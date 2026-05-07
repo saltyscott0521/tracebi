@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tracebi"
+version = "0.3.0"
+description = "Code-first, traceable BI and analytics framework for Python"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=1.5",
+]
+
+[project.optional-dependencies]
+csv = ["openpyxl>=3.0"]
+sql = ["sqlalchemy>=2.0"]
+bigquery = ["google-cloud-bigquery>=3.0", "db-dtypes"]
+snowflake = ["snowflake-connector-python>=3.0"]
+reports = ["openpyxl>=3.0", "matplotlib>=3.5"]
+pdf = ["weasyprint>=57"]
+dashboard = ["dash>=2.14", "plotly>=5.0"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "openpyxl>=3.0",
+    "matplotlib>=3.5",
+    "dash>=2.14",
+    "plotly>=5.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["tracebi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

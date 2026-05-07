@@ -1,0 +1,58 @@
+"""In-memory connector for testing, demos, and notebook workflows."""
+
+from __future__ import annotations
+
+import pandas as pd
+
+from tracebi.connectors.base import BaseConnector
+
+
+class MemoryConnector(BaseConnector):
+    """
+    In-memory connector backed by a dict of DataFrames.
+
+    Useful for unit tests, Jupyter notebooks, and demos where
+    you want lineage tracking without reading from disk or a database.
+
+    Usage:
+        import pandas as pd
+        from tracebi import MemoryConnector, DataModel
+
+        orders_df = pd.DataFrame({...})
+        customers_df = pd.DataFrame({...})
+
+        connector = MemoryConnector("mem", tables={
+            "orders":    orders_df,
+            "customers": customers_df,
+        })
+
+        model = DataModel("Demo")
+        model.add_connector(connector)
+        model.add_table("orders",    connector="mem", source="orders")
+        model.add_table("customers", connector="mem", source="customers")
+
+    Args:
+        name:   Logical name used to reference this connector in a DataModel.
+        tables: Dict mapping source names to DataFrames.
+    """
+
+    def __init__(self, name: str, tables: dict[str, pd.DataFrame]) -> None:
+        super().__init__(name)
+        self._tables: dict[str, pd.DataFrame] = {k: v.copy() for k, v in tables.items()}
+
+    def connect(self) -> None:
+        pass  # nothing to connect
+
+    def load(self, source: str) -> pd.DataFrame:
+        if source not in self._tables:
+            available = list(self._tables.keys())
+            raise KeyError(
+                f"MemoryConnector '{self.name}': source '{source}' not found. "
+                f"Available: {available}"
+            )
+        return self._tables[source].copy()
+
+    def add_table(self, name: str, df: pd.DataFrame) -> "MemoryConnector":
+        """Register an additional DataFrame at runtime."""
+        self._tables[name] = df.copy()
+        return self
