@@ -148,8 +148,51 @@ dashboard = (
 
 # ── Server ────────────────────────────────────────────────────────────────────
 
-if __name__ == "__main__":
-    dashboard.describe()
+def run(port: int = 8050, mode: str = "auto"):
+    """
+    Start the dashboard.
 
+    Args:
+        port: Port to serve on (default 8050).
+        mode: ``'auto'`` detects Jupyter automatically.
+              ``'inline'`` forces Jupyter inline rendering.
+              ``'external'`` opens a browser tab (works in both terminal and Jupyter).
+              ``'terminal'`` always uses the blocking Dash dev server.
+    """
+    dashboard.describe()
     server = DashboardServer(dashboard, model=model)
-    server.run(port=8050, debug=True)
+
+    in_jupyter = _is_jupyter()
+
+    if mode == "auto":
+        mode = "inline" if in_jupyter else "terminal"
+
+    if mode in ("inline", "external") or (mode == "auto" and in_jupyter):
+        try:
+            from jupyter_dash import JupyterDash
+        except ImportError:
+            raise ImportError(
+                "jupyter-dash is required for notebook rendering.\n"
+                "Install with: pip install jupyter-dash"
+            )
+        app = server.get_app()
+        # Re-configure as a JupyterDash app
+        app.__class__ = JupyterDash
+        print(f"\n  TraceBi Dashboard — '{dashboard.title}'")
+        print(f"  Running at http://localhost:{port}/\n")
+        app.run(mode=mode, port=port)
+    else:
+        server.run(port=port, debug=True)
+
+
+def _is_jupyter() -> bool:
+    """Return True when running inside a Jupyter kernel."""
+    try:
+        shell = get_ipython().__class__.__name__  # noqa: F821
+        return shell in ("ZMQInteractiveShell", "google.colab._shell")
+    except NameError:
+        return False
+
+
+if __name__ == "__main__":
+    run()
