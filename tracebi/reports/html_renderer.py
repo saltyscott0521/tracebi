@@ -242,6 +242,113 @@ class HTMLRenderer(BaseRenderer):
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html)
 
+    def serve(
+        self,
+        report: Report,
+        port: int = 8080,
+        output_path: Optional[str] = None,
+        save_manifest: bool = False,
+        open_browser: bool = True,
+    ) -> str:
+        """
+        Render the report and serve it on a local HTTP server.
+
+        Opens the browser automatically (pass ``open_browser=False`` to skip).
+        Press Ctrl+C to stop the server.
+
+        Args:
+            report:       The Report to render.
+            port:         Port to listen on (default 8080).
+            output_path:  Where to write the HTML file. Defaults to a temp file.
+            save_manifest: Save a manifest alongside the HTML (default False).
+            open_browser: Auto-open the browser (default True).
+
+        Returns:
+            The URL being served, e.g. ``'http://localhost:8080'``.
+        """
+        import http.server
+        import threading
+        import tempfile
+        import webbrowser
+
+        if output_path is None:
+            tmp = tempfile.mkdtemp()
+            output_path = os.path.join(tmp, "report.html")
+
+        self.render(report, output_path, save_manifest=save_manifest)
+
+        directory = os.path.dirname(os.path.abspath(output_path))
+        filename   = os.path.basename(output_path)
+        url        = f"http://localhost:{port}/{filename}"
+
+        class _Handler(http.server.SimpleHTTPRequestHandler):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, directory=directory, **kwargs)
+
+            def log_message(self, fmt, *args):  # silence request logs
+                pass
+
+        server = http.server.HTTPServer(("", port), _Handler)
+
+        if open_browser:
+            threading.Timer(0.3, lambda: webbrowser.open(url)).start()
+
+        print(f"\n  TraceBi Report — '{report.name}'")
+        print(f"  Serving at {url}")
+        print(f"  Press Ctrl+C to stop.\n")
+
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\n  Server stopped.")
+        finally:
+            server.server_close()
+
+        return url
+
+    def preview(
+        self,
+        report: Report,
+        width: str = "100%",
+        height: int = 800,
+    ):
+        """
+        Render the report and display it inline in a Jupyter notebook.
+
+        Requires: a running Jupyter kernel with IPython available.
+
+        Args:
+            report: The Report to render.
+            width:  IFrame width (default ``'100%'``).
+            height: IFrame height in pixels (default 800).
+        """
+        import tempfile
+
+        try:
+            from IPython.display import IFrame, display
+        except ImportError:
+            raise ImportError(
+                "IPython is required for preview().\n"
+                "Install with: pip install ipython"
+            )
+
+        tmp = tempfile.mkdtemp()
+        output_path = os.path.join(tmp, "report.html")
+        self.render(report, output_path, save_manifest=False)
+
+        # Read and render as a srcdoc iframe so no server is needed
+        with open(output_path, encoding="utf-8") as f:
+            html_content = f.read()
+
+        from IPython.display import HTML
+        # Embed via srcdoc to avoid needing a running server
+        escaped = html_content.replace('"', "&quot;")
+        display(HTML(
+            f'<iframe srcdoc="{escaped}" '
+            f'width="{width}" height="{height}" '
+            f'style="border:none;border-radius:6px;"></iframe>'
+        ))
+
     def render_pdf(
         self,
         report: Report,
