@@ -11,6 +11,11 @@ from tracebi.connectors.sql_connector import SQLConnector
 from tracebi.connectors.memory_connector import MemoryConnector
 from tracebi.model.dataset import DataSet, LineageNode
 from tracebi.model.data_model import DataModel
+from tracebi.model.star_schema import StarSchema
+from tracebi.etl.bronze import BronzeLayer
+from tracebi.etl.silver import SilverLayer
+from tracebi.etl.gold import GoldLayer
+from tracebi.lineage.diagram import LineageDiagram
 
 __all__ = [
     "BaseConnector",
@@ -20,4 +25,9 @@ __all__ = [
     "DataSet",
     "LineageNode",
     "DataModel",
+    "StarSchema",
+    "BronzeLayer",
+    "SilverLayer",
+    "GoldLayer",
+    "LineageDiagram",
 ]
