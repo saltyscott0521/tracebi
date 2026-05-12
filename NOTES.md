@@ -1,16 +1,123 @@
-# TraceBi — Design Notes
+# TraceBi — Project Notes & Design Decisions
 
-Code-first, traceable BI and analytics framework for Python.
-Every data operation is tracked with a full, immutable lineage chain.
+A running log of key discussions, decisions, and concepts for the TraceBi project.
 
 ---
 
-## Architecture Overview
+## Build Status
 
+| Phase | Status | Description |
+|---|---|---|
+| Phase 1 | ✅ Done | Connectors, DataModel, DataSet + lineage |
+| Phase 2 | ✅ Done | Report Engine (Excel, HTML, manifest) |
+| Phase 2.5 | ✅ Done | Medallion architecture, Star schema, Lineage diagram |
+| Phase 3 | ✅ Done | Dashboard server (Dash-based, associative filters) |
+| Phase 4 | 🔲 Planned | Pipelines and scheduling (APScheduler) |
+
+---
+
+## 2026-05-06 — Report as Code Philosophy
+
+### Context
+Discussion about whether TraceBi's "report as a script" approach would work well
+for ad hoc data requests, and whether it could be made obsolete by AI.
+
+### Core Concept: Report as Code
+Every report is a self-contained `.py` or `.ipynb` file that is the source of
+truth for both the analysis logic and the formatted output. Key properties:
+
+- **Rerunnable on demand** — reconnects to live data, reruns transforms, regenerates output
+- **Auditable** — every report script committed to git with a lineage manifest
+- **Self-documenting** — the code IS the documentation of how the number was calculated
+- **Deliverable + traceable** — the business gets Excel/HTML, the team keeps the script
+
+### Proposed Folder Convention
+```
+tracebi/
+├── tracebi/          ← the library
+├── requests/         ← one file per ad hoc request
+│   ├── 2024_06_open_orders_by_region.py
+│   ├── 2024_07_customer_churn_analysis.ipynb
+│   └── 2024_08_product_margin_review.py
+└── output/           ← generated reports land here
+```
+
+Each file in `requests/` is:
+- Self-contained (defines its own model, transforms, and report)
+- Rerunnable (same code = same logic, fresh data each run)
+- Committed to git (permanent record of the analysis)
+
+### TODO
+- [x] Add `requests/` folder to repo structure
+- [x] Build a request template file (`requests/_template.py`)
+- [x] Add `output/` to `.gitignore` (generated files shouldn't be committed)
+
+---
+
+## 2026-05-06 — AI + TraceBi: Complementary, Not Competing
+
+### Context
+Discussion on whether Claude or similar AI could make TraceBi obsolete by
+managing report delivery and writing directly.
+
+### What AI Could Replace
+- Writing the report script itself (Claude Code can already do this)
+- The "someone sits down and writes the pandas transforms" step
+- Natural language → report script generation
+
+### What AI Cannot Replace
+- **Auditability** — a Claude chat answer is gone; a committed `.py` file
+  with a lineage manifest is permanent and defensible
+- **Reproducibility** — same code + same data = same output, rerunnable in
+  6 months; chat conversations are stateless in the wrong way
+- **Governance** — regulated industries (finance, healthcare, compliance)
+  need to prove how a number was calculated; a git-committed script is
+  evidence, an AI chat is not
+- **Version control** — diff two versions of a report, roll back, branch;
+  none of this is possible with chat-generated answers
+
+### The Right Mental Model: AI + TraceBi Together
+```
+Business user: "Show me open orders by region for $50k+ accounts"
+        ↓
+Claude writes the report script
+        ↓
+TraceBi executes it against the DataModel
+        ↓
+Lineage manifest records everything
+        ↓
+Excel/HTML delivered + script committed to git
+```
+
+AI handles the **generation**, TraceBi handles the **execution, formatting,
+and auditability**. The script exists whether Claude wrote it or a human did.
+
+### Competitive Risk
+The real risk is NOT AI replacing TraceBi — it's tools like Notion, Hex, or
+Observable getting good enough at code-first + formatted output. But none
+currently combine:
+- Relational model (Qlik-style associations)
+- Full lineage tracking per report
+- Multiple output formats (Excel, HTML, PDF)
+- Pure Python, no GUI required
+
+That combination remains a genuine differentiator.
+
+### TODO
+- [ ] Design a `RequestTemplate` that Claude Code can use as a scaffold
+      when generating new report scripts from natural language
+- [ ] Consider a CLI command: `tracebi new-request "open orders by region"`
+      that scaffolds a new request file from a template
+
+---
+
+## Architecture Reference
+
+### Package Structure
 ```
 tracebi/
   connectors/     Source adapters (CSV, SQL, BigQuery, Snowflake, Memory)
-  model/          Core data abstractions (DataSet, DataModel, StarSchema)
+  model/          Core abstractions (DataSet, DataModel, StarSchema)
   etl/            Medallion layers (Bronze → Silver → Gold)
   reports/        Report engine + renderers (Excel, HTML)
   dashboard/      Dash-based live dashboard server
@@ -21,82 +128,42 @@ requests/         Project-specific report scripts (copy _template.py)
 output/           Generated files — gitignored
 ```
 
----
+### Core Design Patterns
 
-## Core Abstractions
+**Immutable DataSet** — every operation (filter/transform/sort/join) returns a new
+DataSet with the original's lineage plus a new LineageNode appended. The underlying
+DataFrame is never mutated in place.
 
-### LineageNode
-A single, immutable record of one operation in a DataSet's history.
+**Why:** Lineage is append-only. You can always reconstruct exactly which operations
+produced a result. No in-place mutation means no hidden state bugs.
 
-```python
-@dataclass
-class LineageNode:
-    operation: str       # 'load', 'filter', 'transform', 'join', 'bronze', 'silver', 'gold', …
-    description: str
-    connector: dict      # connector metadata (for load/bronze steps)
-    source: str          # table name, file path, SQL query
-    timestamp: str       # UTC ISO-8601, auto-set
-    metadata: dict       # arbitrary key/value (rows_before/after, agg spec, …)
-```
+**DataModel** — Qlik-style relational graph. Name your connectors, tables, and
+relationships once; reports, dashboards, and pipelines all read from the same
+definitions. `load()` always re-reads from source (no caching).
 
-### DataSet
-Immutable pandas DataFrame wrapper. Every fluent method returns a **new** DataSet.
+**Medallion layers as separate classes** — Bronze/Silver/Gold are distinct
+_contracts_, not just naming conventions. BronzeLayer enforces "no transforms".
+SilverLayer enforces "declarative pipeline". GoldLayer enforces "aggregated via
+StarSchema". The type boundary makes it impossible to accidentally skip a layer.
 
-```python
-ds = (
-    model.load("orders")
-    .filter("status == 'shipped'")
-    .transform(lambda df: df.assign(margin=df.revenue - df.cost))
-    .sort("margin", ascending=False)
-    .select(["region", "product", "margin"])
-)
-ds.print_lineage()
-```
+**MemoryConnector** — tests and demos should not require external files or databases.
+Drop-in connector backed by a Python dict, so tests run in pure memory with full lineage.
 
-### DataModel
-Qlik-style relational graph. Register connectors + tables, declare joins.
+### Medallion Architecture
 
 ```python
-model = DataModel("SalesModel")
-model.add_connector(CSVConnector("files", directory="data/"))
-model.add_table("orders",    connector="files", source="orders.csv")
-model.add_table("customers", connector="files", source="customers.csv")
-model.add_relationship("orders_customers", "orders", "customers", "customer_id")
-orders_ds = model.resolve("orders_customers")
-```
+# Bronze — raw ingest
+orders_bronze = BronzeLayer(connector=connector, source="orders.csv").load()
 
----
-
-## Medallion Architecture
-
-### Bronze (raw ingest)
-- Load data from any connector with zero transforms.
-- Lineage stamped with `operation="bronze"` + ingestion timestamp.
-
-```python
-bronze = BronzeLayer(connector=csv_connector, source="orders.csv")
-raw_ds = bronze.load(name="orders_raw")
-```
-
-### Silver (clean)
-- Declarative pipeline: cast, drop_nulls, deduplicate, rename, transform.
-- Each step appends a `operation="silver"` lineage node.
-
-```python
-silver = (
+# Silver — clean
+orders_silver = (
     SilverLayer()
     .cast({"order_date": "datetime64[ns]", "qty": "int64"})
     .drop_nulls(subset=["order_id"])
     .deduplicate(subset=["order_id"])
-)
-clean_ds = silver.apply(raw_ds, name="orders_silver")
-```
+).apply(orders_bronze, name="orders_silver")
 
-### Gold (aggregated)
-- Delegates to `StarSchema.query()`.
-- Appends a `operation="gold"` lineage node with query parameters.
-
-```python
+# Gold — aggregated via StarSchema
 gold = GoldLayer(schema=schema)
 revenue_by_region = gold.query(
     fact="fact_orders",
@@ -106,90 +173,28 @@ revenue_by_region = gold.query(
 )
 ```
 
----
+### Star Schema
 
-## Star Schema
+Dimension references use dot notation: `"dim_name.attribute"`.
+Measures are a dict: `{"column": "agg_func"}`.
+Supported agg funcs: `sum`, `count`, `mean`, `min`, `max`, `nunique`.
 
 ```python
 schema = StarSchema("Sales", model=model)
-
 schema.add_dimension("dim_customer", table_name="customers",
                      key_col="customer_id", attributes=["region", "segment"])
 schema.add_fact("fact_orders", table_name="orders",
                 measures=["revenue", "qty"],
                 foreign_keys={"dim_customer": "customer_id"})
-
-ds = schema.query(
-    fact="fact_orders",
-    measures={"revenue": "sum", "order_id": "count"},
-    dimensions=["dim_customer.region"],
-    filters={"status": "shipped"},
-    aggregate=True,
-)
 ```
 
-**Dimension references** use dot notation: `"dim_name.attribute"`.  
-**Measures** are a dict: `{"column": "agg_func"}`.  
-Supported agg funcs: `sum`, `count`, `mean`, `min`, `max`, `nunique`.
-
----
-
-## Report Engine (Phase 2)
+### Lineage Diagram
 
 ```python
-report = (
-    Report("Q2 Sales")
-    .author("Data Team")
-    .add(TextSection(title="Summary", content="...", style="heading1"))
-    .add(ChartSection(dataset=trend_ds, chart_type="line", x="month", y="revenue"))
-    .add(TableSection(dataset=region_ds, columns=["region", "revenue"], totals=["revenue"]))
-)
-
-ExcelRenderer().render(report, "output/report.xlsx")
-HTMLRenderer().render(report, "output/report.html")
-HTMLRenderer().serve(report, port=8080)   # open in browser
-HTMLRenderer().preview(report)            # inline in Jupyter
-```
-
-Every render saves a `.manifest.json` with report metadata + full lineage.
-
----
-
-## Dashboard (Phase 3)
-
-```python
-dashboard = (
-    Dashboard("Sales Dashboard")
-    .columns(2)
-    .add_filter(FilterPanel("region-filter", label="Region", column="region", table_name="orders"))
-    .add_panel(MetricPanel("total-revenue", title="Revenue", table_name="orders",
-                           column="revenue", aggregation="sum", prefix="$"))
-    .add_panel(ChartPanel("by-region", title="By Region", table_name="orders",
-                          chart_type="bar", x="region", y="revenue"))
-    .add_panel(TablePanel("orders-table", title="Orders", table_name="orders",
-                          columns=["order_id", "region", "revenue"]))
-)
-
-DashboardServer(dashboard, model=model).run(port=8050)
-```
-
-Filters are **associative**: selecting a value in any FilterPanel automatically
-filters every panel whose dataset contains that column.
-
----
-
-## Lineage Diagram (Phase 2.5)
-
-```python
-from tracebi.lineage.diagram import LineageDiagram
-
-diag = LineageDiagram(ds)
-diag.show()                  # matplotlib / Jupyter inline
-diag.to_html("lineage.html") # standalone HTML with embedded SVG
-print(diag.to_mermaid())     # Mermaid markdown string
-
-# Works on Reports too
-diag = LineageDiagram(report)
+diag = LineageDiagram(ds)       # or LineageDiagram(report)
+diag.show()                     # matplotlib / Jupyter inline
+diag.to_html("lineage.html")    # standalone HTML with embedded SVG
+print(diag.to_mermaid())        # paste into GitHub markdown
 ```
 
 Node colors by operation type:
@@ -204,34 +209,15 @@ Node colors by operation type:
 | transform | amber   |
 | join      | orange  |
 | sort      | purple  |
-| select    | steel   |
-| rename    | teal    |
 
----
-
-## Connectors
-
-| Class              | Extra dep                          | Notes                          |
-|--------------------|------------------------------------|--------------------------------|
-| CSVConnector       | openpyxl (optional for xlsx)       | `directory=` + filename source |
-| SQLConnector       | sqlalchemy                         | Any SQLAlchemy URL             |
-| BigQueryConnector  | google-cloud-bigquery, db-dtypes   | Uses ADC by default            |
-| SnowflakeConnector | snowflake-connector-python         | Keyword auth supported         |
-| MemoryConnector    | (none)                             | In-process dict of DataFrames  |
-
----
-
-## Install
+### Install
 
 ```bash
-pip install -e ".[reports,dashboard]"      # reports + Dash
-pip install -e ".[reports,dashboard,sql]"  # + SQLAlchemy
-pip install networkx matplotlib            # for LineageDiagram
+pip install -e ".[reports,dashboard]"
+pip install networkx matplotlib        # for LineageDiagram
 ```
 
----
-
-## Running Examples
+### Running Examples
 
 ```bash
 python examples/phase1_example.py    # connectors + DataModel
@@ -240,37 +226,14 @@ python examples/phase3_example.py    # live Dash dashboard
 python examples/phase25_example.py   # medallion + star schema + lineage diagram
 ```
 
-In Jupyter:
-```python
-from examples.phase25_example import run
-run()
-```
-
 ---
 
-## Design Decisions
+## Open Questions
 
-**Why immutable DataSet?**  
-Lineage is append-only. You can always reconstruct exactly which operations
-produced a result. No in-place mutation means no hidden state bugs.
-
-**Why DataModel instead of just pandas merge?**  
-Named relationships let you declare the schema once and reuse it everywhere.
-The model is the single source of truth for joins — reports, dashboards, and
-pipelines all read from the same definitions.
-
-**Why MemoryConnector?**  
-Tests and demos should not require external files or databases. MemoryConnector
-provides a drop-in connector backed by a Python dict, so tests run in pure
-memory with full lineage.
-
-**Why dot notation for star schema dimensions?**  
-`"dim_customer.region"` is self-documenting and prevents column name
-collisions when multiple dimensions are joined. It's also easy to parse
-and display in lineage nodes.
-
-**Why medallion layers as separate classes?**  
-Bronze/Silver/Gold are distinct _contracts_, not just naming conventions.
-BronzeLayer enforces "no transforms". SilverLayer enforces "declarative pipeline".
-GoldLayer enforces "aggregated via StarSchema". The type boundary makes it
-impossible to accidentally skip a layer.
+- Should `requests/` files be standalone scripts or should they import a
+  shared project-level `DataModel` defined once in a central file?
+- Should the request template support both `.py` and `.ipynb` formats?
+- For the CLI scaffolding idea — is `tracebi new-request` worth building
+  before Phase 4, or after?
+- Phase 4 pipeline design: should a `Pipeline` class wrap the full
+  Bronze → Silver → Gold chain, or stay lower-level (just step scheduling)?
