@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tracebi"
-version = "0.4.0"
+version = "0.5.0"
 description = "Code-first, traceable BI and analytics framework for Python"
 readme = "README.md"
 license = { text = "MIT" }
@@ -23,6 +23,7 @@ pdf = ["weasyprint>=57"]
 dashboard = ["dash>=2.14", "plotly>=5.0"]
 lineage = ["networkx>=3.0", "matplotlib>=3.5"]
 medallion = ["networkx>=3.0"]
+pipeline = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
@@ -31,6 +32,8 @@ dev = [
     "dash>=2.14",
     "plotly>=5.0",
     "networkx>=3.0",
+    "apscheduler>=3.10",
+    "sqlalchemy>=2.0",
 ]
 
 [tool.hatch.build.targets.wheel]

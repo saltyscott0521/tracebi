@@ -47,3 +47,14 @@ class SQLConnector(BaseConnector):
         if source.strip().upper().startswith("SELECT"):
             return pd.read_sql(source, con=self._engine)
         return pd.read_sql_table(source, con=self._engine)
+
+    def write(
+        self,
+        df: pd.DataFrame,
+        table: str,
+        if_exists: str = "replace",
+    ) -> None:
+        """Write *df* to *table* using pandas ``to_sql``."""
+        if self._engine is None:
+            self.connect()
+        df.to_sql(table, con=self._engine, if_exists=if_exists, index=False)

@@ -16,6 +16,7 @@ from tracebi.etl.bronze import BronzeLayer
 from tracebi.etl.silver import SilverLayer
 from tracebi.etl.gold import GoldLayer
 from tracebi.lineage.diagram import LineageDiagram
+from tracebi.pipeline.runner import PipelineRunner
 
 __all__ = [
     "BaseConnector",
@@ -30,4 +31,5 @@ __all__ = [
     "SilverLayer",
     "GoldLayer",
     "LineageDiagram",
+    "PipelineRunner",
 ]

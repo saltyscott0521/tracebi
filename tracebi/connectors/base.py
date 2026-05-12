@@ -33,5 +33,28 @@ class BaseConnector(ABC):
         """
         ...
 
+    def write(
+        self,
+        df: "pd.DataFrame",
+        table: str,
+        if_exists: str = "replace",
+    ) -> None:
+        """
+        Write *df* to *table* in this connector's data store.
+
+        Args:
+            df:        DataFrame to write.
+            table:     Destination table / key name.
+            if_exists: What to do if the table already exists:
+                       ``'replace'`` (default), ``'append'``, or ``'fail'``.
+
+        Raises:
+            NotImplementedError: If the connector does not support writes.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support write(). "
+            "Use SQLConnector or MemoryConnector for write operations."
+        )
+
     def __repr__(self) -> str:
         return f"<{type(self).__name__} name={self.name!r}>"

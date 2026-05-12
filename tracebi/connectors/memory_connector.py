@@ -52,6 +52,22 @@ class MemoryConnector(BaseConnector):
             )
         return self._tables[source].copy()
 
+    def write(
+        self,
+        df: pd.DataFrame,
+        table: str,
+        if_exists: str = "replace",
+    ) -> None:
+        """Write *df* into the in-memory table store."""
+        if if_exists == "fail" and table in self._tables:
+            raise ValueError(f"Table '{table}' already exists in MemoryConnector '{self.name}'.")
+        if if_exists == "append" and table in self._tables:
+            self._tables[table] = pd.concat(
+                [self._tables[table], df], ignore_index=True
+            )
+        else:
+            self._tables[table] = df.copy()
+
     def add_table(self, name: str, df: pd.DataFrame) -> "MemoryConnector":
         """Register an additional DataFrame at runtime."""
         self._tables[name] = df.copy()
