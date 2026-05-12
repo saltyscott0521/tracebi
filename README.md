@@ -3,7 +3,8 @@
 A **code-first, traceable BI and analytics framework** for Python.
 
 Define your data model, transformations, and reports entirely in code.
-Every report is traceable back to the exact query, connector, and transform steps that produced it.
+Every dataset, report, and pipeline run is traceable back to the exact
+connector, query, and transform steps that produced it.
 
 ---
 
@@ -14,206 +15,234 @@ Every report is traceable back to the exact query, connector, and transform step
 | Code-defined reports | ✓ | ✗ | ✗ | ✓ |
 | Relational data model | ✗ | ✓ | ✓ | ✓ |
 | Full data lineage per report | ✗ | partial | ✗ | ✓ |
-| PDF / Excel output | ✗ | ✗ | ✓ | ✓ |
-| Scheduled pipelines | ✗ | ✓ | ✓ | ✓ (Phase 4) |
-| Web dashboard | ✓ | ✗ | ✓ | ✓ (Phase 3) |
+| Excel / HTML output | ✗ | ✗ | ✓ | ✓ |
+| Medallion architecture | ✗ | ✓ | ✗ | ✓ |
+| Scheduled pipelines | ✗ | ✓ | ✓ | ✓ |
+| Live dashboard | ✓ | ✗ | ✓ | ✓ |
 
 ---
 
-## Roadmap
+## What's built
 
-- [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake), DataModel, DataSet with lineage
-- [x] **Phase 2** — Report Engine (Excel, HTML, PDF renderers + manifest)
-- [ ] **Phase 3** — Dashboard server (Dash-based, driven by the same DataModel)
-- [ ] **Phase 4** — Pipelines and scheduling (APScheduler, on-demand and cron)
+- [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory), DataModel, DataSet with immutable lineage chain
+- [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
+- [x] **Phase 2.5** — Medallion architecture (Bronze/Silver/Gold), StarSchema, LineageDiagram
+- [x] **Phase 3** — Live Dash dashboard with associative filters
+- [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 
 ---
 
 ## Installation
 
 ```bash
-# Core (CSV + SQLite support)
-pip install pandas openpyxl sqlalchemy matplotlib
+# Core
+pip install pandas
 
-# PostgreSQL
-pip install psycopg2-binary
+# Reports (Excel + charts)
+pip install -e ".[reports]"
 
-# BigQuery
-pip install google-cloud-bigquery db-dtypes
+# Dashboard
+pip install -e ".[dashboard]"
 
-# Snowflake
-pip install snowflake-connector-python
+# Pipelines (scheduling + DB write-back)
+pip install -e ".[pipeline]"
 
-# PDF rendering
-pip install weasyprint
+# Lineage diagrams
+pip install -e ".[lineage]"
+
+# Everything
+pip install -e ".[reports,dashboard,pipeline,lineage,sql]"
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Define a DataModel
+### 1. Connect to data
 
 ```python
-from tracebi import DataModel, CSVConnector, SQLConnector
+from tracebi import DataModel, SQLConnector, MemoryConnector
 
-db  = SQLConnector("sales_db", url="postgresql://user:pass@host/db")
-csv = CSVConnector("lookups", directory="data/")
+# SQLite / Postgres / MySQL / BigQuery / Snowflake
+db = SQLConnector("sales_db", url="sqlite:///data/sales.db")
 
 model = DataModel("SalesModel")
 model.add_connector(db)
-model.add_connector(csv)
-
 model.add_table("orders",    connector="sales_db", source="orders")
 model.add_table("customers", connector="sales_db", source="customers")
-model.add_table("regions",   connector="lookups",  source="regions.csv")
-
-model.add_relationship(
-    name="orders_customers",
-    left_table="orders",
-    right_table="customers",
-    left_key="customer_id",
-    how="left",
-)
-model.add_relationship(
-    name="customers_regions",
-    left_table="customers",
-    right_table="regions",
-    left_key="region_code",
-    how="left",
-)
+model.add_relationship("orders_customers", "orders", "customers",
+                        left_key="customer_id", how="left")
 ```
 
-### 2. Load and transform data
+### 2. Load and transform (full lineage at every step)
 
 ```python
-model.connect()
-
-orders = model.load("orders")
-
-active = (
-    orders
-    .filter("status != 'cancelled'", description="Exclude cancelled orders")
+orders = (
+    model.load("orders")
+    .filter("status == 'shipped'", description="Shipped orders only")
     .transform(
-        lambda df: df.assign(revenue=df["qty"] * df["unit_price"]),
-        description="revenue = qty × unit_price",
+        lambda df: df.assign(margin=df["revenue"] - df["cost"]),
+        description="margin = revenue - cost",
     )
-    .sort("revenue", ascending=False)
+    .sort("margin", ascending=False)
 )
 
-# Full join chain: orders → customers → regions
-full_view = model.resolve_chain(["orders_customers", "customers_regions"])
+orders.print_lineage()
+# Step 1: [LOAD]       Loaded 'orders' from connector 'sales_db'
+# Step 2: [FILTER]     Shipped orders only  (250 → 198 rows)
+# Step 3: [TRANSFORM]  margin = revenue - cost
+# Step 4: [SORT]       Sorted by margin (desc)
 ```
 
-### 3. Inspect lineage at any point
+### 3. Build a report
 
 ```python
-active.print_lineage()
-# ============================================================
-#   Lineage for DataSet: 'orders'
-#   Shape: 243 rows × 8 cols
-# ============================================================
-#   Step 1: [LOAD]  Loaded 'orders' from connector 'sales_db'
-#     Connector : sales_db (SQLConnector)
-#     Source    : orders
-#   Step 2: [FILTER]  Exclude cancelled orders
-#     rows_before : 250
-#     rows_after  : 243
-#   Step 3: [TRANSFORM]  revenue = qty × unit_price
-#   Step 4: [SORT]  Sorted by revenue (desc)
-# ============================================================
-```
-
-### 4. Build and render a report
-
-```python
-from tracebi.reports import Report, TextSection, TableSection, ChartSection
-from tracebi.reports import ExcelRenderer, HTMLRenderer
+from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
+from tracebi.reports.excel_renderer import ExcelRenderer
+from tracebi.reports.html_renderer import HTMLRenderer
 
 report = (
-    Report("Monthly Sales Report")
+    Report("Q2 Sales Report")
     .author("Data Team")
-    .parameter("month", "2024-06")
-    .add(TextSection(
-        title="Executive Summary",
-        content="Revenue up 12% vs prior month.",
-        style="heading1",
-    ))
-    .add(TableSection(
-        title="Top Orders",
-        dataset=active,
-        columns=["order_id", "customer_id", "revenue"],
-        totals=["revenue"],
-        number_formats={"revenue": "{:,.2f}"},
-    ))
-    .add(ChartSection(
-        title="Revenue by Region",
-        dataset=full_view,
-        chart_type="bar",
-        x="region_name",
-        y="revenue",
-    ))
+    .parameter("period", "Q2 2024")
+    .add(TextSection(title="Summary", content="Summary", style="heading1"))
+    .add(TextSection(content="Revenue up 12% vs Q1.", style="normal"))
+    .add(ChartSection(title="Revenue Trend", dataset=trend_ds,
+                      chart_type="line", x="month", y="revenue"))
+    .add(TableSection(title="Top Orders", dataset=orders,
+                      columns=["region", "product", "revenue"],
+                      totals=["revenue"]))
 )
 
-# Renders the report AND saves a .manifest.json with full lineage
-ExcelRenderer().render(report, "output/monthly_sales.xlsx")
-HTMLRenderer().render(report, "output/monthly_sales.html")
+ExcelRenderer().render(report, "output/q2_sales.xlsx")  # + saves manifest.json
+HTMLRenderer().render(report, "output/q2_sales.html")
+HTMLRenderer().serve(report, port=8080)   # open in browser
+HTMLRenderer().preview(report)            # inline in Jupyter
 ```
 
-Every render automatically produces a manifest file:
-```json
-{
-  "report_name": "Monthly Sales Report",
-  "rendered_at": "2024-06-01T09:00:00Z",
-  "rendered_by": "Data Team",
-  "format": "excel",
-  "parameters": { "month": "2024-06" },
-  "sections": [
-    {
-      "section_type": "table",
-      "dataset_name": "orders",
-      "dataset_fingerprint": "a3f9...",
-      "dataset_lineage": [
-        { "operation": "load",      "source": "orders", "connector": "sales_db" },
-        { "operation": "filter",    "description": "Exclude cancelled orders" },
-        { "operation": "transform", "description": "revenue = qty × unit_price" },
-        { "operation": "sort",      "description": "Sorted by revenue (desc)" }
-      ]
-    }
-  ]
-}
+### 4. Medallion architecture
+
+```python
+from tracebi import BronzeLayer, SilverLayer, GoldLayer
+from tracebi.model.star_schema import StarSchema
+
+# Bronze — raw ingest, zero transforms
+bronze = BronzeLayer(connector=db, source="orders_raw",
+                     sink=db, sink_table="orders_bronze")
+ds_bronze = bronze.execute()   # loads + writes to DB
+
+# Silver — declarative cleaning pipeline
+silver = (
+    SilverLayer(source=db, source_table="orders_bronze",
+                sink=db, sink_table="orders_silver")
+    .cast({"qty": "int64", "order_date": "datetime64[ns]"})
+    .drop_nulls(subset=["order_id"])
+    .deduplicate(subset=["order_id"])
+)
+ds_silver = silver.execute()   # loads bronze → cleans → writes silver
+
+# Star schema
+schema = StarSchema("Sales", model=model)
+schema.add_dimension("dim_customer", table_name="customers",
+                     key_col="customer_id", attributes=["region", "segment"])
+schema.add_fact("fact_orders", table_name="orders_silver",
+                measures=["revenue", "qty"],
+                foreign_keys={"dim_customer": "customer_id"})
+
+# Gold — aggregated via StarSchema
+gold = GoldLayer(schema=schema, fact="fact_orders",
+                 measures={"revenue": "sum", "qty": "sum"},
+                 dimensions=["dim_customer.region"],
+                 sink=db, sink_table="revenue_by_region_gold")
+ds_gold = gold.execute()   # queries → aggregates → writes gold
+```
+
+### 5. Schedule pipelines
+
+```python
+from tracebi.pipeline.runner import PipelineRunner
+
+runner = PipelineRunner(db_url="sqlite:///data/tracebi.db")
+
+# Each layer has its own independent schedule
+runner.register(bronze, name="orders_bronze",   schedule="0 * * * *")
+runner.register(silver, name="orders_silver",   schedule="15 * * * *",
+                depends_on="orders_bronze")
+runner.register(gold,   name="revenue_by_region", schedule="30 6 * * *",
+                depends_on="orders_silver")
+
+# On-demand: run one layer
+runner.run("orders_silver")
+
+# On-demand: full refresh (bronze → silver → gold)
+runner.run("revenue_by_region", refresh=True)
+
+# View run history with cross-layer lineage
+runner.lineage("revenue_by_region")
+
+# Start the scheduler (blocking)
+runner.start()
+```
+
+Every run is recorded in `tracebi_runs` with `rows_in`, `rows_out`, `status`,
+and an `upstream_run_id` linking back to the previous layer's run.
+
+### 6. Live dashboard
+
+```python
+from tracebi.dashboard import Dashboard, DashboardServer
+from tracebi.dashboard import FilterPanel, MetricPanel, ChartPanel, TablePanel
+
+dashboard = (
+    Dashboard("Q2 Sales Dashboard")
+    .columns(2)
+    .add_filter(FilterPanel("region-filter", label="Region",
+                            column="region", table_name="orders"))
+    .add_panel(MetricPanel("total-revenue", title="Total Revenue",
+                           table_name="orders", column="revenue",
+                           aggregation="sum", prefix="$"))
+    .add_panel(ChartPanel("by-region", title="Revenue by Region",
+                          table_name="orders", chart_type="bar",
+                          x="region", y="revenue"))
+    .add_panel(TablePanel("orders-table", title="Orders",
+                          table_name="orders",
+                          columns=["order_id", "region", "revenue"]))
+)
+
+DashboardServer(dashboard, model=model).run(port=8050)
+# Open http://localhost:8050/
+```
+
+Filters are **associative** — selecting a region automatically filters every
+panel that shares that column.
+
+### 7. Lineage diagrams
+
+```python
+from tracebi.lineage.diagram import LineageDiagram
+
+diag = LineageDiagram(ds_gold)   # or LineageDiagram(report)
+diag.show()                       # matplotlib / Jupyter inline
+diag.to_html("lineage.html")      # standalone HTML with embedded SVG
+print(diag.to_mermaid())          # paste into GitHub markdown
 ```
 
 ---
 
-## Project Structure
+## Local database setup (example)
 
-```
-tracebi/
-├── tracebi/
-│   ├── connectors/
-│   │   ├── base.py              # Abstract connector
-│   │   ├── csv_connector.py     # CSV / Excel files
-│   │   ├── sql_connector.py     # SQLAlchemy (SQLite, Postgres, MySQL…)
-│   │   ├── bigquery_connector.py
-│   │   └── snowflake_connector.py
-│   ├── model/
-│   │   ├── data_model.py        # Relational graph, Qlik-style associations
-│   │   └── dataset.py           # DataSet + LineageNode chain
-│   ├── reports/
-│   │   ├── report.py            # Report, Section types, ReportManifest
-│   │   ├── base_renderer.py     # Abstract renderer
-│   │   ├── excel_renderer.py    # .xlsx output
-│   │   └── html_renderer.py     # .html output (+ PDF via WeasyPrint)
-│   ├── dashboard/               # Phase 3 — coming soon
-│   └── pipeline/                # Phase 4 — coming soon
-├── examples/
-│   ├── phase1_example.py
-│   └── phase2_example.py
-├── tests/
-│   ├── test_phase1.py
-│   └── test_phase2.py
-└── pyproject.toml
+```bash
+# Create data/tracebi.db, seed source tables, run initial Bronze load
+python seeds/seed_db.py
+
+# Run Silver
+python -c "from seeds.seed_db import runner; runner.run('orders_silver')"
+
+# Full Gold refresh
+python -c "from seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)"
+
+# Start scheduler
+python -c "from seeds.seed_db import runner; runner.start()"
 ```
 
 ---
@@ -221,14 +250,55 @@ tracebi/
 ## Running the examples
 
 ```bash
-python examples/phase1_example.py
-python examples/phase2_example.py
+python examples/phase1_example.py    # connectors + DataModel + lineage
+python examples/phase2_example.py    # report engine (opens browser)
+python examples/phase25_example.py   # medallion + star schema + lineage diagram
+python examples/phase3_example.py    # live Dash dashboard
+python examples/phase4_example.py    # full pipeline (run seeds/seed_db.py first)
 ```
 
 ## Running tests
 
 ```bash
 pytest tests/
+# 163 passed
+```
+
+---
+
+## Project structure
+
+```
+tracebi/
+├── tracebi/
+│   ├── connectors/       CSV, SQL, BigQuery, Snowflake, Memory
+│   ├── model/            DataSet, DataModel, StarSchema
+│   ├── etl/              BronzeLayer, SilverLayer, GoldLayer
+│   ├── reports/          Report, ExcelRenderer, HTMLRenderer
+│   ├── dashboard/        Dashboard, DashboardServer, panels
+│   ├── pipeline/         PipelineRunner (APScheduler + DB)
+│   └── lineage/          LineageDiagram
+├── examples/             Runnable demos (phase1–4)
+├── tests/                163 tests across all phases
+├── seeds/                seed_db.py — one-command DB setup
+├── requests/             _template.py — scaffold for ad hoc report scripts
+├── data/                 SQLite DB lives here (gitignored)
+└── NOTES.md              Design decisions and architecture reference
+```
+
+---
+
+## Ad hoc reports
+
+Copy `requests/_template.py`, rename it, fill in the four sections
+(connect → build datasets → build report → render), and commit it to git.
+The script is the permanent, auditable record of how the numbers were produced.
+
+```
+requests/
+├── _template.py
+├── 2024_06_open_orders_by_region.py
+└── 2024_07_customer_churn_analysis.py
 ```
 
 ---
