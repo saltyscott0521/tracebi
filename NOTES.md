@@ -12,7 +12,8 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 2 | ✅ Done | Report Engine (Excel, HTML, manifest) |
 | Phase 2.5 | ✅ Done | Medallion architecture, Star schema, Lineage diagram |
 | Phase 3 | ✅ Done | Dashboard server (Dash-based, associative filters) |
-| Phase 4 | 🔲 Planned | Pipelines and scheduling (APScheduler) |
+| Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
+| Docs | ✅ Done | README rewritten, docs/overview.html added |
 
 ---
 
