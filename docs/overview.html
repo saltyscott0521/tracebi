@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TraceBi — Project Overview</title>
+  <style>
+    :root {
+      --navy:   #003366;
+      --bronze: #CD7F32;
+      --silver: #8a8a8a;
+      --gold:   #c9920a;
+      --green:  #2E7D32;
+      --amber:  #d97706;
+      --orange: #c2410c;
+      --purple: #6A1B9A;
+      --bg:     #f8f9fa;
+      --card:   #ffffff;
+      --border: #e2e8f0;
+      --text:   #1a202c;
+      --muted:  #64748b;
+      --code-bg:#f1f5f9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: white;
+      padding: 3rem 2rem 2.5rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2.8rem; letter-spacing: -1px; }
+    header p  { font-size: 1.1rem; opacity: .8; margin-top: .5rem; }
+    .version-badge {
+      display: inline-block;
+      margin-top: 1rem;
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 20px;
+      padding: .25rem .9rem;
+      font-size: .85rem;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: .75rem 2rem;
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .9rem;
+      font-weight: 500;
+    }
+    nav a:hover { color: var(--navy); }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    section { margin-bottom: 3.5rem; }
+
+    h2 {
+      font-size: 1.6rem;
+      color: var(--navy);
+      border-bottom: 2px solid var(--border);
+      padding-bottom: .5rem;
+      margin-bottom: 1.5rem;
+    }
+    h3 { font-size: 1.15rem; margin: 1.5rem 0 .75rem; color: var(--text); }
+    h4 { font-size: 1rem; margin: 1rem 0 .5rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+    p  { margin-bottom: .75rem; color: #374151; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 1rem;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── Phase badges ── */
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .phase-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem;
+      border-top: 4px solid var(--navy);
+    }
+    .phase-card.done  { border-top-color: var(--green); }
+    .phase-card .badge {
+      font-size: .75rem;
+      font-weight: 700;
+      padding: .15rem .5rem;
+      border-radius: 10px;
+      background: #dcfce7;
+      color: var(--green);
+      margin-bottom: .5rem;
+      display: inline-block;
+    }
+    .phase-card h3 { margin: .4rem 0 .3rem; font-size: 1rem; }
+    .phase-card p  { font-size: .875rem; color: var(--muted); margin: 0; }
+
+    /* ── Architecture flow ── */
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: 1.5rem 0;
+    }
+    .arch-box {
+      border-radius: 8px;
+      padding: .6rem 1rem;
+      font-size: .9rem;
+      font-weight: 600;
+      color: white;
+      text-align: center;
+      min-width: 110px;
+    }
+    .arch-arrow {
+      color: var(--muted);
+      font-size: 1.4rem;
+      font-weight: 300;
+    }
+
+    /* ── Medallion flow ── */
+    .medallion {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 1rem 0 1.5rem;
+    }
+    .medallion-layer {
+      flex: 1;
+      min-width: 200px;
+      border-radius: 10px;
+      padding: 1.2rem;
+      color: white;
+    }
+    .medallion-layer h3 { font-size: 1rem; margin-bottom: .4rem; color: white; }
+    .medallion-layer p  { font-size: .85rem; opacity: .9; margin: 0; color: white; }
+    .layer-bronze { background: #92400e; }
+    .layer-silver { background: #475569; }
+    .layer-gold   { background: #92660a; }
+
+    /* ── Code blocks ── */
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      overflow-x: auto;
+      font-size: .85rem;
+      line-height: 1.7;
+      margin: .75rem 0 1.2rem;
+    }
+    code {
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+    }
+    p code, li code {
+      background: var(--code-bg);
+      color: #be185d;
+      padding: .1em .35em;
+      border-radius: 4px;
+      font-size: .875em;
+    }
+
+    /* ── Lineage color chips ── */
+    .op-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: .75rem 0;
+    }
+    .op-chip {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .8rem;
+      font-weight: 600;
+    }
+    .op-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .9rem;
+      margin: 1rem 0;
+    }
+    th {
+      background: var(--code-bg);
+      text-align: left;
+      padding: .6rem .9rem;
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      border-bottom: 2px solid var(--border);
+    }
+    td {
+      padding: .6rem .9rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    /* ── File tree ── */
+    .file-tree {
+      background: #1e293b;
+      color: #94a3b8;
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: .82rem;
+      line-height: 1.8;
+    }
+    .file-tree .dir  { color: #7dd3fc; }
+    .file-tree .file { color: #e2e8f0; }
+    .file-tree .note { color: #64748b; }
+
+    /* ── Command block ── */
+    .cmd {
+      background: #1e293b;
+      color: #86efac;
+      border-radius: 8px;
+      padding: 1rem 1.4rem;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: .85rem;
+      margin: .75rem 0;
+    }
+    .cmd .prompt { color: #64748b; user-select: none; }
+
+    /* ── Connector table icons ── */
+    .conn-type {
+      display: inline-block;
+      font-size: .75rem;
+      font-weight: 700;
+      padding: .1rem .45rem;
+      border-radius: 4px;
+      background: var(--code-bg);
+      color: var(--muted);
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--navy);
+      color: rgba(255,255,255,.5);
+      text-align: center;
+      padding: 1.5rem;
+      font-size: .85rem;
+      margin-top: 3rem;
+    }
+
+    ul { padding-left: 1.4rem; }
+    li { margin-bottom: .3rem; color: #374151; font-size: .95rem; }
+
+    .highlight { color: var(--navy); font-weight: 600; }
+    .muted { color: var(--muted); font-size: .875rem; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════ HEADER -->
+<header>
+  <h1>TraceBi</h1>
+  <p>Code-first, traceable BI and analytics framework for Python</p>
+  <div class="version-badge">v0.5.0 &nbsp;·&nbsp; 163 tests passing &nbsp;·&nbsp; Phase 1–4 complete</div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════ NAV -->
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#phases">Phases</a>
+  <a href="#connectors">Connectors</a>
+  <a href="#dataset">DataSet &amp; Lineage</a>
+  <a href="#reports">Reports</a>
+  <a href="#medallion">Medallion</a>
+  <a href="#pipeline">Pipeline</a>
+  <a href="#dashboard">Dashboard</a>
+  <a href="#structure">Structure</a>
+  <a href="#quickstart">Quick Start</a>
+</nav>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════════════ OVERVIEW -->
+<section id="overview">
+  <h2>What is TraceBi?</h2>
+  <p>
+    TraceBi is a Python library for building BI and analytics workflows entirely in code —
+    no GUI builders, no config files. Every data operation from raw ingest to formatted
+    report is tracked in a full, immutable <strong>lineage chain</strong>. You always know
+    exactly where a number came from and how it was calculated.
+  </p>
+
+  <div class="arch-flow">
+    <div class="arch-box" style="background:#475569">Source DB / CSV / Memory</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-box" style="background:#92400e">Bronze</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-box" style="background:#475569">Silver</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-box" style="background:#92660a">Gold</div>
+    <span class="arch-arrow">→</span>
+    <div class="arch-box" style="background:#003366">Reports &amp; Dashboard</div>
+  </div>
+
+  <p>The same DataModel and lineage chain powers every output — whether that's an Excel
+  file, an HTML report, a live Dash dashboard, or a scheduled pipeline writing back to a
+  database.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ PHASES -->
+<section id="phases">
+  <h2>Phases</h2>
+  <div class="phase-grid">
+    <div class="phase-card done">
+      <span class="badge">✓ Done</span>
+      <h3>Phase 1 — Foundation</h3>
+      <p>Connectors, DataModel, DataSet with immutable lineage chain</p>
+    </div>
+    <div class="phase-card done">
+      <span class="badge">✓ Done</span>
+      <h3>Phase 2 — Report Engine</h3>
+      <p>Excel + HTML renderers, lineage manifest saved with every render</p>
+    </div>
+    <div class="phase-card done">
+      <span class="badge">✓ Done</span>
+      <h3>Phase 2.5 — Medallion + Star Schema</h3>
+      <p>Bronze/Silver/Gold layers, StarSchema queries, LineageDiagram</p>
+    </div>
+    <div class="phase-card done">
+      <span class="badge">✓ Done</span>
+      <h3>Phase 3 — Dashboard</h3>
+      <p>Live Dash app with associative filters driven by the same DataModel</p>
+    </div>
+    <div class="phase-card done">
+      <span class="badge">✓ Done</span>
+      <h3>Phase 4 — Pipelines</h3>
+      <p>PipelineRunner with APScheduler, DB write-back, cross-layer lineage</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ CONNECTORS -->
+<section id="connectors">
+  <h2>Connectors</h2>
+  <p>
+    Connectors are the entry point to any data source. Every connector implements
+    <code>connect()</code>, <code>load(source)</code>, and <code>write(df, table)</code>.
+    They are registered in a DataModel by name.
+  </p>
+  <table>
+    <thead>
+      <tr><th>Class</th><th>Source</th><th>Extra dep</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>CSVConnector</code></td>
+        <td>CSV / Excel files</td>
+        <td><span class="conn-type">openpyxl</span></td>
+        <td><code>directory=</code> + filename as source</td>
+      </tr>
+      <tr>
+        <td><code>SQLConnector</code></td>
+        <td>Any SQL database</td>
+        <td><span class="conn-type">sqlalchemy</span></td>
+        <td>SQLite, Postgres, MySQL, etc. Supports <code>write()</code></td>
+      </tr>
+      <tr>
+        <td><code>BigQueryConnector</code></td>
+        <td>Google BigQuery</td>
+        <td><span class="conn-type">google-cloud-bigquery</span></td>
+        <td>Uses Application Default Credentials</td>
+      </tr>
+      <tr>
+        <td><code>SnowflakeConnector</code></td>
+        <td>Snowflake</td>
+        <td><span class="conn-type">snowflake-connector-python</span></td>
+        <td>Keyword auth supported</td>
+      </tr>
+      <tr>
+        <td><code>MemoryConnector</code></td>
+        <td>In-memory DataFrames</td>
+        <td><em>none</em></td>
+        <td>Dict of DataFrames. Supports <code>write()</code>. Used in tests and demos.</td>
+      </tr>
+    </tbody>
+  </table>
+  <pre><code>from tracebi import SQLConnector, MemoryConnector, DataModel
+
+db = SQLConnector("sales_db", url="sqlite:///data/tracebi.db")
+
+model = DataModel("SalesModel")
+model.add_connector(db)
+model.add_table("orders",    connector="sales_db", source="orders")
+model.add_table("customers", connector="sales_db", source="customers")
+model.add_relationship("orders_customers", "orders", "customers",
+                        left_key="customer_id", how="left")</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ DATASET -->
+<section id="dataset">
+  <h2>DataSet &amp; Lineage</h2>
+  <p>
+    <code>DataSet</code> is an immutable pandas DataFrame wrapper. Every fluent operation
+    returns a <strong>new</strong> DataSet — the original is never mutated. Each operation
+    appends a <code>LineageNode</code> to the chain.
+  </p>
+
+  <div class="card">
+    <h4>Available operations</h4>
+    <table>
+      <thead><tr><th>Method</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>.filter(expr)</code></td><td>pandas query string — records rows before/after</td></tr>
+        <tr><td><code>.transform(func)</code></td><td>arbitrary <code>(DataFrame) → DataFrame</code></td></tr>
+        <tr><td><code>.sort(by, ascending)</code></td><td>sort by one or more columns</td></tr>
+        <tr><td><code>.select(columns)</code></td><td>keep only the specified columns</td></tr>
+        <tr><td><code>.rename(columns)</code></td><td><code>{old: new}</code> column mapping</td></tr>
+        <tr><td><code>.print_lineage()</code></td><td>pretty-print the full lineage chain</td></tr>
+        <tr><td><code>.fingerprint()</code></td><td>MD5 hash of DataFrame content</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <pre><code>orders = (
+    model.load("orders")
+    .filter("status == 'shipped'", description="Shipped orders only")
+    .transform(
+        lambda df: df.assign(margin=df["revenue"] - df["cost"]),
+        description="margin = revenue - cost",
+    )
+    .sort("margin", ascending=False)
+)
+
+orders.print_lineage()
+# ============================================================
+#   Lineage for DataSet: 'orders'   Shape: 198 rows × 7 cols
+# ============================================================
+#   Step 1: [LOAD]       Loaded 'orders' from connector 'sales_db'
+#   Step 2: [FILTER]     Shipped orders only  (250 → 198 rows)
+#   Step 3: [TRANSFORM]  margin = revenue - cost
+#   Step 4: [SORT]       Sorted by margin (desc)
+# ============================================================</code></pre>
+
+  <h3>LineageNode fields</h3>
+  <div class="card">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>operation</code></td><td>str</td><td>load, filter, transform, join, bronze, silver, gold, …</td></tr>
+        <tr><td><code>description</code></td><td>str</td><td>human-readable step description</td></tr>
+        <tr><td><code>connector</code></td><td>dict</td><td>connector name + type (load/bronze steps)</td></tr>
+        <tr><td><code>source</code></td><td>str</td><td>table name, file path, or query</td></tr>
+        <tr><td><code>timestamp</code></td><td>str</td><td>UTC ISO-8601, auto-set</td></tr>
+        <tr><td><code>metadata</code></td><td>dict</td><td>rows_before/after, agg spec, cast map, …</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Lineage node colors</h3>
+  <p>Used in <code>LineageDiagram</code> to color-code each step:</p>
+  <div class="op-chips">
+    <div class="op-chip"><div class="op-dot" style="background:#003366"></div> load</div>
+    <div class="op-chip"><div class="op-dot" style="background:#92400e"></div> bronze</div>
+    <div class="op-chip"><div class="op-dot" style="background:#475569"></div> silver</div>
+    <div class="op-chip"><div class="op-dot" style="background:#92660a"></div> gold</div>
+    <div class="op-chip"><div class="op-dot" style="background:#2E7D32"></div> filter</div>
+    <div class="op-chip"><div class="op-dot" style="background:#d97706"></div> transform</div>
+    <div class="op-chip"><div class="op-dot" style="background:#c2410c"></div> join</div>
+    <div class="op-chip"><div class="op-dot" style="background:#6A1B9A"></div> sort</div>
+    <div class="op-chip"><div class="op-dot" style="background:#37474F"></div> select</div>
+    <div class="op-chip"><div class="op-dot" style="background:#00695C"></div> rename</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ REPORTS -->
+<section id="reports">
+  <h2>Report Engine (Phase 2)</h2>
+  <p>
+    Reports are built with a fluent builder and rendered to Excel or HTML.
+    Every render saves a <code>.manifest.json</code> alongside the output file
+    containing the full lineage for each section's dataset.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>Section types</h3>
+      <ul>
+        <li><code>TextSection</code> — heading, paragraph, or note</li>
+        <li><code>TableSection</code> — DataFrame table with optional totals row</li>
+        <li><code>ChartSection</code> — line, bar, or pie chart via matplotlib</li>
+        <li><code>.spacer()</code> — blank row between sections</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Renderers</h3>
+      <ul>
+        <li><code>ExcelRenderer().render(report, path)</code> — multi-sheet .xlsx</li>
+        <li><code>HTMLRenderer().render(report, path)</code> — standalone .html</li>
+        <li><code>HTMLRenderer().serve(report, port=8080)</code> — local browser</li>
+        <li><code>HTMLRenderer().preview(report)</code> — Jupyter inline</li>
+      </ul>
+    </div>
+  </div>
+
+  <pre><code>from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
+from tracebi.reports.excel_renderer import ExcelRenderer
+from tracebi.reports.html_renderer import HTMLRenderer
+
+report = (
+    Report("Q2 Sales Report")
+    .author("Data Team")
+    .parameter("period", "Q2 2024")
+    .add(TextSection(title="Summary", content="Summary", style="heading1"))
+    .add(TextSection(content="Revenue up 12% vs Q1.", style="normal"))
+    .add(ChartSection(title="Revenue Trend", dataset=trend_ds,
+                      chart_type="line", x="month", y="revenue"))
+    .add(TableSection(title="Orders", dataset=orders_ds,
+                      columns=["region", "product", "revenue"],
+                      totals=["revenue"],
+                      number_formats={"revenue": "{:,.2f}"}))
+)
+
+ExcelRenderer().render(report, "output/q2_sales.xlsx")
+HTMLRenderer().serve(report, port=8080)   # opens browser</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ MEDALLION -->
+<section id="medallion">
+  <h2>Medallion Architecture (Phase 2.5)</h2>
+  <p>
+    Three distinct layer classes enforce the Bronze → Silver → Gold contract.
+    Each layer can run standalone or as part of a <code>PipelineRunner</code>
+    that coordinates scheduling and writes results back to a database.
+  </p>
+
+  <div class="medallion">
+    <div class="medallion-layer layer-bronze">
+      <h3>Bronze — Raw ingest</h3>
+      <p>Load data from any connector with zero transforms. Stamps lineage with
+         <code>operation="bronze"</code> + ingestion timestamp.</p>
+    </div>
+    <div class="medallion-layer layer-silver">
+      <h3>Silver — Clean</h3>
+      <p>Declarative pipeline: <code>.cast()</code>, <code>.drop_nulls()</code>,
+         <code>.deduplicate()</code>, <code>.rename()</code>, <code>.transform()</code>.
+         Each step adds a <code>operation="silver"</code> lineage node.</p>
+    </div>
+    <div class="medallion-layer layer-gold">
+      <h3>Gold — Aggregated</h3>
+      <p>Delegates to <code>StarSchema.query()</code>. Stamps
+         <code>operation="gold"</code> with query parameters in metadata.</p>
+    </div>
+  </div>
+
+  <h3>StarSchema</h3>
+  <p>
+    Dimension references use dot notation: <code>"dim_customer.region"</code>.
+    Measures are a dict: <code>{"revenue": "sum", "order_id": "count"}</code>.
+    Supported aggregations: <code>sum</code>, <code>count</code>, <code>mean</code>,
+    <code>min</code>, <code>max</code>, <code>nunique</code>.
+  </p>
+  <pre><code>from tracebi.model.star_schema import StarSchema
+
+schema = StarSchema("Sales", model=model)
+schema.add_dimension("dim_customer", table_name="customers_silver",
+                     key_col="customer_id", attributes=["region", "segment"])
+schema.add_fact("fact_orders", table_name="orders_silver",
+                measures=["revenue", "qty"],
+                foreign_keys={"dim_customer": "customer_id"})
+
+ds = schema.query(
+    fact="fact_orders",
+    measures={"revenue": "sum", "qty": "sum"},
+    dimensions=["dim_customer.region"],
+    filters={"status": "shipped"},
+    aggregate=True,
+)</code></pre>
+
+  <h3>Lineage Diagram</h3>
+  <pre><code>from tracebi.lineage.diagram import LineageDiagram
+
+diag = LineageDiagram(ds)        # or LineageDiagram(report)
+diag.show()                       # matplotlib window / Jupyter inline
+diag.to_html("lineage.html")      # standalone HTML with embedded SVG
+print(diag.to_mermaid())          # paste into GitHub markdown</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ PIPELINE -->
+<section id="pipeline">
+  <h2>Pipeline Runner (Phase 4)</h2>
+  <p>
+    <code>PipelineRunner</code> registers each layer with its own independent cron schedule
+    and persists every run to a SQLite database. Layers are linked via
+    <code>depends_on</code>, enabling <code>refresh=True</code> to walk the full chain.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>System tables in SQLite</h4>
+      <ul>
+        <li><code>tracebi_layers</code> — registered layer config + schedules</li>
+        <li><code>tracebi_runs</code> — every run: status, rows_in/out, timestamps, upstream_run_id</li>
+        <li><code>tracebi_schemas</code> — StarSchema definitions</li>
+        <li><code>tracebi_dimensions</code> — dimension table registrations</li>
+        <li><code>tracebi_facts</code> — fact table registrations</li>
+        <li><code>tracebi_relationships</code> — DataModel join definitions</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>PipelineRunner API</h4>
+      <ul>
+        <li><code>.register(layer, name, schedule, depends_on)</code></li>
+        <li><code>.run(name, refresh=False)</code> — on-demand</li>
+        <li><code>.start(blocking=True)</code> — APScheduler</li>
+        <li><code>.stop()</code></li>
+        <li><code>.lineage(name)</code> — print run history</li>
+        <li><code>.status()</code> — all layers + last run</li>
+        <li><code>.register_schema(schema)</code></li>
+        <li><code>.register_model(model)</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <pre><code>from tracebi.pipeline.runner import PipelineRunner
+
+runner = PipelineRunner(db_url="sqlite:///data/tracebi.db")
+
+# Each layer registered with its own schedule
+runner.register(orders_bronze,   name="orders_bronze",     schedule="0 * * * *")
+runner.register(orders_silver,   name="orders_silver",     schedule="15 * * * *",
+                depends_on="orders_bronze")
+runner.register(revenue_by_region, name="revenue_by_region", schedule="30 6 * * *",
+                depends_on="orders_silver")
+
+# On-demand: single layer only
+runner.run("orders_silver")
+
+# On-demand: full chain refresh (bronze → silver → gold)
+runner.run("revenue_by_region", refresh=True)
+
+# Start all scheduled jobs (blocking — Ctrl+C to stop)
+runner.start()</code></pre>
+
+  <h3>Cross-layer lineage</h3>
+  <p>
+    Each run record stores an <code>upstream_run_id</code> pointing to the most recent
+    successful run of its upstream layer. This means you can always trace a gold table
+    row back through silver → bronze to the exact source ingestion.
+  </p>
+  <pre><code>runner.lineage("revenue_by_region")
+# ============================================================
+#   Pipeline Lineage — 'revenue_by_region'
+#   Chain: orders_bronze → orders_silver → revenue_by_region
+# ============================================================
+#   [orders_bronze]  schedule=0 * * * *  runs=3
+#     ✓ run_id=  1  2026-05-12T02:27:22  rows 11 → 11  [success]
+#
+#   [orders_silver]  schedule=15 * * * * ← orders_bronze  runs=2
+#     ✓ run_id=  3  2026-05-12T02:27:25  rows 11 → 10  [success]  upstream_run=1
+#
+#   [revenue_by_region]  schedule=30 6 * * * ← orders_silver  runs=1
+#     ✓ run_id=  5  2026-05-12T02:27:27  rows 10 → 4   [success]  upstream_run=3</code></pre>
+
+  <h3>One-command database setup</h3>
+  <div class="cmd">
+    <span class="prompt">$ </span>python seeds/seed_db.py
+  </div>
+  <p>This script: creates <code>data/tracebi.db</code>, seeds source tables
+  (<code>orders_raw</code>, <code>customers_raw</code>), registers all six layers
+  with the runner, and runs the initial Bronze load so the DB is ready immediately.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ DASHBOARD -->
+<section id="dashboard">
+  <h2>Dashboard (Phase 3)</h2>
+  <p>
+    A live Dash 2.x application driven by the same DataModel. Filters are
+    <strong>associative</strong> — selecting a value in any <code>FilterPanel</code>
+    automatically filters every panel whose dataset contains that column.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>Panel types</h4>
+      <ul>
+        <li><code>FilterPanel</code> — dropdown filter (single or multi-select)</li>
+        <li><code>MetricPanel</code> — KPI card with aggregation (sum/count/mean)</li>
+        <li><code>ChartPanel</code> — bar, line, or pie chart via Plotly</li>
+        <li><code>TablePanel</code> — paginated data table</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Panel data sources</h4>
+      <p>Each panel accepts either:</p>
+      <ul>
+        <li>A pre-built <code>dataset=DataSet</code></li>
+        <li>A <code>table_name=</code> string — loaded via <code>DataModel.load()</code>
+            on each render, always fresh</li>
+        <li>An optional <code>transform_fn=</code> applied after loading</li>
+      </ul>
+    </div>
+  </div>
+
+  <pre><code>from tracebi.dashboard import Dashboard, DashboardServer
+from tracebi.dashboard import FilterPanel, MetricPanel, ChartPanel, TablePanel
+
+dashboard = (
+    Dashboard("Q2 Sales Dashboard")
+    .columns(2)
+    .add_filter(FilterPanel("region-filter", label="Region",
+                            column="region", table_name="orders"))
+    .add_panel(MetricPanel("total-revenue", title="Total Revenue",
+                           table_name="orders", column="revenue",
+                           aggregation="sum", prefix="$"))
+    .add_panel(ChartPanel("by-region", title="Revenue by Region",
+                          table_name="orders", chart_type="bar",
+                          x="region", y="revenue"))
+    .add_panel(TablePanel("orders-table", title="Orders",
+                          table_name="orders",
+                          columns=["order_id", "region", "revenue"],
+                          width=2))   # span both columns
+)
+
+DashboardServer(dashboard, model=model).run(port=8050)
+# Open http://localhost:8050/</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ STRUCTURE -->
+<section id="structure">
+  <h2>Project Structure</h2>
+  <div class="file-tree">
+    <div><span class="dir">tracebi/</span></div>
+    <div>&nbsp;&nbsp;<span class="dir">tracebi/</span>  <span class="note">← the library</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">connectors/</span>  <span class="note">base, csv, sql, bigquery, snowflake, memory</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">model/</span>  <span class="note">dataset.py, data_model.py, star_schema.py</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">etl/</span>  <span class="note">bronze.py, silver.py, gold.py</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">reports/</span>  <span class="note">report.py, excel_renderer.py, html_renderer.py</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">dashboard/</span>  <span class="note">panels.py, dashboard.py, server.py</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">pipeline/</span>  <span class="note">runner.py</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">lineage/</span>  <span class="note">diagram.py</span></div>
+    <div>&nbsp;&nbsp;<span class="dir">examples/</span>  <span class="note">phase1–4 runnable demos</span></div>
+    <div>&nbsp;&nbsp;<span class="dir">tests/</span>  <span class="note">163 tests across 5 files</span></div>
+    <div>&nbsp;&nbsp;<span class="dir">seeds/</span>  <span class="note">seed_db.py — one-command DB setup</span></div>
+    <div>&nbsp;&nbsp;<span class="dir">requests/</span>  <span class="note">_template.py + ad hoc report scripts</span></div>
+    <div>&nbsp;&nbsp;<span class="dir">data/</span>  <span class="note">tracebi.db lives here (gitignored)</span></div>
+    <div>&nbsp;&nbsp;<span class="file">NOTES.md</span>  <span class="note">design decisions + architecture reference</span></div>
+    <div>&nbsp;&nbsp;<span class="file">pyproject.toml</span>  <span class="note">v0.5.0, optional dep groups</span></div>
+  </div>
+
+  <h3>Install groups</h3>
+  <table>
+    <thead><tr><th>Group</th><th>Command</th><th>Includes</th></tr></thead>
+    <tbody>
+      <tr><td><code>reports</code></td><td><code>pip install -e ".[reports]"</code></td><td>openpyxl, matplotlib</td></tr>
+      <tr><td><code>dashboard</code></td><td><code>pip install -e ".[dashboard]"</code></td><td>dash, plotly</td></tr>
+      <tr><td><code>pipeline</code></td><td><code>pip install -e ".[pipeline]"</code></td><td>apscheduler, sqlalchemy</td></tr>
+      <tr><td><code>lineage</code></td><td><code>pip install -e ".[lineage]"</code></td><td>networkx, matplotlib</td></tr>
+      <tr><td><code>sql</code></td><td><code>pip install -e ".[sql]"</code></td><td>sqlalchemy</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ QUICKSTART -->
+<section id="quickstart">
+  <h2>Quick Start</h2>
+
+  <h3>Run the examples</h3>
+  <div class="cmd">
+    <div><span class="prompt">$ </span>python examples/phase1_example.py   <span style="color:#64748b"># connectors + DataModel + lineage</span></div>
+    <div><span class="prompt">$ </span>python examples/phase2_example.py   <span style="color:#64748b"># report engine (opens browser)</span></div>
+    <div><span class="prompt">$ </span>python examples/phase25_example.py  <span style="color:#64748b"># medallion + star schema + lineage diagram</span></div>
+    <div><span class="prompt">$ </span>python examples/phase3_example.py   <span style="color:#64748b"># live Dash dashboard at localhost:8050</span></div>
+    <div><span class="prompt">$ </span>python seeds/seed_db.py              <span style="color:#64748b"># set up SQLite DB</span></div>
+    <div><span class="prompt">$ </span>python examples/phase4_example.py   <span style="color:#64748b"># full pipeline</span></div>
+  </div>
+
+  <h3>Run tests</h3>
+  <div class="cmd">
+    <span class="prompt">$ </span>pytest tests/  <span style="color:#64748b"># 163 passed</span>
+  </div>
+
+  <h3>New ad hoc report</h3>
+  <div class="cmd">
+    <span class="prompt">$ </span>cp requests/_template.py requests/2024_q3_sales.py
+    <div><span style="color:#64748b"># Edit the file, fill in connect / datasets / report / render sections</span></div>
+    <span class="prompt">$ </span>python requests/2024_q3_sales.py
+  </div>
+
+  <h3>Pull latest (after a session)</h3>
+  <div class="cmd">
+    <span class="prompt">$ </span>cd ~/Downloads/tracebi && git pull
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  TraceBi &nbsp;·&nbsp; v0.5.0 &nbsp;·&nbsp; MIT License &nbsp;·&nbsp;
+  <a href="https://github.com/saltyscott0521/tracebi" style="color:rgba(255,255,255,.6)">github.com/saltyscott0521/tracebi</a>
+</footer>
+
+</body>
+</html>
