@@ -9,7 +9,6 @@ Run with:
 """
 
 import os
-import tempfile
 import pandas as pd
 from tracebi.model.dataset import DataSet, LineageNode
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
@@ -141,28 +140,47 @@ def run():
     report.describe()
 
     # ── Render ───────────────────────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        xlsx_path = os.path.join(tmp, "q2_sales_report.xlsx")
-        html_path = os.path.join(tmp, "q2_sales_report.html")
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "output")
+    os.makedirs(output_dir, exist_ok=True)
+    xlsx_path = os.path.join(output_dir, "q2_sales_report.xlsx")
+    html_path = os.path.join(output_dir, "q2_sales_report.html")
 
-        print("Rendering Excel...")
-        excel_manifest = ExcelRenderer().render(report, xlsx_path)
-        print(f"  ✓ {xlsx_path}  ({os.path.getsize(xlsx_path):,} bytes)")
-        print(f"  ✓ Manifest: {xlsx_path}.manifest.json")
+    print("Rendering Excel...")
+    excel_manifest = ExcelRenderer().render(report, xlsx_path)
+    print(f"  ✓ {xlsx_path}  ({os.path.getsize(xlsx_path):,} bytes)")
 
-        print("Rendering HTML...")
-        html_manifest = HTMLRenderer().render(report, html_path)
-        print(f"  ✓ {html_path}  ({os.path.getsize(html_path):,} bytes)")
+    print("Rendering HTML...")
+    html_manifest = HTMLRenderer().render(report, html_path)
+    print(f"  ✓ {html_path}  ({os.path.getsize(html_path):,} bytes)")
 
-        # Print manifest summary
-        print(f"\nManifest for Excel render:")
-        print(f"  report_name : {excel_manifest.report_name}")
-        print(f"  rendered_at : {excel_manifest.rendered_at}")
-        print(f"  sections    : {len(excel_manifest.sections)}")
-        print(f"  format      : {excel_manifest.format}")
+    print(f"\nManifest: report_name={excel_manifest.report_name!r} "
+          f"sections={len(excel_manifest.sections)}")
+    print("\nAll Phase 2 renders complete ✓")
+    return report
 
-        print("\nAll Phase 2 renders complete ✓")
+
+def serve(port: int = 8080):
+    """Render the report and open it in the browser via a local server."""
+    report = run()
+    HTMLRenderer().serve(report, port=port)
+
+
+def preview():
+    """Render the report inline inside a Jupyter notebook."""
+    report = run()
+    HTMLRenderer().preview(report)
+
+
+def _is_jupyter() -> bool:
+    try:
+        shell = get_ipython().__class__.__name__  # noqa: F821
+        return shell in ("ZMQInteractiveShell", "google.colab._shell")
+    except NameError:
+        return False
 
 
 if __name__ == "__main__":
-    run()
+    if _is_jupyter():
+        preview()
+    else:
+        serve()
