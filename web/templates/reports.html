@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Reports — TraceBi{% endblock %}
+
+{% block content %}
+<div class="page-title">Reports</div>
+<p class="page-sub">Run any report to see rendered output and its full data lineage.</p>
+
+{% if reports %}
+<div class="split" x-data="reportsApp()" x-cloak>
+
+  <!-- Left: report list -->
+  <div class="list-panel">
+    {% for r in reports %}
+    <div class="list-item" :class="selected === '{{ r.name }}' && 'selected'">
+      <div class="list-item-name">{{ r.name }}</div>
+      <div class="list-item-sub" style="margin-bottom:8px;">{{ r.description or '—' }}</div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn btn-primary btn-sm"
+                :disabled="loading"
+                @click="runReport('{{ r.name }}')">
+          <template x-if="loading && selected === '{{ r.name }}'">
+            <span class="spinner" style="width:11px;height:11px;border-width:2px;"></span>
+          </template>
+          <template x-if="!(loading && selected === '{{ r.name }}')">
+            <span>▶ Run</span>
+          </template>
+        </button>
+        <button class="btn btn-outline btn-sm"
+                :disabled="loading"
+                @click="viewLineage('{{ r.name }}')">
+          <template x-if="loading && selected === '{{ r.name }}' && activeTab === 'lineage'">
+            <span class="spinner" style="width:11px;height:11px;border-width:2px;"></span>
+          </template>
+          <template x-if="!(loading && selected === '{{ r.name }}' && activeTab === 'lineage')">
+            <span>⬡ Lineage</span>
+          </template>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Right: viewer -->
+  <div>
+
+    <!-- Idle state -->
+    <div x-show="!selected && !loading" class="card">
+      <div class="empty">
+        <div class="empty-icon">▤</div>
+        <p>Select a report and click <strong>Run</strong> to see rendered output,<br>
+           or <strong>Lineage</strong> to explore the data flow.</p>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div x-show="error" class="alert alert-err" x-text="error"></div>
+
+    <!-- Tabs (shown once we have content) -->
+    <div x-show="selected && (html || mermaidCode)">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <div style="font-weight:600; font-size:15px; color:var(--navy);" x-text="selected"></div>
+        <div style="font-size:11px; color:var(--muted);" x-text="renderedAt"></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn" :class="activeTab==='report'  && 'active'" @click="activeTab='report'"
+                x-show="html">▤ Report</button>
+        <button class="tab-btn" :class="activeTab==='lineage' && 'active'" @click="activeTab='lineage'"
+                x-show="mermaidCode">⬡ Lineage</button>
+        <button class="tab-btn" :class="activeTab==='manifest' && 'active'" @click="activeTab='manifest'"
+                x-show="manifest">{ } Manifest</button>
+      </div>
+
+      <!-- Report iframe -->
+      <div x-show="activeTab === 'report' && html">
+        <iframe id="report-frame"
+                style="width:100%; height:680px; border:1px solid var(--border);
+                       border-radius:8px; background:#fff;"
+                title="Report output"></iframe>
+      </div>
+
+      <!-- Lineage diagram -->
+      <div x-show="activeTab === 'lineage' && mermaidCode">
+        <div class="mermaid-wrap">
+          <div id="mermaid-target" style="text-align:center;"></div>
+        </div>
+        <p style="margin-top:10px; font-size:11px; color:var(--muted);">
+          Each node is a DataSet operation. Color indicates operation type:
+          load · filter · transform · join · sort.
+        </p>
+      </div>
+
+      <!-- Manifest JSON -->
+      <div x-show="activeTab === 'manifest' && manifest">
+        <div class="card" style="padding:0; overflow:hidden;">
+          <pre class="code-block" style="border-radius:8px; max-height:520px; overflow:auto;"
+               x-text="JSON.stringify(manifest, null, 2)"></pre>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Loading overlay (full panel) -->
+    <div x-show="loading && !html && !mermaidCode"
+         style="display:flex; align-items:center; justify-content:center;
+                padding:80px; background:var(--card); border-radius:8px;
+                border:1px solid var(--border);">
+      <div style="text-align:center;">
+        <span class="spinner" style="width:28px;height:28px;border-width:3px;"></span>
+        <p style="margin-top:12px; color:var(--muted); font-size:13px;">Running report…</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty">
+    <div class="empty-icon">▤</div>
+    <p>No reports registered yet.</p>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function reportsApp() {
+  return {
+    selected: null,
+    activeTab: 'report',
+    loading: false,
+    html: null,
+    mermaidCode: null,
+    manifest: null,
+    renderedAt: '',
+    error: null,
+
+    async runReport(name) {
+      this.selected = name;
+      this.activeTab = 'report';
+      this.loading = true;
+      this.error = null;
+      this.html = null;
+      this.mermaidCode = null;
+      this.manifest = null;
+
+      try {
+        const res = await fetch(`/api/reports/${name}/run`, { method: 'POST' });
+        if (!res.ok) {
+          const err = await res.json();
+          this.error = err.detail ?? 'Report failed';
+          return;
+        }
+        const data = await res.json();
+        this.html = data.html;
+        this.manifest = data.manifest;
+        this.renderedAt = data.manifest?.rendered_at?.slice(0, 19).replace('T', ' ') + ' UTC' ?? '';
+
+        // Write into iframe after DOM update
+        await this.$nextTick();
+        const frame = document.getElementById('report-frame');
+        if (frame) frame.srcdoc = this.html;
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async viewLineage(name) {
+      this.selected = name;
+      this.activeTab = 'lineage';
+      this.loading = true;
+      this.error = null;
+      this.mermaidCode = null;
+
+      try {
+        const res = await fetch(`/api/reports/${name}/mermaid`);
+        if (!res.ok) {
+          const err = await res.json();
+          this.error = err.detail ?? 'Lineage failed';
+          return;
+        }
+        const data = await res.json();
+        this.mermaidCode = data.mermaid;
+
+        await this.$nextTick();
+        const el = document.getElementById('mermaid-target');
+        if (el && window._mermaid) {
+          el.innerHTML = '';
+          const { svg } = await window._mermaid.render('mermaid-svg-' + Date.now(), this.mermaidCode);
+          el.innerHTML = svg;
+        }
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

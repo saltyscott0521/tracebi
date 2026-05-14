@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}TraceBi — Home{% endblock %}
+
+{% block content %}
+<div class="page-title">Welcome to TraceBi</div>
+<p class="page-sub">A code-first, traceable BI framework. Every data operation is tracked with a full lineage chain.</p>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">{{ connector_count }}</div>
+    <div class="stat-label">Connector{{ 's' if connector_count != 1 }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ model_count }}</div>
+    <div class="stat-label">Data Model{{ 's' if model_count != 1 }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ report_count }}</div>
+    <div class="stat-label">Report{{ 's' if report_count != 1 }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ pipeline_count }}</div>
+    <div class="stat-label">Pipeline{{ 's' if pipeline_count != 1 }}</div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+  <div class="card">
+    <div class="card-title">Quick Start</div>
+    <p style="color:var(--muted); line-height:1.7; font-size:13px;">
+      Navigate using the sidebar. Run any report to see rendered output and its
+      full data lineage. Explore the <strong>Models</strong> page to preview tables
+      and inspect relationships.
+    </p>
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <a href="/reports" class="btn btn-primary">▤ View Reports</a>
+      <a href="/models"  class="btn btn-outline">⊞ Explore Models</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Customise This Demo</div>
+    <p style="color:var(--muted); line-height:1.7; font-size:13px;">
+      Edit <code>web/demo_app.py</code> to register your own connectors, models,
+      and reports. Or point the server at a different config module:
+    </p>
+    <div class="code-block" style="margin-top:12px;">
+TRACEBI_APP=mypackage.config \<br>
+&nbsp;&nbsp;python web/run.py
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">How It Works</div>
+    <table>
+      <tbody>
+        <tr><td style="padding:6px 14px 6px 0; font-weight:600; white-space:nowrap;">Connectors</td>
+            <td style="padding:6px 0; color:var(--muted);">CSV, SQL, BigQuery, Snowflake, Memory</td></tr>
+        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">DataModel</td>
+            <td style="padding:6px 0; color:var(--muted);">Register tables and named join relationships</td></tr>
+        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">DataSet</td>
+            <td style="padding:6px 0; color:var(--muted);">Immutable DataFrame — every operation appends a LineageNode</td></tr>
+        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">Report</td>
+            <td style="padding:6px 0; color:var(--muted);">Declarative sections (text, table, chart) with manifest on render</td></tr>
+        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">Pipeline</td>
+            <td style="padding:6px 0; color:var(--muted);">Medallion layers (bronze → silver → gold) with APScheduler</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">API Reference</div>
+    <p style="color:var(--muted); line-height:1.7; font-size:13px;">
+      The REST API powering this UI is fully documented. Open the interactive
+      docs to explore every endpoint and try them live.
+    </p>
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <a href="/docs"  target="_blank" class="btn btn-primary">⬡ Swagger UI</a>
+      <a href="/redoc" target="_blank" class="btn btn-outline">⬡ ReDoc</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

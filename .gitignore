@@ -12,3 +12,9 @@ venv/
 htmlcov/
 output/
 *.manifest.json
+.DS_Store
+.ipynb_checkpoints/
+*.ipynb
+test_output.html
+data/
+.claude/

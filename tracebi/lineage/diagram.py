@@ -96,7 +96,7 @@ class LineageDiagram:
         try:
             from tracebi.reports.report import Report
             if isinstance(source, Report):
-                self._title = source.title
+                self._title = source.name
                 self._nodes = self._collect_report_lineage(source)
                 return
         except ImportError:
