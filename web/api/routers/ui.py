@@ -52,3 +52,11 @@ def pipelines(request: Request):
         "request": request,
         "pipeline_names": registry.list_pipeline_names(),
     })
+
+
+@router.get("/dashboards")
+def dashboards(request: Request):
+    return templates.TemplateResponse("dashboards.html", {
+        "request": request,
+        "dashboards": registry.list_dashboards(),
+    })

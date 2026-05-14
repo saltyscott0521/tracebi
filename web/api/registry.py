@@ -45,6 +45,7 @@ class Registry:
         self._models: dict[str, Any] = {}
         self._report_factories: dict[str, dict] = {}
         self._pipelines: dict[str, Any] = {}
+        self._dashboards: dict[str, dict] = {}
 
     # ── Connectors ─────────────────────────────────────────────
 
@@ -157,6 +158,27 @@ class Registry:
         if not entry:
             return None
         return entry["factory"]()
+
+    # ── Dashboards ─────────────────────────────────────────────
+
+    def add_dashboard(
+        self,
+        name: str,
+        server,
+        description: str = "",
+    ) -> "Registry":
+        """Register a DashboardServer under a logical name."""
+        self._dashboards[name] = {"server": server, "description": description}
+        return self
+
+    def get_dashboard(self, name: str):
+        return self._dashboards.get(name)
+
+    def list_dashboards(self) -> list[dict]:
+        return [
+            {"name": k, "description": v["description"]}
+            for k, v in self._dashboards.items()
+        ]
 
     # ── Pipelines ──────────────────────────────────────────────
 
