@@ -1,7 +1,13 @@
 import os
 from fastapi import APIRouter, Request
+from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from web.api.registry import registry
+
+_OVERVIEW_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "..", "docs", "overview.html",
+)
 
 _TEMPLATES_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -60,3 +66,8 @@ def dashboards(request: Request):
         "request": request,
         "dashboards": registry.list_dashboards(),
     })
+
+
+@router.get("/overview")
+def overview():
+    return FileResponse(_OVERVIEW_PATH, media_type="text/html")
