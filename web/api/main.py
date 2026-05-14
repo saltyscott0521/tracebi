@@ -14,6 +14,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.wsgi import WSGIMiddleware
 
 from web.api.routers import connectors, models, reports, pipelines, ui
 
@@ -60,6 +61,19 @@ except ImportError as exc:
         "The API will start with an empty registry.",
         stacklevel=1,
     )
+
+
+# ── Mount registered Dash dashboards ──────────────────────────────────────────
+
+from web.api.registry import registry as _registry  # noqa: E402
+
+for _dash_name, _dash_entry in _registry._dashboards.items():
+    _prefix = f"/dashboards/{_dash_name}/"
+    try:
+        _dash_app = _dash_entry["server"].get_app(requests_pathname_prefix=_prefix)
+        app.mount(_prefix, WSGIMiddleware(_dash_app.server))
+    except ImportError:
+        pass  # dash not installed — skip silently
 
 
 # ── Serve built React UI (production) ──────────────────────────────────────

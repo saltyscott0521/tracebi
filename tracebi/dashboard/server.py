@@ -89,18 +89,18 @@ class DashboardServer:
             port:  TCP port to listen on (default 8050).
             debug: Enable Dash hot-reload and debug overlay (default False).
         """
-        app = self._build_app()
+        app = self._build_app(requests_pathname_prefix="/")
         print(f"\n  TraceBi Dashboard — '{self.dashboard.title}'")
         print(f"  Running at http://localhost:{port}/\n")
         app.run(debug=debug, port=port)
 
-    def get_app(self):
-        """Return the underlying Dash app object (useful for testing / WSGI)."""
-        return self._build_app()
+    def get_app(self, requests_pathname_prefix: str = "/"):
+        """Return the underlying Dash app object (useful for testing / WSGI mounting)."""
+        return self._build_app(requests_pathname_prefix=requests_pathname_prefix)
 
     # ── App construction ───────────────────────────────────────────────────
 
-    def _build_app(self):
+    def _build_app(self, requests_pathname_prefix: str = "/"):
         try:
             import dash
             from dash import Dash, html, dcc
@@ -114,6 +114,7 @@ class DashboardServer:
             __name__,
             title=self.dashboard.title,
             suppress_callback_exceptions=True,
+            requests_pathname_prefix=requests_pathname_prefix,
         )
         app.layout = self._build_layout(app)
         self._register_callbacks(app)
