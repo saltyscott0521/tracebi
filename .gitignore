@@ -18,3 +18,7 @@ output/
 test_output.html
 data/
 .claude/
+
+# Netlify build artifacts (copied in during deploy)
+netlify/functions/api/web/
+netlify/functions/api/tracebi/

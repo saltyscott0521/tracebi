@@ -1,4 +1,5 @@
 [build]
+  command = "cp -r web tracebi netlify/functions/api/"
   publish = "static"
 
 [build.environment]
@@ -6,7 +7,6 @@
 
 [functions]
   directory = "netlify/functions"
-  included_files = ["web/**", "tracebi/**"]
 
 [[redirects]]
   from = "/*"
