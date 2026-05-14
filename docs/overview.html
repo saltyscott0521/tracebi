@@ -316,6 +316,7 @@
   <a href="#medallion">Medallion</a>
   <a href="#pipeline">Pipeline</a>
   <a href="#dashboard">Dashboard</a>
+  <a href="#webui">Web UI</a>
   <a href="#structure">Structure</a>
   <a href="#quickstart">Quick Start</a>
 </nav>
@@ -377,6 +378,11 @@
       <span class="badge">✓ Done</span>
       <h3>Phase 4 — Pipelines</h3>
       <p>PipelineRunner with APScheduler, DB write-back, cross-layer lineage</p>
+    </div>
+    <div class="phase-card done">
+      <span class="badge">✓ Done</span>
+      <h3>Phase 5 — Web UI</h3>
+      <p>FastAPI + Jinja2 browser UI with embedded Dash dashboards, medallion-aware demo, and registry pattern</p>
     </div>
   </div>
 </section>
@@ -767,6 +773,79 @@ DashboardServer(dashboard, model=model).run(port=8050)
 # Open http://localhost:8050/</code></pre>
 </section>
 
+<!-- ══════════════════════════════════════════════════════ WEB UI -->
+<section id="webui">
+  <h2>Web UI (Phase 5)</h2>
+  <p>
+    A FastAPI + Jinja2 browser interface over your TraceBi registry. Connectors,
+    models, reports, pipelines, and live Dash dashboards — all accessible from one
+    server on a single port.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>Pages</h4>
+      <ul>
+        <li><strong>Home</strong> — registry summary (connector / model / report counts)</li>
+        <li><strong>Connectors</strong> — registered sources and table lists</li>
+        <li><strong>Models</strong> — DataModel tables and relationships</li>
+        <li><strong>Reports</strong> — render any registered report to HTML or Excel</li>
+        <li><strong>Pipelines</strong> — Bronze/Silver/Gold layer status, run history, ▶ Run button</li>
+        <li><strong>Dashboards</strong> — lists registered dashboards; each opens the live Dash app</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>How dashboards are embedded</h4>
+      <p>
+        Each <code>DashboardServer</code> is mounted inside FastAPI at
+        <code>/dashboards/&lt;name&gt;/</code> using Starlette's
+        <code>WSGIMiddleware</code>. One port, no second server.
+        The standalone <code>DashboardServer.run()</code> path is unaffected.
+      </p>
+    </div>
+  </div>
+
+  <pre><code># Install web dependencies
+pip install -r web/requirements.txt
+
+# Start the dev server (hot-reload on)
+python web/run.py
+# → http://localhost:8000
+
+# Point at your own app module
+TRACEBI_APP=mypackage.tracebi_config python web/run.py</code></pre>
+
+  <h3>Registry pattern</h3>
+  <p>
+    Everything flows through a single <code>Registry</code> singleton. Your app
+    module (default: <code>web/demo_app.py</code>) registers objects at startup;
+    every API route reads from the registry at request time.
+  </p>
+  <pre><code>from web.api.registry import registry
+
+registry.add_connector(connector)
+registry.add_model(model)
+
+@registry.report("my_report", description="...")
+def my_report():
+    ds = model.load("orders")
+    return Report("My Report").add(TableSection(dataset=ds, title="Orders"))
+
+registry.add_dashboard("sales", DashboardServer(dashboard, model=model))
+registry.add_pipeline("main", runner)</code></pre>
+
+  <h3>Medallion-aware demo</h3>
+  <p>
+    <code>demo_app.py</code> detects <code>data/tracebi.db</code> at startup and adapts:
+  </p>
+  <ul style="margin: 12px 0 0 20px; line-height: 2;">
+    <li>Silver tables present → reports and dashboard read from <code>orders_silver ⋈ customers_silver</code></li>
+    <li>Gold tables present → additional <code>gold_revenue_by_region</code> report registered</li>
+    <li>DB absent or empty → falls back to in-memory <code>MemoryConnector</code> data with a warning</li>
+    <li>Pipeline always registered if DB file exists → Pipelines page shows layer status regardless</li>
+  </ul>
+</section>
+
 <!-- ══════════════════════════════════════════════════════ STRUCTURE -->
 <section id="structure">
   <h2>Project Structure</h2>
@@ -780,6 +859,12 @@ DashboardServer(dashboard, model=model).run(port=8050)
     <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">dashboard/</span>  <span class="note">panels.py, dashboard.py, server.py</span></div>
     <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">pipeline/</span>  <span class="note">runner.py</span></div>
     <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">lineage/</span>  <span class="note">diagram.py</span></div>
+    <div>&nbsp;&nbsp;<span class="dir">web/</span>  <span class="note">← browser UI</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">api/</span>  <span class="note">FastAPI app, routers, registry singleton</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">templates/</span>  <span class="note">Jinja2 HTML templates (base, reports, pipelines, dashboards…)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">demo_app.py</span>  <span class="note">medallion demo — auto-detects SQLite, falls back to in-memory</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">run.py</span>  <span class="note">dev server entrypoint (uvicorn + hot-reload)</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">requirements.txt</span>  <span class="note">fastapi, jinja2, uvicorn, python-multipart</span></div>
     <div>&nbsp;&nbsp;<span class="dir">examples/</span>  <span class="note">phase1–4 runnable demos</span></div>
     <div>&nbsp;&nbsp;<span class="dir">tests/</span>  <span class="note">163 tests across 5 files</span></div>
     <div>&nbsp;&nbsp;<span class="dir">seeds/</span>  <span class="note">seed_db.py — one-command DB setup</span></div>
@@ -826,6 +911,14 @@ DashboardServer(dashboard, model=model).run(port=8050)
     <span class="prompt">$ </span>cp requests/_template.py requests/2024_q3_sales.py
     <div><span style="color:#64748b"># Edit the file, fill in connect / datasets / report / render sections</span></div>
     <span class="prompt">$ </span>python requests/2024_q3_sales.py
+  </div>
+
+  <h3>Run the web UI</h3>
+  <div class="cmd">
+    <div><span class="prompt">$ </span>pip install -r web/requirements.txt  <span style="color:#64748b"># first time only</span></div>
+    <div><span class="prompt">$ </span>python seeds/seed_db.py               <span style="color:#64748b"># seed SQLite DB (first time only)</span></div>
+    <div><span class="prompt">$ </span>python -c "from seeds.seed_db import build_pipeline, DB_URL; r,_,_=build_pipeline(DB_URL); r.run('orders_silver'); r.run('customers_silver')"  <span style="color:#64748b"># run Silver layer</span></div>
+    <div><span class="prompt">$ </span>python web/run.py                     <span style="color:#64748b"># → http://localhost:8000</span></div>
   </div>
 
   <h3>Pull latest (after a session)</h3>

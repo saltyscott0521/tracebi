@@ -29,6 +29,7 @@ connector, query, and transform steps that produced it.
 - [x] **Phase 2.5** — Medallion architecture (Bronze/Silver/Gold), StarSchema, LineageDiagram
 - [x] **Phase 3** — Live Dash dashboard with associative filters
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
+- [x] **Phase 5** — Web UI (FastAPI + Jinja2, Dash embedded, medallion-aware registry)
 
 ---
 
@@ -229,6 +230,51 @@ print(diag.to_mermaid())          # paste into GitHub markdown
 
 ---
 
+## Web UI
+
+A browser interface over your TraceBi registry — connectors, models, reports, pipelines, and live dashboards all in one place.
+
+```bash
+# Install web dependencies
+pip install -r web/requirements.txt
+
+# Start the server (hot-reload on by default)
+python web/run.py
+# Open http://localhost:8000
+```
+
+The web UI auto-detects `data/tracebi.db`. If the Silver pipeline layer has been run, reports and dashboards read from real medallion data. Otherwise it falls back to in-memory demo data.
+
+To point the UI at your own data module instead of the built-in demo:
+
+```bash
+TRACEBI_APP=mypackage.tracebi_config python web/run.py
+```
+
+Your module just needs to import `registry` and call `registry.add_connector()`, `registry.add_model()`, `@registry.report(...)`, and optionally `registry.add_pipeline()` / `registry.add_dashboard()`.
+
+### 8. Adding reports and dashboards to the web UI
+
+```python
+from web.api.registry import registry
+from tracebi.reports import Report, TableSection
+from tracebi.dashboard import Dashboard, DashboardServer, ChartPanel
+
+# Register a report
+@registry.report("my_report", description="My custom report")
+def my_report():
+    ds = model.load("orders")
+    return Report("My Report").add(TableSection(title="Orders", dataset=ds))
+
+# Register a dashboard
+dashboard = Dashboard("My Dashboard").add_panel(
+    ChartPanel("rev", title="Revenue", dataset=ds, chart_type="bar", x="region", y="revenue")
+)
+registry.add_dashboard("my_dashboard", DashboardServer(dashboard, model=model))
+```
+
+---
+
 ## Local database setup (example)
 
 ```bash
@@ -278,6 +324,12 @@ tracebi/
 │   ├── dashboard/        Dashboard, DashboardServer, panels
 │   ├── pipeline/         PipelineRunner (APScheduler + DB)
 │   └── lineage/          LineageDiagram
+├── web/
+│   ├── api/              FastAPI app, routers, registry
+│   ├── templates/        Jinja2 HTML templates
+│   ├── demo_app.py       Built-in demo (medallion + in-memory fallback)
+│   ├── run.py            Dev server entrypoint
+│   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
 ├── tests/                163 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup

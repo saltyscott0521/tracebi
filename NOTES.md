@@ -13,6 +13,7 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 2.5 | ✅ Done | Medallion architecture, Star schema, Lineage diagram |
 | Phase 3 | ✅ Done | Dashboard server (Dash-based, associative filters) |
 | Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
+| Phase 5 | ✅ Done | Web UI (FastAPI + Jinja2, Dash embedded, medallion-aware demo) |
 | Docs | ✅ Done | README rewritten, docs/overview.html added |
 
 ---
@@ -229,12 +230,59 @@ python examples/phase25_example.py   # medallion + star schema + lineage diagram
 
 ---
 
+---
+
+## 2026-05-13 — Web UI (Phase 5)
+
+### What was built
+A FastAPI + Jinja2 web server (`web/`) that provides a browser UI over any
+TraceBi registry. Key pieces:
+
+- **Registry** (`web/api/registry.py`) — central singleton; connectors, models,
+  reports, pipelines, and dashboards are all registered here at startup
+- **App module** (`web/demo_app.py`) — imported on startup; detects `data/tracebi.db`
+  and adapts: full medallion setup when Silver tables are present, in-memory
+  MemoryConnector fallback otherwise
+- **Dash embedding** — each registered `DashboardServer` is mounted inside FastAPI
+  at `/dashboards/<name>/` via Starlette's `WSGIMiddleware`. Single port, no second
+  server. The standalone `DashboardServer.run()` path is unaffected.
+- **Pipelines page** — lists Bronze/Silver/Gold layers with run history and a
+  ▶ Run button backed by `POST /api/pipelines/{name}/layers/{layer}/run`
+
+### TRACEBI_APP pattern
+The web layer is decoupled from `demo_app.py` via an env var:
+
+```bash
+TRACEBI_APP=myproject.tracebi_config python web/run.py
+```
+
+`myproject/tracebi_config.py` defines its own connectors, models, reports, and
+dashboards and registers them with the shared registry. `demo_app.py` is a
+reference implementation, not a required file.
+
+### Notebook → Web UI workflow (TODO)
+Current gap: there is no smooth path from "I built something in a notebook"
+to "it shows up in the web UI". The intended workflow is:
+1. Explore and prototype in a notebook using the library
+2. Move the stable definitions into a `tracebi_config.py` module
+3. Register them and point `TRACEBI_APP` at the module
+
+This is functional but manual. A future improvement could be a helper that
+lets you register objects directly from a notebook into a running server
+(e.g. via a hot-reload module or a dev-mode registry endpoint).
+
+### TODO
+- [ ] Design the notebook → web UI workflow more explicitly
+- [ ] Consider a `tracebi.web.register()` helper usable from notebooks
+- [ ] Add a `/dashboards/<name>/lineage` endpoint to expose dashboard dataset lineage
+
+---
+
 ## Open Questions
 
 - Should `requests/` files be standalone scripts or should they import a
   shared project-level `DataModel` defined once in a central file?
 - Should the request template support both `.py` and `.ipynb` formats?
-- For the CLI scaffolding idea — is `tracebi new-request` worth building
-  before Phase 4, or after?
-- Phase 4 pipeline design: should a `Pipeline` class wrap the full
-  Bronze → Silver → Gold chain, or stay lower-level (just step scheduling)?
+- For the CLI scaffolding idea — is `tracebi new-request` worth building now?
+- What does the notebook → web UI registration workflow look like in practice?
+  Should it be a live dev-mode endpoint, a module reload, or just "copy to config file"?
