@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TraceBi{% endblock %}</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    window._mermaid = mermaid;
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1F3864;
+      --blue:   #2E74B5;
+      --blue-lt:#DEEBF7;
+      --bg:     #f0f2f6;
+      --card:   #ffffff;
+      --border: #dde4ef;
+      --text:   #1a1a2e;
+      --muted:  #6b7280;
+      --green:  #16a34a;
+      --amber:  #d97706;
+      --red:    #dc2626;
+      --nav-w:  220px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar nav ── */
+    nav {
+      width: var(--nav-w);
+      min-height: 100vh;
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0;
+    }
+    .nav-brand {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+    .nav-brand h1 { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+    .nav-brand p  { font-size: 11px; opacity: .6; margin-top: 3px; }
+    nav ul { list-style: none; padding: 12px 0; flex: 1; }
+    nav ul li a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      color: rgba(255,255,255,.75);
+      text-decoration: none;
+      font-size: 13px;
+      transition: background .15s, color .15s;
+    }
+    nav ul li a:hover,
+    nav ul li a.active {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+    }
+    nav ul li a .icon { font-size: 15px; width: 18px; text-align: center; }
+    .nav-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,.12);
+      font-size: 11px;
+      opacity: .45;
+    }
+
+    /* ── Main content ── */
+    main {
+      margin-left: var(--nav-w);
+      flex: 1;
+      padding: 32px 36px;
+      max-width: 1300px;
+    }
+
+    /* ── Headings ── */
+    .page-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .page-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Stat tiles ── */
+    .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 24px;
+      min-width: 140px;
+    }
+    .stat-value { font-size: 32px; font-weight: 700; color: var(--blue); }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: var(--navy); color: #fff; }
+    thead th { padding: 9px 14px; text-align: left; font-weight: 600; white-space: nowrap; }
+    tbody tr:nth-child(even) { background: #f5f7fb; }
+    tbody tr:hover { background: var(--blue-lt); }
+    tbody td { padding: 8px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tfoot td { padding: 8px 14px; font-weight: 600; border-top: 2px solid var(--navy); }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-blue   { background: var(--blue-lt); color: var(--navy); }
+    .badge-green  { background: #dcfce7; color: #14532d; }
+    .badge-amber  { background: #fef3c7; color: #78350f; }
+    .badge-red    { background: #fee2e2; color: #7f1d1d; }
+    .badge-gray   { background: #f3f4f6; color: #374151; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 5px;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary  { background: var(--blue);  color: #fff; }
+    .btn-outline  { background: transparent; color: var(--blue); border: 1px solid var(--blue); }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+    /* ── Two-column split layout ── */
+    .split { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }
+    .list-panel { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .list-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item:hover { background: var(--blue-lt); }
+    .list-item.selected { background: var(--blue-lt); border-left: 3px solid var(--blue); }
+    .list-item-name { font-weight: 600; font-size: 13px; }
+    .list-item-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+    .tab-btn {
+      padding: 8px 18px;
+      border: none;
+      background: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover  { color: var(--blue); }
+    .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+    /* ── Code / pre ── */
+    pre { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; }
+    .code-block {
+      background: #1e2030;
+      color: #c0caf5;
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+
+    /* ── Mermaid container ── */
+    .mermaid-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      overflow-x: auto;
+      min-height: 120px;
+    }
+    .mermaid-wrap svg { max-width: 100%; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 36px; margin-bottom: 12px; }
+    .empty p { font-size: 13px; }
+
+    /* ── Alert ── */
+    .alert {
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .alert-info { background: var(--blue-lt); color: var(--navy); border-left: 4px solid var(--blue); }
+    .alert-err  { background: #fee2e2; color: #7f1d1d; border-left: 4px solid var(--red); }
+
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <h1>TraceBi</h1>
+    <p>Code-first traceable BI</p>
+  </div>
+  <ul>
+    <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+      <span class="icon">⌂</span> Home
+    </a></li>
+    <li><a href="/connectors" class="{% if '/connectors' in request.url.path %}active{% endif %}">
+      <span class="icon">⇌</span> Connectors
+    </a></li>
+    <li><a href="/models" class="{% if '/models' in request.url.path %}active{% endif %}">
+      <span class="icon">⊞</span> Models
+    </a></li>
+    <li><a href="/reports" class="{% if '/reports' in request.url.path %}active{% endif %}">
+      <span class="icon">▤</span> Reports
+    </a></li>
+    <li><a href="/pipelines" class="{% if '/pipelines' in request.url.path %}active{% endif %}">
+      <span class="icon">⧖</span> Pipelines
+    </a></li>
+  </ul>
+  <div class="nav-footer">TraceBi Web v0.1</div>
+</nav>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>
