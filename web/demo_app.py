@@ -9,9 +9,15 @@ To use your own module instead:
     TRACEBI_APP=mypackage.tracebi_config uvicorn web.api.main:app --reload
 """
 
-import pandas as pd
+import os
 
-from tracebi import DataModel, MemoryConnector
+import pandas as pd
+from sqlalchemy import create_engine
+
+from tracebi import (
+    DataModel, MemoryConnector, SQLConnector,
+    BronzeLayer, SilverLayer, GoldLayer, StarSchema, PipelineRunner,
+)
 from tracebi.reports import Report, TableSection, TextSection, ChartSection
 from tracebi.dashboard import Dashboard, DashboardServer, FilterPanel, MetricPanel, ChartPanel, TablePanel
 from web.api.registry import registry
@@ -253,3 +259,201 @@ registry.add_dashboard(
     DashboardServer(sales_dashboard, model=model),
     description="Live sales overview with associative region and product filters.",
 )
+
+
+# ── Medallion Pipeline ────────────────────────────────────────────────────────
+#
+# Extends the demo data with a customer_id FK so orders can be joined to
+# customers through a StarSchema. Runs Bronze → Silver → Gold at startup so
+# the Pipeline page shows live run history immediately.
+
+# Source data — orders extended with customer_id for the FK join
+_orders_raw = orders_df.assign(
+    customer_id=[1, 2, 3, 4, 1, 3, 2, 4, 1, 3]
+)[["order_id", "customer_id", "product", "qty", "revenue", "cost", "status"]]
+
+_customers_raw = customers_df.rename(columns={"tier": "segment"})
+
+# SQLite DB for pipeline persistence
+_DB_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+os.makedirs(_DB_DIR, exist_ok=True)
+_DB_URL = f"sqlite:///{os.path.join(_DB_DIR, 'demo.db')}"
+
+_orders_raw.to_sql("orders_raw",    con=create_engine(_DB_URL), if_exists="replace", index=False)
+_customers_raw.to_sql("customers_raw", con=create_engine(_DB_URL), if_exists="replace", index=False)
+
+_db = SQLConnector("demo_db", url=_DB_URL)
+
+# Bronze
+_orders_bronze = BronzeLayer(
+    connector=_db, source="orders_raw", description="Raw orders",
+    sink=_db, sink_table="orders_bronze",
+)
+_customers_bronze = BronzeLayer(
+    connector=_db, source="customers_raw", description="Raw customers",
+    sink=_db, sink_table="customers_bronze",
+)
+
+# Silver
+_orders_silver = (
+    SilverLayer(source=_db, source_table="orders_bronze", sink=_db, sink_table="orders_silver")
+    .drop_nulls(subset=["order_id", "customer_id"])
+    .deduplicate(subset=["order_id"])
+)
+_customers_silver = (
+    SilverLayer(source=_db, source_table="customers_bronze", sink=_db, sink_table="customers_silver")
+    .drop_nulls()
+    .deduplicate(subset=["customer_id"])
+)
+
+# DataModel + StarSchema (reads from silver tables)
+_pipeline_model = DataModel("SalesPipelineModel")
+_pipeline_model.add_connector(_db)
+_pipeline_model.add_table("orders_silver",    connector="demo_db", source="orders_silver")
+_pipeline_model.add_table("customers_silver", connector="demo_db", source="customers_silver")
+
+_schema = StarSchema("Sales", model=_pipeline_model)
+_schema.add_dimension(
+    name="dim_customer",
+    table_name="customers_silver",
+    key_col="customer_id",
+    attributes=["region", "segment"],
+)
+_schema.add_fact(
+    name="fact_orders",
+    table_name="orders_silver",
+    measures=["revenue", "qty", "cost"],
+    foreign_keys={"dim_customer": "customer_id"},
+)
+
+# Gold layers
+_gold_by_region = GoldLayer(
+    schema=_schema, fact="fact_orders",
+    measures={"revenue": "sum", "qty": "sum", "cost": "sum"},
+    dimensions=["dim_customer.region"],
+    sink=_db, sink_table="gold_revenue_by_region",
+)
+_gold_by_segment = GoldLayer(
+    schema=_schema, fact="fact_orders",
+    measures={"revenue": "sum", "order_id": "count"},
+    dimensions=["dim_customer.segment"],
+    filters={"status": "shipped"},
+    sink=_db, sink_table="gold_revenue_by_segment",
+)
+
+# PipelineRunner — register layers with schedules and dependencies
+_runner = PipelineRunner(db_url=_DB_URL)
+_runner.register(_orders_bronze,    name="orders_bronze",    schedule="0 * * * *")
+_runner.register(_customers_bronze, name="customers_bronze", schedule="0 * * * *")
+_runner.register(_orders_silver,    name="orders_silver",    schedule="15 * * * *",
+                 depends_on="orders_bronze")
+_runner.register(_customers_silver, name="customers_silver", schedule="15 * * * *",
+                 depends_on="customers_bronze")
+_runner.register(_gold_by_region,   name="revenue_by_region",  schedule="30 6 * * *",
+                 depends_on="orders_silver")
+_runner.register(_gold_by_segment,  name="revenue_by_segment", schedule="30 6 * * *",
+                 depends_on="orders_silver")
+
+# Run full pipeline once at startup so the UI has live data immediately
+_runner.run("orders_bronze")
+_runner.run("customers_bronze")
+_runner.run("orders_silver")
+_runner.run("customers_silver")
+_runner.run("revenue_by_region")
+_runner.run("revenue_by_segment")
+
+registry.add_pipeline("sales", _runner)
+
+
+# ── Medallion report (reads from gold layer via StarSchema) ───────────────────
+
+@registry.report(
+    "medallion_revenue",
+    description="Revenue breakdown produced by the Bronze → Silver → Gold pipeline.",
+)
+def medallion_revenue():
+    gold = GoldLayer(schema=_schema)
+
+    by_region = gold.query(
+        fact="fact_orders",
+        measures={"revenue": "sum", "qty": "sum", "cost": "sum"},
+        dimensions=["dim_customer.region"],
+        name="revenue_by_region",
+    )
+    by_segment = gold.query(
+        fact="fact_orders",
+        measures={"revenue": "sum", "order_id": "count"},
+        dimensions=["dim_customer.segment"],
+        filters={"status": "shipped"},
+        name="revenue_by_segment_shipped",
+    )
+
+    total_rev = by_region.to_pandas()["revenue"].sum()
+
+    return (
+        Report("Medallion Revenue Report")
+        .author("TraceBi Demo")
+        .description("Revenue derived from Bronze → Silver → Gold pipeline via StarSchema.")
+        .parameter("pipeline", "orders_bronze → orders_silver → revenue_by_region")
+
+        .add(TextSection(
+            title="Pipeline Overview",
+            content="Pipeline Overview",
+            style="heading1",
+        ))
+        .add(TextSection(
+            content=(
+                f"Total revenue across all regions: ${total_rev:,.2f}. "
+                "Data flows through Bronze (raw ingest) → Silver (deduplication) "
+                "→ Gold (StarSchema dimensional aggregation)."
+            ),
+            style="normal",
+        ))
+        .spacer()
+
+        .add(TextSection(title="Revenue by Region", content="Revenue by Region", style="heading2"))
+        .add(ChartSection(
+            title="Revenue by Region",
+            dataset=by_region,
+            chart_type="bar",
+            x="dim_customer.region",
+            y="revenue",
+            ylabel="Revenue (USD)",
+        ))
+        .add(TableSection(
+            title="Region Summary",
+            dataset=by_region,
+            columns=["dim_customer.region", "revenue", "qty", "cost"],
+            column_labels={
+                "dim_customer.region": "Region",
+                "revenue": "Revenue ($)",
+                "qty": "Units",
+                "cost": "Cost ($)",
+            },
+            totals=["Revenue ($)", "Units", "Cost ($)"],
+            number_formats={"revenue": "{:,.2f}", "cost": "{:,.2f}"},
+        ))
+        .spacer()
+
+        .add(TextSection(title="Revenue by Segment (Shipped)", content="Revenue by Segment (Shipped)", style="heading2"))
+        .add(ChartSection(
+            title="Revenue by Segment — Shipped Orders",
+            dataset=by_segment,
+            chart_type="bar",
+            x="dim_customer.segment",
+            y="revenue",
+            ylabel="Revenue (USD)",
+        ))
+        .add(TableSection(
+            title="Segment Breakdown",
+            dataset=by_segment,
+            columns=["dim_customer.segment", "revenue", "order_id"],
+            column_labels={
+                "dim_customer.segment": "Segment",
+                "revenue": "Revenue ($)",
+                "order_id": "Order Count",
+            },
+            totals=["Revenue ($)", "Order Count"],
+            number_formats={"revenue": "{:,.2f}"},
+        ))
+    )

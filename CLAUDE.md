@@ -1,0 +1,259 @@
+# TraceBi — CLAUDE.md
+
+Behavioral guidelines and codebase reference for AI assistants. Read before touching any code.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial one-liners, use judgment.
+
+---
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing anything:
+- State your assumptions explicitly. If uncertain, ask.
+- If a request is ambiguous, present the interpretations — don't pick one silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something about the codebase is unclear, stop and name what's confusing.
+
+TraceBi-specific traps to surface first:
+- "Add a transform" — does it belong in `DataSet`, a `SilverLayer` config, or a `GoldLayer`? These are different things with different lineage implications.
+- "Add a connector" — is it a core connector (goes in `tracebi/connectors/`) or app-specific (stays in the app module, registered at startup)?
+- "Update the report" — does the caller want the HTML renderer, the Excel renderer, the PDF renderer, or all three?
+
+---
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+TraceBi-specific: the framework already provides DataSet chaining, lineage tracking, and layer composition. Don't re-implement plumbing that already exists. Check `tracebi/__init__.py` for what's already exported before writing anything new.
+
+---
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: every changed line should trace directly to the user's request.
+
+TraceBi-specific: the five test files are phase-scoped (`test_phase1.py` through `test_phase4.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies.
+
+---
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add a transform" → "write a test that uses it, then make it pass"
+- "Fix the lineage bug" → "write a test that reproduces it, then make it pass"
+- "Add a new API route" → "hit the endpoint and verify the response shape"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Run `pytest tests/` before and after any change. A passing suite is the minimum bar.
+
+---
+
+## Project Overview
+
+**TraceBi** is a code-first, traceable BI framework for Python. Core ideas:
+
+- **DataSet**: immutable wrapper around a pandas DataFrame + lineage chain. Every operation returns a new DataSet; nothing mutates in place.
+- **DataModel**: Qlik-style associative model linking multiple DataSets by key.
+- **Medallion ETL**: Bronze (raw ingest) → Silver (declarative cleaning) → Gold (StarSchema aggregation).
+- **PipelineRunner**: registers layers, schedules with APScheduler, persists run history to SQLite.
+- **Report engine**: builds structured reports (text, tables, charts) and renders to Excel, HTML, or PDF.
+- **Dashboard**: live Dash app with associative filter panels.
+- **Web layer** (`web/`): FastAPI REST API exposing all of the above via a singleton registry.
+
+All four development phases are complete and tested.
+
+---
+
+## Repository Layout
+
+```
+tracebi/               # Core Python package (~5200 LOC)
+  connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory
+  model/               # DataSet, DataModel, StarSchema
+  etl/                 # BronzeLayer, SilverLayer, GoldLayer
+  reports/             # Report, Section types, ExcelRenderer, HTMLRenderer, PDFRenderer
+  dashboard/           # Dashboard, FilterPanel, MetricPanel, ChartPanel, TablePanel
+  pipeline/            # PipelineRunner + APScheduler integration
+  lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
+  __init__.py          # Public API re-exports — check here before writing new code
+web/
+  api/
+    main.py            # FastAPI app entry point — CORS, routers, WSGI mounts
+    registry.py        # Singleton resource store — the seam between framework and app
+    routers/           # One file per domain (connectors, models, reports, pipelines)
+  templates/           # Jinja2 HTML templates
+  run.py               # Dev server (uvicorn wrapper)
+  demo_app.py          # Default app module — shows how to wire everything together
+examples/              # Phase 1–4 runnable demos — read these to understand data flow
+tests/                 # 163 pytest tests, one file per phase
+seeds/                 # DB init + Bronze seeding
+requests/              # Ad hoc report scripts; _template.py is the scaffold to copy
+data/                  # SQLite DB (gitignored)
+pyproject.toml         # Single source of truth for deps, build, and pytest config
+README.md              # Full user-facing docs
+NOTES.md               # Architecture decisions and open questions
+```
+
+---
+
+## Commands
+
+```bash
+# Install
+pip install -e ".[dev]"                        # All extras + pytest
+
+# Run (dev)
+python web/run.py                              # http://127.0.0.1:8000
+TRACEBI_APP=mymodule.config python web/run.py  # Custom app module
+
+# Run (prod)
+uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Database
+python seeds/seed_db.py                        # Create + seed data/tracebi.db
+
+# Tests
+pytest tests/                                  # Full suite (163 tests)
+pytest tests/test_phase1.py                    # Single phase
+pytest --cov                                   # With coverage
+```
+
+---
+
+## Core Invariants — Never Violate These
+
+**1. DataSet is immutable.**
+Every transform method must return a new `DataSet`. Never mutate `.df` or `.lineage` in place. If you add a new method to `DataSet`, it returns a new instance with the new `LineageNode` appended.
+
+**2. Every data operation produces a LineageNode.**
+Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern.
+
+**3. Registry is populated at startup, read at request time.**
+`web/api/registry.py` is a singleton. Register all connectors, models, reports, and dashboards in your app module (e.g. `web/demo_app.py`) during import. Never mutate the registry inside a FastAPI route handler.
+
+**4. Optional dependencies must fail loudly.**
+Each feature group (reports, dashboard, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
+
+**5. pyproject.toml is the only place for deps and config.**
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. Do not add a `.env` file — the only env var the framework reads is `TRACEBI_APP`.
+
+---
+
+## Anti-Patterns
+
+| Don't | Do instead |
+|---|---|
+| Mutate `dataset.df` directly | Return `DataSet(new_df, dataset.lineage + [new_node])` |
+| Import from `web/demo_app.py` in tests | Use `MemoryConnector` or fixture data |
+| Add cross-phase imports in test files | Keep tests isolated to their phase module |
+| Put connector URLs in env vars | Define them in the app module Python code |
+| Add a new route without touching the registry | Wire it through `registry.py` so it's discoverable |
+| Modify `tracebi_*` SQLite tables manually | Use `PipelineRunner` API |
+| Add a new medallion layer without registering it | Call `runner.register(layer)` |
+
+---
+
+## How to Add Things
+
+### New connector
+1. Subclass `tracebi.connectors.BaseConnector`
+2. Implement `load(name) -> DataSet` — must append a `LineageNode`
+3. Register: `registry.add_connector(instance)` in your app module
+
+### New report (ad hoc)
+Copy `requests/_template.py`. Fill in the four sections: connectors → transforms → report assembly → render + save.
+
+### New report (web-exposed)
+Decorate a factory function with `@registry.report("name")`. The function receives no args and returns a rendered `Report`.
+
+### New medallion layer
+```python
+layer = SilverLayer("orders_silver", source=bronze_connector, transforms=[...])
+runner.register(layer)
+runner.schedule("orders_silver", "0 * * * *")  # optional cron
+```
+
+### New dashboard panel
+Subclass `FilterPanel`, `MetricPanel`, `ChartPanel`, or `TablePanel`. Pass to `Dashboard(panels=[...])`.
+
+### New FastAPI route
+Add a file under `web/api/routers/`, include it in `web/api/main.py`, and read resources only from the registry — never import app-specific objects directly.
+
+---
+
+## API Routes
+
+```
+GET  /api/health
+GET  /api/connectors
+GET  /api/models
+GET  /api/reports
+POST /api/reports/{name}/run        → HTML + lineage manifest JSON
+GET  /api/pipelines
+POST /api/pipelines/{name}/run
+GET  /api/pipelines/{name}/lineage
+GET  /                              → index page
+GET  /dashboards/{name}/            → Dash WSGI sub-app (not FastAPI)
+```
+
+---
+
+## What Doesn't Exist Yet
+
+- No CI/CD (no GitHub Actions, Dockerfile, or Makefile)
+- No `.env` support
+- No database migrations (layers are idempotent)
+- No authentication on the web API
+- No pre-commit hooks
+
+Don't add these unless asked.
+
+---
+
+## Orientation Map
+
+| Goal | Start here |
+|---|---|
+| Understand the whole framework | `README.md` |
+| Understand architecture decisions | `NOTES.md` |
+| See a complete working wiring | `web/demo_app.py` |
+| Understand data flow end-to-end | `examples/phase4_example.py` |
+| Add something to the web API | `web/api/registry.py` |
+| Write an ad hoc report | `requests/_template.py` |
+| Understand the lineage chain | `tracebi/model/dataset.py` |
+| Add a new connector | `tracebi/connectors/` (pick any existing one as a model) |
+
+---
+
+**These guidelines are working if:** diffs are minimal and focused, tests pass before and after, and questions surface before implementation rather than after mistakes.
