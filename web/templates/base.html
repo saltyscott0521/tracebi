@@ -259,32 +259,114 @@
     .alert-err  { background: #fee2e2; color: #7f1d1d; border-left: 4px solid var(--red); }
 
     [x-cloak] { display: none !important; }
+
+    /* ── Mobile header ── */
+    .mobile-header { display: none; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+
+      .mobile-header {
+        display: flex;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 52px;
+        background: var(--navy);
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 200;
+        color: #fff;
+      }
+      .mobile-brand { font-size: 16px; font-weight: 700; letter-spacing: .5px; }
+      .hamburger {
+        background: none; border: none; cursor: pointer;
+        display: flex; flex-direction: column; gap: 5px; padding: 4px;
+      }
+      .hamburger span {
+        display: block; width: 22px; height: 2px;
+        background: #fff; border-radius: 2px;
+        transition: transform .2s, opacity .2s;
+      }
+
+      .nav-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.45);
+        z-index: 250;
+      }
+
+      nav {
+        position: fixed;
+        top: 0; left: 0;
+        width: 240px;
+        min-height: 100vh;
+        z-index: 300;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+      }
+      nav.nav-open { transform: translateX(0); }
+
+      main {
+        margin-left: 0;
+        margin-top: 52px;
+        padding: 16px;
+        max-width: 100%;
+      }
+
+      /* Stack split layout */
+      .split { grid-template-columns: 1fr; }
+
+      /* Stats: 2-up grid */
+      .stats { display: grid; grid-template-columns: 1fr 1fr; }
+      .stat-value { font-size: 24px; }
+
+      /* Scrollable tables */
+      .card { overflow-x: auto; padding: 16px; }
+      table { min-width: 480px; }
+
+      /* Full-width buttons */
+      .btn { justify-content: center; }
+
+      .page-title { font-size: 18px; }
+    }
   </style>
 </head>
-<body>
+<body x-data="{ menuOpen: false }">
 
-<nav>
+<!-- Mobile top bar -->
+<div class="mobile-header">
+  <span class="mobile-brand">TraceBi</span>
+  <button class="hamburger" @click="menuOpen = true" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+</div>
+
+<!-- Overlay -->
+<div class="nav-overlay" x-show="menuOpen" @click="menuOpen = false" x-cloak></div>
+
+<nav :class="menuOpen ? 'nav-open' : ''">
   <div class="nav-brand">
     <h1>TraceBi</h1>
     <p>Code-first traceable BI</p>
   </div>
   <ul>
-    <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+    <li><a href="/" @click="menuOpen = false" class="{% if request.url.path == '/' %}active{% endif %}">
       <span class="icon">⌂</span> Home
     </a></li>
-    <li><a href="/connectors" class="{% if '/connectors' in request.url.path %}active{% endif %}">
+    <li><a href="/connectors" @click="menuOpen = false" class="{% if '/connectors' in request.url.path %}active{% endif %}">
       <span class="icon">⇌</span> Connectors
     </a></li>
-    <li><a href="/models" class="{% if '/models' in request.url.path %}active{% endif %}">
+    <li><a href="/models" @click="menuOpen = false" class="{% if '/models' in request.url.path %}active{% endif %}">
       <span class="icon">⊞</span> Models
     </a></li>
-    <li><a href="/reports" class="{% if '/reports' in request.url.path %}active{% endif %}">
+    <li><a href="/reports" @click="menuOpen = false" class="{% if '/reports' in request.url.path %}active{% endif %}">
       <span class="icon">▤</span> Reports
     </a></li>
-    <li><a href="/pipelines" class="{% if '/pipelines' in request.url.path %}active{% endif %}">
+    <li><a href="/pipelines" @click="menuOpen = false" class="{% if '/pipelines' in request.url.path %}active{% endif %}">
       <span class="icon">⧖</span> Pipelines
     </a></li>
-    <li><a href="/dashboards" class="{% if '/dashboards' in request.url.path %}active{% endif %}">
+    <li><a href="/dashboards" @click="menuOpen = false" class="{% if '/dashboards' in request.url.path %}active{% endif %}">
       <span class="icon">◫</span> Dashboards
     </a></li>
   </ul>
