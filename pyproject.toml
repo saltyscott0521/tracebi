@@ -11,6 +11,11 @@ license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = [
     "pandas>=1.5",
+    "fastapi>=0.100",
+    "uvicorn>=0.23",
+    "starlette>=0.27",
+    "jinja2>=3.0",
+    "python-multipart>=0.0.6",
 ]
 
 [project.optional-dependencies]
