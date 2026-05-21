@@ -1,5 +1,4 @@
 [build]
-builder = "nixpacks"
 buildCommand = "pip install -e '.[reports,dashboard,pipeline,lineage,sql]'"
 
 [deploy]
