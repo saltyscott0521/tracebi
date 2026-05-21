@@ -1,5 +1,5 @@
-[build]
-buildCommand = "pip install '.[reports,dashboard,pipeline,lineage,sql]'"
+[variables]
+RAILPACK_INSTALL_CMD = "pip install '.[reports,dashboard,pipeline,lineage,sql]'"
 
 [deploy]
 startCommand = "python -m uvicorn web.api.main:app --host 0.0.0.0 --port $PORT"
