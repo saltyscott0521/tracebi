@@ -2,10 +2,66 @@
 {% block title %}TraceBi — Home{% endblock %}
 
 {% block content %}
-<div class="page-title">Welcome to TraceBi</div>
-<p class="page-sub">A code-first, traceable BI framework. Every data operation is tracked with a full lineage chain.</p>
 
-<div class="stats">
+<!-- Hero -->
+<div style="
+  background: linear-gradient(135deg, #0d1835 0%, #0f1e40 50%, #0c1a38 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 52px 48px 48px;
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+">
+  <!-- Subtle glow orb -->
+  <div style="
+    position: absolute; top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  "></div>
+
+  <div style="
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--blue-lt);
+    border: 1px solid var(--blue-br);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #93c5fd;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  ">Code-first · Traceable · Open Source</div>
+
+  <h2 style="
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    background: linear-gradient(90deg, #e2e8f0 0%, #93c5fd 60%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    max-width: 560px;
+  ">Build analytics pipelines that explain themselves.</h2>
+
+  <p style="font-size: 15px; color: #94a3b8; line-height: 1.7; max-width: 580px; margin-bottom: 28px;">
+    TraceBi is a Python framework for building BI workflows — from raw data ingestion
+    to star schemas, reports, and dashboards — where every transformation is tracked
+    with a full lineage chain. No black boxes. No mystery queries.
+  </p>
+
+  <div style="display:flex; gap:12px; flex-wrap:wrap;">
+    <a href="/reports"   class="btn btn-primary" style="font-size:14px; padding:10px 22px;">▤ View Reports</a>
+    <a href="/models"    class="btn btn-outline"  style="font-size:14px; padding:10px 22px;">⊞ Explore Models</a>
+    <a href="/pipelines" class="btn btn-outline"  style="font-size:14px; padding:10px 22px;">⧖ Pipelines</a>
+  </div>
+</div>
+
+<!-- Live stats -->
+<div class="stats" style="margin-bottom:32px;">
   <div class="stat">
     <div class="stat-value">{{ connector_count }}</div>
     <div class="stat-label">Connector{{ 's' if connector_count != 1 }}</div>
@@ -24,62 +80,157 @@
   </div>
 </div>
 
-<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+<!-- What it does -->
+<div class="page-title" style="margin-bottom:8px;">What TraceBi does</div>
+<p class="page-sub">Six building blocks — each independent, all composable.</p>
 
-  <div class="card">
-    <div class="card-title">Quick Start</div>
-    <p style="color:var(--muted); line-height:1.7; font-size:13px;">
-      Navigate using the sidebar. Run any report to see rendered output and its
-      full data lineage. Explore the <strong>Models</strong> page to preview tables
-      and inspect relationships.
+<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:32px;">
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="font-size:26px; margin-bottom:12px;">⇌</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">Connectors</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Pull data from CSV, SQL databases, BigQuery, Snowflake, or in-memory DataFrames
+      through a unified <code>load()</code> interface.
     </p>
-    <div style="margin-top:16px; display:flex; gap:10px;">
-      <a href="/reports" class="btn btn-primary">▤ View Reports</a>
-      <a href="/models"  class="btn btn-outline">⊞ Explore Models</a>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="font-size:26px; margin-bottom:12px;">⬡</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">Medallion ETL</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Structure your pipeline as Bronze → Silver → Gold layers. Each layer
+      transforms data and writes to configurable sinks with full lineage tracking.
+    </p>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="font-size:26px; margin-bottom:12px;">✦</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">Star Schema</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Define dimension and fact tables, then query cross-table joins with a
+      declarative <code>StarSchema.query()</code> — no manual SQL required.
+    </p>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="font-size:26px; margin-bottom:12px;">⊞</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">Data Models</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Register tables and named join relationships. The associative model lets
+      you slice and explore data without writing join logic each time.
+    </p>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="font-size:26px; margin-bottom:12px;">▤</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">Reports</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Compose reports from text, table, and chart sections. Render to HTML or
+      Excel. Every report captures a lineage manifest at render time.
+    </p>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="font-size:26px; margin-bottom:12px;">◫</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:6px;">Dashboards</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Mount interactive Plotly/Dash dashboards directly inside the TraceBi
+      web server — no separate process needed.
+    </p>
+  </div>
+
+</div>
+
+<!-- How to use it -->
+<div class="page-title" style="margin-bottom:8px;">How to use it</div>
+<p class="page-sub">Two ways to work with TraceBi — pick what fits your workflow.</p>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:32px;">
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="
+      display:inline-block; padding:4px 10px; border-radius:6px; font-size:11px;
+      font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+      background:var(--blue-lt); color:#93c5fd; border:1px solid var(--blue-br);
+      margin-bottom:14px;
+    ">Option 1 — Python library</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+      Install and use TraceBi from a notebook or script. Build your
+      medallion pipeline, query your star schema, and render reports to HTML or Excel
+      — all with pure Python.
+    </p>
+    <div class="code-block">pip install tracebi</div>
+    <div class="code-block" style="margin-top:10px;">
+from tracebi import BronzeLayer, StarSchema, Report<br>
+<br>
+gold = GoldLayer(schema=schema).query(filters)<br>
+report = Report("Sales", sections=[<br>
+&nbsp;&nbsp;TableSection("Revenue", gold["revenue"]),<br>
+])<br>
+report.render(HTMLRenderer("out.html"))
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Customise This Demo</div>
-    <p style="color:var(--muted); line-height:1.7; font-size:13px;">
-      Edit <code>web/demo_app.py</code> to register your own connectors, models,
-      and reports. Or point the server at a different config module:
+  <div class="card" style="margin-bottom:0;">
+    <div style="
+      display:inline-block; padding:4px 10px; border-radius:6px; font-size:11px;
+      font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+      background:rgba(167,139,250,.12); color:#c4b5fd; border:1px solid rgba(167,139,250,.25);
+      margin-bottom:14px;
+    ">Option 2 — Web UI (this app)</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+      Register your connectors, models, reports, and pipelines in
+      <code>web/demo_app.py</code>, then run the server to get a live dashboard
+      with API docs, report preview, and lineage diagrams.
     </p>
-    <div class="code-block" style="margin-top:12px;">
-TRACEBI_APP=mypackage.config \<br>
-&nbsp;&nbsp;python web/run.py
+    <div class="code-block">
+# web/demo_app.py<br>
+registry.add_connector("orders", CSVConnector(...))<br>
+registry.add_pipeline("sales", runner)<br>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">How It Works</div>
-    <table>
-      <tbody>
-        <tr><td style="padding:6px 14px 6px 0; font-weight:600; white-space:nowrap;">Connectors</td>
-            <td style="padding:6px 0; color:var(--muted);">CSV, SQL, BigQuery, Snowflake, Memory</td></tr>
-        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">DataModel</td>
-            <td style="padding:6px 0; color:var(--muted);">Register tables and named join relationships</td></tr>
-        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">DataSet</td>
-            <td style="padding:6px 0; color:var(--muted);">Immutable DataFrame — every operation appends a LineageNode</td></tr>
-        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">Report</td>
-            <td style="padding:6px 0; color:var(--muted);">Declarative sections (text, table, chart) with manifest on render</td></tr>
-        <tr><td style="padding:6px 14px 6px 0; font-weight:600;">Pipeline</td>
-            <td style="padding:6px 0; color:var(--muted);">Medallion layers (bronze → silver → gold) with APScheduler</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <div class="card-title">API Reference</div>
-    <p style="color:var(--muted); line-height:1.7; font-size:13px;">
-      The REST API powering this UI is fully documented. Open the interactive
-      docs to explore every endpoint and try them live.
-    </p>
-    <div style="margin-top:16px; display:flex; gap:10px;">
-      <a href="/docs"  target="_blank" class="btn btn-primary">⬡ Swagger UI</a>
-      <a href="/redoc" target="_blank" class="btn btn-outline">⬡ ReDoc</a>
+    <div class="code-block" style="margin-top:10px;">
+python -m uvicorn web.api.main:app \<br>
+&nbsp;&nbsp;--reload --port 8000
     </div>
   </div>
 
 </div>
+
+<!-- Bottom row: lineage callout + API docs -->
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+
+  <div class="card" style="
+    margin-bottom:0;
+    background: linear-gradient(135deg, #0d1835 0%, #111827 100%);
+    border-color: var(--blue-br);
+  ">
+    <div style="font-size:22px; margin-bottom:10px;">⊶</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Full lineage, always</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Every <code>DataSet</code> carries a chain of <code>LineageNode</code> records
+      that describe exactly which connector, transformation, and timestamp produced
+      each result. Click any report to visualise the full DAG.
+    </p>
+    <div style="margin-top:16px;">
+      <a href="/reports" class="btn btn-outline btn-sm">Explore lineage →</a>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:0;">
+    <div style="font-size:22px; margin-bottom:10px;">⬡</div>
+    <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">REST API included</div>
+    <p style="font-size:13px; color:var(--muted); line-height:1.6;">
+      Every UI feature is backed by a documented REST API. Automate report
+      generation, trigger pipelines, or integrate TraceBi data into other tools
+      — all without touching the UI.
+    </p>
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <a href="/docs"  target="_blank" class="btn btn-primary btn-sm">Swagger UI</a>
+      <a href="/redoc" target="_blank" class="btn btn-outline btn-sm">ReDoc</a>
+    </div>
+  </div>
+
+</div>
+
 {% endblock %}
