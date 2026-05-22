@@ -66,13 +66,13 @@ function ReportDetail({ report }) {
     run(report.name, {
       onSuccess: (data) => setResult(data),
     })
-  }, [report.name, run])
+  }, [report?.name, run])
 
   const handleLineage = useCallback(() => {
     fetchLineage(report.name, {
       onSuccess: (data) => setLineageData(data),
     })
-  }, [report.name, fetchLineage])
+  }, [report?.name, fetchLineage])
 
   if (!report) return <Card><Empty icon="▤" message="Select a report to run it." /></Card>
 
