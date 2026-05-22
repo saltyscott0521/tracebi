@@ -278,6 +278,144 @@ lets you register objects directly from a notebook into a running server
 
 ---
 
+## 2026-05-22 — Architecture & Positioning Discussion
+
+### Product Positioning
+
+TraceBi is the **reporting and delivery layer** for data that has already been
+engineered upstream. It is not a replacement for dbt, Airflow, or Spark. It assumes
+a mature data warehouse or lake exists and picks up from there.
+
+**Core value TraceBi adds:**
+- Connectivity — talk to whatever warehouse or lake already exists
+- Lineage — every report knows exactly what data produced it and when
+- Structure — a consistent, code-first pattern for building and maintaining reports
+- Delivery — scheduled outputs, web UI, Excel, HTML, dashboards for non-technical users
+- Auditability — git as the permanent record of what was built and why
+
+**TraceBi explicitly is not:**
+- A data engineering tool
+- Responsible for data quality upstream
+- A replacement for full ETL pipelines
+- An in-memory compute engine for large datasets
+
+The expectation is that heavy data engineering — transformations, aggregations,
+cleaning — happens upstream in the database or lake before TraceBi connects to it.
+
+---
+
+### Replacing Medallion Framing
+
+The Bronze/Silver/Gold medallion naming implies TraceBi owns the full ETL pipeline,
+which conflicts with the positioning above. The discussion landed on replacing
+medallion terminology with a simpler three-step model:
+
+**Level 1 — Landing**
+Connect to whatever upstream table exists and load it into TraceBi's context.
+No transforms. Entry point could be a dbt silver model, a Snowflake view, a
+Postgres table, or anything else. TraceBi does not own what happens before this.
+
+**Level 2 — Manipulation**
+Optional light touches before serving. Joins, column casts, filters, renames —
+the kind of thing an analyst would do in a notebook before analyzing. If upstream
+data is already in the right shape, this step can be skipped entirely.
+
+**Final Model / Star Schema**
+The serving layer. Declare facts and dimensions, run the analytic query, get back
+a clean dataset ready for a report or dashboard. Reports can be built off Level 2
+data (detail/transaction level) or the Final Model (aggregated). Both are valid;
+the framework should support either without prescribing which to use.
+
+> **Open decision:** whether to rename Bronze/Silver/Gold to Landing/Manipulation/Final
+> in the codebase, or keep the current names and adjust the framing in docs/UI only.
+
+---
+
+### Large Data / Memory Considerations
+
+- The database or lake does the heavy compute — TraceBi receives only the result
+- Push-down filters at the connector level (WHERE clauses before loading) are the
+  right pattern for detail-level queries
+- StarSchema.query() should aggregate at the database level where possible —
+  only the small result set comes back to Python
+- Transaction-level detail reports are valid but should always filter at the SQL
+  level first, not load everything and filter in pandas
+- A lineage warning when a large unaggregated load occurs with no filters would
+  be useful — visible in the lineage chain, not blocking
+
+---
+
+### Web UI — Auto-Discovery Direction
+
+Current state: reports and pipelines are registered manually in `demo_app.py`.
+
+Direction: move toward folder-based auto-discovery where the app scans designated
+directories at startup. Reports follow a convention (decorated `run()` function or
+entry point) so the registry builds itself. `demo_app.py` becomes minimal — just
+path config and connector credentials.
+
+Open decisions:
+- Whether `requests/` (ad hoc) and `scheduled/` are separate folders or one folder
+  where a decorator determines scheduling
+- Connectors and models remain as Python declarations (not YAML)
+
+---
+
+### Deployment Model
+
+- Docker is the right deployment target for the web UI mode
+- Single `docker-compose.yml` with app + SQLite (or Postgres) + output volume
+  is the right getting-started story
+- Cloud VM (small EC2, DigitalOcean droplet) is where most real small-team
+  deployments will land
+- Serverless is a poor fit — the scheduler is stateful and long-running
+- API layer should be designed to sit behind external auth (Authelia, Cloudflare
+  Access) without requiring a rewrite
+
+---
+
+### Two Usage Modes
+
+**Mode 1 — Pure library**
+Install TraceBi, write Python scripts, render reports to files or inline in a
+notebook. No web server, no UI. Target persona: data engineer or analyst comfortable
+in code.
+
+**Mode 2 — Installed package with web UI**
+Configure connectors and models, write report scripts into designated folders, web
+UI surfaces and delivers reports. Includes scheduling, run history, output downloads,
+lineage visualization.
+
+---
+
+### User Personas
+
+**Persona A — Data engineer / analyst**
+Writes the Python, sets up connectors, builds the pipeline and reports. Comfortable
+in code. Uses TraceBi as a library or as the code layer of Mode 2. Cares about
+lineage, reproducibility, git as the audit trail.
+
+**Persona B — Business stakeholder**
+Wants to see the report, download the Excel, filter a dashboard. Never touches Python.
+Needs the web UI to be self-service and reliable. Currently underserved by the
+architecture — worth keeping in mind as the web UI develops.
+
+---
+
+### Architectural Risks
+
+- **Dash embedded inside FastAPI** — known friction point for middleware, auth, and
+  hot-reloading. May need to be a separate service as dashboards grow.
+- **Pandas memory ceiling** — DataSet should be designed so it could wrap a lazy
+  frame (Polars, DuckDB) in the future without deep rewrites.
+- **`model.load()` pulling full tables** — push-down filter/column selection on
+  load should be a first-class feature, not an afterthought.
+- **Auth gap** — no user identity or permissions model exists yet. Minimum viable
+  approach is HTTP basic auth or sitting behind a proxy. Design the API so auth
+  can be added without a rewrite.
+
+---
+
 ## Open Questions
 
 - Should `requests/` files be standalone scripts or should they import a
