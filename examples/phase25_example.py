@@ -1,10 +1,11 @@
 """
 TraceBi — Phase 2.5 Example
 ============================
-Demonstrates:
+Demonstrates the full path from raw data to rendered report:
   - Medallion architecture  (BronzeLayer → SilverLayer → GoldLayer)
   - Star schema queries      (StarSchema with dot-notation dimensions)
-  - Lineage diagrams         (LineageDiagram → show / to_html / to_mermaid)
+  - Report engine            (Report with tables + charts → Excel + HTML)
+  - Lineage diagrams         (LineageDiagram → HTML / Mermaid)
 
 No external files or databases needed — uses MemoryConnector.
 
@@ -23,6 +24,9 @@ from tracebi import DataModel, MemoryConnector
 from tracebi import BronzeLayer, SilverLayer, GoldLayer
 from tracebi.model.star_schema import StarSchema
 from tracebi.lineage.diagram import LineageDiagram
+from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
+from tracebi.reports.excel_renderer import ExcelRenderer
+from tracebi.reports.html_renderer import HTMLRenderer
 
 
 # ── Sample source data ────────────────────────────────────────────────────────
@@ -62,7 +66,7 @@ model.add_table("customers_raw", connector="mem", source="customers_raw")
 
 def run():
     print("\n" + "=" * 60)
-    print("  Phase 2.5 — Medallion Architecture + Star Schema")
+    print("  Phase 2.5 — Medallion + Star Schema + Report")
     print("=" * 60)
 
     # ── Bronze ───────────────────────────────────────────────────
@@ -108,7 +112,6 @@ def run():
     # ── Star Schema ──────────────────────────────────────────────
     print("\n[3] Star Schema setup")
 
-    # Re-register clean tables so StarSchema can load them via DataModel
     connector.add_table("orders_silver",    orders_silver.to_pandas())
     connector.add_table("customers_silver", customers_silver.to_pandas())
     model.add_table("orders_silver",    connector="mem", source="orders_silver")
@@ -130,7 +133,7 @@ def run():
     schema.describe()
 
     # ── Gold ─────────────────────────────────────────────────────
-    print("\n[4] Gold — aggregated results")
+    print("\n[4] Gold — aggregated queries")
 
     gold = GoldLayer(schema=schema)
 
@@ -140,8 +143,6 @@ def run():
         dimensions=["dim_customer.region"],
         name="revenue_by_region",
     )
-    print("\n  Revenue by region:")
-    print(revenue_by_region.to_pandas().to_string(index=False))
 
     revenue_by_segment = gold.query(
         fact="fact_orders",
@@ -150,37 +151,154 @@ def run():
         filters={"status": "shipped"},
         name="revenue_by_segment_shipped",
     )
-    print("\n  Revenue by segment (shipped only):")
-    print(revenue_by_segment.to_pandas().to_string(index=False))
 
     total = gold.query(
         fact="fact_orders",
         measures={"revenue": "sum", "qty": "sum"},
         name="grand_total",
     )
-    print("\n  Grand totals:")
-    print(total.to_pandas().to_string(index=False))
+
+    print("\n  Revenue by region:")
+    print(revenue_by_region.to_pandas().to_string(index=False))
+    print("\n  Revenue by segment (shipped only):")
+    print(revenue_by_segment.to_pandas().to_string(index=False))
 
     revenue_by_region.print_lineage()
 
-    # ── Lineage Diagram ──────────────────────────────────────────
-    print("\n[5] Lineage Diagram")
+    # ── Report ───────────────────────────────────────────────────
+    print("\n[5] Report — build + render")
 
-    diag = LineageDiagram(revenue_by_region)
-    print(f"  {diag}")
+    total_revenue = total.to_pandas()["revenue"].iloc[0]
+    total_qty = total.to_pandas()["qty"].iloc[0]
 
-    print("\n  Mermaid:\n")
-    print(diag.to_mermaid())
+    report = (
+        Report("Sales Performance Report — Medallion Pipeline")
+        .author("Data Team")
+        .description("Revenue and order metrics derived from Bronze → Silver → Gold pipeline.")
+        .parameter("source", "MemoryConnector (orders_raw, customers_raw)")
+        .parameter("pipeline", "BronzeLayer → SilverLayer → GoldLayer via StarSchema")
+
+        .add(TextSection(
+            title="Executive Summary",
+            content="Executive Summary",
+            style="heading1",
+        ))
+        .add(TextSection(
+            content=(
+                f"Total pipeline revenue: ${total_revenue:,.2f} across {total_qty:,} units. "
+                "Data cleaned through Silver (deduplication, type casting) and "
+                "aggregated through Gold via StarSchema dimensional joins."
+            ),
+            style="normal",
+        ))
+        .add(TextSection(
+            content="Note: Segment breakdown reflects shipped orders only.",
+            style="note",
+        ))
+        .spacer()
+
+        .add(TextSection(title="Revenue by Region", content="Revenue by Region", style="heading2"))
+        .add(ChartSection(
+            title="Revenue by Region",
+            dataset=revenue_by_region,
+            chart_type="bar",
+            x="dim_customer.region",
+            y="revenue",
+            ylabel="Revenue (USD)",
+            figsize=(9, 4),
+        ))
+        .add(TableSection(
+            title="Region Summary",
+            dataset=revenue_by_region,
+            columns=["dim_customer.region", "revenue", "qty"],
+            column_labels={
+                "dim_customer.region": "Region",
+                "revenue": "Revenue (USD)",
+                "qty": "Units Sold",
+            },
+            totals=["Revenue (USD)", "Units Sold"],
+            number_formats={"revenue": "{:,.2f}"},
+        ))
+        .spacer()
+
+        .add(TextSection(title="Revenue by Segment (Shipped)", content="Revenue by Segment (Shipped)", style="heading2"))
+        .add(ChartSection(
+            title="Revenue by Customer Segment — Shipped Orders",
+            dataset=revenue_by_segment,
+            chart_type="bar",
+            x="dim_customer.segment",
+            y="revenue",
+            ylabel="Revenue (USD)",
+            figsize=(8, 4),
+        ))
+        .add(TableSection(
+            title="Segment Breakdown",
+            dataset=revenue_by_segment,
+            columns=["dim_customer.segment", "revenue", "order_id"],
+            column_labels={
+                "dim_customer.segment": "Segment",
+                "revenue": "Revenue (USD)",
+                "order_id": "Order Count",
+            },
+            totals=["Revenue (USD)", "Order Count"],
+            number_formats={"revenue": "{:,.2f}"},
+        ))
+    )
+
+    report.describe()
 
     output_dir = os.path.join(os.path.dirname(__file__), "..", "output")
     os.makedirs(output_dir, exist_ok=True)
-    html_path = os.path.join(output_dir, "lineage_revenue_by_region.html")
-    diag.to_html(html_path)
-    print(f"  Lineage HTML saved: {html_path}")
+
+    xlsx_path = os.path.join(output_dir, "sales_medallion_report.xlsx")
+    html_path = os.path.join(output_dir, "sales_medallion_report.html")
+
+    print("  Rendering Excel...")
+    ExcelRenderer().render(report, xlsx_path)
+    print(f"    ✓ {xlsx_path}  ({os.path.getsize(xlsx_path):,} bytes)")
+
+    print("  Rendering HTML...")
+    HTMLRenderer().render(report, html_path)
+    print(f"    ✓ {html_path}  ({os.path.getsize(html_path):,} bytes)")
+
+    # ── Lineage Diagram ──────────────────────────────────────────
+    print("\n[6] Lineage Diagram")
+
+    diag = LineageDiagram(revenue_by_region)
+    print(f"  {diag}")
+    print("\n  Mermaid:\n")
+    print(diag.to_mermaid())
+
+    lineage_path = os.path.join(output_dir, "lineage_revenue_by_region.html")
+    diag.to_html(lineage_path)
+    print(f"  Lineage HTML saved: {lineage_path}")
 
     print("\nAll Phase 2.5 steps complete ✓")
-    return revenue_by_region
+    return report
+
+
+def serve(port: int = 8080):
+    """Render the report and open it in the browser via a local server."""
+    report = run()
+    HTMLRenderer().serve(report, port=port)
+
+
+def preview():
+    """Render the report inline inside a Jupyter notebook."""
+    report = run()
+    HTMLRenderer().preview(report)
+
+
+def _is_jupyter() -> bool:
+    try:
+        shell = get_ipython().__class__.__name__  # noqa: F821
+        return shell in ("ZMQInteractiveShell", "google.colab._shell")
+    except NameError:
+        return False
 
 
 if __name__ == "__main__":
-    run()
+    if _is_jupyter():
+        preview()
+    else:
+        serve()
