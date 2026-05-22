@@ -18,3 +18,6 @@ output/
 test_output.html
 data/
 .claude/
+
+web/ui/node_modules/
+web/ui/dist/

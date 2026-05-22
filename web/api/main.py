@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.wsgi import WSGIMiddleware
 
-from web.api.routers import connectors, models, reports, pipelines, ui
+from web.api.routers import connectors, models, reports, pipelines, dashboards
 
 app = FastAPI(
     title="TraceBi API",
@@ -40,7 +40,7 @@ app.include_router(connectors.router, prefix="/api")
 app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")
 app.include_router(pipelines.router,  prefix="/api")
-app.include_router(ui.router)
+app.include_router(dashboards.router, prefix="/api")
 
 
 @app.get("/api/health")
