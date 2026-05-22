@@ -385,43 +385,169 @@ ds = schema.query(<br>
 
 <!-- ── Walkthrough ─────────────────────────────────────────────────────────── -->
 <div class="page-title" style="margin-bottom:8px;">End-to-end walkthrough</div>
-<p class="page-sub">A complete pipeline from raw data to scheduled report — six steps.</p>
+<p class="page-sub">Follow along with the built-in demo data, or bring your own sources.</p>
 
-<div x-data="{ step: 1 }" style="margin-bottom:40px;">
+<div x-data="{ mode: 'demo', demoStep: 1, ownStep: 1 }" style="margin-bottom:40px;">
 
-  <!-- Step tabs -->
-  <div class="tabs" style="flex-wrap:wrap;">
-    <button class="tab-btn" :class="step===1 && 'active'" @click="step=1">1. Connect</button>
-    <button class="tab-btn" :class="step===2 && 'active'" @click="step=2">2. Transform</button>
-    <button class="tab-btn" :class="step===3 && 'active'" @click="step=3">3. Medallion ETL</button>
-    <button class="tab-btn" :class="step===4 && 'active'" @click="step=4">4. Report</button>
-    <button class="tab-btn" :class="step===5 && 'active'" @click="step=5">5. Schedule</button>
-    <button class="tab-btn" :class="step===6 && 'active'" @click="step=6">6. Dashboard</button>
+  <!-- Mode tabs -->
+  <div class="tabs" style="flex-wrap:wrap; margin-bottom:0;">
+    <button class="tab-btn" :class="mode==='demo' && 'active'" @click="mode='demo'">Quick Start (Demo)</button>
+    <button class="tab-btn" :class="mode==='own' && 'active'" @click="mode='own'">Your Own Data</button>
   </div>
 
-  <div class="card" style="margin-bottom:0; border-top-left-radius:0; border-top:none;">
+  <!-- ── DEMO MODE ─────────────────────────────────────────────────────────── -->
+  <div x-show="mode==='demo'">
+    <div class="tabs" style="flex-wrap:wrap; border-top:1px solid var(--border);">
+      <button class="tab-btn" :class="demoStep===1 && 'active'" @click="demoStep=1">1. Load</button>
+      <button class="tab-btn" :class="demoStep===2 && 'active'" @click="demoStep=2">2. Transform</button>
+      <button class="tab-btn" :class="demoStep===3 && 'active'" @click="demoStep=3">3. Report</button>
+      <button class="tab-btn" :class="demoStep===4 && 'active'" @click="demoStep=4">4. Dashboard</button>
+    </div>
+    <div class="card" style="margin-bottom:0; border-top-left-radius:0; border-top:none;">
 
-    <!-- Step 1 -->
-    <div x-show="step===1">
-      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Connect to your data</div>
-      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-        The fastest way to get started is the built-in demo model — no files, no database,
-        no setup. It comes pre-loaded with sample orders, customers, and trend data so you
-        can follow every step of this walkthrough immediately after <code>pip install tracebi</code>.
-      </p>
-      <div class="code-block">
+      <!-- Demo Step 1 -->
+      <div x-show="demoStep===1">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Load the demo model</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          No files, no database, no setup. <code>load_demo_model()</code> returns a fully connected
+          <code>DataModel</code> backed by in-memory sample data — orders, customers, and a revenue
+          trend — so you can follow every step of this walkthrough immediately after
+          <code>pip install tracebi</code>.
+        </p>
+        <div class="code-block">
 from tracebi.demo import load_demo_model<br>
 <br>
 model = load_demo_model()<br>
-<span style="color:#64748b"># Ready — tables: orders, customers, trend</span>
+<span style="color:#64748b"># Ready — tables: orders, customers, trend</span><br>
+<br>
+orders = model.load("orders")<br>
+print(orders.to_pandas().head())
+        </div>
       </div>
-      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-top:18px; margin-bottom:14px;">
-        When you're ready to connect to your own data, register connectors and logical
-        table names in a <code>DataModel</code>. You can mix sources — orders from SQL,
-        a lookup from CSV, a reference table from BigQuery — and reference them all by
-        name in your transforms. Call <code>model.connect()</code> once to open all connections.
-      </p>
-      <div class="code-block">
+
+      <!-- Demo Step 2 -->
+      <div x-show="demoStep===2">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Transform with full lineage</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          Every method on <code>DataSet</code> — filter, transform, sort, select, rename —
+          returns a new immutable DataSet with the step appended to its lineage chain.
+          Call <code>print_lineage()</code> at any point to see the full audit trail.
+        </p>
+        <div class="code-block">
+orders = model.load("orders")<br>
+<br>
+result = (<br>
+&nbsp;&nbsp;orders<br>
+&nbsp;&nbsp;.filter("status == 'shipped'", description="Shipped orders only")<br>
+&nbsp;&nbsp;.transform(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;lambda df: df.assign(margin=df["revenue"] - df["cost"]),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;description="margin = revenue - cost",<br>
+&nbsp;&nbsp;)<br>
+&nbsp;&nbsp;.sort("margin", ascending=False)<br>
+&nbsp;&nbsp;.select(["order_id", "region", "product", "revenue", "margin"])<br>
+)<br>
+<br>
+result.print_lineage()<br>
+<span style="color:#64748b"># Step 1: [LOAD]       Loaded 'orders' from 'demo'</span><br>
+<span style="color:#64748b"># Step 2: [FILTER]     Shipped orders only  (10 → 6 rows)</span><br>
+<span style="color:#64748b"># Step 3: [TRANSFORM]  margin = revenue - cost</span><br>
+<span style="color:#64748b"># Step 4: [SORT]       Sorted by margin (desc)</span><br>
+<span style="color:#64748b"># Step 5: [SELECT]     Selected 5 columns</span>
+        </div>
+      </div>
+
+      <!-- Demo Step 3 -->
+      <div x-show="demoStep===3">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Build and render a report</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          A <code>Report</code> is assembled from section objects — text headings, tables, and charts.
+          Pass any <code>DataSet</code> directly into a section. Render to Excel or HTML; both
+          renderers write a <code>manifest.json</code> capturing the full lineage of every dataset.
+        </p>
+        <div class="code-block">
+from tracebi.reports.report import Report, TextSection, TableSection, ChartSection<br>
+from tracebi.reports.excel_renderer import ExcelRenderer<br>
+from tracebi.reports.html_renderer import HTMLRenderer<br>
+<br>
+orders = model.load("orders")<br>
+<br>
+report = (<br>
+&nbsp;&nbsp;Report("Sales Report")<br>
+&nbsp;&nbsp;.author("Data Team")<br>
+&nbsp;&nbsp;.parameter("period", "Q2 2024")<br>
+&nbsp;&nbsp;.add(TextSection(title="Summary", content="Summary", style="heading1"))<br>
+&nbsp;&nbsp;.add(ChartSection(title="Revenue by Region", dataset=orders,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;chart_type="bar", x="region", y="revenue"))<br>
+&nbsp;&nbsp;.add(TableSection(title="Order Detail", dataset=orders,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["order_id", "region", "product", "revenue"],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;totals=["revenue"]))<br>
+)<br>
+<br>
+ExcelRenderer().render(report, "sales_report.xlsx")<br>
+HTMLRenderer().render(report, "sales_report.html")<br>
+HTMLRenderer().preview(report)   <span style="color:#64748b"># inline in Jupyter</span>
+        </div>
+      </div>
+
+      <!-- Demo Step 4 -->
+      <div x-show="demoStep===4">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Add a live dashboard</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          Build a <code>Dashboard</code> from panel components — metrics, charts, tables, and filters.
+          Filters are <strong style="color:var(--text);">associative</strong>: selecting a region
+          automatically updates every panel that shares that column, with no event-wiring code.
+        </p>
+        <div class="code-block">
+from tracebi.dashboard import Dashboard, DashboardServer<br>
+from tracebi.dashboard import FilterPanel, MetricPanel, ChartPanel, TablePanel<br>
+<br>
+orders = model.load("orders")<br>
+<br>
+dashboard = (<br>
+&nbsp;&nbsp;Dashboard("Sales Dashboard").columns(2)<br>
+&nbsp;&nbsp;.add_filter(FilterPanel("region-filter", label="Region",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;column="region", dataset=orders))<br>
+&nbsp;&nbsp;.add_panel(MetricPanel("total-revenue", title="Total Revenue",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dataset=orders, column="revenue",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;aggregation="sum", prefix="$"))<br>
+&nbsp;&nbsp;.add_panel(ChartPanel("by-region", title="Revenue by Region",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dataset=orders, chart_type="bar",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x="region", y="revenue"))<br>
+&nbsp;&nbsp;.add_panel(TablePanel("orders-table", title="Orders",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dataset=orders,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["order_id", "region", "product", "revenue"]))<br>
+)<br>
+<br>
+DashboardServer(dashboard, model=model).run(port=8050)<br>
+<span style="color:#64748b"># Open http://localhost:8050</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── YOUR OWN DATA MODE ────────────────────────────────────────────────── -->
+  <div x-show="mode==='own'">
+    <div class="tabs" style="flex-wrap:wrap; border-top:1px solid var(--border);">
+      <button class="tab-btn" :class="ownStep===1 && 'active'" @click="ownStep=1">1. Connect</button>
+      <button class="tab-btn" :class="ownStep===2 && 'active'" @click="ownStep=2">2. Transform</button>
+      <button class="tab-btn" :class="ownStep===3 && 'active'" @click="ownStep=3">3. Medallion ETL</button>
+      <button class="tab-btn" :class="ownStep===4 && 'active'" @click="ownStep=4">4. Report</button>
+      <button class="tab-btn" :class="ownStep===5 && 'active'" @click="ownStep=5">5. Schedule</button>
+      <button class="tab-btn" :class="ownStep===6 && 'active'" @click="ownStep=6">6. Dashboard</button>
+    </div>
+    <div class="card" style="margin-bottom:0; border-top-left-radius:0; border-top:none;">
+
+      <!-- Own Step 1 -->
+      <div x-show="ownStep===1">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Connect to your data</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          Register connectors and logical table names in a <code>DataModel</code>.
+          You can mix sources — orders from SQL, a customer lookup from CSV, a reference
+          table from BigQuery — and reference them all by name in your transforms.
+          Call <code>model.connect()</code> once to open all connections.
+        </p>
+        <div class="code-block">
 from tracebi import DataModel, SQLConnector, CSVConnector<br>
 <br>
 db  = SQLConnector("sales_db", url="sqlite:///path/to/sales.db")<br>
@@ -434,19 +560,19 @@ model.add_table("orders",    connector="sales_db", source="orders")<br>
 model.add_table("customers", connector="sales_db", source="customers")<br>
 model.add_table("regions",   connector="lookups",  source="regions.csv")<br>
 model.connect()
+        </div>
       </div>
-    </div>
 
-    <!-- Step 2 -->
-    <div x-show="step===2">
-      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Load and transform with full lineage</div>
-      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-        Every method on <code>DataSet</code> — filter, transform, sort, select, rename —
-        returns a new immutable DataSet with the step appended to its lineage chain.
-        Call <code>print_lineage()</code> at any point to see the full audit trail, or
-        <code>fingerprint()</code> to get a hash of the current data state.
-      </p>
-      <div class="code-block">
+      <!-- Own Step 2 -->
+      <div x-show="ownStep===2">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Load and transform with full lineage</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          Every method on <code>DataSet</code> — filter, transform, sort, select, rename —
+          returns a new immutable DataSet with the step appended to its lineage chain.
+          Call <code>print_lineage()</code> at any point to see the full audit trail, or
+          <code>fingerprint()</code> to get a hash of the current data state.
+        </p>
+        <div class="code-block">
 orders = model.load("orders")<br>
 <br>
 result = (<br>
@@ -466,20 +592,20 @@ result.print_lineage()<br>
 <span style="color:#64748b"># Step 3: [TRANSFORM]  margin = revenue - cost</span><br>
 <span style="color:#64748b"># Step 4: [SORT]       Sorted by margin (desc)</span><br>
 <span style="color:#64748b"># Step 5: [SELECT]     Selected 5 columns</span>
+        </div>
       </div>
-    </div>
 
-    <!-- Step 3 -->
-    <div x-show="step===3">
-      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Structure as a Medallion pipeline</div>
-      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-        For production pipelines, structure your work as Bronze → Silver → Gold layers.
-        Each layer reads from the previous sink and writes its output to the next.
-        <code>SilverLayer</code> transforms are declared once and reused on every run.
-        <code>GoldLayer</code> queries a <code>StarSchema</code> to produce the final
-        analytic output.
-      </p>
-      <div class="code-block">
+      <!-- Own Step 3 -->
+      <div x-show="ownStep===3">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Structure as a Medallion pipeline</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          For production pipelines, structure your work as Bronze → Silver → Gold layers.
+          Each layer reads from the previous sink and writes its output to the next.
+          <code>SilverLayer</code> transforms are declared once and reused on every run.
+          <code>GoldLayer</code> queries a <code>StarSchema</code> to produce the final
+          analytic output.
+        </p>
+        <div class="code-block">
 from tracebi import BronzeLayer, SilverLayer, GoldLayer<br>
 from tracebi.model.star_schema import StarSchema<br>
 <br>
@@ -503,21 +629,23 @@ schema.add_fact("fact_orders", table_name="orders_silver",<br>
 <br>
 gold = GoldLayer(schema=schema, fact="fact_orders",<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;measures={"revenue": "sum"}, dimensions=["dim_customer.region"],<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sink=db, sink_table="gold_by_region")
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sink=db, sink_table="gold_by_region")<br>
+<br>
+gold_ds = gold.execute()
+        </div>
       </div>
-    </div>
 
-    <!-- Step 4 -->
-    <div x-show="step===4">
-      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Build and render a report</div>
-      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-        A <code>Report</code> is assembled from section objects — text headings, tables, and
-        charts. Pass any <code>DataSet</code> directly into a <code>TableSection</code> or
-        <code>ChartSection</code>. Render to Excel or HTML; both renderers write a
-        <code>manifest.json</code> alongside the file capturing the full lineage of every
-        dataset in the report.
-      </p>
-      <div class="code-block">
+      <!-- Own Step 4 -->
+      <div x-show="ownStep===4">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Build and render a report</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          A <code>Report</code> is assembled from section objects — text headings, tables, and
+          charts. Pass any <code>DataSet</code> directly into a <code>TableSection</code> or
+          <code>ChartSection</code>. Render to Excel or HTML; both renderers write a
+          <code>manifest.json</code> alongside the file capturing the full lineage of every
+          dataset in the report.
+        </p>
+        <div class="code-block">
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection<br>
 from tracebi.reports.excel_renderer import ExcelRenderer<br>
 from tracebi.reports.html_renderer import HTMLRenderer<br>
@@ -538,23 +666,23 @@ ExcelRenderer().render(report, "output/q2_sales.xlsx")<br>
 HTMLRenderer().render(report, "output/q2_sales.html")<br>
 HTMLRenderer().serve(report, port=8080)   <span style="color:#64748b"># open in browser</span><br>
 HTMLRenderer().preview(report)            <span style="color:#64748b"># inline in Jupyter</span>
+        </div>
       </div>
-    </div>
 
-    <!-- Step 5 -->
-    <div x-show="step===5">
-      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Schedule with a PipelineRunner</div>
-      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-        Register all your layers with a <code>PipelineRunner</code>. Assign each layer a cron
-        schedule and optionally declare which layer it depends on. Run any layer on demand
-        with <code>runner.run(name)</code>, or pass <code>refresh=True</code> to cascade
-        through all upstream dependencies first. Every run is persisted to SQLite with
-        row counts and an <code>upstream_run_id</code> linking the full cross-layer chain.
-      </p>
-      <div class="code-block">
+      <!-- Own Step 5 -->
+      <div x-show="ownStep===5">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Schedule with a PipelineRunner</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          Register all your layers with a <code>PipelineRunner</code>. Assign each layer a cron
+          schedule and optionally declare which layer it depends on. Run any layer on demand
+          with <code>runner.run(name)</code>, or pass <code>refresh=True</code> to cascade
+          through all upstream dependencies first. Every run is persisted to SQLite with
+          row counts and an <code>upstream_run_id</code> linking the full cross-layer chain.
+        </p>
+        <div class="code-block">
 from tracebi.pipeline.runner import PipelineRunner<br>
 <br>
-runner = PipelineRunner(db_url="sqlite:///data/tracebi.db")<br>
+runner = PipelineRunner(db_url="sqlite:///path/to/tracebi.db")<br>
 <br>
 runner.register(bronze, name="orders_bronze",     schedule="0 * * * *")<br>
 runner.register(silver, name="orders_silver",     schedule="15 * * * *",<br>
@@ -570,20 +698,20 @@ runner.run("revenue_by_region", refresh=True)<br>
 <br>
 <span style="color:#64748b"># Start the APScheduler (blocking)</span><br>
 runner.start()
+        </div>
       </div>
-    </div>
 
-    <!-- Step 6 -->
-    <div x-show="step===6">
-      <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Add a live dashboard</div>
-      <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-        Build a <code>Dashboard</code> from panel components — metrics, charts, tables, and
-        filters. Filters are <strong style="color:var(--text);">associative</strong>: selecting
-        a region in the filter panel automatically updates every chart and table that shares
-        that column, without any event-wiring code. Mount the dashboard into the TraceBi web
-        server via <code>DashboardServer</code> — no separate Dash process required.
-      </p>
-      <div class="code-block">
+      <!-- Own Step 6 -->
+      <div x-show="ownStep===6">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Add a live dashboard</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          Build a <code>Dashboard</code> from panel components — metrics, charts, tables, and
+          filters. Filters are <strong style="color:var(--text);">associative</strong>: selecting
+          a region in the filter panel automatically updates every chart and table that shares
+          that column, without any event-wiring code. Mount the dashboard into the TraceBi web
+          server via <code>DashboardServer</code> — no separate Dash process required.
+        </p>
+        <div class="code-block">
 from tracebi.dashboard import Dashboard, DashboardServer<br>
 from tracebi.dashboard import FilterPanel, MetricPanel, ChartPanel, TablePanel<br>
 <br>
