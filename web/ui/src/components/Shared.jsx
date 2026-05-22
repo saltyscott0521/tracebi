@@ -130,7 +130,7 @@ export function Tabs({ tabs, active, onChange }) {
 
 export function SplitLayout({ left, right }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'start' }}>
+    <div className="split-layout">
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
         {left}
       </div>

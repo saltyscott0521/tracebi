@@ -312,7 +312,7 @@ export default function Home() {
 
       {CONCEPTS.map(c => (
         <div key={c.n} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:10, padding:'20px 24px', marginBottom:16 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:32, alignItems:'start' }}>
+          <div className="concept-grid">
             <div>
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
                 <div style={{ width:32, height:32, borderRadius:8, background:'var(--blue-lt)', border:'1px solid var(--blue-br)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:800, color:'#93c5fd' }}>{c.n}</div>
@@ -331,7 +331,7 @@ export default function Home() {
       <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginBottom: 6, marginTop: 16 }}>What TraceBi includes</div>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>Six building blocks — each independent, all composable.</p>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:40 }}>
+      <div className="grid-3" style={{ marginBottom:40 }}>
         {FEATURES.map(f => (
           <div key={f.title} style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:10, padding:'20px 24px' }}>
             <div style={{ fontSize:26, marginBottom:12 }}>{f.icon}</div>
@@ -367,7 +367,7 @@ export default function Home() {
       <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>How to use it</div>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>Two ways to work with TraceBi.</p>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:32 }}>
+      <div className="grid-2" style={{ marginBottom:32 }}>
         <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:10, padding:'20px 24px' }}>
           <div style={{ display:'inline-block', padding:'4px 10px', borderRadius:6, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:.6, background:'var(--blue-lt)', color:'#93c5fd', border:'1px solid var(--blue-br)', marginBottom:14 }}>Option 1 — Python library</div>
           <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.6, marginBottom:14 }}>Install TraceBi and use it from a notebook or script. Build connectors, medallion layers, star schema queries, and render reports to HTML or Excel.</p>
@@ -383,7 +383,7 @@ export default function Home() {
       </div>
 
       {/* Bottom row */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+      <div className="grid-2">
         <div style={{ background:'linear-gradient(135deg,#0d1835 0%,#111827 100%)', border:'1px solid var(--blue-br)', borderRadius:10, padding:'20px 24px' }}>
           <div style={{ fontSize:22, marginBottom:10 }}>⊶</div>
           <div style={{ fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:8 }}>Full lineage, always</div>
