@@ -81,4 +81,15 @@ for _dash_name, _dash_entry in _registry._dashboards.items():
 _ui_dist = os.path.join(os.path.dirname(__file__), "..", "ui", "dist")
 
 if os.path.isdir(_ui_dist):
-    app.mount("/", StaticFiles(directory=_ui_dist, html=True), name="ui")
+    from starlette.exceptions import HTTPException as _StarletteHTTPException
+
+    class _SPAFiles(StaticFiles):
+        async def get_response(self, path: str, scope):
+            try:
+                return await super().get_response(path, scope)
+            except _StarletteHTTPException as exc:
+                if exc.status_code == 404:
+                    return await super().get_response("index.html", scope)
+                raise
+
+    app.mount("/", _SPAFiles(directory=_ui_dist, html=True), name="ui")
