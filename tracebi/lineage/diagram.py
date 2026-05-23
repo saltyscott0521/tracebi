@@ -34,16 +34,20 @@ if TYPE_CHECKING:
 
 
 _OP_COLORS: dict[str, str] = {
-    "load":      "#003366",
-    "bronze":    "#CD7F32",
-    "silver":    "#C0C0C0",
-    "gold":      "#FFD700",
-    "filter":    "#2E7D32",
-    "transform": "#F59E0B",
-    "join":      "#E65100",
-    "sort":      "#6A1B9A",
-    "select":    "#37474F",
-    "rename":    "#00695C",
+    "load":         "#003366",
+    "bronze":       "#CD7F32",
+    "silver":       "#C0C0C0",
+    "gold":         "#FFD700",
+    "landing":      "#4A90E2",   # blue
+    "manipulation": "#7B68EE",   # slate-blue
+    "final":        "#10B981",   # emerald
+    "filter":       "#2E7D32",
+    "transform":    "#F59E0B",
+    "join":         "#E65100",
+    "sort":         "#6A1B9A",
+    "select":       "#37474F",
+    "rename":       "#00695C",
+    "warning":      "#D97706",   # warm amber for non-blocking warnings
 }
 _DEFAULT_COLOR = "#757575"
 

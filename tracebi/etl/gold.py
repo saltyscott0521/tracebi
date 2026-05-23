@@ -1,11 +1,13 @@
 """
-GoldLayer — aggregated, analytics-ready DataSets built from a StarSchema.
+GoldLayer / FinalLayer — aggregated, analytics-ready DataSets built from
+a StarSchema.
+
+The new canonical name is ``FinalLayer`` — the serving layer that declares
+facts and dimensions and returns a clean dataset ready for a report or
+dashboard. ``GoldLayer`` remains a fully supported alias for back-compat.
 
 Delegates to ``StarSchema.query()`` and stamps the result with an additional
-``operation="gold"`` lineage node.
-
-Pipeline mode: pre-configure query parameters in the constructor and call
-``execute()`` to query, write to sink, and return the DataSet in one step.
+lineage node tagged with the layer's ``operation`` ("final" or "gold").
 """
 
 from __future__ import annotations
@@ -18,30 +20,10 @@ from tracebi.model.star_schema import StarSchema
 
 
 class GoldLayer:
-    """
-    Analytics-ready aggregation layer backed by a StarSchema.
+    """Analytics-ready aggregation layer backed by a StarSchema."""
 
-    Standalone usage::
-
-        gold = GoldLayer(schema=schema)
-        ds = gold.query(
-            fact="fact_orders",
-            measures={"revenue": "sum"},
-            dimensions=["dim_customer.region"],
-        )
-
-    Pipeline usage (pre-configured)::
-
-        gold = GoldLayer(
-            schema=schema,
-            fact="fact_orders",
-            measures={"revenue": "sum"},
-            dimensions=["dim_customer.region"],
-            sink=db_connector,
-            sink_table="revenue_by_region_gold",
-        )
-        ds = gold.execute()   # queries + writes to sink
-    """
+    operation: str = "gold"
+    layer_label: str = "gold"
 
     def __init__(
         self,
@@ -72,12 +54,7 @@ class GoldLayer:
         aggregate: bool = True,
         name: Optional[str] = None,
     ) -> DataSet:
-        """
-        Execute a star schema query and return a gold-layer DataSet.
-
-        All args are passed through to ``StarSchema.query()``.
-        Does NOT write to the sink; use ``execute()`` for that.
-        """
+        """Execute a star schema query and return a final/gold-layer DataSet."""
         ds = self._schema.query(
             fact=fact,
             measures=measures,
@@ -85,16 +62,16 @@ class GoldLayer:
             filters=filters,
             aggregate=aggregate,
         )
-        gold_node = LineageNode(
-            operation="gold",
+        node = LineageNode(
+            operation=self.operation,
             description=(
-                f"Gold layer: {fact} "
+                f"{self.layer_label.title()} layer: {fact} "
                 f"measures={list(measures.keys())} "
                 f"dims={dimensions or []} "
                 f"filters={filters or {}}"
             ),
             metadata={
-                "layer":      "gold",
+                "layer":      self.layer_label,
                 "fact":       fact,
                 "measures":   measures,
                 "dimensions": dimensions or [],
@@ -102,23 +79,17 @@ class GoldLayer:
                 "aggregate":  aggregate,
             },
         )
-        output_name = name or f"{fact}_gold"
-        return DataSet(df=ds.to_pandas(), name=output_name, lineage=ds.lineage + [gold_node])
+        output_name = name or f"{fact}_{self.layer_label}"
+        return DataSet(df=ds.to_pandas(), name=output_name, lineage=ds.lineage + [node])
 
     def execute(self, name: Optional[str] = None) -> DataSet:
-        """
-        Run the pre-configured query, write to sink, and return the DataSet.
-
-        Requires ``fact``, ``measures``, ``sink``, and ``sink_table`` to be
-        set in the constructor.
-        """
         if self._fact is None or self._measures is None:
             raise RuntimeError(
-                "GoldLayer.execute() requires 'fact' and 'measures' to be configured."
+                f"{type(self).__name__}.execute() requires 'fact' and 'measures' to be configured."
             )
         if self._sink is None or self._sink_table is None:
             raise RuntimeError(
-                "GoldLayer.execute() requires 'sink' and 'sink_table'."
+                f"{type(self).__name__}.execute() requires 'sink' and 'sink_table'."
             )
         ds = self.query(
             fact=self._fact,
@@ -133,7 +104,20 @@ class GoldLayer:
 
     def __repr__(self) -> str:
         return (
-            f"<GoldLayer schema={self._schema.name!r} "
+            f"<{type(self).__name__} schema={self._schema.name!r} "
             f"fact={self._fact!r} "
             f"sink_table={self._sink_table!r}>"
         )
+
+
+class FinalLayer(GoldLayer):
+    """
+    Final/serving layer — facts + dimensions resolved into a clean DataSet
+    ready for reports or dashboards.
+
+    TraceBi-positioned name. Identical behaviour to ``GoldLayer`` but stamps
+    lineage with ``operation="final"``.
+    """
+
+    operation: str = "final"
+    layer_label: str = "final"

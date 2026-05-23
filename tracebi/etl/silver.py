@@ -1,11 +1,13 @@
 """
-SilverLayer — clean, type-cast, deduplicate, and lightly transform raw data.
+SilverLayer / ManipulationLayer — clean, type-cast, deduplicate, and lightly
+transform raw data.
 
-Accepts a DataSet (standalone) or reads from a source connector (pipeline mode).
-Each step appends a lineage node with ``operation="silver"``.
+The new canonical name is ``ManipulationLayer`` — it matches TraceBi's
+framing: optional light touches (joins, casts, filters, renames) before
+serving. ``SilverLayer`` remains a fully supported alias for back-compat.
 
-Pipeline mode: supply ``source`` + ``source_table`` + ``sink`` + ``sink_table``
-and call ``execute()`` to load → clean → write in one step.
+Each step appends a lineage node with the layer's ``operation`` tag
+("manipulation" or "silver").
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from tracebi.model.dataset import DataSet, LineageNode
 
 class SilverLayer:
     """
-    Declarative cleaning pipeline for bronze data.
+    Declarative cleaning pipeline for landing/bronze data.
 
     Every method is fluent and returns ``self``.
     Call ``apply(dataset)`` for standalone use or ``execute()`` for pipelines.
@@ -34,21 +36,10 @@ class SilverLayer:
             .deduplicate(subset=["order_id"])
         )
         clean_ds = silver.apply(raw_ds, name="orders_silver")
-
-    Pipeline usage::
-
-        silver = (
-            SilverLayer(
-                source=db_connector,
-                source_table="orders_bronze",
-                sink=db_connector,
-                sink_table="orders_silver",
-            )
-            .cast({"qty": "int64"})
-            .deduplicate(subset=["order_id"])
-        )
-        clean_ds = silver.execute()
     """
+
+    operation: str = "silver"
+    layer_label: str = "silver"
 
     def __init__(
         self,
@@ -66,22 +57,18 @@ class SilverLayer:
     # ── Step declarations ──────────────────────────────────────
 
     def cast(self, type_map: dict[str, str]) -> "SilverLayer":
-        """Cast columns to specified dtypes."""
         self._steps.append({"op": "cast", "type_map": type_map})
         return self
 
     def drop_nulls(self, subset: Optional[list[str]] = None) -> "SilverLayer":
-        """Drop rows with nulls in any of the specified columns (all if omitted)."""
         self._steps.append({"op": "drop_nulls", "subset": subset})
         return self
 
     def deduplicate(self, subset: Optional[list[str]] = None) -> "SilverLayer":
-        """Remove duplicate rows (considering all columns if subset is omitted)."""
         self._steps.append({"op": "deduplicate", "subset": subset})
         return self
 
     def rename(self, columns: dict[str, str]) -> "SilverLayer":
-        """Rename columns via ``{old: new}`` mapping."""
         self._steps.append({"op": "rename", "columns": columns})
         return self
 
@@ -90,24 +77,15 @@ class SilverLayer:
         func: Callable[[pd.DataFrame], pd.DataFrame],
         description: str = "",
     ) -> "SilverLayer":
-        """Apply an arbitrary ``(DataFrame) -> DataFrame`` function."""
         self._steps.append({"op": "transform", "func": func, "description": description})
         return self
 
     # ── Execution ──────────────────────────────────────────────
 
     def apply(self, dataset: DataSet, name: Optional[str] = None) -> DataSet:
-        """
-        Execute all declared steps on *dataset* and return a new DataSet.
-
-        Args:
-            dataset: Input DataSet (typically from BronzeLayer).
-            name:    Name for the output DataSet. Defaults to
-                     ``dataset.name + "_silver"``.
-        """
         df = dataset.to_pandas()
         lineage = list(dataset.lineage)
-        output_name = name or f"{dataset.name}_silver"
+        output_name = name or f"{dataset.name}_{self.layer_label}"
 
         for step in self._steps:
             op = step["op"]
@@ -116,7 +94,7 @@ class SilverLayer:
                 type_map: dict = step["type_map"]
                 df = df.astype({k: v for k, v in type_map.items() if k in df.columns})
                 lineage.append(LineageNode(
-                    operation="silver",
+                    operation=self.operation,
                     description=f"Cast columns: {type_map}",
                     metadata={"step": "cast", "type_map": type_map},
                 ))
@@ -126,7 +104,7 @@ class SilverLayer:
                 rows_before = len(df)
                 df = df.dropna(subset=subset)
                 lineage.append(LineageNode(
-                    operation="silver",
+                    operation=self.operation,
                     description=(
                         f"Dropped nulls in {subset or 'all columns'} "
                         f"({rows_before - len(df)} rows removed)"
@@ -145,7 +123,7 @@ class SilverLayer:
                 rows_before = len(df)
                 df = df.drop_duplicates(subset=subset)
                 lineage.append(LineageNode(
-                    operation="silver",
+                    operation=self.operation,
                     description=(
                         f"Deduplicated on {subset or 'all columns'} "
                         f"({rows_before - len(df)} rows removed)"
@@ -163,16 +141,16 @@ class SilverLayer:
                 columns: dict = step["columns"]
                 df = df.rename(columns=columns)
                 lineage.append(LineageNode(
-                    operation="silver",
+                    operation=self.operation,
                     description=f"Renamed columns: {columns}",
                     metadata={"step": "rename", "columns": columns},
                 ))
 
             elif op == "transform":
-                desc = step.get("description") or "silver transform"
+                desc = step.get("description") or f"{self.layer_label} transform"
                 df = step["func"](df.copy())
                 lineage.append(LineageNode(
-                    operation="silver",
+                    operation=self.operation,
                     description=desc,
                     metadata={"step": "transform"},
                 ))
@@ -180,18 +158,13 @@ class SilverLayer:
         return DataSet(df=df, name=output_name, lineage=lineage)
 
     def execute(self) -> DataSet:
-        """
-        Load from source connector, apply all steps, write to sink, return DataSet.
-
-        Requires ``source``, ``source_table``, ``sink``, and ``sink_table``.
-        """
         if self._source is None or self._source_table is None:
             raise RuntimeError(
-                "SilverLayer.execute() requires 'source' and 'source_table'."
+                f"{type(self).__name__}.execute() requires 'source' and 'source_table'."
             )
         if self._sink is None or self._sink_table is None:
             raise RuntimeError(
-                "SilverLayer.execute() requires 'sink' and 'sink_table'."
+                f"{type(self).__name__}.execute() requires 'sink' and 'sink_table'."
             )
         raw_df = self._source.load(self._source_table)
         load_node = LineageNode(
@@ -211,4 +184,17 @@ class SilverLayer:
 
     def __repr__(self) -> str:
         step_names = [s["op"] for s in self._steps]
-        return f"<SilverLayer steps={step_names} sink_table={self._sink_table!r}>"
+        return f"<{type(self).__name__} steps={step_names} sink_table={self._sink_table!r}>"
+
+
+class ManipulationLayer(SilverLayer):
+    """
+    Manipulation layer — optional light touches before serving.
+
+    TraceBi-positioned name for the cleaning step (joins, casts, filters,
+    renames). Identical behaviour to ``SilverLayer`` but stamps lineage
+    with ``operation="manipulation"``.
+    """
+
+    operation: str = "manipulation"
+    layer_label: str = "manipulation"

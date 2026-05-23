@@ -24,12 +24,12 @@ connector, query, and transform steps that produced it.
 
 ## What's built
 
-- [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory), DataModel, DataSet with immutable lineage chain
+- [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory, DuckDB) with push-down filter/columns, DataModel, DataSet with immutable lineage chain
 - [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
-- [x] **Phase 2.5** — Medallion architecture (Bronze/Silver/Gold), StarSchema, LineageDiagram
+- [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed StarSchema, LineageDiagram
 - [x] **Phase 3** — Live Dash dashboard with associative filters
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
-- [x] **Phase 5** — Web UI (FastAPI + Jinja2, Dash embedded, medallion-aware registry)
+- [x] **Phase 5** — Web UI (FastAPI + React, Dash embedded), folder-based auto-discovery, optional HTTP Basic auth, `tracebi` CLI, docker-compose deployment
 
 ---
 
@@ -51,8 +51,25 @@ pip install -e ".[pipeline]"
 # Lineage diagrams
 pip install -e ".[lineage]"
 
+# DuckDB connector + push-down engine
+pip install -e ".[duckdb]"
+
 # Everything
-pip install -e ".[reports,dashboard,pipeline,lineage,sql]"
+pip install -e ".[reports,dashboard,pipeline,lineage,sql,duckdb,web]"
+```
+
+### Docker
+
+```bash
+docker compose up --build      # web UI on http://localhost:8000
+```
+
+### CLI
+
+```bash
+tracebi new-request "Open orders by region"   # scaffold requests/open_orders_by_region.py
+tracebi list-requests
+tracebi run open_orders_by_region
 ```
 
 ---
@@ -121,26 +138,35 @@ HTMLRenderer().serve(report, port=8080)   # open in browser
 HTMLRenderer().preview(report)            # inline in Jupyter
 ```
 
-### 4. Medallion architecture
+### 4. Landing → Manipulation → Final (Medallion architecture)
+
+The three-step layer model — TraceBi's positioning name and the legacy
+medallion name resolve to the same classes:
+
+| TraceBi name        | Medallion alias  | Role                                       |
+|---------------------|------------------|--------------------------------------------|
+| `LandingLayer`      | `BronzeLayer`    | Connect to upstream table, ingest as-is.   |
+| `ManipulationLayer` | `SilverLayer`    | Optional light cleaning before serving.    |
+| `FinalLayer`        | `GoldLayer`      | Serve via StarSchema — facts + dimensions. |
 
 ```python
-from tracebi import BronzeLayer, SilverLayer, GoldLayer
+from tracebi import LandingLayer, ManipulationLayer, FinalLayer  # or BronzeLayer / SilverLayer / GoldLayer
 from tracebi.model.star_schema import StarSchema
 
-# Bronze — raw ingest, zero transforms
-bronze = BronzeLayer(connector=db, source="orders_raw",
-                     sink=db, sink_table="orders_bronze")
-ds_bronze = bronze.execute()   # loads + writes to DB
+# Landing — raw ingest, zero transforms
+landing = LandingLayer(connector=db, source="orders_raw",
+                       sink=db, sink_table="orders_bronze")
+ds_landing = landing.execute()   # loads + writes to DB
 
-# Silver — declarative cleaning pipeline
-silver = (
-    SilverLayer(source=db, source_table="orders_bronze",
-                sink=db, sink_table="orders_silver")
+# Manipulation — declarative cleaning pipeline
+manip = (
+    ManipulationLayer(source=db, source_table="orders_bronze",
+                      sink=db, sink_table="orders_silver")
     .cast({"qty": "int64", "order_date": "datetime64[ns]"})
     .drop_nulls(subset=["order_id"])
     .deduplicate(subset=["order_id"])
 )
-ds_silver = silver.execute()   # loads bronze → cleans → writes silver
+ds_manip = manip.execute()   # loads landing → cleans → writes manipulation
 
 # Star schema
 schema = StarSchema("Sales", model=model)
@@ -150,12 +176,12 @@ schema.add_fact("fact_orders", table_name="orders_silver",
                 measures=["revenue", "qty"],
                 foreign_keys={"dim_customer": "customer_id"})
 
-# Gold — aggregated via StarSchema
-gold = GoldLayer(schema=schema, fact="fact_orders",
-                 measures={"revenue": "sum", "qty": "sum"},
-                 dimensions=["dim_customer.region"],
-                 sink=db, sink_table="revenue_by_region_gold")
-ds_gold = gold.execute()   # queries → aggregates → writes gold
+# Final — aggregated via StarSchema (DuckDB-backed join/aggregation engine)
+final = FinalLayer(schema=schema, fact="fact_orders",
+                   measures={"revenue": "sum", "qty": "sum"},
+                   dimensions=["dim_customer.region"],
+                   sink=db, sink_table="revenue_by_region_gold")
+ds_final = final.execute()   # queries → aggregates → writes serving table
 ```
 
 ### 5. Schedule pipelines

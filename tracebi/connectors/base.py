@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -13,6 +14,12 @@ class BaseConnector(ABC):
 
     Every connector has a ``name`` (used to reference it in a DataModel)
     and two abstract methods: ``connect()`` and ``load(source)``.
+
+    Push-down: connectors may accept optional ``filter`` (dict of equality
+    filters) and ``columns`` (list of column names to project). When the
+    connector can apply these at source (SQL WHERE/SELECT, DuckDB query),
+    only the filtered/projected data is returned. The default implementation
+    applies them in pandas after loading.
     """
 
     def __init__(self, name: str) -> None:
@@ -24,14 +31,42 @@ class BaseConnector(ABC):
         ...
 
     @abstractmethod
-    def load(self, source: str) -> pd.DataFrame:
+    def load(
+        self,
+        source: str,
+        filter: Optional[dict[str, Any]] = None,
+        columns: Optional[list[str]] = None,
+    ) -> pd.DataFrame:
         """
         Load data from *source* and return a pandas DataFrame.
 
         Args:
-            source: Connector-specific identifier (file name, table name, query, …).
+            source:  Connector-specific identifier (file name, table name, query, …).
+            filter:  Optional column-equality filter map applied at source where
+                     possible, in pandas otherwise.
+            columns: Optional list of columns to project.
         """
         ...
+
+    def supports_pushdown(self) -> bool:
+        """Whether this connector applies filter/columns at source (vs. in pandas)."""
+        return False
+
+    @staticmethod
+    def _apply_pandas_pushdown(
+        df: pd.DataFrame,
+        filter: Optional[dict[str, Any]],
+        columns: Optional[list[str]],
+    ) -> pd.DataFrame:
+        """Apply filter / column projection in pandas as a fallback."""
+        if filter:
+            for col, val in filter.items():
+                if col in df.columns:
+                    df = df[df[col] == val]
+        if columns:
+            keep = [c for c in columns if c in df.columns]
+            df = df[keep]
+        return df
 
     def write(
         self,

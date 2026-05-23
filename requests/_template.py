@@ -6,21 +6,31 @@ Fill in each section below.
 
 Run with:
     python requests/weekly_sales.py
+
+Or scaffold a brand-new request with:
+    tracebi new-request "Weekly Sales"
 """
 
 import os
 import pandas as pd
-from tracebi import DataModel, MemoryConnector, CSVConnector, DataSet, LineageNode
+from tracebi import (
+    DataModel, MemoryConnector, CSVConnector, DuckDBConnector,
+    DataSet, LineageNode,
+)
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
-# from tracebi.etl import BronzeLayer, SilverLayer, GoldLayer
-# from tracebi.model.star_schema import StarSchema
+# from tracebi import LandingLayer, ManipulationLayer, FinalLayer
+# from tracebi import StarSchema
 # from tracebi.lineage.diagram import LineageDiagram
 
 
 # ── 1. Connect ────────────────────────────────────────────────────────────────
 # Register connectors and build a DataModel.
+#
+# Connectors all share the same load(source, filter=None, columns=None)
+# contract — pass filter/columns to push predicates down to the source
+# when possible (SQL WHERE, DuckDB, BigQuery).
 
 model = DataModel("MyModel")
 
@@ -33,6 +43,10 @@ model = DataModel("MyModel")
 # model.add_connector(CSVConnector("files", directory="data/"))
 # model.add_table("orders", connector="files", source="orders.csv")
 
+# Example: DuckDB over a Parquet file
+# model.add_connector(DuckDBConnector("warehouse", directory="data/"))
+# model.add_table("orders", connector="warehouse", source="orders.parquet")
+
 # Example: SQL database
 # from tracebi import SQLConnector
 # model.add_connector(SQLConnector("db", url="sqlite:///sales.db"))
@@ -44,8 +58,7 @@ model = DataModel("MyModel")
 # Each operation appends a LineageNode — no data is mutated in place.
 
 # orders_ds = (
-#     model.load("orders")
-#     .filter("status == 'shipped'", description="Shipped orders only")
+#     model.load("orders", filter={"status": "shipped"})  # pushed down to source
 #     .transform(
 #         lambda df: df.assign(margin=df["revenue"] - df["cost"]),
 #         description="Calculated margin",
@@ -55,7 +68,6 @@ model = DataModel("MyModel")
 
 
 # ── 3. Build Report ───────────────────────────────────────────────────────────
-# Assemble sections using the fluent Report builder.
 
 report = (
     Report("My Report Title")
@@ -88,7 +100,6 @@ report.describe()
 
 
 # ── 4. Render ─────────────────────────────────────────────────────────────────
-# Save to Excel and/or HTML.
 
 def run():
     output_dir = os.path.join(os.path.dirname(__file__), "..", "output")
@@ -107,6 +118,19 @@ def run():
 def serve(port: int = 8080):
     """Render and open the report in a local browser."""
     HTMLRenderer().serve(report, port=port)
+
+
+# ── 5. Optional: register with the web UI ─────────────────────────────────────
+# If this file is auto-discovered by the web server, expose it as a report.
+
+try:
+    from tracebi.web import register
+
+    @register.report("my_report", description="Short description of this report.")
+    def _factory():
+        return report
+except ImportError:
+    pass
 
 
 if __name__ == "__main__":

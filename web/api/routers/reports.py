@@ -4,16 +4,20 @@ from web.api.registry import registry
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 _OP_COLORS: dict[str, str] = {
-    "load":      "#003366",
-    "filter":    "#2E7D32",
-    "transform": "#F59E0B",
-    "join":      "#E65100",
-    "sort":      "#6A1B9A",
-    "select":    "#37474F",
-    "rename":    "#00695C",
-    "bronze":    "#CD7F32",
-    "silver":    "#C0C0C0",
-    "gold":      "#FFD700",
+    "load":         "#003366",
+    "filter":       "#2E7D32",
+    "transform":    "#F59E0B",
+    "join":         "#E65100",
+    "sort":         "#6A1B9A",
+    "select":       "#37474F",
+    "rename":       "#00695C",
+    "bronze":       "#CD7F32",
+    "silver":       "#C0C0C0",
+    "gold":         "#FFD700",
+    "landing":      "#4A90E2",
+    "manipulation": "#7B68EE",
+    "final":        "#10B981",
+    "warning":      "#D97706",
 }
 _DEFAULT_COLOR = "#757575"
 

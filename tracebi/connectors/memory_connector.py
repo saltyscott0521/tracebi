@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Optional
+
 import pandas as pd
 
 from tracebi.connectors.base import BaseConnector
@@ -43,14 +45,20 @@ class MemoryConnector(BaseConnector):
     def connect(self) -> None:
         pass  # nothing to connect
 
-    def load(self, source: str) -> pd.DataFrame:
+    def load(
+        self,
+        source: str,
+        filter: Optional[dict[str, Any]] = None,
+        columns: Optional[list[str]] = None,
+    ) -> pd.DataFrame:
         if source not in self._tables:
             available = list(self._tables.keys())
             raise KeyError(
                 f"MemoryConnector '{self.name}': source '{source}' not found. "
                 f"Available: {available}"
             )
-        return self._tables[source].copy()
+        df = self._tables[source].copy()
+        return self._apply_pandas_pushdown(df, filter, columns)
 
     def write(
         self,
