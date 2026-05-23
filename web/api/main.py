@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.wsgi import WSGIMiddleware
 
 from web.api.routers import connectors, models, reports, pipelines, dashboards
+from web.api.auth import install_if_configured as _install_auth
 
 app = FastAPI(
     title="TraceBi API",
@@ -35,6 +36,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Optional HTTP Basic auth — enabled only when TRACEBI_AUTH_USER / _PASS are set.
+_install_auth(app)
 
 app.include_router(connectors.router, prefix="/api")
 app.include_router(models.router,     prefix="/api")
@@ -61,6 +65,16 @@ except ImportError as exc:
         "The API will start with an empty registry.",
         stacklevel=1,
     )
+
+# Folder-based auto-discovery — scan requests/ (or whatever TRACEBI_REQUESTS_DIR
+# points to) and import every *.py file so @registry.report decorators fire.
+_requests_dir = os.environ.get("TRACEBI_REQUESTS_DIR", "requests")
+if os.path.isdir(_requests_dir):
+    from tracebi.web.discovery import auto_discover as _auto_discover
+    _discovered = _auto_discover(_requests_dir)
+    if _discovered:
+        print(f"[tracebi] auto-discovered {len(_discovered)} request module(s) "
+              f"from {_requests_dir}")
 
 
 # ── Mount registered Dash dashboards ──────────────────────────────────────────

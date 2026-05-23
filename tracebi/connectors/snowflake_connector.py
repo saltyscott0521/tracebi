@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Optional
+
 import pandas as pd
 
 from tracebi.connectors.base import BaseConnector
@@ -55,6 +57,9 @@ class SnowflakeConnector(BaseConnector):
         self.schema = schema
         self._conn = None
 
+    def supports_pushdown(self) -> bool:
+        return True
+
     def connect(self) -> None:
         try:
             import snowflake.connector
@@ -72,14 +77,32 @@ class SnowflakeConnector(BaseConnector):
             schema=self.schema,
         )
 
-    def load(self, source: str) -> pd.DataFrame:
+    def load(
+        self,
+        source: str,
+        filter: Optional[dict[str, Any]] = None,
+        columns: Optional[list[str]] = None,
+    ) -> pd.DataFrame:
         if self._conn is None:
             self.connect()
         cur = self._conn.cursor()
-        if source.strip().upper().startswith("SELECT"):
+        is_query = source.strip().upper().startswith("SELECT")
+        if is_query:
             cur.execute(source)
-        else:
-            cur.execute(f"SELECT * FROM {source}")
+            df = cur.fetch_pandas_all()
+            cur.close()
+            return self._apply_pandas_pushdown(df, filter, columns)
+
+        select_cols = ", ".join(f'"{c}"' for c in columns) if columns else "*"
+        query = f'SELECT {select_cols} FROM "{source}"'
+        params: list[Any] = []
+        if filter:
+            clauses = []
+            for col, val in filter.items():
+                clauses.append(f'"{col}" = %s')
+                params.append(val)
+            query += " WHERE " + " AND ".join(clauses)
+        cur.execute(query, tuple(params))
         df = cur.fetch_pandas_all()
         cur.close()
         return df

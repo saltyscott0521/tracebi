@@ -13,7 +13,8 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 2.5 | ✅ Done | Medallion architecture, Star schema, Lineage diagram |
 | Phase 3 | ✅ Done | Dashboard server (Dash-based, associative filters) |
 | Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
-| Phase 5 | ✅ Done | Web UI (FastAPI + Jinja2, Dash embedded, medallion-aware demo) |
+| Phase 5 | ✅ Done | Web UI (FastAPI + React, Dash embedded, medallion-aware demo) |
+| Phase 6 | ✅ Done | DuckDB engine, push-down filters, layer rename, CLI, auto-discovery, auth, docker-compose |
 | Docs | ✅ Done | README rewritten, docs/overview.html added |
 
 ---
@@ -421,6 +422,81 @@ architecture — worth keeping in mind as the web UI develops.
 - Should `requests/` files be standalone scripts or should they import a
   shared project-level `DataModel` defined once in a central file?
 - Should the request template support both `.py` and `.ipynb` formats?
-- For the CLI scaffolding idea — is `tracebi new-request` worth building now?
-- What does the notebook → web UI registration workflow look like in practice?
-  Should it be a live dev-mode endpoint, a module reload, or just "copy to config file"?
+
+---
+
+## 2026-05-23 — Recommendations Actioned
+
+Built out the work described in the 2026-05-22 architecture discussion plus
+the older Phase 5 and AI + TraceBi TODOs. Summary of what changed:
+
+### DuckDB-backed engine, pandas-facing API
+- New `DuckDBConnector` for in-memory analytics, persistent `.duckdb` files,
+  and zero-config Parquet / CSV / JSON file access (`tracebi.[duckdb]` extra).
+- `StarSchema.query()` now executes joins, filters, and aggregations inside
+  DuckDB (zero-copy view registration from pandas), then materialises the
+  result back to a pandas DataFrame so the user-facing API is unchanged.
+  Falls back to pandas when DuckDB isn't installed.
+- The final lineage node records which engine ran the query
+  (`metadata["engine"] = "duckdb" | "pandas"`).
+
+### Push-down filter + column projection
+- `BaseConnector.load(source, filter=None, columns=None)` is the new
+  contract. Every connector implements it.
+- `SQLConnector` / `BigQueryConnector` / `SnowflakeConnector` /
+  `DuckDBConnector` push filters down via `WHERE` / parameter binding and
+  project columns via `SELECT`. `MemoryConnector` and `CSVConnector` apply
+  them in pandas after loading. `supports_pushdown()` exposes this.
+- `DataModel.load(table_name, filter=..., columns=...)` threads the call
+  through, and records which path was used in the load lineage node.
+
+### Lineage warning on large unfiltered loads
+- `DataModel.load()` appends an `operation="warning"` node when a load
+  returns more than `LARGE_LOAD_WARN_ROWS` (default 100k) rows *and* no
+  filter / column projection was passed. Non-blocking — visible in the
+  lineage chain only.
+
+### Landing / Manipulation / Final layer naming
+- `LandingLayer`, `ManipulationLayer`, `FinalLayer` are the new canonical
+  classes — direct subclasses of `BronzeLayer` / `SilverLayer` / `GoldLayer`
+  with the only difference being the `operation` and `layer_label` they
+  stamp into lineage.
+- Existing `BronzeLayer` / `SilverLayer` / `GoldLayer` keep working
+  unchanged (and existing tests assert on the old `"bronze"`/`"silver"`/
+  `"gold"` lineage tags). All 163 prior tests still pass.
+
+### CLI: `tracebi new-request`
+- New `tracebi.cli` module wired as a `[project.scripts]` entry point.
+- `tracebi new-request "Open orders by region"` → scaffolds
+  `requests/open_orders_by_region.py` from a fresh template.
+- Plus `tracebi list-requests` and `tracebi run <name>`.
+
+### Folder-based auto-discovery
+- `tracebi.web.discovery.auto_discover(path)` imports every `*.py` in a
+  directory (skipping `_*`).  The web server calls this at startup against
+  `TRACEBI_REQUESTS_DIR` (default `requests/`), so any
+  `@registry.report(...)` decorators inside drop-in files fire automatically.
+
+### Notebook helper: `tracebi.web.register`
+- `from tracebi.web import register` exposes a small facade —
+  `register.connector(...)`, `register.model(...)`, `register.pipeline(...)`,
+  `register.dashboard(...)`, `@register.report(...)`,
+  `register.auto_discover(...)`. All lazy-import the web registry singleton
+  so the library still works in pure-library installs.
+
+### Web layer additions
+- `GET /api/dashboards/{name}/lineage` — returns a React Flow graph for the
+  combined lineage of every panel in a dashboard.
+- Optional `BasicAuthMiddleware` activates when `TRACEBI_AUTH_USER` and
+  `TRACEBI_AUTH_PASS` are set; `/api/health` is always public.
+
+### Deployment
+- `docker-compose.yml` for the getting-started story — mounts `data/`,
+  `output/`, and `requests/` and exposes the web UI on port 8000.
+- Dockerfile picks up the new `[duckdb]` extra.
+
+### Open decisions left as-is
+- Notebook → web UI hot-reload remains a future improvement; the current
+  helper is module-import-based (call `register.*` from any imported module).
+- Layer renaming is additive only — no plan to delete the
+  Bronze/Silver/Gold class names. CLAUDE.md still references both.

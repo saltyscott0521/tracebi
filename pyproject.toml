@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 csv = ["openpyxl>=3.0"]
 sql = ["sqlalchemy>=2.0"]
+duckdb = ["duckdb>=0.9"]
 bigquery = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
 reports = ["openpyxl>=3.0", "matplotlib>=3.5"]
@@ -35,7 +36,11 @@ dev = [
     "networkx>=3.0",
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
+    "duckdb>=0.9",
 ]
+
+[project.scripts]
+tracebi = "tracebi.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["tracebi"]

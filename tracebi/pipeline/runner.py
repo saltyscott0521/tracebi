@@ -160,7 +160,10 @@ class PipelineRunner:
                 f"Register upstream layers first."
             )
 
-        layer_type = (
+        # LandingLayer/ManipulationLayer/FinalLayer are subclasses, so the
+        # isinstance check covers both naming conventions. Use the layer's
+        # own label so the new names propagate to run history.
+        layer_type = getattr(layer, "layer_label", None) or (
             "bronze" if isinstance(layer, BronzeLayer) else
             "silver" if isinstance(layer, SilverLayer) else
             "gold"   if isinstance(layer, GoldLayer)   else

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -40,9 +41,20 @@ class CSVConnector(BaseConnector):
                 f"CSVConnector '{self.name}': directory not found: {self.directory}"
             )
 
-    def load(self, source: str) -> pd.DataFrame:
+    def load(
+        self,
+        source: str,
+        filter: Optional[dict[str, Any]] = None,
+        columns: Optional[list[str]] = None,
+    ) -> pd.DataFrame:
         path = os.path.join(self.directory, source)
         ext = os.path.splitext(source)[1].lower()
         if ext in (".xls", ".xlsx"):
-            return pd.read_excel(path)
-        return pd.read_csv(path, encoding=self.encoding)
+            df = pd.read_excel(path)
+        else:
+            df = pd.read_csv(
+                path,
+                encoding=self.encoding,
+                usecols=columns if columns else None,
+            )
+        return self._apply_pandas_pushdown(df, filter, columns)

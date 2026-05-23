@@ -9,12 +9,17 @@ to get fully lineage-tracked DataSets.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 
 from tracebi.connectors.base import BaseConnector
 from tracebi.model.dataset import DataSet, LineageNode
+
+
+# Threshold (rows) at which an unfiltered, full-table load triggers a
+# lineage warning. Visible in the lineage chain, non-blocking.
+LARGE_LOAD_WARN_ROWS = 100_000
 
 
 # ─────────────────────────────────────────────────────────────
@@ -155,12 +160,28 @@ class DataModel:
 
     # ── Data loading ───────────────────────────────────────────
 
-    def load(self, table_name: str) -> DataSet:
+    def load(
+        self,
+        table_name: str,
+        filter: Optional[dict[str, Any]] = None,
+        columns: Optional[list[str]] = None,
+    ) -> DataSet:
         """
         Load a registered table and return a lineage-tracked DataSet.
 
         Every call to ``load()`` re-reads from the source (no caching),
         so lineage is always fresh.
+
+        Args:
+            table_name: Registered table name.
+            filter:     Optional ``{column: value}`` equality filters pushed
+                        down to the connector where possible (SQL WHERE,
+                        DuckDB predicate), applied in pandas otherwise.
+            columns:    Optional list of columns to project at source.
+
+        Lineage: emits one ``operation="load"`` node, plus a non-blocking
+        ``operation="warning"`` node when the load is unfiltered, unprojected,
+        and returns more than ``LARGE_LOAD_WARN_ROWS`` rows.
         """
         if table_name not in self._tables:
             raise ValueError(
@@ -169,8 +190,9 @@ class DataModel:
             )
         tdef = self._tables[table_name]
         connector = self._connectors[tdef.connector_name]
-        df = connector.load(tdef.source)
-        node = LineageNode(
+        df = connector.load(tdef.source, filter=filter, columns=columns)
+        pushdown = connector.supports_pushdown() and (filter or columns)
+        load_node = LineageNode(
             operation="load",
             description=f"Loaded '{table_name}' from connector '{tdef.connector_name}'",
             connector={
@@ -178,8 +200,29 @@ class DataModel:
                 "connector_type": type(connector).__name__,
             },
             source=tdef.source,
+            metadata={
+                "rows_loaded": len(df),
+                "filter":      filter,
+                "columns":     columns,
+                "pushdown":    bool(pushdown),
+            },
         )
-        return DataSet(df=df, name=table_name, lineage=[node])
+        nodes = [load_node]
+        if not filter and not columns and len(df) > LARGE_LOAD_WARN_ROWS:
+            nodes.append(LineageNode(
+                operation="warning",
+                description=(
+                    f"Large unfiltered load: {len(df):,} rows from "
+                    f"'{table_name}'. Consider passing filter= or columns= "
+                    "to push the predicate to the source."
+                ),
+                metadata={
+                    "rows_loaded": len(df),
+                    "threshold":   LARGE_LOAD_WARN_ROWS,
+                    "table":       table_name,
+                },
+            ))
+        return DataSet(df=df, name=table_name, lineage=nodes)
 
     def resolve(self, relationship_name: str) -> DataSet:
         """
