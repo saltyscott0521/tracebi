@@ -1,8 +1,19 @@
 import { useState } from 'react'
-import { usePipelines, useRunLayer, useLayerHistory } from '../api'
+import { usePipelines, useRunLayer, useRunPipeline, useLayerHistory } from '../api'
 import { PageTitle, PageSub, Card, CardTitle, Badge, Spinner, Empty, Btn, Tabs } from '../components/Shared'
 
-const TYPE_BADGE = { BronzeLayer: 'bronze', SilverLayer: 'silver', GoldLayer: 'gold' }
+// PipelineRunner stamps layer_type with either the legacy medallion name
+// ("bronze" / "silver" / "gold") or the new TraceBi vocabulary
+// ("landing" / "manipulation" / "final"). Map both to badge variants.
+const TYPE_BADGE = {
+  bronze:       'bronze',  silver:       'silver',       gold:  'gold',
+  landing:      'landing', manipulation: 'manipulation', final: 'final',
+  BronzeLayer:  'bronze',  SilverLayer:  'silver',       GoldLayer: 'gold',
+}
+const TYPE_LABEL = {
+  bronze: 'Landing',     silver: 'Manipulation',  gold: 'Final',
+  landing: 'Landing',    manipulation: 'Manipulation', final: 'Final',
+}
 const STATUS_BADGE = { success: 'green', error: 'red', running: 'amber' }
 
 function LayerHistory({ pipeline, layer }) {
@@ -34,13 +45,24 @@ function LayerHistory({ pipeline, layer }) {
 
 function PipelineCard({ pipeline, layers }) {
   const { mutate: run, isPending } = useRunLayer()
+  const { mutate: runAll, isPending: isRunningAll } = useRunPipeline()
   const [selected, setSelected] = useState(null)
   const [tab, setTab] = useState('Layers')
 
   return (
     <Card>
       <CardTitle>
-        <span style={{ marginRight: 8 }}>⧖</span>{pipeline}
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span><span style={{ marginRight: 8 }}>⧖</span>{pipeline}</span>
+          <Btn
+            size="sm"
+            variant="outline"
+            disabled={isRunningAll}
+            onClick={() => runAll({ pipeline })}
+          >
+            {isRunningAll ? <Spinner size={12} /> : '▶ Run all'}
+          </Btn>
+        </span>
       </CardTitle>
 
       <Tabs tabs={['Layers', 'History']} active={tab} onChange={t => setTab(t)} />
@@ -55,7 +77,7 @@ function PipelineCard({ pipeline, layers }) {
               {layers.map(l => (
                 <tr key={l.name}>
                   <td><code style={{ fontSize: 12 }}>{l.name}</code></td>
-                  <td><Badge variant={TYPE_BADGE[l.type] || 'gray'}>{l.type?.replace('Layer','') || l.type}</Badge></td>
+                  <td><Badge variant={TYPE_BADGE[l.type] || 'gray'}>{TYPE_LABEL[l.type] || l.type?.replace('Layer','') || l.type}</Badge></td>
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.schedule || '—'}</td>
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.depends_on || '—'}</td>
                   <td>
@@ -118,7 +140,8 @@ export default function Pipelines() {
     <>
       <PageTitle>Pipelines</PageTitle>
       <PageSub>
-        {pipelines.length} pipeline{pipelines.length !== 1 ? 's' : ''} registered.
+        {pipelines.length} pipeline{pipelines.length !== 1 ? 's' : ''} registered —
+        {' '}Landing → Manipulation → Final layers (medallion-compatible).
         {' '}Run history auto-refreshes every 10 seconds.
       </PageSub>
 

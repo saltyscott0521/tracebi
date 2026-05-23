@@ -29,14 +29,25 @@ services:
       # Bundled demo app by default; override to point at your config module.
       TRACEBI_APP: ${TRACEBI_APP:-web.demo_app}
       TRACEBI_REQUESTS_DIR: /app/requests
+      TRACEBI_SCHEDULED_DIR: /app/scheduled
       # Optional HTTP basic auth — leave unset to keep the API open.
       TRACEBI_AUTH_USER: ${TRACEBI_AUTH_USER:-}
       TRACEBI_AUTH_PASS: ${TRACEBI_AUTH_PASS:-}
+      # Reverse-proxy auth (Authelia / oauth2-proxy / Cloudflare Access).
+      # When set, takes precedence over Basic auth.
+      TRACEBI_AUTH_PROXY_HEADER: ${TRACEBI_AUTH_PROXY_HEADER:-}
+      TRACEBI_AUTH_PROXY_TRUSTED_IPS: ${TRACEBI_AUTH_PROXY_TRUSTED_IPS:-}
+      # Set to 0 to skip the in-process Dash mount and run dashboards
+      # as separate services.
+      TRACEBI_EMBED_DASHBOARDS: ${TRACEBI_EMBED_DASHBOARDS:-1}
+      # Set to 1 to enable /api/_dev/reload for hot-reload during dev.
+      TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
       PORT: "8000"
     volumes:
       - ./data:/app/data
       - ./output:/app/output
       - ./requests:/app/requests
+      - ./scheduled:/app/scheduled
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]
       interval: 30s
