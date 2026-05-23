@@ -367,7 +367,7 @@
     <div class="phase-card done">
       <span class="badge">✓ Done</span>
       <h3>Phase 2.5 — Medallion + Star Schema</h3>
-      <p>Bronze/Silver/Gold layers, StarSchema queries, LineageDiagram</p>
+      <p>Bronze/Silver/Gold layers, DataModel star-schema queries, LineageDiagram</p>
     </div>
     <div class="phase-card done">
       <span class="badge">✓ Done</span>
@@ -595,28 +595,26 @@ HTMLRenderer().serve(report, port=8080)   # opens browser</code></pre>
     </div>
     <div class="medallion-layer layer-gold">
       <h3>Gold — Aggregated</h3>
-      <p>Delegates to <code>StarSchema.query()</code>. Stamps
+      <p>Delegates to <code>DataModel.query()</code>. Stamps
          <code>operation="gold"</code> with query parameters in metadata.</p>
     </div>
   </div>
 
-  <h3>StarSchema</h3>
+  <h3>Star Schema (on DataModel)</h3>
   <p>
-    Dimension references use dot notation: <code>"dim_customer.region"</code>.
+    Tag tables on the <code>DataModel</code> with star-schema roles. Dimension
+    references use dot notation: <code>"dim_customer.region"</code>.
     Measures are a dict: <code>{"revenue": "sum", "order_id": "count"}</code>.
     Supported aggregations: <code>sum</code>, <code>count</code>, <code>mean</code>,
     <code>min</code>, <code>max</code>, <code>nunique</code>.
   </p>
-  <pre><code>from tracebi.model.star_schema import StarSchema
+  <pre><code>model.add_dimension("dim_customer", table_name="customers_silver",
+                    key_col="customer_id", attributes=["region", "segment"])
+model.add_fact("fact_orders", table_name="orders_silver",
+               measures=["revenue", "qty"],
+               foreign_keys={"dim_customer": "customer_id"})
 
-schema = StarSchema("Sales", model=model)
-schema.add_dimension("dim_customer", table_name="customers_silver",
-                     key_col="customer_id", attributes=["region", "segment"])
-schema.add_fact("fact_orders", table_name="orders_silver",
-                measures=["revenue", "qty"],
-                foreign_keys={"dim_customer": "customer_id"})
-
-ds = schema.query(
+ds = model.query(
     fact="fact_orders",
     measures={"revenue": "sum", "qty": "sum"},
     dimensions=["dim_customer.region"],
@@ -648,7 +646,7 @@ print(diag.to_mermaid())          # paste into GitHub markdown</code></pre>
       <ul>
         <li><code>tracebi_layers</code> — registered layer config + schedules</li>
         <li><code>tracebi_runs</code> — every run: status, rows_in/out, timestamps, upstream_run_id</li>
-        <li><code>tracebi_schemas</code> — StarSchema definitions</li>
+        <li><code>tracebi_schemas</code> — per-model star-schema definitions</li>
         <li><code>tracebi_dimensions</code> — dimension table registrations</li>
         <li><code>tracebi_facts</code> — fact table registrations</li>
         <li><code>tracebi_relationships</code> — DataModel join definitions</li>
@@ -663,8 +661,7 @@ print(diag.to_mermaid())          # paste into GitHub markdown</code></pre>
         <li><code>.stop()</code></li>
         <li><code>.lineage(name)</code> — print run history</li>
         <li><code>.status()</code> — all layers + last run</li>
-        <li><code>.register_schema(schema)</code></li>
-        <li><code>.register_model(model)</code></li>
+        <li><code>.register_model(model)</code> — persists relationships + facts + dimensions</li>
       </ul>
     </div>
   </div>
@@ -853,7 +850,7 @@ registry.add_pipeline("main", runner)</code></pre>
     <div><span class="dir">tracebi/</span></div>
     <div>&nbsp;&nbsp;<span class="dir">tracebi/</span>  <span class="note">← the library</span></div>
     <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">connectors/</span>  <span class="note">base, csv, sql, bigquery, snowflake, memory</span></div>
-    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">model/</span>  <span class="note">dataset.py, data_model.py, star_schema.py</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">model/</span>  <span class="note">dataset.py, data_model.py (with star-schema query)</span></div>
     <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">etl/</span>  <span class="note">bronze.py, silver.py, gold.py</span></div>
     <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">reports/</span>  <span class="note">report.py, excel_renderer.py, html_renderer.py</span></div>
     <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">dashboard/</span>  <span class="note">panels.py, dashboard.py, server.py</span></div>

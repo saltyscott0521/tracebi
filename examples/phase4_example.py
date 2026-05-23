@@ -4,7 +4,7 @@ TraceBi — Phase 4 Example
 Demonstrates the medallion pipeline with a live SQLite database:
   - BronzeLayer   reads from source tables, writes to bronze tables
   - SilverLayer   cleans bronze, writes to silver tables
-  - GoldLayer     aggregates silver via StarSchema, writes to gold tables
+  - GoldLayer     aggregates silver via the DataModel's star-schema query, writes to gold tables
   - PipelineRunner registers all layers, tracks runs, supports on-demand
                   and scheduled execution
 
@@ -30,7 +30,6 @@ DB_URL = f"sqlite:///{os.path.join(ROOT, 'data', 'tracebi.db')}"
 def run():
     from tracebi.connectors.sql_connector import SQLConnector
     from tracebi.model.data_model import DataModel
-    from tracebi.model.star_schema import StarSchema
     from tracebi.etl.bronze import BronzeLayer
     from tracebi.etl.silver import SilverLayer
     from tracebi.etl.gold import GoldLayer
@@ -70,29 +69,28 @@ def run():
         .deduplicate(subset=["customer_id"])
     )
 
-    # ── DataModel + StarSchema ───────────────────────────────────
+    # ── DataModel (with star-schema query surface) ───────────────
     model = DataModel("SalesModel")
     model.add_connector(db)
     model.add_table("orders_silver",    connector="tracebi_db", source="orders_silver")
     model.add_table("customers_silver", connector="tracebi_db", source="customers_silver")
 
-    schema = StarSchema("Sales", model=model)
-    schema.add_dimension("dim_customer", table_name="customers_silver",
-                         key_col="customer_id", attributes=["region", "segment"])
-    schema.add_fact("fact_orders", table_name="orders_silver",
-                    measures=["revenue", "qty"],
-                    foreign_keys={"dim_customer": "customer_id"})
+    model.add_dimension("dim_customer", table_name="customers_silver",
+                        key_col="customer_id", attributes=["region", "segment"])
+    model.add_fact("fact_orders", table_name="orders_silver",
+                   measures=["revenue", "qty"],
+                   foreign_keys={"dim_customer": "customer_id"})
 
     # ── Gold ─────────────────────────────────────────────────────
     revenue_by_region = GoldLayer(
-        schema=schema,
+        model=model,
         fact="fact_orders",
         measures={"revenue": "sum", "qty": "sum"},
         dimensions=["dim_customer.region"],
         sink=db, sink_table="revenue_by_region_gold",
     )
     revenue_by_segment = GoldLayer(
-        schema=schema,
+        model=model,
         fact="fact_orders",
         measures={"revenue": "sum", "order_id": "count"},
         dimensions=["dim_customer.segment"],

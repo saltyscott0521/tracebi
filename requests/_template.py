@@ -21,7 +21,6 @@ from tracebi.reports.report import Report, TextSection, TableSection, ChartSecti
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
 # from tracebi import LandingLayer, ManipulationLayer, FinalLayer
-# from tracebi import StarSchema
 # from tracebi.lineage.diagram import LineageDiagram
 
 

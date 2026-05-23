@@ -120,7 +120,7 @@ That combination remains a genuine differentiator.
 ```
 tracebi/
   connectors/     Source adapters (CSV, SQL, BigQuery, Snowflake, Memory)
-  model/          Core abstractions (DataSet, DataModel, StarSchema)
+  model/          Core abstractions (DataSet, DataModel with star-schema query)
   etl/            Medallion layers (Bronze → Silver → Gold)
   reports/        Report engine + renderers (Excel, HTML)
   dashboard/      Dash-based live dashboard server
@@ -147,7 +147,8 @@ definitions. `load()` always re-reads from source (no caching).
 **Medallion layers as separate classes** — Bronze/Silver/Gold are distinct
 _contracts_, not just naming conventions. BronzeLayer enforces "no transforms".
 SilverLayer enforces "declarative pipeline". GoldLayer enforces "aggregated via
-StarSchema". The type boundary makes it impossible to accidentally skip a layer.
+the DataModel star-schema query". The type boundary makes it impossible to
+accidentally skip a layer.
 
 **MemoryConnector** — tests and demos should not require external files or databases.
 Drop-in connector backed by a Python dict, so tests run in pure memory with full lineage.
@@ -166,8 +167,8 @@ orders_silver = (
     .deduplicate(subset=["order_id"])
 ).apply(orders_bronze, name="orders_silver")
 
-# Gold — aggregated via StarSchema
-gold = GoldLayer(schema=schema)
+# Gold — aggregated via the DataModel's star-schema query
+gold = GoldLayer(model=model)
 revenue_by_region = gold.query(
     fact="fact_orders",
     measures={"revenue": "sum", "order_id": "count"},
@@ -176,19 +177,25 @@ revenue_by_region = gold.query(
 )
 ```
 
-### Star Schema
+### Star Schema (on DataModel)
 
-Dimension references use dot notation: `"dim_name.attribute"`.
-Measures are a dict: `{"column": "agg_func"}`.
-Supported agg funcs: `sum`, `count`, `mean`, `min`, `max`, `nunique`.
+Tag tables on the DataModel with star-schema roles. Dimension references
+use dot notation: `"dim_name.attribute"`. Measures are a dict:
+`{"column": "agg_func"}`. Supported agg funcs: `sum`, `count`, `mean`,
+`min`, `max`, `nunique`.
 
 ```python
-schema = StarSchema("Sales", model=model)
-schema.add_dimension("dim_customer", table_name="customers",
-                     key_col="customer_id", attributes=["region", "segment"])
-schema.add_fact("fact_orders", table_name="orders",
-                measures=["revenue", "qty"],
-                foreign_keys={"dim_customer": "customer_id"})
+model.add_dimension("dim_customer", table_name="customers",
+                    key_col="customer_id", attributes=["region", "segment"])
+model.add_fact("fact_orders", table_name="orders",
+               measures=["revenue", "qty"],
+               foreign_keys={"dim_customer": "customer_id"})
+
+ds = model.query(
+    fact="fact_orders",
+    measures={"revenue": "sum"},
+    dimensions=["dim_customer.region"],
+)
 ```
 
 ### Lineage Diagram
@@ -337,7 +344,7 @@ the framework should support either without prescribing which to use.
 - The database or lake does the heavy compute — TraceBi receives only the result
 - Push-down filters at the connector level (WHERE clauses before loading) are the
   right pattern for detail-level queries
-- StarSchema.query() should aggregate at the database level where possible —
+- DataModel.query() should aggregate at the database level where possible —
   only the small result set comes back to Python
 - Transaction-level detail reports are valid but should always filter at the SQL
   level first, not load everything and filter in pandas
@@ -433,10 +440,10 @@ the older Phase 5 and AI + TraceBi TODOs. Summary of what changed:
 ### DuckDB-backed engine, pandas-facing API
 - New `DuckDBConnector` for in-memory analytics, persistent `.duckdb` files,
   and zero-config Parquet / CSV / JSON file access (`tracebi.[duckdb]` extra).
-- `StarSchema.query()` now executes joins, filters, and aggregations inside
-  DuckDB (zero-copy view registration from pandas), then materialises the
-  result back to a pandas DataFrame so the user-facing API is unchanged.
-  Falls back to pandas when DuckDB isn't installed.
+- `DataModel.query()` (the star-schema analytic surface) now executes joins,
+  filters, and aggregations inside DuckDB (zero-copy view registration from
+  pandas), then materialises the result back to a pandas DataFrame so the
+  user-facing API is unchanged. Falls back to pandas when DuckDB isn't installed.
 - The final lineage node records which engine ran the query
   (`metadata["engine"] = "duckdb" | "pandas"`).
 

@@ -1,12 +1,13 @@
 """
 GoldLayer / FinalLayer — aggregated, analytics-ready DataSets built from
-a StarSchema.
+a DataModel's star-schema query surface.
 
-The new canonical name is ``FinalLayer`` — the serving layer that declares
-facts and dimensions and returns a clean dataset ready for a report or
-dashboard. ``GoldLayer`` remains a fully supported alias for back-compat.
+The new canonical name is ``FinalLayer`` — the serving layer that uses
+the facts and dimensions declared on a ``DataModel`` to produce a clean
+dataset ready for a report or dashboard. ``GoldLayer`` remains a fully
+supported alias for back-compat.
 
-Delegates to ``StarSchema.query()`` and stamps the result with an additional
+Delegates to ``DataModel.query()`` and stamps the result with an additional
 lineage node tagged with the layer's ``operation`` ("final" or "gold").
 """
 
@@ -16,18 +17,18 @@ from typing import Any, Optional
 
 from tracebi.connectors.base import BaseConnector
 from tracebi.model.dataset import DataSet, LineageNode
-from tracebi.model.star_schema import StarSchema
+from tracebi.model.data_model import DataModel
 
 
 class GoldLayer:
-    """Analytics-ready aggregation layer backed by a StarSchema."""
+    """Analytics-ready aggregation layer backed by a DataModel's star-schema query."""
 
     operation: str = "gold"
     layer_label: str = "gold"
 
     def __init__(
         self,
-        schema: StarSchema,
+        model: DataModel,
         fact: Optional[str] = None,
         measures: Optional[dict[str, str]] = None,
         dimensions: Optional[list[str]] = None,
@@ -36,7 +37,7 @@ class GoldLayer:
         sink: Optional[BaseConnector] = None,
         sink_table: Optional[str] = None,
     ) -> None:
-        self._schema = schema
+        self._model = model
         self._fact = fact
         self._measures = measures
         self._dimensions = dimensions
@@ -54,8 +55,8 @@ class GoldLayer:
         aggregate: bool = True,
         name: Optional[str] = None,
     ) -> DataSet:
-        """Execute a star schema query and return a final/gold-layer DataSet."""
-        ds = self._schema.query(
+        """Execute a star-schema query and return a final/gold-layer DataSet."""
+        ds = self._model.query(
             fact=fact,
             measures=measures,
             dimensions=dimensions,
@@ -104,7 +105,7 @@ class GoldLayer:
 
     def __repr__(self) -> str:
         return (
-            f"<{type(self).__name__} schema={self._schema.name!r} "
+            f"<{type(self).__name__} model={self._model.name!r} "
             f"fact={self._fact!r} "
             f"sink_table={self._sink_table!r}>"
         )

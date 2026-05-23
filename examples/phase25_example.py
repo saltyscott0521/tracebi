@@ -3,7 +3,7 @@ TraceBi — Phase 2.5 Example
 ============================
 Demonstrates the full path from raw data to rendered report:
   - Medallion architecture  (BronzeLayer → SilverLayer → GoldLayer)
-  - Star schema queries      (StarSchema with dot-notation dimensions)
+  - Star schema queries      (DataModel facts/dimensions, dot-notation dim refs)
   - Report engine            (Report with tables + charts → Excel + HTML)
   - Lineage diagrams         (LineageDiagram → HTML / Mermaid)
 
@@ -22,7 +22,6 @@ import pandas as pd
 
 from tracebi import DataModel, MemoryConnector
 from tracebi import BronzeLayer, SilverLayer, GoldLayer
-from tracebi.model.star_schema import StarSchema
 from tracebi.lineage.diagram import LineageDiagram
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
 from tracebi.reports.excel_renderer import ExcelRenderer
@@ -117,25 +116,24 @@ def run():
     model.add_table("orders_silver",    connector="mem", source="orders_silver")
     model.add_table("customers_silver", connector="mem", source="customers_silver")
 
-    schema = StarSchema("Sales", model=model)
-    schema.add_dimension(
+    model.add_dimension(
         name="dim_customer",
         table_name="customers_silver",
         key_col="customer_id",
         attributes=["region", "segment"],
     )
-    schema.add_fact(
+    model.add_fact(
         name="fact_orders",
         table_name="orders_silver",
         measures=["revenue", "qty"],
         foreign_keys={"dim_customer": "customer_id"},
     )
-    schema.describe()
+    model.describe()
 
     # ── Gold ─────────────────────────────────────────────────────
     print("\n[4] Gold — aggregated queries")
 
-    gold = GoldLayer(schema=schema)
+    gold = GoldLayer(model=model)
 
     revenue_by_region = gold.query(
         fact="fact_orders",
@@ -176,7 +174,7 @@ def run():
         .author("Data Team")
         .description("Revenue and order metrics derived from Bronze → Silver → Gold pipeline.")
         .parameter("source", "MemoryConnector (orders_raw, customers_raw)")
-        .parameter("pipeline", "BronzeLayer → SilverLayer → GoldLayer via StarSchema")
+        .parameter("pipeline", "BronzeLayer → SilverLayer → GoldLayer (star-schema query)")
 
         .add(TextSection(
             title="Executive Summary",
@@ -187,7 +185,7 @@ def run():
             content=(
                 f"Total pipeline revenue: ${total_revenue:,.2f} across {total_qty:,} units. "
                 "Data cleaned through Silver (deduplication, type casting) and "
-                "aggregated through Gold via StarSchema dimensional joins."
+                "aggregated through Gold via the DataModel's star-schema dimensional joins."
             ),
             style="normal",
         ))
