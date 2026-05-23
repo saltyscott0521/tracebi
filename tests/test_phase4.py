@@ -9,7 +9,7 @@ Coverage:
   - SilverLayer.execute() (source load + clean + sink write)
   - GoldLayer.execute() (pre-configured query + sink write)
   - PipelineRunner: register, run (single + refresh), lineage, status,
-    register_schema, register_model
+    register_model (persists relationships + facts + dimensions)
 """
 
 import os
@@ -24,7 +24,6 @@ from tracebi.connectors.sql_connector import SQLConnector
 from tracebi.etl.bronze import BronzeLayer
 from tracebi.etl.silver import SilverLayer
 from tracebi.etl.gold import GoldLayer
-from tracebi.model.star_schema import StarSchema
 from tracebi.pipeline.runner import PipelineRunner
 
 
@@ -72,17 +71,16 @@ def sql_db(sqlite_url, orders_df, customers_df):
 
 
 @pytest.fixture
-def schema(sql_db, sqlite_url):
-    model = DataModel("M")
-    model.add_connector(sql_db)
-    model.add_table("orders_silver",    connector="db", source="orders_silver")
-    model.add_table("customers_silver", connector="db", source="customers_silver")
-    s = StarSchema("S", model=model)
-    s.add_dimension("dim_customer", table_name="customers_silver",
+def model(sql_db, sqlite_url):
+    m = DataModel("M")
+    m.add_connector(sql_db)
+    m.add_table("orders_silver",    connector="db", source="orders_silver")
+    m.add_table("customers_silver", connector="db", source="customers_silver")
+    m.add_dimension("dim_customer", table_name="customers_silver",
                     key_col="customer_id", attributes=["region"])
-    s.add_fact("fact_orders", table_name="orders_silver",
+    m.add_fact("fact_orders", table_name="orders_silver",
                measures=["revenue"], foreign_keys={"dim_customer": "customer_id"})
-    return s
+    return m
 
 
 @pytest.fixture
@@ -215,10 +213,10 @@ class TestGoldExecute:
         sql_db.write(orders_clean, "orders_silver")
         sql_db.write(customers_df, "customers_silver")
 
-    def test_execute_writes_to_sink(self, sql_db, orders_df, customers_df, schema):
+    def test_execute_writes_to_sink(self, sql_db, orders_df, customers_df, model):
         self._setup_silver(sql_db, orders_df, customers_df)
         gold = GoldLayer(
-            schema=schema,
+            model=model,
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.region"],
@@ -230,10 +228,10 @@ class TestGoldExecute:
         assert "revenue" in result.columns
         assert len(result) == 3  # 3 regions
 
-    def test_execute_lineage_has_gold_node(self, sql_db, orders_df, customers_df, schema):
+    def test_execute_lineage_has_gold_node(self, sql_db, orders_df, customers_df, model):
         self._setup_silver(sql_db, orders_df, customers_df)
         gold = GoldLayer(
-            schema=schema, fact="fact_orders",
+            model=model, fact="fact_orders",
             measures={"revenue": "sum"}, dimensions=["dim_customer.region"],
             sink=sql_db, sink_table="revenue_gold2",
         )
@@ -241,13 +239,13 @@ class TestGoldExecute:
         ops = [n.operation for n in ds.lineage]
         assert "gold" in ops
 
-    def test_execute_no_fact_raises(self, schema):
-        gold = GoldLayer(schema=schema, sink=MemoryConnector("m", {}), sink_table="t")
+    def test_execute_no_fact_raises(self, model):
+        gold = GoldLayer(model=model, sink=MemoryConnector("m", {}), sink_table="t")
         with pytest.raises(RuntimeError, match="fact"):
             gold.execute()
 
-    def test_execute_no_sink_raises(self, schema):
-        gold = GoldLayer(schema=schema, fact="fact_orders",
+    def test_execute_no_sink_raises(self, model):
+        gold = GoldLayer(model=model, fact="fact_orders",
                          measures={"revenue": "sum"})
         with pytest.raises(RuntimeError, match="sink"):
             gold.execute()
@@ -332,8 +330,8 @@ class TestPipelineRunner:
         chain = runner._resolve_chain("orders_silver")
         assert chain == ["orders_bronze", "orders_silver"]
 
-    def test_register_schema(self, runner, schema):
-        runner.register_schema(schema)
+    def test_register_model_persists_facts_and_dims(self, runner, model):
+        runner.register_model(model)
         df = pd.read_sql("SELECT * FROM tracebi_schemas", con=runner._engine_())
         assert len(df) == 1
         dims = pd.read_sql("SELECT * FROM tracebi_dimensions", con=runner._engine_())
@@ -341,11 +339,13 @@ class TestPipelineRunner:
         facts = pd.read_sql("SELECT * FROM tracebi_facts", con=runner._engine_())
         assert len(facts) >= 1
 
-    def test_register_model(self, runner, schema):
-        model = schema._model
-        runner.register_model(model)
-        df = pd.read_sql("SELECT * FROM tracebi_relationships", con=runner._engine_())
-        # model has no relationships in this fixture — just verify no error
+    def test_register_model_no_facts_skips_schema_row(self, runner, sql_db):
+        m = DataModel("Plain")
+        m.add_connector(sql_db)
+        m.add_table("orders_silver", connector="db", source="orders_silver")
+        runner.register_model(m)
+        df = pd.read_sql("SELECT * FROM tracebi_schemas", con=runner._engine_())
+        assert len(df) == 0
 
     def test_repr(self, runner):
         assert "PipelineRunner" in repr(runner)

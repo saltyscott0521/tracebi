@@ -60,8 +60,8 @@ Acts as the permanent audit record of exactly what arrived.
 Manipulation (Silver) — Optional light cleaning before serving. Type casting,
 null removal, deduplication, column renames.
 
-Final (Gold) — Serving layer. Groups measures by dimensions via a StarSchema
-query (DuckDB-backed). Output feeds reports and dashboards directly.`,
+Final (Gold) — Serving layer. Groups measures by dimensions via the DataModel's
+star-schema query (DuckDB-backed). Output feeds reports and dashboards directly.`,
     code: [
       { t: 'b', v: '# Landing — raw ingest, zero transforms' },
       { t: 'n', v: 'landing = LandingLayer(\n  connector=db, source="orders_raw",\n  sink=db, sink_table="orders_bronze",\n)' },
@@ -69,35 +69,35 @@ query (DuckDB-backed). Output feeds reports and dashboards directly.`,
       { t: 's', v: '# Manipulation — declarative cleaning' },
       { t: 'n', v: 'manip = (\n  ManipulationLayer(source=db, source_table="orders_bronze",\n                    sink=db, sink_table="orders_silver")\n  .cast({"qty": "int64"})\n  .drop_nulls()\n  .deduplicate(subset=["order_id"])\n)' },
       { t: 'n', v: '' },
-      { t: 'g', v: '# Final — aggregated via StarSchema' },
-      { t: 'n', v: 'final = FinalLayer(\n  schema=schema, fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  sink=db, sink_table="revenue_by_region",\n)' },
+      { t: 'g', v: '# Final — aggregated via the DataModel star-schema query' },
+      { t: 'n', v: 'final = FinalLayer(\n  model=model, fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  sink=db, sink_table="revenue_by_region",\n)' },
     ],
   },
   {
     n: 4,
     title: 'Star Schema — declarative analytics',
-    body: `A StarSchema sits above the connector layer and adds BI semantics. You declare two
-types of tables:
+    body: `Tag tables on the DataModel with star-schema roles and TraceBi adds BI semantics
+to the same model you already use for loads and joins. You declare two types of tables:
 
 Facts — Transactional tables with numeric measures to aggregate (revenue, qty, count).
 
 Dimensions — Lookup tables with categorical attributes to group by (region, segment, product).
 
-Once defined, schema.query() is fully declarative. You describe the result you want —
+Once defined, model.query() is fully declarative. You describe the result you want —
 which measures, grouped by which dimension attributes, filtered how — and TraceBi resolves
 all the joins, applies filters, and aggregates automatically. You never write join logic by hand.`,
     code: [
-      { t: 'n', v: 'schema = StarSchema("Sales", model=model)\n\nschema.add_dimension(\n  "dim_customer",\n  table_name="customers_silver",\n  key_col="customer_id",\n  attributes=["region", "segment"],\n)\nschema.add_fact(\n  "fact_orders",\n  table_name="orders_silver",\n  measures=["revenue", "qty"],\n  foreign_keys={"dim_customer": "customer_id"},\n)' },
+      { t: 'n', v: 'model.add_dimension(\n  "dim_customer",\n  table_name="customers_silver",\n  key_col="customer_id",\n  attributes=["region", "segment"],\n)\nmodel.add_fact(\n  "fact_orders",\n  table_name="orders_silver",\n  measures=["revenue", "qty"],\n  foreign_keys={"dim_customer": "customer_id"},\n)' },
       { t: 'n', v: '' },
       { t: 'c', v: '# Declarative query — joins resolved automatically' },
-      { t: 'n', v: 'ds = schema.query(\n  fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  filters={"status": "shipped"},\n)' },
+      { t: 'n', v: 'ds = model.query(\n  fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  filters={"status": "shipped"},\n)' },
     ],
   },
 ]
 
 const FEATURES = [
   { icon: '⇌', title: 'Connectors', desc: 'CSV, SQL (any SQLAlchemy dialect), BigQuery, Snowflake, DuckDB, and in-memory DataFrames. All share connector.load(source, filter=..., columns=...) with push-down to source where possible.' },
-  { icon: '⬡', title: 'Landing → Manipulation → Final', desc: 'Three-layer pipeline (medallion-compatible). Landing ingests as-is, Manipulation cleans declaratively, Final aggregates via StarSchema.' },
+  { icon: '⬡', title: 'Landing → Manipulation → Final', desc: 'Three-layer pipeline (medallion-compatible). Landing ingests as-is, Manipulation cleans declaratively, Final aggregates via the DataModel star-schema query.' },
   { icon: '✦', title: 'Star Schema (DuckDB-backed)', desc: 'Declare facts and dimensions once. Query with dot-notation ("dim_customer.region"). Joins, filters and aggregations execute inside DuckDB; the result comes back as a pandas DataFrame.' },
   { icon: '▤', title: 'Reports', desc: 'Compose from TextSection, TableSection, ChartSection. Render to Excel, HTML, or PDF. A lineage manifest is written alongside every render.' },
   { icon: '⧖', title: 'Pipelines', desc: 'Register layers, assign cron schedules, declare dependencies. Run history persisted to SQLite with row counts and upstream run IDs.' },
@@ -150,7 +150,6 @@ result.print_lineage()
     title: 'Structure as a three-layer pipeline',
     desc: 'Structure work as Landing → Manipulation → Final (the medallion Bronze/Silver/Gold classes are still exported as aliases). Each layer reads from the previous sink and writes output to the next.',
     code: `from tracebi import LandingLayer, ManipulationLayer, FinalLayer
-from tracebi.model.star_schema import StarSchema
 
 landing = LandingLayer(connector=db, source="orders_raw",
                        sink=db, sink_table="orders_bronze")
@@ -163,7 +162,7 @@ manip = (
   .deduplicate(subset=["order_id"])
 )
 
-final = FinalLayer(schema=schema, fact="fact_orders",
+final = FinalLayer(model=model, fact="fact_orders",
                    measures={"revenue": "sum"},
                    dimensions=["dim_customer.region"],
                    sink=db, sink_table="revenue_by_region")`,

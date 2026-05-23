@@ -22,7 +22,6 @@ from tracebi import (
     MemoryConnector,
     SQLConnector,
     DuckDBConnector,
-    StarSchema,
     LandingLayer, ManipulationLayer, FinalLayer,
     BronzeLayer, SilverLayer, GoldLayer,
 )
@@ -215,18 +214,17 @@ class TestLargeLoadWarning:
         assert warning_node.metadata["rows_loaded"] == 10
 
 
-# ── StarSchema runs through DuckDB engine ─────────────────────────────────
+# ── DataModel.query() runs through DuckDB engine ──────────────────────────
 
 class TestStarSchemaDuckDB:
     def test_aggregated_query(self, memory_model):
-        schema = StarSchema("Sales", model=memory_model)
-        schema.add_dimension("dim_customer", "customers",
-                             key_col="customer_id", attributes=["segment"])
-        schema.add_fact("fact_orders", "orders",
-                        measures=["revenue", "qty"],
-                        foreign_keys={"dim_customer": "customer_id"})
+        memory_model.add_dimension("dim_customer", "customers",
+                                   key_col="customer_id", attributes=["segment"])
+        memory_model.add_fact("fact_orders", "orders",
+                              measures=["revenue", "qty"],
+                              foreign_keys={"dim_customer": "customer_id"})
 
-        ds = schema.query(
+        ds = memory_model.query(
             fact="fact_orders",
             measures={"revenue": "sum", "qty": "sum"},
             dimensions=["dim_customer.segment"],
@@ -238,13 +236,12 @@ class TestStarSchemaDuckDB:
         assert ent == 250.0
 
     def test_engine_node_records_duckdb(self, memory_model):
-        schema = StarSchema("Sales", model=memory_model)
-        schema.add_dimension("dim_customer", "customers",
-                             key_col="customer_id", attributes=["segment"])
-        schema.add_fact("fact_orders", "orders", measures=["revenue"],
-                        foreign_keys={"dim_customer": "customer_id"})
+        memory_model.add_dimension("dim_customer", "customers",
+                                   key_col="customer_id", attributes=["segment"])
+        memory_model.add_fact("fact_orders", "orders", measures=["revenue"],
+                              foreign_keys={"dim_customer": "customer_id"})
 
-        ds = schema.query(
+        ds = memory_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.segment"],
@@ -256,13 +253,12 @@ class TestStarSchemaDuckDB:
         assert final_node.metadata.get("engine") == "duckdb"
 
     def test_filters_applied(self, memory_model):
-        schema = StarSchema("Sales", model=memory_model)
-        schema.add_dimension("dim_customer", "customers",
-                             key_col="customer_id", attributes=["segment"])
-        schema.add_fact("fact_orders", "orders", measures=["revenue"],
-                        foreign_keys={"dim_customer": "customer_id"})
+        memory_model.add_dimension("dim_customer", "customers",
+                                   key_col="customer_id", attributes=["segment"])
+        memory_model.add_fact("fact_orders", "orders", measures=["revenue"],
+                              foreign_keys={"dim_customer": "customer_id"})
 
-        ds = schema.query(
+        ds = memory_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.segment"],
@@ -305,13 +301,12 @@ class TestLayerRename:
         assert "manipulation" in ops
 
     def test_final_layer_stamps_final_op(self, memory_model):
-        schema = StarSchema("Sales", model=memory_model)
-        schema.add_dimension("dim_customer", "customers",
-                             key_col="customer_id", attributes=["segment"])
-        schema.add_fact("fact_orders", "orders", measures=["revenue"],
-                        foreign_keys={"dim_customer": "customer_id"})
+        memory_model.add_dimension("dim_customer", "customers",
+                                   key_col="customer_id", attributes=["segment"])
+        memory_model.add_fact("fact_orders", "orders", measures=["revenue"],
+                              foreign_keys={"dim_customer": "customer_id"})
 
-        final = FinalLayer(schema=schema)
+        final = FinalLayer(model=memory_model)
         ds = final.query(
             fact="fact_orders",
             measures={"revenue": "sum"},

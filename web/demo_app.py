@@ -16,7 +16,7 @@ from sqlalchemy import create_engine
 
 from tracebi import (
     DataModel, MemoryConnector, SQLConnector,
-    LandingLayer, ManipulationLayer, FinalLayer, StarSchema, PipelineRunner,
+    LandingLayer, ManipulationLayer, FinalLayer, PipelineRunner,
 )
 from tracebi.reports import Report, TableSection, TextSection, ChartSection
 from tracebi.dashboard import Dashboard, DashboardServer, FilterPanel, MetricPanel, ChartPanel, TablePanel
@@ -264,8 +264,8 @@ registry.add_dashboard(
 # ── Medallion Pipeline ────────────────────────────────────────────────────────
 #
 # Extends the demo data with a customer_id FK so orders can be joined to
-# customers through a StarSchema. Runs Bronze → Silver → Gold at startup so
-# the Pipeline page shows live run history immediately.
+# customers through the DataModel's star-schema query. Runs Bronze → Silver → Gold
+# at startup so the Pipeline page shows live run history immediately.
 
 # Source data — orders extended with customer_id for the FK join
 _orders_raw = orders_df.assign(
@@ -306,35 +306,33 @@ _customers_manip = (
     .deduplicate(subset=["customer_id"])
 )
 
-# DataModel + StarSchema (reads from silver tables)
+# DataModel with star-schema query surface (reads from silver tables)
 _pipeline_model = DataModel("SalesPipelineModel")
 _pipeline_model.add_connector(_db)
 _pipeline_model.add_table("orders_silver",    connector="demo_db", source="orders_silver")
 _pipeline_model.add_table("customers_silver", connector="demo_db", source="customers_silver")
-
-_schema = StarSchema("Sales", model=_pipeline_model)
-_schema.add_dimension(
+_pipeline_model.add_dimension(
     name="dim_customer",
     table_name="customers_silver",
     key_col="customer_id",
     attributes=["region", "segment"],
 )
-_schema.add_fact(
+_pipeline_model.add_fact(
     name="fact_orders",
     table_name="orders_silver",
     measures=["revenue", "qty", "cost"],
     foreign_keys={"dim_customer": "customer_id"},
 )
 
-# Final/serving layers — analytics-ready aggregations via StarSchema
+# Final/serving layers — analytics-ready aggregations via the model's query()
 _final_by_region = FinalLayer(
-    schema=_schema, fact="fact_orders",
+    model=_pipeline_model, fact="fact_orders",
     measures={"revenue": "sum", "qty": "sum", "cost": "sum"},
     dimensions=["dim_customer.region"],
     sink=_db, sink_table="gold_revenue_by_region",
 )
 _final_by_segment = FinalLayer(
-    schema=_schema, fact="fact_orders",
+    model=_pipeline_model, fact="fact_orders",
     measures={"revenue": "sum", "order_id": "count"},
     dimensions=["dim_customer.segment"],
     filters={"status": "shipped"},
@@ -365,14 +363,14 @@ _runner.run("revenue_by_segment")
 registry.add_pipeline("sales", _runner)
 
 
-# ── Medallion report (reads from gold layer via StarSchema) ───────────────────
+# ── Medallion report (reads from gold layer via the model's star-schema query) ──
 
 @registry.report(
     "medallion_revenue",
     description="Revenue breakdown produced by the Landing → Manipulation → Final pipeline.",
 )
 def medallion_revenue():
-    gold = FinalLayer(schema=_schema)
+    gold = FinalLayer(model=_pipeline_model)
 
     by_region = gold.query(
         fact="fact_orders",
@@ -393,7 +391,7 @@ def medallion_revenue():
     return (
         Report("Medallion Revenue Report")
         .author("TraceBi Demo")
-        .description("Revenue derived from Bronze → Silver → Gold pipeline via StarSchema.")
+        .description("Revenue derived from Bronze → Silver → Gold pipeline via the model's star-schema query.")
         .parameter("pipeline", "orders (landing) → orders (manipulation) → revenue_by_region (final)")
 
         .add(TextSection(
@@ -405,7 +403,7 @@ def medallion_revenue():
             content=(
                 f"Total revenue across all regions: ${total_rev:,.2f}. "
                 "Data flows through Landing (raw ingest) → Manipulation (deduplication) "
-                "→ Final (StarSchema dimensional aggregation)."
+                "→ Final (star-schema dimensional aggregation)."
             ),
             style="normal",
         ))

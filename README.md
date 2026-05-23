@@ -26,7 +26,7 @@ connector, query, and transform steps that produced it.
 
 - [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory, DuckDB) with push-down filter/columns, DataModel, DataSet with immutable lineage chain
 - [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
-- [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed StarSchema, LineageDiagram
+- [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
 - [x] **Phase 3** — Live Dash dashboard with associative filters
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 - [x] **Phase 5** — Web UI (FastAPI + React, Dash embedded), folder-based auto-discovery, optional HTTP Basic auth, `tracebi` CLI, docker-compose deployment
@@ -143,15 +143,14 @@ HTMLRenderer().preview(report)            # inline in Jupyter
 The three-step layer model — TraceBi's positioning name and the legacy
 medallion name resolve to the same classes:
 
-| TraceBi name        | Medallion alias  | Role                                       |
-|---------------------|------------------|--------------------------------------------|
-| `LandingLayer`      | `BronzeLayer`    | Connect to upstream table, ingest as-is.   |
-| `ManipulationLayer` | `SilverLayer`    | Optional light cleaning before serving.    |
-| `FinalLayer`        | `GoldLayer`      | Serve via StarSchema — facts + dimensions. |
+| TraceBi name        | Medallion alias  | Role                                                |
+|---------------------|------------------|-----------------------------------------------------|
+| `LandingLayer`      | `BronzeLayer`    | Connect to upstream table, ingest as-is.            |
+| `ManipulationLayer` | `SilverLayer`    | Optional light cleaning before serving.             |
+| `FinalLayer`        | `GoldLayer`      | Serve via DataModel star-schema query — facts + dims. |
 
 ```python
 from tracebi import LandingLayer, ManipulationLayer, FinalLayer  # or BronzeLayer / SilverLayer / GoldLayer
-from tracebi.model.star_schema import StarSchema
 
 # Landing — raw ingest, zero transforms
 landing = LandingLayer(connector=db, source="orders_raw",
@@ -168,16 +167,15 @@ manip = (
 )
 ds_manip = manip.execute()   # loads landing → cleans → writes manipulation
 
-# Star schema
-schema = StarSchema("Sales", model=model)
-schema.add_dimension("dim_customer", table_name="customers",
-                     key_col="customer_id", attributes=["region", "segment"])
-schema.add_fact("fact_orders", table_name="orders_silver",
-                measures=["revenue", "qty"],
-                foreign_keys={"dim_customer": "customer_id"})
+# Tag tables on the DataModel with star-schema roles
+model.add_dimension("dim_customer", table_name="customers",
+                    key_col="customer_id", attributes=["region", "segment"])
+model.add_fact("fact_orders", table_name="orders_silver",
+               measures=["revenue", "qty"],
+               foreign_keys={"dim_customer": "customer_id"})
 
-# Final — aggregated via StarSchema (DuckDB-backed join/aggregation engine)
-final = FinalLayer(schema=schema, fact="fact_orders",
+# Final — aggregated via the model's star-schema query (DuckDB-backed)
+final = FinalLayer(model=model, fact="fact_orders",
                    measures={"revenue": "sum", "qty": "sum"},
                    dimensions=["dim_customer.region"],
                    sink=db, sink_table="revenue_by_region_gold")
@@ -344,7 +342,7 @@ pytest tests/
 tracebi/
 ├── tracebi/
 │   ├── connectors/       CSV, SQL, BigQuery, Snowflake, Memory
-│   ├── model/            DataSet, DataModel, StarSchema
+│   ├── model/            DataSet, DataModel (with star-schema query)
 │   ├── etl/              BronzeLayer, SilverLayer, GoldLayer
 │   ├── reports/          Report, ExcelRenderer, HTMLRenderer
 │   ├── dashboard/        Dashboard, DashboardServer, panels

@@ -12,7 +12,6 @@ from tracebi.connectors.memory_connector import MemoryConnector
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 from tracebi.model.dataset import DataSet, LineageNode
 from tracebi.model.data_model import DataModel
-from tracebi.model.star_schema import StarSchema
 from tracebi.etl.bronze import BronzeLayer, LandingLayer
 from tracebi.etl.silver import SilverLayer, ManipulationLayer
 from tracebi.etl.gold import GoldLayer, FinalLayer
@@ -30,7 +29,6 @@ __all__ = [
     "DataSet",
     "LineageNode",
     "DataModel",
-    "StarSchema",
     # Layers (canonical)
     "LandingLayer",
     "ManipulationLayer",

@@ -84,8 +84,8 @@ Run `pytest tests/` before and after any change. A passing suite is the minimum 
 **TraceBi** is a code-first, traceable BI framework for Python. Core ideas:
 
 - **DataSet**: immutable wrapper around a pandas DataFrame + lineage chain. Every operation returns a new DataSet; nothing mutates in place.
-- **DataModel**: Qlik-style associative model linking multiple DataSets by key.
-- **Medallion ETL**: Bronze (raw ingest) → Silver (declarative cleaning) → Gold (StarSchema aggregation).
+- **DataModel**: Qlik-style associative model linking multiple DataSets by key, with an analytic star-schema query surface (facts, dimensions, measures) on the same class.
+- **Medallion ETL**: Bronze (raw ingest) → Silver (declarative cleaning) → Gold (DataModel star-schema aggregation).
 - **PipelineRunner**: registers layers, schedules with APScheduler, persists run history to SQLite.
 - **Report engine**: builds structured reports (text, tables, charts) and renders to Excel, HTML, or PDF.
 - **Dashboard**: live Dash app with associative filter panels.
@@ -100,7 +100,7 @@ All four development phases are complete and tested.
 ```
 tracebi/               # Core Python package (~5200 LOC)
   connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory
-  model/               # DataSet, DataModel, StarSchema
+  model/               # DataSet, DataModel (with star-schema query)
   etl/                 # BronzeLayer, SilverLayer, GoldLayer
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer, PDFRenderer
   dashboard/           # Dashboard, FilterPanel, MetricPanel, ChartPanel, TablePanel

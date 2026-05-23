@@ -208,7 +208,7 @@ LineageDiagram(top10).to_html("lineage.html")
             background:rgba(234,179,8,.1); color:#fde68a; border:1px solid rgba(234,179,8,.25);
             white-space:nowrap; margin-top:1px;
           ">Gold</span>
-          <span style="font-size:13px; color:var(--muted); line-height:1.5;">Aggregated analytics — groups measures by dimensions via a StarSchema query. The output feeds reports and dashboards directly.</span>
+          <span style="font-size:13px; color:var(--muted); line-height:1.5;">Aggregated analytics — groups measures by dimensions via the DataModel's star-schema query. The output feeds reports and dashboards directly.</span>
         </div>
       </div>
       <p style="font-size:13px; color:var(--muted); line-height:1.7;">
@@ -233,9 +233,9 @@ silver = (<br>
 &nbsp;&nbsp;.deduplicate(subset=["order_id"])<br>
 )<br>
 <br>
-<span style="color:#fde68a"># Gold — aggregated via StarSchema</span><br>
+<span style="color:#fde68a"># Gold — aggregated via the DataModel star-schema query</span><br>
 gold = GoldLayer(<br>
-&nbsp;&nbsp;schema=schema, fact="fact_orders",<br>
+&nbsp;&nbsp;model=model, fact="fact_orders",<br>
 &nbsp;&nbsp;measures={"revenue": "sum"},<br>
 &nbsp;&nbsp;dimensions=["dim_customer.region"],<br>
 &nbsp;&nbsp;sink=db, sink_table="gold_revenue_by_region",<br>
@@ -259,8 +259,8 @@ gold = GoldLayer(<br>
         <div style="font-size:16px; font-weight:700; color:var(--text);">Star Schema — declarative analytics</div>
       </div>
       <p style="font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:12px;">
-        A <code>StarSchema</code> sits above the connector layer and adds BI semantics.
-        You declare two types of tables:
+        Tag tables on the <code>DataModel</code> with star-schema roles and the same model
+        becomes the BI surface. You declare two types of tables:
       </p>
       <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
         <div style="display:flex; gap:12px; align-items:flex-start;">
@@ -281,7 +281,7 @@ gold = GoldLayer(<br>
         </div>
       </div>
       <p style="font-size:13px; color:var(--muted); line-height:1.7;">
-        Once defined, <code>schema.query()</code> is fully declarative. You describe the result
+        Once defined, <code>model.query()</code> is fully declarative. You describe the result
         you want — which measures, grouped by which dimension attributes, filtered how —
         and TraceBi resolves all the joins, applies filters, and aggregates automatically.
         You never write the join logic by hand.
@@ -289,15 +289,13 @@ gold = GoldLayer(<br>
     </div>
     <div>
       <div class="code-block">
-schema = StarSchema("Sales", model=model)<br>
-<br>
-schema.add_dimension(<br>
+model.add_dimension(<br>
 &nbsp;&nbsp;"dim_customer",<br>
 &nbsp;&nbsp;table_name="customers_silver",<br>
 &nbsp;&nbsp;key_col="customer_id",<br>
 &nbsp;&nbsp;attributes=["region", "segment"],<br>
 )<br>
-schema.add_fact(<br>
+model.add_fact(<br>
 &nbsp;&nbsp;"fact_orders",<br>
 &nbsp;&nbsp;table_name="orders_silver",<br>
 &nbsp;&nbsp;measures=["revenue", "qty"],<br>
@@ -305,7 +303,7 @@ schema.add_fact(<br>
 )<br>
 <br>
 <span style="color:#64748b"># Declarative query — joins resolved automatically</span><br>
-ds = schema.query(<br>
+ds = model.query(<br>
 &nbsp;&nbsp;fact="fact_orders",<br>
 &nbsp;&nbsp;measures={"revenue": "sum", "qty": "sum"},<br>
 &nbsp;&nbsp;dimensions=["dim_customer.region"],<br>
@@ -338,7 +336,7 @@ ds = schema.query(<br>
     <p style="font-size:13px; color:var(--muted); line-height:1.6;">
       Bronze → Silver → Gold layers, each writing to a configurable sink.
       Declarative cleaning in Silver (cast, deduplicate, drop nulls),
-      StarSchema-powered aggregation in Gold.
+      DataModel star-schema aggregation in Gold.
     </p>
   </div>
 
@@ -602,12 +600,11 @@ result.print_lineage()<br>
           For production pipelines, structure your work as Bronze → Silver → Gold layers.
           Each layer reads from the previous sink and writes its output to the next.
           <code>SilverLayer</code> transforms are declared once and reused on every run.
-          <code>GoldLayer</code> queries a <code>StarSchema</code> to produce the final
-          analytic output.
+          <code>GoldLayer</code> queries the <code>DataModel</code>'s star-schema surface
+          to produce the final analytic output.
         </p>
         <div class="code-block">
 from tracebi import BronzeLayer, SilverLayer, GoldLayer<br>
-from tracebi.model.star_schema import StarSchema<br>
 <br>
 bronze = BronzeLayer(connector=db, source="orders_raw",<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sink=db, sink_table="orders_bronze")<br>
@@ -620,14 +617,13 @@ silver = (<br>
 &nbsp;&nbsp;.deduplicate(subset=["order_id"])<br>
 )<br>
 <br>
-schema = StarSchema("Sales", model=model)<br>
-schema.add_dimension("dim_customer", table_name="customers_silver",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key_col="customer_id", attributes=["region", "segment"])<br>
-schema.add_fact("fact_orders", table_name="orders_silver",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;measures=["revenue", "qty"],<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;foreign_keys={"dim_customer": "customer_id"})<br>
+model.add_dimension("dim_customer", table_name="customers_silver",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key_col="customer_id", attributes=["region", "segment"])<br>
+model.add_fact("fact_orders", table_name="orders_silver",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;measures=["revenue", "qty"],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;foreign_keys={"dim_customer": "customer_id"})<br>
 <br>
-gold = GoldLayer(schema=schema, fact="fact_orders",<br>
+gold = GoldLayer(model=model, fact="fact_orders",<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;measures={"revenue": "sum"}, dimensions=["dim_customer.region"],<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sink=db, sink_table="gold_by_region")<br>
 <br>
