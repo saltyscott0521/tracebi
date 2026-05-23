@@ -51,6 +51,17 @@ export const useRunLayer = () => {
   })
 }
 
+export const useRunPipeline = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ pipeline }) => post(`/pipelines/${pipeline}/run`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipelines'] }),
+  })
+}
+
+export const useDashboardLineage = () =>
+  useMutation({ mutationFn: (name) => get(`/dashboards/${name}/lineage`) })
+
 export const useLayerHistory = (pipeline, layer) =>
   useQuery({
     queryKey: ['history', pipeline, layer],

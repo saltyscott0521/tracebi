@@ -44,8 +44,10 @@ class Registry:
         self._connectors: dict[str, Any] = {}
         self._models: dict[str, Any] = {}
         self._report_factories: dict[str, dict] = {}
+        self._scheduled_factories: dict[str, dict] = {}
         self._pipelines: dict[str, Any] = {}
         self._dashboards: dict[str, dict] = {}
+        self._default_model_name: Optional[str] = None
 
     # ── Connectors ─────────────────────────────────────────────
 
@@ -75,10 +77,31 @@ class Registry:
 
     # ── Models ─────────────────────────────────────────────────
 
-    def add_model(self, model) -> "Registry":
-        """Register a DataModel by its name."""
+    def add_model(self, model, default: bool = False) -> "Registry":
+        """
+        Register a DataModel by its name.
+
+        Pass ``default=True`` to mark this model as the project default —
+        request scripts can grab it via ``registry.get_default_model()``
+        instead of building their own.
+        """
         self._models[model.name] = model
+        if default or self._default_model_name is None:
+            self._default_model_name = model.name
         return self
+
+    def set_default_model(self, name: str) -> "Registry":
+        """Mark a previously-registered model as the project default."""
+        if name not in self._models:
+            raise KeyError(f"Model '{name}' is not registered.")
+        self._default_model_name = name
+        return self
+
+    def get_default_model(self):
+        """Return the project default DataModel, or None if none is set."""
+        if self._default_model_name is None:
+            return None
+        return self._models.get(self._default_model_name)
 
     def get_model(self, name: str):
         return self._models.get(name)
@@ -158,6 +181,41 @@ class Registry:
         if not entry:
             return None
         return entry["factory"]()
+
+    # ── Scheduled reports ──────────────────────────────────────
+
+    def scheduled(
+        self,
+        name: str,
+        cron: str,
+        description: str = "",
+    ):
+        """
+        Decorator: register a report factory and also mark it for
+        scheduled execution. The PipelineRunner (or any external scheduler)
+        can read ``list_scheduled()`` to wire up cron jobs.
+
+        Usage::
+
+            @registry.scheduled("weekly_sales", cron="0 9 * * MON")
+            def weekly_sales():
+                return Report(...)
+        """
+        def decorator(fn: Callable) -> Callable:
+            self.add_report(name, fn, description)
+            self._scheduled_factories[name] = {
+                "cron":        cron,
+                "description": description,
+                "factory":     fn,
+            }
+            return fn
+        return decorator
+
+    def list_scheduled(self) -> list[dict]:
+        return [
+            {"name": k, "cron": v["cron"], "description": v["description"]}
+            for k, v in self._scheduled_factories.items()
+        ]
 
     # ── Dashboards ─────────────────────────────────────────────
 

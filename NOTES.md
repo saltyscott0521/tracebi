@@ -496,7 +496,72 @@ the older Phase 5 and AI + TraceBi TODOs. Summary of what changed:
 - Dockerfile picks up the new `[duckdb]` extra.
 
 ### Open decisions left as-is
-- Notebook → web UI hot-reload remains a future improvement; the current
-  helper is module-import-based (call `register.*` from any imported module).
 - Layer renaming is additive only — no plan to delete the
   Bronze/Silver/Gold class names. CLAUDE.md still references both.
+
+---
+
+## 2026-05-23 — Follow-up: rename finalised across UI + remaining TODOs
+
+A second pass actioned the items called out in NOTES.md follow-up.
+
+### UI refresh
+- `web/demo_app.py` migrated to `LandingLayer` / `ManipulationLayer`
+  / `FinalLayer`. Pipeline runs now stamp `layer_type =
+  "landing" | "manipulation" | "final"`.
+- React UI updated: new badge variants in `Shared.jsx`, new
+  `TYPE_BADGE` + `TYPE_LABEL` maps in `Pipelines.jsx` that handle both
+  legacy ("bronze/silver/gold") and new vocabularies, copy refresh
+  on `Home.jsx` (concept #3, feature grid, walkthrough step #3),
+  and a "⊶ Lineage" modal on `Dashboards.jsx` consuming
+  `/api/dashboards/{name}/lineage`.
+- `useRunPipeline` hook + "Run all" button on each pipeline card.
+
+### Pipeline-level run endpoint
+- `POST /api/pipelines/{name}/run` — walks all leaves with their full
+  upstream chain (deduplicated) by default, or fires every layer in
+  registration order with `refresh=false`.
+
+### Proxy header-trust auth
+- `ProxyHeaderAuthMiddleware` reads identity from a configurable header
+  (default `X-Forwarded-User`) and exposes it at `request.state.user`.
+- `TRACEBI_AUTH_PROXY_HEADER` selects proxy mode; optional
+  `TRACEBI_AUTH_PROXY_TRUSTED_IPS` restricts which client IPs may pass.
+- Proxy mode wins when both Basic and Proxy env vars are set.
+- Designed for Authelia / oauth2-proxy / Cloudflare Access deployments.
+
+### Embedded Dash toggle
+- `TRACEBI_EMBED_DASHBOARDS=0` skips the WSGI mount; dashboards then
+  run standalone via `DashboardServer.run()`. Default remains embedded
+  for the single-port demo flow.
+
+### Folder & decorator
+- `@registry.scheduled("name", cron="…")` decorator registers a report
+  *and* tags it with a cron expression. `registry.list_scheduled()`
+  exposes the cron-tagged factories for an external scheduler.
+- Second auto-discovery directory: `TRACEBI_SCHEDULED_DIR`
+  (default `scheduled/`). Same import semantics as `requests/`.
+
+### Shared project model
+- `Registry.add_model(model, default=True)` and
+  `Registry.set_default_model(name)` track a project-level default.
+- `tracebi.web.register.get_default_model()` returns it; the request
+  template and notebook scaffold both call this so files don't each
+  rebuild their own DataModel.
+
+### CLI: notebook scaffold
+- `tracebi new-request "…" --notebook` writes a valid `.ipynb` with
+  starter cells. `tracebi list-requests` now lists both `.py` and
+  `.ipynb`.
+
+### Dev-mode reload
+- `TRACEBI_DEV_MODE=1` mounts `POST /api/_dev/reload` and
+  `GET /api/_dev/discovered`.
+- `reload_modules()` invalidates the importlib caches, bumps mtime,
+  and deletes stale `.pyc` before re-importing, so back-to-back edits
+  within the same second are picked up.
+
+### Tests
+- 229 total (66 in `test_phase5.py`), covering proxy auth, dashboard
+  lineage endpoint, pipeline-level run, shared model defaults,
+  `@scheduled`, notebook scaffolding, dev-mode reload.

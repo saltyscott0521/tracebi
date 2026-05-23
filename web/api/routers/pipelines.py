@@ -44,6 +44,49 @@ def list_pipelines():
     return result
 
 
+@router.post("/{pipeline_name}/run")
+def run_pipeline(pipeline_name: str, refresh: bool = True):
+    """
+    Run every layer in a pipeline.
+
+    With ``refresh=true`` (default), each leaf is run with its full
+    upstream chain, so dependencies fire in the right order with no
+    duplicates. Set ``refresh=false`` to fire every registered layer
+    independently regardless of dependencies.
+    """
+    runner = registry.get_pipeline(pipeline_name)
+    if not runner:
+        raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found")
+
+    layer_names = list(runner._layers.keys())
+    if not layer_names:
+        return {"pipeline": pipeline_name, "status": "empty", "ran": []}
+
+    ran: list[str] = []
+    try:
+        if refresh:
+            # Leaves = layers nothing else depends on. Running each leaf
+            # with refresh=True walks the full chain via PipelineRunner.
+            depends = {reg.depends_on for reg in runner._layers.values() if reg.depends_on}
+            leaves = [n for n in layer_names if n not in depends] or layer_names
+            seen: set[str] = set()
+            for leaf in leaves:
+                for name in runner._resolve_chain(leaf):
+                    if name in seen:
+                        continue
+                    seen.add(name)
+                    runner._execute(name)
+                    ran.append(name)
+        else:
+            for name in layer_names:
+                runner._execute(name)
+                ran.append(name)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {"pipeline": pipeline_name, "status": "ok", "ran": ran}
+
+
 @router.post("/{pipeline_name}/layers/{layer_name}/run")
 def run_layer(pipeline_name: str, layer_name: str, refresh: bool = False):
     """

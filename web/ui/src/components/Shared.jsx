@@ -30,15 +30,19 @@ export function PageSub({ children }) {
 }
 
 const BADGE_STYLES = {
-  blue:  { background: 'var(--blue-lt)',              color: '#93c5fd', border: '1px solid var(--blue-br)' },
-  green: { background: 'rgba(34,197,94,.12)',          color: '#86efac', border: '1px solid rgba(34,197,94,.25)' },
-  amber: { background: 'rgba(245,158,11,.12)',         color: '#fcd34d', border: '1px solid rgba(245,158,11,.25)' },
-  red:   { background: 'rgba(239,68,68,.12)',          color: '#fca5a5', border: '1px solid rgba(239,68,68,.25)' },
-  gray:  { background: 'rgba(255,255,255,.06)',        color: '#94a3b8', border: '1px solid var(--border)' },
-  gold:  { background: 'rgba(234,179,8,.1)',           color: '#fde68a', border: '1px solid rgba(234,179,8,.25)' },
-  silver:{ background: 'rgba(148,163,184,.1)',         color: '#cbd5e1', border: '1px solid rgba(148,163,184,.25)' },
-  bronze:{ background: 'rgba(180,120,40,.15)',         color: '#fbbf24', border: '1px solid rgba(180,120,40,.3)' },
-  purple:{ background: 'rgba(167,139,250,.12)',        color: '#c4b5fd', border: '1px solid rgba(167,139,250,.25)' },
+  blue:         { background: 'var(--blue-lt)',              color: '#93c5fd', border: '1px solid var(--blue-br)' },
+  green:        { background: 'rgba(34,197,94,.12)',          color: '#86efac', border: '1px solid rgba(34,197,94,.25)' },
+  amber:        { background: 'rgba(245,158,11,.12)',         color: '#fcd34d', border: '1px solid rgba(245,158,11,.25)' },
+  red:          { background: 'rgba(239,68,68,.12)',          color: '#fca5a5', border: '1px solid rgba(239,68,68,.25)' },
+  gray:         { background: 'rgba(255,255,255,.06)',        color: '#94a3b8', border: '1px solid var(--border)' },
+  gold:         { background: 'rgba(234,179,8,.1)',           color: '#fde68a', border: '1px solid rgba(234,179,8,.25)' },
+  silver:       { background: 'rgba(148,163,184,.1)',         color: '#cbd5e1', border: '1px solid rgba(148,163,184,.25)' },
+  bronze:       { background: 'rgba(180,120,40,.15)',         color: '#fbbf24', border: '1px solid rgba(180,120,40,.3)' },
+  // New canonical layer vocabulary (TraceBi positioning)
+  landing:      { background: 'rgba(74,144,226,.12)',         color: '#93c5fd', border: '1px solid rgba(74,144,226,.30)' },
+  manipulation: { background: 'rgba(123,104,238,.12)',        color: '#c4b5fd', border: '1px solid rgba(123,104,238,.30)' },
+  final:        { background: 'rgba(16,185,129,.12)',         color: '#6ee7b7', border: '1px solid rgba(16,185,129,.30)' },
+  purple:       { background: 'rgba(167,139,250,.12)',        color: '#c4b5fd', border: '1px solid rgba(167,139,250,.25)' },
 }
 
 export function Badge({ variant = 'gray', children, style }) {

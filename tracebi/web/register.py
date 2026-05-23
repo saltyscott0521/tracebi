@@ -35,9 +35,20 @@ class _Register:
         _registry().add_connector(connector)
         return self
 
-    def model(self, model) -> "_Register":
-        _registry().add_model(model)
+    def model(self, model, default: bool = False) -> "_Register":
+        _registry().add_model(model, default=default)
         return self
+
+    def set_default_model(self, name: str) -> "_Register":
+        _registry().set_default_model(name)
+        return self
+
+    def get_default_model(self):
+        """Return the project default DataModel for use inside request scripts."""
+        return _registry().get_default_model()
+
+    def get_model(self, name: str):
+        return _registry().get_model(name)
 
     def pipeline(self, name: str, runner) -> "_Register":
         _registry().add_pipeline(name, runner)
@@ -51,6 +62,15 @@ class _Register:
         """Decorator: register a zero-arg report factory."""
         return _registry().report(name, description=description)
 
+    def scheduled(
+        self,
+        name: str,
+        cron: str,
+        description: str = "",
+    ) -> Callable:
+        """Decorator: register a report factory tagged with a cron schedule."""
+        return _registry().scheduled(name, cron=cron, description=description)
+
     def add_report(
         self,
         name: str,
@@ -61,7 +81,7 @@ class _Register:
         return self
 
     def auto_discover(self, path: str, package: Optional[str] = None) -> list[str]:
-        """Discover and import request modules in *path*. See :func:`auto_discover`."""
+        """Discover and import request modules in *path*."""
         from tracebi.web.discovery import auto_discover
         return auto_discover(path, package=package)
 
