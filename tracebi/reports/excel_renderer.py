@@ -14,16 +14,14 @@ Requires: pip install openpyxl
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
-from typing import Optional
 
 import pandas as pd
 
 from tracebi.reports.base_renderer import BaseRenderer
 from tracebi.reports.report import (
-    Report, ReportSection, SectionType,
-    TextSection, TableSection, ChartSection, SpacerSection,
+    Report, SectionType,
+    TextSection, TableSection, ChartSection,
 )
 
 
@@ -168,7 +166,7 @@ class ExcelRenderer(BaseRenderer):
     # ── Text section ───────────────────────────────────────────────────────
 
     def _write_text(self, ws, section: TextSection, row: int) -> int:
-        from openpyxl.styles import PatternFill, Font, Alignment
+        from openpyxl.styles import Font, Alignment
 
         style = section.style
         if style == "heading1":
@@ -209,7 +207,6 @@ class ExcelRenderer(BaseRenderer):
 
     def _write_table(self, ws, section: TableSection, row: int) -> int:
         from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
-        from openpyxl.utils import get_column_letter
 
         df = section.get_display_df()
         if df.empty:
@@ -312,8 +309,7 @@ class ExcelRenderer(BaseRenderer):
     # ── Chart section ──────────────────────────────────────────────────────
 
     def _write_chart(self, ws, section: ChartSection, row: int, wb) -> int:
-        from openpyxl.chart import BarChart, LineChart, PieChart, Reference, BarChart3D
-        from openpyxl.utils import get_column_letter
+        from openpyxl.chart import BarChart, LineChart, PieChart, Reference
 
         df = section.dataset.to_pandas() if section.dataset else pd.DataFrame()
         if df.empty or not section.x or not section.y:

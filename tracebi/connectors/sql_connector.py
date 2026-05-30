@@ -18,9 +18,13 @@ class SQLConnector(BaseConnector):
     SELECT query, push-down falls back to pandas after the query runs.
 
     Usage:
-        connector = SQLConnector("sales_db", url="postgresql://user:pass@host/db")
+        connector = SQLConnector("sales_db", url="sqlite:///data/sales.db")
         model.add_connector(connector)
         model.add_table("orders", connector="sales_db", source="orders")
+
+        # For Postgres / MySQL / etc., supply the URL via an env var rather
+        # than hard-coding credentials:
+        #   url=os.environ["TRACEBI_SALES_DB_URL"]
 
     Args:
         name:   Logical name used to reference this connector in a DataModel.

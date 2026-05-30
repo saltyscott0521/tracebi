@@ -7,7 +7,7 @@ Pass a Dashboard to DashboardServer to wire up callbacks and serve it.
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional
 
 from tracebi.dashboard.panels import (
     _BasePanel, TablePanel, ChartPanel, MetricPanel, FilterPanel,

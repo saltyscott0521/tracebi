@@ -15,7 +15,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import pandas as pd
 
