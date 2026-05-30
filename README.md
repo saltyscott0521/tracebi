@@ -1,5 +1,9 @@
 # TraceBi
 
+[![CI](https://github.com/saltyscott0521/tracebi/actions/workflows/ci.yml/badge.svg)](https://github.com/saltyscott0521/tracebi/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/saltyscott0521/tracebi)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A **code-first, traceable BI and analytics framework** for Python.
 
 Define your data model, transformations, and reports entirely in code.
@@ -33,36 +37,88 @@ connector, query, and transform steps that produced it.
 
 ---
 
+## 30-second quick start
+
+No database, no config — just pandas in memory:
+
+```python
+import pandas as pd
+from tracebi import DataModel, MemoryConnector
+from tracebi.reports.report import Report, TableSection
+from tracebi.reports.html_renderer import HTMLRenderer
+
+orders = pd.DataFrame({
+    "order_id": [1, 2, 3, 4],
+    "region":   ["NE", "SE", "NE", "MW"],
+    "revenue":  [100.0, 200.0, 150.0, 300.0],
+})
+
+model = DataModel("Demo").add_connector(MemoryConnector("mem", {"orders": orders}))
+model.add_table("orders", connector="mem", source="orders")
+
+ds = model.load("orders")
+report = Report("Demo").add(TableSection(title="Orders", dataset=ds))
+HTMLRenderer().serve(report, port=8080)   # opens in your browser
+```
+
+The same `DataSet` carries its lineage all the way through to the rendered
+manifest — no separate audit step.
+
+---
+
 ## Installation
 
-```bash
-# Core
-pip install pandas
-
-# Reports (Excel + charts)
-pip install -e ".[reports]"
-
-# Dashboard
-pip install -e ".[dashboard]"
-
-# Pipelines (scheduling + DB write-back)
-pip install -e ".[pipeline]"
-
-# Lineage diagrams
-pip install -e ".[lineage]"
-
-# DuckDB connector + push-down engine
-pip install -e ".[duckdb]"
-
-# Everything
-pip install -e ".[reports,dashboard,pipeline,lineage,sql,duckdb,web]"
-```
-
-### Docker
+The fastest path for an analyst:
 
 ```bash
-docker compose up --build      # web UI on http://localhost:8000
+pip install "tracebi[analyst]"        # reports + sql + csv + lineage + duckdb
 ```
+
+Or pick the pieces you need:
+
+```bash
+pip install "tracebi"                 # core only (pandas)
+pip install "tracebi[reports]"        # Excel + HTML renderers
+pip install "tracebi[dashboard]"      # Dash dashboard
+pip install "tracebi[pipeline]"       # scheduling + DB write-back
+pip install "tracebi[lineage]"        # lineage diagrams
+pip install "tracebi[duckdb]"         # DuckDB connector + push-down engine
+pip install "tracebi[web]"            # FastAPI + uvicorn web UI
+pip install "tracebi[all]"            # everything
+```
+
+### Docker / deployment
+
+The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
+Python app) and a `docker-compose.yml` that mounts `./data`, `./output`,
+and `./requests` from the host so your pipeline DB and rendered reports
+survive container restarts.
+
+```bash
+# Local: web UI on http://localhost:8000
+docker compose up --build
+```
+
+Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
+
+| Variable | Purpose |
+|---|---|
+| `TRACEBI_APP` | Python module to import on startup (default `web.demo_app`) |
+| `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | Turn on HTTP Basic auth |
+| `TRACEBI_AUTH_PROXY_HEADER` | Trust an upstream identity header (Authelia / oauth2-proxy / Cloudflare Access) |
+| `TRACEBI_EMBED_DASHBOARDS=0` | Run dashboards as separate processes |
+| `TRACEBI_DEV_MODE=1` | Mount `/api/_dev/reload` for hot iteration |
+
+**Single-VM deployment** is the supported v1 story — one container behind
+nginx or a reverse-proxy, SQLite volume mounted at `/app/data`. Cloud Run /
+ECS / Fly.io all work the same way (the scheduler runs in-process; if the
+container restarts, schedules resume from the persisted DB).
+
+**Honest caveats:** the scheduler is single-process. It will not scale
+horizontally across replicas, and a hard kill loses in-flight runs (the
+`tracebi_runs` table still records that they started). For larger workloads
+swap APScheduler for an external orchestrator (Airflow, Prefect, Dagster) and
+keep the rest of TraceBi as the data layer.
 
 ### CLI
 
@@ -331,7 +387,7 @@ python examples/phase4_example.py    # full pipeline (run seeds/seed_db.py first
 
 ```bash
 pytest tests/
-# 163 passed
+# 229 passed
 ```
 
 ---
@@ -355,7 +411,7 @@ tracebi/
 │   ├── run.py            Dev server entrypoint
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                163 tests across all phases
+├── tests/                229 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── requests/             _template.py — scaffold for ad hoc report scripts
 ├── data/                 SQLite DB lives here (gitignored)

@@ -27,7 +27,7 @@ import pandas as pd
 from tracebi.reports.base_renderer import BaseRenderer
 from tracebi.reports.report import (
     Report, SectionType,
-    TextSection, TableSection, ChartSection, SpacerSection,
+    TextSection, TableSection, ChartSection,
 )
 
 # ── CSS ───────────────────────────────────────────────────────────────────
