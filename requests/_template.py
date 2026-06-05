@@ -6,56 +6,43 @@ Fill in each section below.
 
 Run with:
     python requests/weekly_sales.py
+    # or, if the web server has registered a shared DataModel:
+    tracebi run weekly_sales
 
 Or scaffold a brand-new request with:
-    tracebi new-request "Weekly Sales"
+    tracebi new-request "Weekly Sales"            # .py
+    tracebi new-request "Weekly Sales" --notebook # .ipynb
 """
 
 import os
-import pandas as pd
-from tracebi import (
-    DataModel, MemoryConnector, CSVConnector, DuckDBConnector,
-    DataSet, LineageNode,
-)
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
-# from tracebi import LandingLayer, ManipulationLayer, FinalLayer
-# from tracebi.lineage.diagram import LineageDiagram
 
 
-# ── 1. Connect ────────────────────────────────────────────────────────────────
-# Register connectors and build a DataModel.
-#
-# Connectors all share the same load(source, filter=None, columns=None)
-# contract — pass filter/columns to push predicates down to the source
-# when possible (SQL WHERE, DuckDB, BigQuery).
+# ── 1. Get the project DataModel ─────────────────────────────────────────────
+# Prefer the shared model registered by the web app (via
+# ``registry.add_model(model, default=True)``). Fall back to building a
+# local one when running the script standalone outside the web server.
 
-model = DataModel("MyModel")
+try:
+    from tracebi.web import register
+    model = register.get_default_model()
+except ImportError:
+    model = None
 
-# Example: in-memory connector for quick demos
-# connector = MemoryConnector("mem", tables={"orders": orders_df})
-# model.add_connector(connector)
-# model.add_table("orders", connector="mem", source="orders")
-
-# Example: CSV files
-# model.add_connector(CSVConnector("files", directory="data/"))
-# model.add_table("orders", connector="files", source="orders.csv")
-
-# Example: DuckDB over a Parquet file
-# model.add_connector(DuckDBConnector("warehouse", directory="data/"))
-# model.add_table("orders", connector="warehouse", source="orders.parquet")
-
-# Example: SQL database
-# from tracebi import SQLConnector
-# model.add_connector(SQLConnector("db", url="sqlite:///sales.db"))
-# model.add_table("orders", connector="db", source="orders")
+if model is None:
+    from tracebi import DataModel, MemoryConnector  # noqa: F401
+    # Example local model — uncomment and adapt:
+    # model = DataModel("MyModel")
+    # model.add_connector(MemoryConnector("mem", tables={"orders": orders_df}))
+    # model.add_table("orders", connector="mem", source="orders")
+    pass
 
 
 # ── 2. Build DataSets ─────────────────────────────────────────────────────────
-# Load and transform data using the fluent DataSet API.
-# Each operation appends a LineageNode — no data is mutated in place.
-
+# Load and transform via the model — every step appends a LineageNode.
+#
 # orders_ds = (
 #     model.load("orders", filter={"status": "shipped"})  # pushed down to source
 #     .transform(
@@ -94,8 +81,6 @@ report = (
     #     totals=["revenue"],
     # ))
 )
-
-report.describe()
 
 
 # ── 4. Render ─────────────────────────────────────────────────────────────────
