@@ -26,7 +26,8 @@ from web.api.registry import registry
 # ── Sample data ───────────────────────────────────────────────────────────────
 
 orders_df = pd.DataFrame({
-    "order_id": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "order_id":    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "customer_id": [1, 2, 3, 4, 1, 3, 2, 4, 1, 3],
     "region":   ["North East", "South East", "Midwest", "West",
                  "North East", "Midwest", "South East", "West",
                  "North East", "Midwest"],
@@ -70,6 +71,12 @@ model.add_connector(connector)
 model.add_table("orders",    connector="demo", source="orders")
 model.add_table("trend",     connector="demo", source="trend")
 model.add_table("customers", connector="demo", source="customers")
+model.add_relationship(
+    "orders_to_customers",
+    left_table="orders",
+    right_table="customers",
+    left_key="customer_id",
+)
 model.connect()
 
 registry.add_connector(connector)
