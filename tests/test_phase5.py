@@ -815,3 +815,180 @@ class TestDevReload:
         assert r.status_code == 200
         body = r.json()
         assert body["count"] >= 1
+
+
+# ── notebook_to_source helper ─────────────────────────────────────────────
+
+class TestNotebookToSource:
+    def _make_nb(self, tmp_path, cells: list[dict]) -> str:
+        import json
+        nb = {
+            "nbformat": 4, "nbformat_minor": 5,
+            "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}},
+            "cells": cells,
+        }
+        p = tmp_path / "test_nb.ipynb"
+        p.write_text(json.dumps(nb))
+        return str(p)
+
+    def test_extracts_code_cells(self, tmp_path):
+        from tracebi._notebook import notebook_to_source
+        path = self._make_nb(tmp_path, [
+            {"cell_type": "markdown", "metadata": {}, "source": ["# Title\n"]},
+            {"cell_type": "code",     "metadata": {}, "execution_count": None, "outputs": [],
+             "source": ["x = 1\n", "y = x + 1\n"]},
+        ])
+        src = notebook_to_source(path)
+        assert "x = 1" in src
+        assert "# Title" not in src
+
+    def test_drops_magic_lines(self, tmp_path):
+        from tracebi._notebook import notebook_to_source
+        path = self._make_nb(tmp_path, [
+            {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
+             "source": ["%matplotlib inline\n", "import pandas as pd\n", "!pip install foo\n"]},
+        ])
+        src = notebook_to_source(path)
+        assert "%matplotlib" not in src
+        assert "!pip" not in src
+        assert "import pandas" in src
+
+    def test_multiple_cells_separated_by_blank_line(self, tmp_path):
+        from tracebi._notebook import notebook_to_source
+        path = self._make_nb(tmp_path, [
+            {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
+             "source": ["a = 1\n"]},
+            {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
+             "source": ["b = 2\n"]},
+        ])
+        src = notebook_to_source(path)
+        assert "a = 1" in src
+        assert "b = 2" in src
+
+    def test_empty_notebook_returns_empty_string(self, tmp_path):
+        from tracebi._notebook import notebook_to_source
+        path = self._make_nb(tmp_path, [])
+        assert notebook_to_source(path) == ""
+
+    def test_source_as_string_not_list(self, tmp_path):
+        from tracebi._notebook import notebook_to_source
+        path = self._make_nb(tmp_path, [
+            {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
+             "source": "z = 42\n"},
+        ])
+        src = notebook_to_source(path)
+        assert "z = 42" in src
+
+
+# ── tracebi run with .ipynb ───────────────────────────────────────────────
+
+class TestCliRunNotebook:
+    def _make_nb(self, path, source_lines: list[str]):
+        import json
+        nb = {
+            "nbformat": 4, "nbformat_minor": 5,
+            "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}},
+            "cells": [
+                {"cell_type": "code", "metadata": {}, "execution_count": None,
+                 "outputs": [], "source": source_lines},
+            ],
+        }
+        path.write_text(json.dumps(nb))
+
+    def test_run_ipynb_executes_code(self, tmp_path, capsys):
+        from tracebi.cli import main
+        requests_dir = tmp_path / "requests"
+        requests_dir.mkdir()
+        nb_path = requests_dir / "my_report.ipynb"
+        self._make_nb(nb_path, ["print('notebook ran')\n"])
+        rc = main(["--requests-dir", str(requests_dir), "run", "my_report"])
+        assert rc == 0
+        assert "notebook ran" in capsys.readouterr().out
+
+    def test_run_ipynb_explicit_suffix(self, tmp_path, capsys):
+        from tracebi.cli import main
+        requests_dir = tmp_path / "requests"
+        requests_dir.mkdir()
+        nb_path = requests_dir / "report2.ipynb"
+        self._make_nb(nb_path, ["print('explicit suffix')\n"])
+        rc = main(["--requests-dir", str(requests_dir), "run", "report2.ipynb"])
+        assert rc == 0
+        assert "explicit suffix" in capsys.readouterr().out
+
+    def test_run_prefers_py_over_ipynb(self, tmp_path, capsys):
+        from tracebi.cli import main
+        requests_dir = tmp_path / "requests"
+        requests_dir.mkdir()
+        (requests_dir / "dupe.py").write_text("print('python')\n")
+        self._make_nb(requests_dir / "dupe.ipynb", ["print('notebook')\n"])
+        main(["--requests-dir", str(requests_dir), "run", "dupe"])
+        out = capsys.readouterr().out
+        assert "python" in out
+
+    def test_run_missing_returns_nonzero(self, tmp_path):
+        from tracebi.cli import main
+        requests_dir = tmp_path / "requests"
+        requests_dir.mkdir()
+        rc = main(["--requests-dir", str(requests_dir), "run", "nope"])
+        assert rc != 0
+
+    def test_run_calls_run_function_if_present(self, tmp_path, capsys):
+        from tracebi.cli import main
+        requests_dir = tmp_path / "requests"
+        requests_dir.mkdir()
+        nb_path = requests_dir / "has_run.ipynb"
+        self._make_nb(nb_path, [
+            "def run():\n",
+            "    print('run called')\n",
+        ])
+        rc = main(["--requests-dir", str(requests_dir), "run", "has_run"])
+        assert rc == 0
+        assert "run called" in capsys.readouterr().out
+
+
+# ── auto_discover with .ipynb ─────────────────────────────────────────────
+
+class TestAutoDiscoverNotebook:
+    def _make_nb(self, path, source_lines: list[str]):
+        import json
+        nb = {
+            "nbformat": 4, "nbformat_minor": 5,
+            "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}},
+            "cells": [
+                {"cell_type": "code", "metadata": {}, "execution_count": None,
+                 "outputs": [], "source": source_lines},
+            ],
+        }
+        path.write_text(json.dumps(nb))
+
+    def test_discovers_ipynb(self, tmp_path):
+        from tracebi.web.discovery import auto_discover
+        self._make_nb(tmp_path / "my_notebook.ipynb", ["NB_VALUE = 'hello'\n"])
+        discovered = auto_discover(str(tmp_path))
+        assert any("my_notebook" in n for n in discovered)
+
+    def test_notebook_code_is_executed(self, tmp_path):
+        import sys
+        from tracebi.web.discovery import auto_discover
+        marker = tmp_path / "nb_ran.txt"
+        self._make_nb(tmp_path / "side_effect.ipynb", [
+            f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran')\n",
+        ])
+        auto_discover(str(tmp_path))
+        assert marker.read_text() == "ran"
+
+    def test_skips_underscore_notebooks(self, tmp_path):
+        from tracebi.web.discovery import auto_discover
+        self._make_nb(tmp_path / "_private.ipynb", ["PRIVATE = True\n"])
+        self._make_nb(tmp_path / "public.ipynb", ["PUBLIC = True\n"])
+        discovered = auto_discover(str(tmp_path))
+        assert not any("_private" in n for n in discovered)
+        assert any("public" in n for n in discovered)
+
+    def test_magic_lines_dropped_during_discovery(self, tmp_path):
+        from tracebi.web.discovery import auto_discover
+        self._make_nb(tmp_path / "with_magic.ipynb", [
+            "%matplotlib inline\n",
+            "MAGIC_OK = True\n",
+        ])
+        auto_discover(str(tmp_path))  # would raise SyntaxError if magic not stripped

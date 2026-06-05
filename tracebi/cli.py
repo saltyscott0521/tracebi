@@ -440,15 +440,33 @@ def cmd_list_requests(args: argparse.Namespace) -> int:
 def cmd_run(args: argparse.Namespace) -> int:
     requests_dir: Path = args.requests_dir
     name = args.name
-    if not name.endswith(".py"):
-        name = name + ".py"
-    path = requests_dir / name
-    if not path.is_file():
-        print(f"Request not found: {path}", file=sys.stderr)
+    path = _resolve_request_path(requests_dir, name)
+    if path is None:
+        print(f"Request not found in {requests_dir}: {name}", file=sys.stderr)
         return 1
     print(f"Running {path}…")
-    runpy.run_path(str(path), run_name="__main__")
+    if path.suffix == ".ipynb":
+        from tracebi._notebook import notebook_to_source
+        source = notebook_to_source(path)
+        ns: dict = {"__name__": "__main__", "__file__": str(path)}
+        exec(compile(source, str(path), "exec"), ns)
+        if callable(ns.get("run")):
+            ns["run"]()
+    else:
+        runpy.run_path(str(path), run_name="__main__")
     return 0
+
+
+def _resolve_request_path(requests_dir: Path, name: str) -> Optional[Path]:
+    """Find a request file by name, trying .py then .ipynb if no suffix given."""
+    candidate = requests_dir / name
+    if candidate.is_file():
+        return candidate
+    for suffix in (".py", ".ipynb"):
+        cand = requests_dir / f"{name}{suffix}"
+        if cand.is_file():
+            return cand
+    return None
 
 
 def cmd_validate(args: argparse.Namespace) -> int:

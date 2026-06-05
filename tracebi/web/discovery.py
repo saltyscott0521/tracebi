@@ -3,9 +3,11 @@ Folder-based auto-discovery for request and scheduled scripts.
 
 Two entry points:
 
-* :func:`auto_discover` — import every ``*.py`` file in a directory
-  (non-recursive, skips ``_*``).  Decorators inside (``@registry.report``,
-  ``@registry.scheduled``) fire as a side effect of import.
+* :func:`auto_discover` — import every ``*.py`` and ``*.ipynb`` file in a
+  directory (non-recursive, skips ``_*``).  Decorators inside
+  (``@registry.report``, ``@registry.scheduled``) fire as a side effect of
+  import. Notebook code cells are concatenated into a script first; line
+  magics and shell escapes are silently dropped.
 
 * :func:`reload_modules` — re-import the modules previously discovered
   via :func:`auto_discover`. Used by the optional dev-mode reload endpoint
@@ -45,17 +47,32 @@ def auto_discover(path: str, package: Optional[str] = None) -> list[str]:
 
     discovered: list[str] = []
     for entry in sorted(os.listdir(path)):
-        if not entry.endswith(".py") or entry.startswith("_"):
+        if entry.startswith("_"):
+            continue
+        is_py = entry.endswith(".py")
+        is_nb = entry.endswith(".ipynb")
+        if not (is_py or is_nb):
             continue
         full = os.path.join(path, entry)
-        stem = entry[:-3]
+        stem = entry[: -len(".ipynb") if is_nb else -3]
         mod_name = f"{package}.{stem}" if package else f"tracebi_request_{stem}"
-        spec = importlib.util.spec_from_file_location(mod_name, full)
-        if spec is None or spec.loader is None:
-            continue
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[mod_name] = module
-        spec.loader.exec_module(module)
+
+        if is_nb:
+            from tracebi._notebook import notebook_to_source
+            source = notebook_to_source(full)
+            code = compile(source, full, "exec")
+            module = type(sys)("tracebi_request_nb_" + stem)
+            module.__file__ = full
+            sys.modules[mod_name] = module
+            exec(code, module.__dict__)  # noqa: S102
+        else:
+            spec = importlib.util.spec_from_file_location(mod_name, full)
+            if spec is None or spec.loader is None:
+                continue
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[mod_name] = module
+            spec.loader.exec_module(module)
+
         discovered.append(mod_name)
         _discovered[mod_name] = full
     return discovered
