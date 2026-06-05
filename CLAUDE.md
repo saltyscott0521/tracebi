@@ -85,13 +85,13 @@ Run `pytest tests/` before and after any change. A passing suite is the minimum 
 
 - **DataSet**: immutable wrapper around a pandas DataFrame + lineage chain. Every operation returns a new DataSet; nothing mutates in place.
 - **DataModel**: Qlik-style associative model linking multiple DataSets by key, with an analytic star-schema query surface (facts, dimensions, measures) on the same class.
-- **Medallion ETL**: Bronze (raw ingest) → Silver (declarative cleaning) → Gold (DataModel star-schema aggregation).
+- **Medallion ETL**: Landing (raw ingest) → Manipulation (declarative cleaning) → Final (DataModel star-schema aggregation). `BronzeLayer` / `SilverLayer` / `GoldLayer` remain as aliases.
 - **PipelineRunner**: registers layers, schedules with APScheduler, persists run history to SQLite.
 - **Report engine**: builds structured reports (text, tables, charts) and renders to Excel, HTML, or PDF.
 - **Dashboard**: live Dash app with associative filter panels.
-- **Web layer** (`web/`): FastAPI REST API exposing all of the above via a singleton registry.
+- **Web layer** (`web/`): FastAPI REST API + React UI exposing all of the above via a singleton registry.
 
-All four development phases are complete and tested.
+All six development phases are complete and tested.
 
 ---
 
@@ -99,28 +99,39 @@ All four development phases are complete and tested.
 
 ```
 tracebi/               # Core Python package (~5200 LOC)
-  connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory
+  connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
   model/               # DataSet, DataModel (with star-schema query)
-  etl/                 # BronzeLayer, SilverLayer, GoldLayer
+  etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer, PDFRenderer
   dashboard/           # Dashboard, FilterPanel, MetricPanel, ChartPanel, TablePanel
   pipeline/            # PipelineRunner + APScheduler integration
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
+  web/                 # register facade + auto-discovery for request scripts (.py and .ipynb)
+  cli.py               # tracebi init / new-request / list-requests / run / validate
+  _notebook.py         # notebook_to_source() — concatenates code cells for exec
   __init__.py          # Public API re-exports — check here before writing new code
 web/
   api/
-    main.py            # FastAPI app entry point — CORS, routers, WSGI mounts
+    main.py            # FastAPI app entry point — CORS, routers, WSGI mounts, auth
+    auth.py            # Optional HTTP Basic / proxy-header middleware
     registry.py        # Singleton resource store — the seam between framework and app
-    routers/           # One file per domain (connectors, models, reports, pipelines)
-  templates/           # Jinja2 HTML templates
+    routers/           # One file per domain (connectors, models, reports, pipelines, dashboards, dev)
+  templates/           # Jinja2 HTML templates (legacy index)
+  ui/                  # React UI (built into web/static/ at Docker build time)
   run.py               # Dev server (uvicorn wrapper)
   demo_app.py          # Default app module — shows how to wire everything together
-examples/              # Phase 1–4 runnable demos — read these to understand data flow
-tests/                 # 163 pytest tests, one file per phase
+examples/              # Phase 1–5 runnable demos — read these to understand data flow
+tests/                 # 243 pytest tests, one file per phase
 seeds/                 # DB init + Bronze seeding
-requests/              # Ad hoc report scripts; _template.py is the scaffold to copy
+requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
 data/                  # SQLite DB (gitignored)
+.env.example           # Documented env vars (auth, connector URLs, dev mode)
+.github/workflows/     # CI — pytest matrix + ruff lint
+Dockerfile             # Multi-stage build (React UI + Python app)
+docker-compose.yml     # Single-container getting-started story
 pyproject.toml         # Single source of truth for deps, build, and pytest config
+CHANGELOG.md           # Keep-a-changelog format
+LICENSE                # MIT
 README.md              # Full user-facing docs
 NOTES.md               # Architecture decisions and open questions
 ```
@@ -136,15 +147,17 @@ pip install -e ".[dev]"                        # All extras + pytest
 # Run (dev)
 python web/run.py                              # http://127.0.0.1:8000
 TRACEBI_APP=mymodule.config python web/run.py  # Custom app module
+TRACEBI_DEV_MODE=1 python web/run.py           # Enables POST /api/_dev/reload
 
 # Run (prod)
 uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+docker compose up --build                      # Or the docker-compose path
 
 # Database
 python seeds/seed_db.py                        # Create + seed data/tracebi.db
 
 # Tests
-pytest tests/                                  # Full suite (163 tests)
+pytest tests/                                  # Full suite (243 tests)
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
 ```
@@ -166,7 +179,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, dashboard, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. Do not add a `.env` file — the only env var the framework reads is `TRACEBI_APP`.
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_EMBED_DASHBOARDS`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`.
 
 ---
 
@@ -199,9 +212,11 @@ Decorate a factory function with `@registry.report("name")`. The function receiv
 
 ### New medallion layer
 ```python
-layer = SilverLayer("orders_silver", source=bronze_connector, transforms=[...])
-runner.register(layer)
-runner.schedule("orders_silver", "0 * * * *")  # optional cron
+# ManipulationLayer is the canonical name; SilverLayer remains as an alias.
+layer = ManipulationLayer(source=bronze_connector, source_table="orders_bronze",
+                          sink=db, sink_table="orders_silver").deduplicate(subset=["order_id"])
+runner.register(layer, name="orders_silver", schedule="0 * * * *",
+                depends_on="orders_bronze")
 ```
 
 ### New dashboard panel
@@ -231,11 +246,11 @@ GET  /dashboards/{name}/            → Dash WSGI sub-app (not FastAPI)
 
 ## What Doesn't Exist Yet
 
-- No CI/CD (no GitHub Actions, Dockerfile, or Makefile)
-- No `.env` support
+- No Makefile (commands documented in README + this file)
 - No database migrations (layers are idempotent)
-- No authentication on the web API
 - No pre-commit hooks
+- No PyPI release (install is `pip install -e .` or from git)
+- No PDF renderer implementation (the `[pdf]` extras key exists but `PDFRenderer` does not)
 
 Don't add these unless asked.
 

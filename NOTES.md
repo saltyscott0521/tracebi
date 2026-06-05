@@ -107,10 +107,11 @@ currently combine:
 That combination remains a genuine differentiator.
 
 ### TODO
-- [ ] Design a `RequestTemplate` that Claude Code can use as a scaffold
-      when generating new report scripts from natural language
-- [ ] Consider a CLI command: `tracebi new-request "open orders by region"`
-      that scaffolds a new request file from a template
+- [x] Design a `RequestTemplate` that Claude Code can use as a scaffold
+      when generating new report scripts from natural language —
+      `tracebi/cli.py:_template_text()` is the canonical scaffold.
+- [x] Add a CLI command `tracebi new-request "open orders by region"` —
+      shipped, plus `--notebook` flag for `.ipynb` scaffolding.
 
 ---
 
@@ -268,21 +269,23 @@ TRACEBI_APP=myproject.tracebi_config python web/run.py
 dashboards and registers them with the shared registry. `demo_app.py` is a
 reference implementation, not a required file.
 
-### Notebook → Web UI workflow (TODO)
-Current gap: there is no smooth path from "I built something in a notebook"
-to "it shows up in the web UI". The intended workflow is:
-1. Explore and prototype in a notebook using the library
-2. Move the stable definitions into a `tracebi_config.py` module
-3. Register them and point `TRACEBI_APP` at the module
+### Notebook → Web UI workflow (DONE)
+Three pieces shipped on this thread:
 
-This is functional but manual. A future improvement could be a helper that
-lets you register objects directly from a notebook into a running server
-(e.g. via a hot-reload module or a dev-mode registry endpoint).
+1. **`tracebi.web.register`** — thin facade (`register.connector()`, `register.model()`,
+   `@register.report()`, `register.get_default_model()`, …) that lazy-imports the registry
+   so notebooks don't need to know FastAPI's layout.
+2. **`tracebi.web.discovery.auto_discover()`** — folder scanner that imports
+   every `*.py` and `*.ipynb` (skipping `_*`) under `TRACEBI_REQUESTS_DIR`
+   (default `./requests`). Notebook code cells are concatenated; line magics
+   (`%matplotlib`) and shell escapes (`!pip install`) are dropped silently.
+3. **`POST /api/_dev/reload`** — opt-in dev-mode endpoint
+   (`TRACEBI_DEV_MODE=1`) that re-imports every previously-discovered module.
 
 ### TODO
-- [ ] Design the notebook → web UI workflow more explicitly
-- [ ] Consider a `tracebi.web.register()` helper usable from notebooks
-- [ ] Add a `/dashboards/<name>/lineage` endpoint to expose dashboard dataset lineage
+- [x] Design the notebook → web UI workflow more explicitly — see above.
+- [x] Add a `tracebi.web.register()` helper usable from notebooks — shipped.
+- [x] Add a `/dashboards/<name>/lineage` endpoint to expose dashboard dataset lineage — shipped.
 
 ---
 
@@ -426,12 +429,19 @@ architecture — worth keeping in mind as the web UI develops.
 
 ## Open Questions
 
-- Should `requests/` files be standalone scripts or should they import a
-  shared project-level `DataModel` defined once in a central file?
-- Should the request template support both `.py` and `.ipynb` formats?
-- For the CLI scaffolding idea — is `tracebi new-request` worth building now?
-- What does the notebook → web UI registration workflow look like in practice?
-  Should it be a live dev-mode endpoint, a module reload, or just "copy to config file"?
+All four questions in this section have been resolved:
+
+- **Shared vs standalone request files** — resolved: shared. `requests/_template.py`
+  and the CLI scaffold both call `register.get_default_model()` and fall back to
+  building a local model only when no project default has been registered.
+- **`.py` and `.ipynb` request formats** — resolved: both. `tracebi new-request
+  --notebook` scaffolds an `.ipynb`; `tracebi run` and `auto_discover` execute
+  either format.
+- **`tracebi new-request` worth building** — resolved: yes, shipped. Plus
+  `tracebi init`, `list-requests`, `run`, and `validate`.
+- **Notebook → web UI registration workflow** — resolved: folder-based
+  auto-discovery on startup, plus the optional dev-mode reload endpoint for
+  iterative editing without restarting the server.
 
 ---
 

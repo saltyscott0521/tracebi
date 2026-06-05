@@ -123,9 +123,12 @@ keep the rest of TraceBi as the data layer.
 ### CLI
 
 ```bash
-tracebi new-request "Open orders by region"   # scaffold requests/open_orders_by_region.py
+tracebi init my_project                              # scaffold tracebi.yaml + .env.example + requests/
+tracebi new-request "Open orders by region"          # → requests/open_orders_by_region.py
+tracebi new-request "Customer churn" --notebook      # → requests/customer_churn.ipynb
 tracebi list-requests
-tracebi run open_orders_by_region
+tracebi run open_orders_by_region                    # works for .py and .ipynb
+tracebi validate                                     # sanity-check the current project
 ```
 
 ---
@@ -323,7 +326,7 @@ python web/run.py
 # Open http://localhost:8000
 ```
 
-The web UI auto-detects `data/tracebi.db`. If the Silver pipeline layer has been run, reports and dashboards read from real medallion data. Otherwise it falls back to in-memory demo data.
+`web/demo_app.py` is the default app module. It wires an in-memory `MemoryConnector` for the main `SalesModel` and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports and dashboards read from those resources.
 
 To point the UI at your own data module instead of the built-in demo:
 
@@ -387,7 +390,7 @@ python examples/phase4_example.py    # full pipeline (run seeds/seed_db.py first
 
 ```bash
 pytest tests/
-# 229 passed
+# 243 passed
 ```
 
 ---
@@ -411,7 +414,7 @@ tracebi/
 │   ├── run.py            Dev server entrypoint
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                229 tests across all phases
+├── tests/                243 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── requests/             _template.py — scaffold for ad hoc report scripts
 ├── data/                 SQLite DB lives here (gitignored)
