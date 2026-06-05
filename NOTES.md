@@ -627,3 +627,67 @@ analyzable statically).
 2. **Make the lineage truly bulletproof** (frozen nodes, cryptographic fingerprints, git SHA in manifests, cross-pipeline lineage) before adding more surface area. The promise of "defensible audit trail" is the only thing we can offer that dbt + Hex + Streamlit cannot, and it has to actually hold.
 
 The pandas-memory ceiling is the eventual scaling wall, but doesn't have to be solved on day one — make the abstraction lazy-friendly now so it can be swapped later.
+
+
+---
+
+## 2026-06-05 — demo_app.py → Folder-Based App Structure
+
+### Decision
+
+`web/demo_app.py` is a monolithic file (~460 LOC) mixing data setup, reports,
+dashboard, and pipeline. Goal: split it into a folder where each concern lives
+in its own file and a single `registry.py` is the explicit wiring manifest.
+
+### Chosen approach: Option A — Explicit registry
+
+Each resource is defined in its own file as a plain function or object (no
+decorators). One central `registry.py` imports them all and makes every
+`registry.add_*()` / `registry.add_report()` call. Reading `registry.py`
+top-to-bottom shows the complete app manifest.
+
+Auto-discovery (`@registry.report` decorators spread across files) was
+considered but rejected for the structured app layer — auto-discovery stays
+for ad-hoc `requests/` scripts.
+
+### Target layout
+
+```
+web/
+  demo_app/                    ← replaces demo_app.py; TRACEBI_APP=web.demo_app
+    __init__.py                ← from web.demo_app import registry  (triggers wiring)
+    model.py                   ← DataModel, MemoryConnector, relationships
+    pipeline.py                ← PipelineRunner + Landing/Manipulation/Final layers
+    dashboard.py               ← Dashboard + DashboardServer
+    reports/
+      __init__.py              ← empty
+      sales_summary.py         ← def sales_summary() -> Report
+      revenue_trend.py         ← def revenue_trend() -> Report
+      customer_overview.py     ← def customer_overview() -> Report
+      medallion_revenue.py     ← def medallion_revenue() -> Report
+    registry.py                ← imports all of the above; all registry.add_*() calls live here
+```
+
+### Key invariants to preserve
+
+- `TRACEBI_APP=web.demo_app` must keep working (no change to the env var).
+- `model` object from `model.py` is the shared default — `pipeline.py`,
+  `dashboard.py`, and reports all import from `model.py`, never redefine it.
+- `registry.py` is the only file that imports from `web.api.registry` —
+  individual report files stay pure Python (importable without the web stack).
+- `pipeline.py` creates `_runner` and runs the startup sequence; `registry.py`
+  calls `registry.add_pipeline("sales", _runner)`.
+
+### TODO (pick up next session)
+
+- [ ] Create `web/demo_app/` folder with the layout above
+- [ ] Migrate each report function to its own file under `reports/`
+- [ ] Pull connector + DataModel into `model.py`
+- [ ] Pull pipeline layers + PipelineRunner into `pipeline.py`
+- [ ] Pull Dashboard + DashboardServer into `dashboard.py`
+- [ ] Write `registry.py` that imports + wires everything
+- [ ] Write `__init__.py` that imports registry (side-effect import)
+- [ ] Delete `web/demo_app.py`
+- [ ] Verify `TRACEBI_APP=web.demo_app` still works (resolves to `__init__.py`)
+- [ ] Run full test suite (243 tests) — no regressions expected since web layer
+      imports demo_app lazily via `TRACEBI_APP` string, not direct import
