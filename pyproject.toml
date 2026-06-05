@@ -9,25 +9,97 @@ description = "Code-first, traceable BI and analytics framework for Python"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
+authors = [
+    { name = "TraceBi contributors" },
+]
+keywords = [
+    "bi",
+    "business-intelligence",
+    "analytics",
+    "lineage",
+    "etl",
+    "medallion",
+    "reports",
+    "dashboard",
+    "data-engineering",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "pandas>=1.5",
 ]
 
+[project.urls]
+Homepage      = "https://github.com/saltyscott0521/tracebi"
+Repository    = "https://github.com/saltyscott0521/tracebi"
+Documentation = "https://github.com/saltyscott0521/tracebi#readme"
+Issues        = "https://github.com/saltyscott0521/tracebi/issues"
+Changelog     = "https://github.com/saltyscott0521/tracebi/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
-csv = ["openpyxl>=3.0"]
-sql = ["sqlalchemy>=2.0"]
-bigquery = ["google-cloud-bigquery>=3.0", "db-dtypes"]
+csv       = ["openpyxl>=3.0"]
+sql       = ["sqlalchemy>=2.0"]
+duckdb    = ["duckdb>=0.9"]
+bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
-reports = ["openpyxl>=3.0", "matplotlib>=3.5"]
-pdf = ["weasyprint>=57"]
+reports   = ["openpyxl>=3.0", "matplotlib>=3.5"]
+pdf       = ["weasyprint>=57"]
 dashboard = ["dash>=2.14", "plotly>=5.0"]
-lineage = ["networkx>=3.0", "matplotlib>=3.5"]
+lineage   = ["networkx>=3.0", "matplotlib>=3.5"]
 medallion = ["networkx>=3.0"]
-pipeline = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
-web = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.0", "python-multipart>=0.0.6"]
+pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
+web       = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.0", "python-multipart>=0.0.6"]
+
+# Convenience bundles
+analyst = [
+    # Common case for a data analyst: reports + SQL + CSV + lineage + DuckDB + dotenv
+    "openpyxl>=3.0",
+    "matplotlib>=3.5",
+    "sqlalchemy>=2.0",
+    "networkx>=3.0",
+    "duckdb>=0.9",
+    "python-dotenv>=1.0",
+]
+all = [
+    # Everything: every connector, every renderer, every server.
+    "openpyxl>=3.0",
+    "matplotlib>=3.5",
+    "sqlalchemy>=2.0",
+    "duckdb>=0.9",
+    "google-cloud-bigquery>=3.0",
+    "db-dtypes",
+    "snowflake-connector-python>=3.0",
+    "weasyprint>=57",
+    "dash>=2.14",
+    "plotly>=5.0",
+    "networkx>=3.0",
+    "apscheduler>=3.10",
+    "fastapi>=0.100",
+    "uvicorn>=0.23",
+    "starlette>=0.27",
+    "jinja2>=3.0",
+    "python-multipart>=0.0.6",
+    "python-dotenv>=1.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
+    "ruff>=0.4",
     "openpyxl>=3.0",
     "matplotlib>=3.5",
     "dash>=2.14",
@@ -35,10 +107,38 @@ dev = [
     "networkx>=3.0",
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
+    "duckdb>=0.9",
+    "python-dotenv>=1.0",
 ]
+
+[project.scripts]
+tracebi = "tracebi.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["tracebi"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# Keep the lint surface narrow — just pyflakes (real bugs). The codebase
+# predates ruff so we don't enable import-order / whitespace rules that
+# would churn unrelated files.
+select = ["F"]
+ignore = [
+    "F541",  # f-string without placeholders — used intentionally for clarity
+    "F841",  # unused local — a few pre-existing cases, not worth churning
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*"    = ["F401", "F811", "F841"]   # fixtures + intentional re-imports
+"examples/*" = ["F401"]
+# These modules use `try: import optional_dep` blocks as availability checks;
+# ruff F401 misreads them as unused imports.
+"tracebi/reports/excel_renderer.py" = ["F401"]
+"tracebi/reports/html_renderer.py"  = ["F401"]
+"tracebi/dashboard/*"               = ["F401"]

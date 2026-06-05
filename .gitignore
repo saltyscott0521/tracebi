@@ -19,5 +19,13 @@ test_output.html
 data/
 .claude/
 
+# Local environment / secrets — never commit these.
+.env
+.env.local
+.env.*.local
+*.db
+*.sqlite
+*.sqlite3
+
 web/ui/node_modules/
 web/ui/dist/

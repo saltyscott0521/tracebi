@@ -1,5 +1,9 @@
 # TraceBi
 
+[![CI](https://github.com/saltyscott0521/tracebi/actions/workflows/ci.yml/badge.svg)](https://github.com/saltyscott0521/tracebi/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/saltyscott0521/tracebi)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A **code-first, traceable BI and analytics framework** for Python.
 
 Define your data model, transformations, and reports entirely in code.
@@ -24,35 +28,104 @@ connector, query, and transform steps that produced it.
 
 ## What's built
 
-- [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory), DataModel, DataSet with immutable lineage chain
+- [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory, DuckDB) with push-down filter/columns, DataModel, DataSet with immutable lineage chain
 - [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
-- [x] **Phase 2.5** — Medallion architecture (Bronze/Silver/Gold), StarSchema, LineageDiagram
+- [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
 - [x] **Phase 3** — Live Dash dashboard with associative filters
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
-- [x] **Phase 5** — Web UI (FastAPI + Jinja2, Dash embedded, medallion-aware registry)
+- [x] **Phase 5** — Web UI (FastAPI + React, Dash embedded), folder-based auto-discovery, optional HTTP Basic auth, `tracebi` CLI, docker-compose deployment
+
+---
+
+## 30-second quick start
+
+No database, no config — just pandas in memory:
+
+```python
+import pandas as pd
+from tracebi import DataModel, MemoryConnector
+from tracebi.reports.report import Report, TableSection
+from tracebi.reports.html_renderer import HTMLRenderer
+
+orders = pd.DataFrame({
+    "order_id": [1, 2, 3, 4],
+    "region":   ["NE", "SE", "NE", "MW"],
+    "revenue":  [100.0, 200.0, 150.0, 300.0],
+})
+
+model = DataModel("Demo").add_connector(MemoryConnector("mem", {"orders": orders}))
+model.add_table("orders", connector="mem", source="orders")
+
+ds = model.load("orders")
+report = Report("Demo").add(TableSection(title="Orders", dataset=ds))
+HTMLRenderer().serve(report, port=8080)   # opens in your browser
+```
+
+The same `DataSet` carries its lineage all the way through to the rendered
+manifest — no separate audit step.
 
 ---
 
 ## Installation
 
+The fastest path for an analyst:
+
 ```bash
-# Core
-pip install pandas
+pip install "tracebi[analyst]"        # reports + sql + csv + lineage + duckdb
+```
 
-# Reports (Excel + charts)
-pip install -e ".[reports]"
+Or pick the pieces you need:
 
-# Dashboard
-pip install -e ".[dashboard]"
+```bash
+pip install "tracebi"                 # core only (pandas)
+pip install "tracebi[reports]"        # Excel + HTML renderers
+pip install "tracebi[dashboard]"      # Dash dashboard
+pip install "tracebi[pipeline]"       # scheduling + DB write-back
+pip install "tracebi[lineage]"        # lineage diagrams
+pip install "tracebi[duckdb]"         # DuckDB connector + push-down engine
+pip install "tracebi[web]"            # FastAPI + uvicorn web UI
+pip install "tracebi[all]"            # everything
+```
 
-# Pipelines (scheduling + DB write-back)
-pip install -e ".[pipeline]"
+### Docker / deployment
 
-# Lineage diagrams
-pip install -e ".[lineage]"
+The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
+Python app) and a `docker-compose.yml` that mounts `./data`, `./output`,
+and `./requests` from the host so your pipeline DB and rendered reports
+survive container restarts.
 
-# Everything
-pip install -e ".[reports,dashboard,pipeline,lineage,sql]"
+```bash
+# Local: web UI on http://localhost:8000
+docker compose up --build
+```
+
+Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
+
+| Variable | Purpose |
+|---|---|
+| `TRACEBI_APP` | Python module to import on startup (default `web.demo_app`) |
+| `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | Turn on HTTP Basic auth |
+| `TRACEBI_AUTH_PROXY_HEADER` | Trust an upstream identity header (Authelia / oauth2-proxy / Cloudflare Access) |
+| `TRACEBI_EMBED_DASHBOARDS=0` | Run dashboards as separate processes |
+| `TRACEBI_DEV_MODE=1` | Mount `/api/_dev/reload` for hot iteration |
+
+**Single-VM deployment** is the supported v1 story — one container behind
+nginx or a reverse-proxy, SQLite volume mounted at `/app/data`. Cloud Run /
+ECS / Fly.io all work the same way (the scheduler runs in-process; if the
+container restarts, schedules resume from the persisted DB).
+
+**Honest caveats:** the scheduler is single-process. It will not scale
+horizontally across replicas, and a hard kill loses in-flight runs (the
+`tracebi_runs` table still records that they started). For larger workloads
+swap APScheduler for an external orchestrator (Airflow, Prefect, Dagster) and
+keep the rest of TraceBi as the data layer.
+
+### CLI
+
+```bash
+tracebi new-request "Open orders by region"   # scaffold requests/open_orders_by_region.py
+tracebi list-requests
+tracebi run open_orders_by_region
 ```
 
 ---
@@ -121,41 +194,48 @@ HTMLRenderer().serve(report, port=8080)   # open in browser
 HTMLRenderer().preview(report)            # inline in Jupyter
 ```
 
-### 4. Medallion architecture
+### 4. Landing → Manipulation → Final (Medallion architecture)
+
+The three-step layer model — TraceBi's positioning name and the legacy
+medallion name resolve to the same classes:
+
+| TraceBi name        | Medallion alias  | Role                                                |
+|---------------------|------------------|-----------------------------------------------------|
+| `LandingLayer`      | `BronzeLayer`    | Connect to upstream table, ingest as-is.            |
+| `ManipulationLayer` | `SilverLayer`    | Optional light cleaning before serving.             |
+| `FinalLayer`        | `GoldLayer`      | Serve via DataModel star-schema query — facts + dims. |
 
 ```python
-from tracebi import BronzeLayer, SilverLayer, GoldLayer
-from tracebi.model.star_schema import StarSchema
+from tracebi import LandingLayer, ManipulationLayer, FinalLayer  # or BronzeLayer / SilverLayer / GoldLayer
 
-# Bronze — raw ingest, zero transforms
-bronze = BronzeLayer(connector=db, source="orders_raw",
-                     sink=db, sink_table="orders_bronze")
-ds_bronze = bronze.execute()   # loads + writes to DB
+# Landing — raw ingest, zero transforms
+landing = LandingLayer(connector=db, source="orders_raw",
+                       sink=db, sink_table="orders_bronze")
+ds_landing = landing.execute()   # loads + writes to DB
 
-# Silver — declarative cleaning pipeline
-silver = (
-    SilverLayer(source=db, source_table="orders_bronze",
-                sink=db, sink_table="orders_silver")
+# Manipulation — declarative cleaning pipeline
+manip = (
+    ManipulationLayer(source=db, source_table="orders_bronze",
+                      sink=db, sink_table="orders_silver")
     .cast({"qty": "int64", "order_date": "datetime64[ns]"})
     .drop_nulls(subset=["order_id"])
     .deduplicate(subset=["order_id"])
 )
-ds_silver = silver.execute()   # loads bronze → cleans → writes silver
+ds_manip = manip.execute()   # loads landing → cleans → writes manipulation
 
-# Star schema
-schema = StarSchema("Sales", model=model)
-schema.add_dimension("dim_customer", table_name="customers",
-                     key_col="customer_id", attributes=["region", "segment"])
-schema.add_fact("fact_orders", table_name="orders_silver",
-                measures=["revenue", "qty"],
-                foreign_keys={"dim_customer": "customer_id"})
+# Tag tables on the DataModel with star-schema roles
+model.add_dimension("dim_customer", table_name="customers",
+                    key_col="customer_id", attributes=["region", "segment"])
+model.add_fact("fact_orders", table_name="orders_silver",
+               measures=["revenue", "qty"],
+               foreign_keys={"dim_customer": "customer_id"})
 
-# Gold — aggregated via StarSchema
-gold = GoldLayer(schema=schema, fact="fact_orders",
-                 measures={"revenue": "sum", "qty": "sum"},
-                 dimensions=["dim_customer.region"],
-                 sink=db, sink_table="revenue_by_region_gold")
-ds_gold = gold.execute()   # queries → aggregates → writes gold
+# Final — aggregated via the model's star-schema query (DuckDB-backed)
+final = FinalLayer(model=model, fact="fact_orders",
+                   measures={"revenue": "sum", "qty": "sum"},
+                   dimensions=["dim_customer.region"],
+                   sink=db, sink_table="revenue_by_region_gold")
+ds_final = final.execute()   # queries → aggregates → writes serving table
 ```
 
 ### 5. Schedule pipelines
@@ -307,7 +387,7 @@ python examples/phase4_example.py    # full pipeline (run seeds/seed_db.py first
 
 ```bash
 pytest tests/
-# 163 passed
+# 229 passed
 ```
 
 ---
@@ -318,7 +398,7 @@ pytest tests/
 tracebi/
 ├── tracebi/
 │   ├── connectors/       CSV, SQL, BigQuery, Snowflake, Memory
-│   ├── model/            DataSet, DataModel, StarSchema
+│   ├── model/            DataSet, DataModel (with star-schema query)
 │   ├── etl/              BronzeLayer, SilverLayer, GoldLayer
 │   ├── reports/          Report, ExcelRenderer, HTMLRenderer
 │   ├── dashboard/        Dashboard, DashboardServer, panels
@@ -331,7 +411,7 @@ tracebi/
 │   ├── run.py            Dev server entrypoint
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                163 tests across all phases
+├── tests/                229 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── requests/             _template.py — scaffold for ad hoc report scripts
 ├── data/                 SQLite DB lives here (gitignored)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -13,10 +13,18 @@ class SQLConnector(BaseConnector):
     """
     Load tables or run queries against any SQLAlchemy-supported database.
 
+    Push-down: ``filter`` and ``columns`` are applied via SQL WHERE / SELECT
+    clauses when *source* is a plain table name. When *source* is a raw
+    SELECT query, push-down falls back to pandas after the query runs.
+
     Usage:
-        connector = SQLConnector("sales_db", url="postgresql://user:pass@host/db")
+        connector = SQLConnector("sales_db", url="sqlite:///data/sales.db")
         model.add_connector(connector)
         model.add_table("orders", connector="sales_db", source="orders")
+
+        # For Postgres / MySQL / etc., supply the URL via an env var rather
+        # than hard-coding credentials:
+        #   url=os.environ["TRACEBI_SALES_DB_URL"]
 
     Args:
         name:   Logical name used to reference this connector in a DataModel.
@@ -30,6 +38,9 @@ class SQLConnector(BaseConnector):
         self._engine_kwargs = kwargs
         self._engine = None
 
+    def supports_pushdown(self) -> bool:
+        return True
+
     def connect(self) -> None:
         try:
             from sqlalchemy import create_engine
@@ -40,13 +51,41 @@ class SQLConnector(BaseConnector):
             )
         self._engine = create_engine(self.url, **self._engine_kwargs)
 
-    def load(self, source: str) -> pd.DataFrame:
+    def load(
+        self,
+        source: str,
+        filter: Optional[dict[str, Any]] = None,
+        columns: Optional[list[str]] = None,
+    ) -> pd.DataFrame:
         if self._engine is None:
             self.connect()
-        # source may be a table name or a SELECT query
-        if source.strip().upper().startswith("SELECT"):
-            return pd.read_sql(source, con=self._engine)
-        return pd.read_sql_table(source, con=self._engine)
+        is_query = source.strip().upper().startswith("SELECT")
+        if is_query:
+            # Raw query — fall back to pandas-side push-down
+            df = pd.read_sql(source, con=self._engine)
+            return self._apply_pandas_pushdown(df, filter, columns)
+
+        # Table name — push columns + filter into SQL
+        from sqlalchemy import text
+        select_cols = ", ".join(self._quote_ident(c) for c in columns) if columns else "*"
+        query = f"SELECT {select_cols} FROM {self._quote_ident(source)}"
+        params: dict[str, Any] = {}
+        if filter:
+            clauses = []
+            for i, (col, val) in enumerate(filter.items()):
+                key = f"p{i}"
+                clauses.append(f"{self._quote_ident(col)} = :{key}")
+                params[key] = val
+            query += " WHERE " + " AND ".join(clauses)
+        return pd.read_sql(text(query), con=self._engine, params=params)
+
+    @staticmethod
+    def _quote_ident(name: str) -> str:
+        # Conservative double-quote; most dialects accept this. Reject anything
+        # with embedded quotes to avoid injection via a column name.
+        if '"' in name:
+            raise ValueError(f"Invalid identifier: {name!r}")
+        return f'"{name}"'
 
     def write(
         self,

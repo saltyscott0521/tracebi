@@ -4,8 +4,9 @@ Tests for Phase 2.5 — Medallion Architecture + Star Schema + Lineage Diagram.
 Coverage:
   - BronzeLayer (load, lineage stamp, repr)
   - SilverLayer (cast, drop_nulls, deduplicate, rename, transform, lineage)
-  - StarSchema (add_dimension, add_fact, query: groupby, no-groupby, no-agg, filters)
-  - GoldLayer (wraps StarSchema, gold lineage node)
+  - DataModel star-schema query (add_dimension, add_fact, query: groupby,
+    no-groupby, no-agg, filters)
+  - GoldLayer (wraps DataModel.query, gold lineage node)
   - LineageDiagram (build, to_mermaid, to_html, repr, Report source)
 """
 
@@ -19,7 +20,6 @@ from tracebi import DataModel, MemoryConnector, DataSet, LineageNode
 from tracebi.etl.bronze import BronzeLayer
 from tracebi.etl.silver import SilverLayer
 from tracebi.etl.gold import GoldLayer
-from tracebi.model.star_schema import StarSchema
 from tracebi.lineage.diagram import LineageDiagram
 
 
@@ -63,14 +63,13 @@ def model(connector):
 
 
 @pytest.fixture
-def schema(model):
-    s = StarSchema("TestSchema", model=model)
-    s.add_dimension("dim_customer", table_name="customers",
-                    key_col="customer_id", attributes=["region", "segment"])
-    s.add_fact("fact_orders", table_name="orders",
-               measures=["revenue", "qty"],
-               foreign_keys={"dim_customer": "customer_id"})
-    return s
+def star_model(model):
+    model.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region", "segment"])
+    model.add_fact("fact_orders", table_name="orders",
+                   measures=["revenue", "qty"],
+                   foreign_keys={"dim_customer": "customer_id"})
+    return model
 
 
 # ── BronzeLayer ───────────────────────────────────────────────────────────────
@@ -189,17 +188,17 @@ class TestSilverLayer:
         assert "cast" in repr(silver)
 
 
-# ── StarSchema ────────────────────────────────────────────────────────────────
+# ── DataModel star-schema query ───────────────────────────────────────────────
 
-class TestStarSchema:
-    def test_add_dimension(self, schema):
-        assert "dim_customer" in schema._dimensions
+class TestStarSchemaQuery:
+    def test_add_dimension(self, star_model):
+        assert "dim_customer" in star_model._dimensions
 
-    def test_add_fact(self, schema):
-        assert "fact_orders" in schema._facts
+    def test_add_fact(self, star_model):
+        assert "fact_orders" in star_model._facts
 
-    def test_query_grouped(self, schema):
-        ds = schema.query(
+    def test_query_grouped(self, star_model):
+        ds = star_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.region"],
@@ -209,8 +208,8 @@ class TestStarSchema:
         assert "revenue" in df.columns
         assert len(df) == 3  # 3 unique regions
 
-    def test_query_grouped_values(self, schema):
-        ds = schema.query(
+    def test_query_grouped_values(self, star_model):
+        ds = star_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.region"],
@@ -218,8 +217,8 @@ class TestStarSchema:
         df = ds.to_pandas().set_index("dim_customer.region")
         assert df.loc["North", "revenue"] == pytest.approx(100.0 + 300.0)
 
-    def test_query_no_groupby(self, schema):
-        ds = schema.query(
+    def test_query_no_groupby(self, star_model):
+        ds = star_model.query(
             fact="fact_orders",
             measures={"revenue": "sum", "order_id": "count"},
             aggregate=True,
@@ -228,8 +227,8 @@ class TestStarSchema:
         assert len(df) == 1
         assert df["revenue"].iloc[0] == pytest.approx(100.0 + 200.0 + 300.0 + 400.0 + 200.0)
 
-    def test_query_no_aggregate(self, schema):
-        ds = schema.query(
+    def test_query_no_aggregate(self, star_model):
+        ds = star_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.region"],
@@ -237,8 +236,8 @@ class TestStarSchema:
         )
         assert len(ds) == 5  # all rows returned
 
-    def test_query_filter(self, schema):
-        ds = schema.query(
+    def test_query_filter(self, star_model):
+        ds = star_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.region"],
@@ -248,8 +247,8 @@ class TestStarSchema:
         total = df["revenue"].sum()
         assert total == pytest.approx(100.0 + 200.0 + 400.0 + 200.0)
 
-    def test_query_lineage_includes_join(self, schema):
-        ds = schema.query(
+    def test_query_lineage_includes_join(self, star_model):
+        ds = star_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.region"],
@@ -257,8 +256,8 @@ class TestStarSchema:
         ops = [n.operation for n in ds.lineage]
         assert "join" in ops
 
-    def test_query_lineage_includes_filter(self, schema):
-        ds = schema.query(
+    def test_query_lineage_includes_filter(self, star_model):
+        ds = star_model.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
             dimensions=["dim_customer.region"],
@@ -267,31 +266,32 @@ class TestStarSchema:
         ops = [n.operation for n in ds.lineage]
         assert "filter" in ops
 
-    def test_unknown_fact_raises(self, schema):
+    def test_unknown_fact_raises(self, star_model):
         with pytest.raises(ValueError, match="not registered"):
-            schema.query(fact="no_such_fact", measures={"revenue": "sum"})
+            star_model.query(fact="no_such_fact", measures={"revenue": "sum"})
 
-    def test_unknown_dimension_raises(self, schema):
+    def test_unknown_dimension_raises(self, star_model):
         with pytest.raises(ValueError, match="not registered"):
-            schema.query(
+            star_model.query(
                 fact="fact_orders",
                 measures={"revenue": "sum"},
                 dimensions=["dim_nope.region"],
             )
 
-    def test_bad_dimension_format_raises(self, schema):
+    def test_bad_dimension_format_raises(self, star_model):
         with pytest.raises(ValueError, match="dot notation"):
-            schema.query(
+            star_model.query(
                 fact="fact_orders",
                 measures={"revenue": "sum"},
                 dimensions=["region"],
             )
 
-    def test_repr(self, schema):
-        assert "StarSchema" in repr(schema)
+    def test_repr(self, star_model):
+        assert "DataModel" in repr(star_model)
+        assert "fact_orders" in repr(star_model)
 
-    def test_describe(self, schema, capsys):
-        schema.describe()
+    def test_describe(self, star_model, capsys):
+        star_model.describe()
         out = capsys.readouterr().out
         assert "fact_orders" in out
         assert "dim_customer" in out
@@ -300,8 +300,8 @@ class TestStarSchema:
 # ── GoldLayer ─────────────────────────────────────────────────────────────────
 
 class TestGoldLayer:
-    def test_query_returns_dataset(self, schema):
-        gold = GoldLayer(schema=schema)
+    def test_query_returns_dataset(self, star_model):
+        gold = GoldLayer(model=star_model)
         ds = gold.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
@@ -309,8 +309,8 @@ class TestGoldLayer:
         )
         assert isinstance(ds, DataSet)
 
-    def test_gold_lineage_node(self, schema):
-        gold = GoldLayer(schema=schema)
+    def test_gold_lineage_node(self, star_model):
+        gold = GoldLayer(model=star_model)
         ds = gold.query(
             fact="fact_orders",
             measures={"revenue": "sum"},
@@ -320,18 +320,18 @@ class TestGoldLayer:
         assert len(gold_nodes) == 1
         assert gold_nodes[0].metadata["layer"] == "gold"
 
-    def test_default_name(self, schema):
-        gold = GoldLayer(schema=schema)
+    def test_default_name(self, star_model):
+        gold = GoldLayer(model=star_model)
         ds = gold.query(fact="fact_orders", measures={"revenue": "sum"})
         assert ds.name == "fact_orders_gold"
 
-    def test_custom_name(self, schema):
-        gold = GoldLayer(schema=schema)
+    def test_custom_name(self, star_model):
+        gold = GoldLayer(model=star_model)
         ds = gold.query(fact="fact_orders", measures={"revenue": "sum"}, name="my_gold")
         assert ds.name == "my_gold"
 
-    def test_repr(self, schema):
-        gold = GoldLayer(schema=schema)
+    def test_repr(self, star_model):
+        gold = GoldLayer(model=star_model)
         assert "GoldLayer" in repr(gold)
 
 
@@ -406,8 +406,8 @@ class TestLineageDiagram:
         finally:
             os.unlink(path)
 
-    def test_to_html_gold_ds(self, schema):
-        gold = GoldLayer(schema=schema)
+    def test_to_html_gold_ds(self, star_model):
+        gold = GoldLayer(model=star_model)
         ds = gold.query(
             fact="fact_orders",
             measures={"revenue": "sum"},

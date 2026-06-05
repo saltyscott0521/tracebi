@@ -6,46 +6,45 @@ Fill in each section below.
 
 Run with:
     python requests/weekly_sales.py
+    # or, if the web server has registered a shared DataModel:
+    tracebi run weekly_sales
+
+Or scaffold a brand-new request with:
+    tracebi new-request "Weekly Sales"            # .py
+    tracebi new-request "Weekly Sales" --notebook # .ipynb
 """
 
 import os
-import pandas as pd
-from tracebi import DataModel, MemoryConnector, CSVConnector, DataSet, LineageNode
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
-# from tracebi.etl import BronzeLayer, SilverLayer, GoldLayer
-# from tracebi.model.star_schema import StarSchema
-# from tracebi.lineage.diagram import LineageDiagram
 
 
-# ── 1. Connect ────────────────────────────────────────────────────────────────
-# Register connectors and build a DataModel.
+# ── 1. Get the project DataModel ─────────────────────────────────────────────
+# Prefer the shared model registered by the web app (via
+# ``registry.add_model(model, default=True)``). Fall back to building a
+# local one when running the script standalone outside the web server.
 
-model = DataModel("MyModel")
+try:
+    from tracebi.web import register
+    model = register.get_default_model()
+except ImportError:
+    model = None
 
-# Example: in-memory connector for quick demos
-# connector = MemoryConnector("mem", tables={"orders": orders_df})
-# model.add_connector(connector)
-# model.add_table("orders", connector="mem", source="orders")
-
-# Example: CSV files
-# model.add_connector(CSVConnector("files", directory="data/"))
-# model.add_table("orders", connector="files", source="orders.csv")
-
-# Example: SQL database
-# from tracebi import SQLConnector
-# model.add_connector(SQLConnector("db", url="sqlite:///sales.db"))
-# model.add_table("orders", connector="db", source="orders")
+if model is None:
+    from tracebi import DataModel, MemoryConnector  # noqa: F401
+    # Example local model — uncomment and adapt:
+    # model = DataModel("MyModel")
+    # model.add_connector(MemoryConnector("mem", tables={"orders": orders_df}))
+    # model.add_table("orders", connector="mem", source="orders")
+    pass
 
 
 # ── 2. Build DataSets ─────────────────────────────────────────────────────────
-# Load and transform data using the fluent DataSet API.
-# Each operation appends a LineageNode — no data is mutated in place.
-
+# Load and transform via the model — every step appends a LineageNode.
+#
 # orders_ds = (
-#     model.load("orders")
-#     .filter("status == 'shipped'", description="Shipped orders only")
+#     model.load("orders", filter={"status": "shipped"})  # pushed down to source
 #     .transform(
 #         lambda df: df.assign(margin=df["revenue"] - df["cost"]),
 #         description="Calculated margin",
@@ -55,7 +54,6 @@ model = DataModel("MyModel")
 
 
 # ── 3. Build Report ───────────────────────────────────────────────────────────
-# Assemble sections using the fluent Report builder.
 
 report = (
     Report("My Report Title")
@@ -84,11 +82,8 @@ report = (
     # ))
 )
 
-report.describe()
-
 
 # ── 4. Render ─────────────────────────────────────────────────────────────────
-# Save to Excel and/or HTML.
 
 def run():
     output_dir = os.path.join(os.path.dirname(__file__), "..", "output")
@@ -107,6 +102,19 @@ def run():
 def serve(port: int = 8080):
     """Render and open the report in a local browser."""
     HTMLRenderer().serve(report, port=port)
+
+
+# ── 5. Optional: register with the web UI ─────────────────────────────────────
+# If this file is auto-discovered by the web server, expose it as a report.
+
+try:
+    from tracebi.web import register
+
+    @register.report("my_report", description="Short description of this report.")
+    def _factory():
+        return report
+except ImportError:
+    pass
 
 
 if __name__ == "__main__":

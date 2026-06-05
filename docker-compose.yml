@@ -1,0 +1,56 @@
+# TraceBi — getting-started Docker Compose stack.
+#
+# Spins up the FastAPI + React web UI on port 8000, persists the SQLite
+# pipeline database to ./data, and surfaces generated reports under
+# ./output. Drop your own request scripts into ./requests — they are
+# auto-discovered on startup.
+#
+# Quick start:
+#
+#     docker compose up --build
+#     open http://localhost:8000
+#
+# To require login, set TRACEBI_AUTH_USER and TRACEBI_AUTH_PASS in a
+# local .env file or directly in the environment.
+#
+# To point the server at your own app module (instead of the bundled
+# demo), set TRACEBI_APP to a fully-qualified Python module path that
+# imports cleanly inside the container.
+
+services:
+  app:
+    build: .
+    image: tracebi:local
+    container_name: tracebi
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Bundled demo app by default; override to point at your config module.
+      TRACEBI_APP: ${TRACEBI_APP:-web.demo_app}
+      TRACEBI_REQUESTS_DIR: /app/requests
+      TRACEBI_SCHEDULED_DIR: /app/scheduled
+      # Optional HTTP basic auth — leave unset to keep the API open.
+      TRACEBI_AUTH_USER: ${TRACEBI_AUTH_USER:-}
+      TRACEBI_AUTH_PASS: ${TRACEBI_AUTH_PASS:-}
+      # Reverse-proxy auth (Authelia / oauth2-proxy / Cloudflare Access).
+      # When set, takes precedence over Basic auth.
+      TRACEBI_AUTH_PROXY_HEADER: ${TRACEBI_AUTH_PROXY_HEADER:-}
+      TRACEBI_AUTH_PROXY_TRUSTED_IPS: ${TRACEBI_AUTH_PROXY_TRUSTED_IPS:-}
+      # Set to 0 to skip the in-process Dash mount and run dashboards
+      # as separate services.
+      TRACEBI_EMBED_DASHBOARDS: ${TRACEBI_EMBED_DASHBOARDS:-1}
+      # Set to 1 to enable /api/_dev/reload for hot-reload during dev.
+      TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
+      PORT: "8000"
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./requests:/app/requests
+      - ./scheduled:/app/scheduled
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

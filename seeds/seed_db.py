@@ -9,7 +9,8 @@ What this does:
   1. Creates data/tracebi.db (SQLite)
   2. Creates source tables (orders_raw, customers_raw) and seeds example data
   3. Registers Bronze / Silver / Gold layers with PipelineRunner
-     (writes tracebi_layers, tracebi_schemas, tracebi_relationships to DB)
+     (writes tracebi_layers, tracebi_relationships, tracebi_dimensions,
+     tracebi_facts to DB)
   4. Runs Bronze immediately so orders_bronze and customers_bronze are
      populated and ready for Silver to consume
 
@@ -83,7 +84,6 @@ def seed_source_tables(engine) -> None:
 def build_pipeline(db_url: str):
     from tracebi.connectors.sql_connector import SQLConnector
     from tracebi.model.data_model import DataModel
-    from tracebi.model.star_schema import StarSchema
     from tracebi.etl.bronze import BronzeLayer
     from tracebi.etl.silver import SilverLayer
     from tracebi.etl.gold import GoldLayer
@@ -131,20 +131,19 @@ def build_pipeline(db_url: str):
         .deduplicate(subset=["customer_id"])
     )
 
-    # ── DataModel + StarSchema (reads from silver tables) ────────
+    # ── DataModel with star-schema query surface (reads from silver tables) ─
     model = DataModel("SalesModel")
     model.add_connector(db)
     model.add_table("orders_silver",    connector="tracebi_db", source="orders_silver")
     model.add_table("customers_silver", connector="tracebi_db", source="customers_silver")
 
-    schema = StarSchema("Sales", model=model)
-    schema.add_dimension(
+    model.add_dimension(
         name="dim_customer",
         table_name="customers_silver",
         key_col="customer_id",
         attributes=["region", "segment"],
     )
-    schema.add_fact(
+    model.add_fact(
         name="fact_orders",
         table_name="orders_silver",
         measures=["revenue", "qty"],
@@ -153,7 +152,7 @@ def build_pipeline(db_url: str):
 
     # ── Gold ─────────────────────────────────────────────────────
     revenue_by_region = GoldLayer(
-        schema=schema,
+        model=model,
         fact="fact_orders",
         measures={"revenue": "sum", "qty": "sum"},
         dimensions=["dim_customer.region"],
@@ -161,7 +160,7 @@ def build_pipeline(db_url: str):
         sink_table="revenue_by_region_gold",
     )
     revenue_by_segment = GoldLayer(
-        schema=schema,
+        model=model,
         fact="fact_orders",
         measures={"revenue": "sum", "order_id": "count"},
         dimensions=["dim_customer.segment"],
@@ -189,11 +188,10 @@ def build_pipeline(db_url: str):
     runner.register(revenue_by_segment, name="revenue_by_segment", schedule="30 6 * * *",
                     depends_on="orders_silver")
 
-    # Persist schema config and model relationships
-    runner.register_schema(schema)
+    # Persist model relationships, dimensions, and facts
     runner.register_model(model)
 
-    return runner, schema, model
+    return runner, model
 
 
 # ── Step 3: Initial Bronze run ────────────────────────────────────────────────
@@ -218,7 +216,7 @@ def main():
     engine = create_engine(DB_URL)
     seed_source_tables(engine)
 
-    runner, schema, model = build_pipeline(DB_URL)
+    runner, model = build_pipeline(DB_URL)
     run_initial_bronze(runner)
 
     runner.status()

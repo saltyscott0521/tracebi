@@ -2,8 +2,8 @@
 PipelineRunner — schedule and execute medallion layers with full lineage tracking.
 
 Each layer is registered independently with its own cron schedule.
-The runner records every execution in ``tracebi_runs`` and persists schema
-config (StarSchema, DataModel relationships) to system tables in the DB.
+The runner records every execution in ``tracebi_runs`` and persists DataModel
+config (relationships, facts, dimensions) to system tables in the DB.
 
 Usage::
 
@@ -160,7 +160,10 @@ class PipelineRunner:
                 f"Register upstream layers first."
             )
 
-        layer_type = (
+        # LandingLayer/ManipulationLayer/FinalLayer are subclasses, so the
+        # isinstance check covers both naming conventions. Use the layer's
+        # own label so the new names propagate to run history.
+        layer_type = getattr(layer, "layer_label", None) or (
             "bronze" if isinstance(layer, BronzeLayer) else
             "silver" if isinstance(layer, SilverLayer) else
             "gold"   if isinstance(layer, GoldLayer)   else
@@ -195,55 +198,13 @@ class PipelineRunner:
             })
         return self
 
-    def register_schema(self, schema) -> "PipelineRunner":
+    def register_model(self, model) -> "PipelineRunner":
         """
-        Persist a StarSchema's dimensions and facts to the DB.
+        Persist a DataModel's relationships, facts, and dimensions to the DB.
 
-        Call this once after ``register()`` calls so the schema definition
+        Call this once after ``register()`` calls so the model definition
         is stored alongside run history.
         """
-        from sqlalchemy import text
-        with self._engine_().begin() as conn:
-            conn.execute(text("""
-                INSERT INTO tracebi_schemas (schema_name, model_name, created_at)
-                VALUES (:sn, :mn, :ts)
-            """), {
-                "sn": schema.name,
-                "mn": schema._model.name,
-                "ts": datetime.now(timezone.utc).isoformat(),
-            })
-            schema_id = conn.execute(text("SELECT last_insert_rowid()")).fetchone()[0]
-
-            for dim in schema._dimensions.values():
-                conn.execute(text("""
-                    INSERT INTO tracebi_dimensions
-                      (schema_id, dim_name, table_name, key_col, attributes)
-                    VALUES (:sid, :dn, :tn, :kc, :attrs)
-                """), {
-                    "sid":   schema_id,
-                    "dn":    dim.name,
-                    "tn":    dim.table_name,
-                    "kc":    dim.key_col,
-                    "attrs": ",".join(dim.attributes),
-                })
-
-            for fact in schema._facts.values():
-                fk_str = ",".join(f"{k}:{v}" for k, v in fact.foreign_keys.items())
-                conn.execute(text("""
-                    INSERT INTO tracebi_facts
-                      (schema_id, fact_name, table_name, measures, foreign_keys)
-                    VALUES (:sid, :fn, :tn, :m, :fk)
-                """), {
-                    "sid": schema_id,
-                    "fn":  fact.name,
-                    "tn":  fact.table_name,
-                    "m":   ",".join(fact.measures),
-                    "fk":  fk_str,
-                })
-        return self
-
-    def register_model(self, model) -> "PipelineRunner":
-        """Persist a DataModel's relationships to the DB."""
         from sqlalchemy import text
         with self._engine_().begin() as conn:
             for rel in model._relationships.values():
@@ -260,6 +221,46 @@ class PipelineRunner:
                     "lk":  rel.left_key,
                     "rk":  rel.right_key,
                     "how": rel.how,
+                })
+
+            if not model._facts and not model._dimensions:
+                return self
+
+            conn.execute(text("""
+                INSERT INTO tracebi_schemas (schema_name, model_name, created_at)
+                VALUES (:sn, :mn, :ts)
+            """), {
+                "sn": model.name,
+                "mn": model.name,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            })
+            schema_id = conn.execute(text("SELECT last_insert_rowid()")).fetchone()[0]
+
+            for dim in model._dimensions.values():
+                conn.execute(text("""
+                    INSERT INTO tracebi_dimensions
+                      (schema_id, dim_name, table_name, key_col, attributes)
+                    VALUES (:sid, :dn, :tn, :kc, :attrs)
+                """), {
+                    "sid":   schema_id,
+                    "dn":    dim.name,
+                    "tn":    dim.table_name,
+                    "kc":    dim.key_col,
+                    "attrs": ",".join(dim.attributes),
+                })
+
+            for fact in model._facts.values():
+                fk_str = ",".join(f"{k}:{v}" for k, v in fact.foreign_keys.items())
+                conn.execute(text("""
+                    INSERT INTO tracebi_facts
+                      (schema_id, fact_name, table_name, measures, foreign_keys)
+                    VALUES (:sid, :fn, :tn, :m, :fk)
+                """), {
+                    "sid": schema_id,
+                    "fn":  fact.name,
+                    "tn":  fact.table_name,
+                    "m":   ",".join(fact.measures),
+                    "fk":  fk_str,
                 })
         return self
 

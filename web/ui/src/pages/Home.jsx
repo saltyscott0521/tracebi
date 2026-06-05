@@ -48,55 +48,58 @@ joins, transforms, aggregations — traceable back to the original source.`,
   },
   {
     n: 3,
-    title: 'Medallion architecture — structured ETL',
+    title: 'Landing → Manipulation → Final (medallion-compatible)',
     body: `TraceBi structures pipelines as three named layers, each with a distinct purpose.
+The new canonical names — Landing / Manipulation / Final — and the legacy medallion
+names — Bronze / Silver / Gold — refer to the same classes; pick whichever vocabulary
+fits your team.
 
-Bronze — Raw ingest. Data copied as-is from the source. No transforms. Acts as the permanent
-audit record of exactly what arrived.
+Landing (Bronze) — Connect to upstream tables and ingest as-is. No transforms.
+Acts as the permanent audit record of exactly what arrived.
 
-Silver — Declarative cleaning. Type casting, null removal, deduplication, column renames.
-Produces a trusted, analysis-ready table.
+Manipulation (Silver) — Optional light cleaning before serving. Type casting,
+null removal, deduplication, column renames.
 
-Gold — Aggregated analytics. Groups measures by dimensions via a StarSchema query. The output
-feeds reports and dashboards directly.`,
+Final (Gold) — Serving layer. Groups measures by dimensions via the DataModel's
+star-schema query (DuckDB-backed). Output feeds reports and dashboards directly.`,
     code: [
-      { t: 'b', v: '# Bronze — raw ingest, zero transforms' },
-      { t: 'n', v: 'bronze = BronzeLayer(\n  connector=db, source="orders_raw",\n  sink=db, sink_table="orders_bronze",\n)' },
+      { t: 'b', v: '# Landing — raw ingest, zero transforms' },
+      { t: 'n', v: 'landing = LandingLayer(\n  connector=db, source="orders_raw",\n  sink=db, sink_table="orders_bronze",\n)' },
       { t: 'n', v: '' },
-      { t: 's', v: '# Silver — declarative cleaning' },
-      { t: 'n', v: 'silver = (\n  SilverLayer(source=db, source_table="orders_bronze",\n             sink=db, sink_table="orders_silver")\n  .cast({"qty": "int64"})\n  .drop_nulls()\n  .deduplicate(subset=["order_id"])\n)' },
+      { t: 's', v: '# Manipulation — declarative cleaning' },
+      { t: 'n', v: 'manip = (\n  ManipulationLayer(source=db, source_table="orders_bronze",\n                    sink=db, sink_table="orders_silver")\n  .cast({"qty": "int64"})\n  .drop_nulls()\n  .deduplicate(subset=["order_id"])\n)' },
       { t: 'n', v: '' },
-      { t: 'g', v: '# Gold — aggregated via StarSchema' },
-      { t: 'n', v: 'gold = GoldLayer(\n  schema=schema, fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  sink=db, sink_table="gold_by_region",\n)' },
+      { t: 'g', v: '# Final — aggregated via the DataModel star-schema query' },
+      { t: 'n', v: 'final = FinalLayer(\n  model=model, fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  sink=db, sink_table="revenue_by_region",\n)' },
     ],
   },
   {
     n: 4,
     title: 'Star Schema — declarative analytics',
-    body: `A StarSchema sits above the connector layer and adds BI semantics. You declare two
-types of tables:
+    body: `Tag tables on the DataModel with star-schema roles and TraceBi adds BI semantics
+to the same model you already use for loads and joins. You declare two types of tables:
 
 Facts — Transactional tables with numeric measures to aggregate (revenue, qty, count).
 
 Dimensions — Lookup tables with categorical attributes to group by (region, segment, product).
 
-Once defined, schema.query() is fully declarative. You describe the result you want —
+Once defined, model.query() is fully declarative. You describe the result you want —
 which measures, grouped by which dimension attributes, filtered how — and TraceBi resolves
 all the joins, applies filters, and aggregates automatically. You never write join logic by hand.`,
     code: [
-      { t: 'n', v: 'schema = StarSchema("Sales", model=model)\n\nschema.add_dimension(\n  "dim_customer",\n  table_name="customers_silver",\n  key_col="customer_id",\n  attributes=["region", "segment"],\n)\nschema.add_fact(\n  "fact_orders",\n  table_name="orders_silver",\n  measures=["revenue", "qty"],\n  foreign_keys={"dim_customer": "customer_id"},\n)' },
+      { t: 'n', v: 'model.add_dimension(\n  "dim_customer",\n  table_name="customers_silver",\n  key_col="customer_id",\n  attributes=["region", "segment"],\n)\nmodel.add_fact(\n  "fact_orders",\n  table_name="orders_silver",\n  measures=["revenue", "qty"],\n  foreign_keys={"dim_customer": "customer_id"},\n)' },
       { t: 'n', v: '' },
       { t: 'c', v: '# Declarative query — joins resolved automatically' },
-      { t: 'n', v: 'ds = schema.query(\n  fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  filters={"status": "shipped"},\n)' },
+      { t: 'n', v: 'ds = model.query(\n  fact="fact_orders",\n  measures={"revenue": "sum"},\n  dimensions=["dim_customer.region"],\n  filters={"status": "shipped"},\n)' },
     ],
   },
 ]
 
 const FEATURES = [
-  { icon: '⇌', title: 'Connectors', desc: 'CSV, SQL (any SQLAlchemy dialect), BigQuery, Snowflake, and in-memory DataFrames — all through a single connector.load() interface.' },
-  { icon: '⬡', title: 'Medallion ETL', desc: 'Bronze → Silver → Gold layers, each writing to a configurable sink. Declarative cleaning in Silver, StarSchema aggregation in Gold.' },
-  { icon: '✦', title: 'Star Schema', desc: 'Declare facts and dimensions once. Query with dot-notation dimension references ("dim_customer.region"). Auto-joins, filters, aggregates.' },
-  { icon: '▤', title: 'Reports', desc: 'Compose from TextSection, TableSection, ChartSection. Render to Excel or HTML. A lineage manifest is written alongside every render.' },
+  { icon: '⇌', title: 'Connectors', desc: 'CSV, SQL (any SQLAlchemy dialect), BigQuery, Snowflake, DuckDB, and in-memory DataFrames. All share connector.load(source, filter=..., columns=...) with push-down to source where possible.' },
+  { icon: '⬡', title: 'Landing → Manipulation → Final', desc: 'Three-layer pipeline (medallion-compatible). Landing ingests as-is, Manipulation cleans declaratively, Final aggregates via the DataModel star-schema query.' },
+  { icon: '✦', title: 'Star Schema (DuckDB-backed)', desc: 'Declare facts and dimensions once. Query with dot-notation ("dim_customer.region"). Joins, filters and aggregations execute inside DuckDB; the result comes back as a pandas DataFrame.' },
+  { icon: '▤', title: 'Reports', desc: 'Compose from TextSection, TableSection, ChartSection. Render to Excel, HTML, or PDF. A lineage manifest is written alongside every render.' },
   { icon: '⧖', title: 'Pipelines', desc: 'Register layers, assign cron schedules, declare dependencies. Run history persisted to SQLite with row counts and upstream run IDs.' },
   { icon: '◫', title: 'Dashboards', desc: 'Interactive dashboards with associative filters — selecting one panel auto-filters all others that share the same column.' },
 ]
@@ -143,27 +146,26 @@ result.print_lineage()
 # Step 5: [SELECT]     Selected 5 columns`,
   },
   {
-    label: '3. Medallion ETL',
-    title: 'Structure as a Medallion pipeline',
-    desc: 'For production, structure work as Bronze → Silver → Gold. Each layer reads from the previous sink and writes output to the next.',
-    code: `from tracebi import BronzeLayer, SilverLayer, GoldLayer
-from tracebi.model.star_schema import StarSchema
+    label: '3. Landing → Manipulation → Final',
+    title: 'Structure as a three-layer pipeline',
+    desc: 'Structure work as Landing → Manipulation → Final (the medallion Bronze/Silver/Gold classes are still exported as aliases). Each layer reads from the previous sink and writes output to the next.',
+    code: `from tracebi import LandingLayer, ManipulationLayer, FinalLayer
 
-bronze = BronzeLayer(connector=db, source="orders_raw",
-                     sink=db, sink_table="orders_bronze")
+landing = LandingLayer(connector=db, source="orders_raw",
+                       sink=db, sink_table="orders_bronze")
 
-silver = (
-  SilverLayer(source=db, source_table="orders_bronze",
-              sink=db, sink_table="orders_silver")
+manip = (
+  ManipulationLayer(source=db, source_table="orders_bronze",
+                    sink=db, sink_table="orders_silver")
   .cast({"qty": "int64", "order_date": "datetime64[ns]"})
   .drop_nulls(subset=["order_id"])
   .deduplicate(subset=["order_id"])
 )
 
-gold = GoldLayer(schema=schema, fact="fact_orders",
-                 measures={"revenue": "sum"},
-                 dimensions=["dim_customer.region"],
-                 sink=db, sink_table="gold_by_region")`,
+final = FinalLayer(model=model, fact="fact_orders",
+                   measures={"revenue": "sum"},
+                   dimensions=["dim_customer.region"],
+                   sink=db, sink_table="revenue_by_region")`,
   },
   {
     label: '4. Report',
@@ -197,16 +199,16 @@ HTMLRenderer().serve(report, port=8080)`,
 
 runner = PipelineRunner(db_url="sqlite:///data/tracebi.db")
 
-runner.register(bronze, name="orders_bronze",     schedule="0 * * * *")
-runner.register(silver, name="orders_silver",     schedule="15 * * * *",
+runner.register(landing, name="orders_bronze",     schedule="0 * * * *")
+runner.register(manip,   name="orders_silver",     schedule="15 * * * *",
                 depends_on="orders_bronze")
-runner.register(gold,   name="revenue_by_region", schedule="30 6 * * *",
+runner.register(final,   name="revenue_by_region", schedule="30 6 * * *",
                 depends_on="orders_silver")
 
 # Run one layer on demand
 runner.run("orders_silver")
 
-# Full refresh — runs bronze → silver → gold in order
+# Full refresh — runs landing → manipulation → final in order
 runner.run("revenue_by_region", refresh=True)
 
 # Start the APScheduler (blocking)
@@ -370,7 +372,7 @@ export default function Home() {
       <div className="grid-2" style={{ marginBottom:32 }}>
         <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:10, padding:'20px 24px' }}>
           <div style={{ display:'inline-block', padding:'4px 10px', borderRadius:6, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:.6, background:'var(--blue-lt)', color:'#93c5fd', border:'1px solid var(--blue-br)', marginBottom:14 }}>Option 1 — Python library</div>
-          <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.6, marginBottom:14 }}>Install TraceBi and use it from a notebook or script. Build connectors, medallion layers, star schema queries, and render reports to HTML or Excel.</p>
+          <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.6, marginBottom:14 }}>Install TraceBi and use it from a notebook or script. Build connectors, Landing/Manipulation/Final layers, star schema queries, and render reports to HTML, Excel, or PDF.</p>
           <CodeBlock>{'pip install -e ".[reports,pipeline,lineage,sql]"'}</CodeBlock>
           <p style={{ fontSize:12, color:'var(--muted)', margin:'10px 0 6px' }}>Then follow the walkthrough above:</p>
           <CodeBlock>{'python examples/phase25_example.py'}</CodeBlock>

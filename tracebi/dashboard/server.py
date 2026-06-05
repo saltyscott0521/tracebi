@@ -17,7 +17,7 @@ Requires: pip install dash>=2.14 plotly>=5.0
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -355,7 +355,7 @@ class DashboardServer:
     # ── Callbacks ──────────────────────────────────────────────────────────
 
     def _register_callbacks(self, app) -> None:
-        from dash import Input, Output
+        from dash import Input
 
         # Build the list of filter inputs (always include init-store for initial load)
         filter_inputs = [Input("tracebi-init-store", "data")] + [
@@ -367,7 +367,6 @@ class DashboardServer:
             self._register_panel_callback(app, panel, filter_inputs)
 
     def _register_panel_callback(self, app, panel: _BasePanel, filter_inputs) -> None:
-        from dash import Input, Output
 
         if isinstance(panel, ChartPanel):
             self._register_chart_callback(app, panel, filter_inputs)

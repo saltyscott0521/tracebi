@@ -16,7 +16,7 @@ from sqlalchemy import create_engine
 
 from tracebi import (
     DataModel, MemoryConnector, SQLConnector,
-    BronzeLayer, SilverLayer, GoldLayer, StarSchema, PipelineRunner,
+    LandingLayer, ManipulationLayer, FinalLayer, PipelineRunner,
 )
 from tracebi.reports import Report, TableSection, TextSection, ChartSection
 from tracebi.dashboard import Dashboard, DashboardServer, FilterPanel, MetricPanel, ChartPanel, TablePanel
@@ -73,7 +73,7 @@ model.add_table("customers", connector="demo", source="customers")
 model.connect()
 
 registry.add_connector(connector)
-registry.add_model(model)
+registry.add_model(model, default=True)
 
 
 # ── Report factories ──────────────────────────────────────────────────────────
@@ -264,8 +264,8 @@ registry.add_dashboard(
 # ── Medallion Pipeline ────────────────────────────────────────────────────────
 #
 # Extends the demo data with a customer_id FK so orders can be joined to
-# customers through a StarSchema. Runs Bronze → Silver → Gold at startup so
-# the Pipeline page shows live run history immediately.
+# customers through the DataModel's star-schema query. Runs Bronze → Silver → Gold
+# at startup so the Pipeline page shows live run history immediately.
 
 # Source data — orders extended with customer_id for the FK join
 _orders_raw = orders_df.assign(
@@ -284,57 +284,55 @@ _customers_raw.to_sql("customers_raw", con=create_engine(_DB_URL), if_exists="re
 
 _db = SQLConnector("demo_db", url=_DB_URL)
 
-# Bronze
-_orders_bronze = BronzeLayer(
+# Landing — raw ingest from upstream tables, no transforms
+_orders_landing = LandingLayer(
     connector=_db, source="orders_raw", description="Raw orders",
     sink=_db, sink_table="orders_bronze",
 )
-_customers_bronze = BronzeLayer(
+_customers_landing = LandingLayer(
     connector=_db, source="customers_raw", description="Raw customers",
     sink=_db, sink_table="customers_bronze",
 )
 
-# Silver
-_orders_silver = (
-    SilverLayer(source=_db, source_table="orders_bronze", sink=_db, sink_table="orders_silver")
+# Manipulation — optional light cleaning before serving
+_orders_manip = (
+    ManipulationLayer(source=_db, source_table="orders_bronze", sink=_db, sink_table="orders_silver")
     .drop_nulls(subset=["order_id", "customer_id"])
     .deduplicate(subset=["order_id"])
 )
-_customers_silver = (
-    SilverLayer(source=_db, source_table="customers_bronze", sink=_db, sink_table="customers_silver")
+_customers_manip = (
+    ManipulationLayer(source=_db, source_table="customers_bronze", sink=_db, sink_table="customers_silver")
     .drop_nulls()
     .deduplicate(subset=["customer_id"])
 )
 
-# DataModel + StarSchema (reads from silver tables)
+# DataModel with star-schema query surface (reads from silver tables)
 _pipeline_model = DataModel("SalesPipelineModel")
 _pipeline_model.add_connector(_db)
 _pipeline_model.add_table("orders_silver",    connector="demo_db", source="orders_silver")
 _pipeline_model.add_table("customers_silver", connector="demo_db", source="customers_silver")
-
-_schema = StarSchema("Sales", model=_pipeline_model)
-_schema.add_dimension(
+_pipeline_model.add_dimension(
     name="dim_customer",
     table_name="customers_silver",
     key_col="customer_id",
     attributes=["region", "segment"],
 )
-_schema.add_fact(
+_pipeline_model.add_fact(
     name="fact_orders",
     table_name="orders_silver",
     measures=["revenue", "qty", "cost"],
     foreign_keys={"dim_customer": "customer_id"},
 )
 
-# Gold layers
-_gold_by_region = GoldLayer(
-    schema=_schema, fact="fact_orders",
+# Final/serving layers — analytics-ready aggregations via the model's query()
+_final_by_region = FinalLayer(
+    model=_pipeline_model, fact="fact_orders",
     measures={"revenue": "sum", "qty": "sum", "cost": "sum"},
     dimensions=["dim_customer.region"],
     sink=_db, sink_table="gold_revenue_by_region",
 )
-_gold_by_segment = GoldLayer(
-    schema=_schema, fact="fact_orders",
+_final_by_segment = FinalLayer(
+    model=_pipeline_model, fact="fact_orders",
     measures={"revenue": "sum", "order_id": "count"},
     dimensions=["dim_customer.segment"],
     filters={"status": "shipped"},
@@ -343,15 +341,15 @@ _gold_by_segment = GoldLayer(
 
 # PipelineRunner — register layers with schedules and dependencies
 _runner = PipelineRunner(db_url=_DB_URL)
-_runner.register(_orders_bronze,    name="orders_bronze",    schedule="0 * * * *")
-_runner.register(_customers_bronze, name="customers_bronze", schedule="0 * * * *")
-_runner.register(_orders_silver,    name="orders_silver",    schedule="15 * * * *",
+_runner.register(_orders_landing,    name="orders_bronze",    schedule="0 * * * *")
+_runner.register(_customers_landing, name="customers_bronze", schedule="0 * * * *")
+_runner.register(_orders_manip,      name="orders_silver",    schedule="15 * * * *",
                  depends_on="orders_bronze")
-_runner.register(_customers_silver, name="customers_silver", schedule="15 * * * *",
+_runner.register(_customers_manip,   name="customers_silver", schedule="15 * * * *",
                  depends_on="customers_bronze")
-_runner.register(_gold_by_region,   name="revenue_by_region",  schedule="30 6 * * *",
+_runner.register(_final_by_region,   name="revenue_by_region",  schedule="30 6 * * *",
                  depends_on="orders_silver")
-_runner.register(_gold_by_segment,  name="revenue_by_segment", schedule="30 6 * * *",
+_runner.register(_final_by_segment,  name="revenue_by_segment", schedule="30 6 * * *",
                  depends_on="orders_silver")
 
 # Run full pipeline once at startup so the UI has live data immediately
@@ -365,14 +363,14 @@ _runner.run("revenue_by_segment")
 registry.add_pipeline("sales", _runner)
 
 
-# ── Medallion report (reads from gold layer via StarSchema) ───────────────────
+# ── Medallion report (reads from gold layer via the model's star-schema query) ──
 
 @registry.report(
     "medallion_revenue",
-    description="Revenue breakdown produced by the Bronze → Silver → Gold pipeline.",
+    description="Revenue breakdown produced by the Landing → Manipulation → Final pipeline.",
 )
 def medallion_revenue():
-    gold = GoldLayer(schema=_schema)
+    gold = FinalLayer(model=_pipeline_model)
 
     by_region = gold.query(
         fact="fact_orders",
@@ -393,8 +391,8 @@ def medallion_revenue():
     return (
         Report("Medallion Revenue Report")
         .author("TraceBi Demo")
-        .description("Revenue derived from Bronze → Silver → Gold pipeline via StarSchema.")
-        .parameter("pipeline", "orders_bronze → orders_silver → revenue_by_region")
+        .description("Revenue derived from Bronze → Silver → Gold pipeline via the model's star-schema query.")
+        .parameter("pipeline", "orders (landing) → orders (manipulation) → revenue_by_region (final)")
 
         .add(TextSection(
             title="Pipeline Overview",
@@ -404,8 +402,8 @@ def medallion_revenue():
         .add(TextSection(
             content=(
                 f"Total revenue across all regions: ${total_rev:,.2f}. "
-                "Data flows through Bronze (raw ingest) → Silver (deduplication) "
-                "→ Gold (StarSchema dimensional aggregation)."
+                "Data flows through Landing (raw ingest) → Manipulation (deduplication) "
+                "→ Final (star-schema dimensional aggregation)."
             ),
             style="normal",
         ))
