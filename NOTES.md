@@ -429,146 +429,191 @@ architecture — worth keeping in mind as the web UI develops.
 - Should `requests/` files be standalone scripts or should they import a
   shared project-level `DataModel` defined once in a central file?
 - Should the request template support both `.py` and `.ipynb` formats?
+- For the CLI scaffolding idea — is `tracebi new-request` worth building now?
+- What does the notebook → web UI registration workflow look like in practice?
+  Should it be a live dev-mode endpoint, a module reload, or just "copy to config file"?
 
 ---
 
-## 2026-05-23 — Recommendations Actioned
+## 2026-05-22 — Architecture Review & Action Plan
 
-Built out the work described in the 2026-05-22 architecture discussion plus
-the older Phase 5 and AI + TraceBi TODOs. Summary of what changed:
+> Comprehensive review of the codebase against the vision. Captured here as a
+> working document for the next agent to pick up and execute against.
+> Findings cite specific files; recommendations are prioritized.
 
-### DuckDB-backed engine, pandas-facing API
-- New `DuckDBConnector` for in-memory analytics, persistent `.duckdb` files,
-  and zero-config Parquet / CSV / JSON file access (`tracebi.[duckdb]` extra).
-- `DataModel.query()` (the star-schema analytic surface) now executes joins,
-  filters, and aggregations inside DuckDB (zero-copy view registration from
-  pandas), then materialises the result back to a pandas DataFrame so the
-  user-facing API is unchanged. Falls back to pandas when DuckDB isn't installed.
-- The final lineage node records which engine ran the query
-  (`metadata["engine"] = "duckdb" | "pandas"`).
+### Concept Assessment
 
-### Push-down filter + column projection
-- `BaseConnector.load(source, filter=None, columns=None)` is the new
-  contract. Every connector implements it.
-- `SQLConnector` / `BigQueryConnector` / `SnowflakeConnector` /
-  `DuckDBConnector` push filters down via `WHERE` / parameter binding and
-  project columns via `SELECT`. `MemoryConnector` and `CSVConnector` apply
-  them in pandas after loading. `supports_pushdown()` exposes this.
-- `DataModel.load(table_name, filter=..., columns=...)` threads the call
-  through, and records which path was used in the load lineage node.
+The genuinely differentiated idea is **"Report as Code + lineage manifest as
+audit artifact."** Not the medallion layers, not the dashboard, not the
+connectors. The thing nothing else in the comp set does well is:
 
-### Lineage warning on large unfiltered loads
-- `DataModel.load()` appends an `operation="warning"` node when a load
-  returns more than `LARGE_LOAD_WARN_ROWS` (default 100k) rows *and* no
-  filter / column projection was passed. Non-blocking — visible in the
-  lineage chain only.
+> Business asks for a number. Analyst commits a `.py` file. The file is
+> rerunnable, the output is Excel/HTML the business actually opens, and the
+> manifest is courtroom-defensible six months later.
 
-### Landing / Manipulation / Final layer naming
-- `LandingLayer`, `ManipulationLayer`, `FinalLayer` are the new canonical
-  classes — direct subclasses of `BronzeLayer` / `SilverLayer` / `GoldLayer`
-  with the only difference being the `operation` and `layer_label` they
-  stamp into lineage.
-- Existing `BronzeLayer` / `SilverLayer` / `GoldLayer` keep working
-  unchanged (and existing tests assert on the old `"bronze"`/`"silver"`/
-  `"gold"` lineage tags). All 163 prior tests still pass.
+**Unique value proposition (one sentence):** The only Python framework where
+every Excel/HTML/PDF deliverable carries an immutable, machine-readable
+lineage manifest, and the script that produced it is the auditable source of
+truth.
 
-### CLI: `tracebi new-request`
-- New `tracebi.cli` module wired as a `[project.scripts]` entry point.
-- `tracebi new-request "Open orders by region"` → scaffolds
-  `requests/open_orders_by_region.py` from a fresh template.
-- Plus `tracebi list-requests` and `tracebi run <name>`.
+**Comp set summary:**
 
-### Folder-based auto-discovery
-- `tracebi.web.discovery.auto_discover(path)` imports every `*.py` in a
-  directory (skipping `_*`).  The web server calls this at startup against
-  `TRACEBI_REQUESTS_DIR` (default `requests/`), so any
-  `@registry.report(...)` decorators inside drop-in files fire automatically.
+| Tool | Better than us | Worse than us |
+|---|---|---|
+| dbt | Warehouse SQL transforms, mature model lineage, community | Per-report manifests; Excel/HTML; analyst ad-hoc; non-SQL transforms |
+| Dagster | Real DAG orchestration, asset materialization | Lower ceremony; report-shaped artifacts |
+| Great Expectations | Data quality testing | Nothing — integrate, don't compete |
+| Evidence.dev | Static-site BI from SQL+markdown | Python ecosystem; Excel; programmatic transforms |
+| Hex / Deepnote | Notebook UX, collab, secrets, SSO | Git as source of truth; no vendor lock-in; runs anywhere |
+| Streamlit / Dash | Live interactivity | Lineage; reports-as-files; medallion structure |
+| Power BI / Tableau | Polish, ubiquity | Auditability; diffable reports; code review for analytics |
 
-### Notebook helper: `tracebi.web.register`
-- `from tracebi.web import register` exposes a small facade —
-  `register.connector(...)`, `register.model(...)`, `register.pipeline(...)`,
-  `register.dashboard(...)`, `@register.report(...)`,
-  `register.auto_discover(...)`. All lazy-import the web registry singleton
-  so the library still works in pure-library installs.
-
-### Web layer additions
-- `GET /api/dashboards/{name}/lineage` — returns a React Flow graph for the
-  combined lineage of every panel in a dashboard.
-- Optional `BasicAuthMiddleware` activates when `TRACEBI_AUTH_USER` and
-  `TRACEBI_AUTH_PASS` are set; `/api/health` is always public.
-
-### Deployment
-- `docker-compose.yml` for the getting-started story — mounts `data/`,
-  `output/`, and `requests/` and exposes the web UI on port 8000.
-- Dockerfile picks up the new `[duckdb]` extra.
-
-### Open decisions left as-is
-- Layer renaming is additive only — no plan to delete the
-  Bronze/Silver/Gold class names. CLAUDE.md still references both.
+The 2026-05-22 positioning entry (above) arrived at the right framing —
+delivery and auditability layer, not ETL platform. Need to commit to it in
+README, UI copy, and public API.
 
 ---
 
-## 2026-05-23 — Follow-up: rename finalised across UI + remaining TODOs
+### Architecture Findings
 
-A second pass actioned the items called out in NOTES.md follow-up.
+**DataSet + LineageNode (`tracebi/model/dataset.py`)** — strong.
+Immutability is real. Three gaps:
+- `LineageNode` is a regular `@dataclass`, not frozen. `ds.lineage[0].metadata['rows'] = 999` mutates the audit chain in place.
+- `fingerprint()` uses `pd.util.hash_pandas_object()` — non-cryptographic, non-deterministic across pandas versions, sensitive to column order.
+- Every constructor does `df.copy()`. Lethal for large data; fine for small aggregates.
 
-### UI refresh
-- `web/demo_app.py` migrated to `LandingLayer` / `ManipulationLayer`
-  / `FinalLayer`. Pipeline runs now stamp `layer_type =
-  "landing" | "manipulation" | "final"`.
-- React UI updated: new badge variants in `Shared.jsx`, new
-  `TYPE_BADGE` + `TYPE_LABEL` maps in `Pipelines.jsx` that handle both
-  legacy ("bronze/silver/gold") and new vocabularies, copy refresh
-  on `Home.jsx` (concept #3, feature grid, walkthrough step #3),
-  and a "⊶ Lineage" modal on `Dashboards.jsx` consuming
-  `/api/dashboards/{name}/lineage`.
-- `useRunPipeline` hook + "Run all" button on each pipeline card.
+**DataModel (`tracebi/model/data_model.py`)** — `load()` always issues
+`SELECT *`. No pushdown. `resolve()` does merges in pandas memory even when
+both sides come from the same SQL connector.
 
-### Pipeline-level run endpoint
-- `POST /api/pipelines/{name}/run` — walks all leaves with their full
-  upstream chain (deduplicated) by default, or fires every layer in
-  registration order with `refresh=false`.
+**Medallion (Bronze/Silver/Gold)** — kill the framing. NOTES.md 2026-05-22
+already arrived at Landing/Manipulation/Final. Three reasons:
+1. It overpromises (implies we own ingest).
+2. It collides with dbt.
+3. `GoldLayer` adds nothing — 30-line wrapper around `StarSchema.query()` that stamps a lineage node.
 
-### Proxy header-trust auth
-- `ProxyHeaderAuthMiddleware` reads identity from a configurable header
-  (default `X-Forwarded-User`) and exposes it at `request.state.user`.
-- `TRACEBI_AUTH_PROXY_HEADER` selects proxy mode; optional
-  `TRACEBI_AUTH_PROXY_TRUSTED_IPS` restricts which client IPs may pass.
-- Proxy mode wins when both Basic and Proxy env vars are set.
-- Designed for Authelia / oauth2-proxy / Cloudflare Access deployments.
+Keep old class names as deprecated aliases for one version, then remove.
 
-### Embedded Dash toggle
-- `TRACEBI_EMBED_DASHBOARDS=0` skips the WSGI mount; dashboards then
-  run standalone via `DashboardServer.run()`. Default remains embedded
-  for the single-port demo flow.
+**Report engine (`tracebi/reports/`)** — sections + manifest + multi-renderer
+is solid. Manifest persisting per-section dataset lineage + fingerprint is
+the genuinely novel piece — make it prominent in docs. Renderers need fuzz
+testing with NaN, long text, mixed dtypes, unicode.
 
-### Folder & decorator
-- `@registry.scheduled("name", cron="…")` decorator registers a report
-  *and* tags it with a cron expression. `registry.list_scheduled()`
-  exposes the cron-tagged factories for an external scheduler.
-- Second auto-discovery directory: `TRACEBI_SCHEDULED_DIR`
-  (default `scheduled/`). Same import semantics as `requests/`.
+**Pipeline runner (`tracebi/pipeline/runner.py`)** — functional but rough:
+- No locking. Two workers can both `run("layer")` concurrently; run history becomes ambiguous.
+- SQL injection: `f"WHERE layer_name = '{layer_name}'"` with `layer_name` from a FastAPI path parameter.
+- `runner.run()` returns synchronously from the web endpoint but the UI gets `"status": "triggered"` while the job may still be running.
 
-### Shared project model
-- `Registry.add_model(model, default=True)` and
-  `Registry.set_default_model(name)` track a project-level default.
-- `tracebi.web.register.get_default_model()` returns it; the request
-  template and notebook scaffold both call this so files don't each
-  rebuild their own DataModel.
+**Web UI / Registry** — confirms risks already named in NOTES.md:
+- Dash inside FastAPI via WSGI middleware won't scale.
+- Registry is module-level singleton populated at import time; fragile under hot-reload or multi-worker uvicorn.
+- No auth (known). Design assuming reverse-proxy enforces identity.
 
-### CLI: notebook scaffold
-- `tracebi new-request "…" --notebook` writes a valid `.ipynb` with
-  starter cells. `tracebi list-requests` now lists both `.py` and
-  `.ipynb`.
+---
 
-### Dev-mode reload
-- `TRACEBI_DEV_MODE=1` mounts `POST /api/_dev/reload` and
-  `GET /api/_dev/discovered`.
-- `reload_modules()` invalidates the importlib caches, bumps mtime,
-  and deletes stale `.pyc` before re-importing, so back-to-back edits
-  within the same second are picked up.
+### Lineage & Traceability — Three Real Gaps
 
-### Tests
-- 229 total (66 in `test_phase5.py`), covering proxy auth, dashboard
-  lineage endpoint, pipeline-level run, shared model defaults,
-  `@scheduled`, notebook scaffolding, dev-mode reload.
+**Gap 1 — Lineage of the *code that produced the lineage*.** Manifest
+records transforms but not the git SHA of the repo at render time. Add
+`git_sha` to `ReportManifest`. Difference between "I can prove what
+happened" and "I can prove what happened *and reproduce it.*"
+
+**Gap 2 — Cross-pipeline lineage.** A report consuming a gold table doesn't
+carry the upstream `run_id` of the pipeline run that produced it. Can't
+answer: "this Excel file's `revenue_by_region` came from which pipeline
+run?" Stamp the most recent successful `run_id` of any sink table the
+report reads onto its manifest.
+
+**Gap 3 — Dashboards have no lineage export.** Already a TODO in NOTES.md.
+Should be P1, not P3. A dashboard without lineage breaks the whole
+framework's promise.
+
+**What it gets right:** lineage captured *at operation time*, not
+reconstructed from a parsed DAG. dbt builds lineage from SQL parsing; that
+breaks on dynamic SQL. We build from runtime ops — more accurate (if less
+analyzable statically).
+
+---
+
+### Action Plan (Prioritized)
+
+#### P0 — Before anyone runs this on real data
+
+| # | Item | File(s) |
+|---|---|---|
+| 1 | Parameterize all SQL in pipeline history queries | `tracebi/pipeline/runner.py` |
+| 2 | Remove plaintext credential storage; accept callables/env vars | `tracebi/connectors/snowflake_connector.py`, `sql_connector.py` |
+| 3 | `threading.RLock` around Registry mutators and compound reads | `web/api/registry.py` |
+| 4 | File lock or DB advisory lock per layer in PipelineRunner | `tracebi/pipeline/runner.py` |
+| 5 | `@dataclass(frozen=True)` on `LineageNode`, immutable metadata mapping | `tracebi/model/dataset.py` |
+
+#### P1 — Quick wins (≤1 day each, high impact)
+
+- Add `git_sha` to `ReportManifest` (~15 lines). Falls back to `unknown` if not in a repo.
+- `tracebi[all]` extras_require (one line in `pyproject.toml`).
+- Lead the README with the 10-line Excel report path; medallion as optional section.
+- SHA-256 of canonical Parquet bytes as fingerprint (~10 lines). Turns "fingerprint" into a real audit primitive.
+- Extract `BaseRenderer` and document the renderer extension point.
+- `tests/test_web_api.py` covering every router with FastAPI `TestClient` (~300 lines). Currently zero web-layer tests.
+- Add `/dashboards/<name>/lineage` endpoint (already TODO'd).
+- `StarSchema.query()` — raise on missing declared dimension attributes (currently silent skip; "silent wrong answer" bug class).
+
+#### P2 — Medium-term (1–2 weeks each)
+
+- Pushdown filters on `model.load(where=…, columns=…)` and `BaseConnector.load(…)`. SQL/BigQuery/Snowflake implement; CSV/Memory filter in memory.
+- Per-request memoization (`RunContext` scoped per HTTP request or pipeline run). Reuse loads within a context; never across. Marketed "freshness" doesn't survive dashboard interactivity.
+- Rename medallion → Landing/Manipulation/Final. Old names as aliases.
+- Make `runner.run()` async-capable for web endpoint. Return `run_id`; expose `GET /api/runs/{id}` for polling.
+- `tracebi new-request "open orders by region"` CLI scaffolding.
+- Connector-aware `repr` that masks credentials.
+- Cross-pipeline lineage stamping (Gap 2 above).
+
+#### P3 — Big architectural moves
+
+- **`DataSet` over a query graph, not a DataFrame.** Biggest leverage move. `DataSet` becomes a thin handle to a lazy graph; `.to_pandas()` is the only materialization point. Unlocks pushdown joins, DuckDB execution, Polars backend, lineage-aware query optimization. NOTES.md already flags the direction — start the abstraction work while it's cheap.
+- **DuckDB as default execution engine** for in-process work; pandas as fallback. DuckDB does pushdown to Parquet/SQL natively, handles 10× more data than pandas, and the lineage layer doesn't care which engine ran the op.
+- **Native Great Expectations integration.** Every `SilverLayer` step can carry an optional GE expectation suite; failures become lineage nodes. Don't build a DQ engine; integrate one.
+- **Notebook hot-reload registry.** `from tracebi.web import dev_register; dev_register(report)` POSTs to a dev endpoint and report appears without restart. Killer DX for Persona A.
+
+#### Killer features (where TraceBi could actually stand out)
+
+- **Diffable reports.** `tracebi diff requests/q2_report.py @ main..feature-branch` runs both versions against the same data snapshot and produces a structural diff of the resulting reports (table values, chart shapes). Nothing in BI does this. Analytics equivalent of `git diff` for code review of *numbers*.
+- **Replayable lineage.** Given a saved manifest JSON, regenerate the report against historical data using warehouse time-travel (Snowflake `AT(TIMESTAMP …)`, BigQuery snapshots, Iceberg). "Reproduce the Q1 board deck's revenue number with today's connectors" becomes a one-liner.
+- **Email/Slack delivery as first-class.** `report.deliver(to="finance@…", channel="#weekly-reports")` with Excel attached and a link to the manifest. The "delivery" half of "code-first analytics + delivery" is currently missing.
+- **`tracebi lint`** that statically checks `requests/*.py` for anti-patterns: unfiltered loads of large tables, missing report descriptions, charts without titles, deprecated APIs.
+
+---
+
+### Specific Code Anti-Patterns
+
+1. `pipeline/runner.py` `_engine_()` method — rename to `@property`. Trailing underscore is uncomfortable Python.
+2. `pipeline/runner.py` raw-string SQL — parameterize (also covered in P0).
+3. `GoldLayer` (`etl/gold.py`) is a 30-line wrapper. Delete or make it earn its keep with incremental refresh / sink materialization.
+4. `StarSchema.query()` silently skips dimension attributes that don't exist on the dim table — covered in P1.
+5. Connectors store plaintext credentials as instance attributes — covered in P0; also affects `repr` and pickle.
+6. `DataModel.resolve()` does merges in pandas memory even when both sides share a SQL connector. Add TODO for connector-aware planner.
+7. `web/api/registry.py` mutated at import time — under uvicorn `--reload` can produce duplicate registrations. Guard with `is_registered` check, or `Registry.from_module(name)` factory that wipes state first.
+8. `web/api/routers/*` endpoints are sync, calling blocking pandas. Single-worker uvicorn serializes all requests. Convert to `async def` + `await asyncio.to_thread(...)` or document multi-worker as required.
+9. No timeout on `model.load()` in preview endpoint — a 100M-row table hangs the request indefinitely. Add row-limit + timeout.
+10. `requests/_template.py` could enforce structure via a `@tracebi.request(name, schedule=None)` decorator that the auto-discovery scanner picks up. Unifies ad-hoc and scheduled flows.
+
+---
+
+### What's NOT Tested (test coverage gaps)
+
+- **Web API routers**: zero tests for FastAPI endpoints.
+- **Concurrency**: no concurrent-access tests for Registry, DataModel, PipelineRunner.
+- **Credential handling**: Snowflake and BigQuery connectors never tested.
+- **Large data**: no tests with DataFrames > 100K rows.
+- **Renderer output bytes**: no tests against actual Excel/HTML/PDF output, only that they don't crash. Use `hypothesis` with constrained DataFrames.
+- **Dash dashboard**: panels tested structurally; no integration tests with the server.
+- **Edge cases**: no tests for division by zero in aggregations, NaN handling, special characters in column names.
+
+---
+
+### The Two Bets
+
+1. **Commit to the "code-first analytics delivery + auditability" positioning** and trim everything that contradicts it (medallion framing, implication of ETL ownership). NOTES.md already arrived here — execute on it.
+2. **Make the lineage truly bulletproof** (frozen nodes, cryptographic fingerprints, git SHA in manifests, cross-pipeline lineage) before adding more surface area. The promise of "defensible audit trail" is the only thing we can offer that dbt + Hex + Streamlit cannot, and it has to actually hold.
+
+The pandas-memory ceiling is the eventual scaling wall, but doesn't have to be solved on day one — make the abstraction lazy-friendly now so it can be swapped later.
