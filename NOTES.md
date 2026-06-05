@@ -678,16 +678,15 @@ web/
 - `pipeline.py` creates `_runner` and runs the startup sequence; `registry.py`
   calls `registry.add_pipeline("sales", _runner)`.
 
-### TODO (pick up next session)
+### TODO (completed 2026-06-05)
 
-- [ ] Create `web/demo_app/` folder with the layout above
-- [ ] Migrate each report function to its own file under `reports/`
-- [ ] Pull connector + DataModel into `model.py`
-- [ ] Pull pipeline layers + PipelineRunner into `pipeline.py`
-- [ ] Pull Dashboard + DashboardServer into `dashboard.py`
-- [ ] Write `registry.py` that imports + wires everything
-- [ ] Write `__init__.py` that imports registry (side-effect import)
-- [ ] Delete `web/demo_app.py`
-- [ ] Verify `TRACEBI_APP=web.demo_app` still works (resolves to `__init__.py`)
-- [ ] Run full test suite (243 tests) — no regressions expected since web layer
-      imports demo_app lazily via `TRACEBI_APP` string, not direct import
+- [x] Create `web/demo_app/` folder with the layout above
+- [x] Migrate each report function to its own file under `reports/`
+- [x] Pull connector + DataModel into `model.py`
+- [x] Pull pipeline layers + PipelineRunner into `pipeline.py`
+- [x] Pull Dashboard + DashboardServer into `dashboard.py`
+- [x] Write `registry.py` that imports + wires everything (except reports)
+- [x] Write `__init__.py` that imports registry (side-effect import)
+- [x] Delete `web/demo_app.py`
+- [x] `TRACEBI_APP=web.demo_app` still works — resolves to `__init__.py`
+- [x] Full test suite: 243 passed, 0 regressions
