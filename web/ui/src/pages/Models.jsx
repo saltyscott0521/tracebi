@@ -50,10 +50,10 @@ function TablePreview({ modelName, tableName }) {
 // ── ERD Diagram ──────────────────────────────────────────────────────────────
 
 const ROLE_STYLES = {
-  dimension: { header: 'linear-gradient(135deg,#0a1e3d,#0f2d5e)', accent: '#3b82f6', label: 'Dimension' },
-  fact:      { header: 'linear-gradient(135deg,#12062e,#1e0f52)', accent: '#a78bfa', label: 'Fact' },
-  bridge:    { header: 'linear-gradient(135deg,#251400,#3a2000)', accent: '#fbbf24', label: 'Bridge' },
-  isolated:  { header: 'linear-gradient(135deg,#0c1220,#141e2e)', accent: '#64748b', label: 'Table' },
+  dimension: { header: 'linear-gradient(135deg,#0f2a52,#1a3f78)', accent: '#3b82f6', label: 'Dimension' },
+  fact:      { header: 'linear-gradient(135deg,#1a0a42,#2a1668)', accent: '#a78bfa', label: 'Fact' },
+  bridge:    { header: 'linear-gradient(135deg,#321c00,#4e2c00)', accent: '#fbbf24', label: 'Bridge' },
+  isolated:  { header: 'linear-gradient(135deg,#131e34,#1c2a44)', accent: '#64748b', label: 'Table' },
 }
 
 function getTableKeys(tableName, relationships) {
@@ -89,7 +89,7 @@ function ERDTableNode({ data }) {
   const keyCount = data.pks.length + data.fks.length
   return (
     <div style={{
-      background: '#080f20',
+      background: '#0e1830',
       border: `1.5px solid ${rs.accent}3a`,
       borderRadius: 10,
       minWidth: 215,

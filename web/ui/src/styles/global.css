@@ -8,16 +8,16 @@
   --blue-br:     rgba(59,130,246,0.28);
   --purple:      #7c3aed;
   --purple-lt:   rgba(124,58,237,0.12);
-  --bg:          #080f20;
-  --surface:     #0e1628;
-  --card:        rgba(15, 23, 45, 0.85);
-  --card-solid:  #0f1730;
-  --card-hl:     rgba(20, 32, 62, 0.9);
-  --border:      rgba(46, 66, 120, 0.6);
-  --border-hl:   rgba(59, 130, 246, 0.4);
-  --text:        #e2e8f0;
+  --bg:          #0d1526;
+  --surface:     #111d33;
+  --card:        rgba(22, 34, 62, 0.88);
+  --card-solid:  #131e38;
+  --card-hl:     rgba(28, 42, 76, 0.92);
+  --border:      rgba(60, 84, 148, 0.5);
+  --border-hl:   rgba(59, 130, 246, 0.45);
+  --text:        #e8edf5;
   --text-2:      #94a3b8;
-  --muted:       #4a5f80;
+  --muted:       #5a7099;
   --green:       #22c55e;
   --amber:       #f59e0b;
   --red:         #ef4444;
@@ -60,19 +60,19 @@ body {
   transition: opacity 1s ease;
 }
 .orb-1 {
-  width: 700px; height: 700px;
-  top: -15%; right: -8%;
-  background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 65%);
+  width: 760px; height: 760px;
+  top: -18%; right: -10%;
+  background: radial-gradient(circle, rgba(59,130,246,0.13) 0%, transparent 65%);
 }
 .orb-2 {
-  width: 550px; height: 550px;
-  bottom: 0%; left: 12%;
-  background: radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 65%);
+  width: 600px; height: 600px;
+  bottom: 0%; left: 10%;
+  background: radial-gradient(circle, rgba(124,58,237,0.11) 0%, transparent 65%);
 }
 .orb-3 {
-  width: 350px; height: 350px;
-  top: 40%; right: 25%;
-  background: radial-gradient(circle, rgba(59,130,246,0.04) 0%, transparent 60%);
+  width: 400px; height: 400px;
+  top: 38%; right: 22%;
+  background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 60%);
 }
 
 /* Content sits above orbs */
@@ -127,7 +127,7 @@ tbody tr:hover { background: rgba(59,130,246,.07); }
 tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 
 /* ReactFlow (lineage + ERD) */
-.react-flow__background { background: #040a14 !important; }
+.react-flow__background { background: #0a1220 !important; }
 .react-flow__edge-path { stroke: var(--blue) !important; stroke-width: 1.5 !important; }
 .react-flow__edge-text { font-size: 11px !important; }
 .react-flow__attribution { display: none; }
@@ -249,7 +249,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: #040a14;
+  background: #0a1220;
 }
 
 /* ── Responsive ─────────────────────────────────────── */
