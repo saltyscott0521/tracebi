@@ -1,9 +1,360 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useConnectors, useModels, useReports, usePipelines } from '../api'
-import { StatTile, CodeBlock, Card, CardTitle, Btn } from '../components/Shared'
+import { StatTile, CodeBlock, Btn } from '../components/Shared'
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Demo Player ───────────────────────────────────────────────────────────────
+
+const DEMO_STEPS = [
+  {
+    icon: '⇌',
+    label: 'Connect',
+    title: 'Connect to any data source',
+    desc: 'Wrap SQL, CSV, BigQuery, Snowflake, or in-memory DataFrames. All connectors share the same interface.',
+    code:
+`from tracebi import DataModel, SQLConnector, CSVConnector
+
+db  = SQLConnector("sales_db", url="sqlite:///data/sales.db")
+csv = CSVConnector("lookups",  directory="data/")
+
+model = DataModel("SalesModel")
+model.add_connector(db)
+model.add_connector(csv)
+model.add_table("orders",    connector="sales_db", source="orders")
+model.add_table("customers", connector="sales_db", source="customers")
+model.connect()`,
+    output: [
+      { text: 'Connected to sales_db (SQLite)',      ok: true },
+      { text: 'Connected to lookups (CSV, data/)',   ok: true },
+      { text: 'Registered 2 tables: orders, customers', ok: true },
+    ],
+  },
+  {
+    icon: '⊶',
+    label: 'Transform',
+    title: 'Load and transform — lineage is automatic',
+    desc: 'Every DataSet method returns a new immutable DataSet. The full audit trail is built without any extra tracking code.',
+    code:
+`orders = model.load("orders")
+
+result = (
+  orders
+  .filter("status == 'shipped'",
+          description="Shipped orders only")
+  .transform(
+    lambda df: df.assign(margin=df["revenue"] - df["cost"]),
+    description="margin = revenue - cost",
+  )
+  .sort("margin", ascending=False)
+)
+
+result.print_lineage()`,
+    output: [
+      { text: '[LOAD]       Loaded \'orders\' from sales_db',  color: '#60a5fa' },
+      { text: '[FILTER]     Shipped orders  (250 → 198 rows)', color: '#60a5fa' },
+      { text: '[TRANSFORM]  margin = revenue − cost',         color: '#60a5fa' },
+      { text: '[SORT]       Sorted by margin desc',            color: '#60a5fa' },
+    ],
+  },
+  {
+    icon: '⬡',
+    label: 'Pipeline',
+    title: 'Structure as Landing → Manipulation → Final',
+    desc: 'Three layers, each reading the previous sink and writing the next. Declare schedules and dependencies — PipelineRunner handles the rest.',
+    code:
+`runner = PipelineRunner(db_url="sqlite:///data/tracebi.db")
+
+runner.register(landing, name="orders_bronze",
+                schedule="0 * * * *")
+runner.register(manip,   name="orders_silver",
+                schedule="15 * * * *",
+                depends_on="orders_bronze")
+runner.register(final,   name="revenue_gold",
+                schedule="30 6 * * *",
+                depends_on="orders_silver")
+
+runner.start()`,
+    output: [
+      { text: '3 layers registered',                    ok: true  },
+      { text: 'Scheduler started (APScheduler)',         ok: true  },
+      { text: 'Next: orders_bronze in 00:42',           color: '#fbbf24' },
+    ],
+  },
+  {
+    icon: '▤',
+    label: 'Report',
+    title: 'Compose and render a report',
+    desc: 'Assemble reports from typed sections. Render to Excel or HTML — a lineage manifest is written alongside every output.',
+    code:
+`report = (
+  Report("Q2 Revenue Analysis")
+  .author("Data Team")
+  .add(TextSection("Summary", content=exec_summary))
+  .add(ChartSection("Revenue by Region",
+        dataset=gold_ds, chart_type="bar",
+        x="dim_customer.region", y="revenue"))
+  .add(TableSection("Detail",
+        dataset=gold_ds,
+        columns=["region", "revenue", "margin"],
+        totals=["revenue", "margin"]))
+)
+
+HTMLRenderer().render(report, "output/q2.html")`,
+    output: [
+      { text: 'output/q2.html              284 KB',    ok: true },
+      { text: 'output/q2_manifest.json     lineage',   ok: true },
+      { text: '3 sections · 198 rows · 4 charts',      color: '#94a3b8' },
+    ],
+  },
+  {
+    icon: '◫',
+    label: 'Web UI',
+    title: 'Expose everything via the web layer',
+    desc: 'Register in your app module — connectors, models, pipelines, and reports are surfaced with run buttons, ERD diagrams, and lineage views.',
+    code:
+`# web/demo_app.py
+registry.add_connector(db)
+registry.add_model(model)
+registry.add_pipeline("sales", runner)
+
+@registry.report("q2_revenue")
+def q2_revenue():
+    gold_ds = runner.run("revenue_gold")
+    return build_report(gold_ds)
+
+
+# python web/run.py`,
+    output: [
+      { text: 'GET  /api/connectors',               color: '#60a5fa' },
+      { text: 'GET  /api/models/SalesModel',         color: '#60a5fa' },
+      { text: 'POST /api/reports/q2_revenue/run',    color: '#60a5fa' },
+      { text: 'Serving on http://localhost:8000',     ok: true },
+    ],
+  },
+]
+
+const CHARS_PER_TICK = 6
+const TICK_MS = 22
+const OUTPUT_DELAY_MS = 420
+const STEP_PAUSE_MS = 2800
+
+function CodeView({ code, chars }) {
+  const visible = code.slice(0, chars)
+  const done = chars >= code.length
+  const lines = visible.split('\n')
+
+  return (
+    <pre style={{
+      fontFamily: "'Cascadia Code', 'Fira Code', Consolas, monospace",
+      fontSize: 12.5, lineHeight: 1.75, margin: 0, tabSize: 2,
+      color: '#b8cce8', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+    }}>
+      {lines.map((line, i) => {
+        const isComment = line.trimStart().startsWith('#')
+        const isKeyword = /^(from|import|def|class|return|if|else|for|with)\b/.test(line.trimStart())
+        const color = isComment ? '#4a6280' : isKeyword ? '#93c5fd' : '#b8cce8'
+        const isLast = i === lines.length - 1
+        return (
+          <span key={i}>
+            <span style={{ color, fontStyle: isComment ? 'italic' : 'normal' }}>{line}</span>
+            {isLast && !done && (
+              <span className="cursor-blink" style={{
+                display: 'inline-block', width: 2, height: '0.9em',
+                background: '#60a5fa', marginLeft: 1,
+                verticalAlign: 'text-bottom',
+              }} />
+            )}
+            {i < lines.length - 1 && '\n'}
+          </span>
+        )
+      })}
+    </pre>
+  )
+}
+
+function DemoPlayer() {
+  const [stepIdx, setStepIdx] = useState(0)
+  const [chars, setChars] = useState(0)
+  const [shownOutputs, setShownOutputs] = useState(0)
+  const [playing, setPlaying] = useState(true)
+  const tm = useRef(null)
+
+  const step = DEMO_STEPS[stepIdx]
+
+  // Reset when step changes
+  useEffect(() => {
+    clearTimeout(tm.current)
+    setChars(0)
+    setShownOutputs(0)
+  }, [stepIdx])
+
+  // Animation state machine
+  useEffect(() => {
+    if (!playing) { clearTimeout(tm.current); return }
+    clearTimeout(tm.current)
+    const codeLen = step.code.length
+    const outLen = step.output.length
+
+    if (chars < codeLen) {
+      tm.current = setTimeout(() => setChars(c => Math.min(c + CHARS_PER_TICK, codeLen)), TICK_MS)
+    } else if (shownOutputs < outLen) {
+      tm.current = setTimeout(() => setShownOutputs(s => s + 1), OUTPUT_DELAY_MS)
+    } else {
+      tm.current = setTimeout(() => setStepIdx(i => (i + 1) % DEMO_STEPS.length), STEP_PAUSE_MS)
+    }
+    return () => clearTimeout(tm.current)
+  }, [chars, shownOutputs, playing, step])
+
+  const progress = ((stepIdx + Math.min(chars / (step.code.length || 1), 1)) / DEMO_STEPS.length) * 100
+
+  return (
+    <div style={{
+      background: 'rgba(14,22,42,0.92)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      border: '1px solid var(--border)',
+      borderRadius: 14,
+      overflow: 'hidden',
+      marginBottom: 32,
+      boxShadow: '0 24px 64px rgba(0,0,0,.5), 0 0 0 1px rgba(59,130,246,.08)',
+    }}>
+
+      {/* Window chrome */}
+      <div style={{
+        background: 'rgba(0,0,0,.3)',
+        borderBottom: '1px solid rgba(255,255,255,.06)',
+        padding: '11px 18px',
+        display: 'flex', alignItems: 'center', gap: 12,
+        userSelect: 'none',
+      }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['#ef4444', '#f59e0b', '#22c55e'].map(c => (
+            <div key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c, opacity: .75 }} />
+          ))}
+        </div>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 11.5, color: '#3d5278', fontWeight: 600, letterSpacing: .3 }}>
+          tracebi — interactive demo
+        </div>
+        <button
+          onClick={() => setPlaying(p => !p)}
+          title={playing ? 'Pause' : 'Play'}
+          style={{
+            background: playing ? 'rgba(34,197,94,.12)' : 'rgba(255,255,255,.06)',
+            border: `1px solid ${playing ? 'rgba(34,197,94,.28)' : 'rgba(255,255,255,.08)'}`,
+            borderRadius: 6, cursor: 'pointer', padding: '3px 10px',
+            color: playing ? '#4ade80' : '#64748b',
+            fontSize: 11, fontWeight: 700, letterSpacing: .3,
+          }}>
+          {playing ? '⏸ LIVE' : '▶ PLAY'}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', minHeight: 380 }}>
+
+        {/* Step navigation */}
+        <div style={{
+          width: 210, flexShrink: 0,
+          borderRight: '1px solid rgba(255,255,255,.06)',
+          paddingTop: 8, paddingBottom: 8,
+        }}>
+          {DEMO_STEPS.map((s, i) => {
+            const active = stepIdx === i
+            const done = stepIdx > i
+            return (
+              <button key={i} onClick={() => { setStepIdx(i); setPlaying(true) }} style={{
+                width: '100%', padding: '10px 16px 10px 14px',
+                background: active ? 'rgba(59,130,246,.1)' : 'none',
+                border: 'none',
+                borderLeft: `2px solid ${active ? '#3b82f6' : 'transparent'}`,
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10,
+                textAlign: 'left',
+                transition: 'background var(--t)',
+              }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                  background: active
+                    ? 'linear-gradient(135deg,#2563eb,#7c3aed)'
+                    : done ? 'rgba(34,197,94,.12)' : 'rgba(255,255,255,.05)',
+                  border: active ? 'none' : done ? '1px solid rgba(34,197,94,.3)' : '1px solid rgba(255,255,255,.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: done ? 13 : 15,
+                  boxShadow: active ? '0 2px 10px rgba(124,58,237,.4)' : 'none',
+                  transition: 'all var(--t)',
+                }}>{done && !active ? '✓' : s.icon}</div>
+                <div>
+                  <div style={{ fontSize: 10, color: active ? '#60a5fa' : '#3d5278', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 1 }}>
+                    Step {i + 1}
+                  </div>
+                  <div style={{ fontSize: 12.5, fontWeight: active ? 700 : 500, color: active ? '#e2e8f0' : '#4a6280', lineHeight: 1.2 }}>
+                    {s.label}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Code + output area */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* Step header */}
+          <div style={{
+            padding: '16px 24px 13px',
+            borderBottom: '1px solid rgba(255,255,255,.05)',
+            background: 'rgba(0,0,0,.12)',
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#d1ddf5', marginBottom: 3 }}>
+              {step.title}
+            </div>
+            <p style={{ fontSize: 12, color: '#4a6280', lineHeight: 1.55, margin: 0 }}>
+              {step.desc}
+            </p>
+          </div>
+
+          {/* Code */}
+          <div style={{ flex: 1, padding: '18px 24px 14px', overflowY: 'auto' }}>
+            <CodeView code={step.code} chars={chars} />
+          </div>
+
+          {/* Output lines */}
+          {shownOutputs > 0 && (
+            <div style={{
+              borderTop: '1px solid rgba(255,255,255,.06)',
+              padding: '10px 24px 14px',
+              background: 'rgba(0,0,0,.25)',
+            }}>
+              {step.output.slice(0, shownOutputs).map((line, i) => (
+                <div key={i} className="fade-in" style={{
+                  fontFamily: "'Cascadia Code', 'Fira Code', monospace",
+                  fontSize: 12, lineHeight: 1.7,
+                  color: line.ok ? '#4ade80' : (line.color || '#64748b'),
+                  display: 'flex', alignItems: 'baseline', gap: 8,
+                }}>
+                  <span style={{ color: '#1e3050', flexShrink: 0 }}>$</span>
+                  {line.ok && <span style={{ color: '#16a34a', flexShrink: 0 }}>✓</span>}
+                  <span>{line.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ height: 3, background: 'rgba(255,255,255,.04)' }}>
+        <div style={{
+          height: '100%',
+          background: 'linear-gradient(90deg, #3b82f6, #7c3aed)',
+          width: `${progress}%`,
+          transition: `width ${TICK_MS}ms linear`,
+        }} />
+      </div>
+    </div>
+  )
+}
+
+// ── Static content ────────────────────────────────────────────────────────────
 
 const CONCEPTS = [
   {
@@ -42,7 +393,7 @@ connector, filters, joins, transforms, aggregations — traceable back to the ra
       { t: 'c', v: '# Step 3: [TRANSFORM]  margin = revenue - cost' },
       { t: 'c', v: '# Step 4: [SORT]       Sorted by margin (desc)' },
       { t: 'n', v: '' },
-      { t: 'c', v: '# Visualise as a DAG' },
+      { t: 'c', v: '# Export as a DAG diagram' },
       { t: 'n', v: 'from tracebi.lineage.diagram import LineageDiagram\nLineageDiagram(result).to_html("lineage.html")' },
     ],
   },
@@ -50,8 +401,7 @@ connector, filters, joins, transforms, aggregations — traceable back to the ra
     n: 3,
     title: 'Landing → Manipulation → Final',
     body: `Three named layers, each with a distinct purpose. Landing / Manipulation / Final are
-the canonical names; Bronze / Silver / Gold remain as aliases — pick the vocabulary that
-fits your team.
+the canonical names; Bronze / Silver / Gold remain as aliases.
 
 Landing — raw ingest as-is, permanent audit record.
 Manipulation — declarative light cleaning (casts, nulls, deduplication).
@@ -140,7 +490,7 @@ result.print_lineage()
   {
     label: '3. Pipeline',
     title: 'Structure as a three-layer pipeline',
-    desc: 'Landing → Manipulation → Final mirrors the medallion pattern. Each layer reads from the previous sink, applies its transformations, and writes output — so every run is reproducible.',
+    desc: 'Landing → Manipulation → Final mirrors the medallion pattern. Each layer reads from the previous sink, applies its transformations, and writes output.',
     code: `from tracebi import LandingLayer, ManipulationLayer, FinalLayer
 
 landing = LandingLayer(connector=db, source="orders_raw",
@@ -164,13 +514,11 @@ final = FinalLayer(model=model, fact="fact_orders",
     title: 'Build and render a report',
     desc: 'Assemble reports from section objects — text, tables, charts. Render to Excel or HTML; both renderers write a manifest.json capturing full lineage.',
     code: `from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
-from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
 
 report = (
   Report("Q2 Sales Report")
   .author("Data Team")
-  .parameter("period", "Q2 2024")
   .add(TextSection(title="Summary", content="...", style="heading1"))
   .add(ChartSection(title="Revenue by Region", dataset=gold_ds,
                     chart_type="bar", x="dim_customer.region", y="revenue"))
@@ -179,7 +527,6 @@ report = (
                     totals=["revenue"]))
 )
 
-ExcelRenderer().render(report, "output/q2_sales.xlsx")
 HTMLRenderer().render(report, "output/q2_sales.html")`,
   },
   {
@@ -196,10 +543,8 @@ runner.register(manip,   name="orders_silver",     schedule="15 * * * *",
 runner.register(final,   name="revenue_by_region", schedule="30 6 * * *",
                 depends_on="orders_silver")
 
-# Full refresh — runs all three in dependency order
-runner.run("revenue_by_region", refresh=True)
-
-runner.start()  # Start APScheduler (blocking)`,
+runner.run("revenue_by_region", refresh=True)  # full refresh
+runner.start()  # start APScheduler (blocking)`,
   },
   {
     label: '6. Dashboard',
@@ -224,16 +569,14 @@ DashboardServer(dashboard, model=model).run(port=8050)`,
   },
 ]
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
 function ConceptCode({ lines }) {
-  const colorMap = { c: '#4a6080', b: '#fbbf24', s: '#94a3b8', g: '#fde68a' }
+  const colorMap = { c: '#4a6280', b: '#fbbf24', s: '#94a3b8', g: '#fde68a' }
   return (
     <pre className="code-block" style={{ fontSize: 11.5, lineHeight: 1.75 }}>
       {lines.map((l, i) => (
         l.t === 'n'
           ? <span key={i}>{l.v}</span>
-          : <span key={i} style={{ color: colorMap[l.t] || '#4a6080' }}>{l.v}</span>
+          : <span key={i} style={{ color: colorMap[l.t] || '#4a6280' }}>{l.v}</span>
       )).reduce((acc, el, i) => i > 0 ? [...acc, '\n', el] : [el], [])}
     </pre>
   )
@@ -242,9 +585,9 @@ function ConceptCode({ lines }) {
 function SectionHeader({ title, sub }) {
   return (
     <div style={{ marginBottom: 24, marginTop: 8 }}>
-      <h2 className="gradient-text" style={{
-        fontSize: 22, fontWeight: 800, marginBottom: 4, letterSpacing: -.2,
-      }}>{title}</h2>
+      <h2 className="gradient-text" style={{ fontSize: 22, fontWeight: 800, marginBottom: 4, letterSpacing: -.2 }}>
+        {title}
+      </h2>
       {sub && <p style={{ fontSize: 13, color: 'var(--muted)' }}>{sub}</p>}
     </div>
   )
@@ -268,7 +611,8 @@ export default function Home() {
 
   return (
     <div>
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div style={{
         background: 'rgba(8,14,30,0.7)',
         backdropFilter: 'blur(12px)',
@@ -281,7 +625,6 @@ export default function Home() {
         overflow: 'hidden',
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='rgba(59,130,246,0.06)' stroke-width='1'/%3E%3C/svg%3E")`,
       }}>
-        {/* Radial glow */}
         <div style={{
           position: 'absolute', top: -80, right: -80, width: 340, height: 340,
           background: 'radial-gradient(circle, rgba(124,58,237,.14) 0%, transparent 65%)',
@@ -296,8 +639,7 @@ export default function Home() {
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 7,
           padding: '4px 14px', marginBottom: 22,
-          background: 'rgba(59,130,246,.1)',
-          border: '1px solid rgba(59,130,246,.25)',
+          background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.25)',
           borderRadius: 20, fontSize: 11, fontWeight: 700,
           color: '#93c5fd', letterSpacing: .8, textTransform: 'uppercase',
         }}>
@@ -330,40 +672,39 @@ export default function Home() {
             background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
             color: '#fff', textDecoration: 'none',
             boxShadow: '0 4px 20px rgba(124,58,237,.4)',
-            transition: 'filter var(--t), box-shadow var(--t), transform var(--t)',
           }}>▤ View Reports</Link>
           <Link to="/models" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             background: 'rgba(59,130,246,.08)', color: '#93c5fd',
             border: '1px solid rgba(59,130,246,.28)', textDecoration: 'none',
-            transition: 'background var(--t), border-color var(--t)',
           }}>⬡ Explore Models</Link>
           <Link to="/pipelines" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             background: 'rgba(251,191,36,.08)', color: '#fcd34d',
             border: '1px solid rgba(251,191,36,.22)', textDecoration: 'none',
-            transition: 'background var(--t), border-color var(--t)',
           }}>⧖ Pipelines</Link>
         </div>
       </div>
 
-      {/* ── Stats ────────────────────────────────────────────────────────── */}
+      {/* ── Demo Player ───────────────────────────────────────────────────── */}
+      <DemoPlayer />
+
+      {/* ── Stats ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 44 }}>
         {stats.map(s => (
           <StatTile key={s.label} value={s.value} label={s.label} color={s.color} icon={s.icon} />
         ))}
       </div>
 
-      {/* ── Core Concepts ────────────────────────────────────────────────── */}
+      {/* ── Core Concepts ─────────────────────────────────────────────────── */}
       <SectionHeader title="Core concepts" sub="Four ideas that everything else is built on." />
 
       {CONCEPTS.map(c => (
         <div key={c.n} className="card-accent" style={{
           background: 'var(--card)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
           border: '1px solid var(--border)',
           borderRadius: 12, padding: '22px 26px', marginBottom: 16,
         }}>
@@ -390,14 +731,13 @@ export default function Home() {
         </div>
       ))}
 
-      {/* ── What's included ──────────────────────────────────────────────── */}
+      {/* ── What's included ───────────────────────────────────────────────── */}
       <SectionHeader title="What TraceBi includes" sub="Six building blocks — each independent, all composable." />
 
       <div className="grid-3" style={{ marginBottom: 44 }}>
         {FEATURES.map(f => (
           <div key={f.title} className="card-hover" style={{
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
+            background: 'var(--card)', border: '1px solid var(--border)',
             borderRadius: 12, padding: '22px 24px',
             position: 'relative', overflow: 'hidden',
           }}>
@@ -418,24 +758,22 @@ export default function Home() {
         ))}
       </div>
 
-      {/* ── Walkthrough ──────────────────────────────────────────────────── */}
+      {/* ── Walkthrough ───────────────────────────────────────────────────── */}
       <SectionHeader title="End-to-end walkthrough" sub="A complete pipeline from raw data to scheduled report." />
 
       <div style={{ marginBottom: 44 }}>
         <div style={{
           display: 'flex', flexWrap: 'wrap', gap: 4,
-          padding: '6px 6px 0', marginBottom: 0,
+          padding: '6px 6px 0',
           background: 'rgba(0,0,0,.25)',
-          border: '1px solid var(--border)',
-          borderBottom: 'none',
+          border: '1px solid var(--border)', borderBottom: 'none',
           borderRadius: '10px 10px 0 0',
         }}>
           {STEPS.map((s, i) => (
             <button key={i} onClick={() => setStep(i)} style={{
               padding: '7px 16px', border: 'none',
               background: step === i ? 'rgba(59,130,246,.15)' : 'none',
-              fontSize: 12.5, fontWeight: 600,
-              cursor: 'pointer',
+              fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
               color: step === i ? '#93c5fd' : 'var(--muted)',
               borderRadius: '6px 6px 0 0',
               borderBottom: `2px solid ${step === i ? 'var(--blue)' : 'transparent'}`,
@@ -446,10 +784,8 @@ export default function Home() {
         <div style={{
           background: 'var(--card)',
           backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid var(--border)',
-          borderTop: 'none',
-          borderRadius: '0 0 10px 10px',
-          padding: '22px 26px',
+          border: '1px solid var(--border)', borderTop: 'none',
+          borderRadius: '0 0 10px 10px', padding: '22px 26px',
         }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 8 }}>
             {STEPS[step].title}
@@ -461,7 +797,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── How to use it ────────────────────────────────────────────────── */}
+      {/* ── How to use it ─────────────────────────────────────────────────── */}
       <SectionHeader title="Two ways to use TraceBi" />
 
       <div className="grid-2" style={{ marginBottom: 36 }}>
@@ -501,7 +837,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Bottom row ───────────────────────────────────────────────────── */}
+      {/* ── Bottom row ────────────────────────────────────────────────────── */}
       <div className="grid-2" style={{ marginBottom: 8 }}>
         <div className="card-hover" style={{
           background: 'linear-gradient(135deg, rgba(10,20,55,.8), rgba(15,10,40,.8))',
@@ -524,8 +860,7 @@ export default function Home() {
           <Link to="/reports" style={{
             display: 'inline-flex', padding: '6px 14px', fontSize: 12, fontWeight: 600,
             borderRadius: 6, background: 'rgba(167,139,250,.12)',
-            color: '#c4b5fd', border: '1px solid rgba(167,139,250,.3)',
-            textDecoration: 'none',
+            color: '#c4b5fd', border: '1px solid rgba(167,139,250,.3)', textDecoration: 'none',
           }}>Explore lineage →</Link>
         </div>
 
@@ -551,13 +886,12 @@ export default function Home() {
             <a href="/docs" target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', padding: '6px 14px', fontSize: 12, fontWeight: 600,
               borderRadius: 6, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
-              color: '#fff', textDecoration: 'none',
-              boxShadow: '0 2px 10px rgba(59,130,246,.3)',
+              color: '#fff', textDecoration: 'none', boxShadow: '0 2px 10px rgba(59,130,246,.3)',
             }}>Swagger UI</a>
             <a href="/redoc" target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', padding: '6px 14px', fontSize: 12, fontWeight: 600,
-              borderRadius: 6, background: 'transparent',
-              color: '#93c5fd', border: '1px solid var(--blue-br)', textDecoration: 'none',
+              borderRadius: 6, background: 'transparent', color: '#93c5fd',
+              border: '1px solid var(--blue-br)', textDecoration: 'none',
             }}>ReDoc</a>
           </div>
         </div>
