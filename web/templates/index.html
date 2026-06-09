@@ -398,122 +398,219 @@ ds = model.query(<br>
     <div class="tabs" style="flex-wrap:wrap; border-top:1px solid var(--border);">
       <button class="tab-btn" :class="demoStep===1 && 'active'" @click="demoStep=1">1. Load</button>
       <button class="tab-btn" :class="demoStep===2 && 'active'" @click="demoStep=2">2. Transform</button>
-      <button class="tab-btn" :class="demoStep===3 && 'active'" @click="demoStep=3">3. Report</button>
-      <button class="tab-btn" :class="demoStep===4 && 'active'" @click="demoStep=4">4. Dashboard</button>
+      <button class="tab-btn" :class="demoStep===3 && 'active'" @click="demoStep=3">3. Reports</button>
+      <button class="tab-btn" :class="demoStep===4 && 'active'" @click="demoStep=4">4. Pipeline</button>
+      <button class="tab-btn" :class="demoStep===5 && 'active'" @click="demoStep=5">5. Dashboard</button>
     </div>
     <div class="card" style="margin-bottom:0; border-top-left-radius:0; border-top:none;">
 
       <!-- Demo Step 1 -->
       <div x-show="demoStep===1">
-        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Load the demo model</div>
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">1. Load the demo model</div>
         <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
           No files, no database, no setup. <code>load_demo_model()</code> returns a fully connected
-          <code>DataModel</code> backed by in-memory sample data — orders, customers, and a revenue
-          trend — so you can follow every step of this walkthrough immediately after
-          <code>pip install tracebi</code>.
+          <code>DataModel</code> backed by in-memory sample data. Run this cell once — <code>model</code>,
+          <code>orders</code>, <code>customers</code>, and <code>trend</code> carry forward into every step below.
         </p>
         <div class="code-block">
 from tracebi.demo import load_demo_model<br>
 <br>
-model = load_demo_model()<br>
-<span style="color:#64748b"># Ready — tables: orders, customers, trend</span><br>
+model     = load_demo_model()<br>
+orders    = model.load("orders")<br>
+customers = model.load("customers")<br>
+trend     = model.load("trend")<br>
 <br>
-orders = model.load("orders")<br>
-print(orders.to_pandas().head())
+orders.to_pandas()
         </div>
       </div>
 
       <!-- Demo Step 2 -->
       <div x-show="demoStep===2">
-        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Transform with full lineage</div>
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">2. Transform with full lineage</div>
         <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-          Every method on <code>DataSet</code> — filter, transform, sort, select, rename —
-          returns a new immutable DataSet with the step appended to its lineage chain.
-          Call <code>print_lineage()</code> at any point to see the full audit trail.
+          Every method on <code>DataSet</code> returns a new immutable DataSet with the step appended
+          to its lineage chain. The transformed datasets produced here are passed directly into the
+          reports in Step 3 — the full audit trail travels with them.
         </p>
         <div class="code-block">
-orders = model.load("orders")<br>
+<span style="color:#64748b"># Continuing from Step 1</span><br>
 <br>
-result = (<br>
+<span style="color:#64748b"># Shipped orders with margin</span><br>
+shipped = (<br>
 &nbsp;&nbsp;orders<br>
 &nbsp;&nbsp;.filter("status == 'shipped'", description="Shipped orders only")<br>
 &nbsp;&nbsp;.transform(<br>
 &nbsp;&nbsp;&nbsp;&nbsp;lambda df: df.assign(margin=df["revenue"] - df["cost"]),<br>
 &nbsp;&nbsp;&nbsp;&nbsp;description="margin = revenue - cost",<br>
 &nbsp;&nbsp;)<br>
-&nbsp;&nbsp;.sort("margin", ascending=False)<br>
-&nbsp;&nbsp;.select(["order_id", "region", "product", "revenue", "margin"])<br>
 )<br>
 <br>
-result.print_lineage()<br>
-<span style="color:#64748b"># Step 1: [LOAD]       Loaded 'orders' from 'demo'</span><br>
-<span style="color:#64748b"># Step 2: [FILTER]     Shipped orders only  (10 → 6 rows)</span><br>
-<span style="color:#64748b"># Step 3: [TRANSFORM]  margin = revenue - cost</span><br>
-<span style="color:#64748b"># Step 4: [SORT]       Sorted by margin (desc)</span><br>
-<span style="color:#64748b"># Step 5: [SELECT]     Selected 5 columns</span>
+<span style="color:#64748b"># Revenue and margin aggregated by region</span><br>
+by_region = shipped.transform(<br>
+&nbsp;&nbsp;lambda df: df.groupby("region", as_index=False).agg(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;revenue=("revenue", "sum"),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;margin=("margin", "sum"),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;orders=("order_id", "count"),<br>
+&nbsp;&nbsp;).sort_values("revenue", ascending=False),<br>
+&nbsp;&nbsp;description="Aggregate by region",<br>
+)<br>
+<br>
+<span style="color:#64748b"># Revenue trend with month-over-month growth</span><br>
+trend_with_growth = trend.transform(<br>
+&nbsp;&nbsp;lambda df: df.assign(growth_pct=df["revenue"].pct_change().mul(100).round(1)),<br>
+&nbsp;&nbsp;description="Month-over-month revenue growth %",<br>
+)<br>
+<br>
+<span style="color:#64748b"># Customers by segment</span><br>
+by_segment = customers.transform(<br>
+&nbsp;&nbsp;lambda df: df.groupby("segment", as_index=False).size().rename(columns={"size": "count"}),<br>
+&nbsp;&nbsp;description="Count by segment",<br>
+)<br>
+<br>
+shipped.print_lineage()
         </div>
       </div>
 
       <!-- Demo Step 3 -->
       <div x-show="demoStep===3">
-        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Build and render a report</div>
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">3. Build and render reports</div>
         <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-          A <code>Report</code> is assembled from section objects — text headings, tables, and charts.
-          Pass any <code>DataSet</code> directly into a section. Render to Excel or HTML; both
-          renderers write a <code>manifest.json</code> capturing the full lineage of every dataset.
+          Assemble reports from section objects and pass datasets from Step 2 directly in.
+          Each renderer writes a <code>manifest.json</code> capturing the full lineage of every
+          dataset in the report. Run all three to match what the demo app exposes.
         </p>
         <div class="code-block">
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection<br>
-from tracebi.reports.excel_renderer import ExcelRenderer<br>
 from tracebi.reports.html_renderer import HTMLRenderer<br>
+from tracebi.reports.excel_renderer import ExcelRenderer<br>
 <br>
-orders = model.load("orders")<br>
-<br>
-report = (<br>
-&nbsp;&nbsp;Report("Sales Report")<br>
-&nbsp;&nbsp;.author("Data Team")<br>
-&nbsp;&nbsp;.parameter("period", "Q2 2024")<br>
-&nbsp;&nbsp;.add(TextSection(title="Summary", content="Summary", style="heading1"))<br>
-&nbsp;&nbsp;.add(ChartSection(title="Revenue by Region", dataset=orders,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;chart_type="bar", x="region", y="revenue"))<br>
-&nbsp;&nbsp;.add(TableSection(title="Order Detail", dataset=orders,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["order_id", "region", "product", "revenue"],<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;totals=["revenue"]))<br>
+<span style="color:#64748b"># ── Report 1: Sales Summary ──────────────────────────────────────</span><br>
+sales_report = (<br>
+&nbsp;&nbsp;Report("Sales Summary").author("Data Team").parameter("status_filter", "shipped")<br>
+&nbsp;&nbsp;.add(TextSection(title="Overview",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;content="Revenue and margin for all shipped orders, grouped by region.",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;style="heading1"))<br>
+&nbsp;&nbsp;.add(TableSection(title="Revenue by Region", dataset=by_region,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["region", "revenue", "margin", "orders"],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;totals=["revenue", "margin", "orders"], style="striped"))<br>
+&nbsp;&nbsp;.add(ChartSection(title="Revenue by Region", dataset=by_region,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;chart_type="bar", x="region", y="revenue", ylabel="Revenue (USD)"))<br>
+&nbsp;&nbsp;.add(TableSection(title="Shipped Order Detail", dataset=shipped,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["order_id", "region", "product", "qty", "revenue", "margin"]))<br>
 )<br>
+HTMLRenderer().preview(sales_report)<br>
 <br>
-ExcelRenderer().render(report, "sales_report.xlsx")<br>
-HTMLRenderer().render(report, "sales_report.html")<br>
-HTMLRenderer().preview(report)   <span style="color:#64748b"># inline in Jupyter</span>
+<span style="color:#64748b"># ── Report 2: Revenue Trend ──────────────────────────────────────</span><br>
+trend_report = (<br>
+&nbsp;&nbsp;Report("Revenue Trend").author("Data Team")<br>
+&nbsp;&nbsp;.add(TextSection(title="Revenue Trend",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;content="Month-over-month revenue and cost trend.",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;style="heading1"))<br>
+&nbsp;&nbsp;.add(ChartSection(title="Revenue vs Cost", dataset=trend,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;chart_type="line", x="month", y=["revenue", "cost"], ylabel="USD"))<br>
+&nbsp;&nbsp;.add(TableSection(title="Monthly Detail", dataset=trend_with_growth,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["month", "revenue", "cost", "orders", "growth_pct"]))<br>
+)<br>
+HTMLRenderer().preview(trend_report)<br>
+<br>
+<span style="color:#64748b"># ── Report 3: Customer Overview ──────────────────────────────────</span><br>
+customer_report = (<br>
+&nbsp;&nbsp;Report("Customer Overview").author("Data Team")<br>
+&nbsp;&nbsp;.add(TextSection(title="Customers",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;content="All registered customers grouped by segment.",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;style="heading1"))<br>
+&nbsp;&nbsp;.add(ChartSection(title="Customers by Segment", dataset=by_segment,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;chart_type="pie", x="segment", y="count"))<br>
+&nbsp;&nbsp;.add(TableSection(title="Customer List", dataset=customers,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["customer_id", "name", "region", "segment"]))<br>
+)<br>
+HTMLRenderer().preview(customer_report)
         </div>
       </div>
 
       <!-- Demo Step 4 -->
       <div x-show="demoStep===4">
-        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">Add a live dashboard</div>
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">4. Run the medallion pipeline</div>
         <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
-          Build a <code>Dashboard</code> from panel components — metrics, charts, tables, and filters.
-          Filters are <strong style="color:var(--text);">associative</strong>: selecting a region
-          automatically updates every panel that shares that column, with no event-wiring code.
+          <code>load_demo_pipeline()</code> sets up a full Bronze → Silver → Gold pipeline backed by
+          a local SQLite database — no configuration required. Run each layer in order, inspect the
+          cross-layer lineage, then query the Gold layer via <code>StarSchema</code>.
+        </p>
+        <div class="code-block">
+from tracebi.demo import load_demo_pipeline<br>
+from tracebi import GoldLayer<br>
+<br>
+runner, model = load_demo_pipeline()<br>
+<br>
+<span style="color:#64748b"># Run the full pipeline</span><br>
+runner.run("orders_bronze")<br>
+runner.run("customers_bronze")<br>
+runner.run("orders_silver")<br>
+runner.run("customers_silver")<br>
+runner.run("revenue_by_region")<br>
+runner.run("revenue_by_segment")<br>
+<br>
+<span style="color:#64748b"># View cross-layer lineage</span><br>
+runner.lineage("revenue_by_region")<br>
+<br>
+<span style="color:#64748b"># Query Gold via DataModel</span><br>
+gold = GoldLayer(model=model)<br>
+<br>
+by_region = gold.query(<br>
+&nbsp;&nbsp;fact="fact_orders",<br>
+&nbsp;&nbsp;measures={"revenue": "sum", "qty": "sum", "cost": "sum"},<br>
+&nbsp;&nbsp;dimensions=["dim_customer.region"],<br>
+&nbsp;&nbsp;name="revenue_by_region",<br>
+)<br>
+by_region.to_pandas()<br>
+<br>
+by_segment = gold.query(<br>
+&nbsp;&nbsp;fact="fact_orders",<br>
+&nbsp;&nbsp;measures={"revenue": "sum", "order_id": "count"},<br>
+&nbsp;&nbsp;dimensions=["dim_customer.segment"],<br>
+&nbsp;&nbsp;filters={"status": "shipped"},<br>
+&nbsp;&nbsp;name="revenue_by_segment_shipped",<br>
+)<br>
+by_segment.to_pandas()
+        </div>
+      </div>
+
+      <!-- Demo Step 5 -->
+      <div x-show="demoStep===5">
+        <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:8px;">5. Add a live dashboard</div>
+        <p style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:14px;">
+          Build the same dashboard as the demo app using <code>orders</code> and <code>trend</code>
+          from Step 1. Filters are <strong style="color:var(--text);">associative</strong>:
+          selecting a region automatically updates every panel that shares that column.
         </p>
         <div class="code-block">
 from tracebi.dashboard import Dashboard, DashboardServer<br>
 from tracebi.dashboard import FilterPanel, MetricPanel, ChartPanel, TablePanel<br>
 <br>
-orders = model.load("orders")<br>
+<span style="color:#64748b"># orders and trend come from Step 1</span><br>
 <br>
 dashboard = (<br>
-&nbsp;&nbsp;Dashboard("Sales Dashboard").columns(2)<br>
+&nbsp;&nbsp;Dashboard("Sales Dashboard")<br>
+&nbsp;&nbsp;.description("Live sales overview with associative region filter.")<br>
+&nbsp;&nbsp;.columns(2)<br>
 &nbsp;&nbsp;.add_filter(FilterPanel("region-filter", label="Region",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;column="region", dataset=orders))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;column="region", table_name="orders"))<br>
 &nbsp;&nbsp;.add_panel(MetricPanel("total-revenue", title="Total Revenue",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dataset=orders, column="revenue",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;aggregation="sum", prefix="$"))<br>
-&nbsp;&nbsp;.add_panel(ChartPanel("by-region", title="Revenue by Region",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dataset=orders, chart_type="bar",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x="region", y="revenue"))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;table_name="orders", column="revenue",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;aggregation="sum", prefix="$", number_format="{:,.0f}"))<br>
+&nbsp;&nbsp;.add_panel(MetricPanel("total-orders", title="Total Orders",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;table_name="orders", column="order_id",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;aggregation="count", number_format="{:,.0f}"))<br>
+&nbsp;&nbsp;.add_panel(ChartPanel("revenue-by-region", title="Revenue by Region",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;table_name="orders", chart_type="bar",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x="region", y="revenue", ylabel="Revenue (USD)"))<br>
+&nbsp;&nbsp;.add_panel(ChartPanel("revenue-trend", title="Revenue Trend",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;table_name="trend", chart_type="line",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x="month", y=["revenue", "cost"], ylabel="USD"))<br>
 &nbsp;&nbsp;.add_panel(TablePanel("orders-table", title="Orders",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dataset=orders,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["order_id", "region", "product", "revenue"]))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;table_name="orders",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;columns=["order_id", "region", "product", "qty", "revenue", "status"],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;column_labels={"order_id": "Order #", "revenue": "Revenue ($)"}))<br>
 )<br>
 <br>
 DashboardServer(dashboard, model=model).run(port=8050)<br>
