@@ -291,11 +291,10 @@ export function StatTile({ value, label, color, icon }) {
       {icon && <div style={{ fontSize: 18, marginBottom: 10, opacity: .7 }}>{icon}</div>}
       <div style={{
         fontSize: 32, fontWeight: 800,
-        color: color ? 'transparent' : 'var(--blue)',
-        background: color ? undefined : 'var(--brand-text)',
-        WebkitBackgroundClip: color ? undefined : 'text',
-        WebkitTextFillColor: color ? undefined : 'transparent',
-        backgroundClip: color ? undefined : 'text',
+        background: 'var(--brand-text)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
         lineHeight: 1, fontVariantNumeric: 'tabular-nums',
       }}>{value ?? '—'}</div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 7, fontWeight: 500 }}>{label}</div>
