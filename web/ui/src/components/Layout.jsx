@@ -37,47 +37,36 @@ const ICONS = {
 }
 
 const NAV = [
-  { path: '/',           label: 'Home',       icon: 'home' },
-  { path: '/connectors', label: 'Connectors', icon: 'connectors' },
-  { path: '/models',     label: 'Models',     icon: 'models' },
-  { path: '/reports',    label: 'Reports',    icon: 'reports' },
-  { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines' },
-  { path: '/dashboards', label: 'Dashboards', icon: 'dashboards' },
+  { path: '/',           label: 'Home',       icon: 'home',       color: '#60a5fa' },
+  { path: '/connectors', label: 'Connectors', icon: 'connectors', color: '#34d399' },
+  { path: '/models',     label: 'Models',     icon: 'models',     color: '#a78bfa' },
+  { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#f472b6' },
+  { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#fbbf24' },
+  { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#22d3ee' },
 ]
-
-function linkStyle(isActive) {
-  return {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '9px 20px',
-    color: isActive ? '#60a5fa' : '#94a3b8',
-    textDecoration: 'none',
-    fontSize: 13,
-    fontWeight: isActive ? 600 : 500,
-    borderLeft: `2px solid ${isActive ? 'var(--blue)' : 'transparent'}`,
-    background: isActive ? 'rgba(59,130,246,.1)' : 'transparent',
-  }
-}
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false)
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Background orbs */}
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
 
       {/* Mobile top bar */}
       <div className="mobile-header" style={{
         display: 'none', position: 'fixed', top: 0, left: 0, right: 0,
-        height: 52, background: 'var(--navy)', borderBottom: '1px solid var(--border)',
+        height: 52,
+        background: 'rgba(6,14,31,0.9)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid var(--border)',
         alignItems: 'center', justifyContent: 'space-between', padding: '0 16px',
         zIndex: 200,
       }}>
-        <span style={{
-          fontSize: 16, fontWeight: 800,
-          background: 'linear-gradient(90deg,#60a5fa,#a78bfa)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>TraceBi</span>
+        <span className="gradient-text" style={{ fontSize: 16, fontWeight: 800 }}>TraceBi</span>
         <button onClick={() => setOpen(true)} style={{
           background: 'none', border: 'none', cursor: 'pointer',
           display: 'flex', flexDirection: 'column', gap: 5, padding: 4,
@@ -91,62 +80,74 @@ export default function Layout({ children }) {
       {/* Overlay */}
       {open && (
         <div onClick={() => setOpen(false)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 250,
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,.7)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 250,
         }} />
       )}
 
       {/* Sidebar */}
       <nav style={{
         width: 'var(--nav-w)', minHeight: '100vh',
-        background: 'var(--navy)', borderRight: '1px solid var(--border)',
+        background: 'rgba(6,10,22,0.95)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderRight: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
         position: 'fixed', top: 0, left: 0, zIndex: 300,
       }} className={open ? 'nav-open' : ''}>
 
         {/* Brand */}
-        <div style={{
-          padding: '22px 20px 18px',
-          borderBottom: '1px solid var(--border)',
-          background: 'linear-gradient(160deg,#0d1f45 0%,#0a1530 100%)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 5 }}>
             <div style={{
-              width: 28, height: 28, borderRadius: 7,
-              background: 'linear-gradient(135deg,var(--blue),#7c3aed)',
+              width: 32, height: 32, borderRadius: 9,
+              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 10px rgba(59,130,246,.4)', flexShrink: 0,
+              boxShadow: '0 4px 16px rgba(124,58,237,0.35)',
+              flexShrink: 0,
             }}>
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="white">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="white">
                 <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
               </svg>
             </div>
-            <h1 style={{
-              fontSize: 17, fontWeight: 800, letterSpacing: .3,
-              background: 'linear-gradient(90deg,#e2e8f0,#93c5fd)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>TraceBi</h1>
+            <h1 className="gradient-text" style={{ fontSize: 18, fontWeight: 800, letterSpacing: .2 }}>
+              TraceBi
+            </h1>
           </div>
-          <p style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 38 }}>
+          <p style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 43, letterSpacing: .2 }}>
             Code-first traceable BI
           </p>
         </div>
 
         {/* Nav items */}
-        <ul style={{ listStyle: 'none', padding: '8px 0', flex: 1 }}>
-          {NAV.map(({ path, label, icon }) => (
+        <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1 }}>
+          {NAV.map(({ path, label, icon, color }) => (
             <li key={path}>
               <NavLink
                 to={path}
                 end={path === '/'}
                 onClick={() => setOpen(false)}
                 className="nav-link"
-                style={({ isActive }) => linkStyle(isActive)}
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '9px 20px',
+                  color: isActive ? '#e2e8f0' : '#64748b',
+                  textDecoration: 'none',
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 400,
+                  borderLeft: `2px solid ${isActive ? color : 'transparent'}`,
+                  background: isActive ? `${color}14` : 'transparent',
+                })}
               >
                 <span style={{
                   width: 15, height: 15,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, opacity: .85,
+                  flexShrink: 0,
+                  color: 'inherit',
                 }}>
                   {ICONS[icon]}
                 </span>
@@ -158,24 +159,28 @@ export default function Layout({ children }) {
 
         {/* Footer */}
         <div style={{
-          padding: '12px 20px',
+          padding: '14px 20px',
           borderTop: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <span style={{
-            display: 'inline-block', width: 6, height: 6,
-            borderRadius: '50%', background: 'var(--green)',
-            boxShadow: '0 0 6px rgba(34,197,94,.5)', flexShrink: 0,
+          <span className="pulse-glow" style={{
+            display: 'inline-block', width: 7, height: 7,
+            borderRadius: '50%', background: '#22c55e', flexShrink: 0,
           }} />
           <span style={{ fontSize: 11, color: 'var(--muted)' }}>TraceBi v0.5.2</span>
+          <span style={{
+            marginLeft: 'auto', fontSize: 10, color: 'var(--muted)',
+            background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.2)',
+            padding: '1px 6px', borderRadius: 4,
+          }}>BETA</span>
         </div>
       </nav>
 
-      {/* Main */}
+      {/* Main content */}
       <main style={{
         marginLeft: 'var(--nav-w)', flex: 1,
-        padding: '36px 40px', maxWidth: 1320,
-      }}>
+        padding: '40px 44px', maxWidth: 1340,
+      }} className="layout-main">
         {children}
       </main>
 
