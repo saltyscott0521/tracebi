@@ -58,7 +58,7 @@ duckdb    = ["duckdb>=0.9"]
 bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
 reports   = ["openpyxl>=3.0", "matplotlib>=3.5"]
-pdf       = ["weasyprint>=57"]
+pdf       = ["weasyprint>=57"]  # enables HTMLRenderer.render_pdf(); no standalone PDFRenderer yet
 dashboard = ["dash>=2.14", "plotly>=5.0"]
 lineage   = ["networkx>=3.0", "matplotlib>=3.5"]
 medallion = ["networkx>=3.0"]

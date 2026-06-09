@@ -28,8 +28,8 @@ def list_pipelines():
                     last_status = row["status"]
                     last_run = str(row["completed_at"] or "")
                     last_rows_out = int(row["rows_out"]) if row["rows_out"] is not None else None
-            except Exception:
-                last_status, last_run, last_rows_out = None, None, None
+            except Exception as exc:
+                last_status, last_run, last_rows_out = f"error: {exc}", None, None
 
             layers.append({
                 "name": layer_name,
