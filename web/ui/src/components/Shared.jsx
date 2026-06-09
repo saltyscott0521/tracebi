@@ -16,23 +16,27 @@ function ToastContainer({ toasts, remove }) {
         return (
           <div key={t.id} className="toast-enter" style={{
             pointerEvents: 'all',
-            background: isErr ? 'rgba(239,68,68,.14)' : isOk ? 'rgba(34,197,94,.14)' : 'var(--card)',
-            border: `1px solid ${isErr ? 'rgba(239,68,68,.4)' : isOk ? 'rgba(34,197,94,.4)' : 'var(--border-hl)'}`,
-            borderRadius: 10, padding: '11px 14px',
+            background: isErr ? 'rgba(239,68,68,.12)' : isOk ? 'rgba(34,197,94,.12)' : 'rgba(15,23,45,0.95)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: `1px solid ${isErr ? 'rgba(239,68,68,.4)' : isOk ? 'rgba(34,197,94,.35)' : 'rgba(59,130,246,.3)'}`,
+            borderRadius: 12, padding: '12px 14px',
             fontSize: 13, lineHeight: 1.5,
             color: isErr ? '#fca5a5' : isOk ? '#86efac' : 'var(--text)',
-            boxShadow: 'var(--shadow)',
+            boxShadow: '0 8px 32px rgba(0,0,0,.6)',
             display: 'flex', alignItems: 'center', gap: 10,
             minWidth: 260, maxWidth: 380,
           }}>
-            <span style={{ fontSize: 14, flexShrink: 0, opacity: .8 }}>
+            <span style={{
+              fontSize: 15, flexShrink: 0,
+              color: isErr ? '#f87171' : isOk ? '#4ade80' : '#60a5fa',
+            }}>
               {isErr ? '✕' : isOk ? '✓' : 'ℹ'}
             </span>
             <span style={{ flex: 1 }}>{t.message}</span>
             <button onClick={() => remove(t.id)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--muted)', fontSize: 17, lineHeight: 1,
-              padding: '0 2px', flexShrink: 0,
+              color: 'var(--muted)', fontSize: 17, lineHeight: 1, padding: '0 2px', flexShrink: 0,
             }}>×</button>
           </div>
         )
@@ -115,16 +119,21 @@ export function SearchInput({ value, onChange, placeholder = 'Search…' }) {
 
 // ── Layout components ─────────────────────────────────────────────────────────
 
-export function Card({ children, style, hover }) {
+export function Card({ children, style, hover, accent }) {
   return (
-    <div className={hover ? 'card-hover' : ''} style={{
-      background: 'var(--card)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
-      padding: '20px 24px',
-      marginBottom: 20,
-      ...style,
-    }}>
+    <div
+      className={[hover ? 'card-hover' : '', accent ? 'card-accent' : ''].filter(Boolean).join(' ')}
+      style={{
+        background: 'var(--card)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        padding: '20px 24px',
+        marginBottom: 20,
+        ...style,
+      }}
+    >
       {children}
     </div>
   )
@@ -146,9 +155,9 @@ export function CardTitle({ children, action }) {
 
 export function PageTitle({ children }) {
   return (
-    <h1 style={{
-      fontSize: 22, fontWeight: 700, color: 'var(--text)',
-      marginBottom: 6, lineHeight: 1.3,
+    <h1 className="gradient-text" style={{
+      fontSize: 26, fontWeight: 800,
+      marginBottom: 6, lineHeight: 1.2, letterSpacing: -.3,
     }}>{children}</h1>
   )
 }
@@ -162,25 +171,25 @@ export function PageSub({ children }) {
 }
 
 const BADGE_STYLES = {
-  blue:         { background: 'var(--blue-lt)',              color: '#93c5fd', border: '1px solid var(--blue-br)' },
-  green:        { background: 'rgba(34,197,94,.12)',          color: '#86efac', border: '1px solid rgba(34,197,94,.28)' },
-  amber:        { background: 'rgba(245,158,11,.12)',         color: '#fcd34d', border: '1px solid rgba(245,158,11,.28)' },
-  red:          { background: 'rgba(239,68,68,.12)',          color: '#fca5a5', border: '1px solid rgba(239,68,68,.28)' },
-  gray:         { background: 'rgba(255,255,255,.06)',        color: '#94a3b8', border: '1px solid var(--border)' },
-  gold:         { background: 'rgba(234,179,8,.1)',           color: '#fde68a', border: '1px solid rgba(234,179,8,.28)' },
-  silver:       { background: 'rgba(148,163,184,.1)',         color: '#cbd5e1', border: '1px solid rgba(148,163,184,.28)' },
-  bronze:       { background: 'rgba(180,120,40,.15)',         color: '#fbbf24', border: '1px solid rgba(180,120,40,.32)' },
-  landing:      { background: 'rgba(74,144,226,.12)',         color: '#93c5fd', border: '1px solid rgba(74,144,226,.3)' },
-  manipulation: { background: 'rgba(123,104,238,.12)',        color: '#c4b5fd', border: '1px solid rgba(123,104,238,.3)' },
-  final:        { background: 'rgba(16,185,129,.12)',         color: '#6ee7b7', border: '1px solid rgba(16,185,129,.3)' },
-  purple:       { background: 'rgba(167,139,250,.12)',        color: '#c4b5fd', border: '1px solid rgba(167,139,250,.28)' },
+  blue:         { background: 'rgba(59,130,246,.14)',   color: '#93c5fd', border: '1px solid rgba(59,130,246,.3)' },
+  green:        { background: 'rgba(34,197,94,.12)',     color: '#86efac', border: '1px solid rgba(34,197,94,.28)' },
+  amber:        { background: 'rgba(245,158,11,.12)',    color: '#fcd34d', border: '1px solid rgba(245,158,11,.28)' },
+  red:          { background: 'rgba(239,68,68,.12)',     color: '#fca5a5', border: '1px solid rgba(239,68,68,.28)' },
+  gray:         { background: 'rgba(255,255,255,.06)',   color: '#64748b', border: '1px solid rgba(255,255,255,.08)' },
+  gold:         { background: 'rgba(234,179,8,.1)',      color: '#fde68a', border: '1px solid rgba(234,179,8,.28)' },
+  silver:       { background: 'rgba(148,163,184,.1)',    color: '#cbd5e1', border: '1px solid rgba(148,163,184,.25)' },
+  bronze:       { background: 'rgba(180,120,40,.15)',    color: '#fbbf24', border: '1px solid rgba(180,120,40,.3)' },
+  landing:      { background: 'rgba(74,144,226,.12)',    color: '#93c5fd', border: '1px solid rgba(74,144,226,.3)' },
+  manipulation: { background: 'rgba(123,104,238,.12)',   color: '#c4b5fd', border: '1px solid rgba(123,104,238,.3)' },
+  final:        { background: 'rgba(16,185,129,.12)',    color: '#6ee7b7', border: '1px solid rgba(16,185,129,.3)' },
+  purple:       { background: 'rgba(167,139,250,.12)',   color: '#c4b5fd', border: '1px solid rgba(167,139,250,.28)' },
 }
 
-export function Badge({ variant = 'gray', children, style }) {
+export function Badge({ variant = 'gray', children, style, title }) {
   return (
-    <span style={{
-      display: 'inline-block', padding: '2px 8px', borderRadius: 10,
-      fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .3,
+    <span title={title} style={{
+      display: 'inline-block', padding: '2px 9px', borderRadius: 20,
+      fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .4,
       ...BADGE_STYLES[variant],
       ...style,
     }}>{children}</span>
@@ -191,7 +200,8 @@ export function Spinner({ size = 18 }) {
   return (
     <span style={{
       display: 'inline-block', width: size, height: size,
-      border: '2px solid var(--border)', borderTopColor: 'var(--blue)',
+      border: `${size > 16 ? 2 : 1.5}px solid rgba(59,130,246,.2)`,
+      borderTopColor: 'var(--blue)',
       borderRadius: '50%', animation: 'spin .7s linear infinite', flexShrink: 0,
     }} />
   )
@@ -200,7 +210,7 @@ export function Spinner({ size = 18 }) {
 export function Empty({ icon, message, action }) {
   return (
     <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--muted)' }}>
-      {icon && <div style={{ fontSize: 32, marginBottom: 14, opacity: .35 }}>{icon}</div>}
+      {icon && <div style={{ fontSize: 30, marginBottom: 14, opacity: .3 }}>{icon}</div>}
       <p style={{ fontSize: 13, lineHeight: 1.65, maxWidth: 300, margin: '0 auto' }}>{message}</p>
       {action && <div style={{ marginTop: 16 }}>{action}</div>}
     </div>
@@ -209,8 +219,8 @@ export function Empty({ icon, message, action }) {
 
 export function Alert({ variant = 'info', children }) {
   const s = variant === 'err'
-    ? { background: 'rgba(239,68,68,.1)', color: '#fca5a5', borderLeft: '3px solid var(--red)' }
-    : { background: 'var(--blue-lt)', color: '#93c5fd', borderLeft: '3px solid var(--blue)' }
+    ? { background: 'rgba(239,68,68,.08)', color: '#fca5a5', borderLeft: '3px solid #ef4444' }
+    : { background: 'rgba(59,130,246,.08)', color: '#93c5fd', borderLeft: '3px solid var(--blue)' }
   return (
     <div style={{ borderRadius: 8, padding: '11px 16px', fontSize: 13, marginBottom: 16, lineHeight: 1.5, ...s }}>
       {children}
@@ -221,40 +231,36 @@ export function Alert({ variant = 'info', children }) {
 export function Btn({ children, onClick, disabled, variant = 'primary', size, style, type = 'button' }) {
   const base = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: size === 'sm' ? '5px 11px' : '8px 16px',
-    borderRadius: 'var(--radius-sm)',
-    border: 'none',
+    padding: size === 'sm' ? '5px 12px' : '9px 18px',
+    borderRadius: 'var(--radius-sm)', border: 'none',
     fontSize: size === 'sm' ? 12 : 13,
     fontWeight: 600,
     cursor: disabled ? 'not-allowed' : 'pointer',
     textDecoration: 'none',
     opacity: disabled ? .4 : 1,
-    transition: 'filter var(--t), box-shadow var(--t), background var(--t), opacity var(--t)',
-    lineHeight: 1,
+    transition: 'filter var(--t), box-shadow var(--t), background var(--t), opacity var(--t), transform var(--t)',
+    lineHeight: 1, letterSpacing: .1,
     ...style,
   }
   const variants = {
     primary: {
-      background: 'linear-gradient(135deg,var(--blue),var(--blue-md))',
+      background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
       color: '#fff',
-      boxShadow: '0 2px 10px rgba(59,130,246,.25)',
+      boxShadow: '0 2px 12px rgba(124,58,237,.3)',
     },
     outline: {
       background: 'transparent',
-      color: 'var(--blue)',
-      border: '1px solid var(--blue-br)',
+      color: '#93c5fd',
+      border: '1px solid rgba(59,130,246,.3)',
     },
     red: {
-      background: 'rgba(239,68,68,.12)',
+      background: 'rgba(239,68,68,.1)',
       color: '#fca5a5',
-      border: '1px solid rgba(239,68,68,.3)',
+      border: '1px solid rgba(239,68,68,.28)',
     },
   }
   return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
+    <button type={type} onClick={onClick} disabled={disabled}
       className={`btn-${variant}`}
       style={{ ...base, ...variants[variant] }}
     >
@@ -263,35 +269,48 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
   )
 }
 
-export function StatTile({ value, label, color }) {
+export function StatTile({ value, label, color, icon }) {
   return (
     <div className="card-hover" style={{
       background: 'var(--card)',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
       border: '1px solid var(--border)',
       borderRadius: 'var(--radius)',
-      padding: '18px 22px',
-      minWidth: 130,
-      flex: 1,
+      padding: '20px 22px',
+      minWidth: 130, flex: 1,
+      position: 'relative', overflow: 'hidden',
     }}>
+      {/* Subtle color tint in corner */}
       <div style={{
-        fontSize: 30, fontWeight: 800,
-        color: color || 'var(--blue)',
-        lineHeight: 1,
-        fontVariantNumeric: 'tabular-nums',
+        position: 'absolute', top: 0, right: 0,
+        width: 80, height: 80,
+        background: `radial-gradient(circle at top right, ${color || 'rgba(59,130,246,.12)'} 0%, transparent 70%)`,
+        pointerEvents: 'none',
+      }} />
+      {icon && <div style={{ fontSize: 18, marginBottom: 10, opacity: .7 }}>{icon}</div>}
+      <div style={{
+        fontSize: 32, fontWeight: 800,
+        color: color ? 'transparent' : 'var(--blue)',
+        background: color ? undefined : 'var(--brand-text)',
+        WebkitBackgroundClip: color ? undefined : 'text',
+        WebkitTextFillColor: color ? undefined : 'transparent',
+        backgroundClip: color ? undefined : 'text',
+        lineHeight: 1, fontVariantNumeric: 'tabular-nums',
       }}>{value ?? '—'}</div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 7, fontWeight: 500 }}>{label}</div>
     </div>
   )
 }
 
 export function Tabs({ tabs, active, onChange }) {
   return (
-    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 16, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 18, flexWrap: 'wrap' }}>
       {tabs.map(t => (
         <button key={t} onClick={() => onChange(t)} style={{
           padding: '9px 18px', border: 'none', background: 'none',
           fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          color: active === t ? 'var(--blue)' : 'var(--muted)',
+          color: active === t ? '#93c5fd' : 'var(--muted)',
           borderBottom: `2px solid ${active === t ? 'var(--blue)' : 'transparent'}`,
           marginBottom: -1,
           transition: 'color var(--t), border-color var(--t)',
@@ -305,7 +324,10 @@ export function SplitLayout({ left, right }) {
   return (
     <div className="split-layout">
       <div style={{
-        background: 'var(--card)', border: '1px solid var(--border)',
+        background: 'var(--card)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '1px solid var(--border)',
         borderRadius: 'var(--radius)', overflow: 'hidden',
       }}>
         {left}
@@ -317,12 +339,11 @@ export function SplitLayout({ left, right }) {
 
 export function ListItem({ selected, onClick, name, sub, right }) {
   return (
-    <div
-      onClick={onClick}
+    <div onClick={onClick}
       className={selected ? '' : 'list-item-hover'}
       style={{
         padding: '11px 16px',
-        borderBottom: '1px solid rgba(30,45,74,.6)',
+        borderBottom: '1px solid rgba(30,45,74,.4)',
         cursor: 'pointer',
         background: selected ? 'rgba(59,130,246,.1)' : 'transparent',
         borderLeft: `2px solid ${selected ? 'var(--blue)' : 'transparent'}`,
@@ -331,7 +352,7 @@ export function ListItem({ selected, onClick, name, sub, right }) {
       }}
     >
       <div>
-        <div style={{ fontWeight: 600, fontSize: 13, color: selected ? 'var(--text)' : '#cbd5e1' }}>{name}</div>
+        <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? '#e2e8f0' : '#94a3b8' }}>{name}</div>
         {sub && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{sub}</div>}
       </div>
       {right && <div style={{ marginLeft: 8, flexShrink: 0 }}>{right}</div>}
