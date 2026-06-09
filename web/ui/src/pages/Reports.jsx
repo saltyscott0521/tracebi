@@ -3,31 +3,36 @@ import ReactFlow, { Background, Controls, Handle, Position } from 'reactflow'
 import 'reactflow/dist/style.css'
 
 import { useReports, useRunReport, useReportLineage } from '../api'
-import { PageTitle, PageSub, Card, CardTitle, Badge, Spinner, Empty, Btn, Tabs, SplitLayout, ListItem, Alert } from '../components/Shared'
+import {
+  PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
+  Empty, Btn, Tabs, SplitLayout, ListItem, Alert,
+  SearchInput, SkeletonList, SkeletonCard, useToast,
+} from '../components/Shared'
 
 const OP_COLORS = {
-  load: '#003366', filter: '#2E7D32', transform: '#F59E0B',
-  join: '#E65100', sort: '#6A1B9A', select: '#37474F',
-  rename: '#00695C', bronze: '#CD7F32', silver: '#9E9E9E', gold: '#F9A825',
+  load: '#1e3a5f', filter: '#1a3d24', transform: '#4a3000',
+  join: '#4a1500', sort: '#2d1060', select: '#1a2530',
+  rename: '#003d38', bronze: '#4a2800', silver: '#2a3040', gold: '#3d3000',
 }
 
 function LineageNode({ data }) {
   return (
     <div style={{
-      background: data.color || '#333', border: '1px solid rgba(255,255,255,.2)',
+      background: data.color || '#1e2d4a',
+      border: '1px solid rgba(255,255,255,.15)',
       borderRadius: 8, padding: '10px 14px', minWidth: 180, color: '#fff', fontSize: 12,
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: 'rgba(255,255,255,.4)' }} />
-      <div style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: 10, opacity: .7, marginBottom: 4 }}>
+      <Handle type="target" position={Position.Left} style={{ background: 'rgba(255,255,255,.3)' }} />
+      <div style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: 10, opacity: .65, marginBottom: 4, letterSpacing: .5 }}>
         {data.operation}
       </div>
       <div style={{ lineHeight: 1.4 }}>{data.description}</div>
       {data.metadata?.rows_before != null && (
-        <div style={{ marginTop: 6, fontSize: 10, opacity: .6 }}>
+        <div style={{ marginTop: 6, fontSize: 10, opacity: .55 }}>
           {data.metadata.rows_before} → {data.metadata.rows_after} rows
         </div>
       )}
-      <Handle type="source" position={Position.Right} style={{ background: 'rgba(255,255,255,.4)' }} />
+      <Handle type="source" position={Position.Right} style={{ background: 'rgba(255,255,255,.3)' }} />
     </div>
   )
 }
@@ -59,31 +64,42 @@ function ReportDetail({ report }) {
   const [tab, setTab] = useState('Output')
   const [result, setResult] = useState(null)
   const [lineageData, setLineageData] = useState(null)
+  const toast = useToast()
   const { mutate: run, isPending: running, error: runErr } = useRunReport()
   const { mutate: fetchLineage, isPending: loadingLineage } = useReportLineage()
 
   const handleRun = useCallback(() => {
     run(report.name, {
-      onSuccess: (data) => setResult(data),
+      onSuccess: data => {
+        setResult(data)
+        toast('Report ran successfully', 'success')
+      },
+      onError: err => toast(`Run failed: ${err.message}`, 'error'),
     })
-  }, [report?.name, run])
+  }, [report?.name, run, toast])
 
   const handleLineage = useCallback(() => {
     fetchLineage(report.name, {
-      onSuccess: (data) => setLineageData(data),
+      onSuccess: data => {
+        setLineageData(data)
+        setTab('Lineage')
+      },
+      onError: err => toast(`Lineage failed: ${err.message}`, 'error'),
     })
-  }, [report?.name, fetchLineage])
+  }, [report?.name, fetchLineage, toast])
 
-  if (!report) return <Card><Empty icon="▤" message="Select a report to run it." /></Card>
+  if (!report) return <Card><Empty message="Select a report from the list to run it and view its output." /></Card>
 
   return (
     <Card>
-      <CardTitle>{report.name}</CardTitle>
-      {report.description && (
-        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
-          {report.description}
-        </p>
-      )}
+      <CardTitle>
+        {report.name}
+        {report.description && (
+          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>
+            {report.description}
+          </span>
+        )}
+      </CardTitle>
 
       {runErr && <Alert variant="err">{runErr.message}</Alert>}
 
@@ -98,8 +114,10 @@ function ReportDetail({ report }) {
 
       {result && (
         <>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Btn onClick={handleRun} disabled={running} variant="outline" size="sm">↺ Re-run</Btn>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Btn onClick={handleRun} disabled={running} variant="outline" size="sm">
+              {running ? <><Spinner size={12} /> Running…</> : '↺ Re-run'}
+            </Btn>
             {!lineageData && (
               <Btn onClick={handleLineage} disabled={loadingLineage} variant="outline" size="sm">
                 {loadingLineage ? <><Spinner size={12} /> Loading…</> : '⊶ View Lineage'}
@@ -116,13 +134,13 @@ function ReportDetail({ report }) {
           {tab === 'Output' && (
             <iframe
               srcDoc={result.html}
-              style={{ width: '100%', height: 640, border: 'none', borderRadius: 6 }}
+              style={{ width: '100%', height: 640, border: 'none', borderRadius: 6, background: '#fff' }}
               title={report.name}
             />
           )}
 
           {tab === 'Lineage' && lineageData && (
-            <div>
+            <div className="fade-in">
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>Combined lineage graph</div>
                 <LineageGraph graph={lineageData.combined_graph} />
@@ -130,7 +148,7 @@ function ReportDetail({ report }) {
               {lineageData.sections?.map(s => (
                 <div key={s.section_title} style={{ marginTop: 20 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 8 }}>
-                    Section: {s.section_title} · {s.dataset_name}
+                    {s.section_title} · <span style={{ fontWeight: 400 }}>{s.dataset_name}</span>
                   </div>
                   <LineageGraph graph={s.graph} />
                 </div>
@@ -152,34 +170,48 @@ function ReportDetail({ report }) {
 export default function Reports() {
   const { data, isLoading } = useReports()
   const [selected, setSelected] = useState(null)
+  const [query, setQuery] = useState('')
+
   const reports = data || []
-
-  if (isLoading) return <div style={{ padding: 40 }}><Spinner /></div>
-
+  const filtered = reports.filter(r =>
+    r.name.toLowerCase().includes(query.toLowerCase()) ||
+    (r.description || '').toLowerCase().includes(query.toLowerCase())
+  )
   const current = reports.find(r => r.name === selected)
 
   return (
     <>
       <PageTitle>Reports</PageTitle>
-      <PageSub>{reports.length} report{reports.length !== 1 ? 's' : ''} registered. Select one to run it.</PageSub>
+      <PageSub>
+        {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''} registered. Select one to run it.`}
+      </PageSub>
 
-      {reports.length === 0
-        ? <Empty icon="▤" message="No reports registered. Add one with @registry.report() in your app module." />
-        : (
-          <SplitLayout
-            left={reports.map(r => (
-              <ListItem
-                key={r.name}
-                selected={selected === r.name}
-                onClick={() => setSelected(r.name)}
-                name={r.name}
-                sub={r.description}
-              />
-            ))}
-            right={<ReportDetail report={current} />}
-          />
-        )
-      }
+      {!isLoading && reports.length === 0 ? (
+        <Empty message="No reports registered. Add one with @registry.report() in your app module." />
+      ) : (
+        <SplitLayout
+          left={
+            isLoading ? <SkeletonList /> : (
+              <>
+                <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" />
+                {filtered.length === 0
+                  ? <Empty message="No matches." />
+                  : filtered.map(r => (
+                    <ListItem
+                      key={r.name}
+                      selected={selected === r.name}
+                      onClick={() => setSelected(r.name)}
+                      name={r.name}
+                      sub={r.description}
+                    />
+                  ))
+                }
+              </>
+            )
+          }
+          right={isLoading ? <SkeletonCard /> : <ReportDetail report={current} />}
+        />
+      )}
     </>
   )
 }

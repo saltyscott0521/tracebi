@@ -66,6 +66,19 @@ manifest — no separate audit step.
 
 ---
 
+## Choose your path
+
+| I want to… | Start here |
+|---|---|
+| Write a one-off report or query | Copy `requests/_template.py` and run it with `tracebi run` |
+| Build a scheduled ETL pipeline | `examples/phase4_example.py` → then `web/demo_app/` as a wiring template |
+| Expose everything in a web UI | `web/demo_app/` shows the full wiring; `TRACEBI_APP=mymodule python web/run.py` |
+| Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
+| Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
+| Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
+
+---
+
 ## Installation
 
 The fastest path for an analyst:
@@ -326,6 +339,11 @@ python web/run.py
 # Open http://localhost:8000
 ```
 
+The API is self-documenting: once the server is running, open
+[`http://localhost:8000/docs`](http://localhost:8000/docs) for the Swagger UI
+or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
+every endpoint, parameter, and response schema is listed there.
+
 `web/demo_app.py` is the default app module. It wires an in-memory `MemoryConnector` for the main `SalesModel` and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports and dashboards read from those resources.
 
 To point the UI at your own data module instead of the built-in demo:
@@ -403,7 +421,7 @@ tracebi/
 │   ├── connectors/       CSV, SQL, BigQuery, Snowflake, Memory
 │   ├── model/            DataSet, DataModel (with star-schema query)
 │   ├── etl/              BronzeLayer, SilverLayer, GoldLayer
-│   ├── reports/          Report, ExcelRenderer, HTMLRenderer
+│   ├── reports/          Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
 │   ├── dashboard/        Dashboard, DashboardServer, panels
 │   ├── pipeline/         PipelineRunner (APScheduler + DB)
 │   └── lineage/          LineageDiagram
