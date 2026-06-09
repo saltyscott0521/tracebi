@@ -213,6 +213,12 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 /* ── Animations ─────────────────────────────────────── */
 @keyframes spin { to { transform: rotate(360deg); } }
 
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.cursor-blink { animation: blink .75s step-end infinite; }
+
 @keyframes skeleton-wave {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
