@@ -24,8 +24,8 @@ model.add_table("orders",    connector="sales_db", source="orders")
 model.add_table("customers", connector="sales_db", source="customers")
 model.connect()`,
     output: [
-      { text: 'Connected to sales_db (SQLite)',      ok: true },
-      { text: 'Connected to lookups (CSV, data/)',   ok: true },
+      { text: 'Connected to sales_db (SQLite)',         ok: true },
+      { text: 'Connected to lookups (CSV, data/)',      ok: true },
       { text: 'Registered 2 tables: orders, customers', ok: true },
     ],
   },
@@ -52,8 +52,8 @@ result.print_lineage()`,
     output: [
       { text: '[LOAD]       Loaded \'orders\' from sales_db',  color: '#60a5fa' },
       { text: '[FILTER]     Shipped orders  (250 → 198 rows)', color: '#60a5fa' },
-      { text: '[TRANSFORM]  margin = revenue − cost',         color: '#60a5fa' },
-      { text: '[SORT]       Sorted by margin desc',            color: '#60a5fa' },
+      { text: '[TRANSFORM]  margin = revenue − cost',          color: '#60a5fa' },
+      { text: '[SORT]       Sorted by margin desc',             color: '#60a5fa' },
     ],
   },
   {
@@ -75,14 +75,15 @@ runner.register(final,   name="revenue_gold",
 
 runner.start()`,
     output: [
-      { text: '3 layers registered',                    ok: true  },
-      { text: 'Scheduler started (APScheduler)',         ok: true  },
-      { text: 'Next: orders_bronze in 00:42',           color: '#fbbf24' },
+      { text: '3 layers registered',             ok: true },
+      { text: 'Scheduler started (APScheduler)', ok: true },
+      { text: 'Next: orders_bronze in 00:42',    color: '#fbbf24' },
     ],
   },
   {
     icon: '▤',
     label: 'Report',
+    outputType: 'report',
     title: 'Compose and render a report',
     desc: 'Assemble reports from typed sections. Render to Excel or HTML — a lineage manifest is written alongside every output.',
     code:
@@ -100,11 +101,7 @@ runner.start()`,
 )
 
 HTMLRenderer().render(report, "output/q2.html")`,
-    output: [
-      { text: 'output/q2.html              284 KB',    ok: true },
-      { text: 'output/q2_manifest.json     lineage',   ok: true },
-      { text: '3 sections · 198 rows · 4 charts',      color: '#94a3b8' },
-    ],
+    output: [],
   },
   {
     icon: '◫',
@@ -125,10 +122,10 @@ def q2_revenue():
 
 # python web/run.py`,
     output: [
-      { text: 'GET  /api/connectors',               color: '#60a5fa' },
-      { text: 'GET  /api/models/SalesModel',         color: '#60a5fa' },
-      { text: 'POST /api/reports/q2_revenue/run',    color: '#60a5fa' },
-      { text: 'Serving on http://localhost:8000',     ok: true },
+      { text: 'GET  /api/connectors',            color: '#60a5fa' },
+      { text: 'GET  /api/models/SalesModel',      color: '#60a5fa' },
+      { text: 'POST /api/reports/q2_revenue/run', color: '#60a5fa' },
+      { text: 'Serving on http://localhost:8000',  ok: true },
     ],
   },
 ]
@@ -136,13 +133,96 @@ def q2_revenue():
 const CHARS_PER_TICK = 6
 const TICK_MS = 22
 const OUTPUT_DELAY_MS = 420
-const STEP_PAUSE_MS = 2800
+const STEP_PAUSE_MS = 3000
+
+// ── Report preview (shown when Report step finishes typing) ───────────────────
+
+const REPORT_DATA = [
+  { region: 'North', revenue: 284210, margin: 62340 },
+  { region: 'West',  revenue: 198450, margin: 43760 },
+  { region: 'South', revenue: 156780, margin: 33450 },
+  { region: 'East',  revenue: 142110, margin: 30560 },
+]
+const REPORT_MAX = 284210
+
+function ReportPreview() {
+  return (
+    <div style={{ padding: '16px 22px', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#d1ddf5', marginBottom: 3 }}>Q2 Revenue Analysis</div>
+          <div style={{ fontSize: 10.5, color: '#3d5278' }}>Data Team · Q2 2024 · 198 rows · 3 sections</div>
+        </div>
+        <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.2)' }}>✓ q2.html</span>
+          <span style={{ fontSize: 10, color: '#60a5fa', fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.2)' }}>⊶ lineage</span>
+        </div>
+      </div>
+
+      {/* Bar chart */}
+      <div>
+        <div style={{ fontSize: 9.5, fontWeight: 700, color: '#3d5278', textTransform: 'uppercase', letterSpacing: .7, marginBottom: 9 }}>Revenue by Region</div>
+        {REPORT_DATA.map(d => (
+          <div key={d.region} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <div style={{ width: 36, fontSize: 10.5, color: '#64748b', textAlign: 'right', flexShrink: 0 }}>{d.region}</div>
+            <div style={{ flex: 1, height: 20, background: 'rgba(255,255,255,.04)', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{
+                width: `${(d.revenue / REPORT_MAX) * 100}%`, height: '100%',
+                background: 'linear-gradient(90deg, rgba(37,99,235,.7), rgba(124,58,237,.7))',
+                borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 8,
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,.8)', fontFamily: 'Cascadia Code, Fira Code, monospace', whiteSpace: 'nowrap' }}>
+                  ${(d.revenue / 1000).toFixed(0)}K
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div>
+        <div style={{ fontSize: 9.5, fontWeight: 700, color: '#3d5278', textTransform: 'uppercase', letterSpacing: .7, marginBottom: 7 }}>Detail</div>
+        <div style={{ border: '1px solid rgba(255,255,255,.07)', borderRadius: 6, overflow: 'hidden' }}>
+          <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'rgba(0,0,0,.25)' }}>
+                {['Region','Revenue','Margin','Margin %'].map(h => (
+                  <th key={h} style={{ padding: '5px 10px', textAlign: h === 'Region' ? 'left' : 'right', color: '#3d5278', fontWeight: 700, fontSize: 9, textTransform: 'uppercase', letterSpacing: .5 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {REPORT_DATA.map(d => (
+                <tr key={d.region} style={{ borderTop: '1px solid rgba(255,255,255,.04)' }}>
+                  <td style={{ padding: '5px 10px', color: '#94a3b8' }}>{d.region}</td>
+                  <td style={{ padding: '5px 10px', color: '#e2e8f0', textAlign: 'right', fontFamily: 'monospace' }}>${d.revenue.toLocaleString()}</td>
+                  <td style={{ padding: '5px 10px', color: '#4ade80', textAlign: 'right', fontFamily: 'monospace' }}>${d.margin.toLocaleString()}</td>
+                  <td style={{ padding: '5px 10px', color: '#94a3b8', textAlign: 'right', fontFamily: 'monospace' }}>{((d.margin / d.revenue) * 100).toFixed(1)}%</td>
+                </tr>
+              ))}
+              <tr style={{ borderTop: '1px solid rgba(255,255,255,.1)', background: 'rgba(59,130,246,.06)' }}>
+                <td style={{ padding: '5px 10px', color: '#64748b', fontWeight: 700, fontSize: 10.5 }}>Total</td>
+                <td style={{ padding: '5px 10px', color: '#93c5fd', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>$781,550</td>
+                <td style={{ padding: '5px 10px', color: '#4ade80', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>$170,110</td>
+                <td style={{ padding: '5px 10px', color: '#94a3b8', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>21.8%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Code view ─────────────────────────────────────────────────────────────────
 
 function CodeView({ code, chars }) {
   const visible = code.slice(0, chars)
   const done = chars >= code.length
   const lines = visible.split('\n')
-
   return (
     <pre style={{
       fontFamily: "'Cascadia Code', 'Fira Code', Consolas, monospace",
@@ -160,8 +240,7 @@ function CodeView({ code, chars }) {
             {isLast && !done && (
               <span className="cursor-blink" style={{
                 display: 'inline-block', width: 2, height: '0.9em',
-                background: '#60a5fa', marginLeft: 1,
-                verticalAlign: 'text-bottom',
+                background: '#60a5fa', marginLeft: 1, verticalAlign: 'text-bottom',
               }} />
             )}
             {i < lines.length - 1 && '\n'}
@@ -172,6 +251,8 @@ function CodeView({ code, chars }) {
   )
 }
 
+// ── Player ────────────────────────────────────────────────────────────────────
+
 function DemoPlayer() {
   const [stepIdx, setStepIdx] = useState(0)
   const [chars, setChars] = useState(0)
@@ -180,36 +261,40 @@ function DemoPlayer() {
   const tm = useRef(null)
 
   const step = DEMO_STEPS[stepIdx]
+  const isReport = step.outputType === 'report'
 
-  // Reset when step changes
   useEffect(() => {
     clearTimeout(tm.current)
     setChars(0)
     setShownOutputs(0)
   }, [stepIdx])
 
-  // Animation state machine
   useEffect(() => {
     if (!playing) { clearTimeout(tm.current); return }
     clearTimeout(tm.current)
     const codeLen = step.code.length
-    const outLen = step.output.length
+    const outLen  = step.output.length
 
     if (chars < codeLen) {
       tm.current = setTimeout(() => setChars(c => Math.min(c + CHARS_PER_TICK, codeLen)), TICK_MS)
-    } else if (shownOutputs < outLen) {
+    } else if (isReport && shownOutputs === 0) {
+      // show report preview after a brief pause
+      tm.current = setTimeout(() => setShownOutputs(1), 700)
+    } else if (!isReport && shownOutputs < outLen) {
       tm.current = setTimeout(() => setShownOutputs(s => s + 1), OUTPUT_DELAY_MS)
     } else {
       tm.current = setTimeout(() => setStepIdx(i => (i + 1) % DEMO_STEPS.length), STEP_PAUSE_MS)
     }
     return () => clearTimeout(tm.current)
-  }, [chars, shownOutputs, playing, step])
+  }, [chars, shownOutputs, playing, step, isReport])
 
   const progress = ((stepIdx + Math.min(chars / (step.code.length || 1), 1)) / DEMO_STEPS.length) * 100
+  const showPreview = isReport && shownOutputs > 0
+  const outputVisible = !isReport && shownOutputs > 0
 
   return (
     <div style={{
-      background: 'rgba(14,22,42,0.92)',
+      background: 'rgba(10,18,36,0.95)',
       backdropFilter: 'blur(16px)',
       WebkitBackdropFilter: 'blur(16px)',
       border: '1px solid var(--border)',
@@ -219,9 +304,9 @@ function DemoPlayer() {
       boxShadow: '0 24px 64px rgba(0,0,0,.5), 0 0 0 1px rgba(59,130,246,.08)',
     }}>
 
-      {/* Window chrome */}
+      {/* Chrome */}
       <div style={{
-        background: 'rgba(0,0,0,.3)',
+        background: 'rgba(0,0,0,.35)',
         borderBottom: '1px solid rgba(255,255,255,.06)',
         padding: '11px 18px',
         display: 'flex', alignItems: 'center', gap: 12,
@@ -235,50 +320,43 @@ function DemoPlayer() {
         <div style={{ flex: 1, textAlign: 'center', fontSize: 11.5, color: '#3d5278', fontWeight: 600, letterSpacing: .3 }}>
           tracebi — interactive demo
         </div>
-        <button
-          onClick={() => setPlaying(p => !p)}
-          title={playing ? 'Pause' : 'Play'}
-          style={{
-            background: playing ? 'rgba(34,197,94,.12)' : 'rgba(255,255,255,.06)',
-            border: `1px solid ${playing ? 'rgba(34,197,94,.28)' : 'rgba(255,255,255,.08)'}`,
-            borderRadius: 6, cursor: 'pointer', padding: '3px 10px',
-            color: playing ? '#4ade80' : '#64748b',
-            fontSize: 11, fontWeight: 700, letterSpacing: .3,
-          }}>
+        <button onClick={() => setPlaying(p => !p)} title={playing ? 'Pause' : 'Play'} style={{
+          background: playing ? 'rgba(34,197,94,.12)' : 'rgba(255,255,255,.06)',
+          border: `1px solid ${playing ? 'rgba(34,197,94,.28)' : 'rgba(255,255,255,.08)'}`,
+          borderRadius: 6, cursor: 'pointer', padding: '3px 10px',
+          color: playing ? '#4ade80' : '#64748b',
+          fontSize: 11, fontWeight: 700, letterSpacing: .3,
+        }}>
           {playing ? '⏸ LIVE' : '▶ PLAY'}
         </button>
       </div>
 
-      <div style={{ display: 'flex', minHeight: 380 }}>
+      {/* Body — fixed height so window never resizes */}
+      <div style={{ display: 'flex', height: 430 }}>
 
         {/* Step navigation */}
         <div style={{
-          width: 210, flexShrink: 0,
+          width: 210, flexShrink: 0, height: '100%', overflowY: 'auto',
           borderRight: '1px solid rgba(255,255,255,.06)',
-          paddingTop: 8, paddingBottom: 8,
+          paddingTop: 6, paddingBottom: 6,
         }}>
           {DEMO_STEPS.map((s, i) => {
             const active = stepIdx === i
-            const done = stepIdx > i
+            const done   = stepIdx > i
             return (
               <button key={i} onClick={() => { setStepIdx(i); setPlaying(true) }} style={{
-                width: '100%', padding: '10px 16px 10px 14px',
+                width: '100%', padding: '11px 16px 11px 14px',
                 background: active ? 'rgba(59,130,246,.1)' : 'none',
-                border: 'none',
-                borderLeft: `2px solid ${active ? '#3b82f6' : 'transparent'}`,
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 10,
-                textAlign: 'left',
-                transition: 'background var(--t)',
+                border: 'none', borderLeft: `2px solid ${active ? '#3b82f6' : 'transparent'}`,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                textAlign: 'left', transition: 'background var(--t)',
               }}>
                 <div style={{
                   width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                  background: active
-                    ? 'linear-gradient(135deg,#2563eb,#7c3aed)'
-                    : done ? 'rgba(34,197,94,.12)' : 'rgba(255,255,255,.05)',
+                  background: active ? 'linear-gradient(135deg,#2563eb,#7c3aed)' : done ? 'rgba(34,197,94,.12)' : 'rgba(255,255,255,.05)',
                   border: active ? 'none' : done ? '1px solid rgba(34,197,94,.3)' : '1px solid rgba(255,255,255,.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: done ? 13 : 15,
+                  fontSize: done && !active ? 13 : 15,
                   boxShadow: active ? '0 2px 10px rgba(124,58,237,.4)' : 'none',
                   transition: 'all var(--t)',
                 }}>{done && !active ? '✓' : s.icon}</div>
@@ -295,35 +373,53 @@ function DemoPlayer() {
           })}
         </div>
 
-        {/* Code + output area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Right panel — flex column, fills fixed height */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
           {/* Step header */}
           <div style={{
-            padding: '16px 24px 13px',
+            flexShrink: 0, padding: '14px 24px 12px',
             borderBottom: '1px solid rgba(255,255,255,.05)',
-            background: 'rgba(0,0,0,.12)',
+            background: 'rgba(0,0,0,.15)',
           }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#d1ddf5', marginBottom: 3 }}>
-              {step.title}
-            </div>
-            <p style={{ fontSize: 12, color: '#4a6280', lineHeight: 1.55, margin: 0 }}>
-              {step.desc}
-            </p>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#d1ddf5', marginBottom: 3 }}>{step.title}</div>
+            <p style={{ fontSize: 11.5, color: '#4a6280', lineHeight: 1.5, margin: 0 }}>{step.desc}</p>
           </div>
 
-          {/* Code */}
-          <div style={{ flex: 1, padding: '18px 24px 14px', overflowY: 'auto' }}>
-            <CodeView code={step.code} chars={chars} />
-          </div>
-
-          {/* Output lines */}
-          {shownOutputs > 0 && (
+          {/* Code area — scrollable, report preview overlaid when done */}
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            {/* Code — fades out when report preview shows */}
             <div style={{
-              borderTop: '1px solid rgba(255,255,255,.06)',
-              padding: '10px 24px 14px',
-              background: 'rgba(0,0,0,.25)',
+              position: 'absolute', inset: 0, overflowY: 'auto',
+              padding: '16px 24px 14px',
+              opacity: showPreview ? 0 : 1,
+              transition: 'opacity 0.55s ease',
             }}>
+              <CodeView code={step.code} chars={chars} />
+            </div>
+            {/* Report preview — fades in after typing completes */}
+            {isReport && (
+              <div style={{
+                position: 'absolute', inset: 0, overflowY: 'auto',
+                opacity: showPreview ? 1 : 0,
+                transition: 'opacity 0.55s ease',
+                pointerEvents: showPreview ? 'auto' : 'none',
+              }}>
+                <ReportPreview />
+              </div>
+            )}
+          </div>
+
+          {/* Terminal output — slides up from bottom, hidden for report step */}
+          <div style={{
+            flexShrink: 0,
+            height: outputVisible ? 118 : 0,
+            overflow: 'hidden',
+            transition: 'height 0.35s cubic-bezier(.4,0,.2,1)',
+            borderTop: outputVisible ? '1px solid rgba(255,255,255,.06)' : 'none',
+            background: 'rgba(0,0,0,.28)',
+          }}>
+            <div style={{ padding: '10px 24px 12px' }}>
               {step.output.slice(0, shownOutputs).map((line, i) => (
                 <div key={i} className="fade-in" style={{
                   fontFamily: "'Cascadia Code', 'Fira Code', monospace",
@@ -337,7 +433,7 @@ function DemoPlayer() {
                 </div>
               ))}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
