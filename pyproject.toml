@@ -109,6 +109,7 @@ dev = [
     "sqlalchemy>=2.0",
     "duckdb>=0.9",
     "python-dotenv>=1.0",
+    "httpx2",
 ]
 
 [project.scripts]
