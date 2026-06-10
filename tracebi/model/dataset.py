@@ -164,10 +164,24 @@ class DataSet:
             func:        A callable ``(pd.DataFrame) -> pd.DataFrame``.
             description: Human-readable description for the lineage record.
         """
+        rows_before = len(self._df)
+        cols_before = set(self._df.columns)
         new_df = func(self._df.copy())
+        cols_after = set(new_df.columns)
+        metadata: dict[str, Any] = {
+            "rows_before": rows_before,
+            "rows_after":  len(new_df),
+        }
+        added = sorted(cols_after - cols_before)
+        removed = sorted(cols_before - cols_after)
+        if added:
+            metadata["columns_added"] = added
+        if removed:
+            metadata["columns_removed"] = removed
         node = LineageNode(
             operation="transform",
             description=description or "transform",
+            metadata=metadata,
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
@@ -193,7 +207,7 @@ class DataSet:
         node = LineageNode(
             operation="sort",
             description=description or f"Sorted by {by_str} ({dir_str})",
-            metadata={"by": by, "ascending": ascending},
+            metadata={"by": by, "ascending": ascending, "rows": len(new_df)},
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
@@ -203,7 +217,7 @@ class DataSet:
         node = LineageNode(
             operation="select",
             description=description or f"Selected columns: {columns}",
-            metadata={"columns": columns},
+            metadata={"columns": columns, "rows": len(new_df)},
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
@@ -217,7 +231,7 @@ class DataSet:
         node = LineageNode(
             operation="rename",
             description=description or f"Renamed columns: {columns}",
-            metadata={"columns": columns},
+            metadata={"columns": columns, "rows": len(new_df)},
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 

@@ -19,8 +19,22 @@ export function opStyle(operation) {
   }
 }
 
+// One-line row-count summary from whatever counts the lineage step recorded.
+export function rowSummary(meta) {
+  const m = meta || {}
+  const fmt = n => Number(n).toLocaleString()
+  if (m.rows_left != null && m.rows_right != null && m.rows_after != null)
+    return `${fmt(m.rows_left)} ⋈ ${fmt(m.rows_right)} → ${fmt(m.rows_after)} rows`
+  if (m.rows_before != null && m.rows_after != null)
+    return `${fmt(m.rows_before)} → ${fmt(m.rows_after)} rows`
+  const rows = m.rows ?? m.rows_loaded ?? m.rows_out ?? m.rows_after
+  if (rows != null) return `${fmt(rows)} rows`
+  return null
+}
+
 export function LineageNode({ data, selected }) {
   const op = opStyle(data.operation)
+  const rows = rowSummary(data.metadata)
   return (
     <div style={{
       background: op.bg,
@@ -34,9 +48,9 @@ export function LineageNode({ data, selected }) {
         {data.operation}
       </div>
       <div style={{ lineHeight: 1.4, color: 'var(--text-2)' }}>{data.description}</div>
-      {data.metadata?.rows_before != null && (
+      {rows && (
         <div style={{ marginTop: 6, fontSize: 10, color: 'var(--muted)' }}>
-          {data.metadata.rows_before} → {data.metadata.rows_after} rows
+          {rows}
         </div>
       )}
       <Handle type="source" position={Position.Right} style={{ background: op.br }} />

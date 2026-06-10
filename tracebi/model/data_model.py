@@ -355,6 +355,9 @@ class DataModel:
                 "left_key":     rel.left_key,
                 "right_key":    rel.right_key,
                 "how":          rel.how,
+                "rows_left":    len(left_ds),
+                "rows_right":   len(right_ds),
+                "rows_after":   len(merged),
             },
         )
         combined_lineage = left_ds.lineage + right_ds.lineage + [join_node]
@@ -404,6 +407,9 @@ class DataModel:
                     "left_key":     rel.left_key,
                     "right_key":    rel.right_key,
                     "how":          rel.how,
+                    "rows_left":    len(ds),
+                    "rows_right":   len(right_ds),
+                    "rows_after":   len(merged),
                 },
             )
             ds = DataSet(
