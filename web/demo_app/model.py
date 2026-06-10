@@ -58,4 +58,19 @@ model.add_relationship(
     right_table="customers",
     left_key="customer_id",
 )
+
+# Star-schema tags — power the Explore query builder in the web UI.
+model.add_dimension(
+    "dim_customer",
+    table_name="customers",
+    key_col="customer_id",
+    attributes=["name", "region", "tier"],
+)
+model.add_fact(
+    "fact_orders",
+    table_name="orders",
+    measures=["revenue", "qty", "cost"],
+    foreign_keys={"dim_customer": "customer_id"},
+)
+
 model.connect()

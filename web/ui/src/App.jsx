@@ -4,6 +4,7 @@ import { ToastProvider } from './components/Shared'
 import Home from './pages/Home'
 import Connectors from './pages/Connectors'
 import Models from './pages/Models'
+import Explore from './pages/Explore'
 import Reports from './pages/Reports'
 import Pipelines from './pages/Pipelines'
 import Dashboards from './pages/Dashboards'
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/connectors" element={<Connectors />} />
           <Route path="/models" element={<Models />} />
+          <Route path="/explore" element={<Explore />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/pipelines" element={<Pipelines />} />
           <Route path="/dashboards" element={<Dashboards />} />

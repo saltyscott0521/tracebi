@@ -41,6 +41,18 @@ class SQLConnector(BaseConnector):
     def supports_pushdown(self) -> bool:
         return True
 
+    def describe(self) -> dict:
+        return {**super().describe(), "url": self._redacted_url()}
+
+    def _redacted_url(self) -> str:
+        """Connection URL with any password replaced by ***."""
+        try:
+            from sqlalchemy.engine import make_url
+            url = make_url(self.url)
+            return url.render_as_string(hide_password=True)
+        except Exception:
+            return "<unparseable url>"
+
     def connect(self) -> None:
         try:
             from sqlalchemy import create_engine

@@ -14,6 +14,7 @@ Requires: pip install openpyxl
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -23,6 +24,8 @@ from tracebi.reports.report import (
     Report, SectionType,
     TextSection, TableSection, ChartSection,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ── Color palette ──────────────────────────────────────────────────────────
@@ -251,7 +254,10 @@ class ExcelRenderer(BaseRenderer):
                     try:
                         totals[display_col] = df[display_col].sum()
                     except Exception:
-                        pass
+                        logger.warning(
+                            "total for column %r could not be computed; "
+                            "omitting from totals row", display_col, exc_info=True,
+                        )
 
         # Data rows
         fmt_map = {}
@@ -275,7 +281,10 @@ class ExcelRenderer(BaseRenderer):
                             display_val = val   # store raw; apply number_format
                             c.number_format = self._excel_number_format(fmt)
                     except Exception:
-                        pass
+                        logger.warning(
+                            "number_format %r failed for column %r; "
+                            "writing unformatted value", fmt_map.get(col_name), col_name,
+                        )
 
                 c.value = display_val
                 c.font = Font(size=9, name="Calibri")
@@ -351,8 +360,9 @@ class ExcelRenderer(BaseRenderer):
             chart = BarChart()
 
         chart.title = section.title or ""
-        chart.y_axis.title = section.ylabel or (y_cols[0] if len(y_cols) == 1 else "")
-        chart.x_axis.title = section.xlabel or section.x
+        if chart_type != "pie":  # PieChart has no x/y axes
+            chart.y_axis.title = section.ylabel or (y_cols[0] if len(y_cols) == 1 else "")
+            chart.x_axis.title = section.xlabel or section.x
         chart.width = 20
         chart.height = 12
 

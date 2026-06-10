@@ -108,6 +108,23 @@ code {
   white-space: pre;
 }
 
+/* Download links (report Excel/HTML, table CSV) */
+.dl-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--blue-br);
+  background: var(--blue-lt);
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--t), color var(--t);
+}
+.dl-link:hover { background: rgba(59,130,246,.22); color: #bfdbfe; }
+
 /* Tables */
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead tr { background: rgba(8,15,35,0.8); }

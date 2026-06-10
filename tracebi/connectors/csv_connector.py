@@ -35,6 +35,9 @@ class CSVConnector(BaseConnector):
         self.directory = directory
         self.encoding = encoding
 
+    def describe(self) -> dict:
+        return {**super().describe(), "directory": self.directory}
+
     def connect(self) -> None:
         if not os.path.isdir(self.directory):
             raise FileNotFoundError(

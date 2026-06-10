@@ -93,13 +93,13 @@ class SnowflakeConnector(BaseConnector):
             cur.close()
             return self._apply_pandas_pushdown(df, filter, columns)
 
-        select_cols = ", ".join(f'"{c}"' for c in columns) if columns else "*"
-        query = f'SELECT {select_cols} FROM "{source}"'
+        select_cols = ", ".join(self._quote_ident(c) for c in columns) if columns else "*"
+        query = f"SELECT {select_cols} FROM {self._quote_ident(source)}"
         params: list[Any] = []
         if filter:
             clauses = []
             for col, val in filter.items():
-                clauses.append(f'"{col}" = %s')
+                clauses.append(f"{self._quote_ident(col)} = %s")
                 params.append(val)
             query += " WHERE " + " AND ".join(clauses)
         cur.execute(query, tuple(params))

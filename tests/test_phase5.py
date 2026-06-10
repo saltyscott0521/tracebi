@@ -8,6 +8,7 @@ Existing phase tests guarantee back-compat; this file covers what's new.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import tempfile
 import textwrap
@@ -135,6 +136,11 @@ class TestPushDownSQL:
 # ── DuckDB connector ──────────────────────────────────────────────────────
 
 class TestDuckDBConnector:
+    pytestmark = pytest.mark.skipif(
+        importlib.util.find_spec("duckdb") is None,
+        reason="duckdb not installed",
+    )
+
     def test_register_and_load(self, orders_df):
         conn = DuckDBConnector("dd")
         conn.register_df("orders", orders_df)
@@ -236,6 +242,7 @@ class TestStarSchemaDuckDB:
         assert ent == 250.0
 
     def test_engine_node_records_duckdb(self, memory_model):
+        pytest.importorskip("duckdb")
         memory_model.add_dimension("dim_customer", "customers",
                                    key_col="customer_id", attributes=["segment"])
         memory_model.add_fact("fact_orders", "orders", measures=["revenue"],
@@ -553,6 +560,220 @@ class TestProxyHeaderAuth:
         app = FastAPI()
         # Proxy mode wins when both are set.
         assert install_if_configured(app) == "proxy"
+
+    def test_proxy_without_trusted_ips_warns(self, monkeypatch):
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
+        monkeypatch.delenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", raising=False)
+        from fastapi import FastAPI
+        from web.api.auth import install_if_configured
+        app = FastAPI()
+        with pytest.warns(UserWarning, match="TRUSTED_IPS"):
+            assert install_if_configured(app) == "proxy"
+
+    def test_proxy_with_trusted_ips_does_not_warn(self, monkeypatch, recwarn):
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", "10.0.0.0/8")
+        from fastapi import FastAPI
+        from web.api.auth import install_if_configured
+        app = FastAPI()
+        assert install_if_configured(app) == "proxy"
+        assert not [w for w in recwarn if "TRUSTED_IPS" in str(w.message)]
+
+
+# ── Analyst endpoints: preview metadata, CSV export, report downloads ─────
+
+class TestAnalystEndpoints:
+    def _client_with_model(self, memory_model):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.registry import registry
+        from web.api.routers import models as models_router
+
+        registry.add_model(memory_model)
+        app = FastAPI()
+        app.include_router(models_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _cleanup_model(self, name):
+        from web.api.registry import registry
+        registry._models.pop(name, None)
+
+    def test_preview_includes_dtypes_and_total_rows(self, memory_model):
+        client = self._client_with_model(memory_model)
+        try:
+            r = client.get("/api/models/Sales/tables/orders/preview?rows=2")
+            assert r.status_code == 200
+            body = r.json()
+            assert body["rows"] == 2
+            assert body["total_rows"] == 6
+            assert set(body["dtypes"]) == set(body["columns"])
+        finally:
+            self._cleanup_model("Sales")
+
+    def test_csv_export_streams_full_table(self, memory_model):
+        client = self._client_with_model(memory_model)
+        try:
+            r = client.get("/api/models/Sales/tables/orders/export.csv")
+            assert r.status_code == 200
+            assert r.headers["content-type"].startswith("text/csv")
+            assert 'filename="orders.csv"' in r.headers["content-disposition"]
+            lines = r.text.strip().splitlines()
+            assert len(lines) == 7  # header + 6 rows
+            assert lines[0].startswith("order_id")
+        finally:
+            self._cleanup_model("Sales")
+
+    def _client_with_report(self, factory, name="t_report"):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.registry import registry
+        from web.api.routers import reports as reports_router
+
+        registry.add_report(name, factory)
+        app = FastAPI()
+        app.include_router(reports_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _cleanup_report(self, name="t_report"):
+        from web.api.registry import registry
+        registry._report_factories.pop(name, None)
+
+    @staticmethod
+    def _sample_report(memory_model):
+        from tracebi.reports import Report, TableSection
+        ds = memory_model.load("orders")
+        return Report("T Report").add(TableSection(title="Orders", dataset=ds))
+
+    def test_download_html_attachment(self, memory_model):
+        client = self._client_with_report(lambda: self._sample_report(memory_model))
+        try:
+            r = client.get("/api/reports/t_report/download?format=html")
+            assert r.status_code == 200
+            assert "attachment" in r.headers["content-disposition"]
+            assert r.text.startswith("<!DOCTYPE html>")
+        finally:
+            self._cleanup_report()
+
+    def test_download_xlsx_attachment(self, memory_model):
+        pytest.importorskip("openpyxl")
+        client = self._client_with_report(lambda: self._sample_report(memory_model))
+        try:
+            r = client.get("/api/reports/t_report/download?format=xlsx")
+            assert r.status_code == 200
+            assert "spreadsheetml" in r.headers["content-type"]
+            assert r.content[:2] == b"PK"  # xlsx is a zip container
+        finally:
+            self._cleanup_report()
+
+    def test_download_bad_format_400(self, memory_model):
+        client = self._client_with_report(lambda: self._sample_report(memory_model))
+        try:
+            r = client.get("/api/reports/t_report/download?format=exe")
+            assert r.status_code == 400
+        finally:
+            self._cleanup_report()
+
+    def test_failing_factory_returns_structured_traceback(self):
+        def boom():
+            raise RuntimeError("kapow")
+
+        client = self._client_with_report(boom)
+        try:
+            r = client.post("/api/reports/t_report/run")
+            assert r.status_code == 500
+            detail = r.json()["detail"]
+            assert "kapow" in detail["message"]
+            assert detail["exception_type"] == "RuntimeError"
+            assert "RuntimeError: kapow" in detail["traceback"]
+        finally:
+            self._cleanup_report()
+
+
+# ── Explore: star-schema query endpoint ───────────────────────────────────
+
+class TestQueryEndpoint:
+    def _client(self, memory_model):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.registry import registry
+        from web.api.routers import models as models_router
+
+        memory_model.add_dimension("dim_customer", "customers",
+                                   key_col="customer_id", attributes=["segment"])
+        memory_model.add_fact("fact_orders", "orders",
+                              measures=["revenue", "qty"],
+                              foreign_keys={"dim_customer": "customer_id"})
+        registry.add_model(memory_model)
+        app = FastAPI()
+        app.include_router(models_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _cleanup(self):
+        from web.api.registry import registry
+        registry._models.pop("Sales", None)
+
+    def test_aggregated_query_returns_rows_and_lineage(self, memory_model):
+        client = self._client(memory_model)
+        try:
+            r = client.post("/api/models/Sales/query", json={
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "dimensions": ["dim_customer.segment"],
+            })
+            assert r.status_code == 200
+            body = r.json()
+            assert body["rows"] == 2
+            assert "dim_customer.segment" in body["columns"]
+            assert body["lineage_graph"]["nodes"]
+            assert body["engine"] in ("duckdb", "pandas")
+        finally:
+            self._cleanup()
+
+    def test_unknown_fact_is_400(self, memory_model):
+        client = self._client(memory_model)
+        try:
+            r = client.post("/api/models/Sales/query", json={
+                "fact": "nope", "measures": {"revenue": "sum"},
+            })
+            assert r.status_code == 400
+            assert "nope" in r.json()["detail"]
+        finally:
+            self._cleanup()
+
+    def test_filters_apply_to_fact(self, memory_model):
+        client = self._client(memory_model)
+        try:
+            r = client.post("/api/models/Sales/query", json={
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "filters": {"status": "shipped"},
+            })
+            assert r.status_code == 200
+            body = r.json()
+            assert body["rows"] == 1
+        finally:
+            self._cleanup()
+
+
+# ── Connector SQL identifier hygiene ──────────────────────────────────────
+
+class TestConnectorIdentifierQuoting:
+    def test_base_quote_ident_rejects_embedded_quote(self):
+        from tracebi.connectors.base import BaseConnector
+        with pytest.raises(ValueError):
+            BaseConnector._quote_ident('bad"name')
+        with pytest.raises(ValueError):
+            BaseConnector._quote_ident("bad`name", quote="`")
+        assert BaseConnector._quote_ident("ok_name") == '"ok_name"'
+
+    def test_bigquery_param_type_mapping(self):
+        from tracebi.connectors.bigquery_connector import BigQueryConnector
+        assert BigQueryConnector._bq_param_type(True) == "BOOL"
+        assert BigQueryConnector._bq_param_type(3) == "INT64"
+        assert BigQueryConnector._bq_param_type(3.5) == "FLOAT64"
+        assert BigQueryConnector._bq_param_type("x") == "STRING"
+        with pytest.raises(ValueError):
+            BigQueryConnector._bq_param_type(object())
 
 
 # ── Shared project model & @scheduled decorator ──────────────────────────

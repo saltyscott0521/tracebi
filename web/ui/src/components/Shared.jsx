@@ -228,6 +228,32 @@ export function Alert({ variant = 'info', children }) {
   )
 }
 
+// Renders an API error with an expandable Python traceback when the
+// backend supplied one (err.detail.traceback — see api.js toError()).
+export function ErrorDetail({ error }) {
+  if (!error) return null
+  const tb = error.detail?.traceback
+  return (
+    <Alert variant="err">
+      <div>{error.message}</div>
+      {tb && (
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 12, opacity: .8 }}>
+            Show Python traceback
+          </summary>
+          <pre style={{
+            marginTop: 8, padding: 12, borderRadius: 6, overflowX: 'auto',
+            background: 'rgba(0,0,0,.35)', color: '#fda4af',
+            fontSize: 11, lineHeight: 1.55,
+            fontFamily: 'Cascadia Code, Fira Code, monospace',
+            whiteSpace: 'pre-wrap',
+          }}>{tb}</pre>
+        </details>
+      )}
+    </Alert>
+  )
+}
+
 export function Btn({ children, onClick, disabled, variant = 'primary', size, style, type = 'button' }) {
   const base = {
     display: 'inline-flex', alignItems: 'center', gap: 6,

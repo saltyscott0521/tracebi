@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Optional
@@ -29,6 +30,8 @@ from tracebi.reports.report import (
     Report, SectionType,
     TextSection, TableSection, ChartSection,
 )
+
+logger = logging.getLogger(__name__)
 
 # ── CSS ───────────────────────────────────────────────────────────────────
 
@@ -378,6 +381,10 @@ class HTMLRenderer(BaseRenderer):
 
     # ── HTML building ──────────────────────────────────────────────────────
 
+    def to_html(self, report: Report) -> str:
+        """Return the report as a self-contained HTML string (no file I/O)."""
+        return self._build_html(report)
+
     def _build_html(self, report: Report) -> str:
         sections_html = "\n".join(
             self._render_section(s) for s in report.sections
@@ -498,6 +505,10 @@ class HTMLRenderer(BaseRenderer):
                     try:
                         display_val = fmt_map[col].format(val)
                     except Exception:
+                        logger.warning(
+                            "number_format %r failed for column %r value %r; "
+                            "rendering raw value", fmt_map[col], col, val,
+                        )
                         display_val = str(val) if pd.notna(val) else ""
                 else:
                     display_val = str(val) if pd.notna(val) else ""
@@ -526,6 +537,10 @@ class HTMLRenderer(BaseRenderer):
                             display_total = f"{total_val:,.2f}" if isinstance(total_val, float) else str(total_val)
                         totals_cells += f'<td{align_cls}><strong>{self._esc(display_total)}</strong></td>'
                     except Exception:
+                        logger.warning(
+                            "total for column %r could not be computed; "
+                            "rendering empty cell", col, exc_info=True,
+                        )
                         totals_cells += f'<td></td>'
                 else:
                     totals_cells += f'<td></td>'

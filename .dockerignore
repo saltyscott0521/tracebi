@@ -1,0 +1,33 @@
+# Never bake secrets or local state into image layers.
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+
+# Local data/outputs are volume-mounted by docker-compose, not copied.
+data/*
+!data/.gitkeep
+output/
+
+# VCS, caches, tooling state
+.git/
+.github/
+.claude/
+.pytest_cache/
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+*.egg-info/
+htmlcov/
+.coverage
+.DS_Store
+
+# The UI is built in the ui-builder stage; never copy host node_modules/dist.
+web/ui/node_modules/
+web/ui/dist/
+
+# Not needed at runtime
+tests/
+.venv/
+venv/

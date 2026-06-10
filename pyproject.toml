@@ -109,6 +109,15 @@ dev = [
     "sqlalchemy>=2.0",
     "duckdb>=0.9",
     "python-dotenv>=1.0",
+    # Web deps included so `pip install -e ".[dev]"` runs the full test suite
+    # (tests/test_phase5.py exercises the FastAPI layer).
+    "fastapi>=0.100",
+    "uvicorn>=0.23",
+    "starlette>=0.27",
+    "jinja2>=3.0",
+    "python-multipart>=0.0.6",
+    # NOT a typo for httpx: starlette >=1.x TestClient prefers `import httpx2`
+    # (the Pydantic-maintained httpx successor) and falls back to httpx.
     "httpx2",
 ]
 

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import ReactFlow, { Background, Controls, MiniMap, Handle, Position, MarkerType } from 'reactflow'
 import 'reactflow/dist/style.css'
 
-import { useModels, useModel, useTablePreview } from '../api'
+import { useModels, useModel, useTablePreview, tableCsvUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Tabs, SplitLayout, ListItem, SearchInput, SkeletonList, SkeletonCard,
@@ -19,15 +19,39 @@ function TablePreview({ modelName, tableName }) {
   )
   if (error) return <div style={{ padding: 16, color: '#fca5a5', fontSize: 13 }}>{error.message}</div>
   if (!data) return null
+  const showingAll = data.total_rows == null || data.rows >= data.total_rows
   return (
     <div className="fade-in">
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <Badge variant="gray">{data.rows} rows</Badge>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Badge variant="gray">
+          {showingAll
+            ? `${data.rows} rows`
+            : `first ${data.rows} of ${data.total_rows.toLocaleString()} rows`}
+        </Badge>
         <Badge variant="gray">{data.columns.length} cols</Badge>
+        <span style={{ flex: 1 }} />
+        <a href={tableCsvUrl(modelName, tableName)} download className="dl-link">
+          ↓ CSV {showingAll ? '' : '(all rows)'}
+        </a>
       </div>
       <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--border)' }}>
         <table>
-          <thead><tr>{data.columns.map(c => <th key={c}>{c}</th>)}</tr></thead>
+          <thead>
+            <tr>
+              {data.columns.map(c => (
+                <th key={c}>
+                  {c}
+                  {data.dtypes?.[c] && (
+                    <span style={{
+                      display: 'block', fontSize: 9.5, fontWeight: 400,
+                      color: 'var(--muted)', textTransform: 'none', letterSpacing: 0,
+                      fontFamily: 'Cascadia Code, Fira Code, monospace',
+                    }}>{data.dtypes[c]}</span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
             {data.data.map((row, i) => (
               <tr key={i}>

@@ -160,6 +160,17 @@ class TestExcelRenderer:
             assert isinstance(manifest, ReportManifest)
             assert manifest.format == "excel"
 
+    def test_renders_pie_chart(self):
+        # Regression: PieChart has no x/y axes — setting axis titles crashed.
+        report = Report("Pie Report").add(ChartSection(
+            title="Revenue Share", dataset=make_ds("pie"),
+            chart_type="pie", x="region", y="revenue",
+        ))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "pie.xlsx")
+            ExcelRenderer().render(report=report, output_path=path)
+            assert os.path.getsize(path) > 1000
+
     def test_excel_has_sheets(self, sample_report):
         import openpyxl
         with tempfile.TemporaryDirectory() as tmp:

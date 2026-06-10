@@ -75,15 +75,37 @@ class BigQueryConnector(BaseConnector):
             df = self._client.query(source).to_dataframe()
             return self._apply_pandas_pushdown(df, filter, columns)
 
-        select_cols = ", ".join(f"`{c}`" for c in columns) if columns else "*"
-        query = f"SELECT {select_cols} FROM `{self.project}.{self.dataset}.{source}`"
+        from google.cloud import bigquery
+
+        select_cols = (
+            ", ".join(self._quote_ident(c, quote="`") for c in columns)
+            if columns else "*"
+        )
+        table_ref = self._quote_ident(f"{self.project}.{self.dataset}.{source}", quote="`")
+        query = f"SELECT {select_cols} FROM {table_ref}"
+        params: list[Any] = []
         if filter:
             clauses = []
-            for col, val in filter.items():
-                if isinstance(val, str):
-                    val_lit = "'" + val.replace("'", "''") + "'"
-                else:
-                    val_lit = repr(val)
-                clauses.append(f"`{col}` = {val_lit}")
+            for i, (col, val) in enumerate(filter.items()):
+                pname = f"p{i}"
+                clauses.append(f"{self._quote_ident(col, quote='`')} = @{pname}")
+                params.append(bigquery.ScalarQueryParameter(
+                    pname, self._bq_param_type(val), val,
+                ))
             query += " WHERE " + " AND ".join(clauses)
-        return self._client.query(query).to_dataframe()
+        job_config = bigquery.QueryJobConfig(query_parameters=params) if params else None
+        return self._client.query(query, job_config=job_config).to_dataframe()
+
+    @staticmethod
+    def _bq_param_type(val: Any) -> str:
+        if isinstance(val, bool):
+            return "BOOL"
+        if isinstance(val, int):
+            return "INT64"
+        if isinstance(val, float):
+            return "FLOAT64"
+        if isinstance(val, str):
+            return "STRING"
+        raise ValueError(
+            f"Unsupported filter value type for BigQuery push-down: {type(val).__name__}"
+        )

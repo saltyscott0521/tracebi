@@ -139,10 +139,22 @@ def install_if_configured(app) -> Optional[str]:
 
     if proxy_header:
         trusted = os.environ.get("TRACEBI_AUTH_PROXY_TRUSTED_IPS", "")
+        trusted_list = [ip for ip in trusted.split(",") if ip.strip()]
+        if not trusted_list:
+            import warnings
+            warnings.warn(
+                "TRACEBI_AUTH_PROXY_HEADER is set without "
+                "TRACEBI_AUTH_PROXY_TRUSTED_IPS. Any client that can reach "
+                f"this server directly can authenticate by sending the "
+                f"'{proxy_header}' header itself. Set "
+                "TRACEBI_AUTH_PROXY_TRUSTED_IPS to your proxy's address(es) "
+                "unless the server is only reachable through the proxy.",
+                stacklevel=2,
+            )
         app.add_middleware(
             ProxyHeaderAuthMiddleware,
             header=proxy_header,
-            trusted_ips=[ip for ip in trusted.split(",") if ip.strip()],
+            trusted_ips=trusted_list,
         )
         return "proxy"
 

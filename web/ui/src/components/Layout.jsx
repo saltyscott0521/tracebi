@@ -19,6 +19,11 @@ const ICONS = {
       <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
     </svg>
   ),
+  explore: (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.707a1 1 0 00-1.111-.206l-4 1.714a1 1 0 00-.525.525l-1.714 4a1 1 0 001.317 1.317l4-1.714a1 1 0 00.525-.525l1.714-4a1 1 0 00-.206-1.111zM10 11a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" />
+    </svg>
+  ),
   reports: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
@@ -40,6 +45,7 @@ const NAV = [
   { path: '/',           label: 'Home',       icon: 'home',       color: '#60a5fa' },
   { path: '/connectors', label: 'Connectors', icon: 'connectors', color: '#34d399' },
   { path: '/models',     label: 'Models',     icon: 'models',     color: '#a78bfa' },
+  { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#38bdf8' },
   { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#f472b6' },
   { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#fbbf24' },
   { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#22d3ee' },

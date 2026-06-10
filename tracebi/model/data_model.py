@@ -703,6 +703,50 @@ class DataModel:
 
     # ── Inspection ─────────────────────────────────────────────
 
+    def info(self) -> dict:
+        """
+        The model's structure as a plain dict (tables, relationships,
+        facts, dimensions). This is the stable surface the web layer reads —
+        prefer it over touching private attributes.
+        """
+        return {
+            "name": self.name,
+            "connectors": list(self._connectors.keys()),
+            "tables": [
+                {"name": t.name, "connector": t.connector_name, "source": t.source}
+                for t in self._tables.values()
+            ],
+            "relationships": [
+                {
+                    "name": r.name,
+                    "left_table": r.left_table,
+                    "right_table": r.right_table,
+                    "left_key": r.left_key,
+                    "right_key": r.right_key,
+                    "how": r.how,
+                }
+                for r in self._relationships.values()
+            ],
+            "facts": [
+                {
+                    "name": f.name,
+                    "table": f.table_name,
+                    "measures": list(f.measures),
+                    "foreign_keys": dict(f.foreign_keys),
+                }
+                for f in self._facts.values()
+            ],
+            "dimensions": [
+                {
+                    "name": d.name,
+                    "table": d.table_name,
+                    "key": d.key_col,
+                    "attributes": list(d.attributes),
+                }
+                for d in self._dimensions.values()
+            ],
+        }
+
     def describe(self) -> None:
         """Print a summary of the model's connectors, tables, relationships, facts, and dimensions."""
         sep = "=" * 55

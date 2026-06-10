@@ -60,20 +60,7 @@ class Registry:
         return self._connectors.get(name)
 
     def list_connectors(self) -> list[dict]:
-        out = []
-        for c in self._connectors.values():
-            entry = {
-                "name": c.name,
-                "type": type(c).__name__,
-            }
-            if hasattr(c, "_tables"):
-                entry["tables"] = list(c._tables.keys())
-            elif hasattr(c, "_directory"):
-                entry["directory"] = c._directory
-            elif hasattr(c, "_url"):
-                entry["url"] = c._url
-            out.append(entry)
-        return out
+        return [c.describe() for c in self._connectors.values()]
 
     # ── Models ─────────────────────────────────────────────────
 
@@ -107,45 +94,22 @@ class Registry:
         return self._models.get(name)
 
     def list_models(self) -> list[dict]:
-        return [
-            {
-                "name": m.name,
-                "connectors": list(m._connectors.keys()),
-                "tables": list(m._tables.keys()),
-                "relationships": list(m._relationships.keys()),
-            }
-            for m in self._models.values()
-        ]
+        out = []
+        for m in self._models.values():
+            info = m.info()
+            out.append({
+                "name": info["name"],
+                "connectors": info["connectors"],
+                "tables": [t["name"] for t in info["tables"]],
+                "relationships": [r["name"] for r in info["relationships"]],
+            })
+        return out
 
     def describe_model(self, name: str) -> Optional[dict]:
         m = self._models.get(name)
         if not m:
             return None
-        tables = [
-            {
-                "name": t.name,
-                "connector": t.connector_name,
-                "source": t.source,
-            }
-            for t in m._tables.values()
-        ]
-        relationships = [
-            {
-                "name": r.name,
-                "left_table": r.left_table,
-                "right_table": r.right_table,
-                "left_key": r.left_key,
-                "right_key": r.right_key,
-                "how": r.how,
-            }
-            for r in m._relationships.values()
-        ]
-        return {
-            "name": m.name,
-            "connectors": list(m._connectors.keys()),
-            "tables": tables,
-            "relationships": relationships,
-        }
+        return m.info()
 
     # ── Reports ────────────────────────────────────────────────
 
@@ -231,6 +195,10 @@ class Registry:
 
     def get_dashboard(self, name: str):
         return self._dashboards.get(name)
+
+    def dashboards(self) -> dict[str, dict]:
+        """All registered dashboards: name -> {server, description}."""
+        return dict(self._dashboards)
 
     def list_dashboards(self) -> list[dict]:
         return [

@@ -52,6 +52,25 @@ class BaseConnector(ABC):
         """Whether this connector applies filter/columns at source (vs. in pandas)."""
         return False
 
+    def describe(self) -> dict:
+        """
+        Metadata shown in registries/UIs. Subclasses may add fields
+        (tables, directory, url, …) but must never include credentials.
+        """
+        return {"name": self.name, "type": type(self).__name__}
+
+    @staticmethod
+    def _quote_ident(name: str, quote: str = '"') -> str:
+        """
+        Quote a SQL identifier conservatively.
+
+        Rejects identifiers containing the quote character itself so a
+        column/table name can never break out of its quoting.
+        """
+        if quote in name:
+            raise ValueError(f"Invalid identifier: {name!r}")
+        return f"{quote}{name}{quote}"
+
     @staticmethod
     def _apply_pandas_pushdown(
         df: pd.DataFrame,

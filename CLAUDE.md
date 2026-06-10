@@ -102,7 +102,7 @@ tracebi/               # Core Python package (~5200 LOC)
   connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
   model/               # DataSet, DataModel (with star-schema query)
   etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer
-  reports/             # Report, Section types, ExcelRenderer, HTMLRenderer, PDFRenderer
+  reports/             # Report, Section types, ExcelRenderer, HTMLRenderer
   dashboard/           # Dashboard, FilterPanel, MetricPanel, ChartPanel, TablePanel
   pipeline/            # PipelineRunner + APScheduler integration
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
@@ -116,11 +116,10 @@ web/
     auth.py            # Optional HTTP Basic / proxy-header middleware
     registry.py        # Singleton resource store — the seam between framework and app
     routers/           # One file per domain (connectors, models, reports, pipelines, dashboards, dev)
-  templates/           # Jinja2 HTML templates (legacy index)
-  ui/                  # React UI (built into web/static/ at Docker build time)
+  ui/                  # React UI (built into web/ui/dist/ at Docker build time)
   run.py               # Dev server (uvicorn wrapper)
-  demo_app.py          # Default app module — shows how to wire everything together
-examples/              # Phase 1–5 runnable demos — read these to understand data flow
+  demo_app/            # Default app module package — shows how to wire everything together
+examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
 tests/                 # 243 pytest tests, one file per phase
 seeds/                 # DB init + Bronze seeding
 requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
@@ -142,7 +141,7 @@ NOTES.md               # Architecture decisions and open questions
 
 ```bash
 # Install
-pip install -e ".[dev]"                        # All extras + pytest
+pip install -e ".[dev]"                        # Everything the test suite needs (incl. web)
 
 # Run (dev)
 python web/run.py                              # http://127.0.0.1:8000
@@ -173,7 +172,7 @@ Every transform method must return a new `DataSet`. Never mutate `.df` or `.line
 Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern.
 
 **3. Registry is populated at startup, read at request time.**
-`web/api/registry.py` is a singleton. Register all connectors, models, reports, and dashboards in your app module (e.g. `web/demo_app.py`) during import. Never mutate the registry inside a FastAPI route handler.
+`web/api/registry.py` is a singleton. Register all connectors, models, reports, and dashboards in your app module (e.g. `web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.
 
 **4. Optional dependencies must fail loudly.**
 Each feature group (reports, dashboard, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
@@ -188,9 +187,9 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 | Don't | Do instead |
 |---|---|
 | Mutate `dataset.df` directly | Return `DataSet(new_df, dataset.lineage + [new_node])` |
-| Import from `web/demo_app.py` in tests | Use `MemoryConnector` or fixture data |
+| Import from `web/demo_app/` in tests | Use `MemoryConnector` or fixture data |
 | Add cross-phase imports in test files | Keep tests isolated to their phase module |
-| Put connector URLs in env vars | Define them in the app module Python code |
+| Make the framework read connector URLs from env vars implicitly | Construct connectors in app module code; pass credential-bearing URLs via `os.environ[...]` explicitly (see `.env.example`) |
 | Add a new route without touching the registry | Wire it through `registry.py` so it's discoverable |
 | Modify `tracebi_*` SQLite tables manually | Use `PipelineRunner` API |
 | Add a new medallion layer without registering it | Call `runner.register(layer)` |
@@ -262,7 +261,7 @@ Don't add these unless asked.
 |---|---|
 | Understand the whole framework | `README.md` |
 | Understand architecture decisions | `NOTES.md` |
-| See a complete working wiring | `web/demo_app.py` |
+| See a complete working wiring | `web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `web/api/registry.py` |
 | Write an ad hoc report | `requests/_template.py` |
