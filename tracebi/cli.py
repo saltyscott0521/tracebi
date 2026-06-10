@@ -554,8 +554,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_list = sub.add_parser("list-requests", help="List request scripts.")
     p_list.set_defaults(func=cmd_list_requests)
 
-    p_run = sub.add_parser("run", help="Run a .py request script.")
-    p_run.add_argument("name", help="Request file name (with or without .py).")
+    p_run = sub.add_parser("run", help="Run a request script (.py or .ipynb).")
+    p_run.add_argument("name", help="Request file name (suffix optional; tries .py then .ipynb).")
     p_run.set_defaults(func=cmd_run)
 
     p_dev = sub.add_parser(
@@ -563,7 +563,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Watch a request script and serve a live HTML preview that "
              "reloads on every save.",
     )
-    p_dev.add_argument("name", help="Request file name (with or without .py).")
+    p_dev.add_argument("name", help="Request file name (suffix optional; tries .py then .ipynb).")
     p_dev.add_argument("--port", type=int, default=8001,
                        help="Port for the preview server (default 8001).")
     p_dev.add_argument("--no-browser", action="store_true",

@@ -1,8 +1,16 @@
 """
 TraceBi — code-first, traceable BI and analytics framework.
 
-Quick start:
-    from tracebi import DataModel, CSVConnector, DataSet
+Quick start (in-memory, no config):
+    import pandas as pd
+    from tracebi import DataModel, MemoryConnector
+
+    df = pd.DataFrame({"region": ["NE", "SE"], "revenue": [100.0, 200.0]})
+    model = DataModel("Demo").add_connector(MemoryConnector("mem", {"orders": df}))
+    model.add_table("orders", connector="mem", source="orders")
+
+    ds = model.load("orders")   # DataSet: immutable DataFrame + lineage chain
+    ds.help()                   # API cheat sheet (DataModel and Report have one too)
 """
 
 from tracebi.connectors.base import BaseConnector
@@ -10,6 +18,8 @@ from tracebi.connectors.csv_connector import CSVConnector
 from tracebi.connectors.sql_connector import SQLConnector
 from tracebi.connectors.memory_connector import MemoryConnector
 from tracebi.connectors.duckdb_connector import DuckDBConnector
+from tracebi.connectors.bigquery_connector import BigQueryConnector
+from tracebi.connectors.snowflake_connector import SnowflakeConnector
 from tracebi.model.dataset import DataSet, LineageNode
 from tracebi.model.data_model import DataModel
 from tracebi.etl.bronze import BronzeLayer, LandingLayer
@@ -25,6 +35,8 @@ __all__ = [
     "SQLConnector",
     "MemoryConnector",
     "DuckDBConnector",
+    "BigQueryConnector",
+    "SnowflakeConnector",
     # Core
     "DataSet",
     "LineageNode",

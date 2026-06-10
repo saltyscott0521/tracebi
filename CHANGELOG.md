@@ -49,6 +49,13 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   out of the box.
 - `.dockerignore` — `.env`, databases, `.git`, and local state no longer
   reach Docker image layers.
+- `BigQueryConnector` and `SnowflakeConnector` are now importable from the
+  top level (`from tracebi import BigQueryConnector`) like every other
+  connector; their optional dependencies still load lazily.
+- README "Coming from pandas?" section — how `DataSet` maps onto DataFrame
+  habits (`.transform()` accepts any DataFrame→DataFrame function,
+  `.to_pandas()` escape hatch, immutability); install instructions now show
+  working from-clone / from-git commands (TraceBi is not on PyPI yet).
 
 ### Security
 - Proxy-header auth warns loudly when `TRACEBI_AUTH_PROXY_TRUSTED_IPS` is
@@ -58,6 +65,11 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   interpolated literals; Snowflake identifiers are validated before quoting.
 
 ### Fixed
+- `tracebi run --help` / `tracebi dev --help` said they only accept `.py`
+  scripts; both have always accepted `.ipynb` too and the help text now
+  says so.
+- Lint: removed two unused imports in `web/demo_app/reports/analyst_demo.py`
+  that were failing `ruff check` in CI.
 - Excel rendering crashed on reports containing pie charts (`PieChart` has
   no x/y axes).
 - Renderer failures that change report output (totals, number formats) are

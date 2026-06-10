@@ -44,8 +44,7 @@ No database, no config — just pandas in memory:
 ```python
 import pandas as pd
 from tracebi import DataModel, MemoryConnector
-from tracebi.reports.report import Report, TableSection
-from tracebi.reports.html_renderer import HTMLRenderer
+from tracebi.reports import Report, TableSection, HTMLRenderer
 
 orders = pd.DataFrame({
     "order_id": [1, 2, 3, 4],
@@ -66,10 +65,43 @@ manifest — no separate audit step.
 
 ---
 
+## Coming from pandas?
+
+You already know 95% of this. A `DataSet` is a thin, **immutable** wrapper
+around a `pandas.DataFrame` that records what happened to it:
+
+```python
+ds = model.load("orders")        # DataSet, not DataFrame
+
+# Any pandas logic fits inside .transform() — it takes any DataFrame -> DataFrame
+# function, so groupby, merge, pivot, resample, etc. all work unchanged:
+monthly = ds.transform(
+    lambda df: df.groupby("month", as_index=False)["revenue"].sum(),
+    description="Monthly revenue",
+)
+
+df = ds.to_pandas()              # escape hatch: plain DataFrame copy, any time
+ds.help()                        # cheat sheet of the fluent API
+```
+
+The differences that matter:
+
+- **Nothing mutates.** Every method (`.filter()`, `.transform()`, `.sort()`, …)
+  returns a *new* DataSet; the original is untouched. Branch freely.
+- **Every step is recorded.** The description you pass becomes part of the
+  audit trail — `ds.print_lineage()` shows the full chain with row counts.
+- **`.filter()` takes a pandas query string** (`"status == 'shipped'"`), the
+  same syntax as `DataFrame.query()`.
+- **In Jupyter**, a `DataSet` at the end of a cell renders a rich preview —
+  shape, lineage chain, and the first rows with dtypes.
+
+---
+
 ## Choose your path
 
 | I want to… | Start here |
 |---|---|
+| Work in a notebook with rich previews | `examples/analyst_quickstart.py` — run it cell-by-cell in Jupyter |
 | Write a one-off report or query | Copy `requests/_template.py` and run it with `tracebi run` |
 | Build a scheduled ETL pipeline | `examples/phase4_example.py` → then `web/demo_app/` as a wiring template |
 | Expose everything in a web UI | `web/demo_app/` shows the full wiring; `TRACEBI_APP=mymodule python web/run.py` |
@@ -82,23 +114,32 @@ manifest — no separate audit step.
 
 ## Installation
 
+TraceBi is not on PyPI yet — install from a clone (or straight from GitHub).
 The fastest path for an analyst:
 
 ```bash
-pip install "tracebi[analyst]"        # reports + sql + csv + lineage + duckdb
+git clone https://github.com/saltyscott0521/tracebi
+cd tracebi
+pip install -e ".[analyst]"           # reports + sql + csv + lineage + duckdb + dotenv
 ```
 
-Or pick the pieces you need:
+Or without cloning:
 
 ```bash
-pip install "tracebi"                 # core only (pandas)
-pip install "tracebi[reports]"        # Excel + HTML renderers
-pip install "tracebi[dashboard]"      # Dash dashboard
-pip install "tracebi[pipeline]"       # scheduling + DB write-back
-pip install "tracebi[lineage]"        # lineage diagrams
-pip install "tracebi[duckdb]"         # DuckDB connector + push-down engine
-pip install "tracebi[web]"            # FastAPI + uvicorn web UI
-pip install "tracebi[all]"            # everything
+pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"
+```
+
+Pick the pieces you need (extras work the same with either install style):
+
+```bash
+pip install -e "."                    # core only (pandas)
+pip install -e ".[reports]"           # Excel + HTML renderers
+pip install -e ".[dashboard]"         # Dash dashboard
+pip install -e ".[pipeline]"          # scheduling + DB write-back
+pip install -e ".[lineage]"           # lineage diagrams
+pip install -e ".[duckdb]"            # DuckDB connector + push-down engine
+pip install -e ".[web]"               # FastAPI + uvicorn web UI
+pip install -e ".[all]"               # everything
 ```
 
 ### Docker / deployment
@@ -194,9 +235,10 @@ orders.print_lineage()
 ### 3. Build a report
 
 ```python
-from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
-from tracebi.reports.excel_renderer import ExcelRenderer
-from tracebi.reports.html_renderer import HTMLRenderer
+from tracebi.reports import (
+    Report, TextSection, TableSection, ChartSection,
+    ExcelRenderer, HTMLRenderer,
+)
 
 report = (
     Report("Q2 Sales Report")
@@ -300,10 +342,11 @@ from tracebi.pipeline.runner import PipelineRunner
 runner = PipelineRunner(db_url="sqlite:///data/tracebi.db")
 
 # Each layer has its own independent schedule
-runner.register(bronze, name="orders_bronze",   schedule="0 * * * *")
-runner.register(silver, name="orders_silver",   schedule="15 * * * *",
+# (landing / manip / final are the layers built in section 4 above)
+runner.register(landing, name="orders_bronze",   schedule="0 * * * *")
+runner.register(manip,   name="orders_silver",   schedule="15 * * * *",
                 depends_on="orders_bronze")
-runner.register(gold,   name="revenue_by_region", schedule="30 6 * * *",
+runner.register(final,   name="revenue_by_region", schedule="30 6 * * *",
                 depends_on="orders_silver")
 
 # On-demand: run one layer
@@ -448,18 +491,19 @@ python -c "from seeds.seed_db import runner; runner.start()"
 ## Running the examples
 
 ```bash
-python examples/phase1_example.py    # connectors + DataModel + lineage
-python examples/phase2_example.py    # report engine (opens browser)
-python examples/phase25_example.py   # medallion + star schema + lineage diagram
-python examples/phase3_example.py    # live Dash dashboard
-python examples/phase4_example.py    # full pipeline (run seeds/seed_db.py first)
+python examples/analyst_quickstart.py  # notebook-first tour: rich previews, report styling
+python examples/phase1_example.py      # connectors + DataModel + lineage
+python examples/phase2_example.py      # report engine (opens browser)
+python examples/phase25_example.py     # medallion + star schema + lineage diagram
+python examples/phase3_example.py      # live Dash dashboard
+python examples/phase4_example.py      # full pipeline (run seeds/seed_db.py first)
 ```
 
 ## Running tests
 
 ```bash
 pytest tests/
-# 243 passed
+# 303 passed
 ```
 
 ---
@@ -469,9 +513,9 @@ pytest tests/
 ```
 tracebi/
 ├── tracebi/
-│   ├── connectors/       CSV, SQL, BigQuery, Snowflake, Memory
+│   ├── connectors/       CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
 │   ├── model/            DataSet, DataModel (with star-schema query)
-│   ├── etl/              BronzeLayer, SilverLayer, GoldLayer
+│   ├── etl/              LandingLayer, ManipulationLayer, FinalLayer (Bronze/Silver/Gold aliases)
 │   ├── reports/          Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
 │   ├── dashboard/        Dashboard, DashboardServer, panels
 │   ├── pipeline/         PipelineRunner (APScheduler + DB)
@@ -483,7 +527,7 @@ tracebi/
 │   ├── run.py            Dev server entrypoint
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                243 tests across all phases
+├── tests/                303 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── requests/             _template.py — scaffold for ad hoc report scripts
 ├── data/                 SQLite DB lives here (gitignored)
