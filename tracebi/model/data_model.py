@@ -765,6 +765,78 @@ class DataModel:
                 print(f"    {d.name} → {d.table_name}  key={d.key_col}  attrs={d.attributes}")
         print(f"{sep}\n")
 
+    def help(self) -> None:
+        """Print a cheat sheet of the DataModel API."""
+        print(
+            "\nDataModel — associative model linking DataSets by key.\n"
+            "\n"
+            "Building:\n"
+            "  .add_connector(connector)                Register a data source\n"
+            '  .add_table(name, connector=, source=)    Declare a table\n'
+            "  .add_relationship(name, left_table=, right_table=, left_key=, right_key=)\n"
+            "  .add_fact(name, table=, measures=[...])  Star-schema fact\n"
+            "  .add_dimension(name, table=, key=, attributes=[...])\n"
+            "\n"
+            "Loading & querying (all return a DataSet with lineage):\n"
+            "  .load(table_name)                        Load one table\n"
+            "  .resolve(relationship_name)              Join two tables\n"
+            "  .resolve_chain([rel1, rel2, ...])        Chain multiple joins\n"
+            "  .query(fact=, dimensions=[...], measures={...}, filters={...})\n"
+            "\n"
+            "Inspection:\n"
+            "  .info()        Structure as a dict\n"
+            "  .describe()    Print a text summary\n"
+        )
+
+    def _repr_html_(self) -> str:
+        """Rich notebook display: tables, relationships, facts, dimensions."""
+        import html as _h
+
+        info = self.info()
+        h_css = "font-weight:700;color:#1F3864;font-size:12px;margin:8px 0 4px 0"
+        item_css = "font-size:11px;color:#333;padding:1px 0"
+
+        def block(title: str, lines: list[str]) -> str:
+            if not lines:
+                return ""
+            items = "".join(f'<div style="{item_css}">{line}</div>' for line in lines)
+            return f'<div style="{h_css}">{title}</div>{items}'
+
+        tables = [
+            f'<b>{_h.escape(t["name"])}</b> '
+            f'<span style="color:#999">← {_h.escape(t["connector"])} / {_h.escape(t["source"])}</span>'
+            for t in info["tables"]
+        ]
+        rels = [
+            f'<b>{_h.escape(r["name"])}</b> '
+            f'<span style="color:#999">{_h.escape(r["left_table"])}.{_h.escape(r["left_key"])} '
+            f'{_h.escape(r["how"])}-join {_h.escape(r["right_table"])}.{_h.escape(r["right_key"])}</span>'
+            for r in info["relationships"]
+        ]
+        facts = [
+            f'<b>{_h.escape(f["name"])}</b> '
+            f'<span style="color:#999">→ {_h.escape(f["table"])} measures={f["measures"]}</span>'
+            for f in info["facts"]
+        ]
+        dims = [
+            f'<b>{_h.escape(d["name"])}</b> '
+            f'<span style="color:#999">→ {_h.escape(d["table"])} key={_h.escape(d["key"])} '
+            f'attrs={d["attributes"]}</span>'
+            for d in info["dimensions"]
+        ]
+
+        return f"""
+<div style="font-family:'Segoe UI',Calibri,Arial,sans-serif;border:1px solid #dde4ef;border-radius:6px;padding:12px 16px;display:inline-block;max-width:100%">
+  <div>
+    <span style="font-weight:700;color:#1F3864;font-size:14px">DataModel: {_h.escape(self.name)}</span>
+    <span style="color:#666;font-size:11px;margin-left:8px">connectors: {", ".join(_h.escape(c) for c in info["connectors"]) or "—"}</span>
+  </div>
+  {block("Tables", tables)}
+  {block("Relationships", rels)}
+  {block("Facts", facts)}
+  {block("Dimensions", dims)}
+</div>"""
+
     def __repr__(self) -> str:
         return (
             f"<DataModel name={self.name!r} "

@@ -488,6 +488,49 @@ class Report:
             print(f"    {i}. {label} {s.title or '(untitled)'}")
         print(f"{'='*55}\n")
 
+    def help(self) -> None:
+        """Print a cheat sheet of the Report builder API."""
+        print(
+            "\nReport — renderer-agnostic report built from sections.\n"
+            "\n"
+            "Metadata (fluent, chainable):\n"
+            "  .author(name) / .description(text) / .parameter(key, value) / .logo(path)\n"
+            "\n"
+            "Sections (fluent shortcuts):\n"
+            '  .text(content, title=, style=)     style: normal|heading1|heading2|note|callout\n'
+            "  .table(dataset, title=, ...)       TableSection kwargs: columns, column_labels,\n"
+            "                                     number_formats (incl. 'currency', 'percent', …),\n"
+            "                                     totals, max_rows, highlight_negatives,\n"
+            "                                     color_scale, column_widths\n"
+            '  .chart(dataset, chart_type=, x=, y=)  types: bar|barh|line|area|pie|scatter\n'
+            "  .metrics([Metric(...), ...])       Row of KPI cards with optional deltas\n"
+            "  .row(section1, section2, ...)      Render sections side by side (HTML)\n"
+            "  .spacer(height=1)\n"
+            "\n"
+            "Rendering:\n"
+            "  HTMLRenderer().render(report, 'out.html')   or .preview(report) in a notebook\n"
+            "  ExcelRenderer().render(report, 'out.xlsx')\n"
+            "  In a notebook, the report renders inline when it is the last\n"
+            "  expression in a cell.\n"
+        )
+
+    def _repr_html_(self) -> str:
+        """Render the report inline in a notebook (iframe preview)."""
+        try:
+            from tracebi.reports.html_renderer import HTMLRenderer
+            html_doc = HTMLRenderer().to_html(self)
+        except Exception as exc:
+            return (
+                f"<pre>&lt;Report {self.name!r}: inline preview unavailable "
+                f"({exc})&gt;</pre>"
+            )
+        escaped = html_doc.replace("&", "&amp;").replace('"', "&quot;")
+        return (
+            f'<iframe srcdoc="{escaped}" width="100%" height="650" '
+            f'style="border:1px solid #dde4ef;border-radius:6px;background:#fff">'
+            f'</iframe>'
+        )
+
     def __repr__(self) -> str:
         return (
             f"<Report name={self.name!r} "

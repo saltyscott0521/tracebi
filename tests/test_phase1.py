@@ -317,3 +317,58 @@ class TestDataModel:
         m.add_table("x", connector="t", source="x")
         m.connect()
         assert connected == [True]
+
+
+# ─────────────────────────────────────────────
+# Notebook integration tests
+# ─────────────────────────────────────────────
+
+class TestNotebookReprs:
+
+    def test_dataset_repr_html(self, sample_df):
+        ds = DataSet(df=sample_df, name="orders", lineage=[
+            LineageNode(operation="load", description="Loaded orders"),
+        ]).filter("value > 100")
+        html = ds._repr_html_()
+        assert "orders" in html
+        # Lineage chain badges
+        assert ">load<" in html
+        assert ">filter<" in html
+        # Column headers with dtypes
+        assert "region" in html
+        assert "float64" in html
+
+    def test_dataset_repr_html_caps_preview(self, sample_df):
+        big = pd.concat([sample_df] * 5, ignore_index=True)   # 25 rows
+        ds = DataSet(df=big, name="big", lineage=[])
+        html = ds._repr_html_()
+        assert "15 more rows" in html
+
+    def test_dataset_repr_html_escapes(self):
+        df = pd.DataFrame({"col": ["<script>alert(1)</script>"]})
+        ds = DataSet(df=df, name="<evil>", lineage=[])
+        html = ds._repr_html_()
+        assert "<script>" not in html
+        assert "<evil>" not in html
+
+    def test_dataset_help_prints(self, sample_df, capsys):
+        DataSet(df=sample_df, name="x", lineage=[]).help()
+        out = capsys.readouterr().out
+        assert ".filter(" in out
+        assert ".transform(" in out
+        assert ".print_lineage()" in out
+
+    def test_datamodel_repr_html(self, sample_df):
+        model = DataModel("Sales").add_connector(
+            MemoryConnector("mem", {"orders": sample_df}))
+        model.add_table("orders", connector="mem", source="orders")
+        html = model._repr_html_()
+        assert "DataModel: Sales" in html
+        assert "orders" in html
+        assert "mem" in html
+
+    def test_datamodel_help_prints(self, capsys):
+        DataModel("M").help()
+        out = capsys.readouterr().out
+        assert ".load(" in out
+        assert ".query(" in out

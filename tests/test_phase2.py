@@ -455,3 +455,19 @@ class TestChartEnhancements:
             show_values=True))
         html = HTMLRenderer().to_html(report)
         assert "data:image/png;base64," in html
+
+
+class TestReportNotebookIntegration:
+
+    def test_report_repr_html_is_iframe(self, sample_report):
+        html = sample_report._repr_html_()
+        assert html.strip().startswith("<iframe srcdoc=")
+        # Report content is embedded (entity-escaped)
+        assert "Test Report" in html
+
+    def test_report_help_prints(self, capsys):
+        Report("R").help()
+        out = capsys.readouterr().out
+        assert ".table(" in out
+        assert ".metrics(" in out
+        assert ".row(" in out
