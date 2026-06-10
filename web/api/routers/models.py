@@ -1,8 +1,13 @@
 import io
+import time
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
+from web.api.errors import error_detail
+from web.api.lineage_graph import lineage_to_graph
 from web.api.registry import registry
 
 router = APIRouter(prefix="/models", tags=["models"])
@@ -53,6 +58,60 @@ def preview_table(name: str, table_name: str, rows: int = 50):
         "dtypes": {c: str(t) for c, t in full_df.dtypes.items()},
         "data": df.to_dict(orient="records"),
         "lineage": ds.lineage_to_dict(),
+    }
+
+
+class QueryRequest(BaseModel):
+    fact: str
+    measures: dict[str, str]                  # {column: agg} e.g. {"revenue": "sum"}
+    dimensions: Optional[list[str]] = None    # ["dim_customer.region", ...]
+    filters: Optional[dict[str, Any]] = None  # equality filters on the fact table
+    aggregate: bool = True
+
+
+@router.post("/{name}/query")
+def run_query(name: str, body: QueryRequest):
+    """
+    Run a star-schema query against a model's facts/dimensions and return
+    the result rows plus the full lineage of the query that was executed.
+    """
+    model = registry.get_model(name)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+
+    started = time.perf_counter()
+    try:
+        ds = model.query(
+            fact=body.fact,
+            measures=body.measures,
+            dimensions=body.dimensions,
+            filters=body.filters,
+            aggregate=body.aggregate,
+        )
+    except ValueError as exc:
+        # Unknown fact/dimension/agg or malformed reference — caller error.
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=error_detail("Query failed", exc))
+    elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+
+    df = ds.to_pandas()
+    lineage = ds.lineage_to_dict()
+    engine = next(
+        (n["metadata"].get("engine") for n in reversed(lineage)
+         if n.get("metadata", {}).get("engine")),
+        None,
+    )
+    return {
+        "model": name,
+        "fact": body.fact,
+        "rows": len(df),
+        "columns": list(df.columns),
+        "data": df.to_dict(orient="records"),
+        "engine": engine,
+        "elapsed_ms": elapsed_ms,
+        "lineage": lineage,
+        "lineage_graph": lineage_to_graph(lineage),
     }
 
 

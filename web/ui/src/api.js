@@ -32,6 +32,16 @@ async function post(path) {
   return r.json()
 }
 
+async function postJson(path, body) {
+  const r = await fetch(BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) throw await toError(r)
+  return r.json()
+}
+
 export const reportDownloadUrl = (name, format) =>
   `${BASE}/reports/${encodeURIComponent(name)}/download?format=${format}`
 
@@ -95,3 +105,6 @@ export const useLayerHistory = (pipeline, layer) =>
 
 export const useDashboards = () =>
   useQuery({ queryKey: ['dashboards'], queryFn: () => get('/dashboards') })
+
+export const useRunQuery = () =>
+  useMutation({ mutationFn: ({ model, body }) => postJson(`/models/${encodeURIComponent(model)}/query`, body) })

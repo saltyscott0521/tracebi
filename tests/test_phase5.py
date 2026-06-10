@@ -689,6 +689,72 @@ class TestAnalystEndpoints:
             self._cleanup_report()
 
 
+# ── Explore: star-schema query endpoint ───────────────────────────────────
+
+class TestQueryEndpoint:
+    def _client(self, memory_model):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.registry import registry
+        from web.api.routers import models as models_router
+
+        memory_model.add_dimension("dim_customer", "customers",
+                                   key_col="customer_id", attributes=["segment"])
+        memory_model.add_fact("fact_orders", "orders",
+                              measures=["revenue", "qty"],
+                              foreign_keys={"dim_customer": "customer_id"})
+        registry.add_model(memory_model)
+        app = FastAPI()
+        app.include_router(models_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _cleanup(self):
+        from web.api.registry import registry
+        registry._models.pop("Sales", None)
+
+    def test_aggregated_query_returns_rows_and_lineage(self, memory_model):
+        client = self._client(memory_model)
+        try:
+            r = client.post("/api/models/Sales/query", json={
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "dimensions": ["dim_customer.segment"],
+            })
+            assert r.status_code == 200
+            body = r.json()
+            assert body["rows"] == 2
+            assert "dim_customer.segment" in body["columns"]
+            assert body["lineage_graph"]["nodes"]
+            assert body["engine"] in ("duckdb", "pandas")
+        finally:
+            self._cleanup()
+
+    def test_unknown_fact_is_400(self, memory_model):
+        client = self._client(memory_model)
+        try:
+            r = client.post("/api/models/Sales/query", json={
+                "fact": "nope", "measures": {"revenue": "sum"},
+            })
+            assert r.status_code == 400
+            assert "nope" in r.json()["detail"]
+        finally:
+            self._cleanup()
+
+    def test_filters_apply_to_fact(self, memory_model):
+        client = self._client(memory_model)
+        try:
+            r = client.post("/api/models/Sales/query", json={
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "filters": {"status": "shipped"},
+            })
+            assert r.status_code == 200
+            body = r.json()
+            assert body["rows"] == 1
+        finally:
+            self._cleanup()
+
+
 # ── Connector SQL identifier hygiene ──────────────────────────────────────
 
 class TestConnectorIdentifierQuoting:

@@ -1,24 +1,15 @@
 import os
 import tempfile
-import traceback
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
 
+from web.api.errors import error_detail as _error_detail
 from web.api.lineage_graph import lineage_to_graph as _lineage_to_graph
 from web.api.registry import registry
 
 router = APIRouter(prefix="/reports", tags=["reports"])
-
-
-def _error_detail(message: str, exc: Exception) -> dict:
-    """Structured error payload: message plus the full traceback."""
-    return {
-        "message": f"{message}: {exc}",
-        "exception_type": type(exc).__name__,
-        "traceback": traceback.format_exc(),
-    }
 
 
 def _safe_filename(name: str) -> str:
