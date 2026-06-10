@@ -50,6 +50,13 @@ app.add_middleware(
 _auth_mode = _install_auth(app)
 if _auth_mode:
     print(f"[tracebi] auth mode: {_auth_mode}")
+else:
+    print(
+        "[tracebi] WARNING: no auth configured — the API (including pipeline "
+        "run endpoints) is open to anyone who can reach this server. Set "
+        "TRACEBI_AUTH_USER/TRACEBI_AUTH_PASS or TRACEBI_AUTH_PROXY_HEADER "
+        "before exposing it beyond localhost."
+    )
 
 app.include_router(connectors.router, prefix="/api")
 app.include_router(models.router,     prefix="/api")

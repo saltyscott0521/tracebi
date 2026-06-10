@@ -344,7 +344,7 @@ The API is self-documenting: once the server is running, open
 or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
 every endpoint, parameter, and response schema is listed there.
 
-`web/demo_app.py` is the default app module. It wires an in-memory `MemoryConnector` for the main `SalesModel` and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports and dashboards read from those resources.
+`web/demo_app/` is the default app module package. It wires an in-memory `MemoryConnector` for the main `SalesModel` and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports and dashboards read from those resources.
 
 To point the UI at your own data module instead of the built-in demo:
 
@@ -427,8 +427,8 @@ tracebi/
 │   └── lineage/          LineageDiagram
 ├── web/
 │   ├── api/              FastAPI app, routers, registry
-│   ├── templates/        Jinja2 HTML templates
-│   ├── demo_app.py       Built-in demo (medallion + in-memory fallback)
+│   ├── ui/               React UI (Vite)
+│   ├── demo_app/         Built-in demo (medallion + in-memory fallback)
 │   ├── run.py            Dev server entrypoint
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)

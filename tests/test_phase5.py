@@ -8,6 +8,7 @@ Existing phase tests guarantee back-compat; this file covers what's new.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import tempfile
 import textwrap
@@ -135,6 +136,11 @@ class TestPushDownSQL:
 # ── DuckDB connector ──────────────────────────────────────────────────────
 
 class TestDuckDBConnector:
+    pytestmark = pytest.mark.skipif(
+        importlib.util.find_spec("duckdb") is None,
+        reason="duckdb not installed",
+    )
+
     def test_register_and_load(self, orders_df):
         conn = DuckDBConnector("dd")
         conn.register_df("orders", orders_df)
@@ -236,6 +242,7 @@ class TestStarSchemaDuckDB:
         assert ent == 250.0
 
     def test_engine_node_records_duckdb(self, memory_model):
+        pytest.importorskip("duckdb")
         memory_model.add_dimension("dim_customer", "customers",
                                    key_col="customer_id", attributes=["segment"])
         memory_model.add_fact("fact_orders", "orders", measures=["revenue"],
@@ -553,6 +560,45 @@ class TestProxyHeaderAuth:
         app = FastAPI()
         # Proxy mode wins when both are set.
         assert install_if_configured(app) == "proxy"
+
+    def test_proxy_without_trusted_ips_warns(self, monkeypatch):
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
+        monkeypatch.delenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", raising=False)
+        from fastapi import FastAPI
+        from web.api.auth import install_if_configured
+        app = FastAPI()
+        with pytest.warns(UserWarning, match="TRUSTED_IPS"):
+            assert install_if_configured(app) == "proxy"
+
+    def test_proxy_with_trusted_ips_does_not_warn(self, monkeypatch, recwarn):
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", "10.0.0.0/8")
+        from fastapi import FastAPI
+        from web.api.auth import install_if_configured
+        app = FastAPI()
+        assert install_if_configured(app) == "proxy"
+        assert not [w for w in recwarn if "TRUSTED_IPS" in str(w.message)]
+
+
+# ── Connector SQL identifier hygiene ──────────────────────────────────────
+
+class TestConnectorIdentifierQuoting:
+    def test_base_quote_ident_rejects_embedded_quote(self):
+        from tracebi.connectors.base import BaseConnector
+        with pytest.raises(ValueError):
+            BaseConnector._quote_ident('bad"name')
+        with pytest.raises(ValueError):
+            BaseConnector._quote_ident("bad`name", quote="`")
+        assert BaseConnector._quote_ident("ok_name") == '"ok_name"'
+
+    def test_bigquery_param_type_mapping(self):
+        from tracebi.connectors.bigquery_connector import BigQueryConnector
+        assert BigQueryConnector._bq_param_type(True) == "BOOL"
+        assert BigQueryConnector._bq_param_type(3) == "INT64"
+        assert BigQueryConnector._bq_param_type(3.5) == "FLOAT64"
+        assert BigQueryConnector._bq_param_type("x") == "STRING"
+        with pytest.raises(ValueError):
+            BigQueryConnector._bq_param_type(object())
 
 
 # ── Shared project model & @scheduled decorator ──────────────────────────

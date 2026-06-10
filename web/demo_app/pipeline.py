@@ -8,7 +8,6 @@ page in the UI has live run history immediately. Exports `runner` and
 
 import os
 
-import pandas as pd
 from sqlalchemy import create_engine
 
 from tracebi import (
