@@ -73,6 +73,7 @@ manifest — no separate audit step.
 | Write a one-off report or query | Copy `requests/_template.py` and run it with `tracebi run` |
 | Build a scheduled ETL pipeline | `examples/phase4_example.py` → then `web/demo_app/` as a wiring template |
 | Expose everything in a web UI | `web/demo_app/` shows the full wiring; `TRACEBI_APP=mymodule python web/run.py` |
+| Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open the **Explore** page |
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
@@ -328,11 +329,21 @@ print(diag.to_mermaid())          # paste into GitHub markdown
 
 ## Web UI
 
-A browser interface over your TraceBi registry — connectors, models, reports, pipelines, and live dashboards all in one place.
+A browser interface over your TraceBi registry — connectors, models, reports, pipelines, and live dashboards all in one place. Highlights:
+
+- **Explore** — a visual star-schema query builder: pick a fact, toggle
+  measures and dimension attributes, add filters, and get results with a
+  chart, CSV download, and the *lineage graph of the exact query that ran*.
+- **Models** — table previews with column dtypes and full-table CSV export,
+  plus an interactive ERD of your relationships.
+- **Reports** — run in the browser, download as Excel or HTML, and inspect
+  per-section lineage. Failures show the full Python traceback.
+- **Pipelines** — the medallion chain as a live DAG with per-layer run
+  buttons and run history.
 
 ```bash
 # Install web dependencies
-pip install -r web/requirements.txt
+pip install -e ".[web]"
 
 # Start the server (hot-reload on by default)
 python web/run.py
