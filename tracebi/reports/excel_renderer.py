@@ -23,6 +23,8 @@ from tracebi.reports.base_renderer import BaseRenderer
 from tracebi.reports.report import (
     Report, SectionType,
     TextSection, TableSection, ChartSection,
+    MetricSection, RowSection,
+    resolve_number_format,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,7 @@ class ExcelRenderer(BaseRenderer):
         """
         self.include_cover = include_cover
         self.include_lineage_sheet = include_lineage_sheet
+        self._width_overrides: dict[str, int] = {}
 
     def _render(self, report: Report, output_path: str) -> None:
         try:
@@ -93,24 +96,74 @@ class ExcelRenderer(BaseRenderer):
         # Main report sheet
         ws = wb.create_sheet("Report")
         row = 1
+        self._width_overrides = {}   # column letter → width, applied after autosize
 
         for section in report.sections:
-            if section.section_type == SectionType.TEXT:
-                row = self._write_text(ws, section, row)
-            elif section.section_type == SectionType.TABLE:
-                row = self._write_table(ws, section, row)
-            elif section.section_type == SectionType.CHART:
-                row = self._write_chart(ws, section, row, wb)
-            elif section.section_type == SectionType.SPACER:
-                row += section.height
+            row = self._write_section(ws, section, row, wb)
 
         # Auto-size columns on the main sheet
         self._autosize_columns(ws)
+        for letter, width in self._width_overrides.items():
+            ws.column_dimensions[letter].width = width
 
         if self.include_lineage_sheet:
             self._write_lineage_sheet(wb, report)
 
         wb.save(output_path)
+
+    def _write_section(self, ws, section, row: int, wb) -> int:
+        """Dispatch a single section to its writer. RowSections have no
+        side-by-side equivalent in Excel, so their children render stacked."""
+        if section.section_type == SectionType.TEXT:
+            return self._write_text(ws, section, row)
+        elif section.section_type == SectionType.TABLE:
+            return self._write_table(ws, section, row)
+        elif section.section_type == SectionType.CHART:
+            return self._write_chart(ws, section, row, wb)
+        elif section.section_type == SectionType.SPACER:
+            return row + section.height
+        elif section.section_type == SectionType.METRICS:
+            return self._write_metrics(ws, section, row)
+        elif section.section_type == SectionType.ROW:
+            for child in section.sections:
+                row = self._write_section(ws, child, row, wb)
+            return row
+        return row
+
+    # ── Metrics section ────────────────────────────────────────────────────
+
+    def _write_metrics(self, ws, section: MetricSection, row: int) -> int:
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        if section.title:
+            c = ws.cell(row=row, column=1, value=section.title)
+            c.font = Font(bold=True, size=12,
+                          color=COLORS["subheader_fill"], name="Calibri")
+            row += 1
+
+        label_row, value_row, delta_row = row, row + 1, row + 2
+        ws.row_dimensions[value_row].height = 26
+        has_delta = any(m.delta is not None for m in section.metrics)
+
+        for col_idx, m in enumerate(section.metrics, 1):
+            c = ws.cell(row=label_row, column=col_idx, value=m.label)
+            c.font = Font(bold=True, size=9, color="5A6B8A", name="Calibri")
+            c.alignment = Alignment(horizontal="left", vertical="bottom")
+
+            c = ws.cell(row=value_row, column=col_idx, value=m.formatted_value())
+            c.font = Font(bold=True, size=16,
+                          color=COLORS["cover_bg"], name="Calibri")
+
+            if m.delta is not None:
+                up = m.delta >= 0
+                good = up == m.good_when_up
+                arrow = "▲" if up else "▼"
+                c = ws.cell(row=delta_row, column=col_idx,
+                            value=f"{arrow} {m.delta:+.1%}")
+                c.font = Font(bold=True, size=9, name="Calibri",
+                              color="2E7D32" if good else "C62828")
+
+        return (delta_row if has_delta else value_row) + 2
 
     # ── Cover sheet ────────────────────────────────────────────────────────
 
@@ -260,6 +313,9 @@ class ExcelRenderer(BaseRenderer):
                         )
 
         # Data rows
+        def _disp(col):
+            return (section.column_labels or {}).get(col, col)
+
         fmt_map = {}
         if section.number_formats:
             for orig, disp in (section.column_labels or {}).items():
@@ -267,6 +323,9 @@ class ExcelRenderer(BaseRenderer):
                     fmt_map[disp] = section.number_formats[orig]
             fmt_map.update(section.number_formats)
 
+        neg_cols = {_disp(c) for c in (section.highlight_negatives or [])}
+
+        data_start_row = row
         for row_idx, (_, data_row) in enumerate(df.iterrows()):
             bg = COLORS["alt_row"] if row_idx % 2 == 1 else "FFFFFF"
             for col_idx, (col_name, val) in enumerate(data_row.items(), 1):
@@ -287,7 +346,10 @@ class ExcelRenderer(BaseRenderer):
                         )
 
                 c.value = display_val
-                c.font = Font(size=9, name="Calibri")
+                is_neg = (col_name in neg_cols and isinstance(val, (int, float))
+                          and pd.notna(val) and val < 0)
+                c.font = Font(size=9, name="Calibri",
+                              color="C62828" if is_neg else "000000")
                 c.fill = PatternFill("solid", fgColor=bg)
                 c.alignment = Alignment(
                     horizontal="right" if isinstance(val, (int, float)) else "left",
@@ -296,6 +358,34 @@ class ExcelRenderer(BaseRenderer):
                 c.border = border
             ws.row_dimensions[row].height = 15
             row += 1
+        data_end_row = row - 1
+
+        # Color-scale (heat map) conditional formatting per column
+        if section.color_scale and data_end_row >= data_start_row:
+            from openpyxl.formatting.rule import ColorScaleRule
+            from openpyxl.utils import get_column_letter
+            col_positions = {c: i for i, c in enumerate(df.columns, 1)}
+            for orig, hex_color in section.color_scale.items():
+                disp = _disp(orig)
+                if disp not in col_positions:
+                    continue
+                letter = get_column_letter(col_positions[disp])
+                ws.conditional_formatting.add(
+                    f"{letter}{data_start_row}:{letter}{data_end_row}",
+                    ColorScaleRule(
+                        start_type="min", start_color="FFFFFF",
+                        end_type="max", end_color=hex_color.lstrip("#"),
+                    ),
+                )
+
+        # Record explicit column widths (applied after autosize)
+        if section.column_widths:
+            from openpyxl.utils import get_column_letter
+            col_positions = {c: i for i, c in enumerate(df.columns, 1)}
+            for orig, width in section.column_widths.items():
+                disp = _disp(orig)
+                if disp in col_positions:
+                    self._width_overrides[get_column_letter(col_positions[disp])] = width
 
         # Totals row
         if totals:
@@ -410,7 +500,7 @@ class ExcelRenderer(BaseRenderer):
             c.alignment = Alignment(horizontal="center")
 
         row = 2
-        for section in report.sections:
+        for section in report.data_sections():
             if section.section_type not in (SectionType.TABLE, SectionType.CHART):
                 continue
             ds = section.dataset
@@ -450,15 +540,20 @@ class ExcelRenderer(BaseRenderer):
 
     @staticmethod
     def _excel_number_format(fmt_string: str) -> str:
-        """Convert Python format string to Excel number format string."""
-        if ",.2f" in fmt_string:
-            return '#,##0.00'
-        elif ",.0f" in fmt_string:
-            return '#,##0'
-        elif ".2f" in fmt_string:
-            return '0.00'
-        elif ".0f" in fmt_string:
-            return '0'
+        """Convert a Python format string (or named shortcut) to an Excel
+        number format string."""
+        fmt_string = resolve_number_format(fmt_string)
+        prefix = "$" if fmt_string.startswith("$") else ""
+        if ".1%" in fmt_string:
+            return '0.0%'
         elif "%" in fmt_string:
             return '0.00%'
+        elif ",.2f" in fmt_string:
+            return prefix + '#,##0.00'
+        elif ",.0f" in fmt_string:
+            return prefix + '#,##0'
+        elif ".2f" in fmt_string:
+            return prefix + '0.00'
+        elif ".0f" in fmt_string:
+            return prefix + '0'
         return 'General'
