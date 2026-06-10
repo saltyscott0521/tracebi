@@ -109,9 +109,9 @@ export default function Layout({ children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 5 }}>
             <div style={{
               width: 32, height: 32, borderRadius: 9,
-              background: 'linear-gradient(135deg, #0f2575, #0369a1)',
+              background: 'linear-gradient(135deg, #091a55, #0369a1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 16px rgba(15,37,117,0.45)',
+              boxShadow: '0 4px 16px rgba(9,26,85,0.45)',
               flexShrink: 0,
             }}>
               <svg width="15" height="15" viewBox="0 0 20 20" fill="white">
