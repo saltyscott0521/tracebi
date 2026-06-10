@@ -2,10 +2,10 @@ import { useState, useCallback } from 'react'
 import ReactFlow, { Background, Controls, Handle, Position } from 'reactflow'
 import 'reactflow/dist/style.css'
 
-import { useReports, useRunReport, useReportLineage } from '../api'
+import { useReports, useRunReport, useReportLineage, reportDownloadUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
-  Empty, Btn, Tabs, SplitLayout, ListItem, Alert,
+  Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
   SearchInput, SkeletonList, SkeletonCard, useToast,
 } from '../components/Shared'
 
@@ -101,7 +101,7 @@ function ReportDetail({ report }) {
         )}
       </CardTitle>
 
-      {runErr && <Alert variant="err">{runErr.message}</Alert>}
+      {runErr && <ErrorDetail error={runErr} />}
 
       {!result && !running && (
         <Btn onClick={handleRun}>▶ Run Report</Btn>
@@ -123,6 +123,13 @@ function ReportDetail({ report }) {
                 {loadingLineage ? <><Spinner size={12} /> Loading…</> : '⊶ View Lineage'}
               </Btn>
             )}
+            <span style={{ flex: 1 }} />
+            <a href={reportDownloadUrl(report.name, 'xlsx')} download className="dl-link">
+              ↓ Excel
+            </a>
+            <a href={reportDownloadUrl(report.name, 'html')} download className="dl-link">
+              ↓ HTML
+            </a>
           </div>
 
           <Tabs

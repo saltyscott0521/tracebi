@@ -360,8 +360,9 @@ class ExcelRenderer(BaseRenderer):
             chart = BarChart()
 
         chart.title = section.title or ""
-        chart.y_axis.title = section.ylabel or (y_cols[0] if len(y_cols) == 1 else "")
-        chart.x_axis.title = section.xlabel or section.x
+        if chart_type != "pie":  # PieChart has no x/y axes
+            chart.y_axis.title = section.ylabel or (y_cols[0] if len(y_cols) == 1 else "")
+            chart.x_axis.title = section.xlabel or section.x
         chart.width = 20
         chart.height = 12
 

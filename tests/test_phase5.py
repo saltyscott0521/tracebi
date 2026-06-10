@@ -580,6 +580,115 @@ class TestProxyHeaderAuth:
         assert not [w for w in recwarn if "TRUSTED_IPS" in str(w.message)]
 
 
+# ── Analyst endpoints: preview metadata, CSV export, report downloads ─────
+
+class TestAnalystEndpoints:
+    def _client_with_model(self, memory_model):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.registry import registry
+        from web.api.routers import models as models_router
+
+        registry.add_model(memory_model)
+        app = FastAPI()
+        app.include_router(models_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _cleanup_model(self, name):
+        from web.api.registry import registry
+        registry._models.pop(name, None)
+
+    def test_preview_includes_dtypes_and_total_rows(self, memory_model):
+        client = self._client_with_model(memory_model)
+        try:
+            r = client.get("/api/models/Sales/tables/orders/preview?rows=2")
+            assert r.status_code == 200
+            body = r.json()
+            assert body["rows"] == 2
+            assert body["total_rows"] == 6
+            assert set(body["dtypes"]) == set(body["columns"])
+        finally:
+            self._cleanup_model("Sales")
+
+    def test_csv_export_streams_full_table(self, memory_model):
+        client = self._client_with_model(memory_model)
+        try:
+            r = client.get("/api/models/Sales/tables/orders/export.csv")
+            assert r.status_code == 200
+            assert r.headers["content-type"].startswith("text/csv")
+            assert 'filename="orders.csv"' in r.headers["content-disposition"]
+            lines = r.text.strip().splitlines()
+            assert len(lines) == 7  # header + 6 rows
+            assert lines[0].startswith("order_id")
+        finally:
+            self._cleanup_model("Sales")
+
+    def _client_with_report(self, factory, name="t_report"):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.registry import registry
+        from web.api.routers import reports as reports_router
+
+        registry.add_report(name, factory)
+        app = FastAPI()
+        app.include_router(reports_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _cleanup_report(self, name="t_report"):
+        from web.api.registry import registry
+        registry._report_factories.pop(name, None)
+
+    @staticmethod
+    def _sample_report(memory_model):
+        from tracebi.reports import Report, TableSection
+        ds = memory_model.load("orders")
+        return Report("T Report").add(TableSection(title="Orders", dataset=ds))
+
+    def test_download_html_attachment(self, memory_model):
+        client = self._client_with_report(lambda: self._sample_report(memory_model))
+        try:
+            r = client.get("/api/reports/t_report/download?format=html")
+            assert r.status_code == 200
+            assert "attachment" in r.headers["content-disposition"]
+            assert r.text.startswith("<!DOCTYPE html>")
+        finally:
+            self._cleanup_report()
+
+    def test_download_xlsx_attachment(self, memory_model):
+        pytest.importorskip("openpyxl")
+        client = self._client_with_report(lambda: self._sample_report(memory_model))
+        try:
+            r = client.get("/api/reports/t_report/download?format=xlsx")
+            assert r.status_code == 200
+            assert "spreadsheetml" in r.headers["content-type"]
+            assert r.content[:2] == b"PK"  # xlsx is a zip container
+        finally:
+            self._cleanup_report()
+
+    def test_download_bad_format_400(self, memory_model):
+        client = self._client_with_report(lambda: self._sample_report(memory_model))
+        try:
+            r = client.get("/api/reports/t_report/download?format=exe")
+            assert r.status_code == 400
+        finally:
+            self._cleanup_report()
+
+    def test_failing_factory_returns_structured_traceback(self):
+        def boom():
+            raise RuntimeError("kapow")
+
+        client = self._client_with_report(boom)
+        try:
+            r = client.post("/api/reports/t_report/run")
+            assert r.status_code == 500
+            detail = r.json()["detail"]
+            assert "kapow" in detail["message"]
+            assert detail["exception_type"] == "RuntimeError"
+            assert "RuntimeError: kapow" in detail["traceback"]
+        finally:
+            self._cleanup_report()
+
+
 # ── Connector SQL identifier hygiene ──────────────────────────────────────
 
 class TestConnectorIdentifierQuoting:

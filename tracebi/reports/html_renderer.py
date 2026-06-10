@@ -381,6 +381,10 @@ class HTMLRenderer(BaseRenderer):
 
     # ── HTML building ──────────────────────────────────────────────────────
 
+    def to_html(self, report: Report) -> str:
+        """Return the report as a self-contained HTML string (no file I/O)."""
+        return self._build_html(report)
+
     def _build_html(self, report: Report) -> str:
         sections_html = "\n".join(
             self._render_section(s) for s in report.sections
