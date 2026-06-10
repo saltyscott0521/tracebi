@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TraceBi Theme Mockups</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; padding: 24px; }
+
+  .switcher { display: flex; gap: 12px; margin-bottom: 24px; justify-content: center; }
+  .switcher button {
+    padding: 10px 24px; border-radius: 8px; border: 2px solid transparent;
+    cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;
+    background: #1f1f1f; color: #aaa;
+  }
+  .switcher button.active { border-color: #60a5fa; color: #60a5fa; background: #1a2233; }
+
+  .mockup-label {
+    color: #666; font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; text-align: center; margin-bottom: 10px;
+  }
+
+  .theme-panel { display: none; border-radius: 16px; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
+  .theme-panel.active { display: flex; height: 580px; }
+
+  /* ───── LAYOUT ───── */
+  .sidebar {
+    width: 220px; flex-shrink: 0; display: flex; flex-direction: column;
+    padding: 20px 0; gap: 2px;
+  }
+  .sidebar-logo {
+    padding: 0 20px 20px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em;
+    border-bottom-width: 1px; border-bottom-style: solid; margin-bottom: 12px;
+  }
+  .sidebar-logo span { font-weight: 300; opacity: 0.5; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 20px;
+    font-size: 13.5px; font-weight: 500; cursor: pointer; border-radius: 0;
+    transition: background 0.12s; margin: 0 8px; border-radius: 8px;
+  }
+  .nav-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .nav-item.active { font-weight: 600; }
+
+  .main { flex: 1; overflow: auto; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .page-sub { font-size: 13px; margin-top: 4px; opacity: 0.6; }
+
+  .btn {
+    padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: none; cursor: pointer; white-space: nowrap;
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .card { border-radius: 12px; padding: 18px; border-width: 1px; border-style: solid; }
+  .card-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.55; margin-bottom: 6px; }
+  .card-value { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+  .card-sub { font-size: 12px; margin-top: 4px; opacity: 0.5; }
+
+  .section-title { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.5; margin-bottom: 10px; }
+
+  .table-wrap { border-radius: 10px; border-width: 1px; border-style: solid; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+  td { padding: 11px 14px; border-top-width: 1px; border-top-style: solid; }
+
+  .badge {
+    display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  }
+
+  .pill { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+
+  /* ══════════════════════════════════════════════
+     THEME A — Slate Dark
+  ══════════════════════════════════════════════ */
+  #theme-a {
+    --bg: #111827;
+    --surface: #1f2937;
+    --surface-2: #273344;
+    --card: #1f2937;
+    --border: #2d3748;
+    --border-hl: rgba(59,130,246,0.35);
+    --text: #f1f5f9;
+    --text-2: #94a3b8;
+    --muted: #4b5a6e;
+    --blue: #3b82f6;
+    --blue-lt: rgba(59,130,246,0.12);
+    --navy: #1e40af;
+    --green: #22c55e;
+    --green-lt: rgba(34,197,94,0.12);
+    --amber: #f59e0b;
+    --amber-lt: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-lt: rgba(239,68,68,0.12);
+    background: var(--bg);
+  }
+  #theme-a .sidebar { background: var(--surface); border-right: 1px solid var(--border); }
+  #theme-a .sidebar-logo { color: var(--text); border-bottom-color: var(--border); }
+  #theme-a .nav-item { color: var(--text-2); }
+  #theme-a .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  #theme-a .nav-item.active { background: var(--blue-lt); color: var(--blue); }
+  #theme-a .main { background: var(--bg); }
+  #theme-a .page-title { color: var(--text); }
+  #theme-a .page-sub { color: var(--text-2); }
+  #theme-a .btn { background: var(--blue); color: #fff; }
+  #theme-a .card { background: var(--card); border-color: var(--border); }
+  #theme-a .card-value { color: var(--text); }
+  #theme-a .card-label { color: var(--text-2); }
+  #theme-a .card-sub { color: var(--text-2); }
+  #theme-a th { background: var(--surface-2); color: var(--text-2); }
+  #theme-a td { color: var(--text); border-top-color: var(--border); }
+  #theme-a .table-wrap { border-color: var(--border); background: var(--surface); }
+  #theme-a .section-title { color: var(--text-2); }
+  #theme-a .badge-blue { background: var(--blue-lt); color: var(--blue); }
+  #theme-a .badge-green { background: var(--green-lt); color: var(--green); }
+  #theme-a .badge-amber { background: var(--amber-lt); color: var(--amber); }
+  #theme-a .badge-red { background: var(--red-lt); color: var(--red); }
+  #theme-a .accentbar {
+    height: 3px; background: linear-gradient(90deg, #3b82f6 0%, #1e40af 100%);
+    border-radius: 0 0 0 0;
+  }
+
+  /* ══════════════════════════════════════════════
+     THEME B — Navy Dark
+  ══════════════════════════════════════════════ */
+  #theme-b {
+    --bg: #0d1b2a;
+    --surface: #162030;
+    --surface-2: #1a2840;
+    --card: #162030;
+    --border: #1e3254;
+    --border-hl: rgba(96,165,250,0.3);
+    --text: #dce8f5;
+    --text-2: #7fa3c8;
+    --muted: #3d5a7a;
+    --blue: #60a5fa;
+    --blue-lt: rgba(96,165,250,0.12);
+    --navy: #1d4ed8;
+    --green: #34d399;
+    --green-lt: rgba(52,211,153,0.12);
+    --amber: #fbbf24;
+    --amber-lt: rgba(251,191,36,0.12);
+    --red: #f87171;
+    --red-lt: rgba(248,113,113,0.12);
+    background: var(--bg);
+  }
+  #theme-b .sidebar { background: var(--surface); border-right: 1px solid var(--border); }
+  #theme-b .sidebar-logo { color: var(--text); border-bottom-color: var(--border); }
+  #theme-b .nav-item { color: var(--text-2); }
+  #theme-b .nav-item:hover { background: rgba(96,165,250,0.06); color: var(--text); }
+  #theme-b .nav-item.active { background: var(--blue-lt); color: var(--blue); }
+  #theme-b .main { background: var(--bg); }
+  #theme-b .page-title { color: var(--text); }
+  #theme-b .page-sub { color: var(--text-2); }
+  #theme-b .btn { background: var(--navy); color: #fff; }
+  #theme-b .card { background: var(--card); border-color: var(--border); }
+  #theme-b .card-value { color: var(--text); }
+  #theme-b .card-label { color: var(--text-2); }
+  #theme-b .card-sub { color: var(--text-2); }
+  #theme-b th { background: var(--surface-2); color: var(--text-2); }
+  #theme-b td { color: var(--text); border-top-color: var(--border); }
+  #theme-b .table-wrap { border-color: var(--border); background: var(--surface); }
+  #theme-b .section-title { color: var(--text-2); }
+  #theme-b .badge-blue { background: var(--blue-lt); color: var(--blue); }
+  #theme-b .badge-green { background: var(--green-lt); color: var(--green); }
+  #theme-b .badge-amber { background: var(--amber-lt); color: var(--amber); }
+  #theme-b .badge-red { background: var(--red-lt); color: var(--red); }
+  #theme-b .accentbar {
+    height: 3px; background: linear-gradient(90deg, #60a5fa 0%, #0ea5e9 100%);
+  }
+
+  /* ══════════════════════════════════════════════
+     THEME C — Graphite + Navy (Light-ish)
+  ══════════════════════════════════════════════ */
+  #theme-c {
+    --bg: #e5eaf2;
+    --surface: #f0f3f8;
+    --surface-2: #e8ecf4;
+    --card: #f7f9fc;
+    --border: #c9d3e3;
+    --border-hl: rgba(26,63,168,0.25);
+    --text: #0f1c34;
+    --text-2: #3d5070;
+    --muted: #7a8ea8;
+    --blue: #1a3fa8;
+    --blue-lt: rgba(26,63,168,0.08);
+    --navy: #1e3a8a;
+    --green: #15803d;
+    --green-lt: rgba(21,128,61,0.1);
+    --amber: #b45309;
+    --amber-lt: rgba(180,83,9,0.1);
+    --red: #b91c1c;
+    --red-lt: rgba(185,28,28,0.1);
+    background: var(--bg);
+  }
+  #theme-c .sidebar { background: #1e3a6e; border-right: 1px solid rgba(255,255,255,0.08); }
+  #theme-c .sidebar-logo { color: #e8f0fb; border-bottom-color: rgba(255,255,255,0.1); }
+  #theme-c .nav-item { color: rgba(200,220,255,0.7); }
+  #theme-c .nav-item:hover { background: rgba(255,255,255,0.08); color: #e8f0fb; }
+  #theme-c .nav-item.active { background: rgba(255,255,255,0.14); color: #ffffff; }
+  #theme-c .main { background: var(--bg); }
+  #theme-c .page-title { color: var(--text); }
+  #theme-c .page-sub { color: var(--text-2); }
+  #theme-c .btn { background: var(--blue); color: #fff; }
+  #theme-c .card { background: var(--card); border-color: var(--border); box-shadow: 0 2px 8px rgba(15,28,52,0.06); }
+  #theme-c .card-value { color: var(--text); }
+  #theme-c .card-label { color: var(--text-2); }
+  #theme-c .card-sub { color: var(--muted); }
+  #theme-c th { background: var(--surface-2); color: var(--text-2); }
+  #theme-c td { color: var(--text); border-top-color: var(--border); }
+  #theme-c .table-wrap { border-color: var(--border); background: var(--card); box-shadow: 0 2px 8px rgba(15,28,52,0.06); }
+  #theme-c .section-title { color: var(--text-2); }
+  #theme-c .badge-blue { background: var(--blue-lt); color: var(--blue); }
+  #theme-c .badge-green { background: var(--green-lt); color: var(--green); }
+  #theme-c .badge-amber { background: var(--amber-lt); color: var(--amber); }
+  #theme-c .badge-red { background: var(--red-lt); color: var(--red); }
+  #theme-c .accentbar {
+    height: 3px; background: linear-gradient(90deg, #1a3fa8 0%, #0369a1 100%);
+  }
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <button onclick="show('a')" id="btn-a" class="active">A — Slate Dark</button>
+  <button onclick="show('b')" id="btn-b">B — Navy Dark</button>
+  <button onclick="show('c')" id="btn-c">C — Graphite + Navy</button>
+</div>
+
+<!-- ── THEME A ── -->
+<div class="mockup-label" id="label-a">Option A — Slate Dark · charcoal grey surfaces · bright navy accents</div>
+<div id="theme-a" class="theme-panel active">
+  <div class="accentbar" style="position:absolute;top:0;left:0;right:0;"></div>
+  <nav class="sidebar">
+    <div class="sidebar-logo">Trace<span>Bi</span></div>
+    <div class="nav-item"><span class="dot" style="background:#3b82f6"></span>Home</div>
+    <div class="nav-item"><span class="dot" style="background:#22c55e"></span>Connectors</div>
+    <div class="nav-item active"><span class="dot" style="background:#3b82f6"></span>Models</div>
+    <div class="nav-item"><span class="dot" style="background:#38bdf8"></span>Explore</div>
+    <div class="nav-item"><span class="dot" style="background:#f472b6"></span>Reports</div>
+    <div class="nav-item"><span class="dot" style="background:#f59e0b"></span>Pipelines</div>
+    <div class="nav-item"><span class="dot" style="background:#22d3ee"></span>Dashboards</div>
+  </nav>
+  <main class="main">
+    <div style="height:3px;background:linear-gradient(90deg,#3b82f6,#1e40af);margin:-28px -28px 8px;border-radius:0"></div>
+    <div class="page-header">
+      <div>
+        <div class="page-title">Models</div>
+        <div class="page-sub">3 registered · last refreshed 2 min ago</div>
+      </div>
+      <button class="btn">+ New Model</button>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Tables</div>
+        <div class="card-value">12</div>
+        <div class="card-sub">across 3 models</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Relationships</div>
+        <div class="card-value">8</div>
+        <div class="card-sub">star schema links</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Last Run</div>
+        <div class="card-value" style="font-size:18px;padding-top:4px">2 min ago</div>
+        <div class="card-sub">pipeline: orders_gold</div>
+      </div>
+    </div>
+    <div class="section-title">Registered Models</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Tables</th><th>Status</th><th>Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>sales_model</strong></td>
+            <td>5</td>
+            <td><span class="badge badge-green"><span class="pill" style="background:#22c55e"></span>healthy</span></td>
+            <td>2 min ago</td>
+          </tr>
+          <tr>
+            <td><strong>orders_model</strong></td>
+            <td>4</td>
+            <td><span class="badge badge-blue"><span class="pill" style="background:#3b82f6"></span>running</span></td>
+            <td>10 min ago</td>
+          </tr>
+          <tr>
+            <td><strong>inventory_model</strong></td>
+            <td>3</td>
+            <td><span class="badge badge-amber"><span class="pill" style="background:#f59e0b"></span>stale</span></td>
+            <td>3 hrs ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- ── THEME B ── -->
+<div class="mockup-label" id="label-b" style="display:none">Option B — Navy Dark · deep navy surfaces · sky-blue accents</div>
+<div id="theme-b" class="theme-panel">
+  <nav class="sidebar">
+    <div class="sidebar-logo">Trace<span>Bi</span></div>
+    <div class="nav-item"><span class="dot" style="background:#60a5fa"></span>Home</div>
+    <div class="nav-item"><span class="dot" style="background:#34d399"></span>Connectors</div>
+    <div class="nav-item active"><span class="dot" style="background:#60a5fa"></span>Models</div>
+    <div class="nav-item"><span class="dot" style="background:#38bdf8"></span>Explore</div>
+    <div class="nav-item"><span class="dot" style="background:#f472b6"></span>Reports</div>
+    <div class="nav-item"><span class="dot" style="background:#fbbf24"></span>Pipelines</div>
+    <div class="nav-item"><span class="dot" style="background:#22d3ee"></span>Dashboards</div>
+  </nav>
+  <main class="main">
+    <div style="height:3px;background:linear-gradient(90deg,#60a5fa,#0ea5e9);margin:-28px -28px 8px;border-radius:0"></div>
+    <div class="page-header">
+      <div>
+        <div class="page-title">Models</div>
+        <div class="page-sub">3 registered · last refreshed 2 min ago</div>
+      </div>
+      <button class="btn">+ New Model</button>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Tables</div>
+        <div class="card-value">12</div>
+        <div class="card-sub">across 3 models</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Relationships</div>
+        <div class="card-value">8</div>
+        <div class="card-sub">star schema links</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Last Run</div>
+        <div class="card-value" style="font-size:18px;padding-top:4px">2 min ago</div>
+        <div class="card-sub">pipeline: orders_gold</div>
+      </div>
+    </div>
+    <div class="section-title">Registered Models</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Tables</th><th>Status</th><th>Updated</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>sales_model</strong></td><td>5</td>
+            <td><span class="badge badge-green"><span class="pill" style="background:#34d399"></span>healthy</span></td>
+            <td>2 min ago</td>
+          </tr>
+          <tr>
+            <td><strong>orders_model</strong></td><td>4</td>
+            <td><span class="badge badge-blue"><span class="pill" style="background:#60a5fa"></span>running</span></td>
+            <td>10 min ago</td>
+          </tr>
+          <tr>
+            <td><strong>inventory_model</strong></td><td>3</td>
+            <td><span class="badge badge-amber"><span class="pill" style="background:#fbbf24"></span>stale</span></td>
+            <td>3 hrs ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- ── THEME C ── -->
+<div class="mockup-label" id="label-c" style="display:none">Option C — Graphite + Navy · cool grey surfaces · deep navy sidebar + accents</div>
+<div id="theme-c" class="theme-panel">
+  <nav class="sidebar">
+    <div class="sidebar-logo">Trace<span>Bi</span></div>
+    <div class="nav-item"><span class="dot" style="background:#60a5fa"></span>Home</div>
+    <div class="nav-item"><span class="dot" style="background:#34d399"></span>Connectors</div>
+    <div class="nav-item active"><span class="dot" style="background:#93c5fd"></span>Models</div>
+    <div class="nav-item"><span class="dot" style="background:#7dd3fc"></span>Explore</div>
+    <div class="nav-item"><span class="dot" style="background:#f9a8d4"></span>Reports</div>
+    <div class="nav-item"><span class="dot" style="background:#fcd34d"></span>Pipelines</div>
+    <div class="nav-item"><span class="dot" style="background:#67e8f9"></span>Dashboards</div>
+  </nav>
+  <main class="main">
+    <div style="height:3px;background:linear-gradient(90deg,#1a3fa8,#0369a1);margin:-28px -28px 8px;border-radius:0"></div>
+    <div class="page-header">
+      <div>
+        <div class="page-title">Models</div>
+        <div class="page-sub">3 registered · last refreshed 2 min ago</div>
+      </div>
+      <button class="btn">+ New Model</button>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Tables</div>
+        <div class="card-value">12</div>
+        <div class="card-sub">across 3 models</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Relationships</div>
+        <div class="card-value">8</div>
+        <div class="card-sub">star schema links</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Last Run</div>
+        <div class="card-value" style="font-size:18px;padding-top:4px">2 min ago</div>
+        <div class="card-sub">pipeline: orders_gold</div>
+      </div>
+    </div>
+    <div class="section-title">Registered Models</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Tables</th><th>Status</th><th>Updated</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>sales_model</strong></td><td>5</td>
+            <td><span class="badge badge-green"><span class="pill" style="background:#15803d"></span>healthy</span></td>
+            <td>2 min ago</td>
+          </tr>
+          <tr>
+            <td><strong>orders_model</strong></td><td>4</td>
+            <td><span class="badge badge-blue"><span class="pill" style="background:#1a3fa8"></span>running</span></td>
+            <td>10 min ago</td>
+          </tr>
+          <tr>
+            <td><strong>inventory_model</strong></td><td>3</td>
+            <td><span class="badge badge-amber"><span class="pill" style="background:#b45309"></span>stale</span></td>
+            <td>3 hrs ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script>
+function show(id) {
+  ['a','b','c'].forEach(x => {
+    document.getElementById('theme-' + x).classList.toggle('active', x === id);
+    document.getElementById('label-' + x).style.display = x === id ? 'block' : 'none';
+    document.getElementById('btn-' + x).classList.toggle('active', x === id);
+  });
+}
+</script>
+</body>
+</html>
