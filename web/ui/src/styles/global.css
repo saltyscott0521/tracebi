@@ -7,32 +7,32 @@
   use the --code-* / --terminal-* tokens below.
 */
 :root {
-  --blue:        #1535a0;
-  --blue-md:     #122e88;
-  --blue-lt:     rgba(21,53,160,0.09);
-  --blue-br:     rgba(21,53,160,0.25);
-  --purple:      #1535a0;
-  --purple-lt:   rgba(21,53,160,0.09);
+  --blue:        #0f2575;
+  --blue-md:     #0c1e60;
+  --blue-lt:     rgba(15,37,117,0.09);
+  --blue-br:     rgba(15,37,117,0.25);
+  --purple:      #0f2575;
+  --purple-lt:   rgba(15,37,117,0.09);
 
-  --bg:          #d6dce8;
-  --surface:     #e5eaf2;
-  --surface-2:   #dde3ef;
-  --card:        #edf1f8;
-  --card-solid:  #edf1f8;
-  --card-hl:     #d4dced;
-  --border:      #bbc8db;
-  --border-hl:   rgba(21,53,160,0.3);
+  --bg:          #b3bece;
+  --surface:     #c4ceda;
+  --surface-2:   #bbc6d3;
+  --card:        #cdd6e4;
+  --card-solid:  #cdd6e4;
+  --card-hl:     #b8c4d5;
+  --border:      #9aafc5;
+  --border-hl:   rgba(15,37,117,0.3);
 
   --text:        #0f1c34;
   --text-2:      #3d5070;
-  --muted:       #7a8ea8;
+  --muted:       #6a7e98;
 
   /* Accent text — links, active tabs, highlighted values */
-  --accent-text:    #1535a0;
-  --accent-text-2:  #122e88;
+  --accent-text:    #0f2575;
+  --accent-text-2:  #0c1e60;
 
   /* Sidebar (dark navy panel) */
-  --sidebar-bg:          #1a3362;
+  --sidebar-bg:          #111c3a;
   --sidebar-border:      rgba(255,255,255,0.08);
   --sidebar-text:        rgba(200,220,255,0.72);
   --sidebar-text-active: #ffffff;
@@ -67,25 +67,25 @@
   --radius-lg:   16px;
   --shadow:      0 8px 24px rgba(15,28,52,.09);
   --shadow-sm:   0 2px 8px rgba(15,28,52,.07);
-  --shadow-glow: 0 4px 20px rgba(21,53,160,.12);
+  --shadow-glow: 0 4px 20px rgba(15,37,117,.12);
   --t:           0.16s ease;
 
   /* Brand gradient */
-  --brand: linear-gradient(135deg, #1535a0 0%, #0369a1 100%);
-  --brand-text: linear-gradient(135deg, #1535a0 0%, #0369a1 100%);
+  --brand: linear-gradient(135deg, #0f2575 0%, #0369a1 100%);
+  --brand-text: linear-gradient(135deg, #0f2575 0%, #0369a1 100%);
 
   /* Lineage / diagram node palette — light tint, border, text per operation.
      Used by Lineage.jsx, the pipeline DAG, and the ERD. */
   --op-default-bg: #eef2f6;  --op-default-br: #cfd9e3;  --op-default-tx: #3a4960;
-  --op-load-bg:    #e8f1fd;  --op-load-br:    #b6d2f4;  --op-load-tx:    #1535a0;
+  --op-load-bg:    #e8f1fd;  --op-load-br:    #b6d2f4;  --op-load-tx:    #0f2575;
   --op-filter-bg:  #e7f5ed;  --op-filter-br:  #b7e1ca;  --op-filter-tx:  #15803d;
   --op-transform-bg:#fdf3e1; --op-transform-br:#f0d9a6; --op-transform-tx:#92520a;
   --op-join-bg:    #fdeee4;  --op-join-br:    #f3ccae;  --op-join-tx:    #b4500f;
-  --op-sort-bg:    #e8edf8;  --op-sort-br:    #b8c6e0;  --op-sort-tx:    #1535a0;
+  --op-sort-bg:    #e8edf8;  --op-sort-br:    #b8c6e0;  --op-sort-tx:    #0f2575;
   --op-select-bg:  #eef2f6;  --op-select-br:  #cfd9e3;  --op-select-tx:  #3a4960;
   --op-rename-bg:  #e4f5f3;  --op-rename-br:  #b3e0da;  --op-rename-tx:  #0f766e;
-  --op-landing-bg: #e8f1fd;  --op-landing-br: #b6d2f4;  --op-landing-tx: #1535a0;
-  --op-manipulation-bg:#e8edf8; --op-manipulation-br:#b8c6e0; --op-manipulation-tx:#1535a0;
+  --op-landing-bg: #e8f1fd;  --op-landing-br: #b6d2f4;  --op-landing-tx: #0f2575;
+  --op-manipulation-bg:#e8edf8; --op-manipulation-br:#b8c6e0; --op-manipulation-tx:#0f2575;
   --op-final-bg:   #e7f5ed;  --op-final-br:   #b7e1ca;  --op-final-tx:   #15803d;
   --op-bronze-bg:  #f7ede3;  --op-bronze-br:  #e4cbac;  --op-bronze-tx:  #8a5a2a;
   --op-silver-bg:  #eef1f5;  --op-silver-br:  #d3dae3;  --op-silver-tx:  #55657a;
@@ -93,16 +93,16 @@
   --op-warning-bg: #fdf3e1;  --op-warning-br: #f0d9a6;  --op-warning-tx: #92520a;
 
   /* Diagram canvas (React Flow panes) */
-  --flow-bg:       #e2e8f2;
-  --flow-dots:     #b8c5d8;
+  --flow-bg:       #c4ceda;
+  --flow-dots:     #9aafc5;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #a4b2c8; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(21,53,160,.4); }
-::selection { background: rgba(21,53,160,.12); color: var(--text); }
+::-webkit-scrollbar-thumb { background: #8fa0b8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(15,37,117,.4); }
+::selection { background: rgba(15,37,117,.12); color: var(--text); }
 
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -124,17 +124,17 @@ body {
 .orb-1 {
   width: 760px; height: 760px;
   top: -18%; right: -10%;
-  background: radial-gradient(circle, rgba(21,53,160,0.05) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(15,37,117,0.05) 0%, transparent 65%);
 }
 .orb-2 {
   width: 600px; height: 600px;
   bottom: 0%; left: 10%;
-  background: radial-gradient(circle, rgba(21,53,160,0.04) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(15,37,117,0.04) 0%, transparent 65%);
 }
 .orb-3 {
   width: 400px; height: 400px;
   top: 38%; right: 22%;
-  background: radial-gradient(circle, rgba(21,53,160,0.03) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(15,37,117,0.03) 0%, transparent 60%);
 }
 
 /* Content sits above orbs */
@@ -185,7 +185,7 @@ code {
   text-decoration: none;
   transition: background var(--t), color var(--t);
 }
-.dl-link:hover { background: rgba(21,53,160,.16); color: var(--blue-md); }
+.dl-link:hover { background: rgba(15,37,117,.16); color: var(--blue-md); }
 
 /* Tables */
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -201,12 +201,12 @@ thead th {
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
 }
-tbody tr { border-bottom: 1px solid #cdd6e5; transition: background var(--t); }
-tbody tr:hover { background: rgba(21,53,160,.04); }
+tbody tr { border-bottom: 1px solid #9aafc5; transition: background var(--t); }
+tbody tr:hover { background: rgba(15,37,117,.04); }
 tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 
 /* ReactFlow (lineage + ERD) */
-.react-flow__background { background: #e2e8f2 !important; }
+.react-flow__background { background: #c4ceda !important; }
 .react-flow__edge-path { stroke: var(--blue) !important; stroke-width: 1.5 !important; }
 .react-flow__edge-text { font-size: 11px !important; }
 .react-flow__attribution { display: none; }
@@ -246,14 +246,14 @@ tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 /* ── Buttons ────────────────────────────────────────── */
 .btn-primary:hover:not(:disabled) {
   filter: brightness(1.08);
-  box-shadow: 0 6px 20px rgba(21,53,160,.35) !important;
+  box-shadow: 0 6px 20px rgba(15,37,117,.35) !important;
   transform: translateY(-1px);
 }
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
 .btn-outline:hover:not(:disabled) {
   background: var(--blue-lt) !important;
   border-color: var(--blue) !important;
-  box-shadow: 0 0 12px rgba(21,53,160,.1);
+  box-shadow: 0 0 12px rgba(15,37,117,.1);
 }
 .btn-red:hover:not(:disabled) {
   background: rgba(220,38,38,.16) !important;
@@ -262,7 +262,7 @@ tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 /* ── Nav ────────────────────────────────────────────── */
 .nav-link { transition: background var(--t), color var(--t), border-color var(--t); }
 .nav-link:hover { background: rgba(255,255,255,0.07) !important; color: var(--sidebar-text-active) !important; }
-.list-item-hover:hover { background: rgba(21,53,160,.04) !important; }
+.list-item-hover:hover { background: rgba(15,37,117,.04) !important; }
 
 /* ── Search ─────────────────────────────────────────── */
 .search-wrap { position: relative; }
@@ -284,7 +284,7 @@ tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 }
 .search-input:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(21,53,160,.1);
+  box-shadow: 0 0 0 3px rgba(15,37,117,.1);
 }
 .search-input::placeholder { color: var(--muted); }
 input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
@@ -303,7 +303,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   100% { background-position: -200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #cdd5e4 0%, #d6dce8 50%, #cdd5e4 100%);
+  background: linear-gradient(90deg, #adbace 0%, #b3bece 50%, #adbace 100%);
   background-size: 200% 100%;
   animation: skeleton-wave 1.7s ease infinite;
   border-radius: 4px;
@@ -334,7 +334,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: #e2e8f2;
+  background: #c4ceda;
 }
 
 /* ── Responsive ─────────────────────────────────────── */
