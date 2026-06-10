@@ -7,6 +7,24 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 ## [Unreleased]
 
 ### Added
+- **Report layout & styling** — `MetricSection`/`Metric` KPI cards with
+  green/red delta indicators, `RowSection` side-by-side layout (HTML;
+  stacks in Excel), table `highlight_negatives`, per-column `color_scale`
+  heat maps, `column_widths`, named number-format shortcuts (`currency`,
+  `currency0`, `percent`, `comma`, `decimal`), `area` charts, and
+  `show_values` data labels. Fluent shortcuts: `Report.metrics()` / `.row()`.
+- **Notebook ergonomics** — rich `_repr_html_` on `DataSet` (preview table +
+  lineage-chain badges), `DataModel` (structure at a glance), and `Report`
+  (full inline preview); `.help()` cheat sheets on all three.
+- **Live dev loop** — `tracebi dev <request>` watches a request script,
+  re-runs it on save, and serves the report with browser auto-reload;
+  script errors render as a traceback page that reloads once fixed.
+- **Requests page** — browse the scripts in `requests/` from the web UI and
+  run them fresh per click (no registration or server restart needed), with
+  output, lineage, and manifest tabs. Backed by `GET/POST /api/requests…`.
+- **Row counts in every lineage step** — transforms, sorts, selects,
+  renames, and joins now record row counts (joins: left/right/after);
+  lineage graph nodes display them for every operation.
 - **Explore page** — visual star-schema query builder in the web UI: pick a
   fact, measures (with per-measure agg functions), dimension attributes, and
   filters; results render with a bar chart, CSV download, and the lineage

@@ -142,8 +142,14 @@ tracebi new-request "Open orders by region"          # → requests/open_orders_
 tracebi new-request "Customer churn" --notebook      # → requests/customer_churn.ipynb
 tracebi list-requests
 tracebi run open_orders_by_region                    # works for .py and .ipynb
+tracebi dev open_orders_by_region                    # live preview: re-runs + reloads on save
 tracebi validate                                     # sanity-check the current project
 ```
+
+`tracebi dev` serves the rendered report on http://127.0.0.1:8001 and reloads
+the browser every time you save the script — keep it next to your editor for
+a tight authoring loop. Script errors render as a traceback page that
+recovers on the next good save.
 
 ---
 
@@ -210,6 +216,37 @@ HTMLRenderer().render(report, "output/q2_sales.html")
 HTMLRenderer().serve(report, port=8080)   # open in browser
 HTMLRenderer().preview(report)            # inline in Jupyter
 ```
+
+Layout and styling extras:
+
+```python
+from tracebi.reports import Metric, MetricSection, RowSection
+
+report = (
+    Report("Q2 Sales Report")
+    # Row of KPI cards with green/red deltas
+    .metrics([
+        Metric("Total Revenue", 1_250_000, format="currency0", delta=0.12),
+        Metric("Refund Rate", 0.034, format="percent", delta=-0.01, good_when_up=False),
+    ])
+    # Chart and table side by side (HTML; stacks vertically in Excel)
+    .row(
+        ChartSection(title="By Region", dataset=by_region, chart_type="bar",
+                     x="region", y="revenue", show_values=True),
+        TableSection(title="Detail", dataset=by_region,
+                     number_formats={"revenue": "currency"},   # named shortcuts
+                     highlight_negatives=["margin"],           # red negatives
+                     color_scale={"revenue": "#2E74B5"}),      # heat map
+    )
+)
+```
+
+Named number formats (`currency`, `currency0`, `percent`, `comma`, `decimal`)
+work in tables and metrics, in both HTML and Excel output.
+
+**In notebooks**, `DataSet`, `DataModel`, and `Report` all render rich inline
+previews — a `Report` at the end of a cell shows the fully rendered report.
+Call `.help()` on any of them for an API cheat sheet.
 
 ### 4. Landing → Manipulation → Final (Medallion architecture)
 
@@ -338,6 +375,9 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
   plus an interactive ERD of your relationships.
 - **Reports** — run in the browser, download as Excel or HTML, and inspect
   per-section lineage. Failures show the full Python traceback.
+- **Requests** — browse the scripts in `requests/` and run them straight
+  from the browser. Scripts execute fresh on every click, so edits on disk
+  show up without registering anything or restarting the server.
 - **Pipelines** — the medallion chain as a live DAG with per-layer run
   buttons and run history.
 
