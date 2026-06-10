@@ -107,7 +107,7 @@ tracebi/               # Core Python package (~5200 LOC)
   pipeline/            # PipelineRunner + APScheduler integration
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
   web/                 # register facade + auto-discovery for request scripts (.py and .ipynb)
-  cli.py               # tracebi init / new-request / list-requests / run / validate
+  cli.py               # tracebi init / new-request / list-requests / run / dev / validate
   _notebook.py         # notebook_to_source() — concatenates code cells for exec
   __init__.py          # Public API re-exports — check here before writing new code
 web/
@@ -245,6 +245,9 @@ POST /api/reports/{name}/run                         → HTML + lineage manifest
 GET  /api/reports/{name}/download?format=xlsx|html   → rendered file attachment
 GET  /api/reports/{name}/lineage                     → React Flow graph per section
 GET  /api/reports/{name}/mermaid
+GET  /api/requests                                   → scripts in requests/ (name, type, modified)
+POST /api/requests/{name}/run                        → execute script fresh; HTML + manifest
+GET  /api/requests/{name}/lineage                    → React Flow graph per section
 GET  /api/pipelines
 POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run

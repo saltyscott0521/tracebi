@@ -124,7 +124,7 @@ def report_lineage(name: str):
     all_nodes: list[dict] = []
     section_lineages: list[dict] = []
 
-    for section in report.sections:
+    for section in report.data_sections():
         ds = getattr(section, "dataset", None)
         if ds is None:
             continue

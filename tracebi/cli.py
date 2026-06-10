@@ -6,6 +6,7 @@ Usage:
     tracebi new-request "Open orders by region"  # scaffolds requests/<slug>.py
     tracebi list-requests                        # show all request scripts
     tracebi run <name>                           # run a request and render outputs
+    tracebi dev <name>                           # live preview: re-run + reload on save
     tracebi validate                             # sanity-check the current project
     tracebi --version
 
@@ -457,6 +458,16 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dev(args: argparse.Namespace) -> int:
+    path = _resolve_request_path(args.requests_dir, args.name)
+    if path is None:
+        print(f"Request not found in {args.requests_dir}: {args.name}",
+              file=sys.stderr)
+        return 1
+    from tracebi._dev_server import serve_dev
+    return serve_dev(path, port=args.port, open_browser=not args.no_browser)
+
+
 def _resolve_request_path(requests_dir: Path, name: str) -> Optional[Path]:
     """Find a request file by name, trying .py then .ipynb if no suffix given."""
     candidate = requests_dir / name
@@ -546,6 +557,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_run = sub.add_parser("run", help="Run a .py request script.")
     p_run.add_argument("name", help="Request file name (with or without .py).")
     p_run.set_defaults(func=cmd_run)
+
+    p_dev = sub.add_parser(
+        "dev",
+        help="Watch a request script and serve a live HTML preview that "
+             "reloads on every save.",
+    )
+    p_dev.add_argument("name", help="Request file name (with or without .py).")
+    p_dev.add_argument("--port", type=int, default=8001,
+                       help="Port for the preview server (default 8001).")
+    p_dev.add_argument("--no-browser", action="store_true",
+                       help="Do not open the browser automatically.")
+    p_dev.set_defaults(func=cmd_dev)
 
     p_validate = sub.add_parser(
         "validate",

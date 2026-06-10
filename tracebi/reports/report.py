@@ -31,6 +31,25 @@ class SectionType(str, Enum):
     TABLE = "table"
     CHART = "chart"
     SPACER = "spacer"
+    METRICS = "metrics"
+    ROW = "row"
+
+
+# Named number-format shortcuts accepted anywhere a Python format string is.
+# e.g. number_formats={"revenue": "currency"} instead of "${:,.2f}".
+NAMED_NUMBER_FORMATS = {
+    "currency":  "${:,.2f}",
+    "currency0": "${:,.0f}",
+    "percent":   "{:.1%}",
+    "comma":     "{:,.0f}",
+    "decimal":   "{:,.2f}",
+}
+
+
+def resolve_number_format(fmt: str) -> str:
+    """Resolve a named format shortcut ('currency', 'percent', …) to a
+    Python format string. Unrecognised values pass through unchanged."""
+    return NAMED_NUMBER_FORMATS.get(fmt, fmt)
 
 
 @dataclass
@@ -81,9 +100,16 @@ class TableSection(ReportSection):
         max_rows:       Cap the number of rows shown (None = all).
         number_formats: Dict of {col_name: format_string}
                         e.g. {"revenue": "{:,.2f}", "date": "%Y-%m-%d"}
+                        Named shortcuts also work: 'currency', 'currency0',
+                        'percent', 'comma', 'decimal'.
         freeze_header:  Whether to freeze the header row (Excel only).
         totals:         List of column names to sum in a totals row.
         style:          Table style hint: 'default', 'striped', 'compact'.
+        highlight_negatives: Column names whose negative values render in red.
+        color_scale:    Dict of {col_name: hex_color} — cells in the column get
+                        a white→color background scaled by value (heat map).
+        column_widths:  Dict of {col_name: width} in approximate character
+                        units (Excel column width; converted to px for HTML).
     """
     dataset: Optional[DataSet] = None
     columns: Optional[list[str]] = None
@@ -93,6 +119,9 @@ class TableSection(ReportSection):
     freeze_header: bool = True
     totals: Optional[list[str]] = None
     style: str = "default"   # default | striped | compact
+    highlight_negatives: Optional[list[str]] = None
+    color_scale: Optional[dict[str, str]] = None
+    column_widths: Optional[dict[str, int]] = None
 
     def __post_init__(self):
         self.section_type = SectionType.TABLE
@@ -141,6 +170,7 @@ class ChartSection(ReportSection):
         figsize:    Tuple (width_inches, height_inches). Default (10, 5).
         style:      Matplotlib style string (e.g. 'seaborn-v0_8-whitegrid').
         palette:    List of hex colors to use.
+        show_values: Draw value labels on bars / line points (HTML output).
     """
     dataset: Optional[DataSet] = None
     chart_type: str = "bar"
@@ -152,6 +182,7 @@ class ChartSection(ReportSection):
     figsize: tuple[float, float] = (10, 5)
     style: str = "seaborn-v0_8-whitegrid"
     palette: Optional[list[str]] = None
+    show_values: bool = False
 
     def __post_init__(self):
         self.section_type = SectionType.CHART
@@ -176,6 +207,87 @@ class SpacerSection(ReportSection):
 
     def __post_init__(self):
         self.section_type = SectionType.SPACER
+
+
+@dataclass
+class Metric:
+    """
+    A single KPI value displayed as a card in a MetricSection.
+
+    Fields:
+        label:  Short caption shown above the value, e.g. "Total Revenue".
+        value:  The number (or string) to display.
+        format: Python format string or named shortcut ('currency', 'percent',
+                'comma', 'decimal') applied to numeric values.
+        delta:  Optional change vs. a prior period. Rendered as ▲/▼ with
+                green/red coloring.
+        good_when_up: When False, a positive delta renders red and a negative
+                one green (e.g. for costs or error rates).
+    """
+    label: str
+    value: Any
+    format: Optional[str] = None
+    delta: Optional[float] = None
+    good_when_up: bool = True
+
+    def formatted_value(self) -> str:
+        if self.format and isinstance(self.value, (int, float)):
+            try:
+                return resolve_number_format(self.format).format(self.value)
+            except Exception:
+                return str(self.value)
+        return str(self.value)
+
+
+@dataclass
+class MetricSection(ReportSection):
+    """
+    A horizontal row of KPI cards.
+
+    Usage:
+        report.add(MetricSection(title="Key Metrics", metrics=[
+            Metric("Total Revenue", 1_250_000, format="currency0", delta=0.12),
+            Metric("Orders", 8421, format="comma", delta=-0.03),
+        ]))
+    """
+    metrics: list[Metric] = field(default_factory=list)
+
+    def __post_init__(self):
+        self.section_type = SectionType.METRICS
+
+    def to_manifest_dict(self) -> dict:
+        d = super().to_manifest_dict()
+        d["metrics"] = [
+            {"label": m.label, "value": m.value, "delta": m.delta}
+            for m in self.metrics
+        ]
+        return d
+
+
+@dataclass
+class RowSection(ReportSection):
+    """
+    A layout container that renders its child sections side by side.
+
+    HTML renders children in equal-width columns (or weighted by ``widths``).
+    Excel has no side-by-side flow, so children render stacked vertically.
+
+    Usage:
+        report.add(RowSection(sections=[
+            ChartSection(title="By Region", dataset=ds, chart_type="bar", x="region", y="revenue"),
+            TableSection(title="Detail", dataset=ds),
+        ]))
+    """
+    sections: list[ReportSection] = field(default_factory=list)
+    widths: Optional[list[float]] = None   # relative column weights (HTML only)
+
+    def __post_init__(self):
+        self.section_type = SectionType.ROW
+
+    def to_manifest_dict(self) -> dict:
+        d = super().to_manifest_dict()
+        d["sections"] = [s.to_manifest_dict() for s in self.sections]
+        return d
 
 
 # ─────────────────────────────────────────────────────────────
@@ -320,11 +432,34 @@ class Report:
         """Shortcut to add a SpacerSection."""
         return self.add(SpacerSection(height=height))
 
+    def metrics(self, metrics: list[Metric], title: Optional[str] = None) -> Report:
+        """Shortcut to add a MetricSection (row of KPI cards)."""
+        return self.add(MetricSection(title=title, metrics=metrics))
+
+    def row(self, *sections: ReportSection, title: Optional[str] = None,
+            widths: Optional[list[float]] = None) -> Report:
+        """Shortcut to add a RowSection (children rendered side by side)."""
+        return self.add(RowSection(title=title, sections=list(sections), widths=widths))
+
     # ── Inspection ─────────────────────────────────────────────
 
     @property
     def sections(self) -> list[ReportSection]:
         return list(self._sections)
+
+    def data_sections(self) -> list[ReportSection]:
+        """All leaf sections in order, descending into RowSection containers.
+
+        Use this when walking the report for datasets/lineage so sections
+        nested inside layout rows are not missed.
+        """
+        out: list[ReportSection] = []
+        for s in self._sections:
+            if isinstance(s, RowSection):
+                out.extend(s.sections)
+            else:
+                out.append(s)
+        return out
 
     def build_manifest(self, format: str, output_path: str) -> ReportManifest:
         """Build the audit manifest for a render run."""
@@ -352,6 +487,49 @@ class Report:
             label = f"[{s.section_type.value.upper()}]"
             print(f"    {i}. {label} {s.title or '(untitled)'}")
         print(f"{'='*55}\n")
+
+    def help(self) -> None:
+        """Print a cheat sheet of the Report builder API."""
+        print(
+            "\nReport — renderer-agnostic report built from sections.\n"
+            "\n"
+            "Metadata (fluent, chainable):\n"
+            "  .author(name) / .description(text) / .parameter(key, value) / .logo(path)\n"
+            "\n"
+            "Sections (fluent shortcuts):\n"
+            '  .text(content, title=, style=)     style: normal|heading1|heading2|note|callout\n'
+            "  .table(dataset, title=, ...)       TableSection kwargs: columns, column_labels,\n"
+            "                                     number_formats (incl. 'currency', 'percent', …),\n"
+            "                                     totals, max_rows, highlight_negatives,\n"
+            "                                     color_scale, column_widths\n"
+            '  .chart(dataset, chart_type=, x=, y=)  types: bar|barh|line|area|pie|scatter\n'
+            "  .metrics([Metric(...), ...])       Row of KPI cards with optional deltas\n"
+            "  .row(section1, section2, ...)      Render sections side by side (HTML)\n"
+            "  .spacer(height=1)\n"
+            "\n"
+            "Rendering:\n"
+            "  HTMLRenderer().render(report, 'out.html')   or .preview(report) in a notebook\n"
+            "  ExcelRenderer().render(report, 'out.xlsx')\n"
+            "  In a notebook, the report renders inline when it is the last\n"
+            "  expression in a cell.\n"
+        )
+
+    def _repr_html_(self) -> str:
+        """Render the report inline in a notebook (iframe preview)."""
+        try:
+            from tracebi.reports.html_renderer import HTMLRenderer
+            html_doc = HTMLRenderer().to_html(self)
+        except Exception as exc:
+            return (
+                f"<pre>&lt;Report {self.name!r}: inline preview unavailable "
+                f"({exc})&gt;</pre>"
+            )
+        escaped = html_doc.replace("&", "&amp;").replace('"', "&quot;")
+        return (
+            f'<iframe srcdoc="{escaped}" width="100%" height="650" '
+            f'style="border:1px solid #dde4ef;border-radius:6px;background:#fff">'
+            f'</iframe>'
+        )
 
     def __repr__(self) -> str:
         return (

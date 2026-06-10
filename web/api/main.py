@@ -25,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.wsgi import WSGIMiddleware
 
-from web.api.routers import connectors, models, reports, pipelines, dashboards
+from web.api.routers import connectors, models, reports, pipelines, dashboards, requests
 from web.api.auth import install_if_configured as _install_auth
 
 app = FastAPI(
@@ -61,6 +61,7 @@ else:
 app.include_router(connectors.router, prefix="/api")
 app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")
+app.include_router(requests.router,   prefix="/api")
 app.include_router(pipelines.router,  prefix="/api")
 app.include_router(dashboards.router, prefix="/api")
 

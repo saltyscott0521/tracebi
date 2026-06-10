@@ -117,7 +117,7 @@ class LineageDiagram:
     def _collect_report_lineage(self, report) -> list[LineageNode]:
         seen_ids: set[int] = set()
         nodes: list[LineageNode] = []
-        for section in report._sections:
+        for section in report.data_sections():
             ds = getattr(section, "dataset", None)
             if ds is None:
                 continue

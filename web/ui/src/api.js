@@ -73,6 +73,15 @@ export const useRunReport = () =>
 export const useReportLineage = () =>
   useMutation({ mutationFn: (name) => get(`/reports/${name}/lineage`) })
 
+export const useRequests = () =>
+  useQuery({ queryKey: ['requests'], queryFn: () => get('/requests') })
+
+export const useRunRequest = () =>
+  useMutation({ mutationFn: (name) => post(`/requests/${encodeURIComponent(name)}/run`) })
+
+export const useRequestLineage = () =>
+  useMutation({ mutationFn: (name) => get(`/requests/${encodeURIComponent(name)}/lineage`) })
+
 export const usePipelines = () =>
   useQuery({ queryKey: ['pipelines'], queryFn: () => get('/pipelines'), refetchInterval: 10000 })
 

@@ -164,10 +164,24 @@ class DataSet:
             func:        A callable ``(pd.DataFrame) -> pd.DataFrame``.
             description: Human-readable description for the lineage record.
         """
+        rows_before = len(self._df)
+        cols_before = set(self._df.columns)
         new_df = func(self._df.copy())
+        cols_after = set(new_df.columns)
+        metadata: dict[str, Any] = {
+            "rows_before": rows_before,
+            "rows_after":  len(new_df),
+        }
+        added = sorted(cols_after - cols_before)
+        removed = sorted(cols_before - cols_after)
+        if added:
+            metadata["columns_added"] = added
+        if removed:
+            metadata["columns_removed"] = removed
         node = LineageNode(
             operation="transform",
             description=description or "transform",
+            metadata=metadata,
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
@@ -193,7 +207,7 @@ class DataSet:
         node = LineageNode(
             operation="sort",
             description=description or f"Sorted by {by_str} ({dir_str})",
-            metadata={"by": by, "ascending": ascending},
+            metadata={"by": by, "ascending": ascending, "rows": len(new_df)},
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
@@ -203,7 +217,7 @@ class DataSet:
         node = LineageNode(
             operation="select",
             description=description or f"Selected columns: {columns}",
-            metadata={"columns": columns},
+            metadata={"columns": columns, "rows": len(new_df)},
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
@@ -217,7 +231,7 @@ class DataSet:
         node = LineageNode(
             operation="rename",
             description=description or f"Renamed columns: {columns}",
-            metadata={"columns": columns},
+            metadata={"columns": columns, "rows": len(new_df)},
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
@@ -242,6 +256,86 @@ class DataSet:
                 label = k.replace("_", " ").title().ljust(12)
                 print(f"    {label}: {v}")
         print(f"{sep}\n")
+
+    def help(self) -> None:
+        """Print a cheat sheet of the fluent DataSet API."""
+        print(
+            "\nDataSet — immutable DataFrame wrapper with a lineage chain.\n"
+            "\n"
+            "Transforms (each returns a NEW DataSet and records a lineage step):\n"
+            '  .filter(expr, description="")     Pandas query string, e.g. "status == \'shipped\'"\n'
+            '  .transform(func, description="")  Any function (DataFrame) -> DataFrame\n'
+            "  .sort(by, ascending=True)         Sort by column(s)\n"
+            "  .select(columns)                  Keep only these columns\n"
+            '  .rename({"old": "new"})           Rename columns\n'
+            "\n"
+            "Inspection:\n"
+            "  .shape / .columns / len(ds)\n"
+            "  .to_pandas()                      Copy of the underlying DataFrame\n"
+            "  .lineage / .print_lineage()       Full audit chain\n"
+            "  .fingerprint()                    Content hash for change detection\n"
+            "\n"
+            "Reporting:\n"
+            "  Pass a DataSet to TableSection / ChartSection — its lineage is\n"
+            "  included in the report manifest automatically.\n"
+        )
+
+    def _repr_html_(self) -> str:
+        """Rich notebook display: header, lineage chain, and a preview table."""
+        import html as _h
+
+        n_preview = 10
+        head = self._df.head(n_preview)
+        rows, cols = self._df.shape
+
+        badge_css = (
+            "display:inline-block;padding:2px 8px;border-radius:10px;"
+            "font-size:10px;font-weight:600;background:#DEEBF7;color:#1F3864;"
+        )
+        chain = ' <span style="color:#999">→</span> '.join(
+            f'<span style="{badge_css}" title="{_h.escape(node.description)}">'
+            f'{_h.escape(node.operation)}</span>'
+            for node in self._lineage
+        ) or '<span style="color:#999;font-size:11px">no lineage</span>'
+
+        th_css = (
+            "background:#1F3864;color:#fff;padding:5px 10px;text-align:left;"
+            "font-size:11px;font-weight:600;"
+        )
+        td_css = "padding:4px 10px;border-bottom:1px solid #dde4ef;font-size:11px;"
+
+        header_cells = "".join(
+            f'<th style="{th_css}">{_h.escape(str(c))}'
+            f'<div style="font-weight:400;opacity:0.7">{_h.escape(str(self._df[c].dtype))}</div></th>'
+            for c in head.columns
+        )
+        body_rows = ""
+        for _, r in head.iterrows():
+            cells = "".join(
+                f'<td style="{td_css}">'
+                f'{_h.escape(str(v)) if pd.notna(v) else "<i>NaN</i>"}</td>'
+                for v in r
+            )
+            body_rows += f"<tr>{cells}</tr>"
+
+        more = ""
+        if rows > n_preview:
+            more = (
+                f'<div style="font-size:11px;color:#999;margin-top:4px">'
+                f'… {rows - n_preview:,} more rows</div>'
+            )
+
+        return f"""
+<div style="font-family:'Segoe UI',Calibri,Arial,sans-serif;border:1px solid #dde4ef;border-radius:6px;padding:12px 14px;display:inline-block;max-width:100%;overflow-x:auto">
+  <div style="margin-bottom:6px">
+    <span style="font-weight:700;color:#1F3864;font-size:13px">{_h.escape(self.name)}</span>
+    <span style="color:#666;font-size:11px;margin-left:8px">{rows:,} rows × {cols} cols</span>
+  </div>
+  <div style="margin-bottom:8px">{chain}</div>
+  <table style="border-collapse:collapse"><thead><tr>{header_cells}</tr></thead>
+  <tbody>{body_rows}</tbody></table>
+  {more}
+</div>"""
 
     # ── Dunder ─────────────────────────────────────────────────
 

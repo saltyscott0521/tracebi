@@ -29,6 +29,8 @@ from tracebi.reports.base_renderer import BaseRenderer
 from tracebi.reports.report import (
     Report, SectionType,
     TextSection, TableSection, ChartSection,
+    MetricSection, RowSection,
+    resolve_number_format,
 )
 
 logger = logging.getLogger(__name__)
@@ -142,6 +144,34 @@ body {
     border-top: 2px solid #1F3864;
 }
 .data-table tfoot td.num { text-align: right; }
+
+.data-table tbody td.neg { color: #C62828; }
+
+/* Metric cards */
+.metric-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.metric-card {
+    flex: 1;
+    min-width: 140px;
+    background: #f8fafd;
+    border: 1px solid #dde4ef;
+    border-left: 4px solid #2E74B5;
+    border-radius: 6px;
+    padding: 14px 18px;
+}
+.metric-label {
+    font-size: 11px; font-weight: 600;
+    color: #5a6b8a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.metric-value { font-size: 24px; font-weight: 700; color: #1F3864; margin-top: 4px; }
+.metric-delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.metric-delta.good { color: #2E7D32; }
+.metric-delta.bad  { color: #C62828; }
+
+/* Side-by-side layout rows */
+.layout-row { display: flex; gap: 24px; align-items: flex-start; }
+.layout-row > .layout-col { min-width: 0; }
 
 /* Charts */
 .chart-container {
@@ -447,7 +477,63 @@ class HTMLRenderer(BaseRenderer):
             return self._render_chart(section)
         elif section.section_type == SectionType.SPACER:
             return f'<div style="height:{section.height * 16}px"></div>'
+        elif section.section_type == SectionType.METRICS:
+            return self._render_metrics(section)
+        elif section.section_type == SectionType.ROW:
+            return self._render_row(section)
         return ""
+
+    def _render_metrics(self, section: MetricSection) -> str:
+        title_html = ""
+        if section.title:
+            title_html = f'<div class="section-title">{self._esc(section.title)}</div>'
+
+        cards = ""
+        for m in section.metrics:
+            delta_html = ""
+            if m.delta is not None:
+                up = m.delta >= 0
+                cls = "good" if up == m.good_when_up else "bad"
+                arrow = "▲" if up else "▼"
+                delta_html = (
+                    f'<div class="metric-delta {cls}">{arrow} {m.delta:+.1%}</div>'
+                )
+            cards += f"""
+      <div class="metric-card">
+        <div class="metric-label">{self._esc(m.label)}</div>
+        <div class="metric-value">{self._esc(m.formatted_value())}</div>
+        {delta_html}
+      </div>"""
+
+        return f"""
+  <div class="section">
+    {title_html}
+    <div class="metric-row">{cards}
+    </div>
+  </div>"""
+
+    def _render_row(self, section: RowSection) -> str:
+        title_html = ""
+        if section.title:
+            title_html = f'<div class="section-title">{self._esc(section.title)}</div>'
+
+        n = len(section.sections)
+        weights = list(section.widths or [])
+        weights += [1] * (n - len(weights))
+
+        cols = ""
+        for child, w in zip(section.sections, weights):
+            cols += (
+                f'<div class="layout-col" style="flex:{w}">'
+                f'{self._render_section(child)}</div>'
+            )
+
+        return f"""
+  <div class="section">
+    {title_html}
+    <div class="layout-row">{cols}
+    </div>
+  </div>"""
 
     def _render_text(self, section: TextSection) -> str:
         style = section.style
@@ -481,18 +567,38 @@ class HTMLRenderer(BaseRenderer):
         # Determine numeric columns
         numeric_cols = set(df.select_dtypes(include="number").columns)
 
-        # Number format map (adjusted for display column names)
+        # Map original column names to display names for all per-column options
+        def _disp(col: str) -> str:
+            return (section.column_labels or {}).get(col, col)
+
         fmt_map = {}
         if section.number_formats:
             for orig, fmt in section.number_formats.items():
-                disp = (section.column_labels or {}).get(orig, orig)
-                fmt_map[disp] = fmt
+                fmt_map[_disp(orig)] = resolve_number_format(fmt)
+
+        neg_cols = {_disp(c) for c in (section.highlight_negatives or [])}
+        width_map = {_disp(c): w for c, w in (section.column_widths or {}).items()}
+
+        # Pre-compute min/max for color-scale columns
+        scale_ranges: dict[str, tuple[float, float, str]] = {}
+        for orig, hex_color in (section.color_scale or {}).items():
+            disp = _disp(orig)
+            if disp in numeric_cols:
+                series = df[disp].dropna()
+                if len(series):
+                    scale_ranges[disp] = (
+                        float(series.min()), float(series.max()),
+                        hex_color.lstrip("#"),
+                    )
 
         # Header
         headers = ""
         for col in df.columns:
             align_cls = ' class="num"' if col in numeric_cols else ""
-            headers += f"<th{align_cls}>{self._esc(str(col))}</th>"
+            width_style = ""
+            if col in width_map:
+                width_style = f' style="min-width:{width_map[col] * 7}px"'
+            headers += f"<th{align_cls}{width_style}>{self._esc(str(col))}</th>"
 
         # Body
         rows_html = ""
@@ -500,7 +606,18 @@ class HTMLRenderer(BaseRenderer):
             cells = ""
             for col, val in row.items():
                 is_num = col in numeric_cols
-                align_cls = ' class="num"' if is_num else ""
+                classes = []
+                if is_num:
+                    classes.append("num")
+                if col in neg_cols and is_num and pd.notna(val) and val < 0:
+                    classes.append("neg")
+                cls_attr = f' class="{" ".join(classes)}"' if classes else ""
+                style_attr = ""
+                if col in scale_ranges and pd.notna(val):
+                    lo, hi, hex_color = scale_ranges[col]
+                    style_attr = (
+                        f' style="background:{self._scale_color(float(val), lo, hi, hex_color)}"'
+                    )
                 if is_num and col in fmt_map and pd.notna(val):
                     try:
                         display_val = fmt_map[col].format(val)
@@ -512,7 +629,7 @@ class HTMLRenderer(BaseRenderer):
                         display_val = str(val) if pd.notna(val) else ""
                 else:
                     display_val = str(val) if pd.notna(val) else ""
-                cells += f"<td{align_cls}>{self._esc(display_val)}</td>"
+                cells += f"<td{cls_attr}{style_attr}>{self._esc(display_val)}</td>"
             rows_html += f"<tr>{cells}</tr>"
 
         # Totals
@@ -630,6 +747,15 @@ class HTMLRenderer(BaseRenderer):
                     ax.legend()
                 ax.set_xlabel(section.xlabel or (section.x if chart_type != "barh" else ""))
                 ax.set_ylabel(section.ylabel or (y_cols[0] if len(y_cols) == 1 else ""))
+            elif chart_type == "area":
+                for i, col in enumerate(y_cols):
+                    c = palette[i % len(palette)]
+                    ax.fill_between(df[section.x], df[col], color=c, alpha=0.3)
+                    ax.plot(df[section.x], df[col], color=c, linewidth=2, label=col)
+                if len(y_cols) > 1:
+                    ax.legend()
+                ax.set_xlabel(section.xlabel or section.x)
+                ax.set_ylabel(section.ylabel or (y_cols[0] if len(y_cols) == 1 else ""))
             elif chart_type == "scatter" and len(y_cols) >= 1:
                 ax.scatter(df[section.x], df[y_cols[0]],
                            color=palette[0], alpha=0.7)
@@ -642,6 +768,21 @@ class HTMLRenderer(BaseRenderer):
         except Exception as e:
             ax.text(0.5, 0.5, f"Chart error: {e}", transform=ax.transAxes,
                     ha="center", va="center")
+
+        if section.show_values:
+            try:
+                if chart_type in ("bar", "barh"):
+                    for container in ax.containers:
+                        ax.bar_label(container, fmt="%g", fontsize=8, padding=2)
+                elif chart_type in ("line", "area"):
+                    for col in y_cols:
+                        for xv, yv in zip(df[section.x], df[col]):
+                            ax.annotate(f"{yv:g}", (xv, yv),
+                                        textcoords="offset points",
+                                        xytext=(0, 6), ha="center", fontsize=8)
+            except Exception:
+                logger.warning("show_values labels failed; rendering chart "
+                               "without them", exc_info=True)
 
         if section.title:
             ax.set_title(section.title, fontsize=13, fontweight="bold", pad=12)
@@ -664,7 +805,7 @@ class HTMLRenderer(BaseRenderer):
 
     def _render_lineage(self, report: Report) -> str:
         rows_html = ""
-        for section in report.sections:
+        for section in report.data_sections():
             if section.section_type not in (SectionType.TABLE, SectionType.CHART):
                 continue
             ds = getattr(section, "dataset", None)
@@ -708,6 +849,16 @@ class HTMLRenderer(BaseRenderer):
       </table>
     </details>
   </div>"""
+
+    @staticmethod
+    def _scale_color(val: float, lo: float, hi: float, hex_color: str) -> str:
+        """Blend white → hex_color based on where val sits between lo and hi."""
+        t = 0.0 if hi <= lo else max(0.0, min(1.0, (val - lo) / (hi - lo)))
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        blend = lambda c: int(255 + (c - 255) * t)  # noqa: E731
+        return f"rgb({blend(r)},{blend(g)},{blend(b)})"
 
     @staticmethod
     def _esc(text: str) -> str:

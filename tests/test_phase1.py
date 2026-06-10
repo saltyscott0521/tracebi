@@ -317,3 +317,102 @@ class TestDataModel:
         m.add_table("x", connector="t", source="x")
         m.connect()
         assert connected == [True]
+
+
+# ─────────────────────────────────────────────
+# Notebook integration tests
+# ─────────────────────────────────────────────
+
+class TestNotebookReprs:
+
+    def test_dataset_repr_html(self, sample_df):
+        ds = DataSet(df=sample_df, name="orders", lineage=[
+            LineageNode(operation="load", description="Loaded orders"),
+        ]).filter("value > 100")
+        html = ds._repr_html_()
+        assert "orders" in html
+        # Lineage chain badges
+        assert ">load<" in html
+        assert ">filter<" in html
+        # Column headers with dtypes
+        assert "region" in html
+        assert "float64" in html
+
+    def test_dataset_repr_html_caps_preview(self, sample_df):
+        big = pd.concat([sample_df] * 5, ignore_index=True)   # 25 rows
+        ds = DataSet(df=big, name="big", lineage=[])
+        html = ds._repr_html_()
+        assert "15 more rows" in html
+
+    def test_dataset_repr_html_escapes(self):
+        df = pd.DataFrame({"col": ["<script>alert(1)</script>"]})
+        ds = DataSet(df=df, name="<evil>", lineage=[])
+        html = ds._repr_html_()
+        assert "<script>" not in html
+        assert "<evil>" not in html
+
+    def test_dataset_help_prints(self, sample_df, capsys):
+        DataSet(df=sample_df, name="x", lineage=[]).help()
+        out = capsys.readouterr().out
+        assert ".filter(" in out
+        assert ".transform(" in out
+        assert ".print_lineage()" in out
+
+    def test_datamodel_repr_html(self, sample_df):
+        model = DataModel("Sales").add_connector(
+            MemoryConnector("mem", {"orders": sample_df}))
+        model.add_table("orders", connector="mem", source="orders")
+        html = model._repr_html_()
+        assert "DataModel: Sales" in html
+        assert "orders" in html
+        assert "mem" in html
+
+    def test_datamodel_help_prints(self, capsys):
+        DataModel("M").help()
+        out = capsys.readouterr().out
+        assert ".load(" in out
+        assert ".query(" in out
+
+
+class TestLineageRowCounts:
+    """Every operation records row counts so the lineage UI can show what
+    each step did to the data — without storing any detail records."""
+
+    def test_transform_records_counts_and_columns(self, sample_df):
+        ds = DataSet(df=sample_df, name="x", lineage=[])
+        out = ds.transform(lambda df: df.assign(double=df.value * 2).drop(columns=["status"]))
+        meta = out.lineage[-1].metadata
+        assert meta["rows_before"] == 5
+        assert meta["rows_after"] == 5
+        assert meta["columns_added"] == ["double"]
+        assert meta["columns_removed"] == ["status"]
+
+    def test_transform_omits_column_keys_when_unchanged(self, sample_df):
+        ds = DataSet(df=sample_df, name="x", lineage=[])
+        meta = ds.transform(lambda df: df).lineage[-1].metadata
+        assert "columns_added" not in meta
+        assert "columns_removed" not in meta
+
+    def test_sort_select_rename_record_rows(self, sample_df):
+        ds = DataSet(df=sample_df, name="x", lineage=[])
+        assert ds.sort("value").lineage[-1].metadata["rows"] == 5
+        assert ds.select(["id"]).lineage[-1].metadata["rows"] == 5
+        assert ds.rename({"id": "key"}).lineage[-1].metadata["rows"] == 5
+
+    def test_join_records_row_counts(self, sample_df):
+        regions = pd.DataFrame({
+            "region": ["North", "South", "East", "West"],
+            "manager": ["a", "b", "c", "d"],
+        })
+        model = DataModel("M").add_connector(
+            MemoryConnector("mem", {"orders": sample_df, "regions": regions}))
+        model.add_table("orders", connector="mem", source="orders")
+        model.add_table("regions", connector="mem", source="regions")
+        model.add_relationship("orders_regions",
+                               left_table="orders", right_table="regions",
+                               left_key="region", right_key="region")
+        ds = model.resolve("orders_regions")
+        join_meta = [n for n in ds.lineage if n.operation == "join"][-1].metadata
+        assert join_meta["rows_left"] == 5
+        assert join_meta["rows_right"] == 4
+        assert join_meta["rows_after"] == len(ds)

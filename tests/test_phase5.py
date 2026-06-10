@@ -1213,3 +1213,158 @@ class TestAutoDiscoverNotebook:
             "MAGIC_OK = True\n",
         ])
         auto_discover(str(tmp_path))  # would raise SyntaxError if magic not stripped
+
+
+# ── Request runner & dev preview ──────────────────────────────────────────
+
+_GOOD_REQUEST = textwrap.dedent("""
+    import pandas as pd
+    from tracebi.model.dataset import DataSet, LineageNode
+    from tracebi.reports.report import Report, TableSection
+
+    ds = DataSet(
+        df=pd.DataFrame({"region": ["N", "S"], "revenue": [10.0, 20.0]}),
+        name="orders",
+        lineage=[LineageNode(operation="load", description="Load orders")],
+    )
+    report = Report("Good Report").add(TableSection(title="Orders", dataset=ds))
+
+    if __name__ == "__main__":
+        raise RuntimeError("main block must not fire during preview")
+""")
+
+
+class TestRequestRunner:
+    def test_finds_report_variable(self, tmp_path):
+        from tracebi._request_runner import execute_request
+        script = tmp_path / "good.py"
+        script.write_text(_GOOD_REQUEST)
+        report = execute_request(script)
+        assert report.name == "Good Report"
+
+    def test_main_block_does_not_fire(self, tmp_path):
+        # _GOOD_REQUEST raises inside __main__ — execute_request must not trip it
+        from tracebi._request_runner import execute_request
+        script = tmp_path / "good.py"
+        script.write_text(_GOOD_REQUEST)
+        execute_request(script)   # no RuntimeError
+
+    def test_finds_report_under_other_name(self, tmp_path):
+        from tracebi._request_runner import execute_request
+        script = tmp_path / "other.py"
+        script.write_text(textwrap.dedent("""
+            from tracebi.reports.report import Report
+            my_summary = Report("Other Name")
+        """))
+        assert execute_request(script).name == "Other Name"
+
+    def test_no_report_raises_lookup_error(self, tmp_path):
+        from tracebi._request_runner import execute_request
+        script = tmp_path / "empty.py"
+        script.write_text("x = 1\n")
+        with pytest.raises(LookupError, match="No Report object"):
+            execute_request(script)
+
+    def test_script_errors_propagate(self, tmp_path):
+        from tracebi._request_runner import execute_request
+        script = tmp_path / "broken.py"
+        script.write_text("raise ValueError('boom')\n")
+        with pytest.raises(ValueError, match="boom"):
+            execute_request(script)
+
+
+class TestDevServer:
+    def test_render_request_returns_report_html(self, tmp_path):
+        from tracebi._dev_server import render_request
+        script = tmp_path / "good.py"
+        script.write_text(_GOOD_REQUEST)
+        html = render_request(script)
+        assert "Good Report" in html
+        assert "<!DOCTYPE html>" in html
+
+    def test_render_request_error_page(self, tmp_path):
+        from tracebi._dev_server import render_request
+        script = tmp_path / "broken.py"
+        script.write_text("raise ValueError('boom')\n")
+        html = render_request(script)
+        assert "Request script failed" in html
+        assert "boom" in html
+        assert "broken.py" in html
+
+    def test_inject_refresh(self):
+        from tracebi._dev_server import _inject_refresh
+        html = _inject_refresh("<html><body>hi</body></html>", 7)
+        assert "var current = 7" in html
+        assert html.index("hi") < html.index("/__status")
+
+    def test_cli_dev_missing_request(self, tmp_path, capsys):
+        from tracebi.cli import main
+        requests_dir = tmp_path / "requests"
+        requests_dir.mkdir()
+        rc = main(["--requests-dir", str(requests_dir), "dev", "nope",
+                   "--no-browser"])
+        assert rc == 1
+        assert "not found" in capsys.readouterr().err
+
+
+class TestRequestsAPI:
+    def _client(self, requests_dir, monkeypatch):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.routers import requests as requests_router
+        monkeypatch.setenv("TRACEBI_REQUESTS_DIR", str(requests_dir))
+        app = FastAPI()
+        app.include_router(requests_router.router, prefix="/api")
+        return TestClient(app)
+
+    def test_list_requests(self, tmp_path, monkeypatch):
+        (tmp_path / "good.py").write_text(_GOOD_REQUEST)
+        (tmp_path / "_template.py").write_text("x = 1\n")
+        client = self._client(tmp_path, monkeypatch)
+        items = client.get("/api/requests").json()
+        assert [i["name"] for i in items] == ["good"]
+        assert items[0]["type"] == "script"
+        assert items[0]["file"] == "good.py"
+
+    def test_list_missing_dir_returns_empty(self, tmp_path, monkeypatch):
+        client = self._client(tmp_path / "nope", monkeypatch)
+        assert client.get("/api/requests").json() == []
+
+    def test_run_request(self, tmp_path, monkeypatch):
+        (tmp_path / "good.py").write_text(_GOOD_REQUEST)
+        client = self._client(tmp_path, monkeypatch)
+        r = client.post("/api/requests/good/run")
+        assert r.status_code == 200
+        body = r.json()
+        assert "Good Report" in body["html"]
+        assert body["manifest"]["report_name"] == "Good Report"
+
+    def test_run_missing_returns_404(self, tmp_path, monkeypatch):
+        client = self._client(tmp_path, monkeypatch)
+        assert client.post("/api/requests/nope/run").status_code == 404
+
+    def test_run_broken_returns_structured_500(self, tmp_path, monkeypatch):
+        (tmp_path / "broken.py").write_text("raise ValueError('boom')\n")
+        client = self._client(tmp_path, monkeypatch)
+        r = client.post("/api/requests/broken/run")
+        assert r.status_code == 500
+        detail = r.json()["detail"]
+        assert detail["message"].startswith("Request script failed")
+        assert detail["exception_type"] == "ValueError"
+        assert "boom" in detail["traceback"]
+
+    def test_path_traversal_rejected(self, tmp_path, monkeypatch):
+        client = self._client(tmp_path, monkeypatch)
+        # Slash-bearing names never reach the route (Starlette 404s them);
+        # backslash and dot-prefixed names must be rejected by the router.
+        assert client.post("/api/requests/..%5Csecret/run").status_code == 400
+        assert client.post("/api/requests/.hidden/run").status_code == 400
+
+    def test_lineage(self, tmp_path, monkeypatch):
+        (tmp_path / "good.py").write_text(_GOOD_REQUEST)
+        client = self._client(tmp_path, monkeypatch)
+        r = client.get("/api/requests/good/lineage")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["combined_graph"]["nodes"]
+        assert body["sections"][0]["dataset_name"] == "orders"
