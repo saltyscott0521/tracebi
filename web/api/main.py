@@ -112,7 +112,7 @@ from web.api.registry import registry as _registry  # noqa: E402
 
 _embed_dashboards = os.environ.get("TRACEBI_EMBED_DASHBOARDS", "1") != "0"
 if _embed_dashboards:
-    for _dash_name, _dash_entry in _registry._dashboards.items():
+    for _dash_name, _dash_entry in _registry.dashboards().items():
         _prefix = f"/dashboards/{_dash_name}/"
         try:
             _dash_app = _dash_entry["server"].get_app(requests_pathname_prefix=_prefix)
@@ -120,9 +120,9 @@ if _embed_dashboards:
         except ImportError:
             pass  # dash not installed — skip silently
 else:
-    if _registry._dashboards:
+    if _registry.dashboards():
         print(
-            f"[tracebi] TRACEBI_EMBED_DASHBOARDS=0 — {len(_registry._dashboards)} "
+            f"[tracebi] TRACEBI_EMBED_DASHBOARDS=0 — {len(_registry.dashboards())} "
             f"dashboard(s) registered but not mounted. Run them standalone "
             f"with DashboardServer.run() in a separate process."
         )

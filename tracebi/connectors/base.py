@@ -52,6 +52,13 @@ class BaseConnector(ABC):
         """Whether this connector applies filter/columns at source (vs. in pandas)."""
         return False
 
+    def describe(self) -> dict:
+        """
+        Metadata shown in registries/UIs. Subclasses may add fields
+        (tables, directory, url, …) but must never include credentials.
+        """
+        return {"name": self.name, "type": type(self).__name__}
+
     @staticmethod
     def _quote_ident(name: str, quote: str = '"') -> str:
         """

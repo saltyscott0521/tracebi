@@ -52,6 +52,12 @@ class DuckDBConnector(BaseConnector):
     def supports_pushdown(self) -> bool:
         return True
 
+    def describe(self) -> dict:
+        out = {**super().describe(), "database": self.database}
+        if self.directory:
+            out["directory"] = self.directory
+        return out
+
     def connect(self) -> None:
         try:
             import duckdb

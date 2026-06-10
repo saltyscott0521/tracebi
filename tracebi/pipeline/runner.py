@@ -29,8 +29,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-import pandas as pd
-
 from tracebi.etl.bronze import BronzeLayer
 from tracebi.etl.silver import SilverLayer
 from tracebi.etl.gold import GoldLayer
@@ -352,6 +350,48 @@ class PipelineRunner:
         if self._scheduler and self._scheduler.running:
             self._scheduler.shutdown()
 
+    # ── Public inspection API (used by the web layer) ─────────
+
+    def layers(self) -> list[dict]:
+        """Registered layers as plain dicts (name, type, schedule, depends_on)."""
+        return [
+            {
+                "name":       reg.name,
+                "type":       reg.layer_type,
+                "schedule":   reg.schedule,
+                "depends_on": reg.depends_on,
+            }
+            for reg in self._layers.values()
+        ]
+
+    def has_layer(self, name: str) -> bool:
+        return name in self._layers
+
+    def execution_order(self, name: str) -> list[str]:
+        """Full upstream chain for *name*, upstream first (public wrapper)."""
+        return self._resolve_chain(name)
+
+    def execute_layer(self, name: str) -> None:
+        """Execute a single registered layer and record the run."""
+        if name not in self._layers:
+            raise ValueError(f"Layer '{name}' is not registered.")
+        self._execute(name)
+
+    def last_run(self, name: str) -> Optional[dict]:
+        """Most recent run record for a layer, or None."""
+        runs = self.run_history(name, limit=1)
+        return runs[0] if runs else None
+
+    def run_history(self, name: str, limit: int = 20) -> list[dict]:
+        """Most recent run records for a layer, newest first."""
+        from sqlalchemy import text
+        with self._engine_().connect() as conn:
+            rows = conn.execute(text(
+                "SELECT * FROM tracebi_runs WHERE layer_name = :n "
+                "ORDER BY id DESC LIMIT :lim"
+            ), {"n": name, "lim": limit}).mappings().all()
+        return [dict(r) for r in rows]
+
     # ── Lineage / inspection ───────────────────────────────────
 
     def lineage(self, name: str, limit: int = 10) -> None:
@@ -370,19 +410,14 @@ class PipelineRunner:
         print(sep)
 
         for layer_name in chain:
-            df = pd.read_sql(
-                "SELECT * FROM tracebi_runs "
-                f"WHERE layer_name = '{layer_name}' "
-                f"ORDER BY id DESC LIMIT {limit}",
-                con=self._engine_(),
-            )
+            runs = self.run_history(layer_name, limit=limit)
             reg = self._layers.get(layer_name)
             schedule = reg.schedule if reg else "—"
-            print(f"\n  [{layer_name}]  schedule={schedule}  runs={len(df)}")
-            if df.empty:
+            print(f"\n  [{layer_name}]  schedule={schedule}  runs={len(runs)}")
+            if not runs:
                 print("    No runs recorded.")
             else:
-                for _, row in df.iterrows():
+                for row in runs:
                     icon = "✓" if row["status"] == "success" else "✗"
                     ts = str(row["started_at"])[:19]
                     print(
@@ -402,16 +437,10 @@ class PipelineRunner:
         print(f"  PipelineRunner — {len(self._layers)} layer(s)")
         print(sep)
         for name, reg in self._layers.items():
-            df = pd.read_sql(
-                "SELECT status, completed_at, rows_out FROM tracebi_runs "
-                f"WHERE layer_name = '{name}' "
-                "ORDER BY id DESC LIMIT 1",
-                con=self._engine_(),
-            )
-            if df.empty:
+            row = self.last_run(name)
+            if row is None:
                 last = "never run"
             else:
-                row = df.iloc[0]
                 ts = str(row["completed_at"] or "")[:19]
                 last = f"{row['status']}  {ts}  rows_out={row['rows_out']}"
             schedule = reg.schedule or "on-demand"

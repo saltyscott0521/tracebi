@@ -45,6 +45,9 @@ class MemoryConnector(BaseConnector):
     def connect(self) -> None:
         pass  # nothing to connect
 
+    def describe(self) -> dict:
+        return {**super().describe(), "tables": list(self._tables.keys())}
+
     def load(
         self,
         source: str,
