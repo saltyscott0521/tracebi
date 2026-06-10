@@ -15,12 +15,12 @@
   --purple-lt:   rgba(9,26,85,0.1);
 
   --bg:          #8f9fb2;
-  --surface:     #a0aebb;
-  --surface-2:   #97a8b8;
-  --card:        #aab8c8;
-  --card-solid:  #aab8c8;
-  --card-hl:     #96a6b8;
-  --border:      #7a90a8;
+  --surface:     #c5d0dd;
+  --surface-2:   #bcc8d4;
+  --card:        #d8e2ec;
+  --card-solid:  #d8e2ec;
+  --card-hl:     #c0cdd9;
+  --border:      #9eb0c2;
   --border-hl:   rgba(9,26,85,0.35);
 
   --text:        #0a1628;
@@ -93,14 +93,14 @@
   --op-warning-bg: #fdf3e1;  --op-warning-br: #f0d9a6;  --op-warning-tx: #92520a;
 
   /* Diagram canvas (React Flow panes) */
-  --flow-bg:       #a0aebb;
-  --flow-dots:     #7a90a8;
+  --flow-bg:       #c5d0dd;
+  --flow-dots:     #9eb0c2;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #6e8298; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #8fa0b5; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(9,26,85,.4); }
 ::selection { background: rgba(9,26,85,.12); color: var(--text); }
 
@@ -201,12 +201,12 @@ thead th {
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
 }
-tbody tr { border-bottom: 1px solid #7a90a8; transition: background var(--t); }
+tbody tr { border-bottom: 1px solid #9eb0c2; transition: background var(--t); }
 tbody tr:hover { background: rgba(9,26,85,.04); }
 tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 
 /* ReactFlow (lineage + ERD) */
-.react-flow__background { background: #a0aebb !important; }
+.react-flow__background { background: #c5d0dd !important; }
 .react-flow__edge-path { stroke: var(--blue) !important; stroke-width: 1.5 !important; }
 .react-flow__edge-text { font-size: 11px !important; }
 .react-flow__attribution { display: none; }
@@ -303,7 +303,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   100% { background-position: -200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #8898aa 0%, #8f9fb2 50%, #8898aa 100%);
+  background: linear-gradient(90deg, #b8c4d0 0%, #c5d0dd 50%, #b8c4d0 100%);
   background-size: 200% 100%;
   animation: skeleton-wave 1.7s ease infinite;
   border-radius: 4px;
@@ -334,7 +334,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: #a0aebb;
+  background: #c5d0dd;
 }
 
 /* ── Responsive ─────────────────────────────────────── */
