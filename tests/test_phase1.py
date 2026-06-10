@@ -185,6 +185,20 @@ class TestDataSet:
 
 
 # ─────────────────────────────────────────────
+# Public API exports
+# ─────────────────────────────────────────────
+
+class TestPublicExports:
+
+    def test_all_connectors_importable_from_top_level(self):
+        # Optional-dep connectors import lazily, so the names must always resolve
+        from tracebi import (  # noqa: F401
+            BaseConnector, CSVConnector, SQLConnector, MemoryConnector,
+            DuckDBConnector, BigQueryConnector, SnowflakeConnector,
+        )
+
+
+# ─────────────────────────────────────────────
 # MemoryConnector tests
 # ─────────────────────────────────────────────
 

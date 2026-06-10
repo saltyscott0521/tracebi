@@ -55,7 +55,7 @@ When your changes create orphans:
 
 The test: every changed line should trace directly to the user's request.
 
-TraceBi-specific: the five test files are phase-scoped (`test_phase1.py` through `test_phase4.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies.
+TraceBi-specific: the six test files are phase-scoped (`test_phase1.py` through `test_phase5.py`, plus `test_phase25.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies.
 
 ---
 
@@ -122,7 +122,7 @@ web/
   run.py               # Dev server (uvicorn wrapper)
   demo_app/            # Default app module package — shows how to wire everything together
 examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
-tests/                 # 243 pytest tests, one file per phase
+tests/                 # 303 pytest tests, one file per phase
 seeds/                 # DB init + Bronze seeding
 requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
 data/                  # SQLite DB (gitignored)
@@ -158,7 +158,7 @@ docker compose up --build                      # Or the docker-compose path
 python seeds/seed_db.py                        # Create + seed data/tracebi.db
 
 # Tests
-pytest tests/                                  # Full suite (243 tests)
+pytest tests/                                  # Full suite (303 tests)
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
 ```

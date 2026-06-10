@@ -7,8 +7,8 @@ Analyst Demo Report — showcases the new analyst-experience features:
 """
 
 from tracebi.reports.report import (
-    Report, TextSection, TableSection, ChartSection, SpacerSection,
-    Metric, MetricSection, RowSection,
+    Report, TextSection, TableSection, ChartSection,
+    Metric, MetricSection,
 )
 from tracebi.web import register
 from web.demo_app.model import model
