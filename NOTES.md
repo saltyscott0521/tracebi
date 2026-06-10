@@ -690,3 +690,51 @@ web/
 - [x] Delete `web/demo_app.py`
 - [x] `TRACEBI_APP=web.demo_app` still works — resolves to `__init__.py`
 - [x] Full test suite: 243 passed, 0 regressions
+
+---
+
+## 2026-06-09 — Registry Seam Hardened + Explore Query Builder
+
+A principal-level audit (see PR #21) found the web layer reaching into
+`_private` attributes of framework objects — the registry was documented as
+"the seam" but the seam was fiction. Decisions made:
+
+### Public surfaces are now the contract
+
+- `PipelineRunner.layers()` / `last_run()` / `run_history()` /
+  `execute_layer()` / `execution_order()` — routers never touch `_layers`,
+  `_engine_()`, or `_execute()` again. History queries are parametrized.
+- `DataModel.info()` — full structure (tables, relationships, facts,
+  dimensions) as a dict. `describe()` keeps printing for humans.
+- `BaseConnector.describe()` — replaces hasattr-sniffing that silently never
+  matched CSV/SQL connectors. `SQLConnector` redacts passwords via
+  SQLAlchemy's `render_as_string(hide_password=True)`.
+- `Registry.dashboards()` — main.py no longer iterates `_dashboards`.
+
+Rule going forward (also in CLAUDE.md anti-patterns): a router that needs
+something new gets a public method on the framework object, not an
+underscore reach-in.
+
+### Explore (visual query builder)
+
+`POST /api/models/{name}/query` wraps `DataModel.query()`. ValueError
+(unknown fact/dim/agg) → 400 with the message; runtime failures → 500 with
+`{message, exception_type, traceback}`. The UI builds queries from
+`model.info()` facts/dimensions and renders the result + the lineage graph
+of that exact run — the "show your work" pitch made tangible.
+
+Chart is pure CSS bars — deliberately no chart library in the React bundle;
+revisit only if Explore needs more than 1-dimension visuals.
+
+### Deployment posture
+
+Demo/MVP hosting only (Railway). Therefore: warn-don't-refuse when auth is
+missing; `.dockerignore` keeps `.env`/DBs out of image layers; proxy auth
+without trusted IPs warns about header spoofing. If TraceBi ever targets
+self-serve production hosting, revisit refuse-to-start.
+
+### Open follow-ups (agreed, not yet built)
+
+- Background report execution (run id + polling) — after PR #21 merges.
+- CI constraints file for deterministic installs; coverage reporting.
+- `logging` adoption in runner/web (zero `import logging` outside renderers).

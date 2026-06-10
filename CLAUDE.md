@@ -115,6 +115,8 @@ web/
     main.py            # FastAPI app entry point — CORS, routers, WSGI mounts, auth
     auth.py            # Optional HTTP Basic / proxy-header middleware
     registry.py        # Singleton resource store — the seam between framework and app
+    errors.py          # Structured error payload (message + traceback) for routers
+    lineage_graph.py   # LineageNode list → React Flow graph (shared by routers)
     routers/           # One file per domain (connectors, models, reports, pipelines, dashboards, dev)
   ui/                  # React UI (built into web/ui/dist/ at Docker build time)
   run.py               # Dev server (uvicorn wrapper)
@@ -191,6 +193,7 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 | Add cross-phase imports in test files | Keep tests isolated to their phase module |
 | Make the framework read connector URLs from env vars implicitly | Construct connectors in app module code; pass credential-bearing URLs via `os.environ[...]` explicitly (see `.env.example`) |
 | Add a new route without touching the registry | Wire it through `registry.py` so it's discoverable |
+| Reach into `_private` attrs of framework objects from routers | Use the public surfaces: `runner.layers()`/`run_history()`, `model.info()`, `connector.describe()`, `registry.dashboards()` |
 | Modify `tracebi_*` SQLite tables manually | Use `PipelineRunner` API |
 | Add a new medallion layer without registering it | Call `runner.register(layer)` |
 
@@ -231,15 +234,29 @@ Add a file under `web/api/routers/`, include it in `web/api/main.py`, and read r
 ```
 GET  /api/health
 GET  /api/connectors
+GET  /api/connectors/{name}
 GET  /api/models
+GET  /api/models/{name}                              → tables, relationships, facts, dimensions
+GET  /api/models/{name}/tables/{t}/preview           → first N rows + dtypes + total_rows
+GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV attachment
+POST /api/models/{name}/query                        → star-schema query + lineage graph
 GET  /api/reports
-POST /api/reports/{name}/run        → HTML + lineage manifest JSON
+POST /api/reports/{name}/run                         → HTML + lineage manifest JSON
+GET  /api/reports/{name}/download?format=xlsx|html   → rendered file attachment
+GET  /api/reports/{name}/lineage                     → React Flow graph per section
+GET  /api/reports/{name}/mermaid
 GET  /api/pipelines
 POST /api/pipelines/{name}/run
-GET  /api/pipelines/{name}/lineage
-GET  /                              → index page
-GET  /dashboards/{name}/            → Dash WSGI sub-app (not FastAPI)
+POST /api/pipelines/{name}/layers/{layer}/run
+GET  /api/pipelines/{name}/layers/{layer}/history
+GET  /api/dashboards
+GET  /api/dashboards/{name}/lineage
+GET  /dashboards/{name}/                             → Dash WSGI sub-app (not FastAPI)
+GET  /                                               → React SPA (web/ui/dist, when built)
 ```
+
+Failed report/query runs return a structured ``detail``:
+``{message, exception_type, traceback}`` — keep that shape; the UI renders it.
 
 ---
 

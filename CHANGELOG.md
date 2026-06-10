@@ -6,6 +6,51 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added
+- **Explore page** — visual star-schema query builder in the web UI: pick a
+  fact, measures (with per-measure agg functions), dimension attributes, and
+  filters; results render with a bar chart, CSV download, and the lineage
+  graph of the exact query that ran. Backed by `POST /api/models/{name}/query`.
+- **Pipeline Flow view** — the medallion chain rendered as a live DAG with
+  status-colored layer nodes, animated dependency edges, and per-node run
+  buttons.
+- **Lineage inspector** — click any step in a lineage graph to see its full
+  metadata (connector, source, join keys, engine, row counts, timestamp).
+- Report downloads: `GET /api/reports/{name}/download?format=xlsx|html` plus
+  download buttons in the UI.
+- Full-table CSV export (`GET /api/models/{m}/tables/{t}/export.csv`) and
+  richer previews (column dtypes, true total row count).
+- Structured API errors: report/query failures return
+  `{message, exception_type, traceback}`; the UI shows an expandable
+  Python traceback.
+- Public inspection surfaces: `PipelineRunner.layers()` / `run_history()` /
+  `last_run()` / `execute_layer()` / `execution_order()`, `DataModel.info()`,
+  `BaseConnector.describe()` (with credential-redacted URLs on
+  `SQLConnector`), `Registry.dashboards()`, `HTMLRenderer.to_html()`.
+- The demo model now ships `fact_orders` / `dim_customer` so Explore works
+  out of the box.
+- `.dockerignore` — `.env`, databases, `.git`, and local state no longer
+  reach Docker image layers.
+
+### Security
+- Proxy-header auth warns loudly when `TRACEBI_AUTH_PROXY_TRUSTED_IPS` is
+  unset (header spoofing risk); the server prints a banner at startup when
+  no auth is configured at all.
+- BigQuery push-down filters now use real query parameters instead of
+  interpolated literals; Snowflake identifiers are validated before quoting.
+
+### Fixed
+- Excel rendering crashed on reports containing pie charts (`PieChart` has
+  no x/y axes).
+- Renderer failures that change report output (totals, number formats) are
+  now logged instead of silently swallowed.
+- `pip install -e ".[dev]"` now installs the web dependencies the test
+  suite needs; DuckDB tests skip instead of failing when duckdb is absent.
+
+### Removed
+- Legacy server-rendered Jinja UI (`web/api/routers/ui.py`,
+  `web/templates/`) — unused since the React UI landed.
+
 ### Changed
 - **Merged `StarSchema` into `DataModel`.** Facts, dimensions, and the
   analytic `query()` surface (DuckDB engine with pandas fallback) now live on
