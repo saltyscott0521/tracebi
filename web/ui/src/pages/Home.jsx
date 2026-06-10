@@ -296,14 +296,12 @@ function DemoPlayer() {
 
   return (
     <div style={{
-      background: 'rgba(10,18,36,0.95)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      border: '1px solid var(--border)',
+      background: 'var(--terminal-bg-2)',
+      border: '1px solid var(--terminal-border)',
       borderRadius: 14,
       overflow: 'hidden',
       marginBottom: 32,
-      boxShadow: '0 24px 64px rgba(0,0,0,.5), 0 0 0 1px rgba(59,130,246,.08)',
+      boxShadow: '0 16px 44px rgba(23,37,84,.22)',
     }}>
 
       {/* Chrome */}
@@ -536,12 +534,12 @@ all joins, applies filters, and aggregates automatically inside DuckDB.`,
 ]
 
 const FEATURES = [
-  { icon: '⇌', color: '#34d399', title: 'Connectors', desc: 'CSV, SQL (any SQLAlchemy dialect), BigQuery, Snowflake, DuckDB, and in-memory DataFrames — all sharing the same connector.load() interface.' },
-  { icon: '⬡', color: '#a78bfa', title: 'Data Models', desc: 'Associative model linking multiple DataSets by key. Add star-schema roles to get a fully declarative query surface over DuckDB — and browse it visually on the Explore page.' },
-  { icon: '⧖', color: '#fbbf24', title: 'Pipelines', desc: 'Register layers with cron schedules and dependencies. Every run writes row counts and upstream IDs to SQLite — full chain provenance.' },
-  { icon: '▤', color: '#f472b6', title: 'Reports', desc: 'Compose from TextSection, TableSection, ChartSection. Render to Excel or HTML. A lineage manifest is written alongside every render.' },
-  { icon: '◫', color: '#22d3ee', title: 'Dashboards', desc: 'Interactive Dash app with associative filter panels — selecting one panel auto-filters every panel sharing that column.' },
-  { icon: '⊶', color: '#60a5fa', title: 'Lineage', desc: 'Every DataSet carries its full audit trail. Export to matplotlib, Mermaid, or interactive HTML. View the DAG for any report from the web UI.' },
+  { icon: '⇌', color: '#059669', title: 'Connectors', desc: 'CSV, SQL (any SQLAlchemy dialect), BigQuery, Snowflake, DuckDB, and in-memory DataFrames — all sharing the same connector.load() interface.' },
+  { icon: '⬡', color: '#7c3aed', title: 'Data Models', desc: 'Associative model linking multiple DataSets by key. Add star-schema roles to get a fully declarative query surface over DuckDB — and browse it visually on the Explore page.' },
+  { icon: '⧖', color: '#d97706', title: 'Pipelines', desc: 'Register layers with cron schedules and dependencies. Every run writes row counts and upstream IDs to SQLite — full chain provenance.' },
+  { icon: '▤', color: '#db2777', title: 'Reports', desc: 'Compose from TextSection, TableSection, ChartSection. Render to Excel or HTML. A lineage manifest is written alongside every render.' },
+  { icon: '◫', color: '#0891b2', title: 'Dashboards', desc: 'Interactive Dash app with associative filter panels — selecting one panel auto-filters every panel sharing that column.' },
+  { icon: '⊶', color: '#2563eb', title: 'Lineage', desc: 'Every DataSet carries its full audit trail. Export to matplotlib, Mermaid, or interactive HTML. View the DAG for any report from the web UI.' },
 ]
 
 const STEPS = [
@@ -712,52 +710,51 @@ export default function Home() {
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div style={{
-        background: 'rgba(8,14,30,0.7)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 16,
         padding: '52px 52px 48px',
         marginBottom: 28,
         position: 'relative',
         overflow: 'hidden',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='rgba(59,130,246,0.06)' stroke-width='1'/%3E%3C/svg%3E")`,
+        boxShadow: 'var(--shadow-sm)',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='rgba(37,99,235,0.05)' stroke-width='1'/%3E%3C/svg%3E")`,
       }}>
         <div style={{
           position: 'absolute', top: -80, right: -80, width: 340, height: 340,
-          background: 'radial-gradient(circle, rgba(124,58,237,.14) 0%, transparent 65%)',
+          background: 'radial-gradient(circle, rgba(124,58,237,.07) 0%, transparent 65%)',
           pointerEvents: 'none',
         }} />
         <div style={{
           position: 'absolute', bottom: -40, left: '30%', width: 240, height: 240,
-          background: 'radial-gradient(circle, rgba(59,130,246,.1) 0%, transparent 65%)',
+          background: 'radial-gradient(circle, rgba(37,99,235,.06) 0%, transparent 65%)',
           pointerEvents: 'none',
         }} />
 
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 7,
           padding: '4px 14px', marginBottom: 22,
-          background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.25)',
+          background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
           borderRadius: 20, fontSize: 11, fontWeight: 700,
-          color: '#93c5fd', letterSpacing: .8, textTransform: 'uppercase',
+          color: 'var(--accent-text)', letterSpacing: .8, textTransform: 'uppercase',
         }}>
           <span className="pulse-glow" style={{
             display: 'inline-block', width: 6, height: 6,
-            borderRadius: '50%', background: '#22c55e',
+            borderRadius: '50%', background: 'var(--green)',
           }} />
           Code-first · Traceable · Open Source
         </div>
 
         <h2 style={{
           fontSize: 42, fontWeight: 900, lineHeight: 1.15, marginBottom: 16,
-          background: 'linear-gradient(100deg, #f1f5f9 0%, #93c5fd 55%, #c4b5fd 100%)',
+          background: 'var(--brand-text)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           backgroundClip: 'text', maxWidth: 600, letterSpacing: -.5,
         }}>
           Build analytics pipelines that explain themselves.
         </h2>
 
-        <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.75, maxWidth: 540, marginBottom: 32 }}>
+        <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.75, maxWidth: 540, marginBottom: 32 }}>
           TraceBi is a Python BI framework where every transformation is tracked with a full
           lineage chain. DataSets, star schemas, medallion pipelines, and reports — with no
           black boxes.
@@ -774,20 +771,20 @@ export default function Home() {
           <Link to="/explore" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(56,189,248,.08)', color: '#7dd3fc',
-            border: '1px solid rgba(56,189,248,.28)', textDecoration: 'none',
+            background: 'rgba(2,132,199,.07)', color: '#0369a1',
+            border: '1px solid rgba(2,132,199,.3)', textDecoration: 'none',
           }}>◬ Explore Data</Link>
           <Link to="/models" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(59,130,246,.08)', color: '#93c5fd',
-            border: '1px solid rgba(59,130,246,.28)', textDecoration: 'none',
+            background: 'var(--blue-lt)', color: 'var(--accent-text)',
+            border: '1px solid var(--blue-br)', textDecoration: 'none',
           }}>⬡ Models</Link>
           <Link to="/pipelines" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(251,191,36,.08)', color: '#fcd34d',
-            border: '1px solid rgba(251,191,36,.22)', textDecoration: 'none',
+            background: 'var(--amber-lt)', color: 'var(--amber-text)',
+            border: '1px solid var(--amber-br)', textDecoration: 'none',
           }}>⧖ Pipelines</Link>
         </div>
       </div>
@@ -869,16 +866,16 @@ export default function Home() {
         <div style={{
           display: 'flex', flexWrap: 'wrap', gap: 4,
           padding: '6px 6px 0',
-          background: 'rgba(0,0,0,.25)',
+          background: 'var(--surface-2)',
           border: '1px solid var(--border)', borderBottom: 'none',
           borderRadius: '10px 10px 0 0',
         }}>
           {STEPS.map((s, i) => (
             <button key={i} onClick={() => setStep(i)} style={{
               padding: '7px 16px', border: 'none',
-              background: step === i ? 'rgba(59,130,246,.15)' : 'none',
+              background: step === i ? 'var(--blue-lt)' : 'none',
               fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-              color: step === i ? '#93c5fd' : 'var(--muted)',
+              color: step === i ? 'var(--accent-text)' : 'var(--muted)',
               borderRadius: '6px 6px 0 0',
               borderBottom: `2px solid ${step === i ? 'var(--blue)' : 'transparent'}`,
               transition: 'color var(--t), background var(--t)',
@@ -912,7 +909,7 @@ export default function Home() {
           <div style={{
             display: 'inline-block', padding: '4px 12px', borderRadius: 20, fontSize: 11,
             fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
-            background: 'var(--blue-lt)', color: '#93c5fd',
+            background: 'var(--blue-lt)', color: 'var(--accent-text)',
             border: '1px solid var(--blue-br)', marginBottom: 14,
           }}>Python library</div>
           <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 14 }}>
@@ -930,8 +927,8 @@ export default function Home() {
           <div style={{
             display: 'inline-block', padding: '4px 12px', borderRadius: 20, fontSize: 11,
             fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
-            background: 'rgba(167,139,250,.12)', color: '#c4b5fd',
-            border: '1px solid rgba(167,139,250,.25)', marginBottom: 14,
+            background: 'var(--purple-lt)', color: '#6d28d9',
+            border: '1px solid rgba(124,58,237,.25)', marginBottom: 14,
           }}>Web UI (this app)</div>
           <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7, marginBottom: 14 }}>
             Register connectors, models, reports, and pipelines in your app module.
@@ -944,15 +941,14 @@ export default function Home() {
       {/* ── Bottom row ────────────────────────────────────────────────────── */}
       <div className="grid-2" style={{ marginBottom: 8 }}>
         <div className="card-hover" style={{
-          background: 'linear-gradient(135deg, rgba(10,20,55,.8), rgba(15,10,40,.8))',
-          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid rgba(124,58,237,.3)',
+          background: 'linear-gradient(135deg, rgba(124,58,237,.05), var(--surface))',
+          border: '1px solid rgba(124,58,237,.25)',
           borderRadius: 12, padding: '22px 26px',
           position: 'relative', overflow: 'hidden',
         }}>
           <div style={{
             position: 'absolute', top: -20, right: -20, width: 140, height: 140,
-            background: 'radial-gradient(circle, rgba(124,58,237,.2) 0%, transparent 65%)',
+            background: 'radial-gradient(circle, rgba(124,58,237,.08) 0%, transparent 65%)',
             pointerEvents: 'none',
           }} />
           <div style={{ fontSize: 26, marginBottom: 12 }}>⊶</div>
@@ -963,21 +959,20 @@ export default function Home() {
           </p>
           <Link to="/reports" style={{
             display: 'inline-flex', padding: '6px 14px', fontSize: 12, fontWeight: 600,
-            borderRadius: 6, background: 'rgba(167,139,250,.12)',
-            color: '#c4b5fd', border: '1px solid rgba(167,139,250,.3)', textDecoration: 'none',
+            borderRadius: 6, background: 'var(--purple-lt)',
+            color: '#6d28d9', border: '1px solid rgba(124,58,237,.3)', textDecoration: 'none',
           }}>Explore lineage →</Link>
         </div>
 
         <div className="card-hover" style={{
-          background: 'linear-gradient(135deg, rgba(10,30,55,.8), rgba(5,18,40,.8))',
-          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid rgba(59,130,246,.25)',
+          background: 'linear-gradient(135deg, rgba(37,99,235,.05), var(--surface))',
+          border: '1px solid rgba(37,99,235,.25)',
           borderRadius: 12, padding: '22px 26px',
           position: 'relative', overflow: 'hidden',
         }}>
           <div style={{
             position: 'absolute', top: -20, right: -20, width: 140, height: 140,
-            background: 'radial-gradient(circle, rgba(59,130,246,.18) 0%, transparent 65%)',
+            background: 'radial-gradient(circle, rgba(37,99,235,.07) 0%, transparent 65%)',
             pointerEvents: 'none',
           }} />
           <div style={{ fontSize: 26, marginBottom: 12 }}>⬡</div>
@@ -994,7 +989,7 @@ export default function Home() {
             }}>Swagger UI</a>
             <a href="/redoc" target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', padding: '6px 14px', fontSize: 12, fontWeight: 600,
-              borderRadius: 6, background: 'transparent', color: '#93c5fd',
+              borderRadius: 6, background: 'transparent', color: 'var(--accent-text)',
               border: '1px solid var(--blue-br)', textDecoration: 'none',
             }}>ReDoc</a>
           </div>

@@ -16,20 +16,20 @@ function ToastContainer({ toasts, remove }) {
         return (
           <div key={t.id} className="toast-enter" style={{
             pointerEvents: 'all',
-            background: isErr ? 'rgba(239,68,68,.12)' : isOk ? 'rgba(34,197,94,.12)' : 'rgba(15,23,45,0.95)',
+            background: isErr ? '#fdf1f1' : isOk ? '#effaf2' : 'var(--surface)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
-            border: `1px solid ${isErr ? 'rgba(239,68,68,.4)' : isOk ? 'rgba(34,197,94,.35)' : 'rgba(59,130,246,.3)'}`,
+            border: `1px solid ${isErr ? 'var(--red-br)' : isOk ? 'var(--green-br)' : 'var(--blue-br)'}`,
             borderRadius: 12, padding: '12px 14px',
             fontSize: 13, lineHeight: 1.5,
-            color: isErr ? '#fca5a5' : isOk ? '#86efac' : 'var(--text)',
-            boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+            color: isErr ? 'var(--red-text)' : isOk ? 'var(--green-text)' : 'var(--text)',
+            boxShadow: 'var(--shadow)',
             display: 'flex', alignItems: 'center', gap: 10,
             minWidth: 260, maxWidth: 380,
           }}>
             <span style={{
               fontSize: 15, flexShrink: 0,
-              color: isErr ? '#f87171' : isOk ? '#4ade80' : '#60a5fa',
+              color: isErr ? 'var(--red)' : isOk ? 'var(--green)' : 'var(--blue)',
             }}>
               {isErr ? '✕' : isOk ? '✓' : 'ℹ'}
             </span>
@@ -171,18 +171,18 @@ export function PageSub({ children }) {
 }
 
 const BADGE_STYLES = {
-  blue:         { background: 'rgba(59,130,246,.14)',   color: '#93c5fd', border: '1px solid rgba(59,130,246,.3)' },
-  green:        { background: 'rgba(34,197,94,.12)',     color: '#86efac', border: '1px solid rgba(34,197,94,.28)' },
-  amber:        { background: 'rgba(245,158,11,.12)',    color: '#fcd34d', border: '1px solid rgba(245,158,11,.28)' },
-  red:          { background: 'rgba(239,68,68,.12)',     color: '#fca5a5', border: '1px solid rgba(239,68,68,.28)' },
-  gray:         { background: 'rgba(255,255,255,.06)',   color: '#64748b', border: '1px solid rgba(255,255,255,.08)' },
-  gold:         { background: 'rgba(234,179,8,.1)',      color: '#fde68a', border: '1px solid rgba(234,179,8,.28)' },
-  silver:       { background: 'rgba(148,163,184,.1)',    color: '#cbd5e1', border: '1px solid rgba(148,163,184,.25)' },
-  bronze:       { background: 'rgba(180,120,40,.15)',    color: '#fbbf24', border: '1px solid rgba(180,120,40,.3)' },
-  landing:      { background: 'rgba(74,144,226,.12)',    color: '#93c5fd', border: '1px solid rgba(74,144,226,.3)' },
-  manipulation: { background: 'rgba(123,104,238,.12)',   color: '#c4b5fd', border: '1px solid rgba(123,104,238,.3)' },
-  final:        { background: 'rgba(16,185,129,.12)',    color: '#6ee7b7', border: '1px solid rgba(16,185,129,.3)' },
-  purple:       { background: 'rgba(167,139,250,.12)',   color: '#c4b5fd', border: '1px solid rgba(167,139,250,.28)' },
+  blue:         { background: 'var(--blue-lt)',          color: 'var(--accent-text)', border: '1px solid var(--blue-br)' },
+  green:        { background: 'var(--green-lt)',         color: 'var(--green-text)',  border: '1px solid var(--green-br)' },
+  amber:        { background: 'var(--amber-lt)',         color: 'var(--amber-text)',  border: '1px solid var(--amber-br)' },
+  red:          { background: 'var(--red-lt)',           color: 'var(--red-text)',    border: '1px solid var(--red-br)' },
+  gray:         { background: 'var(--surface-2)',        color: 'var(--muted)',       border: '1px solid var(--border)' },
+  gold:         { background: 'rgba(202,138,4,.1)',      color: '#854d0e', border: '1px solid rgba(202,138,4,.3)' },
+  silver:       { background: 'rgba(100,116,139,.08)',   color: '#475569', border: '1px solid rgba(100,116,139,.25)' },
+  bronze:       { background: 'rgba(180,120,40,.12)',    color: '#92531a', border: '1px solid rgba(180,120,40,.3)' },
+  landing:      { background: 'rgba(37,99,235,.08)',     color: '#1d4ed8', border: '1px solid rgba(37,99,235,.28)' },
+  manipulation: { background: 'rgba(109,40,217,.08)',    color: '#6d28d9', border: '1px solid rgba(109,40,217,.28)' },
+  final:        { background: 'rgba(5,150,105,.08)',     color: '#047857', border: '1px solid rgba(5,150,105,.3)' },
+  purple:       { background: 'var(--purple-lt)',        color: '#6d28d9', border: '1px solid rgba(124,58,237,.28)' },
 }
 
 export function Badge({ variant = 'gray', children, style, title }) {
@@ -200,7 +200,7 @@ export function Spinner({ size = 18 }) {
   return (
     <span style={{
       display: 'inline-block', width: size, height: size,
-      border: `${size > 16 ? 2 : 1.5}px solid rgba(59,130,246,.2)`,
+      border: `${size > 16 ? 2 : 1.5}px solid var(--blue-br)`,
       borderTopColor: 'var(--blue)',
       borderRadius: '50%', animation: 'spin .7s linear infinite', flexShrink: 0,
     }} />
@@ -219,8 +219,8 @@ export function Empty({ icon, message, action }) {
 
 export function Alert({ variant = 'info', children }) {
   const s = variant === 'err'
-    ? { background: 'rgba(239,68,68,.08)', color: '#fca5a5', borderLeft: '3px solid #ef4444' }
-    : { background: 'rgba(59,130,246,.08)', color: '#93c5fd', borderLeft: '3px solid var(--blue)' }
+    ? { background: 'var(--red-lt)', color: 'var(--red-text)', borderLeft: '3px solid var(--red)' }
+    : { background: 'var(--blue-lt)', color: 'var(--accent-text)', borderLeft: '3px solid var(--blue)' }
   return (
     <div style={{ borderRadius: 8, padding: '11px 16px', fontSize: 13, marginBottom: 16, lineHeight: 1.5, ...s }}>
       {children}
@@ -243,7 +243,7 @@ export function ErrorDetail({ error }) {
           </summary>
           <pre style={{
             marginTop: 8, padding: 12, borderRadius: 6, overflowX: 'auto',
-            background: 'rgba(0,0,0,.35)', color: '#fda4af',
+            background: 'var(--code-bg)', color: '#fda4af',
             fontSize: 11, lineHeight: 1.55,
             fontFamily: 'Cascadia Code, Fira Code, monospace',
             whiteSpace: 'pre-wrap',
@@ -270,19 +270,19 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
   }
   const variants = {
     primary: {
-      background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+      background: 'var(--brand)',
       color: '#fff',
-      boxShadow: '0 2px 12px rgba(124,58,237,.3)',
+      boxShadow: '0 2px 12px rgba(37,99,235,.25)',
     },
     outline: {
       background: 'transparent',
-      color: '#93c5fd',
-      border: '1px solid rgba(59,130,246,.3)',
+      color: 'var(--accent-text)',
+      border: '1px solid var(--blue-br)',
     },
     red: {
-      background: 'rgba(239,68,68,.1)',
-      color: '#fca5a5',
-      border: '1px solid rgba(239,68,68,.28)',
+      background: 'var(--red-lt)',
+      color: 'var(--red-text)',
+      border: '1px solid var(--red-br)',
     },
   }
   return (
@@ -335,7 +335,7 @@ export function Tabs({ tabs, active, onChange }) {
         <button key={t} onClick={() => onChange(t)} style={{
           padding: '9px 18px', border: 'none', background: 'none',
           fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          color: active === t ? '#93c5fd' : 'var(--muted)',
+          color: active === t ? 'var(--accent-text)' : 'var(--muted)',
           borderBottom: `2px solid ${active === t ? 'var(--blue)' : 'transparent'}`,
           marginBottom: -1,
           transition: 'color var(--t), border-color var(--t)',
@@ -368,16 +368,16 @@ export function ListItem({ selected, onClick, name, sub, right }) {
       className={selected ? '' : 'list-item-hover'}
       style={{
         padding: '11px 16px',
-        borderBottom: '1px solid rgba(30,45,74,.4)',
+        borderBottom: '1px solid var(--border)',
         cursor: 'pointer',
-        background: selected ? 'rgba(59,130,246,.1)' : 'transparent',
+        background: selected ? 'var(--blue-lt)' : 'transparent',
         borderLeft: `2px solid ${selected ? 'var(--blue)' : 'transparent'}`,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         transition: 'background var(--t)',
       }}
     >
       <div>
-        <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? '#e2e8f0' : '#94a3b8' }}>{name}</div>
+        <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)' }}>{name}</div>
         {sub && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{sub}</div>}
       </div>
       {right && <div style={{ marginLeft: 8, flexShrink: 0 }}>{right}</div>}

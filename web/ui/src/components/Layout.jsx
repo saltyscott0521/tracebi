@@ -42,13 +42,13 @@ const ICONS = {
 }
 
 const NAV = [
-  { path: '/',           label: 'Home',       icon: 'home',       color: '#60a5fa' },
-  { path: '/connectors', label: 'Connectors', icon: 'connectors', color: '#34d399' },
-  { path: '/models',     label: 'Models',     icon: 'models',     color: '#a78bfa' },
-  { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#38bdf8' },
-  { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#f472b6' },
-  { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#fbbf24' },
-  { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#22d3ee' },
+  { path: '/',           label: 'Home',       icon: 'home',       color: '#2563eb' },
+  { path: '/connectors', label: 'Connectors', icon: 'connectors', color: '#059669' },
+  { path: '/models',     label: 'Models',     icon: 'models',     color: '#7c3aed' },
+  { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#0284c7' },
+  { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#db2777' },
+  { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#d97706' },
+  { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#0891b2' },
 ]
 
 export default function Layout({ children }) {
@@ -65,7 +65,7 @@ export default function Layout({ children }) {
       <div className="mobile-header" style={{
         display: 'none', position: 'fixed', top: 0, left: 0, right: 0,
         height: 52,
-        background: 'rgba(6,14,31,0.9)',
+        background: 'rgba(255,255,255,0.92)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border)',
@@ -78,7 +78,7 @@ export default function Layout({ children }) {
           display: 'flex', flexDirection: 'column', gap: 5, padding: 4,
         }}>
           {[0,1,2].map(i => (
-            <span key={i} style={{ display: 'block', width: 20, height: 2, background: '#94a3b8', borderRadius: 2 }} />
+            <span key={i} style={{ display: 'block', width: 20, height: 2, background: 'var(--text-2)', borderRadius: 2 }} />
           ))}
         </button>
       </div>
@@ -87,7 +87,7 @@ export default function Layout({ children }) {
       {open && (
         <div onClick={() => setOpen(false)} style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,.7)',
+          background: 'rgba(22,35,60,.4)',
           backdropFilter: 'blur(4px)',
           zIndex: 250,
         }} />
@@ -96,7 +96,7 @@ export default function Layout({ children }) {
       {/* Sidebar */}
       <nav style={{
         width: 'var(--nav-w)', minHeight: '100vh',
-        background: 'rgba(6,10,22,0.95)',
+        background: 'var(--surface)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderRight: '1px solid var(--border)',
@@ -141,12 +141,12 @@ export default function Layout({ children }) {
                   alignItems: 'center',
                   gap: 10,
                   padding: '9px 20px',
-                  color: isActive ? '#e2e8f0' : '#64748b',
+                  color: isActive ? 'var(--text)' : 'var(--muted)',
                   textDecoration: 'none',
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 400,
                   borderLeft: `2px solid ${isActive ? color : 'transparent'}`,
-                  background: isActive ? `${color}14` : 'transparent',
+                  background: isActive ? `${color}1a` : 'transparent',
                 })}
               >
                 <span style={{
@@ -175,8 +175,8 @@ export default function Layout({ children }) {
           }} />
           <span style={{ fontSize: 11, color: 'var(--muted)' }}>TraceBi v0.5.2</span>
           <span style={{
-            marginLeft: 'auto', fontSize: 10, color: 'var(--muted)',
-            background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.2)',
+            marginLeft: 'auto', fontSize: 10, color: 'var(--accent-text)',
+            background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
             padding: '1px 6px', borderRadius: 4,
           }}>BETA</span>
         </div>

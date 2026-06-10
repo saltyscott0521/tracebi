@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDashboards, useDashboardLineage } from '../api'
+import { opStyle } from '../components/Lineage'
 import { PageTitle, PageSub, Card, Badge, Spinner, Empty, Btn } from '../components/Shared'
 
 function LineageModal({ name, onClose }) {
@@ -13,7 +14,7 @@ function LineageModal({ name, onClose }) {
     <div
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)',
+        position: 'fixed', inset: 0, background: 'rgba(22,35,60,.4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 100, padding: 24,
       }}
@@ -34,7 +35,7 @@ function LineageModal({ name, onClose }) {
         </div>
 
         {isPending && <Spinner />}
-        {error && <p style={{ color: '#fca5a5', fontSize: 13 }}>{String(error)}</p>}
+        {error && <p style={{ color: 'var(--red-text)', fontSize: 13 }}>{String(error)}</p>}
 
         {data && (
           <>
@@ -47,19 +48,22 @@ function LineageModal({ name, onClose }) {
                   {p.panel_title || p.panel_id || 'panel'} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>· dataset {p.dataset_name}</span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {p.graph.nodes.map(n => (
-                    <span
-                      key={n.id}
-                      title={n.data.description}
-                      style={{
-                        display: 'inline-block', padding: '3px 9px', borderRadius: 4,
-                        fontSize: 11, fontWeight: 600,
-                        background: n.data.color, color: '#fff',
-                      }}
-                    >
-                      {n.data.operation}
-                    </span>
-                  ))}
+                  {p.graph.nodes.map(n => {
+                    const op = opStyle(n.data.operation)
+                    return (
+                      <span
+                        key={n.id}
+                        title={n.data.description}
+                        style={{
+                          display: 'inline-block', padding: '3px 9px', borderRadius: 4,
+                          fontSize: 11, fontWeight: 600,
+                          background: op.bg, color: op.tx, border: `1px solid ${op.br}`,
+                        }}
+                      >
+                        {n.data.operation}
+                      </span>
+                    )
+                  })}
                 </div>
               </div>
             ))}

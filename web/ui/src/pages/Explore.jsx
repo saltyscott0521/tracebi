@@ -8,7 +8,7 @@ import {
 } from '../components/Shared'
 
 const AGG_FUNCS = ['sum', 'count', 'mean', 'min', 'max', 'nunique']
-const MEASURE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#22d3ee']
+const MEASURE_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#db2777', '#0891b2']
 
 // ── Builder controls ─────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ function CheckRow({ checked, onToggle, label, right }) {
 }
 
 const selectStyle = {
-  background: '#0b1426', color: '#93c5fd', border: '1px solid var(--border)',
+  background: 'var(--surface)', color: 'var(--accent-text)', border: '1px solid var(--border)',
   borderRadius: 5, fontSize: 11, padding: '3px 6px', cursor: 'pointer',
 }
 
@@ -69,7 +69,7 @@ function FilterRows({ columns, filters, setFilters }) {
             onChange={e => setFilters({ ...filters, [col]: e.target.value })}
             placeholder="value"
             style={{
-              flex: 1, minWidth: 60, background: '#0b1426', color: 'var(--text)',
+              flex: 1, minWidth: 60, background: 'var(--surface)', color: 'var(--text)',
               border: '1px solid var(--border)', borderRadius: 5, fontSize: 12, padding: '4px 8px',
             }}
           />
@@ -244,8 +244,8 @@ export default function Explore() {
               {facts.map(f => (
                 <button key={f.name} onClick={() => selectFact(f.name)} style={{
                   padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  background: fact?.name === f.name ? 'var(--blue-lt)' : 'rgba(255,255,255,.03)',
-                  color: fact?.name === f.name ? '#93c5fd' : 'var(--muted)',
+                  background: fact?.name === f.name ? 'var(--blue-lt)' : 'var(--surface-2)',
+                  color: fact?.name === f.name ? 'var(--accent-text)' : 'var(--muted)',
                   border: `1px solid ${fact?.name === f.name ? 'var(--blue-br)' : 'var(--border)'}`,
                 }}>{f.name}</button>
               ))}
