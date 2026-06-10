@@ -107,24 +107,26 @@ HTMLRenderer().render(report, "output/q2.html")`,
     icon: '◫',
     label: 'Web UI',
     title: 'Expose everything via the web layer',
-    desc: 'Register in your app module — connectors, models, pipelines, and reports are surfaced with run buttons, ERD diagrams, and lineage views.',
+    desc: 'Register in your app module — connectors, models, pipelines, and reports are surfaced with run buttons, ERD diagrams, the Explore query builder, and lineage views.',
     code:
-`# web/demo_app.py
+`# web/demo_app/registry.py
 registry.add_connector(db)
 registry.add_model(model)
 registry.add_pipeline("sales", runner)
 
 @registry.report("q2_revenue")
 def q2_revenue():
-    gold_ds = runner.run("revenue_gold")
-    return build_report(gold_ds)
-
+    gold = model.query(
+        fact="fact_orders",
+        measures={"revenue": "sum"},
+        dimensions=["dim_customer.region"])
+    return build_report(gold)
 
 # python web/run.py`,
     output: [
-      { text: 'GET  /api/connectors',            color: '#60a5fa' },
-      { text: 'GET  /api/models/SalesModel',      color: '#60a5fa' },
-      { text: 'POST /api/reports/q2_revenue/run', color: '#60a5fa' },
+      { text: 'GET  /api/models/SalesModel',       color: '#60a5fa' },
+      { text: 'POST /api/models/SalesModel/query', color: '#60a5fa' },
+      { text: 'POST /api/reports/q2_revenue/run',  color: '#60a5fa' },
       { text: 'Serving on http://localhost:8000',  ok: true },
     ],
   },
@@ -535,7 +537,7 @@ all joins, applies filters, and aggregates automatically inside DuckDB.`,
 
 const FEATURES = [
   { icon: '⇌', color: '#34d399', title: 'Connectors', desc: 'CSV, SQL (any SQLAlchemy dialect), BigQuery, Snowflake, DuckDB, and in-memory DataFrames — all sharing the same connector.load() interface.' },
-  { icon: '⬡', color: '#a78bfa', title: 'Data Models', desc: 'Associative model linking multiple DataSets by key. Add star-schema roles to get a fully declarative query surface over DuckDB.' },
+  { icon: '⬡', color: '#a78bfa', title: 'Data Models', desc: 'Associative model linking multiple DataSets by key. Add star-schema roles to get a fully declarative query surface over DuckDB — and browse it visually on the Explore page.' },
   { icon: '⧖', color: '#fbbf24', title: 'Pipelines', desc: 'Register layers with cron schedules and dependencies. Every run writes row counts and upstream IDs to SQLite — full chain provenance.' },
   { icon: '▤', color: '#f472b6', title: 'Reports', desc: 'Compose from TextSection, TableSection, ChartSection. Render to Excel or HTML. A lineage manifest is written alongside every render.' },
   { icon: '◫', color: '#22d3ee', title: 'Dashboards', desc: 'Interactive Dash app with associative filter panels — selecting one panel auto-filters every panel sharing that column.' },
@@ -769,12 +771,18 @@ export default function Home() {
             color: '#fff', textDecoration: 'none',
             boxShadow: '0 4px 20px rgba(124,58,237,.4)',
           }}>▤ View Reports</Link>
+          <Link to="/explore" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: 'rgba(56,189,248,.08)', color: '#7dd3fc',
+            border: '1px solid rgba(56,189,248,.28)', textDecoration: 'none',
+          }}>◬ Explore Data</Link>
           <Link to="/models" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             background: 'rgba(59,130,246,.08)', color: '#93c5fd',
             border: '1px solid rgba(59,130,246,.28)', textDecoration: 'none',
-          }}>⬡ Explore Models</Link>
+          }}>⬡ Models</Link>
           <Link to="/pipelines" style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
@@ -929,7 +937,7 @@ export default function Home() {
             Register connectors, models, reports, and pipelines in your app module.
             The web server surfaces them with run buttons, lineage diagrams, and a REST API.
           </p>
-          <CodeBlock>{'# web/demo_app.py\nregistry.add_connector(my_connector)\nregistry.add_model(my_model)\nregistry.add_pipeline("sales", runner)\n\n@registry.report("my_report")\ndef my_report(): ...'}</CodeBlock>
+          <CodeBlock>{'# web/demo_app/registry.py\nregistry.add_connector(my_connector)\nregistry.add_model(my_model)\nregistry.add_pipeline("sales", runner)\n\n@registry.report("my_report")\ndef my_report(): ...'}</CodeBlock>
         </div>
       </div>
 
