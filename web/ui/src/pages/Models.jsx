@@ -17,7 +17,7 @@ function TablePreview({ modelName, tableName }) {
       <Spinner size={14} /> Loading preview…
     </div>
   )
-  if (error) return <div style={{ padding: 16, color: '#fca5a5', fontSize: 13 }}>{error.message}</div>
+  if (error) return <div style={{ padding: 16, color: 'var(--red-text)', fontSize: 13 }}>{error.message}</div>
   if (!data) return null
   const showingAll = data.total_rows == null || data.rows >= data.total_rows
   return (
@@ -74,10 +74,10 @@ function TablePreview({ modelName, tableName }) {
 // ── ERD Diagram ──────────────────────────────────────────────────────────────
 
 const ROLE_STYLES = {
-  dimension: { header: 'linear-gradient(135deg,#0f2a52,#1a3f78)', accent: '#3b82f6', label: 'Dimension' },
-  fact:      { header: 'linear-gradient(135deg,#1a0a42,#2a1668)', accent: '#a78bfa', label: 'Fact' },
-  bridge:    { header: 'linear-gradient(135deg,#321c00,#4e2c00)', accent: '#fbbf24', label: 'Bridge' },
-  isolated:  { header: 'linear-gradient(135deg,#131e34,#1c2a44)', accent: '#64748b', label: 'Table' },
+  dimension: { header: 'var(--op-landing-bg)',      accent: '#2563eb', label: 'Dimension' },
+  fact:      { header: 'var(--op-manipulation-bg)', accent: '#6d28d9', label: 'Fact' },
+  bridge:    { header: 'var(--op-transform-bg)',    accent: '#b45309', label: 'Bridge' },
+  isolated:  { header: 'var(--op-default-bg)',      accent: '#64748b', label: 'Table' },
 }
 
 function getTableKeys(tableName, relationships) {
@@ -113,29 +113,29 @@ function ERDTableNode({ data }) {
   const keyCount = data.pks.length + data.fks.length
   return (
     <div style={{
-      background: '#0e1830',
-      border: `1.5px solid ${rs.accent}3a`,
+      background: 'var(--surface)',
+      border: `1.5px solid ${rs.accent}38`,
       borderRadius: 10,
       minWidth: 215,
       overflow: 'hidden',
-      boxShadow: `0 8px 32px rgba(0,0,0,.6), 0 0 0 1px ${rs.accent}14`,
+      boxShadow: 'var(--shadow-sm)',
       fontSize: 12,
     }}>
       <Handle type="target" position={Position.Left}
-        style={{ background: rs.accent, width: 10, height: 10, border: '2px solid #080f20', left: -6 }} />
+        style={{ background: rs.accent, width: 10, height: 10, border: '2px solid #fff', left: -6 }} />
 
-      <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid ${rs.accent}2a` }}>
-        <div style={{ fontWeight: 700, fontSize: 12.5, color: '#e2e8f0', letterSpacing: .15, marginBottom: 4 }}>
+      <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid ${rs.accent}26` }}>
+        <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text)', letterSpacing: .15, marginBottom: 4 }}>
           {data.label}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{
             fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
             padding: '1px 7px', borderRadius: 20,
-            background: `${rs.accent}20`, color: rs.accent, border: `1px solid ${rs.accent}3a`,
+            background: 'var(--surface)', color: rs.accent, border: `1px solid ${rs.accent}3a`,
           }}>{rs.label}</span>
           {data.connector && (
-            <span style={{ fontSize: 9.5, color: '#3d5278' }}>{data.connector}</span>
+            <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{data.connector}</span>
           )}
         </div>
       </div>
@@ -144,15 +144,15 @@ function ERDTableNode({ data }) {
         {data.pks.map(k => (
           <div key={k} style={{
             padding: '3px 14px', display: 'flex', alignItems: 'center', gap: 7,
-            borderLeft: '2px solid #fbbf2450',
+            borderLeft: '2px solid var(--op-gold-br)',
           }}>
             <span style={{ fontSize: 11, lineHeight: 1 }}>🔑</span>
-            <span style={{ color: '#fcd34d', fontWeight: 500, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 11 }}>{k}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 8.5, color: '#475569', fontWeight: 700, letterSpacing: .4 }}>PK</span>
+            <span style={{ color: 'var(--op-gold-tx)', fontWeight: 500, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 11 }}>{k}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 8.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: .4 }}>PK</span>
           </div>
         ))}
         {data.pks.length > 0 && data.fks.length > 0 && (
-          <div style={{ height: 1, background: 'rgba(255,255,255,.04)', margin: '4px 14px' }} />
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 14px' }} />
         )}
         {data.fks.map(k => (
           <div key={k} style={{
@@ -160,17 +160,17 @@ function ERDTableNode({ data }) {
             borderLeft: `2px solid ${rs.accent}40`,
           }}>
             <span style={{ fontSize: 11, color: rs.accent, opacity: .7, lineHeight: 1 }}>⤷</span>
-            <span style={{ color: '#93c5fd', fontWeight: 500, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 11 }}>{k}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 8.5, color: '#475569', fontWeight: 700, letterSpacing: .4 }}>FK</span>
+            <span style={{ color: 'var(--accent-text)', fontWeight: 500, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 11 }}>{k}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 8.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: .4 }}>FK</span>
           </div>
         ))}
         {keyCount === 0 && (
-          <div style={{ padding: '6px 14px', color: '#334155', fontStyle: 'italic', fontSize: 11 }}>no key columns</div>
+          <div style={{ padding: '6px 14px', color: 'var(--muted)', fontStyle: 'italic', fontSize: 11 }}>no key columns</div>
         )}
       </div>
 
       <Handle type="source" position={Position.Right}
-        style={{ background: rs.accent, width: 10, height: 10, border: '2px solid #080f20', right: -6 }} />
+        style={{ background: rs.accent, width: 10, height: 10, border: '2px solid #fff', right: -6 }} />
     </div>
   )
 }
@@ -197,8 +197,8 @@ function ERDDiagram({ tables, relationships }) {
       style: { stroke: '#3b82f660', strokeWidth: 1.5 },
       markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 12, height: 12 },
       label: `${r.left_key} → ${r.right_key}`,
-      labelStyle: { fontSize: 9, fill: '#4a6080', fontFamily: 'Cascadia Code, Fira Code, monospace' },
-      labelBgStyle: { fill: '#040a14', fillOpacity: 0.9 },
+      labelStyle: { fontSize: 9, fill: '#55657a', fontFamily: 'Cascadia Code, Fira Code, monospace' },
+      labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
     }))
     return { nodes, edges }
   }, [tables, relationships])
@@ -216,15 +216,15 @@ function ERDDiagram({ tables, relationships }) {
         nodesConnectable={false}
         elementsSelectable
       >
-        <Background color="#1a2844" gap={30} size={1} />
+        <Background color="var(--flow-dots)" gap={30} size={1} />
         <Controls style={{
           background: 'rgba(8,15,32,.9)', border: '1px solid var(--border)',
           borderRadius: 8,
         }} />
         <MiniMap
           nodeColor={n => ROLE_STYLES[n.data?.role]?.accent || '#64748b'}
-          style={{ background: '#040a14', border: '1px solid var(--border)', borderRadius: 8 }}
-          maskColor="rgba(4,10,20,.75)"
+          style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8 }}
+          maskColor="rgba(228,233,240,.6)"
         />
       </ReactFlow>
     </div>
@@ -305,7 +305,7 @@ function ModelDetail({ name }) {
                     <td>
                       <button onClick={() => setPreviewTable(previewTable === t.name ? null : t.name)} style={{
                         padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 4,
-                        background: 'var(--blue-lt)', color: '#93c5fd',
+                        background: 'var(--blue-lt)', color: 'var(--accent-text)',
                         border: '1px solid var(--blue-br)', cursor: 'pointer',
                         transition: 'background var(--t)',
                       }}>
