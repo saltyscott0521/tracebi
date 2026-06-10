@@ -42,13 +42,13 @@ const ICONS = {
 }
 
 const NAV = [
-  { path: '/',           label: 'Home',       icon: 'home',       color: '#2563eb' },
-  { path: '/connectors', label: 'Connectors', icon: 'connectors', color: '#059669' },
-  { path: '/models',     label: 'Models',     icon: 'models',     color: '#7c3aed' },
-  { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#0284c7' },
-  { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#db2777' },
-  { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#d97706' },
-  { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#0891b2' },
+  { path: '/',           label: 'Home',       icon: 'home',       color: '#93c5fd' },
+  { path: '/connectors', label: 'Connectors', icon: 'connectors', color: '#6ee7b7' },
+  { path: '/models',     label: 'Models',     icon: 'models',     color: '#93c5fd' },
+  { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#7dd3fc' },
+  { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#f9a8d4' },
+  { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#fde68a' },
+  { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#a5f3fc' },
 ]
 
 export default function Layout({ children }) {
@@ -65,7 +65,7 @@ export default function Layout({ children }) {
       <div className="mobile-header" style={{
         display: 'none', position: 'fixed', top: 0, left: 0, right: 0,
         height: 52,
-        background: 'rgba(255,255,255,0.92)',
+        background: 'rgba(240,243,248,0.95)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border)',
@@ -96,22 +96,22 @@ export default function Layout({ children }) {
       {/* Sidebar */}
       <nav style={{
         width: 'var(--nav-w)', minHeight: '100vh',
-        background: 'var(--surface)',
+        background: 'var(--sidebar-bg)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        borderRight: '1px solid var(--border)',
+        borderRight: '1px solid var(--sidebar-border)',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
         position: 'fixed', top: 0, left: 0, zIndex: 300,
       }} className={open ? 'nav-open' : ''}>
 
         {/* Brand */}
-        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 5 }}>
             <div style={{
               width: 32, height: 32, borderRadius: 9,
-              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+              background: 'linear-gradient(135deg, #1a3fa8, #0369a1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 16px rgba(124,58,237,0.35)',
+              boxShadow: '0 4px 16px rgba(26,63,168,0.45)',
               flexShrink: 0,
             }}>
               <svg width="15" height="15" viewBox="0 0 20 20" fill="white">
@@ -141,12 +141,12 @@ export default function Layout({ children }) {
                   alignItems: 'center',
                   gap: 10,
                   padding: '9px 20px',
-                  color: isActive ? 'var(--text)' : 'var(--muted)',
+                  color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
                   textDecoration: 'none',
                   fontSize: 13,
                   fontWeight: isActive ? 600 : 400,
                   borderLeft: `2px solid ${isActive ? color : 'transparent'}`,
-                  background: isActive ? `${color}1a` : 'transparent',
+                  background: isActive ? 'rgba(255,255,255,0.13)' : 'transparent',
                 })}
               >
                 <span style={{
@@ -166,17 +166,17 @@ export default function Layout({ children }) {
         {/* Footer */}
         <div style={{
           padding: '14px 20px',
-          borderTop: '1px solid var(--border)',
+          borderTop: '1px solid var(--sidebar-border)',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <span className="pulse-glow" style={{
             display: 'inline-block', width: 7, height: 7,
             borderRadius: '50%', background: '#22c55e', flexShrink: 0,
           }} />
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>TraceBi v0.5.2</span>
+          <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>TraceBi v0.5.2</span>
           <span style={{
-            marginLeft: 'auto', fontSize: 10, color: 'var(--accent-text)',
-            background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
+            marginLeft: 'auto', fontSize: 10, color: 'rgba(200,220,255,0.8)',
+            background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)',
             padding: '1px 6px', borderRadius: 4,
           }}>BETA</span>
         </div>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TraceBi Theme Mockups</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0d; padding: 32px 24px; display: flex; flex-direction: column; gap: 48px; }
+
+  .theme-block { display: flex; flex-direction: column; gap: 10px; }
+  .theme-label { color: #888; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding-left: 2px; }
+  .theme-title { color: #ddd; font-size: 20px; font-weight: 700; }
+  .theme-desc { color: #666; font-size: 13px; margin-top: 2px; }
+
+  .mockup {
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    display: flex; height: 520px;
+  }
+
+  .sidebar {
+    width: 216px; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    padding: 20px 0; gap: 2px;
+  }
+  .logo {
+    padding: 0 20px 18px;
+    font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
+    border-bottom-width: 1px; border-bottom-style: solid;
+    margin-bottom: 10px;
+  }
+  .logo em { font-style: normal; font-weight: 300; opacity: 0.45; }
+  .nav {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; margin: 0 8px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; cursor: default;
+  }
+  .nav .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .main { flex: 1; overflow: hidden; padding: 26px; display: flex; flex-direction: column; gap: 18px; }
+  .topbar { height: 3px; margin: -26px -26px 4px; }
+
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .page-sub { font-size: 12.5px; margin-top: 3px; opacity: 0.55; }
+  .btn { padding: 8px 16px; border-radius: 8px; font-size: 12.5px; font-weight: 600; border: none; cursor: default; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card { border-radius: 10px; padding: 16px; border-width: 1px; border-style: solid; }
+  .card-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.5; margin-bottom: 5px; }
+  .card-value { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
+  .card-sub { font-size: 11.5px; margin-top: 3px; opacity: 0.45; }
+
+  .sec-title { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.45; margin-bottom: 8px; }
+
+  .tbl-wrap { border-radius: 9px; border-width: 1px; border-style: solid; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { padding: 9px 13px; text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+  td { padding: 10px 13px; border-top-width: 1px; border-top-style: solid; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
+  .pip { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; }
+
+  /* ═══════════════════════════════
+     THEME A — Slate Dark
+  ═══════════════════════════════ */
+  .a-mockup { background: #111827; }
+  .a-mockup .sidebar { background: #1f2937; border-right: 1px solid #2d3748; }
+  .a-mockup .logo { color: #f1f5f9; border-bottom-color: #2d3748; }
+  .a-mockup .nav { color: #94a3b8; }
+  .a-mockup .nav.on { background: rgba(59,130,246,0.13); color: #3b82f6; }
+  .a-mockup .main { background: #111827; }
+  .a-mockup .topbar { background: linear-gradient(90deg, #3b82f6, #1e40af); }
+  .a-mockup .page-title { color: #f1f5f9; }
+  .a-mockup .page-sub { color: #94a3b8; }
+  .a-mockup .btn { background: #3b82f6; color: #fff; }
+  .a-mockup .card { background: #1f2937; border-color: #2d3748; }
+  .a-mockup .card-value { color: #f1f5f9; }
+  .a-mockup .card-label,.a-mockup .card-sub { color: #94a3b8; }
+  .a-mockup .sec-title { color: #94a3b8; }
+  .a-mockup .tbl-wrap { border-color: #2d3748; background: #1f2937; }
+  .a-mockup th { background: #243040; color: #64748b; }
+  .a-mockup td { color: #f1f5f9; border-top-color: #2d3748; }
+  .a-mockup .bg { background: rgba(59,130,246,0.13); color: #3b82f6; }
+  .a-mockup .gg { background: rgba(34,197,94,0.13); color: #22c55e; }
+  .a-mockup .am { background: rgba(245,158,11,0.13); color: #f59e0b; }
+
+  /* ═══════════════════════════════
+     THEME B — Navy Dark
+  ═══════════════════════════════ */
+  .b-mockup { background: #0d1b2a; }
+  .b-mockup .sidebar { background: #162030; border-right: 1px solid #1e3254; }
+  .b-mockup .logo { color: #dce8f5; border-bottom-color: #1e3254; }
+  .b-mockup .nav { color: #7fa3c8; }
+  .b-mockup .nav.on { background: rgba(96,165,250,0.12); color: #60a5fa; }
+  .b-mockup .main { background: #0d1b2a; }
+  .b-mockup .topbar { background: linear-gradient(90deg, #60a5fa, #0ea5e9); }
+  .b-mockup .page-title { color: #dce8f5; }
+  .b-mockup .page-sub { color: #7fa3c8; }
+  .b-mockup .btn { background: #1d4ed8; color: #fff; }
+  .b-mockup .card { background: #162030; border-color: #1e3254; }
+  .b-mockup .card-value { color: #dce8f5; }
+  .b-mockup .card-label,.b-mockup .card-sub { color: #7fa3c8; }
+  .b-mockup .sec-title { color: #7fa3c8; }
+  .b-mockup .tbl-wrap { border-color: #1e3254; background: #162030; }
+  .b-mockup th { background: #1a2840; color: #4a6a8a; }
+  .b-mockup td { color: #dce8f5; border-top-color: #1e3254; }
+  .b-mockup .bg { background: rgba(96,165,250,0.12); color: #60a5fa; }
+  .b-mockup .gg { background: rgba(52,211,153,0.12); color: #34d399; }
+  .b-mockup .am { background: rgba(251,191,36,0.12); color: #fbbf24; }
+
+  /* ═══════════════════════════════
+     THEME C — Graphite + Navy
+  ═══════════════════════════════ */
+  .c-mockup { background: #e5eaf2; }
+  .c-mockup .sidebar { background: #1e3a6e; border-right: 1px solid rgba(255,255,255,0.07); }
+  .c-mockup .logo { color: #e8f0fb; border-bottom-color: rgba(255,255,255,0.1); }
+  .c-mockup .nav { color: rgba(190,215,255,0.65); }
+  .c-mockup .nav.on { background: rgba(255,255,255,0.14); color: #fff; }
+  .c-mockup .main { background: #e5eaf2; }
+  .c-mockup .topbar { background: linear-gradient(90deg, #1a3fa8, #0369a1); }
+  .c-mockup .page-title { color: #0f1c34; }
+  .c-mockup .page-sub { color: #3d5070; }
+  .c-mockup .btn { background: #1a3fa8; color: #fff; }
+  .c-mockup .card { background: #f7f9fc; border-color: #c9d3e3; box-shadow: 0 2px 6px rgba(15,28,52,0.07); }
+  .c-mockup .card-value { color: #0f1c34; }
+  .c-mockup .card-label { color: #3d5070; }
+  .c-mockup .card-sub { color: #7a8ea8; }
+  .c-mockup .sec-title { color: #3d5070; }
+  .c-mockup .tbl-wrap { border-color: #c9d3e3; background: #f7f9fc; box-shadow: 0 2px 6px rgba(15,28,52,0.07); }
+  .c-mockup th { background: #edf0f7; color: #3d5070; }
+  .c-mockup td { color: #0f1c34; border-top-color: #d5dce9; }
+  .c-mockup .bg { background: rgba(26,63,168,0.09); color: #1a3fa8; }
+  .c-mockup .gg { background: rgba(21,128,61,0.1); color: #15803d; }
+  .c-mockup .am { background: rgba(180,83,9,0.1); color: #b45309; }
+</style>
+</head>
+<body>
+
+  <!-- ── A ── -->
+  <div class="theme-block">
+    <div>
+      <div class="theme-label">Option A</div>
+      <div class="theme-title">Slate Dark</div>
+      <div class="theme-desc">Charcoal grey surfaces · bright navy-blue accents · full dark mode</div>
+    </div>
+    <div class="mockup a-mockup">
+      <nav class="sidebar">
+        <div class="logo">Trace<em>Bi</em></div>
+        <div class="nav"><span class="dot" style="background:#3b82f6"></span>Home</div>
+        <div class="nav"><span class="dot" style="background:#22c55e"></span>Connectors</div>
+        <div class="nav on"><span class="dot" style="background:#3b82f6"></span>Models</div>
+        <div class="nav"><span class="dot" style="background:#38bdf8"></span>Explore</div>
+        <div class="nav"><span class="dot" style="background:#f472b6"></span>Reports</div>
+        <div class="nav"><span class="dot" style="background:#f59e0b"></span>Pipelines</div>
+        <div class="nav"><span class="dot" style="background:#22d3ee"></span>Dashboards</div>
+      </nav>
+      <main class="main">
+        <div class="topbar"></div>
+        <div class="page-header">
+          <div><div class="page-title">Models</div><div class="page-sub">3 registered · last refreshed 2 min ago</div></div>
+          <button class="btn">+ New Model</button>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="card-label">Tables</div><div class="card-value">12</div><div class="card-sub">across 3 models</div></div>
+          <div class="card"><div class="card-label">Relationships</div><div class="card-value">8</div><div class="card-sub">star schema links</div></div>
+          <div class="card"><div class="card-label">Last Run</div><div class="card-value" style="font-size:17px;padding-top:6px">2 min ago</div><div class="card-sub">pipeline: orders_gold</div></div>
+        </div>
+        <div class="sec-title">Registered Models</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Tables</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody>
+              <tr><td><strong>sales_model</strong></td><td>5</td><td><span class="badge gg"><span class="pip" style="background:#22c55e"></span>healthy</span></td><td>2 min ago</td></tr>
+              <tr><td><strong>orders_model</strong></td><td>4</td><td><span class="badge bg"><span class="pip" style="background:#3b82f6"></span>running</span></td><td>10 min ago</td></tr>
+              <tr><td><strong>inventory_model</strong></td><td>3</td><td><span class="badge am"><span class="pip" style="background:#f59e0b"></span>stale</span></td><td>3 hrs ago</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ── B ── -->
+  <div class="theme-block">
+    <div>
+      <div class="theme-label">Option B</div>
+      <div class="theme-title">Navy Dark</div>
+      <div class="theme-desc">Deep navy-blue surfaces · sky-blue accents · immersive dark mode</div>
+    </div>
+    <div class="mockup b-mockup">
+      <nav class="sidebar">
+        <div class="logo">Trace<em>Bi</em></div>
+        <div class="nav"><span class="dot" style="background:#60a5fa"></span>Home</div>
+        <div class="nav"><span class="dot" style="background:#34d399"></span>Connectors</div>
+        <div class="nav on"><span class="dot" style="background:#60a5fa"></span>Models</div>
+        <div class="nav"><span class="dot" style="background:#38bdf8"></span>Explore</div>
+        <div class="nav"><span class="dot" style="background:#f472b6"></span>Reports</div>
+        <div class="nav"><span class="dot" style="background:#fbbf24"></span>Pipelines</div>
+        <div class="nav"><span class="dot" style="background:#22d3ee"></span>Dashboards</div>
+      </nav>
+      <main class="main">
+        <div class="topbar"></div>
+        <div class="page-header">
+          <div><div class="page-title">Models</div><div class="page-sub">3 registered · last refreshed 2 min ago</div></div>
+          <button class="btn">+ New Model</button>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="card-label">Tables</div><div class="card-value">12</div><div class="card-sub">across 3 models</div></div>
+          <div class="card"><div class="card-label">Relationships</div><div class="card-value">8</div><div class="card-sub">star schema links</div></div>
+          <div class="card"><div class="card-label">Last Run</div><div class="card-value" style="font-size:17px;padding-top:6px">2 min ago</div><div class="card-sub">pipeline: orders_gold</div></div>
+        </div>
+        <div class="sec-title">Registered Models</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Tables</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody>
+              <tr><td><strong>sales_model</strong></td><td>5</td><td><span class="badge gg"><span class="pip" style="background:#34d399"></span>healthy</span></td><td>2 min ago</td></tr>
+              <tr><td><strong>orders_model</strong></td><td>4</td><td><span class="badge bg"><span class="pip" style="background:#60a5fa"></span>running</span></td><td>10 min ago</td></tr>
+              <tr><td><strong>inventory_model</strong></td><td>3</td><td><span class="badge am"><span class="pip" style="background:#fbbf24"></span>stale</span></td><td>3 hrs ago</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ── C ── -->
+  <div class="theme-block">
+    <div>
+      <div class="theme-label">Option C</div>
+      <div class="theme-title">Graphite + Navy</div>
+      <div class="theme-desc">Cool grey light surfaces · dark navy sidebar · deep navy accents</div>
+    </div>
+    <div class="mockup c-mockup">
+      <nav class="sidebar">
+        <div class="logo">Trace<em>Bi</em></div>
+        <div class="nav"><span class="dot" style="background:#93c5fd"></span>Home</div>
+        <div class="nav"><span class="dot" style="background:#6ee7b7"></span>Connectors</div>
+        <div class="nav on"><span class="dot" style="background:#bfdbfe"></span>Models</div>
+        <div class="nav"><span class="dot" style="background:#7dd3fc"></span>Explore</div>
+        <div class="nav"><span class="dot" style="background:#fbcfe8"></span>Reports</div>
+        <div class="nav"><span class="dot" style="background:#fde68a"></span>Pipelines</div>
+        <div class="nav"><span class="dot" style="background:#a5f3fc"></span>Dashboards</div>
+      </nav>
+      <main class="main">
+        <div class="topbar"></div>
+        <div class="page-header">
+          <div><div class="page-title">Models</div><div class="page-sub">3 registered · last refreshed 2 min ago</div></div>
+          <button class="btn">+ New Model</button>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="card-label">Tables</div><div class="card-value">12</div><div class="card-sub">across 3 models</div></div>
+          <div class="card"><div class="card-label">Relationships</div><div class="card-value">8</div><div class="card-sub">star schema links</div></div>
+          <div class="card"><div class="card-label">Last Run</div><div class="card-value" style="font-size:17px;padding-top:6px">2 min ago</div><div class="card-sub">pipeline: orders_gold</div></div>
+        </div>
+        <div class="sec-title">Registered Models</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Tables</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody>
+              <tr><td><strong>sales_model</strong></td><td>5</td><td><span class="badge gg"><span class="pip" style="background:#15803d"></span>healthy</span></td><td>2 min ago</td></tr>
+              <tr><td><strong>orders_model</strong></td><td>4</td><td><span class="badge bg"><span class="pip" style="background:#1a3fa8"></span>running</span></td><td>10 min ago</td></tr>
+              <tr><td><strong>inventory_model</strong></td><td>3</td><td><span class="badge am"><span class="pip" style="background:#b45309"></span>stale</span></td><td>3 hrs ago</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+</body>
+</html>
