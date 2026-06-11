@@ -17,13 +17,17 @@ Or browse it in the web UI:
 import os
 import pandas as pd
 
-from tracebi import DataModel, MemoryConnector
+from tracebi import DataModel, MemoryConnector, request_params
 from tracebi.reports.report import (
     Report, TextSection, TableSection, ChartSection,
     Metric, MetricSection,
 )
 from tracebi.reports.html_renderer import HTMLRenderer
 from tracebi.reports.excel_renderer import ExcelRenderer
+
+# Override from the UI's Requests page or:
+#   tracebi run analyst_demo --param status=open --param min_revenue=5000
+params = request_params(status="shipped", min_revenue=0.0)
 
 
 # ── Data ──────────────────────────────────────────────────────────────────────
@@ -45,17 +49,27 @@ orders_df = pd.DataFrame({
                   1498.50, -300.40, 2998.90, 748.25, -1003.00],
 })
 
+region_targets_df = pd.DataFrame({
+    "region": ["North East", "South East", "Midwest", "West"],
+    "target": [15000.0, 9000.0, 30000.0, 11000.0],
+})
+
 trend_df = pd.DataFrame({
     "month":   ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
     "revenue": [28000, 31500, 29800, 34200, 38100, 39145],
     "cost":    [19600, 22050, 20860, 23940, 26670, 27400],
 })
 
-conn = MemoryConnector("demo", tables={"orders": orders_df, "trend": trend_df})
+conn = MemoryConnector("demo", tables={
+    "orders": orders_df,
+    "trend": trend_df,
+    "region_targets": region_targets_df,
+})
 model = DataModel("demo")
 model.add_connector(conn)
 model.add_table("orders", connector="demo", source="orders")
 model.add_table("trend",  connector="demo", source="trend")
+model.add_table("region_targets", connector="demo", source="region_targets")
 model.connect()
 
 
@@ -63,20 +77,25 @@ model.connect()
 
 shipped = (
     model.load("orders")
-    .filter("status == 'shipped'", description="Shipped orders only")
-    .transform(
-        lambda df: df.assign(margin=df["revenue"] - df["cost"]),
+    .filter(
+        f"status == '{params['status']}' and revenue >= {params['min_revenue']}",
+        description=f"{params['status']} orders ≥ {params['min_revenue']:,.0f}",
+    )
+    .assign(
+        margin=lambda df: df["revenue"] - df["cost"],
         description="margin = revenue - cost",
     )
 )
 
-by_region = shipped.transform(
-    lambda df: df.groupby("region", as_index=False).agg(
-        revenue=("revenue", "sum"),
-        margin=("margin", "sum"),
-        orders=("order_id", "count"),
-    ).sort_values("revenue", ascending=False),
-    description="Aggregate by region",
+by_region = (
+    shipped
+    .aggregate(by="region",
+               revenue="sum", margin="sum", orders=("order_id", "count"),
+               description="Aggregate by region")
+    .join(model.load("region_targets"), on="region", how="left")
+    .assign(vs_target=lambda df: df["revenue"] - df["target"],
+            description="vs_target = revenue - target")
+    .sort("revenue", ascending=False)
 )
 
 variance_ds = (

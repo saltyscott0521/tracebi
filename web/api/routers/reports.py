@@ -8,6 +8,7 @@ from starlette.background import BackgroundTask
 from web.api.errors import error_detail as _error_detail
 from web.api.lineage_graph import lineage_to_graph as _lineage_to_graph
 from web.api.registry import registry
+from web.api.run_store import run_store
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -54,6 +55,51 @@ def run_report(name: str):
         "html": html,
         "manifest": manifest.to_dict(),
     }
+
+
+def _render_report_payload(name: str) -> dict:
+    """Run + render a report; shared by the sync and background paths."""
+    report = registry.run_report(name)
+    from tracebi.reports.html_renderer import HTMLRenderer
+    html = HTMLRenderer().to_html(report)
+    manifest = report.build_manifest(format="html", output_path="(in-memory)")
+    return {"name": name, "html": html, "manifest": manifest.to_dict()}
+
+
+@router.post("/{name}/runs", status_code=202)
+def start_report_run(name: str):
+    """
+    Start a report run in the background.
+
+    Returns a ``run_id`` immediately; poll ``GET /reports/{name}/runs/{run_id}``
+    until ``status`` is ``succeeded`` (payload in ``result``) or ``failed``
+    (structured detail in ``error``).
+    """
+    if name not in {r["name"] for r in registry.list_reports()}:
+        raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
+    record = run_store.start("report", name, lambda: _render_report_payload(name))
+    return {
+        "run_id":     record["run_id"],
+        "status":     record["status"],
+        "started_at": record["started_at"],
+    }
+
+
+@router.get("/{name}/runs")
+def report_run_history(name: str, limit: int = 10):
+    """Recent background runs for this report, newest first (no payloads)."""
+    return run_store.list_for("report", name, limit)
+
+
+@router.get("/{name}/runs/{run_id}")
+def report_run_status(name: str, run_id: str):
+    """Status + result of one background run."""
+    record = run_store.get(run_id)
+    if record is None or record["kind"] != "report" or record["name"] != name:
+        raise HTTPException(
+            status_code=404, detail=f"Run '{run_id}' not found for report '{name}'"
+        )
+    return record
 
 
 @router.get("/{name}/download")

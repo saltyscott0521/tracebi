@@ -21,7 +21,8 @@ async function toError(r) {
 }
 
 async function get(path) {
-  const r = await fetch(BASE + path)
+  // no-store: live data — never let the browser HTTP cache answer for the API
+  const r = await fetch(BASE + path, { cache: 'no-store' })
   if (!r.ok) throw await toError(r)
   return r.json()
 }
@@ -70,17 +71,55 @@ export const useReports = () =>
 export const useRunReport = () =>
   useMutation({ mutationFn: (name) => post(`/reports/${name}/run`) })
 
+// Background report runs: start returns a run_id; the status query polls
+// every 1.2s while the run is in flight, then stops on its own.
+export const useStartReportRun = () =>
+  useMutation({ mutationFn: (name) => post(`/reports/${encodeURIComponent(name)}/runs`) })
+
+export const useReportRun = (name, runId) =>
+  useQuery({
+    queryKey: ['report-run', name, runId],
+    queryFn: () => get(`/reports/${encodeURIComponent(name)}/runs/${runId}`),
+    enabled: !!(name && runId),
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? 1200 : false),
+  })
+
+export const useReportRunHistory = (name) =>
+  useQuery({
+    queryKey: ['report-runs', name],
+    queryFn: () => get(`/reports/${encodeURIComponent(name)}/runs?limit=5`),
+    enabled: !!name,
+  })
+
 export const useReportLineage = () =>
   useMutation({ mutationFn: (name) => get(`/reports/${name}/lineage`) })
 
 export const useRequests = () =>
   useQuery({ queryKey: ['requests'], queryFn: () => get('/requests') })
 
+// Declared request_params() defaults — statically discovered, no execution.
+export const useRequestParams = (name) =>
+  useQuery({
+    queryKey: ['request-params', name],
+    queryFn: () => get(`/requests/${encodeURIComponent(name)}/params`),
+    enabled: !!name,
+  })
+
 export const useRunRequest = () =>
-  useMutation({ mutationFn: (name) => post(`/requests/${encodeURIComponent(name)}/run`) })
+  useMutation({
+    mutationFn: ({ name, params }) =>
+      postJson(`/requests/${encodeURIComponent(name)}/run`, { params: params || {} }),
+  })
 
 export const useRequestLineage = () =>
-  useMutation({ mutationFn: (name) => get(`/requests/${encodeURIComponent(name)}/lineage`) })
+  useMutation({
+    mutationFn: ({ name, params }) => {
+      const qs = params && Object.keys(params).length
+        ? `?params_json=${encodeURIComponent(JSON.stringify(params))}`
+        : ''
+      return get(`/requests/${encodeURIComponent(name)}/lineage${qs}`)
+    },
+  })
 
 export const usePipelines = () =>
   useQuery({ queryKey: ['pipelines'], queryFn: () => get('/pipelines'), refetchInterval: 10000 })

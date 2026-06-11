@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
-import { useRequests, useRunRequest, useRequestLineage } from '../api'
+import { useRequests, useRequestParams, useRunRequest, useRequestLineage } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
@@ -17,16 +17,73 @@ function timeAgo(iso) {
   return `${Math.floor(secs / 86400)}d ago`
 }
 
+// Form for a script's declared request_params() — type-aware inputs.
+function ParamsForm({ schema, values, onChange, disabled }) {
+  if (!schema?.length) return null
+  return (
+    <div style={{
+      display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end',
+      marginBottom: 14, padding: '12px 14px',
+      background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8,
+    }}>
+      <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .6, alignSelf: 'center' }}>
+        Parameters
+      </span>
+      {schema.map(p => (
+        <label key={p.name} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>
+          {p.name}
+          {p.type === 'bool' ? (
+            <input
+              type="checkbox"
+              checked={!!values[p.name]}
+              disabled={disabled}
+              onChange={e => onChange(p.name, e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: 'var(--blue)' }}
+            />
+          ) : (
+            <input
+              type={p.type === 'int' || p.type === 'float' ? 'number' : 'text'}
+              step={p.type === 'float' ? 'any' : undefined}
+              value={values[p.name] ?? ''}
+              disabled={disabled}
+              onChange={e => onChange(p.name, e.target.value)}
+              className="search-input"
+              style={{ padding: '6px 10px', width: 170 }}
+            />
+          )}
+        </label>
+      ))}
+    </div>
+  )
+}
+
 function RequestDetail({ request }) {
   const [tab, setTab] = useState('Output')
   const [result, setResult] = useState(null)
   const [lineageData, setLineageData] = useState(null)
+  const [paramValues, setParamValues] = useState(null)
   const toast = useToast()
+  const { data: paramData } = useRequestParams(request?.name)
   const { mutate: run, isPending: running, error: runErr } = useRunRequest()
   const { mutate: fetchLineage, isPending: loadingLineage } = useRequestLineage()
 
+  const schema = paramData?.params || []
+
+  // Seed the form with the script's declared defaults once they load.
+  useEffect(() => {
+    if (schema.length && paramValues === null) {
+      setParamValues(Object.fromEntries(schema.map(p => [p.name, p.default])))
+    }
+  }, [schema, paramValues])
+
+  const effectiveParams = paramValues || {}
+  const setParam = useCallback(
+    (k, v) => setParamValues(prev => ({ ...(prev || {}), [k]: v })),
+    [],
+  )
+
   const handleRun = useCallback(() => {
-    run(request.name, {
+    run({ name: request.name, params: effectiveParams }, {
       onSuccess: data => {
         setResult(data)
         setLineageData(null)
@@ -34,17 +91,17 @@ function RequestDetail({ request }) {
       },
       onError: err => toast(`Run failed: ${err.message}`, 'error'),
     })
-  }, [request?.name, run, toast])
+  }, [request?.name, run, toast, effectiveParams])
 
   const handleLineage = useCallback(() => {
-    fetchLineage(request.name, {
+    fetchLineage({ name: request.name, params: effectiveParams }, {
       onSuccess: data => {
         setLineageData(data)
         setTab('Lineage')
       },
       onError: err => toast(`Lineage failed: ${err.message}`, 'error'),
     })
-  }, [request?.name, fetchLineage, toast])
+  }, [request?.name, fetchLineage, toast, effectiveParams])
 
   if (!request) return <Card><Empty message="Select a request script to run it and preview the output." /></Card>
 
@@ -57,6 +114,8 @@ function RequestDetail({ request }) {
           {request.file} · modified {timeAgo(request.modified)}
         </span>
       </CardTitle>
+
+      <ParamsForm schema={schema} values={effectiveParams} onChange={setParam} disabled={running} />
 
       {runErr && <ErrorDetail error={runErr} />}
 
@@ -167,7 +226,7 @@ export default function Requests() {
               </>
             )
           }
-          right={isLoading ? <SkeletonCard /> : <RequestDetail request={current} />}
+          right={isLoading ? <SkeletonCard /> : <RequestDetail key={current?.file} request={current} />}
         />
       )}
     </>

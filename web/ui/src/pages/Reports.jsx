@@ -1,6 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
-import { useReports, useRunReport, useReportLineage, reportDownloadUrl } from '../api'
+import {
+  useReports, useStartReportRun, useReportRun, useReportRunHistory,
+  useReportLineage, reportDownloadUrl,
+} from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
@@ -8,23 +11,67 @@ import {
   SearchInput, SkeletonList, SkeletonCard, useToast,
 } from '../components/Shared'
 
+function runDuration(rec) {
+  if (!rec.finished_at) return null
+  const s = (new Date(rec.finished_at) - new Date(rec.started_at)) / 1000
+  return s < 10 ? `${s.toFixed(1)}s` : `${Math.round(s)}s`
+}
+
+function RunHistory({ name, refreshKey }) {
+  const { data: runs, refetch } = useReportRunHistory(name)
+  useEffect(() => { refetch() }, [refreshKey, refetch])
+  if (!runs?.length) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
+      <span style={{ fontSize: 11, color: 'var(--muted)' }}>Recent runs:</span>
+      {runs.map(r => {
+        const dur = runDuration(r)
+        return (
+          <Badge
+            key={r.run_id}
+            variant={r.status === 'succeeded' ? 'green' : r.status === 'failed' ? 'red' : 'amber'}
+            title={r.status === 'failed' ? r.error?.message : undefined}
+            style={{ textTransform: 'none' }}
+          >
+            {r.status === 'running'
+              ? '… running'
+              : `${r.status === 'succeeded' ? '✓' : '✕'} ${new Date(r.started_at).toLocaleTimeString()}${dur ? ` · ${dur}` : ''}`}
+          </Badge>
+        )
+      })}
+    </div>
+  )
+}
+
 function ReportDetail({ report }) {
   const [tab, setTab] = useState('Output')
-  const [result, setResult] = useState(null)
+  const [runId, setRunId] = useState(null)
   const [lineageData, setLineageData] = useState(null)
   const toast = useToast()
-  const { mutate: run, isPending: running, error: runErr } = useRunReport()
+  const { mutate: startRun, isPending: starting, error: startErr } = useStartReportRun()
+  const { data: run } = useReportRun(report?.name, runId)
   const { mutate: fetchLineage, isPending: loadingLineage } = useReportLineage()
 
+  // The run executes in the background on the server; useReportRun polls
+  // until it settles. Result/error derive from the polled record.
+  const running = starting || run?.status === 'running'
+  const result = run?.status === 'succeeded' ? run.result : null
+  const runErr = run?.status === 'failed'
+    ? { message: run.error?.message || 'Run failed', detail: run.error }
+    : startErr
+
+  useEffect(() => {
+    if (run?.status === 'succeeded') toast('Report ran successfully', 'success')
+    if (run?.status === 'failed') toast(`Run failed: ${run.error?.message || 'unknown error'}`, 'error')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.status])
+
   const handleRun = useCallback(() => {
-    run(report.name, {
-      onSuccess: data => {
-        setResult(data)
-        toast('Report ran successfully', 'success')
-      },
-      onError: err => toast(`Run failed: ${err.message}`, 'error'),
+    startRun(report.name, {
+      onSuccess: data => setRunId(data.run_id),
+      onError: err => toast(`Run failed to start: ${err.message}`, 'error'),
     })
-  }, [report?.name, run, toast])
+  }, [report?.name, startRun, toast])
 
   const handleLineage = useCallback(() => {
     fetchLineage(report.name, {
@@ -49,6 +96,8 @@ function ReportDetail({ report }) {
         )}
       </CardTitle>
 
+      <RunHistory name={report.name} refreshKey={run?.status} />
+
       {runErr && <ErrorDetail error={runErr} />}
 
       {!result && !running && (
@@ -56,7 +105,7 @@ function ReportDetail({ report }) {
       )}
       {running && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
-          <Spinner /> Running report…
+          <Spinner /> Running in background… you can keep browsing; a toast will confirm when it finishes.
         </div>
       )}
 
@@ -164,7 +213,7 @@ export default function Reports() {
               </>
             )
           }
-          right={isLoading ? <SkeletonCard /> : <ReportDetail report={current} />}
+          right={isLoading ? <SkeletonCard /> : <ReportDetail key={current?.name} report={current} />}
         />
       )}
     </>
