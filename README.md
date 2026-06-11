@@ -449,6 +449,8 @@ every endpoint, parameter, and response schema is listed there.
 
 `web/demo_app/` is the default app module package. It wires an in-memory `MemoryConnector` for the main `SalesModel` and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports and dashboards read from those resources.
 
+It also registers a second, richer model — `WealthModel` (`web/demo_app/banking.py`), a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities) — to show that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
+
 To point the UI at your own data module instead of the built-in demo:
 
 ```bash
