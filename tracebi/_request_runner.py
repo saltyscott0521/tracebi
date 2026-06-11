@@ -10,20 +10,25 @@ files. The script runs with ``__name__`` set to ``"tracebi_request"`` so its
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 
-def execute_request(path: Union[str, Path]):
+def execute_request(path: Union[str, Path], params: Optional[dict] = None):
     """
     Run a request file and return the Report it defines.
 
     Prefers a module-level variable named ``report``; otherwise returns the
     first Report instance found in the script's namespace.
 
+    Args:
+        params: Optional parameter overrides, delivered to the script's
+                ``request_params(...)`` call (see ``tracebi._params``).
+
     Raises:
         LookupError: The script ran but defined no Report object.
         Exception:   Whatever the script itself raised.
     """
+    from tracebi._params import reset_param_overrides, set_param_overrides
     from tracebi.reports.report import Report
 
     path = Path(path)
@@ -34,7 +39,11 @@ def execute_request(path: Union[str, Path]):
         source = path.read_text(encoding="utf-8")
 
     ns: dict = {"__name__": "tracebi_request", "__file__": str(path)}
-    exec(compile(source, str(path), "exec"), ns)  # noqa: S102
+    token = set_param_overrides(params)
+    try:
+        exec(compile(source, str(path), "exec"), ns)  # noqa: S102
+    finally:
+        reset_param_overrides(token)
 
     report = ns.get("report")
     if isinstance(report, Report):

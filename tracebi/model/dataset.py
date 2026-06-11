@@ -235,6 +235,166 @@ class DataSet:
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
+    def join(
+        self,
+        other: "DataSet",
+        on: Optional[Union[str, list[str]]] = None,
+        how: str = "left",
+        left_on: Optional[Union[str, list[str]]] = None,
+        right_on: Optional[Union[str, list[str]]] = None,
+        description: str = "",
+    ) -> "DataSet":
+        """
+        Join another DataSet and return a new one.
+
+        The result's lineage contains both sides' full chains plus a join
+        step recording the keys, join type, and left/right/after row counts.
+
+        Args:
+            on:          Key column(s) present on both sides. Mutually
+                         exclusive with ``left_on``/``right_on``.
+            how:         'left' (default), 'inner', 'right', or 'outer'.
+            left_on:     Key column(s) on this DataSet.
+            right_on:    Key column(s) on ``other``.
+            description: Human-readable description for the lineage record.
+        """
+        if on is not None and (left_on is not None or right_on is not None):
+            raise ValueError("Pass either 'on' or 'left_on'/'right_on', not both.")
+        if on is None and (left_on is None or right_on is None):
+            raise ValueError("join() requires 'on', or both 'left_on' and 'right_on'.")
+
+        lk = on if on is not None else left_on
+        rk = on if on is not None else right_on
+        self._require_columns([lk] if isinstance(lk, str) else lk, "join key")
+        other._require_columns([rk] if isinstance(rk, str) else rk, "join key")
+
+        merged = self._df.merge(
+            other._df,
+            left_on=lk,
+            right_on=rk,
+            how=how,
+            suffixes=("", f"_{other.name}"),
+        )
+        key_str = lk if lk == rk else f"{lk}={rk}"
+        node = LineageNode(
+            operation="join",
+            description=description
+            or f"Joined '{self.name}' → '{other.name}' on {key_str} ({how})",
+            metadata={
+                "right":      other.name,
+                "left_key":   lk,
+                "right_key":  rk,
+                "how":        how,
+                "rows_left":  len(self._df),
+                "rows_right": len(other._df),
+                "rows_after": len(merged),
+                # How many trailing pre-join lineage nodes belong to the right
+                # side — lets graph renderers reconstruct the branch structure
+                # from the flat lineage list.
+                "right_chain_len": len(other._lineage),
+            },
+        )
+        return DataSet(
+            df=merged,
+            name=self.name,
+            lineage=self._lineage + other._lineage + [node],
+        )
+
+    def aggregate(
+        self,
+        by: Union[str, list[str]],
+        description: str = "",
+        **measures: Union[str, tuple[str, str]],
+    ) -> "DataSet":
+        """
+        Group by one or more columns and aggregate, returning a new DataSet.
+
+        Each keyword argument names an output column. A string value
+        aggregates the column of the same name (``revenue="sum"``); a
+        ``(column, fn)`` tuple aggregates a different source column
+        (``orders=("order_id", "nunique")``).
+
+        Args:
+            by:          Column name or list of column names to group by.
+            description: Human-readable description for the lineage record.
+        """
+        if not measures:
+            raise ValueError(
+                'aggregate() requires at least one measure, e.g. revenue="sum".'
+            )
+        by_list = [by] if isinstance(by, str) else list(by)
+        named: dict[str, tuple[str, str]] = {
+            out: (out, spec) if isinstance(spec, str) else (spec[0], spec[1])
+            for out, spec in measures.items()
+        }
+        self._require_columns(
+            by_list + [col for col, _ in named.values()], "aggregate"
+        )
+
+        rows_before = len(self._df)
+        new_df = (
+            self._df.groupby(by_list, as_index=False, dropna=False)
+            .agg(**{out: pd.NamedAgg(column=col, aggfunc=fn)
+                    for out, (col, fn) in named.items()})
+        )
+        measure_str = ", ".join(f"{out}={fn}({col})" if out != col else f"{fn}({col})"
+                                for out, (col, fn) in named.items())
+        node = LineageNode(
+            operation="aggregate",
+            description=description
+            or f"Aggregated by {', '.join(by_list)}: {measure_str}",
+            metadata={
+                "by":          by_list,
+                "measures":    {out: {"column": col, "fn": fn}
+                                for out, (col, fn) in named.items()},
+                "rows_before": rows_before,
+                "rows_after":  len(new_df),
+            },
+        )
+        return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
+
+    def assign(self, description: str = "", **columns: Any) -> "DataSet":
+        """
+        Add or replace columns and return a new DataSet.
+
+        Works like ``DataFrame.assign``: values may be scalars, Series, or
+        callables receiving the DataFrame
+        (``ds.assign(margin=lambda df: df.revenue - df.cost)``).
+        """
+        if not columns:
+            raise ValueError("assign() requires at least one column keyword.")
+        existing = set(self._df.columns)
+        new_df = self._df.assign(**columns)
+        added = [c for c in columns if c not in existing]
+        replaced = [c for c in columns if c in existing]
+        metadata: dict[str, Any] = {"rows": len(new_df)}
+        if added:
+            metadata["columns_added"] = added
+        if replaced:
+            metadata["columns_replaced"] = replaced
+        node = LineageNode(
+            operation="assign",
+            description=description or f"Assigned columns: {', '.join(columns)}",
+            metadata=metadata,
+        )
+        return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
+
+    def _require_columns(self, columns: list[str], context: str) -> None:
+        """Raise ValueError naming missing columns, with close-match hints."""
+        import difflib
+
+        missing = [c for c in columns if c not in self._df.columns]
+        if not missing:
+            return
+        hints = []
+        for c in missing:
+            close = difflib.get_close_matches(c, self._df.columns, n=1)
+            hints.append(f"'{c}'" + (f" (did you mean '{close[0]}'?)" if close else ""))
+        raise ValueError(
+            f"DataSet '{self.name}': {context} column(s) not found: "
+            f"{', '.join(hints)}. Available: {list(self._df.columns)}"
+        )
+
     # ── Inspection ─────────────────────────────────────────────
 
     def print_lineage(self) -> None:
@@ -264,7 +424,11 @@ class DataSet:
             "\n"
             "Transforms (each returns a NEW DataSet and records a lineage step):\n"
             '  .filter(expr, description="")     Pandas query string, e.g. "status == \'shipped\'"\n'
-            '  .transform(func, description="")  Any function (DataFrame) -> DataFrame\n'
+            '  .assign(margin=lambda df: ...)    Add/replace columns (like DataFrame.assign)\n'
+            '  .join(other, on="key", how="left")  Join another DataSet; lineage keeps both sides\n'
+            '  .aggregate(by="region", revenue="sum", orders=("order_id", "nunique"))\n'
+            "                                    Group + aggregate; kwargs name output columns\n"
+            '  .transform(func, description="")  Any function (DataFrame) -> DataFrame (escape hatch)\n'
             "  .sort(by, ascending=True)         Sort by column(s)\n"
             "  .select(columns)                  Keep only these columns\n"
             '  .rename({"old": "new"})           Rename columns\n'

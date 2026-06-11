@@ -358,6 +358,7 @@ class DataModel:
                 "rows_left":    len(left_ds),
                 "rows_right":   len(right_ds),
                 "rows_after":   len(merged),
+                "right_chain_len": len(right_ds.lineage),
             },
         )
         combined_lineage = left_ds.lineage + right_ds.lineage + [join_node]
@@ -410,6 +411,7 @@ class DataModel:
                     "rows_left":    len(ds),
                     "rows_right":   len(right_ds),
                     "rows_after":   len(merged),
+                    "right_chain_len": len(right_ds.lineage),
                 },
             )
             ds = DataSet(

@@ -445,16 +445,31 @@ def cmd_run(args: argparse.Namespace) -> int:
     if path is None:
         print(f"Request not found in {requests_dir}: {name}", file=sys.stderr)
         return 1
+
+    overrides: dict = {}
+    for item in args.param or []:
+        if "=" not in item:
+            print(f"--param expects key=value, got: {item}", file=sys.stderr)
+            return 1
+        key, _, value = item.partition("=")
+        overrides[key.strip()] = value
+
+    from tracebi._params import reset_param_overrides, set_param_overrides
+
     print(f"Running {path}…")
-    if path.suffix == ".ipynb":
-        from tracebi._notebook import notebook_to_source
-        source = notebook_to_source(path)
-        ns: dict = {"__name__": "__main__", "__file__": str(path)}
-        exec(compile(source, str(path), "exec"), ns)
-        if callable(ns.get("run")):
-            ns["run"]()
-    else:
-        runpy.run_path(str(path), run_name="__main__")
+    token = set_param_overrides(overrides or None)
+    try:
+        if path.suffix == ".ipynb":
+            from tracebi._notebook import notebook_to_source
+            source = notebook_to_source(path)
+            ns: dict = {"__name__": "__main__", "__file__": str(path)}
+            exec(compile(source, str(path), "exec"), ns)
+            if callable(ns.get("run")):
+                ns["run"]()
+        else:
+            runpy.run_path(str(path), run_name="__main__")
+    finally:
+        reset_param_overrides(token)
     return 0
 
 
@@ -556,6 +571,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_run = sub.add_parser("run", help="Run a request script (.py or .ipynb).")
     p_run.add_argument("name", help="Request file name (suffix optional; tries .py then .ipynb).")
+    p_run.add_argument(
+        "--param", action="append", metavar="KEY=VALUE",
+        help="Override a request_params() default (repeatable), "
+             "e.g. --param period=2026-Q1",
+    )
     p_run.set_defaults(func=cmd_run)
 
     p_dev = sub.add_parser(

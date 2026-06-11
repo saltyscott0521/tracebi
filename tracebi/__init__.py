@@ -27,6 +27,7 @@ from tracebi.etl.silver import SilverLayer, ManipulationLayer
 from tracebi.etl.gold import GoldLayer, FinalLayer
 from tracebi.lineage.diagram import LineageDiagram
 from tracebi.pipeline.runner import PipelineRunner
+from tracebi._params import request_params
 
 __all__ = [
     # Connectors
@@ -52,4 +53,6 @@ __all__ = [
     # Visualisation & orchestration
     "LineageDiagram",
     "PipelineRunner",
+    # Request scripts
+    "request_params",
 ]

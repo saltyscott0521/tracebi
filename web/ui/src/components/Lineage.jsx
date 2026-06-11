@@ -4,7 +4,7 @@ import 'reactflow/dist/style.css'
 
 // Operations with a dedicated tint in global.css (--op-{name}-bg/br/tx).
 const KNOWN_OPS = new Set([
-  'load', 'filter', 'transform', 'join', 'sort', 'select', 'rename',
+  'load', 'filter', 'transform', 'join', 'aggregate', 'assign', 'sort', 'select', 'rename',
   'landing', 'manipulation', 'final', 'bronze', 'silver', 'gold', 'warning',
 ])
 
@@ -60,6 +60,25 @@ export function LineageNode({ data, selected }) {
 
 const NODE_TYPES = { lineageNode: LineageNode }
 
+// Render structured metadata values readably: arrays join, the aggregate
+// `measures` map becomes "out = fn(column)", other objects fall back to JSON.
+function fmtMetaValue(k, v) {
+  if (v == null) return ''
+  if (Array.isArray(v)) return v.join(', ')
+  if (typeof v === 'object') {
+    if (k === 'measures') {
+      return Object.entries(v)
+        .map(([out, m]) => `${out} = ${m.fn}(${m.column})`)
+        .join(', ')
+    }
+    return JSON.stringify(v)
+  }
+  return String(v)
+}
+
+// Internal markers not worth showing in the inspector.
+const HIDDEN_META_KEYS = new Set(['right_chain_len'])
+
 function MetaRow({ k, v }) {
   return (
     <div style={{ display: 'flex', gap: 10, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
@@ -67,7 +86,7 @@ function MetaRow({ k, v }) {
         {k.replaceAll('_', ' ')}
       </span>
       <span style={{ fontSize: 11.5, color: 'var(--text-2)', wordBreak: 'break-word', fontFamily: 'Cascadia Code, Fira Code, monospace' }}>
-        {String(v)}
+        {fmtMetaValue(k, v)}
       </span>
     </div>
   )
@@ -100,7 +119,9 @@ function NodeInspector({ data, onClose }) {
       </p>
       {data.connector && Object.entries(data.connector).map(([k, v]) => <MetaRow key={k} k={k} v={v} />)}
       {data.source && <MetaRow k="source" v={data.source} />}
-      {Object.entries(meta).map(([k, v]) => <MetaRow key={k} k={k} v={v} />)}
+      {Object.entries(meta)
+        .filter(([k]) => !HIDDEN_META_KEYS.has(k))
+        .map(([k, v]) => <MetaRow key={k} k={k} v={v} />)}
       {data.timestamp && <MetaRow k="recorded" v={new Date(data.timestamp).toLocaleString()} />}
     </div>
   )

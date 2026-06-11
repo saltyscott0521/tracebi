@@ -15,9 +15,18 @@ Or scaffold a brand-new request with:
 """
 
 import os
+from tracebi import request_params
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
+
+
+# ── 0. Parameters ─────────────────────────────────────────────────────────────
+# Declare defaults here; override at run time with
+#   tracebi run my_report --param period="Q3 2024"
+# or from the parameter form on the web UI's Requests page.
+
+params = request_params(period="Q2 2024")
 
 
 # ── 1. Get the project DataModel ─────────────────────────────────────────────
@@ -59,7 +68,7 @@ report = (
     Report("My Report Title")
     .author("Your Name")
     .description("Short description of this report.")
-    .parameter("period", "Q2 2024")
+    .parameter("period", params["period"])
 
     .add(TextSection(title="Executive Summary", content="Executive Summary", style="heading1"))
     .add(TextSection(content="Write your narrative here.", style="normal"))

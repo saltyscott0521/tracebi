@@ -1368,3 +1368,285 @@ class TestRequestsAPI:
         body = r.json()
         assert body["combined_graph"]["nodes"]
         assert body["sections"][0]["dataset_name"] == "orders"
+
+
+# ─────────────────────────────────────────────
+# Lineage graph branching (joins render as a DAG)
+# ─────────────────────────────────────────────
+
+class TestLineageGraphBranching:
+
+    @staticmethod
+    def _joined_lineage():
+        from tracebi.model.dataset import DataSet, LineageNode
+        left = DataSet(
+            df=pd.DataFrame({"id": [1, 2], "v": [10, 20]}),
+            name="orders",
+            lineage=[LineageNode(operation="load", description="load orders")],
+        ).filter("v > 0")
+        right = DataSet(
+            df=pd.DataFrame({"id": [1, 2], "n": ["a", "b"]}),
+            name="customers",
+            lineage=[LineageNode(operation="load", description="load customers")],
+        )
+        return left.join(right, on="id").lineage_to_dict()
+
+    def test_join_node_has_two_incoming_edges(self):
+        from web.api.lineage_graph import lineage_to_graph
+        graph = lineage_to_graph(self._joined_lineage())
+        join_ids = [n["id"] for n in graph["nodes"]
+                    if n["data"]["operation"] == "join"]
+        assert len(join_ids) == 1
+        incoming = [e for e in graph["edges"] if e["target"] == join_ids[0]]
+        assert len(incoming) == 2
+
+    def test_branches_on_separate_lanes(self):
+        from web.api.lineage_graph import lineage_to_graph
+        graph = lineage_to_graph(self._joined_lineage())
+        load_ys = {n["data"]["description"]: n["position"]["y"]
+                   for n in graph["nodes"] if n["data"]["operation"] == "load"}
+        assert load_ys["load orders"] != load_ys["load customers"]
+
+    def test_linear_lineage_unchanged(self):
+        from web.api.lineage_graph import lineage_to_graph
+        from tracebi.model.dataset import DataSet, LineageNode
+        ds = DataSet(
+            df=pd.DataFrame({"v": [1, 2, 3]}),
+            name="t",
+            lineage=[LineageNode(operation="load")],
+        ).filter("v > 1").sort("v")
+        graph = lineage_to_graph(ds.lineage_to_dict())
+        assert len(graph["nodes"]) == 3
+        assert len(graph["edges"]) == 2
+        assert all(n["position"]["y"] == 0 for n in graph["nodes"])
+
+
+# ─────────────────────────────────────────────
+# Background report runs
+# ─────────────────────────────────────────────
+
+class TestBackgroundReportRuns:
+
+    def _client_with_report(self, factory, name="bg_report"):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.registry import registry
+        from web.api.routers import reports as reports_router
+
+        registry.add_report(name, factory)
+        app = FastAPI()
+        app.include_router(reports_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _cleanup_report(self, name="bg_report"):
+        from web.api.registry import registry
+        registry._report_factories.pop(name, None)
+
+    @staticmethod
+    def _poll(client, name, run_id, timeout=10.0):
+        import time
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            r = client.get(f"/api/reports/{name}/runs/{run_id}")
+            assert r.status_code == 200
+            body = r.json()
+            if body["status"] != "running":
+                return body
+            time.sleep(0.05)
+        raise AssertionError("background run did not finish in time")
+
+    def test_run_succeeds_and_returns_payload(self, memory_model):
+        from tracebi.reports import Report, TableSection
+
+        def factory():
+            ds = memory_model.load("orders")
+            return Report("BG").add(TableSection(title="Orders", dataset=ds))
+
+        client = self._client_with_report(factory)
+        try:
+            r = client.post("/api/reports/bg_report/runs")
+            assert r.status_code == 202
+            run_id = r.json()["run_id"]
+            body = self._poll(client, "bg_report", run_id)
+            assert body["status"] == "succeeded"
+            assert "<html" in body["result"]["html"].lower()
+            assert body["result"]["manifest"]
+            assert body["finished_at"]
+        finally:
+            self._cleanup_report()
+
+    def test_failed_run_carries_structured_error(self):
+        def boom():
+            raise RuntimeError("bg kapow")
+
+        client = self._client_with_report(boom)
+        try:
+            run_id = client.post("/api/reports/bg_report/runs").json()["run_id"]
+            body = self._poll(client, "bg_report", run_id)
+            assert body["status"] == "failed"
+            assert "bg kapow" in body["error"]["message"]
+            assert body["error"]["exception_type"] == "RuntimeError"
+            assert "RuntimeError: bg kapow" in body["error"]["traceback"]
+        finally:
+            self._cleanup_report()
+
+    def test_history_lists_runs_without_payload(self, memory_model):
+        from tracebi.reports import Report, TableSection
+
+        def factory():
+            ds = memory_model.load("orders")
+            return Report("BG").add(TableSection(title="Orders", dataset=ds))
+
+        client = self._client_with_report(factory)
+        try:
+            run_id = client.post("/api/reports/bg_report/runs").json()["run_id"]
+            self._poll(client, "bg_report", run_id)
+            r = client.get("/api/reports/bg_report/runs")
+            assert r.status_code == 200
+            runs = r.json()
+            assert runs[0]["run_id"] == run_id
+            assert runs[0]["status"] == "succeeded"
+            assert "result" not in runs[0]
+        finally:
+            self._cleanup_report()
+
+    def test_unknown_run_or_report_404(self, memory_model):
+        from tracebi.reports import Report, TableSection
+
+        def factory():
+            ds = memory_model.load("orders")
+            return Report("BG").add(TableSection(title="Orders", dataset=ds))
+
+        client = self._client_with_report(factory)
+        try:
+            assert client.post("/api/reports/nope/runs").status_code == 404
+            assert client.get("/api/reports/bg_report/runs/zzz").status_code == 404
+        finally:
+            self._cleanup_report()
+
+
+# ─────────────────────────────────────────────
+# Request parameters (request_params / discovery / API)
+# ─────────────────────────────────────────────
+
+PARAM_SCRIPT = '''
+import pandas as pd
+from tracebi import request_params
+from tracebi.model.dataset import DataSet, LineageNode
+from tracebi.reports import Report, TableSection
+
+params = request_params(period="Q2", top_n=3, strict=False)
+
+df = pd.DataFrame({"v": range(10)}).head(params["top_n"])
+ds = DataSet(df=df, name="t", lineage=[LineageNode(operation="load")])
+report = (
+    Report(f"Params {params['period']}")
+    .parameter("period", params["period"])
+    .add(TableSection(title="T", dataset=ds))
+)
+'''
+
+
+class TestRequestParams:
+
+    def test_defaults_without_overrides(self):
+        from tracebi import request_params
+        assert request_params(a=1, b="x") == {"a": 1, "b": "x"}
+
+    def test_overrides_coerced_to_default_types(self):
+        from tracebi._params import (request_params, reset_param_overrides,
+                                     set_param_overrides)
+        token = set_param_overrides({"n": "5", "ratio": "0.5", "flag": "true"})
+        try:
+            out = request_params(n=1, ratio=1.0, flag=False, label="x")
+            assert out == {"n": 5, "ratio": 0.5, "flag": True, "label": "x"}
+        finally:
+            reset_param_overrides(token)
+
+    def test_unknown_override_raises(self):
+        from tracebi._params import (request_params, reset_param_overrides,
+                                     set_param_overrides)
+        token = set_param_overrides({"nope": "1"})
+        try:
+            with pytest.raises(ValueError, match="Unknown request parameter"):
+                request_params(a=1)
+        finally:
+            reset_param_overrides(token)
+
+    def test_bad_coercion_raises(self):
+        from tracebi._params import (request_params, reset_param_overrides,
+                                     set_param_overrides)
+        token = set_param_overrides({"n": "not-a-number"})
+        try:
+            with pytest.raises(ValueError, match="Parameter 'n'"):
+                request_params(n=1)
+        finally:
+            reset_param_overrides(token)
+
+    def test_discover_params_static(self, tmp_path):
+        from tracebi._params import discover_params
+        script = tmp_path / "r.py"
+        script.write_text(PARAM_SCRIPT, encoding="utf-8")
+        found = {p["name"]: p for p in discover_params(script)}
+        assert found["period"] == {"name": "period", "default": "Q2", "type": "str"}
+        assert found["top_n"]["type"] == "int"
+        assert found["strict"]["default"] is False
+
+    def test_discover_params_none_declared(self, tmp_path):
+        from tracebi._params import discover_params
+        script = tmp_path / "r.py"
+        script.write_text("x = 1\n", encoding="utf-8")
+        assert discover_params(script) == []
+
+    def test_execute_request_with_overrides(self, tmp_path):
+        from tracebi._request_runner import execute_request
+        script = tmp_path / "r.py"
+        script.write_text(PARAM_SCRIPT, encoding="utf-8")
+        report = execute_request(script, params={"period": "Q4", "top_n": "7"})
+        assert report.name == "Params Q4"
+        section = report.data_sections()[0]
+        assert len(section.dataset) == 7
+
+
+class TestRequestParamsAPI:
+
+    @pytest.fixture
+    def client(self, tmp_path, monkeypatch):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.routers import requests as requests_router
+
+        (tmp_path / "param_req.py").write_text(PARAM_SCRIPT, encoding="utf-8")
+        monkeypatch.setenv("TRACEBI_REQUESTS_DIR", str(tmp_path))
+        app = FastAPI()
+        app.include_router(requests_router.router, prefix="/api")
+        return TestClient(app)
+
+    def test_params_endpoint_lists_declared(self, client):
+        r = client.get("/api/requests/param_req/params")
+        assert r.status_code == 200
+        names = [p["name"] for p in r.json()["params"]]
+        assert names == ["period", "top_n", "strict"]
+
+    def test_run_with_param_overrides(self, client):
+        r = client.post("/api/requests/param_req/run",
+                        json={"params": {"period": "Q4", "top_n": 2}})
+        assert r.status_code == 200
+        body = r.json()
+        assert "Params Q4" in body["html"]
+        assert body["params"] == {"period": "Q4", "top_n": 2}
+
+    def test_run_unknown_param_is_structured_500(self, client):
+        r = client.post("/api/requests/param_req/run",
+                        json={"params": {"bogus": 1}})
+        assert r.status_code == 500
+        assert "Unknown request parameter" in r.json()["detail"]["message"]
+
+    def test_lineage_accepts_params_json(self, client):
+        r = client.get('/api/requests/param_req/lineage?params_json={"top_n":2}')
+        assert r.status_code == 200
+        assert r.json()["combined_graph"]["nodes"]
+
+    def test_lineage_bad_params_json_400(self, client):
+        r = client.get("/api/requests/param_req/lineage?params_json=notjson")
+        assert r.status_code == 400

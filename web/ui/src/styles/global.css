@@ -81,6 +81,8 @@
   --op-filter-bg:  #e7f5ed;  --op-filter-br:  #b7e1ca;  --op-filter-tx:  #15803d;
   --op-transform-bg:#fdf3e1; --op-transform-br:#f0d9a6; --op-transform-tx:#92520a;
   --op-join-bg:    #fdeee4;  --op-join-br:    #f3ccae;  --op-join-tx:    #b4500f;
+  --op-aggregate-bg:#fbe9f1; --op-aggregate-br:#efbcd3; --op-aggregate-tx:#ad1457;
+  --op-assign-bg:  #ebebfa;  --op-assign-br:  #c7c7ee;  --op-assign-tx:  #4338ca;
   --op-sort-bg:    #e8edf8;  --op-sort-br:    #b8c6e0;  --op-sort-tx:    #091a55;
   --op-select-bg:  #eef2f6;  --op-select-br:  #cfd9e3;  --op-select-tx:  #3a4960;
   --op-rename-bg:  #e4f5f3;  --op-rename-br:  #b3e0da;  --op-rename-tx:  #0f766e;

@@ -73,12 +73,19 @@ around a `pandas.DataFrame` that records what happened to it:
 ```python
 ds = model.load("orders")        # DataSet, not DataFrame
 
-# Any pandas logic fits inside .transform() — it takes any DataFrame -> DataFrame
-# function, so groupby, merge, pivot, resample, etc. all work unchanged:
-monthly = ds.transform(
-    lambda df: df.groupby("month", as_index=False)["revenue"].sum(),
-    description="Monthly revenue",
+# The verbs you already use have first-class equivalents that record
+# structured lineage (keys, measures, row counts in/out):
+enriched = (
+    ds
+    .assign(margin=lambda df: df.revenue - df.cost)        # like df.assign
+    .join(customers, on="customer_id", how="left")         # like df.merge
+    .aggregate(by="region",                                # like groupby/agg
+               revenue="sum", orders=("order_id", "nunique"))
 )
+
+# Anything else fits in .transform() — any DataFrame -> DataFrame function
+# (pivot, resample, custom logic) works unchanged:
+pivoted = ds.transform(lambda df: df.pivot_table(...), description="…")
 
 df = ds.to_pandas()              # escape hatch: plain DataFrame copy, any time
 ds.help()                        # cheat sheet of the fluent API
@@ -416,11 +423,13 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
   chart, CSV download, and the *lineage graph of the exact query that ran*.
 - **Models** — table previews with column dtypes and full-table CSV export,
   plus an interactive ERD of your relationships.
-- **Reports** — run in the browser, download as Excel or HTML, and inspect
-  per-section lineage. Failures show the full Python traceback.
+- **Reports** — run in the browser (in the background, with run history and
+  a toast when done), download as Excel or HTML, and inspect per-section
+  lineage. Failures show the full Python traceback.
 - **Requests** — browse the scripts in `requests/` and run them straight
   from the browser. Scripts execute fresh on every click, so edits on disk
-  show up without registering anything or restarting the server.
+  show up without registering anything or restarting the server. Scripts
+  that declare `request_params(...)` get an automatic parameter form.
 - **Pipelines** — the medallion chain as a live DAG with per-layer run
   buttons and run history.
 
@@ -503,7 +512,7 @@ python examples/phase4_example.py      # full pipeline (run seeds/seed_db.py fir
 
 ```bash
 pytest tests/
-# 303 passed
+# 339 passed
 ```
 
 ---
@@ -527,7 +536,7 @@ tracebi/
 │   ├── run.py            Dev server entrypoint
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                303 tests across all phases
+├── tests/                339 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── requests/             _template.py — scaffold for ad hoc report scripts
 ├── data/                 SQLite DB lives here (gitignored)
@@ -541,6 +550,21 @@ tracebi/
 Copy `requests/_template.py`, rename it, fill in the four sections
 (connect → build datasets → build report → render), and commit it to git.
 The script is the permanent, auditable record of how the numbers were produced.
+
+Declare parameters with defaults in one line — they're overridable from the
+CLI and surface as a form on the web UI's Requests page:
+
+```python
+from tracebi import request_params
+
+params = request_params(period="Q2 2024", top_n=10)
+```
+
+```bash
+tracebi run my_report --param period="Q3 2024" --param top_n=25
+```
+
+Run standalone, the script just uses the defaults — no harness required.
 
 ```
 requests/
