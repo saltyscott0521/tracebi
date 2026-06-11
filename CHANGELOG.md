@@ -7,6 +7,25 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 ## [Unreleased]
 
 ### Added
+- **First-class `DataSet.join()` / `.aggregate()` / `.assign()`** — the
+  pandas verbs analysts reach for, recording *structured* lineage instead of
+  freeform descriptions: join keys, join type, and left/right/after row
+  counts; group-by columns and per-measure aggregation functions; columns
+  added/replaced. Missing columns raise with did-you-mean suggestions.
+  `.transform()` remains the escape hatch for everything else.
+- **Lineage graphs now branch at joins** — join steps record which lineage
+  nodes belong to the right side (`right_chain_len`), so the React Flow
+  graph renders both parent chains flowing into the join node instead of a
+  misleading straight line. Older lineage still renders linearly.
+- **Background report runs in the web UI** — `POST /api/reports/{name}/runs`
+  starts a run and returns a `run_id` (202); the UI polls, shows recent run
+  history with durations, and toasts on completion instead of blocking.
+- **Request parameters** — declare defaults in one line
+  (`params = request_params(period="Q2 2024", top_n=10)`); override via
+  `tracebi run x --param period=Q3` or the automatic parameter form on the
+  web UI's Requests page. Defaults are discovered statically (AST), so the
+  form renders without executing the script; overrides are coerced to the
+  default's type and unknown names fail loudly.
 - **Report layout & styling** — `MetricSection`/`Metric` KPI cards with
   green/red delta indicators, `RowSection` side-by-side layout (HTML;
   stacks in Excel), table `highlight_negatives`, per-column `color_scale`

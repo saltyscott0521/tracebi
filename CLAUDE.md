@@ -122,7 +122,7 @@ web/
   run.py               # Dev server (uvicorn wrapper)
   demo_app/            # Default app module package — shows how to wire everything together
 examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
-tests/                 # 303 pytest tests, one file per phase
+tests/                 # 339 pytest tests, one file per phase
 seeds/                 # DB init + Bronze seeding
 requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
 data/                  # SQLite DB (gitignored)
@@ -158,7 +158,7 @@ docker compose up --build                      # Or the docker-compose path
 python seeds/seed_db.py                        # Create + seed data/tracebi.db
 
 # Tests
-pytest tests/                                  # Full suite (303 tests)
+pytest tests/                                  # Full suite (339 tests)
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
 ```
@@ -241,13 +241,17 @@ GET  /api/models/{name}/tables/{t}/preview           → first N rows + dtypes +
 GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV attachment
 POST /api/models/{name}/query                        → star-schema query + lineage graph
 GET  /api/reports
-POST /api/reports/{name}/run                         → HTML + lineage manifest JSON
+POST /api/reports/{name}/run                         → HTML + lineage manifest JSON (sync)
+POST /api/reports/{name}/runs                        → start background run; returns run_id (202)
+GET  /api/reports/{name}/runs                        → recent background runs (no payloads)
+GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
 GET  /api/reports/{name}/download?format=xlsx|html   → rendered file attachment
 GET  /api/reports/{name}/lineage                     → React Flow graph per section
 GET  /api/reports/{name}/mermaid
 GET  /api/requests                                   → scripts in requests/ (name, type, modified)
-POST /api/requests/{name}/run                        → execute script fresh; HTML + manifest
-GET  /api/requests/{name}/lineage                    → React Flow graph per section
+GET  /api/requests/{name}/params                     → declared request_params() defaults (static)
+POST /api/requests/{name}/run                        → execute script fresh; body {"params": {…}}
+GET  /api/requests/{name}/lineage?params_json={…}    → React Flow graph per section
 GET  /api/pipelines
 POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run
