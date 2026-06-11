@@ -185,6 +185,127 @@ class TestDataSet:
 
 
 # ─────────────────────────────────────────────
+# DataSet join / aggregate / assign
+# ─────────────────────────────────────────────
+
+@pytest.fixture
+def customers_ds():
+    df = pd.DataFrame({
+        "id":      [1, 2, 3],
+        "name":    ["Alice", "Bob", "Carol"],
+        "segment": ["SMB", "Enterprise", "SMB"],
+    })
+    node = LineageNode(operation="load", description="Test load", source="customers")
+    return DataSet(df=df, name="customers", lineage=[node])
+
+
+class TestJoin:
+
+    def test_join_on_shared_key(self, sample_ds, customers_ds):
+        joined = sample_ds.join(customers_ds, on="id", how="left")
+        assert len(joined) == 5
+        assert "name" in joined.columns
+        node = joined.lineage[-1]
+        assert node.operation == "join"
+        assert node.metadata["right"] == "customers"
+        assert node.metadata["how"] == "left"
+        assert node.metadata["rows_left"] == 5
+        assert node.metadata["rows_right"] == 3
+        assert node.metadata["rows_after"] == 5
+
+    def test_join_lineage_keeps_both_sides(self, sample_ds, customers_ds):
+        joined = sample_ds.join(customers_ds, on="id")
+        ops = [n.operation for n in joined.lineage]
+        assert ops == ["load", "load", "join"]
+
+    def test_join_inner_drops_unmatched(self, sample_ds, customers_ds):
+        joined = sample_ds.join(customers_ds, on="id", how="inner")
+        assert len(joined) == 3
+
+    def test_join_left_on_right_on(self, sample_ds, customers_ds):
+        renamed = customers_ds.rename({"id": "customer_id"})
+        joined = sample_ds.join(renamed, left_on="id", right_on="customer_id")
+        assert len(joined) == 5
+        assert joined.lineage[-1].metadata["left_key"] == "id"
+        assert joined.lineage[-1].metadata["right_key"] == "customer_id"
+
+    def test_join_does_not_mutate_either_side(self, sample_ds, customers_ds):
+        _ = sample_ds.join(customers_ds, on="id")
+        assert len(sample_ds) == 5
+        assert len(customers_ds) == 3
+        assert len(sample_ds.lineage) == 1
+        assert len(customers_ds.lineage) == 1
+
+    def test_join_requires_keys(self, sample_ds, customers_ds):
+        with pytest.raises(ValueError, match="requires 'on'"):
+            sample_ds.join(customers_ds)
+        with pytest.raises(ValueError, match="not both"):
+            sample_ds.join(customers_ds, on="id", left_on="id", right_on="id")
+
+    def test_join_missing_key_suggests_close_match(self, sample_ds, customers_ds):
+        with pytest.raises(ValueError, match="did you mean 'id'"):
+            sample_ds.join(customers_ds, on="idd")
+
+
+class TestAggregate:
+
+    def test_aggregate_same_name_measure(self, sample_ds):
+        agg = sample_ds.aggregate(by="region", value="sum")
+        assert len(agg) == 4  # North, South, East, West
+        node = agg.lineage[-1]
+        assert node.operation == "aggregate"
+        assert node.metadata["by"] == ["region"]
+        assert node.metadata["measures"]["value"] == {"column": "value", "fn": "sum"}
+
+    def test_aggregate_values_correct(self, sample_ds):
+        agg = sample_ds.aggregate(by="region", value="sum")
+        df = agg.to_pandas().set_index("region")
+        assert df.loc["North", "value"] == 400.0  # 100 + 300
+
+    def test_aggregate_tuple_measure(self, sample_ds):
+        agg = sample_ds.aggregate(by="region", n=("id", "nunique"))
+        df = agg.to_pandas().set_index("region")
+        assert df.loc["North", "n"] == 2
+        node = agg.lineage[-1]
+        assert node.metadata["measures"]["n"] == {"column": "id", "fn": "nunique"}
+
+    def test_aggregate_rows_metadata(self, sample_ds):
+        agg = sample_ds.aggregate(by="region", value="sum")
+        assert agg.lineage[-1].metadata["rows_before"] == 5
+        assert agg.lineage[-1].metadata["rows_after"] == len(agg)
+
+    def test_aggregate_requires_measures(self, sample_ds):
+        with pytest.raises(ValueError, match="at least one measure"):
+            sample_ds.aggregate(by="region")
+
+    def test_aggregate_missing_column_raises(self, sample_ds):
+        with pytest.raises(ValueError, match="did you mean 'value'"):
+            sample_ds.aggregate(by="region", valu="sum")
+
+
+class TestAssign:
+
+    def test_assign_callable(self, sample_ds):
+        ds = sample_ds.assign(doubled=lambda df: df["value"] * 2)
+        assert "doubled" in ds.columns
+        assert ds.lineage[-1].operation == "assign"
+        assert ds.lineage[-1].metadata["columns_added"] == ["doubled"]
+
+    def test_assign_replace_tracked(self, sample_ds):
+        ds = sample_ds.assign(value=lambda df: df["value"] * 0)
+        assert ds.lineage[-1].metadata["columns_replaced"] == ["value"]
+        assert "columns_added" not in ds.lineage[-1].metadata
+
+    def test_assign_does_not_mutate_original(self, sample_ds):
+        _ = sample_ds.assign(doubled=lambda df: df["value"] * 2)
+        assert "doubled" not in sample_ds.columns
+
+    def test_assign_requires_columns(self, sample_ds):
+        with pytest.raises(ValueError, match="at least one column"):
+            sample_ds.assign()
+
+
+# ─────────────────────────────────────────────
 # Public API exports
 # ─────────────────────────────────────────────
 
