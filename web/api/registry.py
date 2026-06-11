@@ -28,6 +28,7 @@ Usage in your app module::
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Callable, Optional
 
 
@@ -38,9 +39,13 @@ class Registry:
     Holds connectors, data models, report factories, and pipeline runners.
     The API layer only talks to this — it never imports TraceBi internals
     directly, keeping the web layer thin and the library usage visible.
+
+    All mutators and compound reads are guarded by an RLock so the
+    registry is safe under threaded servers and dev-mode reloads.
     """
 
     def __init__(self) -> None:
+        self._lock = threading.RLock()
         self._connectors: dict[str, Any] = {}
         self._models: dict[str, Any] = {}
         self._report_factories: dict[str, dict] = {}
@@ -53,14 +58,18 @@ class Registry:
 
     def add_connector(self, connector) -> "Registry":
         """Register a BaseConnector by its name."""
-        self._connectors[connector.name] = connector
+        with self._lock:
+            self._connectors[connector.name] = connector
         return self
 
     def get_connector(self, name: str):
-        return self._connectors.get(name)
+        with self._lock:
+            return self._connectors.get(name)
 
     def list_connectors(self) -> list[dict]:
-        return [c.describe() for c in self._connectors.values()]
+        with self._lock:
+            connectors = list(self._connectors.values())
+        return [c.describe() for c in connectors]
 
     # ── Models ─────────────────────────────────────────────────
 
@@ -72,30 +81,36 @@ class Registry:
         request scripts can grab it via ``registry.get_default_model()``
         instead of building their own.
         """
-        self._models[model.name] = model
-        if default or self._default_model_name is None:
-            self._default_model_name = model.name
+        with self._lock:
+            self._models[model.name] = model
+            if default or self._default_model_name is None:
+                self._default_model_name = model.name
         return self
 
     def set_default_model(self, name: str) -> "Registry":
         """Mark a previously-registered model as the project default."""
-        if name not in self._models:
-            raise KeyError(f"Model '{name}' is not registered.")
-        self._default_model_name = name
+        with self._lock:
+            if name not in self._models:
+                raise KeyError(f"Model '{name}' is not registered.")
+            self._default_model_name = name
         return self
 
     def get_default_model(self):
         """Return the project default DataModel, or None if none is set."""
-        if self._default_model_name is None:
-            return None
-        return self._models.get(self._default_model_name)
+        with self._lock:
+            if self._default_model_name is None:
+                return None
+            return self._models.get(self._default_model_name)
 
     def get_model(self, name: str):
-        return self._models.get(name)
+        with self._lock:
+            return self._models.get(name)
 
     def list_models(self) -> list[dict]:
+        with self._lock:
+            models = list(self._models.values())
         out = []
-        for m in self._models.values():
+        for m in models:
             info = m.info()
             out.append({
                 "name": info["name"],
@@ -106,7 +121,8 @@ class Registry:
         return out
 
     def describe_model(self, name: str) -> Optional[dict]:
-        m = self._models.get(name)
+        with self._lock:
+            m = self._models.get(name)
         if not m:
             return None
         return m.info()
@@ -120,10 +136,11 @@ class Registry:
         description: str = "",
     ) -> "Registry":
         """Register a report factory (a zero-arg callable that returns a Report)."""
-        self._report_factories[name] = {
-            "description": description,
-            "factory": factory,
-        }
+        with self._lock:
+            self._report_factories[name] = {
+                "description": description,
+                "factory": factory,
+            }
         return self
 
     def report(self, name: str, description: str = ""):
@@ -134,14 +151,16 @@ class Registry:
         return decorator
 
     def list_reports(self) -> list[dict]:
-        return [
-            {"name": k, "description": v["description"]}
-            for k, v in self._report_factories.items()
-        ]
+        with self._lock:
+            return [
+                {"name": k, "description": v["description"]}
+                for k, v in self._report_factories.items()
+            ]
 
     def run_report(self, name: str):
         """Call the report factory and return the Report object."""
-        entry = self._report_factories.get(name)
+        with self._lock:
+            entry = self._report_factories.get(name)
         if not entry:
             return None
         return entry["factory"]()
@@ -167,19 +186,21 @@ class Registry:
         """
         def decorator(fn: Callable) -> Callable:
             self.add_report(name, fn, description)
-            self._scheduled_factories[name] = {
-                "cron":        cron,
-                "description": description,
-                "factory":     fn,
-            }
+            with self._lock:
+                self._scheduled_factories[name] = {
+                    "cron":        cron,
+                    "description": description,
+                    "factory":     fn,
+                }
             return fn
         return decorator
 
     def list_scheduled(self) -> list[dict]:
-        return [
-            {"name": k, "cron": v["cron"], "description": v["description"]}
-            for k, v in self._scheduled_factories.items()
-        ]
+        with self._lock:
+            return [
+                {"name": k, "cron": v["cron"], "description": v["description"]}
+                for k, v in self._scheduled_factories.items()
+            ]
 
     # ── Dashboards ─────────────────────────────────────────────
 
@@ -190,34 +211,41 @@ class Registry:
         description: str = "",
     ) -> "Registry":
         """Register a DashboardServer under a logical name."""
-        self._dashboards[name] = {"server": server, "description": description}
+        with self._lock:
+            self._dashboards[name] = {"server": server, "description": description}
         return self
 
     def get_dashboard(self, name: str):
-        return self._dashboards.get(name)
+        with self._lock:
+            return self._dashboards.get(name)
 
     def dashboards(self) -> dict[str, dict]:
         """All registered dashboards: name -> {server, description}."""
-        return dict(self._dashboards)
+        with self._lock:
+            return dict(self._dashboards)
 
     def list_dashboards(self) -> list[dict]:
-        return [
-            {"name": k, "description": v["description"]}
-            for k, v in self._dashboards.items()
-        ]
+        with self._lock:
+            return [
+                {"name": k, "description": v["description"]}
+                for k, v in self._dashboards.items()
+            ]
 
     # ── Pipelines ──────────────────────────────────────────────
 
     def add_pipeline(self, name: str, runner) -> "Registry":
         """Register a PipelineRunner under a logical name."""
-        self._pipelines[name] = runner
+        with self._lock:
+            self._pipelines[name] = runner
         return self
 
     def get_pipeline(self, name: str):
-        return self._pipelines.get(name)
+        with self._lock:
+            return self._pipelines.get(name)
 
     def list_pipeline_names(self) -> list[str]:
-        return list(self._pipelines.keys())
+        with self._lock:
+            return list(self._pipelines.keys())
 
 
 registry = Registry()

@@ -81,6 +81,27 @@ class TestLineageNode:
                                  "source", "timestamp", "metadata"}
         assert d["metadata"]["rows_before"] == 10
 
+    def test_attributes_frozen(self):
+        node = LineageNode(operation="load")
+        with pytest.raises(AttributeError):
+            node.operation = "filter"
+
+    def test_metadata_read_only(self):
+        node = LineageNode(operation="filter", metadata={"rows_after": 5})
+        with pytest.raises(TypeError):
+            node.metadata["rows_after"] = 999
+
+    def test_connector_read_only(self):
+        node = LineageNode(operation="load", connector={"connector_name": "x"})
+        with pytest.raises(TypeError):
+            node.connector["connector_name"] = "evil"
+
+    def test_to_dict_returns_mutable_copies(self):
+        node = LineageNode(operation="filter", metadata={"rows_after": 5})
+        d = node.to_dict()
+        d["metadata"]["rows_after"] = 999          # copy is editable...
+        assert node.metadata["rows_after"] == 5    # ...the node is not
+
 
 # ─────────────────────────────────────────────
 # DataSet tests
@@ -159,6 +180,15 @@ class TestDataSet:
 
     def test_fingerprint_stable(self, sample_ds):
         assert sample_ds.fingerprint() == sample_ds.fingerprint()
+
+    def test_fingerprint_is_sha256(self, sample_ds):
+        fp = sample_ds.fingerprint()
+        assert len(fp) == 64
+        int(fp, 16)  # valid hex
+
+    def test_fingerprint_changes_on_rename(self, sample_ds):
+        renamed = sample_ds.rename({"value": "amount"})
+        assert sample_ds.fingerprint() != renamed.fingerprint()
 
     def test_lineage_to_dict(self, sample_ds):
         result = sample_ds.filter("id > 1").lineage_to_dict()

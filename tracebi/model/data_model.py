@@ -493,6 +493,11 @@ class DataModel:
             lineage.extend(dim_ds.lineage)
             dim_dfs[dim_name] = dim_ds.to_pandas()
 
+        # A typo'd column must never produce a silently wrong result.
+        self._validate_query_columns(
+            fact_def, fact_df, dim_dfs, parsed_dims, measures, filters
+        )
+
         for col, val in filters.items():
             lineage.append(LineageNode(
                 operation="filter",
@@ -533,6 +538,56 @@ class DataModel:
         ))
 
         return DataSet(df=result_df, name=f"{fact}_result", lineage=lineage)
+
+    @staticmethod
+    def _hint(name: str, options) -> str:
+        import difflib
+        close = difflib.get_close_matches(name, [str(o) for o in options], n=1)
+        return f" Did you mean '{close[0]}'?" if close else ""
+
+    def _validate_query_columns(
+        self,
+        fact_def,
+        fact_df: pd.DataFrame,
+        dim_dfs: dict[str, pd.DataFrame],
+        parsed_dims: list[tuple[str, str]],
+        measures: dict[str, str],
+        filters: dict[str, Any],
+    ) -> None:
+        """Raise ValueError for any measure, filter, or dimension-attribute
+        reference that doesn't exist. Both query engines rely on this —
+        a typo must fail loudly, never return a silently wrong result."""
+        fact_cols = set(fact_df.columns)
+        for col in measures:
+            if col not in fact_cols:
+                raise ValueError(
+                    f"Measure column '{col}' not found on fact table "
+                    f"'{fact_def.table_name}'.{self._hint(col, fact_cols)} "
+                    f"Available columns: {sorted(fact_cols)}"
+                )
+        for col in filters:
+            if col not in fact_cols:
+                raise ValueError(
+                    f"Filter column '{col}' not found on fact table "
+                    f"'{fact_def.table_name}'.{self._hint(col, fact_cols)} "
+                    f"Available columns: {sorted(fact_cols)}"
+                )
+        for dim_name, attribute in parsed_dims:
+            dim_def = self._dimensions[dim_name]
+            declared = dim_def.attributes
+            if declared and attribute not in declared and attribute != dim_def.key_col:
+                raise ValueError(
+                    f"Attribute '{attribute}' is not declared on dimension "
+                    f"'{dim_name}'.{self._hint(attribute, declared)} "
+                    f"Declared attributes: {declared}"
+                )
+            dim_cols = set(dim_dfs[dim_name].columns)
+            if attribute not in dim_cols:
+                raise ValueError(
+                    f"Attribute '{attribute}' not found on dimension table "
+                    f"'{dim_def.table_name}'.{self._hint(attribute, dim_cols)} "
+                    f"Available columns: {sorted(dim_cols)}"
+                )
 
     # ── DuckDB engine ──────────────────────────────────────────
 

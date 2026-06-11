@@ -11,7 +11,8 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional, Union
+from types import MappingProxyType
+from typing import Any, Callable, Mapping, Optional, Union
 
 import pandas as pd
 
@@ -20,16 +21,21 @@ import pandas as pd
 # LineageNode
 # ─────────────────────────────────────────────────────────────
 
-@dataclass
+@dataclass(frozen=True)
 class LineageNode:
     """
     A single step in a DataSet's lineage chain.
+
+    Instances are immutable: attributes cannot be reassigned, and
+    ``connector`` / ``metadata`` are exposed as read-only mappings.
+    This is what makes the lineage chain a trustworthy audit record —
+    no code can rewrite history after the fact.
 
     Fields:
         operation:   Operation type string: 'load', 'filter', 'transform',
                      'join', 'sort', 'select', 'rename', …
         description: Human-readable description of the step.
-        connector:   Dict with connector metadata (for 'load' steps).
+        connector:   Mapping with connector metadata (for 'load' steps).
         source:      Source identifier (table name, file path, …).
         timestamp:   ISO-8601 UTC timestamp when this node was created.
         metadata:    Arbitrary key/value pairs (e.g. rows_before/after for filters).
@@ -37,21 +43,29 @@ class LineageNode:
 
     operation: str
     description: str = ""
-    connector: Optional[dict[str, str]] = None
+    connector: Optional[Mapping[str, str]] = None
     source: Optional[str] = None
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        # Wrap mutable dicts in read-only views so the audit chain
+        # cannot be edited in place after creation.
+        if self.connector is not None and not isinstance(self.connector, MappingProxyType):
+            object.__setattr__(self, "connector", MappingProxyType(dict(self.connector)))
+        if not isinstance(self.metadata, MappingProxyType):
+            object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))
 
     def to_dict(self) -> dict:
         return {
             "operation":   self.operation,
             "description": self.description,
-            "connector":   self.connector,
+            "connector":   dict(self.connector) if self.connector is not None else None,
             "source":      self.source,
             "timestamp":   self.timestamp,
-            "metadata":    self.metadata,
+            "metadata":    dict(self.metadata),
         }
 
 
@@ -120,9 +134,19 @@ class DataSet:
         return self._df.copy()
 
     def fingerprint(self) -> str:
-        """MD5 hash of the DataFrame content — useful for change detection."""
-        raw = pd.util.hash_pandas_object(self._df, index=True).values.tobytes()
-        return hashlib.md5(raw).hexdigest()
+        """
+        SHA-256 hash of the DataFrame content — a stable audit primitive.
+
+        Covers column names, dtypes, and every cell value in row order,
+        via a canonical CSV serialization. Deterministic across sessions
+        and pandas versions, so a manifest fingerprint can be re-verified
+        long after the report was rendered.
+        """
+        h = hashlib.sha256()
+        h.update(repr(list(self._df.columns)).encode("utf-8"))
+        h.update(repr([str(t) for t in self._df.dtypes]).encode("utf-8"))
+        h.update(self._df.to_csv(index=False).encode("utf-8"))
+        return h.hexdigest()
 
     def lineage_to_dict(self) -> list[dict]:
         return [node.to_dict() for node in self._lineage]

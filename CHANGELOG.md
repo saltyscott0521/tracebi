@@ -6,7 +6,34 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed
+- **`LineageNode` is now frozen** — attributes cannot be reassigned and
+  `connector`/`metadata` are read-only mappings. The audit chain can no
+  longer be rewritten after the fact. `to_dict()` still returns plain
+  mutable dicts for serialization.
+- **`DataSet.fingerprint()` is now SHA-256** over a canonical
+  serialization (column names + dtypes + CSV content) instead of MD5 over
+  `pd.util.hash_pandas_object`. Deterministic across sessions and pandas
+  versions, so manifest fingerprints can be re-verified long after render.
+  Fingerprints recorded by older versions will not match.
+- **`DataModel.query()` validates every column reference** — unknown
+  measure columns, filter columns, and dimension attributes now raise
+  `ValueError` with did-you-mean suggestions. Previously the pandas engine
+  silently skipped filters on missing columns (returning unfiltered data)
+  and undeclared dimension attributes could slip through.
+
 ### Added
+- **`git_sha` in every `ReportManifest`** — the HEAD commit of the repo at
+  render time (`"unknown"` outside a git checkout). Closes the gap between
+  "I can prove what happened" and "I can prove what happened *and
+  reproduce it*."
+- **Per-layer run locks in `PipelineRunner`** — a layer can only execute
+  once at a time per process; a second concurrent run raises
+  `RuntimeError("Layer '…' is already running")` instead of corrupting
+  run history.
+- **Thread-safe web `Registry`** — all mutators and compound reads are
+  guarded by an `RLock`, making registration safe under threaded servers
+  and dev-mode reloads.
 - **Second demo data model: `WealthModel`** — a wealth-management star
   schema (clients, branches, products, accounts dimensions; holdings and
   activities facts) registered alongside `SalesModel` to showcase serving

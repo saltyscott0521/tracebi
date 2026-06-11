@@ -25,6 +25,7 @@ Usage::
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -114,6 +115,10 @@ class PipelineRunner:
         self._layers: dict[str, _LayerReg] = {}
         self._engine = None
         self._scheduler = None
+        # Per-layer execution locks: a layer can only run once at a time
+        # within this process, keeping run history unambiguous.
+        self._run_locks: dict[str, threading.Lock] = {}
+        self._run_locks_guard = threading.Lock()
         self._init_db()
 
     # ── DB setup ───────────────────────────────────────────────
@@ -465,7 +470,25 @@ class PipelineRunner:
             current = reg.depends_on if reg else None
         return list(reversed(chain))
 
+    def _layer_lock(self, name: str) -> threading.Lock:
+        with self._run_locks_guard:
+            if name not in self._run_locks:
+                self._run_locks[name] = threading.Lock()
+            return self._run_locks[name]
+
     def _execute(self, name: str) -> None:
+        lock = self._layer_lock(name)
+        if not lock.acquire(blocking=False):
+            raise RuntimeError(
+                f"Layer '{name}' is already running. "
+                f"Wait for the current run to finish before starting another."
+            )
+        try:
+            self._execute_locked(name)
+        finally:
+            lock.release()
+
+    def _execute_locked(self, name: str) -> None:
         reg = self._layers[name]
         started_at = datetime.now(timezone.utc).isoformat()
         upstream_run_id = self._latest_run_id(reg.depends_on) if reg.depends_on else None

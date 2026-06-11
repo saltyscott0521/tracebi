@@ -294,6 +294,28 @@ class RowSection(ReportSection):
 # Report manifest
 # ─────────────────────────────────────────────────────────────
 
+_GIT_SHA: Optional[str] = None
+
+
+def _current_git_sha() -> str:
+    """Git SHA of the working tree at render time, or 'unknown'.
+
+    Cached after the first call — the SHA cannot change mid-process
+    in a meaningful way for audit purposes.
+    """
+    global _GIT_SHA
+    if _GIT_SHA is None:
+        import subprocess
+        try:
+            _GIT_SHA = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout.strip() or "unknown"
+        except Exception:
+            _GIT_SHA = "unknown"
+    return _GIT_SHA
+
+
 @dataclass
 class ReportManifest:
     """
@@ -301,7 +323,9 @@ class ReportManifest:
 
     This is what makes every TraceBi report traceable. The manifest
     records the report name, run timestamp, all section definitions,
-    and the full data lineage of every DataSet used.
+    the full data lineage of every DataSet used, and the git SHA of
+    the code that rendered it — proof of both *what* happened and
+    *which code* made it happen.
     """
     report_name: str
     rendered_at: str
@@ -310,6 +334,7 @@ class ReportManifest:
     output_path: str
     sections: list[dict]
     parameters: dict = field(default_factory=dict)
+    git_sha: str = field(default_factory=_current_git_sha)
 
     def to_dict(self) -> dict:
         return {
@@ -318,6 +343,7 @@ class ReportManifest:
             "rendered_by": self.rendered_by,
             "format": self.format,
             "output_path": self.output_path,
+            "git_sha": self.git_sha,
             "parameters": self.parameters,
             "sections": self.sections,
         }
