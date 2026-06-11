@@ -7,6 +7,14 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 ## [Unreleased]
 
 ### Added
+- **Second demo data model: `WealthModel`** — a wealth-management star
+  schema (clients, branches, products, accounts dimensions; holdings and
+  activities facts) registered alongside `SalesModel` to showcase serving
+  multiple data models from one TraceBi app. Ships with two reports built
+  on the new join/aggregate/assign verbs (`aum_by_branch`,
+  `client_activity`), works in the Explore query builder across all four
+  dimensions, and `seeds/seed_db.py` now persists the banking tables to
+  SQLite as well.
 - **First-class `DataSet.join()` / `.aggregate()` / `.assign()`** — the
   pandas verbs analysts reach for, recording *structured* lineage instead of
   freeform descriptions: join keys, join type, and left/right/after row

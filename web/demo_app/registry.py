@@ -14,6 +14,7 @@ import os
 
 from web.api.registry import registry
 from web.demo_app.model import connector, model
+from web.demo_app.banking import banking_connector, banking_model
 from web.demo_app.pipeline import runner
 from web.demo_app.dashboard import dashboard_server
 from tracebi.web.discovery import auto_discover
@@ -22,6 +23,11 @@ from tracebi.web.discovery import auto_discover
 
 registry.add_connector(connector)
 registry.add_model(model, default=True)
+
+# ── Banking / Wealth Management ───────────────────────────────────────────────
+
+registry.add_connector(banking_connector)
+registry.add_model(banking_model)
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 

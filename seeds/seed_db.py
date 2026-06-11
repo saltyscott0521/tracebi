@@ -79,6 +79,26 @@ def seed_source_tables(engine) -> None:
     print(f"  customers_raw: {len(CUSTOMERS_RAW)} rows")
 
 
+# ── Step 1b: Seed banking tables (WealthModel demo) ───────────────────────────
+
+def seed_banking_tables(engine) -> None:
+    """Persist the WealthModel demo tables (web/demo_app/banking.py) so the
+    second data model is also available in the database."""
+    from web.demo_app import banking
+
+    print("[seed] Writing banking tables (WealthModel)...")
+    for table, df in [
+        ("banking_clients",    banking.clients_df),
+        ("banking_branches",   banking.branches_df),
+        ("banking_products",   banking.products_df),
+        ("banking_accounts",   banking.accounts_df),
+        ("banking_holdings",   banking.holdings_df),
+        ("banking_activities", banking.activities_df),
+    ]:
+        df.to_sql(table, con=engine, if_exists="replace", index=False)
+        print(f"  {table}: {len(df)} rows")
+
+
 # ── Step 2: Build connectors + layers ─────────────────────────────────────────
 
 def build_pipeline(db_url: str):
@@ -215,6 +235,7 @@ def main():
 
     engine = create_engine(DB_URL)
     seed_source_tables(engine)
+    seed_banking_tables(engine)
 
     runner, model = build_pipeline(DB_URL)
     run_initial_bronze(runner)
