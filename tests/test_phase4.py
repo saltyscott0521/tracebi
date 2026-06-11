@@ -299,6 +299,21 @@ class TestPipelineRunner:
         assert df.iloc[0]["status"] == "success"
         assert df.iloc[0]["rows_out"] > 0
 
+    def test_concurrent_run_of_same_layer_rejected(self, runner, mem):
+        bronze = self._make_bronze(mem)
+        runner.register(bronze, name="orders_bronze")
+        # Simulate an in-flight run by holding the layer's lock.
+        lock = runner._layer_lock("orders_bronze")
+        lock.acquire()
+        try:
+            with pytest.raises(RuntimeError, match="already running"):
+                runner.run("orders_bronze")
+        finally:
+            lock.release()
+        # Once released, the layer runs normally again.
+        runner.run("orders_bronze")
+        assert "orders_bronze" in mem._tables
+
     def test_run_unknown_raises(self, runner):
         with pytest.raises(ValueError, match="not registered"):
             runner.run("no_such_layer")

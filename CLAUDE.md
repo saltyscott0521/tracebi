@@ -171,7 +171,7 @@ pytest --cov                                   # With coverage
 Every transform method must return a new `DataSet`. Never mutate `.df` or `.lineage` in place. If you add a new method to `DataSet`, it returns a new instance with the new `LineageNode` appended.
 
 **2. Every data operation produces a LineageNode.**
-Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern.
+Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern. `LineageNode` is frozen — pass all fields (including `metadata`) at construction; you cannot edit a node afterwards, by design.
 
 **3. Registry is populated at startup, read at request time.**
 `web/api/registry.py` is a singleton. Register all connectors, models, reports, and dashboards in your app module (e.g. `web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.

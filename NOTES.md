@@ -738,3 +738,38 @@ self-serve production hosting, revisit refuse-to-start.
 - Background report execution (run id + polling) — after PR #21 merges.
 - CI constraints file for deterministic installs; coverage reporting.
 - `logging` adoption in runner/web (zero `import logging` outside renderers).
+
+---
+
+## 2026-06-11 — Lineage Hardening Sprint (P0/P1 execution)
+
+Executed the remaining P0 and quick-win P1 items from the 2026-05-22
+architecture review. Theme: make the audit-trail promise actually hold.
+
+### Shipped
+
+| Review item | Status |
+|---|---|
+| P0-1 Parameterize pipeline SQL | Already done in PR #21 |
+| P0-3 `RLock` around Registry | ✅ All mutators + compound reads guarded |
+| P0-4 Per-layer run lock in PipelineRunner | ✅ In-process `threading.Lock` per layer; concurrent run raises `RuntimeError` |
+| P0-5 Frozen `LineageNode` | ✅ `@dataclass(frozen=True)`; `connector`/`metadata` are `MappingProxyType` |
+| P1 `git_sha` in `ReportManifest` | ✅ Cached `git rev-parse HEAD`; falls back to `"unknown"` |
+| P1 SHA-256 fingerprint | ✅ Canonical columns + dtypes + CSV bytes; deterministic across pandas versions |
+| P1 `query()` raise on missing dim attributes | ✅ Plus measure and filter columns — all with did-you-mean hints |
+
+The `query()` validation also fixed a silent-wrong-answer bug: the pandas
+engine skipped filters whose column didn't exist (`if col in df.columns`),
+so a typo'd filter returned **unfiltered** data. Both engines now fail
+loudly before execution.
+
+### Deliberately not done (still open)
+
+- P0-2 Credential callables/env-var indirection in connectors —
+  `SQLConnector.describe()` already redacts passwords; full credential
+  rework is a bigger change.
+- Per-layer lock is in-process only. Multi-worker uvicorn or multiple
+  schedulers on one DB can still race; a DB advisory/file lock is the
+  cross-process answer if that deployment shape becomes real.
+- Fingerprint is content-based but row-order-sensitive (intentional:
+  reports are order-sensitive deliverables).

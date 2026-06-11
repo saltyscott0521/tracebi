@@ -286,6 +286,45 @@ class TestStarSchemaQuery:
                 dimensions=["region"],
             )
 
+    def test_unknown_measure_column_raises(self, star_model):
+        with pytest.raises(ValueError, match="Measure column 'revnue'"):
+            star_model.query(fact="fact_orders", measures={"revnue": "sum"})
+
+    def test_unknown_measure_column_hint(self, star_model):
+        with pytest.raises(ValueError, match="Did you mean 'revenue'"):
+            star_model.query(fact="fact_orders", measures={"revnue": "sum"})
+
+    def test_unknown_filter_column_raises(self, star_model):
+        with pytest.raises(ValueError, match="Filter column 'staus'"):
+            star_model.query(
+                fact="fact_orders",
+                measures={"revenue": "sum"},
+                filters={"staus": "shipped"},
+            )
+
+    def test_undeclared_dim_attribute_raises(self, star_model):
+        # 'segment' is declared but 'tier' is not — must fail loudly,
+        # never silently drop the dimension from the result.
+        with pytest.raises(ValueError, match="not declared on dimension"):
+            star_model.query(
+                fact="fact_orders",
+                measures={"revenue": "sum"},
+                dimensions=["dim_customer.tier"],
+            )
+
+    def test_dim_attribute_missing_from_table_raises(self, model):
+        model.add_dimension("dim_customer", table_name="customers",
+                            key_col="customer_id")  # no declared attrs
+        model.add_fact("fact_orders", table_name="orders",
+                       measures=["revenue"],
+                       foreign_keys={"dim_customer": "customer_id"})
+        with pytest.raises(ValueError, match="not found on dimension table"):
+            model.query(
+                fact="fact_orders",
+                measures={"revenue": "sum"},
+                dimensions=["dim_customer.nonexistent"],
+            )
+
     def test_repr(self, star_model):
         assert "DataModel" in repr(star_model)
         assert "fact_orders" in repr(star_model)

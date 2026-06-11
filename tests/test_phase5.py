@@ -839,6 +839,33 @@ class TestRegistryExtras:
             {"name": "weekly", "cron": "0 9 * * MON", "description": "weekly KPIs"}
         ]
 
+    def test_concurrent_registration_is_safe(self):
+        import threading
+        from types import SimpleNamespace
+        from web.api.registry import Registry
+
+        r = Registry()
+        errors = []
+
+        def add_many(prefix):
+            try:
+                for i in range(100):
+                    r.add_connector(SimpleNamespace(name=f"{prefix}_{i}"))
+                    r.add_report(f"{prefix}_{i}", lambda: None)
+            except Exception as exc:  # pragma: no cover
+                errors.append(exc)
+
+        threads = [threading.Thread(target=add_many, args=(f"t{n}",))
+                   for n in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors
+        assert len(r.list_reports()) == 400
+        assert r.get_connector("t0_99") is not None
+
     def test_scheduled_via_notebook_helper(self):
         from tracebi.web import register
         from web.api.registry import registry

@@ -93,6 +93,13 @@ class TestReport:
         assert len(manifest.sections) == 6
         assert manifest.parameters == {"period": "Q1 2024"}
 
+    def test_manifest_records_git_sha(self, sample_report):
+        manifest = sample_report.build_manifest("excel", "/tmp/test.xlsx")
+        # In a git checkout this is the HEAD SHA; outside one it's 'unknown'.
+        assert manifest.git_sha
+        assert manifest.git_sha == "unknown" or len(manifest.git_sha) == 40
+        assert manifest.to_dict()["git_sha"] == manifest.git_sha
+
     def test_manifest_contains_lineage(self, sample_report):
         manifest = sample_report.build_manifest("html", "/tmp/test.html")
         # Find the table section manifest entry
