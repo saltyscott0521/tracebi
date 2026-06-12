@@ -383,6 +383,183 @@ class TestCLI:
         assert "No request scripts" in captured.out
 
 
+# ── Model registry ───────────────────────────────────────────────────────
+
+class TestModelRegistry:
+    def _make_model_file(self, path, name="MyModel", connect=False):
+        """Write a minimal model file to path."""
+        connect_line = "model.connect()" if connect else ""
+        path.write_text(textwrap.dedent(f"""\
+            import pandas as pd
+            from tracebi import DataModel, MemoryConnector
+            _df = pd.DataFrame({{"x": [1, 2]}})
+            _conn = MemoryConnector("mem", {{"t": _df}})
+            model = DataModel("{name}")
+            model.add_connector(_conn)
+            model.add_table("t", connector="mem", source="t")
+            {connect_line}
+        """))
+
+    def test_auto_discover_records_stems(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py")
+        self._make_model_file(tmp_path / "banking.py", name="BankingModel")
+        found = reg.auto_discover(str(tmp_path))
+        assert "sales" in found
+        assert "banking" in found
+
+    def test_auto_discover_skips_underscore(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "_template.py")
+        self._make_model_file(tmp_path / "real.py")
+        found = reg.auto_discover(str(tmp_path))
+        assert found == ["real"]
+
+    def test_auto_discover_missing_dir_returns_empty(self):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        assert reg.auto_discover("/does/not/exist") == []
+
+    def test_get_lazy_loads_file(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py", name="SalesModel", connect=True)
+        reg.auto_discover(str(tmp_path))
+        model = reg.get("sales")
+        assert model.name == "SalesModel"
+
+    def test_get_by_model_name_after_load(self, tmp_path):
+        # DataModel.name alias only available after the file has been loaded by stem
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py", name="SalesModel", connect=True)
+        reg.auto_discover(str(tmp_path))
+        reg.get("sales")                   # loads the file, registers "SalesModel" alias
+        model = reg.get("SalesModel")      # now resolves via .name index
+        assert model.name == "SalesModel"
+
+    def test_get_missing_raises_key_error(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        reg.auto_discover(str(tmp_path))
+        with pytest.raises(KeyError, match="nope"):
+            reg.get("nope")
+
+    def test_file_without_model_var_raises(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        (tmp_path / "bad.py").write_text("x = 1\n")
+        reg.auto_discover(str(tmp_path))
+        with pytest.raises(AttributeError, match="module-level 'model'"):
+            reg.get("bad")
+
+    def test_list_models_includes_undiscovered(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py")
+        self._make_model_file(tmp_path / "banking.py", name="BankingModel")
+        reg.auto_discover(str(tmp_path))
+        names = reg.list_models()
+        assert "sales" in names
+        assert "banking" in names
+
+    def test_register_explicit(self, tmp_path):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        from tracebi.model_registry import ModelRegistry
+        df = pd.DataFrame({"a": [1]})
+        conn = MemoryConnector("m", {"t": df})
+        m = DataModel("Explicit")
+        m.add_connector(conn)
+        m.add_table("t", connector="m", source="t")
+        reg = ModelRegistry()
+        reg.register(m, default=True)
+        assert reg.get("Explicit") is m
+        assert reg.get_default() is m
+
+    def test_first_discovered_becomes_default(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "alpha.py", name="Alpha", connect=True)
+        self._make_model_file(tmp_path / "beta.py", name="Beta", connect=True)
+        reg.auto_discover(str(tmp_path))
+        default = reg.get_default()
+        assert default.name == "Alpha"
+
+    def test_set_default(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "alpha.py", name="Alpha", connect=True)
+        self._make_model_file(tmp_path / "beta.py", name="Beta", connect=True)
+        reg.auto_discover(str(tmp_path))
+        reg.set_default("beta")
+        assert reg.get_default().name == "Beta"
+
+
+class TestCLIModelCommands:
+    def test_new_model_creates_file(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        rc = main([
+            "--models-dir", str(models_dir),
+            "new-model", "Sales Model",
+        ])
+        assert rc == 0
+        created = models_dir / "sales_model.py"
+        assert created.is_file()
+        content = created.read_text()
+        assert "model = DataModel(" in content
+        assert "get_model" in content
+
+    def test_new_model_refuses_overwrite(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        rc = main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        assert rc != 0
+
+    def test_new_model_force_overwrites(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        rc = main(["--models-dir", str(models_dir), "new-model", "Sales Model", "--force"])
+        assert rc == 0
+
+    def test_list_models_empty(self, tmp_path, capsys):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        models_dir.mkdir()
+        main(["--models-dir", str(models_dir), "list-models"])
+        captured = capsys.readouterr()
+        assert "No model files" in captured.out
+
+    def test_list_models_shows_files(self, tmp_path, capsys):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        main(["--models-dir", str(models_dir), "new-model", "Banking Model"])
+        main(["--models-dir", str(models_dir), "list-models"])
+        captured = capsys.readouterr()
+        assert "sales_model.py" in captured.out
+        assert "banking_model.py" in captured.out
+
+    def test_new_model_scaffolds_valid_python(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "My Reports"])
+        content = (models_dir / "my_reports.py").read_text()
+        compile(content, "my_reports.py", "exec")  # should not raise
+
+    def test_list_models_no_dir(self, tmp_path, capsys):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "list-models"])
+        captured = capsys.readouterr()
+        assert "No models directory" in captured.out
+
+
 # ── Auto-discovery ────────────────────────────────────────────────────────
 
 class TestAutoDiscover:

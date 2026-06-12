@@ -13,6 +13,7 @@ Quick start (in-memory, no config):
     ds.help()                   # API cheat sheet (DataModel and Report have one too)
 """
 
+from tracebi import model_registry
 from tracebi.connectors.base import BaseConnector
 from tracebi.connectors.csv_connector import CSVConnector
 from tracebi.connectors.sql_connector import SQLConnector
