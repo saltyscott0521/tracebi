@@ -7,9 +7,22 @@ TRACEBI_APP environment variable to point at a different module.
 
     TRACEBI_APP=myproject.tracebi_config uvicorn web.api.main:app --reload
 
+Project-root directories are also auto-discovered at startup so you can define
+artifacts outside of the app module package:
+
+    models/       DataModel definitions (each file exposes a ``model`` variable)
+    pipelines/    PipelineRunner definitions (each file exposes a ``runner`` variable)
+    reports/      Named report factories (use @register.report() decorator)
+    requests/     Ad-hoc report scripts with request_params() and run()
+    scheduled/    Scheduled report scripts
+
 Environment switches:
     TRACEBI_APP                 — app module to import (default: web.demo_app)
-    TRACEBI_REQUESTS_DIR        — folder scanned for request scripts (default: requests)
+    TRACEBI_MODELS_DIR          — model definitions folder (default: models)
+    TRACEBI_PIPELINES_DIR       — pipeline definitions folder (default: pipelines)
+    TRACEBI_REPORTS_DIR         — named reports folder (default: reports)
+    TRACEBI_REQUESTS_DIR        — request scripts folder (default: requests)
+    TRACEBI_SCHEDULED_DIR       — scheduled scripts folder (default: scheduled)
     TRACEBI_DEV_MODE=1          — mount /_dev/reload + /_dev/discovered
     TRACEBI_EMBED_DASHBOARDS=0  — skip the WSGI mount; run dashboards as a
                                   separate process via DashboardServer.run()
@@ -92,12 +105,12 @@ except ImportError as exc:
         stacklevel=1,
     )
 
-# Folder-based auto-discovery — scan requests/ and scheduled/ (or whatever
-# TRACEBI_REQUESTS_DIR / TRACEBI_SCHEDULED_DIR point to). Both fire registry
-# decorators as a side effect of import.
+# Folder-based auto-discovery — decorator-based artifacts fire registry side
+# effects on import (reports use @register.report, requests expose run()).
 for _env, _default in (
-    ("TRACEBI_REQUESTS_DIR", "requests"),
+    ("TRACEBI_REQUESTS_DIR",  "requests"),
     ("TRACEBI_SCHEDULED_DIR", "scheduled"),
+    ("TRACEBI_REPORTS_DIR",   "reports"),
 ):
     _dir = os.environ.get(_env, _default)
     if os.path.isdir(_dir):
@@ -106,6 +119,40 @@ for _env, _default in (
         if _discovered:
             print(f"[tracebi] auto-discovered {len(_discovered)} module(s) "
                   f"from {_dir}")
+
+# Models discovery — each models/<name>.py exposes a `model` variable.
+_models_dir = os.environ.get("TRACEBI_MODELS_DIR", "models")
+if os.path.isdir(_models_dir):
+    from tracebi import model_registry as _model_reg
+    _disc_models = _model_reg.auto_discover(_models_dir)
+    for _mname in _disc_models:
+        try:
+            _m = _model_reg.get_model(_mname)
+            from web.api.registry import registry as _registry_ref
+            if _mname not in [t["name"] for t in _registry_ref.list_models()]:
+                _registry_ref.add_model(_m)
+        except Exception as _exc:
+            import warnings
+            warnings.warn(f"[tracebi] model '{_mname}' failed to load: {_exc}")
+    if _disc_models:
+        print(f"[tracebi] auto-discovered {len(_disc_models)} model(s) from {_models_dir}")
+
+# Pipelines discovery — each pipelines/<name>.py exposes a `runner` variable.
+_pipelines_dir = os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines")
+if os.path.isdir(_pipelines_dir):
+    from tracebi import pipeline_registry as _pipe_reg
+    _disc_pipes = _pipe_reg.auto_discover(_pipelines_dir)
+    for _pname in _disc_pipes:
+        try:
+            _pr = _pipe_reg.get_runner(_pname)
+            from web.api.registry import registry as _registry_ref
+            if _pname not in _registry_ref.list_pipeline_names():
+                _registry_ref.add_pipeline(_pname, _pr)
+        except Exception as _exc:
+            import warnings
+            warnings.warn(f"[tracebi] pipeline '{_pname}' failed to load: {_exc}")
+    if _disc_pipes:
+        print(f"[tracebi] auto-discovered {len(_disc_pipes)} pipeline(s) from {_pipelines_dir}")
 
 
 # ── Mount registered Dash dashboards ──────────────────────────────────────────

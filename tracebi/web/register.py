@@ -44,15 +44,36 @@ class _Register:
         return self
 
     def get_default_model(self):
-        """Return the project default DataModel for use inside request scripts."""
-        return _registry().get_default_model()
+        """Return the default DataModel — web registry first, then models/ on disk."""
+        try:
+            return _registry().get_default_model()
+        except ImportError:
+            from tracebi.model_registry import get_default_model as _get
+            return _get()
 
     def get_model(self, name: str):
-        return _registry().get_model(name)
+        """Return a model by name — web registry first, then models/ on disk."""
+        try:
+            return _registry().get_model(name)
+        except ImportError:
+            from tracebi.model_registry import get_model as _get
+            return _get(name)
 
     def pipeline(self, name: str, runner) -> "_Register":
         _registry().add_pipeline(name, runner)
         return self
+
+    def get_runner(self, name: str):
+        """Return a runner by name — web registry first, then pipelines/ on disk."""
+        try:
+            result = _registry().get_pipeline(name)
+            if result is not None:
+                return result
+            raise KeyError(name)
+        except ImportError:
+            pass
+        from tracebi.pipeline_registry import get_runner as _get
+        return _get(name)
 
     def dashboard(self, name: str, server, description: str = "") -> "_Register":
         _registry().add_dashboard(name, server, description=description)

@@ -47,6 +47,14 @@ def _default_requests_dir() -> Path:
     return Path.cwd() / "requests"
 
 
+def _default_models_dir() -> Path:
+    return Path.cwd() / "models"
+
+
+def _default_pipelines_dir() -> Path:
+    return Path.cwd() / "pipelines"
+
+
 def _slugify(title: str) -> str:
     """Convert "Open orders by region" → "open_orders_by_region"."""
     s = title.strip().lower()
@@ -79,12 +87,13 @@ from tracebi.reports.html_renderer import HTMLRenderer
 # The web UI's Requests page renders a form from these defaults.
 params = request_params(period="Q2 2024")
 
-# Prefer the shared project DataModel if the web layer registered one;
-# otherwise build your own here (see commented imports below).
+# Use a model from models/ if one is defined, or build your own below.
+# List available models: tracebi list-models
+# Create a new model:    tracebi new-model "My Model"
 try:
-    from tracebi.web import register
-    model = register.get_default_model()
-except ImportError:
+    from tracebi.model_registry import get_default_model
+    model = get_default_model()
+except KeyError:
     model = None
 
 if model is None:
@@ -241,6 +250,116 @@ def _notebook_text(title: str) -> str:
         ],
     }
     return json.dumps(nb, indent=1) + "\n"
+
+
+def _model_template_text(title: str) -> str:
+    today = date.today().isoformat()
+    slug = _slugify(title)
+    model_name = title.strip().replace(" ", "")
+    return f'''\
+"""
+{title}
+{'=' * len(title)}
+
+DataModel definition. Scaffolded by ``tracebi new-model`` on {today}.
+
+Use in any notebook or script:
+
+    from tracebi.model_registry import get_model
+    model = get_model("{slug}")
+    ds = model.load("my_table")
+
+Or set as default so notebooks that call get_default_model() pick it up:
+
+    from tracebi.model_registry import get_model, set_default
+    set_default("{slug}")
+"""
+
+from tracebi import DataModel, SQLConnector
+# from tracebi import CSVConnector, DuckDBConnector, MemoryConnector
+
+# ── Connectors ───────────────────────────────────────────────────────────────
+connector = SQLConnector("{slug}_db", url="sqlite:///data/{slug}.db")
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+# The variable MUST be named `model` — the registry looks for it at load time.
+model = DataModel("{model_name}")
+model.add_connector(connector)
+model.add_table("my_table", connector="{slug}_db", source="my_table")
+# model.add_relationship(
+#     name="orders_customers",
+#     left_table="orders", right_table="customers", left_key="customer_id",
+# )
+# model.add_dimension("dim_customer", table_name="customers", key_col="customer_id",
+#                     attributes=["region", "segment"])
+# model.add_fact("fact_orders", table_name="orders", measures=["revenue", "qty"],
+#                foreign_keys={{"dim_customer": "customer_id"}})
+model.connect()
+
+# ── Register with the web layer (optional) ───────────────────────────────────
+try:
+    from tracebi.web import register
+    register.model(model)
+except ImportError:
+    pass
+'''
+
+
+def _pipeline_template_text(title: str) -> str:
+    today = date.today().isoformat()
+    slug = _slugify(title)
+    return f'''\
+"""
+{title}
+{'=' * len(title)}
+
+PipelineRunner definition. Scaffolded by ``tracebi new-pipeline`` on {today}.
+
+Use in any script or notebook:
+
+    from tracebi.pipeline_registry import get_runner
+    runner = get_runner("{slug}")
+    runner.run("layer_name")
+    runner.status()
+"""
+
+from tracebi import PipelineRunner
+# from tracebi import LandingLayer, ManipulationLayer, FinalLayer, SQLConnector
+# from tracebi.model_registry import get_model
+
+_DB_URL = "sqlite:///data/{slug}.db"
+
+# ── Layers ────────────────────────────────────────────────────────────────────
+# Uncomment and adapt to wire your medallion layers.
+#
+# from tracebi import LandingLayer, ManipulationLayer, SQLConnector
+# _db = SQLConnector("{slug}_db", url=_DB_URL)
+#
+# _bronze = LandingLayer(
+#     connector=_db, source="orders_raw",
+#     sink=_db, sink_table="orders_bronze",
+# )
+# _silver = (
+#     ManipulationLayer(source=_db, source_table="orders_bronze",
+#                       sink=_db, sink_table="orders_silver")
+#     .drop_nulls(subset=["order_id"])
+#     .deduplicate(subset=["order_id"])
+# )
+
+# ── Runner ─────────────────────────────────────────────────────────────────────
+# The variable MUST be named `runner` — the registry looks for it at load time.
+runner = PipelineRunner(db_url=_DB_URL)
+# runner.register(_bronze, name="orders_bronze", schedule="0 * * * *")
+# runner.register(_silver, name="orders_silver", schedule="15 * * * *",
+#                 depends_on="orders_bronze")
+
+# ── Register with the web layer (optional) ───────────────────────────────────
+try:
+    from tracebi.web import register
+    register.pipeline("{slug}", runner)
+except ImportError:
+    pass
+'''
 
 
 # ── init project scaffolding ────────────────────────────────────────────────
@@ -551,6 +670,72 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0 if not problems else 1
 
 
+def cmd_new_model(args: argparse.Namespace) -> int:
+    models_dir: Path = args.models_dir
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    slug = _slugify(args.title)
+    out_path = models_dir / f"{slug}.py"
+    if out_path.exists() and not args.force:
+        print(f"refusing to overwrite existing {out_path}; pass --force to replace",
+              file=sys.stderr)
+        return 1
+
+    out_path.write_text(_model_template_text(args.title), encoding="utf-8")
+    print(f"Created {out_path}")
+    print(f"  Edit the file, then use it with:")
+    print(f"    from tracebi.model_registry import get_model")
+    print(f'    model = get_model("{slug}")')
+    return 0
+
+
+def cmd_list_models(args: argparse.Namespace) -> int:
+    models_dir: Path = args.models_dir
+    if not models_dir.is_dir():
+        print(f"No models directory at {models_dir}")
+        return 0
+    files = sorted(p for p in models_dir.glob("*.py") if not p.name.startswith("_"))
+    if not files:
+        print(f"No model files found in {models_dir}")
+        return 0
+    for p in files:
+        print(p.relative_to(models_dir.parent))
+    return 0
+
+
+def cmd_new_pipeline(args: argparse.Namespace) -> int:
+    pipelines_dir: Path = args.pipelines_dir
+    pipelines_dir.mkdir(parents=True, exist_ok=True)
+
+    slug = _slugify(args.title)
+    out_path = pipelines_dir / f"{slug}.py"
+    if out_path.exists() and not args.force:
+        print(f"refusing to overwrite existing {out_path}; pass --force to replace",
+              file=sys.stderr)
+        return 1
+
+    out_path.write_text(_pipeline_template_text(args.title), encoding="utf-8")
+    print(f"Created {out_path}")
+    print(f"  Edit the file, then use it with:")
+    print(f"    from tracebi.pipeline_registry import get_runner")
+    print(f'    runner = get_runner("{slug}")')
+    return 0
+
+
+def cmd_list_pipelines(args: argparse.Namespace) -> int:
+    pipelines_dir: Path = args.pipelines_dir
+    if not pipelines_dir.is_dir():
+        print(f"No pipelines directory at {pipelines_dir}")
+        return 0
+    files = sorted(p for p in pipelines_dir.glob("*.py") if not p.name.startswith("_"))
+    if not files:
+        print(f"No pipeline files found in {pipelines_dir}")
+        return 0
+    for p in files:
+        print(p.relative_to(pipelines_dir.parent))
+    return 0
+
+
 # ── Argparse wiring ─────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
@@ -568,6 +753,18 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=_default_requests_dir(),
         help="Directory holding request scripts (default: ./requests).",
+    )
+    parser.add_argument(
+        "--models-dir",
+        type=Path,
+        default=_default_models_dir(),
+        help="Directory holding model definitions (default: ./models).",
+    )
+    parser.add_argument(
+        "--pipelines-dir",
+        type=Path,
+        default=_default_pipelines_dir(),
+        help="Directory holding pipeline definitions (default: ./pipelines).",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -619,6 +816,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Sanity-check the current directory: tracebi.yaml, requests/, .env.",
     )
     p_validate.set_defaults(func=cmd_validate)
+
+    p_new_model = sub.add_parser("new-model", help="Scaffold a new model definition.")
+    p_new_model.add_argument("title", help='Free-form title, e.g. "Sales Model".')
+    p_new_model.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_model.set_defaults(func=cmd_new_model)
+
+    p_list_models = sub.add_parser("list-models", help="List model definition files.")
+    p_list_models.set_defaults(func=cmd_list_models)
+
+    p_new_pipeline = sub.add_parser("new-pipeline", help="Scaffold a new pipeline definition.")
+    p_new_pipeline.add_argument("title", help='Free-form title, e.g. "Sales Pipeline".')
+    p_new_pipeline.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_pipeline.set_defaults(func=cmd_new_pipeline)
+
+    p_list_pipelines = sub.add_parser("list-pipelines", help="List pipeline definition files.")
+    p_list_pipelines.set_defaults(func=cmd_list_pipelines)
 
     return parser
 

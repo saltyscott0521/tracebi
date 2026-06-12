@@ -15,6 +15,8 @@ pip install "tracebi[analyst]"   # includes IPython/Jupyter integration deps
 ```
 
 ```bash
+tracebi list-models              # see what shared models are available
+tracebi new-model "Sales Model"  # scaffold models/sales_model.py if none exists yet
 tracebi new-request "Weekly Sales" --notebook
 # → requests/weekly_sales.ipynb, pre-structured: params → model → datasets → report
 ```
@@ -28,12 +30,14 @@ the end of a cell shows shape, columns, dtypes, sample rows, and the lineage
 chain — no `print` calls needed:
 
 ```python
-from tracebi.web import register
-model = register.get_default_model()
-model                  # tables, relationships, facts/dimensions, as HTML
+from tracebi.model_registry import get_model, list_models
+
+print(list_models())             # see what's in models/
+model = get_model("sales_model") # loads models/sales_model.py — no web server needed
+model                            # tables, relationships, facts/dimensions, as HTML
 
 orders = model.load("orders")
-orders                 # shape, dtypes, sample rows, operation chain
+orders                           # shape, dtypes, sample rows, operation chain
 
 orders.help()          # plain-text cheat sheet of every verb
 model.describe()       # plain-text model summary

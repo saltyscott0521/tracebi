@@ -383,6 +383,336 @@ class TestCLI:
         assert "No request scripts" in captured.out
 
 
+# ── Model registry ───────────────────────────────────────────────────────
+
+class TestModelRegistry:
+    def _make_model_file(self, path, name="MyModel", connect=False):
+        """Write a minimal model file to path."""
+        connect_line = "model.connect()" if connect else ""
+        path.write_text(textwrap.dedent(f"""\
+            import pandas as pd
+            from tracebi import DataModel, MemoryConnector
+            _df = pd.DataFrame({{"x": [1, 2]}})
+            _conn = MemoryConnector("mem", {{"t": _df}})
+            model = DataModel("{name}")
+            model.add_connector(_conn)
+            model.add_table("t", connector="mem", source="t")
+            {connect_line}
+        """))
+
+    def test_auto_discover_records_stems(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py")
+        self._make_model_file(tmp_path / "banking.py", name="BankingModel")
+        found = reg.auto_discover(str(tmp_path))
+        assert "sales" in found
+        assert "banking" in found
+
+    def test_auto_discover_skips_underscore(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "_template.py")
+        self._make_model_file(tmp_path / "real.py")
+        found = reg.auto_discover(str(tmp_path))
+        assert found == ["real"]
+
+    def test_auto_discover_missing_dir_returns_empty(self):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        assert reg.auto_discover("/does/not/exist") == []
+
+    def test_get_lazy_loads_file(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py", name="SalesModel", connect=True)
+        reg.auto_discover(str(tmp_path))
+        model = reg.get("sales")
+        assert model.name == "SalesModel"
+
+    def test_get_by_model_name_after_load(self, tmp_path):
+        # DataModel.name alias only available after the file has been loaded by stem
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py", name="SalesModel", connect=True)
+        reg.auto_discover(str(tmp_path))
+        reg.get("sales")                   # loads the file, registers "SalesModel" alias
+        model = reg.get("SalesModel")      # now resolves via .name index
+        assert model.name == "SalesModel"
+
+    def test_get_missing_raises_key_error(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        reg.auto_discover(str(tmp_path))
+        with pytest.raises(KeyError, match="nope"):
+            reg.get("nope")
+
+    def test_file_without_model_var_raises(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        (tmp_path / "bad.py").write_text("x = 1\n")
+        reg.auto_discover(str(tmp_path))
+        with pytest.raises(AttributeError, match="module-level 'model'"):
+            reg.get("bad")
+
+    def test_list_models_includes_undiscovered(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "sales.py")
+        self._make_model_file(tmp_path / "banking.py", name="BankingModel")
+        reg.auto_discover(str(tmp_path))
+        names = reg.list_models()
+        assert "sales" in names
+        assert "banking" in names
+
+    def test_register_explicit(self, tmp_path):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        from tracebi.model_registry import ModelRegistry
+        df = pd.DataFrame({"a": [1]})
+        conn = MemoryConnector("m", {"t": df})
+        m = DataModel("Explicit")
+        m.add_connector(conn)
+        m.add_table("t", connector="m", source="t")
+        reg = ModelRegistry()
+        reg.register(m, default=True)
+        assert reg.get("Explicit") is m
+        assert reg.get_default() is m
+
+    def test_first_discovered_becomes_default(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "alpha.py", name="Alpha", connect=True)
+        self._make_model_file(tmp_path / "beta.py", name="Beta", connect=True)
+        reg.auto_discover(str(tmp_path))
+        default = reg.get_default()
+        assert default.name == "Alpha"
+
+    def test_set_default(self, tmp_path):
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        self._make_model_file(tmp_path / "alpha.py", name="Alpha", connect=True)
+        self._make_model_file(tmp_path / "beta.py", name="Beta", connect=True)
+        reg.auto_discover(str(tmp_path))
+        reg.set_default("beta")
+        assert reg.get_default().name == "Beta"
+
+
+class TestCLIModelCommands:
+    def test_new_model_creates_file(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        rc = main([
+            "--models-dir", str(models_dir),
+            "new-model", "Sales Model",
+        ])
+        assert rc == 0
+        created = models_dir / "sales_model.py"
+        assert created.is_file()
+        content = created.read_text()
+        assert "model = DataModel(" in content
+        assert "get_model" in content
+
+    def test_new_model_refuses_overwrite(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        rc = main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        assert rc != 0
+
+    def test_new_model_force_overwrites(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        rc = main(["--models-dir", str(models_dir), "new-model", "Sales Model", "--force"])
+        assert rc == 0
+
+    def test_list_models_empty(self, tmp_path, capsys):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        models_dir.mkdir()
+        main(["--models-dir", str(models_dir), "list-models"])
+        captured = capsys.readouterr()
+        assert "No model files" in captured.out
+
+    def test_list_models_shows_files(self, tmp_path, capsys):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "Sales Model"])
+        main(["--models-dir", str(models_dir), "new-model", "Banking Model"])
+        main(["--models-dir", str(models_dir), "list-models"])
+        captured = capsys.readouterr()
+        assert "sales_model.py" in captured.out
+        assert "banking_model.py" in captured.out
+
+    def test_new_model_scaffolds_valid_python(self, tmp_path):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "new-model", "My Reports"])
+        content = (models_dir / "my_reports.py").read_text()
+        compile(content, "my_reports.py", "exec")  # should not raise
+
+    def test_list_models_no_dir(self, tmp_path, capsys):
+        from tracebi.cli import main
+        models_dir = tmp_path / "models"
+        main(["--models-dir", str(models_dir), "list-models"])
+        captured = capsys.readouterr()
+        assert "No models directory" in captured.out
+
+
+# ── Pipeline registry ─────────────────────────────────────────────────────
+
+class TestPipelineRegistry:
+    def _make_pipeline_file(self, path, connect=True):
+        """Write a minimal pipeline file that exposes a runner variable."""
+        path.write_text(textwrap.dedent(f"""\
+            from tracebi import PipelineRunner
+            runner = PipelineRunner(db_url="sqlite:///:memory:")
+        """))
+
+    def test_auto_discover_records_stems(self, tmp_path):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        self._make_pipeline_file(tmp_path / "sales.py")
+        self._make_pipeline_file(tmp_path / "finance.py")
+        found = reg.auto_discover(str(tmp_path))
+        assert "sales" in found
+        assert "finance" in found
+
+    def test_auto_discover_skips_underscore(self, tmp_path):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        self._make_pipeline_file(tmp_path / "_template.py")
+        self._make_pipeline_file(tmp_path / "real.py")
+        found = reg.auto_discover(str(tmp_path))
+        assert found == ["real"]
+
+    def test_auto_discover_missing_dir_returns_empty(self):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        assert reg.auto_discover("/does/not/exist") == []
+
+    def test_get_lazy_loads_file(self, tmp_path):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        self._make_pipeline_file(tmp_path / "sales.py")
+        reg.auto_discover(str(tmp_path))
+        runner = reg.get("sales")
+        from tracebi import PipelineRunner
+        assert isinstance(runner, PipelineRunner)
+
+    def test_get_missing_raises_key_error(self):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        with pytest.raises(KeyError, match="nope"):
+            reg.get("nope")
+
+    def test_file_without_runner_var_raises(self, tmp_path):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        (tmp_path / "bad.py").write_text("x = 1\n")
+        reg.auto_discover(str(tmp_path))
+        with pytest.raises(AttributeError, match="module-level 'runner'"):
+            reg.get("bad")
+
+    def test_list_pipelines_includes_undiscovered(self, tmp_path):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        self._make_pipeline_file(tmp_path / "sales.py")
+        self._make_pipeline_file(tmp_path / "finance.py")
+        reg.auto_discover(str(tmp_path))
+        names = reg.list_pipelines()
+        assert "sales" in names
+        assert "finance" in names
+
+    def test_register_explicit(self):
+        from tracebi import PipelineRunner
+        from tracebi.pipeline_registry import PipelineRegistry
+        runner = PipelineRunner(db_url="sqlite:///:memory:")
+        reg = PipelineRegistry()
+        reg.register("myrun", runner, default=True)
+        assert reg.get("myrun") is runner
+        assert reg.get_default() is runner
+
+    def test_first_discovered_becomes_default(self, tmp_path):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        self._make_pipeline_file(tmp_path / "alpha.py")
+        self._make_pipeline_file(tmp_path / "beta.py")
+        reg.auto_discover(str(tmp_path))
+        default = reg.get_default()
+        from tracebi import PipelineRunner
+        assert isinstance(default, PipelineRunner)
+
+    def test_set_default(self, tmp_path):
+        from tracebi.pipeline_registry import PipelineRegistry
+        reg = PipelineRegistry()
+        self._make_pipeline_file(tmp_path / "alpha.py")
+        self._make_pipeline_file(tmp_path / "beta.py")
+        reg.auto_discover(str(tmp_path))
+        reg.set_default("beta")
+        reg.get_default()  # should not raise
+
+
+class TestCLIPipelineCommands:
+    def test_new_pipeline_creates_file(self, tmp_path):
+        from tracebi.cli import main
+        pipes_dir = tmp_path / "pipelines"
+        rc = main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Sales Pipeline"])
+        assert rc == 0
+        created = pipes_dir / "sales_pipeline.py"
+        assert created.is_file()
+        content = created.read_text()
+        assert "runner = PipelineRunner(" in content
+        assert "get_runner" in content
+
+    def test_new_pipeline_refuses_overwrite(self, tmp_path):
+        from tracebi.cli import main
+        pipes_dir = tmp_path / "pipelines"
+        main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Sales Pipeline"])
+        rc = main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Sales Pipeline"])
+        assert rc != 0
+
+    def test_new_pipeline_force_overwrites(self, tmp_path):
+        from tracebi.cli import main
+        pipes_dir = tmp_path / "pipelines"
+        main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Sales Pipeline"])
+        rc = main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Sales Pipeline", "--force"])
+        assert rc == 0
+
+    def test_list_pipelines_empty(self, tmp_path, capsys):
+        from tracebi.cli import main
+        pipes_dir = tmp_path / "pipelines"
+        pipes_dir.mkdir()
+        main(["--pipelines-dir", str(pipes_dir), "list-pipelines"])
+        captured = capsys.readouterr()
+        assert "No pipeline files" in captured.out
+
+    def test_list_pipelines_shows_files(self, tmp_path, capsys):
+        from tracebi.cli import main
+        pipes_dir = tmp_path / "pipelines"
+        main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Sales Pipeline"])
+        main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Finance Pipeline"])
+        main(["--pipelines-dir", str(pipes_dir), "list-pipelines"])
+        captured = capsys.readouterr()
+        assert "sales_pipeline.py" in captured.out
+        assert "finance_pipeline.py" in captured.out
+
+    def test_new_pipeline_scaffolds_valid_python(self, tmp_path):
+        from tracebi.cli import main
+        pipes_dir = tmp_path / "pipelines"
+        main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "My ETL"])
+        content = (pipes_dir / "my_etl.py").read_text()
+        compile(content, "my_etl.py", "exec")  # should not raise
+
+    def test_list_pipelines_no_dir(self, tmp_path, capsys):
+        from tracebi.cli import main
+        pipes_dir = tmp_path / "pipelines"
+        main(["--pipelines-dir", str(pipes_dir), "list-pipelines"])
+        captured = capsys.readouterr()
+        assert "No pipelines directory" in captured.out
+
+
 # ── Auto-discovery ────────────────────────────────────────────────────────
 
 class TestAutoDiscover:

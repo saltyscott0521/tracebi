@@ -23,20 +23,53 @@ your app module ──populates──▶ registry ◀──reads── API route
 (import time)                 (singleton)          (request time)
 ```
 
-## Step 1: Create your app module
+## Step 1: Project-root directories (recommended)
 
-An app module is any importable Python module that registers resources at
-import time. The demo ([web/demo_app/](../web/demo_app/)) is the reference —
-copy its layout:
+The server auto-discovers four directories at the project root. This is the
+lowest-friction way to add resources — no app module configuration needed:
+
+| Directory | Convention | What the server does |
+|---|---|---|
+| `models/` | each `.py` exposes a `model` variable (a `DataModel`) | registers it via `registry.add_model()` |
+| `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | registers it via `registry.add_pipeline()` |
+| `reports/` | each `.py` calls `@register.report(...)` at import time | decorator fires; report appears in UI |
+| `requests/` | ad-hoc scripts with `request_params()` and `run()` | appears on Requests page with run button |
+
+Scaffold files with the CLI, then edit and commit them:
+
+```bash
+tracebi new-model "Sales Model"     # → models/sales_model.py
+tracebi new-pipeline "Sales ETL"    # → pipelines/sales_etl.py
+tracebi new-request "Weekly Report" # → requests/weekly_report.py
+```
+
+These directories also work without the web server — notebooks and scripts
+can import from them directly:
+
+```python
+from tracebi.model_registry import get_model
+from tracebi.pipeline_registry import get_runner
+
+model = get_model("sales_model")    # no server needed
+runner = get_runner("sales_etl")
+```
+
+Override any directory path via env var (`TRACEBI_MODELS_DIR`,
+`TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`).
+
+## Step 1b: Create an app module (for connectors and dashboards)
+
+Connectors and dashboards still need an app module — they can't be expressed
+as a simple file convention. The demo ([web/demo_app/](../web/demo_app/)) is
+the reference — copy its layout:
 
 ```
 myapp/
   __init__.py        # imports registry module (one line, like demo_app)
-  model.py           # connectors + DataModel construction
-  pipeline.py        # PipelineRunner + layer registration (optional)
+  model.py           # connectors + DataModel construction (optional if using models/)
+  pipeline.py        # PipelineRunner + layer setup (optional if using pipelines/)
   dashboard.py       # Dash dashboard server (optional)
-  registry.py        # THE wiring file — all register calls live here
-  reports/           # auto-discovered report factories, one per file
+  registry.py        # THE wiring file — connector and dashboard registration lives here
 ```
 
 `registry.py` is the only file with registration side effects:
@@ -45,13 +78,11 @@ myapp/
 import os
 from web.api.registry import registry
 from myapp.model import connector, model
-from tracebi.web.discovery import auto_discover
 
 registry.add_connector(connector)
-registry.add_model(model, default=True)     # default ⇒ used by request scripts
-
-# Reports: each file in reports/ with a @registry.report(...) factory
-auto_discover(os.path.join(os.path.dirname(__file__), "reports"))
+# Models and pipelines in models/ and pipelines/ are auto-discovered;
+# register here only if you build them inside the app module.
+registry.add_model(model, default=True)
 ```
 
 Then point the server at it:
@@ -74,22 +105,25 @@ your peril):
 
 ## Step 2: Add resources
 
-All registration goes through the registry (or its notebook-friendly facade
-`tracebi.web.register`, same methods minus the `add_` prefix):
+**Preferred — project-root directories (auto-discovered, no registration code):**
+
+| Directory | File convention | Result |
+|---|---|---|
+| `models/` | `model = DataModel(...)` variable | **Models** + **Explore** |
+| `pipelines/` | `runner = PipelineRunner(...)` variable | **Pipelines** page |
+| `reports/` | `@register.report("name")` factory | **Reports** page |
+| `requests/` | any `.py` / `.ipynb` with `run()` | **Requests** page |
+
+**Or register explicitly** (in your app module's `registry.py`, or the notebook facade `tracebi.web.register`):
 
 | Resource | Call | Appears in UI as |
 |---|---|---|
 | Connector | `registry.add_connector(conn)` | **Connectors** page |
 | Model | `registry.add_model(model, default=False)` | **Models** + **Explore** |
-| Report | `@registry.report("name", description="…")` on a factory returning a `Report` | **Reports** page |
-| Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler metadata |
-| Dashboard | `registry.add_dashboard("name", dash_server, description="…")` | **Dashboards** page + `/dashboards/name/` |
-| Pipeline | `registry.add_pipeline("name", runner)` | **Pipelines** page (DAG, run buttons, history) |
-
-Ad-hoc request scripts need no registration at all: any `.py` or `.ipynb`
-in the requests directory (`TRACEBI_REQUESTS_DIR`, default `requests/`)
-appears on the **Requests** page automatically — see the
-[Analyst Guide](analyst-guide.md).
+| Report | `@registry.report("name", description="…")` on a zero-arg factory | **Reports** page |
+| Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
+| Dashboard | `registry.add_dashboard("name", dash_server, description="…")` | **Dashboards** + `/dashboards/name/` |
+| Pipeline | `registry.add_pipeline("name", runner)` | **Pipelines** (DAG, run buttons, history) |
 
 ## Step 3: The development loop
 
@@ -186,7 +220,11 @@ uvicorn workers, since Dash apps hold in-process state.
 | Variable | Default | Effect |
 |---|---|---|
 | `TRACEBI_APP` | `web.demo_app` | App module imported at startup |
-| `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for request scripts |
+| `TRACEBI_MODELS_DIR` | `models` | Folder scanned for `model` variable files |
+| `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for `runner` variable files |
+| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `@register.report()` factories |
+| `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for ad-hoc request scripts |
+| `TRACEBI_SCHEDULED_DIR` | `scheduled` | Folder scanned for `@register.scheduled()` factories |
 | `TRACEBI_DEV_MODE` | unset | `1` mounts `POST /api/_dev/reload` |
 | `TRACEBI_EMBED_DASHBOARDS` | `1` | `0` skips Dash WSGI mounts |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | unset | HTTP Basic auth |
