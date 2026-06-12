@@ -1,5 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+
+import { useGuides, useGuide } from '../api'
+import { PageTitle, PageSub, CodeBlock, Spinner } from '../components/Shared'
 
 const STEPS = [
   {
@@ -83,11 +88,83 @@ const LINK_STYLE = {
   border: '1px solid var(--blue-br)', textDecoration: 'none',
 }
 
+// ── Guides (markdown from docs/, served by /api/docs) ─────────────────────────
+
+function GuideReader({ name }) {
+  const { data, isLoading, error } = useGuide(name)
+  if (isLoading) return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 20, color: 'var(--muted)', fontSize: 13 }}>
+      <Spinner size={14} /> Loading guide…
+    </div>
+  )
+  if (error) return <div style={{ padding: 16, color: 'var(--red-text)', fontSize: 13 }}>{error.message}</div>
+  if (!data) return null
+  return (
+    <div className="markdown-doc fade-in">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Repo-relative links don't resolve inside the SPA — send them to nothing
+          // useful is worse than opening the file path as text, so render as plain text.
+          a: ({ href, children }) =>
+            /^https?:\/\//.test(href || '')
+              ? <a href={href} target="_blank" rel="noreferrer">{children}</a>
+              : <span className="md-deadlink">{children}</span>,
+        }}
+      >
+        {data.content}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+function Guides() {
+  const { data: guides, isLoading } = useGuides()
+  const [active, setActive] = useState(null)
+
+  if (isLoading || !guides?.length) return null
+
+  return (
+    <div style={{ marginBottom: 40 }}>
+      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>Guides</div>
+      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
+        The full handbooks — readable here, versioned in <code>docs/</code>.
+      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: active ? 16 : 0 }}>
+        {guides.map(g => (
+          <button
+            key={g.name}
+            onClick={() => setActive(active === g.name ? null : g.name)}
+            style={{
+              ...LINK_STYLE,
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5,
+              background: active === g.name ? 'var(--blue)' : 'var(--blue-lt)',
+              color: active === g.name ? '#fff' : 'var(--accent-text)',
+            }}
+          >
+            ☰ {g.title}
+          </button>
+        ))}
+      </div>
+      {active && (
+        <div style={{
+          background: 'var(--card)', border: '1px solid var(--border)',
+          borderRadius: 12, padding: '26px 30px', maxHeight: 640, overflowY: 'auto',
+        }}>
+          <GuideReader name={active} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function GettingStarted() {
   return (
     <div>
       <PageTitle>Getting started</PageTitle>
       <PageSub>Five steps from install to your first lineage-tracked report.</PageSub>
+
+      <Guides />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 40 }}>
         {STEPS.map(s => (

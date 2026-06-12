@@ -416,3 +416,30 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 @media (max-width: 480px) {
   .grid-3 { grid-template-columns: 1fr; }
 }
+
+/* ── Markdown guides (Getting Started page) ──────────── */
+.markdown-doc { font-size: 13.5px; line-height: 1.7; color: var(--text-2); max-width: 760px; }
+.markdown-doc h1 { font-size: 21px; font-weight: 800; color: var(--text); margin: 0 0 14px; }
+.markdown-doc h2 { font-size: 16px; font-weight: 700; color: var(--text); margin: 28px 0 10px; }
+.markdown-doc h3 { font-size: 14px; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+.markdown-doc p  { margin: 0 0 12px; }
+.markdown-doc ul, .markdown-doc ol { margin: 0 0 12px; padding-left: 22px; }
+.markdown-doc li { margin-bottom: 4px; }
+.markdown-doc hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.markdown-doc a  { color: var(--accent-text); font-weight: 600; }
+.markdown-doc strong { color: var(--text); }
+.markdown-doc blockquote {
+  border-left: 3px solid var(--blue-br); padding: 2px 14px; margin: 0 0 12px;
+  color: var(--muted);
+}
+.markdown-doc pre {
+  background: var(--code-bg); color: var(--code-text);
+  border: 1px solid var(--terminal-border); border-radius: 8px;
+  padding: 14px 16px; margin: 0 0 14px; overflow-x: auto;
+  font-size: 12px; line-height: 1.6;
+}
+.markdown-doc pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+.markdown-doc table { width: auto; margin: 0 0 14px; font-size: 12.5px; }
+.markdown-doc th, .markdown-doc td { border: 1px solid var(--border); padding: 6px 12px; }
+.markdown-doc thead th { font-size: 10.5px; }
+.markdown-doc .md-deadlink { color: var(--accent-text); font-weight: 600; }
