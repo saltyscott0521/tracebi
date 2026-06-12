@@ -52,6 +52,18 @@ export const tableCsvUrl = (model, table) =>
 export const useConnectors = () =>
   useQuery({ queryKey: ['connectors'], queryFn: () => get('/connectors') })
 
+// Markdown guides from docs/ — static content, cache for the session.
+export const useGuides = () =>
+  useQuery({ queryKey: ['guides'], queryFn: () => get('/docs'), staleTime: Infinity })
+
+export const useGuide = (name) =>
+  useQuery({
+    queryKey: ['guide', name],
+    queryFn: () => get(`/docs/${encodeURIComponent(name)}`),
+    enabled: !!name,
+    staleTime: Infinity,
+  })
+
 export const useModels = () =>
   useQuery({ queryKey: ['models'], queryFn: () => get('/models') })
 

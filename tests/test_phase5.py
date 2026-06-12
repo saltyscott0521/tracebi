@@ -1677,3 +1677,46 @@ class TestRequestParamsAPI:
     def test_lineage_bad_params_json_400(self, client):
         r = client.get("/api/requests/param_req/lineage?params_json=notjson")
         assert r.status_code == 400
+
+
+# ─────────────────────────────────────────────
+# Docs guide endpoints
+# ─────────────────────────────────────────────
+
+class TestDocsEndpoints:
+    """GET /api/docs serves the markdown guides in docs/ read-only."""
+
+    @pytest.fixture
+    def client(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from web.api.routers import docs
+        app = FastAPI()
+        app.include_router(docs.router, prefix="/api")
+        return TestClient(app)
+
+    def test_list_guides(self, client):
+        r = client.get("/api/docs")
+        assert r.status_code == 200
+        guides = r.json()
+        names = {g["name"] for g in guides}
+        assert "analyst-guide" in names
+        for g in guides:
+            assert set(g) == {"name", "title", "bytes"}
+
+    def test_get_guide_content(self, client):
+        r = client.get("/api/docs/analyst-guide")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["name"] == "analyst-guide"
+        assert body["title"] == "TraceBi Analyst Guide"
+        assert "tracebi new-request" in body["content"]
+
+    def test_unknown_guide_404(self, client):
+        assert client.get("/api/docs/nope").status_code == 404
+
+    def test_path_traversal_is_unaddressable(self, client):
+        # Names are matched against a directory listing of docs/*.md, so
+        # traversal inputs can never resolve to a file.
+        for evil in ["../README", "..%2F..%2Fpyproject", "etc/passwd"]:
+            assert client.get(f"/api/docs/{evil}").status_code == 404
