@@ -11,7 +11,9 @@ from tracebi.reports.report import (
     Metric, MetricSection,
 )
 from tracebi.web import register
-from web.demo_app.model import model
+from tracebi.model_registry import get_model
+
+model = get_model("sales_model")
 
 
 @register.report(

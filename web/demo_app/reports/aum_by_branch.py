@@ -10,7 +10,9 @@ from tracebi.reports.report import (
     Metric, MetricSection,
 )
 from tracebi.web import register
-from web.demo_app.banking import banking_model
+from tracebi.model_registry import get_model
+
+banking_model = get_model("wealth_model")
 
 
 @register.report(

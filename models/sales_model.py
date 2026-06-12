@@ -1,8 +1,14 @@
 """
-Shared DataModel for the demo app.
+SalesModel — the default demo DataModel.
 
-Imported by reports, dashboard, and registry. Never import from registry.py
-back into this file — that would create a circular dependency.
+Lives at the project root so notebooks, scripts, and the web server can all
+share one definition::
+
+    from tracebi.model_registry import get_model
+    model = get_model("sales_model")
+
+Exposes a module-level ``model`` (the convention the registry looks for) plus
+``connector`` so the web app can surface it on the Connectors page.
 """
 
 import pandas as pd

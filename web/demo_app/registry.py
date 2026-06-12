@@ -1,9 +1,11 @@
 """
 Demo app registry — the single wiring file for the demo app instance.
 
-Everything registered here is visible to the web UI. Reports live in
-reports/ and are auto-discovered; all other resources (connector, model,
-dashboard, pipeline) are registered explicitly below.
+Everything registered here is visible to the web UI. The DataModels
+themselves live at the project root in models/ (sales_model.py,
+wealth_model.py) and are pulled in via the shared model registry — the web
+layer runs on top of those base files. Reports live in reports/ and are
+auto-discovered; the dashboard and pipeline are registered explicitly below.
 
 To add a new report: create reports/<name>.py with a
 @register.report(...) decorated factory function. It will be picked up
@@ -13,21 +15,22 @@ automatically on the next server start (or dev-mode reload).
 import os
 
 from web.api.registry import registry
-from web.demo_app.model import connector, model
-from web.demo_app.banking import banking_connector, banking_model
+from tracebi.model_registry import get_model
 from web.demo_app.pipeline import runner
 from web.demo_app.dashboard import dashboard_server
 from tracebi.web.discovery import auto_discover
 
-# ── Connector + Model ─────────────────────────────────────────────────────────
+# ── Models (defined in models/, shared with notebooks and scripts) ────────────
 
-registry.add_connector(connector)
-registry.add_model(model, default=True)
+sales_model = get_model("sales_model")
+wealth_model = get_model("wealth_model")
 
-# ── Banking / Wealth Management ───────────────────────────────────────────────
+registry.add_model(sales_model, default=True)
+registry.add_model(wealth_model)
 
-registry.add_connector(banking_connector)
-registry.add_model(banking_model)
+# Surface each model's connectors on the Connectors page.
+for _conn in (*sales_model.connectors(), *wealth_model.connectors()):
+    registry.add_connector(_conn)
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 

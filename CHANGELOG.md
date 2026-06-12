@@ -42,6 +42,16 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   loading, default selection, explicit registration, and all new CLI commands.
 
 ### Changed
+- **Demo models moved out of the web layer** — `SalesModel` and `WealthModel`
+  now live at the project root in `models/sales_model.py` and
+  `models/wealth_model.py` (replacing `web/demo_app/model.py` and
+  `web/demo_app/banking.py`). The demo app's reports, dashboard, pipeline, and
+  registry now pull them in via `get_model(...)`, demonstrating the intended
+  pattern: models are declared once outside the web UI and the web layer runs
+  on top of them.
+- **`DataModel.connectors()`** — new public accessor returning the connector
+  objects registered on a model, so app code can surface a model's connectors
+  without reaching into private attributes.
 - **`LineageNode` is now frozen** — attributes cannot be reassigned and
   `connector`/`metadata` are read-only mappings. The audit chain can no
   longer be rewritten after the fact. `to_dict()` still returns plain
