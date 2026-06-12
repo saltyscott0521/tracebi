@@ -1,630 +1,295 @@
-import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useConnectors, useModels, useReports, usePipelines } from '../api'
-import { StatTile, CodeBlock } from '../components/Shared'
+import { Skeleton } from '../components/Shared'
 
-// ── Notebook Demo ─────────────────────────────────────────────────────────────
-// Animated Jupyter-notebook walkthrough of the TraceBi Python API.
-// Outputs mirror the library's real _repr_html_ for DataSet / DataModel.
+// ── Greeting ─────────────────────────────────────────────────────────────────
 
-const MONO = "'Cascadia Code', 'Fira Code', Consolas, monospace"
-const NAVY = '#1F3864'
-const REPR_BORDER = '1px solid #dde4ef'
-
-const CHARS_PER_TICK = 6
-const TICK_MS = 22
-const RUN_MS = 700
-const CELL_PAUSE_MS = 2400
-const LOOP_PAUSE_MS = 5200
-
-const NB_CELLS = [
-  {
-    output: 'model',
-    code:
-`from tracebi import DataModel, SQLConnector
-
-db = SQLConnector("sales_db", url="sqlite:///data/sales.db")
-
-model = DataModel("SalesModel")
-model.add_connector(db)
-model.add_table("orders",    connector="sales_db", source="orders")
-model.add_table("customers", connector="sales_db", source="customers")
-model.connect()
-model`,
-  },
-  {
-    output: 'result',
-    code:
-`orders = model.load("orders")
-
-result = (
-    orders
-    .filter("status == 'shipped'", description="Shipped orders only")
-    .transform(lambda df: df.assign(margin=df["revenue"] - df["cost"]),
-               description="margin = revenue - cost")
-    .sort("margin", ascending=False)
-)
-result`,
-  },
-  {
-    output: 'lineage',
-    stdout: true,
-    code: `result.print_lineage()`,
-  },
-  {
-    output: 'query',
-    code:
-`model.add_dimension("dim_customer", table_name="customers",
-                    key_col="customer_id", attributes=["region"])
-model.add_fact("fact_orders", table_name="orders",
-               measures=["revenue", "margin"],
-               foreign_keys={"dim_customer": "customer_id"})
-
-by_region = model.query(fact="fact_orders",
-                        measures={"revenue": "sum", "margin": "sum"},
-                        dimensions=["dim_customer.region"])
-by_region`,
-  },
-  {
-    output: 'report',
-    stdout: true,
-    code:
-`from tracebi.reports import Report, ChartSection, TableSection, HTMLRenderer
-
-report = (
-    Report("Q2 Revenue Analysis")
-    .author("Data Team")
-    .add(ChartSection("Revenue by Region", dataset=by_region,
-                      chart_type="bar", x="dim_customer.region", y="revenue"))
-    .add(TableSection("Detail", dataset=by_region, totals=["revenue"]))
-)
-
-HTMLRenderer().render(report, "output/q2.html")`,
-  },
-]
-
-// ── Python syntax highlighting (light theme) ──────────────────────────────────
-
-const PY_RE = /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"?|'(?:[^'\\\n]|\\.)*'?)|\b(from|import|lambda|def|return|class|if|else|for|in|with|as|True|False|None)\b|(\b\d+(?:\.\d+)?\b)/g
-
-const TOKEN_STYLES = {
-  comment: { color: '#8a97a8', fontStyle: 'italic' },
-  string:  { color: '#0e7a4e' },
-  keyword: { color: '#7c3aed', fontWeight: 600 },
-  number:  { color: '#b45309' },
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
-function highlightPy(src) {
-  const out = []
-  let last = 0
-  let m
-  PY_RE.lastIndex = 0
-  while ((m = PY_RE.exec(src)) !== null) {
-    if (m.index > last) out.push(src.slice(last, m.index))
-    const kind = m[1] ? 'comment' : m[2] ? 'string' : m[3] ? 'keyword' : 'number'
-    out.push(<span key={m.index} style={TOKEN_STYLES[kind]}>{m[0]}</span>)
-    last = m.index + m[0].length
-  }
-  if (last < src.length) out.push(src.slice(last))
-  return out
+function formatDate() {
+  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
-// ── Mock cell outputs (shaped like the real rich reprs) ───────────────────────
+// ── Stat card ─────────────────────────────────────────────────────────────────
 
-const DS_RESULT = {
-  name: 'orders',
-  shape: '198 rows × 6 cols',
-  chain: ['load', 'filter', 'transform', 'sort'],
-  cols: [
-    { name: 'order_id', dtype: 'int64' },
-    { name: 'region',   dtype: 'object' },
-    { name: 'product',  dtype: 'object' },
-    { name: 'revenue',  dtype: 'float64' },
-    { name: 'cost',     dtype: 'float64' },
-    { name: 'margin',   dtype: 'float64' },
-  ],
-  rows: [
-    ['1042', 'North', 'Solar Panel', '12400.0', '8100.0', '4300.0'],
-    ['1187', 'West',  'Inverter',    '9850.0',  '6200.0', '3650.0'],
-    ['1093', 'North', 'Battery',     '8400.0',  '5300.0', '3100.0'],
-    ['1216', 'South', 'Controller',  '7120.0',  '4480.0', '2640.0'],
-  ],
-  more: '… 194 more rows',
-}
-
-const DS_QUERY = {
-  name: 'query_result',
-  shape: '4 rows × 3 cols',
-  chain: ['query'],
-  cols: [
-    { name: 'dim_customer.region', dtype: 'object' },
-    { name: 'revenue',             dtype: 'float64' },
-    { name: 'margin',              dtype: 'float64' },
-  ],
-  rows: [
-    ['North', '284210.0', '62340.0'],
-    ['West',  '198450.0', '43760.0'],
-    ['South', '156780.0', '33450.0'],
-    ['East',  '142110.0', '30560.0'],
-  ],
-  more: null,
-}
-
-const LINEAGE_STEPS = [
-  { op: 'LOAD',      color: '#1d4ed8', desc: "Loaded 'orders' from 'sales_db'", rows: '250' },
-  { op: 'FILTER',    color: '#15803d', desc: 'Shipped orders only',             rows: '250 → 198' },
-  { op: 'TRANSFORM', color: '#b45309', desc: 'margin = revenue - cost',         rows: '198' },
-  { op: 'SORT',      color: '#6d28d9', desc: 'Sorted by margin (descending)',   rows: '198' },
-]
-
-const REPORT_BARS = [
-  { region: 'North', revenue: 284210 },
-  { region: 'West',  revenue: 198450 },
-  { region: 'South', revenue: 156780 },
-  { region: 'East',  revenue: 142110 },
-]
-
-function ReprFrame({ children }) {
-  return (
+function StatCard({ label, value, icon, color, href, loading }) {
+  const inner = (
     <div style={{
-      border: REPR_BORDER, borderRadius: 6, padding: '12px 14px',
-      display: 'inline-block', maxWidth: '100%', overflowX: 'auto',
-      background: '#fff', fontFamily: "'Segoe UI', Calibri, Arial, sans-serif",
-    }}>{children}</div>
-  )
-}
-
-function NbModelOut() {
-  const item = { fontSize: 11, color: '#333', padding: '1px 0' }
-  return (
-    <ReprFrame>
+      background: 'var(--card)', border: '1px solid var(--border)',
+      borderRadius: 14, padding: '20px 22px',
+      display: 'flex', alignItems: 'flex-start', gap: 14,
+    }} className="card-hover card-accent">
+      <div style={{
+        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+        background: `${color}18`, border: `1px solid ${color}30`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color,
+      }}>
+        {icon}
+      </div>
       <div>
-        <span style={{ fontWeight: 700, color: NAVY, fontSize: 14 }}>DataModel: SalesModel</span>
-        <span style={{ color: '#666', fontSize: 11, marginLeft: 8 }}>connectors: sales_db</span>
+        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>
+          {loading ? <Skeleton width={36} height={24} /> : value}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{label}</div>
       </div>
-      <div style={{ fontWeight: 700, color: NAVY, fontSize: 12, margin: '8px 0 4px' }}>Tables</div>
-      <div style={item}><b>orders</b> <span style={{ color: '#999' }}>← sales_db / orders</span></div>
-      <div style={item}><b>customers</b> <span style={{ color: '#999' }}>← sales_db / customers</span></div>
-    </ReprFrame>
+    </div>
+  )
+  return href
+    ? <Link to={href} style={{ textDecoration: 'none', display: 'block' }}>{inner}</Link>
+    : inner
+}
+
+// ── Nav card ──────────────────────────────────────────────────────────────────
+
+function NavCard({ href, title, desc, icon, color, badge }) {
+  return (
+    <Link to={href} style={{ textDecoration: 'none' }}>
+      <div style={{
+        background: 'var(--card)', border: '1px solid var(--border)',
+        borderRadius: 14, padding: '18px 20px', height: '100%',
+      }} className="card-hover">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+            background: `${color}18`, border: `1px solid ${color}28`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color,
+          }}>
+            {icon}
+          </div>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{title}</span>
+          {badge != null && (
+            <span style={{
+              marginLeft: 'auto', fontSize: 11, fontWeight: 700,
+              background: `${color}18`, color, border: `1px solid ${color}28`,
+              padding: '1px 8px', borderRadius: 20,
+            }}>{badge}</span>
+          )}
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55, margin: 0 }}>{desc}</p>
+      </div>
+    </Link>
   )
 }
 
-function NbDataSetOut({ name, shape, chain, cols, rows, more }) {
-  const badge = {
-    display: 'inline-block', padding: '2px 8px', borderRadius: 10,
-    fontSize: 10, fontWeight: 600, background: '#DEEBF7', color: NAVY,
+// ── Recent pipeline runs ───────────────────────────────────────────────────────
+
+const STATUS_COLOR = { success: '#16a34a', failed: '#dc2626', running: '#d97706', never: '#94a3b8' }
+const STATUS_LABEL = { success: 'OK', failed: 'ERR', running: '…', never: '—' }
+
+function PipelineActivity({ pipelines }) {
+  const layers = (pipelines || []).flatMap(p =>
+    (p.layers || []).map(l => ({ ...l, pipeline: p.pipeline }))
+  )
+
+  const active = layers
+    .filter(l => l.last_run)
+    .sort((a, b) => new Date(b.last_run) - new Date(a.last_run))
+    .slice(0, 6)
+
+  if (!active.length) {
+    return (
+      <div style={{ color: 'var(--muted)', fontSize: 13, padding: '16px 12px' }}>
+        No runs yet.{' '}
+        <Link to="/pipelines" style={{ color: 'var(--accent-text)' }}>Run a pipeline</Link>{' '}
+        to see activity here.
+      </div>
+    )
   }
-  return (
-    <ReprFrame>
-      <div style={{ marginBottom: 6 }}>
-        <span style={{ fontWeight: 700, color: NAVY, fontSize: 13 }}>{name}</span>
-        <span style={{ color: '#666', fontSize: 11, marginLeft: 8 }}>{shape}</span>
-      </div>
-      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-        {chain.map((op, i) => (
-          <span key={op} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            {i > 0 && <span style={{ color: '#999', fontSize: 10 }}>→</span>}
-            <span style={badge}>{op}</span>
-          </span>
-        ))}
-      </div>
-      <table style={{ borderCollapse: 'collapse', width: 'auto', fontSize: 11 }}>
-        <thead>
-          <tr style={{ background: 'transparent' }}>
-            {cols.map(c => (
-              <th key={c.name} style={{
-                background: NAVY, color: '#fff', padding: '5px 10px', textAlign: 'left',
-                fontSize: 11, fontWeight: 600, textTransform: 'none', letterSpacing: 0, border: 'none',
-              }}>
-                {c.name}
-                <div style={{ fontWeight: 400, opacity: 0.7 }}>{c.dtype}</div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} style={{ border: 'none' }}>
-              {r.map((v, j) => (
-                <td key={j} style={{ padding: '4px 10px', borderBottom: '1px solid #dde4ef', fontSize: 11, color: '#333' }}>{v}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {more && <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>{more}</div>}
-    </ReprFrame>
-  )
-}
 
-function NbLineageOut() {
-  const sep = '='.repeat(60)
   return (
-    <pre style={{ fontFamily: MONO, fontSize: 11.5, lineHeight: 1.6, margin: 0, color: '#43536b', whiteSpace: 'pre-wrap' }}>
-      {sep + '\n'}
-      {"  Lineage for DataSet: 'orders'\n"}
-      {'  Shape: 198 rows × 6 cols\n'}
-      {sep + '\n'}
-      {LINEAGE_STEPS.map((s, i) => (
-        <span key={s.op}>
-          {`  Step ${i + 1}: `}
-          <span style={{ color: s.color, fontWeight: 700 }}>{`[${s.op}]`}</span>
-          {`  ${s.desc}\n    Rows        : ${s.rows}\n`}
-        </span>
-      ))}
-      {sep}
-    </pre>
-  )
-}
-
-function NbReportOut() {
-  const max = REPORT_BARS[0].revenue
-  return (
-    <div>
-      <pre style={{ fontFamily: MONO, fontSize: 11.5, margin: '0 0 10px', color: '#15803d', whiteSpace: 'pre-wrap' }}>
-        ✓ Rendered → output/q2.html   (manifest.json written with full lineage)
-      </pre>
-      <div style={{ border: REPR_BORDER, borderRadius: 8, background: '#fff', padding: '14px 18px', maxWidth: 460 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #eef2f7' }}>
-          <div>
-            <div style={{ fontSize: 13.5, fontWeight: 800, color: NAVY }}>Q2 Revenue Analysis</div>
-            <div style={{ fontSize: 10.5, color: '#8a97a8' }}>Data Team · 2 sections · output/q2.html</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {active.map((l, i) => {
+        const status = l.last_status || 'never'
+        const color = STATUS_COLOR[status] ?? STATUS_COLOR.never
+        const when = l.last_run
+          ? new Date(l.last_run).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+          : '—'
+        return (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 8, fontSize: 13,
+            background: i % 2 === 0 ? 'var(--surface)' : 'transparent',
+          }}>
+            <span style={{
+              width: 28, textAlign: 'center', fontSize: 10, fontWeight: 700,
+              color, background: `${color}18`, border: `1px solid ${color}30`,
+              borderRadius: 5, padding: '2px 0', flexShrink: 0,
+            }}>{STATUS_LABEL[status]}</span>
+            <span style={{ flex: 1, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 12 }}>
+              <span style={{ color: 'var(--text)' }}>{l.pipeline}</span>
+              <span style={{ color: 'var(--muted)' }}> / {l.name}</span>
+            </span>
+            {l.last_rows_out != null && (
+              <span style={{ color: 'var(--muted)', fontSize: 11 }}>
+                {l.last_rows_out.toLocaleString()} rows
+              </span>
+            )}
+            <span style={{ color: 'var(--muted)', fontSize: 11, flexShrink: 0 }}>{when}</span>
           </div>
-          <span style={{ fontSize: 10, color: '#15803d', fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'rgba(22,163,74,.08)', border: '1px solid rgba(22,163,74,.25)' }}>preview</span>
-        </div>
-        <div style={{ fontSize: 9.5, fontWeight: 700, color: '#8a97a8', textTransform: 'uppercase', letterSpacing: .7, marginBottom: 8 }}>Revenue by Region</div>
-        {REPORT_BARS.map(b => (
-          <div key={b.region} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <div style={{ width: 38, fontSize: 10.5, color: '#5a6e88', textAlign: 'right', flexShrink: 0 }}>{b.region}</div>
-            <div style={{ flex: 1, height: 18, background: '#eef2f7', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{
-                width: `${(b.revenue / max) * 100}%`, height: '100%',
-                background: 'linear-gradient(90deg, #091a55, #0369a1)',
-                borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 8,
-              }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,.85)', fontFamily: MONO, whiteSpace: 'nowrap' }}>
-                  ${(b.revenue / 1000).toFixed(0)}K
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-        <div style={{ fontSize: 10.5, color: '#5a6e88', marginTop: 10, paddingTop: 8, borderTop: '1px solid #eef2f7', display: 'flex', justifyContent: 'space-between' }}>
-          <span>Total revenue</span>
-          <span style={{ fontFamily: MONO, fontWeight: 700, color: NAVY }}>$781,550</span>
-        </div>
-      </div>
+        )
+      })}
     </div>
   )
 }
 
-function NbOutput({ type }) {
-  if (type === 'model')   return <NbModelOut />
-  if (type === 'result')  return <NbDataSetOut {...DS_RESULT} />
-  if (type === 'lineage') return <NbLineageOut />
-  if (type === 'query')   return <NbDataSetOut {...DS_QUERY} />
-  return <NbReportOut />
-}
+// ── Section header ────────────────────────────────────────────────────────────
 
-// ── Notebook cell ─────────────────────────────────────────────────────────────
-
-function NbCell({ cell, num, isCurrent, chars, stage }) {
-  const showOutput = !isCurrent || stage === 'output'
-  const running = isCurrent && stage === 'running'
-  const typing = isCurrent && stage === 'typing'
-  const visible = isCurrent ? cell.code.slice(0, chars) : cell.code
-  const inPrompt = showOutput ? `In [${num}]:` : running ? 'In [*]:' : 'In [ ]:'
-
+function SH({ title, action }) {
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <div style={{
-          width: 58, flexShrink: 0, textAlign: 'right', paddingTop: 11,
-          fontFamily: MONO, fontSize: 11, fontWeight: 700,
-          color: running ? '#b45309' : '#307fc1',
-        }}>{inPrompt}</div>
-        <div style={{
-          flex: 1, minWidth: 0, background: '#fff', borderRadius: 4,
-          border: `1px solid ${isCurrent ? '#a8c3e8' : '#dde4ef'}`,
-          borderLeft: `3px solid ${isCurrent ? '#2563eb' : '#dde4ef'}`,
-          boxShadow: isCurrent ? '0 1px 6px rgba(37,99,235,.08)' : 'none',
-          padding: '10px 14px', transition: 'border-color .3s, box-shadow .3s',
-        }}>
-          <pre style={{ fontFamily: MONO, fontSize: 12.5, lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#1f2d45' }}>
-            {highlightPy(visible)}
-            {typing && (
-              <span className="cursor-blink" style={{
-                display: 'inline-block', width: 2, height: '0.95em',
-                background: '#2563eb', marginLeft: 1, verticalAlign: 'text-bottom',
-              }} />
-            )}
-          </pre>
-        </div>
-      </div>
-      {showOutput && (
-        <div className="fade-in" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 8 }}>
-          <div style={{
-            width: 58, flexShrink: 0, textAlign: 'right', paddingTop: 4,
-            fontFamily: MONO, fontSize: 11, fontWeight: 700, color: '#bf5b3d',
-          }}>{cell.stdout ? '' : `Out[${num}]:`}</div>
-          <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
-            <NbOutput type={cell.output} />
-          </div>
-        </div>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+      <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{title}</h2>
+      {action && (
+        <Link to={action.href} style={{ fontSize: 12, color: 'var(--accent-text)', textDecoration: 'none' }}>
+          {action.label} →
+        </Link>
       )}
     </div>
   )
 }
 
-// ── Player ────────────────────────────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
-function DemoPlayer() {
-  const [cellIdx, setCellIdx] = useState(0)
-  const [chars, setChars] = useState(0)
-  const [stage, setStage] = useState('typing')   // typing → running → output
-  const [playing, setPlaying] = useState(true)
-  const tm = useRef(null)
-  const scrollRef = useRef(null)
-
-  const cell = NB_CELLS[cellIdx]
-
-  useEffect(() => {
-    if (!playing) { clearTimeout(tm.current); return }
-    clearTimeout(tm.current)
-    if (stage === 'typing') {
-      tm.current = chars < cell.code.length
-        ? setTimeout(() => setChars(c => Math.min(c + CHARS_PER_TICK, cell.code.length)), TICK_MS)
-        : setTimeout(() => setStage('running'), 200)
-    } else if (stage === 'running') {
-      tm.current = setTimeout(() => setStage('output'), RUN_MS)
-    } else {
-      const isLast = cellIdx === NB_CELLS.length - 1
-      tm.current = setTimeout(() => {
-        setCellIdx(i => (i + 1) % NB_CELLS.length)
-        setChars(0)
-        setStage('typing')
-      }, isLast ? LOOP_PAUSE_MS : CELL_PAUSE_MS)
-    }
-    return () => clearTimeout(tm.current)
-  }, [chars, stage, playing, cellIdx, cell])
-
-  // Keep the newest cell in view as it types and outputs appear
-  useEffect(() => {
-    const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [chars, stage, cellIdx])
-
-  const restart = () => { setCellIdx(0); setChars(0); setStage('typing'); setPlaying(true) }
-  const progress = ((cellIdx + (stage === 'output' ? 1 : Math.min(chars / (cell.code.length || 1), 1))) / NB_CELLS.length) * 100
-
-  const btn = {
-    background: 'rgba(9,26,85,.06)', border: '1px solid rgba(9,26,85,.18)',
-    borderRadius: 6, cursor: 'pointer', padding: '3px 10px',
-    color: '#43536b', fontSize: 11, fontWeight: 700, letterSpacing: .3,
-  }
-
-  return (
-    <div style={{
-      background: '#f6f8fb',
-      border: '1px solid var(--border)',
-      borderRadius: 14,
-      overflow: 'hidden',
-      marginBottom: 32,
-      boxShadow: 'var(--shadow)',
-    }}>
-
-      {/* Window chrome */}
-      <div style={{
-        background: '#e9eef5',
-        borderBottom: '1px solid #d4dde8',
-        padding: '10px 16px',
-        display: 'flex', alignItems: 'center', gap: 12,
-        userSelect: 'none',
-      }}>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['#ef4444', '#f59e0b', '#22c55e'].map(c => (
-            <div key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c, opacity: .8 }} />
-          ))}
-        </div>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: '#43536b', fontWeight: 600, letterSpacing: .2 }}>
-          tracebi_quickstart.ipynb
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#43536b', fontWeight: 600 }}>
-            <span style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: stage === 'running' ? '#d97706' : '#16a34a',
-              transition: 'background .2s',
-            }} />
-            Python 3 (tracebi)
-          </span>
-          <button onClick={restart} title="Restart" style={btn}>↺</button>
-          <button onClick={() => setPlaying(p => !p)} title={playing ? 'Pause' : 'Play'} style={{
-            ...btn,
-            background: playing ? 'rgba(22,163,74,.1)' : 'rgba(9,26,85,.06)',
-            border: `1px solid ${playing ? 'rgba(22,163,74,.3)' : 'rgba(9,26,85,.18)'}`,
-            color: playing ? '#15803d' : '#43536b',
-          }}>
-            {playing ? '⏸' : '▶'}
-          </button>
-        </div>
-      </div>
-
-      {/* Cells */}
-      <div ref={scrollRef} style={{ height: 480, overflowY: 'auto', padding: '20px 22px 26px' }}>
-
-        {/* Markdown cell */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-          <div style={{ width: 58, flexShrink: 0 }} />
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#15243f', marginBottom: 4 }}>TraceBi quickstart</div>
-            <p style={{ fontSize: 12.5, color: '#5a6e88', lineHeight: 1.6, margin: 0 }}>
-              Connect → transform → trace → report. Every step records lineage automatically —
-              run this yourself in any notebook.
-            </p>
-          </div>
-        </div>
-
-        {NB_CELLS.slice(0, cellIdx + 1).map((c, i) => (
-          <NbCell key={i} cell={c} num={i + 1} isCurrent={i === cellIdx} chars={chars} stage={stage} />
-        ))}
-      </div>
-
-      {/* Progress */}
-      <div style={{ height: 3, background: '#e2e8f1' }}>
-        <div style={{
-          height: '100%',
-          background: 'linear-gradient(90deg, #091a55, #0369a1)',
-          width: `${progress}%`,
-          transition: `width ${TICK_MS}ms linear`,
-        }} />
-      </div>
-    </div>
-  )
+const I = {
+  db: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" /></svg>,
+  cube: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" /><path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" /><path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" /></svg>,
+  doc: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>,
+  bolt: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>,
+  compass: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.707a1 1 0 00-1.111-.206l-4 1.714a1 1 0 00-.525.525l-1.714 4a1 1 0 001.317 1.317l4-1.714a1 1 0 00.525-.525l1.714-4a1 1 0 00-.206-1.111zM10 11a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" /></svg>,
+  code: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>,
 }
-
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const QUICK = [
-  { n: 1, label: 'Install',        cmd: 'pip install "tracebi[analyst]"',                    color: '#2563eb' },
-  { n: 2, label: 'Write a report', cmd: 'tracebi new-request "revenue by region"',            color: '#7c3aed' },
-  { n: 3, label: 'Run it',         cmd: 'tracebi run requests/revenue_by_region.py',          color: '#059669' },
-]
-
 export default function Home() {
-  const { data: connectors } = useConnectors()
-  const { data: models } = useModels()
-  const { data: reports } = useReports()
-  const { data: pipelines } = usePipelines()
+  const { data: connectors, isLoading: lc } = useConnectors()
+  const { data: models,     isLoading: lm } = useModels()
+  const { data: reports,    isLoading: lr } = useReports()
+  const { data: pipelines,  isLoading: lp } = usePipelines()
 
-  const stats = [
-    { value: connectors?.length ?? '—', label: 'Connectors',  color: 'rgba(52,211,153,.18)',  icon: '⇌' },
-    { value: models?.length     ?? '—', label: 'Data Models', color: 'rgba(167,139,250,.18)', icon: '⬡' },
-    { value: reports?.length    ?? '—', label: 'Reports',     color: 'rgba(244,114,182,.18)', icon: '▤' },
-    { value: pipelines?.length  ?? '—', label: 'Pipelines',   color: 'rgba(251,191,36,.18)',  icon: '⧖' },
-  ]
+  const nConn  = (connectors || []).length
+  const nMod   = (models     || []).length
+  const nRep   = (reports    || []).length
+  const nPipe  = (pipelines  || []).length
 
   return (
-    <div>
-
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 16,
-        padding: '52px 52px 48px',
-        marginBottom: 28,
-        position: 'relative',
-        overflow: 'hidden',
-        boxShadow: 'var(--shadow-sm)',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='rgba(37,99,235,0.05)' stroke-width='1'/%3E%3C/svg%3E")`,
-      }}>
-        <div style={{
-          position: 'absolute', top: -80, right: -80, width: 340, height: 340,
-          background: 'radial-gradient(circle, rgba(124,58,237,.07) 0%, transparent 65%)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -40, left: '30%', width: 240, height: 240,
-          background: 'radial-gradient(circle, rgba(37,99,235,.06) 0%, transparent 65%)',
-          pointerEvents: 'none',
-        }} />
-
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7,
-          padding: '4px 14px', marginBottom: 22,
-          background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
-          borderRadius: 20, fontSize: 11, fontWeight: 700,
-          color: 'var(--accent-text)', letterSpacing: .8, textTransform: 'uppercase',
-        }}>
-          <span className="pulse-glow" style={{
-            display: 'inline-block', width: 6, height: 6,
-            borderRadius: '50%', background: 'var(--green)',
-          }} />
-          Code-first · Traceable · Open Source
-        </div>
-
-        <h2 style={{
-          fontSize: 42, fontWeight: 900, lineHeight: 1.15, marginBottom: 16,
-          background: 'var(--brand-text)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text', maxWidth: 600, letterSpacing: -.5,
-        }}>
-          Build analytics pipelines that explain themselves.
-        </h2>
-
-        <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.75, maxWidth: 540, marginBottom: 32 }}>
-          TraceBi is a Python BI framework where every transformation is tracked with a full
-          lineage chain. DataSets, star schemas, medallion pipelines, and reports — with no
-          black boxes.
-        </p>
-
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Link to="/reports" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-            background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-            color: '#fff', textDecoration: 'none',
-            boxShadow: '0 4px 20px rgba(124,58,237,.4)',
-          }}>▤ View Reports</Link>
-          <Link to="/explore" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(2,132,199,.07)', color: '#0369a1',
-            border: '1px solid rgba(2,132,199,.3)', textDecoration: 'none',
-          }}>◬ Explore Data</Link>
-          <Link to="/getting-started" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '11px 24px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'var(--blue-lt)', color: 'var(--accent-text)',
-            border: '1px solid var(--blue-br)', textDecoration: 'none',
-          }}>→ Get started</Link>
-        </div>
+    <div className="fade-in">
+      {/* Header */}
+      <div style={{ marginBottom: 36 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
+          {greeting()}
+        </h1>
+        <p style={{ fontSize: 14, color: 'var(--muted)' }}>{formatDate()}</p>
       </div>
 
-      {/* ── Demo Player ───────────────────────────────────────────────────── */}
-      <DemoPlayer />
-
-      {/* ── Stats ─────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 44 }}>
-        {stats.map(s => (
-          <StatTile key={s.label} value={s.value} label={s.label} color={s.color} icon={s.icon} />
-        ))}
+      {/* Stats row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
+        <StatCard label="Connectors" value={nConn} icon={I.db}      color="#2563eb" href="/connectors" loading={lc} />
+        <StatCard label="Models"     value={nMod}  icon={I.cube}    color="#7c3aed" href="/models"     loading={lm} />
+        <StatCard label="Reports"    value={nRep}  icon={I.doc}     color="#db2777" href="/reports"    loading={lr} />
+        <StatCard label="Pipelines"  value={nPipe} icon={I.bolt}    color="#d97706" href="/pipelines"  loading={lp} />
       </div>
 
-      {/* ── 3-step quick start ────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{
-          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          marginBottom: 16,
-        }}>
-          <h2 className="gradient-text" style={{ fontSize: 18, fontWeight: 800, letterSpacing: -.2 }}>
-            Start in 3 steps
-          </h2>
-          <Link to="/getting-started" style={{
-            fontSize: 12, fontWeight: 600, color: 'var(--accent-text)', textDecoration: 'none',
-          }}>Full guide →</Link>
+      {/* Two-column layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 32, alignItems: 'start' }}>
+
+        {/* Left */}
+        <div>
+          <SH title="Navigate" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 32 }}>
+            <NavCard href="/explore"  title="Explore"   icon={I.compass} color="#0891b2" badge={nMod || undefined}
+              desc="Run star-schema queries across your models. Pick measures, dimensions, and filters." />
+            <NavCard href="/models"   title="Models"    icon={I.cube}    color="#7c3aed" badge={nMod || undefined}
+              desc="Browse DataModel tables, preview rows, inspect relationships, and view the ER diagram." />
+            <NavCard href="/reports"  title="Reports"   icon={I.doc}     color="#db2777" badge={nRep || undefined}
+              desc="Run registered reports and download HTML or Excel outputs with lineage manifests." />
+            <NavCard href="/requests" title="Requests"  icon={I.code}    color="#6d28d9"
+              desc="Execute ad-hoc Python scripts with custom parameters and live lineage graphs." />
+          </div>
+
+          <SH title="Recent pipeline activity" action={{ href: '/pipelines', label: 'View all' }} />
+          <div style={{
+            background: 'var(--card)', border: '1px solid var(--border)',
+            borderRadius: 14, padding: '8px 4px',
+          }}>
+            {lp
+              ? <div style={{ padding: '12px 12px' }}>
+                  <Skeleton height={13} style={{ marginBottom: 10 }} />
+                  <Skeleton width="70%" height={13} />
+                </div>
+              : <PipelineActivity pipelines={pipelines} />
+            }
+          </div>
         </div>
-        <div className="grid-3">
-          {QUICK.map(s => (
-            <div key={s.n} className="card-hover" style={{
-              background: 'var(--card)', border: '1px solid var(--border)',
-              borderRadius: 12, padding: '18px 20px',
+
+        {/* Right */}
+        <div>
+          <SH title="Quick start" />
+          <div style={{
+            background: 'var(--card)', border: '1px solid var(--border)',
+            borderRadius: 14, padding: '20px 22px', marginBottom: 20,
+          }}>
+            <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.65, marginBottom: 16 }}>
+              TraceBi is a code-first analytics framework. Every transform is immutable and lineage-tracked automatically.
+            </p>
+            {[
+              'Define a connector + DataModel in your app module',
+              'Load, filter, transform — each step appends a LineageNode',
+              'Run queries via .query() or the Explore page',
+              'Build reports and render to HTML or Excel',
+            ].map((text, n) => (
+              <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
+                <span style={{
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
+                  color: 'var(--accent-text)', fontSize: 11, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{n + 1}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, paddingTop: 2 }}>{text}</span>
+              </div>
+            ))}
+            <Link to="/getting-started" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8,
+              fontSize: 13, fontWeight: 600, color: 'var(--accent-text)', textDecoration: 'none',
             }}>
+              Full walkthrough →
+            </Link>
+          </div>
+
+          {!lc && connectors?.length > 0 && (
+            <>
+              <SH title="Connectors" action={{ href: '/connectors', label: 'Details' }} />
               <div style={{
-                width: 28, height: 28, borderRadius: 7, marginBottom: 12,
-                background: `${s.color}14`, border: `1px solid ${s.color}28`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 800, color: s.color,
-              }}>{s.n}</div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', marginBottom: 10 }}>{s.label}</div>
-              <CodeBlock>{s.cmd}</CodeBlock>
-            </div>
-          ))}
+                background: 'var(--card)', border: '1px solid var(--border)',
+                borderRadius: 14, overflow: 'hidden',
+              }}>
+                {connectors.slice(0, 6).map((c, i) => (
+                  <div key={c.name} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
+                    borderBottom: i < connectors.length - 1 && i < 5 ? '1px solid var(--border)' : 'none',
+                    fontSize: 13,
+                  }}>
+                    <span style={{
+                      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                      background: c.connected === false ? '#dc2626' : '#22c55e',
+                    }} />
+                    <span style={{ flex: 1, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 12, color: 'var(--text)' }}>
+                      {c.name}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--muted)' }}>{c.type}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
-
     </div>
   )
 }

@@ -1,4 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
+import {
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer,
+} from 'recharts'
 
 import { useModels, useModel, useTablePreview, useRunQuery } from '../api'
 import { LineageGraph } from '../components/Lineage'
@@ -88,42 +93,115 @@ function FilterRows({ columns, filters, setFilters }) {
   )
 }
 
-// ── Result chart (pure CSS horizontal bars — no chart lib needed) ───────────
+// ── Result chart (Recharts) ──────────────────────────────────────────────────
 
-function BarChart({ data, dimCol, measureCols }) {
-  const maxByCol = useMemo(() => {
-    const m = {}
-    for (const col of measureCols) m[col] = Math.max(...data.map(r => Math.abs(r[col] ?? 0)), 1e-9)
-    return m
-  }, [data, measureCols])
+const fmtTick = v => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : String(v)
 
-  if (!data.length || !dimCol || !measureCols.length) return null
+const tooltipStyle = {
+  background: 'var(--card)', border: '1px solid var(--border)',
+  borderRadius: 8, fontSize: 12, color: 'var(--text)',
+}
+
+const fmtValue = (v, name) => [
+  typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v,
+  name,
+]
+
+function ChartTypeToggle({ type, onChange }) {
+  const types = [
+    { id: 'bar',  label: '▥', title: 'Bar chart' },
+    { id: 'line', label: '∿', title: 'Line chart' },
+    { id: 'area', label: '◮', title: 'Area chart' },
+  ]
   return (
-    <div style={{ padding: '6px 2px 2px' }}>
-      {data.map((row, i) => (
-        <div key={i} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>
-            {String(row[dimCol])}
-          </div>
-          {measureCols.map((col, ci) => {
-            const v = row[col] ?? 0
-            const pct = Math.max(2, (Math.abs(v) / maxByCol[col]) * 100)
-            return (
-              <div key={col} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                <div style={{
-                  height: 14, width: `${pct}%`, maxWidth: 'calc(100% - 110px)',
-                  borderRadius: 4, background: `linear-gradient(90deg, ${MEASURE_COLORS[ci % MEASURE_COLORS.length]}cc, ${MEASURE_COLORS[ci % MEASURE_COLORS.length]}55)`,
-                  transition: 'width .4s ease',
-                }} />
-                <span style={{ fontSize: 11, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                  {typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(v)}
-                  <span style={{ opacity: .55 }}> {col}</span>
-                </span>
-              </div>
-            )
-          })}
-        </div>
+    <div style={{
+      display: 'inline-flex', gap: 2, padding: 2,
+      background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7,
+    }}>
+      {types.map(t => (
+        <button key={t.id} onClick={() => onChange(t.id)} title={t.title} style={{
+          border: 'none', borderRadius: 5, cursor: 'pointer',
+          padding: '3px 10px', fontSize: 13, lineHeight: 1.4,
+          background: type === t.id ? 'var(--card)' : 'transparent',
+          color: type === t.id ? 'var(--accent-text)' : 'var(--muted)',
+          fontWeight: type === t.id ? 700 : 400,
+          boxShadow: type === t.id ? 'var(--shadow-sm)' : 'none',
+          transition: 'background var(--t), color var(--t)',
+        }}>{t.label}</button>
       ))}
+    </div>
+  )
+}
+
+function ResultChart({ data, dimCol, measureCols, type = 'bar' }) {
+  if (!data.length || !dimCol || !measureCols.length) return null
+
+  // Trim long dimension labels for the axis
+  const trimmed = data.map(row => ({
+    ...row,
+    _label: String(row[dimCol]).slice(0, 20),
+  }))
+
+  const grid = <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={type !== 'bar'} vertical={type === 'bar'} />
+  const tooltip = <Tooltip contentStyle={tooltipStyle} formatter={fmtValue} labelFormatter={() => ''} />
+  const legend = measureCols.length > 1
+    ? <Legend wrapperStyle={{ fontSize: 11, color: 'var(--muted)', paddingTop: 8 }} />
+    : null
+
+  const height = type === 'bar'
+    ? Math.max(220, Math.min(400, data.length * 42))
+    : 300
+
+  let chart
+  if (type === 'bar') {
+    chart = (
+      <BarChart data={trimmed} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
+        layout="vertical" barCategoryGap="28%">
+        {grid}
+        <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--muted)' }}
+          tickFormatter={fmtTick} axisLine={false} tickLine={false} />
+        <YAxis type="category" dataKey="_label" width={110}
+          tick={{ fontSize: 11, fill: 'var(--text-2)' }} axisLine={false} tickLine={false} />
+        {tooltip}{legend}
+        {measureCols.map((col, ci) => (
+          <Bar key={col} dataKey={col} fill={MEASURE_COLORS[ci % MEASURE_COLORS.length]}
+            radius={[0, 4, 4, 0]} maxBarSize={28} />
+        ))}
+      </BarChart>
+    )
+  } else {
+    const axes = (
+      <>
+        <XAxis dataKey="_label" tick={{ fontSize: 11, fill: 'var(--text-2)' }}
+          axisLine={false} tickLine={false} interval="preserveStartEnd" />
+        <YAxis tick={{ fontSize: 11, fill: 'var(--muted)' }}
+          tickFormatter={fmtTick} axisLine={false} tickLine={false} width={52} />
+      </>
+    )
+    chart = type === 'line' ? (
+      <LineChart data={trimmed} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+        {grid}{axes}{tooltip}{legend}
+        {measureCols.map((col, ci) => (
+          <Line key={col} dataKey={col} stroke={MEASURE_COLORS[ci % MEASURE_COLORS.length]}
+            strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+        ))}
+      </LineChart>
+    ) : (
+      <AreaChart data={trimmed} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+        {grid}{axes}{tooltip}{legend}
+        {measureCols.map((col, ci) => {
+          const c = MEASURE_COLORS[ci % MEASURE_COLORS.length]
+          return <Area key={col} dataKey={col} stroke={c} fill={c} fillOpacity={0.18} strokeWidth={2} />
+        })}
+      </AreaChart>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 8, marginBottom: 4 }}>
+      <ResponsiveContainer width="100%" height={height}>
+        {chart}
+      </ResponsiveContainer>
     </div>
   )
 }
@@ -160,6 +238,7 @@ export default function Explore() {
   const [measures, setMeasures] = useState({})        // {col: agg}
   const [dimAttrs, setDimAttrs] = useState([])        // ["dim.attr"]
   const [filters, setFilters] = useState({})          // {col: "value"}
+  const [chartType, setChartType] = useState('bar')   // bar | line | area
 
   // Fact table columns (for filters) come from a 1-row preview.
   const { data: factPreview } = useTablePreview(activeModel, fact?.table)
@@ -338,7 +417,12 @@ export default function Explore() {
                   </div>
 
                   {chartDim && measureCols.length > 0 && (
-                    <BarChart data={result.data} dimCol={chartDim} measureCols={measureCols} />
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <ChartTypeToggle type={chartType} onChange={setChartType} />
+                      </div>
+                      <ResultChart data={result.data} dimCol={chartDim} measureCols={measureCols} type={chartType} />
+                    </>
                   )}
 
                   <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--border)', marginTop: chartDim ? 14 : 0 }}>

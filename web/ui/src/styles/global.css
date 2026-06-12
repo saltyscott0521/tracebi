@@ -99,6 +99,63 @@
   --flow-dots:     #9eb0c2;
 }
 
+/* ── Dark mode overrides ─────────────────────────────────────────────────────
+   Flip just the surface/text tokens. Accent, sidebar, and code surfaces
+   are already dark-friendly and need no change.
+*/
+[data-theme="dark"] {
+  --bg:          #0d1623;
+  --surface:     #162030;
+  --surface-2:   #111d2c;
+  --card:        #1a2a3e;
+  --card-solid:  #1a2a3e;
+  --card-hl:     #203048;
+  --border:      #2a3d54;
+  --border-hl:   rgba(100,160,240,0.35);
+
+  --text:        #dde8f5;
+  --text-2:      #8aaac8;
+  --muted:       #5a7a9c;
+
+  --blue-lt:     rgba(100,160,240,0.10);
+  --blue-br:     rgba(100,160,240,0.26);
+
+  --accent-text:   #7ab4f0;
+  --accent-text-2: #5894d4;
+
+  --green-lt:   rgba(22,163,74,0.12);
+  --green-br:   rgba(22,163,74,0.28);
+  --amber-lt:   rgba(217,119,6,0.12);
+  --amber-br:   rgba(217,119,6,0.28);
+  --red-lt:     rgba(220,38,38,0.10);
+  --red-br:     rgba(220,38,38,0.26);
+
+  --shadow:     0 8px 24px rgba(0,0,0,.35);
+  --shadow-sm:  0 2px 8px rgba(0,0,0,.28);
+  --shadow-glow:0 4px 20px rgba(100,160,240,.12);
+
+  --flow-bg:    #111d2c;
+  --flow-dots:  #2a3d54;
+
+  /* Operation node palette (dark) */
+  --op-default-bg: #1a2535; --op-default-br: #2e405a; --op-default-tx: #8aaac8;
+  --op-load-bg:    #0f1e38; --op-load-br:    #1e3a6e; --op-load-tx:    #7ab4f0;
+  --op-filter-bg:  #0e2218; --op-filter-br:  #1a4030; --op-filter-tx:  #4ade80;
+  --op-transform-bg:#241a08;--op-transform-br:#4a360a;--op-transform-tx:#fbbf24;
+  --op-join-bg:    #271408; --op-join-br:    #4e2810; --op-join-tx:    #fb923c;
+  --op-aggregate-bg:#240f1a;--op-aggregate-br:#4a1a30;--op-aggregate-tx:#f472b6;
+  --op-assign-bg:  #14133a; --op-assign-br:  #2a2870; --op-assign-tx:  #a78bfa;
+  --op-sort-bg:    #111e35; --op-sort-br:    #1e3658; --op-sort-tx:    #7ab4f0;
+  --op-select-bg:  #1a2535; --op-select-br:  #2e405a; --op-select-tx:  #8aaac8;
+  --op-rename-bg:  #0d1e20; --op-rename-br:  #163832; --op-rename-tx:  #2dd4bf;
+  --op-landing-bg: #0f1e38; --op-landing-br: #1e3a6e; --op-landing-tx: #7ab4f0;
+  --op-manipulation-bg:#111e35;--op-manipulation-br:#1e3658;--op-manipulation-tx:#7ab4f0;
+  --op-final-bg:   #0e2218; --op-final-br:   #1a4030; --op-final-tx:   #4ade80;
+}
+
+[data-theme="dark"] .react-flow__background { background: #111d2c !important; }
+[data-theme="dark"] .erd-wrapper { background: #111d2c; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
