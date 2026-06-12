@@ -138,7 +138,7 @@ function ReportDetail({ report }) {
           {tab === 'Output' && (
             <iframe
               srcDoc={result.html}
-              style={{ width: '100%', height: 640, border: 'none', borderRadius: 6, background: '#fff' }}
+              style={{ width: '100%', height: 'clamp(340px, 65vh, 640px)', border: 'none', borderRadius: 6, background: '#fff' }}
               title={report.name}
             />
           )}

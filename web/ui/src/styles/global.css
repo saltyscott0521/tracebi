@@ -389,7 +389,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* ── ERD diagram ─────────────────────────────────────── */
 .erd-wrapper {
-  height: 520px;
+  height: clamp(280px, 55vw, 520px);
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -412,9 +412,30 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .grid-2       { grid-template-columns: 1fr; }
   .grid-3       { grid-template-columns: 1fr 1fr; }
   .concept-grid { grid-template-columns: 1fr; }
+
+  /* Shrink page headings on small screens (layout-main is the content area) */
+  .layout-main h1 { font-size: 20px !important; }
+
+  /* Tables scroll inside their overflow-x wrappers; enforce min-width so
+     columns don't collapse to nothing on narrow viewports */
+  table { min-width: 440px; font-size: 12px; }
+  .markdown-doc table { min-width: 0; font-size: 12.5px; }
+  thead th { padding: 8px 10px; }
+  tbody td { padding: 8px 10px; }
+
+  /* Mobile close button inside the sidebar nav */
+  .nav-close-btn { display: flex !important; }
+
+  /* Toast — full-width strip at bottom on small screens */
+  .toast-container-mobile {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 16px !important;
+  }
 }
 @media (max-width: 480px) {
   .grid-3 { grid-template-columns: 1fr; }
+  table { min-width: 360px; }
 }
 
 /* ── Markdown guides (Getting Started page) ──────────── */

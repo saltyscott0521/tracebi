@@ -115,7 +115,9 @@ export default function Layout({ children }) {
         <span className="gradient-text" style={{ fontSize: 16, fontWeight: 800 }}>TraceBi</span>
         <button onClick={() => setOpen(true)} style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', gap: 5, padding: 4,
+          display: 'flex', flexDirection: 'column', gap: 5,
+          padding: 0, width: 44, height: 44,
+          alignItems: 'center', justifyContent: 'center',
         }}>
           {[0,1,2].map(i => (
             <span key={i} style={{ display: 'block', width: 20, height: 2, background: 'var(--text-2)', borderRadius: 2 }} />
@@ -143,6 +145,23 @@ export default function Layout({ children }) {
         display: 'flex', flexDirection: 'column', flexShrink: 0,
         position: 'fixed', top: 0, left: 0, zIndex: 300,
       }} className={open ? 'nav-open' : ''}>
+
+        {/* Close button — mobile only, positioned top-right of sidebar */}
+        <button
+          className="nav-close-btn"
+          onClick={() => setOpen(false)}
+          style={{
+            display: 'none',
+            position: 'absolute', top: 10, right: 10,
+            background: 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            borderRadius: 6, width: 32, height: 32,
+            alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            color: 'rgba(200,220,255,0.85)', fontSize: 17, lineHeight: 1,
+            zIndex: 1,
+          }}
+        >×</button>
 
         {/* Brand */}
         <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid var(--sidebar-border)' }}>
