@@ -63,6 +63,18 @@ class _Register:
         _registry().add_pipeline(name, runner)
         return self
 
+    def get_runner(self, name: str):
+        """Return a runner by name — web registry first, then pipelines/ on disk."""
+        try:
+            result = _registry().get_pipeline(name)
+            if result is not None:
+                return result
+            raise KeyError(name)
+        except ImportError:
+            pass
+        from tracebi.pipeline_registry import get_runner as _get
+        return _get(name)
+
     def dashboard(self, name: str, server, description: str = "") -> "_Register":
         _registry().add_dashboard(name, server, description=description)
         return self
