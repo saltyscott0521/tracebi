@@ -23,6 +23,27 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   and undeclared dimension attributes could slip through.
 
 ### Added
+- **DataSet cleaning verbs** — `dropna()`, `fillna()`, `deduplicate()`,
+  `cast()`, and `limit()` as first-class transforms with structured lineage
+  (row counts, fill counts, type maps). Previously these required
+  `.transform(lambda ...)`, which records only a freeform description.
+  `ds.help()` lists them under a new "Cleaning" section.
+- **`docs/analyst-guide.md`** — a single linear walkthrough of the analyst
+  development flow: scaffold → discover data → transform → parameters →
+  report → live preview (`tracebi dev`) → publish to the web UI. Linked
+  from the README's "Choose your path" table.
+- **`docs/notebook-guide.md`** — using TraceBi from Jupyter: rich DataSet/
+  DataModel previews, `HTMLRenderer().preview()` inline rendering, and how
+  `.ipynb` files in `requests/` execute as request scripts (cell
+  concatenation, magic/shell-escape stripping, run-clean-top-to-bottom).
+- **`docs/web-customization.md`** — pointing the web server at your own
+  app module (`TRACEBI_APP`), the registry seam, adding resources and API
+  routes, React UI theming via the CSS token system, auth modes, and
+  deployment, with an environment-variable reference table.
+- **`request_params` in scaffolds** — `tracebi new-request` (both `.py`
+  and `--notebook`) now includes a parameters section, so the CLI
+  `--param` flag and the web UI's parameter form work out of the box on
+  newly scaffolded requests.
 - **`git_sha` in every `ReportManifest`** — the HEAD commit of the repo at
   render time (`"unknown"` outside a git checkout). Closes the gap between
   "I can prove what happened" and "I can prove what happened *and

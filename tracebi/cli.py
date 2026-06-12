@@ -69,9 +69,15 @@ Fill in the four sections below, then run with:
 """
 
 import os
+from tracebi import request_params
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
+
+# ── 0. Parameters ───────────────────────────────────────────────────────────
+# Override at run time:  tracebi run {slug} --param period="Q3 2024"
+# The web UI's Requests page renders a form from these defaults.
+params = request_params(period="Q2 2024")
 
 # Prefer the shared project DataModel if the web layer registered one;
 # otherwise build your own here (see commented imports below).
@@ -90,7 +96,16 @@ if model is None:
 
 
 # ── 1. Build DataSets ───────────────────────────────────────────────────────
-# orders = model.load("orders", filter={{"status": "shipped"}})
+# Every verb returns a new DataSet and records a lineage step. Run
+# ds.help() for the full cheat sheet, or see docs/analyst-guide.md.
+#
+# orders = (
+#     model.load("orders", filter={{"status": "shipped"}})
+#     .deduplicate(subset="order_id")
+#     .dropna(subset="region")
+#     .assign(margin=lambda df: df.revenue - df.cost)
+#     .sort("margin", ascending=False)
+# )
 
 
 # ── 2. Build Report ─────────────────────────────────────────────────────────
@@ -158,8 +173,12 @@ def _notebook_text(title: str) -> str:
                 "execution_count": None,
                 "outputs":   [],
                 "source": [
+                    "from tracebi import request_params\n",
                     "from tracebi.reports.report import Report, TextSection, TableSection, ChartSection\n",
                     "from tracebi.reports.html_renderer import HTMLRenderer\n",
+                    "\n",
+                    "# Declare defaults; override via tracebi run --param or the web UI form\n",
+                    "params = request_params(period=\"Q2 2024\")\n",
                     "\n",
                     "# Pull the shared project model if the web server registered one\n",
                     "try:\n",
@@ -175,8 +194,13 @@ def _notebook_text(title: str) -> str:
                 "execution_count": None,
                 "outputs":   [],
                 "source": [
-                    "# Build DataSets with model.load(...) — every step adds a lineage node\n",
-                    "# orders = model.load(\"orders\", filter={\"status\": \"shipped\"})\n",
+                    "# Build DataSets with model.load(...) — every step adds a lineage node.\n",
+                    "# Run ds.help() for the full verb cheat sheet.\n",
+                    "# orders = (\n",
+                    "#     model.load(\"orders\", filter={\"status\": \"shipped\"})\n",
+                    "#     .deduplicate(subset=\"order_id\")\n",
+                    "#     .assign(margin=lambda df: df.revenue - df.cost)\n",
+                    "# )\n",
                 ],
             },
             {

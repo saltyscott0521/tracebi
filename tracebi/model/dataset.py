@@ -403,6 +403,140 @@ class DataSet:
         )
         return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
 
+    def dropna(
+        self,
+        subset: Optional[Union[str, list[str]]] = None,
+        description: str = "",
+    ) -> "DataSet":
+        """
+        Drop rows containing nulls and return a new DataSet.
+
+        Args:
+            subset:      Column name or list of columns to check (default: all).
+            description: Human-readable description for the lineage record.
+        """
+        cols = [subset] if isinstance(subset, str) else subset
+        if cols:
+            self._require_columns(cols, "dropna()")
+        rows_before = len(self._df)
+        new_df = self._df.dropna(subset=cols)
+        rows_after = len(new_df)
+        scope = f" in {cols}" if cols else ""
+        node = LineageNode(
+            operation="dropna",
+            description=description or f"Dropped {rows_before - rows_after} rows with nulls{scope}",
+            metadata={
+                "subset":       cols,
+                "rows_before":  rows_before,
+                "rows_after":   rows_after,
+                "rows_removed": rows_before - rows_after,
+            },
+        )
+        return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
+
+    def fillna(
+        self,
+        values: Union[Any, dict[str, Any]],
+        description: str = "",
+    ) -> "DataSet":
+        """
+        Fill nulls and return a new DataSet.
+
+        Args:
+            values:      Scalar applied to every column, or a dict
+                         ``{column: fill_value}``.
+            description: Human-readable description for the lineage record.
+        """
+        if isinstance(values, dict):
+            self._require_columns(list(values), "fillna()")
+        nulls_before = int(self._df.isna().sum().sum())
+        new_df = self._df.fillna(value=values)
+        nulls_after = int(new_df.isna().sum().sum())
+        node = LineageNode(
+            operation="fillna",
+            description=description or f"Filled {nulls_before - nulls_after} null cells",
+            metadata={
+                "values":       {k: repr(v) for k, v in values.items()} if isinstance(values, dict) else repr(values),
+                "cells_filled": nulls_before - nulls_after,
+                "rows":         len(new_df),
+            },
+        )
+        return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
+
+    def deduplicate(
+        self,
+        subset: Optional[Union[str, list[str]]] = None,
+        keep: str = "first",
+        description: str = "",
+    ) -> "DataSet":
+        """
+        Drop duplicate rows and return a new DataSet.
+
+        Args:
+            subset:      Column name or list of columns that define a
+                         duplicate (default: all columns).
+            keep:        Which duplicate to keep: "first" (default) or "last".
+            description: Human-readable description for the lineage record.
+        """
+        cols = [subset] if isinstance(subset, str) else subset
+        if cols:
+            self._require_columns(cols, "deduplicate()")
+        rows_before = len(self._df)
+        new_df = self._df.drop_duplicates(subset=cols, keep=keep)
+        rows_after = len(new_df)
+        scope = f" by {cols}" if cols else ""
+        node = LineageNode(
+            operation="deduplicate",
+            description=description or f"Removed {rows_before - rows_after} duplicate rows{scope}",
+            metadata={
+                "subset":       cols,
+                "keep":         keep,
+                "rows_before":  rows_before,
+                "rows_after":   rows_after,
+                "rows_removed": rows_before - rows_after,
+            },
+        )
+        return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
+
+    def cast(
+        self,
+        types: dict[str, Any],
+        description: str = "",
+    ) -> "DataSet":
+        """
+        Convert column dtypes and return a new DataSet.
+
+        Args:
+            types:       Dict ``{column: dtype}``, e.g.
+                         ``{"order_id": "int64", "placed_at": "datetime64[ns]"}``.
+            description: Human-readable description for the lineage record.
+        """
+        self._require_columns(list(types), "cast()")
+        new_df = self._df.astype(types)
+        type_strs = {k: str(v) for k, v in types.items()}
+        node = LineageNode(
+            operation="cast",
+            description=description or f"Cast columns: {type_strs}",
+            metadata={"types": type_strs, "rows": len(new_df)},
+        )
+        return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
+
+    def limit(self, n: int, description: str = "") -> "DataSet":
+        """
+        Keep only the first ``n`` rows and return a new DataSet.
+
+        Combine with :meth:`sort` for top-N analyses:
+        ``ds.sort("revenue", ascending=False).limit(10)``.
+        """
+        rows_before = len(self._df)
+        new_df = self._df.head(n)
+        node = LineageNode(
+            operation="limit",
+            description=description or f"Limited to first {n} rows (from {rows_before})",
+            metadata={"n": n, "rows_before": rows_before, "rows_after": len(new_df)},
+        )
+        return DataSet(df=new_df, name=self.name, lineage=self._lineage + [node])
+
     def _require_columns(self, columns: list[str], context: str) -> None:
         """Raise ValueError naming missing columns, with close-match hints."""
         import difflib
@@ -456,6 +590,13 @@ class DataSet:
             "  .sort(by, ascending=True)         Sort by column(s)\n"
             "  .select(columns)                  Keep only these columns\n"
             '  .rename({"old": "new"})           Rename columns\n'
+            "\n"
+            "Cleaning (structured lineage — prefer these over transform() lambdas):\n"
+            '  .dropna(subset=None)              Drop rows with nulls\n'
+            '  .fillna(0)  /  .fillna({"qty": 0})  Fill nulls (scalar or per-column)\n'
+            '  .deduplicate(subset="order_id")   Drop duplicate rows\n'
+            '  .cast({"qty": "int64"})           Convert column dtypes\n'
+            "  .limit(10)                        First n rows (chain after .sort for top-N)\n"
             "\n"
             "Inspection:\n"
             "  .shape / .columns / len(ds)\n"

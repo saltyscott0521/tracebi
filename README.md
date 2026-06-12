@@ -108,10 +108,11 @@ The differences that matter:
 
 | I want to… | Start here |
 |---|---|
-| Work in a notebook with rich previews | `examples/analyst_quickstart.py` — run it cell-by-cell in Jupyter |
+| Follow the full analyst flow start-to-finish | [docs/analyst-guide.md](docs/analyst-guide.md) — scaffold → transform → report → publish |
+| Work in a notebook with rich previews | [docs/notebook-guide.md](docs/notebook-guide.md) + `examples/analyst_quickstart.py` |
 | Write a one-off report or query | Copy `requests/_template.py` and run it with `tracebi run` |
 | Build a scheduled ETL pipeline | `examples/phase4_example.py` → then `web/demo_app/` as a wiring template |
-| Expose everything in a web UI | `web/demo_app/` shows the full wiring; `TRACEBI_APP=mymodule python web/run.py` |
+| Point the web app at my own data / restyle the UI | [docs/web-customization.md](docs/web-customization.md) — app modules, registry, theming, auth, deploy |
 | Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open the **Explore** page |
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
@@ -225,19 +226,25 @@ model.add_relationship("orders_customers", "orders", "customers",
 orders = (
     model.load("orders")
     .filter("status == 'shipped'", description="Shipped orders only")
-    .transform(
-        lambda df: df.assign(margin=df["revenue"] - df["cost"]),
-        description="margin = revenue - cost",
-    )
+    .deduplicate(subset="order_id")
+    .dropna(subset="region")
+    .assign(margin=lambda df: df["revenue"] - df["cost"])
     .sort("margin", ascending=False)
 )
 
 orders.print_lineage()
-# Step 1: [LOAD]       Loaded 'orders' from connector 'sales_db'
-# Step 2: [FILTER]     Shipped orders only  (250 → 198 rows)
-# Step 3: [TRANSFORM]  margin = revenue - cost
-# Step 4: [SORT]       Sorted by margin (desc)
+# Step 1: [LOAD]         Loaded 'orders' from connector 'sales_db'
+# Step 2: [FILTER]       Shipped orders only  (250 → 198 rows)
+# Step 3: [DEDUPLICATE]  Removed 3 duplicate rows by ['order_id']
+# Step 4: [DROPNA]       Dropped 2 rows with nulls in ['region']
+# Step 5: [ASSIGN]       Assigned columns: margin
+# Step 6: [SORT]         Sorted by margin (desc)
 ```
+
+Cleaning verbs (`dropna`, `fillna`, `deduplicate`, `cast`, `limit`) record
+structured lineage — row counts, fill counts, type maps — automatically.
+`.transform(lambda df: ...)` remains the escape hatch for anything else.
+Run `ds.help()` for the full cheat sheet.
 
 ### 3. Build a report
 
