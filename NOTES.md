@@ -427,6 +427,84 @@ architecture — worth keeping in mind as the web UI develops.
 
 ---
 
+## 2026-06-12 — Project-Root Artifact Directories
+
+### Decision
+
+Models and pipelines were only definable inside the web app module package
+(`web/demo_app/`), meaning an analyst had to understand the web layer to
+reuse anything across notebooks. The new convention makes all four artifact
+types first-class project-root citizens, usable with or without the web server:
+
+```
+my_project/
+  models/       # DataModel definitions
+  pipelines/    # PipelineRunner definitions
+  reports/      # Named web-exposed report factories
+  requests/     # Ad-hoc parameterised report scripts
+```
+
+### How each works
+
+**`models/` and `pipelines/`** use a variable-name convention: the file must
+expose a module-level `model` (DataModel) or `runner` (PipelineRunner).
+`tracebi/model_registry.py` and `tracebi/pipeline_registry.py` provide
+standalone lazy-loading registries that auto-discover these directories from
+cwd on first access — no web server required.
+
+**`reports/`** uses the existing `@register.report()` decorator pattern.
+Files are imported at server startup and the decorator fires as a side effect,
+exactly like `requests/` files already worked.
+
+**`requests/`** is unchanged — ad-hoc parameterised scripts with `run()`.
+
+### Web server auto-discovery
+
+`web/api/main.py` scans all four directories at startup using
+`TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`,
+`TRACEBI_REQUESTS_DIR` (defaults: directory names without leading path).
+Models and pipelines are loaded via their respective registries and registered
+into the web registry; reports and requests use the existing `auto_discover()`
+decorator-firing path.
+
+### App module role narrowed
+
+`TRACEBI_APP` / `web/demo_app/` remains the right place for connector
+construction (credentials come from env vars, not from a file convention) and
+for Dash dashboard wiring. Models, pipelines, and named reports no longer need
+to live there — `web/demo_app/` is now a reference for connector + dashboard
+wiring, not the mandatory home of all project configuration.
+
+### Notebook/script workflow
+
+```python
+from tracebi.model_registry import get_model, list_models
+from tracebi.pipeline_registry import get_runner
+
+model = get_model("sales_model")     # loads models/sales_model.py lazily
+runner = get_runner("sales_etl")     # loads pipelines/sales_etl.py lazily
+runner.run("orders_silver")
+```
+
+### CLI additions
+
+- `tracebi new-model "Sales Model"` → `models/sales_model.py`
+- `tracebi list-models`
+- `tracebi new-pipeline "Sales ETL"` → `pipelines/sales_etl.py`
+- `tracebi list-pipelines`
+- Global flags: `--models-dir`, `--pipelines-dir`
+
+### TODO (resolved)
+
+- [x] Create `tracebi/model_registry.py` with lazy-loading registry
+- [x] Create `tracebi/pipeline_registry.py` with lazy-loading registry
+- [x] Add CLI scaffold commands for models and pipelines
+- [x] Auto-discover `models/`, `pipelines/`, `reports/` in `web/api/main.py`
+- [x] Update `tracebi.web.register` to fall back to standalone registries
+- [x] Update all docs (README, CLAUDE.md, analyst-guide, notebook-guide, web-customization, CHANGELOG, .env.example)
+
+---
+
 ## Open Questions
 
 All four questions in this section have been resolved:

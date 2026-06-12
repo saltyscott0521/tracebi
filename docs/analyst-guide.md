@@ -43,11 +43,20 @@ if something feels misconfigured.
 
 ## 2. Discover what data you have
 
-Before writing transforms, see what's in the model. In a notebook or REPL:
+First, see what shared models the project has defined:
+
+```bash
+tracebi list-models            # lists files in models/
+```
+
+Then load the one you need — this works whether or not the web server is running:
 
 ```python
-from tracebi.web import register
-model = register.get_default_model()
+from tracebi.model_registry import get_model, get_default_model, list_models
+
+print(list_models())           # ["sales_model", "banking_model"]
+model = get_model("sales_model")   # load a specific model by name
+# or: model = get_default_model()  # load the first / default model
 
 model.describe()        # tables, relationships, facts, dimensions
 model.info()            # same, as a dict
@@ -55,6 +64,13 @@ model.info()            # same, as a dict
 orders = model.load("orders")
 orders                  # rich repr: shape, columns, dtypes, sample rows
 orders.help()           # cheat sheet of every DataSet verb
+```
+
+If no shared model exists yet, create one:
+
+```bash
+tracebi new-model "Sales Model"   # scaffolds models/sales_model.py
+# edit it, then import with get_model("sales_model")
 ```
 
 Or browse the web UI: **Models** shows every table with previews and the ER
@@ -195,6 +211,35 @@ no extra wiring.
 
 Inspection (no lineage step): `.shape`, `.columns`, `len(ds)`, `.to_pandas()`,
 `.print_lineage()`, `.fingerprint()`, `.help()`.
+
+---
+
+---
+
+## Shared models and pipelines
+
+If multiple people are writing reports against the same data, define the
+model once in `models/` so nobody has to repeat the connector and table
+setup:
+
+```bash
+tracebi new-model "Sales Model"       # creates models/sales_model.py — edit and commit it
+tracebi new-pipeline "Sales ETL"      # creates pipelines/sales_etl.py — edit and commit it
+```
+
+Anyone on the team then gets:
+
+```python
+from tracebi.model_registry import get_model
+from tracebi.pipeline_registry import get_runner
+
+model = get_model("sales_model")      # loads models/sales_model.py on first access
+runner = get_runner("sales_etl")      # loads pipelines/sales_etl.py on first access
+runner.run("orders_silver")           # run a layer on demand
+```
+
+The web server auto-discovers both directories at startup — no extra
+registration needed.
 
 ---
 

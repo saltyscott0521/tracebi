@@ -111,7 +111,8 @@ The differences that matter:
 | Follow the full analyst flow start-to-finish | [docs/analyst-guide.md](docs/analyst-guide.md) — scaffold → transform → report → publish |
 | Work in a notebook with rich previews | [docs/notebook-guide.md](docs/notebook-guide.md) + `examples/analyst_quickstart.py` |
 | Write a one-off report or query | Copy `requests/_template.py` and run it with `tracebi run` |
-| Build a scheduled ETL pipeline | `examples/phase4_example.py` → then `web/demo_app/` as a wiring template |
+| Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
+| Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
 | Point the web app at my own data / restyle the UI | [docs/web-customization.md](docs/web-customization.md) — app modules, registry, theming, auth, deploy |
 | Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open the **Explore** page |
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
@@ -167,6 +168,10 @@ Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
 | Variable | Purpose |
 |---|---|
 | `TRACEBI_APP` | Python module to import on startup (default `web.demo_app`) |
+| `TRACEBI_MODELS_DIR` | Folder scanned for model definitions (default `models`) |
+| `TRACEBI_PIPELINES_DIR` | Folder scanned for pipeline definitions (default `pipelines`) |
+| `TRACEBI_REPORTS_DIR` | Folder scanned for named report factories (default `reports`) |
+| `TRACEBI_REQUESTS_DIR` | Folder scanned for ad-hoc request scripts (default `requests`) |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | Turn on HTTP Basic auth |
 | `TRACEBI_AUTH_PROXY_HEADER` | Trust an upstream identity header (Authelia / oauth2-proxy / Cloudflare Access) |
 | `TRACEBI_EMBED_DASHBOARDS=0` | Run dashboards as separate processes |
@@ -193,6 +198,10 @@ tracebi list-requests
 tracebi run open_orders_by_region                    # works for .py and .ipynb
 tracebi dev open_orders_by_region                    # live preview: re-runs + reloads on save
 tracebi validate                                     # sanity-check the current project
+tracebi new-model "Sales Model"                      # → models/sales_model.py
+tracebi list-models
+tracebi new-pipeline "Sales ETL"                     # → pipelines/sales_etl.py
+tracebi list-pipelines
 ```
 
 `tracebi dev` serves the rendered report on http://127.0.0.1:8001 and reloads
@@ -466,20 +475,77 @@ TRACEBI_APP=mypackage.tracebi_config python web/run.py
 
 Your module just needs to import `registry` and call `registry.add_connector()`, `registry.add_model()`, `@registry.report(...)`, and optionally `registry.add_pipeline()` / `registry.add_dashboard()`.
 
-### 8. Adding reports and dashboards to the web UI
+**Project-root directories are auto-discovered** — you don't have to put everything in the app module. The server scans these folders at startup and registers whatever it finds:
+
+| Directory | Convention | Env var override |
+|---|---|---|
+| `models/` | each `.py` exposes a `model` variable (a `DataModel`) | `TRACEBI_MODELS_DIR` |
+| `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | `TRACEBI_PIPELINES_DIR` |
+| `reports/` | each `.py` calls `@register.report(...)` at import time | `TRACEBI_REPORTS_DIR` |
+| `requests/` | ad-hoc scripts with `request_params()` and `run()` | `TRACEBI_REQUESTS_DIR` |
+
+Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/web-customization.md](docs/web-customization.md) for the full wiring guide.
+
+### 8. Shared models and pipelines (no web server required)
+
+Define a model once in `models/` and import it anywhere — notebooks, scripts, or the web server:
+
+```bash
+tracebi new-model "Sales Model"          # scaffold models/sales_model.py
+# edit models/sales_model.py — wire connectors, tables, relationships
+```
+
+```python
+from tracebi.model_registry import get_model, list_models
+
+print(list_models())                     # ["sales_model"]
+model = get_model("sales_model")
+ds = model.load("orders")
+```
+
+Same pattern for pipelines:
+
+```bash
+tracebi new-pipeline "Sales ETL"         # scaffold pipelines/sales_etl.py
+```
+
+```python
+from tracebi.pipeline_registry import get_runner
+
+runner = get_runner("sales_etl")
+runner.run("orders_silver")
+runner.status()
+```
+
+The web server auto-discovers both directories at startup and registers them into the registry automatically.
+
+### 9. Adding reports and dashboards to the web UI
+
+Drop a file in `reports/` and decorate a factory function — the server picks it up on startup with no extra wiring:
+
+```python
+# reports/weekly_summary.py
+from tracebi.model_registry import get_model
+from tracebi.reports import Report, TableSection
+
+try:
+    from tracebi.web import register
+
+    @register.report("weekly_summary", description="Weekly order summary")
+    def _factory():
+        model = get_model("sales_model")
+        ds = model.load("orders")
+        return Report("Weekly Summary").add(TableSection(title="Orders", dataset=ds))
+except ImportError:
+    pass
+```
+
+For dashboards, register directly in your app module (`registry.py`):
 
 ```python
 from web.api.registry import registry
-from tracebi.reports import Report, TableSection
 from tracebi.dashboard import Dashboard, DashboardServer, ChartPanel
 
-# Register a report
-@registry.report("my_report", description="My custom report")
-def my_report():
-    ds = model.load("orders")
-    return Report("My Report").add(TableSection(title="Orders", dataset=ds))
-
-# Register a dashboard
 dashboard = Dashboard("My Dashboard").add_panel(
     ChartPanel("rev", title="Revenue", dataset=ds, chart_type="bar", x="region", y="revenue")
 )
@@ -521,7 +587,7 @@ python examples/phase4_example.py      # full pipeline (run seeds/seed_db.py fir
 
 ```bash
 pytest tests/
-# 339 passed
+# 404 passed
 ```
 
 ---
@@ -547,6 +613,9 @@ tracebi/
 ├── examples/             Runnable demos (phase1–4)
 ├── tests/                339 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
+├── models/               DataModel definitions — each .py exposes a `model` variable
+├── pipelines/            PipelineRunner definitions — each .py exposes a `runner` variable
+├── reports/              Named web-exposed reports (files use @register.report() decorator)
 ├── requests/             _template.py — scaffold for ad hoc report scripts
 ├── data/                 SQLite DB lives here (gitignored)
 └── NOTES.md              Design decisions and architecture reference

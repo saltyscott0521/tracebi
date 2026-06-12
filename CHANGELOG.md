@@ -6,6 +6,41 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added
+- **Standalone model registry** (`tracebi/model_registry.py`) — define a
+  `DataModel` once in `models/<name>.py` (expose it as a module-level `model`
+  variable) and import it from any notebook or script without the web server:
+  `from tracebi.model_registry import get_model, list_models`.
+  `auto_discover()` lazily loads files on first access; the global registry
+  auto-discovers `models/` in cwd on first use.
+- **Standalone pipeline registry** (`tracebi/pipeline_registry.py`) — same
+  pattern for `PipelineRunner` instances. Each `pipelines/<name>.py` exposes a
+  `runner` variable; `from tracebi.pipeline_registry import get_runner` loads
+  it on demand. No web server required.
+- **`tracebi new-model` / `tracebi list-models`** CLI commands with a
+  `--models-dir` global flag. `new-model` scaffolds a fully-commented
+  `models/<slug>.py` template including connector, table, relationship,
+  dimension, and fact stubs.
+- **`tracebi new-pipeline` / `tracebi list-pipelines`** CLI commands with a
+  `--pipelines-dir` global flag. `new-pipeline` scaffolds a
+  `pipelines/<slug>.py` template with Bronze → Silver layer stubs and an
+  optional `@register.pipeline()` block for web registration.
+- **Project-root auto-discovery in the web server** — `web/api/main.py` now
+  scans `models/`, `pipelines/`, and `reports/` at startup and registers
+  anything it finds into the web registry. Override paths via
+  `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`.
+  `TRACEBI_REPORTS_DIR` is also added to the existing requests/scheduled
+  discovery loop.
+- **`tracebi.web.register.get_runner(name)`** — returns the named pipeline
+  runner from the web registry when available, falling back to
+  `pipeline_registry` when the web layer is not running.
+- **`tracebi.web.register.get_model()` / `get_default_model()` fallback** —
+  these now fall back to the standalone `model_registry` when the web layer
+  is not imported, so `from tracebi.web import register;
+  register.get_default_model()` works in pure-library usage too.
+- **35 new tests** covering model and pipeline registry discovery, lazy
+  loading, default selection, explicit registration, and all new CLI commands.
+
 ### Changed
 - **`LineageNode` is now frozen** — attributes cannot be reassigned and
   `connector`/`metadata` are read-only mappings. The audit chain can no

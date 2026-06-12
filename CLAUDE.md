@@ -122,8 +122,11 @@ web/
   run.py               # Dev server (uvicorn wrapper)
   demo_app/            # Default app module package — shows how to wire everything together
 examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
-tests/                 # 339 pytest tests, one file per phase
+tests/                 # 404 pytest tests, one file per phase
 seeds/                 # DB init + Bronze seeding
+models/                # DataModel definitions — each .py exposes a `model` variable
+pipelines/             # PipelineRunner definitions — each .py exposes a `runner` variable
+reports/               # Named web-exposed report factories (use @register.report() decorator)
 requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
 data/                  # SQLite DB (gitignored)
 .env.example           # Documented env vars (auth, connector URLs, dev mode)
@@ -157,8 +160,14 @@ docker compose up --build                      # Or the docker-compose path
 # Database
 python seeds/seed_db.py                        # Create + seed data/tracebi.db
 
+# Model and pipeline scaffolding
+tracebi new-model "Sales Model"                # → models/sales_model.py
+tracebi list-models
+tracebi new-pipeline "Sales ETL"               # → pipelines/sales_etl.py
+tracebi list-pipelines
+
 # Tests
-pytest tests/                                  # Full suite (339 tests)
+pytest tests/                                  # Full suite (404 tests)
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
 ```
@@ -180,7 +189,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, dashboard, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_EMBED_DASHBOARDS`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`.
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_EMBED_DASHBOARDS`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`.
 
 ---
 
@@ -206,11 +215,23 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 2. Implement `load(name) -> DataSet` — must append a `LineageNode`
 3. Register: `registry.add_connector(instance)` in your app module
 
+### New model definition (project-scope, no web server required)
+1. `tracebi new-model "My Model"` — creates `models/my_model.py`
+2. Edit the file: wire connectors, tables, relationships, facts, dimensions. The variable **must** be named `model`.
+3. Import anywhere: `from tracebi.model_registry import get_model; model = get_model("my_model")`
+4. The web server auto-discovers `models/` at startup (`TRACEBI_MODELS_DIR` to override).
+
+### New pipeline definition (project-scope, no web server required)
+1. `tracebi new-pipeline "My ETL"` — creates `pipelines/my_etl.py`
+2. Edit the file: wire connectors, layers, and `runner.register(...)`. The variable **must** be named `runner`.
+3. Import anywhere: `from tracebi.pipeline_registry import get_runner; runner = get_runner("my_etl")`
+4. The web server auto-discovers `pipelines/` at startup (`TRACEBI_PIPELINES_DIR` to override).
+
 ### New report (ad hoc)
 Copy `requests/_template.py`. Fill in the four sections: connectors → transforms → report assembly → render + save.
 
 ### New report (web-exposed)
-Decorate a factory function with `@registry.report("name")`. The function receives no args and returns a rendered `Report`.
+Put a `.py` file in `reports/` (or use `requests/`). Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
 
 ### New medallion layer
 ```python
@@ -289,6 +310,8 @@ Don't add these unless asked.
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `web/api/registry.py` |
 | Write an ad hoc report | `requests/_template.py` |
+| Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
+| Define a reusable pipeline | `tracebi new-pipeline` → `pipelines/` → `tracebi/pipeline_registry.py` |
 | Understand the lineage chain | `tracebi/model/dataset.py` |
 | Add a new connector | `tracebi/connectors/` (pick any existing one as a model) |
 
