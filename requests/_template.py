@@ -12,6 +12,8 @@ Run with:
 Or scaffold a brand-new request with:
     tracebi new-request "Weekly Sales"            # .py
     tracebi new-request "Weekly Sales" --notebook # .ipynb
+
+Full walkthrough of the analyst flow: docs/analyst-guide.md
 """
 
 import os
@@ -51,13 +53,13 @@ if model is None:
 
 # ── 2. Build DataSets ─────────────────────────────────────────────────────────
 # Load and transform via the model — every step appends a LineageNode.
+# Run ds.help() for the full verb cheat sheet.
 #
 # orders_ds = (
 #     model.load("orders", filter={"status": "shipped"})  # pushed down to source
-#     .transform(
-#         lambda df: df.assign(margin=df["revenue"] - df["cost"]),
-#         description="Calculated margin",
-#     )
+#     .deduplicate(subset="order_id")
+#     .dropna(subset="region")
+#     .assign(margin=lambda df: df["revenue"] - df["cost"])
 #     .sort("margin", ascending=False)
 # )
 

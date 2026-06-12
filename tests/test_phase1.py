@@ -336,6 +336,110 @@ class TestAssign:
 
 
 # ─────────────────────────────────────────────
+# DataSet cleaning verbs
+# ─────────────────────────────────────────────
+
+@pytest.fixture
+def messy_ds():
+    df = pd.DataFrame({
+        "order_id": [1, 1, 2, 3, 4],
+        "region":   ["North", "North", None, "East", "West"],
+        "qty":      [2.0, 2.0, None, 5.0, 1.0],
+    })
+    node = LineageNode(operation="load", description="Test load", source="messy")
+    return DataSet(df=df, name="messy", lineage=[node])
+
+
+class TestCleaningVerbs:
+
+    def test_dropna_all_columns(self, messy_ds):
+        ds = messy_ds.dropna()
+        assert len(ds) == 4
+        node = ds.lineage[-1]
+        assert node.operation == "dropna"
+        assert node.metadata["rows_removed"] == 1
+        assert node.metadata["subset"] is None
+
+    def test_dropna_subset_str_normalized(self, messy_ds):
+        ds = messy_ds.dropna(subset="region")
+        assert len(ds) == 4
+        assert ds.lineage[-1].metadata["subset"] == ["region"]
+
+    def test_dropna_unknown_column_hints(self, messy_ds):
+        with pytest.raises(ValueError, match="did you mean 'region'"):
+            messy_ds.dropna(subset="regin")
+
+    def test_fillna_scalar(self, messy_ds):
+        ds = messy_ds.fillna(0)
+        assert ds.to_pandas().isna().sum().sum() == 0
+        node = ds.lineage[-1]
+        assert node.operation == "fillna"
+        assert node.metadata["cells_filled"] == 2
+
+    def test_fillna_dict(self, messy_ds):
+        ds = messy_ds.fillna({"qty": 0})
+        df = ds.to_pandas()
+        assert df["qty"].isna().sum() == 0
+        assert df["region"].isna().sum() == 1
+        assert ds.lineage[-1].metadata["cells_filled"] == 1
+
+    def test_fillna_dict_unknown_column(self, messy_ds):
+        with pytest.raises(ValueError, match="not found"):
+            messy_ds.fillna({"nope": 0})
+
+    def test_deduplicate_full_row(self, messy_ds):
+        ds = messy_ds.deduplicate()
+        assert len(ds) == 4
+        node = ds.lineage[-1]
+        assert node.operation == "deduplicate"
+        assert node.metadata["rows_removed"] == 1
+        assert node.metadata["keep"] == "first"
+
+    def test_deduplicate_subset(self, messy_ds):
+        ds = messy_ds.deduplicate(subset="order_id")
+        assert len(ds) == 4
+        assert ds.lineage[-1].metadata["subset"] == ["order_id"]
+
+    def test_cast(self, messy_ds):
+        ds = messy_ds.dropna().cast({"qty": "int64"})
+        assert str(ds.to_pandas()["qty"].dtype) == "int64"
+        node = ds.lineage[-1]
+        assert node.operation == "cast"
+        assert node.metadata["types"] == {"qty": "int64"}
+
+    def test_cast_unknown_column(self, messy_ds):
+        with pytest.raises(ValueError, match="not found"):
+            messy_ds.cast({"nope": "int64"})
+
+    def test_limit(self, messy_ds):
+        ds = messy_ds.sort("qty", ascending=False).limit(2)
+        assert len(ds) == 2
+        node = ds.lineage[-1]
+        assert node.operation == "limit"
+        assert node.metadata["n"] == 2
+        assert node.metadata["rows_before"] == 5
+
+    def test_cleaning_verbs_do_not_mutate_original(self, messy_ds):
+        messy_ds.dropna()
+        messy_ds.fillna(0)
+        messy_ds.deduplicate()
+        messy_ds.limit(1)
+        assert len(messy_ds) == 5
+        assert messy_ds.to_pandas().isna().sum().sum() == 2
+
+    def test_chained_cleaning_lineage(self, messy_ds):
+        ds = (
+            messy_ds
+            .deduplicate(subset="order_id")
+            .fillna({"qty": 0})
+            .dropna(subset="region")
+            .limit(3)
+        )
+        ops = [n.operation for n in ds.lineage]
+        assert ops == ["load", "deduplicate", "fillna", "dropna", "limit"]
+
+
+# ─────────────────────────────────────────────
 # Public API exports
 # ─────────────────────────────────────────────
 
