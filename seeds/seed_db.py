@@ -82,19 +82,22 @@ def seed_source_tables(engine) -> None:
 # ── Step 1b: Seed banking tables (WealthModel demo) ───────────────────────────
 
 def seed_banking_tables(engine) -> None:
-    """Persist the WealthModel demo tables (web/demo_app/banking.py) so the
+    """Persist the WealthModel demo tables (models/wealth_model.py) so the
     second data model is also available in the database."""
-    from web.demo_app import banking
+    from tracebi.model_registry import get_model
+
+    wealth = get_model("wealth_model")
 
     print("[seed] Writing banking tables (WealthModel)...")
-    for table, df in [
-        ("banking_clients",    banking.clients_df),
-        ("banking_branches",   banking.branches_df),
-        ("banking_products",   banking.products_df),
-        ("banking_accounts",   banking.accounts_df),
-        ("banking_holdings",   banking.holdings_df),
-        ("banking_activities", banking.activities_df),
+    for table, source in [
+        ("banking_clients",    "clients"),
+        ("banking_branches",   "branches"),
+        ("banking_products",   "products"),
+        ("banking_accounts",   "accounts"),
+        ("banking_holdings",   "holdings"),
+        ("banking_activities", "activities"),
     ]:
+        df = wealth.load(source).to_pandas()
         df.to_sql(table, con=engine, if_exists="replace", index=False)
         print(f"  {table}: {len(df)} rows")
 

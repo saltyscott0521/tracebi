@@ -144,6 +144,10 @@ class DataModel:
         self._connectors[connector.name] = connector
         return self
 
+    def connectors(self) -> list[BaseConnector]:
+        """Return the connector objects registered on this model."""
+        return list(self._connectors.values())
+
     def add_table(
         self,
         name: str,

@@ -15,7 +15,12 @@ from tracebi import (
     LandingLayer, ManipulationLayer, FinalLayer,
     PipelineRunner,
 )
-from web.demo_app.model import customers_df, orders_df
+from tracebi.model_registry import get_model
+
+# Seed the pipeline from the shared SalesModel's source tables.
+_sales = get_model("sales_model")
+orders_df = _sales.load("orders").to_pandas()
+customers_df = _sales.load("customers").to_pandas()
 
 # Source data — orders with customer_id FK, customers with segment rename
 _orders_raw = orders_df.assign(

@@ -5,7 +5,9 @@ Exports `dashboard_server` for registration in registry.py.
 """
 
 from tracebi.dashboard import Dashboard, DashboardServer, FilterPanel, MetricPanel, ChartPanel, TablePanel
-from web.demo_app.model import model
+from tracebi.model_registry import get_model
+
+model = get_model("sales_model")
 
 sales_dashboard = (
     Dashboard("Sales Dashboard")

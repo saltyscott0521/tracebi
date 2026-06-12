@@ -1,11 +1,15 @@
 """
-Banking/wealth-management DataModel for the demo app.
+WealthModel — banking / wealth-management demo DataModel.
 
-Provides a six-table star schema (clients, branches, products, accounts,
-holdings, activities) backed by a single MemoryConnector.
+A six-table star schema (clients, branches, products, accounts, holdings,
+activities) backed by a single MemoryConnector. Lives at the project root so
+notebooks, scripts, and the web server share one definition::
 
-Imported by reports and registry. Never import from registry.py back into
-this file — that would create a circular dependency.
+    from tracebi.model_registry import get_model
+    model = get_model("wealth_model")
+
+Exposes a module-level ``model`` (the convention the registry looks for) plus
+``connector`` so the web app can surface it on the Connectors page.
 """
 
 import pandas as pd
@@ -149,7 +153,7 @@ activities_df = pd.DataFrame({
 
 # ── Connector ──────────────────────────────────────────────────────────────────
 
-banking_connector = MemoryConnector("banking", tables={
+connector = MemoryConnector("banking", tables={
     "clients":    clients_df,
     "branches":   branches_df,
     "products":   products_df,
@@ -160,47 +164,47 @@ banking_connector = MemoryConnector("banking", tables={
 
 # ── DataModel ──────────────────────────────────────────────────────────────────
 
-banking_model = DataModel("WealthModel")
-banking_model.add_connector(banking_connector)
+model = DataModel("WealthModel")
+model.add_connector(connector)
 
-banking_model.add_table("clients",    connector="banking", source="clients")
-banking_model.add_table("branches",   connector="banking", source="branches")
-banking_model.add_table("products",   connector="banking", source="products")
-banking_model.add_table("accounts",   connector="banking", source="accounts")
-banking_model.add_table("holdings",   connector="banking", source="holdings")
-banking_model.add_table("activities", connector="banking", source="activities")
+model.add_table("clients",    connector="banking", source="clients")
+model.add_table("branches",   connector="banking", source="branches")
+model.add_table("products",   connector="banking", source="products")
+model.add_table("accounts",   connector="banking", source="accounts")
+model.add_table("holdings",   connector="banking", source="holdings")
+model.add_table("activities", connector="banking", source="activities")
 
-banking_model.add_relationship(
+model.add_relationship(
     "accounts_to_clients",
     left_table="accounts",
     right_table="clients",
     left_key="client_id",
 )
-banking_model.add_relationship(
+model.add_relationship(
     "clients_to_branches",
     left_table="clients",
     right_table="branches",
     left_key="branch_id",
 )
-banking_model.add_relationship(
+model.add_relationship(
     "holdings_to_accounts",
     left_table="holdings",
     right_table="accounts",
     left_key="account_id",
 )
-banking_model.add_relationship(
+model.add_relationship(
     "holdings_to_products",
     left_table="holdings",
     right_table="products",
     left_key="product_id",
 )
-banking_model.add_relationship(
+model.add_relationship(
     "activities_to_accounts",
     left_table="activities",
     right_table="accounts",
     left_key="account_id",
 )
-banking_model.add_relationship(
+model.add_relationship(
     "activities_to_products",
     left_table="activities",
     right_table="products",
@@ -209,38 +213,38 @@ banking_model.add_relationship(
 
 # ── Star-schema tags ───────────────────────────────────────────────────────────
 
-banking_model.add_dimension(
+model.add_dimension(
     "dim_client",
     table_name="clients",
     key_col="client_id",
     attributes=["name", "segment", "risk_profile", "advisor"],
 )
-banking_model.add_dimension(
+model.add_dimension(
     "dim_branch",
     table_name="branches",
     key_col="branch_id",
     attributes=["branch", "region", "manager"],
 )
-banking_model.add_dimension(
+model.add_dimension(
     "dim_product",
     table_name="products",
     key_col="product_id",
     attributes=["ticker", "product_name", "asset_class", "risk_rating"],
 )
-banking_model.add_dimension(
+model.add_dimension(
     "dim_account",
     table_name="accounts",
     key_col="account_id",
     attributes=["account_type", "opened"],
 )
-banking_model.add_fact(
+model.add_fact(
     "fact_holdings",
     table_name="holdings",
     measures=["units", "market_value", "cost_basis"],
     foreign_keys={"dim_account": "account_id", "dim_client": "client_id",
                   "dim_branch": "branch_id", "dim_product": "product_id"},
 )
-banking_model.add_fact(
+model.add_fact(
     "fact_activities",
     table_name="activities",
     measures=["units", "amount"],
@@ -248,4 +252,4 @@ banking_model.add_fact(
                   "dim_branch": "branch_id", "dim_product": "product_id"},
 )
 
-banking_model.connect()
+model.connect()
