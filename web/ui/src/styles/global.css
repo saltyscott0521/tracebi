@@ -396,6 +396,12 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   background: #c5d0dd;
 }
 
+/* ── Home-page layout helpers ────────────────────────── */
+.home-greeting  { font-size: 26px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.home-main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 32px; align-items: start; }
+.home-nav-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
 /* ── Responsive ─────────────────────────────────────── */
 .split-layout {
   display: grid;
@@ -426,12 +432,11 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   /* Mobile close button inside the sidebar nav */
   .nav-close-btn { display: flex !important; }
 
-  /* Toast — full-width strip at bottom on small screens */
-  .toast-container-mobile {
-    left: 12px !important;
-    right: 12px !important;
-    bottom: 16px !important;
-  }
+  /* Home page responsive grids */
+  .home-greeting  { font-size: 20px; }
+  .grid-4        { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .home-main-grid { grid-template-columns: 1fr; gap: 20px; }
+  .home-nav-grid  { grid-template-columns: 1fr; gap: 12px; }
 }
 @media (max-width: 480px) {
   .grid-3 { grid-template-columns: 1fr; }

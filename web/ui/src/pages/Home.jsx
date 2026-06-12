@@ -182,14 +182,14 @@ export default function Home() {
     <div className="fade-in">
       {/* Header */}
       <div style={{ marginBottom: 36 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
+        <h1 className="home-greeting" style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
           {greeting()}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--muted)' }}>{formatDate()}</p>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
+      <div className="grid-4" style={{ marginBottom: 40 }}>
         <StatCard label="Connectors" value={nConn} icon={I.db}      color="#2563eb" href="/connectors" loading={lc} />
         <StatCard label="Models"     value={nMod}  icon={I.cube}    color="#7c3aed" href="/models"     loading={lm} />
         <StatCard label="Reports"    value={nRep}  icon={I.doc}     color="#db2777" href="/reports"    loading={lr} />
@@ -197,12 +197,12 @@ export default function Home() {
       </div>
 
       {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 32, alignItems: 'start' }}>
+      <div className="home-main-grid">
 
         {/* Left */}
         <div>
           <SH title="Navigate" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 32 }}>
+          <div className="home-nav-grid" style={{ marginBottom: 32 }}>
             <NavCard href="/explore"  title="Explore"   icon={I.compass} color="#0891b2" badge={nMod || undefined}
               desc="Run star-schema queries across your models. Pick measures, dimensions, and filters." />
             <NavCard href="/models"   title="Models"    icon={I.cube}    color="#7c3aed" badge={nMod || undefined}
