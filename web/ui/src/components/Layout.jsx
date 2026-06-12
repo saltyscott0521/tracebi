@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
+
+import CommandPalette from './CommandPalette'
 
 const ICONS = {
   home: (
@@ -63,11 +65,37 @@ const NAV = [
   { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#a5f3fc' },
 ]
 
+function SunIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+    </svg>
+  )
+}
+
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false)
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('tracebi-theme') === 'dark' } catch { return false }
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+    try { localStorage.setItem('tracebi-theme', dark ? 'dark' : 'light') } catch { /* ignore */ }
+  }, [dark])
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <CommandPalette />
+
       {/* Background orbs */}
       <div className="orb orb-1" />
       <div className="orb orb-2" />
@@ -137,6 +165,27 @@ export default function Layout({ children }) {
           <p style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 43, letterSpacing: .2 }}>
             Code-first traceable BI
           </p>
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            style={{
+              marginTop: 14, width: '100%',
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 8, padding: '7px 10px', cursor: 'pointer',
+              color: 'rgba(200,220,255,0.55)', fontSize: 12, fontFamily: 'inherit',
+              transition: 'background .15s',
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+            </svg>
+            Search…
+            <kbd style={{
+              marginLeft: 'auto', fontSize: 10, padding: '1px 5px',
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)',
+              borderRadius: 4, color: 'rgba(200,220,255,0.6)',
+            }}>⌘K</kbd>
+          </button>
         </div>
 
         {/* Nav items */}
@@ -187,10 +236,23 @@ export default function Layout({ children }) {
           }} />
           <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>TraceBi v0.5.2</span>
           <span style={{
-            marginLeft: 'auto', fontSize: 10, color: 'rgba(200,220,255,0.8)',
+            fontSize: 10, color: 'rgba(200,220,255,0.8)',
             background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)',
             padding: '1px 6px', borderRadius: 4,
           }}>BETA</span>
+          <button
+            onClick={() => setDark(d => !d)}
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{
+              marginLeft: 'auto', background: 'rgba(255,255,255,0.09)',
+              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 6,
+              color: 'rgba(200,220,255,0.75)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 26, height: 26, flexShrink: 0, transition: 'background .15s',
+            }}
+          >
+            {dark ? <SunIcon /> : <MoonIcon />}
+          </button>
         </div>
       </nav>
 
