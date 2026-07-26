@@ -13,6 +13,7 @@ Quick start (in-memory, no config):
     ds.help()                   # API cheat sheet (DataModel and Report have one too)
 """
 
+from tracebi._version import __version__
 from tracebi import model_registry
 from tracebi import pipeline_registry
 from tracebi.connectors.base import BaseConnector
@@ -29,6 +30,11 @@ from tracebi.etl.silver import SilverLayer, ManipulationLayer
 from tracebi.etl.gold import GoldLayer, FinalLayer
 from tracebi.lineage.diagram import LineageDiagram
 from tracebi.pipeline.runner import PipelineRunner
+# NB: import the class only. Binding the `registry` singleton here would
+# shadow the `tracebi.registry` submodule, breaking the documented
+# `from tracebi.registry import registry`.
+from tracebi.registry import Registry
+from tracebi.web.register import register
 from tracebi._params import request_params
 
 __all__ = [
@@ -57,4 +63,13 @@ __all__ = [
     "PipelineRunner",
     # Request scripts
     "request_params",
+    # Project registry + registration facade
+    # (the singleton is `from tracebi.registry import registry`)
+    "Registry",
+    "register",
+    # Project-scope registries (import as modules: tracebi.model_registry.get_model)
+    "model_registry",
+    "pipeline_registry",
+    # Metadata
+    "__version__",
 ]

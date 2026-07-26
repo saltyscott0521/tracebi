@@ -25,11 +25,11 @@ import io
 import textwrap
 from typing import TYPE_CHECKING, Union
 
-import networkx as nx
-
 from tracebi.model.dataset import DataSet, LineageNode
 
 if TYPE_CHECKING:
+    import networkx as nx
+
     from tracebi.reports.report import Report
 
 
@@ -50,6 +50,25 @@ _OP_COLORS: dict[str, str] = {
     "warning":      "#D97706",   # warm amber for non-blocking warnings
 }
 _DEFAULT_COLOR = "#757575"
+
+
+def _require_networkx():
+    """
+    Import networkx on demand.
+
+    Kept out of module scope so ``import tracebi`` works on the base install
+    (pandas only) and ``to_mermaid()`` — which needs no graph library — stays
+    usable without the optional extras.
+    """
+    try:
+        import networkx as nx
+    except ImportError as exc:  # pragma: no cover - exercised via extras
+        raise ImportError(
+            "Graph rendering requires networkx. "
+            "Install with: pip install 'tracebi[lineage]'. "
+            "(LineageDiagram.to_mermaid() works without it.)"
+        ) from exc
+    return nx
 
 
 def _node_color(operation: str) -> str:
@@ -130,7 +149,8 @@ class LineageDiagram:
 
     # ── Graph construction ─────────────────────────────────────
 
-    def _build_graph(self) -> nx.DiGraph:
+    def _build_graph(self) -> "nx.DiGraph":
+        nx = _require_networkx()
         G = nx.DiGraph()
         for i, node in enumerate(self._nodes):
             label = f"[{node.operation.upper()}]\n{textwrap.shorten(node.description, 40)}"
@@ -150,6 +170,7 @@ class LineageDiagram:
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
+        nx = _require_networkx()
         G = self._build_graph()
         if not G.nodes:
             print("No lineage nodes to display.")
@@ -255,6 +276,7 @@ class LineageDiagram:
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
 
+        nx = _require_networkx()
         G = self._build_graph()
         if not G.nodes:
             return "<svg><text x='10' y='20'>No lineage nodes.</text></svg>"

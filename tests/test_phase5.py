@@ -2050,3 +2050,85 @@ class TestDocsEndpoints:
         # traversal inputs can never resolve to a file.
         for evil in ["../README", "..%2F..%2Fpyproject", "etc/passwd"]:
             assert client.get(f"/api/docs/{evil}").status_code == 404
+
+
+class TestRegistryLibrarySeam:
+    """
+    The registry lives in tracebi/ so the library never imports the app.
+    That import direction is what makes an open-core split possible, and it
+    is easy to reintroduce by accident.
+    """
+
+    def test_library_does_not_import_the_app_package(self):
+        """No module under tracebi/ may import from web/."""
+        import pathlib
+        import re
+
+        root = pathlib.Path(__file__).resolve().parents[1] / "tracebi"
+        pattern = re.compile(r"^\s*(?:from|import)\s+web\b", re.MULTILINE)
+        offenders = [
+            str(p.relative_to(root))
+            for p in root.rglob("*.py")
+            if "__pycache__" not in p.parts and pattern.search(p.read_text())
+        ]
+        assert offenders == [], (
+            f"tracebi/ must not import from web/: {offenders}. "
+            "This is the seam that lets the library ship without the app."
+        )
+
+    def test_shim_and_library_expose_the_same_singleton(self):
+        import tracebi.registry as lib
+        import web.api.registry as shim
+
+        assert shim.registry is lib.registry
+        assert shim.Registry is lib.Registry
+
+    def test_shim_reexports_both_names(self):
+        """Tests import the class as well as the singleton; both must survive."""
+        from web.api.registry import Registry, registry
+
+        assert isinstance(registry, Registry)
+
+    def test_registry_imports_without_web_dependencies(self):
+        """The registry must be usable on the base install."""
+        import subprocess
+        import sys
+
+        code = (
+            "import sys\n"
+            "class B:\n"
+            "    def find_module(self, n, p=None):\n"
+            "        return self if n.split('.')[0] in "
+            "('fastapi','starlette','uvicorn','dash') else None\n"
+            "    def load_module(self, n):\n"
+            "        raise ImportError(n)\n"
+            "sys.meta_path.insert(0, B())\n"
+            "from tracebi.registry import Registry, registry\n"
+            "from tracebi import register\n"
+            "print('ok')\n"
+        )
+        out = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True
+        )
+        assert out.returncode == 0, out.stderr
+        assert "ok" in out.stdout
+
+    def test_register_facade_available_from_package_root(self):
+        import tracebi
+        from tracebi.web import register as legacy
+
+        assert tracebi.register is legacy
+
+    def test_registry_submodule_is_not_shadowed_by_the_singleton(self):
+        """
+        `from tracebi.registry import registry` is the documented import.
+        Binding the singleton as tracebi.registry would break it.
+        """
+        import types
+
+        import tracebi.registry
+
+        assert isinstance(tracebi.registry, types.ModuleType)
+        from tracebi.registry import registry as singleton
+
+        assert not isinstance(singleton, types.ModuleType)

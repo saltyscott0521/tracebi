@@ -456,3 +456,142 @@ class TestLineageDiagram:
         assert len(diag._nodes) > 0
         mermaid = diag.to_mermaid()
         assert "GOLD" in mermaid
+
+
+class TestDimensionKeyFanout:
+    """
+    A star-schema join assumes one dimension row per key. A repeated key
+    multiplies fact rows and silently inflates every additive measure —
+    returning a confident, fully-lineaged, wrong number. That is the one
+    failure mode an auditability product cannot ship with.
+    """
+
+    @staticmethod
+    def _model(customers=None):
+        orders = pd.DataFrame({
+            "order_id":    [10, 11],
+            "customer_id": [1, 2],
+            "revenue":     [100.0, 50.0],
+        })
+        if customers is None:
+            # customer_id 1 appears twice — e.g. SCD-2 rows, or a wrong key_col
+            customers = pd.DataFrame({
+                "customer_id": [1, 1, 2],
+                "region":      ["NE", "NE", "SE"],
+            })
+        m = DataModel("FanoutDemo").add_connector(
+            MemoryConnector("mem", {"orders": orders, "customers": customers})
+        )
+        m.add_table("orders", connector="mem", source="orders")
+        m.add_table("customers", connector="mem", source="customers")
+        m.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region"])
+        m.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                   foreign_keys={"dim_customer": "customer_id"})
+        m.connect()
+        return m
+
+    def test_duplicate_dimension_key_raises(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="non-unique key"):
+            m.query(fact="fact_orders", measures={"revenue": "sum"},
+                    dimensions=["dim_customer.region"])
+
+    def test_error_names_dimension_key_and_fanout_factor(self):
+        m = self._model()
+        with pytest.raises(ValueError) as exc:
+            m.query(fact="fact_orders", measures={"revenue": "sum"},
+                    dimensions=["dim_customer.region"])
+        msg = str(exc.value)
+        assert "dim_customer" in msg
+        assert "customers.customer_id" in msg
+        assert "2 → 3 rows" in msg          # the actual multiplication
+        assert "allow_fanout=True" in msg   # the escape hatch is discoverable
+
+    def test_the_specific_inflated_total_is_not_produced(self):
+        """True revenue is 150.0; the fan-out bug reported 250.0."""
+        m = self._model()
+        with pytest.raises(ValueError):
+            m.query(fact="fact_orders", measures={"revenue": "sum"},
+                    dimensions=["dim_customer.region"])
+
+    def test_unique_key_is_unaffected(self):
+        clean = pd.DataFrame({"customer_id": [1, 2], "region": ["NE", "SE"]})
+        m = self._model(customers=clean)
+        res = m.query(fact="fact_orders", measures={"revenue": "sum"},
+                      dimensions=["dim_customer.region"])
+        assert res.to_pandas()["revenue"].sum() == 150.0
+
+    def test_allow_fanout_proceeds_and_records_a_warning_node(self):
+        m = self._model()
+        res = m.query(fact="fact_orders", measures={"revenue": "sum"},
+                      dimensions=["dim_customer.region"], allow_fanout=True)
+        assert res.to_pandas()["revenue"].sum() == 250.0  # inflated, opted into
+
+        warnings = [n for n in res.lineage if n.operation == "warning"]
+        assert warnings, "opting into fan-out must be recorded in the lineage"
+        meta = [n.metadata for n in warnings if n.metadata.get("allow_fanout")][0]
+        assert meta["dimension"] == "dim_customer"
+        assert meta["rows_before"] == 2
+        assert meta["rows_after"] == 3
+        assert meta["fanout_factor"] == 1.5
+
+    def test_null_dimension_key_warns_without_blocking(self):
+        customers = pd.DataFrame({"customer_id": [1, None, 2], "region": ["NE", "X", "SE"]})
+        m = self._model(customers=customers)
+        res = m.query(fact="fact_orders", measures={"revenue": "sum"},
+                      dimensions=["dim_customer.region"])
+        nulls = [n for n in res.lineage
+                 if n.operation == "warning" and n.metadata.get("null_keys")]
+        assert nulls and nulls[0].metadata["null_keys"] == 1
+
+    def test_unreferenced_dimension_does_not_block(self):
+        """Only dimensions actually joined in this query are checked."""
+        m = self._model()
+        res = m.query(fact="fact_orders", measures={"revenue": "sum"})
+        assert res.to_pandas()["revenue"].sum() == 150.0
+
+
+class TestModelValidate:
+    @staticmethod
+    def _model(customers):
+        orders = pd.DataFrame({"order_id": [1], "customer_id": [1], "revenue": [10.0]})
+        m = DataModel("V").add_connector(
+            MemoryConnector("mem", {"orders": orders, "customers": customers})
+        )
+        m.add_table("orders", connector="mem", source="orders")
+        m.add_table("customers", connector="mem", source="customers")
+        m.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region"])
+        m.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                   foreign_keys={"dim_customer": "customer_id"})
+        m.connect()
+        return m
+
+    def test_clean_model_validates_ok(self):
+        m = self._model(pd.DataFrame({"customer_id": [1, 2], "region": ["NE", "SE"]}))
+        result = m.validate()
+        assert result["ok"] is True
+        assert result["errors"] == []
+        assert result["dimensions"][0]["key_unique"] is True
+
+    def test_duplicate_key_reported_as_error(self):
+        m = self._model(pd.DataFrame({"customer_id": [1, 1], "region": ["NE", "NE"]}))
+        result = m.validate()
+        assert result["ok"] is False
+        assert len(result["errors"]) == 1
+        assert "not unique" in result["errors"][0]
+        assert result["dimensions"][0]["duplicate_rows"] == 2
+
+    def test_null_key_reported_as_warning_not_error(self):
+        m = self._model(pd.DataFrame({"customer_id": [1, None], "region": ["NE", "SE"]}))
+        result = m.validate()
+        assert result["ok"] is True          # nulls do not inflate totals
+        assert len(result["warnings"]) == 1
+        assert result["dimensions"][0]["null_keys"] == 1
+
+    def test_returns_structured_data_not_printed_output(self, capsys):
+        m = self._model(pd.DataFrame({"customer_id": [1, 1], "region": ["NE", "NE"]}))
+        result = m.validate()
+        assert capsys.readouterr().out == ""   # consumable by CLI/API/agents
+        assert set(result) == {"ok", "model", "dimensions", "errors", "warnings"}

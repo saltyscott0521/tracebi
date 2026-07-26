@@ -1,9 +1,14 @@
 """
-``tracebi.web.register`` — thin facade over the running web registry.
+``tracebi.register`` — the friendly facade over the project registry.
 
-All functions resolve the registry lazily so importing this module never
-forces the web stack to load. Errors point users at the right extras key
-when the web layer is missing.
+Lets notebook and script authors register resources without learning the
+registry API. Lookups check the registry first and fall back to the
+project-root ``models/`` and ``pipelines/`` directories, so the same code
+works with or without a running server.
+
+Also importable as ``tracebi.web.register`` — the original spelling, kept
+because it appears in every scaffold and doc. The registry is no longer
+part of the web layer, so ``tracebi.register`` is the accurate name.
 """
 
 from __future__ import annotations
@@ -12,14 +17,7 @@ from typing import Callable, Optional
 
 
 def _registry():
-    try:
-        from web.api.registry import registry as _r
-    except ImportError as exc:
-        raise ImportError(
-            "tracebi.web helpers require the web layer. "
-            "Install with: pip install 'tracebi[web]', and make sure your "
-            "Python process can import the 'web' package."
-        ) from exc
+    from tracebi.registry import registry as _r
     return _r
 
 
@@ -44,34 +42,30 @@ class _Register:
         return self
 
     def get_default_model(self):
-        """Return the default DataModel — web registry first, then models/ on disk."""
-        try:
-            return _registry().get_default_model()
-        except ImportError:
-            from tracebi.model_registry import get_default_model as _get
-            return _get()
+        """Return the default DataModel — registry first, then models/ on disk."""
+        found = _registry().get_default_model()
+        if found is not None:
+            return found
+        from tracebi.model_registry import get_default_model as _get
+        return _get()
 
     def get_model(self, name: str):
-        """Return a model by name — web registry first, then models/ on disk."""
-        try:
-            return _registry().get_model(name)
-        except ImportError:
-            from tracebi.model_registry import get_model as _get
-            return _get(name)
+        """Return a model by name — registry first, then models/ on disk."""
+        found = _registry().get_model(name)
+        if found is not None:
+            return found
+        from tracebi.model_registry import get_model as _get
+        return _get(name)
 
     def pipeline(self, name: str, runner) -> "_Register":
         _registry().add_pipeline(name, runner)
         return self
 
     def get_runner(self, name: str):
-        """Return a runner by name — web registry first, then pipelines/ on disk."""
-        try:
-            result = _registry().get_pipeline(name)
-            if result is not None:
-                return result
-            raise KeyError(name)
-        except ImportError:
-            pass
+        """Return a runner by name — registry first, then pipelines/ on disk."""
+        found = _registry().get_pipeline(name)
+        if found is not None:
+            return found
         from tracebi.pipeline_registry import get_runner as _get
         return _get(name)
 

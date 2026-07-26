@@ -33,6 +33,51 @@ jobs:
       - name: Run tests
         run: pytest tests/ -q
 
+  base-install:
+    name: base install (no extras)
+    runs-on: ubuntu-latest
+    # The test job installs ".[dev,web]", so it cannot catch a module-level
+    # import of an optional dependency. That is exactly how `import tracebi`
+    # came to hard-require networkx while the only declared runtime dep is
+    # pandas. This job installs the base distribution and nothing else.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install base distribution only
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Import on base dependencies
+        run: |
+          python -c "import tracebi"
+          python -c "import tracebi.cli"
+          python -c "import tracebi.model"
+          python -c "import tracebi.reports"
+          python -c "import tracebi.model_registry, tracebi.pipeline_registry"
+
+      - name: Console script works
+        run: tracebi --version
+
+      - name: Optional deps are genuinely absent
+        # Guards the guard: if an extra leaks into the base install this job
+        # would pass vacuously.
+        run: |
+          python - <<'PY'
+          import importlib.util as u
+          leaked = [m for m in ("networkx", "matplotlib", "sqlalchemy", "duckdb", "dash", "fastapi")
+                    if u.find_spec(m) is not None]
+          assert not leaked, f"optional deps leaked into base install: {leaked}"
+          print("base install is clean")
+          PY
+
   lint:
     name: ruff
     runs-on: ubuntu-latest

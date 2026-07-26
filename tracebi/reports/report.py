@@ -52,17 +52,53 @@ def resolve_number_format(fmt: str) -> str:
     return NAMED_NUMBER_FORMATS.get(fmt, fmt)
 
 
+# Closed value domains. Renderers used to silently substitute a default for
+# anything unrecognised — a bad chart_type drew a bar chart, a bad style
+# rendered as normal text — so a typo produced a plausible-looking wrong
+# report and exit code 0. Validating here means the error surfaces at the
+# line that wrote it, which is what both a human and an agent need.
+TEXT_STYLES = ("normal", "heading1", "heading2", "note", "callout")
+TABLE_STYLES = ("default", "striped", "compact")
+CHART_TYPES = ("bar", "barh", "line", "area", "pie", "scatter")
+
+
+def _reject_unknown(value: str, allowed: tuple[str, ...], field: str, cls: str) -> None:
+    """Raise ValueError naming the field, the allowed set, and a suggestion."""
+    if value in allowed:
+        return
+    import difflib
+    close = difflib.get_close_matches(str(value), allowed, n=1)
+    hint = f" Did you mean '{close[0]}'?" if close else ""
+    raise ValueError(
+        f"{cls}.{field}={value!r} is not valid.{hint} "
+        f"Allowed: {', '.join(allowed)}."
+    )
+
+
 @dataclass
 class ReportSection:
-    """Base class for all report sections."""
+    """
+    Base class for all report sections.
+
+    Fields:
+        title: Optional heading shown above the section.
+        id:    Optional stable identifier. Carried into the manifest so a
+               section can be referenced across renders — useful for diffing
+               two versions of a report and for tooling that edits a report
+               structurally rather than by line number.
+    """
     title: Optional[str] = None
     section_type: SectionType = SectionType.TEXT
+    id: Optional[str] = None
 
     def to_manifest_dict(self) -> dict:
-        return {
+        d = {
             "section_type": self.section_type.value,
             "title": self.title,
         }
+        if self.id is not None:
+            d["id"] = self.id
+        return d
 
 
 @dataclass
@@ -79,11 +115,16 @@ class TextSection(ReportSection):
 
     def __post_init__(self):
         self.section_type = SectionType.TEXT
+        _reject_unknown(self.style, TEXT_STYLES, "style", "TextSection")
 
     def to_manifest_dict(self) -> dict:
+        import hashlib
         d = super().to_manifest_dict()
         d["style"] = self.style
         d["content_length"] = len(self.content)
+        # The manifest is a receipt: recording only the length cannot prove
+        # the narrative prose was not altered after the fact.
+        d["content_sha256"] = hashlib.sha256(self.content.encode("utf-8")).hexdigest()
         return d
 
 
@@ -125,6 +166,7 @@ class TableSection(ReportSection):
 
     def __post_init__(self):
         self.section_type = SectionType.TABLE
+        _reject_unknown(self.style, TABLE_STYLES, "style", "TableSection")
 
     def get_display_df(self) -> pd.DataFrame:
         """Return the DataFrame ready for display (columns selected, rows capped)."""
@@ -186,6 +228,13 @@ class ChartSection(ReportSection):
 
     def __post_init__(self):
         self.section_type = SectionType.CHART
+        _reject_unknown(self.chart_type, CHART_TYPES, "chart_type", "ChartSection")
+        # Normalise so the section round-trips through JSON losslessly:
+        # JSON has no tuple type, and a str|list union needs one shape.
+        if self.figsize is not None:
+            self.figsize = tuple(self.figsize)
+        if isinstance(self.y, str):
+            self.y = [self.y]
 
     def to_manifest_dict(self) -> dict:
         d = super().to_manifest_dict()
@@ -197,6 +246,14 @@ class ChartSection(ReportSection):
         d["chart_type"] = self.chart_type
         d["x"] = self.x
         d["y"] = self.y
+        # A chart must be re-renderable from its own receipt.
+        d["color"] = self.color
+        d["xlabel"] = self.xlabel
+        d["ylabel"] = self.ylabel
+        d["figsize"] = list(self.figsize) if self.figsize else None
+        d["style"] = self.style
+        d["palette"] = self.palette
+        d["show_values"] = self.show_values
         return d
 
 
@@ -477,14 +534,22 @@ class Report:
         """All leaf sections in order, descending into RowSection containers.
 
         Use this when walking the report for datasets/lineage so sections
-        nested inside layout rows are not missed.
+        nested inside layout rows are not missed. Recursion is unbounded:
+        RowSection renders nested rows fine, so anything shallower would
+        drop those datasets from the lineage graph and the manifest —
+        silently breaking the audit trail on exactly the reports that are
+        most elaborate.
         """
         out: list[ReportSection] = []
-        for s in self._sections:
-            if isinstance(s, RowSection):
-                out.extend(s.sections)
-            else:
-                out.append(s)
+
+        def _walk(sections: list[ReportSection]) -> None:
+            for s in sections:
+                if isinstance(s, RowSection):
+                    _walk(s.sections)
+                else:
+                    out.append(s)
+
+        _walk(self._sections)
         return out
 
     def build_manifest(self, format: str, output_path: str) -> ReportManifest:

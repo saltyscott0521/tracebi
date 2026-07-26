@@ -545,15 +545,26 @@ class HTMLRenderer(BaseRenderer):
         }.get(style, "text-normal")
 
         if style in ("heading1", "heading2"):
-            content = section.title or section.content
-        else:
-            title_html = ""
-            if section.title:
-                title_html = f'<div class="section-title">{self._esc(section.title)}</div>'
-            content_html = f'<div class="{css_class}">{self._esc(section.content)}</div>'
-            return f'<div class="section">{title_html}{content_html}</div>'
+            # Heading text comes from the title, falling back to content when
+            # only content was supplied.
+            #
+            # Content used to be dropped unconditionally, so callers worked
+            # around it by passing the same string as both title and content.
+            # Render the body only when it actually differs from the heading:
+            # that recovers the genuinely-lost text without double-printing
+            # the many existing call sites that use the duplication idiom.
+            heading = section.title or section.content
+            parts = [f'<div class="{css_class}">{self._esc(heading)}</div>']
+            body = section.content
+            if section.title and body and body != section.title:
+                parts.append(f'<div class="text-normal">{self._esc(body)}</div>')
+            return f'<div class="section">{"".join(parts)}</div>'
 
-        return f'<div class="section"><div class="{css_class}">{self._esc(content)}</div></div>'
+        title_html = ""
+        if section.title:
+            title_html = f'<div class="section-title">{self._esc(section.title)}</div>'
+        content_html = f'<div class="{css_class}">{self._esc(section.content)}</div>'
+        return f'<div class="section">{title_html}{content_html}</div>'
 
     def _render_table(self, section: TableSection) -> str:
         df = section.get_display_df()
@@ -766,8 +777,17 @@ class HTMLRenderer(BaseRenderer):
                 df.plot(x=section.x, y=y_cols, kind="bar", ax=ax,
                         color=palette[:len(y_cols)])
         except Exception as e:
-            ax.text(0.5, 0.5, f"Chart error: {e}", transform=ax.transAxes,
-                    ha="center", va="center")
+            # Previously the exception text was drawn into the PNG. That
+            # produces a finished-looking deliverable containing a picture of
+            # an error message: invisible to the caller, absent from the
+            # manifest, exit code 0. A failed render is strictly better.
+            plt.close(fig)
+            label = section.title or f"{chart_type} chart"
+            raise ValueError(
+                f"Chart '{label}' failed to render "
+                f"(chart_type={chart_type!r}, x={section.x!r}, y={section.y!r}): "
+                f"{type(e).__name__}: {e}"
+            ) from e
 
         if section.show_values:
             try:

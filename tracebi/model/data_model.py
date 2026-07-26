@@ -435,6 +435,7 @@ class DataModel:
         dimensions: Optional[list[str]] = None,
         filters: Optional[dict[str, Any]] = None,
         aggregate: bool = True,
+        allow_fanout: bool = False,
     ) -> DataSet:
         """
         Run a star-schema analytic query and return a lineage-tracked DataSet.
@@ -453,10 +454,19 @@ class DataModel:
             aggregate:  When ``True`` (default), group by dimension attributes
                         and aggregate measures. When ``False``, return the
                         flat joined rows with measures selected.
+            allow_fanout: Permit joining a dimension whose key is not unique.
+                        Off by default: a repeated key multiplies fact rows
+                        and silently inflates additive measures. Set ``True``
+                        only when the multiplication is intended — the opt-in
+                        is then recorded as a warning node in the lineage.
 
         Returns:
             A DataSet with full lineage covering load → join → filter →
             aggregate steps.
+
+        Raises:
+            ValueError: if a referenced column does not exist, or if a joined
+                dimension has a non-unique key and ``allow_fanout`` is False.
         """
         if fact not in self._facts:
             raise ValueError(
@@ -500,6 +510,10 @@ class DataModel:
         # A typo'd column must never produce a silently wrong result.
         self._validate_query_columns(
             fact_def, fact_df, dim_dfs, parsed_dims, measures, filters
+        )
+        # Neither must a non-unique dimension key.
+        self._check_dimension_keys(
+            dim_dfs, parsed_dims, fact_df, fact_def, allow_fanout, lineage
         )
 
         for col, val in filters.items():
@@ -548,6 +562,160 @@ class DataModel:
         import difflib
         close = difflib.get_close_matches(name, [str(o) for o in options], n=1)
         return f" Did you mean '{close[0]}'?" if close else ""
+
+    def _check_dimension_keys(
+        self,
+        dim_dfs: dict[str, pd.DataFrame],
+        parsed_dims: list[tuple[str, str]],
+        fact_df: pd.DataFrame,
+        fact_def: "_FactDef",
+        allow_fanout: bool,
+        lineage: list[LineageNode],
+    ) -> None:
+        """
+        Reject dimensions whose key is not unique.
+
+        A star-schema join assumes one dimension row per key. When the key
+        repeats, the LEFT JOIN multiplies fact rows and every additive
+        measure is silently inflated — the query returns a confident,
+        fully-lineaged, wrong number. Same principle as
+        ``_validate_query_columns``: never return a silently wrong result.
+
+        With ``allow_fanout=True`` the join proceeds (legitimate for
+        many-to-many) but the opt-in is recorded as a warning lineage node
+        so the audit trail shows the multiplication was intentional.
+        """
+        for dim_name in {d for d, _ in parsed_dims}:
+            dim_def = self._dimensions[dim_name]
+            dim_df = dim_dfs[dim_name]
+            key = dim_def.key_col
+
+            n_null = int(dim_df[key].isna().sum())
+            dup_mask = dim_df[key].duplicated(keep=False)
+            n_dup_rows = int(dup_mask.sum())
+
+            if n_dup_rows:
+                dup_values = dim_df.loc[dup_mask, key].drop_duplicates()
+                sample = [repr(v) for v in dup_values.head(3).tolist()]
+                if len(dup_values) > 3:
+                    sample.append("…")
+                # Rows the fact side would gain, for the keys it actually uses.
+                fk_col = fact_def.foreign_keys.get(dim_name, key)
+                if fk_col in fact_df.columns:
+                    counts = dim_df[key].value_counts()
+                    rows_after = int(fact_df[fk_col].map(counts).fillna(1).sum())
+                else:
+                    rows_after = len(fact_df)
+                factor = (rows_after / len(fact_df)) if len(fact_df) else 1.0
+
+                if not allow_fanout:
+                    raise ValueError(
+                        f"Dimension '{dim_name}' has a non-unique key: "
+                        f"'{dim_def.table_name}.{key}' repeats across "
+                        f"{n_dup_rows} rows ({len(dup_values)} duplicated "
+                        f"value(s): {', '.join(sample)}). Joining would fan "
+                        f"out the fact table {len(fact_df)} → {rows_after} "
+                        f"rows (x{factor:.2f}) and inflate every additive "
+                        f"measure. Deduplicate the dimension, pick a key "
+                        f"column that is unique, or pass allow_fanout=True "
+                        f"if the multiplication is intended."
+                    )
+
+                lineage.append(LineageNode(
+                    operation="warning",
+                    description=(
+                        f"Fan-out allowed on dimension '{dim_name}': "
+                        f"key '{key}' is not unique; measures are multiplied "
+                        f"x{factor:.2f}"
+                    ),
+                    metadata={
+                        "dimension": dim_name,
+                        "key_column": key,
+                        "duplicate_rows": n_dup_rows,
+                        "duplicate_values": len(dup_values),
+                        "rows_before": len(fact_df),
+                        "rows_after": rows_after,
+                        "fanout_factor": round(factor, 4),
+                        "allow_fanout": True,
+                    },
+                ))
+
+            if n_null:
+                lineage.append(LineageNode(
+                    operation="warning",
+                    description=(
+                        f"Dimension '{dim_name}' key '{key}' contains "
+                        f"{n_null} null value(s); those rows cannot be "
+                        f"matched by the join"
+                    ),
+                    metadata={
+                        "dimension": dim_name,
+                        "key_column": key,
+                        "null_keys": n_null,
+                    },
+                ))
+
+    def validate(self) -> dict[str, Any]:
+        """
+        Check the model's declared structure against the actual data.
+
+        Loads only each dimension's key column and reports uniqueness and
+        null status. Returns a structured result rather than printing, so
+        the CLI, the web API, and agent tooling can all consume it::
+
+            {"ok": bool, "dimensions": [{...}], "errors": [str], "warnings": [str]}
+
+        Call this before running queries — a non-unique dimension key is the
+        difference between a correct number and a silently inflated one.
+        """
+        dims: list[dict[str, Any]] = []
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        for dim_name, dim_def in self._dimensions.items():
+            entry: dict[str, Any] = {
+                "dimension": dim_name,
+                "table": dim_def.table_name,
+                "key_column": dim_def.key_col,
+            }
+            try:
+                df = self.load(dim_def.table_name, columns=[dim_def.key_col]).to_pandas()
+            except Exception as exc:  # noqa: BLE001 - reported, not raised
+                entry.update(ok=False, error=str(exc))
+                errors.append(f"Dimension '{dim_name}': could not load key column — {exc}")
+                dims.append(entry)
+                continue
+
+            n_dup = int(df[dim_def.key_col].duplicated(keep=False).sum())
+            n_null = int(df[dim_def.key_col].isna().sum())
+            entry.update(
+                rows=len(df),
+                duplicate_rows=n_dup,
+                null_keys=n_null,
+                key_unique=(n_dup == 0),
+                ok=(n_dup == 0),
+            )
+            if n_dup:
+                errors.append(
+                    f"Dimension '{dim_name}': key "
+                    f"'{dim_def.table_name}.{dim_def.key_col}' is not unique "
+                    f"({n_dup} duplicated rows) — joins will inflate measures."
+                )
+            if n_null:
+                warnings.append(
+                    f"Dimension '{dim_name}': key "
+                    f"'{dim_def.table_name}.{dim_def.key_col}' has "
+                    f"{n_null} null value(s)."
+                )
+            dims.append(entry)
+
+        return {
+            "ok": not errors,
+            "model": self.name,
+            "dimensions": dims,
+            "errors": errors,
+            "warnings": warnings,
+        }
 
     def _validate_query_columns(
         self,

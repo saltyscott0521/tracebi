@@ -11,7 +11,7 @@ import pandas as pd
 from tracebi.model.dataset import DataSet, LineageNode
 from tracebi.reports.report import (
     Report, TextSection, TableSection, ChartSection,
-    SpacerSection, SectionType, ReportManifest,
+    SpacerSection, SectionType, ReportManifest, RowSection,
 )
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
@@ -478,3 +478,124 @@ class TestReportNotebookIntegration:
         assert ".table(" in out
         assert ".metrics(" in out
         assert ".row(" in out
+
+
+class TestSectionValidationAtConstruction:
+    """
+    Renderers used to substitute a default for anything unrecognised, so a
+    typo produced a plausible-looking wrong report and exit code 0.
+    Validating in __post_init__ surfaces the error at the line that wrote it.
+    """
+
+    def test_unknown_chart_type_rejected(self):
+        with pytest.raises(ValueError, match="chart_type"):
+            ChartSection(chart_type="stacked_bar")
+
+    def test_unknown_chart_type_suggests_a_close_match(self):
+        with pytest.raises(ValueError, match="Did you mean 'bar'"):
+            ChartSection(chart_type="barr")
+
+    def test_unknown_text_style_rejected(self):
+        with pytest.raises(ValueError, match="Did you mean 'heading1'"):
+            TextSection(content="x", style="headline1")
+
+    def test_unknown_table_style_rejected(self):
+        with pytest.raises(ValueError, match="Did you mean 'striped'"):
+            TableSection(style="stripey")
+
+    def test_valid_values_still_accepted(self):
+        for t in ("bar", "barh", "line", "area", "pie", "scatter"):
+            assert ChartSection(chart_type=t).chart_type == t
+        for s in ("normal", "heading1", "heading2", "note", "callout"):
+            assert TextSection(style=s).style == s
+
+
+class TestChartSectionNormalisation:
+    """Normalised at construction so a section round-trips through JSON."""
+
+    def test_scalar_y_becomes_a_list(self):
+        assert ChartSection(chart_type="bar", y="revenue").y == ["revenue"]
+
+    def test_list_y_is_preserved(self):
+        assert ChartSection(chart_type="bar", y=["a", "b"]).y == ["a", "b"]
+
+    def test_figsize_list_becomes_a_tuple(self):
+        assert ChartSection(chart_type="bar", figsize=[8, 4]).figsize == (8, 4)
+
+
+class TestHeadingContentNotDiscarded:
+    """
+    heading1/heading2 used to render `title or content`, silently dropping
+    content when both were set. Many call sites worked around it by passing
+    the same string twice, so content renders only when it actually differs.
+    """
+
+    @staticmethod
+    def _html(section):
+        from tracebi.reports.html_renderer import HTMLRenderer
+        return HTMLRenderer().to_html(Report("T").add(section))
+
+    def test_distinct_content_is_recovered(self):
+        html = self._html(TextSection(title="Summary",
+                                      content="Sales rose 12% QoQ.",
+                                      style="heading1"))
+        assert "Summary" in html
+        assert "Sales rose 12% QoQ." in html
+
+    def test_duplication_idiom_does_not_double_print(self):
+        html = self._html(TextSection(title="Revenue by Region",
+                                      content="Revenue by Region",
+                                      style="heading2"))
+        assert html.count("Revenue by Region") == 1
+
+    def test_content_only_heading_unchanged(self):
+        html = self._html(TextSection(content="Just A Heading", style="heading1"))
+        assert html.count("Just A Heading") == 1
+
+
+class TestNestedRowLineage:
+    def test_data_sections_recurses_through_nested_rows(self):
+        ds = DataSet(pd.DataFrame({"a": [1]}), name="d")
+        inner = RowSection(sections=[TableSection(dataset=ds)])
+        outer = RowSection(sections=[inner, TableSection(dataset=ds)])
+        report = Report("N").add(outer)
+
+        with_data = [s for s in report.data_sections()
+                     if getattr(s, "dataset", None) is not None]
+        assert len(with_data) == 2, (
+            "a doubly-nested RowSection must not vanish from the lineage walk"
+        )
+
+    def test_flat_row_behaviour_unchanged(self):
+        ds = DataSet(pd.DataFrame({"a": [1]}), name="d")
+        report = Report("F").add(RowSection(sections=[TableSection(dataset=ds)]))
+        assert len(report.data_sections()) == 1
+
+
+class TestChartFailuresRaise:
+    def test_missing_column_raises_instead_of_drawing_the_error(self):
+        from tracebi.reports.html_renderer import HTMLRenderer
+
+        ds = DataSet(pd.DataFrame({"region": ["NE"], "revenue": [1.0]}), name="d")
+        bad = ChartSection(chart_type="bar", dataset=ds, x="nope", y="revenue")
+        with pytest.raises(ValueError, match="failed to render"):
+            HTMLRenderer().to_html(Report("C").add(bad))
+
+
+class TestManifestReceiptCompleteness:
+    def test_text_manifest_carries_a_content_hash(self):
+        d = TextSection(title="H", content="body").to_manifest_dict()
+        assert len(d["content_sha256"]) == 64
+        other = TextSection(title="H", content="tampered").to_manifest_dict()
+        assert d["content_sha256"] != other["content_sha256"]
+
+    def test_chart_manifest_is_re_renderable(self):
+        d = ChartSection(chart_type="line", x="m", y="rev",
+                         palette=["#fff"], show_values=True).to_manifest_dict()
+        for key in ("chart_type", "x", "y", "color", "xlabel", "ylabel",
+                    "figsize", "style", "palette", "show_values"):
+            assert key in d
+
+    def test_section_id_round_trips_when_set(self):
+        assert TextSection(content="x", id="exec-summary").to_manifest_dict()["id"] == "exec-summary"
+        assert "id" not in TextSection(content="x").to_manifest_dict()

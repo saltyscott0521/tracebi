@@ -6,6 +6,100 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### ⚠️ Breaking — queries now refuse to double-count
+
+`DataModel.query()` **raises `ValueError` when a joined dimension's key is
+not unique.** Previously the star-schema `LEFT JOIN` silently multiplied
+fact rows and inflated every additive measure — returning a confident,
+fully-lineaged, wrong number. In a two-order fixture whose true revenue was
+$150, a single duplicated `customer_id` produced $250 with no warning.
+
+**If this raises for you, your previous numbers were wrong.** Three ways
+forward:
+
+1. Deduplicate the dimension table (usually correct — the duplicate is an
+   SCD-2 history row or an unfiltered snapshot).
+2. Pick a key column that is genuinely unique.
+3. Pass `query(..., allow_fanout=True)` if the multiplication is intended
+   (legitimate for many-to-many). The opt-in is then recorded as a
+   `warning` node in the lineage, so the audit trail shows it was
+   deliberate.
+
+The error names the dimension, the key, sample duplicate values, and the
+exact row multiplication (e.g. `2 → 3 rows (x1.50)`).
+
+This applies the principle already documented for column validation —
+*"a typo must fail loudly, never return a silently wrong result"* — to join
+cardinality.
+
+### ⚠️ Breaking — the report layer now fails loudly
+
+Renderers used to substitute a default for anything unrecognised, so a typo
+produced a plausible-looking wrong report and exit code 0. Sections now
+validate at construction, with did-you-mean suggestions:
+
+- Unknown `ChartSection.chart_type` raised nothing and drew a bar chart.
+- Unknown `TextSection.style` / `TableSection.style` silently fell back.
+- A chart that failed to plot had its **exception text drawn into the PNG** —
+  a finished-looking deliverable containing a picture of an error message,
+  invisible to the caller and absent from the manifest. It now raises.
+
+`TextSection(style="heading1"|"heading2")` **no longer discards `content`.**
+It rendered `title or content`, so a section with both lost the body text
+entirely — this was silently dropping real narrative in five of the seven
+demo reports. Content now renders beneath the heading when it differs from
+the title; the widespread `title="X", content="X"` workaround still renders
+once.
+
+### Fixed
+
+- **Nested `RowSection` no longer breaks the audit trail.**
+  `Report.data_sections()` descended only one level while rendering and
+  `to_manifest_dict()` recursed fully, so a row inside a row rendered
+  correctly but vanished from the lineage graph, the manifest, and every
+  `/lineage` endpoint. Recursion is now unbounded.
+- **`tracebi validate` actually validates.** It performed three filesystem
+  `stat` calls and imported nothing. It now loads every model in `models/`
+  and runs `DataModel.validate()` on each, so a non-unique dimension key is
+  caught before it can inflate a number. Exits non-zero on problems.
+
+### Added
+
+- **Section `id`** — optional stable identifier carried into the manifest,
+  so a section can be referenced across renders (diffing two versions of a
+  report, or tooling that edits structurally rather than by line number).
+- **Manifest completeness.** `TextSection` records `content_sha256` (length
+  alone cannot prove prose was not altered); `ChartSection` records `color`,
+  `xlabel`, `ylabel`, `figsize`, `style`, `palette`, and `show_values`, so a
+  chart is re-renderable from its own receipt.
+- `ChartSection` normalises `figsize` to a tuple and `y` to a list at
+  construction, so a section round-trips through JSON losslessly.
+- **`DataModel.validate()`** — checks every declared dimension's key for
+  uniqueness and nulls, loading only the key column. Returns structured
+  data (`{ok, model, dimensions, errors, warnings}`) rather than printing,
+  so the CLI, the web API, and agent tooling can all consume it. Run it
+  before querying.
+- **Null dimension keys** now emit a non-blocking `warning` lineage node —
+  those rows cannot be matched by the join.
+- **`tracebi/_version.py`** — single source of truth for the version. The
+  package, the CLI, and the FastAPI app all resolve through it; the API had
+  drifted to a hard-coded `0.1.0` against the package's `0.5.2`.
+
+### Fixed
+
+- **`import tracebi` no longer requires networkx.** The only declared
+  runtime dependency is pandas, but `__init__` eagerly imported
+  `LineageDiagram`, whose module scope did `import networkx as nx` — so a
+  clean `pip install tracebi` produced an unimportable package. networkx is
+  now imported on demand with an `ImportError` naming the `[lineage]`
+  extra, and `LineageDiagram.to_mermaid()` (pure string building) works on
+  the base install.
+- **CI now has a base-install job.** The test job installs `.[dev,web]`, so
+  it structurally cannot catch a module-level import of an optional
+  dependency — which is how the above regressed unnoticed. The new job
+  installs the bare distribution, imports the public modules, runs the
+  console script, and asserts no optional dependency leaked in.
+
 ### Added
 - **Standalone model registry** (`tracebi/model_registry.py`) — define a
   `DataModel` once in `models/<name>.py` (expose it as a module-level `model`
