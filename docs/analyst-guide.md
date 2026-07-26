@@ -38,8 +38,9 @@ previews, inline report rendering, and shipping notebooks as request scripts.
 The generated file has five numbered sections: parameters → model → datasets →
 report → render. Fill them in top to bottom.
 
-`tracebi validate` checks your project layout (tracebi.yaml, requests/, .env)
-if something feels misconfigured.
+`tracebi validate` checks your project layout and then loads every model in
+`models/`, verifying each dimension key is unique — a duplicate key silently
+inflates every total it touches. Run it before you trust a number.
 
 ## 2. Discover what data you have
 

@@ -7,13 +7,31 @@ addressable — names are matched against a directory listing, so path
 traversal is structurally impossible.
 """
 
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/docs", tags=["docs"])
 
-_DOCS_DIR = Path(__file__).resolve().parents[3] / "docs"
+
+def _docs_dir() -> Path:
+    """
+    Locate the markdown guides.
+
+    Resolved at call time rather than import time, and checked in order:
+    an explicit override, the working directory (an installed project may
+    ship its own docs/), then the repo checkout. The repo-relative path
+    alone silently produced an empty Getting Started page whenever the
+    server ran from anywhere but a source tree.
+    """
+    override = os.environ.get("TRACEBI_DOCS_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    cwd_docs = Path.cwd() / "docs"
+    if cwd_docs.is_dir():
+        return cwd_docs
+    return Path(__file__).resolve().parents[3] / "docs"
 
 
 def _title(path: Path) -> str:
@@ -25,9 +43,10 @@ def _title(path: Path) -> str:
 
 
 def _guides() -> dict[str, Path]:
-    if not _DOCS_DIR.is_dir():
+    docs_dir = _docs_dir()
+    if not docs_dir.is_dir():
         return {}
-    return {p.stem: p for p in sorted(_DOCS_DIR.glob("*.md"))}
+    return {p.stem: p for p in sorted(docs_dir.glob("*.md"))}
 
 
 @router.get("")

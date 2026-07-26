@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import runpy
 import sys
@@ -380,33 +381,10 @@ _INIT_ENV_EXAMPLE = """\
 # TRACEBI_AUTH_PASS=changeme
 """
 
-_INIT_TRACEBI_YAML = """\
-# tracebi.yaml — project configuration.
-#
-# Wire connectors, output destinations, and schedules here. Values of the form
-# ${ENV_VAR} are interpolated from the environment (and .env via python-dotenv)
-# so credentials never live in this file.
-
-project: my_project
-
-connectors:
-  # Example: a SQLite connector backed by a local file. Swap the URL for
-  # Postgres / MySQL / BigQuery / Snowflake when you wire your real data.
-  sales_db:
-    type: sql
-    url:  ${TRACEBI_SALES_DB_URL:-sqlite:///data/sales.db}
-
-reports:
-  output_dir: output
-  formats:
-    - html
-    - xlsx
-"""
-
 _INIT_SAMPLE_REQUEST = '''"""
 Sample report — runs against an in-memory DataFrame so you can see TraceBi
 working immediately. Replace MemoryConnector with SQLConnector / CSVConnector
-once you wire your real data source in tracebi.yaml.
+once you wire your real data source (see models/ and `tracebi new-model`).
 
 Run:
     python requests/sample_report.py
@@ -439,7 +417,7 @@ ds = model.load("orders")
 report = (
     Report("Sample Report")
     .author("Your Name")
-    .description("Replace this with your own data — see tracebi.yaml.")
+    .description("Replace this with your own data — see models/.")
     .add(TextSection(title="Summary", content="Five orders across three regions.",
                      style="heading1"))
     .add(TableSection(title="Orders", dataset=ds,
@@ -473,12 +451,19 @@ A TraceBi project. Scaffolded by `tracebi init`.
 
 ```
 {project}/
-├── tracebi.yaml      Project config (connectors, output, schedules)
 ├── .env.example      Copy to `.env` and fill in credentials
-├── requests/         Report scripts — copy sample_report.py to add more
+├── models/           DataModel definitions — each .py exposes `model`
+├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
+├── reports/          Named reports — each .py uses @register.report()
+├── requests/         Ad-hoc report scripts — copy sample_report.py
+├── scheduled/        Reports on a cron schedule
 ├── data/             Local databases / cached files (gitignored)
 └── output/           Rendered reports (gitignored)
 ```
+
+Everything in those four artifact directories is picked up automatically —
+by `tracebi serve`, and by notebooks via `get_model()` / `get_runner()`.
+There is no registration file to edit.
 
 ## Run the sample report
 
@@ -488,12 +473,22 @@ tracebi run sample_report
 open output/sample_report.html
 ```
 
+## Browse in the web UI
+
+```bash
+pip install "tracebi[web]"
+tracebi serve                 # http://127.0.0.1:8000
+```
+
 ## Wire your own data
 
 1. Copy `.env.example` to `.env` and add your database URL.
-2. Edit `tracebi.yaml` to point at your connector.
-3. Copy `requests/sample_report.py` to `requests/my_report.py` and adapt.
-4. `tracebi run my_report`.
+2. `tracebi new-model "Sales"` — edit `models/sales.py` to point at your
+   connector and declare tables, dimensions, facts, and measures.
+3. `tracebi validate` — confirms the model loads and its dimension keys
+   are unique (a duplicate key silently inflates every total).
+4. Copy `requests/sample_report.py` to `requests/my_report.py` and adapt.
+5. `tracebi run my_report`.
 """
 
 
@@ -509,17 +504,24 @@ def cmd_init(args: argparse.Namespace) -> int:
             )
             return 1
 
-    (target / "requests").mkdir(parents=True, exist_ok=True)
-    (target / "data").mkdir(exist_ok=True)
-    (target / "output").mkdir(exist_ok=True)
+    # The four artifact directories the server auto-discovers at startup,
+    # plus scheduled/. init used to create only requests/, so an init'd
+    # project was structurally incompatible with `tracebi serve`.
+    for d in ("models", "pipelines", "reports", "requests", "scheduled",
+              "data", "output"):
+        (target / d).mkdir(parents=True, exist_ok=True)
 
     files = {
         target / ".gitignore":              _INIT_GITIGNORE,
         target / ".env.example":            _INIT_ENV_EXAMPLE,
-        target / "tracebi.yaml":            _INIT_TRACEBI_YAML,
         target / "README.md":               _init_project_readme(target.name),
         target / "requests" / "sample_report.py": _INIT_SAMPLE_REQUEST,
     }
+    # Keep the discovery directories in git even while empty, so the layout
+    # survives a clone.
+    for d in ("models", "pipelines", "reports", "scheduled"):
+        files[target / d / ".gitkeep"] = ""
+
     for path, content in files.items():
         if path.exists() and not args.force:
             print(f"skipping existing {path}", file=sys.stderr)
@@ -527,7 +529,65 @@ def cmd_init(args: argparse.Namespace) -> int:
         path.write_text(content, encoding="utf-8")
 
     print(f"Initialised TraceBi project at {target}")
-    print(f"  cd {target.name} && tracebi run sample_report")
+    print(f"  cd {target.name}")
+    print(f"  tracebi run sample_report     # render to output/")
+    print(f"  tracebi serve                 # browse at http://127.0.0.1:8000")
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """
+    Serve the current project's web UI.
+
+    The one CLI step between an installed package and a running app.
+    Artifacts are discovered from the working directory, so this is run
+    from a project root — the layout ``tracebi init`` creates.
+    """
+    cwd = Path.cwd()
+    discovered = {
+        d: len([p for p in (cwd / d).glob("*.py") if not p.name.startswith("_")])
+        for d in ("models", "pipelines", "reports", "requests")
+        if (cwd / d).is_dir()
+    }
+    if not discovered:
+        print(
+            f"No TraceBi project found in {cwd}.\n"
+            f"Expected at least one of: models/ pipelines/ reports/ requests/\n"
+            f"Run `tracebi init .` to scaffold one, or cd to a project root.",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        import uvicorn  # noqa: F401
+    except ImportError:
+        print(
+            "The web UI needs the web extras. Install with:\n"
+            "    pip install 'tracebi[web]'",
+            file=sys.stderr,
+        )
+        return 1
+
+    # The app reads artifact directories relative to the working directory,
+    # so it must stay on sys.path for the discovery imports to resolve.
+    sys.path.insert(0, str(cwd))
+
+    # Don't drag the bundled demo app into someone else's project — it
+    # references demo data they do not have. An app module is only needed
+    # for connectors and dashboards; opt in by setting TRACEBI_APP.
+    os.environ.setdefault("TRACEBI_APP", "")
+
+    summary = ", ".join(f"{n} {d}" for d, n in discovered.items() if n) or "no artifacts yet"
+    print(f"TraceBi — serving {cwd.name} ({summary})")
+    print(f"  http://{args.host}:{args.port}")
+
+    import uvicorn
+    uvicorn.run(
+        "web.api.main:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
     return 0
 
 
@@ -794,7 +854,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_init = sub.add_parser(
         "init",
-        help="Scaffold a new TraceBi project (tracebi.yaml, .env.example, "
+        help="Scaffold a new TraceBi project (models/, pipelines/, reports/, "
              "sample report, .gitignore).",
     )
     p_init.add_argument("project", help="Target directory name.")
@@ -822,6 +882,17 @@ def build_parser() -> argparse.ArgumentParser:
              "e.g. --param period=2026-Q1",
     )
     p_run.set_defaults(func=cmd_run)
+
+    p_serve = sub.add_parser(
+        "serve",
+        help="Serve this project's web UI (models, reports, pipelines, "
+             "dashboards) at http://127.0.0.1:8000.",
+    )
+    p_serve.add_argument("--host", default="127.0.0.1")
+    p_serve.add_argument("--port", type=int, default=8000)
+    p_serve.add_argument("--reload", action="store_true",
+                         help="Restart on file changes (development).")
+    p_serve.set_defaults(func=cmd_serve)
 
     p_dev = sub.add_parser(
         "dev",

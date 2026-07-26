@@ -2134,3 +2134,98 @@ class TestRegistryLibrarySeam:
         from tracebi.registry import registry as singleton
 
         assert not isinstance(singleton, types.ModuleType)
+
+
+class TestConsumerProjectPath:
+    """
+    `tracebi init` used to scaffold a layout the web app could not open,
+    and there was no CLI route from an installed package to a running UI.
+    """
+
+    def test_init_creates_the_directories_the_server_discovers(self, tmp_path):
+        from tracebi.cli import main
+
+        target = tmp_path / "proj"
+        assert main(["init", str(target)]) == 0
+        for d in ("models", "pipelines", "reports", "requests", "scheduled",
+                  "data", "output"):
+            assert (target / d).is_dir(), f"init must create {d}/"
+
+    def test_discovery_dirs_survive_a_clone(self, tmp_path):
+        """Empty directories vanish in git without a keepfile."""
+        from tracebi.cli import main
+
+        target = tmp_path / "proj"
+        main(["init", str(target)])
+        for d in ("models", "pipelines", "reports", "scheduled"):
+            assert (target / d / ".gitkeep").exists()
+
+    def test_init_does_not_write_dead_config(self, tmp_path):
+        """tracebi.yaml was scaffolded and parsed by nothing."""
+        from tracebi.cli import main
+
+        target = tmp_path / "proj"
+        main(["init", str(target)])
+        assert not (target / "tracebi.yaml").exists()
+
+    def test_serve_refuses_outside_a_project(self, tmp_path, monkeypatch, capsys):
+        from tracebi.cli import main
+
+        monkeypatch.chdir(tmp_path)
+        assert main(["serve"]) == 1
+        assert "No TraceBi project found" in capsys.readouterr().err
+
+    def test_serve_accepts_host_and_port(self, tmp_path, monkeypatch):
+        from tracebi.cli import main
+
+        (tmp_path / "models").mkdir()
+        monkeypatch.chdir(tmp_path)
+        captured = {}
+
+        import uvicorn
+
+        def _fake_run(app, **kw):
+            captured.update(kw)
+
+        monkeypatch.setattr(uvicorn, "run", _fake_run)
+        main(["serve", "--host", "0.0.0.0", "--port", "9123"])
+        assert captured["host"] == "0.0.0.0"
+        assert captured["port"] == 9123
+
+    def test_serve_does_not_load_the_bundled_demo_app(self, tmp_path, monkeypatch):
+        """
+        Serving someone else's project must not import web.demo_app — it
+        references demo data they do not have, and the import blew up.
+        """
+        from tracebi.cli import main
+
+        (tmp_path / "models").mkdir()
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("TRACEBI_APP", raising=False)
+
+        import uvicorn
+
+        monkeypatch.setattr(uvicorn, "run", lambda app, **kw: None)
+        main(["serve"])
+        assert os.environ.get("TRACEBI_APP") == ""
+
+
+class TestDocsDirResolution:
+    def test_env_override_wins(self, tmp_path, monkeypatch):
+        from web.api.routers import docs
+
+        (tmp_path / "guide.md").write_text("# A Guide\n")
+        monkeypatch.setenv("TRACEBI_DOCS_DIR", str(tmp_path))
+        assert docs._docs_dir() == tmp_path.resolve()
+        assert "guide" in docs._guides()
+
+    def test_resolves_when_cwd_has_no_docs(self, tmp_path, monkeypatch):
+        """
+        The path was hardcoded to the repo root, so an installed layout
+        silently served an empty Getting Started page.
+        """
+        from web.api.routers import docs
+
+        monkeypatch.delenv("TRACEBI_DOCS_DIR", raising=False)
+        monkeypatch.chdir(tmp_path)
+        assert docs._guides(), "guides must still resolve from the package"

@@ -95,17 +95,23 @@ def health():
 
 # ── Load app module ────────────────────────────────────────────────────────
 
-_app_module = os.environ.get("TRACEBI_APP", "web.demo_app")
+# An app module wires up connectors and dashboards, which cannot be
+# expressed as a file convention. Set TRACEBI_APP="" to skip it entirely —
+# a project that only uses the models/ pipelines/ reports/ requests/
+# directories needs no app module, and loading the bundled demo into
+# someone else's project would fail on data they do not have.
+_app_module = os.environ.get("TRACEBI_APP", "web.demo_app").strip()
 
-try:
-    importlib.import_module(_app_module)
-except ImportError as exc:
-    import warnings
-    warnings.warn(
-        f"TRACEBI_APP module '{_app_module}' could not be imported: {exc}. "
-        "The API will start with an empty registry.",
-        stacklevel=1,
-    )
+if _app_module:
+    try:
+        importlib.import_module(_app_module)
+    except ImportError as exc:
+        import warnings
+        warnings.warn(
+            f"TRACEBI_APP module '{_app_module}' could not be imported: {exc}. "
+            "The API will start with an empty registry.",
+            stacklevel=1,
+        )
 
 # Folder-based auto-discovery — decorator-based artifacts fire registry side
 # effects on import (reports use @register.report, requests expose run()).

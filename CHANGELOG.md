@@ -32,6 +32,41 @@ This applies the principle already documented for column validation —
 *"a typo must fail loudly, never return a silently wrong result"* — to join
 cardinality.
 
+### Added — a working path from install to running app
+
+**`tracebi serve`** — the missing CLI step between an installed package and
+a browsable UI. Run it from a project root; artifacts are discovered from
+the working directory. Previously every documented route to the web app
+started with `git clone` plus an editable install.
+
+**`tracebi init` now scaffolds the layout the server actually reads** —
+`models/`, `pipelines/`, `reports/`, `requests/`, `scheduled/`, plus
+`data/` and `output/`. It used to create only `requests/`, so an init'd
+project was structurally incompatible with the web app: there was no path
+from `tracebi init` to a running UI at all. Discovery directories carry a
+`.gitkeep` so the layout survives a clone.
+
+**`TRACEBI_APP=""` now means "no app module".** Serving a user's project no
+longer drags in the bundled demo app, which references demo data they do
+not have and failed on import. An app module is only needed for connectors
+and dashboards; the four artifact directories need none.
+
+### Removed
+
+- **`tracebi.yaml`.** It was scaffolded by `tracebi init` and checked by
+  `tracebi validate`, but **parsed by no code** — there was no YAML reader
+  and `pyyaml` was not a dependency. Its `connectors:` block invited users
+  to configure a data source that would never be read. Connectors are
+  declared in Python, in `models/`, where they are versioned and reviewable.
+
+### Fixed
+
+- **The Getting Started page could silently serve nothing.** The docs
+  router hardcoded a repo-root-relative path (`parents[3]`), which does not
+  exist in an installed layout, so `GET /api/docs` returned an empty list
+  with no error. It now resolves at call time: `TRACEBI_DOCS_DIR`, then the
+  working directory, then the package checkout.
+
 ### Added — named measures make the model a shared vocabulary
 
 **`DataModel.add_measure()`** — define a calculation once, review it in a

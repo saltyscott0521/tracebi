@@ -191,13 +191,14 @@ keep the rest of TraceBi as the data layer.
 ### CLI
 
 ```bash
-tracebi init my_project                              # scaffold tracebi.yaml + .env.example + requests/
+tracebi init my_project                              # scaffold models/ pipelines/ reports/ requests/
 tracebi new-request "Open orders by region"          # → requests/open_orders_by_region.py
 tracebi new-request "Customer churn" --notebook      # → requests/customer_churn.ipynb
 tracebi list-requests
 tracebi run open_orders_by_region                    # works for .py and .ipynb
 tracebi dev open_orders_by_region                    # live preview: re-runs + reloads on save
-tracebi validate                                     # sanity-check the current project
+tracebi validate                                     # load every model; check dimension keys are unique
+tracebi serve                                        # browse the project at http://127.0.0.1:8000
 tracebi new-model "Sales Model"                      # → models/sales_model.py
 tracebi list-models
 tracebi new-pipeline "Sales ETL"                     # → pipelines/sales_etl.py
