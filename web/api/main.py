@@ -31,9 +31,11 @@ Environment switches:
 import importlib
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+from web.api.errors import error_detail
 
 from web.api.routers import connectors, models, reports, pipelines, requests, docs
 from web.api.auth import install_if_configured as _install_auth
@@ -106,6 +108,61 @@ def discovery():
     for e in entries:
         counts[e["status"]] = counts.get(e["status"], 0) + 1
     return {"summary": counts, "entries": entries}
+
+
+@app.get("/api/spec/schema")
+def spec_schema():
+    """JSON Schema for a report spec, generated from the section dataclasses."""
+    from tracebi.spec import json_schema
+    return json_schema()
+
+
+@app.post("/api/spec/validate")
+def spec_validate(body: dict):
+    """
+    Check a report spec without executing it.
+
+    Validates section types, field names, enum values, and — against the
+    registered models — that each referenced model, fact, measure and
+    dimension exists. Returns field-scoped errors like
+    ``sections[2].data.query.fact``, so an author can fix the spec before
+    anything runs.
+    """
+    from tracebi.spec import ReportSpec
+
+    try:
+        spec = ReportSpec.from_dict(body)
+    except Exception as exc:  # noqa: BLE001 — a malformed spec is a 400
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    result = spec.validate(_registered_models())
+    result["data_coverage"] = spec.data_coverage()
+    return result
+
+
+@app.post("/api/spec/render")
+def spec_render(body: dict):
+    """Build a report spec against the registered models and render it to HTML."""
+    from tracebi.reports.html_renderer import HTMLRenderer
+    from tracebi.spec import ReportSpec
+
+    try:
+        spec = ReportSpec.from_dict(body)
+        report = spec.build(_registered_models())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=500, detail=error_detail("Spec render failed", exc)
+        ) from exc
+
+    manifest = report.build_manifest(format="html", output_path="(in-memory)")
+    return {"html": HTMLRenderer().to_html(report), "manifest": manifest.to_dict()}
+
+
+def _registered_models() -> dict:
+    """Registered models keyed by name, for spec validation and building."""
+    from web.api.registry import registry as _reg
+    return {m["name"]: _reg.get_model(m["name"]) for m in _reg.list_models()}
 
 
 @app.get("/api/schema")

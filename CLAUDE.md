@@ -167,6 +167,9 @@ tracebi list-pipelines
 # Agent / tooling context
 tracebi context                                # framework vocabulary as JSON
 tracebi context --model sales_model            # plus that model's schema
+tracebi spec schema                            # JSON Schema for a report spec
+tracebi spec validate report.json              # check a spec without running it
+tracebi spec render report.json                # build and render it
 tracebi serve                                  # browse the project
 
 # Tests
@@ -258,6 +261,9 @@ Add a file under `web/api/routers/`, include it in `web/api/main.py`, and read r
 GET  /api/health
 GET  /api/schema                                     → machine-readable vocabulary (generated)
 GET  /api/discovery                                  → per-file registered/skipped/failed + reason
+GET  /api/spec/schema                                → JSON Schema for a report spec
+POST /api/spec/validate                              → check a spec without executing it
+POST /api/spec/render                                → build a spec and render HTML + manifest
 GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/models

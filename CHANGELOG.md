@@ -6,6 +6,50 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — reports as data (`ReportSpec`)
+
+A `Report` is declarative in Python but holds live `DataSet` objects, so it
+could not be written down. A **`ReportSpec`** is the same report as JSON:
+presentation structure plus a *declarative reference* to the data rather than
+the data itself.
+
+```json
+{"name": "Regional Margin",
+ "sections": [
+   {"type": "text", "title": "Summary", "style": "heading1"},
+   {"type": "table", "title": "By Region",
+    "data": {"model": "Sales", "query": {
+       "fact": "fact_orders",
+       "measures": ["revenue", "gross_margin", "margin_pct"],
+       "dimensions": ["dim_customer.region"]}}}]}
+```
+
+That distinction buys three things a Python-only report cannot have:
+
+- **Validation before execution.** `spec.validate(models)` checks section
+  types, field names, enum values, and whether the referenced model, fact,
+  measures and dimensions exist — **without loading a single row**. Errors
+  carry a path: `sections[0].sections[1].data.query.fact`. An author, human
+  or agent, finds out it is wrong before anything runs.
+- **Diff and review.** Two specs are two JSON documents, so a change to how a
+  number is defined shows up in a pull request.
+- **Replay.** The spec is the input, the manifest is the receipt.
+
+Sections serialize **generically from their dataclass fields**, never through
+parallel "spec" classes — duplicating the definitions would drift the first
+time someone added a field. A test asserts the section mapping covers every
+`SectionType`.
+
+`ReportSpec.from_report()` recovers a spec from a live report:
+`DataModel.execute()` now stamps the model name and resolved `QuerySpec` into
+the lineage, so a dataset produced by a model query can describe itself.
+A dataset built from ad-hoc transforms has no declarative form, and
+`data_coverage()` says so rather than pretending it round-trips.
+
+New surfaces: `tracebi spec schema | validate | render`,
+`GET /api/spec/schema`, `POST /api/spec/validate`, `POST /api/spec/render`,
+and a generated JSON Schema so an editor can complete a spec.
+
 ### ⚠️ Removed — the Dash dashboard layer
 
 `tracebi.dashboard` (Dashboard, DashboardServer, and the four panel types),

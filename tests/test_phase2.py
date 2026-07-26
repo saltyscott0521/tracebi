@@ -8,6 +8,7 @@ import tempfile
 import pytest
 import pandas as pd
 
+from tracebi import DataModel, MemoryConnector
 from tracebi.model.dataset import DataSet, LineageNode
 from tracebi.reports.report import (
     Report, TextSection, TableSection, ChartSection,
@@ -599,3 +600,268 @@ class TestManifestReceiptCompleteness:
     def test_section_id_round_trips_when_set(self):
         assert TextSection(content="x", id="exec-summary").to_manifest_dict()["id"] == "exec-summary"
         assert "id" not in TextSection(content="x").to_manifest_dict()
+
+
+# ── Report specs (reports as data) ────────────────────────────────────────────
+
+def _spec_model():
+    """A model with declared measures, for spec tests."""
+    orders = pd.DataFrame({
+        "order_id": [1, 2, 3, 4], "customer_id": [1, 2, 1, 2],
+        "revenue": [100.0, 200.0, 300.0, 400.0],
+        "cost": [60.0, 150.0, 180.0, 320.0],
+    })
+    customers = pd.DataFrame({"customer_id": [1, 2], "region": ["West", "NE"]})
+    m = DataModel("Sales").add_connector(
+        MemoryConnector("mem", {"orders": orders, "customers": customers})
+    )
+    m.add_table("orders", connector="mem", source="orders")
+    m.add_table("customers", connector="mem", source="customers")
+    m.add_dimension("dim_customer", table_name="customers",
+                    key_col="customer_id", attributes=["region"])
+    m.add_fact("fact_orders", table_name="orders", measures=["revenue", "cost"],
+               foreign_keys={"dim_customer": "customer_id"})
+    m.add_measure("revenue", column="revenue", agg="sum")
+    m.add_measure("gross_margin", expr="revenue - cost", agg="sum")
+    m.connect()
+    return m
+
+
+VALID_SPEC = {
+    "name": "Regional Margin",
+    "author": "an agent",
+    "sections": [
+        {"type": "text", "title": "Summary", "style": "heading1"},
+        {"type": "table", "title": "By Region",
+         "data": {"model": "Sales", "query": {
+             "fact": "fact_orders", "measures": ["revenue", "gross_margin"],
+             "dimensions": ["dim_customer.region"]}}},
+    ],
+}
+
+
+class TestReportSpecRoundTrip:
+    def test_round_trips_through_json(self):
+        from tracebi.spec import ReportSpec
+
+        spec = ReportSpec.from_dict(VALID_SPEC)
+        assert ReportSpec.from_json(spec.to_json()).to_dict() == spec.to_dict()
+
+    def test_builds_a_live_report(self):
+        from tracebi.spec import ReportSpec
+
+        report = ReportSpec.from_dict(VALID_SPEC).build({"Sales": _spec_model()})
+        assert report.name == "Regional Margin"
+        assert len(report.sections) == 2
+
+    def test_built_report_renders_with_real_data(self):
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.spec import ReportSpec
+
+        report = ReportSpec.from_dict(VALID_SPEC).build({"Sales": _spec_model()})
+        html = HTMLRenderer().to_html(report)
+        assert "West" in html and "NE" in html
+
+    def test_report_to_spec_recovers_the_data_reference(self):
+        from tracebi.reports.report import Report, TableSection
+        from tracebi.spec import ReportSpec
+
+        model = _spec_model()
+        ds = model.query(fact="fact_orders", measures=["revenue"],
+                         dimensions=["dim_customer.region"])
+        report = Report("RT").add(TableSection(title="Rows", dataset=ds))
+
+        spec = ReportSpec.from_report(report)
+        assert spec.data_coverage() == {
+            "total": 1, "with_data_ref": 1, "presentation_only": [],
+        }
+        assert spec.to_dict()["sections"][0]["data"]["model"] == "Sales"
+
+    def test_rebuilt_report_matches_the_original(self):
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.reports.report import Report, TableSection
+        from tracebi.spec import ReportSpec
+
+        model = _spec_model()
+        ds = model.query(fact="fact_orders", measures=["revenue"],
+                         dimensions=["dim_customer.region"])
+        original = Report("RT").add(TableSection(title="Rows", dataset=ds))
+        rebuilt = ReportSpec.from_report(original).build({"Sales": model})
+
+        renderer = HTMLRenderer()
+        assert len(renderer.to_html(original)) == len(renderer.to_html(rebuilt))
+
+    def test_adhoc_data_is_reported_as_not_declarative(self):
+        """
+        A dataset built from arbitrary transforms has no declarative form.
+        Saying so is better than pretending it round-trips.
+        """
+        from tracebi.reports.report import Report, TableSection
+        from tracebi.spec import ReportSpec
+
+        model = _spec_model()
+        report = Report("A").add(
+            TableSection(title="T", dataset=model.load("orders"))
+        )
+        coverage = ReportSpec.from_report(report).data_coverage()
+        assert coverage["with_data_ref"] == 0
+        assert coverage["presentation_only"] == ["T"]
+
+    def test_nested_rows_round_trip(self):
+        from tracebi.spec import ReportSpec
+
+        spec = ReportSpec.from_dict({
+            "name": "Nested",
+            "sections": [{"type": "row", "sections": [
+                {"type": "row", "sections": [{"type": "text", "content": "deep"}]},
+                {"type": "text", "content": "shallow"},
+            ]}],
+        })
+        report = spec.build({})
+        assert "deep" in ReportSpec.from_report(report).to_json()
+
+    def test_metrics_round_trip(self):
+        from tracebi.spec import ReportSpec
+
+        spec = ReportSpec.from_dict({
+            "name": "KPIs",
+            "sections": [{"type": "metrics", "title": "Q2", "metrics": [
+                {"label": "Revenue", "value": 1000, "format": "currency"},
+            ]}],
+        })
+        report = spec.build({})
+        again = ReportSpec.from_report(report).to_dict()
+        assert again["sections"][0]["metrics"][0]["label"] == "Revenue"
+
+
+class TestReportSpecValidation:
+    """
+    The point of a spec is being checkable before it runs. An agent that
+    gets a field-scoped error fixes its output; one that gets a rendered
+    wrong report does not.
+    """
+
+    @staticmethod
+    def _errors(spec_dict, models=None):
+        from tracebi.spec import ReportSpec
+
+        return ReportSpec.from_dict(spec_dict).validate(
+            models if models is not None else {"Sales": _spec_model()}
+        )["errors"]
+
+    def test_valid_spec_passes(self):
+        assert self._errors(VALID_SPEC) == []
+
+    def test_bad_chart_type_is_caught_without_executing(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "chart", "chart_type": "stacked_bar"}]})
+        assert any("chart_type" in e and "sections[0]" in e for e in errs)
+
+    def test_bad_style_suggests_a_match(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "text", "style": "headline1"}]})
+        assert any("heading1" in e for e in errs)
+
+    def test_unknown_section_type_suggests_a_match(self):
+        errs = self._errors({"name": "x", "sections": [{"type": "tabel"}]})
+        assert any("table" in e for e in errs)
+
+    def test_unknown_field_suggests_a_match(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "text", "contnet": "typo"}]})
+        assert any("content" in e for e in errs)
+
+    def test_unknown_model_is_caught(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "table", "data": {"model": "Nope", "query": {
+                "fact": "fact_orders", "measures": ["revenue"]}}}]})
+        assert any("data.model" in e for e in errs)
+
+    def test_unknown_fact_is_caught(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "table", "data": {"model": "Sales", "query": {
+                "fact": "fact_nope", "measures": ["revenue"]}}}]})
+        assert any("data.query.fact" in e for e in errs)
+
+    def test_undeclared_measure_is_caught(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "table", "data": {"model": "Sales", "query": {
+                "fact": "fact_orders", "measures": ["revenu"]}}}]})
+        assert any("data.query.measures" in e for e in errs)
+
+    def test_unknown_dimension_is_caught(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "table", "data": {"model": "Sales", "query": {
+                "fact": "fact_orders", "measures": ["revenue"],
+                "dimensions": ["dim_nope.region"]}}}]})
+        assert any("data.query.dimensions" in e for e in errs)
+
+    def test_errors_inside_nested_rows_carry_the_path(self):
+        errs = self._errors({"name": "x", "sections": [
+            {"type": "row", "sections": [{"type": "chart", "chart_type": "bogus"}]}]})
+        assert any("sections[0].sections[0]" in e for e in errs)
+
+    def test_missing_data_reference_warns_but_does_not_error(self):
+        from tracebi.spec import ReportSpec
+
+        result = ReportSpec.from_dict(
+            {"name": "x", "sections": [{"type": "table", "title": "T"}]}
+        ).validate({"Sales": _spec_model()})
+        assert result["ok"] is True
+        assert any("no data reference" in w for w in result["warnings"])
+
+    def test_build_refuses_an_invalid_spec(self):
+        from tracebi.spec import ReportSpec
+
+        spec = ReportSpec.from_dict({"name": "x", "sections": [
+            {"type": "chart", "chart_type": "bogus"}]})
+        with pytest.raises(ValueError, match="not valid"):
+            spec.build({"Sales": _spec_model()})
+
+    def test_unknown_top_level_field_rejected(self):
+        from tracebi.spec import ReportSpec
+
+        with pytest.raises(ValueError, match="Unknown report spec field"):
+            ReportSpec.from_dict({"name": "x", "titel": "typo"})
+
+    def test_name_is_required(self):
+        from tracebi.spec import ReportSpec
+
+        with pytest.raises(ValueError, match="needs a 'name'"):
+            ReportSpec.from_dict({"sections": []})
+
+
+class TestReportSpecSchema:
+    def test_covers_every_section_type(self):
+        """
+        Anti-drift: add a SectionType and forget the spec mapping, and this
+        fails rather than silently producing an unbuildable schema.
+        """
+        from tracebi.reports.report import SectionType
+        from tracebi.spec import SECTION_CLASSES
+
+        assert set(SECTION_CLASSES) == {t.value for t in SectionType}
+
+    def test_schema_is_json_serializable(self):
+        import json
+
+        from tracebi.spec import json_schema
+
+        assert json.loads(json.dumps(json_schema()))
+
+    def test_schema_publishes_enum_values(self):
+        from tracebi.reports.report import CHART_TYPES
+        from tracebi.spec import json_schema
+
+        variants = {v["properties"]["type"]["const"]: v
+                    for v in json_schema()["$defs"]["section"]["oneOf"]}
+        assert variants["chart"]["properties"]["chart_type"]["enum"] == list(CHART_TYPES)
+
+    def test_schema_omits_live_object_fields(self):
+        """A spec references data; it never inlines a DataSet."""
+        from tracebi.spec import json_schema
+
+        variants = {v["properties"]["type"]["const"]: v
+                    for v in json_schema()["$defs"]["section"]["oneOf"]}
+        assert "dataset" not in variants["table"]["properties"]
+        assert "data" in variants["table"]["properties"]

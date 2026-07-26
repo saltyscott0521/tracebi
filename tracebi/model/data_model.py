@@ -930,8 +930,11 @@ class DataModel:
                 "engine": engine,
                 "rows_out": len(result_df),
                 "measures": dict(measures),
-                # The exact spec that produced this frame. With
-                # DataSet.fingerprint() this makes the run reproducible.
+                # The model and the exact spec that produced this frame.
+                # With DataSet.fingerprint() that makes the run
+                # reproducible, and it lets a report recover a declarative
+                # data reference for its own sections (see tracebi.spec).
+                "model": self.name,
                 "query_spec": spec.to_dict(),
             },
         ))

@@ -560,6 +560,80 @@ def cmd_context(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_project_models() -> dict:
+    """Every model in models/, keyed by the name the spec would reference."""
+    from tracebi import model_registry
+
+    models: dict = {}
+    d = _default_models_dir()
+    if not d.is_dir():
+        return models
+    for stem in model_registry.auto_discover(str(d)):
+        try:
+            m = model_registry.get_model(stem)
+        except Exception:  # noqa: BLE001 — validate reports load failures itself
+            continue
+        models[m.name] = m
+        models.setdefault(stem, m)
+    return models
+
+
+def cmd_spec(args: argparse.Namespace) -> int:
+    """
+    Work with report specs — a report as JSON rather than Python.
+
+        tracebi spec schema                 # the JSON Schema
+        tracebi spec validate report.json   # check it without running it
+        tracebi spec render report.json     # build and render it
+    """
+    from tracebi.spec import ReportSpec, json_schema
+
+    if args.action == "schema":
+        print(json.dumps(json_schema(), indent=2))
+        return 0
+
+    if not args.file:
+        print(f"`tracebi spec {args.action}` needs a spec file.", file=sys.stderr)
+        return 1
+    path = Path(args.file)
+    if not path.is_file():
+        print(f"No such file: {path}", file=sys.stderr)
+        return 1
+
+    try:
+        spec = ReportSpec.from_json(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001 — a bad file is a user error
+        print(f"{path}: could not read spec — {exc}", file=sys.stderr)
+        return 1
+
+    models = _load_project_models()
+    result = spec.validate(models)
+
+    for warn in result["warnings"]:
+        print(f"· {warn}")
+    for err in result["errors"]:
+        print(f"✗ {err}", file=sys.stderr)
+    if not result["ok"]:
+        print(f"\n{len(result['errors'])} problem(s) in {path}.", file=sys.stderr)
+        return 1
+
+    if args.action == "validate":
+        coverage = spec.data_coverage()
+        print(f"✓ {path} is valid — {len(spec.sections)} section(s), "
+              f"{coverage['with_data_ref']}/{coverage['total']} data-bearing "
+              f"section(s) have a reference")
+        return 0
+
+    # render
+    from tracebi.reports.html_renderer import HTMLRenderer
+
+    report = spec.build(models)
+    out = Path(args.output or f"{_slugify(spec.name)}.html")
+    HTMLRenderer().render(report, str(out))
+    print(f"Rendered {spec.name} → {out}")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     """
     Serve the current project's web UI.
@@ -925,6 +999,16 @@ def build_parser() -> argparse.ArgumentParser:
              "e.g. --param period=2026-Q1",
     )
     p_run.set_defaults(func=cmd_run)
+
+    p_spec = sub.add_parser(
+        "spec",
+        help="Work with report specs (a report as JSON): print the schema, "
+             "validate a spec without running it, or render one.",
+    )
+    p_spec.add_argument("action", choices=["schema", "validate", "render"])
+    p_spec.add_argument("file", nargs="?", help="Path to a spec .json file.")
+    p_spec.add_argument("--output", help="Output path for `render`.")
+    p_spec.set_defaults(func=cmd_spec)
 
     p_context = sub.add_parser(
         "context",

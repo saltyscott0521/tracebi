@@ -34,6 +34,7 @@ from tracebi.pipeline.runner import PipelineRunner
 # shadow the `tracebi.registry` submodule, breaking the documented
 # `from tracebi.registry import registry`.
 from tracebi.registry import Registry
+from tracebi.spec import DataRef, ReportSpec
 from tracebi.web.register import register
 from tracebi._params import request_params
 
@@ -69,6 +70,9 @@ __all__ = [
     # (the singleton is `from tracebi.registry import registry`)
     "Registry",
     "register",
+    # Reports as data
+    "ReportSpec",
+    "DataRef",
     # Project-scope registries (import as modules: tracebi.model_registry.get_model)
     "model_registry",
     "pipeline_registry",
