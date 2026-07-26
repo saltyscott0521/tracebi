@@ -1,13 +1,15 @@
 """
-``tracebi.web`` — helpers for the TraceBi web layer.
+``tracebi.web`` — auto-discovery helpers and the registration facade.
 
-This module gives library users and notebook authors a clean entry point
-to the running web server's resource registry without importing the web
-application package directly.
+Kept for backward compatibility: ``register`` now lives in the library
+proper and is better imported as ``from tracebi import register``, since
+the registry is no longer part of the web layer. This spelling still
+works and appears throughout the scaffolds and docs.
 
 Notebook usage::
 
-    from tracebi.web import register
+    from tracebi import register          # preferred
+    from tracebi.web import register      # equivalent, original spelling
 
     register.connector(my_connector)
     register.model(my_model, default=True)
@@ -22,9 +24,10 @@ Notebook usage::
 
     register.auto_discover("requests/")
 
-These calls populate the singleton in ``web.api.registry`` if the web
-package is importable (i.e. you installed ``tracebi[web]``). When the
-web package is not available, an informative ``ImportError`` is raised.
+These calls populate the process-global singleton in
+:mod:`tracebi.registry`. No web install is required — the same code works
+in a bare notebook and under the running server, and lookups fall back to
+the project-root ``models/`` and ``pipelines/`` directories.
 """
 
 from __future__ import annotations

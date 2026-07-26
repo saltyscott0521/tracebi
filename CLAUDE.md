@@ -114,7 +114,7 @@ web/
   api/
     main.py            # FastAPI app entry point — CORS, routers, WSGI mounts, auth
     auth.py            # Optional HTTP Basic / proxy-header middleware
-    registry.py        # Singleton resource store — the seam between framework and app
+    registry.py        # Back-compat re-export of tracebi.registry (the real seam)
     errors.py          # Structured error payload (message + traceback) for routers
     lineage_graph.py   # LineageNode list → React Flow graph (shared by routers)
     routers/           # One file per domain (connectors, models, reports, pipelines, dashboards, dev)
@@ -183,7 +183,9 @@ Every transform method must return a new `DataSet`. Never mutate `.df` or `.line
 Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern. `LineageNode` is frozen — pass all fields (including `metadata`) at construction; you cannot edit a node afterwards, by design.
 
 **3. Registry is populated at startup, read at request time.**
-`web/api/registry.py` is a singleton. Register all connectors, models, reports, and dashboards in your app module (e.g. `web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.
+`tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, reports, and dashboards in your app module (e.g. `web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.
+
+`web/api/registry.py` is a backward-compatible re-export of the same object. **Do not repoint the routers at `tracebi.registry` directly** — several tests isolate state by rebinding `web.api.registry.registry`, and routers bind at import time, so changing the import path silently breaks that isolation. If you ever do repoint them, convert those tests in the same change.
 
 **4. Optional dependencies must fail loudly.**
 Each feature group (reports, dashboard, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
@@ -308,7 +310,7 @@ Don't add these unless asked.
 | Understand architecture decisions | `NOTES.md` |
 | See a complete working wiring | `web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
-| Add something to the web API | `web/api/registry.py` |
+| Add something to the web API | `tracebi/registry.py` (singleton) + `web/api/routers/` |
 | Write an ad hoc report | `requests/_template.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
 | Define a reusable pipeline | `tracebi new-pipeline` → `pipelines/` → `tracebi/pipeline_registry.py` |

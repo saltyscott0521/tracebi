@@ -124,15 +124,15 @@ def run():
     print(f"Saved: {{base}}.xlsx / .html")
 
 
-# ── 4. Optional: expose to the web UI ──────────────────────────────────────
-try:
-    from tracebi.web import register
+# ── 4. Publish to the project registry ─────────────────────────────────────
+# Makes this report available to `tracebi run`, the web UI, and any other
+# consumer. Harmless when nothing is listening.
+from tracebi import register
 
-    @register.report("{slug}", description="Short description of this report.")
-    def _factory():
-        return report
-except ImportError:
-    pass
+
+@register.report("{slug}", description="Short description of this report.")
+def _factory():
+    return report
 
 
 if __name__ == "__main__":
@@ -176,12 +176,10 @@ def _notebook_text(title: str) -> str:
                     "# Declare defaults; override via tracebi run --param or the web UI form\n",
                     "params = request_params(period=\"Q2 2024\")\n",
                     "\n",
-                    "# Pull the shared project model if the web server registered one\n",
-                    "try:\n",
-                    "    from tracebi.web import register\n",
-                    "    model = register.get_default_model()\n",
-                    "except ImportError:\n",
-                    "    model = None\n",
+                    "# Pull the shared project model (registry, then models/ on disk)\n",
+                    "from tracebi import register\n",
+                    "\n",
+                    "model = register.get_default_model()\n",
                 ],
             },
             {
@@ -228,7 +226,7 @@ def _notebook_text(title: str) -> str:
                 "execution_count": None,
                 "outputs":   [],
                 "source": [
-                    "# from tracebi.web import register\n",
+                    "# from tracebi import register\n",
                     f"# @register.report(\"{slug}\", description=\"...\")\n",
                     "# def _factory():\n",
                     "#     return report\n",
@@ -283,12 +281,12 @@ model.add_table("my_table", connector="{slug}_db", source="my_table")
 #                foreign_keys={{"dim_customer": "customer_id"}})
 model.connect()
 
-# ── Register with the web layer (optional) ───────────────────────────────────
-try:
-    from tracebi.web import register
-    register.model(model)
-except ImportError:
-    pass
+# ── Publish to the project registry ──────────────────────────────────────────
+# Also discoverable without this line via `get_model("{slug}")`, since files
+# in models/ are auto-loaded. Registering makes it visible to the web UI too.
+from tracebi import register
+
+register.model(model)
 '''
 
 
@@ -340,12 +338,12 @@ runner = PipelineRunner(db_url=_DB_URL)
 # runner.register(_silver, name="orders_silver", schedule="15 * * * *",
 #                 depends_on="orders_bronze")
 
-# ── Register with the web layer (optional) ───────────────────────────────────
-try:
-    from tracebi.web import register
-    register.pipeline("{slug}", runner)
-except ImportError:
-    pass
+# ── Publish to the project registry ──────────────────────────────────────────
+# Also discoverable without this line via `get_runner("{slug}")`, since files
+# in pipelines/ are auto-loaded. Registering makes it visible to the web UI too.
+from tracebi import register
+
+register.pipeline("{slug}", runner)
 '''
 
 
