@@ -575,9 +575,9 @@ class DataSet:
                 print(f"    {label}: {v}")
         print(f"{sep}\n")
 
-    def help(self) -> None:
-        """Print a cheat sheet of the fluent DataSet API."""
-        print(
+    def help_text(self) -> str:
+        """Return a cheat sheet of the fluent DataSet API as a string."""
+        return (
             "\nDataSet — immutable DataFrame wrapper with a lineage chain.\n"
             "\n"
             "Transforms (each returns a NEW DataSet and records a lineage step):\n"
@@ -608,6 +608,10 @@ class DataSet:
             "  Pass a DataSet to TableSection / ChartSection — its lineage is\n"
             "  included in the report manifest automatically.\n"
         )
+
+    def help(self) -> None:
+        """Print a cheat sheet of the fluent DataSet API."""
+        print(self.help_text())
 
     def _repr_html_(self) -> str:
         """Rich notebook display: header, lineage chain, and a preview table."""

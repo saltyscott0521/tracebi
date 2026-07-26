@@ -93,6 +93,21 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/schema")
+def schema():
+    """
+    The framework's vocabulary as data: every report section and dashboard
+    panel with its fields, types, defaults and allowed values, the DataSet
+    verbs, measure kinds, filter operators, and the discovery conventions.
+
+    Generated from the code rather than hand-maintained, so it stays
+    correct. Intended for tools — an agent authoring a project, an editor
+    completing a constructor, or a UI building a form.
+    """
+    from tracebi.capabilities import describe
+    return describe()
+
+
 # ── Load app module ────────────────────────────────────────────────────────
 
 # An app module wires up connectors and dashboards, which cannot be

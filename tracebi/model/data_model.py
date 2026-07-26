@@ -1717,9 +1717,9 @@ class DataModel:
                 print(f"    {d.name} → {d.table_name}  key={d.key_col}  attrs={d.attributes}")
         print(f"{sep}\n")
 
-    def help(self) -> None:
-        """Print a cheat sheet of the DataModel API."""
-        print(
+    def help_text(self) -> str:
+        """Return a cheat sheet of the DataModel API as a string."""
+        return (
             "\nDataModel — governed semantic model over your tables.\n"
             "\n"
             "Building:\n"
@@ -1739,6 +1739,10 @@ class DataModel:
             "  .info()        Structure as a dict\n"
             "  .describe()    Print a text summary\n"
         )
+
+    def help(self) -> None:
+        """Print a cheat sheet of the DataModel API."""
+        print(self.help_text())
 
     def _repr_html_(self) -> str:
         """Rich notebook display: tables, relationships, facts, dimensions."""

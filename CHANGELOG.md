@@ -32,6 +32,32 @@ This applies the principle already documented for column validation —
 *"a typo must fail loudly, never return a silently wrong result"* — to join
 cardinality.
 
+### Added — a machine-readable description of the framework
+
+**`tracebi.capabilities.describe()`**, **`tracebi context`**, and
+**`GET /api/schema`** return TraceBi's vocabulary as plain data: every
+report section and dashboard panel with its fields, types, defaults and
+*allowed values*; the DataSet verbs with signatures; measure kinds; filter
+operators; number formats; and the file conventions that make a project
+discoverable.
+
+It is **generated from dataclass fields and type annotations**, not written
+by hand. The section-type → class → parameter mapping previously existed
+only in docstrings and two hard-coded renderer dispatchers, so a
+hand-maintained copy would drift the first time a field was added. A test
+asserts the surface covers every `SectionType`, and another asserts every
+*advertised* enum value is actually accepted by the constructor — publishing
+a value that raises would be worse than publishing none.
+
+Intended for tools rather than people: an agent authoring a project, an
+editor completing a constructor, a UI building a form. Works on the base
+install — it reads class metadata and touches no optional dependency.
+
+**`help_text()` on `DataSet`, `DataModel`, and `Report`.** The cheat sheets
+were `print()` calls returning `None`, so anything in-process had to capture
+stdout to read them. The text now has one source: `help_text()` returns it,
+`help()` prints it, and the surface above carries all three.
+
 ### Added — a working path from install to running app
 
 **`tracebi serve`** — the missing CLI step between an installed package and

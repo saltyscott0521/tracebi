@@ -166,6 +166,11 @@ tracebi list-models
 tracebi new-pipeline "Sales ETL"               # → pipelines/sales_etl.py
 tracebi list-pipelines
 
+# Agent / tooling context
+tracebi context                                # framework vocabulary as JSON
+tracebi context --model sales_model            # plus that model's schema
+tracebi serve                                  # browse the project
+
 # Tests
 pytest tests/                                  # Full suite (404 tests)
 pytest tests/test_phase1.py                    # Single phase
@@ -256,6 +261,7 @@ Add a file under `web/api/routers/`, include it in `web/api/main.py`, and read r
 
 ```
 GET  /api/health
+GET  /api/schema                                     → machine-readable vocabulary (generated)
 GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/models

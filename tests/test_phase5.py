@@ -2229,3 +2229,157 @@ class TestDocsDirResolution:
         monkeypatch.delenv("TRACEBI_DOCS_DIR", raising=False)
         monkeypatch.chdir(tmp_path)
         assert docs._guides(), "guides must still resolve from the package"
+
+
+class TestCapabilitySurface:
+    """
+    The framework's vocabulary as data, for tools that author TraceBi
+    projects. Generated from the code — a hand-maintained copy would drift
+    the first time a field was added.
+    """
+
+    def test_describe_is_json_serializable(self):
+        import json
+
+        from tracebi.capabilities import describe
+
+        assert json.loads(json.dumps(describe(), default=str))
+
+    def test_every_section_class_is_described(self):
+        """
+        The generator must cover every SectionType. This is the anti-drift
+        check: add a section and forget the surface, and this fails.
+        """
+        from tracebi.capabilities import describe
+        from tracebi.reports.report import SectionType
+
+        described = {s["section_type"] for s in describe()["report_sections"]}
+        assert described == {t.value for t in SectionType}
+
+    def test_fields_carry_types_and_defaults(self):
+        from tracebi.capabilities import describe
+
+        text = next(s for s in describe()["report_sections"]
+                    if s["class"] == "TextSection")
+        by_name = {f["name"]: f for f in text["fields"]}
+        assert by_name["content"]["type"] == "str"
+        assert by_name["content"]["default"] == ""
+        assert by_name["style"]["default"] == "normal"
+
+    def test_closed_value_sets_are_published(self):
+        """An agent must be able to enumerate valid values, not guess."""
+        from tracebi.capabilities import describe
+        from tracebi.reports.report import CHART_TYPES, TEXT_STYLES
+
+        sections = {s["class"]: s for s in describe()["report_sections"]}
+        chart = {f["name"]: f for f in sections["ChartSection"]["fields"]}
+        text = {f["name"]: f for f in sections["TextSection"]["fields"]}
+        assert chart["chart_type"]["allowed"] == list(CHART_TYPES)
+        assert text["style"]["allowed"] == list(TEXT_STYLES)
+
+    def test_published_enums_match_what_is_enforced(self):
+        """
+        The advertised values must be the ones the constructor accepts —
+        publishing a value that raises would be worse than publishing none.
+        """
+        from tracebi.capabilities import describe
+        from tracebi.reports.report import ChartSection, TextSection
+
+        sections = {s["class"]: s for s in describe()["report_sections"]}
+        for value in next(f for f in sections["ChartSection"]["fields"]
+                          if f["name"] == "chart_type")["allowed"]:
+            ChartSection(chart_type=value)
+        for value in next(f for f in sections["TextSection"]["fields"]
+                          if f["name"] == "style")["allowed"]:
+            TextSection(style=value)
+
+    def test_data_bearing_fields_are_flagged(self):
+        """A spec must reference data, not inline a live DataSet."""
+        from tracebi.capabilities import describe
+
+        table = next(s for s in describe()["report_sections"]
+                     if s["class"] == "TableSection")
+        dataset = next(f for f in table["fields"] if f["name"] == "dataset")
+        assert dataset.get("holds_data") is True
+
+    def test_dataset_verbs_exclude_accessors(self):
+        from tracebi.capabilities import describe
+
+        names = {v["name"] for v in describe()["dataset_verbs"]}
+        assert "filter" in names and "aggregate" in names
+        for accessor in ("to_pandas", "fingerprint", "help", "help_text"):
+            assert accessor not in names
+
+    def test_semantic_model_vocabulary_matches_the_code(self):
+        from tracebi.capabilities import describe
+        from tracebi.model.data_model import _AGG_FUNCS, FILTER_OPS
+
+        sm = describe()["semantic_model"]
+        assert sm["filter_operators"] == list(FILTER_OPS)
+        assert set(sm["aggregations"]) == _AGG_FUNCS
+        assert {k["kind"] for k in sm["measure_kinds"]} == {
+            "simple", "expression", "ratio"
+        }
+
+    def test_discovery_conventions_are_described(self):
+        from tracebi.capabilities import describe
+
+        dirs = {d["path"]: d for d in describe()["conventions"]["directories"]}
+        assert dirs["models/"]["must_define"] == "model"
+        assert dirs["pipelines/"]["must_define"] == "runner"
+
+    def test_importable_without_optional_dependencies(self):
+        import subprocess
+        import sys
+
+        code = (
+            "import sys\n"
+            "class B:\n"
+            "    def find_spec(self, n, p=None, t=None):\n"
+            "        if n.split('.')[0] in ('openpyxl','matplotlib','dash',"
+            "'plotly','networkx','duckdb','sqlalchemy','fastapi'):\n"
+            "            raise ImportError(n)\n"
+            "        return None\n"
+            "sys.meta_path.insert(0, B())\n"
+            "from tracebi.capabilities import describe\n"
+            "assert describe()['report_sections']\n"
+            "print('ok')\n"
+        )
+        out = subprocess.run([sys.executable, "-c", code],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert "ok" in out.stdout
+
+
+class TestHelpTextIsReadable:
+    """
+    help() printed and returned None, so an in-process tool had to capture
+    stdout to read the cheat sheet.
+    """
+
+    def test_help_text_returns_the_string(self):
+        import pandas as pd
+
+        from tracebi import DataModel, DataSet
+        from tracebi.reports.report import Report
+
+        assert "DataSet" in DataSet(pd.DataFrame(), name="t").help_text()
+        assert "DataModel" in DataModel("m").help_text()
+        assert "Report" in Report("r").help_text()
+
+    def test_help_still_prints_the_same_text(self, capsys):
+        import pandas as pd
+
+        from tracebi import DataSet
+
+        ds = DataSet(pd.DataFrame(), name="t")
+        text = ds.help_text()
+        ds.help()
+        assert capsys.readouterr().out.strip() == text.strip()
+
+    def test_cheat_sheets_are_in_the_capability_surface(self):
+        from tracebi.capabilities import describe
+
+        sheets = describe()["cheat_sheets"]
+        assert set(sheets) == {"DataSet", "DataModel", "Report"}
+        assert all(len(v) > 100 for v in sheets.values())

@@ -535,6 +535,31 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_context(args: argparse.Namespace) -> int:
+    """
+    Print TraceBi's vocabulary as JSON — every section and panel type with
+    its fields and allowed values, the DataSet verbs, measure kinds, filter
+    operators, and the discovery conventions.
+
+    Generated from the code, so it cannot drift. Intended as context for a
+    tool or agent authoring a project; add --model to include a specific
+    model's tables, dimensions and declared measures.
+    """
+    from tracebi.capabilities import describe
+
+    payload = describe()
+    if args.model:
+        from tracebi.model_registry import get_model
+        try:
+            payload["model"] = get_model(args.model).info()
+        except (KeyError, AttributeError) as exc:
+            print(f"Could not describe model '{args.model}': {exc}", file=sys.stderr)
+            return 1
+
+    print(json.dumps(payload, indent=None if args.compact else 2, default=str))
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     """
     Serve the current project's web UI.
@@ -882,6 +907,16 @@ def build_parser() -> argparse.ArgumentParser:
              "e.g. --param period=2026-Q1",
     )
     p_run.set_defaults(func=cmd_run)
+
+    p_context = sub.add_parser(
+        "context",
+        help="Print the framework's vocabulary as JSON (section and panel "
+             "types, DataSet verbs, measures, operators, conventions).",
+    )
+    p_context.add_argument("--model", help="Also include this model's schema.")
+    p_context.add_argument("--compact", action="store_true",
+                           help="Single-line JSON.")
+    p_context.set_defaults(func=cmd_context)
 
     p_serve = sub.add_parser(
         "serve",

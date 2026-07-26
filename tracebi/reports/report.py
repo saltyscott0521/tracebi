@@ -579,9 +579,9 @@ class Report:
             print(f"    {i}. {label} {s.title or '(untitled)'}")
         print(f"{'='*55}\n")
 
-    def help(self) -> None:
-        """Print a cheat sheet of the Report builder API."""
-        print(
+    def help_text(self) -> str:
+        """Return a cheat sheet of the Report builder API as a string."""
+        return (
             "\nReport — renderer-agnostic report built from sections.\n"
             "\n"
             "Metadata (fluent, chainable):\n"
@@ -604,6 +604,10 @@ class Report:
             "  In a notebook, the report renders inline when it is the last\n"
             "  expression in a cell.\n"
         )
+
+    def help(self) -> None:
+        """Print a cheat sheet of the Report builder API."""
+        print(self.help_text())
 
     def _repr_html_(self) -> str:
         """Render the report inline in a notebook (iframe preview)."""
