@@ -595,3 +595,182 @@ class TestModelValidate:
         result = m.validate()
         assert capsys.readouterr().out == ""   # consumable by CLI/API/agents
         assert set(result) == {"ok", "model", "dimensions", "errors", "warnings"}
+
+
+class TestDimensionAttributeFilters:
+    """
+    Filtering by a dimension attribute is the most common analytic gesture
+    and used to raise ValueError — query() only accepted fact columns.
+    """
+
+    @staticmethod
+    def _model():
+        orders = pd.DataFrame({
+            "order_id":    [1, 2, 3, 4, 5, 6],
+            "customer_id": [1, 2, 3, 1, 2, 3],
+            "revenue":     [100.0, 200.0, 300.0, 50.0, 80.0, 400.0],
+            "status": ["shipped", "open", "shipped", "shipped", "open", "shipped"],
+        })
+        customers = pd.DataFrame({
+            "customer_id": [1, 2, 3],
+            "region":      ["West", "NE", "West"],
+            "tier":        ["ent", "smb", "ent"],
+        })
+        m = DataModel("F").add_connector(
+            MemoryConnector("mem", {"orders": orders, "customers": customers})
+        )
+        m.add_table("orders", connector="mem", source="orders")
+        m.add_table("customers", connector="mem", source="customers")
+        m.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region", "tier"])
+        m.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                   foreign_keys={"dim_customer": "customer_id"})
+        m.connect()
+        return m
+
+    def _sum(self, **kw):
+        df = self._model().query(
+            fact="fact_orders", measures={"revenue": "sum"}, **kw
+        ).to_pandas()
+        return float(df["revenue"].sum()) if len(df) else 0.0
+
+    def test_filter_on_dimension_attribute(self):
+        # West = customers 1 and 3 → 100 + 300 + 50 + 400
+        assert self._sum(filters={"dim_customer.region": "West"}) == 850.0
+
+    def test_dimension_joined_even_when_not_grouped_by(self):
+        """A filter-only dimension still has to be joined."""
+        df = self._model().query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            filters={"dim_customer.region": "NE"},
+        ).to_pandas()
+        assert float(df["revenue"].sum()) == 280.0
+
+    def test_fact_and_dimension_predicates_combine(self):
+        assert self._sum(filters={"status": "shipped",
+                                  "dim_customer.tier": "ent"}) == 850.0
+
+    def test_bare_dimension_attribute_says_how_to_reference_it(self):
+        with pytest.raises(ValueError, match=r"reference it as 'dim_customer\.region'"):
+            self._sum(filters={"region": "West"})
+
+    def test_unknown_dimension_suggests_a_match(self):
+        with pytest.raises(ValueError, match="Did you mean 'dim_customer'"):
+            self._sum(filters={"dim_custmer.region": "West"})
+
+    def test_undeclared_dimension_attribute_rejected(self):
+        with pytest.raises(ValueError, match="not declared on dimension"):
+            self._sum(filters={"dim_customer.zipcode": "90210"})
+
+
+class TestFilterOperators:
+    """Equality-only filters were too thin for a semantic layer."""
+
+    def _sum(self, **kw):
+        return TestDimensionAttributeFilters()._sum(**kw)
+
+    def test_scalar_shorthand_is_equality(self):
+        assert self._sum(filters={"status": "shipped"}) == 850.0
+
+    def test_list_shorthand_is_in(self):
+        assert self._sum(filters={"status": ["shipped"]}) == 850.0
+
+    def test_gte(self):
+        assert self._sum(filters={"revenue": {"gte": 200}}) == 900.0
+
+    def test_ne(self):
+        assert self._sum(filters={"status": {"ne": "open"}}) == 850.0
+
+    def test_between(self):
+        assert self._sum(filters={"revenue": {"between": [100, 300]}}) == 600.0
+
+    def test_not_in_on_a_dimension(self):
+        assert self._sum(filters={"dim_customer.region": {"not_in": ["West"]}}) == 280.0
+
+    def test_contains(self):
+        assert self._sum(filters={"status": {"contains": "ship"}}) == 850.0
+
+    def test_empty_in_matches_nothing(self):
+        assert self._sum(filters={"revenue": {"in": []}}) == 0.0
+
+    def test_unknown_operator_suggests_a_match(self):
+        with pytest.raises(ValueError, match="Did you mean 'gte'"):
+            self._sum(filters={"revenue": {"greater": 100}})
+
+    def test_between_needs_two_values(self):
+        with pytest.raises(ValueError, match="two-element"):
+            self._sum(filters={"revenue": {"between": [1]}})
+
+    def test_in_needs_a_list(self):
+        with pytest.raises(ValueError, match="needs a list"):
+            self._sum(filters={"status": {"in": "shipped"}})
+
+    def test_one_operator_per_filter_entry(self):
+        with pytest.raises(ValueError, match="exactly one operator"):
+            self._sum(filters={"revenue": {"gte": 1, "lte": 2}})
+
+    def test_predicates_are_recorded_in_lineage(self):
+        ds = TestDimensionAttributeFilters._model().query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            filters={"dim_customer.region": "West"},
+        )
+        nodes = [n for n in ds.lineage if n.operation == "filter"]
+        assert nodes, "every predicate must appear in the audit chain"
+        meta = nodes[-1].metadata
+        assert meta["target"] == "dim_customer.region"
+        assert meta["operator"] == "eq"
+        assert meta["on"] == "dimension"
+
+
+class TestEngineParity:
+    """
+    DuckDB is preferred, pandas is the fallback. They must never disagree —
+    a query returning different numbers depending on what is installed would
+    make the lineage meaningless.
+    """
+
+    CASES = [
+        {"filters": {"dim_customer.region": "West"}},
+        {"filters": {"revenue": {"gte": 200}}},
+        {"filters": {"status": ["shipped"]}},
+        {"filters": {"revenue": {"between": [100, 300]}}},
+        {"filters": {"dim_customer.region": {"not_in": ["West"]}}},
+        {"filters": {"status": "shipped", "dim_customer.tier": "ent"}},
+        {"dimensions": ["dim_customer.tier"], "filters": {"dim_customer.region": "West"}},
+        {"filters": {"status": {"contains": "ship"}}},
+    ]
+
+    @staticmethod
+    def _run(case):
+        return TestDimensionAttributeFilters._model().query(
+            fact="fact_orders", measures={"revenue": "sum"}, **case
+        ).to_pandas()
+
+    def test_engines_agree(self, monkeypatch):
+        import sys
+
+        duck_results = [self._run(c) for c in self.CASES]
+
+        class _Block:
+            def find_module(self, name, path=None):
+                return self if name.split(".")[0] == "duckdb" else None
+
+            def load_module(self, name):
+                raise ImportError(name)
+
+        blocker = _Block()
+        saved = {k: v for k, v in sys.modules.items() if k.startswith("duckdb")}
+        for k in saved:
+            del sys.modules[k]
+        sys.meta_path.insert(0, blocker)
+        try:
+            pandas_results = [self._run(c) for c in self.CASES]
+        finally:
+            sys.meta_path.remove(blocker)
+            sys.modules.update(saved)
+
+        for case, d, p in zip(self.CASES, duck_results, pandas_results):
+            assert len(d) == len(p), f"row count differs for {case}"
+            assert abs(float(d["revenue"].sum()) - float(p["revenue"].sum())) < 1e-9, (
+                f"engines disagree for {case}"
+            )

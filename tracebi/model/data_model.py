@@ -34,10 +34,52 @@ LARGE_LOAD_WARN_ROWS = 100_000
 
 _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique"}
 
+# Filter operators. A closed set rather than free SQL: free SQL cannot be
+# validated, cannot be executed by the pandas engine, and is an injection
+# surface. Every operator below is implemented in both engines and is
+# parameterised in the DuckDB path.
+#   {"region": "NE"}                        → eq  (scalar shorthand)
+#   {"region": ["NE", "SE"]}                → in  (list shorthand)
+#   {"revenue": {"gte": 1000}}              → explicit operator
+#   {"dim_customer.region": "NE"}           → filter on a dimension attribute
+FILTER_OPS = (
+    "eq", "ne", "in", "not_in", "gt", "gte", "lt", "lte",
+    "between", "is_null", "not_null", "contains",
+)
+
+# Operators whose value is not a plain scalar.
+_LIST_OPS = ("in", "not_in")
+_NULL_OPS = ("is_null", "not_null")
+
 
 # ─────────────────────────────────────────────────────────────
 # Internal config dataclasses
 # ─────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class _Predicate:
+    """
+    One parsed filter condition.
+
+    ``target`` is either a fact column name or a ``"dim_name.attribute"``
+    reference. Dimension predicates require the dimension to be joined, so
+    they are applied after the join; fact predicates can be pushed down.
+    """
+    target: str
+    op: str
+    value: Any
+    dim_name: Optional[str] = None      # set for dimension predicates
+    attribute: Optional[str] = None
+
+    @property
+    def is_dim(self) -> bool:
+        return self.dim_name is not None
+
+    def describe(self) -> str:
+        if self.op in _NULL_OPS:
+            return f"{self.target} {self.op.replace('_', ' ')}"
+        return f"{self.target} {self.op} {self.value!r}"
 
 @dataclass(frozen=True)
 class _TableDef:
@@ -449,8 +491,19 @@ class DataModel:
             dimensions: List of ``"dim_name.attribute"`` references for
                         grouping and selection. May be ``None`` or ``[]``
                         to return aggregate totals only.
-            filters:    ``{column: value}`` equality filters applied to the
-                        fact table before joining/aggregating.
+            filters:    Predicates on fact columns **or dimension
+                        attributes**. Three spellings per entry::
+
+                            {"status": "shipped"}              # equality
+                            {"region": ["NE", "SE"]}           # IN
+                            {"revenue": {"gte": 1000}}         # operator
+                            {"dim_customer.region": "West"}    # dimension
+
+                        Operators: eq, ne, in, not_in, gt, gte, lt, lte,
+                        between, is_null, not_null, contains. A dimension
+                        referenced only by a filter is still joined.
+                        Equality filters on fact columns are pushed down to
+                        the connector where it supports it.
             aggregate:  When ``True`` (default), group by dimension attributes
                         and aggregate measures. When ``False``, return the
                         flat joined rows with measures selected.
@@ -493,13 +546,38 @@ class DataModel:
                 )
             parsed_dims.append((dim_name, attribute))
 
-        # ── Load fact + needed dimension tables ───────────────
+        # ── Load fact ─────────────────────────────────────────
         lineage: list[LineageNode] = []
-        fact_ds = self.load(fact_def.table_name, filter=filters or None)
+
+        # Parse filters before loading so equality predicates on fact columns
+        # can still be pushed down to the connector. A first load without a
+        # filter is needed to know the fact's columns; use the declared
+        # measures/foreign keys to avoid it where possible.
+        probe_cols = set(fact_def.measures) | set(fact_def.foreign_keys.values())
+        pushdown: dict[str, Any] = {}
+        deferred: dict[str, Any] = {}
+        for key, raw in (filters or {}).items():
+            simple = (
+                "." not in key
+                and not isinstance(raw, (dict, list, tuple, set))
+            )
+            (pushdown if simple else deferred)[key] = raw
+
+        fact_ds = self.load(fact_def.table_name, filter=pushdown or None)
         lineage.extend(fact_ds.lineage)
         fact_df = fact_ds.to_pandas()
+        fact_cols = set(fact_df.columns) | probe_cols
 
+        predicates = self._parse_filters(filters, fact_def, fact_cols)
+        # Predicates already satisfied by pushdown must not be re-applied
+        # against a frame the connector has already filtered — but re-applying
+        # an equality filter is idempotent, so keep them for the engine too
+        # when the connector could not push down.
+        pushed = set(pushdown) if fact_ds.lineage and pushdown else set()
+
+        # ── Load dimensions: those grouped by AND those filtered on ───
         needed_dims = {dim_name for dim_name, _ in parsed_dims}
+        needed_dims |= {p.dim_name for p in predicates if p.is_dim}
         dim_dfs: dict[str, pd.DataFrame] = {}
         for dim_name in needed_dims:
             dim_def = self._dimensions[dim_name]
@@ -509,18 +587,27 @@ class DataModel:
 
         # A typo'd column must never produce a silently wrong result.
         self._validate_query_columns(
-            fact_def, fact_df, dim_dfs, parsed_dims, measures, filters
+            fact_def, fact_df, dim_dfs, parsed_dims, measures, {}
         )
-        # Neither must a non-unique dimension key.
+        self._validate_dim_predicates(predicates, dim_dfs)
+        # Neither must a non-unique dimension key. Every joined dimension is
+        # checked, including ones joined only to satisfy a filter.
+        join_dims = [(d, "") for d in needed_dims]
         self._check_dimension_keys(
-            dim_dfs, parsed_dims, fact_df, fact_def, allow_fanout, lineage
+            dim_dfs, join_dims, fact_df, fact_def, allow_fanout, lineage
         )
 
-        for col, val in filters.items():
+        for p in predicates:
             lineage.append(LineageNode(
                 operation="filter",
-                description=f"Filter: {col} == {val!r}",
-                metadata={"column": col, "value": val},
+                description=f"Filter: {p.describe()}",
+                metadata={
+                    "target": p.target,
+                    "operator": p.op,
+                    "value": p.value,
+                    "on": "dimension" if p.is_dim else "fact",
+                    "pushed_down": p.target in pushed,
+                },
             ))
 
         # ── Try DuckDB engine first; fall back to pandas ──────
@@ -531,7 +618,7 @@ class DataModel:
                 dim_dfs=dim_dfs,
                 parsed_dims=parsed_dims,
                 measures=measures,
-                filters=filters,
+                predicates=predicates,
                 aggregate=aggregate,
                 lineage=lineage,
             )
@@ -543,7 +630,7 @@ class DataModel:
                 dim_dfs=dim_dfs,
                 parsed_dims=parsed_dims,
                 measures=measures,
-                filters=filters,
+                predicates=predicates,
                 aggregate=aggregate,
                 lineage=lineage,
             )
@@ -562,6 +649,124 @@ class DataModel:
         import difflib
         close = difflib.get_close_matches(name, [str(o) for o in options], n=1)
         return f" Did you mean '{close[0]}'?" if close else ""
+
+    def _parse_filters(
+        self,
+        filters: dict[str, Any],
+        fact_def: "_FactDef",
+        fact_cols: set,
+    ) -> list[_Predicate]:
+        """
+        Turn the user-facing filter dict into validated predicates.
+
+        Accepts three spellings per entry::
+
+            {"status": "shipped"}                 # eq
+            {"region": ["NE", "SE"]}              # in
+            {"revenue": {"gte": 1000}}            # explicit operator
+
+        A key containing a dot is resolved as ``dim_name.attribute`` against
+        the registered dimensions — filtering by a dimension attribute is the
+        most common analytic gesture and used to raise.
+        """
+        preds: list[_Predicate] = []
+
+        for key, raw in filters.items():
+            dim_name = attribute = None
+            if "." in key:
+                cand_dim, cand_attr = key.split(".", 1)
+                if cand_dim not in self._dimensions:
+                    raise ValueError(
+                        f"Filter '{key}' refers to dimension '{cand_dim}', "
+                        f"which is not registered in model '{self.name}'."
+                        f"{self._hint(cand_dim, self._dimensions)} "
+                        f"Available dimensions: {sorted(self._dimensions)}"
+                    )
+                dim_name, attribute = cand_dim, cand_attr
+            elif key not in fact_cols:
+                # Not a fact column — maybe they meant a dimension attribute.
+                matches = [
+                    f"{dn}.{key}" for dn, dd in self._dimensions.items()
+                    if key in (dd.attributes or []) or key == dd.key_col
+                ]
+                extra = (
+                    f" It exists on {matches[0].split('.')[0]}; "
+                    f"reference it as '{matches[0]}'."
+                    if matches else self._hint(key, fact_cols)
+                )
+                raise ValueError(
+                    f"Filter column '{key}' not found on fact table "
+                    f"'{fact_def.table_name}'.{extra} "
+                    f"Available columns: {sorted(fact_cols)}"
+                )
+
+            # Normalise the value into (op, value)
+            if isinstance(raw, dict):
+                if len(raw) != 1:
+                    raise ValueError(
+                        f"Filter '{key}' must specify exactly one operator, "
+                        f"got {sorted(raw)}. Combine conditions by passing "
+                        f"separate filter entries."
+                    )
+                op, value = next(iter(raw.items()))
+                op = str(op).lower()
+                if op not in FILTER_OPS:
+                    raise ValueError(
+                        f"Unknown filter operator '{op}' for '{key}'."
+                        f"{self._hint(op, FILTER_OPS)} "
+                        f"Supported: {', '.join(FILTER_OPS)}"
+                    )
+            elif isinstance(raw, (list, tuple, set)):
+                op, value = "in", list(raw)
+            else:
+                op, value = "eq", raw
+
+            if op in _LIST_OPS and not isinstance(value, (list, tuple, set)):
+                raise ValueError(
+                    f"Filter '{key}' with operator '{op}' needs a list of "
+                    f"values, got {type(value).__name__}."
+                )
+            if op == "between":
+                if not isinstance(value, (list, tuple)) or len(value) != 2:
+                    raise ValueError(
+                        f"Filter '{key}' with operator 'between' needs a "
+                        f"two-element [low, high], got {value!r}."
+                    )
+            if op in _LIST_OPS:
+                value = list(value)
+
+            preds.append(_Predicate(
+                target=key, op=op, value=value,
+                dim_name=dim_name, attribute=attribute,
+            ))
+
+        return preds
+
+    def _validate_dim_predicates(
+        self,
+        preds: list[_Predicate],
+        dim_dfs: dict[str, pd.DataFrame],
+    ) -> None:
+        """Check that every dimension predicate's attribute actually exists."""
+        for p in preds:
+            if not p.is_dim:
+                continue
+            dim_def = self._dimensions[p.dim_name]
+            declared = dim_def.attributes
+            if declared and p.attribute not in declared and p.attribute != dim_def.key_col:
+                raise ValueError(
+                    f"Filter attribute '{p.attribute}' is not declared on "
+                    f"dimension '{p.dim_name}'.{self._hint(p.attribute, declared)} "
+                    f"Declared attributes: {declared}"
+                )
+            cols = set(dim_dfs[p.dim_name].columns)
+            if p.attribute not in cols:
+                raise ValueError(
+                    f"Filter attribute '{p.attribute}' not found on dimension "
+                    f"table '{dim_def.table_name}'."
+                    f"{self._hint(p.attribute, cols)} "
+                    f"Available columns: {sorted(cols)}"
+                )
 
     def _check_dimension_keys(
         self,
@@ -761,6 +966,47 @@ class DataModel:
                     f"Available columns: {sorted(dim_cols)}"
                 )
 
+    @staticmethod
+    def _predicate_sql(pred: _Predicate, column_sql: str) -> tuple[str, list]:
+        """Render one predicate as parameterised SQL."""
+        op, v = pred.op, pred.value
+        if op == "eq":       return f"{column_sql} = ?", [v]
+        if op == "ne":       return f"{column_sql} <> ?", [v]
+        if op == "gt":       return f"{column_sql} > ?", [v]
+        if op == "gte":      return f"{column_sql} >= ?", [v]
+        if op == "lt":       return f"{column_sql} < ?", [v]
+        if op == "lte":      return f"{column_sql} <= ?", [v]
+        if op == "between":  return f"{column_sql} BETWEEN ? AND ?", [v[0], v[1]]
+        if op == "is_null":  return f"{column_sql} IS NULL", []
+        if op == "not_null": return f"{column_sql} IS NOT NULL", []
+        if op == "contains": return f"CAST({column_sql} AS VARCHAR) LIKE ?", [f"%{v}%"]
+        if op in _LIST_OPS:
+            if not v:
+                # An empty IN matches nothing; NOT IN matches everything.
+                return ("1 = 0", []) if op == "in" else ("1 = 1", [])
+            marks = ", ".join("?" for _ in v)
+            neg = "NOT " if op == "not_in" else ""
+            return f"{column_sql} {neg}IN ({marks})", list(v)
+        raise ValueError(f"Unhandled filter operator '{op}'")
+
+    @staticmethod
+    def _predicate_mask(pred: _Predicate, series: "pd.Series"):
+        """Render one predicate as a pandas boolean mask."""
+        op, v = pred.op, pred.value
+        if op == "eq":       return series == v
+        if op == "ne":       return series != v
+        if op == "gt":       return series > v
+        if op == "gte":      return series >= v
+        if op == "lt":       return series < v
+        if op == "lte":      return series <= v
+        if op == "between":  return series.between(v[0], v[1])
+        if op == "is_null":  return series.isna()
+        if op == "not_null": return series.notna()
+        if op == "contains": return series.astype(str).str.contains(str(v), na=False)
+        if op == "in":       return series.isin(list(v))
+        if op == "not_in":   return ~series.isin(list(v))
+        raise ValueError(f"Unhandled filter operator '{op}'")
+
     # ── DuckDB engine ──────────────────────────────────────────
 
     def _execute_duckdb(
@@ -771,7 +1017,7 @@ class DataModel:
         dim_dfs: dict[str, pd.DataFrame],
         parsed_dims: list[tuple[str, str]],
         measures: dict[str, str],
-        filters: dict[str, Any],
+        predicates: list[_Predicate],
         aggregate: bool,
         lineage: list[LineageNode],
     ) -> pd.DataFrame:
@@ -813,8 +1059,10 @@ class DataModel:
                 for col in measures.keys():
                     select_cols_sql.append(f'fact."{col}" AS "{col}"')
 
+            # Join every loaded dimension — those grouped by and those only
+            # referenced in a filter.
             from_clause = "fact"
-            for dim_name in {d for d, _ in parsed_dims}:
+            for dim_name in dim_dfs:
                 dim_def = self._dimensions[dim_name]
                 fk_col = fact_def.foreign_keys.get(dim_name, dim_def.key_col)
                 from_clause += (
@@ -839,9 +1087,14 @@ class DataModel:
 
             where_clauses: list[str] = []
             params: list[Any] = []
-            for col, val in filters.items():
-                where_clauses.append(f'fact."{col}" = ?')
-                params.append(val)
+            for p in predicates:
+                if p.is_dim:
+                    column_sql = f'dim_{p.dim_name}."{p.attribute}"'
+                else:
+                    column_sql = f'fact."{p.target}"'
+                clause, vals = self._predicate_sql(p, column_sql)
+                where_clauses.append(clause)
+                params.extend(vals)
 
             sql = "SELECT " + ", ".join(select_cols_sql) + f" FROM {from_clause}"
             if where_clauses:
@@ -863,16 +1116,17 @@ class DataModel:
         dim_dfs: dict[str, pd.DataFrame],
         parsed_dims: list[tuple[str, str]],
         measures: dict[str, str],
-        filters: dict[str, Any],
+        predicates: list[_Predicate],
         aggregate: bool,
         lineage: list[LineageNode],
     ) -> pd.DataFrame:
         df = fact_df
-        for col, val in filters.items():
-            if col in df.columns:
-                df = df[df[col] == val]
+        # Fact predicates apply before the join (smaller frame to join).
+        for p in predicates:
+            if not p.is_dim and p.target in df.columns:
+                df = df[self._predicate_mask(p, df[p.target])]
 
-        for dim_name in {d for d, _ in parsed_dims}:
+        for dim_name in dim_dfs:
             dim_def = self._dimensions[dim_name]
             fk_col = fact_def.foreign_keys.get(dim_name, dim_def.key_col)
             dim_df = dim_dfs[dim_name]
@@ -883,6 +1137,7 @@ class DataModel:
             dim_df = dim_df[attr_cols].rename(
                 columns={c: f"{dim_name}.{c}" for c in attr_cols if c != dim_def.key_col}
             )
+            rows_before = len(df)
             df = df.merge(
                 dim_df,
                 left_on=fk_col,
@@ -903,8 +1158,22 @@ class DataModel:
                     "fact_key":  fk_col,
                     "dim_key":   dim_def.key_col,
                     "engine":    "pandas",
+                    "rows_before": rows_before,
+                    "rows_after":  len(df),
                 },
             ))
+
+        # Dimension predicates can only be applied once the dimension is
+        # joined. Columns are prefixed "dim_name.attribute" by the merge above,
+        # except the key column which keeps its own name.
+        for p in predicates:
+            if not p.is_dim:
+                continue
+            dim_def = self._dimensions[p.dim_name]
+            col = (dim_def.key_col if p.attribute == dim_def.key_col
+                   else f"{p.dim_name}.{p.attribute}")
+            if col in df.columns:
+                df = df[self._predicate_mask(p, df[col])]
 
         groupby_cols = [f"{d}.{a}" for d, a in parsed_dims]
 

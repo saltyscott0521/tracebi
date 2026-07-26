@@ -32,6 +32,43 @@ This applies the principle already documented for column validation —
 *"a typo must fail loudly, never return a silently wrong result"* — to join
 cardinality.
 
+### Added — the semantic model can express real questions
+
+**Filters now work on dimension attributes.** `query()` accepted filters only
+on fact columns and raised `ValueError` for anything else, so *"revenue by
+product, for customers in the West region"* — the most common analytic
+gesture there is — was unexpressible. A dimension referenced only by a
+filter is now joined for that purpose.
+
+**Filters are no longer equality-only.** A closed operator set, implemented
+in both engines and parameterised in the DuckDB path:
+`eq, ne, in, not_in, gt, gte, lt, lte, between, is_null, not_null, contains`.
+Deliberately not free-form SQL — that cannot be validated, cannot be
+executed by the pandas fallback, and is an injection surface.
+
+Three spellings, all backward compatible with the existing `{col: value}`:
+
+```python
+model.query(fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_product.category"],
+            filters={
+                "status": "shipped",                    # equality
+                "region": ["NE", "SE"],                 # IN
+                "revenue": {"gte": 1000},               # operator
+                "dim_customer.tier": "enterprise",      # dimension attribute
+            })
+```
+
+Every predicate is recorded as its own lineage node with `target`,
+`operator`, `value`, whether it hit the fact or a dimension, and whether it
+was pushed down to the connector. Errors name the problem precisely — asking
+for a bare `region` when it lives on a dimension tells you to write
+`dim_customer.region`.
+
+The pandas engine and the DuckDB engine are covered by a parity test: a
+query returning different numbers depending on what happens to be installed
+would make the lineage meaningless.
+
 ### ⚠️ Breaking — the report layer now fails loudly
 
 Renderers used to substitute a default for anything unrecognised, so a typo
