@@ -697,14 +697,19 @@ class TestBaseInstallImports:
 
     @staticmethod
     def _block(*names):
-        """Return a meta_path finder that makes `names` unimportable."""
-        class _Blocker:
-            def find_module(self, name, path=None):
-                root = name.split(".")[0]
-                return self if root in names else None
+        """
+        Return a meta_path finder that makes `names` unimportable.
 
-            def load_module(self, name):
-                raise ImportError(f"No module named {name!r}")
+        Must use find_spec, not the legacy find_module/load_module pair:
+        those were removed from meta-path finders in Python 3.12, so a
+        find_module-based blocker silently does nothing there and the test
+        passes (or fails) for the wrong reason.
+        """
+        class _Blocker:
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split(".")[0] in names:
+                    raise ImportError(f"No module named {fullname!r}")
+                return None
 
         return _Blocker()
 

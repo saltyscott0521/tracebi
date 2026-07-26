@@ -2094,14 +2094,16 @@ class TestRegistryLibrarySeam:
         import subprocess
         import sys
 
+        # find_spec, not find_module — the latter was removed from
+        # meta-path finders in 3.12 and would silently not block.
         code = (
             "import sys\n"
             "class B:\n"
-            "    def find_module(self, n, p=None):\n"
-            "        return self if n.split('.')[0] in "
-            "('fastapi','starlette','uvicorn','dash') else None\n"
-            "    def load_module(self, n):\n"
-            "        raise ImportError(n)\n"
+            "    def find_spec(self, name, path=None, target=None):\n"
+            "        if name.split('.')[0] in "
+            "('fastapi','starlette','uvicorn','dash'):\n"
+            "            raise ImportError(name)\n"
+            "        return None\n"
             "sys.meta_path.insert(0, B())\n"
             "from tracebi.registry import Registry, registry\n"
             "from tracebi import register\n"

@@ -752,11 +752,14 @@ class TestEngineParity:
         duck_results = [self._run(c) for c in self.CASES]
 
         class _Block:
-            def find_module(self, name, path=None):
-                return self if name.split(".")[0] == "duckdb" else None
-
-            def load_module(self, name):
-                raise ImportError(name)
+            # find_spec, not find_module: the legacy protocol was removed
+            # from meta-path finders in 3.12, where a find_module blocker
+            # would silently not block — making this compare duckdb to
+            # itself and pass for the wrong reason.
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split(".")[0] == "duckdb":
+                    raise ImportError(fullname)
+                return None
 
         blocker = _Block()
         saved = {k: v for k, v in sys.modules.items() if k.startswith("duckdb")}
