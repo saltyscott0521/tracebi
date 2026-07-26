@@ -221,6 +221,26 @@ class ExcelRenderer(BaseRenderer):
 
     # ── Text section ───────────────────────────────────────────────────────
 
+    @staticmethod
+    def _write_heading_body(ws, section: TextSection, row: int) -> int:
+        """
+        Write a heading's content beneath it when it carries text the
+        heading itself does not already show.
+
+        Content used to be dropped unconditionally, so callers worked around
+        it by passing the same string as both title and content. Writing it
+        only when it differs recovers the genuinely-lost text without
+        double-printing those existing call sites.
+        """
+        from openpyxl.styles import Font
+
+        body = section.content
+        if not (section.title and body and body != section.title):
+            return row
+        c = ws.cell(row=row, column=1, value=body)
+        c.font = Font(size=10, name="Calibri")
+        return row + 1
+
     def _write_text(self, ws, section: TextSection, row: int) -> int:
         from openpyxl.styles import Font, Alignment
 
@@ -231,11 +251,13 @@ class ExcelRenderer(BaseRenderer):
             c.font = Font(bold=True, size=16, color=COLORS["cover_bg"], name="Calibri")
             c.alignment = Alignment(vertical="center")
             row += 1
+            row = self._write_heading_body(ws, section, row)
         elif style == "heading2":
             ws.row_dimensions[row].height = 22
             c = ws.cell(row=row, column=1, value=section.title or section.content)
             c.font = Font(bold=True, size=13, color=COLORS["subheader_fill"], name="Calibri")
             row += 1
+            row = self._write_heading_body(ws, section, row)
         elif style in ("note", "callout"):
             bg = COLORS["note_fill"] if style == "note" else COLORS["callout_fill"]
             c = ws.cell(row=row, column=1, value=section.content)

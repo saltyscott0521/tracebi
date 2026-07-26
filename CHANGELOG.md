@@ -32,8 +32,48 @@ This applies the principle already documented for column validation —
 *"a typo must fail loudly, never return a silently wrong result"* — to join
 cardinality.
 
+### ⚠️ Breaking — the report layer now fails loudly
+
+Renderers used to substitute a default for anything unrecognised, so a typo
+produced a plausible-looking wrong report and exit code 0. Sections now
+validate at construction, with did-you-mean suggestions:
+
+- Unknown `ChartSection.chart_type` raised nothing and drew a bar chart.
+- Unknown `TextSection.style` / `TableSection.style` silently fell back.
+- A chart that failed to plot had its **exception text drawn into the PNG** —
+  a finished-looking deliverable containing a picture of an error message,
+  invisible to the caller and absent from the manifest. It now raises.
+
+`TextSection(style="heading1"|"heading2")` **no longer discards `content`.**
+It rendered `title or content`, so a section with both lost the body text
+entirely — this was silently dropping real narrative in five of the seven
+demo reports. Content now renders beneath the heading when it differs from
+the title; the widespread `title="X", content="X"` workaround still renders
+once.
+
+### Fixed
+
+- **Nested `RowSection` no longer breaks the audit trail.**
+  `Report.data_sections()` descended only one level while rendering and
+  `to_manifest_dict()` recursed fully, so a row inside a row rendered
+  correctly but vanished from the lineage graph, the manifest, and every
+  `/lineage` endpoint. Recursion is now unbounded.
+- **`tracebi validate` actually validates.** It performed three filesystem
+  `stat` calls and imported nothing. It now loads every model in `models/`
+  and runs `DataModel.validate()` on each, so a non-unique dimension key is
+  caught before it can inflate a number. Exits non-zero on problems.
+
 ### Added
 
+- **Section `id`** — optional stable identifier carried into the manifest,
+  so a section can be referenced across renders (diffing two versions of a
+  report, or tooling that edits structurally rather than by line number).
+- **Manifest completeness.** `TextSection` records `content_sha256` (length
+  alone cannot prove prose was not altered); `ChartSection` records `color`,
+  `xlabel`, `ylabel`, `figsize`, `style`, `palette`, and `show_values`, so a
+  chart is re-renderable from its own receipt.
+- `ChartSection` normalises `figsize` to a tuple and `y` to a list at
+  construction, so a section round-trips through JSON losslessly.
 - **`DataModel.validate()`** — checks every declared dimension's key for
   uniqueness and nulls, loading only the key column. Returns structured
   data (`{ok, model, dimensions, errors, warnings}`) rather than printing,

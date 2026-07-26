@@ -109,7 +109,8 @@ report = (
     Report("{title}")
     .author("Your Name")
     .description("Short description of this report.")
-    .add(TextSection(title="Summary", content="Write your narrative here.", style="heading1"))
+    .add(TextSection(title="Summary", style="heading1"))
+    .add(TextSection(content="Write your narrative here."))
 )
 
 
@@ -206,7 +207,8 @@ def _notebook_text(title: str) -> str:
                     f'report = (\n',
                     f'    Report("{title}")\n',
                     '    .author("Your Name")\n',
-                    '    .add(TextSection(title="Summary", content="Write your narrative here.", style="heading1"))\n',
+                    '    .add(TextSection(title="Summary", style="heading1"))\n',
+                    '    .add(TextSection(content="Write your narrative here."))\n',
                     ')\n',
                     'HTMLRenderer().preview(report)\n',
                 ],
@@ -624,35 +626,72 @@ def _resolve_request_path(requests_dir: Path, name: str) -> Optional[Path]:
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
+    """
+    Sanity-check the project: layout, then the models themselves.
+
+    Layout checks are cheap file stats. The substantive part is loading each
+    model in models/ and running ``DataModel.validate()``, which catches the
+    failures that would otherwise surface as wrong numbers — chiefly a
+    non-unique dimension key silently inflating every additive measure.
+    """
     cwd = Path.cwd()
     problems: list[str] = []
+    warnings: list[str] = []
     ok: list[str] = []
-
-    yaml_path = cwd / "tracebi.yaml"
-    if yaml_path.is_file():
-        ok.append(f"✓ tracebi.yaml found at {yaml_path}")
-    else:
-        problems.append("✗ tracebi.yaml not found in current directory")
 
     requests_dir = args.requests_dir
     if requests_dir.is_dir():
         scripts = [p for p in requests_dir.glob("*.py") if not p.name.startswith("_")]
-        ok.append(f"✓ requests/ contains {len(scripts)} script(s)")
+        nbs = list(requests_dir.glob("*.ipynb"))
+        ok.append(f"✓ requests/ contains {len(scripts) + len(nbs)} script(s)")
     else:
-        problems.append(f"✗ requests/ directory missing at {requests_dir}")
+        warnings.append(f"· requests/ not present at {requests_dir}")
 
     env_path = cwd / ".env"
     if env_path.is_file():
         ok.append("✓ .env file found")
     else:
-        ok.append("· .env not present (only needed if you use ${ENV_VAR} interpolation)")
+        ok.append("· .env not present (only needed if you load it yourself)")
+
+    # ── Models: load each one and check its declared structure ──────────
+    models_dir = args.models_dir
+    if not models_dir.is_dir():
+        warnings.append(f"· models/ not present at {models_dir}")
+    else:
+        from tracebi import model_registry
+
+        names = model_registry.auto_discover(str(models_dir))
+        if not names:
+            warnings.append("· models/ contains no model files")
+        for name in names:
+            try:
+                model = model_registry.get_model(name)
+            except Exception as exc:  # noqa: BLE001 — reported, not raised
+                problems.append(f"✗ models/{name}.py failed to load: {exc}")
+                continue
+
+            result = model.validate()
+            if result["ok"]:
+                ndims = len(result["dimensions"])
+                ok.append(f"✓ {name}: {model.name} loaded, {ndims} dimension(s) key-unique")
+            else:
+                for err in result["errors"]:
+                    problems.append(f"✗ {name}: {err}")
+            for warn in result["warnings"]:
+                warnings.append(f"· {name}: {warn}")
 
     for line in ok:
+        print(line)
+    for line in warnings:
         print(line)
     for line in problems:
         print(line, file=sys.stderr)
 
-    return 0 if not problems else 1
+    if problems:
+        print(f"\n{len(problems)} problem(s) found.", file=sys.stderr)
+        return 1
+    print("\nProject looks good.")
+    return 0
 
 
 def cmd_new_model(args: argparse.Namespace) -> int:
@@ -798,7 +837,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_validate = sub.add_parser(
         "validate",
-        help="Sanity-check the current directory: tracebi.yaml, requests/, .env.",
+        help="Sanity-check the project: layout, plus load every model in "
+             "models/ and verify its dimension keys are unique.",
     )
     p_validate.set_defaults(func=cmd_validate)
 

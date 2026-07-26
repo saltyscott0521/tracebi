@@ -72,7 +72,7 @@ report = (
     .description("Short description of this report.")
     .parameter("period", params["period"])
 
-    .add(TextSection(title="Executive Summary", content="Executive Summary", style="heading1"))
+    .add(TextSection(title="Executive Summary", style="heading1"))
     .add(TextSection(content="Write your narrative here.", style="normal"))
     .spacer()
 

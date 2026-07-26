@@ -134,7 +134,7 @@ def client_activity():
         ))
         .spacer()
 
-        .add(TextSection(title="Top 10 Clients by Gross Activity", content="Top 10 Clients", style="heading2"))
+        .add(TextSection(title="Top 10 Clients by Gross Activity", style="heading2"))
         .add(TableSection(
             title="Top 10 Clients",
             dataset=top_clients,
