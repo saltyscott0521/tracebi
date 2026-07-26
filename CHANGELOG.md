@@ -6,6 +6,60 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### ⚠️ Breaking — queries now refuse to double-count
+
+`DataModel.query()` **raises `ValueError` when a joined dimension's key is
+not unique.** Previously the star-schema `LEFT JOIN` silently multiplied
+fact rows and inflated every additive measure — returning a confident,
+fully-lineaged, wrong number. In a two-order fixture whose true revenue was
+$150, a single duplicated `customer_id` produced $250 with no warning.
+
+**If this raises for you, your previous numbers were wrong.** Three ways
+forward:
+
+1. Deduplicate the dimension table (usually correct — the duplicate is an
+   SCD-2 history row or an unfiltered snapshot).
+2. Pick a key column that is genuinely unique.
+3. Pass `query(..., allow_fanout=True)` if the multiplication is intended
+   (legitimate for many-to-many). The opt-in is then recorded as a
+   `warning` node in the lineage, so the audit trail shows it was
+   deliberate.
+
+The error names the dimension, the key, sample duplicate values, and the
+exact row multiplication (e.g. `2 → 3 rows (x1.50)`).
+
+This applies the principle already documented for column validation —
+*"a typo must fail loudly, never return a silently wrong result"* — to join
+cardinality.
+
+### Added
+
+- **`DataModel.validate()`** — checks every declared dimension's key for
+  uniqueness and nulls, loading only the key column. Returns structured
+  data (`{ok, model, dimensions, errors, warnings}`) rather than printing,
+  so the CLI, the web API, and agent tooling can all consume it. Run it
+  before querying.
+- **Null dimension keys** now emit a non-blocking `warning` lineage node —
+  those rows cannot be matched by the join.
+- **`tracebi/_version.py`** — single source of truth for the version. The
+  package, the CLI, and the FastAPI app all resolve through it; the API had
+  drifted to a hard-coded `0.1.0` against the package's `0.5.2`.
+
+### Fixed
+
+- **`import tracebi` no longer requires networkx.** The only declared
+  runtime dependency is pandas, but `__init__` eagerly imported
+  `LineageDiagram`, whose module scope did `import networkx as nx` — so a
+  clean `pip install tracebi` produced an unimportable package. networkx is
+  now imported on demand with an `ImportError` naming the `[lineage]`
+  extra, and `LineageDiagram.to_mermaid()` (pure string building) works on
+  the base install.
+- **CI now has a base-install job.** The test job installs `.[dev,web]`, so
+  it structurally cannot catch a module-level import of an optional
+  dependency — which is how the above regressed unnoticed. The new job
+  installs the bare distribution, imports the public modules, runs the
+  console script, and asserts no optional dependency leaked in.
+
 ### Added
 - **Standalone model registry** (`tracebi/model_registry.py`) — define a
   `DataModel` once in `models/<name>.py` (expose it as a module-level `model`
