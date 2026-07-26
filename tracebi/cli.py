@@ -25,20 +25,7 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-try:
-    from importlib.metadata import PackageNotFoundError, version as _pkg_version
-except ImportError:  # pragma: no cover — Python <3.8 unsupported
-    _pkg_version = None  # type: ignore
-    PackageNotFoundError = Exception  # type: ignore
-
-
-def _tracebi_version() -> str:
-    if _pkg_version is None:
-        return "unknown"
-    try:
-        return _pkg_version("tracebi")
-    except PackageNotFoundError:
-        return "unknown"
+from tracebi._version import get_version as _tracebi_version
 
 
 # Resolve the requests/ folder relative to the user's current working

@@ -13,6 +13,7 @@ Quick start (in-memory, no config):
     ds.help()                   # API cheat sheet (DataModel and Report have one too)
 """
 
+from tracebi._version import __version__
 from tracebi import model_registry
 from tracebi import pipeline_registry
 from tracebi.connectors.base import BaseConnector
@@ -57,4 +58,9 @@ __all__ = [
     "PipelineRunner",
     # Request scripts
     "request_params",
+    # Project-scope registries (import as modules: tracebi.model_registry.get_model)
+    "model_registry",
+    "pipeline_registry",
+    # Metadata
+    "__version__",
 ]

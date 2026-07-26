@@ -41,10 +41,12 @@ from starlette.middleware.wsgi import WSGIMiddleware
 from web.api.routers import connectors, models, reports, pipelines, dashboards, requests, docs
 from web.api.auth import install_if_configured as _install_auth
 
+from tracebi._version import get_version as _tracebi_version
+
 app = FastAPI(
     title="TraceBi API",
     description="Code-first, traceable BI — REST interface to your TraceBi data layer.",
-    version="0.1.0",
+    version=_tracebi_version(),
 )
 
 app.add_middleware(

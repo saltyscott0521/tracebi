@@ -685,3 +685,105 @@ class TestLineageRowCounts:
         assert join_meta["rows_left"] == 5
         assert join_meta["rows_right"] == 4
         assert join_meta["rows_after"] == len(ds)
+
+
+class TestBaseInstallImports:
+    """
+    The only declared runtime dependency is pandas; everything else is an
+    extra. A module-level import of an optional dep silently breaks
+    `pip install tracebi`, and the test job cannot catch it because it
+    installs ".[dev,web]". These tests simulate the optional dep being absent.
+    """
+
+    @staticmethod
+    def _block(*names):
+        """Return a meta_path finder that makes `names` unimportable."""
+        class _Blocker:
+            def find_module(self, name, path=None):
+                root = name.split(".")[0]
+                return self if root in names else None
+
+            def load_module(self, name):
+                raise ImportError(f"No module named {name!r}")
+
+        return _Blocker()
+
+    def test_lineage_diagram_importable_without_networkx(self):
+        import sys
+
+        blocker = self._block("networkx")
+        saved = {k: v for k, v in sys.modules.items() if k.startswith("networkx")}
+        for k in saved:
+            del sys.modules[k]
+        sys.meta_path.insert(0, blocker)
+        try:
+            import importlib
+
+            import tracebi.lineage.diagram as diagram
+
+            importlib.reload(diagram)
+            assert diagram.LineageDiagram is not None
+        finally:
+            sys.meta_path.remove(blocker)
+            sys.modules.update(saved)
+            import importlib
+
+            import tracebi.lineage.diagram as diagram
+
+            importlib.reload(diagram)
+
+    def test_to_mermaid_works_without_networkx(self):
+        """Mermaid export is pure string building — it must not need a graph lib."""
+        import sys
+
+        import pandas as pd
+
+        from tracebi import DataSet, LineageDiagram
+
+        ds = DataSet(pd.DataFrame({"a": [1, 2, 3]}), name="t").filter(
+            "a > 1", description="keep a>1"
+        )
+        diagram = LineageDiagram(ds)
+
+        blocker = self._block("networkx")
+        saved = {k: v for k, v in sys.modules.items() if k.startswith("networkx")}
+        for k in saved:
+            del sys.modules[k]
+        sys.meta_path.insert(0, blocker)
+        try:
+            out = diagram.to_mermaid()
+            assert "graph" in out.lower()
+        finally:
+            sys.meta_path.remove(blocker)
+            sys.modules.update(saved)
+
+    def test_graph_rendering_raises_actionable_error_without_networkx(self):
+        import sys
+
+        import pandas as pd
+
+        from tracebi import DataSet, LineageDiagram
+
+        ds = DataSet(pd.DataFrame({"a": [1]}), name="t")
+        diagram = LineageDiagram(ds)
+
+        blocker = self._block("networkx")
+        saved = {k: v for k, v in sys.modules.items() if k.startswith("networkx")}
+        for k in saved:
+            del sys.modules[k]
+        sys.meta_path.insert(0, blocker)
+        try:
+            with pytest.raises(ImportError, match=r"tracebi\[lineage\]"):
+                diagram._build_graph()
+        finally:
+            sys.meta_path.remove(blocker)
+            sys.modules.update(saved)
+
+
+class TestVersionSingleSource:
+    def test_package_and_cli_agree(self):
+        import tracebi
+        from tracebi.cli import _tracebi_version
+
+        assert tracebi.__version__ == _tracebi_version()
+        assert tracebi.__version__ != "0.0.0"
