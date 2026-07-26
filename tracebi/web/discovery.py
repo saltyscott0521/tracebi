@@ -27,9 +27,37 @@ from typing import Optional
 _discovered: dict[str, str] = {}  # module_name -> file path
 
 
-def auto_discover(path: str, package: Optional[str] = None) -> list[str]:
+# Per-file outcome of every discovery attempt, in order. Discovery is
+# convention-based and quiet by nature: a file in the wrong place, or one
+# that raises on import, simply never appears. Recording what happened is
+# the difference between "why isn't my report showing up?" and an answer.
+_outcomes: list[dict] = []
+
+
+def discovery_report() -> list[dict]:
     """
-    Import every ``*.py`` file in *path* (non-recursive, skips ``_*``).
+    What happened to every file discovery looked at.
+
+    Each entry is ``{directory, file, module, status, reason}`` where status
+    is ``registered``, ``skipped``, or ``failed``. Consumed by
+    ``tracebi validate``, ``GET /api/discovery``, and agent tooling.
+    """
+    return [dict(o) for o in _outcomes]
+
+
+def clear_discovery_report() -> None:
+    """Forget recorded outcomes (used between test runs and dev reloads)."""
+    _outcomes.clear()
+
+
+def auto_discover(
+    path: str,
+    package: Optional[str] = None,
+    strict: bool = False,
+) -> list[str]:
+    """
+    Import every ``*.py`` / ``*.ipynb`` file in *path* (non-recursive,
+    skips ``_*``).
 
     Args:
         path:    Directory to scan. Relative paths are resolved against the
@@ -38,43 +66,77 @@ def auto_discover(path: str, package: Optional[str] = None) -> list[str]:
                  omitted, modules are imported under synthetic names
                  ``tracebi_request_<filename>`` so they do not collide with
                  anything on ``sys.path``.
+        strict:  Re-raise the first import error instead of recording it.
+                 Off by default so one broken file cannot stop a server
+                 from starting — the failure is recorded in
+                 :func:`discovery_report` and surfaced by
+                 ``tracebi validate``.
 
     Returns:
-        List of imported module names. Useful for logging on startup.
+        List of successfully imported module names.
     """
     if not os.path.isdir(path):
+        _outcomes.append({
+            "directory": path, "file": None, "module": None,
+            "status": "skipped", "reason": "directory does not exist",
+        })
         return []
 
     discovered: list[str] = []
     for entry in sorted(os.listdir(path)):
+        full = os.path.join(path, entry)
+        record = {"directory": path, "file": entry, "module": None}
+
         if entry.startswith("_"):
+            _outcomes.append({**record, "status": "skipped",
+                              "reason": "name starts with '_'"})
             continue
         is_py = entry.endswith(".py")
         is_nb = entry.endswith(".ipynb")
         if not (is_py or is_nb):
+            if not os.path.isdir(full):
+                _outcomes.append({**record, "status": "skipped",
+                                  "reason": "not a .py or .ipynb file"})
+            else:
+                _outcomes.append({**record, "status": "skipped",
+                                  "reason": "subdirectories are not scanned"})
             continue
-        full = os.path.join(path, entry)
+
         stem = entry[: -len(".ipynb") if is_nb else -3]
         mod_name = f"{package}.{stem}" if package else f"tracebi_request_{stem}"
+        record["module"] = mod_name
 
-        if is_nb:
-            from tracebi._notebook import notebook_to_source
-            source = notebook_to_source(full)
-            code = compile(source, full, "exec")
-            module = type(sys)("tracebi_request_nb_" + stem)
-            module.__file__ = full
-            sys.modules[mod_name] = module
-            exec(code, module.__dict__)  # noqa: S102
-        else:
-            spec = importlib.util.spec_from_file_location(mod_name, full)
-            if spec is None or spec.loader is None:
-                continue
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[mod_name] = module
-            spec.loader.exec_module(module)
+        try:
+            if is_nb:
+                from tracebi._notebook import notebook_to_source
+                source = notebook_to_source(full)
+                code = compile(source, full, "exec")
+                module = type(sys)("tracebi_request_nb_" + stem)
+                module.__file__ = full
+                sys.modules[mod_name] = module
+                exec(code, module.__dict__)  # noqa: S102
+            else:
+                spec = importlib.util.spec_from_file_location(mod_name, full)
+                if spec is None or spec.loader is None:
+                    _outcomes.append({**record, "status": "failed",
+                                      "reason": "could not build an import spec"})
+                    continue
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[mod_name] = module
+                spec.loader.exec_module(module)
+        except Exception as exc:  # noqa: BLE001 — recorded, and re-raised if strict
+            sys.modules.pop(mod_name, None)
+            _outcomes.append({
+                **record, "status": "failed",
+                "reason": f"{type(exc).__name__}: {exc}",
+            })
+            if strict:
+                raise
+            continue
 
         discovered.append(mod_name)
         _discovered[mod_name] = full
+        _outcomes.append({**record, "status": "registered", "reason": None})
     return discovered
 
 

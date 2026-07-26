@@ -32,7 +32,11 @@ the project-root ``models/`` and ``pipelines/`` directories.
 
 from __future__ import annotations
 
-from tracebi.web.discovery import auto_discover, reload_modules
+from tracebi.web.discovery import (
+    auto_discover,
+    discovery_report,
+    reload_modules,
+)
 from tracebi.web.register import register
 
-__all__ = ["register", "auto_discover", "reload_modules"]
+__all__ = ["register", "auto_discover", "reload_modules", "discovery_report"]

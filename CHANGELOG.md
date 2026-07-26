@@ -32,6 +32,27 @@ This applies the principle already documented for column validation —
 *"a typo must fail loudly, never return a silently wrong result"* — to join
 cardinality.
 
+### Added — discovery is no longer silent
+
+Auto-discovery is convention-based and was quiet by nature: a file in the
+wrong place never appeared, and a file that raised on import vanished with
+only a `warnings.warn` to stderr. There was no way to ask *why* a report
+wasn't showing up.
+
+Every attempt is now recorded. `tracebi.web.discovery_report()`,
+`GET /api/discovery`, and `tracebi validate` report each file as
+`registered`, `skipped` (with which rule skipped it), or `failed` (with the
+exception). `tracebi validate` treats a failure as a problem and exits
+non-zero, so there is a loud gate as well as an inspectable one.
+
+**Behaviour change:** a broken artifact no longer stops the others. Failures
+in `models/` and `pipelines/` were already warnings, but a broken file in
+`reports/`, `requests/`, or `scheduled/` propagated and **took down server
+startup entirely** — one bad file made the whole app unbootable. Discovery
+now records the failure and continues; pass `strict=True` to `auto_discover()`
+for the old behaviour. A module that failed mid-import is removed from
+`sys.modules` rather than left half-executed.
+
 ### Added — a machine-readable description of the framework
 
 **`tracebi.capabilities.describe()`**, **`tracebi context`**, and

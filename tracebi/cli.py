@@ -732,6 +732,24 @@ def cmd_validate(args: argparse.Namespace) -> int:
     else:
         warnings.append(f"· requests/ not present at {requests_dir}")
 
+    # ── Import every discoverable artifact and report what failed ────────
+    # A file that raises on import is skipped at startup with only a
+    # warning, so this is where it becomes visible.
+    from tracebi.web.discovery import auto_discover, discovery_report
+
+    for label in ("reports", "requests", "scheduled"):
+        d = cwd / label
+        if d.is_dir():
+            auto_discover(str(d))
+    for entry in discovery_report():
+        if entry["status"] == "failed":
+            problems.append(
+                f"✗ {entry['directory']}/{entry['file']}: {entry['reason']}"
+            )
+    n_registered = sum(1 for e in discovery_report() if e["status"] == "registered")
+    if n_registered:
+        ok.append(f"✓ {n_registered} artifact module(s) imported cleanly")
+
     env_path = cwd / ".env"
     if env_path.is_file():
         ok.append("✓ .env file found")

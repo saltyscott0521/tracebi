@@ -93,6 +93,25 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/discovery")
+def discovery():
+    """
+    What happened to every file auto-discovery looked at: registered,
+    skipped (and why), or failed (with the error).
+
+    Discovery is convention-based and quiet — a file in the wrong place or
+    one that raises on import simply never appears. This answers "why isn't
+    my report showing up?" without reading the server's stderr.
+    """
+    from tracebi.web.discovery import discovery_report
+
+    entries = discovery_report()
+    counts: dict[str, int] = {}
+    for e in entries:
+        counts[e["status"]] = counts.get(e["status"], 0) + 1
+    return {"summary": counts, "entries": entries}
+
+
 @app.get("/api/schema")
 def schema():
     """

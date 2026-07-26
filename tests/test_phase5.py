@@ -2383,3 +2383,100 @@ class TestHelpTextIsReadable:
         sheets = describe()["cheat_sheets"]
         assert set(sheets) == {"DataSet", "DataModel", "Report"}
         assert all(len(v) > 100 for v in sheets.values())
+
+
+class TestDiscoveryDiagnostics:
+    """
+    Auto-discovery is convention-based and quiet: a file in the wrong place
+    or one that raises on import simply never appears. Recording the outcome
+    is the difference between "why isn't my report showing up?" and an answer.
+    """
+
+    @staticmethod
+    def _fixture(tmp_path):
+        (tmp_path / "good.py").write_text(
+            "from tracebi import register\n"
+            "@register.report('t_good')\n"
+            "def _f():\n"
+            "    from tracebi.reports.report import Report\n"
+            "    return Report('Good')\n"
+        )
+        (tmp_path / "broken.py").write_text("import no_such_module_at_all\n")
+        (tmp_path / "_skipped.py").write_text("raise RuntimeError('never')\n")
+        (tmp_path / "notes.txt").write_text("not python\n")
+        (tmp_path / "subdir").mkdir()
+        return tmp_path
+
+    def test_one_broken_file_does_not_stop_the_others(self, tmp_path):
+        from tracebi.web.discovery import auto_discover, clear_discovery_report
+
+        clear_discovery_report()
+        imported = auto_discover(str(self._fixture(tmp_path)))
+        assert any(m.endswith("good") for m in imported), (
+            "a healthy file must still register alongside a broken one"
+        )
+
+    def test_every_outcome_is_recorded_with_a_reason(self, tmp_path):
+        from tracebi.web.discovery import (
+            auto_discover, clear_discovery_report, discovery_report,
+        )
+
+        clear_discovery_report()
+        auto_discover(str(self._fixture(tmp_path)))
+        by_file = {e["file"]: e for e in discovery_report()}
+
+        assert by_file["good.py"]["status"] == "registered"
+        assert by_file["broken.py"]["status"] == "failed"
+        assert "no_such_module_at_all" in by_file["broken.py"]["reason"]
+        assert by_file["_skipped.py"]["status"] == "skipped"
+        assert by_file["notes.txt"]["status"] == "skipped"
+        assert by_file["subdir"]["status"] == "skipped"
+
+    def test_underscore_file_is_never_executed(self, tmp_path):
+        """_skipped.py raises on import; the skip must happen before that."""
+        from tracebi.web.discovery import auto_discover, clear_discovery_report
+
+        clear_discovery_report()
+        auto_discover(str(self._fixture(tmp_path)))  # must not raise
+
+    def test_missing_directory_is_recorded_not_silent(self, tmp_path):
+        from tracebi.web.discovery import (
+            auto_discover, clear_discovery_report, discovery_report,
+        )
+
+        clear_discovery_report()
+        assert auto_discover(str(tmp_path / "nope")) == []
+        entry = discovery_report()[0]
+        assert entry["status"] == "skipped"
+        assert "does not exist" in entry["reason"]
+
+    def test_strict_mode_reraises(self, tmp_path):
+        from tracebi.web.discovery import auto_discover, clear_discovery_report
+
+        clear_discovery_report()
+        (tmp_path / "bad.py").write_text("import no_such_module_at_all\n")
+        with pytest.raises(ModuleNotFoundError):
+            auto_discover(str(tmp_path), strict=True)
+
+    def test_failed_module_is_not_left_in_sys_modules(self, tmp_path):
+        """A half-executed module would poison later imports."""
+        import sys
+
+        from tracebi.web.discovery import auto_discover, clear_discovery_report
+
+        clear_discovery_report()
+        (tmp_path / "bad.py").write_text("import no_such_module_at_all\n")
+        auto_discover(str(tmp_path))
+        assert "tracebi_request_bad" not in sys.modules
+
+    def test_validate_reports_a_broken_artifact(self, tmp_path, monkeypatch, capsys):
+        from tracebi.cli import main
+        from tracebi.web.discovery import clear_discovery_report
+
+        clear_discovery_report()
+        (tmp_path / "reports").mkdir()
+        (tmp_path / "reports" / "broken.py").write_text("import no_such_module_at_all\n")
+        monkeypatch.chdir(tmp_path)
+
+        assert main(["validate"]) == 1
+        assert "no_such_module_at_all" in capsys.readouterr().err

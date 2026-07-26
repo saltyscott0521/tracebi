@@ -262,6 +262,7 @@ Add a file under `web/api/routers/`, include it in `web/api/main.py`, and read r
 ```
 GET  /api/health
 GET  /api/schema                                     → machine-readable vocabulary (generated)
+GET  /api/discovery                                  → per-file registered/skipped/failed + reason
 GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/models
