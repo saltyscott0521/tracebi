@@ -1,7 +1,7 @@
 """
 TraceBi Registry — the process-global store of a project's resources.
 
-Holds connectors, data models, report factories, dashboards, and pipeline
+Holds connectors, data models, report factories, and pipeline
 runners. Populated once at startup (by an app module, by the project-root
 ``models/`` and ``pipelines/`` directories, or from a notebook), then read
 at request time.
@@ -60,7 +60,6 @@ class Registry:
         self._report_factories: dict[str, dict] = {}
         self._scheduled_factories: dict[str, dict] = {}
         self._pipelines: dict[str, Any] = {}
-        self._dashboards: dict[str, dict] = {}
         self._default_model_name: Optional[str] = None
 
     # ── Connectors ─────────────────────────────────────────────
@@ -209,35 +208,6 @@ class Registry:
             return [
                 {"name": k, "cron": v["cron"], "description": v["description"]}
                 for k, v in self._scheduled_factories.items()
-            ]
-
-    # ── Dashboards ─────────────────────────────────────────────
-
-    def add_dashboard(
-        self,
-        name: str,
-        server,
-        description: str = "",
-    ) -> "Registry":
-        """Register a DashboardServer under a logical name."""
-        with self._lock:
-            self._dashboards[name] = {"server": server, "description": description}
-        return self
-
-    def get_dashboard(self, name: str):
-        with self._lock:
-            return self._dashboards.get(name)
-
-    def dashboards(self) -> dict[str, dict]:
-        """All registered dashboards: name -> {server, description}."""
-        with self._lock:
-            return dict(self._dashboards)
-
-    def list_dashboards(self) -> list[dict]:
-        with self._lock:
-            return [
-                {"name": k, "description": v["description"]}
-                for k, v in self._dashboards.items()
             ]
 
     # ── Pipelines ──────────────────────────────────────────────

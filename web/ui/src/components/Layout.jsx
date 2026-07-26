@@ -41,11 +41,6 @@ const ICONS = {
       <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
     </svg>
   ),
-  dashboards: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-    </svg>
-  ),
   guide: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
@@ -62,7 +57,6 @@ const NAV = [
   { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#f9a8d4' },
   { path: '/requests',   label: 'Requests',   icon: 'requests',   color: '#c4b5fd' },
   { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#fde68a' },
-  { path: '/dashboards', label: 'Dashboards', icon: 'dashboards', color: '#a5f3fc' },
 ]
 
 function SunIcon() {

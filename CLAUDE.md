@@ -55,7 +55,7 @@ When your changes create orphans:
 
 The test: every changed line should trace directly to the user's request.
 
-TraceBi-specific: the six test files are phase-scoped (`test_phase1.py` through `test_phase5.py`, plus `test_phase25.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies.
+TraceBi-specific: the test files are phase-scoped (`test_phase1.py`, `test_phase2.py`, `test_phase25.py`, `test_phase4.py`, `test_phase5.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies.
 
 ---
 
@@ -88,7 +88,6 @@ Run `pytest tests/` before and after any change. A passing suite is the minimum 
 - **Medallion ETL**: Landing (raw ingest) → Manipulation (declarative cleaning) → Final (DataModel star-schema aggregation). `BronzeLayer` / `SilverLayer` / `GoldLayer` remain as aliases.
 - **PipelineRunner**: registers layers, schedules with APScheduler, persists run history to SQLite.
 - **Report engine**: builds structured reports (text, tables, charts) and renders to Excel, HTML, or PDF.
-- **Dashboard**: live Dash app with associative filter panels.
 - **Web layer** (`web/`): FastAPI REST API + React UI exposing all of the above via a singleton registry.
 
 All six development phases are complete and tested.
@@ -103,7 +102,6 @@ tracebi/               # Core Python package (~5200 LOC)
   model/               # DataSet, DataModel (with star-schema query)
   etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer
-  dashboard/           # Dashboard, FilterPanel, MetricPanel, ChartPanel, TablePanel
   pipeline/            # PipelineRunner + APScheduler integration
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
   web/                 # register facade + auto-discovery for request scripts (.py and .ipynb)
@@ -117,7 +115,7 @@ web/
     registry.py        # Back-compat re-export of tracebi.registry (the real seam)
     errors.py          # Structured error payload (message + traceback) for routers
     lineage_graph.py   # LineageNode list → React Flow graph (shared by routers)
-    routers/           # One file per domain (connectors, models, reports, pipelines, dashboards, dev)
+    routers/           # One file per domain (connectors, models, reports, pipelines, dev)
   ui/                  # React UI (built into web/ui/dist/ at Docker build time)
   run.py               # Dev server (uvicorn wrapper)
   demo_app/            # Default app module package — shows how to wire everything together
@@ -188,15 +186,15 @@ Every transform method must return a new `DataSet`. Never mutate `.df` or `.line
 Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern. `LineageNode` is frozen — pass all fields (including `metadata`) at construction; you cannot edit a node afterwards, by design.
 
 **3. Registry is populated at startup, read at request time.**
-`tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, reports, and dashboards in your app module (e.g. `web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.
+`tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, and reports in your app module (e.g. `web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.
 
 `web/api/registry.py` is a backward-compatible re-export of the same object. **Do not repoint the routers at `tracebi.registry` directly** — several tests isolate state by rebinding `web.api.registry.registry`, and routers bind at import time, so changing the import path silently breaks that isolation. If you ever do repoint them, convert those tests in the same change.
 
 **4. Optional dependencies must fail loudly.**
-Each feature group (reports, dashboard, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
+Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_EMBED_DASHBOARDS`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`.
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`.
 
 ---
 
@@ -209,7 +207,7 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 | Add cross-phase imports in test files | Keep tests isolated to their phase module |
 | Make the framework read connector URLs from env vars implicitly | Construct connectors in app module code; pass credential-bearing URLs via `os.environ[...]` explicitly (see `.env.example`) |
 | Add a new route without touching the registry | Wire it through `registry.py` so it's discoverable |
-| Reach into `_private` attrs of framework objects from routers | Use the public surfaces: `runner.layers()`/`run_history()`, `model.info()`, `connector.describe()`, `registry.dashboards()` |
+| Reach into `_private` attrs of framework objects from routers | Use the public surfaces: `runner.layers()`/`run_history()`, `model.info()`, `connector.describe()`, `runner.layers()` |
 | Modify `tracebi_*` SQLite tables manually | Use `PipelineRunner` API |
 | Add a new medallion layer without registering it | Call `runner.register(layer)` |
 
@@ -249,9 +247,6 @@ runner.register(layer, name="orders_silver", schedule="0 * * * *",
                 depends_on="orders_bronze")
 ```
 
-### New dashboard panel
-Subclass `FilterPanel`, `MetricPanel`, `ChartPanel`, or `TablePanel`. Pass to `Dashboard(panels=[...])`.
-
 ### New FastAPI route
 Add a file under `web/api/routers/`, include it in `web/api/main.py`, and read resources only from the registry — never import app-specific objects directly.
 
@@ -286,9 +281,6 @@ GET  /api/pipelines
 POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run
 GET  /api/pipelines/{name}/layers/{layer}/history
-GET  /api/dashboards
-GET  /api/dashboards/{name}/lineage
-GET  /dashboards/{name}/                             → Dash WSGI sub-app (not FastAPI)
 GET  /                                               → React SPA (web/ui/dist, when built)
 ```
 

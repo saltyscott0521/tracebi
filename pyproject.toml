@@ -20,7 +20,6 @@ keywords = [
     "etl",
     "medallion",
     "reports",
-    "dashboard",
     "data-engineering",
 ]
 classifiers = [
@@ -59,7 +58,6 @@ bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
 reports   = ["openpyxl>=3.0", "matplotlib>=3.5"]
 pdf       = ["weasyprint>=57"]  # enables HTMLRenderer.render_pdf(); no standalone PDFRenderer yet
-dashboard = ["dash>=2.14", "plotly>=5.0"]
 lineage   = ["networkx>=3.0", "matplotlib>=3.5"]
 medallion = ["networkx>=3.0"]
 pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
@@ -85,8 +83,6 @@ all = [
     "db-dtypes",
     "snowflake-connector-python>=3.0",
     "weasyprint>=57",
-    "dash>=2.14",
-    "plotly>=5.0",
     "networkx>=3.0",
     "apscheduler>=3.10",
     "fastapi>=0.100",
@@ -102,8 +98,6 @@ dev = [
     "ruff>=0.4",
     "openpyxl>=3.0",
     "matplotlib>=3.5",
-    "dash>=2.14",
-    "plotly>=5.0",
     "networkx>=3.0",
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
@@ -151,4 +145,3 @@ ignore = [
 # ruff F401 misreads them as unused imports.
 "tracebi/reports/excel_renderer.py" = ["F401"]
 "tracebi/reports/html_renderer.py"  = ["F401"]
-"tracebi/dashboard/*"               = ["F401"]

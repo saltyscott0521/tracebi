@@ -22,7 +22,6 @@ connector, query, and transform steps that produced it.
 | Excel / HTML output | ✗ | ✗ | ✓ | ✓ |
 | Medallion architecture | ✗ | ✓ | ✗ | ✓ |
 | Scheduled pipelines | ✗ | ✓ | ✓ | ✓ |
-| Live dashboard | ✓ | ✗ | ✓ | ✓ |
 
 ---
 
@@ -31,7 +30,6 @@ connector, query, and transform steps that produced it.
 - [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory, DuckDB) with push-down filter/columns, DataModel, DataSet with immutable lineage chain
 - [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
 - [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
-- [x] **Phase 3** — Live Dash dashboard with associative filters
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 - [x] **Phase 5** — Web UI (FastAPI + React, Dash embedded), folder-based auto-discovery, optional HTTP Basic auth, `tracebi` CLI, docker-compose deployment
 
@@ -143,7 +141,6 @@ Pick the pieces you need (extras work the same with either install style):
 ```bash
 pip install -e "."                    # core only (pandas)
 pip install -e ".[reports]"           # Excel + HTML renderers
-pip install -e ".[dashboard]"         # Dash dashboard
 pip install -e ".[pipeline]"          # scheduling + DB write-back
 pip install -e ".[lineage]"           # lineage diagrams
 pip install -e ".[duckdb]"            # DuckDB connector + push-down engine
@@ -174,7 +171,6 @@ Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
 | `TRACEBI_REQUESTS_DIR` | Folder scanned for ad-hoc request scripts (default `requests`) |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | Turn on HTTP Basic auth |
 | `TRACEBI_AUTH_PROXY_HEADER` | Trust an upstream identity header (Authelia / oauth2-proxy / Cloudflare Access) |
-| `TRACEBI_EMBED_DASHBOARDS=0` | Run dashboards as separate processes |
 | `TRACEBI_DEV_MODE=1` | Mount `/api/_dev/reload` for hot iteration |
 
 **Single-VM deployment** is the supported v1 story — one container behind
@@ -389,35 +385,6 @@ runner.start()
 Every run is recorded in `tracebi_runs` with `rows_in`, `rows_out`, `status`,
 and an `upstream_run_id` linking back to the previous layer's run.
 
-### 6. Live dashboard
-
-```python
-from tracebi.dashboard import Dashboard, DashboardServer
-from tracebi.dashboard import FilterPanel, MetricPanel, ChartPanel, TablePanel
-
-dashboard = (
-    Dashboard("Q2 Sales Dashboard")
-    .columns(2)
-    .add_filter(FilterPanel("region-filter", label="Region",
-                            column="region", table_name="orders"))
-    .add_panel(MetricPanel("total-revenue", title="Total Revenue",
-                           table_name="orders", column="revenue",
-                           aggregation="sum", prefix="$"))
-    .add_panel(ChartPanel("by-region", title="Revenue by Region",
-                          table_name="orders", chart_type="bar",
-                          x="region", y="revenue"))
-    .add_panel(TablePanel("orders-table", title="Orders",
-                          table_name="orders",
-                          columns=["order_id", "region", "revenue"]))
-)
-
-DashboardServer(dashboard, model=model).run(port=8050)
-# Open http://localhost:8050/
-```
-
-Filters are **associative** — selecting a region automatically filters every
-panel that shares that column.
-
 ### 7. Lineage diagrams
 
 ```python
@@ -433,7 +400,7 @@ print(diag.to_mermaid())          # paste into GitHub markdown
 
 ## Web UI
 
-A browser interface over your TraceBi registry — connectors, models, reports, pipelines, and live dashboards all in one place. Highlights:
+A browser interface over your TraceBi registry — connectors, models, reports, and pipelines all in one place. Highlights:
 
 - **Explore** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
@@ -464,7 +431,7 @@ The API is self-documenting: once the server is running, open
 or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
 every endpoint, parameter, and response schema is listed there.
 
-`web/demo_app/` is the default app module package. The DataModels themselves live at the project root in `models/` (`sales_model.py`, `wealth_model.py`) and are shared with notebooks and scripts via `get_model(...)`; the demo app pulls them in and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports and dashboards read from those resources.
+`web/demo_app/` is the default app module package. The DataModels themselves live at the project root in `models/` (`sales_model.py`, `wealth_model.py`) and are shared with notebooks and scripts via `get_model(...)`; the demo app pulls them in and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports read from those resources.
 
 The second model — `WealthModel` (`models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
 
@@ -474,7 +441,7 @@ To point the UI at your own data module instead of the built-in demo:
 TRACEBI_APP=mypackage.tracebi_config python web/run.py
 ```
 
-Your module just needs to import `registry` and call `registry.add_connector()`, `registry.add_model()`, `@registry.report(...)`, and optionally `registry.add_pipeline()` / `registry.add_dashboard()`.
+Your module just needs to import `registry` and call `registry.add_connector()`, `registry.add_model()`, `@registry.report(...)`, and optionally `registry.add_pipeline()`.
 
 **Project-root directories are auto-discovered** — you don't have to put everything in the app module. The server scans these folders at startup and registers whatever it finds:
 
@@ -520,7 +487,7 @@ runner.status()
 
 The web server auto-discovers both directories at startup and registers them into the registry automatically.
 
-### 9. Adding reports and dashboards to the web UI
+### 9. Adding reports to the web UI
 
 Drop a file in `reports/` and decorate a factory function — the server picks it up on startup with no extra wiring:
 
@@ -539,18 +506,6 @@ try:
         return Report("Weekly Summary").add(TableSection(title="Orders", dataset=ds))
 except ImportError:
     pass
-```
-
-For dashboards, register directly in your app module (`registry.py`):
-
-```python
-from web.api.registry import registry
-from tracebi.dashboard import Dashboard, DashboardServer, ChartPanel
-
-dashboard = Dashboard("My Dashboard").add_panel(
-    ChartPanel("rev", title="Revenue", dataset=ds, chart_type="bar", x="region", y="revenue")
-)
-registry.add_dashboard("my_dashboard", DashboardServer(dashboard, model=model))
 ```
 
 ---
@@ -580,7 +535,6 @@ python examples/analyst_quickstart.py  # notebook-first tour: rich previews, rep
 python examples/phase1_example.py      # connectors + DataModel + lineage
 python examples/phase2_example.py      # report engine (opens browser)
 python examples/phase25_example.py     # medallion + star schema + lineage diagram
-python examples/phase3_example.py      # live Dash dashboard
 python examples/phase4_example.py      # full pipeline (run seeds/seed_db.py first)
 ```
 
@@ -602,7 +556,6 @@ tracebi/
 │   ├── model/            DataSet, DataModel (with star-schema query)
 │   ├── etl/              LandingLayer, ManipulationLayer, FinalLayer (Bronze/Silver/Gold aliases)
 │   ├── reports/          Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
-│   ├── dashboard/        Dashboard, DashboardServer, panels
 │   ├── pipeline/         PipelineRunner (APScheduler + DB)
 │   └── lineage/          LineageDiagram
 ├── web/

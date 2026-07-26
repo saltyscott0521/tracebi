@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useModels, useReports, useRequests, usePipelines, useDashboards } from '../api'
+import { useModels, useReports, useRequests, usePipelines } from '../api'
 
 // Static page destinations — always available, even before data loads.
 const PAGES = [
@@ -12,7 +12,6 @@ const PAGES = [
   { label: 'Reports',         path: '/reports',         kind: 'page' },
   { label: 'Requests',        path: '/requests',        kind: 'page' },
   { label: 'Pipelines',       path: '/pipelines',       kind: 'page' },
-  { label: 'Dashboards',      path: '/dashboards',      kind: 'page' },
 ]
 
 const KIND_META = {
@@ -21,7 +20,6 @@ const KIND_META = {
   report:    { tag: 'Report',    color: '#db2777' },
   request:   { tag: 'Request',   color: '#6d28d9' },
   pipeline:  { tag: 'Pipeline',  color: '#d97706' },
-  dashboard: { tag: 'Dashboard', color: '#0891b2' },
 }
 
 export default function CommandPalette() {
@@ -35,7 +33,6 @@ export default function CommandPalette() {
   const { data: reports }    = useReports()
   const { data: requests }   = useRequests()
   const { data: pipelines }  = usePipelines()
-  const { data: dashboards } = useDashboards()
 
   const items = useMemo(() => [
     ...PAGES,
@@ -43,8 +40,7 @@ export default function CommandPalette() {
     ...(reports    || []).map(r => ({ label: r.name,     path: '/reports',    kind: 'report',    sub: r.description })),
     ...(requests   || []).map(r => ({ label: r.name,     path: '/requests',   kind: 'request',   sub: r.type })),
     ...(pipelines  || []).map(p => ({ label: p.pipeline, path: '/pipelines',  kind: 'pipeline',  sub: `${(p.layers || []).length} layers` })),
-    ...(dashboards || []).map(d => ({ label: d.name,     path: '/dashboards', kind: 'dashboard', sub: d.description })),
-  ], [models, reports, requests, pipelines, dashboards])
+  ], [models, reports, requests, pipelines])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()

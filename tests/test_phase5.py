@@ -1307,53 +1307,6 @@ class TestPipelineRunEndpoint:
         assert r.status_code == 404
 
 
-# ── Dashboard lineage endpoint ────────────────────────────────────────────
-
-class TestDashboardLineageEndpoint:
-    def test_returns_combined_graph(self, memory_model):
-        import web.api.registry as reg_mod
-        from web.api.registry import Registry
-        from tracebi.dashboard import Dashboard, DashboardServer, FilterPanel, TablePanel
-
-        local = Registry()
-        local.add_model(memory_model)
-        dash = (
-            Dashboard("Sales")
-            .add_filter(FilterPanel("r", label="Region", column="region", table_name="orders"))
-            .add_panel(TablePanel("t", title="Orders", table_name="orders",
-                                  columns=["order_id", "region"]))
-        )
-        local.add_dashboard("sales", DashboardServer(dash, model=memory_model))
-
-        original = reg_mod.registry
-        reg_mod.registry = local
-        try:
-            from fastapi.testclient import TestClient
-            from fastapi import FastAPI
-            from web.api.routers import dashboards as dash_router
-            app = FastAPI()
-            app.include_router(dash_router.router, prefix="/api")
-
-            client = TestClient(app)
-            r = client.get("/api/dashboards/sales/lineage")
-            assert r.status_code == 200
-            body = r.json()
-            assert body["dashboard"] == "sales"
-            assert "combined_graph" in body
-            assert len(body["combined_graph"]["nodes"]) >= 1
-            assert len(body["panels"]) == 2
-        finally:
-            reg_mod.registry = original
-
-    def test_unknown_dashboard_404(self):
-        from fastapi.testclient import TestClient
-        from fastapi import FastAPI
-        from web.api.routers import dashboards as dash_router
-        app = FastAPI()
-        app.include_router(dash_router.router, prefix="/api")
-        client = TestClient(app)
-        r = client.get("/api/dashboards/nope/lineage")
-        assert r.status_code == 404
 
 
 # ── Dev-mode reload endpoint ──────────────────────────────────────────────

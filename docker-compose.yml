@@ -37,9 +37,6 @@ services:
       # When set, takes precedence over Basic auth.
       TRACEBI_AUTH_PROXY_HEADER: ${TRACEBI_AUTH_PROXY_HEADER:-}
       TRACEBI_AUTH_PROXY_TRUSTED_IPS: ${TRACEBI_AUTH_PROXY_TRUSTED_IPS:-}
-      # Set to 0 to skip the in-process Dash mount and run dashboards
-      # as separate services.
-      TRACEBI_EMBED_DASHBOARDS: ${TRACEBI_EMBED_DASHBOARDS:-1}
       # Set to 1 to enable /api/_dev/reload for hot-reload during dev.
       TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
       PORT: "8000"

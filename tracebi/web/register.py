@@ -69,10 +69,6 @@ class _Register:
         from tracebi.pipeline_registry import get_runner as _get
         return _get(name)
 
-    def dashboard(self, name: str, server, description: str = "") -> "_Register":
-        _registry().add_dashboard(name, server, description=description)
-        return self
-
     def report(self, name: str, description: str = "") -> Callable:
         """Decorator: register a zero-arg report factory."""
         return _registry().report(name, description=description)

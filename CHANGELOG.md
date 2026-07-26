@@ -6,6 +6,41 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### ⚠️ Removed — the Dash dashboard layer
+
+`tracebi.dashboard` (Dashboard, DashboardServer, and the four panel types),
+the `/api/dashboards` routes, the `/dashboards/{name}/` WSGI mounts,
+`registry.add_dashboard()`, `TRACEBI_EMBED_DASHBOARDS`, the `[dashboard]`
+extra (dash + plotly), and the Dashboards page in the UI are all gone.
+
+This is subtraction on purpose, not neglect. The layer had three problems
+that compounded:
+
+- **No lineage export.** A dashboard could show a number with no audit
+  trail, which contradicts the one thing this framework exists to
+  guarantee.
+- **Filters didn't traverse relationships.** Selecting a value filtered
+  only panels whose own frame happened to carry that column, and silently
+  skipped the rest — so a "filtered" dashboard could mix filtered and
+  unfiltered numbers side by side.
+- **It forced a second charting stack.** Reports render matplotlib; the
+  dashboard rendered Plotly, with overlapping-but-different field names.
+  Maintaining two chart grammars blocks unifying on one declarative spec,
+  which is the prerequisite for AI-authored front-ends.
+
+Plus the mounting itself was a scaling risk — Dash apps embedded in FastAPI
+via WSGI at import time, holding in-process state, unable to accept a new
+dashboard without a restart.
+
+The **Explore** page and the report engine already cover most of what it
+did, and both carry lineage. If live dashboards return, they will be a spec
+over the same sections, sharing one chart grammar and inheriting lineage for
+free.
+
+Side effects worth noting: the deployed image no longer installs dash or
+plotly, and the Starlette `middleware.wsgi` deprecation warning is gone
+since nothing mounts WSGI any more.
+
 ### ⚠️ Breaking — queries now refuse to double-count
 
 `DataModel.query()` **raises `ValueError` when a joined dimension's key is
@@ -57,8 +92,7 @@ for the old behaviour. A module that failed mid-import is removed from
 
 **`tracebi.capabilities.describe()`**, **`tracebi context`**, and
 **`GET /api/schema`** return TraceBi's vocabulary as plain data: every
-report section and dashboard panel with its fields, types, defaults and
-*allowed values*; the DataSet verbs with signatures; measure kinds; filter
+report section with its fields, types, defaults and *allowed values*; the DataSet verbs with signatures; measure kinds; filter
 operators; number formats; and the file conventions that make a project
 discoverable.
 
@@ -95,8 +129,8 @@ from `tracebi init` to a running UI at all. Discovery directories carry a
 
 **`TRACEBI_APP=""` now means "no app module".** Serving a user's project no
 longer drags in the bundled demo app, which references demo data they do
-not have and failed on import. An app module is only needed for connectors
-and dashboards; the four artifact directories need none.
+not have and failed on import. An app module is only needed for connectors;
+the four artifact directories need none.
 
 ### Removed
 

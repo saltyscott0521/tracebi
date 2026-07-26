@@ -153,18 +153,12 @@ export const useRunPipeline = () => {
   })
 }
 
-export const useDashboardLineage = () =>
-  useMutation({ mutationFn: (name) => get(`/dashboards/${name}/lineage`) })
-
 export const useLayerHistory = (pipeline, layer) =>
   useQuery({
     queryKey: ['history', pipeline, layer],
     queryFn: () => get(`/pipelines/${pipeline}/layers/${layer}/history`),
     enabled: !!(pipeline && layer),
   })
-
-export const useDashboards = () =>
-  useQuery({ queryKey: ['dashboards'], queryFn: () => get('/dashboards') })
 
 export const useRunQuery = () =>
   useMutation({ mutationFn: ({ model, body }) => postJson(`/models/${encodeURIComponent(model)}/query`, body) })

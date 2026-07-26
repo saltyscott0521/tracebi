@@ -2,8 +2,8 @@
 A machine-readable description of what TraceBi can build.
 
 ``describe()`` returns the framework's vocabulary as plain data: every
-report section and dashboard panel with its fields, types, defaults and
-allowed values; the DataSet verbs; the measure kinds, filter operators and
+report section with its fields, types, defaults and allowed values;
+the DataSet verbs; the measure kinds, filter operators and
 aggregations; and the file conventions that make a project discoverable.
 
 Everything here is **generated** from dataclass fields and type
@@ -45,8 +45,6 @@ _ENUMS: dict[tuple[str, str], tuple[str, ...]] = {
     ("TextSection", "style"): TEXT_STYLES,
     ("TableSection", "style"): TABLE_STYLES,
     ("ChartSection", "chart_type"): CHART_TYPES,
-    ("ChartPanel", "chart_type"): ("bar", "line", "pie", "scatter", "area"),
-    ("MetricPanel", "aggregation"): ("sum", "mean", "count", "min", "max", "median"),
 }
 
 # Fields that hold a live DataSet rather than plain data. Flagged so a
@@ -142,18 +140,6 @@ def _sections() -> list[dict]:
         entry["section_type"] = getattr(instance_type, "value", None)
         out.append(entry)
     return out
-
-
-def _panels() -> list[dict]:
-    from tracebi.dashboard.panels import (
-        ChartPanel,
-        FilterPanel,
-        MetricPanel,
-        TablePanel,
-    )
-
-    return [_describe_dataclass(c)
-            for c in (TablePanel, ChartPanel, MetricPanel, FilterPanel)]
 
 
 def _dataset_verbs() -> list[dict]:
@@ -266,7 +252,6 @@ def describe() -> dict:
             "Report": Report("_").help_text(),
         },
         "report_sections": _sections(),
-        "dashboard_panels": _panels(),
         "dataset_verbs": _dataset_verbs(),
         "semantic_model": {
             "measure_kinds": [

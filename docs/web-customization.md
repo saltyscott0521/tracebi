@@ -1,7 +1,7 @@
 # Customizing the TraceBi Web App
 
 How to point the web server at your own data, add your own reports and
-dashboards, restyle or extend the React UI, and deploy. Written for the
+restyle or extend the React UI, and deploy. Written for the
 person who has outgrown the demo app.
 
 ---
@@ -9,10 +9,9 @@ person who has outgrown the demo app.
 ## Architecture in one paragraph
 
 The web layer is a FastAPI app ([web/api/main.py](../web/api/main.py)) that
-serves a JSON API under `/api`, mounts Dash dashboards as WSGI sub-apps
-under `/dashboards/{name}/`, and serves the built React SPA
+serves a JSON API under `/api` and serves the built React SPA
 (`web/ui/dist/`) at `/`. Everything the API exposes — connectors, models,
-reports, pipelines, dashboards — is read from a **singleton registry**
+reports, pipelines — is read from a **singleton registry**
 ([web/api/registry.py](../web/api/registry.py)) that your *app module*
 populates once at startup. Routes never construct resources themselves;
 they only read the registry. That seam is what makes the whole web layer
@@ -57,10 +56,10 @@ runner = get_runner("sales_etl")
 Override any directory path via env var (`TRACEBI_MODELS_DIR`,
 `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`).
 
-## Step 1b: Create an app module (for connectors and dashboards)
+## Step 1b: Create an app module (for connectors)
 
-Connectors and dashboards still need an app module — they can't be expressed
-as a simple file convention. The demo ([web/demo_app/](../web/demo_app/)) is
+Connectors still need an app module — credential-bearing construction can't
+be expressed as a simple file convention. The demo ([web/demo_app/](../web/demo_app/)) is
 the reference — copy its layout:
 
 ```
@@ -68,8 +67,7 @@ myapp/
   __init__.py        # imports registry module (one line, like demo_app)
   model.py           # connectors + DataModel construction (optional if using models/)
   pipeline.py        # PipelineRunner + layer setup (optional if using pipelines/)
-  dashboard.py       # Dash dashboard server (optional)
-  registry.py        # THE wiring file — connector and dashboard registration lives here
+  registry.py        # THE wiring file — connector registration lives here
 ```
 
 `registry.py` is the only file with registration side effects:
@@ -122,7 +120,6 @@ your peril):
 | Model | `registry.add_model(model, default=False)` | **Models** + **Explore** |
 | Report | `@registry.report("name", description="…")` on a zero-arg factory | **Reports** page |
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
-| Dashboard | `registry.add_dashboard("name", dash_server, description="…")` | **Dashboards** + `/dashboards/name/` |
 | Pipeline | `registry.add_pipeline("name", runner)` | **Pipelines** (DAG, run buttons, history) |
 
 ## Step 3: The development loop
@@ -211,9 +208,6 @@ uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 docker compose up --build
 ```
 
-Set `TRACEBI_EMBED_DASHBOARDS=0` to skip the in-process Dash WSGI mounts
-and run dashboards as separate services instead — useful with multiple
-uvicorn workers, since Dash apps hold in-process state.
 
 ## Environment variable reference
 
@@ -226,7 +220,6 @@ uvicorn workers, since Dash apps hold in-process state.
 | `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for ad-hoc request scripts |
 | `TRACEBI_SCHEDULED_DIR` | `scheduled` | Folder scanned for `@register.scheduled()` factories |
 | `TRACEBI_DEV_MODE` | unset | `1` mounts `POST /api/_dev/reload` |
-| `TRACEBI_EMBED_DASHBOARDS` | `1` | `0` skips Dash WSGI mounts |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | unset | HTTP Basic auth |
 | `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` | unset | Proxy-header auth |
 | `TRACEBI_AUTH_REALM` | `TraceBi` | Basic-auth realm string |

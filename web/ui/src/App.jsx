@@ -9,7 +9,6 @@ import Explore from './pages/Explore'
 import Reports from './pages/Reports'
 import Requests from './pages/Requests'
 import Pipelines from './pages/Pipelines'
-import Dashboards from './pages/Dashboards'
 
 export default function App() {
   return (
@@ -24,7 +23,6 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/pipelines" element={<Pipelines />} />
-          <Route path="/dashboards" element={<Dashboards />} />
         </Routes>
       </Layout>
     </ToastProvider>

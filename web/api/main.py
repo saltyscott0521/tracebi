@@ -23,9 +23,7 @@ Environment switches:
     TRACEBI_REPORTS_DIR         — named reports folder (default: reports)
     TRACEBI_REQUESTS_DIR        — request scripts folder (default: requests)
     TRACEBI_SCHEDULED_DIR       — scheduled scripts folder (default: scheduled)
-    TRACEBI_DEV_MODE=1          — mount /_dev/reload + /_dev/discovered
-    TRACEBI_EMBED_DASHBOARDS=0  — skip the WSGI mount; run dashboards as a
-                                  separate process via DashboardServer.run()
+    TRACEBI_DEV_MODE=1          — mount /_dev/reload
     TRACEBI_AUTH_USER / _PASS   — enable HTTP Basic auth
     TRACEBI_AUTH_PROXY_HEADER   — enable proxy header-trust auth
 """
@@ -36,9 +34,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.wsgi import WSGIMiddleware
 
-from web.api.routers import connectors, models, reports, pipelines, dashboards, requests, docs
+from web.api.routers import connectors, models, reports, pipelines, requests, docs
 from web.api.auth import install_if_configured as _install_auth
 
 from tracebi._version import get_version as _tracebi_version
@@ -78,7 +75,6 @@ app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")
 app.include_router(requests.router,   prefix="/api")
 app.include_router(pipelines.router,  prefix="/api")
-app.include_router(dashboards.router, prefix="/api")
 app.include_router(docs.router,       prefix="/api")
 
 # Dev-mode reload endpoint — opt-in via TRACEBI_DEV_MODE=1.
@@ -115,8 +111,8 @@ def discovery():
 @app.get("/api/schema")
 def schema():
     """
-    The framework's vocabulary as data: every report section and dashboard
-    panel with its fields, types, defaults and allowed values, the DataSet
+    The framework's vocabulary as data: every report section with its
+    fields, types, defaults and allowed values, the DataSet
     verbs, measure kinds, filter operators, and the discovery conventions.
 
     Generated from the code rather than hand-maintained, so it stays
@@ -129,7 +125,7 @@ def schema():
 
 # ── Load app module ────────────────────────────────────────────────────────
 
-# An app module wires up connectors and dashboards, which cannot be
+# An app module wires up connectors, which cannot be
 # expressed as a file convention. Set TRACEBI_APP="" to skip it entirely —
 # a project that only uses the models/ pipelines/ reports/ requests/
 # directories needs no app module, and loading the bundled demo into
@@ -195,28 +191,6 @@ if os.path.isdir(_pipelines_dir):
             warnings.warn(f"[tracebi] pipeline '{_pname}' failed to load: {_exc}")
     if _disc_pipes:
         print(f"[tracebi] auto-discovered {len(_disc_pipes)} pipeline(s) from {_pipelines_dir}")
-
-
-# ── Mount registered Dash dashboards ──────────────────────────────────────────
-
-from web.api.registry import registry as _registry  # noqa: E402
-
-_embed_dashboards = os.environ.get("TRACEBI_EMBED_DASHBOARDS", "1") != "0"
-if _embed_dashboards:
-    for _dash_name, _dash_entry in _registry.dashboards().items():
-        _prefix = f"/dashboards/{_dash_name}/"
-        try:
-            _dash_app = _dash_entry["server"].get_app(requests_pathname_prefix=_prefix)
-            app.mount(_prefix, WSGIMiddleware(_dash_app.server))
-        except ImportError:
-            pass  # dash not installed — skip silently
-else:
-    if _registry.dashboards():
-        print(
-            f"[tracebi] TRACEBI_EMBED_DASHBOARDS=0 — {len(_registry.dashboards())} "
-            f"dashboard(s) registered but not mounted. Run them standalone "
-            f"with DashboardServer.run() in a separate process."
-        )
 
 
 # ── Serve built React UI (production) ──────────────────────────────────────
