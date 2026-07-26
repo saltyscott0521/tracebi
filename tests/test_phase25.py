@@ -16,7 +16,7 @@ import tempfile
 import pandas as pd
 import pytest
 
-from tracebi import DataModel, MemoryConnector, DataSet, LineageNode
+from tracebi import DataModel, MemoryConnector, DataSet, LineageNode, QuerySpec
 from tracebi.etl.bronze import BronzeLayer
 from tracebi.etl.silver import SilverLayer
 from tracebi.etl.gold import GoldLayer
@@ -777,3 +777,222 @@ class TestEngineParity:
             assert abs(float(d["revenue"].sum()) - float(p["revenue"].sum())) < 1e-9, (
                 f"engines disagree for {case}"
             )
+            # Row ORDER too, not just totals. pandas' groupby sorts by
+            # default and DuckDB returned hash order, so the two engines
+            # produced different frames for the same query — and
+            # DataSet.fingerprint() hashes row order, so identical runs
+            # produced different fingerprints.
+            pd.testing.assert_frame_equal(
+                d.reset_index(drop=True), p.reset_index(drop=True),
+                check_dtype=False,
+                obj=f"engine output for {case}",
+            )
+
+
+class TestQueryDeterminism:
+    """
+    A fingerprint that changes between identical runs makes the manifest
+    unverifiable, which is the whole product promise.
+    """
+
+    def test_repeated_identical_queries_have_one_fingerprint(self):
+        model = TestDimensionAttributeFilters._model()
+        prints = {
+            model.query(
+                fact="fact_orders", measures={"revenue": "sum"},
+                dimensions=["dim_customer.region"],
+            ).fingerprint()
+            for _ in range(12)
+        }
+        assert len(prints) == 1, (
+            "identical queries produced different fingerprints — grouped "
+            "results must have a deterministic row order"
+        )
+
+    def test_grouped_rows_come_back_sorted_by_dimension(self):
+        df = TestDimensionAttributeFilters._model().query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_customer.region"],
+        ).to_pandas()
+        col = list(df["dim_customer.region"])
+        assert col == sorted(col)
+
+
+class TestNamedMeasures:
+    """
+    Measures declared once on the model, reviewed in a PR, versioned in
+    git, and referenced by name — the difference between a governed
+    semantic model and a pile of ad-hoc groupbys.
+    """
+
+    @staticmethod
+    def _model():
+        orders = pd.DataFrame({
+            "order_id":    [1, 2, 3, 4],
+            "customer_id": [1, 2, 1, 2],
+            "revenue":     [100.0, 200.0, 300.0, 400.0],
+            "cost":        [60.0, 150.0, 180.0, 320.0],
+        })
+        customers = pd.DataFrame({"customer_id": [1, 2], "region": ["West", "NE"]})
+        m = DataModel("Meas").add_connector(
+            MemoryConnector("mem", {"orders": orders, "customers": customers})
+        )
+        m.add_table("orders", connector="mem", source="orders")
+        m.add_table("customers", connector="mem", source="customers")
+        m.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region"])
+        m.add_fact("fact_orders", table_name="orders",
+                   measures=["revenue", "cost"],
+                   foreign_keys={"dim_customer": "customer_id"})
+        m.add_measure("revenue", column="revenue", agg="sum",
+                      description="Gross booked revenue")
+        m.add_measure("orders", column="order_id", agg="nunique")
+        m.add_measure("gross_margin", expr="revenue - cost", agg="sum")
+        m.add_measure("margin_pct", ratio=("gross_margin", "revenue"),
+                      format="percent")
+        m.connect()
+        return m
+
+    def test_simple_measure_by_name(self):
+        df = self._model().query(fact="fact_orders", measures=["revenue"]).to_pandas()
+        assert float(df["revenue"].iloc[0]) == 1000.0
+
+    def test_expression_measure(self):
+        df = self._model().query(fact="fact_orders", measures=["gross_margin"]).to_pandas()
+        assert float(df["gross_margin"].iloc[0]) == 290.0   # 1000 - 710
+
+    def test_ratio_divides_totals_not_rows(self):
+        """sum(margin)/sum(revenue), not the mean of per-row ratios."""
+        df = self._model().query(fact="fact_orders", measures=["margin_pct"]).to_pandas()
+        assert abs(float(df["margin_pct"].iloc[0]) - 0.29) < 1e-9
+
+    def test_measures_group_by_dimension(self):
+        df = self._model().query(
+            fact="fact_orders", measures=["revenue", "gross_margin", "margin_pct"],
+            dimensions=["dim_customer.region"],
+        ).to_pandas().set_index("dim_customer.region")
+        assert float(df.loc["West", "revenue"]) == 400.0
+        assert float(df.loc["West", "gross_margin"]) == 160.0
+        assert abs(float(df.loc["West", "margin_pct"]) - 0.40) < 1e-9
+
+    def test_legacy_dict_form_still_works(self):
+        df = self._model().query(
+            fact="fact_orders", measures={"revenue": "sum"}
+        ).to_pandas()
+        assert float(df["revenue"].iloc[0]) == 1000.0
+
+    # ── The constraint that protects reproducibility ───────────────────
+
+    def test_callables_are_rejected(self):
+        m = self._model()
+        with pytest.raises(TypeError, match="not a callable"):
+            m.add_measure("bad", column=lambda df: df.revenue, agg="sum")
+
+    def test_function_calls_rejected_in_expressions(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="function call"):
+            m.add_measure("bad", expr="SUM(revenue)", agg="sum")
+
+    def test_sql_fragments_rejected_in_expressions(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="may only contain"):
+            m.add_measure("bad", expr="revenue); DROP TABLE x--", agg="sum")
+
+    def test_arithmetic_with_parens_allowed(self):
+        m = self._model()
+        m.add_measure("half_margin", expr="(revenue - cost) / 2", agg="sum")
+        df = m.query(fact="fact_orders", measures=["half_margin"]).to_pandas()
+        assert float(df["half_margin"].iloc[0]) == 145.0
+
+    # ── Declaration-time validation ────────────────────────────────────
+
+    def test_exactly_one_kind_required(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="exactly one of"):
+            m.add_measure("bad", column="revenue", expr="revenue - cost", agg="sum")
+
+    def test_agg_required_for_non_ratio(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="needs an agg"):
+            m.add_measure("bad", column="revenue")
+
+    def test_unknown_agg_suggests_a_match(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="Did you mean 'sum'"):
+            m.add_measure("bad", column="revenue", agg="summ")
+
+    def test_ratio_takes_no_agg(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="take no agg"):
+            m.add_measure("bad", ratio=("revenue", "cost"), agg="sum")
+
+    # ── Query-time validation ──────────────────────────────────────────
+
+    def test_expression_referencing_missing_column_fails_loudly(self):
+        m = self._model()
+        m.add_measure("bogus", expr="revenue - nope", agg="sum")
+        with pytest.raises(ValueError, match="references column 'nope'"):
+            m.query(fact="fact_orders", measures=["bogus"])
+
+    def test_undeclared_measure_name_is_actionable(self):
+        m = self._model()
+        with pytest.raises(ValueError, match="add_measure"):
+            m.query(fact="fact_orders", measures=["revenu"])
+
+    def test_self_referential_ratio_detected(self):
+        m = self._model()
+        m.add_measure("loop", ratio=("loop", "revenue"))
+        with pytest.raises(ValueError, match="defined in terms of itself"):
+            m.query(fact="fact_orders", measures=["loop"])
+
+    def test_info_exposes_the_vocabulary(self):
+        info = self._model().info()
+        by_name = {m["name"]: m for m in info["measures"]}
+        assert by_name["revenue"]["description"] == "Gross booked revenue"
+        assert by_name["gross_margin"]["expr"] == "revenue - cost"
+        assert by_name["margin_pct"]["ratio"] == ["gross_margin", "revenue"]
+        assert "between" in info["filter_operators"]
+
+
+class TestQuerySpec:
+    """A query as data: serializable, diffable, committable, replayable."""
+
+    def test_round_trips_through_json(self):
+        import json
+
+        spec = QuerySpec(
+            fact="fact_orders", measures=["revenue"],
+            dimensions=("dim_customer.region",),
+            filters={"dim_customer.region": "West"},
+        )
+        again = QuerySpec.from_dict(json.loads(json.dumps(spec.to_dict())))
+        assert again.to_dict() == spec.to_dict()
+
+    def test_execute_matches_query(self):
+        m = TestNamedMeasures._model()
+        via_query = m.query(
+            fact="fact_orders", measures=["revenue"],
+            dimensions=["dim_customer.region"],
+        ).to_pandas()
+        via_spec = m.execute(QuerySpec(
+            fact="fact_orders", measures=["revenue"],
+            dimensions=("dim_customer.region",),
+        )).to_pandas()
+        pd.testing.assert_frame_equal(via_query, via_spec)
+
+    def test_spec_is_stamped_into_lineage(self):
+        m = TestNamedMeasures._model()
+        ds = m.query(fact="fact_orders", measures=["revenue"])
+        stamped = [n for n in ds.lineage if n.metadata.get("query_spec")]
+        assert stamped, "the executed spec must be recorded for reproducibility"
+        assert stamped[-1].metadata["query_spec"]["fact"] == "fact_orders"
+
+    def test_missing_required_fields_rejected(self):
+        with pytest.raises(ValueError, match="requires a 'fact'"):
+            QuerySpec.from_dict({"measures": ["revenue"]})
+        with pytest.raises(ValueError, match="requires 'measures'"):
+            QuerySpec.from_dict({"fact": "fact_orders"})
+
+    def test_unknown_fields_rejected(self):
+        with pytest.raises(ValueError, match="Unknown QuerySpec field"):
+            QuerySpec.from_dict({"fact": "f", "measures": ["m"], "limit": 10})

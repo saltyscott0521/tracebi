@@ -1,5 +1,6 @@
 """
-DataModel — Qlik-style relational graph with built-in star-schema query.
+DataModel — governed semantic model: tables, relationships, declared
+facts/dimensions/measures, and a star-schema query surface.
 
 A DataModel registers connectors and tables, then exposes two layered query
 surfaces over them:
@@ -19,6 +20,7 @@ full lineage chains.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -80,6 +82,132 @@ class _Predicate:
         if self.op in _NULL_OPS:
             return f"{self.target} {self.op.replace('_', ' ')}"
         return f"{self.target} {self.op} {self.value!r}"
+
+
+@dataclass(frozen=True)
+class MeasureDef:
+    """
+    A named, governed measure declared on the model.
+
+    Defined once in ``models/<name>.py``, reviewed in a pull request,
+    versioned in git, and referenced by name from every report — this is
+    what makes the model a shared vocabulary rather than a pile of ad-hoc
+    groupbys.
+
+    Exactly three kinds, deliberately closed:
+
+    * **simple** — an aggregation of one column::
+
+          add_measure("revenue", column="revenue", agg="sum")
+
+    * **expression** — an aggregation of a row-level arithmetic expression::
+
+          add_measure("gross_margin", expr="revenue - cost", agg="sum")
+
+    * **ratio** — one measure divided by another, computed after
+      aggregation so the result is a true ratio of totals, not a mean of
+      per-row ratios::
+
+          add_measure("margin_pct", ratio=("gross_margin", "revenue"))
+
+    These three cover the large majority of real usage, run on both
+    engines, and need no expression parser. A richer grammar can arrive
+    later as sugar that compiles down to these same structures.
+
+    Measures are **data, never callables.** A lambda cannot be serialized,
+    diffed, reviewed as data, validated before execution, or sent over the
+    wire — accepting one would forfeit reproducibility at the root.
+    """
+    name: str
+    kind: str                                  # simple | expression | ratio
+    agg: Optional[str] = None
+    column: Optional[str] = None
+    expr: Optional[str] = None
+    ratio: Optional[tuple[str, str]] = None    # (numerator, denominator)
+    description: str = ""
+    format: Optional[str] = None               # presentation hint, e.g. "percent"
+
+    def to_dict(self) -> dict:
+        d = {"name": self.name, "kind": self.kind}
+        for key in ("agg", "column", "expr", "description", "format"):
+            val = getattr(self, key)
+            if val:
+                d[key] = val
+        if self.ratio:
+            d["ratio"] = list(self.ratio)
+        return d
+
+
+# Characters permitted in a row-level measure expression. Restricted to
+# arithmetic over bare column names and numeric literals: no function calls,
+# no quotes, no subqueries. The expression is validated against the fact's
+# actual columns before it ever reaches an engine.
+_EXPR_TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_EXPR_ALLOWED = re.compile(r"^[A-Za-z0-9_+\-*/(). ]+$")
+# An identifier immediately followed by "(" is a function call. Row
+# expressions are arithmetic only — aggregation is declared via agg=.
+_EXPR_CALL = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*\(")
+
+
+@dataclass(frozen=True)
+class QuerySpec:
+    """
+    A star-schema query as data.
+
+    Everything needed to run a query, in a form that can be serialized,
+    diffed, code-reviewed, committed, and replayed. ``DataModel.execute()``
+    takes one of these; ``DataModel.query()`` is sugar that builds one.
+
+    The resolved spec is stamped into the query's lineage, so an audit trail
+    records not merely "a query ran" but exactly which query — and combined
+    with ``DataSet.fingerprint()`` that is end-to-end reproducibility.
+
+    Deliberately contains no callables and no free-form SQL: a spec that
+    cannot be validated before execution is not a spec.
+    """
+    fact: str
+    measures: Any                                   # {col: agg} or [names]
+    dimensions: tuple[str, ...] = ()
+    filters: Any = None                             # see DataModel.query()
+    aggregate: bool = True
+    allow_fanout: bool = False
+
+    def to_dict(self) -> dict:
+        return {
+            "fact": self.fact,
+            "measures": (list(self.measures) if isinstance(self.measures, (list, tuple))
+                         else dict(self.measures)),
+            "dimensions": list(self.dimensions),
+            "filters": dict(self.filters) if self.filters else {},
+            "aggregate": self.aggregate,
+            "allow_fanout": self.allow_fanout,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "QuerySpec":
+        if "fact" not in d:
+            raise ValueError("QuerySpec requires a 'fact'.")
+        if "measures" not in d:
+            raise ValueError("QuerySpec requires 'measures'.")
+        unknown = set(d) - {
+            "fact", "measures", "dimensions", "filters", "aggregate", "allow_fanout",
+        }
+        if unknown:
+            raise ValueError(
+                f"Unknown QuerySpec field(s): {sorted(unknown)}. "
+                f"Allowed: fact, measures, dimensions, filters, aggregate, "
+                f"allow_fanout."
+            )
+        measures = d["measures"]
+        return cls(
+            fact=d["fact"],
+            measures=list(measures) if isinstance(measures, list) else dict(measures),
+            dimensions=tuple(d.get("dimensions") or ()),
+            filters=dict(d.get("filters") or {}) or None,
+            aggregate=bool(d.get("aggregate", True)),
+            allow_fanout=bool(d.get("allow_fanout", False)),
+        )
+
 
 @dataclass(frozen=True)
 class _TableDef:
@@ -178,6 +306,7 @@ class DataModel:
         self._relationships: dict[str, _RelationshipDef] = {}
         self._dimensions: dict[str, _DimensionDef] = {}
         self._facts: dict[str, _FactDef] = {}
+        self._measures: dict[str, MeasureDef] = {}
 
     # ── Fluent builder ─────────────────────────────────────────
 
@@ -293,6 +422,113 @@ class DataModel:
             foreign_keys=dict(foreign_keys) if foreign_keys else {},
         )
         return self
+
+    def add_measure(
+        self,
+        name: str,
+        *,
+        column: Optional[str] = None,
+        agg: Optional[str] = None,
+        expr: Optional[str] = None,
+        ratio: Optional[tuple[str, str]] = None,
+        description: str = "",
+        format: Optional[str] = None,
+    ) -> "DataModel":
+        """
+        Declare a named measure on the model.
+
+        Define the calculation once, review it in a pull request, and
+        reference it by name from every report and query::
+
+            model.add_measure("revenue", column="revenue", agg="sum")
+            model.add_measure("orders", column="order_id", agg="nunique")
+            model.add_measure("gross_margin", expr="revenue - cost", agg="sum")
+            model.add_measure("margin_pct", ratio=("gross_margin", "revenue"),
+                              format="percent")
+
+            model.query(fact="fact_orders",
+                        measures=["revenue", "margin_pct"],
+                        dimensions=["dim_customer.region"])
+
+        Exactly one of ``column``, ``expr``, or ``ratio`` must be given.
+        ``agg`` is required for the first two. Ratios are computed after
+        aggregation, so they are a ratio of totals rather than a mean of
+        per-row ratios.
+
+        Everything here is declarative data — callables are rejected, since
+        a lambda cannot be serialized, diffed, reviewed, or validated
+        before it runs.
+        """
+        for label, value in (("column", column), ("expr", expr), ("agg", agg)):
+            if callable(value):
+                raise TypeError(
+                    f"Measure '{name}': {label} must be declarative data, not a "
+                    f"callable. A function cannot be serialized, diffed, or "
+                    f"validated before execution. Use expr='a - b' instead of "
+                    f"a lambda."
+                )
+
+        given = [k for k, v in (("column", column), ("expr", expr), ("ratio", ratio))
+                 if v is not None]
+        if len(given) != 1:
+            raise ValueError(
+                f"Measure '{name}' must specify exactly one of column=, expr=, "
+                f"or ratio=, got {given or 'none'}."
+            )
+
+        kind = {"column": "simple", "expr": "expression", "ratio": "ratio"}[given[0]]
+
+        if kind == "ratio":
+            if not (isinstance(ratio, (tuple, list)) and len(ratio) == 2):
+                raise ValueError(
+                    f"Measure '{name}': ratio must be a (numerator, denominator) "
+                    f"pair of measure names, got {ratio!r}."
+                )
+            if agg is not None:
+                raise ValueError(
+                    f"Measure '{name}': ratio measures take no agg — the ratio "
+                    f"is computed from the aggregated numerator and denominator."
+                )
+            ratio = (str(ratio[0]), str(ratio[1]))
+        else:
+            if agg is None:
+                raise ValueError(
+                    f"Measure '{name}' needs an agg (one of "
+                    f"{', '.join(sorted(_AGG_FUNCS))})."
+                )
+            if agg.lower() not in _AGG_FUNCS:
+                raise ValueError(
+                    f"Measure '{name}': unsupported aggregation '{agg}'."
+                    f"{self._hint(agg, sorted(_AGG_FUNCS))} "
+                    f"Supported: {', '.join(sorted(_AGG_FUNCS))}"
+                )
+            agg = agg.lower()
+
+        if kind == "expression":
+            if not _EXPR_ALLOWED.match(expr or ""):
+                raise ValueError(
+                    f"Measure '{name}': expression {expr!r} may only contain "
+                    f"column names, numbers, and + - * / ( ). Function calls, "
+                    f"quotes, and SQL fragments are not allowed."
+                )
+            if _EXPR_CALL.search(expr or ""):
+                raise ValueError(
+                    f"Measure '{name}': expression {expr!r} looks like a "
+                    f"function call. Row expressions are arithmetic only — "
+                    f"declare the aggregation separately, e.g. "
+                    f"expr='revenue - cost', agg='sum'."
+                )
+
+        self._measures[name] = MeasureDef(
+            name=name, kind=kind, agg=agg, column=column, expr=expr,
+            ratio=tuple(ratio) if ratio else None,
+            description=description, format=format,
+        )
+        return self
+
+    def measures(self) -> dict[str, MeasureDef]:
+        """Declared measures, by name."""
+        return dict(self._measures)
 
     # ── Connection ─────────────────────────────────────────────
 
@@ -473,7 +709,7 @@ class DataModel:
     def query(
         self,
         fact: str,
-        measures: dict[str, str],
+        measures: "dict[str, str] | list[str]",
         dimensions: Optional[list[str]] = None,
         filters: Optional[dict[str, Any]] = None,
         aggregate: bool = True,
@@ -521,6 +757,31 @@ class DataModel:
             ValueError: if a referenced column does not exist, or if a joined
                 dimension has a non-unique key and ``allow_fanout`` is False.
         """
+        return self.execute(QuerySpec(
+            fact=fact,
+            measures=measures,
+            dimensions=tuple(dimensions or ()),
+            filters=filters,
+            aggregate=aggregate,
+            allow_fanout=allow_fanout,
+        ))
+
+    def execute(self, spec: QuerySpec) -> DataSet:
+        """
+        Run a :class:`QuerySpec` and return a lineage-tracked DataSet.
+
+        This is the primitive; :meth:`query` is keyword sugar over it. Taking
+        a spec means a query can be built as data — validated, serialized,
+        committed, reviewed, and replayed — rather than only ever existing as
+        a function call.
+        """
+        fact = spec.fact
+        measures = spec.measures
+        dimensions = list(spec.dimensions or [])
+        filters = spec.filters
+        aggregate = spec.aggregate
+        allow_fanout = spec.allow_fanout
+
         if fact not in self._facts:
             raise ValueError(
                 f"Fact '{fact}' is not registered in model '{self.name}'. "
@@ -529,6 +790,7 @@ class DataModel:
         fact_def = self._facts[fact]
         dimensions = list(dimensions or [])
         filters = dict(filters or {})
+        measures, derived, ratios = self._resolve_measures(measures, fact_def)
 
         # ── Parse dimension references ─────────────────────────
         parsed_dims: list[tuple[str, str]] = []
@@ -566,6 +828,18 @@ class DataModel:
         fact_ds = self.load(fact_def.table_name, filter=pushdown or None)
         lineage.extend(fact_ds.lineage)
         fact_df = fact_ds.to_pandas()
+        # Materialise row-level measure expressions before validation, so
+        # derived columns are visible to everything downstream.
+        if derived:
+            fact_df = self._apply_derived(fact_df, derived, fact_def)
+            lineage.append(LineageNode(
+                operation="assign",
+                description=(
+                    "Derived measure column(s): "
+                    + ", ".join(f"{k} = {v}" for k, v in derived.items())
+                ),
+                metadata={"derived": dict(derived)},
+            ))
         fact_cols = set(fact_df.columns) | probe_cols
 
         predicates = self._parse_filters(filters, fact_def, fact_cols)
@@ -636,10 +910,30 @@ class DataModel:
             )
             engine = "pandas"
 
+        # Ratios divide the aggregated totals, so they must run after the
+        # engine — sum(margin)/sum(revenue), not the mean of row ratios.
+        if ratios:
+            result_df = self._apply_ratios(result_df, ratios)
+            lineage.append(LineageNode(
+                operation="assign",
+                description=(
+                    "Ratio measure(s): "
+                    + ", ".join(f"{k} = {n} / {d}" for k, (n, d) in ratios.items())
+                ),
+                metadata={"ratios": {k: list(v) for k, v in ratios.items()}},
+            ))
+
         lineage.append(LineageNode(
             operation="transform",
             description=f"Star-schema query executed via {engine}",
-            metadata={"engine": engine, "rows_out": len(result_df)},
+            metadata={
+                "engine": engine,
+                "rows_out": len(result_df),
+                "measures": dict(measures),
+                # The exact spec that produced this frame. With
+                # DataSet.fingerprint() this makes the run reproducible.
+                "query_spec": spec.to_dict(),
+            },
         ))
 
         return DataSet(df=result_df, name=f"{fact}_result", lineage=lineage)
@@ -649,6 +943,146 @@ class DataModel:
         import difflib
         close = difflib.get_close_matches(name, [str(o) for o in options], n=1)
         return f" Did you mean '{close[0]}'?" if close else ""
+
+    def _resolve_measures(
+        self,
+        measures: "dict[str, str] | list[str]",
+        fact_def: "_FactDef",
+    ) -> tuple[dict[str, str], dict[str, str], dict[str, tuple[str, str]]]:
+        """
+        Expand the ``measures`` argument into what the engines understand.
+
+        Accepts either the legacy ``{column: agg}`` mapping or a list of
+        declared measure names, and returns:
+
+        * ``agg_map``  — ``{output_column: agg_func}`` for the engine
+        * ``derived``  — ``{output_column: row_expression}`` to materialise
+                          on the fact before aggregating
+        * ``ratios``   — ``{output_column: (numerator, denominator)}`` to
+                          compute after aggregation
+
+        Ad-hoc ``{column: agg}`` still works unchanged, so existing callers
+        and the Explore UI are unaffected.
+        """
+        agg_map: dict[str, str] = {}
+        derived: dict[str, str] = {}
+        ratios: dict[str, tuple[str, str]] = {}
+
+        if isinstance(measures, dict):
+            if not measures:
+                raise ValueError("query() requires at least one measure.")
+            # Legacy/ad-hoc form. Values may be an agg name, or a
+            # (source_column, agg) tuple mirroring DataSet.aggregate().
+            for out_col, spec in measures.items():
+                if isinstance(spec, (tuple, list)) and len(spec) == 2:
+                    src, func = spec
+                    derived[out_col] = str(src)   # rename, not arithmetic
+                    agg_map[out_col] = str(func).lower()
+                else:
+                    agg_map[out_col] = str(spec).lower()
+            return agg_map, derived, ratios
+
+        names = list(measures or [])
+        if not names:
+            raise ValueError("query() requires at least one measure.")
+
+        def _expand(mname: str, seen: tuple) -> None:
+            if mname in agg_map or mname in ratios:
+                return
+            if mname not in self._measures:
+                raise ValueError(
+                    f"Measure '{mname}' is not declared on model '{self.name}'."
+                    f"{self._hint(mname, self._measures)} "
+                    f"Declared measures: {sorted(self._measures)}. "
+                    f"Pass {{'{mname}': 'sum'}} for an ad-hoc measure, or "
+                    f"declare it with add_measure()."
+                )
+            if mname in seen:
+                raise ValueError(
+                    f"Measure '{mname}' is defined in terms of itself "
+                    f"({' → '.join(seen + (mname,))})."
+                )
+            m = self._measures[mname]
+            if m.kind == "simple":
+                agg_map[m.name] = m.agg
+                if m.column != m.name:
+                    derived[m.name] = m.column
+            elif m.kind == "expression":
+                agg_map[m.name] = m.agg
+                derived[m.name] = m.expr
+            else:  # ratio
+                num, den = m.ratio
+                _expand(num, seen + (mname,))
+                _expand(den, seen + (mname,))
+                ratios[m.name] = (num, den)
+
+        for n in names:
+            _expand(n, ())
+        return agg_map, derived, ratios
+
+    def _apply_derived(
+        self,
+        df: pd.DataFrame,
+        derived: dict[str, str],
+        fact_def: "_FactDef",
+    ) -> pd.DataFrame:
+        """
+        Materialise row-level measure expressions onto the fact frame.
+
+        Validates every referenced name against the frame's actual columns
+        first — an unknown column must fail loudly, never evaluate to NaN
+        and quietly poison a total.
+        """
+        if not derived:
+            return df
+        cols = set(df.columns)
+        out = df.copy()
+        for out_col, expression in derived.items():
+            if expression in cols:            # plain rename/alias
+                out[out_col] = out[expression]
+                continue
+            referenced = [
+                t for t in _EXPR_TOKEN.findall(expression)
+                if not t.isdigit()
+            ]
+            for token in referenced:
+                if token not in cols:
+                    raise ValueError(
+                        f"Measure '{out_col}' references column '{token}', "
+                        f"which is not on fact table "
+                        f"'{fact_def.table_name}'.{self._hint(token, cols)} "
+                        f"Available columns: {sorted(cols)}"
+                    )
+            try:
+                out[out_col] = out.eval(expression)
+            except Exception as exc:  # noqa: BLE001 — re-raised with context
+                raise ValueError(
+                    f"Measure '{out_col}' expression {expression!r} could not "
+                    f"be evaluated: {type(exc).__name__}: {exc}"
+                ) from exc
+        return out
+
+    def _apply_ratios(
+        self,
+        df: pd.DataFrame,
+        ratios: dict[str, tuple[str, str]],
+    ) -> pd.DataFrame:
+        """
+        Compute ratio measures from already-aggregated columns.
+
+        Division happens on the totals, so ``margin_pct`` is
+        ``sum(margin) / sum(revenue)`` — not the mean of per-row ratios,
+        which is a different and usually wrong number.
+        """
+        if not ratios:
+            return df
+        out = df.copy()
+        for name, (num, den) in ratios.items():
+            if num not in out.columns or den not in out.columns:
+                continue
+            denominator = out[den].replace(0, pd.NA)
+            out[name] = out[num] / denominator
+        return out
 
     def _parse_filters(
         self,
@@ -1101,6 +1535,13 @@ class DataModel:
                 sql += " WHERE " + " AND ".join(where_clauses)
             if aggregate and group_cols_sql:
                 sql += " GROUP BY " + ", ".join(group_cols_sql)
+                # Deterministic row order. Without it DuckDB returns groups in
+                # hash-table order, which varies between identical runs — so
+                # DataSet.fingerprint() differed across runs of the same query
+                # and manifest fingerprints were not re-verifiable. It also
+                # matches pandas' groupby, which sorts by default, keeping the
+                # two engines byte-comparable.
+                sql += " ORDER BY " + ", ".join(group_cols_sql)
 
             return con.execute(sql, params).df()
         finally:
@@ -1210,8 +1651,13 @@ class DataModel:
     def info(self) -> dict:
         """
         The model's structure as a plain dict (tables, relationships,
-        facts, dimensions). This is the stable surface the web layer reads —
-        prefer it over touching private attributes.
+        facts, dimensions, measures). This is the stable surface the web
+        layer reads — prefer it over touching private attributes.
+
+        It is also the machine-readable description of the model's
+        vocabulary: what can be measured, sliced, and filtered. Declared
+        measures carry their definition, description, and format so a
+        consumer can tell what a number *means*, not just what it's called.
         """
         return {
             "name": self.name,
@@ -1249,6 +1695,8 @@ class DataModel:
                 }
                 for d in self._dimensions.values()
             ],
+            "measures": [m.to_dict() for m in self._measures.values()],
+            "filter_operators": list(FILTER_OPS),
         }
 
     def describe(self) -> None:
@@ -1272,7 +1720,7 @@ class DataModel:
     def help(self) -> None:
         """Print a cheat sheet of the DataModel API."""
         print(
-            "\nDataModel — associative model linking DataSets by key.\n"
+            "\nDataModel — governed semantic model over your tables.\n"
             "\n"
             "Building:\n"
             "  .add_connector(connector)                Register a data source\n"

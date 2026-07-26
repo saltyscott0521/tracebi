@@ -157,11 +157,12 @@ class MetricPanel(_BasePanel):
 @dataclass
 class FilterPanel:
     """
-    A filter control that drives associative filtering across all panels.
+    A filter control that drives filtering across panels.
 
     When a value is selected, every data panel whose dataset contains the
-    ``column`` will be re-rendered with that filter applied — this is the
-    Qlik-style associative behaviour.
+    ``column`` is re-rendered with that filter applied. Panels whose data
+    lacks the column are left untouched — this filters each panel
+    independently and does not traverse the model's relationships.
 
     Usage:
         FilterPanel(

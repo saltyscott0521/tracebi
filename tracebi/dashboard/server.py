@@ -5,7 +5,7 @@ Key behaviours
 --------------
 * Associative filtering: selecting a value in any FilterPanel re-renders
   every data panel whose dataset contains the filtered column — exactly
-  the Qlik-style behaviour described in the README.
+  cross-panel filtering.
 * Every data refresh calls DataModel.load() (when table_name is used),
   so lineage is tracked on every render.
 * Panels that provide a pre-built DataSet apply filters on top of that
@@ -461,7 +461,11 @@ class DashboardServer:
         """Apply a single filter value to a DataSet if the column exists."""
         df = ds.to_pandas()
         if column not in df.columns:
-            return ds  # column not present — skip (associative: no error)
+            # This panel's data does not carry the filtered column, so the
+            # filter does not apply to it. Note this does NOT traverse the
+            # model's relationships — the panel is left unfiltered rather
+            # than filtered through a join.
+            return ds
 
         col_series = df[column]
 

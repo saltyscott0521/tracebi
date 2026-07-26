@@ -32,6 +32,64 @@ This applies the principle already documented for column validation —
 *"a typo must fail loudly, never return a silently wrong result"* — to join
 cardinality.
 
+### Added — named measures make the model a shared vocabulary
+
+**`DataModel.add_measure()`** — define a calculation once, review it in a
+pull request, version it in git, and reference it by name everywhere:
+
+```python
+model.add_measure("revenue", column="revenue", agg="sum",
+                  description="Gross booked revenue")
+model.add_measure("gross_margin", expr="revenue - cost", agg="sum")
+model.add_measure("margin_pct", ratio=("gross_margin", "revenue"),
+                  format="percent")
+
+model.query(fact="fact_orders", measures=["revenue", "margin_pct"],
+            dimensions=["dim_customer.region"])
+```
+
+Exactly three kinds — *simple*, *aggregate-of-row-expression*, and
+*ratio-of-measures*. They cover the large majority of real usage, run on
+both engines, and need **no expression parser**. Ratios divide the
+aggregated totals, so `margin_pct` is `sum(margin)/sum(revenue)` rather than
+the mean of per-row ratios, which is a different and usually wrong number.
+
+Measures are **data, never callables** — a lambda cannot be serialized,
+diffed, reviewed, or validated before it runs, and accepting one would
+forfeit reproducibility at the root. Expressions are arithmetic over column
+names only: function calls, quotes, and SQL fragments are rejected at
+declaration, and every referenced column is checked against the fact table
+before execution.
+
+The ad-hoc `{column: agg}` form is unchanged and still works.
+
+**`QuerySpec`** — a star-schema query as data, with `to_dict()`/`from_dict()`.
+`DataModel.execute(spec)` is now the primitive and `query(...)` is sugar over
+it. The resolved spec is stamped into the query's lineage, so the audit trail
+records not merely *that* a query ran but exactly *which* one — with
+`DataSet.fingerprint()`, that is end-to-end reproducibility.
+
+**`info()` now describes the vocabulary** — declared measures with their
+definitions, descriptions, and formats, plus the supported filter operators.
+It answers what a number *means*, not just what it is called.
+
+### Fixed — identical queries produced different fingerprints
+
+Grouped query results had no deterministic row order. DuckDB returned groups
+in hash-table order, which **varied between identical runs of the same
+query**, while pandas' `groupby` sorts by default. Two consequences, both
+undermining the audit story:
+
+- `DataSet.fingerprint()` hashes row order, so re-running the same query
+  against the same data produced a *different* fingerprint — manifest
+  fingerprints were not reliably re-verifiable.
+- The two engines returned different frames for the same query, so results
+  depended on whether DuckDB happened to be installed.
+
+Grouped results are now ordered by their dimension columns, making runs
+reproducible and the engines byte-identical. The engine-parity test now
+compares whole frames rather than just totals.
+
 ### Added — the semantic model can express real questions
 
 **Filters now work on dimension attributes.** `query()` accepted filters only
