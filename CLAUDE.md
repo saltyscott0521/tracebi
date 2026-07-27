@@ -166,6 +166,9 @@ tracebi new-model "Sales Model"                # → models/sales_model.py
 tracebi list-models
 tracebi new-pipeline "Sales ETL"               # → pipelines/sales_etl.py
 tracebi list-pipelines
+tracebi run-pipeline sales_etl                 # run every layer, upstream first
+tracebi run-pipeline sales_etl --layer orders_silver [--refresh]
+tracebi run-pipeline sales_etl --status        # last run per layer, executes nothing
 
 # Agent / tooling context
 tracebi context                                # framework vocabulary as JSON

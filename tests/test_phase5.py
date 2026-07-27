@@ -382,6 +382,97 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "No request scripts" in captured.out
 
+    # ── run-pipeline ──────────────────────────────────────────────────────
+    # The execution plane's entry point: running layers without a web server.
+
+    def _two_layer_runner(self, tmp_path, source_table="orders_raw"):
+        """Landing → Manipulation over an in-memory source, history in SQLite."""
+        import pandas as pd
+        from tracebi import (
+            LandingLayer, ManipulationLayer, MemoryConnector, PipelineRunner,
+        )
+        mem = MemoryConnector("mem", tables={
+            "orders_raw": pd.DataFrame({"order_id": [1, 2, 2], "region": ["N", "S", "S"]}),
+        })
+        landing = LandingLayer(connector=mem, source=source_table,
+                               sink=mem, sink_table="orders_bronze")
+        manip = ManipulationLayer(
+            source=mem, source_table="orders_bronze",
+            sink=mem, sink_table="orders_silver",
+        ).deduplicate(subset=["order_id"])
+        runner = PipelineRunner(db_url=f"sqlite:///{tmp_path / 'runs.db'}")
+        runner.register(landing, name="orders_bronze")
+        runner.register(manip, name="orders_silver", depends_on="orders_bronze")
+        return runner, mem
+
+    def _patch_get_runner(self, monkeypatch, runner):
+        import tracebi.pipeline_registry as preg
+        monkeypatch.setattr(preg, "get_runner", lambda name: runner)
+
+    def test_pipeline_plan_is_upstream_first(self, tmp_path):
+        from tracebi.cli import _pipeline_plan
+        runner, _ = self._two_layer_runner(tmp_path)
+        plan = _pipeline_plan(runner)
+        assert plan == ["orders_bronze", "orders_silver"]
+        # Each layer appears exactly once even though it shows up in the
+        # chains of everything downstream of it.
+        assert len(plan) == len(set(plan))
+
+    def test_run_pipeline_executes_every_layer(self, tmp_path, monkeypatch):
+        from tracebi.cli import main
+        runner, mem = self._two_layer_runner(tmp_path)
+        self._patch_get_runner(monkeypatch, runner)
+        rc = main(["run-pipeline", "whatever"])
+        assert rc == 0
+        # Both sinks were written, and the manipulation layer actually
+        # deduplicated — 3 rows in, 2 out.
+        assert "orders_bronze" in mem._tables
+        assert "orders_silver" in mem._tables
+        assert len(mem._tables["orders_silver"]) == 2
+
+    def test_run_pipeline_single_layer_skips_the_rest(self, tmp_path, monkeypatch):
+        from tracebi.cli import main
+        runner, mem = self._two_layer_runner(tmp_path)
+        self._patch_get_runner(monkeypatch, runner)
+        rc = main(["run-pipeline", "whatever", "--layer", "orders_bronze"])
+        assert rc == 0
+        assert "orders_bronze" in mem._tables
+        assert "orders_silver" not in mem._tables
+
+    def test_run_pipeline_unknown_layer_is_nonzero(self, tmp_path, monkeypatch):
+        from tracebi.cli import main
+        runner, _ = self._two_layer_runner(tmp_path)
+        self._patch_get_runner(monkeypatch, runner)
+        assert main(["run-pipeline", "whatever", "--layer", "nope"]) != 0
+
+    def test_run_pipeline_status_does_not_execute(self, tmp_path, monkeypatch, capsys):
+        from tracebi.cli import main
+        runner, mem = self._two_layer_runner(tmp_path)
+        self._patch_get_runner(monkeypatch, runner)
+        rc = main(["run-pipeline", "whatever", "--status"])
+        assert rc == 0
+        assert "orders_bronze" not in mem._tables
+        assert "never run" in capsys.readouterr().out
+
+    def test_run_pipeline_failure_is_nonzero(self, tmp_path, monkeypatch):
+        from tracebi.cli import main
+        # Source table does not exist, so the landing layer must fail. A
+        # scheduler needs the exit code to say so.
+        runner, _ = self._two_layer_runner(tmp_path, source_table="missing_table")
+        self._patch_get_runner(monkeypatch, runner)
+        assert main(["run-pipeline", "whatever"]) != 0
+
+    def test_run_pipeline_unknown_pipeline_is_nonzero(self, tmp_path, monkeypatch):
+        from tracebi.cli import main
+        import tracebi.pipeline_registry as preg
+
+        def _boom(name):
+            raise KeyError(f"Pipeline '{name}' not found. Available: []")
+
+        monkeypatch.setattr(preg, "get_runner", _boom)
+        monkeypatch.setattr(preg, "list_pipelines", lambda: [])
+        assert main(["run-pipeline", "ghost"]) != 0
+
 
 # ── Model registry ───────────────────────────────────────────────────────
 

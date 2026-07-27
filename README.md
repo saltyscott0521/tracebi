@@ -199,7 +199,15 @@ tracebi new-model "Sales Model"                      # → models/sales_model.py
 tracebi list-models
 tracebi new-pipeline "Sales ETL"                     # → pipelines/sales_etl.py
 tracebi list-pipelines
+tracebi run-pipeline sales_etl                       # run every layer, upstream first
+tracebi run-pipeline sales_etl --status              # last run per layer, executes nothing
 ```
+
+`run-pipeline` executes layers without a web server, which is what lets the
+batch work run somewhere other than the API process — a cron entry, a
+Kubernetes CronJob, an Airflow task, a CI job. It exits non-zero if any layer
+fails, so whatever invoked it can act on that. TraceBi does not need to own
+the schedule.
 
 `tracebi dev` serves the rendered report on http://127.0.0.1:8001 and reloads
 the browser every time you save the script — keep it next to your editor for

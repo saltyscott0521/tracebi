@@ -121,6 +121,38 @@ and marketing surface rather than the architecture. This is also what
 container and keep only the UI on Vercel" — so the split is a matter of
 following advice the project already gives, once the registry allows it.
 
+### First step taken — `tracebi run-pipeline`
+
+Investigating the above turned up something sharper than "the registry is a
+singleton": **there was no way to run a pipeline outside the web server at
+all.** The CLI's `run` executes a request script; `list-pipelines` only lists
+files. The single execution path was
+`POST /api/pipelines/{name}/layers/{layer}/run`. Batch work was not merely
+coupled to the serving process, it was only expressible as an HTTP request to
+it.
+
+`tracebi run-pipeline <name>` closes that, built entirely on existing public
+runner API (`layers`, `execution_order`, `execute_layer`, `last_run`):
+
+- no `--layer`: every registered layer, upstream-first, each run once
+- `--layer X [--refresh]`: one layer, optionally preceded by its chain
+- `--status`: last run per layer, executing nothing
+- non-zero exit if any layer fails, and it reports *every* failure rather than
+  stopping at the first — downstream layers read what upstream wrote, so a
+  partial run leaves the rest resting on stale data and the operator should
+  see the whole picture
+
+Any external scheduler can now drive execution: cron, a Kubernetes CronJob,
+Airflow, CI. That is the execution plane becoming addressable, and it is the
+prerequisite for the container split — the serving plane can stop being the
+only thing that can do work, without the registry being touched at all.
+
+Note this does *not* by itself fix the demo: on serverless with a
+per-invocation temp filesystem there is nowhere durable for an execution
+plane to write, so `web/demo_app` still runs its pipeline at import. The demo
+can only be split once it has a real database behind it. That ordering —
+Postgres first, then split — is worth respecting.
+
 ### Open decisions
 
 - Multi-tenancy: one process per tenant, or a registry that can hold many?

@@ -923,6 +923,105 @@ def cmd_new_pipeline(args: argparse.Namespace) -> int:
     return 0
 
 
+def _pipeline_plan(runner) -> list[str]:
+    """
+    Every registered layer, upstream-first, each appearing once.
+
+    ``execution_order`` resolves the chain for a single layer. Concatenating
+    each layer's chain and keeping the first occurrence gives a valid order
+    for the whole pipeline: within any chain a layer's upstreams precede it,
+    and deduplicating on first sight can only move a layer earlier.
+    """
+    plan: list[str] = []
+    for layer in runner.layers():
+        for step in runner.execution_order(layer["name"]):
+            if step not in plan:
+                plan.append(step)
+    return plan
+
+
+def cmd_run_pipeline(args: argparse.Namespace) -> int:
+    """
+    Run a pipeline from the command line.
+
+    This is the execution plane's entry point. Until it existed the only way
+    to execute a layer was ``POST /api/pipelines/{name}/layers/{layer}/run``,
+    which meant the web server had to be running — and had to be the thing
+    doing the work — for any data to be produced. That is what tied batch
+    execution to the serving process and made deployments where the two are
+    separate (a scheduled job writing to Postgres, a stateless API reading
+    from it) impossible to express. See NOTES.md, "Deployment planes".
+
+    Any external scheduler can now drive this: cron, a Kubernetes CronJob,
+    Airflow, a CI job. TraceBi does not need to own the schedule.
+    """
+    from tracebi.pipeline_registry import get_runner, list_pipelines
+
+    try:
+        runner = get_runner(args.name)
+    except KeyError as exc:
+        print(str(exc).strip("\"'"), file=sys.stderr)
+        known = list_pipelines()
+        if not known:
+            print(f"No pipelines found in {args.pipelines_dir}. "
+                  'Scaffold one with: tracebi new-pipeline "My ETL"', file=sys.stderr)
+        return 1
+
+    if args.status:
+        rows = runner.layers()
+        if not rows:
+            print(f"Pipeline '{args.name}' has no registered layers.")
+            return 0
+        width = max(len(r["name"]) for r in rows)
+        for r in rows:
+            # layers() returns registration data only — name, type, schedule,
+            # depends_on. Run status is a separate DB read per layer, which is
+            # what the web router does too.
+            try:
+                last = runner.last_run(r["name"])
+            except Exception as exc:  # noqa: BLE001
+                status, when = f"error: {type(exc).__name__}", ""
+            else:
+                status = (last or {}).get("status") or "never run"
+                when = (last or {}).get("completed_at") or (last or {}).get("started_at") or ""
+            print(f"  {r['name']:<{width}}  {r['type']:<12} {status:<10} {when}")
+        return 0
+
+    if args.layer:
+        if not runner.has_layer(args.layer):
+            print(f"Layer '{args.layer}' is not registered in pipeline '{args.name}'. "
+                  f"Available: {[r['name'] for r in runner.layers()]}", file=sys.stderr)
+            return 1
+        chain = runner.execution_order(args.layer) if args.refresh else [args.layer]
+    else:
+        chain = _pipeline_plan(runner)
+
+    if not chain:
+        print(f"Pipeline '{args.name}' has no registered layers.")
+        return 0
+
+    print(f"[tracebi] {args.name}: {' → '.join(chain)}")
+    failed: list[str] = []
+    for step in chain:
+        try:
+            runner.execute_layer(step)
+        except Exception as exc:  # noqa: BLE001 — report and keep going
+            # Downstream layers read what upstream wrote, so a failure part
+            # way through leaves the rest resting on stale data. Report every
+            # failure rather than stopping at the first, and exit non-zero so
+            # whatever scheduler invoked this can act on it.
+            failed.append(step)
+            print(f"[tracebi] {step} FAILED: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+    if failed:
+        print(f"[tracebi] {len(failed)} of {len(chain)} layer(s) failed: "
+              f"{', '.join(failed)}", file=sys.stderr)
+        return 1
+
+    print(f"[tracebi] {len(chain)} layer(s) completed.")
+    return 0
+
+
 def cmd_list_pipelines(args: argparse.Namespace) -> int:
     pipelines_dir: Path = args.pipelines_dir
     if not pipelines_dir.is_dir():
@@ -1065,6 +1164,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_list_pipelines = sub.add_parser("list-pipelines", help="List pipeline definition files.")
     p_list_pipelines.set_defaults(func=cmd_list_pipelines)
+
+    p_run_pipeline = sub.add_parser(
+        "run-pipeline",
+        help="Run a pipeline's layers (the execution plane — no web server needed).",
+    )
+    p_run_pipeline.add_argument("name", help="Pipeline name, as listed by list-pipelines.")
+    p_run_pipeline.add_argument(
+        "--layer",
+        help="Run only this layer instead of the whole pipeline.",
+    )
+    p_run_pipeline.add_argument(
+        "--refresh", action="store_true",
+        help="With --layer, run its upstream chain first.",
+    )
+    p_run_pipeline.add_argument(
+        "--status", action="store_true",
+        help="Show each layer and its last run without executing anything.",
+    )
+    p_run_pipeline.set_defaults(func=cmd_run_pipeline)
 
     return parser
 
