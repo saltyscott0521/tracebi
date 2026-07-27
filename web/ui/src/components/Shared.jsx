@@ -144,10 +144,13 @@ export function CardTitle({ children, action }) {
     <div style={{
       display: 'flex', alignItems: 'center',
       justifyContent: action ? 'space-between' : 'flex-start',
-      marginBottom: 16, paddingBottom: 12,
+      marginBottom: 'var(--space-4)', paddingBottom: 'var(--space-3)',
       borderBottom: '1px solid var(--border)',
     }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{children}</div>
+      <div style={{
+        fontSize: 'var(--text-base)', fontWeight: 600,
+        color: 'var(--text)', lineHeight: 1.3,
+      }}>{children}</div>
       {action && <div>{action}</div>}
     </div>
   )
@@ -156,15 +159,22 @@ export function CardTitle({ children, action }) {
 export function PageTitle({ children }) {
   return (
     <h1 className="gradient-text" style={{
-      fontSize: 26, fontWeight: 800,
-      marginBottom: 6, lineHeight: 1.2, letterSpacing: -.3,
+      fontSize: 'var(--text-2xl)', fontWeight: 800,
+      marginBottom: 'var(--space-1)', lineHeight: 1.2,
+      letterSpacing: 'var(--tracking-tight)',
     }}>{children}</h1>
   )
 }
 
 export function PageSub({ children }) {
   return (
-    <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 28, lineHeight: 1.6 }}>
+    <p style={{
+      fontSize: 'var(--text-caption)', color: 'var(--muted)',
+      // The gap under the subtitle is the page's first rhythm cue — it sets
+      // how far the content sits from the heading block on every page.
+      marginBottom: 'var(--space-7)', lineHeight: 1.6,
+      maxWidth: '68ch',
+    }}>
       {children}
     </p>
   )

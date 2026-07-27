@@ -74,6 +74,38 @@
      put the light-on-dark wordmark onto a light bar in dark mode. */
   --header-bg:   rgba(238,242,248,0.92);
 
+  /* Type scale. The sizes here are the ones already in use across the app,
+     collected rather than invented — they were spread across inline styles as
+     bare numbers, so the same role (a card title, a caption) drifted a half
+     pixel apart between pages and nothing said which sizes were the system.
+     Ratio is roughly 1.2 from --text-base in both directions.
+
+     --text-eyebrow is the uppercase-tracked label used for table headers and
+     section kickers; it carries its own letter-spacing because uppercase text
+     at that size needs it and body text at that size does not. */
+  --text-eyebrow: 10.5px;
+  --text-xs:      11px;
+  --text-sm:      12px;
+  --text-caption: 13px;
+  --text-base:    14px;
+  --text-lg:      16px;
+  --text-xl:      20px;
+  --text-2xl:     26px;
+  --tracking-eyebrow: .7px;
+  --tracking-tight:  -.3px;
+
+  /* Spacing scale — a 4px grid. Same story: these are the values already in
+     use, named so a layout can be reasoned about in steps rather than in
+     arbitrary pixels. */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+
   --nav-w:       232px;
   --radius-sm:   6px;
   --radius:      12px;
@@ -192,12 +224,21 @@
 ::selection { background: rgba(9,26,85,.12); color: var(--text); }
 
 body {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  /* The stack led with 'Inter', which this project never loads — there is no
+     @font-face and no font link in index.html — so every platform silently
+     fell through to something different and none of them was the face the
+     type was sized and tracked against. Leading with system-ui at least makes
+     the rendered result the one being designed against: SF on Apple, Segoe UI
+     Variable on Windows, Roboto on Android. If Inter is wanted, it has to be
+     actually shipped; putting its name here does not do that. */
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: var(--text-base);
   color: var(--text);
   background: var(--bg);
   min-height: 100vh;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Ambient background orbs — rendered in Layout as fixed divs */
@@ -285,17 +326,33 @@ thead tr { background: var(--surface-2); }
 thead th {
   padding: 10px 14px;
   text-align: left;
-  font-size: 10.5px;
+  font-size: var(--text-eyebrow);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .7px;
+  letter-spacing: var(--tracking-eyebrow);
   color: var(--muted);
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
 }
-tbody tr { border-bottom: 1px solid #9eb0c2; transition: background var(--t); }
-tbody tr:hover { background: rgba(9,26,85,.04); }
-tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
+/* Was a hardcoded #9eb0c2 — the old light-theme --border value, which meant
+   row rules ignored the token and drew a light grey line straight across the
+   dark theme's cards. */
+tbody tr { border-bottom: 1px solid var(--border); transition: background var(--t); }
+tbody tr:hover { background: var(--card-hl); }
+
+/* Tabular figures on every cell. This is a BI tool: a column of numbers that
+   does not line up is harder to scan and harder to compare, and proportional
+   digits vary in width so they never line up. Four call sites had already
+   reached for this individually — Explore's result grid, the metric value in
+   Shared, two columns in Pipelines — which is the signal that it belongs on
+   the element rather than being remembered each time. It is a no-op for text
+   columns, so applying it to every cell costs nothing. */
+tbody td {
+  padding: 10px 14px;
+  color: var(--text);
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ReactFlow (lineage + ERD) */
 .react-flow__background { background: var(--flow-bg) !important; }
