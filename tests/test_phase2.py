@@ -455,14 +455,14 @@ class TestChartEnhancements:
         report = Report("R").add(ChartSection(
             dataset=make_ds(), chart_type="area", x="region", y="revenue"))
         html = HTMLRenderer().to_html(report)
-        assert "data:image/png;base64," in html
+        assert '<svg class="tb-chart' in html   # inline SVG, not a base64 PNG
 
     def test_show_values_bar(self):
         report = Report("R").add(ChartSection(
             dataset=make_ds(), chart_type="bar", x="region", y="revenue",
             show_values=True))
         html = HTMLRenderer().to_html(report)
-        assert "data:image/png;base64," in html
+        assert '<svg class="tb-chart' in html   # inline SVG, not a base64 PNG
 
 
 class TestReportNotebookIntegration:
@@ -579,7 +579,15 @@ class TestChartFailuresRaise:
 
         ds = DataSet(pd.DataFrame({"region": ["NE"], "revenue": [1.0]}), name="d")
         bad = ChartSection(chart_type="bar", dataset=ds, x="nope", y="revenue")
-        with pytest.raises(ValueError, match="failed to render"):
+        with pytest.raises(ValueError, match="not present in its dataset"):
+            HTMLRenderer().to_html(Report("C").add(bad))
+
+    def test_missing_column_error_suggests_a_close_match(self):
+        from tracebi.reports.html_renderer import HTMLRenderer
+
+        ds = DataSet(pd.DataFrame({"region": ["NE"], "revenue": [1.0]}), name="d")
+        bad = ChartSection(chart_type="bar", dataset=ds, x="regoin", y="revenue")
+        with pytest.raises(ValueError, match="did you mean 'region'"):
             HTMLRenderer().to_html(Report("C").add(bad))
 
 
@@ -865,3 +873,141 @@ class TestReportSpecSchema:
                     for v in json_schema()["$defs"]["section"]["oneOf"]}
         assert "dataset" not in variants["table"]["properties"]
         assert "data" in variants["table"]["properties"]
+
+
+class TestChartSpecSvg:
+    """
+    Charts were base64 matplotlib PNGs: unreadable in a diff, unstylable,
+    fixed-size, and unavailable at all without an optional dependency.
+    """
+
+    @staticmethod
+    def _ds():
+        return DataSet(pd.DataFrame({
+            "region":  ["North", "South", "East", "West"],
+            "revenue": [5000.0, -1200.0, 6100.0, 300.0],
+            "cost":    [3000.0, 900.0, 4000.0, 100.0],
+        }), name="d")
+
+    def _svg(self, kind, **kw):
+        from tracebi.reports.chart import ChartSpec
+
+        y = kw.pop("y", ["revenue", "cost"])
+        x = kw.pop("x", "region")
+        return ChartSpec.from_section(
+            ChartSection(dataset=self._ds(), chart_type=kind, x=x, y=y, **kw)
+        ).to_svg()
+
+    @pytest.mark.parametrize("kind", ["bar", "barh", "line", "area"])
+    def test_multi_series_types_produce_valid_xml(self, kind):
+        import xml.etree.ElementTree as ET
+
+        ET.fromstring(self._svg(kind))
+
+    @pytest.mark.parametrize("kind", ["pie", "scatter"])
+    def test_single_series_types_produce_valid_xml(self, kind):
+        import xml.etree.ElementTree as ET
+
+        x = "cost" if kind == "scatter" else "region"
+        ET.fromstring(self._svg(kind, x=x, y=["revenue"]))
+
+    def test_negative_values_stay_inside_the_plot(self):
+        """A negative bar must hang below the zero line, not off-canvas."""
+        import xml.etree.ElementTree as ET
+
+        root = ET.fromstring(self._svg("bar"))
+        ns = "{http://www.w3.org/2000/svg}"
+        for rect in root.iter(f"{ns}rect"):
+            y, h = float(rect.get("y")), float(rect.get("height"))
+            assert y >= 0 and y + h <= 420
+
+    def test_labels_are_escaped(self):
+        """A label is untrusted text; unescaped it would break the document."""
+        import xml.etree.ElementTree as ET
+
+        from tracebi.reports.chart import ChartSpec
+
+        ds = DataSet(pd.DataFrame({
+            "region": ["<script>alert(1)</script>", "a & b", '"q"'],
+            "v": [1.0, 2.0, 3.0],
+        }), name="x")
+        svg = ChartSpec.from_section(
+            ChartSection(dataset=ds, chart_type="bar", x="region", y=["v"])
+        ).to_svg()
+        ET.fromstring(svg)
+        assert "<script>" not in svg
+
+    def test_spec_round_trips_through_json(self):
+        import json
+
+        from tracebi.reports.chart import ChartSpec
+
+        spec = ChartSpec.from_section(
+            ChartSection(dataset=self._ds(), chart_type="bar",
+                         x="region", y=["revenue"])
+        )
+        again = ChartSpec.from_dict(json.loads(json.dumps(spec.to_dict())))
+        assert again.to_svg() == spec.to_svg()
+
+    def test_empty_data_renders_a_placeholder_not_a_crash(self):
+        from tracebi.reports.chart import ChartSpec
+
+        ds = DataSet(pd.DataFrame({"r": [], "v": []}), name="e")
+        svg = ChartSpec.from_section(
+            ChartSection(dataset=ds, chart_type="bar", x="r", y=["v"])
+        ).to_svg()
+        assert "no data" in svg
+
+    def test_svg_is_responsive_not_fixed_size(self):
+        svg = self._svg("bar")
+        assert "viewBox" in svg
+        assert "width=" not in svg.split(">", 1)[0]   # no hardcoded px width
+
+    def test_elements_carry_classes_for_theming(self):
+        """A stylesheet must be able to restyle a chart without code changes."""
+        svg = self._svg("bar")
+        for cls in ("tb-chart", "tb-grid", "tb-tick", "tb-bar"):
+            assert cls in svg
+
+    def test_axis_ticks_are_round_numbers(self):
+        from tracebi.reports.chart import ChartSpec
+
+        ticks = ChartSpec._ticks(0, 6100)
+        assert all(t == round(t) for t in ticks)
+        assert len(ticks) >= 2
+
+    def test_charts_render_without_matplotlib(self):
+        """The whole point: no optional dependency for HTML charts."""
+        import subprocess
+        import sys
+
+        code = (
+            "import sys\n"
+            "class B:\n"
+            "    def find_spec(self, n, p=None, t=None):\n"
+            "        if n.split('.')[0] == 'matplotlib':\n"
+            "            raise ImportError(n)\n"
+            "        return None\n"
+            "sys.meta_path.insert(0, B())\n"
+            "import pandas as pd\n"
+            "from tracebi import DataSet\n"
+            "from tracebi.reports.report import Report, ChartSection\n"
+            "from tracebi.reports.html_renderer import HTMLRenderer\n"
+            "ds = DataSet(pd.DataFrame({'r': ['a','b'], 'v': [1.0, 2.0]}), name='d')\n"
+            "h = HTMLRenderer().to_html(Report('C').add(\n"
+            "    ChartSection(dataset=ds, chart_type='bar', x='r', y='v')))\n"
+            "assert 'matplotlib required' not in h\n"
+            "assert 'tb-chart' in h\n"
+            "print('ok')\n"
+        )
+        out = subprocess.run([sys.executable, "-c", code],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert "ok" in out.stdout
+
+    def test_no_base64_png_in_html_output(self):
+        html = HTMLRenderer().to_html(Report("C").add(ChartSection(
+            title="T", dataset=self._ds(), chart_type="bar",
+            x="region", y=["revenue"])))
+        assert "data:image/png;base64," not in html
+        assert '<svg class="tb-chart' in html

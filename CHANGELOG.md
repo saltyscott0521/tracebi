@@ -6,6 +6,41 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### ⚠️ Changed — charts are inline SVG, not embedded PNGs
+
+`ChartSection` rendered to a base64 matplotlib PNG. It now renders to inline
+SVG via a new `ChartSpec` (`tracebi/reports/chart.py`), which is a chart's
+definition *plus its resolved rows* as plain JSON.
+
+Five things this fixes:
+
+- **Charts no longer need matplotlib.** A base install rendered the literal
+  text *"matplotlib required for charts"* in place of every chart. HTML
+  charts now always work; matplotlib remains only for Excel, which genuinely
+  needs a raster image.
+- **Reports got ~75% smaller.** `revenue_trend` went from 71,886 to 12,841
+  bytes, `analyst_demo` from 106,715 to 23,901. Base64 PNGs are enormous.
+- **Charts are diffable.** SVG is text, so a chart change reads as a change
+  in a pull request instead of 40 KB of altered base64 — and two visually
+  identical PNGs could differ byte-for-byte.
+- **Charts are themeable.** Every element carries a class (`tb-bar`,
+  `tb-grid`, `tb-tick`, `tb-axis-label`, …) and the defaults live in the
+  stylesheet, so a chart restyles without touching code.
+- **Charts are responsive.** A `viewBox` scales to its container; a
+  fixed-DPI bitmap did not.
+
+Deliberately **not** a JS charting library. Vega-Lite and friends need a
+browser and either a CDN or ~300 KB of bundled JavaScript, which would stop
+a rendered report from being a single self-contained file that opens in six
+months with no network. That property matters more here than interactivity.
+
+Same six chart types as before (`bar`, `barh`, `line`, `area`, `pie`,
+`scatter`), and `ChartSpec` round-trips through JSON so a tool can emit or
+inspect a chart as data.
+
+A chart referencing a column that isn't in its dataset now raises with a
+did-you-mean suggestion, rather than silently plotting zeros.
+
 ### Added — reports as data (`ReportSpec`)
 
 A `Report` is declarative in Python but holds live `DataSet` objects, so it

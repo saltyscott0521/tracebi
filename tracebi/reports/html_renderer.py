@@ -173,12 +173,23 @@ body {
 .layout-row { display: flex; gap: 24px; align-items: flex-start; }
 .layout-row > .layout-col { min-width: 0; }
 
-/* Charts */
+/* Charts — inline SVG, so every part is themeable from here. Override any
+   of these in a custom stylesheet to restyle charts without touching code. */
 .chart-container {
     text-align: center;
     margin: 8px 0;
 }
 .chart-container img { max-width: 100%; height: auto; }
+.tb-chart { width: 100%; height: auto; max-height: 460px; font-family: inherit; }
+.tb-grid          { stroke: #E3E7EE; stroke-width: 1; }
+.tb-tick          { fill: #6B7280; font-size: 11px; }
+.tb-cat           { fill: #374151; font-size: 11px; }
+.tb-axis-label    { fill: #374151; font-size: 12px; font-weight: 600; }
+.tb-legend        { fill: #374151; font-size: 11.5px; }
+.tb-value         { fill: #374151; font-size: 10.5px; }
+.tb-chart-empty   { fill: #9CA3AF; font-size: 13px; font-style: italic; }
+.tb-bar, .tb-slice { stroke: #FFFFFF; stroke-width: 0.75; }
+.tb-point         { stroke: #FFFFFF; stroke-width: 1; }
 
 /* Lineage */
 .lineage-toggle {
@@ -685,143 +696,33 @@ class HTMLRenderer(BaseRenderer):
   </div>"""
 
     def _render_chart(self, section: ChartSection) -> str:
-        try:
-            import matplotlib
-            matplotlib.use("Agg")
-            import matplotlib.pyplot as plt
-        except ImportError:
-            return '<div class="section"><em>matplotlib required for charts: pip install matplotlib</em></div>'
+        """
+        Render a chart as inline SVG.
 
-        df = section.dataset.to_pandas() if section.dataset else pd.DataFrame()
-        if df.empty or not section.x:
+        This used to embed a base64 matplotlib PNG. SVG is diffable, can be
+        restyled by the stylesheet, scales with its container, and needs no
+        optional dependency — a base install previously rendered
+        "matplotlib required" in place of every chart. See
+        :mod:`tracebi.reports.chart`.
+        """
+        from tracebi.reports.chart import ChartSpec
+
+        spec = ChartSpec.from_section(section)
+        if not spec.rows or not spec.series:
             return ""
 
         title_html = ""
         if section.title:
             title_html = f'<div class="section-title">{self._esc(section.title)}</div>'
 
-        try:
-            plt.style.use(self.chart_style)
-        except Exception:
-            pass
-
-        fig, ax = plt.subplots(figsize=section.figsize)
-
-        y_cols = [section.y] if isinstance(section.y, str) else list(section.y or [])
-        palette = section.palette or [
-            "#2E74B5", "#ED7D31", "#A9D18E", "#FFC000",
-            "#5B9BD5", "#70AD47", "#FF0000", "#7030A0",
-        ]
-
-        chart_type = section.chart_type.lower()
-
-        try:
-            if chart_type == "pie" and y_cols:
-                ax.pie(
-                    df[y_cols[0]],
-                    labels=df[section.x],
-                    autopct="%1.1f%%",
-                    colors=palette[:len(df)],
-                    startangle=140,
-                )
-            elif chart_type == "line":
-                for i, col in enumerate(y_cols):
-                    ax.plot(
-                        df[section.x], df[col],
-                        label=col,
-                        color=palette[i % len(palette)],
-                        linewidth=2,
-                        marker="o",
-                        markersize=4,
-                    )
-                ax.legend()
-                ax.set_xlabel(section.xlabel or section.x)
-                ax.set_ylabel(section.ylabel or (y_cols[0] if len(y_cols) == 1 else ""))
-            elif chart_type in ("bar", "barh"):
-                x_positions = range(len(df))
-                width = 0.8 / max(len(y_cols), 1)
-                for i, col in enumerate(y_cols):
-                    offset = [x + i * width - (len(y_cols) - 1) * width / 2
-                               for x in x_positions]
-                    if chart_type == "barh":
-                        ax.barh(offset, df[col], height=width,
-                                color=palette[i % len(palette)], label=col)
-                    else:
-                        ax.bar(offset, df[col], width=width,
-                               color=palette[i % len(palette)], label=col)
-                tick_fn = ax.set_yticks if chart_type == "barh" else ax.set_xticks
-                label_fn = ax.set_yticklabels if chart_type == "barh" else ax.set_xticklabels
-                tick_fn(list(x_positions))
-                label_fn(df[section.x].tolist(), rotation=30 if chart_type != "barh" else 0,
-                         ha="right" if chart_type != "barh" else "right")
-                if len(y_cols) > 1:
-                    ax.legend()
-                ax.set_xlabel(section.xlabel or (section.x if chart_type != "barh" else ""))
-                ax.set_ylabel(section.ylabel or (y_cols[0] if len(y_cols) == 1 else ""))
-            elif chart_type == "area":
-                for i, col in enumerate(y_cols):
-                    c = palette[i % len(palette)]
-                    ax.fill_between(df[section.x], df[col], color=c, alpha=0.3)
-                    ax.plot(df[section.x], df[col], color=c, linewidth=2, label=col)
-                if len(y_cols) > 1:
-                    ax.legend()
-                ax.set_xlabel(section.xlabel or section.x)
-                ax.set_ylabel(section.ylabel or (y_cols[0] if len(y_cols) == 1 else ""))
-            elif chart_type == "scatter" and len(y_cols) >= 1:
-                ax.scatter(df[section.x], df[y_cols[0]],
-                           color=palette[0], alpha=0.7)
-                ax.set_xlabel(section.xlabel or section.x)
-                ax.set_ylabel(section.ylabel or y_cols[0])
-            else:
-                # fallback: bar
-                df.plot(x=section.x, y=y_cols, kind="bar", ax=ax,
-                        color=palette[:len(y_cols)])
-        except Exception as e:
-            # Previously the exception text was drawn into the PNG. That
-            # produces a finished-looking deliverable containing a picture of
-            # an error message: invisible to the caller, absent from the
-            # manifest, exit code 0. A failed render is strictly better.
-            plt.close(fig)
-            label = section.title or f"{chart_type} chart"
-            raise ValueError(
-                f"Chart '{label}' failed to render "
-                f"(chart_type={chart_type!r}, x={section.x!r}, y={section.y!r}): "
-                f"{type(e).__name__}: {e}"
-            ) from e
-
-        if section.show_values:
-            try:
-                if chart_type in ("bar", "barh"):
-                    for container in ax.containers:
-                        ax.bar_label(container, fmt="%g", fontsize=8, padding=2)
-                elif chart_type in ("line", "area"):
-                    for col in y_cols:
-                        for xv, yv in zip(df[section.x], df[col]):
-                            ax.annotate(f"{yv:g}", (xv, yv),
-                                        textcoords="offset points",
-                                        xytext=(0, 6), ha="center", fontsize=8)
-            except Exception:
-                logger.warning("show_values labels failed; rendering chart "
-                               "without them", exc_info=True)
-
-        if section.title:
-            ax.set_title(section.title, fontsize=13, fontweight="bold", pad=12)
-
-        plt.tight_layout()
-
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=self.chart_dpi, bbox_inches="tight")
-        plt.close(fig)
-        buf.seek(0)
-        img_b64 = base64.b64encode(buf.read()).decode()
-
         return f"""
   <div class="section">
     {title_html}
     <div class="chart-container">
-      <img src="data:image/png;base64,{img_b64}" alt="{self._esc(section.title or 'chart')}">
+      {spec.to_svg()}
     </div>
   </div>"""
+
 
     def _render_lineage(self, report: Report) -> str:
         rows_html = ""
