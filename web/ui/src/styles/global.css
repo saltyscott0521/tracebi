@@ -224,14 +224,14 @@
 ::selection { background: rgba(9,26,85,.12); color: var(--text); }
 
 body {
-  /* The stack led with 'Inter', which this project never loads — there is no
-     @font-face and no font link in index.html — so every platform silently
-     fell through to something different and none of them was the face the
-     type was sized and tracked against. Leading with system-ui at least makes
-     the rendered result the one being designed against: SF on Apple, Segoe UI
-     Variable on Windows, Roboto on Android. If Inter is wanted, it has to be
-     actually shipped; putting its name here does not do that. */
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* 'Inter Variable' is the self-hosted @fontsource-variable/inter imported in
+     main.jsx. The stack used to name plain 'Inter' while shipping no font at
+     all, so every platform quietly rendered something else and none of them
+     was the face these sizes and tracking were chosen against. The system
+     stack behind it is the fallback for first paint and for the rare client
+     that rejects the woff2. */
+  font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto,
+               'Helvetica Neue', Arial, sans-serif;
   font-size: var(--text-base);
   color: var(--text);
   background: var(--bg);
