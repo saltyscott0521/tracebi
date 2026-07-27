@@ -188,6 +188,7 @@ Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
 | `TRACEBI_APP` | Python module to import on startup (default `web.demo_app`) |
 | `TRACEBI_DEMO_DB_URL` | Any SQLAlchemy URL. Set → definitions only, no execution at import. Unset → ephemeral SQLite that seeds itself. |
 | `POSTGRES_PASSWORD` | Local compose Postgres password (default `tracebi`) |
+| `POSTGRES_PORT` | Host port for the compose Postgres (default `5432`). Set it if you already run Postgres locally: `POSTGRES_PORT=55432 docker compose up`. |
 | `TRACEBI_MODELS_DIR` | Folder scanned for model definitions (default `models`) |
 | `TRACEBI_PIPELINES_DIR` | Folder scanned for pipeline definitions (default `pipelines`) |
 | `TRACEBI_REPORTS_DIR` | Folder scanned for named report factories (default `reports`) |
