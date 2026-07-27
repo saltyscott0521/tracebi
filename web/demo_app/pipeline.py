@@ -1,9 +1,25 @@
 """
 Medallion pipeline for the demo app.
 
-Runs Landing → Manipulation → Final at module import time so the Pipelines
-page in the UI has live run history immediately. Exports `runner` and
-`pipeline_model` for use by the medallion_revenue report.
+Defines Landing → Manipulation → Final and exports ``runner`` and
+``pipeline_model`` (the latter for the medallion_revenue report).
+
+**Definition and execution are separate here, and which one you get depends on
+where the data lives.** See NOTES.md, "Deployment planes".
+
+* With ``TRACEBI_DEMO_DB_URL`` set — a real Postgres, e.g. Supabase — importing
+  this module only *defines* layers. Nothing is seeded and nothing is run. The
+  data is already there because something else put it there: the execution
+  plane, via ``tracebi run-pipeline`` from a cron job, a CI step, or a laptop.
+  Importing the module in a web process does no work at all.
+
+* Without it, the pipeline falls back to an ephemeral SQLite file and seeds
+  and runs itself at import, because otherwise there is nowhere for an
+  execution plane to have written and the demo would come up empty. That is
+  the compromise a serverless deployment with no database forces, and it is
+  exactly the thing pointing at Postgres removes.
+
+``seed_and_run()`` is the execution-plane entry point for both cases.
 """
 
 import os
@@ -30,36 +46,47 @@ _orders_raw = orders_df.assign(
 
 _customers_raw = customers_df.rename(columns={"tier": "segment"})
 
-# SQLite DB for pipeline persistence.
+# Where the pipeline's tables and run history live.
 #
-# This used to be hardcoded to the repo's data/ directory, which is why the
-# Vercel entry point had to skip this whole app module: a serverless
-# deployment mounts its own code read-only, so the makedirs/to_sql below
-# raised at import and took the demo reports and connectors down with it.
-# Hence a production site with an empty Reports, Connectors and Pipelines
-# page. Set TRACEBI_DEMO_DB_DIR to place it explicitly; otherwise fall back
-# to the system temp dir when the checkout is not writable, so the demo
-# comes up anywhere without needing configuration.
+# TRACEBI_DEMO_DB_URL takes any SQLAlchemy URL and is the durable case — point
+# it at Supabase and both the medallion tables and the run history survive
+# between requests, which is what lets execution move out of the web process.
 #
-# On serverless, temp is per-invocation, so run history does not survive
-# between requests — the pipeline is still runnable and inspectable, which
-# is what the demo needs.
-_DB_DIR = os.environ.get("TRACEBI_DEMO_DB_DIR") or os.path.join(
-    os.path.dirname(__file__), "..", "..", "data"
-)
-try:
-    os.makedirs(_DB_DIR, exist_ok=True)
-    _probe = os.path.join(_DB_DIR, ".write-probe")
-    with open(_probe, "w") as fh:
-        fh.write("")
-    os.remove(_probe)
-except OSError:
-    _DB_DIR = tempfile.gettempdir()
+# Without it we fall back to SQLite. That path used to be hardcoded to the
+# repo's data/ directory, which is why the Vercel entry point had to skip this
+# whole app module: a serverless deployment mounts its code read-only, so the
+# makedirs/to_sql raised at import and took the demo's reports and connectors
+# down with it. TRACEBI_DEMO_DB_DIR places it explicitly; otherwise fall back
+# to the system temp dir when the checkout is not writable.
+_DB_URL = os.environ.get("TRACEBI_DEMO_DB_URL")
+DURABLE_DB = bool(_DB_URL)
 
-_DB_URL = f"sqlite:///{os.path.join(_DB_DIR, 'demo.db')}"
+if not _DB_URL:
+    _DB_DIR = os.environ.get("TRACEBI_DEMO_DB_DIR") or os.path.join(
+        os.path.dirname(__file__), "..", "..", "data"
+    )
+    try:
+        os.makedirs(_DB_DIR, exist_ok=True)
+        _probe = os.path.join(_DB_DIR, ".write-probe")
+        with open(_probe, "w") as fh:
+            fh.write("")
+        os.remove(_probe)
+    except OSError:
+        _DB_DIR = tempfile.gettempdir()
+    _DB_URL = f"sqlite:///{os.path.join(_DB_DIR, 'demo.db')}"
 
-_orders_raw.to_sql("orders_raw",     con=create_engine(_DB_URL), if_exists="replace", index=False)
-_customers_raw.to_sql("customers_raw", con=create_engine(_DB_URL), if_exists="replace", index=False)
+
+def seed_source_tables() -> None:
+    """
+    Write the raw source tables the Landing layers read from.
+
+    Execution, not definition — it writes. Called by ``seed_and_run()``, and at
+    import only in the ephemeral-SQLite case where nothing else can have done
+    it. Against Postgres this is the once-per-deployment step.
+    """
+    engine = create_engine(_DB_URL)
+    _orders_raw.to_sql("orders_raw", con=engine, if_exists="replace", index=False)
+    _customers_raw.to_sql("customers_raw", con=engine, if_exists="replace", index=False)
 
 db = SQLConnector("demo_db", url=_DB_URL)
 
@@ -131,10 +158,37 @@ runner.register(_final_by_region,   name="revenue_by_region", schedule="30 6 * *
 runner.register(_final_by_segment,  name="revenue_by_segment", schedule="30 6 * * *",
                 depends_on="orders_silver")
 
-# Run full pipeline once at startup so the UI has live data immediately
-runner.run("orders_bronze")
-runner.run("customers_bronze")
-runner.run("orders_silver")
-runner.run("customers_silver")
-runner.run("revenue_by_region")
-runner.run("revenue_by_segment")
+#: Layers in dependency order. `tracebi run-pipeline` derives this itself from
+#: the registrations above; it is named here so seed_and_run() and the tests
+#: agree on what a full pass is.
+LAYERS = [
+    "orders_bronze",
+    "customers_bronze",
+    "orders_silver",
+    "customers_silver",
+    "revenue_by_region",
+    "revenue_by_segment",
+]
+
+
+def seed_and_run() -> None:
+    """
+    Seed the source tables and run every layer, upstream first.
+
+    The execution plane for this demo. Run it against a durable database and
+    the web process never has to: it imports definitions and reads results.
+
+        TRACEBI_DEMO_DB_URL=postgresql+psycopg://… \\
+            python -c "from web.demo_app.pipeline import seed_and_run; seed_and_run()"
+    """
+    seed_source_tables()
+    for layer in LAYERS:
+        runner.run(layer)
+
+
+if not DURABLE_DB:
+    # No durable database configured, so nothing else can have produced this
+    # data — seed and run at import so the demo is not empty. This is the
+    # branch that makes a web process do batch work, and pointing
+    # TRACEBI_DEMO_DB_URL at Postgres is what retires it.
+    seed_and_run()

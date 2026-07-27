@@ -62,6 +62,33 @@ Set it in Vercel under **Settings → Environment Variables**:
 | `TRACEBI_SUPABASE_URL` | the URL above |
 | `TRACEBI_APP` | *(empty string)* — skip the bundled demo app |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | pick something; see §4 |
+| `TRACEBI_DEMO_DB_URL` | *(only when running the bundled demo, `TRACEBI_APP=web.demo_app`)* — same URL. See below. |
+
+### Running the bundled demo against Postgres
+
+If you deploy the demo app rather than your own project, point
+`TRACEBI_DEMO_DB_URL` at the same database. That changes what importing the
+app module does:
+
+- **With it set**, importing only *defines* layers. Nothing is seeded, nothing
+  is executed, and the web process does no batch work at all — it reads
+  results that are already in Postgres.
+- **Without it**, the demo falls back to an ephemeral SQLite file and seeds
+  and runs itself at import, because otherwise there would be nowhere for
+  anything else to have written and the demo would come up empty.
+
+Seed it once, from anywhere with the URL — a laptop, a CI job, a container:
+
+```bash
+TRACEBI_DEMO_DB_URL='postgresql+psycopg://…' \
+  python -c "from web.demo_app.pipeline import seed_and_run; seed_and_run()"
+```
+
+That command is the execution plane. For a project of your own with pipelines
+in `pipelines/`, the equivalent is `tracebi run-pipeline <name>`, which needs
+no web server and exits non-zero if a layer fails — so cron, a Kubernetes
+CronJob, an Airflow task or a CI step can own the schedule instead of the API
+process. See NOTES.md, "Deployment planes".
 
 Never commit the password. The framework reads connector URLs only from
 `os.environ`, deliberately — see [.env.example](../.env.example).
