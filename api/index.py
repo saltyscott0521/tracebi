@@ -43,10 +43,17 @@ if str(_ROOT) not in sys.path:
 # Artifact discovery is relative to the working directory.
 os.chdir(_ROOT)
 
-# Don't load the bundled demo app: it builds demo data and runs a six-layer
-# SQLite pipeline at import time, which would fail on a read-only filesystem
-# and add seconds to every cold start. A project's own models/ and reports/
-# directories are discovered without it.
+# Default to no app module, because a real project deploying this should get
+# its own models/ and reports/ (both discovered without an app module) rather
+# than someone else's demo data.
+#
+# This is now a default rather than a hard rule. It used to be the latter: the
+# bundled demo app wrote its pipeline SQLite into the checkout, which raises on
+# a read-only serverless filesystem and took the demo's reports and connectors
+# down with it. web/demo_app/pipeline.py now falls back to a writable location,
+# so setting TRACEBI_APP=web.demo_app here is a supported way to deploy the
+# demo — that is exactly what tracebi.com does. Import cost is ~1.4s including
+# the six-layer pipeline run, most of which is importing pandas either way.
 os.environ.setdefault("TRACEBI_APP", "")
 
 from web.api.main import app  # noqa: E402  (after sys.path/env setup)

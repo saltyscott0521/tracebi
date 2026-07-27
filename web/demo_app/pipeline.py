@@ -7,6 +7,7 @@ page in the UI has live run history immediately. Exports `runner` and
 """
 
 import os
+import tempfile
 
 from sqlalchemy import create_engine
 
@@ -29,9 +30,32 @@ _orders_raw = orders_df.assign(
 
 _customers_raw = customers_df.rename(columns={"tier": "segment"})
 
-# SQLite DB for pipeline persistence
-_DB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
-os.makedirs(_DB_DIR, exist_ok=True)
+# SQLite DB for pipeline persistence.
+#
+# This used to be hardcoded to the repo's data/ directory, which is why the
+# Vercel entry point had to skip this whole app module: a serverless
+# deployment mounts its own code read-only, so the makedirs/to_sql below
+# raised at import and took the demo reports and connectors down with it.
+# Hence a production site with an empty Reports, Connectors and Pipelines
+# page. Set TRACEBI_DEMO_DB_DIR to place it explicitly; otherwise fall back
+# to the system temp dir when the checkout is not writable, so the demo
+# comes up anywhere without needing configuration.
+#
+# On serverless, temp is per-invocation, so run history does not survive
+# between requests — the pipeline is still runnable and inspectable, which
+# is what the demo needs.
+_DB_DIR = os.environ.get("TRACEBI_DEMO_DB_DIR") or os.path.join(
+    os.path.dirname(__file__), "..", "..", "data"
+)
+try:
+    os.makedirs(_DB_DIR, exist_ok=True)
+    _probe = os.path.join(_DB_DIR, ".write-probe")
+    with open(_probe, "w") as fh:
+        fh.write("")
+    os.remove(_probe)
+except OSError:
+    _DB_DIR = tempfile.gettempdir()
+
 _DB_URL = f"sqlite:///{os.path.join(_DB_DIR, 'demo.db')}"
 
 _orders_raw.to_sql("orders_raw",     con=create_engine(_DB_URL), if_exists="replace", index=False)
