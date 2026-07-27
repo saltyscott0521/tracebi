@@ -131,6 +131,8 @@ data/                  # SQLite DB (gitignored)
 .github/workflows/     # CI — pytest matrix + ruff lint
 Dockerfile             # Multi-stage build (React UI + Python app)
 docker-compose.yml     # Single-container getting-started story
+vercel.json            # Vercel: UI build + /api rewrite to the Python function
+api/                   # Vercel serverless entry (index.py) + trimmed requirements
 pyproject.toml         # Single source of truth for deps, build, and pytest config
 CHANGELOG.md           # Keep-a-changelog format
 LICENSE                # MIT
@@ -154,6 +156,7 @@ TRACEBI_DEV_MODE=1 python web/run.py           # Enables POST /api/_dev/reload
 # Run (prod)
 uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 docker compose up --build                      # Or the docker-compose path
+vercel --prod                                  # Vercel + Supabase (see docs/deploy-vercel-supabase.md)
 
 # Database
 python seeds/seed_db.py                        # Create + seed data/tracebi.db
