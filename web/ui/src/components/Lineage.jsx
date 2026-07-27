@@ -149,7 +149,18 @@ export function LineageGraph({ graph, height = 340 }) {
         edges={edges}
         nodeTypes={NODE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.3 }}
+        /* padding was 0.3, which spent nearly a third of the canvas on margin and
+           left a four-step chain as a small strip in a lot of dead space. Dropping
+           it renders the same graph appreciably larger.
+
+           The whole graph should fit on first paint: the shape of the chain is the
+           thing this panel exists to show, and a view clipped at both ends just
+           looks broken to anyone who doesn't think to pan. Per-step detail is not
+           the job of the initial view — that is what clicking a step opens. So the
+           zoom floor is only a backstop for chains long enough that fitting them
+           would be pointless anyway. maxZoom stops a one- or two-node graph from
+           ballooning to fill the canvas. */
+        fitViewOptions={{ padding: 0.12, minZoom: 0.5, maxZoom: 1 }}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, node) => setInspected(node.data)}
         onPaneClick={() => setInspected(null)}

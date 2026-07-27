@@ -341,6 +341,28 @@ tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
   opacity: 0.85;
 }
 
+/* ── Empty state ────────────────────────────────────────
+   A page-level empty state is the whole page — on the live deployment
+   Connectors, Reports and Pipelines are all empty, so this is the first
+   thing a visitor sees. Bare centred text floating on the ground read as
+   an unfinished page rather than a deliberate "nothing here yet", so it
+   gets a dashed outline: present enough to be a defined region, dashed so
+   it still reads as absence rather than content.
+
+   Nested inside a surface (a Card, or SplitLayout's list panel) it is
+   already sitting on one, and a second box around a two-word "No matches."
+   would be noise — so there it falls back to plain text. */
+.empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.surface .empty {
+  border: none;
+  background: none;
+  padding: 40px 24px;
+}
+
 /* ── Buttons ────────────────────────────────────────── */
 .btn-primary:hover:not(:disabled) {
   filter: brightness(1.08);

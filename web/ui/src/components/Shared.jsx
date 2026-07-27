@@ -122,7 +122,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…' }) {
 export function Card({ children, style, hover, accent }) {
   return (
     <div
-      className={[hover ? 'card-hover' : '', accent ? 'card-accent' : ''].filter(Boolean).join(' ')}
+      className={['surface', hover ? 'card-hover' : '', accent ? 'card-accent' : ''].filter(Boolean).join(' ')}
       style={{
         background: 'var(--card)',
         backdropFilter: 'blur(8px)',
@@ -209,7 +209,7 @@ export function Spinner({ size = 18 }) {
 
 export function Empty({ icon, message, action }) {
   return (
-    <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--muted)' }}>
+    <div className="empty" style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--muted)' }}>
       {icon && <div style={{ fontSize: 30, marginBottom: 14, opacity: .3 }}>{icon}</div>}
       <p style={{ fontSize: 13, lineHeight: 1.65, maxWidth: 300, margin: '0 auto' }}>{message}</p>
       {action && <div style={{ marginTop: 16 }}>{action}</div>}
@@ -348,7 +348,7 @@ export function Tabs({ tabs, active, onChange }) {
 export function SplitLayout({ left, right }) {
   return (
     <div className="split-layout">
-      <div style={{
+      <div className="surface" style={{
         background: 'var(--card)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
