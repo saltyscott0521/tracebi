@@ -53,6 +53,10 @@ Changelog     = "https://github.com/saltyscott0521/tracebi/blob/main/CHANGELOG.m
 [project.optional-dependencies]
 csv       = ["openpyxl>=3.0"]
 sql       = ["sqlalchemy>=2.0"]
+# `sql` brings SQLAlchemy but no driver, so Postgres — the database every
+# deployment doc here assumes — needed one naming. api/requirements.txt had
+# been hand-rolling psycopg for exactly this reason.
+postgres  = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1"]
 duckdb    = ["duckdb>=0.9"]
 bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
@@ -78,6 +82,7 @@ all = [
     "openpyxl>=3.0",
     "matplotlib>=3.5",
     "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
     "duckdb>=0.9",
     "google-cloud-bigquery>=3.0",
     "db-dtypes",

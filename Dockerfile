@@ -9,5 +9,5 @@ FROM python:3.11-slim
 WORKDIR /app
 COPY . .
 COPY --from=ui-builder /ui/dist web/ui/dist
-RUN pip install --no-cache-dir '.[reports,pipeline,lineage,sql,duckdb,web]'
+RUN pip install --no-cache-dir '.[reports,pipeline,lineage,sql,postgres,duckdb,web]'
 CMD python -m uvicorn web.api.main:app --host 0.0.0.0 --port ${PORT:-8000}

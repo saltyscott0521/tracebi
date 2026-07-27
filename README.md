@@ -160,11 +160,34 @@ survive container restarts.
 docker compose up --build
 ```
 
+The stack is three services, one per deployment plane:
+
+| Service | Plane | Does |
+|---|---|---|
+| `db` | state | Postgres. Medallion tables **and** pipeline run history, surviving restarts. |
+| `seed` | execution | Runs the pipeline once, then exits. The only service that writes. |
+| `app` | serving | FastAPI + React on `:8000`. Reads. |
+
+Because `TRACEBI_DEMO_DB_URL` points at Postgres, importing the app module in
+`app` *defines* layers without executing any — starting a web process does no
+batch work. Re-run the pipeline without restarting the API:
+
+```bash
+docker compose run --rm seed
+```
+
+Postgres is published on `:5432`, so the execution plane can equally be driven
+from the host by cron, CI, or `tracebi run-pipeline`. That is the shape a real
+deployment takes, and it is why the compose file is worth reading even if you
+deploy elsewhere. See NOTES.md, "Deployment planes".
+
 Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
 
 | Variable | Purpose |
 |---|---|
 | `TRACEBI_APP` | Python module to import on startup (default `web.demo_app`) |
+| `TRACEBI_DEMO_DB_URL` | Any SQLAlchemy URL. Set → definitions only, no execution at import. Unset → ephemeral SQLite that seeds itself. |
+| `POSTGRES_PASSWORD` | Local compose Postgres password (default `tracebi`) |
 | `TRACEBI_MODELS_DIR` | Folder scanned for model definitions (default `models`) |
 | `TRACEBI_PIPELINES_DIR` | Folder scanned for pipeline definitions (default `pipelines`) |
 | `TRACEBI_REPORTS_DIR` | Folder scanned for named report factories (default `reports`) |

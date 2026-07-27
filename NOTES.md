@@ -93,7 +93,16 @@ registry buys working schedules and little else.
 
 More than expected, and worth not undoing:
 
-- `PipelineRunner(db_url=...)` and `SQLConnector` both accept any SQLAlchemy URL
+- ~~`PipelineRunner(db_url=...)` and `SQLConnector` both accept any SQLAlchemy URL~~
+  **Wrong when written, corrected 2026-07-27.** `SQLConnector` was fine.
+  `PipelineRunner` accepted any URL and worked only on SQLite: the schema DDL
+  used `INTEGER PRIMARY KEY AUTOINCREMENT`, the layer upsert used
+  `INSERT OR REPLACE`, and run ids came from `last_insert_rowid()` — all three
+  SQLite-only. Pointing it at Postgres, which is exactly what
+  `docs/deploy-vercel-supabase.md` §5 instructs, raised on the first
+  `CREATE TABLE`. This was assumed from the signature rather than checked, and
+  only surfaced on actually running it. Now dialect-aware and verified against
+  a real Postgres end to end.
 - `pyproject.toml` extras already name the planes — `pipeline` (apscheduler,
   sqlalchemy), `web` (fastapi), `reports` (matplotlib), `lineage` (networkx),
   with `pandas` as the only core dependency. The logical split being asked for

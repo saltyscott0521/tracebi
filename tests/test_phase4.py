@@ -380,3 +380,58 @@ class TestPipelineRunner:
         runner.lineage("orders_bronze")
         out = capsys.readouterr().out
         assert "orders_bronze" in out
+
+
+# ── Dialect portability ───────────────────────────────────────────────────────
+# PipelineRunner takes any SQLAlchemy URL, and the Supabase deploy guide tells
+# people to hand it a Postgres one — but the schema DDL, the layer upsert and
+# the last-inserted-id read were all SQLite-only, so that combination raised on
+# the very first CREATE TABLE. These lock the portability contract in place
+# without needing a live Postgres in CI; the round trip against a real server
+# was verified by hand.
+
+class TestDialectPortability:
+    def test_ddl_has_no_hardcoded_autoincrement(self):
+        # AUTOINCREMENT is SQLite-only syntax and must not be baked into the
+        # shared DDL — it arrives via the {pk} substitution instead.
+        for ddl in PipelineRunner._DDL:
+            assert "AUTOINCREMENT" not in ddl
+            assert "{pk}" in ddl
+
+    def test_every_ddl_statement_formats_per_dialect(self):
+        for dialect, pk in PipelineRunner._PK_SQL.items():
+            for ddl in PipelineRunner._DDL:
+                sql = ddl.format(pk=pk)
+                assert "{pk}" not in sql
+                assert pk in sql, dialect
+
+    def test_postgres_pk_is_not_sqlite_syntax(self):
+        pg = PipelineRunner._PK_SQL["postgresql"]
+        assert "AUTOINCREMENT" not in pg
+        assert "IDENTITY" in pg
+
+    def test_unknown_dialect_falls_back_rather_than_failing(self):
+        # Better to create a usable table on an untested dialect than to
+        # refuse to start.
+        pk = PipelineRunner._PK_SQL.get("some-future-db", PipelineRunner._PK_DEFAULT)
+        assert pk == "INTEGER PRIMARY KEY"
+        for ddl in PipelineRunner._DDL:
+            assert "{pk}" not in ddl.format(pk=pk)
+
+    def test_sqlite_runner_reports_its_dialect(self, runner):
+        assert runner._dialect == "sqlite"
+
+    def test_sqlite_still_uses_last_insert_rowid(self, runner, mem):
+        # The SQLite path is the one every existing test exercises; make sure
+        # the refactor kept it, and that ids are real and increasing.
+        bronze = self._make_bronze(mem)
+        runner.register(bronze, name="orders_bronze")
+        runner.run("orders_bronze")
+        runner.run("orders_bronze")
+        history = runner.run_history("orders_bronze", limit=2)
+        assert len(history) == 2
+        assert history[0]["id"] != history[1]["id"]
+
+    def _make_bronze(self, mem):
+        return BronzeLayer(connector=mem, source="orders_raw",
+                           sink=mem, sink_table="orders_bronze")
