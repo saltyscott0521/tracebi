@@ -20,6 +20,119 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-07-27 — Deployment planes, and what a corporate rollout requires
+
+Written after taking tracebi.com live on Vercel. The question that prompted it:
+is this the right stack given the product eventually goes to corporations, and
+should the requirements be split along some logical line? Recording the
+reasoning now because the answer turns out to be about the registry, not the
+host, and that is easy to forget once the site is up and working.
+
+### What Vercel actually costs, measured rather than assumed
+
+| Constraint | What we observed |
+|---|---|
+| Scheduling | Cannot work at all. Every layer registers a cron (`"0 * * * *"`), and APScheduler needs a process that outlives a request. On serverless those schedules are decorative. |
+| Run history | Does not persist. The demo pipeline's SQLite now falls back to the system temp dir, which serverless scopes per-invocation. |
+| Background report runs | Worked, but by luck. `POST /reports/{n}/runs` then polling went running → succeeded over ~9s only because Fluid compute reused the instance holding the in-memory run registry. A poll landing on a cold instance finds nothing. |
+| Function size | The 250 MB limit already forced `api/requirements.txt` to drop matplotlib, networkx and apscheduler relative to the project extras. |
+| Cold start | ~1.4s to import with the demo app, including a full six-layer pipeline run. Most of that is pandas and would be paid anywhere. |
+
+None of these are platform defects. They are the shape of serverless meeting the
+shape of a stateful framework.
+
+### The comparison that clarified it
+
+AltsVault (`bdc-fund-dashboard`) runs happily on Vercel + Supabase, which
+invites the conclusion that it simply does not need functions. It does — there
+is a full set under `src/app/api` (compare, fund, graph, leaders, coinvest…).
+The difference is what those functions are asked to do:
+
+```
+[pipeline/ — its own installable Python package, never deployed to Vercel]
+        │ writes
+        ▼
+[Supabase Postgres]        ← the contract
+        ▲
+        │ reads
+[Next.js on Vercel — stateless, request-scoped]
+```
+
+Its batch and stateful work was moved out of the serving layer entirely.
+Vercel is fine there because nothing stateful is ever asked of it.
+
+TraceBi collapses those planes into one process. That is the whole difference.
+
+### Three planes
+
+| Plane | What lives here | Where it can run | State |
+|---|---|---|---|
+| **Definition** | `models/`, `reports/`, `pipelines/` as code | git | none |
+| **Execution** | pipeline runs, materialisation, schedules | container, cron, Airflow, whatever the org already operates | **writes** Postgres |
+| **Serving** | FastAPI read+compute, React UI | anywhere, stateless | **reads** Postgres |
+
+Postgres — or any SQLAlchemy URL — is the seam. Make that the contract and
+every other piece becomes swappable, which is what "agnostic to the underlying
+pieces" actually requires in practice.
+
+### The coupling that blocks it
+
+`tracebi/registry.py` is a process-global singleton populated at import. That
+one decision is why:
+
+- the web server must import the app module, and therefore runs whatever that
+  module runs — which is exactly why the demo pipeline's read-only filesystem
+  failure took the reports and connectors down with it
+- the scheduler has to live in the web process
+- background run ids live in memory and cannot survive a second instance
+
+The host is downstream of this. Moving off Vercel without addressing the
+registry buys working schedules and little else.
+
+### What is already agnostic
+
+More than expected, and worth not undoing:
+
+- `PipelineRunner(db_url=...)` and `SQLConnector` both accept any SQLAlchemy URL
+- `pyproject.toml` extras already name the planes — `pipeline` (apscheduler,
+  sqlalchemy), `web` (fastapi), `reports` (matplotlib), `lineage` (networkx),
+  with `pandas` as the only core dependency. The logical split being asked for
+  is already declared; it is the deployment that ignores it.
+- proxy-header auth (`TRACEBI_AUTH_PROXY_HEADER` + `TRACEBI_AUTH_PROXY_TRUSTED_IPS`)
+  is the shape that sits behind corporate SSO
+- a Dockerfile and docker-compose already exist
+
+### What a corporate rollout adds
+
+| Requirement | Status |
+|---|---|
+| Bring your own Postgres | Supported today |
+| SSO | Proxy-header mode fits; trusted-IP configuration needs documenting, not building |
+| No outbound egress | Inter is now self-hosted rather than CDN-loaded. Worth auditing that nothing else reaches out. |
+| Container delivery | Dockerfile exists |
+| **Multi-tenancy** | **Open.** One global registry per process means one tenant per process. This is the decision with the largest blast radius and it has not been made. |
+
+### Recommendation
+
+Ship the product as a container with Postgres as its only hard dependency and
+scheduling pluggable. Vercel then becomes one deployment target for the demo
+and marketing surface rather than the architecture. This is also what
+`docs/deploy-vercel-supabase.md` already prescribes — "run the API in a
+container and keep only the UI on Vercel" — so the split is a matter of
+following advice the project already gives, once the registry allows it.
+
+### Open decisions
+
+- Multi-tenancy: one process per tenant, or a registry that can hold many?
+- Should the serving plane be permitted to trigger execution at all
+  (`POST /pipelines/{n}/layers/{l}/run`), or is that strictly the execution
+  plane's job with serving reduced to reads?
+- Requirements profiles: a serving install (light, no apscheduler or
+  matplotlib) versus an execution install (full). The extras already exist;
+  what is missing is a documented pairing of profile to plane.
+
+---
+
 ## 2026-07-27 — Product scope review, correctness sweep, and the AI-authoring turn
 
 A long session. Three things happened: a full scope review that changed the
@@ -979,6 +1092,16 @@ Demo/MVP hosting only (Railway). Therefore: warn-don't-refuse when auth is
 missing; `.dockerignore` keeps `.env`/DBs out of image layers; proxy auth
 without trusted IPs warns about header spoofing. If TraceBi ever targets
 self-serve production hosting, revisit refuse-to-start.
+
+> **Superseded 2026-07-27.** Railway is gone — `tracebi.com` pointed at a
+> deleted Railway app returning "Application not found" until it was repointed.
+> The demo now runs on Vercel at `www.tracebi.com` with the apex redirecting,
+> serving `web.demo_app` via `TRACEBI_APP`. The reasoning above still holds and
+> is now load-bearing rather than hypothetical: the deployment is public with
+> **no auth at all**, a deliberate call given both models are synthetic
+> `MemoryConnector` data and no credentials are deployed. The exposure is
+> compute abuse, not disclosure. That calculus inverts the moment a model
+> points at real tables — see the deployment-planes entry above.
 
 ### Open follow-ups (agreed, not yet built)
 
