@@ -11,13 +11,182 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 1 | ✅ Done | Connectors, DataModel, DataSet + lineage |
 | Phase 2 | ✅ Done | Report Engine (Excel, HTML, manifest) |
 | Phase 2.5 | ✅ Done | Medallion architecture, Star schema, Lineage diagram |
-| Phase 3 | ✅ Done | Dashboard server (Dash-based, associative filters) |
+| Phase 3 | ❌ Removed | Dashboard server (Dash) — cut 2026-07-27, see entry below |
 | Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
 | Phase 5 | ✅ Done | Web UI (FastAPI + React, Dash embedded, medallion-aware demo) |
 | Phase 6 | ✅ Done | DuckDB engine, push-down filters, layer rename, CLI, auto-discovery, auth, docker-compose |
-| Docs | ✅ Done | README rewritten, docs/overview.html added |
+| Docs | ⚠️ Partial | README/CLAUDE.md current; docs/overview.html is stale (documents the removed Dash layer) |
+| Phase 7 | ✅ Done | Correctness sweep, open-core seam, capability surface, ReportSpec, SVG charts, theme layer |
 
 ---
+
+## 2026-07-27 — Product scope review, correctness sweep, and the AI-authoring turn
+
+A long session. Three things happened: a full scope review that changed the
+positioning, a correctness sweep that found seven silent-wrong-output bugs,
+and the beginning of the AI-authoring architecture. Recording the decisions
+and — more usefully — what was rejected and why.
+
+### Positioning, settled
+
+| Question | Decision |
+|---|---|
+| ETL scope | **Own the last mile.** Landing/Manipulation/Final stay, for transforms close to the report. Not a dbt/Airflow/Dagster competitor; stop implying we own ingest. |
+| Associative model | **Drop the Qlik framing entirely.** Owner: *"i dont want to copy qlik, i feel like we can get away with just a good well defined semantic model."* |
+| Open core | Library (`tracebi/`) eventually OSS, web app proprietary. Fix the seam now, publish later. |
+| AI direction | External agent toolkit first, building toward AI-authored reports and front-ends. |
+
+The Qlik claim was a check the code could not cash. None of Qlik's three
+defining features existed — no selection-state propagation, no automatic
+key association, no set analysis — and the dashboard's filter code literally
+said `# column not present — skip (associative: no error)`. Dropping the
+claim removed a marketing liability; it did **not** remove the obligation to
+have a good semantic layer, so the same session added dimension-attribute
+filters, twelve operators, named measures, and `QuerySpec`.
+
+### The seven bugs, and the pattern in them
+
+All seven produced **silently wrong or unverifiable output** — the exact
+failure mode this framework exists to prevent:
+
+1. Dimension fan-out: $150 of revenue reported as $250, with a complete
+   lineage chain attached. The lineage already recorded `rows_left`/
+   `rows_after` — the framework observed the fan-out, wrote it into the audit
+   trail, and said nothing.
+2. Non-deterministic row order: identical queries produced different
+   `fingerprint()` values, so manifest fingerprints were not re-verifiable.
+   DuckDB returned hash order; pandas `groupby` sorts. The two engines also
+   disagreed with each other.
+3. `heading1`/`heading2` discarded `content`, losing real narrative in five
+   of seven demo reports.
+4. Nested `RowSection` vanished from the lineage walk — the most elaborate
+   reports were the ones losing their audit trail.
+5. `import tracebi` hard-required networkx against a pandas-only dep list.
+6. A broken file in `reports/` took down server startup entirely.
+7. A missing chart column silently plotted zeros — **a regression I
+   introduced hours after fixing the same class of bug**, while rewriting the
+   chart renderer.
+
+**Four of the seven surfaced from tests written for something else**, and the
+seventh came from a rewrite forgetting why a check existed. None would have
+been found by reading code. The implication for the AI direction is direct:
+when an agent writes the analytics, the human magnitude-check disappears, and
+this stops being an embarrassment and becomes the primary risk. Bias hard
+toward loud failure and toward tests that assert *absence* of a wrong answer,
+not just presence of a right one.
+
+### Cut: the Dash dashboard layer
+
+Removed, 1,047 LOC plus mounting. Three compounding problems:
+
+- **No lineage export.** A dashboard could show a number with no audit
+  trail, contradicting the whole premise.
+- **Filters did not traverse relationships.** A "filtered" dashboard could
+  mix filtered and unfiltered numbers side by side.
+- **It forced a second charting stack** (Plotly alongside matplotlib), and
+  two chart grammars is what blocked unifying on one declarative spec.
+
+Explore plus the report engine already cover most of the use case, and both
+carry lineage. If live dashboards return, they should be a spec over the same
+sections, sharing one chart grammar and inheriting lineage for free.
+
+### Rejected: Vega-Lite for charts
+
+Charts moved from base64 matplotlib PNGs to inline SVG. Vega-Lite was the
+obvious candidate — it *is* a JSON chart grammar, which is what an agent
+should emit — and it was rejected deliberately:
+
+- Needs a browser plus either a CDN or ~300 KB of bundled JS.
+- Cannot produce a static artifact server-side without Node.
+- A rendered report must stay a single self-contained file that still opens
+  in six months with no network. That property beats interactivity **for an
+  archived audit artifact**, and the live-dashboard case that would have
+  justified Vega-Lite had just been deleted.
+
+Hand-rolled SVG gets diffability, theming, and responsiveness with no
+runtime. Side effects: reports shrank ~75% (base64 PNGs were most of the
+weight), and charts stopped needing matplotlib at all — a base install had
+been rendering the literal text *"matplotlib required for charts"* where
+every chart should have been.
+
+### The keystone: reports as data
+
+`ReportSpec` — presentation structure plus a declarative `DataRef`
+(model + `QuerySpec`) instead of a live `DataSet`. This is what makes
+AI-authoring tractable, because it enables **validation before execution**:
+section types, field names, enum values, and whether the referenced model,
+fact, measures and dimensions exist — all checked without loading a row,
+with errors carrying a path like `sections[0].sections[1].data.query.fact`.
+
+Two design rules worth preserving:
+
+- **Sections serialize generically from their dataclass fields**, never
+  through parallel spec classes. Duplicating the definitions would drift the
+  first time someone added a field. A test asserts the mapping covers every
+  `SectionType`.
+- **Measures are declarative data, never callables.** A lambda cannot be
+  serialized, diffed, reviewed, or validated before execution. Accepting one
+  would forfeit reproducibility at the root. This is the single most
+  consequential API constraint in the codebase — do not relax it.
+
+`Report → spec` is best-effort by design: a dataset built from ad-hoc
+transforms has no declarative form, and `data_coverage()` reports that rather
+than pretending it round-trips.
+
+### Template layer, and what stayed in Python
+
+`Theme` (stylesheet as data), custom Jinja2 page shells, and a
+`section_renderers` registry. Jinja2 had been declared in `pyproject.toml`
+three times and imported nowhere; it now gates exactly one thing — a custom
+shell — and the built-in shell needs no template engine, so reports still
+work on a base install.
+
+Section *internals* stayed in Python on purpose. Table formatting and chart
+geometry are logic, not layout; as templates they would be harder to read and
+harder to test. What you override is the shell, the styling, and whole new
+block types.
+
+Default output was verified **byte-for-byte identical** across all seven demo
+reports. The first attempt was two blank lines off from empty head/body
+placeholders — fixed rather than waved through, because "probably fine" is
+how output drift starts in a tool whose promise is reproducibility.
+
+### Deployment: Vercel + Supabase
+
+Moved off Railway. Vercel hosts the UI and the FastAPI layer as Python
+serverless functions; Supabase Postgres is the data source and pipeline
+history store.
+
+This fits for a non-obvious reason on each side: TraceBi never caches a query
+— every call recomputes from source — which is what an ephemeral function
+wants; and Supabase provides a *remote* Postgres, fixing the one thing
+serverless otherwise breaks (default SQLite on a local disk).
+
+**The SVG chart work is what made it viable at all.** Functions cap at 250 MB
+unzipped and the full dep set is ~199 MB; dropping matplotlib (~35 MB) and
+networkx (~17 MB) brings it to ~150 MB.
+
+Three things cannot work on serverless, documented rather than discovered in
+production: the scheduler (APScheduler needs a process outliving the
+request), background report runs (the `run_id` lives in an in-process thread
+pool, so the next poll hits a different process), and local SQLite.
+
+### Open
+
+- **`docs/overview.html`** — 38 KB, stale. Documents the removed Dash layer
+  and Jinja2 templates that did not exist until this session. Rewrite or
+  delete.
+- **`tracebi.yaml`** — removed. It was scaffolded by `init` and parsed by no
+  code, inviting users to configure a connector that would never be read.
+  Restorable as a real project manifest if wanted.
+- **Lazy `DataSet` over a query graph** — still the eventual scaling wall.
+  DuckDB currently registers full pandas frames rather than pushing down, so
+  it is a local aggregation engine, not a query engine. Not blocking
+  anything; the seam is designed to allow it.
+- **The MCP server** — should now be thin: it mostly wraps `describe()`,
+  `ReportSpec.validate()`, `discovery_report()`, and the render endpoints.
+- **Six merged branches** deleted; repo is down to `main`.
+
 
 ## 2026-05-06 — Report as Code Philosophy
 

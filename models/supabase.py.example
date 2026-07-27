@@ -1,0 +1,71 @@
+"""
+A DataModel over Supabase Postgres.
+
+To activate:
+
+    mv models/supabase.py.example models/supabase.py
+
+It is shipped with a ``.example`` suffix on purpose — auto-discovery only
+loads ``.py`` files, so this one stays inert until you rename it. That keeps
+the repo's own test suite and ``tracebi validate`` green for anyone who has
+no Supabase project.
+
+Expects the schema in ``seeds/supabase_schema.sql``. Run that in the Supabase
+SQL Editor first.
+"""
+
+import os
+
+from tracebi import DataModel, SQLConnector
+
+# Read the URL from the environment rather than hard-coding it: the framework
+# never reads connector credentials implicitly, and a password in a committed
+# file is a password you have to rotate. Indexing (not .get) so a missing
+# variable fails at import with a clear KeyError, which shows up in
+# GET /api/discovery as a failed model rather than as mysterious empty results.
+DATABASE_URL = os.environ["TRACEBI_SUPABASE_URL"]
+
+db = SQLConnector("supabase", url=DATABASE_URL)
+
+model = DataModel("Sales")
+model.add_connector(db)
+
+model.add_table("orders",    connector="supabase", source="orders")
+model.add_table("customers", connector="supabase", source="customers")
+
+# ── Star schema ─────────────────────────────────────────────────────────────
+# customer_id is the primary key of customers, so the join cannot fan out.
+# If it were not unique, query() would refuse rather than silently inflate
+# every additive measure.
+model.add_dimension(
+    "dim_customer",
+    table_name="customers",
+    key_col="customer_id",
+    attributes=["name", "region", "tier"],
+)
+model.add_fact(
+    "fact_orders",
+    table_name="orders",
+    measures=["revenue", "cost", "qty"],
+    foreign_keys={"dim_customer": "customer_id"},
+)
+
+# ── Measures ────────────────────────────────────────────────────────────────
+# Defined once here, referenced by name from every report and query. This is
+# what makes the model a shared vocabulary instead of a pile of ad-hoc
+# groupbys — change a definition here and every consumer follows.
+model.add_measure("revenue", column="revenue", agg="sum",
+                  description="Gross booked revenue")
+model.add_measure("cost", column="cost", agg="sum",
+                  description="Cost of goods sold")
+model.add_measure("orders", column="order_id", agg="nunique",
+                  description="Distinct order count")
+model.add_measure("gross_margin", expr="revenue - cost", agg="sum",
+                  description="Revenue less cost")
+# A ratio of totals, not the mean of per-row ratios — a different and usually
+# wrong number.
+model.add_measure("margin_pct", ratio=("gross_margin", "revenue"),
+                  format="percent",
+                  description="Gross margin as a share of revenue")
+
+model.connect()
