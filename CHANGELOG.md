@@ -6,6 +6,41 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — Vercel + Supabase deployment
+
+`vercel.json`, `api/index.py`, `api/requirements.txt`, and
+[docs/deploy-vercel-supabase.md](docs/deploy-vercel-supabase.md). Vercel
+hosts the React UI and the FastAPI layer as Python serverless functions;
+Supabase Postgres is the data source and, for pipelines, the run-history
+store.
+
+The pairing works because of one property on each side. TraceBi never caches
+a query — every call recomputes from source — which is what an ephemeral
+function wants. And Supabase provides a *remote* Postgres, which fixes the
+thing serverless otherwise breaks: the default SQLite lives on a local disk a
+Vercel function cannot write to.
+
+**The recent chart work is what made this fit.** A serverless function has a
+250 MB unzipped limit and the full dependency set measures ~199 MB. Since
+HTML charts are now inline SVG and Excel charts are openpyxl-native,
+matplotlib (~35 MB) and networkx (~17 MB) can both be dropped — bringing the
+function to ~150 MB with room to spare.
+
+**`VITE_API_BASE`** makes the UI buildable against an API on another origin.
+It was hardcoded to a same-origin `/api`, so the UI could only ever be served
+from the same host as the API.
+
+Three things do **not** work on serverless, and the docs say so plainly
+rather than letting you find out in production: scheduled reports/pipelines
+(APScheduler needs a process that outlives a request), background report runs
+(the `run_id` lives in an in-process thread pool, so the next poll hits a
+different process), and local SQLite. Use `pg_cron`/Vercel Cron, the
+synchronous run endpoint, and Supabase Postgres respectively — or keep the
+API in a container and host only the UI on Vercel.
+
+Five tests pin the deploy contract, so a dependency creeping back into the
+import path fails in CI rather than at a Vercel build.
+
 ### Added — themes, custom page templates, and pluggable sections
 
 The HTML renderer kept its stylesheet as a 214-line module constant and

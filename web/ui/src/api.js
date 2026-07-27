@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const BASE = '/api'
+// Where the API lives. Defaults to a same-origin /api, which is what the
+// bundled dev server and the container image serve. Set VITE_API_BASE at
+// build time to point the UI at an API on another origin — e.g. a Vercel
+// deployment whose functions live under /api, or an external host:
+//
+//   VITE_API_BASE=https://tracebi-api.example.com/api  npm run build
+//
+// Trailing slashes are trimmed so both forms work.
+const BASE = (import.meta.env?.VITE_API_BASE || '/api').replace(/\/+$/, '')
 
 // API errors carry a structured `detail` ({ message, exception_type, traceback })
 // for 500s from report/pipeline runs; fall back to plain text otherwise.

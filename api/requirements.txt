@@ -1,0 +1,26 @@
+# Dependencies for the Vercel Python function. Deliberately narrower than
+# the project's own extras: a serverless function has a 250 MB unzipped
+# limit, and this set measures ~150 MB.
+#
+# Notably absent, and why it is safe:
+#   matplotlib  (~35 MB) — HTML charts are inline SVG and Excel charts are
+#                          openpyxl-native, so nothing needs it any more.
+#   networkx    (~17 MB) — only used for graph *drawing*;
+#                          LineageDiagram.to_mermaid() works without it.
+#   apscheduler          — a scheduler cannot outlive a request here.
+#
+# Keep this file in step with pyproject.toml when versions move.
+
+pandas>=1.5
+duckdb>=0.9
+
+# Web layer
+fastapi>=0.100
+python-multipart>=0.0.6
+
+# SQL connectors + PipelineRunner history, pointed at Supabase Postgres
+sqlalchemy>=2.0
+psycopg[binary]>=3.1
+
+# Excel export (native charts, no matplotlib)
+openpyxl>=3.0

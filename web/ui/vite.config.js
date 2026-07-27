@@ -10,7 +10,6 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': apiTarget,
-      '/dashboards': apiTarget,
     },
   },
 })

@@ -2433,3 +2433,120 @@ class TestDiscoveryDiagnostics:
 
         assert main(["validate"]) == 1
         assert "no_such_module_at_all" in capsys.readouterr().err
+
+
+class TestServerlessDeployContract:
+    """
+    The Vercel function runs with a trimmed dependency set and no bundled
+    demo app. These pin that contract: a dependency creeping back into the
+    import path would break the deploy at build time, far from the cause.
+    """
+
+    def test_api_imports_without_the_heavy_optional_deps(self):
+        """
+        matplotlib, networkx and apscheduler are excluded from
+        api/requirements.txt to stay under Vercel's 250 MB function limit.
+        """
+        import subprocess
+        import sys
+
+        code = (
+            "import sys, os\n"
+            "BLOCK = {'matplotlib', 'networkx', 'apscheduler'}\n"
+            "class B:\n"
+            "    def find_spec(self, n, p=None, t=None):\n"
+            "        if n.split('.')[0] in BLOCK:\n"
+            "            raise ImportError(n)\n"
+            "        return None\n"
+            "sys.meta_path.insert(0, B())\n"
+            "os.environ['TRACEBI_APP'] = ''\n"
+            "from web.api.main import app\n"
+            "from fastapi.testclient import TestClient\n"
+            "c = TestClient(app)\n"
+            "for path in ('/api/health', '/api/models', '/api/schema',\n"
+            "             '/api/spec/schema', '/api/discovery'):\n"
+            "    r = c.get(path)\n"
+            "    assert r.status_code == 200, (path, r.status_code)\n"
+            "print('ok')\n"
+        )
+        out = subprocess.run([sys.executable, "-c", code],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert "ok" in out.stdout
+
+    def test_charts_and_excel_need_no_matplotlib(self):
+        """
+        Dropping matplotlib is only safe because HTML charts are SVG and
+        Excel charts are openpyxl-native. If either regressed, the trimmed
+        deploy would render broken reports.
+        """
+        import subprocess
+        import sys
+
+        code = (
+            "import sys, os, tempfile\n"
+            "class B:\n"
+            "    def find_spec(self, n, p=None, t=None):\n"
+            "        if n.split('.')[0] == 'matplotlib':\n"
+            "            raise ImportError(n)\n"
+            "        return None\n"
+            "sys.meta_path.insert(0, B())\n"
+            "import pandas as pd\n"
+            "from tracebi import DataSet\n"
+            "from tracebi.reports.report import Report, ChartSection\n"
+            "from tracebi.reports.html_renderer import HTMLRenderer\n"
+            "from tracebi.reports.excel_renderer import ExcelRenderer\n"
+            "ds = DataSet(pd.DataFrame({'r': ['a','b'], 'v': [1.0, 2.0]}), name='d')\n"
+            "rep = Report('X').add(ChartSection(title='C', dataset=ds,\n"
+            "                                   chart_type='bar', x='r', y='v'))\n"
+            "assert 'tb-chart' in HTMLRenderer().to_html(rep)\n"
+            "with tempfile.TemporaryDirectory() as t:\n"
+            "    p = os.path.join(t, 'x.xlsx')\n"
+            "    ExcelRenderer().render(rep, p)\n"
+            "    assert os.path.getsize(p) > 1000\n"
+            "print('ok')\n"
+        )
+        out = subprocess.run([sys.executable, "-c", code],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert "ok" in out.stdout
+
+    def test_function_requirements_exclude_the_heavy_deps(self):
+        import pathlib
+
+        req = (pathlib.Path(__file__).resolve().parents[1]
+               / "api" / "requirements.txt").read_text()
+        active = [ln.strip() for ln in req.splitlines()
+                  if ln.strip() and not ln.strip().startswith("#")]
+        joined = " ".join(active).lower()
+        for heavy in ("matplotlib", "networkx", "apscheduler"):
+            assert heavy not in joined, (
+                f"{heavy} in api/requirements.txt would push the function "
+                f"toward Vercel's 250 MB limit"
+            )
+        assert any(p.startswith("pandas") for p in active)
+        assert any(p.startswith("fastapi") for p in active)
+
+    def test_vercel_config_routes_api_and_spa(self):
+        import json
+        import pathlib
+
+        cfg = json.loads((pathlib.Path(__file__).resolve().parents[1]
+                          / "vercel.json").read_text())
+        assert cfg["outputDirectory"] == "web/ui/dist"
+        sources = [r["source"] for r in cfg["rewrites"]]
+        assert any("api" in s for s in sources)
+        # An SPA fallback that also swallowed /api would break every request.
+        spa = next(r for r in cfg["rewrites"] if r["destination"] == "/index.html")
+        assert "?!api" in spa["source"]
+
+    def test_ui_api_base_is_configurable(self):
+        """
+        The UI must be buildable against an API on another origin, or it
+        can only ever be served from the same host as the API.
+        """
+        import pathlib
+
+        api_js = (pathlib.Path(__file__).resolve().parents[1]
+                  / "web" / "ui" / "src" / "api.js").read_text()
+        assert "VITE_API_BASE" in api_js
