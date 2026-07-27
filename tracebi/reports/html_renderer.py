@@ -5,13 +5,17 @@ Features:
 - Fully self-contained (no external CSS/JS dependencies)
 - Responsive layout
 - Styled tables with alternating rows and totals
-- Charts rendered as inline SVG via matplotlib
+- Charts rendered as inline SVG (no matplotlib needed)
 - Cover section with report metadata
 - Collapsible lineage section at the bottom
 - Print-friendly CSS (also used as base for PDF via WeasyPrint)
 
-Requires: pip install matplotlib
+Styling and page structure are overridable — see
+``tracebi.reports.theme`` (Theme, custom shell templates) and the
+``section_renderers`` argument for adding block types.
+
 Optional: pip install weasyprint  (for PDF export)
+          pip install jinja2      (only for custom shell templates)
 """
 
 from __future__ import annotations
@@ -37,220 +41,9 @@ logger = logging.getLogger(__name__)
 
 # ── CSS ───────────────────────────────────────────────────────────────────
 
-_CSS = """
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
-    font-size: 13px;
-    color: #1a1a2e;
-    background: #f5f7fa;
-    padding: 0;
-}
-.page {
-    max-width: 1100px;
-    margin: 0 auto;
-    background: #ffffff;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-    padding: 48px 56px 64px 56px;
-}
-/* Cover */
-.cover {
-    background: linear-gradient(135deg, #1F3864 0%, #2E74B5 100%);
-    color: #fff;
-    padding: 48px;
-    border-radius: 6px;
-    margin-bottom: 40px;
-}
-.cover h1 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
-.cover p  { font-size: 14px; opacity: 0.85; margin-bottom: 6px; }
-.cover .meta-table { margin-top: 20px; border-collapse: collapse; }
-.cover .meta-table td {
-    padding: 5px 18px 5px 0;
-    font-size: 12px;
-    opacity: 0.9;
-}
-.cover .meta-table td:first-child { font-weight: 600; opacity: 1; }
-
-/* Sections */
-.section { margin-bottom: 36px; }
-
-/* Text styles */
-.text-heading1 {
-    font-size: 20px; font-weight: 700;
-    color: #1F3864;
-    border-bottom: 2px solid #2E74B5;
-    padding-bottom: 6px;
-    margin-bottom: 18px;
-}
-.text-heading2 {
-    font-size: 15px; font-weight: 600;
-    color: #2E74B5;
-    margin-bottom: 12px;
-}
-.text-normal { font-size: 13px; line-height: 1.6; color: #333; }
-.text-note {
-    background: #FFF2CC;
-    border-left: 4px solid #F5C518;
-    padding: 10px 14px;
-    font-size: 12px;
-    border-radius: 0 4px 4px 0;
-}
-.text-callout {
-    background: #DEEBF7;
-    border-left: 4px solid #2E74B5;
-    padding: 10px 14px;
-    font-size: 12px;
-    border-radius: 0 4px 4px 0;
-}
-.section-title {
-    font-size: 14px; font-weight: 600;
-    color: #1F3864;
-    margin-bottom: 10px;
-}
-
-/* Tables */
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-    margin-top: 4px;
-}
-.data-table thead tr {
-    background: #1F3864;
-    color: #fff;
-}
-.data-table thead th {
-    padding: 9px 12px;
-    text-align: left;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    white-space: nowrap;
-}
-.data-table thead th.num { text-align: right; }
-.data-table tbody tr:nth-child(even) { background: #EBF0F7; }
-.data-table tbody tr:hover { background: #d6e4f0; }
-.data-table tbody td {
-    padding: 7px 12px;
-    border-bottom: 1px solid #dde4ef;
-}
-.data-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.data-table tfoot tr {
-    background: #D6DCE4;
-    font-weight: 700;
-    color: #1F3864;
-}
-.data-table tfoot td {
-    padding: 8px 12px;
-    border-top: 2px solid #1F3864;
-}
-.data-table tfoot td.num { text-align: right; }
-
-.data-table tbody td.neg { color: #C62828; }
-
-/* Metric cards */
-.metric-row { display: flex; gap: 16px; flex-wrap: wrap; }
-.metric-card {
-    flex: 1;
-    min-width: 140px;
-    background: #f8fafd;
-    border: 1px solid #dde4ef;
-    border-left: 4px solid #2E74B5;
-    border-radius: 6px;
-    padding: 14px 18px;
-}
-.metric-label {
-    font-size: 11px; font-weight: 600;
-    color: #5a6b8a;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.metric-value { font-size: 24px; font-weight: 700; color: #1F3864; margin-top: 4px; }
-.metric-delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
-.metric-delta.good { color: #2E7D32; }
-.metric-delta.bad  { color: #C62828; }
-
-/* Side-by-side layout rows */
-.layout-row { display: flex; gap: 24px; align-items: flex-start; }
-.layout-row > .layout-col { min-width: 0; }
-
-/* Charts — inline SVG, so every part is themeable from here. Override any
-   of these in a custom stylesheet to restyle charts without touching code. */
-.chart-container {
-    text-align: center;
-    margin: 8px 0;
-}
-.chart-container img { max-width: 100%; height: auto; }
-.tb-chart { width: 100%; height: auto; max-height: 460px; font-family: inherit; }
-.tb-grid          { stroke: #E3E7EE; stroke-width: 1; }
-.tb-tick          { fill: #6B7280; font-size: 11px; }
-.tb-cat           { fill: #374151; font-size: 11px; }
-.tb-axis-label    { fill: #374151; font-size: 12px; font-weight: 600; }
-.tb-legend        { fill: #374151; font-size: 11.5px; }
-.tb-value         { fill: #374151; font-size: 10.5px; }
-.tb-chart-empty   { fill: #9CA3AF; font-size: 13px; font-style: italic; }
-.tb-bar, .tb-slice { stroke: #FFFFFF; stroke-width: 0.75; }
-.tb-point         { stroke: #FFFFFF; stroke-width: 1; }
-
-/* Lineage */
-.lineage-toggle {
-    margin-top: 48px;
-    border-top: 1px solid #dde4ef;
-    padding-top: 20px;
-}
-.lineage-toggle summary {
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    color: #2E74B5;
-    padding: 6px 0;
-    list-style: none;
-}
-.lineage-toggle summary::-webkit-details-marker { display: none; }
-.lineage-toggle summary::before { content: "▶  "; }
-details[open] summary::before { content: "▼  "; }
-.lineage-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-    margin-top: 12px;
-}
-.lineage-table th {
-    background: #2F5496;
-    color: #fff;
-    padding: 6px 10px;
-    text-align: left;
-}
-.lineage-table td {
-    padding: 5px 10px;
-    border-bottom: 1px solid #eee;
-    vertical-align: top;
-}
-.lineage-table tr:nth-child(even) td { background: #f5f7fa; }
-.badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-.badge-load      { background: #DEEBF7; color: #1F3864; }
-.badge-filter    { background: #E2EFDA; color: #375623; }
-.badge-transform { background: #FFF2CC; color: #7D6608; }
-.badge-join      { background: #FCE4D6; color: #843C0C; }
-.badge-sort      { background: #EAD1DC; color: #4A235A; }
-.badge-select    { background: #D9EAD3; color: #274E13; }
-.badge-rename    { background: #CFE2F3; color: #1C4587; }
-.badge-other     { background: #eeeeee; color: #333; }
-
-/* Print */
-@media print {
-    body { background: #fff; }
-    .page { box-shadow: none; padding: 20px; }
-    .lineage-toggle { display: none; }
-    details { display: none; }
-}
-"""
+# The stylesheet moved to tracebi.reports.theme so it can be swapped or
+# overridden without editing the renderer. Alias kept for compatibility.
+from tracebi.reports.theme import DEFAULT_CSS as _CSS  # noqa: E402
 
 
 class HTMLRenderer(BaseRenderer):
@@ -270,14 +63,50 @@ class HTMLRenderer(BaseRenderer):
 
     FORMAT = "html"
 
-    def __init__(self, chart_dpi: int = 120, chart_style: str = "seaborn-v0_8-whitegrid"):
+    def __init__(
+        self,
+        chart_dpi: int = 120,
+        chart_style: str = "seaborn-v0_8-whitegrid",
+        theme=None,
+        template: Optional[str] = None,
+        section_renderers: Optional[dict] = None,
+        head_extra: str = "",
+        body_extra: str = "",
+        template_context: Optional[dict] = None,
+    ):
         """
         Args:
-            chart_dpi:    DPI for embedded chart images (default 120).
-            chart_style:  Matplotlib style for all charts.
+            chart_dpi:    Retained for compatibility; HTML charts are SVG.
+            chart_style:  Retained for compatibility; see
+                          :mod:`tracebi.reports.chart`.
+            theme:        A :class:`~tracebi.reports.theme.Theme`, or None for
+                          the built-in one. Swap it to restyle without
+                          touching code.
+            template:     Jinja2 template string for the page shell. Takes
+                          over the document structure (header, footer, script
+                          tags) while section rendering stays intact. Requires
+                          Jinja2; the built-in shell does not.
+            section_renderers: ``{SectionType | str: callable(section) -> str}``
+                          to add a block type or replace how one renders.
+                          The extension point that used to require a fork.
+            head_extra / body_extra: Markup injected into the built-in shell.
+            template_context: Extra names available to a custom template.
         """
+        from tracebi.reports.theme import Theme
+
         self.chart_dpi = chart_dpi
         self.chart_style = chart_style
+        self.theme = theme or Theme.default()
+        self.template = template
+        self.head_extra = head_extra
+        self.body_extra = body_extra
+        self.template_context = dict(template_context or {})
+        # Keyed by the section-type string so callers can pass either the
+        # enum or a plain string, including one the framework doesn't know.
+        self.section_renderers = {
+            (k.value if hasattr(k, "value") else str(k)): v
+            for k, v in (section_renderers or {}).items()
+        }
 
     # ── Public API ─────────────────────────────────────────────────────────
 
@@ -427,30 +256,20 @@ class HTMLRenderer(BaseRenderer):
         return self._build_html(report)
 
     def _build_html(self, report: Report) -> str:
-        sections_html = "\n".join(
-            self._render_section(s) for s in report.sections
-        )
-        lineage_html = self._render_lineage(report)
-        cover_html = self._render_cover(report)
+        from tracebi.reports.theme import render_shell
 
-        return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{self._esc(report.name)}</title>
-<style>
-{_CSS}
-</style>
-</head>
-<body>
-<div class="page">
-  {cover_html}
-  {sections_html}
-  {lineage_html}
-</div>
-</body>
-</html>"""
+        return render_shell(
+            title=self._esc(report.name),
+            css=self.theme.css,
+            cover=self._render_cover(report),
+            sections="\n".join(self._render_section(s) for s in report.sections),
+            lineage=self._render_lineage(report),
+            template=self.template,
+            head_extra=self.head_extra,
+            body_extra=self.body_extra,
+            context={"report": report, "theme": self.theme,
+                     **self.template_context},
+        )
 
     def _render_cover(self, report: Report) -> str:
         desc = f"<p>{self._esc(report._description)}</p>" if report._description else ""
@@ -480,6 +299,14 @@ class HTMLRenderer(BaseRenderer):
   </div>"""
 
     def _render_section(self, section) -> str:
+        # A registered renderer wins, so a caller can add a block type or
+        # replace how a built-in one renders without editing this file.
+        stype = getattr(section, "section_type", None)
+        key = stype.value if hasattr(stype, "value") else str(stype)
+        custom = self.section_renderers.get(key)
+        if custom is not None:
+            return custom(section)
+
         if section.section_type == SectionType.TEXT:
             return self._render_text(section)
         elif section.section_type == SectionType.TABLE:

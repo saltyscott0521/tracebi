@@ -6,6 +6,42 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — themes, custom page templates, and pluggable sections
+
+The HTML renderer kept its stylesheet as a 214-line module constant and
+assembled the page with f-strings, so restyling or restructuring output meant
+editing — or forking — the renderer. There was no extension point at all.
+
+Three seams replace that:
+
+- **`Theme`** (`tracebi.reports.theme`) — the stylesheet as data.
+  `Theme.default().with_overrides(css)` layers on top (appended, so overrides
+  win at equal specificity), `Theme.from_file(path)` and `Theme.from_css(...)`
+  replace it outright. This covers the common case: make reports look like
+  your brand.
+- **Custom page shells** — pass `template=` a Jinja2 string to take over the
+  document structure (header, footer, nav, analytics tag) while section
+  rendering stays intact. `head_extra=` / `body_extra=` handle smaller
+  injections without a full template. Rendered with `StrictUndefined`, so a
+  mistyped placeholder raises instead of quietly rendering an empty string
+  into a report someone will rely on.
+- **`section_renderers=`** — `{section_type: callable}` to add a block type or
+  replace how a built-in one renders. Accepts a `SectionType` or a plain
+  string, so a type the framework doesn't know about works too.
+
+Section *internals* stay in Python deliberately. Table formatting and chart
+geometry are logic, not layout; expressing them as templates would make them
+harder to read and harder to test. What you override is the shell, the
+styling, and whole new block types.
+
+Jinja2 remains optional — the built-in shell needs no template engine, so
+reports still work on a base install. It is required only for a custom
+template, which is finally what the long-declared, never-imported `jinja2`
+dependency is for.
+
+Default output is **byte-for-byte identical** to before this change, verified
+across all seven demo reports. The renderer lost 177 lines.
+
 ### ⚠️ Changed — charts are inline SVG, not embedded PNGs
 
 `ChartSection` rendered to a base64 matplotlib PNG. It now renders to inline

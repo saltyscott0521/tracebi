@@ -1011,3 +1011,126 @@ class TestChartSpecSvg:
             x="region", y=["revenue"])))
         assert "data:image/png;base64," not in html
         assert '<svg class="tb-chart' in html
+
+
+class TestThemeAndTemplateLayer:
+    """
+    The renderer held its stylesheet as a module constant and built the page
+    with f-strings, so restyling or restructuring output meant forking it.
+    """
+
+    @staticmethod
+    def _report():
+        ds = DataSet(pd.DataFrame({"r": ["a", "b"], "v": [1.0, 2.0]}), name="d")
+        return (Report("Themed")
+                .add(TextSection(title="Head", style="heading1"))
+                .add(TableSection(dataset=ds)))
+
+    def test_default_output_is_unchanged(self):
+        """The refactor must not alter what existing reports look like."""
+        html = HTMLRenderer().to_html(self._report())
+        assert "Segoe UI" in html          # default stylesheet still applied
+        assert html.startswith("<!DOCTYPE html>")
+        assert "</html>" in html.strip()[-10:]
+
+    def test_theme_overrides_are_appended_so_they_win(self):
+        from tracebi.reports.theme import Theme
+
+        theme = Theme.default().with_overrides("body { background: #111; }")
+        html = HTMLRenderer(theme=theme).to_html(self._report())
+        assert "#111" in html
+        # appended after the defaults, so equal specificity resolves to ours
+        assert html.index("Segoe UI") < html.index("#111")
+
+    def test_theme_can_replace_the_stylesheet_entirely(self):
+        from tracebi.reports.theme import Theme
+
+        html = HTMLRenderer(
+            theme=Theme.from_css("body{font-family:monospace}", name="mono")
+        ).to_html(self._report())
+        assert "monospace" in html
+        assert "Segoe UI" not in html
+
+    def test_theme_from_file(self, tmp_path):
+        from tracebi.reports.theme import Theme
+
+        css = tmp_path / "brand.css"
+        css.write_text("body { color: rebeccapurple; }")
+        theme = Theme.from_file(css)
+        assert theme.name == "brand"
+        assert "rebeccapurple" in HTMLRenderer(theme=theme).to_html(self._report())
+
+    def test_missing_theme_file_raises(self, tmp_path):
+        from tracebi.reports.theme import Theme
+
+        with pytest.raises(FileNotFoundError):
+            Theme.from_file(tmp_path / "nope.css")
+
+    def test_section_renderer_can_be_replaced(self):
+        """The extension point that previously required editing the renderer."""
+        html = HTMLRenderer(
+            section_renderers={SectionType.TEXT: lambda s: "<aside>CUSTOM</aside>"}
+        ).to_html(Report("R").add(TextSection(content="original")))
+        assert "<aside>CUSTOM</aside>" in html
+        assert "original" not in html
+
+    def test_section_renderer_accepts_a_plain_string_key(self):
+        html = HTMLRenderer(
+            section_renderers={"text": lambda s: "<b>via string key</b>"}
+        ).to_html(Report("R").add(TextSection(content="x")))
+        assert "via string key" in html
+
+    def test_head_and_body_extra_are_injected(self):
+        html = HTMLRenderer(
+            head_extra='<link rel="icon" href="/f.ico">',
+            body_extra="<!-- analytics -->",
+        ).to_html(self._report())
+        assert 'rel="icon"' in html
+        assert "<!-- analytics -->" in html
+
+    def test_custom_template_takes_over_the_page_shell(self):
+        template = (
+            "<!DOCTYPE html><html><head><title>{{ title }}</title>"
+            "<style>{{ css }}</style></head><body class=\"corp\">"
+            "<header>ACME — {{ report.name }}</header>{{ sections }}</body></html>"
+        )
+        html = HTMLRenderer(template=template).to_html(self._report())
+        assert '<body class="corp">' in html
+        assert "ACME — Themed" in html
+
+    def test_template_typo_fails_loudly(self):
+        """
+        StrictUndefined: a mistyped placeholder must raise, not silently
+        render an empty string into a report someone will rely on.
+        """
+        with pytest.raises(Exception, match="undefined"):
+            HTMLRenderer(template="<h1>{{ titl }}</h1>").to_html(Report("R"))
+
+    def test_default_shell_needs_no_template_engine(self):
+        """Reports must work on a base install; jinja2 is only for custom shells."""
+        import subprocess
+        import sys
+
+        code = (
+            "import sys\n"
+            "class B:\n"
+            "    def find_spec(self, n, p=None, t=None):\n"
+            "        if n.split('.')[0] == 'jinja2':\n"
+            "            raise ImportError(n)\n"
+            "        return None\n"
+            "sys.meta_path.insert(0, B())\n"
+            "from tracebi.reports.report import Report, TextSection\n"
+            "from tracebi.reports.html_renderer import HTMLRenderer\n"
+            "h = HTMLRenderer().to_html(Report('R').add(TextSection(content='x')))\n"
+            "assert h.startswith('<!DOCTYPE html>')\n"
+            "try:\n"
+            "    HTMLRenderer(template='{{ title }}').to_html(Report('R'))\n"
+            "    raise AssertionError('custom template should need jinja2')\n"
+            "except ImportError as e:\n"
+            "    assert 'Jinja2' in str(e)\n"
+            "print('ok')\n"
+        )
+        out = subprocess.run([sys.executable, "-c", code],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert "ok" in out.stdout
