@@ -99,7 +99,7 @@ export default function Layout({ children }) {
       <div className="mobile-header" style={{
         display: 'none', position: 'fixed', top: 0, left: 0, right: 0,
         height: 52,
-        background: 'rgba(240,243,248,0.95)',
+        background: 'var(--header-bg)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border)',
@@ -171,7 +171,7 @@ export default function Layout({ children }) {
                 <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
               </svg>
             </div>
-            <h1 className="gradient-text" style={{ fontSize: 18, fontWeight: 800, letterSpacing: .2 }}>
+            <h1 className="gradient-text-on-dark" style={{ fontSize: 18, fontWeight: 800, letterSpacing: .2 }}>
               TraceBi
             </h1>
           </div>

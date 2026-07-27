@@ -133,6 +133,11 @@ function ChartTypeToggle({ type, onChange }) {
   )
 }
 
+// Every series below sets isAnimationActive={false}, and it is load-bearing —
+// without it no series draws at all. ResponsiveContainer's first paint has zero
+// width, the enter animation runs against that geometry, and what settles is an
+// empty chart: axes, gridlines, ticks, no bars or lines. It reads as "the query
+// returned nothing" rather than as a rendering bug, which is how it survived.
 function ResultChart({ data, dimCol, measureCols, type = 'bar' }) {
   if (!data.length || !dimCol || !measureCols.length) return null
 
@@ -165,7 +170,7 @@ function ResultChart({ data, dimCol, measureCols, type = 'bar' }) {
         {tooltip}{legend}
         {measureCols.map((col, ci) => (
           <Bar key={col} dataKey={col} fill={MEASURE_COLORS[ci % MEASURE_COLORS.length]}
-            radius={[0, 4, 4, 0]} maxBarSize={28} />
+            radius={[0, 4, 4, 0]} maxBarSize={28} isAnimationActive={false} />
         ))}
       </BarChart>
     )
@@ -183,7 +188,7 @@ function ResultChart({ data, dimCol, measureCols, type = 'bar' }) {
         {grid}{axes}{tooltip}{legend}
         {measureCols.map((col, ci) => (
           <Line key={col} dataKey={col} stroke={MEASURE_COLORS[ci % MEASURE_COLORS.length]}
-            strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
         ))}
       </LineChart>
     ) : (
@@ -191,7 +196,8 @@ function ResultChart({ data, dimCol, measureCols, type = 'bar' }) {
         {grid}{axes}{tooltip}{legend}
         {measureCols.map((col, ci) => {
           const c = MEASURE_COLORS[ci % MEASURE_COLORS.length]
-          return <Area key={col} dataKey={col} stroke={c} fill={c} fillOpacity={0.18} strokeWidth={2} />
+          return <Area key={col} dataKey={col} stroke={c} fill={c} fillOpacity={0.18} strokeWidth={2}
+            isAnimationActive={false} />
         })}
       </AreaChart>
     )
