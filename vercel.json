@@ -4,8 +4,6 @@
   "outputDirectory": "web/ui/dist",
   "functions": {
     "api/index.py": {
-      "runtime": "@vercel/python@4.3.0",
-      "memory": 1024,
       "maxDuration": 60
     }
   },
