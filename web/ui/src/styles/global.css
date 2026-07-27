@@ -83,6 +83,7 @@
      near-white ground reads as smudge rather than elevation. */
   --shadow:      0 1px 2px rgba(15,28,52,.05), 0 6px 20px rgba(15,28,52,.07);
   --shadow-sm:   0 1px 2px rgba(15,28,52,.05), 0 2px 6px rgba(15,28,52,.04);
+  --shadow-lift: 0 2px 4px rgba(15,28,52,.06), 0 12px 28px rgba(15,28,52,.10);
   --shadow-glow: 0 1px 2px rgba(9,26,85,.06), 0 6px 22px rgba(9,26,85,.14);
   --t:           0.16s ease;
 
@@ -161,6 +162,7 @@
 
   --shadow:     0 8px 24px rgba(0,0,0,.35);
   --shadow-sm:  0 2px 8px rgba(0,0,0,.28);
+  --shadow-lift:0 2px 6px rgba(0,0,0,.32), 0 14px 32px rgba(0,0,0,.44);
   --shadow-glow:0 4px 20px rgba(100,160,240,.12);
 
   --flow-bg:    #111d2c;
@@ -315,10 +317,17 @@ tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 .card-hover:hover {
   border-color: var(--border-hl) !important;
   transform: translateY(-2px);
-  box-shadow: var(--shadow), var(--shadow-glow);
+  /* --shadow is already a two-layer contact+ambient pair; stacking
+     --shadow-glow on top of it put four layers on one hovered card and the
+     lift turned muddy. One pair, lifted a little further, reads cleaner. */
+  box-shadow: var(--shadow-lift);
 }
 
-/* Card with top accent gradient bar */
+/* Card with top accent bar. Defaults to the brand gradient, but a card that
+   already carries a colour of its own (the Home stat cards tint their icon
+   tile per metric) should set --card-accent-color to that same colour — four
+   differently-coloured cards each wearing the one navy brand bar read as a
+   stray line rather than an accent. */
 .card-accent {
   position: relative;
   overflow: hidden;
@@ -328,9 +337,8 @@ tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: var(--brand);
-  border-radius: var(--radius) var(--radius) 0 0;
-  opacity: 0.8;
+  background: var(--card-accent-color, var(--brand));
+  opacity: 0.85;
 }
 
 /* ── Buttons ────────────────────────────────────────── */

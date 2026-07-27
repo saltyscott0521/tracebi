@@ -23,6 +23,7 @@ function StatCard({ label, value, icon, color, href, loading }) {
       background: 'var(--card)', border: '1px solid var(--border)',
       borderRadius: 14, padding: '20px 22px',
       display: 'flex', alignItems: 'flex-start', gap: 14,
+      '--card-accent-color': color,
     }} className="card-hover card-accent">
       <div style={{
         width: 40, height: 40, borderRadius: 10, flexShrink: 0,
