@@ -5,7 +5,7 @@ import { LineageGraph } from '../components/Lineage'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
-  SearchInput, SkeletonList, SkeletonCard, useToast,
+  SearchInput, SkeletonList, SkeletonCard, useToast, ReportFrame,
 } from '../components/Shared'
 
 function timeAgo(iso) {
@@ -148,11 +148,7 @@ function RequestDetail({ request }) {
           />
 
           {tab === 'Output' && (
-            <iframe
-              srcDoc={result.html}
-              style={{ width: '100%', height: 640, border: 'none', borderRadius: 6, background: '#fff' }}
-              title={request.name}
-            />
+            <ReportFrame html={result.html} title={request.name} />
           )}
 
           {tab === 'Lineage' && lineageData && (

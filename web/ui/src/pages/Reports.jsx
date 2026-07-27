@@ -8,7 +8,7 @@ import { LineageGraph } from '../components/Lineage'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
-  SearchInput, SkeletonList, SkeletonCard, useToast,
+  SearchInput, SkeletonList, SkeletonCard, useToast, ReportFrame,
 } from '../components/Shared'
 
 function runDuration(rec) {
@@ -136,11 +136,7 @@ function ReportDetail({ report }) {
           />
 
           {tab === 'Output' && (
-            <iframe
-              srcDoc={result.html}
-              style={{ width: '100%', height: 'clamp(340px, 65vh, 640px)', border: 'none', borderRadius: 6, background: '#fff' }}
-              title={report.name}
-            />
+            <ReportFrame html={result.html} title={report.name} />
           )}
 
           {tab === 'Lineage' && lineageData && (

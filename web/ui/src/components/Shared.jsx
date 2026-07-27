@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -214,6 +214,67 @@ export function Empty({ icon, message, action }) {
       <p style={{ fontSize: 13, lineHeight: 1.65, maxWidth: 300, margin: '0 auto' }}>{message}</p>
       {action && <div style={{ marginTop: 16 }}>{action}</div>}
     </div>
+  )
+}
+
+/**
+ * Renders a rendered-report HTML document at its natural height.
+ *
+ * Both callers previously used a fixed-height iframe — 640px, against demo
+ * output that is 1872px tall. Two thirds of every report sat behind the
+ * iframe's own scrollbar, including charts and tables, and because the frame
+ * ends on a clean white edge a truncated report looks like a finished one.
+ * Nobody scrolls a region they cannot tell is scrollable.
+ *
+ * A report is a document, so it should lay out at full height and let the page
+ * scroll. srcDoc inherits this origin, so the content is measurable; the
+ * ResizeObserver covers content that settles after load (late fonts, images)
+ * rather than trusting a single measurement at the load event.
+ */
+export function ReportFrame({ html, title }) {
+  const ref = useRef(null)
+  const [height, setHeight] = useState(480)
+
+  useEffect(() => {
+    const frame = ref.current
+    if (!frame) return
+    let observer
+
+    const measure = () => {
+      const doc = frame.contentDocument
+      if (!doc?.body) return
+      const h = Math.max(doc.documentElement?.scrollHeight || 0, doc.body.scrollHeight || 0)
+      if (h) setHeight(h)
+    }
+
+    const onLoad = () => {
+      measure()
+      const doc = frame.contentDocument
+      if (doc?.body && typeof ResizeObserver !== 'undefined') {
+        observer = new ResizeObserver(measure)
+        observer.observe(doc.body)
+      }
+    }
+
+    frame.addEventListener('load', onLoad)
+    if (frame.contentDocument?.readyState === 'complete') onLoad()
+    return () => {
+      frame.removeEventListener('load', onLoad)
+      observer?.disconnect()
+    }
+  }, [html])
+
+  return (
+    <iframe
+      ref={ref}
+      srcDoc={html}
+      title={title}
+      scrolling="no"
+      style={{
+        width: '100%', height, display: 'block',
+        border: 'none', borderRadius: 6, background: '#fff',
+      }}
+    />
   )
 }
 
