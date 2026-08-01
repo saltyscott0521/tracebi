@@ -2641,3 +2641,128 @@ class TestServerlessDeployContract:
         api_js = (pathlib.Path(__file__).resolve().parents[1]
                   / "web" / "ui" / "src" / "api.js").read_text()
         assert "VITE_API_BASE" in api_js
+
+
+# ── Authorization (roles) ─────────────────────────────────────────────────────
+# Both auth middlewares set request.state.user and, until now, nothing read it:
+# any authenticated principal could run every report and every pipeline layer.
+# Roles are ordered viewer < analyst < admin and split by side effect — reads,
+# executing report/request code, writing to the warehouse.
+
+class TestAuthorization:
+    def _authorizer(self, monkeypatch, **env):
+        for k in ("TRACEBI_AUTH_ROLE_HEADER", "TRACEBI_AUTH_ROLE_MAP",
+                  "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        for k, v in env.items():
+            monkeypatch.setenv(k, v)
+        from web.api.auth import _Authorizer
+        return _Authorizer()
+
+    def _request(self, path="/api/models", method="GET", headers=None):
+        from starlette.requests import Request
+        raw = [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()]
+        return Request({
+            "type": "http", "method": method, "path": path,
+            "headers": raw, "query_string": b"", "scheme": "http",
+            "server": ("test", 80), "client": ("1.2.3.4", 1234),
+        })
+
+    # ── required role by side effect ──
+    def test_reads_require_viewer(self):
+        from web.api.auth import _required_role
+        assert _required_role("GET", "/api/models") == "viewer"
+        assert _required_role("GET", "/api/reports") == "viewer"
+
+    def test_executing_report_code_requires_analyst(self):
+        from web.api.auth import _required_role
+        assert _required_role("POST", "/api/reports/x/run") == "analyst"
+        assert _required_role("POST", "/api/requests/x/run") == "analyst"
+
+    def test_writing_to_the_warehouse_requires_admin(self):
+        from web.api.auth import _required_role
+        assert _required_role("POST", "/api/pipelines/p/layers/l/run") == "admin"
+        assert _required_role("POST", "/api/_dev/reload") == "admin"
+
+    def test_explore_and_validate_are_reads(self):
+        # They compute but persist nothing, so they sit with the reads.
+        from web.api.auth import _required_role
+        assert _required_role("POST", "/api/models/m/query") == "viewer"
+        assert _required_role("POST", "/api/spec/validate") == "viewer"
+
+    def test_unlisted_write_defaults_to_analyst_not_open(self):
+        # A route added later must be guarded by default.
+        from web.api.auth import _required_role
+        assert _required_role("POST", "/api/something/new") == "analyst"
+        assert _required_role("DELETE", "/api/whatever") == "analyst"
+
+    # ── opt-in enforcement ──
+    def test_unconfigured_grants_admin_so_upgrades_do_not_lock_out(self, monkeypatch):
+        # The important back-compat property: adding authorization must not
+        # silently forbid what a running deployment could already do.
+        authz = self._authorizer(monkeypatch)
+        assert authz.enabled is False
+        assert authz.role_for(self._request(), "anyone") == "admin"
+        assert authz.check(self._request("/api/pipelines/p/layers/l/run", "POST"),
+                           "anyone") is None
+
+    def test_role_header_switches_enforcement_on(self, monkeypatch):
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
+        assert authz.enabled is True
+        req = self._request("/api/pipelines/p/layers/l/run", "POST",
+                            {"X-Groups": "viewer"})
+        denied = authz.check(req, "alice")
+        assert denied is not None and denied.status_code == 403
+
+    def test_role_map_switches_enforcement_on(self, monkeypatch):
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_MAP="bob:analyst")
+        assert authz.enabled is True
+        assert authz.role_for(self._request(), "bob") == "analyst"
+
+    # ── role resolution ──
+    def test_highest_role_wins_among_group_claims(self, monkeypatch):
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
+        req = self._request(headers={"X-Groups": "viewer,admin,analyst"})
+        assert authz.role_for(req, "alice") == "admin"
+
+    def test_space_separated_claims_are_accepted(self, monkeypatch):
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
+        req = self._request(headers={"X-Groups": "viewer analyst"})
+        assert authz.role_for(req, "alice") == "analyst"
+
+    def test_unknown_group_falls_back_to_default_not_admin(self, monkeypatch):
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
+        req = self._request(headers={"X-Groups": "sales-team"})
+        assert authz.role_for(req, "dave") == "viewer"
+
+    def test_default_role_is_configurable(self, monkeypatch):
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups",
+                                 TRACEBI_AUTH_DEFAULT_ROLE="analyst")
+        assert authz.role_for(self._request(headers={"X-Groups": "nope"}), "d") == "analyst"
+
+    def test_bad_default_role_fails_loudly_at_construction(self, monkeypatch):
+        with pytest.raises(ValueError, match="TRACEBI_AUTH_DEFAULT_ROLE"):
+            self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups",
+                             TRACEBI_AUTH_DEFAULT_ROLE="superuser")
+
+    def test_role_map_ignores_malformed_and_unknown_roles(self, monkeypatch):
+        authz = self._authorizer(
+            monkeypatch,
+            TRACEBI_AUTH_ROLE_MAP="alice:admin,garbage,bob:wizard, carol:analyst ",
+        )
+        assert authz.role_map == {"alice": "admin", "carol": "analyst"}
+
+    def test_denial_names_the_role_and_what_was_needed(self, monkeypatch):
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
+        req = self._request("/api/pipelines/p/layers/l/run", "POST",
+                            {"X-Groups": "analyst"})
+        denied = authz.check(req, "bob")
+        body = denied.body.decode()
+        assert "analyst" in body and "admin" in body
+
+    def test_role_is_exposed_on_request_state(self, monkeypatch):
+        # So handlers and, later, the audit trail can attribute an action.
+        authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
+        req = self._request(headers={"X-Groups": "analyst"})
+        authz.check(req, "bob")
+        assert req.state.role == "analyst"

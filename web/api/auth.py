@@ -28,11 +28,146 @@ from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 
 _PROTECTED_PREFIXES = ("/api/", "/dashboards/")
 _EXEMPT_PATHS = ("/api/health",)
+
+
+# ── Authorization ───────────────────────────────────────────────────────────
+#
+# Authentication answers "who is this"; until now nothing asked "may they".
+# Both middlewares set request.state.user and no code read it, so any
+# authenticated principal could run every report, execute every request
+# script, and trigger every pipeline layer.
+#
+# Three roles, ordered. The split is by *side effect*, which is what a
+# security review asks about and what a reader can predict without a table:
+#
+#   viewer   reads. Browsing models, reports, lineage, and running Explore
+#            queries — analytical reads that write nothing.
+#   analyst  viewer, plus executing report and request code.
+#   admin    analyst, plus running pipeline layers, which write to the
+#            warehouse, and dev-mode reload.
+
+ROLES = ("viewer", "analyst", "admin")
+_ROLE_RANK = {role: i for i, role in enumerate(ROLES)}
+
+#: Role assumed for an authenticated principal with no role of their own,
+#: once any role configuration exists. Overridable per deployment.
+_DEFAULT_ROLE = "viewer"
+
+
+def _required_role(method: str, path: str) -> str:
+    """
+    Minimum role for *method* *path*.
+
+    Unlisted writes require `analyst`, so a route added later is guarded by
+    default rather than open by default.
+    """
+    if method in ("GET", "HEAD", "OPTIONS"):
+        return "viewer"
+    if path.startswith("/api/pipelines/") or path.startswith("/api/_dev/"):
+        return "admin"
+    # Explore and spec validation compute but persist nothing, so they sit
+    # with the reads rather than behind an execute permission.
+    if path.startswith("/api/models/") and path.endswith("/query"):
+        return "viewer"
+    if path.startswith("/api/spec/validate"):
+        return "viewer"
+    return "analyst"
+
+
+def _rank(role: Optional[str]) -> int:
+    return _ROLE_RANK.get(role or "", -1)
+
+
+def _highest_role(values) -> Optional[str]:
+    """Best known role among *values*; unknown names are ignored, not fatal."""
+    known = [v for v in values if v in _ROLE_RANK]
+    return max(known, key=_rank) if known else None
+
+
+class _Authorizer:
+    """
+    Resolves a principal's role and decides whether a request is permitted.
+
+    Role comes from a header claim forwarded by the SSO proxy (the usual
+    enterprise shape — the org's IdP already knows the groups) or from an
+    explicit user→role map for the Basic-auth case.
+
+    **Enforcement is opt-in, deliberately.** With neither source configured
+    every principal is treated as `admin`, so adding this cannot silently
+    lock existing deployments out of their own pipelines. Configure either
+    source and enforcement switches on for everyone, with unmatched
+    principals falling back to TRACEBI_AUTH_DEFAULT_ROLE (`viewer`).
+    """
+
+    def __init__(self) -> None:
+        self.role_header = os.environ.get("TRACEBI_AUTH_ROLE_HEADER", "").strip()
+        self.role_map = self._parse_map(os.environ.get("TRACEBI_AUTH_ROLE_MAP", ""))
+        self.default_role = (
+            os.environ.get("TRACEBI_AUTH_DEFAULT_ROLE", "").strip() or _DEFAULT_ROLE
+        )
+        if self.default_role not in _ROLE_RANK:
+            raise ValueError(
+                f"TRACEBI_AUTH_DEFAULT_ROLE must be one of {ROLES}, "
+                f"got {self.default_role!r}"
+            )
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.role_header or self.role_map)
+
+    @staticmethod
+    def _parse_map(raw: str) -> dict:
+        """Parse ``alice:admin,bob:analyst`` into a dict, ignoring blanks."""
+        out = {}
+        for pair in raw.split(","):
+            if ":" not in pair:
+                continue
+            user, _, role = pair.partition(":")
+            user, role = user.strip(), role.strip()
+            if user and role in _ROLE_RANK:
+                out[user] = role
+        return out
+
+    def role_for(self, request: Request, user: Optional[str]) -> str:
+        if not self.enabled:
+            # No authorization configured: preserve pre-existing behaviour
+            # rather than breaking a running deployment.
+            return "admin"
+        if self.role_header:
+            raw = request.headers.get(self.role_header, "")
+            # Group claims are conventionally comma- or space-separated.
+            claimed = _highest_role(raw.replace(" ", ",").split(","))
+            if claimed:
+                return claimed
+        if user and user in self.role_map:
+            return self.role_map[user]
+        return self.default_role
+
+    def check(self, request: Request, user: Optional[str]) -> Optional[Response]:
+        """None when permitted, otherwise the 403 to return."""
+        role = self.role_for(request, user)
+        request.state.role = role
+        needed = _required_role(request.method, request.url.path)
+        if _rank(role) >= _rank(needed):
+            return None
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": {
+                    "message": (
+                        f"Role '{role}' may not {request.method} {request.url.path}. "
+                        f"Requires '{needed}' or higher."
+                    ),
+                    "role": role,
+                    "required_role": needed,
+                }
+            },
+        )
 
 
 class BasicAuthMiddleware(BaseHTTPMiddleware):
@@ -43,6 +178,7 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         self._username = username
         self._password = password
         self._realm = realm
+        self._authz = _Authorizer()
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -56,6 +192,9 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
                 headers={"WWW-Authenticate": f'Basic realm="{self._realm}"'},
             )
         request.state.user = self._username
+        denied = self._authz.check(request, self._username)
+        if denied is not None:
+            return denied
         return await call_next(request)
 
     def _check(self, header: Optional[str]) -> bool:
@@ -94,6 +233,7 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
             for ip in (trusted_ips or [])
             if ip.strip()
         ]
+        self._authz = _Authorizer()
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -113,6 +253,9 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
             )
         request.state.user = user
         request.state.user_header = self._header
+        denied = self._authz.check(request, user)
+        if denied is not None:
+            return denied
         return await call_next(request)
 
     def _is_trusted_client(self, request: Request) -> bool:

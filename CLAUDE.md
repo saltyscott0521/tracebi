@@ -187,6 +187,34 @@ pytest --cov                                   # With coverage
 
 ---
 
+## Authorization
+
+Authentication (`web/api/auth.py`) says who a caller is; the `_Authorizer` in
+the same module says what they may do. Roles are ordered and split by **side
+effect**, which is the question a security review actually asks:
+
+| Role | May |
+|---|---|
+| `viewer` | Read models, reports, lineage. Run Explore queries and spec validation — they compute but persist nothing. |
+| `analyst` | viewer + execute report and request code. |
+| `admin` | analyst + run pipeline layers, which write to the warehouse, and `/api/_dev/reload`. |
+
+Two things to preserve when touching this:
+
+1. **Enforcement is opt-in.** With neither `TRACEBI_AUTH_ROLE_HEADER` nor
+   `TRACEBI_AUTH_ROLE_MAP` set, every principal resolves to `admin`, so adding
+   authorization could not lock a running deployment out of its own pipelines.
+   Do not make it default-deny without a migration path.
+2. **Unlisted writes require `analyst`.** `_required_role` falls through to
+   `analyst` for any non-GET it does not recognise, so a route added later is
+   guarded by default rather than open by default. Add an explicit rule when a
+   new route needs `admin`.
+
+Enforcement lives in the middleware, not in the routers — one place, and it
+avoids touching the router imports that tests rebind for isolation.
+
+---
+
 ## Running More Than One Worker
 
 `--workers 4`, or several container replicas, means several processes sharing
