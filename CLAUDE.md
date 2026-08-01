@@ -215,6 +215,35 @@ avoids touching the router imports that tests rebind for isolation.
 
 ---
 
+## Audit Attribution
+
+`tracebi_runs` records an `actor` and `actor_role` alongside what happened.
+Identity lives in the web layer and the writer lives in the library, so it
+crosses that boundary on a **ContextVar** (`tracebi/audit.py`) rather than the
+library importing `web/` — the same mechanism works for the CLI, notebooks and
+scheduled jobs, none of which have an HTTP request.
+
+```python
+from tracebi.audit import actor
+with actor("alice", role="admin"):
+    runner.run("orders_bronze")     # recorded against alice
+```
+
+Set by `BasicAuthMiddleware` / `ProxyHeaderAuthMiddleware` around `call_next`,
+and by `tracebi run-pipeline` from the OS user. Attribution is optional
+throughout: an unattributed run records `None` and behaves exactly as before.
+
+A ContextVar, **not a module global** — a global would let concurrent requests
+in one process read each other's actor.
+
+New columns on an existing table are reconciled at startup by
+`_add_missing_run_columns` (`CREATE TABLE IF NOT EXISTS` is a no-op against a
+table that already exists). There is no migration framework here by design; if
+you add a column to `tracebi_runs`, add it to `_RUNS_ADDED_COLUMNS` in the same
+change or upgrades will break.
+
+---
+
 ## Running More Than One Worker
 
 `--workers 4`, or several container replicas, means several processes sharing

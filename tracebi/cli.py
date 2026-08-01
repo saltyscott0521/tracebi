@@ -955,7 +955,18 @@ def cmd_run_pipeline(args: argparse.Namespace) -> int:
     Any external scheduler can now drive this: cron, a Kubernetes CronJob,
     Airflow, a CI job. TraceBi does not need to own the schedule.
     """
+    import getpass
+
+    from tracebi.audit import set_actor
     from tracebi.pipeline_registry import get_runner, list_pipelines
+
+    # Attribute CLI-driven runs too. A cron job or CI step runs as some
+    # account, and "who ran this" should answer that rather than shrug at
+    # everything the web UI did not trigger.
+    try:
+        set_actor(getpass.getuser(), role="cli")
+    except Exception:  # noqa: BLE001 — no controlling user (some containers)
+        set_actor(None, role="cli")
 
     try:
         runner = get_runner(args.name)

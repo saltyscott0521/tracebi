@@ -30,6 +30,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from tracebi.audit import actor as audit_actor
+
 
 _PROTECTED_PREFIXES = ("/api/", "/dashboards/")
 _EXEMPT_PATHS = ("/api/health",)
@@ -195,7 +197,10 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         denied = self._authz.check(request, self._username)
         if denied is not None:
             return denied
-        return await call_next(request)
+        # Carry identity down to whatever this request ends up executing, so
+        # a pipeline run records who asked for it.
+        with audit_actor(self._username, getattr(request.state, "role", None)):
+            return await call_next(request)
 
     def _check(self, header: Optional[str]) -> bool:
         if not header or not header.lower().startswith("basic "):
@@ -256,7 +261,8 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
         denied = self._authz.check(request, user)
         if denied is not None:
             return denied
-        return await call_next(request)
+        with audit_actor(user, getattr(request.state, "role", None)):
+            return await call_next(request)
 
     def _is_trusted_client(self, request: Request) -> bool:
         host = request.client.host if request.client else None

@@ -494,3 +494,102 @@ class TestCrossProcessLocking:
             key = r._advisory_key("anything")
         assert key >> 32 == PipelineRunner._ADVISORY_NAMESPACE
         assert key < 2 ** 63
+
+
+# ── Audit attribution ─────────────────────────────────────────────────────────
+# tracebi_runs recorded what happened and never who. For a product sold on
+# traceability that is the first question an auditor asks, so runs now carry an
+# actor. Identity lives in the web layer and the writer lives here, so it
+# crosses that boundary on a ContextVar rather than the library importing web.
+
+class TestAuditAttribution:
+    def _bronze(self, mem):
+        return BronzeLayer(connector=mem, source="orders_raw",
+                           sink=mem, sink_table="orders_bronze")
+
+    def test_unattributed_by_default(self):
+        from tracebi.audit import get_actor
+        assert get_actor() == (None, None)
+
+    def test_actor_scope_sets_and_restores(self):
+        from tracebi.audit import actor, get_actor
+        with actor("alice", role="admin"):
+            assert get_actor() == ("alice", "admin")
+        assert get_actor() == (None, None)
+
+    def test_actor_scopes_nest(self):
+        from tracebi.audit import actor, get_actor
+        with actor("alice", role="admin"):
+            with actor("bob", role="analyst"):
+                assert get_actor() == ("bob", "analyst")
+            assert get_actor() == ("alice", "admin")
+
+    def test_actor_restored_even_when_the_block_raises(self):
+        from tracebi.audit import actor, get_actor
+        with pytest.raises(ValueError):
+            with actor("alice"):
+                raise ValueError("boom")
+        assert get_actor() == (None, None)
+
+    def test_run_records_the_actor(self, runner, mem):
+        from tracebi.audit import actor
+        runner.register(self._bronze(mem), name="orders_bronze")
+        with actor("alice", role="admin"):
+            runner.run("orders_bronze")
+        last = runner.last_run("orders_bronze")
+        assert last["actor"] == "alice"
+        assert last["actor_role"] == "admin"
+
+    def test_run_without_an_actor_records_none(self, runner, mem):
+        # A CLI run, a notebook, or a deployment that never wired identity —
+        # unattributed is honest, and must not fail.
+        runner.register(self._bronze(mem), name="orders_bronze")
+        runner.run("orders_bronze")
+        last = runner.last_run("orders_bronze")
+        assert last["actor"] is None
+        assert last["actor_role"] is None
+
+    def test_actor_does_not_leak_between_runs(self, runner, mem):
+        from tracebi.audit import actor
+        runner.register(self._bronze(mem), name="orders_bronze")
+        with actor("alice", role="admin"):
+            runner.run("orders_bronze")
+        runner.run("orders_bronze")
+        history = runner.run_history("orders_bronze", limit=2)
+        assert history[0]["actor"] is None, "later unattributed run must not inherit"
+        assert history[1]["actor"] == "alice"
+
+    def test_existing_database_gains_the_columns(self, tmp_path):
+        # CREATE TABLE IF NOT EXISTS is a no-op against an existing table, so
+        # a database written by an older TraceBi would keep the old shape and
+        # every INSERT naming actor would fail. Reconciled at startup instead.
+        import sqlite3
+        db = tmp_path / "old.db"
+        con = sqlite3.connect(db)
+        con.execute("""CREATE TABLE tracebi_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, layer_name TEXT NOT NULL,
+            layer_type TEXT NOT NULL, started_at TEXT NOT NULL, completed_at TEXT,
+            status TEXT NOT NULL, rows_in INTEGER, rows_out INTEGER,
+            upstream_run_id INTEGER, error_message TEXT)""")
+        con.execute("INSERT INTO tracebi_runs (layer_name, layer_type, started_at, status)"
+                    " VALUES ('legacy','landing','2020-01-01','success')")
+        con.commit()
+        con.close()
+
+        r = PipelineRunner(db_url=f"sqlite:///{db}")
+        cols = {c["name"] for c in __import__("sqlalchemy").inspect(
+            r._engine_()).get_columns("tracebi_runs")}
+        assert {"actor", "actor_role"} <= cols
+        # History written before attribution existed survives, unattributed.
+        legacy = r.run_history("legacy", limit=1)[0]
+        assert legacy["layer_name"] == "legacy"
+        assert legacy["actor"] is None
+
+    def test_migration_is_idempotent(self, tmp_path):
+        db_url = f"sqlite:///{tmp_path / 'x.db'}"
+        PipelineRunner(db_url=db_url)
+        PipelineRunner(db_url=db_url)   # second startup must not re-add columns
+        r = PipelineRunner(db_url=db_url)
+        cols = [c["name"] for c in __import__("sqlalchemy").inspect(
+            r._engine_()).get_columns("tracebi_runs")]
+        assert cols.count("actor") == 1

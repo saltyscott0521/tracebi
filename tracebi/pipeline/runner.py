@@ -166,6 +166,16 @@ class PipelineRunner:
             return conn.execute(text("SELECT last_insert_rowid()")).fetchone()[0]
         return conn.execute(text(sql + " RETURNING id"), params).fetchone()[0]
 
+    #: Columns added to tracebi_runs after the table shipped. CREATE TABLE IF
+    #: NOT EXISTS is a no-op against an existing table, so a database created
+    #: by an older TraceBi would keep the old shape and every INSERT naming a
+    #: new column would fail. There is no migration framework here by design,
+    #: so additive columns are reconciled at startup instead.
+    _RUNS_ADDED_COLUMNS = {
+        "actor":      "TEXT",
+        "actor_role": "TEXT",
+    }
+
     def _init_db(self) -> None:
         from sqlalchemy import text
         engine = self._engine_()
@@ -173,6 +183,27 @@ class PipelineRunner:
         with engine.begin() as conn:
             for ddl in self._DDL:
                 conn.execute(text(ddl.format(pk=pk)))
+        self._add_missing_run_columns()
+
+    def _add_missing_run_columns(self) -> None:
+        """
+        Bring an existing tracebi_runs up to the current shape.
+
+        ``inspect()`` rather than a dialect-specific catalogue query, so this
+        works the same on SQLite and Postgres. ADD COLUMN is additive and
+        nullable: an upgrade neither rewrites nor invalidates history already
+        recorded, it just leaves the older rows unattributed, which is honest
+        — nobody knows who ran them.
+        """
+        from sqlalchemy import inspect, text
+        engine = self._engine_()
+        existing = {c["name"] for c in inspect(engine).get_columns("tracebi_runs")}
+        missing = {k: v for k, v in self._RUNS_ADDED_COLUMNS.items() if k not in existing}
+        if not missing:
+            return
+        with engine.begin() as conn:
+            for column, coltype in missing.items():
+                conn.execute(text(f"ALTER TABLE tracebi_runs ADD COLUMN {column} {coltype}"))
 
     # ── Registration ───────────────────────────────────────────
 
@@ -655,13 +686,22 @@ class PipelineRunner:
     def _write_run_start(
         self, name: str, layer_type: str, started_at: str, upstream_run_id: Optional[int]
     ) -> int:
+        from tracebi.audit import get_actor
+        who, role = get_actor()
         with self._engine_().begin() as conn:
             return self._insert_returning_id(
                 conn,
                 "INSERT INTO tracebi_runs"
-                " (layer_name, layer_type, started_at, status, upstream_run_id)"
-                " VALUES (:n, :lt, :ts, 'running', :uid)",
-                {"n": name, "lt": layer_type, "ts": started_at, "uid": upstream_run_id},
+                " (layer_name, layer_type, started_at, status, upstream_run_id,"
+                "  actor, actor_role)"
+                " VALUES (:n, :lt, :ts, 'running', :uid, :actor, :role)",
+                {
+                    "n": name, "lt": layer_type, "ts": started_at,
+                    "uid": upstream_run_id,
+                    # None when nothing set an actor — a CLI run, a notebook,
+                    # or a deployment that has not wired identity through.
+                    "actor": who, "role": role,
+                },
             )
 
     def _write_run_end(

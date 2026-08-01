@@ -24,10 +24,16 @@ def list_pipelines():
                 layer["last_rows_out"] = (
                     int(last["rows_out"]) if last["rows_out"] is not None else None
                 )
+                # None for runs recorded before attribution existed, and for
+                # anything executed without an actor in scope.
+                layer["last_actor"] = last.get("actor")
+                layer["last_actor_role"] = last.get("actor_role")
             else:
                 layer.setdefault("last_status", None)
                 layer["last_run"] = None
                 layer["last_rows_out"] = None
+                layer["last_actor"] = None
+                layer["last_actor_role"] = None
             layers.append(layer)
         result.append({"pipeline": pipeline_name, "layers": layers})
     return result
