@@ -1134,3 +1134,62 @@ class TestThemeAndTemplateLayer:
                              capture_output=True, text=True)
         assert out.returncode == 0, out.stderr
         assert "ok" in out.stdout
+
+
+# ── Totals × column_labels ────────────────────────────────────────────────────
+
+class TestTotalsWithRenamedColumns:
+    """
+    Renaming a column for presentation used to silently delete its total.
+
+    get_display_df() returns display names, but the totals loop matched against
+    the original names in section.totals, so the moment column_labels renamed a
+    column its total became an empty cell — no error, no warning. A missing
+    total reads as "none was requested" rather than "we lost it", which is the
+    worst way for a financial report to be wrong, and it is exactly the
+    combination anything composing a presentable report will produce.
+    """
+
+    def _total_cells(self, tmp_path, **kwargs):
+        import re
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.reports.report import Report, TableSection
+        out = tmp_path / "r.html"
+        HTMLRenderer().render(Report("t").add(TableSection(**kwargs)), str(out))
+        row = re.search(
+            r"<tr[^>]*>(?:(?!</tr>).)*?<strong>Total</strong>.*?</tr>",
+            out.read_text(), re.S,
+        )
+        assert row, "no totals row rendered"
+        return [
+            re.sub(r"<[^>]+>", "", c).strip()
+            for c in re.findall(r"<td[^>]*>(.*?)</td>", row.group(0), re.S)
+        ]
+
+    @pytest.fixture
+    def ds(self):
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        return DataSet(pd.DataFrame({"region": ["N", "S"], "amount": [10.0, 32.0]}), name="t")
+
+    def test_total_without_labels(self, tmp_path, ds):
+        cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"])
+        assert cells[-1] == "42.00"
+
+    def test_total_survives_column_labels(self, tmp_path, ds):
+        cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"],
+                                  column_labels={"amount": "Amount"})
+        assert cells[-1] == "42.00", "renaming a column must not drop its total"
+
+    def test_total_survives_labels_and_formats_together(self, tmp_path, ds):
+        cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"],
+                                  column_labels={"amount": "Amount"},
+                                  number_formats={"amount": "currency0"})
+        assert cells[-1] == "$42"
+
+    def test_totals_may_be_given_as_the_display_name(self, tmp_path, ds):
+        # Either spelling works, so a caller who thinks in labels is not
+        # silently ignored.
+        cells = self._total_cells(tmp_path, dataset=ds, totals=["Amount"],
+                                  column_labels={"amount": "Amount"})
+        assert cells[-1] == "42.00"

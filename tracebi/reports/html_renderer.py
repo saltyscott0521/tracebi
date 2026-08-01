@@ -484,17 +484,26 @@ class HTMLRenderer(BaseRenderer):
         # Totals
         tfoot_html = ""
         if section.totals:
+            # df already carries display names, so match against display names
+            # too — the same mapping fmt_map, neg_cols and width_map use.
+            #
+            # This used to re-apply column_labels to a name that was already a
+            # label, so `totals` silently stopped working the moment a column
+            # was renamed for presentation: no error, no warning, just an empty
+            # cell where the total belonged. A missing total reads as "none was
+            # asked for" rather than "we lost it", which is the worst way for a
+            # financial report to be wrong.
+            total_cols = {_disp(c) for c in section.totals} | set(section.totals)
             totals_cells = ""
             first = True
             for col in df.columns:
-                disp_col = (section.column_labels or {}).get(col, col)
                 is_num = col in numeric_cols
                 align_cls = ' class="num"' if is_num else ""
                 if first:
                     totals_cells += f'<td{align_cls}><strong>Total</strong></td>'
                     first = False
                     continue
-                if disp_col in section.totals or col in section.totals:
+                if col in total_cols:
                     try:
                         total_val = df[col].sum()
                         if col in fmt_map:
