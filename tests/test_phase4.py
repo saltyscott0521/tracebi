@@ -435,3 +435,62 @@ class TestDialectPortability:
     def _make_bronze(self, mem):
         return BronzeLayer(connector=mem, source="orders_raw",
                            sink=mem, sink_table="orders_bronze")
+
+
+# ── Cross-process layer locking ───────────────────────────────────────────────
+# The per-layer threading.Lock only guards one process, but the documented
+# production command is `uvicorn --workers 4` and a container deployment runs
+# replicas — so two workers could execute the same layer at once, interleaving
+# writes to the sink and leaving two "running" rows in the audit trail. On
+# Postgres the lock now lives in the database. Verified against a real server
+# with two forked processes: one RAN, one was REFUSED; with the DB lock
+# neutered, both ran.
+
+class TestCrossProcessLocking:
+    def test_advisory_key_is_stable_and_in_range(self, runner):
+        a = runner._advisory_key("orders_bronze")
+        b = runner._advisory_key("orders_bronze")
+        assert a == b, "same layer must map to the same lock key across processes"
+        # pg_try_advisory_lock takes a signed bigint.
+        assert 0 <= a < 2 ** 63
+
+    def test_advisory_key_differs_per_layer(self, runner):
+        assert runner._advisory_key("orders_bronze") != runner._advisory_key("orders_silver")
+
+    def test_advisory_key_is_namespaced(self, runner):
+        # Namespaced so TraceBi cannot collide with an application's own
+        # advisory locks in the same database.
+        assert runner._advisory_key("x") >> 32 == PipelineRunner._ADVISORY_NAMESPACE
+
+    def test_sqlite_lock_is_a_noop_that_grants(self, runner):
+        # SQLite is the single-process dev fallback; the context manager must
+        # still grant so execution proceeds.
+        with runner._cross_process_lock("orders_bronze") as granted:
+            assert granted is True
+
+    def test_same_process_double_run_still_refused(self, runner, mem):
+        # The in-process lock remains the first gate; this is the behaviour
+        # existing deployments already rely on.
+        import threading
+        bronze = BronzeLayer(connector=mem, source="orders_raw",
+                             sink=mem, sink_table="orders_bronze")
+        runner.register(bronze, name="orders_bronze")
+        held = runner._layer_lock("orders_bronze")
+        assert held.acquire(blocking=False)
+        try:
+            with pytest.raises(RuntimeError, match="already running"):
+                runner.run("orders_bronze")
+        finally:
+            held.release()
+        assert isinstance(held, type(threading.Lock()))
+
+    def test_advisory_key_namespace_survives_max_checksum(self):
+        # Regression: a 31-bit shift let a crc32 with its top bit set bleed
+        # into the namespace, so two layers could collide on one lock key.
+        import zlib
+        from unittest.mock import patch
+        r = PipelineRunner(db_url="sqlite:///:memory:")
+        with patch.object(zlib, "crc32", return_value=0xFFFFFFFF):
+            key = r._advisory_key("anything")
+        assert key >> 32 == PipelineRunner._ADVISORY_NAMESPACE
+        assert key < 2 ** 63

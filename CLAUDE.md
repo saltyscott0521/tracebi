@@ -154,6 +154,7 @@ TRACEBI_APP=mymodule.config python web/run.py  # Custom app module
 TRACEBI_DEV_MODE=1 python web/run.py           # Enables POST /api/_dev/reload
 
 # Run (prod)
+# Multiple workers requires Postgres — see the note below.
 uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 docker compose up --build                      # Or the docker-compose path
 vercel --prod                                  # Vercel + Supabase (see docs/deploy-vercel-supabase.md)
@@ -183,6 +184,22 @@ pytest tests/                                  # Full suite (404 tests)
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
 ```
+
+---
+
+## Running More Than One Worker
+
+`--workers 4`, or several container replicas, means several processes sharing
+one database. `PipelineRunner`'s per-layer `threading.Lock` only guards its own
+process, so the lock that actually matters is the database one:
+
+| Backend | Concurrent layer execution |
+|---|---|
+| **Postgres** | Safe. A `pg_try_advisory_lock` per layer means a second process is refused with a clear error instead of interleaving writes. |
+| **SQLite** | **Single process only.** The cross-process lock is a no-op, so two workers will both execute the same layer, interleave writes to the sink, and leave two "running" rows in the run history. |
+
+SQLite is the development and demo fallback. Anything running more than one
+process needs `PipelineRunner(db_url=<postgres url>)`.
 
 ---
 

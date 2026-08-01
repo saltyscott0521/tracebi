@@ -208,6 +208,14 @@ uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 docker compose up --build
 ```
 
+> **More than one worker requires Postgres.** Each process gets its own
+> in-process layer lock, so the lock that counts is the database one: on
+> Postgres a `pg_try_advisory_lock` per layer refuses a concurrent run with a
+> clear error, while on SQLite the cross-process lock is a no-op and two
+> workers will both execute the same layer — interleaving writes to the sink
+> and leaving two "running" rows in the run history. Point
+> `PipelineRunner(db_url=...)` at Postgres before scaling past one process.
+
 
 ## Environment variable reference
 

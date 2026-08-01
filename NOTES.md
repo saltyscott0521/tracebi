@@ -1179,8 +1179,17 @@ loudly before execution.
 - P0-2 Credential callables/env-var indirection in connectors —
   `SQLConnector.describe()` already redacts passwords; full credential
   rework is a bigger change.
-- Per-layer lock is in-process only. Multi-worker uvicorn or multiple
+- ~~Per-layer lock is in-process only. Multi-worker uvicorn or multiple
   schedulers on one DB can still race; a DB advisory/file lock is the
-  cross-process answer if that deployment shape becomes real.
+  cross-process answer if that deployment shape becomes real.~~
+  **Done 2026-07-27.** That deployment shape was already real — README,
+  CLAUDE.md and docs/web-customization.md all show `uvicorn --workers 4`, so
+  the docs were steering people straight into it. `_execute` now takes a
+  `pg_try_advisory_lock` per layer on Postgres, keyed on a namespaced crc32 of
+  the layer name; session-scoped, so a crashed worker's lock is released by
+  the server rather than leaving a row to reap. Proved with two forked
+  processes against a real Postgres: one RAN, one REFUSED, and with the DB
+  lock neutered both ran. SQLite still yields True — it is the single-process
+  fallback, and that is now documented rather than implied.
 - Fingerprint is content-based but row-order-sensitive (intentional:
   reports are order-sensitive deliverables).

@@ -26,6 +26,8 @@ Usage::
 from __future__ import annotations
 
 import threading
+import zlib
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -531,6 +533,63 @@ class PipelineRunner:
                 self._run_locks[name] = threading.Lock()
             return self._run_locks[name]
 
+    #: Namespace for advisory lock keys, so TraceBi's locks cannot collide with
+    #: an application's own use of pg_advisory_lock in the same database.
+    _ADVISORY_NAMESPACE = 0x54424900  # "TBI\0"
+
+    def _advisory_key(self, name: str) -> int:
+        """
+        Stable key for a layer name, safe for pg_try_advisory_lock's bigint.
+
+        Shift by 32, not 31: crc32 fills a full 32 bits, so a narrower shift
+        lets a checksum with its top bit set bleed into the namespace and two
+        different layers could share a key. 0x54424900 << 32 tops out around
+        6.1e18, comfortably inside a signed bigint's 9.2e18.
+        """
+        return (self._ADVISORY_NAMESPACE << 32) | zlib.crc32(name.encode("utf-8"))
+
+    @contextmanager
+    def _cross_process_lock(self, name: str):
+        """
+        Hold a database-level lock on *name* for the duration of the block.
+
+        The threading.Lock above only guards one process. The documented
+        production command is ``uvicorn --workers 4``, and a container
+        deployment runs several replicas — each with its own lock table — so
+        two workers could execute the same layer at once, interleaving writes
+        to the sink and leaving two "running" rows in the audit trail. The
+        lock has to live where the contention does: the database.
+
+        Postgres advisory locks are session-scoped, so a crashed worker's lock
+        is released by the server when its connection drops — no stale rows to
+        reap. Yields False when the lock is already held.
+
+        Other dialects yield True: SQLite is the single-process dev and demo
+        fallback, and concurrent writers are already outside what it offers.
+        """
+        if self._dialect != "postgresql":
+            yield True
+            return
+
+        from sqlalchemy import text
+        # AUTOCOMMIT: the lock is session-scoped and must outlive any single
+        # statement, and holding an open transaction for a whole pipeline run
+        # would pin the snapshot and block vacuum.
+        conn = self._engine_().connect().execution_options(isolation_level="AUTOCOMMIT")
+        key = self._advisory_key(name)
+        acquired = False
+        try:
+            acquired = bool(
+                conn.execute(text("SELECT pg_try_advisory_lock(:k)"), {"k": key}).scalar()
+            )
+            yield acquired
+        finally:
+            if acquired:
+                conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": key})
+            # Closing would release it anyway; the explicit unlock keeps the
+            # lock's lifetime obvious rather than resting on pool behaviour.
+            conn.close()
+
     def _execute(self, name: str) -> None:
         lock = self._layer_lock(name)
         if not lock.acquire(blocking=False):
@@ -539,7 +598,13 @@ class PipelineRunner:
                 f"Wait for the current run to finish before starting another."
             )
         try:
-            self._execute_locked(name)
+            with self._cross_process_lock(name) as got_db_lock:
+                if not got_db_lock:
+                    raise RuntimeError(
+                        f"Layer '{name}' is already running in another process. "
+                        f"Wait for the current run to finish before starting another."
+                    )
+                self._execute_locked(name)
         finally:
             lock.release()
 
