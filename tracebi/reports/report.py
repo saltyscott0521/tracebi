@@ -92,8 +92,15 @@ class ReportSection:
     id: Optional[str] = None
 
     def to_manifest_dict(self) -> dict:
+        # section_type may be a plain string: HTMLRenderer's section_renderers
+        # accepts "a type the framework doesn't know", which is how a project
+        # adds a block without forking. The renderer already tolerates that;
+        # the manifest did not, so a custom section rendered fine and then
+        # crashed on the way to the audit trail — the one artefact that must
+        # never be the thing that breaks.
+        stype = self.section_type
         d = {
-            "section_type": self.section_type.value,
+            "section_type": stype.value if hasattr(stype, "value") else str(stype),
             "title": self.title,
         }
         if self.id is not None:

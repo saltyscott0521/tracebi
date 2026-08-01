@@ -1193,3 +1193,44 @@ class TestTotalsWithRenamedColumns:
         cells = self._total_cells(tmp_path, dataset=ds, totals=["Amount"],
                                   column_labels={"amount": "Amount"})
         assert cells[-1] == "42.00"
+
+
+class TestCustomSectionTypes:
+    """
+    HTMLRenderer.section_renderers accepts "a type the framework doesn't know",
+    which is how a project adds a block without forking. _render_section already
+    tolerated a plain-string section_type; to_manifest_dict did not, so a custom
+    section rendered correctly and then crashed on the way to the manifest — the
+    audit trail being the one artefact that must never be what breaks.
+    """
+
+    def _custom(self):
+        from dataclasses import dataclass
+        from tracebi.reports.report import ReportSection
+
+        @dataclass
+        class Banner(ReportSection):
+            def __post_init__(self):
+                self.section_type = "banner"
+
+        return Banner(title="Hello")
+
+    def test_manifest_accepts_a_string_section_type(self):
+        d = self._custom().to_manifest_dict()
+        assert d["section_type"] == "banner"
+        assert d["title"] == "Hello"
+
+    def test_builtin_enum_section_type_still_serialises(self):
+        from tracebi.reports.report import TextSection
+        assert TextSection(title="t").to_manifest_dict()["section_type"] == "text"
+
+    def test_report_manifest_builds_with_a_custom_section(self, tmp_path):
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.reports.report import Report
+        report = Report("r").add(self._custom())
+        out = tmp_path / "r.html"
+        # Rendering builds the manifest; before the fix this raised
+        # AttributeError: 'str' object has no attribute 'value'.
+        HTMLRenderer(section_renderers={"banner": lambda s: "<p>banner</p>"}).render(
+            report, str(out))
+        assert "banner" in out.read_text()
