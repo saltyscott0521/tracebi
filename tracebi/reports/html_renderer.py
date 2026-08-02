@@ -44,6 +44,9 @@ logger = logging.getLogger(__name__)
 # The stylesheet moved to tracebi.reports.theme so it can be swapped or
 # overridden without editing the renderer. Alias kept for compatibility.
 from tracebi.reports.theme import DEFAULT_CSS as _CSS  # noqa: E402
+from tracebi.reports.derive import (  # noqa: E402
+    derive_column_labels, derive_number_formats,
+)
 
 
 class HTMLRenderer(BaseRenderer):
@@ -73,6 +76,7 @@ class HTMLRenderer(BaseRenderer):
         head_extra: str = "",
         body_extra: str = "",
         template_context: Optional[dict] = None,
+        derive_defaults: bool = True,
     ):
         """
         Args:
@@ -101,6 +105,9 @@ class HTMLRenderer(BaseRenderer):
         self.head_extra = head_extra
         self.body_extra = body_extra
         self.template_context = dict(template_context or {})
+        # Derived labels and number formats for anything the author left
+        # unset. Off restores the previous raw output verbatim.
+        self.derive_defaults = derive_defaults
         # Keyed by the section-type string so callers can pass either the
         # enum or a plain string, including one the framework doesn't know.
         self.section_renderers = {
@@ -405,7 +412,25 @@ class HTMLRenderer(BaseRenderer):
         return f'<div class="section">{title_html}{content_html}</div>'
 
     def _render_table(self, section: TableSection) -> str:
-        df = section.get_display_df()
+        # Labels and formats the author did not supply, worked out from the
+        # query's own metadata. Raw defaults put DIM_BRANCH.REGION and
+        # 1705495.2200000002 on the page, which a human authoring one report
+        # notices and something composing at volume does not. Anything set
+        # explicitly on the section wins outright — see tracebi.reports.derive.
+        labels = section.column_labels
+        formats = section.number_formats
+        if self.derive_defaults:
+            raw = section.dataset.to_pandas() if section.dataset is not None else None
+            cols = list(raw.columns) if raw is not None else []
+            if section.columns:
+                cols = [c for c in cols if c in section.columns]
+            labels = derive_column_labels(cols, section.dataset, section.column_labels)
+            if raw is not None:
+                formats = derive_number_formats(
+                    raw[cols] if cols else raw, section.dataset, section.number_formats
+                )
+
+        df = section.get_display_df(column_labels=labels)
         if df.empty:
             return '<div class="section"><em>No data</em></div>'
 
@@ -418,11 +443,11 @@ class HTMLRenderer(BaseRenderer):
 
         # Map original column names to display names for all per-column options
         def _disp(col: str) -> str:
-            return (section.column_labels or {}).get(col, col)
+            return (labels or {}).get(col, col)
 
         fmt_map = {}
-        if section.number_formats:
-            for orig, fmt in section.number_formats.items():
+        if formats:
+            for orig, fmt in formats.items():
                 fmt_map[_disp(orig)] = resolve_number_format(fmt)
 
         neg_cols = {_disp(c) for c in (section.highlight_negatives or [])}

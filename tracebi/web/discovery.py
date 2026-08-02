@@ -50,6 +50,54 @@ def clear_discovery_report() -> None:
     _outcomes.clear()
 
 
+def _register_spec_file(full_path: str, stem: str) -> dict:
+    """
+    Register a ``reports/<name>.json`` report spec.
+
+    The factory resolves models and builds the report at *call* time, not at
+    discovery time. Two reasons. Discovery runs at server startup, where doing
+    real query work would be the same mistake the demo pipeline made — and a
+    model the spec names may be registered after this file is scanned, so
+    binding eagerly would make discovery order significant.
+
+    Validation is deliberately structural only: the schema, the section types,
+    the shape of each data reference. Checking a spec *against* its models
+    needs the models, so that is left to ``tracebi spec validate`` and to the
+    first run, which reports a real error rather than a startup failure.
+    """
+    from tracebi.registry import registry
+    from tracebi.spec import ReportSpec
+
+    try:
+        spec = ReportSpec.from_json(open(full_path, encoding="utf-8").read())
+    except Exception as exc:  # noqa: BLE001 — one bad file must not stop startup
+        return {"status": "failed", "module": stem,
+                "reason": f"{type(exc).__name__}: {exc}"}
+
+    problems = [p for p in spec.validate().get("errors", [])]
+    if problems:
+        return {"status": "failed", "module": stem,
+                "reason": "; ".join(str(p) for p in problems[:3])}
+
+    def factory(_spec=spec):
+        from tracebi.model_registry import get_model, list_models
+        models = {}
+        for name in list_models():
+            try:
+                m = get_model(name)
+            except Exception:  # noqa: BLE001 — a broken model is that model's problem
+                continue
+            # A DataRef may name either the file stem (sales_model) or the
+            # model's own name (SalesModel); accept both so an author is not
+            # made to care which one they saw.
+            models[name] = m
+            models[getattr(m, "name", name)] = m
+        return _spec.build(models=models)
+
+    registry.add_report(stem, factory, spec.description or "")
+    return {"status": "registered", "module": stem}
+
+
 def auto_discover(
     path: str,
     package: Optional[str] = None,
@@ -82,6 +130,7 @@ def auto_discover(
         })
         return []
 
+
     discovered: list[str] = []
     for entry in sorted(os.listdir(path)):
         full = os.path.join(path, entry)
@@ -93,10 +142,23 @@ def auto_discover(
             continue
         is_py = entry.endswith(".py")
         is_nb = entry.endswith(".ipynb")
+        is_spec = entry.endswith(".json")
+
+        if is_spec:
+            # A report as data rather than as code. Registered without
+            # importing anything, which is the point: a spec is a bounded
+            # document that can be checked before it runs, where a .py file
+            # is arbitrary code that has already run by the time you see it.
+            outcome = _register_spec_file(full, stem=entry[: -len(".json")])
+            _outcomes.append({**record, **outcome})
+            if outcome["status"] == "registered":
+                discovered.append(outcome["module"])
+            continue
+
         if not (is_py or is_nb):
             if not os.path.isdir(full):
                 _outcomes.append({**record, "status": "skipped",
-                                  "reason": "not a .py or .ipynb file"})
+                                  "reason": "not a .py, .ipynb or .json file"})
             else:
                 _outcomes.append({**record, "status": "skipped",
                                   "reason": "subdirectories are not scanned"})

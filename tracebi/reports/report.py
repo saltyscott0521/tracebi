@@ -175,8 +175,14 @@ class TableSection(ReportSection):
         self.section_type = SectionType.TABLE
         _reject_unknown(self.style, TABLE_STYLES, "style", "TableSection")
 
-    def get_display_df(self) -> pd.DataFrame:
-        """Return the DataFrame ready for display (columns selected, rows capped)."""
+    def get_display_df(self, column_labels: Optional[dict] = None) -> pd.DataFrame:
+        """
+        The DataFrame ready for display (columns selected, rows capped).
+
+        *column_labels* overrides the section's own, so a renderer can pass in
+        labels it derived from the model without mutating the section. Omitted,
+        behaviour is unchanged.
+        """
         if self.dataset is None:
             return pd.DataFrame()
         df = self.dataset.to_pandas()
@@ -184,8 +190,9 @@ class TableSection(ReportSection):
             df = df[self.columns]
         if self.max_rows:
             df = df.head(self.max_rows)
-        if self.column_labels:
-            df = df.rename(columns=self.column_labels)
+        labels = self.column_labels if column_labels is None else column_labels
+        if labels:
+            df = df.rename(columns=labels)
         return df
 
     def to_manifest_dict(self) -> dict:

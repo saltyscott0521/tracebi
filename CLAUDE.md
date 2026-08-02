@@ -187,6 +187,47 @@ pytest --cov                                   # With coverage
 
 ---
 
+## Reports as Data
+
+`reports/` accepts `*.json` alongside `*.py` and `*.ipynb`. A JSON file is a
+`ReportSpec`: sections, and for each data-bearing one a `data` reference naming
+a model and a query. Discovery validates it structurally and registers a
+factory; everything downstream treats it as any other report, because a report
+has only ever been *a name and a zero-arg callable*.
+
+Two properties to preserve:
+
+1. **The factory resolves models at call time, not at discovery time.** Doing
+   query work during startup is the mistake `web/demo_app` made, and a model
+   the spec names may be registered after the file is scanned.
+2. **Discovery-time validation is structural only.** Checking a spec against
+   its models needs the models; that belongs to `tracebi spec validate` and to
+   the first run, which reports a real error instead of failing startup.
+
+Python and JSON are two serializations of one object graph — `from_report()`
+exports, `build()` imports — so a notebook analyst can prototype interactively
+and export to a governed artifact without a rewrite. **Python stays strictly
+more powerful**: a spec cannot express arbitrary computation, which is exactly
+why it is safe to generate and checkable without executing.
+
+## Derived Presentation Defaults
+
+`HTMLRenderer(derive_defaults=True)` (the default) fills in labels and number
+formats the author left unset, from what the query already knows —
+`tracebi/reports/derive.py`. `dim_branch.region` renders as `Region`;
+`1705495.2200000002` renders as `1,705,495.22`.
+
+Anything explicit wins outright. Order of preference for a format: the author's
+`number_formats`, then a format the model declares on that measure, then a
+column-name suffix hint (`_pct`), then shape — whole numbers get separators,
+fractional ones two decimals.
+
+Pass `derive_defaults=False` for the previous raw output verbatim.
+
+This exists because raw defaults are a trap that scales badly: a human
+authoring one report sees `DIM_BRANCH.REGION` and fixes it; an agent composing
+at volume, with nobody reading the output, does not.
+
 ## Authorization
 
 Authentication (`web/api/auth.py`) says who a caller is; the `_Authorizer` in

@@ -1174,12 +1174,12 @@ class TestTotalsWithRenamedColumns:
 
     def test_total_without_labels(self, tmp_path, ds):
         cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"])
-        assert cells[-1] == "42.00"
+        assert cells[-1] == "42"
 
     def test_total_survives_column_labels(self, tmp_path, ds):
         cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"],
                                   column_labels={"amount": "Amount"})
-        assert cells[-1] == "42.00", "renaming a column must not drop its total"
+        assert cells[-1] == "42", "renaming a column must not drop its total"
 
     def test_total_survives_labels_and_formats_together(self, tmp_path, ds):
         cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"],
@@ -1192,7 +1192,7 @@ class TestTotalsWithRenamedColumns:
         # silently ignored.
         cells = self._total_cells(tmp_path, dataset=ds, totals=["Amount"],
                                   column_labels={"amount": "Amount"})
-        assert cells[-1] == "42.00"
+        assert cells[-1] == "42"
 
 
 class TestCustomSectionTypes:
@@ -1234,3 +1234,103 @@ class TestCustomSectionTypes:
         HTMLRenderer(section_renderers={"banner": lambda s: "<p>banner</p>"}).render(
             report, str(out))
         assert "banner" in out.read_text()
+
+
+# ── Derived presentation defaults ─────────────────────────────────────────────
+
+class TestDerivedDefaults:
+    """
+    A table rendered straight from a star-schema query used to show
+    DIM_BRANCH.REGION as a heading and 1705495.2200000002 as a figure. Both
+    were always fixable via column_labels and number_formats — but only by an
+    author remembering, on every table. A human authoring one report notices;
+    something composing at volume with nobody reading the output does not. So
+    the defaults are derived from what the query already knows, and anything
+    set explicitly still wins.
+    """
+
+    def _render(self, section, derive=True):
+        import tempfile, os
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.reports.report import Report
+        p = os.path.join(tempfile.mkdtemp(), "r.html")
+        HTMLRenderer(derive_defaults=derive).render(Report("t").add(section), p)
+        return open(p).read()
+
+    @pytest.fixture
+    def ds(self):
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        return DataSet(pd.DataFrame({
+            "dim_branch.region": ["Midwest", "West"],
+            "market_value": [1705495.2200000002, 2314506.39],
+            "orders": [12, 8],
+        }), name="t")
+
+    # ── humanise ──
+    def test_humanise_strips_dimension_addressing(self):
+        from tracebi.reports.derive import humanise
+        assert humanise("dim_branch.region") == "Region"
+        assert humanise("dim_client.segment") == "Segment"
+
+    def test_humanise_makes_snake_case_readable(self):
+        from tracebi.reports.derive import humanise
+        assert humanise("market_value") == "Market value"
+        assert humanise("units") == "Units"
+
+    def test_humanise_leaves_an_already_plain_name_alone(self):
+        from tracebi.reports.derive import humanise
+        assert humanise("region") == "Region"
+
+    # ── rendering ──
+    def test_headers_are_readable_without_the_author_saying_so(self, ds):
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(dataset=ds))
+        assert "Market value" in html
+        assert "dim_branch.region" not in html
+
+    def test_float_noise_does_not_reach_the_page(self, ds):
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(dataset=ds))
+        assert "1705495.2200000002" not in html
+        assert "1,705,495.22" in html
+
+    def test_whole_numbers_get_separators_not_decimals(self, ds):
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(dataset=ds))
+        assert ">12<" in html.replace(" ", "")
+
+    def test_explicit_labels_still_win(self, ds):
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(
+            dataset=ds, column_labels={"market_value": "AUM (USD)"}))
+        assert "AUM (USD)" in html
+        assert "Market value" not in html
+
+    def test_explicit_formats_still_win(self, ds):
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(
+            dataset=ds, number_formats={"market_value": "currency0"}))
+        assert "$1,705,495" in html
+
+    def test_derivation_can_be_turned_off(self, ds):
+        # The previous raw output verbatim, for anyone depending on it.
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(dataset=ds), derive=False)
+        assert "dim_branch.region" in html
+        assert "1705495.2200000002" in html
+
+    def test_percent_suffix_is_recognised(self):
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        from tracebi.reports.derive import derive_number_formats
+        df = pd.DataFrame({"margin_pct": [0.42, 0.51]})
+        fmts = derive_number_formats(df, DataSet(df, name="t"))
+        assert fmts["margin_pct"] == "percent"
+
+    def test_get_display_df_is_unchanged_when_no_labels_passed(self, ds):
+        # The renderer passes derived labels in; called directly, the section
+        # behaves exactly as before.
+        from tracebi.reports.report import TableSection
+        cols = list(TableSection(dataset=ds).get_display_df().columns)
+        assert cols == ["dim_branch.region", "market_value", "orders"]

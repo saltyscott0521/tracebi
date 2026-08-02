@@ -1,0 +1,27 @@
+{
+  "name": "AUM by Region",
+  "author": "analyst",
+  "description": "Market value by branch region — authored as data, not code.",
+  "sections": [
+    {
+      "type": "text",
+      "title": "Scope",
+      "content": "Holdings market value aggregated by the branch that manages the account."
+    },
+    {
+      "type": "table",
+      "title": "By region",
+      "column_labels": {"dim_branch.region": "Region", "market_value": "Market value"},
+      "number_formats": {"market_value": "currency0"},
+      "totals": ["market_value"],
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": {"market_value": "sum"},
+          "dimensions": ["dim_branch.region"]
+        }
+      }
+    }
+  ]
+}
