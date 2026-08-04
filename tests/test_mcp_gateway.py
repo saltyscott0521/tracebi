@@ -248,4 +248,5 @@ def test_build_server_registers_the_tools(gateway_model):
     assert names == {
         "get_context", "list_models", "describe_model", "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
+        "verify_manifest",
     }

@@ -1067,6 +1067,61 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify(args: argparse.Namespace) -> int:
+    """
+    Re-verify a rendered manifest: the other half of the stamp.
+
+    Every recorded query in the manifest is re-run against the project's
+    models and classified — REPRODUCES, SOURCE DRIFT (result differs and
+    an input fingerprint moved), UNEXPLAINED (result differs but the
+    inputs did not — the alarming case), or UNVERIFIABLE (no recorded
+    query to re-run). One line per section, then a summary.
+
+    Exit codes: 0 all reproduce/unverifiable · 2 diagnosed drift only ·
+    1 anything unexplained, of unknown cause, or errored.
+    """
+    from tracebi.verify import (
+        REPRODUCES, STATUS_LABELS, UNVERIFIABLE, load_models, verify_manifest,
+    )
+
+    path = Path(args.manifest)
+    if not path.is_file():
+        print(f"manifest not found: {path}", file=sys.stderr)
+        return 1
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"manifest is not valid JSON: {exc}", file=sys.stderr)
+        return 1
+    if not isinstance(manifest, dict):
+        print(f"manifest must be a JSON object, got {type(manifest).__name__}",
+              file=sys.stderr)
+        return 1
+
+    models = load_models(args.verify_models_dir or args.models_dir)
+    result = verify_manifest(manifest, models)
+
+    name = result["report_name"] or path.name
+    print(f"Verifying '{name}' ({path})")
+    width = max(len(v) for v in STATUS_LABELS.values())
+    for s in result["sections"]:
+        status = s["status"]
+        mark = ("✓" if status == REPRODUCES
+                else "·" if status == UNVERIFIABLE
+                else "✗")
+        line = f"{mark} {STATUS_LABELS[status]:<{width}}  {s['section']}"
+        if status != REPRODUCES:
+            line += f" — {s['detail']}"
+        print(line, file=sys.stdout if mark != "✗" else sys.stderr)
+
+    counts = ", ".join(
+        f"{n} {STATUS_LABELS[status].lower()}"
+        for status, n in result["summary"].items() if n
+    ) or "no data-bearing sections"
+    print(f"\n{len(result['sections'])} section(s) checked: {counts}")
+    return result["exit_code"]
+
+
 # ── Argparse wiring ─────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1228,6 +1283,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Port for --transport http (default 8765).",
     )
     p_mcp.set_defaults(func=cmd_mcp)
+
+    p_verify = sub.add_parser(
+        "verify",
+        help="Re-run every recorded query in a rendered manifest and "
+             "classify each section: reproduces, source drift, unexplained, "
+             "or unverifiable.",
+    )
+    p_verify.add_argument("manifest", help="Path to a *.manifest.json file.")
+    # Distinct dest: a subparser option sharing dest with a main-parser
+    # option would clobber an already-parsed `tracebi --models-dir X verify`.
+    p_verify.add_argument(
+        "--models-dir", type=Path, default=None, dest="verify_models_dir",
+        help="Directory holding model definitions (default: ./models).",
+    )
+    p_verify.set_defaults(func=cmd_verify)
 
     return parser
 

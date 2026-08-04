@@ -290,6 +290,39 @@ def gateway_reports() -> dict:
     return {"reports": discovery_report()}
 
 
+def gateway_verify_manifest(manifest: Any) -> dict:
+    """
+    Close the loop: re-run every recorded query in a rendered manifest and
+    classify each section — ``reproduces`` (fingerprint matches),
+    ``source_drift`` (result differs and an input fingerprint moved),
+    ``unexplained`` (result differs but the inputs did not — the alarming
+    case), or ``unverifiable`` (no recorded query to re-run).
+
+    *manifest* is the manifest as a dict, or a path to the
+    ``*.manifest.json`` file ``render_report_spec`` wrote. On success the
+    result carries per-section classifications plus a summary; ``ok`` is
+    True only when every section reproduces or is unverifiable — a drifted
+    or unexplained receipt is not an ok one.
+    """
+    from tracebi.verify import load_models, verify_manifest
+
+    if isinstance(manifest, str):
+        p = Path(manifest)
+        if not p.is_file():
+            return {"ok": False, "errors": [f"manifest file not found: {manifest}"]}
+        try:
+            manifest = json.loads(p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            return {"ok": False, "errors": [f"manifest is not valid JSON: {exc}"]}
+    if not isinstance(manifest, dict):
+        return {"ok": False, "errors": [
+            f"manifest must be a dict or a file path, got {type(manifest).__name__}"
+        ]}
+
+    with actor(_mcp_actor()):
+        return verify_manifest(manifest, load_models())
+
+
 # ── MCP registration ───────────────────────────────────────────────────────
 
 
@@ -319,7 +352,10 @@ def build_server():
             "fingerprint when you quote a number. Author reports as specs: "
             "validate_report_spec to check without executing, "
             "render_report_spec to produce the governed HTML artifact and "
-            "its manifest."
+            "its manifest. The loop is closed: verify_manifest re-runs a "
+            "manifest's recorded queries and classifies every section as "
+            "reproduces, source drift, or unexplained — a receipt you "
+            "rendered is a receipt you (or anyone later) can check."
         ),
     )
 
@@ -371,6 +407,17 @@ def build_server():
         name="list_reports",
         description="Reports the project exposes, with registration status per file.",
     )(gateway_reports)
+    server.tool(
+        name="verify_manifest",
+        description=(
+            "Re-run every recorded query in a rendered manifest (a dict, or "
+            "a path to the *.manifest.json render_report_spec wrote) and "
+            "classify each section: reproduces, source_drift (an input "
+            "fingerprint moved), unexplained (result differs but inputs "
+            "match), or unverifiable (no recorded query). Closes the loop "
+            "on your own receipts."
+        ),
+    )(gateway_verify_manifest)
 
     return server
 

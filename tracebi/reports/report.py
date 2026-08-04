@@ -377,6 +377,11 @@ class RowSection(ReportSection):
 # Report manifest
 # ─────────────────────────────────────────────────────────────
 
+# Version of the manifest's own shape. Bump when a key changes meaning or
+# moves; `tracebi verify` and archived-manifest consumers key off it so
+# receipts stay checkable across upgrades.
+MANIFEST_SCHEMA_VERSION = 1
+
 _GIT_SHA: Optional[str] = None
 
 
@@ -421,6 +426,7 @@ class ReportManifest:
 
     def to_dict(self) -> dict:
         return {
+            "schema_version": MANIFEST_SCHEMA_VERSION,
             "report_name": self.report_name,
             "rendered_at": self.rendered_at,
             "rendered_by": self.rendered_by,
