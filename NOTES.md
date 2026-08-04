@@ -20,6 +20,90 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-08-03 — The agent gateway, and the inversion behind it
+
+### The product question this answers
+
+A long strategy discussion settled on a reframing: TraceBi's scarce asset is
+not the report framework, it is **trust in machine-made numbers**. AI made
+creating reports nearly free; believing them is becoming the expensive part.
+The corporate question is "we want agents to access the warehouse and create
+reports — how do we do that organized and controlled, with a reusable schema
+defined for the agents?" The answer is a **semantic gateway**: the agent
+never touches the warehouse, it speaks the model's vocabulary, and every
+answer carries a receipt.
+
+### The inversion
+
+Previously the renderer was the mandatory door: to get governance you had to
+produce a TraceBi-rendered report. That coupled control to presentation and
+made every expressiveness gap (six sections, six chart types) a governance
+leak — an author who needed more would route around the whole framework.
+
+The gateway moves control down to **data access**, where it belongs, and
+makes assurance graded rather than binary:
+
+| Level | Agent does | Company can prove |
+|---|---|---|
+| L0 | Raw SQL, raw HTML | Nothing |
+| L1 | Queries via gateway, renders its own HTML | Every number traceable |
+| L2 | Emits a ReportSpec; TraceBi renders | Artifact reproducible |
+| L3 | L2 + signed manifest + re-verification | Attestable (future) |
+
+At L1 the agent has unlimited presentation freedom — the framework's
+expressiveness ceiling stops being a cage and becomes the premium lane. This
+was **not a pivot**: the framework and the gateway are two doors into one
+kernel (the dbt Core / dbt Cloud pairing), and the gateway's "reusable
+schema" *is* the `DataModel` the framework always had.
+
+### What was built
+
+`tracebi/mcp_server.py` + `tracebi mcp` (extras key `mcp`). Seven tools:
+`get_context`, `list_models`, `describe_model`, `query_model`,
+`validate_report_spec`, `render_report_spec`, `list_reports`.
+
+Decisions worth recording:
+
+- **The stamp covers the full result; rows are transport.** `query_model`
+  caps rows (default 50, hard cap 500) but fingerprints the uncapped
+  DataSet, and a test pins that capping cannot change the fingerprint. An
+  agent quoting a number beyond the cap is still auditable: re-run the
+  recorded query, compare hashes. The smoke test showed the raw query
+  fingerprint and the rendered report's manifest fingerprint coming back
+  identical — same hash, provably the same data — which is the entire
+  product in one line of output.
+- **Read-and-compute only.** No pipeline execution over MCP yet: that
+  writes to the warehouse, and per-agent scopes (which models, which
+  operations, per credential) don't exist. Adding writes before scopes
+  would put the highest-privilege operation on the least-attributable
+  surface.
+- **Plain functions under a thin MCP skin.** The `gateway_*` operations are
+  ordinary functions; `build_server()` is the only place `mcp` is imported
+  (fail-loudly rule). The suite tests the gateway with no MCP dependency;
+  one `importorskip` test checks tool registration.
+- **`render_report_spec` refuses an invalid spec** rather than rendering
+  best-effort. An artifact from a spec that failed validation is exactly
+  the ungoverned output the surface exists to prevent.
+- Attribution reuses the audit ContextVar: `mcp:<TRACEBI_MCP_ACTOR>`.
+
+Side effect discovered while wiring: installing `mcp` upgraded starlette
+past the pinned-by-luck fastapi, breaking every TestClient test with
+`Router.__init__() got an unexpected keyword argument 'on_startup'`.
+Fastapi upgraded to match; suite back to green (620).
+
+### Open
+
+- **Per-agent scopes** — which models/measures per credential; the gate for
+  ever exposing pipeline runs over MCP.
+- **`tracebi verify`** — drift-aware re-verification (reproduces / source
+  drift / unexplained). Needs input fingerprints recorded at render.
+- **L1 receipts for foreign renderers** — a stable URL or token per stamped
+  query an agent can cite from its own HTML.
+- The HTTP transport has no auth of its own yet; stdio (local agent) is the
+  supported mode, HTTP should sit behind the same proxy story as the web
+  app.
+
+
 ## 2026-07-27 — Deployment planes, and what a corporate rollout requires
 
 Written after taking tracebi.com live on Vercel. The question that prompted it:

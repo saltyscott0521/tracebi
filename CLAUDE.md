@@ -177,6 +177,8 @@ tracebi context --model sales_model            # plus that model's schema
 tracebi spec schema                            # JSON Schema for a report spec
 tracebi spec validate report.json              # check a spec without running it
 tracebi spec render report.json                # build and render it
+tracebi mcp                                    # agent gateway over MCP (stdio)
+tracebi mcp --transport http --port 8765       # same, for a remote agent
 tracebi serve                                  # browse the project
 
 # Tests

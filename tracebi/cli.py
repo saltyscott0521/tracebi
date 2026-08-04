@@ -1047,6 +1047,26 @@ def cmd_list_pipelines(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mcp(args: argparse.Namespace) -> int:
+    """
+    Serve the agent gateway over the Model Context Protocol.
+
+    stdio by default, which is what a locally-configured agent speaks;
+    --transport http for a remote one. Models come from the same project
+    conventions as every other command (./models, or TRACEBI_MODELS_DIR).
+    """
+    from tracebi.mcp_server import serve
+
+    try:
+        serve(transport=args.transport, port=args.port)
+    except ImportError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 # ── Argparse wiring ─────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1194,6 +1214,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show each layer and its last run without executing anything.",
     )
     p_run_pipeline.set_defaults(func=cmd_run_pipeline)
+
+    p_mcp = sub.add_parser(
+        "mcp",
+        help="Serve the agent gateway over the Model Context Protocol.",
+    )
+    p_mcp.add_argument(
+        "--transport", choices=("stdio", "http"), default="stdio",
+        help="stdio for a local agent (default); http for a remote one.",
+    )
+    p_mcp.add_argument(
+        "--port", type=int, default=8765,
+        help="Port for --transport http (default 8765).",
+    )
+    p_mcp.set_defaults(func=cmd_mcp)
 
     return parser
 

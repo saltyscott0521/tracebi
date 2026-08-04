@@ -32,6 +32,7 @@ connector, query, and transform steps that produced it.
 - [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 - [x] **Phase 5** — Web UI (FastAPI + React, Dash embedded), folder-based auto-discovery, optional HTTP Basic auth, `tracebi` CLI, docker-compose deployment
+- [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model and authors validated report specs; every response is stamped with the resolved query, lineage, and a fingerprint of the full result
 
 ---
 
@@ -116,6 +117,7 @@ The differences that matter:
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
+| Let an AI agent query models and author reports | `pip install 'tracebi[mcp]'`, then register `tracebi mcp` with your agent — see [Agent gateway](#agent-gateway-mcp) |
 
 ---
 
@@ -427,6 +429,41 @@ diag.show()                       # matplotlib / Jupyter inline
 diag.to_html("lineage.html")      # standalone HTML with embedded SVG
 print(diag.to_mermaid())          # paste into GitHub markdown
 ```
+
+---
+
+## Agent gateway (MCP)
+
+An AI agent should work against your **semantic contract**, not your
+warehouse. `tracebi mcp` serves the kernel over the
+[Model Context Protocol](https://modelcontextprotocol.io): the agent reads
+the vocabulary with `get_context` (models, facts, dimensions, named
+measures, report sections — nothing outside it will validate), queries with
+`query_model`, and authors reports as specs it can check *before* executing
+with `validate_report_spec`.
+
+Every query response is **stamped** — the resolved query, the full lineage
+chain, and a SHA-256 fingerprint of the complete result travel with the
+rows. Rows are a capped preview; the fingerprint always covers the full
+result, so any number the agent quotes is verifiable afterwards by
+re-running the recorded query and comparing hashes. `render_report_spec`
+produces the governed HTML artifact plus its lineage manifest, and refuses
+a spec that fails validation.
+
+```bash
+pip install 'tracebi[mcp]'
+
+# Local agent (e.g. Claude Code), from your project directory:
+claude mcp add tracebi -- tracebi mcp
+
+# Remote agent:
+tracebi mcp --transport http --port 8765
+```
+
+Read-and-compute only: queries, validation and rendering. Pipeline
+execution (which writes to the warehouse) is deliberately not exposed.
+Attribution is recorded as `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`)
+in the same audit trail as web and CLI actors.
 
 ---
 

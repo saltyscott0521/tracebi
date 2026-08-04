@@ -6,6 +6,29 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — MCP agent gateway (`tracebi mcp`)
+
+`tracebi/mcp_server.py` exposes the kernel over the Model Context Protocol,
+so an agent can work against the semantic contract instead of the warehouse:
+`get_context` (the vocabulary — nothing outside it validates), `list_models`
+/ `describe_model`, `query_model`, `validate_report_spec`,
+`render_report_spec`, and `list_reports`.
+
+Every `query_model` response is **stamped**: the resolved query, the full
+lineage chain, and a fingerprint of the complete result travel with the
+rows. The row payload is transport-capped (default 50, hard cap 500) but the
+fingerprint always covers the full result, so a quoted number is verifiable
+even when its row was beyond the cap. Queries and renders record an actor of
+`mcp:<TRACEBI_MCP_ACTOR>` through the existing audit ContextVar.
+
+Read-and-compute only by design — pipeline execution writes to the
+warehouse and stays off this surface until per-agent scopes exist to gate
+it. The gateway operations are plain functions with a thin MCP registration
+on top, so the test suite covers them without the optional `mcp` package
+(`pip install 'tracebi[mcp]'`), and `render_report_spec` refuses a spec
+that fails validation. Serve locally with `tracebi mcp` (stdio) or
+`tracebi mcp --transport http --port 8765`.
+
 ### Added — Vercel + Supabase deployment
 
 `vercel.json`, `api/index.py`, `api/requirements.txt`, and
