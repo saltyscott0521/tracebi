@@ -6,6 +6,18 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Security — bearer-token auth on the MCP HTTP transport
+
+`tracebi mcp --transport http` no longer starts unauthenticated by
+default. Set `TRACEBI_MCP_TOKEN` and every request must carry
+`Authorization: Bearer <token>` (verified in constant time via the MCP
+SDK's `token_verifier` hook; anything else is a 401), or pass
+`--insecure` to opt out explicitly — with neither, the server refuses to
+start and says exactly what to do. Startup logs one posture line
+(transport, auth mode, actor) to stderr. stdio is unchanged, and
+attribution remains `mcp:<TRACEBI_MCP_ACTOR>` — per-agent credentials
+and scopes are a later, separate design.
+
 ### Added — MCP agent gateway (`tracebi mcp`)
 
 `tracebi/mcp_server.py` exposes the kernel over the Model Context Protocol,

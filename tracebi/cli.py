@@ -1054,12 +1054,16 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     stdio by default, which is what a locally-configured agent speaks;
     --transport http for a remote one. Models come from the same project
     conventions as every other command (./models, or TRACEBI_MODELS_DIR).
+
+    The http transport refuses to start until an auth decision is made:
+    set TRACEBI_MCP_TOKEN (bearer auth) or pass --insecure explicitly.
     """
-    from tracebi.mcp_server import serve
+    from tracebi.mcp_server import GatewayAuthError, serve
 
     try:
-        serve(transport=args.transport, port=args.port)
-    except ImportError as exc:
+        serve(transport=args.transport, port=args.port,
+              insecure=args.insecure)
+    except (ImportError, GatewayAuthError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     except KeyboardInterrupt:
@@ -1226,6 +1230,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_mcp.add_argument(
         "--port", type=int, default=8765,
         help="Port for --transport http (default 8765).",
+    )
+    p_mcp.add_argument(
+        "--insecure", action="store_true",
+        help="Serve --transport http without authentication. Deliberate "
+             "opt-out: without it, http requires TRACEBI_MCP_TOKEN.",
     )
     p_mcp.set_defaults(func=cmd_mcp)
 

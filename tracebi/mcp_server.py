@@ -28,9 +28,11 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any, Optional
 
@@ -42,6 +44,45 @@ from tracebi.audit import actor
 #: a report spec rather than paging raw rows through a chat context.
 _ROW_DEFAULT = 50
 _ROW_HARD_CAP = 500
+
+
+class GatewayAuthError(RuntimeError):
+    """Refusal to serve the HTTP transport without an auth decision."""
+
+
+#: The refusal an operator sees when starting the HTTP transport with no
+#: auth decision made. It must say exactly what to do — a gateway that
+#: fails closed but cryptically just teaches people to reach for --insecure.
+_HTTP_AUTH_REFUSAL = (
+    "Refusing to serve the MCP gateway over HTTP without authentication.\n"
+    "Either set TRACEBI_MCP_TOKEN to a secret value — every client must "
+    "then send 'Authorization: Bearer <token>' — or pass --insecure to "
+    "serve unauthenticated on purpose."
+)
+
+
+class StaticTokenVerifier:
+    """
+    Verify the single static token from ``TRACEBI_MCP_TOKEN``.
+
+    Deliberately the minimal slice of gateway auth: one shared secret,
+    compared in constant time. Per-agent credentials and scopes are a
+    later, separate design; until then work done with the token is still
+    attributed as ``mcp:<TRACEBI_MCP_ACTOR>``.
+    """
+
+    def __init__(self, token: str) -> None:
+        self._token = token.encode("utf-8")
+
+    async def verify_token(self, token: str):
+        # Imported here, not at module top: the gateway_* functions must
+        # stay importable without the optional ``mcp`` package, and this
+        # method only ever runs inside a server build_server() created.
+        from mcp.server.auth.provider import AccessToken
+
+        if not hmac.compare_digest(token.encode("utf-8"), self._token):
+            return None
+        return AccessToken(token=token, client_id=_mcp_actor(), scopes=[])
 
 
 def _mcp_actor() -> str:
@@ -293,9 +334,13 @@ def gateway_reports() -> dict:
 # ── MCP registration ───────────────────────────────────────────────────────
 
 
-def build_server():
+def build_server(token: Optional[str] = None):
     """
     Register the gateway operations as MCP tools.
+
+    With *token*, the streamable-http transport requires
+    ``Authorization: Bearer <token>`` on every request (401 otherwise),
+    via the SDK's own ``token_verifier`` hook; stdio ignores it.
 
     The only place the optional ``mcp`` package is imported, per the
     fail-loudly rule for optional dependencies.
@@ -308,8 +353,26 @@ def build_server():
             "Install it with: pip install 'tracebi[mcp]'"
         ) from exc
 
+    auth_kwargs: dict[str, Any] = {}
+    if token is not None:
+        from mcp.server.auth.settings import AuthSettings
+
+        auth_kwargs = {
+            "token_verifier": StaticTokenVerifier(token),
+            # AuthSettings models an OAuth resource server, so it demands
+            # an issuer_url — but a static shared token has no issuer. The
+            # placeholder is never served: without an auth_server_provider
+            # no OAuth routes exist, and with resource_server_url=None no
+            # metadata routes exist. Only the bearer check remains.
+            "auth": AuthSettings(
+                issuer_url="http://127.0.0.1",
+                resource_server_url=None,
+            ),
+        }
+
     server = MCPServer(
         name="tracebi",
+        **auth_kwargs,
         instructions=(
             "TraceBi semantic gateway. Call get_context first — it returns "
             "the full vocabulary (models, facts, dimensions, measures, "
@@ -375,10 +438,32 @@ def build_server():
     return server
 
 
-def serve(transport: str = "stdio", port: int = 8765) -> None:
-    """Build the server and run it until interrupted."""
-    server = build_server()
+def serve(transport: str = "stdio", port: int = 8765,
+          insecure: bool = False) -> None:
+    """
+    Build the server and run it until interrupted.
+
+    The HTTP transport refuses to start until the operator makes an auth
+    decision: set ``TRACEBI_MCP_TOKEN`` (bearer auth on every request) or
+    pass ``insecure=True`` explicitly. stdio has no network surface and is
+    unchanged.
+    """
     if transport == "http":
+        token = os.environ.get("TRACEBI_MCP_TOKEN", "")
+        if not token and not insecure:
+            raise GatewayAuthError(_HTTP_AUTH_REFUSAL)
+        auth_mode = (
+            "bearer (TRACEBI_MCP_TOKEN)" if token else "none (--insecure)"
+        )
+        # stderr: on stdio the protocol owns stdout, so operator-facing
+        # posture lines go to stderr on every transport for consistency.
+        print(
+            f"[tracebi] mcp gateway: transport=http auth={auth_mode} "
+            f"actor={_mcp_actor()}",
+            file=sys.stderr,
+        )
+        server = build_server(token=token or None)
         server.run(transport="streamable-http", port=port)
     else:
+        server = build_server()
         server.run(transport="stdio")

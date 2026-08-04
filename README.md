@@ -457,8 +457,14 @@ pip install 'tracebi[mcp]'
 # Local agent (e.g. Claude Code), from your project directory:
 claude mcp add tracebi -- tracebi mcp
 
-# Remote agent:
+# Remote agent: the HTTP transport requires a token —
+# every client must send "Authorization: Bearer $TRACEBI_MCP_TOKEN".
+export TRACEBI_MCP_TOKEN=$(openssl rand -hex 32)
 tracebi mcp --transport http --port 8765
+
+# Without a token the server refuses to start; serving an
+# unauthenticated gateway is an explicit opt-out:
+tracebi mcp --transport http --port 8765 --insecure
 ```
 
 Read-and-compute only: queries, validation and rendering. Pipeline

@@ -50,6 +50,9 @@ Start it with `tracebi mcp` (stdio, local agent) or
 `pip install 'tracebi[mcp]'`. Register with Claude Code:
 `claude mcp add tracebi -- tracebi mcp`. Work is attributed as
 `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`).
+The http transport requires `TRACEBI_MCP_TOKEN` (send
+`Authorization: Bearer <token>`) — it refuses to start without it unless
+`--insecure` is passed explicitly.
 
 Seven tools (`tracebi/mcp_server.py`):
 
