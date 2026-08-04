@@ -17,6 +17,24 @@ from typing import Any, Callable, Mapping, Optional, Union
 import pandas as pd
 
 
+def frame_fingerprint(df: pd.DataFrame) -> str:
+    """
+    SHA-256 hash of a DataFrame's content — the audit primitive.
+
+    Covers column names, dtypes, and every cell value in row order, via a
+    canonical CSV serialization. This is the single fingerprint algorithm:
+    ``DataSet.fingerprint()`` delegates here, and ``DataModel.load()`` uses
+    it to fingerprint source tables while the frame is already in memory,
+    so query lineage and manifests record exactly which inputs produced a
+    result.
+    """
+    h = hashlib.sha256()
+    h.update(repr(list(df.columns)).encode("utf-8"))
+    h.update(repr([str(t) for t in df.dtypes]).encode("utf-8"))
+    h.update(df.to_csv(index=False).encode("utf-8"))
+    return h.hexdigest()
+
+
 # ─────────────────────────────────────────────────────────────
 # LineageNode
 # ─────────────────────────────────────────────────────────────
@@ -142,11 +160,7 @@ class DataSet:
         and pandas versions, so a manifest fingerprint can be re-verified
         long after the report was rendered.
         """
-        h = hashlib.sha256()
-        h.update(repr(list(self._df.columns)).encode("utf-8"))
-        h.update(repr([str(t) for t in self._df.dtypes]).encode("utf-8"))
-        h.update(self._df.to_csv(index=False).encode("utf-8"))
-        return h.hexdigest()
+        return frame_fingerprint(self._df)
 
     def lineage_to_dict(self) -> list[dict]:
         return [node.to_dict() for node in self._lineage]

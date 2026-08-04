@@ -27,7 +27,7 @@ from typing import Any, Optional
 import pandas as pd
 
 from tracebi.connectors.base import BaseConnector
-from tracebi.model.dataset import DataSet, LineageNode
+from tracebi.model.dataset import DataSet, LineageNode, frame_fingerprint
 
 
 # Threshold (rows) at which an unfiltered, full-table load triggers a
@@ -584,6 +584,16 @@ class DataModel:
                 "filter":      filter,
                 "columns":     columns,
                 "pushdown":    bool(pushdown),
+                # The frame is already in memory here, so fingerprint it now.
+                # Every stamped query — and every manifest section built from
+                # one — then records exactly which inputs produced it, which
+                # is what lets `tracebi verify` tell source drift apart from
+                # an unexplained mismatch.
+                "input": {
+                    "table":       table_name,
+                    "fingerprint": frame_fingerprint(df),
+                    "rows":        len(df),
+                },
             },
         )
         nodes = [load_node]
