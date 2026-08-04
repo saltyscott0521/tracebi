@@ -1413,6 +1413,186 @@ class DataModel:
                     f"Available columns: {sorted(dim_cols)}"
                 )
 
+    def _declared_fact_columns(self, fact_def: "_FactDef") -> set[str]:
+        """
+        Every fact-table column the model *declares*: the fact's measure
+        columns and foreign keys, plus any column a named measure reads
+        (directly or inside a row expression). A subset of the table's
+        actual columns — knowable without loading a row.
+        """
+        cols = set(fact_def.measures) | set(fact_def.foreign_keys.values())
+        for m in self._measures.values():
+            if m.column:
+                cols.add(m.column)
+            if m.expr:
+                cols |= {
+                    t for t in _EXPR_TOKEN.findall(m.expr) if not t.isdigit()
+                }
+        return cols
+
+    def check_query_spec(
+        self, spec: QuerySpec
+    ) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+        """
+        Validate a :class:`QuerySpec` against the model's declared structure,
+        without loading any data.
+
+        The declaration-time twin of the execution-time checks
+        (``_validate_query_columns``, ``_parse_filters``,
+        ``_validate_dim_predicates``), kept beside them so the rules cannot
+        drift. Whatever the model itself declares — facts, named measures,
+        dimensions and their attributes, the closed aggregation-function
+        set — is authoritative, and a mismatch is an **error**. A reference
+        only the physical table can confirm (an ad-hoc measure column or a
+        bare filter column beyond the declared ones) is a **warning**:
+        execution re-checks it against the actual columns and fails loudly
+        there.
+
+        Returns ``(errors, warnings)``, each a list of ``(subpath, message)``
+        pairs relative to the query — e.g. ``("filters.region", "…")`` — so
+        a caller can prefix its own location (``sections[0].data.query``).
+        """
+        errors: list[tuple[str, str]] = []
+        warnings: list[tuple[str, str]] = []
+
+        fact_def = self._facts.get(spec.fact)
+        if fact_def is None:
+            errors.append((
+                "fact",
+                f"'{spec.fact}' is not a fact on model '{self.name}'."
+                f"{self._hint(spec.fact, self._facts)} "
+                f"Available: {sorted(self._facts)}",
+            ))
+            return errors, warnings
+
+        declared_cols = self._declared_fact_columns(fact_def)
+
+        # ── Measures ──────────────────────────────────────────
+        if isinstance(spec.measures, dict):
+            for out_col, mspec in spec.measures.items():
+                if isinstance(mspec, (tuple, list)) and len(mspec) == 2:
+                    src, func = str(mspec[0]), str(mspec[1])
+                else:
+                    src, func = str(out_col), str(mspec)
+                if func.lower() not in _AGG_FUNCS:
+                    errors.append((
+                        f"measures.{out_col}",
+                        f"unsupported aggregation '{func}'."
+                        f"{self._hint(func, sorted(_AGG_FUNCS))} "
+                        f"Supported: {', '.join(sorted(_AGG_FUNCS))}",
+                    ))
+                if src not in declared_cols:
+                    warnings.append((
+                        f"measures.{out_col}",
+                        f"column '{src}' is not among the declared columns "
+                        f"of fact '{spec.fact}'."
+                        f"{self._hint(src, declared_cols)} "
+                        f"Declared: {sorted(declared_cols)}. It cannot be "
+                        f"verified before execution, which checks it "
+                        f"against the actual table.",
+                    ))
+        else:
+            for m in spec.measures or ():
+                if m not in self._measures:
+                    errors.append((
+                        "measures",
+                        f"'{m}' is not a declared measure on model "
+                        f"'{self.name}'.{self._hint(m, self._measures)} "
+                        f"Declared: {sorted(self._measures)}",
+                    ))
+
+        # ── Dimensions ────────────────────────────────────────
+        for ref in spec.dimensions or ():
+            ref_s = str(ref)
+            if "." not in ref_s:
+                errors.append((
+                    "dimensions",
+                    f"'{ref_s}' must use dot notation: 'dim_name.attribute'",
+                ))
+                continue
+            dim_name, attribute = ref_s.split(".", 1)
+            err = self._check_declared_dim_ref(dim_name, attribute)
+            if err:
+                errors.append(("dimensions", err))
+
+        # ── Filters ───────────────────────────────────────────
+        for key in (spec.filters or {}):
+            key_s = str(key)
+            sub = f"filters.{key_s}"
+            if "." in key_s:
+                dim_name, attribute = key_s.split(".", 1)
+                err = self._check_declared_dim_ref(dim_name, attribute)
+                if err:
+                    errors.append((sub, err))
+                continue
+            if key_s in declared_cols:
+                continue
+            matches = [
+                f"{dn}.{key_s}" for dn, dd in self._dimensions.items()
+                if key_s in (dd.attributes or []) or key_s == dd.key_col
+            ]
+            if matches:
+                errors.append((
+                    sub,
+                    f"'{key_s}' is not a declared column on fact "
+                    f"'{spec.fact}'. It exists on "
+                    f"{matches[0].split('.')[0]}; reference it as "
+                    f"'{matches[0]}'.",
+                ))
+            else:
+                warnings.append((
+                    sub,
+                    f"filter column '{key_s}' is not among the declared "
+                    f"columns of fact '{spec.fact}'."
+                    f"{self._hint(key_s, declared_cols)} "
+                    f"Declared: {sorted(declared_cols)}. It cannot be "
+                    f"verified before execution, which checks it against "
+                    f"the actual table.",
+                ))
+
+        return errors, warnings
+
+    def _check_declared_dim_ref(
+        self, dim_name: str, attribute: str
+    ) -> Optional[str]:
+        """One ``dim_name.attribute`` reference against the declarations."""
+        dim_def = self._dimensions.get(dim_name)
+        if dim_def is None:
+            return (
+                f"'{dim_name}' is not a dimension on model '{self.name}'."
+                f"{self._hint(dim_name, self._dimensions)} "
+                f"Available: {sorted(self._dimensions)}"
+            )
+        declared = dim_def.attributes
+        if declared and attribute not in declared and attribute != dim_def.key_col:
+            return (
+                f"attribute '{attribute}' is not declared on dimension "
+                f"'{dim_name}'.{self._hint(attribute, declared)} "
+                f"Declared attributes: {declared}"
+            )
+        return None
+
+    def spec_result_columns(self, spec: QuerySpec) -> list[str]:
+        """
+        The column names a :class:`QuerySpec`'s result frame will carry,
+        computed from declarations alone: each dimension reference as
+        written (``dim_name.attribute``) plus every measure output —
+        ratio components included — exactly as ``execute()`` produces
+        them via ``_resolve_measures``. Raises ``ValueError`` when the
+        fact or measures cannot be resolved; check the spec first.
+        """
+        fact_def = self._facts.get(spec.fact)
+        if fact_def is None:
+            raise ValueError(
+                f"Fact '{spec.fact}' is not registered in model '{self.name}'."
+            )
+        agg_map, _derived, ratios = self._resolve_measures(spec.measures, fact_def)
+        return (
+            [str(d) for d in (spec.dimensions or ())]
+            + list(agg_map)
+            + list(ratios)
+        )
+
     @staticmethod
     def _predicate_sql(pred: _Predicate, column_sql: str) -> tuple[str, list]:
         """Render one predicate as parameterised SQL."""

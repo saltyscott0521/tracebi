@@ -165,6 +165,14 @@ def section_from_dict(
     """
     if "type" not in d:
         raise ValueError(f"Section spec needs a 'type'. Got keys: {sorted(d)}")
+    # The classic trap: 'dataset' is the Python field holding a live
+    # DataSet (get_context advertises it), so a section carrying it would
+    # construct fine and die at render with a pathless AttributeError.
+    if "dataset" in d:
+        raise ValueError(
+            "'dataset' is the Python field; a spec references data — "
+            "rename to 'data'"
+        )
     stype = d["type"]
     cls = SECTION_CLASSES.get(stype)
     if cls is None:
@@ -396,29 +404,35 @@ class ReportSpec:
             )
             return
 
-        info = model.info()
-        facts = {f["name"] for f in info["facts"]}
-        if ref.query.fact not in facts:
-            errors.append(
-                f"{where}.data.query.fact: '{ref.query.fact}' is not a fact on "
-                f"model '{ref.model}'. Available: {sorted(facts)}"
-            )
+        # The model checks the query against what it declares — the same
+        # rules execution enforces (DataModel.check_query_spec lives beside
+        # its execution-time twins), shared so they cannot drift.
+        q_errors, q_warnings = model.check_query_spec(ref.query)
+        errors.extend(f"{where}.data.query.{sub}: {msg}" for sub, msg in q_errors)
+        warnings.extend(f"{where}.data.query.{sub}: {msg}" for sub, msg in q_warnings)
+        if q_errors:
             return
-        declared = {m["name"] for m in info.get("measures", [])}
-        if isinstance(ref.query.measures, (list, tuple)):
-            for m in ref.query.measures:
-                if m not in declared:
-                    errors.append(
-                        f"{where}.data.query.measures: '{m}' is not a declared "
-                        f"measure on '{ref.model}'. Declared: {sorted(declared)}"
-                    )
-        dims = {d["name"] for d in info["dimensions"]}
-        for ref_dim in ref.query.dimensions or ():
-            name = str(ref_dim).split(".", 1)[0]
-            if name not in dims:
+
+        # Chart axes must name columns this query will actually produce.
+        if raw.get("type") == SectionType.CHART.value:
+            try:
+                columns = model.spec_result_columns(ref.query)
+            except ValueError:
+                return  # already reported above, or unresolvable measures
+            y = raw.get("y")
+            axes = [("x", raw.get("x"))] + [
+                ("y", v) for v in (y if isinstance(y, list) else [y])
+            ]
+            for axis, value in axes:
+                if value is None or value in columns:
+                    continue
+                import difflib
+                hint = difflib.get_close_matches(str(value), columns, n=1)
                 errors.append(
-                    f"{where}.data.query.dimensions: '{name}' is not a dimension "
-                    f"on '{ref.model}'. Available: {sorted(dims)}"
+                    f"{where}.{axis}: '{value}' is not a column this query "
+                    f"produces."
+                    + (f" Did you mean '{hint[0]}'?" if hint else "")
+                    + f" It will have: {sorted(columns)}."
                 )
 
     # ── Execution ──────────────────────────────────────────────
