@@ -118,6 +118,7 @@ The differences that matter:
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
 | Let an AI agent query models and author reports | `pip install 'tracebi[mcp]'`, then register `tracebi mcp` with your agent — see [Agent gateway](#agent-gateway-mcp) |
+| Point an agent at the rules of the road | [AGENTS.md](AGENTS.md) — the agent knowledge base; SOPs in [docs/agents/](docs/agents) |
 
 ---
 
