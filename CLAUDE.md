@@ -110,7 +110,7 @@ tracebi/               # Core Python package (~5200 LOC)
   __init__.py          # Public API re-exports — check here before writing new code
 web/
   api/
-    main.py            # FastAPI app entry point — CORS, routers, WSGI mounts, auth
+    main.py            # FastAPI app entry point — CORS, routers, auth
     auth.py            # Optional HTTP Basic / proxy-header middleware
     registry.py        # Back-compat re-export of tracebi.registry (the real seam)
     errors.py          # Structured error payload (message + traceback) for routers
@@ -120,7 +120,7 @@ web/
   run.py               # Dev server (uvicorn wrapper)
   demo_app/            # Default app module package — shows how to wire everything together
 examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
-tests/                 # 404 pytest tests, one file per phase
+tests/                 # pytest suite (700+ tests; run it for the current count), one file per area
 seeds/                 # DB init + Bronze seeding
 models/                # DataModel definitions — each .py exposes a `model` variable
 pipelines/             # PipelineRunner definitions — each .py exposes a `runner` variable

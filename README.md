@@ -4,24 +4,32 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/saltyscott0521/tracebi)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A **code-first, traceable BI and analytics framework** for Python.
+A **trust layer for AI-generated analytics** — built on a code-first,
+traceable BI framework for Python.
 
-Define your data model, transformations, and reports entirely in code.
-Every dataset, report, and pipeline run is traceable back to the exact
-connector, query, and transform steps that produced it.
+AI made producing reports nearly free; believing them is the expensive part.
+TraceBi answers that: agents and analysts author reports against a
+**semantic contract** (models, facts, dimensions, named measures), every
+query comes back **stamped** — the resolved query, the full lineage chain,
+and a SHA-256 fingerprint of the complete result — and every rendered
+artifact carries a manifest that `tracebi verify` can re-prove later.
+Underneath is the Python framework that makes it work: define your data
+model, transformations, and reports entirely in code, with every dataset,
+report, and pipeline run traceable back to the exact connector, query, and
+transform steps that produced it.
 
 ---
 
 ## Why TraceBi?
 
-| Feature | Dash / Streamlit | dbt | Qlik / Tableau | **TraceBi** |
+| Trust capability | Dash / Streamlit | dbt | Qlik / Tableau | **TraceBi** |
 |---|---|---|---|---|
-| Code-defined reports | ✓ | ✗ | ✗ | ✓ |
-| Relational data model | ✗ | ✓ | ✓ | ✓ |
-| Full data lineage per report | ✗ | partial | ✗ | ✓ |
-| Excel / HTML output | ✗ | ✗ | ✓ | ✓ |
-| Medallion architecture | ✗ | ✓ | ✗ | ✓ |
-| Scheduled pipelines | ✗ | ✓ | ✓ | ✓ |
+| Semantic contract agents query (facts, dims, named measures) | ✗ | ✓ (Semantic Layer, cloud) | partial (governed models, not agent-first) | ✓ |
+| Every query stamped: resolved query + lineage + result fingerprint | ✗ | ✗ | ✗ | ✓ |
+| Report specs validated *before* execution | ✗ | ✗ (compiles SQL, no report layer) | ✗ | ✓ |
+| Re-provable artifacts (`tracebi verify` re-runs the receipts) | ✗ | ✗ | ✗ | ✓ |
+| Self-contained HTML artifact + lineage manifest | ✗ (live app, no artifact) | ✗ (docs site, not reports) | partial (exports, no lineage) | ✓ |
+| Code-first Python framework underneath | ✓ | ✗ (SQL + YAML) | ✗ | ✓ |
 
 ---
 
@@ -31,8 +39,9 @@ connector, query, and transform steps that produced it.
 - [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
 - [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
-- [x] **Phase 5** — Web UI (FastAPI + React, Dash embedded), folder-based auto-discovery, optional HTTP Basic auth, `tracebi` CLI, docker-compose deployment
+- [x] **Phase 5** — Web UI (FastAPI + React), folder-based auto-discovery, optional HTTP Basic / proxy-header auth with roles, `tracebi` CLI, docker-compose deployment
 - [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model and authors validated report specs; every response is stamped with the resolved query, lineage, and a fingerprint of the full result
+- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable
 
 ---
 
@@ -118,6 +127,7 @@ The differences that matter:
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
 | Let an AI agent query models and author reports | `pip install 'tracebi[mcp]'`, then register `tracebi mcp` with your agent — see [Agent gateway](#agent-gateway-mcp) |
+| Re-prove a rendered report's numbers | `tracebi verify output/report.manifest.json` — re-runs every recorded query and classifies drift |
 | Point an agent at the rules of the road | [AGENTS.md](AGENTS.md) — the agent knowledge base; SOPs in [docs/agents/](docs/agents) |
 
 ---
@@ -228,6 +238,12 @@ tracebi new-pipeline "Sales ETL"                     # → pipelines/sales_etl.p
 tracebi list-pipelines
 tracebi run-pipeline sales_etl                       # run every layer, upstream first
 tracebi run-pipeline sales_etl --status              # last run per layer, executes nothing
+tracebi context [--model NAME]                       # framework vocabulary as JSON (for agents and tooling)
+tracebi spec schema                                  # JSON Schema for a report spec
+tracebi spec validate report.json                    # check a spec without executing it
+tracebi spec render report.json                      # build a spec and render HTML + manifest
+tracebi mcp                                          # agent gateway over MCP (stdio)
+tracebi verify output/report.manifest.json           # re-run recorded queries; classify drift
 ```
 
 `run-pipeline` executes layers without a web server, which is what lets the
@@ -420,7 +436,7 @@ runner.start()
 Every run is recorded in `tracebi_runs` with `rows_in`, `rows_out`, `status`,
 and an `upstream_run_id` linking back to the previous layer's run.
 
-### 7. Lineage diagrams
+### 6. Lineage diagrams
 
 ```python
 from tracebi.lineage.diagram import LineageDiagram
@@ -449,7 +465,14 @@ rows. Rows are a capped preview; the fingerprint always covers the full
 result, so any number the agent quotes is verifiable afterwards by
 re-running the recorded query and comparing hashes. `render_report_spec`
 produces the governed HTML artifact plus its lineage manifest, and refuses
-a spec that fails validation.
+a spec that fails validation. `verify_manifest` closes the loop: it re-runs
+every query recorded in a manifest and classifies the outcome (reproduces,
+source drift, model changed, unexplained), so an agent can check its own
+receipt before a human sees the number.
+
+The full playbook — the two planes, the L0–L3 assurance ladder, all eight
+tools, and the canonical discover → explore → author → validate → render → verify → cite
+loop — is in [AGENTS.md](AGENTS.md).
 
 ```bash
 pip install 'tracebi[mcp]'
@@ -471,8 +494,8 @@ The HTTP transport binds `127.0.0.1` and enables DNS-rebinding protection,
 so a genuinely remote agent should reach it through a reverse proxy (TLS
 termination there; the bearer token still applies end to end).
 
-Read-and-compute only: queries, validation and rendering. Pipeline
-execution (which writes to the warehouse) is deliberately not exposed.
+Read-and-compute only: queries, validation, rendering, and verification.
+Pipeline execution (which writes to the warehouse) is deliberately not exposed.
 Attribution is recorded as `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`)
 in the same audit trail as web and CLI actors.
 
@@ -480,11 +503,13 @@ in the same audit trail as web and CLI actors.
 
 Every render writes a `<output>.manifest.json` next to the artifact —
 `render_report_spec` lands both in `output/` by default. The
-manifest is the audit trail: the recorded queries, lineage, and git SHA
-that let a reviewer check a number months later. Rendered HTML is
-disposable; manifests are not. Retain them — commit them, or archive
-whatever lands in `output/` — because a receipt you discarded proves
-nothing.
+manifest is the audit trail: the recorded queries, lineage, input
+fingerprints, and git SHA that let a reviewer check a number months later.
+`tracebi verify <manifest>` is that check — it re-runs every recorded query
+and reports whether each still reproduces, whether the inputs drifted, or
+whether the model itself changed. Rendered HTML is disposable; manifests
+are not. Retain them — commit them, or archive whatever lands in `output/`
+— because a receipt you discarded proves nothing.
 
 ---
 
@@ -544,7 +569,7 @@ Your module just needs to import `registry` and call `registry.add_connector()`,
 
 Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/web-customization.md](docs/web-customization.md) for the full wiring guide.
 
-### 8. Shared models and pipelines (no web server required)
+### Shared models and pipelines (no web server required)
 
 Define a model once in `models/` and import it anywhere — notebooks, scripts, or the web server:
 
@@ -577,7 +602,7 @@ runner.status()
 
 The web server auto-discovers both directories at startup and registers them into the registry automatically.
 
-### 9. Adding reports to the web UI
+### Adding reports to the web UI
 
 Drop a file in `reports/` and decorate a factory function — the server picks it up on startup with no extra wiring:
 
@@ -632,7 +657,7 @@ python examples/phase4_example.py      # full pipeline (run seeds/seed_db.py fir
 
 ```bash
 pytest tests/
-# 404 passed
+# 727 passed
 ```
 
 ---
@@ -647,7 +672,8 @@ tracebi/
 │   ├── etl/              LandingLayer, ManipulationLayer, FinalLayer (Bronze/Silver/Gold aliases)
 │   ├── reports/          Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
 │   ├── pipeline/         PipelineRunner (APScheduler + DB)
-│   └── lineage/          LineageDiagram
+│   ├── lineage/          LineageDiagram
+│   └── mcp_server.py     Agent gateway — 8 MCP tools over the kernel
 ├── web/
 │   ├── api/              FastAPI app, routers, registry
 │   ├── ui/               React UI (Vite)
@@ -655,7 +681,7 @@ tracebi/
 │   ├── run.py            Dev server entrypoint
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                339 tests across all phases
+├── tests/                727 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── models/               DataModel definitions — each .py exposes a `model` variable
 ├── pipelines/            PipelineRunner definitions — each .py exposes a `runner` variable
@@ -669,8 +695,8 @@ tracebi/
 
 ## Ad hoc reports
 
-Copy `requests/_template.py`, rename it, fill in the four sections
-(connect → build datasets → build report → render), and commit it to git.
+Copy `requests/_template.py`, rename it, fill in the numbered sections
+(parameters → model → datasets → report → render), and commit it to git.
 The script is the permanent, auditable record of how the numbers were produced.
 
 Declare parameters with defaults in one line — they're overridable from the

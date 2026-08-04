@@ -176,7 +176,7 @@ export default function Layout({ children }) {
             </h1>
           </div>
           <p style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 43, letterSpacing: .2 }}>
-            Code-first traceable BI
+            Trust layer for AI-generated analytics
           </p>
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}

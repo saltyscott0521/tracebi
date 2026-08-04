@@ -122,7 +122,7 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 
 ### 18. Docs-and-drift sweep
 
-- **What:** Reconcile the stale test counts across README, NOTES and CLAUDE.md, fix the Quick Start 5→7 numbering, the 4-vs-5 template-sections mismatch, `spec render`'s CWD-default output path, and delete or rewrite the stale docs/overview.html (still documents the removed Dash layer).
+- **What:** ~~Reconcile the stale test counts, Quick Start numbering, template-sections mismatch, rewrite docs/overview.html~~ — done in the story-sync pass (2026-08-04). Remaining: `spec render`'s CWD-default output path.
 - **Why:** Analyst audit lows — individually trivial, collectively the kind of drift a skeptical evaluator reads as a proxy for rigor, which is expensive for a product selling exactness.
 - **Effort:** S
 

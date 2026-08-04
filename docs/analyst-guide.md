@@ -7,7 +7,10 @@ code block is runnable.
 **Who this is for:** analysts writing reports against an existing TraceBi
 project (a `DataModel` someone has already wired up). If you're setting up
 connectors and models from scratch, start with the [README](../README.md)
-Quick Start instead.
+Quick Start instead. If your "analyst" is an AI agent, the playbook is
+[AGENTS.md](../AGENTS.md) — the two planes, the assurance ladder, and the
+MCP gateway tools — with step-by-step SOPs in [docs/agents/](agents/);
+agents work through the gateway against the same models this guide uses.
 
 ---
 
@@ -172,8 +175,17 @@ your browser. This is the fastest way to iterate on layout and content.
 When you're done, render the final artifacts:
 
 ```bash
-tracebi run my_report          # writes output/*.xlsx and *.html
+tracebi run my_report          # writes output/*.xlsx and *.html + *.manifest.json
 ```
+
+The `.manifest.json` beside each output is the **receipt**: the recorded
+queries, lineage, input fingerprints, and git SHA behind every section.
+Rendered HTML is disposable; the manifest is not — retain it. Later,
+`tracebi verify output/my_report.html.manifest.json` re-proves it by re-running
+each section's recorded model query and reporting whether the numbers still
+reproduce, whether the source data drifted, or whether the model itself
+changed. (Sections built from hand-transformed DataSets carry no recorded
+query and are reported as `unverifiable` rather than guessed at.)
 
 ## 7. Publish to the web UI
 

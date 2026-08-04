@@ -231,19 +231,38 @@ export default function Home() {
 
         {/* Right */}
         <div>
+          <SH title="Every number has a receipt" />
+          <div style={{
+            background: 'var(--card)', border: '1px solid var(--border)',
+            borderRadius: 14, padding: '20px 22px', marginBottom: 20,
+          }}>
+            {[
+              ['Stamped queries', 'Gateway query results carry the resolved query, the full lineage chain, and a SHA-256 fingerprint of the complete result.'],
+              ['Validation before execution', 'Report specs are checked against the model contract first — invalid specs are refused, never rendered.'],
+              ['The verify loop', 'tracebi verify re-runs every query recorded in a manifest and classifies the outcome: reproduces, source drift, model changed, or unexplained — ad-hoc data honestly reports unverifiable.'],
+              ['Agent gateway', 'Eight MCP tools let agents discover, query, author, render, and verify against the semantic contract — read-and-compute only, never the warehouse.'],
+            ].map(([title, desc], i) => (
+              <div key={title} style={{ marginBottom: i < 3 ? 14 : 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55 }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+
           <SH title="Quick start" />
           <div style={{
             background: 'var(--card)', border: '1px solid var(--border)',
             borderRadius: 14, padding: '20px 22px', marginBottom: 20,
           }}>
             <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.65, marginBottom: 16 }}>
-              TraceBi is a code-first analytics framework. Every transform is immutable and lineage-tracked automatically.
+              TraceBi is a trust layer for AI-generated analytics. Analysts and agents author reports against a semantic contract — and every number carries a re-provable receipt.
             </p>
             {[
               'Define a connector + DataModel in your app module',
               'Load, filter, transform — each step appends a LineageNode',
               'Run queries via .query() or the Explore page',
-              'Build reports and render to HTML or Excel',
+              'Build reports and render to HTML or Excel — a lineage manifest ships with every output',
+              'Re-prove any output later: tracebi verify re-runs the recorded queries',
             ].map((text, n) => (
               <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
                 <span style={{

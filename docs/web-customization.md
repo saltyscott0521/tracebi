@@ -198,6 +198,25 @@ TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.0/8,172.16.0.0/12
 
 No auth vars set ⇒ the app is open (fine on localhost, not on a network).
 
+**Roles.** Authentication says who a caller is; authorization says what they
+may do. Three ordered roles, split by side effect: `viewer` (read models,
+reports, lineage; run Explore queries and spec validation — they compute
+but persist nothing), `analyst` (viewer + execute report and request code),
+`admin` (analyst + run pipeline layers, which write to the warehouse, and
+`/api/_dev/reload`). Assign roles per principal with
+`TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst` or from a trusted proxy
+header with `TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups`; unlisted
+principals get `TRACEBI_AUTH_DEFAULT_ROLE` (default `viewer`). With
+*neither* role var set, every authenticated principal is `admin` — role
+enforcement is opt-in so enabling auth cannot lock a deployment out of its
+own pipelines.
+
+**The MCP gateway authenticates separately.** `tracebi mcp --transport http`
+is not behind the web app's auth — it requires its own bearer token
+(`TRACEBI_MCP_TOKEN`; every request sends `Authorization: Bearer <token>`)
+and refuses to start without one unless `--insecure` is passed explicitly.
+See the README's Agent gateway section.
+
 ## Deployment
 
 ```bash
@@ -231,3 +250,9 @@ docker compose up --build
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | unset | HTTP Basic auth |
 | `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` | unset | Proxy-header auth |
 | `TRACEBI_AUTH_REALM` | `TraceBi` | Basic-auth realm string |
+| `TRACEBI_AUTH_ROLE_MAP` | unset | `principal:role` pairs (e.g. `alice:admin,bob:analyst`) |
+| `TRACEBI_AUTH_ROLE_HEADER` | unset | Read roles from a trusted proxy header (e.g. `X-Forwarded-Groups`) |
+| `TRACEBI_AUTH_DEFAULT_ROLE` | `viewer` | Role for principals not covered above (when role config is set) |
+| `TRACEBI_DOCS_DIR` | `docs` | Folder the Getting Started page serves markdown guides from |
+| `TRACEBI_MCP_TOKEN` | unset | Bearer token for `tracebi mcp --transport http` (gateway, not the web app — required unless `--insecure`) |
+| `TRACEBI_MCP_ACTOR` | `agent` | Audit attribution for gateway work (recorded as `mcp:<actor>`) |

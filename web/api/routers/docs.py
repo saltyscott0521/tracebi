@@ -46,7 +46,16 @@ def _guides() -> dict[str, Path]:
     docs_dir = _docs_dir()
     if not docs_dir.is_dir():
         return {}
-    return {p.stem: p for p in sorted(docs_dir.glob("*.md"))}
+    guides = {p.stem: p for p in sorted(docs_dir.glob("*.md"))}
+    # One level of subdirectories, slugged as "dir--stem" ("agents--sop-
+    # authoring"). The agent SOPs live in docs/agents/ and were invisible
+    # here — a knowledge base the product's own UI could not serve. The
+    # separator contains no path character, so names remain a flat lookup
+    # into this listing and traversal stays structurally impossible.
+    for sub in sorted(p for p in docs_dir.iterdir() if p.is_dir()):
+        for p in sorted(sub.glob("*.md")):
+            guides[f"{sub.name}--{p.stem}"] = p
+    return guides
 
 
 @router.get("")

@@ -13,9 +13,9 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 2.5 | ✅ Done | Medallion architecture, Star schema, Lineage diagram |
 | Phase 3 | ❌ Removed | Dashboard server (Dash) — cut 2026-07-27, see entry below |
 | Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
-| Phase 5 | ✅ Done | Web UI (FastAPI + React, Dash embedded, medallion-aware demo) |
+| Phase 5 | ✅ Done | Web UI (FastAPI + React, medallion-aware demo) |
 | Phase 6 | ✅ Done | DuckDB engine, push-down filters, layer rename, CLI, auto-discovery, auth, docker-compose |
-| Docs | ⚠️ Partial | README/CLAUDE.md current; docs/overview.html is stale (documents the removed Dash layer) |
+| Docs | ✅ Current | README/CLAUDE.md current; docs/overview.html rewritten for the trust-layer story (2026-08-04); AGENTS.md + docs/agents/ SOPs added |
 | Phase 7 | ✅ Done | Correctness sweep, open-core seam, capability surface, ReportSpec, SVG charts, theme layer |
 
 ---

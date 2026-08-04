@@ -70,6 +70,12 @@ A `.ipynb` file in `requests/` is a first-class request script:
 - The web UI's **Requests** page lists it with a run button, parameter
   form, and lineage graphs — exactly like a `.py` script
 
+Renders from a request notebook write the same receipts as a script: each
+output file lands with a `.manifest.json` beside it — the recorded queries,
+lineage, and input fingerprints — and `tracebi verify <manifest>` re-proves
+the numbers later. See the render step in the
+[Analyst Guide](analyst-guide.md) for what verify can and can't check.
+
 **How execution works:** the code cells are concatenated top-to-bottom into
 one script and executed. Markdown cells are ignored. Line magics
 (`%matplotlib inline`) and shell escapes (`!pip install ...`) are silently
