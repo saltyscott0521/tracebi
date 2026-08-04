@@ -254,19 +254,29 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> dict:
         return {"ok": False, "errors": result["errors"],
                 "warnings": result["warnings"]}
 
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    html_path = out_dir / f"{_slug(rs.name)}.html"
-    manifest_path = out_dir / f"{_slug(rs.name)}.manifest.json"
+    # Every failure comes back on the one documented channel —
+    # {ok: false, errors: [...]} with the exception type, never a raw
+    # traceback. Build and render run real queries, so they can fail in
+    # ways validation cannot see (a column only the table knows, a
+    # non-unique dimension key, a connector error).
+    try:
+        out_dir = Path(output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        html_path = out_dir / f"{_slug(rs.name)}.html"
+        manifest_path = out_dir / f"{_slug(rs.name)}.manifest.json"
 
-    with actor(_mcp_actor()):
-        report = rs.build(models)
-        HTMLRenderer().render(report, str(html_path))
-        manifest = report.build_manifest("html", str(html_path)).to_dict()
+        with actor(_mcp_actor()):
+            report = rs.build(models)
+            HTMLRenderer().render(report, str(html_path))
+            manifest = report.build_manifest("html", str(html_path)).to_dict()
 
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, default=str), encoding="utf-8"
-    )
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, default=str), encoding="utf-8"
+        )
+    except Exception as exc:  # noqa: BLE001 — reported on the error channel
+        return {"ok": False,
+                "errors": [f"{type(exc).__name__}: {exc}"],
+                "warnings": result["warnings"]}
     fingerprints = [
         s["dataset_fingerprint"]
         for s in manifest.get("sections", [])
