@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book of Business Review</title>
+<style>
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    font-size: 13px;
+    color: #1a1a2e;
+    background: #f5f7fa;
+    padding: 0;
+}
+.page {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #ffffff;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 48px 56px 64px 56px;
+}
+/* Cover */
+.cover {
+    background: linear-gradient(135deg, #1F3864 0%, #2E74B5 100%);
+    color: #fff;
+    padding: 48px;
+    border-radius: 6px;
+    margin-bottom: 40px;
+}
+.cover h1 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+.cover p  { font-size: 14px; opacity: 0.85; margin-bottom: 6px; }
+.cover .meta-table { margin-top: 20px; border-collapse: collapse; }
+.cover .meta-table td {
+    padding: 5px 18px 5px 0;
+    font-size: 12px;
+    opacity: 0.9;
+}
+.cover .meta-table td:first-child { font-weight: 600; opacity: 1; }
+
+/* Sections */
+.section { margin-bottom: 36px; }
+
+/* Text styles */
+.text-heading1 {
+    font-size: 20px; font-weight: 700;
+    color: #1F3864;
+    border-bottom: 2px solid #2E74B5;
+    padding-bottom: 6px;
+    margin-bottom: 18px;
+}
+.text-heading2 {
+    font-size: 15px; font-weight: 600;
+    color: #2E74B5;
+    margin-bottom: 12px;
+}
+.text-normal { font-size: 13px; line-height: 1.6; color: #333; }
+.text-note {
+    background: #FFF2CC;
+    border-left: 4px solid #F5C518;
+    padding: 10px 14px;
+    font-size: 12px;
+    border-radius: 0 4px 4px 0;
+}
+.text-callout {
+    background: #DEEBF7;
+    border-left: 4px solid #2E74B5;
+    padding: 10px 14px;
+    font-size: 12px;
+    border-radius: 0 4px 4px 0;
+}
+.section-title {
+    font-size: 14px; font-weight: 600;
+    color: #1F3864;
+    margin-bottom: 10px;
+}
+
+/* Tables */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 4px;
+}
+.data-table thead tr {
+    background: #1F3864;
+    color: #fff;
+}
+.data-table thead th {
+    padding: 9px 12px;
+    text-align: left;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+.data-table thead th.num { text-align: right; }
+.data-table tbody tr:nth-child(even) { background: #EBF0F7; }
+.data-table tbody tr:hover { background: #d6e4f0; }
+.data-table tbody td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #dde4ef;
+}
+.data-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.data-table tfoot tr {
+    background: #D6DCE4;
+    font-weight: 700;
+    color: #1F3864;
+}
+.data-table tfoot td {
+    padding: 8px 12px;
+    border-top: 2px solid #1F3864;
+}
+.data-table tfoot td.num { text-align: right; }
+
+.data-table tbody td.neg { color: #C62828; }
+
+/* Metric cards */
+.metric-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.metric-card {
+    flex: 1;
+    min-width: 140px;
+    background: #f8fafd;
+    border: 1px solid #dde4ef;
+    border-left: 4px solid #2E74B5;
+    border-radius: 6px;
+    padding: 14px 18px;
+}
+.metric-label {
+    font-size: 11px; font-weight: 600;
+    color: #5a6b8a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.metric-value { font-size: 24px; font-weight: 700; color: #1F3864; margin-top: 4px; }
+.metric-delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.metric-delta.good { color: #2E7D32; }
+.metric-delta.bad  { color: #C62828; }
+
+/* Side-by-side layout rows */
+.layout-row { display: flex; gap: 24px; align-items: flex-start; }
+.layout-row > .layout-col { min-width: 0; }
+
+/* Charts — inline SVG, so every part is themeable from here. Override any
+   of these in a custom stylesheet to restyle charts without touching code. */
+.chart-container {
+    text-align: center;
+    margin: 8px 0;
+}
+.chart-container img { max-width: 100%; height: auto; }
+.tb-chart { width: 100%; height: auto; max-height: 460px; font-family: inherit; }
+.tb-grid          { stroke: #E3E7EE; stroke-width: 1; }
+.tb-tick          { fill: #6B7280; font-size: 11px; }
+.tb-cat           { fill: #374151; font-size: 11px; }
+.tb-axis-label    { fill: #374151; font-size: 12px; font-weight: 600; }
+.tb-legend        { fill: #374151; font-size: 11.5px; }
+.tb-value         { fill: #374151; font-size: 10.5px; }
+.tb-chart-empty   { fill: #9CA3AF; font-size: 13px; font-style: italic; }
+.tb-bar, .tb-slice { stroke: #FFFFFF; stroke-width: 0.75; }
+.tb-point         { stroke: #FFFFFF; stroke-width: 1; }
+
+/* Lineage */
+.lineage-toggle {
+    margin-top: 48px;
+    border-top: 1px solid #dde4ef;
+    padding-top: 20px;
+}
+.lineage-toggle summary {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2E74B5;
+    padding: 6px 0;
+    list-style: none;
+}
+.lineage-toggle summary::-webkit-details-marker { display: none; }
+.lineage-toggle summary::before { content: "▶  "; }
+details[open] summary::before { content: "▼  "; }
+.lineage-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 12px;
+}
+.lineage-table th {
+    background: #2F5496;
+    color: #fff;
+    padding: 6px 10px;
+    text-align: left;
+}
+.lineage-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+}
+.lineage-table tr:nth-child(even) td { background: #f5f7fa; }
+.badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.badge-load      { background: #DEEBF7; color: #1F3864; }
+.badge-filter    { background: #E2EFDA; color: #375623; }
+.badge-transform { background: #FFF2CC; color: #7D6608; }
+.badge-join      { background: #FCE4D6; color: #843C0C; }
+.badge-sort      { background: #EAD1DC; color: #4A235A; }
+.badge-select    { background: #D9EAD3; color: #274E13; }
+.badge-rename    { background: #CFE2F3; color: #1C4587; }
+.badge-other     { background: #eeeeee; color: #333; }
+
+/* Print */
+@media print {
+    body { background: #fff; }
+    .page { box-shadow: none; padding: 20px; }
+    .lineage-toggle { display: none; }
+    details { display: none; }
+}
+
+</style>
+</head>
+<body>
+<div class="page">
+  
+  <div class="cover">
+    <h1>Book of Business Review</h1>
+    <p>AUM, cost basis and unrealized gains across the wealth book. Gain figures use the model's shared measure definitions.</p>
+    
+        <table class="meta-table">
+          
+            <tr>
+              <td>Author</td>
+              <td>claude (via mcp gateway)</td>
+            </tr>
+            <tr>
+              <td>Generated</td>
+              <td>2026-08-04 03:27 UTC</td>
+            </tr>
+        </table>
+  </div>
+  <div class="section"><div class="section-title">Scope</div><div class="text-normal">Holdings across all branches as of the latest pipeline run. Market value and cost basis are aggregated from position-level records; client mix counts positions, not accounts. Authored by an agent through the TraceBi gateway - each section's data carries its full lineage in the report manifest.</div></div>
+
+  <div class="section">
+    <div class="section-title">AUM and cost basis by asset class</div>
+    <table class="data-table">
+      <thead><tr><th>Asset class</th><th class="num">Market value</th><th class="num">Cost basis</th><th class="num">Unrealized gain</th><th class="num">Gain %</th></tr></thead>
+      <tbody><tr><td>alternatives</td><td class="num">$891,276</td><td class="num">$833,795</td><td class="num">$57,482</td><td class="num">6.9%</td></tr><tr><td>equity</td><td class="num">$2,215,130</td><td class="num">$2,071,033</td><td class="num">$144,097</td><td class="num">7.0%</td></tr><tr><td>fixed income</td><td class="num">$2,726,364</td><td class="num">$2,554,683</td><td class="num">$171,681</td><td class="num">6.7%</td></tr><tr><td>money market</td><td class="num">$1,688,904</td><td class="num">$1,539,119</td><td class="num">$149,785</td><td class="num">9.7%</td></tr></tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td class="num"><strong>$7,521,674</strong></td><td class="num"><strong>$6,998,630</strong></td><td class="num"><strong>$523,044</strong></td><td></td></tr></tfoot>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">AUM by advisor</div>
+    <div class="chart-container">
+      <svg class="tb-chart tb-chart-barh" viewBox="0 0 840 420" preserveAspectRatio="xMidYMid meet" role="img" xmlns="http://www.w3.org/2000/svg"><title>AUM by advisor</title><desc>barh chart</desc><line class="tb-grid" x1="72.0" y1="24" x2="72.0" y2="356"/><text class="tb-tick" x="72.0" y="374" text-anchor="middle">0</text><line class="tb-grid" x1="220.8" y1="24" x2="220.8" y2="356"/><text class="tb-tick" x="220.8" y="374" text-anchor="middle">500,000</text><line class="tb-grid" x1="369.6" y1="24" x2="369.6" y2="356"/><text class="tb-tick" x="369.6" y="374" text-anchor="middle">1,000,000</text><line class="tb-grid" x1="518.4" y1="24" x2="518.4" y2="356"/><text class="tb-tick" x="518.4" y="374" text-anchor="middle">1,500,000</text><line class="tb-grid" x1="667.2" y1="24" x2="667.2" y2="356"/><text class="tb-tick" x="667.2" y="374" text-anchor="middle">2,000,000</text><line class="tb-grid" x1="816.0" y1="24" x2="816.0" y2="356"/><text class="tb-tick" x="816.0" y="374" text-anchor="middle">2,500,000</text><text class="tb-cat" x="64" y="61.2" text-anchor="end">Anna Park</text><text class="tb-cat" x="64" y="127.6" text-anchor="end">Lisa Chen</text><text class="tb-cat" x="64" y="194.0" text-anchor="end">Mike Torres</text><text class="tb-cat" x="64" y="260.4" text-anchor="end">Sara Green</text><text class="tb-cat" x="64" y="326.8" text-anchor="end">Tom Hall</text><text class="tb-axis-label" transform="rotate(-90 16 190.0)" x="16" y="190.0" text-anchor="middle">Market value</text><text class="tb-axis-label" x="444.0" y="412" text-anchor="middle">Advisor</text><rect class="tb-bar" x="72.0" y="33.3" width="445.9" height="47.8" fill="#2E74B5"><title>Anna Park: 1,498,414.73</title></rect><text class="tb-value" x="521.9" y="61.2">1,498,414.73</text><rect class="tb-bar" x="72.0" y="99.7" width="714.3" height="47.8" fill="#2E74B5"><title>Lisa Chen: 2,400,240.38</title></rect><text class="tb-value" x="790.3" y="127.6">2,400,240.38</text><rect class="tb-bar" x="72.0" y="166.1" width="571.4" height="47.8" fill="#2E74B5"><title>Mike Torres: 1,919,901.08</title></rect><text class="tb-value" x="647.4" y="194.0">1,919,901.08</text><rect class="tb-bar" x="72.0" y="232.5" width="350.9" height="47.8" fill="#2E74B5"><title>Sara Green: 1,179,196.93</title></rect><text class="tb-value" x="426.9" y="260.4">1,179,196.93</text><rect class="tb-bar" x="72.0" y="298.9" width="155.9" height="47.8" fill="#2E74B5"><title>Tom Hall: 523,921.25</title></rect><text class="tb-value" x="231.9" y="326.8">523,921.25</text></svg>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Client mix - segment by risk profile</div>
+    <table class="data-table">
+      <thead><tr><th>Segment</th><th>Risk profile</th><th class="num">Market value</th><th class="num">Positions</th></tr></thead>
+      <tbody><tr><td>affluent</td><td>aggressive</td><td class="num">$671,067</td><td class="num">15</td></tr><tr><td>affluent</td><td>balanced</td><td class="num">$1,637,035</td><td class="num">20</td></tr><tr><td>affluent</td><td>conservative</td><td class="num">$705,500</td><td class="num">16</td></tr><tr><td>private</td><td>aggressive</td><td class="num">$687,823</td><td class="num">10</td></tr><tr><td>private</td><td>balanced</td><td class="num">$515,990</td><td class="num">10</td></tr><tr><td>private</td><td>conservative</td><td class="num">$956,710</td><td class="num">16</td></tr><tr><td>retail</td><td>aggressive</td><td class="num">$205,094</td><td class="num">4</td></tr><tr><td>retail</td><td>balanced</td><td class="num">$1,404,909</td><td class="num">20</td></tr><tr><td>retail</td><td>conservative</td><td class="num">$737,547</td><td class="num">9</td></tr></tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td></td><td class="num"><strong>$7,521,674</strong></td><td></td></tr></tfoot>
+    </table>
+  </div>
+<div class="section"><div class="section-title">Provenance</div><div class="text-note">Rendered from a validated report spec. The manifest beside this artifact records, for every table and chart above, the exact query, the lineage chain from connector to aggregate, and a SHA-256 fingerprint of the underlying result.</div></div>
+  
+  <div class="lineage-toggle">
+    <details>
+      <summary>Data Lineage — click to expand</summary>
+      <table class="lineage-table">
+        <thead>
+          <tr>
+            <th>Section</th><th>Dataset</th><th>Step</th>
+            <th>Operation</th><th>Description</th>
+            <th>Connector</th><th>Source</th><th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>AUM and cost basis by asset class</td>
+              <td>fact_holdings_result</td>
+              <td>1</td>
+              <td><span class="badge badge-load">load</span></td>
+              <td>Loaded 'holdings' from connector 'banking'</td>
+              <td>banking</td>
+              <td>holdings</td>
+              <td>2026-08-04T03:27:30.682230+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM and cost basis by asset class</td>
+              <td>fact_holdings_result</td>
+              <td>2</td>
+              <td><span class="badge badge-other">assign</span></td>
+              <td>Derived measure column(s): unrealized_gain = market_value - cost_basis</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.683133+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM and cost basis by asset class</td>
+              <td>fact_holdings_result</td>
+              <td>3</td>
+              <td><span class="badge badge-load">load</span></td>
+              <td>Loaded 'products' from connector 'banking'</td>
+              <td>banking</td>
+              <td>products</td>
+              <td>2026-08-04T03:27:30.683163+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM and cost basis by asset class</td>
+              <td>fact_holdings_result</td>
+              <td>4</td>
+              <td><span class="badge badge-join">join</span></td>
+              <td>Joined fact 'holdings' → dim 'products' on product_id = product_id (left)</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.790348+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM and cost basis by asset class</td>
+              <td>fact_holdings_result</td>
+              <td>5</td>
+              <td><span class="badge badge-other">assign</span></td>
+              <td>Ratio measure(s): gain_pct = unrealized_gain / cost_basis</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.804754+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM and cost basis by asset class</td>
+              <td>fact_holdings_result</td>
+              <td>6</td>
+              <td><span class="badge badge-transform">transform</span></td>
+              <td>Star-schema query executed via duckdb</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.804766+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM by advisor</td>
+              <td>fact_holdings_result</td>
+              <td>1</td>
+              <td><span class="badge badge-load">load</span></td>
+              <td>Loaded 'holdings' from connector 'banking'</td>
+              <td>banking</td>
+              <td>holdings</td>
+              <td>2026-08-04T03:27:30.804893+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM by advisor</td>
+              <td>fact_holdings_result</td>
+              <td>2</td>
+              <td><span class="badge badge-load">load</span></td>
+              <td>Loaded 'clients' from connector 'banking'</td>
+              <td>banking</td>
+              <td>clients</td>
+              <td>2026-08-04T03:27:30.804933+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM by advisor</td>
+              <td>fact_holdings_result</td>
+              <td>3</td>
+              <td><span class="badge badge-join">join</span></td>
+              <td>Joined fact 'holdings' → dim 'clients' on client_id = client_id (left)</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.810457+00:00</td>
+            </tr>
+            <tr>
+              <td>AUM by advisor</td>
+              <td>fact_holdings_result</td>
+              <td>4</td>
+              <td><span class="badge badge-transform">transform</span></td>
+              <td>Star-schema query executed via duckdb</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.812108+00:00</td>
+            </tr>
+            <tr>
+              <td>Client mix - segment by risk profile</td>
+              <td>fact_holdings_result</td>
+              <td>1</td>
+              <td><span class="badge badge-load">load</span></td>
+              <td>Loaded 'holdings' from connector 'banking'</td>
+              <td>banking</td>
+              <td>holdings</td>
+              <td>2026-08-04T03:27:30.812200+00:00</td>
+            </tr>
+            <tr>
+              <td>Client mix - segment by risk profile</td>
+              <td>fact_holdings_result</td>
+              <td>2</td>
+              <td><span class="badge badge-load">load</span></td>
+              <td>Loaded 'clients' from connector 'banking'</td>
+              <td>banking</td>
+              <td>clients</td>
+              <td>2026-08-04T03:27:30.812240+00:00</td>
+            </tr>
+            <tr>
+              <td>Client mix - segment by risk profile</td>
+              <td>fact_holdings_result</td>
+              <td>3</td>
+              <td><span class="badge badge-join">join</span></td>
+              <td>Joined fact 'holdings' → dim 'clients' on client_id = client_id (left)</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.817843+00:00</td>
+            </tr>
+            <tr>
+              <td>Client mix - segment by risk profile</td>
+              <td>fact_holdings_result</td>
+              <td>4</td>
+              <td><span class="badge badge-transform">transform</span></td>
+              <td>Star-schema query executed via duckdb</td>
+              <td></td>
+              <td></td>
+              <td>2026-08-04T03:27:30.819761+00:00</td>
+            </tr>
+        </tbody>
+      </table>
+    </details>
+  </div>
+</div>
+</body>
+</html>

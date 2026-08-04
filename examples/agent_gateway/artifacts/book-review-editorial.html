@@ -1,0 +1,393 @@
+<title>Book of Business Review — Wealth Book, Verified</title>
+<style>
+  :root{
+    --paper:#f2f3ee; --card:#fbfbf8; --ink:#182420; --ink-2:#41544b; --ink-3:#6b7d74;
+    --line:#d8dcd2; --line-strong:#b9c1b3;
+    --green:#1e5c41; --green-bright:#1e7a4e; --green-wash:#e7efe8;
+    --gold:#a8853b; --gold-wash:#f3ecdc;
+    --stamp:#2e6b4f;
+    --band-1:#1e4d3b; --band-2:#2e6b4f; --band-3:#6c9480; --band-4:#b08d3f;
+    --serif:"Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#111815; --card:#18211c; --ink:#e6eae2; --ink-2:#a9b8ae; --ink-3:#7e8f85;
+      --line:#2a352f; --line-strong:#3d4b43;
+      --green:#4fa87c; --green-bright:#54b184; --green-wash:#1a2b22;
+      --gold:#c9a55a; --gold-wash:#2a2416;
+      --stamp:#54b184;
+      --band-1:#2e6b4f; --band-2:#3f8563; --band-3:#6c9480; --band-4:#c9a55a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#111815; --card:#18211c; --ink:#e6eae2; --ink-2:#a9b8ae; --ink-3:#7e8f85;
+    --line:#2a352f; --line-strong:#3d4b43;
+    --green:#4fa87c; --green-bright:#54b184; --green-wash:#1a2b22;
+    --gold:#c9a55a; --gold-wash:#2a2416;
+    --stamp:#54b184;
+    --band-1:#2e6b4f; --band-2:#3f8563; --band-3:#6c9480; --band-4:#c9a55a;
+  }
+  :root[data-theme="light"]{
+    --paper:#f2f3ee; --card:#fbfbf8; --ink:#182420; --ink-2:#41544b; --ink-3:#6b7d74;
+    --line:#d8dcd2; --line-strong:#b9c1b3;
+    --green:#1e5c41; --green-bright:#1e7a4e; --green-wash:#e7efe8;
+    --gold:#a8853b; --gold-wash:#f3ecdc;
+    --stamp:#2e6b4f;
+    --band-1:#1e4d3b; --band-2:#2e6b4f; --band-3:#6c9480; --band-4:#b08d3f;
+  }
+  html{background:var(--paper)}
+  body{
+    margin:0; padding:0 20px 90px; background:var(--paper); color:var(--ink);
+    font-family:var(--serif); font-size:16px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .sheet{max-width:880px; margin:0 auto}
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--green); font-weight:600;
+  }
+  .num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+
+  /* ── Masthead ─────────────────────────────────── */
+  header{padding:64px 0 0}
+  .rule{border:0; border-top:1px solid var(--line-strong); margin:18px 0 0}
+  .rule.thick{border-top:3px double var(--line-strong)}
+  h1{
+    font-size:clamp(34px,6vw,54px); font-weight:600; letter-spacing:-.015em;
+    line-height:1.06; margin:18px 0 10px; text-wrap:balance;
+  }
+  .deck{font-size:17px; color:var(--ink-2); max-width:58ch; margin:0 0 26px; font-style:italic}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:6px 34px; padding:14px 0;
+    border-top:1px solid var(--line-strong); border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-size:12px; color:var(--ink-3);
+  }
+  .meta b{color:var(--ink-2); font-weight:600}
+
+  /* ── Hero figures ─────────────────────────────── */
+  .hero{position:relative; padding:40px 0 8px}
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:0}
+  .stat{padding:8px 26px 8px 0}
+  .stat + .stat{border-left:1px solid var(--line); padding-left:26px}
+  .stat .label{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+  .stat .value{font-family:var(--mono); font-size:clamp(26px,4vw,36px); font-weight:600; letter-spacing:-.02em; margin-top:6px; font-variant-numeric:tabular-nums}
+  .stat .value.gain{color:var(--green-bright)}
+  .stat .sub{font-size:13px; color:var(--ink-3); margin-top:2px}
+  .stamp{
+    position:absolute; top:26px; right:0; width:112px; height:112px;
+    border:2.5px solid var(--stamp); border-radius:50%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transform:rotate(-11deg); color:var(--stamp); opacity:.85;
+    font-family:var(--mono); text-align:center; pointer-events:none;
+  }
+  .stamp::before{content:""; position:absolute; inset:5px; border:1px solid var(--stamp); border-radius:50%}
+  .stamp .s1{font-size:10px; letter-spacing:.18em; font-weight:700}
+  .stamp .s2{font-size:15px; font-weight:700; letter-spacing:.08em; margin:2px 0}
+  .stamp .s3{font-size:8.5px; letter-spacing:.1em}
+  @media (max-width:640px){.stamp{display:none}}
+
+  /* ── Sections ─────────────────────────────────── */
+  section{padding:52px 0 0}
+  h2{font-size:24px; font-weight:600; letter-spacing:-.01em; margin:8px 0 4px; text-wrap:balance}
+  .h2note{font-size:14px; color:var(--ink-3); margin:0 0 22px}
+
+  /* Allocation band */
+  .band{display:flex; height:38px; border-radius:3px; overflow:hidden; margin:8px 0 12px}
+  .band div{transition:filter .15s}
+  .band div:hover{filter:brightness(1.12)}
+  .legend{display:flex; flex-wrap:wrap; gap:8px 24px; font-size:13px; color:var(--ink-2)}
+  .key{display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:7px; vertical-align:-1px}
+
+  /* Ledger table */
+  .ledgerwrap{overflow-x:auto; margin-top:26px}
+  table.ledger{border-collapse:collapse; width:100%; min-width:560px; font-size:14.5px}
+  .ledger th{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-3); font-weight:600; text-align:right; padding:0 14px 10px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .ledger th:first-child{text-align:left; padding-left:0}
+  .ledger td{padding:11px 14px; border-bottom:1px solid var(--line); text-align:right}
+  .ledger td:first-child{text-align:left; padding-left:0; font-weight:600}
+  .ledger tfoot td{border-top:3px double var(--line-strong); border-bottom:none; font-weight:700; padding-top:13px}
+  .gainchip{
+    font-family:var(--mono); font-size:12px; font-weight:700; color:var(--green-bright);
+    background:var(--green-wash); border-radius:999px; padding:3px 10px; white-space:nowrap;
+  }
+  .gainchip.gold{color:var(--gold); background:var(--gold-wash)}
+
+  /* Advisor bars */
+  .bars{display:grid; gap:14px; margin-top:10px}
+  .barrow{display:grid; grid-template-columns:130px 1fr 90px; align-items:center; gap:14px}
+  .barrow .who{font-size:14.5px; font-weight:600}
+  .barrow .track{background:var(--green-wash); border-radius:3px; height:26px; overflow:hidden}
+  .barrow .fill{
+    height:100%; border-radius:3px; background:linear-gradient(90deg,var(--band-1),var(--band-2));
+    animation:grow .9s cubic-bezier(.2,.7,.3,1) both;
+  }
+  .barrow:nth-child(2) .fill{animation-delay:.08s}
+  .barrow:nth-child(3) .fill{animation-delay:.16s}
+  .barrow:nth-child(4) .fill{animation-delay:.24s}
+  .barrow:nth-child(5) .fill{animation-delay:.32s}
+  @keyframes grow{from{max-width:0}to{max-width:100%}}
+  @media (prefers-reduced-motion: reduce){.barrow .fill{animation:none}}
+  .barrow .val{font-family:var(--mono); font-size:13.5px; font-weight:600; text-align:right; font-variant-numeric:tabular-nums}
+  .barrow .share{color:var(--ink-3); font-weight:400; font-size:11.5px}
+  @media (max-width:560px){.barrow{grid-template-columns:96px 1fr 74px; gap:8px}}
+
+  /* Matrix */
+  .matrixwrap{overflow-x:auto}
+  table.matrix{border-collapse:separate; border-spacing:5px; width:100%; min-width:520px; margin-top:6px}
+  .matrix th{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-3); font-weight:600; padding:6px 8px; text-align:center;
+  }
+  .matrix th[scope=row]{text-align:right; padding-right:12px}
+  .matrix td{
+    background:var(--card); border:1px solid var(--line); border-radius:4px;
+    padding:12px 10px; text-align:center; min-width:104px;
+  }
+  .matrix td .mv{font-family:var(--mono); font-size:15px; font-weight:700; font-variant-numeric:tabular-nums}
+  .matrix td .pos{font-size:11.5px; color:var(--ink-3); margin-top:2px}
+  .matrix td.hot{background:var(--green-wash); border-color:var(--band-3)}
+  .matrix td.hot .mv{color:var(--green)}
+
+  /* Working papers */
+  .papers{display:grid; gap:14px; margin-top:22px}
+  .receipt{
+    background:var(--card); border:1px solid var(--line); border-radius:4px;
+    padding:18px 20px 16px; position:relative;
+  }
+  .receipt::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:var(--green); border-radius:4px 0 0 4px;
+  }
+  .receipt .rhead{display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 16px; align-items:baseline}
+  .receipt .rtitle{font-weight:700; font-size:15px}
+  .receipt .hash{font-family:var(--mono); font-size:12px; color:var(--green-bright); font-weight:600}
+  .receipt .hash::before{content:"⬡ "; color:var(--ink-3)}
+  .receipt .qline{font-family:var(--mono); font-size:12px; color:var(--ink-2); margin-top:10px; overflow-x:auto; white-space:nowrap; padding-bottom:2px}
+  .receipt .chain{margin-top:10px; font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; color:var(--ink-3)}
+  .receipt .chain b{color:var(--ink-2); background:var(--green-wash); border-radius:3px; padding:2px 7px; font-weight:600}
+  .verifynote{
+    margin-top:26px; padding:16px 20px; background:var(--green-wash); border-radius:4px;
+    font-size:14.5px; color:var(--ink-2);
+  }
+  .verifynote b{color:var(--ink)}
+
+  footer{
+    margin-top:70px; border-top:3px double var(--line-strong); padding-top:16px;
+    font-family:var(--mono); font-size:11.5px; color:var(--ink-3); line-height:1.8;
+  }
+  a{color:var(--green-bright)}
+  :focus-visible{outline:2px solid var(--green-bright); outline-offset:2px}
+</style>
+
+<div class="sheet">
+
+<header>
+  <span class="eyebrow">TraceBi · Governed Artifact · No. 0001</span>
+  <h1>Book of Business Review</h1>
+  <p class="deck">A wealth book of $7.52&#8202;million, carried at a 7.5% unrealized gain — every figure on this page traceable to a fingerprinted query.</p>
+  <div class="meta">
+    <span><b>Rendered</b> 2026-08-04</span>
+    <span><b>Author</b> claude · mcp:agent</span>
+    <span><b>Model</b> wealth_model</span>
+    <span><b>Fact</b> fact_holdings</span>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="stamp" aria-hidden="true">
+    <span class="s1">TRACEBI</span>
+    <span class="s2">VERIFIED</span>
+    <span class="s3">SHA-256 · LINEAGE</span>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="label">Assets under mgmt</div>
+      <div class="value">$7.52M</div>
+      <div class="sub">120 positions</div>
+    </div>
+    <div class="stat">
+      <div class="label">Unrealized gain</div>
+      <div class="value gain">+$523.0K</div>
+      <div class="sub">vs. $7.00M cost basis</div>
+    </div>
+    <div class="stat">
+      <div class="label">Return on basis</div>
+      <div class="value gain">+7.5%</div>
+      <div class="sub">ratio of totals, not mean of ratios</div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <span class="eyebrow">Allocation</span>
+  <h2>Where the book sits</h2>
+  <p class="h2note">Market value by asset class · share of $7,521,674 total</p>
+
+  <div class="band" role="img" aria-label="Allocation: fixed income 36%, equity 29%, money market 22%, alternatives 12%">
+    <div style="width:36.2%;background:var(--band-1)" title="Fixed income · 36.2%"></div>
+    <div style="width:29.5%;background:var(--band-2)" title="Equity · 29.5%"></div>
+    <div style="width:22.5%;background:var(--band-3)" title="Money market · 22.5%"></div>
+    <div style="width:11.8%;background:var(--band-4)" title="Alternatives · 11.8%"></div>
+  </div>
+  <div class="legend">
+    <span><i class="key" style="background:var(--band-1)"></i>Fixed income 36.2%</span>
+    <span><i class="key" style="background:var(--band-2)"></i>Equity 29.5%</span>
+    <span><i class="key" style="background:var(--band-3)"></i>Money market 22.5%</span>
+    <span><i class="key" style="background:var(--band-4)"></i>Alternatives 11.8%</span>
+  </div>
+
+  <div class="ledgerwrap">
+  <table class="ledger">
+    <thead>
+      <tr><th>Asset class</th><th>Market value</th><th>Cost basis</th><th>Unrealized gain</th><th>Gain</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Fixed income</td>
+        <td class="num">$2,726,364</td><td class="num">$2,554,683</td>
+        <td class="num">+$171,681</td><td><span class="gainchip">+6.7%</span></td>
+      </tr>
+      <tr>
+        <td>Equity</td>
+        <td class="num">$2,215,130</td><td class="num">$2,071,033</td>
+        <td class="num">+$144,097</td><td><span class="gainchip">+7.0%</span></td>
+      </tr>
+      <tr>
+        <td>Money market</td>
+        <td class="num">$1,688,904</td><td class="num">$1,539,119</td>
+        <td class="num">+$149,785</td><td><span class="gainchip">+9.7%</span></td>
+      </tr>
+      <tr>
+        <td>Alternatives</td>
+        <td class="num">$891,276</td><td class="num">$833,795</td>
+        <td class="num">+$57,482</td><td><span class="gainchip gold">+6.9%</span></td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>Total book</td>
+        <td class="num">$7,521,674</td><td class="num">$6,998,630</td>
+        <td class="num">+$523,044</td><td><span class="gainchip">+7.5%</span></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+  <p class="h2note" style="margin-top:14px">Money market's outsized 9.7% reflects accrued yield against par-cost positions; the alternatives sleeve, though smallest, carries gains in line with the book. <em>Gain %</em> uses the model's shared <span class="num" style="font-size:.85em">gain_pct</span> measure — a ratio of aggregated totals, defined once in the semantic model.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Coverage</span>
+  <h2>Five advisors carry the book</h2>
+  <p class="h2note">Market value of client holdings per advisor</p>
+  <div class="bars">
+    <div class="barrow">
+      <span class="who">Lisa Chen</span>
+      <div class="track"><div class="fill" style="width:100%"></div></div>
+      <span class="val">$2.40M<br><span class="share">31.9%</span></span>
+    </div>
+    <div class="barrow">
+      <span class="who">Mike Torres</span>
+      <div class="track"><div class="fill" style="width:80%"></div></div>
+      <span class="val">$1.92M<br><span class="share">25.5%</span></span>
+    </div>
+    <div class="barrow">
+      <span class="who">Anna Park</span>
+      <div class="track"><div class="fill" style="width:62.4%"></div></div>
+      <span class="val">$1.50M<br><span class="share">19.9%</span></span>
+    </div>
+    <div class="barrow">
+      <span class="who">Sara Green</span>
+      <div class="track"><div class="fill" style="width:49.1%"></div></div>
+      <span class="val">$1.18M<br><span class="share">15.7%</span></span>
+    </div>
+    <div class="barrow">
+      <span class="who">Tom Hall</span>
+      <div class="track"><div class="fill" style="width:21.8%"></div></div>
+      <span class="val">$0.52M<br><span class="share">7.0%</span></span>
+    </div>
+  </div>
+  <p class="h2note" style="margin-top:16px">The top two advisors hold 57% of AUM — a concentration worth watching in succession planning.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Client mix</span>
+  <h2>Segment by risk profile</h2>
+  <p class="h2note">Market value and position count per cell · shaded cells are the largest sleeve in the book</p>
+  <div class="matrixwrap">
+  <table class="matrix">
+    <thead>
+      <tr><th></th><th scope="col">Conservative</th><th scope="col">Balanced</th><th scope="col">Aggressive</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">Affluent</th>
+        <td><div class="mv">$706K</div><div class="pos">16 positions</div></td>
+        <td class="hot"><div class="mv">$1,637K</div><div class="pos">20 positions</div></td>
+        <td><div class="mv">$671K</div><div class="pos">15 positions</div></td>
+      </tr>
+      <tr>
+        <th scope="row">Private</th>
+        <td><div class="mv">$957K</div><div class="pos">16 positions</div></td>
+        <td><div class="mv">$516K</div><div class="pos">10 positions</div></td>
+        <td><div class="mv">$688K</div><div class="pos">10 positions</div></td>
+      </tr>
+      <tr>
+        <th scope="row">Retail</th>
+        <td><div class="mv">$738K</div><div class="pos">9 positions</div></td>
+        <td class="hot"><div class="mv">$1,405K</div><div class="pos">20 positions</div></td>
+        <td><div class="mv">$205K</div><div class="pos">4 positions</div></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="h2note" style="margin-top:14px">Balanced mandates hold $3.56M — nearly half the book — while aggressive exposure stays a disciplined 21%. The retail-aggressive cell is thin at four positions.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Working papers</span>
+  <h2>Where every number came from</h2>
+  <p class="h2note">Each section above was produced by one stamped gateway query. The stamps:</p>
+
+  <div class="papers">
+    <div class="receipt">
+      <div class="rhead">
+        <span class="rtitle">Allocation &amp; gains by asset class</span>
+        <span class="hash">b3d614c1d264</span>
+      </div>
+      <div class="qline">fact_holdings · [market_value, cost_basis, unrealized_gain, gain_pct] · by dim_product.asset_class</div>
+      <div class="chain"><b>LOAD</b> → <b>LOAD</b> → <b>JOIN</b> → <b>TRANSFORM</b> &nbsp;·&nbsp; actor mcp:agent</div>
+    </div>
+    <div class="receipt">
+      <div class="rhead">
+        <span class="rtitle">AUM by advisor</span>
+        <span class="hash">7d5f1ad1e088</span>
+      </div>
+      <div class="qline">fact_holdings · [market_value: sum] · by dim_client.advisor</div>
+      <div class="chain"><b>LOAD</b> → <b>LOAD</b> → <b>JOIN</b> → <b>TRANSFORM</b> &nbsp;·&nbsp; actor mcp:agent</div>
+    </div>
+    <div class="receipt">
+      <div class="rhead">
+        <span class="rtitle">Client mix — segment × risk profile</span>
+        <span class="hash">3b6a4e8879c2</span>
+      </div>
+      <div class="qline">fact_holdings · [market_value: sum, units: count] · by dim_client.segment, dim_client.risk_profile</div>
+      <div class="chain"><b>LOAD</b> → <b>LOAD</b> → <b>JOIN</b> → <b>TRANSFORM</b> &nbsp;·&nbsp; actor mcp:agent</div>
+    </div>
+  </div>
+
+  <div class="verifynote">
+    <b>To re-prove any figure:</b> re-run the recorded query against the model and compare SHA-256 fingerprints of the full result. A matching hash means the number on this page is the number in the warehouse — not a transcription, not a hallucination. The complete lineage manifest lives beside the governed render of this report.
+  </div>
+</section>
+
+<footer>
+  TraceBi · Book of Business Review · rendered 2026-08-04 by claude via the MCP gateway<br>
+  Demonstration data · model <span class="num">wealth_model</span> · presentation free-form (assurance level L1: every number gateway-stamped)
+</footer>
+
+</div>

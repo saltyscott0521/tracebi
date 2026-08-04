@@ -1,0 +1,102 @@
+{
+  "name": "Book of Business Review",
+  "author": "claude (via mcp gateway)",
+  "description": "AUM, cost basis and unrealized gains across the wealth book. Gain figures use the model's shared measure definitions.",
+  "sections": [
+    {
+      "type": "text",
+      "title": "Scope",
+      "content": "Holdings across all branches as of the latest pipeline run. Market value and cost basis are aggregated from position-level records; client mix counts positions, not accounts. Authored by an agent through the TraceBi gateway - each section's data carries its full lineage in the report manifest."
+    },
+    {
+      "type": "table",
+      "title": "AUM and cost basis by asset class",
+      "column_labels": {
+        "dim_product.asset_class": "Asset class",
+        "market_value": "Market value",
+        "cost_basis": "Cost basis",
+        "unrealized_gain": "Unrealized gain",
+        "gain_pct": "Gain %"
+      },
+      "totals": [
+        "market_value",
+        "cost_basis",
+        "unrealized_gain"
+      ],
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": [
+            "market_value",
+            "cost_basis",
+            "unrealized_gain",
+            "gain_pct"
+          ],
+          "dimensions": [
+            "dim_product.asset_class"
+          ]
+        }
+      }
+    },
+    {
+      "type": "chart",
+      "title": "AUM by advisor",
+      "chart_type": "barh",
+      "x": "dim_client.advisor",
+      "y": "market_value",
+      "xlabel": "Advisor",
+      "ylabel": "Market value",
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": {
+            "market_value": "sum"
+          },
+          "dimensions": [
+            "dim_client.advisor"
+          ]
+        }
+      },
+      "show_values": true
+    },
+    {
+      "type": "table",
+      "title": "Client mix - segment by risk profile",
+      "column_labels": {
+        "dim_client.segment": "Segment",
+        "dim_client.risk_profile": "Risk profile",
+        "market_value": "Market value",
+        "units": "Positions"
+      },
+      "number_formats": {
+        "market_value": "currency0",
+        "units": "comma"
+      },
+      "totals": [
+        "market_value"
+      ],
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": {
+            "market_value": "sum",
+            "units": "count"
+          },
+          "dimensions": [
+            "dim_client.segment",
+            "dim_client.risk_profile"
+          ]
+        }
+      }
+    },
+    {
+      "type": "text",
+      "title": "Provenance",
+      "style": "note",
+      "content": "Rendered from a validated report spec. The manifest beside this artifact records, for every table and chart above, the exact query, the lineage chain from connector to aggregate, and a SHA-256 fingerprint of the underlying result."
+    }
+  ]
+}
