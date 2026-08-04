@@ -332,3 +332,79 @@ def test_gateway_verify_manifest_bad_inputs():
     not_a_manifest = gateway_verify_manifest(42)
     assert not not_a_manifest["ok"]
     assert not_a_manifest["errors"]
+
+
+# ─────────────────────────────────────────────
+# Review-pass fixes (adversarial findings)
+# ─────────────────────────────────────────────
+
+def test_model_repointing_is_model_changed_not_source_drift(
+    vf_model, tmp_path, empty_models_dir
+):
+    """A table remapped to a different source is a governance event (exit 1),
+    never a benign data refresh (exit 2) — the review's major finding."""
+    from tracebi.verify import MODEL_CHANGED, load_models, verify_manifest
+
+    import json as _json
+    manifest = _json.loads(_render(tmp_path).read_text(encoding="utf-8"))
+
+    # Repoint: same model name, same fingerprint-different data, but the
+    # table now loads from a *different source table* on the connector.
+    other = ORDERS.copy()
+    other.loc[0, "revenue"] = 99999.0
+    connector = MemoryConnector("vf_mem2", tables={
+        "orders_v2": other, "customers": CUSTOMERS.copy(),
+    })
+    model = DataModel("vf_demo")
+    model.add_connector(connector)
+    model.add_table("orders", connector="vf_mem2", source="orders_v2")
+    model.add_table("customers", connector="vf_mem2", source="customers")
+    model.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region"])
+    model.add_fact("fact_orders", table_name="orders",
+                   measures=["revenue"], foreign_keys={"dim_customer": "customer_id"})
+    model.connect()
+    model_registry.register(model)
+
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    statuses = [s["status"] for s in result["sections"]]
+    assert MODEL_CHANGED in statuses
+    assert result["exit_code"] == 1
+    section = next(s for s in result["sections"] if s["status"] == MODEL_CHANGED)
+    assert "orders" in section["detail"]
+
+
+def test_malformed_lineage_nodes_do_not_crash_verification(vf_model, empty_models_dir):
+    """Corrupt receipts are exactly what verify gets pointed at."""
+    from tracebi.verify import UNVERIFIABLE, load_models, verify_manifest
+
+    manifest = {
+        "report_name": "corrupt", "schema_version": 1,
+        "sections": [{
+            "section_type": "table", "title": "t",
+            "dataset_fingerprint": "x",
+            "dataset_lineage": ["bogus", 42, {"metadata": "not-a-dict"}],
+        }],
+    }
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    assert result["sections"][0]["status"] == UNVERIFIABLE
+
+
+def test_gateway_verify_survives_corrupt_manifest():
+    from tracebi.mcp_server import gateway_verify_manifest
+
+    out = gateway_verify_manifest({"sections": "not-a-list"})
+    assert isinstance(out, dict)
+    assert "ok" in out
+
+
+def test_newer_schema_version_refuses_to_guess(vf_model, empty_models_dir):
+    from tracebi.verify import load_models, verify_manifest
+
+    result = verify_manifest(
+        {"report_name": "future", "schema_version": 99, "sections": []},
+        load_models(empty_models_dir),
+    )
+    assert not result["ok"]
+    assert result["exit_code"] == 1
+    assert "schema_version 99" in result["error"]

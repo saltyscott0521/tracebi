@@ -85,16 +85,20 @@ def _validate(spec_dict, model):
 
 # ── Filter columns ─────────────────────────────────────────────────────────
 
-def test_bare_filter_naming_a_dimension_attribute_is_a_pathed_error():
+def test_bare_filter_naming_a_dimension_attribute_is_a_pathed_warning():
+    # A warning, not an error: the bare name may also be a physical column
+    # on a denormalised fact table, and execution accepts that spelling with
+    # different semantics than the dimension filter — rejecting it outright
+    # was a false rejection (review finding on the validate-gaps branch).
     model, conn = _model()
     result = _validate(_table({
         "fact": "fact_orders", "measures": ["total_revenue"],
         "filters": {"region": "West"},
     }), model)
-    assert not result["ok"]
-    err = next(e for e in result["errors"]
-               if e.startswith("sections[0].data.query.filters.region:"))
-    assert "dim_customer.region" in err
+    assert result["ok"]
+    warn = next(w for w in result["warnings"]
+                if w.startswith("sections[0].data.query.filters.region:"))
+    assert "dim_customer.region" in warn
     assert conn.loads == [], "validation must not load data"
 
 
@@ -314,3 +318,63 @@ def test_render_returns_ok_false_for_an_execution_time_failure(tmp_path):
     assert all("Traceback" not in e for e in out["errors"])
     assert not any(p.suffix == ".html" for p in tmp_path.iterdir()), \
         "no artifact may exist for a failed render"
+
+
+# ─────────────────────────────────────────────
+# Review-pass fixes (adversarial findings)
+# ─────────────────────────────────────────────
+
+def test_mixed_type_measures_list_is_a_pathed_error_not_a_crash():
+    model, conn = _model()
+    result = _validate(_table({
+        "fact": "fact_orders",
+        "measures": ["total_revenue", ["revenue"], 7],
+    }), model)
+    assert not result["ok"]
+    msgs = [e for e in result["errors"] if "list-form measures" in e]
+    assert len(msgs) == 2   # one per non-string entry
+    assert conn.loads == []
+
+
+def test_unknown_filter_operator_is_a_pathed_error():
+    model, conn = _model()
+    result = _validate(_table({
+        "fact": "fact_orders", "measures": ["total_revenue"],
+        "filters": {"revenue": {"gte!": 1000}},
+    }), model)
+    assert not result["ok"]
+    err = next(e for e in result["errors"] if "gte!" in e)
+    assert "filters.revenue" in err
+    assert "gte" in err   # did-you-mean or supported list
+    assert conn.loads == []
+
+
+def test_chart_color_typo_is_a_pathed_error():
+    model, conn = _model()
+    section = {
+        "type": "chart", "chart_type": "bar",
+        "x": "dim_customer.region", "y": "total_revenue",
+        "color": "regoin",
+        "data": {"model": model.name, "query": {
+            "fact": "fact_orders", "measures": ["total_revenue"],
+            "dimensions": ["dim_customer.region"],
+        }},
+    }
+    result = _validate({"name": "s", "sections": [section]}, model)
+    assert not result["ok"]
+    assert any("color" in e and "regoin" in e for e in result["errors"])
+    assert conn.loads == []
+
+
+def test_tuple_y_is_treated_as_a_list_of_axes():
+    model, conn = _model()
+    section = {
+        "type": "chart", "chart_type": "bar",
+        "x": "dim_customer.region", "y": ("total_revenue",),
+        "data": {"model": model.name, "query": {
+            "fact": "fact_orders", "measures": ["total_revenue"],
+            "dimensions": ["dim_customer.region"],
+        }},
+    }
+    result = _validate({"name": "s", "sections": [section]}, model)
+    assert result["ok"], result["errors"]

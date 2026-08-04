@@ -174,3 +174,60 @@ class TestGitignoreRetainsManifests:
             for ln in (project / ".gitignore").read_text().splitlines()
         ]
         assert "*.manifest.json" not in lines
+
+
+# ─────────────────────────────────────────────
+# Review-pass fixes (adversarial findings)
+# ─────────────────────────────────────────────
+
+def test_commitless_repo_records_unknown_not_the_literal_HEAD(tmp_path, monkeypatch):
+    """`git rev-parse HEAD` in a repo with no commits exits 128 but still
+    prints the literal string 'HEAD' — which was recorded as provenance and
+    evaded the unknown-sha warning. Only an actual sha counts."""
+    import subprocess
+
+    import tracebi.reports.report as report_mod
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(report_mod, "_GIT_SHA", None)
+    try:
+        assert report_mod._current_git_sha() == "unknown"
+    finally:
+        report_mod._GIT_SHA = None   # do not leak the cwd's sha to other tests
+
+
+def test_provenance_warning_emitted_once_per_process(monkeypatch, capsys):
+    import tracebi.reports.base_renderer as br
+    from tracebi.reports.report import ReportManifest
+
+    monkeypatch.setattr(br, "_GIT_SHA_WARNED", False)
+    m = ReportManifest(report_name="r", rendered_at="t", rendered_by="u",
+                       format="html", output_path="o", sections=[],
+                       git_sha="unknown")
+    br._warn_if_unknown_git_sha(m)
+    br._warn_if_unknown_git_sha(m)   # e.g. xlsx + html back to back
+    err = capsys.readouterr().err
+    assert err.count("git_sha is 'unknown'") == 1
+
+
+def test_gitignore_negation_actually_retains_output_manifests(tmp_path):
+    """git cannot re-include a file under an excluded DIRECTORY — the rule
+    must be `output/*` + negation, not `output/`. Checked with git itself."""
+    import subprocess
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    gi = (Path(__file__).resolve().parents[1] / ".gitignore").read_text()
+    (tmp_path / ".gitignore").write_text(gi)
+    out = tmp_path / "output"
+    out.mkdir()
+    (out / "report.html").write_text("x")
+    (out / "report.manifest.json").write_text("{}")
+
+    def ignored(rel):
+        return subprocess.run(
+            ["git", "check-ignore", "-q", rel], cwd=tmp_path
+        ).returncode == 0
+
+    assert ignored("output/report.html")
+    assert not ignored("output/report.manifest.json")

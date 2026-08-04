@@ -10,14 +10,22 @@ from typing import Optional
 from tracebi.reports.report import Report, ReportManifest
 
 
+_GIT_SHA_WARNED = False
+
+
 def _warn_if_unknown_git_sha(manifest: ReportManifest) -> None:
     """One loud stderr line when code provenance is missing from the manifest.
 
-    Emitted once per render — the manifest is built once per render run, so
-    this never repeats per section. Not an error: the report still renders,
-    but the receipt cannot say which code produced it.
+    Emitted once per process — a report rendered to two formats back to back
+    would otherwise print the identical warning twice, which teaches people
+    to ignore it. Not an error: the report still renders, but the receipt
+    cannot say which code produced it.
     """
+    global _GIT_SHA_WARNED
+    if _GIT_SHA_WARNED:
+        return
     if manifest.git_sha == "unknown":
+        _GIT_SHA_WARNED = True
         print(
             "tracebi: warning: git_sha is 'unknown' — code provenance is "
             "missing from this render's audit trail. Run the report from a "

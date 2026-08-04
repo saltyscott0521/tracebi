@@ -287,7 +287,8 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> dict:
             else ReportSpec.from_dict(spec)
         )
     except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "errors": [f"spec could not be parsed: {exc}"]}
+        return {"ok": False, "errors": [f"spec could not be parsed: {exc}"],
+                "warnings": []}
 
     models = _load_models()
     result = rs.validate(models)
@@ -370,8 +371,13 @@ def gateway_verify_manifest(manifest: Any) -> dict:
             f"manifest must be a dict or a file path, got {type(manifest).__name__}"
         ]}
 
-    with actor(_mcp_actor()):
-        return verify_manifest(manifest, load_models())
+    try:
+        with actor(_mcp_actor()):
+            return verify_manifest(manifest, load_models())
+    except Exception as exc:  # noqa: BLE001 — corrupt receipts are data, not crashes
+        return {"ok": False, "errors": [
+            f"manifest could not be verified: {type(exc).__name__}: {exc}"
+        ]}
 
 
 # ── MCP registration ───────────────────────────────────────────────────────
@@ -506,12 +512,17 @@ def serve(transport: str = "stdio", port: int = 8765,
     unchanged.
     """
     if transport == "http":
-        token = os.environ.get("TRACEBI_MCP_TOKEN", "")
+        # .strip(): a whitespace-only value is an unset token that *looks*
+        # set — the worst kind for an auth gate.
+        token = os.environ.get("TRACEBI_MCP_TOKEN", "").strip()
         if not token and not insecure:
             raise GatewayAuthError(_HTTP_AUTH_REFUSAL)
         auth_mode = (
             "bearer (TRACEBI_MCP_TOKEN)" if token else "none (--insecure)"
         )
+        server = build_server(token=token or None)
+        # After build_server: a posture line printed before a failed build
+        # would announce an auth mode that never came up.
         # stderr: on stdio the protocol owns stdout, so operator-facing
         # posture lines go to stderr on every transport for consistency.
         print(
@@ -519,7 +530,6 @@ def serve(transport: str = "stdio", port: int = 8765,
             f"actor={_mcp_actor()}",
             file=sys.stderr,
         )
-        server = build_server(token=token or None)
         server.run(transport="streamable-http", port=port)
     else:
         server = build_server()

@@ -11,9 +11,11 @@ venv/
 .coverage
 htmlcov/
 # Rendered outputs are disposable, but *.manifest.json files are receipts —
-# the audit trail behind every rendered number. They are deliberately NOT
-# ignored: projects should retain (commit or archive) their manifests.
-output/
+# the audit trail behind every rendered number. `output/*` + the negation
+# (not `output/`: git cannot re-include files under an excluded directory)
+# keeps outputs ignored while manifests stay retained.
+output/*
+!output/*.manifest.json
 .DS_Store
 .ipynb_checkpoints/
 *.ipynb

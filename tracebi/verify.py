@@ -8,6 +8,8 @@ of the result. Verify time re-runs each recorded query against today's
 models and data and classifies the outcome:
 
 * **reproduces** — the re-run's fingerprint matches the manifest.
+* **model_changed** — a table now loads from a different source/connector
+  than the manifest records: a governance event, alarming (exit 1)
 * **source_drift** — the result differs AND at least one recorded input
   fingerprint no longer matches the source table: the data moved.
 * **unexplained** — the result differs but every input fingerprint still
@@ -37,6 +39,7 @@ from typing import Any, Mapping, Optional, Union
 # JSON to the CLI, the MCP gateway, and archived verification records.
 REPRODUCES = "reproduces"
 SOURCE_DRIFT = "source_drift"
+MODEL_CHANGED = "model_changed"
 UNEXPLAINED = "unexplained"
 MISMATCH_UNKNOWN = "mismatch_unknown_cause"
 UNVERIFIABLE = "unverifiable"
@@ -46,6 +49,7 @@ ERROR = "error"
 STATUS_LABELS = {
     REPRODUCES:       "REPRODUCES",
     SOURCE_DRIFT:     "SOURCE DRIFT",
+    MODEL_CHANGED:    "MODEL CHANGED",
     UNEXPLAINED:      "UNEXPLAINED",
     MISMATCH_UNKNOWN: "MISMATCH (cause unknown)",
     UNVERIFIABLE:     "UNVERIFIABLE",
@@ -56,7 +60,7 @@ STATUS_LABELS = {
 #: reason nobody has diagnosed" — the exit-1 class. An unknown-cause
 #: mismatch belongs here: it *might* be drift, but the bias is toward loud
 #: failure, never toward the reassuring guess.
-_ALARMING = (UNEXPLAINED, MISMATCH_UNKNOWN, ERROR)
+_ALARMING = (UNEXPLAINED, MODEL_CHANGED, MISMATCH_UNKNOWN, ERROR)
 
 
 def load_models(models_dir: Union[str, Path, None] = None) -> dict:
@@ -109,8 +113,10 @@ def _query_node(lineage: list) -> Optional[dict]:
     metadata carries a ``query_spec``.
     """
     for node in reversed(lineage or []):
-        md = node.get("metadata") or {}
-        if md.get("query_spec"):
+        if not isinstance(node, dict):
+            continue
+        md = node.get("metadata")
+        if isinstance(md, dict) and md.get("query_spec"):
             return node
     return None
 
@@ -125,12 +131,45 @@ def _input_index(lineage: list) -> dict[str, list[str]]:
     """
     out: dict[str, list[str]] = {}
     for node in lineage or []:
-        md = node.get("metadata") or {}
-        inp = md.get("input") or {}
+        if not isinstance(node, dict):
+            continue
+        md = node.get("metadata")
+        if not isinstance(md, dict):
+            continue
+        inp = md.get("input")
+        if not isinstance(inp, dict):
+            continue
         if inp.get("fingerprint"):
             out.setdefault(str(inp.get("table")), []).append(inp["fingerprint"])
     for fps in out.values():
         fps.sort()
+    return out
+
+
+def _mapping_index(lineage: list) -> dict[str, list[str]]:
+    """``{table: sorted ["connector:source"]}`` from a chain's load nodes.
+
+    The drift diagnosis must not credit a mismatch to "the data moved" when
+    what actually moved is the *model* — a table remapped to a different
+    source or connector is a governance event, not a data refresh.
+    """
+    out: dict[str, list[str]] = {}
+    for node in lineage or []:
+        if not isinstance(node, dict):
+            continue
+        md = node.get("metadata")
+        if not isinstance(md, dict):
+            continue
+        inp = md.get("input")
+        if not isinstance(inp, dict) or not inp.get("table"):
+            continue
+        conn = node.get("connector")
+        cname = conn.get("connector_name") if isinstance(conn, dict) else None
+        out.setdefault(str(inp["table"]), []).append(
+            f"{cname}:{node.get('source')}"
+        )
+    for v in out.values():
+        v.sort()
     return out
 
 
@@ -197,11 +236,24 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
                 "detail": "result differs and no input fingerprints recorded "
                           "(manifest predates input fingerprinting); cannot "
                           "distinguish source drift from unexplained"}
+    recorded_map = _mapping_index(lineage)
+    current_map = _mapping_index(ds.lineage_to_dict())
+    remapped = [
+        t for t in sorted(set(recorded_map) | set(current_map))
+        if recorded_map.get(t) != current_map.get(t)
+    ]
+    if remapped and recorded_map:
+        return {**base, "status": MODEL_CHANGED,
+                "detail": "table(s) now load from a different source or "
+                          "connector than the manifest records: "
+                          + ", ".join(remapped)
+                          + " — a model change, not a data refresh"}
     drifted = [i["table"] for i in inputs if not i["match"]]
     if drifted:
         return {**base, "status": SOURCE_DRIFT,
-                "detail": "input fingerprint(s) changed for table(s): "
-                          + ", ".join(drifted)}
+                "detail": "input fingerprint(s) for table(s) "
+                          + ", ".join(drifted)
+                          + " differ — the inputs this model loads changed"}
     return {**base, "status": UNEXPLAINED,
             "detail": "result differs but every input fingerprint matches — "
                       "the data did not move; the model, measures, or engine did"}
@@ -229,6 +281,26 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
     only failures are diagnosed source drift, 1 when anything is
     unexplained, of unknown cause, or errored.
     """
+    from tracebi.reports.report import MANIFEST_SCHEMA_VERSION
+
+    sv = manifest.get("schema_version")
+    if isinstance(sv, int) and sv > MANIFEST_SCHEMA_VERSION:
+        # A newer writer may have changed semantics this checker does not
+        # know; pretending to verify it would be a reassuring guess.
+        return {
+            "report_name": manifest.get("report_name"),
+            "schema_version": sv,
+            "sections": [],
+            "summary": {status: 0 for status in STATUS_LABELS},
+            "exit_code": 1,
+            "ok": False,
+            "error": (
+                f"manifest schema_version {sv} is newer than this tracebi "
+                f"supports ({MANIFEST_SCHEMA_VERSION}); upgrade tracebi to "
+                f"verify it"
+            ),
+        }
+
     results: list[dict] = []
     for i, s in enumerate(_walk_sections(manifest.get("sections") or []), start=1):
         if not s.get("dataset_fingerprint"):

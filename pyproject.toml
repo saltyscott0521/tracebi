@@ -103,6 +103,9 @@ dev = [
     "pytest>=7.0",
     "pytest-cov",
     "ruff>=0.4",
+    # mcp so CI actually exercises the gateway registration + auth tests
+    # instead of importorskip-ing them.
+    "mcp>=2.0",
     "openpyxl>=3.0",
     "matplotlib>=3.5",
     "networkx>=3.0",

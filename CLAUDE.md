@@ -178,7 +178,8 @@ tracebi spec schema                            # JSON Schema for a report spec
 tracebi spec validate report.json              # check a spec without running it
 tracebi spec render report.json                # build and render it
 tracebi mcp                                    # agent gateway over MCP (stdio)
-tracebi mcp --transport http --port 8765       # same, for a remote agent
+tracebi mcp --transport http --port 8765       # remote agent — needs TRACEBI_MCP_TOKEN (or --insecure)
+tracebi verify output/report.manifest.json     # re-run recorded queries; classify drift
 tracebi serve                                  # browse the project
 
 # Tests
@@ -320,7 +321,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`.
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
 
 ---
 

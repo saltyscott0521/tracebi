@@ -38,7 +38,7 @@ exactly which query produced it.
 | L0 | Raw SQL, raw HTML | Nothing — and proves nothing. Avoid. |
 | L1 | Queries via gateway, renders its own HTML | Every number from `query_model`; cite its fingerprint alongside the figure |
 | L2 | Emits a ReportSpec; TraceBi renders | Spec passes `validate_report_spec`; artifact + manifest come from `render_report_spec` |
-| L3 | L2 + signed manifest + re-verification | **Not yet built** (planned; needs input fingerprints recorded at render) |
+| L3 | L2 + signed manifest + re-verification | Re-verification exists (`verify_manifest` / `tracebi verify`, drift-aware via input fingerprints recorded at render); **signing not yet built** |
 
 Prefer L2. Use L1 when you need presentation freedom the spec grammar lacks —
 governed data, ungoverned presentation.
@@ -54,7 +54,7 @@ The http transport requires `TRACEBI_MCP_TOKEN` (send
 `Authorization: Bearer <token>`) — it refuses to start without it unless
 `--insecure` is passed explicitly.
 
-Seven tools (`tracebi/mcp_server.py`):
+Eight tools (`tracebi/mcp_server.py`):
 
 | Tool | Purpose |
 |---|---|
@@ -65,6 +65,7 @@ Seven tools (`tracebi/mcp_server.py`):
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
+| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Anything but reproduces is not an ok receipt |
 
 ### The canonical loop
 
@@ -73,7 +74,9 @@ Seven tools (`tracebi/mcp_server.py`):
 3. **Author** — write a ReportSpec using only vocabulary the gateway showed you.
 4. **Validate** — `validate_report_spec`; fix pathed errors until clean.
 5. **Render** — `render_report_spec`; keep the manifest with the HTML.
-6. **Cite** — every number you quote anywhere carries its fingerprint.
+6. **Verify** — `verify_manifest` on the manifest you just produced; anything
+   but REPRODUCES needs explaining before a human sees the number.
+7. **Cite** — every number you quote anywhere carries its fingerprint.
 
 Rows are transport; the stamp is the truth. `query_model` caps rows (default
 50, hard cap 500) but fingerprints the *uncapped* result, so a figure beyond
@@ -81,7 +84,7 @@ the cap is still verifiable: re-run the recorded query, compare fingerprints.
 
 CLI equivalents (no MCP needed): `tracebi context [--model NAME]`,
 `tracebi spec schema`, `tracebi spec validate report.json`,
-`tracebi spec render report.json`.
+`tracebi spec render report.json`, `tracebi verify out.manifest.json`.
 
 ## Audit your own transcription
 

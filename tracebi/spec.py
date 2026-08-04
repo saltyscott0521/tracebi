@@ -421,8 +421,12 @@ class ReportSpec:
                 return  # already reported above, or unresolvable measures
             y = raw.get("y")
             axes = [("x", raw.get("x"))] + [
-                ("y", v) for v in (y if isinstance(y, list) else [y])
+                ("y", v) for v in (y if isinstance(y, (list, tuple)) else [y])
             ]
+            # color= fails at render for a missing column exactly like x/y;
+            # validation must catch it at the same time it catches those.
+            if raw.get("color") is not None:
+                axes.append(("color", raw.get("color")))
             for axis, value in axes:
                 if value is None or value in columns:
                     continue

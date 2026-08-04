@@ -393,12 +393,21 @@ def _current_git_sha() -> str:
     """
     global _GIT_SHA
     if _GIT_SHA is None:
+        import re
         import subprocess
         try:
-            _GIT_SHA = subprocess.run(
+            res = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
                 capture_output=True, text=True, timeout=5,
-            ).stdout.strip() or "unknown"
+            )
+            sha = res.stdout.strip()
+            # In a repo with no commits, `git rev-parse HEAD` exits 128 but
+            # still prints the literal string "HEAD" — which would be
+            # recorded as provenance and would evade the unknown-sha
+            # warning. Only a value that is actually a sha counts.
+            if res.returncode != 0 or not re.fullmatch(r"[0-9a-f]{7,64}", sha):
+                sha = "unknown"
+            _GIT_SHA = sha
         except Exception:
             _GIT_SHA = "unknown"
     return _GIT_SHA

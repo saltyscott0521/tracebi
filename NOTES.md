@@ -99,9 +99,9 @@ Fastapi upgraded to match; suite back to green (620).
   drift / unexplained). Needs input fingerprints recorded at render.
 - **L1 receipts for foreign renderers** — a stable URL or token per stamped
   query an agent can cite from its own HTML.
-- The HTTP transport has no auth of its own yet; stdio (local agent) is the
-  supported mode, HTTP should sit behind the same proxy story as the web
-  app.
+- ~~The HTTP transport has no auth of its own yet~~ — since the Now-tier
+  sprint the HTTP transport requires `TRACEBI_MCP_TOKEN` (bearer) or an
+  explicit `--insecure`; per-agent scopes remain open.
 
 
 ## 2026-07-27 — Deployment planes, and what a corporate rollout requires

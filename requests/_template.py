@@ -18,7 +18,9 @@ Full walkthrough of the analyst flow: docs/analyst-guide.md
 
 import os
 from tracebi import request_params
-from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
+# TableSection/ChartSection are imported for the commented starter blocks
+# below — uncomment those and these imports are already in place.
+from tracebi.reports.report import Report, TextSection, TableSection, ChartSection  # noqa: F401
 from tracebi.reports.excel_renderer import ExcelRenderer
 from tracebi.reports.html_renderer import HTMLRenderer
 

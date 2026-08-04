@@ -1,0 +1,43 @@
+{
+  "report_name": "Holdings Review",
+  "rendered_at": "2026-08-01T21:01:53.854647+00:00",
+  "rendered_by": "Wealth Analytics",
+  "format": "html",
+  "output_path": "/Users/andrewscott/Documents/Claude/tracebi/output/interactive_report.html",
+  "git_sha": "d811abf969cd9a1bcda7c80f6cb42217e0f66d14",
+  "parameters": {},
+  "sections": [
+    {
+      "section_type": "metrics",
+      "title": "Position summary",
+      "metrics": [
+        {
+          "label": "Total AUM",
+          "value": 7521674.369999999,
+          "delta": null
+        },
+        {
+          "label": "Cuts available",
+          "value": 3,
+          "delta": null
+        },
+        {
+          "label": "Lineage steps",
+          "value": 12,
+          "delta": null
+        }
+      ]
+    },
+    {
+      "section_type": "text",
+      "title": "Reading this report",
+      "style": "normal",
+      "content_length": 251,
+      "content_sha256": "f768978be6604379253841664dd6c7c00a79abc063c838dc5538bfc2d65eb340"
+    },
+    {
+      "section_type": "tabs",
+      "title": "Holdings by cut"
+    }
+  ]
+}

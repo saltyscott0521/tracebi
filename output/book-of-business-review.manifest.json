@@ -1,0 +1,334 @@
+{
+  "report_name": "Book of Business Review",
+  "rendered_at": "2026-08-04T03:27:30.852727+00:00",
+  "rendered_by": "claude (via mcp gateway)",
+  "format": "html",
+  "output_path": "/Users/andrewscott/Documents/Claude/tracebi/output/book-of-business-review.html",
+  "git_sha": "c4f48e5bfaba5bea0b94a531eb69c50513d59c6e",
+  "parameters": {},
+  "sections": [
+    {
+      "section_type": "text",
+      "title": "Scope",
+      "style": "normal",
+      "content_length": 294,
+      "content_sha256": "a053a28775ee898f560737e7ab98ebe510c037630ddf0ae006ecc486467e48e2"
+    },
+    {
+      "section_type": "table",
+      "title": "AUM and cost basis by asset class",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        4,
+        5
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'holdings' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "holdings",
+          "timestamp": "2026-08-04T03:27:30.682230+00:00",
+          "metadata": {
+            "rows_loaded": 120,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): unrealized_gain = market_value - cost_basis",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.683133+00:00",
+          "metadata": {
+            "derived": {
+              "unrealized_gain": "market_value - cost_basis"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'products' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "products",
+          "timestamp": "2026-08-04T03:27:30.683163+00:00",
+          "metadata": {
+            "rows_loaded": 10,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'holdings' \u2192 dim 'products' on product_id = product_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.790348+00:00",
+          "metadata": {
+            "fact": "holdings",
+            "dimension": "products",
+            "fact_key": "product_id",
+            "dim_key": "product_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): gain_pct = unrealized_gain / cost_basis",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.804754+00:00",
+          "metadata": {
+            "ratios": {
+              "gain_pct": [
+                "unrealized_gain",
+                "cost_basis"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.804766+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "rows_out": 4,
+            "measures": {
+              "market_value": "sum",
+              "cost_basis": "sum",
+              "unrealized_gain": "sum"
+            },
+            "model": "WealthModel",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "market_value",
+                "cost_basis",
+                "unrealized_gain",
+                "gain_pct"
+              ],
+              "dimensions": [
+                "dim_product.asset_class"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "b3d614c1d2644eadc27c76fdb0e4c72efff73aab06fd722d4b235fca11eb1d5a",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "chart",
+      "title": "AUM by advisor",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        5,
+        2
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'holdings' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "holdings",
+          "timestamp": "2026-08-04T03:27:30.804893+00:00",
+          "metadata": {
+            "rows_loaded": 120,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'clients' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "clients",
+          "timestamp": "2026-08-04T03:27:30.804933+00:00",
+          "metadata": {
+            "rows_loaded": 30,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'holdings' \u2192 dim 'clients' on client_id = client_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.810457+00:00",
+          "metadata": {
+            "fact": "holdings",
+            "dimension": "clients",
+            "fact_key": "client_id",
+            "dim_key": "client_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.812108+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "rows_out": 5,
+            "measures": {
+              "market_value": "sum"
+            },
+            "model": "WealthModel",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": {
+                "market_value": "sum"
+              },
+              "dimensions": [
+                "dim_client.advisor"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "7d5f1ad1e0882b4a968d5430d179e149061bbc9b32e5f6c38c52423a0452d8d9",
+      "chart_type": "barh",
+      "x": "dim_client.advisor",
+      "y": [
+        "market_value"
+      ],
+      "color": null,
+      "xlabel": "Advisor",
+      "ylabel": "Market value",
+      "figsize": [
+        10,
+        5
+      ],
+      "style": "seaborn-v0_8-whitegrid",
+      "palette": null,
+      "show_values": true
+    },
+    {
+      "section_type": "table",
+      "title": "Client mix - segment by risk profile",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        9,
+        4
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'holdings' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "holdings",
+          "timestamp": "2026-08-04T03:27:30.812200+00:00",
+          "metadata": {
+            "rows_loaded": 120,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'clients' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "clients",
+          "timestamp": "2026-08-04T03:27:30.812240+00:00",
+          "metadata": {
+            "rows_loaded": 30,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'holdings' \u2192 dim 'clients' on client_id = client_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.817843+00:00",
+          "metadata": {
+            "fact": "holdings",
+            "dimension": "clients",
+            "fact_key": "client_id",
+            "dim_key": "client_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-04T03:27:30.819761+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "rows_out": 9,
+            "measures": {
+              "market_value": "sum",
+              "units": "count"
+            },
+            "model": "WealthModel",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": {
+                "market_value": "sum",
+                "units": "count"
+              },
+              "dimensions": [
+                "dim_client.segment",
+                "dim_client.risk_profile"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "3b6a4e8879c2209b60428f159535e12b4cff3698e3d17b80e1b9b3ba74277cfa",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "text",
+      "title": "Provenance",
+      "style": "note",
+      "content_length": 230,
+      "content_sha256": "f3fc54b392889008150115c885c97c4c46131a773376c3feaf870a8f8df27cbd"
+    }
+  ]
+}

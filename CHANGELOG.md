@@ -6,6 +6,53 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the verify loop (`tracebi verify`, `verify_manifest`)
+
+Every `DataModel` query now fingerprints each source table as it loads
+(`{table, fingerprint, rows}` on the load lineage node), manifests declare
+`schema_version: 1`, and two new checkers close the loop: `tracebi verify
+<manifest.json>` and the gateway's 8th tool `verify_manifest`. Each recorded
+query is re-run and classified — `reproduces`, `source_drift` (inputs
+moved), `model_changed` (a table now loads from a different source or
+connector: a governance event, alarming, never counted as benign drift),
+`unexplained` (inputs match, result doesn't — the alarm), `unverifiable`
+(no recorded query, or post-query transforms). Exit codes 0/2/1. A newer
+manifest `schema_version` refuses to verify rather than guess.
+
+### Changed — validation before execution actually is
+
+`DataModel.check_query_spec` (shared by `spec.validate` and the gateway)
+now checks filter columns and dimension attributes, aggregation names,
+ad-hoc dict-measure columns, filter operator names, and chart x/y/color
+axes against the query's real output — the typo classes agents produce
+most, which previously validated `ok: true` and detonated at render.
+`dataset` vs `data` in a spec section gets a pointed error. Every
+`render_report_spec` failure now returns the documented `{ok: false}`
+shape. A bare filter that collides with a dimension attribute warns (both
+readings stated) instead of erroring, since execution accepts the
+fact-column reading.
+
+### Added — HTTP gateway auth
+
+`tracebi mcp --transport http` refuses to start without a decision: set
+`TRACEBI_MCP_TOKEN` (constant-time bearer verification on every request)
+or pass `--insecure` explicitly. Whitespace-only tokens count as unset.
+A posture line (transport / auth mode / actor) prints on startup, after
+the server actually builds. stdio is unchanged.
+
+### Fixed — analyst-journey and receipt-retention defects
+
+`tracebi serve` without the web package now exits with an actionable
+message instead of a raw ModuleNotFoundError; the init-generated README
+uses the real git-URL install form; `git rev-parse HEAD` in a commitless
+repo no longer records the literal string "HEAD" as provenance (only a
+real sha counts, and an unknown sha warns once per process); `.gitignore`
+uses `output/*` + `!output/*.manifest.json` so manifests — the receipts —
+are actually retainable (the old `output/` directory rule made the
+negation impossible, which is also why the agent-gateway example's own
+manifest had silently never been committed).
+
+
 ### Security — bearer-token auth on the MCP HTTP transport
 
 `tracebi mcp --transport http` no longer starts unauthenticated by

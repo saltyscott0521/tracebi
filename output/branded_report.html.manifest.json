@@ -1,0 +1,325 @@
+{
+  "report_name": "Assets Under Management",
+  "rendered_at": "2026-08-01T19:59:11.579147+00:00",
+  "rendered_by": "Wealth Analytics",
+  "format": "html",
+  "output_path": "/Users/andrewscott/Documents/Claude/tracebi/output/branded_report.html",
+  "git_sha": "53c30c973ada1e725acfef268a941c7dd2efe6d5",
+  "parameters": {},
+  "sections": [
+    {
+      "section_type": "metrics",
+      "title": "Portfolio at a glance",
+      "metrics": [
+        {
+          "label": "Total AUM",
+          "value": 7521674.369999999,
+          "delta": null
+        },
+        {
+          "label": "Unrealised gain",
+          "value": 523044.31999999844,
+          "delta": 0.07473524336380638
+        },
+        {
+          "label": "Asset classes",
+          "value": 4,
+          "delta": null
+        }
+      ]
+    },
+    {
+      "section_type": "text",
+      "title": "Where the money sits",
+      "style": "normal",
+      "content_length": 222,
+      "content_sha256": "a46835976b939ff92daf1f54b47888f041ac6cca15aec6628fbeef2f38f8c1aa"
+    },
+    {
+      "section_type": "row",
+      "title": null,
+      "sections": [
+        {
+          "section_type": "chart",
+          "title": "AUM by asset class",
+          "dataset_name": "fact_holdings_result",
+          "dataset_shape": [
+            4,
+            3
+          ],
+          "dataset_lineage": [
+            {
+              "operation": "load",
+              "description": "Loaded 'holdings' from connector 'banking'",
+              "connector": {
+                "connector_name": "banking",
+                "connector_type": "MemoryConnector"
+              },
+              "source": "holdings",
+              "timestamp": "2026-08-01T19:59:11.506410+00:00",
+              "metadata": {
+                "rows_loaded": 120,
+                "filter": null,
+                "columns": null,
+                "pushdown": false
+              }
+            },
+            {
+              "operation": "load",
+              "description": "Loaded 'products' from connector 'banking'",
+              "connector": {
+                "connector_name": "banking",
+                "connector_type": "MemoryConnector"
+              },
+              "source": "products",
+              "timestamp": "2026-08-01T19:59:11.506457+00:00",
+              "metadata": {
+                "rows_loaded": 10,
+                "filter": null,
+                "columns": null,
+                "pushdown": false
+              }
+            },
+            {
+              "operation": "join",
+              "description": "Joined fact 'holdings' \u2192 dim 'products' on product_id = product_id (left)",
+              "connector": null,
+              "source": null,
+              "timestamp": "2026-08-01T19:59:11.536593+00:00",
+              "metadata": {
+                "fact": "holdings",
+                "dimension": "products",
+                "fact_key": "product_id",
+                "dim_key": "product_id",
+                "engine": "duckdb"
+              }
+            },
+            {
+              "operation": "transform",
+              "description": "Star-schema query executed via duckdb",
+              "connector": null,
+              "source": null,
+              "timestamp": "2026-08-01T19:59:11.539017+00:00",
+              "metadata": {
+                "engine": "duckdb",
+                "rows_out": 4,
+                "measures": {
+                  "market_value": "sum",
+                  "cost_basis": "sum"
+                },
+                "model": "WealthModel",
+                "query_spec": {
+                  "fact": "fact_holdings",
+                  "measures": {
+                    "market_value": "sum",
+                    "cost_basis": "sum"
+                  },
+                  "dimensions": [
+                    "dim_product.asset_class"
+                  ],
+                  "filters": {},
+                  "aggregate": true,
+                  "allow_fanout": false
+                }
+              }
+            }
+          ],
+          "dataset_fingerprint": "6d7152a5a22317e17ad33eaec447ef3a1cd8f6d7c73839895809eaa27eb74a24",
+          "chart_type": "bar",
+          "x": "dim_product.asset_class",
+          "y": [
+            "market_value"
+          ],
+          "color": null,
+          "xlabel": "",
+          "ylabel": "Market value (USD)",
+          "figsize": [
+            7.2,
+            4.2
+          ],
+          "style": "seaborn-v0_8-whitegrid",
+          "palette": [
+            "#0f766e"
+          ],
+          "show_values": true
+        },
+        {
+          "section_type": "table",
+          "title": "By region",
+          "dataset_name": "fact_holdings_result",
+          "dataset_shape": [
+            4,
+            2
+          ],
+          "dataset_lineage": [
+            {
+              "operation": "load",
+              "description": "Loaded 'holdings' from connector 'banking'",
+              "connector": {
+                "connector_name": "banking",
+                "connector_type": "MemoryConnector"
+              },
+              "source": "holdings",
+              "timestamp": "2026-08-01T19:59:11.539119+00:00",
+              "metadata": {
+                "rows_loaded": 120,
+                "filter": null,
+                "columns": null,
+                "pushdown": false
+              }
+            },
+            {
+              "operation": "load",
+              "description": "Loaded 'branches' from connector 'banking'",
+              "connector": {
+                "connector_name": "banking",
+                "connector_type": "MemoryConnector"
+              },
+              "source": "branches",
+              "timestamp": "2026-08-01T19:59:11.539167+00:00",
+              "metadata": {
+                "rows_loaded": 6,
+                "filter": null,
+                "columns": null,
+                "pushdown": false
+              }
+            },
+            {
+              "operation": "join",
+              "description": "Joined fact 'holdings' \u2192 dim 'branches' on branch_id = branch_id (left)",
+              "connector": null,
+              "source": null,
+              "timestamp": "2026-08-01T19:59:11.546030+00:00",
+              "metadata": {
+                "fact": "holdings",
+                "dimension": "branches",
+                "fact_key": "branch_id",
+                "dim_key": "branch_id",
+                "engine": "duckdb"
+              }
+            },
+            {
+              "operation": "transform",
+              "description": "Star-schema query executed via duckdb",
+              "connector": null,
+              "source": null,
+              "timestamp": "2026-08-01T19:59:11.548021+00:00",
+              "metadata": {
+                "engine": "duckdb",
+                "rows_out": 4,
+                "measures": {
+                  "market_value": "sum"
+                },
+                "model": "WealthModel",
+                "query_spec": {
+                  "fact": "fact_holdings",
+                  "measures": {
+                    "market_value": "sum"
+                  },
+                  "dimensions": [
+                    "dim_branch.region"
+                  ],
+                  "filters": {},
+                  "aggregate": true,
+                  "allow_fanout": false
+                }
+              }
+            }
+          ],
+          "dataset_fingerprint": "c8b202458e70f29909a6f21f597a3ef9e36abefd88a3b372d9a177567200cf3f",
+          "columns": null,
+          "max_rows": null
+        }
+      ]
+    },
+    {
+      "section_type": "table",
+      "title": "By client segment",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        3,
+        3
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'holdings' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "holdings",
+          "timestamp": "2026-08-01T19:59:11.548115+00:00",
+          "metadata": {
+            "rows_loaded": 120,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'clients' from connector 'banking'",
+          "connector": {
+            "connector_name": "banking",
+            "connector_type": "MemoryConnector"
+          },
+          "source": "clients",
+          "timestamp": "2026-08-01T19:59:11.548166+00:00",
+          "metadata": {
+            "rows_loaded": 30,
+            "filter": null,
+            "columns": null,
+            "pushdown": false
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'holdings' \u2192 dim 'clients' on client_id = client_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-01T19:59:11.556746+00:00",
+          "metadata": {
+            "fact": "holdings",
+            "dimension": "clients",
+            "fact_key": "client_id",
+            "dim_key": "client_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-01T19:59:11.558974+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "rows_out": 3,
+            "measures": {
+              "market_value": "sum",
+              "units": "sum"
+            },
+            "model": "WealthModel",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": {
+                "market_value": "sum",
+                "units": "sum"
+              },
+              "dimensions": [
+                "dim_client.segment"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "96e86a28c495ac84ff4b1875f69bd4049495172f54fa5605600e1ce623b1e4cf",
+      "columns": null,
+      "max_rows": null
+    }
+  ]
+}

@@ -360,9 +360,11 @@ venv/
 .env
 data/
 # Rendered outputs are disposable, but the *.manifest.json files inside are
-# receipts — the audit trail. Retain (commit or archive) the manifests you
-# need to stand behind a report later.
-output/
+# receipts — the audit trail. `output/*` with the negation (git cannot
+# re-include under an excluded directory) keeps outputs ignored while the
+# manifests you need to stand behind a report stay retained.
+output/*
+!output/*.manifest.json
 *.db
 .ipynb_checkpoints/
 """
@@ -1115,9 +1117,10 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
     Every recorded query in the manifest is re-run against the project's
     models and classified — REPRODUCES, SOURCE DRIFT (result differs and
-    an input fingerprint moved), UNEXPLAINED (result differs but the
-    inputs did not — the alarming case), or UNVERIFIABLE (no recorded
-    query to re-run). One line per section, then a summary.
+    an input fingerprint moved), MODEL CHANGED (a table now loads from a
+    different source/connector — a governance event), UNEXPLAINED (result
+    differs but the inputs did not — the alarming case), or UNVERIFIABLE
+    (no recorded query to re-run). One line per section, then a summary.
 
     Exit codes: 0 all reproduce/unverifiable · 2 diagnosed drift only ·
     1 anything unexplained, of unknown cause, or errored.
@@ -1141,7 +1144,15 @@ def cmd_verify(args: argparse.Namespace) -> int:
         return 1
 
     models = load_models(args.verify_models_dir or args.models_dir)
-    result = verify_manifest(manifest, models)
+    try:
+        result = verify_manifest(manifest, models)
+    except Exception as exc:  # noqa: BLE001 — a corrupt receipt is a user error
+        print(f"manifest could not be verified: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
+        return 1
+    if result.get("error"):
+        print(result["error"], file=sys.stderr)
+        return result["exit_code"]
 
     name = result["report_name"] or path.name
     print(f"Verifying '{name}' ({path})")

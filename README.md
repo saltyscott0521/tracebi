@@ -467,6 +467,10 @@ tracebi mcp --transport http --port 8765
 tracebi mcp --transport http --port 8765 --insecure
 ```
 
+The HTTP transport binds `127.0.0.1` and enables DNS-rebinding protection,
+so a genuinely remote agent should reach it through a reverse proxy (TLS
+termination there; the bearer token still applies end to end).
+
 Read-and-compute only: queries, validation and rendering. Pipeline
 execution (which writes to the warehouse) is deliberately not exposed.
 Attribution is recorded as `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`)

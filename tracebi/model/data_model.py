@@ -1493,6 +1493,14 @@ class DataModel:
                     ))
         else:
             for m in spec.measures or ():
+                if not isinstance(m, str):
+                    errors.append((
+                        "measures",
+                        f"list-form measures must be declared measure names "
+                        f"(strings); got {type(m).__name__}: {m!r}. Use the "
+                        f"dict form {{column: agg}} for ad-hoc measures.",
+                    ))
+                    continue
                 if m not in self._measures:
                     errors.append((
                         "measures",
@@ -1519,6 +1527,16 @@ class DataModel:
         for key in (spec.filters or {}):
             key_s = str(key)
             sub = f"filters.{key_s}"
+            val = (spec.filters or {}).get(key)
+            if isinstance(val, dict):
+                for op in val:
+                    if str(op) not in FILTER_OPS:
+                        errors.append((
+                            f"{sub}.{op}",
+                            f"unknown filter operator '{op}'."
+                            f"{self._hint(str(op), sorted(FILTER_OPS))} "
+                            f"Supported: {', '.join(sorted(FILTER_OPS))}",
+                        ))
             if "." in key_s:
                 dim_name, attribute = key_s.split(".", 1)
                 err = self._check_declared_dim_ref(dim_name, attribute)
@@ -1532,12 +1550,17 @@ class DataModel:
                 if key_s in (dd.attributes or []) or key_s == dd.key_col
             ]
             if matches:
-                errors.append((
+                # A warning, not an error: the name may also be a physical
+                # column on the fact table (denormalised facts do this), and
+                # a bare fact-column filter and a dimension-attribute filter
+                # have different semantics — execution accepts the former.
+                warnings.append((
                     sub,
                     f"'{key_s}' is not a declared column on fact "
-                    f"'{spec.fact}'. It exists on "
-                    f"{matches[0].split('.')[0]}; reference it as "
-                    f"'{matches[0]}'.",
+                    f"'{spec.fact}' but matches dimension attribute "
+                    f"'{matches[0]}'. If you mean the dimension, reference "
+                    f"it as '{matches[0]}'; a bare name filters the fact "
+                    f"table's own column, which is checked at execution.",
                 ))
             else:
                 warnings.append((
