@@ -106,7 +106,10 @@ def section_to_dict(section: ReportSection) -> dict:
     was produced by a model query (its lineage carries the spec); otherwise
     ``data`` is omitted and the section is presentation-only.
     """
-    out: dict[str, Any] = {"type": section.section_type.value}
+    # Custom sections carry a plain-string section_type (same tolerance as
+    # to_manifest_dict and describe()); export is best-effort by design.
+    stype = section.section_type
+    out: dict[str, Any] = {"type": stype.value if hasattr(stype, "value") else str(stype)}
     for f in dataclasses.fields(section):
         if f.name in _OMIT:
             continue

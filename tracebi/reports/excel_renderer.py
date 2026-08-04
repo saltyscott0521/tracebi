@@ -432,6 +432,20 @@ class ExcelRenderer(BaseRenderer):
     def _write_chart(self, ws, section: ChartSection, row: int, wb) -> int:
         from openpyxl.chart import BarChart, LineChart, PieChart, Reference
 
+        # color= grouping exists only in the SVG renderer. Rendering this
+        # section here without it would emit one bar per raw row under
+        # repeated x labels — a confident-looking wrong chart — while the
+        # HTML output of the same section shows grouped series. Silent
+        # divergence between renderers of one section is the failure class
+        # this codebase exists to prevent, so the unsupported path refuses.
+        if getattr(section, "color", None):
+            raise ValueError(
+                f"Chart '{section.title or section.chart_type}': color= "
+                f"grouping is not implemented in the Excel renderer. Render "
+                f"to HTML, or pivot the query into one y column per group "
+                f"for Excel."
+            )
+
         df = section.dataset.to_pandas() if section.dataset else pd.DataFrame()
         if df.empty or not section.x or not section.y:
             return row

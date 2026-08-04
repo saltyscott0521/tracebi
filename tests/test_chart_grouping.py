@@ -175,3 +175,144 @@ class TestNoColorByteIdentical:
         assert hashlib.sha256(svg.encode()).hexdigest() == (
             "b98cd632dd15a3b05e9f804b0db3d73c650abeb92701355c25075835b63bd855"
         )
+
+
+# ─────────────────────────────────────────────
+# Review-pass fixes (adversarial findings)
+# ─────────────────────────────────────────────
+
+class TestDuplicateGroupKeysRefuse:
+    """Silently keeping one of two values would draw a confident wrong bar."""
+
+    def test_duplicate_x_group_pair_raises(self):
+        df = pd.DataFrame({
+            "region":  ["North", "North"],
+            "segment": ["Retail", "Retail"],
+            "revenue": [100.0, 7.0],
+        })
+        with pytest.raises(ValueError, match="duplicate rows"):
+            spec(dataset=DataSet(df=df, name="dup"), chart_type="bar",
+                 x="region", y="revenue", color="segment")
+
+    def test_str_coerced_group_collision_raises(self):
+        # 1 (int) and "1" (str) are distinct values that collide after str()
+        df = pd.DataFrame({
+            "region":  ["North", "North"],
+            "segment": [1, "1"],
+            "revenue": [10.0, 99.0],
+        })
+        with pytest.raises(ValueError, match="duplicate rows"):
+            spec(dataset=DataSet(df=df, name="coerce"), chart_type="bar",
+                 x="region", y="revenue", color="segment")
+
+
+class TestMissingGroupValues:
+    def test_none_and_nan_groups_become_readable_placeholder(self):
+        df = pd.DataFrame({
+            "region":  ["North", "South", "East"],
+            "segment": ["Retail", None, float("nan")],
+            "revenue": [10.0, 20.0, 30.0],
+        })
+        s = spec(dataset=DataSet(df=df, name="nones"), chart_type="bar",
+                 x="region", y="revenue", color="segment")
+        assert "(none)" in s.series
+        assert "" not in s.series
+        assert "nan" not in s.series
+
+
+class TestConfigChecksPrecedeEmptyData:
+    """A misconfigured chart must not wait for its first non-empty run."""
+
+    def test_pie_plus_color_raises_even_on_empty_dataset(self):
+        empty = DataSet(df=pd.DataFrame({"region": [], "revenue": [],
+                                         "segment": []}), name="empty")
+        with pytest.raises(ValueError, match="pie"):
+            spec(dataset=empty, chart_type="pie",
+                 x="region", y="revenue", color="segment")
+
+    def test_color_with_multiple_y_raises_even_on_empty_dataset(self):
+        empty = DataSet(df=pd.DataFrame({"region": [], "revenue": [],
+                                         "cost": [], "segment": []}),
+                        name="empty")
+        with pytest.raises(ValueError, match="exactly one y"):
+            spec(dataset=empty, chart_type="bar", x="region",
+                 y=["revenue", "cost"], color="segment")
+
+    def test_empty_dataset_spec_carries_color(self):
+        empty = DataSet(df=pd.DataFrame({"region": [], "revenue": [],
+                                         "segment": []}), name="empty")
+        s = spec(dataset=empty, chart_type="bar", x="region", y="revenue",
+                 color="segment")
+        assert s.color == "segment"
+
+
+class TestCompactFmtUnitBoundaries:
+    def test_999999_promotes_to_1M(self):
+        assert ChartSpec._fmt(999_999, compact=True) == "1M"
+
+    def test_999_point_999_promotes_to_1K(self):
+        assert ChartSpec._fmt(999.999, compact=True) == "1K"
+
+    def test_ordinary_values_unchanged(self):
+        assert ChartSpec._fmt(2_400_240.38, compact=True) == "2.4M"
+        assert ChartSpec._fmt(523_921.25, compact=True) == "523.9K"
+        assert ChartSpec._fmt(950.0, compact=True) == "950"
+
+
+class TestLineGapsDoNotInterpolate:
+    """A gap in a grouped series draws nothing — never a straight segment
+    painting a value the data never contained."""
+
+    def _gappy(self, chart_type):
+        # Group B has data at x=a and x=c only; x=b is a genuine gap.
+        df = pd.DataFrame({
+            "x": ["a", "b", "c", "a", "c"],
+            "g": ["A", "A", "A", "B", "B"],
+            "v": [1.0, 2.0, 3.0, 10.0, 30.0],
+        })
+        return spec(dataset=DataSet(df=df, name="gappy"),
+                    chart_type=chart_type, x="x", y="v", color="g")
+
+    def test_line_path_breaks_at_gap(self):
+        svg = self._gappy("line").to_svg()
+        import re
+        paths = re.findall(r'class="tb-line" d="([^"]+)"', svg)
+        assert len(paths) == 2
+        # Group A (contiguous): one subpath. Group B (gap at b): two
+        # single-point subpaths — two M commands, no L bridging the gap.
+        assert paths[0].count("M") == 1
+        assert paths[1].count("M") == 2
+        assert "L" not in paths[1]
+
+    def test_area_fills_per_contiguous_run(self):
+        svg = self._gappy("area").to_svg()
+        import re
+        areas = re.findall(r'class="tb-area"[^>]*d="([^"]+)"', svg)
+        assert len(areas) == 2
+        # Group B's fill must close one polygon per run — two Z commands.
+        assert areas[1].count("Z") == 2
+
+    def test_gapless_series_path_shape_unchanged(self):
+        # One M then only L commands — the pre-gap-aware shape.
+        svg = spec(dataset=plain_ds(), chart_type="line",
+                   x="region", y="revenue").to_svg()
+        import re
+        path = re.findall(r'class="tb-line" d="([^"]+)"', svg)[0]
+        assert path.count("M") == 1
+        assert path.count("L") == 3
+
+
+class TestExcelRefusesColor:
+    """The SVG renderer groups; Excel does not. Divergence must be loud."""
+
+    def test_excel_write_chart_raises_for_color(self, tmp_path):
+        openpyxl = pytest.importorskip("openpyxl")
+        from tracebi.reports.excel_renderer import ExcelRenderer
+        from tracebi.reports.report import Report
+
+        report = Report(name="excel-color")
+        report.add(ChartSection(title="Grouped", dataset=grouped_ds(),
+                                chart_type="bar", x="region", y="revenue",
+                                color="segment"))
+        with pytest.raises(ValueError, match="Excel renderer"):
+            ExcelRenderer().render(report, str(tmp_path / "out.xlsx"))

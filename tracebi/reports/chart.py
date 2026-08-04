@@ -74,14 +74,13 @@ class ChartSpec:
     def from_section(cls, section) -> "ChartSpec":
         """Resolve a ChartSection (and its DataSet) into a portable spec."""
         df = section.dataset.to_pandas() if section.dataset is not None else None
-        if df is None or df.empty or not section.x:
-            return cls(chart_type=section.chart_type, x=section.x or "",
-                       series=(), rows=(), title=section.title or "")
-
         series = tuple(section.y) if section.y else ()
         color = getattr(section, "color", None)
         label = section.title or f"{section.chart_type} chart"
 
+        # Configuration errors are knowable without any data, so they are
+        # checked before the empty-dataset early return — a misconfigured
+        # chart must not wait for its first non-empty run to complain.
         if color and section.chart_type.lower() == "pie":
             raise ValueError(
                 f"Chart '{label}': color= is not supported for pie charts — "
@@ -92,6 +91,11 @@ class ChartSpec:
                 f"Chart '{label}': color= requires exactly one y column to "
                 f"pivot into series; got {list(series) or 'none'}."
             )
+
+        if df is None or df.empty or not section.x:
+            return cls(chart_type=section.chart_type, x=section.x or "",
+                       series=(), rows=(), title=section.title or "",
+                       color=color or None)
 
         # A column that isn't there must fail loudly. Plotting it as zeros
         # would produce a confident, wrong-looking chart with exit code 0 —
@@ -142,13 +146,18 @@ class ChartSpec:
         row; rendering then draws nothing there rather than inventing a zero.
         """
         scatter = section.chart_type.lower() == "scatter"
+        label = section.title or f"{section.chart_type} chart"
         groups: list[str] = []
         rows: list[dict] = []
         by_x: dict = {}
         for r in df[[section.x, color, value_col]].to_dict("records"):
-            g = "" if r[color] is None else str(r[color])
+            raw = r[color]
+            # A missing group is a real category, not an empty legend label.
+            if raw is None or (isinstance(raw, float) and raw != raw):
+                g = "(none)"
+            else:
+                g = str(raw)
             if g == section.x:
-                label = section.title or f"{section.chart_type} chart"
                 raise ValueError(
                     f"Chart '{label}': color group {g!r} collides with the x "
                     f"column name '{section.x}'; rename one of them."
@@ -162,6 +171,15 @@ class ChartSpec:
                 if xv not in by_x:
                     by_x[xv] = {section.x: xv}
                     rows.append(by_x[xv])
+                if g in by_x[xv]:
+                    # Silently keeping one of the values would draw a
+                    # confident wrong bar; this also catches distinct group
+                    # values that collide after str() (1 vs "1").
+                    raise ValueError(
+                        f"Chart '{label}': duplicate rows for x={xv!r}, "
+                        f"group={g!r}. Aggregate the query before charting, "
+                        f"or include the distinguishing column in x."
+                    )
                 by_x[xv][g] = r[value_col]
         return cls(
             chart_type=section.chart_type,
@@ -284,10 +302,18 @@ class ChartSpec:
         # Compact mode is for on-chart value labels: 2400240.38 painted on a
         # bar is noise, 2.4M is legible. Values under 1000 keep up to two
         # decimals either way, so there is one formatting voice per chart.
-        if compact and abs(v) >= 1000:
+        # The threshold and the mantissa both use *rounded* values so unit
+        # boundaries stay honest: 999,999 is "1M", never "1000K", and
+        # 999.999 is "1K", never "1,000" beside a "1K" neighbour.
+        if compact and abs(round(v, 2)) >= 1000:
             for div, unit in ((1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")):
-                if abs(v) >= div:
-                    return f"{v / div:.1f}".rstrip("0").rstrip(".") + unit
+                if abs(round(v, 2)) >= div:
+                    mantissa = f"{v / div:.1f}"
+                    if abs(float(mantissa)) >= 1000 and unit != "T":
+                        div *= 1000
+                        unit = {"K": "M", "M": "B", "B": "T"}[unit]
+                        mantissa = f"{v / div:.1f}"
+                    return mantissa.rstrip("0").rstrip(".") + unit
         if v == int(v) and abs(v) < 1e15:
             return f"{int(v):,}"
         return f"{v:,.2f}".rstrip("0").rstrip(".")
@@ -476,17 +502,39 @@ class ChartSpec:
         for si, name in enumerate(self.series):
             pairs = self._series_values(name)
             pts = [(px(i), py(v)) for i, v in pairs]
-            path = " ".join(
-                f"{'M' if i == 0 else 'L'}{x:.1f},{y:.1f}"
-                for i, (x, y) in enumerate(pts)
-            )
+
+            # Split into contiguous runs of adjacent x indices. A gap in a
+            # grouped series must draw *nothing* — a straight segment across
+            # it would paint an interpolated value the data never contained.
+            # For gapless series this yields exactly one run, so the emitted
+            # path is byte-identical to the pre-gap-aware output.
+            runs: list[list[tuple[float, float]]] = []
+            prev_i = None
+            for (i, _v), pt in zip(pairs, pts):
+                if prev_i is None or i != prev_i + 1:
+                    runs.append([])
+                runs[-1].append(pt)
+                prev_i = i
+
+            def _subpath(run):
+                return " ".join(
+                    f"{'M' if j == 0 else 'L'}{x:.1f},{y:.1f}"
+                    for j, (x, y) in enumerate(run)
+                )
+
+            path = " ".join(_subpath(run) for run in runs)
             colour = self._colour(si)
             if area and pts:
                 base = py(max(lo, 0.0))
                 out.append(
                     f'<path class="tb-area" fill="{colour}" fill-opacity="0.18" '
-                    f'd="{path} L{pts[-1][0]:.1f},{base:.1f} '
-                    f'L{pts[0][0]:.1f},{base:.1f} Z"/>'
+                    + 'd="'
+                    + " ".join(
+                        f'{_subpath(run)} L{run[-1][0]:.1f},{base:.1f} '
+                        f'L{run[0][0]:.1f},{base:.1f} Z'
+                        for run in runs
+                    )
+                    + '"/>'
                 )
             out.append(
                 f'<path class="tb-line" d="{path}" fill="none" '

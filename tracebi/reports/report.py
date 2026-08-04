@@ -109,8 +109,14 @@ class ReportSection:
         # lineage and fingerprint recorded here, in the base class, so a
         # project-defined section type cannot silently forfeit the audit
         # trail just by not overriding to_manifest_dict().
+        #
+        # isinstance, not just is-not-None: a custom section may name a field
+        # "dataset" and put something else in it (a raw DataFrame, a path).
+        # Crashing here would break the manifest *after* the artifact is
+        # rendered; foreign types are simply not lineage-bearing, so their
+        # keys are omitted — the pre-existing behavior for that case.
         dataset = getattr(self, "dataset", None)
-        if dataset is not None:
+        if isinstance(dataset, DataSet):
             d["dataset_name"] = dataset.name
             d["dataset_shape"] = list(dataset.shape)
             d["dataset_lineage"] = dataset.lineage_to_dict()
@@ -229,7 +235,9 @@ class ChartSection(ReportSection):
                     becomes its own coloured series (grouped bars for
                     bar/barh, one line/area per group, per-group scatter
                     points) with a legend entry. Requires exactly one y
-                    column; not supported for pie.
+                    column; not supported for pie. HTML/SVG renderer only —
+                    the Excel renderer raises rather than drawing the
+                    ungrouped rows.
         xlabel:     X axis label override.
         ylabel:     Y axis label override.
         figsize:    Tuple (width_inches, height_inches). Default (10, 5).

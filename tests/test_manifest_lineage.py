@@ -174,3 +174,74 @@ class TestDescribeCustomSections:
         out = capsys.readouterr().out
         assert "[TABLE]" in out
         assert "[MAP]" in out
+
+
+# ─────────────────────────────────────────────
+# Review-pass fixes (adversarial findings)
+# ─────────────────────────────────────────────
+
+@dataclass
+class ForeignPayloadSection(ReportSection):
+    """A custom section whose 'dataset' field holds a non-DataSet."""
+    dataset: object = None
+
+    def __post_init__(self):
+        self.section_type = "foreign"
+
+
+class TestForeignDatasetPayloads:
+    """A field *named* dataset is not necessarily a DataSet. Foreign types
+    must not crash the manifest — they are simply not lineage-bearing."""
+
+    def test_raw_dataframe_payload_omits_keys_no_crash(self):
+        s = ForeignPayloadSection(title="df", dataset=pd.DataFrame({"a": [1]}))
+        d = s.to_manifest_dict()
+        assert "dataset_fingerprint" not in d
+        assert "dataset_lineage" not in d
+
+    def test_string_payload_omits_keys_no_crash(self):
+        d = ForeignPayloadSection(title="s", dataset="not-a-dataset").to_manifest_dict()
+        assert "dataset_fingerprint" not in d
+
+    def test_render_with_foreign_payload_still_builds_manifest(self):
+        report = Report(name="foreign")
+        report.add(ForeignPayloadSection(title="odd",
+                                         dataset=pd.DataFrame({"a": [1]})))
+        report.add(TableSection(title="real", dataset=make_ds()))
+        m = report.build_manifest("html", "/dev/null").to_dict()
+        assert len(m["sections"]) == 2
+        assert m["sections"][1]["dataset_fingerprint"]
+
+
+class TestEmptyDatasetRecordsLineage:
+    """A present-but-0-row DataSet is data with provenance, not absence of
+    data. The old truthiness guard silently skipped it (DataSet defines
+    __len__); the is-not-None semantics are pinned here."""
+
+    def test_empty_dataset_emits_all_four_keys(self):
+        empty = DataSet(df=pd.DataFrame({"region": [], "revenue": []}),
+                        name="empty")
+        d = TableSection(title="t", dataset=empty).to_manifest_dict()
+        assert d["dataset_name"] == "empty"
+        assert d["dataset_shape"] == [0, 2]
+        assert d["dataset_fingerprint"] == empty.fingerprint()
+
+    def test_empty_dataset_on_custom_section(self):
+        empty = DataSet(df=pd.DataFrame({"a": []}), name="empty")
+        d = MapSection(title="m", dataset=empty).to_manifest_dict()
+        assert d["dataset_shape"] == [0, 1]
+
+
+class TestSpecExportToleratesCustomSections:
+    """from_report() is best-effort by design; a custom string section_type
+    must export (as its string), not crash with AttributeError."""
+
+    def test_from_report_with_custom_section_does_not_raise(self):
+        from tracebi.spec import ReportSpec
+
+        report = Report(name="mixed")
+        report.add(MapSection(title="map", dataset=make_ds()))
+        report.add(TableSection(title="tbl", dataset=make_ds()))
+        rspec = ReportSpec.from_report(report)
+        types = [s.get("type") for s in rspec.to_dict()["sections"]]
+        assert "map" in types
