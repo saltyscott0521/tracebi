@@ -359,6 +359,9 @@ __pycache__/
 venv/
 .env
 data/
+# Rendered outputs are disposable, but the *.manifest.json files inside are
+# receipts — the audit trail. Retain (commit or archive) the manifests you
+# need to stand behind a report later.
 output/
 *.db
 .ipynb_checkpoints/
@@ -467,8 +470,10 @@ There is no registration file to edit.
 
 ## Run the sample report
 
+TraceBi is not on PyPI — install it from GitHub:
+
 ```bash
-pip install "tracebi[analyst]"
+pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"
 tracebi run sample_report
 open output/sample_report.html
 ```
@@ -476,7 +481,7 @@ open output/sample_report.html
 ## Browse in the web UI
 
 ```bash
-pip install "tracebi[web]"
+pip install "tracebi[web] @ git+https://github.com/saltyscott0521/tracebi"
 tracebi serve                 # http://127.0.0.1:8000
 ```
 
@@ -530,6 +535,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     print(f"Initialised TraceBi project at {target}")
     print(f"  cd {target.name}")
+    print(f"  git init && git add .         # manifests stamp the commit (git_sha)")
     print(f"  tracebi run sample_report     # render to output/")
     print(f"  tracebi serve                 # browse at http://127.0.0.1:8000")
     return 0
@@ -634,6 +640,22 @@ def cmd_spec(args: argparse.Namespace) -> int:
     return 0
 
 
+def _web_app_importable() -> bool:
+    """True when the ``web`` FastAPI app package can be imported.
+
+    The wheel ships only the ``tracebi`` package (pyproject ``packages``),
+    while ``tracebi serve`` boots ``web.api.main:app`` — so a plain pip
+    install has no web app to serve. Checked up front so the failure is an
+    actionable message instead of uvicorn's ModuleNotFoundError mid-boot.
+    """
+    import importlib.util
+
+    try:
+        return importlib.util.find_spec("web.api.main") is not None
+    except ImportError:
+        return False
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     """
     Serve the current project's web UI.
@@ -657,19 +679,35 @@ def cmd_serve(args: argparse.Namespace) -> int:
         )
         return 1
 
-    try:
-        import uvicorn  # noqa: F401
-    except ImportError:
+    # The app reads artifact directories relative to the working directory,
+    # so it must stay on sys.path for the discovery imports to resolve.
+    # Inserted before the checks below so a checkout in cwd counts as one.
+    sys.path.insert(0, str(cwd))
+
+    if not _web_app_importable():
         print(
-            "The web UI needs the web extras. Install with:\n"
-            "    pip install 'tracebi[web]'",
+            "tracebi serve: the web app ('web' package) is not importable.\n"
+            "The installed wheel ships only the `tracebi` library, not the web\n"
+            "app. Either run `tracebi serve` from a clone of the repo:\n"
+            "    git clone https://github.com/saltyscott0521/tracebi\n"
+            "or point PYTHONPATH at an existing checkout:\n"
+            "    PYTHONPATH=/path/to/tracebi-checkout tracebi serve\n"
+            "(TraceBi is not on PyPI; the library installs with:\n"
+            '    pip install "tracebi[web] @ git+https://github.com/saltyscott0521/tracebi")',
             file=sys.stderr,
         )
         return 1
 
-    # The app reads artifact directories relative to the working directory,
-    # so it must stay on sys.path for the discovery imports to resolve.
-    sys.path.insert(0, str(cwd))
+    try:
+        import uvicorn  # noqa: F401
+    except ImportError:
+        print(
+            "The web UI needs the web extras. TraceBi is not on PyPI —\n"
+            "install from the repo:\n"
+            '    pip install "tracebi[web] @ git+https://github.com/saltyscott0521/tracebi"',
+            file=sys.stderr,
+        )
+        return 1
 
     # Don't drag the bundled demo app into someone else's project — it
     # references demo data they do not have. An app module is only needed

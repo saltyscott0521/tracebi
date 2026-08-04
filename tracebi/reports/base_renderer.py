@@ -3,10 +3,28 @@
 from __future__ import annotations
 
 import os
+import sys
 from abc import ABC, abstractmethod
 from typing import Optional
 
 from tracebi.reports.report import Report, ReportManifest
+
+
+def _warn_if_unknown_git_sha(manifest: ReportManifest) -> None:
+    """One loud stderr line when code provenance is missing from the manifest.
+
+    Emitted once per render — the manifest is built once per render run, so
+    this never repeats per section. Not an error: the report still renders,
+    but the receipt cannot say which code produced it.
+    """
+    if manifest.git_sha == "unknown":
+        print(
+            "tracebi: warning: git_sha is 'unknown' — code provenance is "
+            "missing from this render's audit trail. Run the report from a "
+            "git repository (`git init && git add .` in your project) so the "
+            "manifest records the commit.",
+            file=sys.stderr,
+        )
 
 
 class BaseRenderer(ABC):
@@ -57,6 +75,7 @@ class BaseRenderer(ABC):
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         self._render(report, output_path)
         manifest = report.build_manifest(format=self.FORMAT, output_path=output_path)
+        _warn_if_unknown_git_sha(manifest)
         if save_manifest:
             mp = manifest_path or output_path + ".manifest.json"
             manifest.save(mp)

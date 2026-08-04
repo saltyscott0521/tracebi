@@ -472,6 +472,16 @@ execution (which writes to the warehouse) is deliberately not exposed.
 Attribution is recorded as `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`)
 in the same audit trail as web and CLI actors.
 
+### Retaining receipts
+
+Every render writes a `<output>.manifest.json` next to the artifact —
+`render_report_spec` lands both in `output/` by default. The
+manifest is the audit trail: the recorded queries, lineage, and git SHA
+that let a reviewer check a number months later. Rendered HTML is
+disposable; manifests are not. Retain them — commit them, or archive
+whatever lands in `output/` — because a receipt you discarded proves
+nothing.
+
 ---
 
 ## Web UI

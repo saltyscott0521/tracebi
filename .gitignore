@@ -10,8 +10,10 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
+# Rendered outputs are disposable, but *.manifest.json files are receipts —
+# the audit trail behind every rendered number. They are deliberately NOT
+# ignored: projects should retain (commit or archive) their manifests.
 output/
-*.manifest.json
 .DS_Store
 .ipynb_checkpoints/
 *.ipynb
