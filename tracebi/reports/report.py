@@ -225,7 +225,11 @@ class ChartSection(ReportSection):
         chart_type: 'bar', 'line', 'pie', 'scatter', 'area', 'barh'.
         x:          Column name for the X axis.
         y:          Column name(s) for the Y axis (str or list).
-        color:      Column to use for color grouping (optional).
+        color:      Optional column to pivot into series: each distinct value
+                    becomes its own coloured series (grouped bars for
+                    bar/barh, one line/area per group, per-group scatter
+                    points) with a legend entry. Requires exactly one y
+                    column; not supported for pie.
         xlabel:     X axis label override.
         ylabel:     Y axis label override.
         figsize:    Tuple (width_inches, height_inches). Default (10, 5).

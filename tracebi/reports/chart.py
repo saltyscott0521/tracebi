@@ -64,6 +64,9 @@ class ChartSpec:
     ylabel: str = ""
     palette: tuple[str, ...] = DEFAULT_PALETTE
     show_values: bool = False
+    # The column the rows were pivoted on when built with color=. Purely
+    # descriptive — the pivot has already happened by construction time.
+    color: str = ""
 
     # ── Construction ───────────────────────────────────────────
 
@@ -76,12 +79,26 @@ class ChartSpec:
                        series=(), rows=(), title=section.title or "")
 
         series = tuple(section.y) if section.y else ()
+        color = getattr(section, "color", None)
+        label = section.title or f"{section.chart_type} chart"
+
+        if color and section.chart_type.lower() == "pie":
+            raise ValueError(
+                f"Chart '{label}': color= is not supported for pie charts — "
+                f"a pie already colours one slice per x value."
+            )
+        if color and len(series) != 1:
+            raise ValueError(
+                f"Chart '{label}': color= requires exactly one y column to "
+                f"pivot into series; got {list(series) or 'none'}."
+            )
 
         # A column that isn't there must fail loudly. Plotting it as zeros
         # would produce a confident, wrong-looking chart with exit code 0 —
         # the same class of silent-wrong-output this framework exists to
         # prevent, and the reason chart failures were made to raise.
-        missing = [c for c in (section.x, *series) if c not in df.columns]
+        wanted = (section.x, *series, *((color,) if color else ()))
+        missing = [c for c in wanted if c not in df.columns]
         if missing:
             import difflib
             available = sorted(df.columns)
@@ -89,11 +106,13 @@ class ChartSpec:
             for col in missing:
                 close = difflib.get_close_matches(str(col), available, n=1)
                 hints.append(f"'{col}'" + (f" (did you mean '{close[0]}'?)" if close else ""))
-            label = section.title or f"{section.chart_type} chart"
             raise ValueError(
                 f"Chart '{label}' references column(s) not present in its "
                 f"dataset: {', '.join(hints)}. Available columns: {available}"
             )
+
+        if color:
+            return cls._from_section_grouped(section, df, series[0], color)
 
         keep = [section.x, *series]
         rows = df[keep].to_dict("records")
@@ -107,6 +126,54 @@ class ChartSpec:
             ylabel=section.ylabel or (series[0] if len(series) == 1 else ""),
             palette=tuple(section.palette) if section.palette else DEFAULT_PALETTE,
             show_values=bool(section.show_values),
+        )
+
+    @classmethod
+    def _from_section_grouped(cls, section, df, value_col: str, color: str) -> "ChartSpec":
+        """
+        Pivot rows on the color column: each distinct value becomes a series.
+
+        Bar/barh/line/area share x categories, so rows are merged by x value
+        (first-appearance order; a duplicate (x, color) pair keeps the last
+        value). Scatter keeps one row per data point — its x is numeric and
+        groups rarely share x values, so merging would lose points.
+
+        A group with no row at some x leaves that series key absent from the
+        row; rendering then draws nothing there rather than inventing a zero.
+        """
+        scatter = section.chart_type.lower() == "scatter"
+        groups: list[str] = []
+        rows: list[dict] = []
+        by_x: dict = {}
+        for r in df[[section.x, color, value_col]].to_dict("records"):
+            g = "" if r[color] is None else str(r[color])
+            if g == section.x:
+                label = section.title or f"{section.chart_type} chart"
+                raise ValueError(
+                    f"Chart '{label}': color group {g!r} collides with the x "
+                    f"column name '{section.x}'; rename one of them."
+                )
+            if g not in groups:
+                groups.append(g)
+            if scatter:
+                rows.append({section.x: r[section.x], g: r[value_col]})
+            else:
+                xv = r[section.x]
+                if xv not in by_x:
+                    by_x[xv] = {section.x: xv}
+                    rows.append(by_x[xv])
+                by_x[xv][g] = r[value_col]
+        return cls(
+            chart_type=section.chart_type,
+            x=section.x,
+            series=tuple(groups),
+            rows=tuple(rows),
+            title=section.title or "",
+            xlabel=section.xlabel or section.x,
+            ylabel=section.ylabel or value_col,
+            palette=tuple(section.palette) if section.palette else DEFAULT_PALETTE,
+            show_values=bool(section.show_values),
+            color=color,
         )
 
     def to_dict(self) -> dict:
@@ -126,6 +193,7 @@ class ChartSpec:
             xlabel=d.get("xlabel", ""), ylabel=d.get("ylabel", ""),
             palette=tuple(d.get("palette") or DEFAULT_PALETTE),
             show_values=bool(d.get("show_values", False)),
+            color=d.get("color", ""),
         )
 
     # ── Rendering ──────────────────────────────────────────────
@@ -159,11 +227,30 @@ class ChartSpec:
                 out.append(0.0)
         return out
 
+    def _series_values(self, col: str) -> list[tuple[int, float]]:
+        """
+        (row index, value) pairs for rows that carry the column at all.
+
+        A key can only be absent from a pivoted (color-grouped) row — a group
+        with no data at that x. Skipping the row draws nothing there, rather
+        than inventing a zero the data never contained.
+        """
+        out = []
+        for i, r in enumerate(self.rows):
+            if col not in r:
+                continue
+            v = r[col]
+            try:
+                out.append((i, float(v)))
+            except (TypeError, ValueError):
+                out.append((i, 0.0))
+        return out
+
     def _labels(self) -> list[str]:
         return ["" if r.get(self.x) is None else str(r.get(self.x)) for r in self.rows]
 
     def _y_bounds(self) -> tuple[float, float]:
-        vals = [v for s in self.series for v in self._values(s)]
+        vals = [v for s in self.series for _, v in self._series_values(s)]
         if not vals:
             return 0.0, 1.0
         lo, hi = min(min(vals), 0.0), max(max(vals), 0.0)
@@ -193,7 +280,14 @@ class ChartSpec:
         return out
 
     @staticmethod
-    def _fmt(v: float) -> str:
+    def _fmt(v: float, compact: bool = False) -> str:
+        # Compact mode is for on-chart value labels: 2400240.38 painted on a
+        # bar is noise, 2.4M is legible. Values under 1000 keep up to two
+        # decimals either way, so there is one formatting voice per chart.
+        if compact and abs(v) >= 1000:
+            for div, unit in ((1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")):
+                if abs(v) >= div:
+                    return f"{v / div:.1f}".rstrip("0").rstrip(".") + unit
         if v == int(v) and abs(v) < 1e15:
             return f"{int(v):,}"
         return f"{v:,.2f}".rstrip("0").rstrip(".")
@@ -311,7 +405,7 @@ class ChartSpec:
 
         bars = []
         for si, name in enumerate(self.series):
-            for i, v in enumerate(self._values(name)):
+            for i, v in self._series_values(name):
                 y = _M["top"] + ph - (v - lo) / (hi - lo) * ph
                 top, height = min(y, zero), abs(zero - y)
                 x = _M["left"] + i * band + band * 0.14 + si * bw
@@ -325,7 +419,7 @@ class ChartSpec:
                     bars.append(
                         f'<text class="tb-value" x="{x + bw / 2:.1f}" '
                         f'y="{top - 4:.1f}" text-anchor="middle">'
-                        f'{self._esc(self._fmt(v))}</text>'
+                        f'{self._esc(self._fmt(v, compact=True))}</text>'
                     )
         return self._axes(ticks, lo, hi, labels) + self._legend() + "".join(bars)
 
@@ -343,7 +437,7 @@ class ChartSpec:
 
         bars = []
         for si, name in enumerate(self.series):
-            for i, v in enumerate(self._values(name)):
+            for i, v in self._series_values(name):
                 x = _M["left"] + (v - lo) / (hi - lo) * pw
                 left, width = min(x, zero), abs(x - zero)
                 y = _M["top"] + i * band + band * 0.14 + si * bh
@@ -356,7 +450,8 @@ class ChartSpec:
                 if self.show_values:
                     bars.append(
                         f'<text class="tb-value" x="{left + width + 4:.1f}" '
-                        f'y="{y + bh / 2 + 4:.1f}">{self._esc(self._fmt(v))}</text>'
+                        f'y="{y + bh / 2 + 4:.1f}">'
+                        f'{self._esc(self._fmt(v, compact=True))}</text>'
                     )
         return (self._axes(ticks, lo, hi, labels, horizontal=True)
                 + self._legend() + "".join(bars))
@@ -379,8 +474,8 @@ class ChartSpec:
 
         out = []
         for si, name in enumerate(self.series):
-            vals = self._values(name)
-            pts = [(px(i), py(v)) for i, v in enumerate(vals)]
+            pairs = self._series_values(name)
+            pts = [(px(i), py(v)) for i, v in pairs]
             path = " ".join(
                 f"{'M' if i == 0 else 'L'}{x:.1f},{y:.1f}"
                 for i, (x, y) in enumerate(pts)
@@ -397,16 +492,17 @@ class ChartSpec:
                 f'<path class="tb-line" d="{path}" fill="none" '
                 f'stroke="{colour}" stroke-width="2.5" stroke-linejoin="round"/>'
             )
-            for i, (x, y) in enumerate(pts):
+            for (i, v), (x, y) in zip(pairs, pts):
                 out.append(
                     f'<circle class="tb-point" cx="{x:.1f}" cy="{y:.1f}" r="3.5" '
                     f'fill="{colour}"><title>{self._esc(labels[i])}: '
-                    f'{self._esc(self._fmt(vals[i]))}</title></circle>'
+                    f'{self._esc(self._fmt(v))}</title></circle>'
                 )
                 if self.show_values:
                     out.append(
                         f'<text class="tb-value" x="{x:.1f}" y="{y - 8:.1f}" '
-                        f'text-anchor="middle">{self._esc(self._fmt(vals[i]))}</text>'
+                        f'text-anchor="middle">'
+                        f'{self._esc(self._fmt(v, compact=True))}</text>'
                     )
         return self._axes(ticks, lo, hi, labels) + self._legend() + "".join(out)
 
@@ -433,7 +529,8 @@ class ChartSpec:
                 f'text-anchor="end">{self._esc(self._fmt(t))}</text>'
             )
         for si, name in enumerate(self.series):
-            for xv, yv in zip(xs, self._values(name)):
+            for i, yv in self._series_values(name):
+                xv = xs[i]
                 cx = _M["left"] + (xv - lo_x) / (hi_x - lo_x) * pw
                 cy = _M["top"] + ph - (yv - lo_y) / (hi_y - lo_y) * ph
                 out.append(
