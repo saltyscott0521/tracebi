@@ -105,6 +105,16 @@ class ReportSection:
         }
         if self.id is not None:
             d["id"] = self.id
+        # Any section carrying a DataSet — built-in or custom — gets its
+        # lineage and fingerprint recorded here, in the base class, so a
+        # project-defined section type cannot silently forfeit the audit
+        # trail just by not overriding to_manifest_dict().
+        dataset = getattr(self, "dataset", None)
+        if dataset is not None:
+            d["dataset_name"] = dataset.name
+            d["dataset_shape"] = list(dataset.shape)
+            d["dataset_lineage"] = dataset.lineage_to_dict()
+            d["dataset_fingerprint"] = dataset.fingerprint()
         return d
 
 
@@ -197,11 +207,6 @@ class TableSection(ReportSection):
 
     def to_manifest_dict(self) -> dict:
         d = super().to_manifest_dict()
-        if self.dataset:
-            d["dataset_name"] = self.dataset.name
-            d["dataset_shape"] = list(self.dataset.shape)
-            d["dataset_lineage"] = self.dataset.lineage_to_dict()
-            d["dataset_fingerprint"] = self.dataset.fingerprint()
         d["columns"] = self.columns
         d["max_rows"] = self.max_rows
         return d
@@ -252,11 +257,6 @@ class ChartSection(ReportSection):
 
     def to_manifest_dict(self) -> dict:
         d = super().to_manifest_dict()
-        if self.dataset:
-            d["dataset_name"] = self.dataset.name
-            d["dataset_shape"] = list(self.dataset.shape)
-            d["dataset_lineage"] = self.dataset.lineage_to_dict()
-            d["dataset_fingerprint"] = self.dataset.fingerprint()
         d["chart_type"] = self.chart_type
         d["x"] = self.x
         d["y"] = self.y
@@ -589,7 +589,11 @@ class Report:
             print(f"  Parameters: {self._parameters}")
         print(f"  Sections ({len(self._sections)}):")
         for i, s in enumerate(self._sections, 1):
-            label = f"[{s.section_type.value.upper()}]"
+            # section_type may be a plain string for custom section types —
+            # same tolerance as ReportSection.to_manifest_dict().
+            stype = s.section_type
+            name = stype.value if hasattr(stype, "value") else str(stype)
+            label = f"[{name.upper()}]"
             print(f"    {i}. {label} {s.title or '(untitled)'}")
         print(f"{'='*55}\n")
 
