@@ -114,15 +114,28 @@ def gateway_context(model: Optional[str] = None) -> dict:
 
 
 def gateway_models() -> dict:
-    """Models this project exposes, with table/fact/dimension counts."""
-    out = {}
+    """
+    Models this project exposes, with table/fact/dimension counts.
+
+    The registry indexes each model under both its file stem and its
+    ``.name``; listing both as separate models made an agent's world look
+    twice its size, so aliases are collapsed to one entry with every name
+    that resolves to it.
+    """
+    by_id: dict[int, tuple[Any, list[str]]] = {}
     for name, m in _load_models().items():
+        by_id.setdefault(id(m), (m, []))[1].append(name)
+
+    out = {}
+    for m, names in by_id.values():
+        primary = getattr(m, "name", None) or names[0]
         try:
             info = m.info()
         except Exception as exc:  # noqa: BLE001
-            out[name] = {"error": str(exc)}
+            out[primary] = {"error": str(exc)}
             continue
-        out[name] = {
+        out[primary] = {
+            "aliases": sorted(n for n in names if n != primary),
             "tables": sorted(info.get("tables", {}))
             if isinstance(info.get("tables"), dict)
             else info.get("tables"),

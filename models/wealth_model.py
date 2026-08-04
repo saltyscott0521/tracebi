@@ -252,4 +252,26 @@ model.add_fact(
                   "dim_branch": "branch_id", "dim_product": "product_id"},
 )
 
+# Named measures — the shared definitions every report and agent agrees on.
+# "Unrealized gain" is defined here, once, rather than re-derived (perhaps
+# differently) by each consumer. The declared format also becomes the
+# renderer's default for the column.
+model.add_measure(
+    "market_value", column="market_value", agg="sum", format="currency0",
+    description="Sum of position market values.",
+)
+model.add_measure(
+    "cost_basis", column="cost_basis", agg="sum", format="currency0",
+    description="Sum of position cost bases.",
+)
+model.add_measure(
+    "unrealized_gain", expr="market_value - cost_basis", agg="sum",
+    format="currency0",
+    description="Market value less cost basis, summed per group.",
+)
+model.add_measure(
+    "gain_pct", ratio=("unrealized_gain", "cost_basis"), format="percent",
+    description="Unrealized gain as a share of cost basis (ratio of totals).",
+)
+
 model.connect()

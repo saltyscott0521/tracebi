@@ -62,6 +62,9 @@ def gateway_model():
         "fact_orders", table_name="orders",
         measures=["revenue"], foreign_keys={"dim_customer": "customer_id"},
     )
+    model.add_measure(
+        "total_revenue", column="revenue", agg="sum", format="currency",
+    )
     model.connect()
     model_registry.register(model)
     return model
@@ -148,8 +151,29 @@ def test_context_carries_the_vocabulary(gateway_model):
 def test_models_listing_includes_the_fixture(gateway_model):
     listing = gateway_models()["models"]
     assert "gw_demo" in listing
+    assert "total_revenue" in listing["gw_demo"]["measures"]
     info = gateway_model_info("gw_demo")
     assert info["name"] == "gw_demo"
+
+
+def test_models_listing_collapses_aliases(gateway_model, monkeypatch):
+    """stem + .name index the same object; the listing shows one model."""
+    import tracebi.mcp_server as gw
+
+    monkeypatch.setattr(
+        gw, "_load_models",
+        lambda: {"gw_demo": gateway_model, "gw_demo_file": gateway_model},
+    )
+    listing = gw.gateway_models()["models"]
+    assert list(listing) == ["gw_demo"]
+    assert listing["gw_demo"]["aliases"] == ["gw_demo_file"]
+
+
+def test_named_measure_queries_through_the_gateway(gateway_model):
+    out = _query(measures=["total_revenue"], dimensions=[])
+    assert out["row_count"] == 1
+    assert out["rows"][0]["total_revenue"] == pytest.approx(900.0)
+    assert out["fingerprint"]
 
 
 # ── Spec validation and rendering ──────────────────────────────────────────
