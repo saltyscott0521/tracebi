@@ -6,6 +6,31 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the three-phase workflow: manipulate → model → dashboard
+
+A worked, end-to-end path from a messy source file to a served dashboard, with
+each phase in its own folder (see `WORKFLOW.md`):
+
+- `transforms/` — phase ①, ordinary pandas that cleans a source and **sinks**
+  star-schema tables into a file-backed DuckDB warehouse. As much code as the
+  data needs; the contract is what lands, not how it was cleaned.
+- `models/portfolio_model.py` — phase ②, a `DataModel` over the warehouse. The
+  reviewable contract: grain, keys and measures in ~50 declarative lines.
+- `dashboards/` — phase ③, a `ReportSpec` JSON whose every figure is a live
+  query against the model. A new `TRACEBI_DASHBOARDS_DIR` (default `dashboards`)
+  is auto-discovered and served on the Reports page.
+- `run_workflow.py` drives ①→③; `workflow_data/generate_raw.py` produces a
+  synthetic Schedule-of-Investments file so phase ① has real work to do.
+
+A **metrics section can now bind its cards to a query**: a card whose `value`
+names a measure reads it from a one-row result, so the KPI strip stays live
+instead of hard-coding a number that goes stale. Static (literal-value) metrics
+are unchanged.
+
+Fixed a background-report polling bug surfaced by the dashboard: the run-status
+poll now continues while the tab is backgrounded (`refetchIntervalInBackground`),
+matching the UI's own "you can keep browsing" promise.
+
 ### Changed — **BREAKING**: the FastAPI app moved to `tracebi.web.api`
 
 The wheel shipped the library but not the FastAPI app, so an installed TraceBi

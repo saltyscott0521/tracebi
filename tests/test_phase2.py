@@ -742,6 +742,61 @@ class TestReportSpecRoundTrip:
         assert again["sections"][0]["metrics"][0]["label"] == "Revenue"
 
 
+class TestQueryBoundMetrics:
+    """
+    A metrics section may pull its card values from a one-row query so the KPI
+    strip stays live. These assert the values come from the model, and that a
+    column name never leaks into the page when resolution is expected.
+    """
+
+    def _spec(self):
+        from tracebi.spec import ReportSpec
+        return ReportSpec.from_dict({
+            "name": "Live KPIs",
+            "sections": [{
+                "type": "metrics", "title": "Totals",
+                "data": {"model": "Sales", "query": {
+                    "fact": "fact_orders",
+                    "measures": ["revenue", "gross_margin"],
+                }},
+                "metrics": [
+                    {"label": "Revenue", "value": "revenue", "format": "currency0"},
+                    {"label": "Margin", "value": "gross_margin", "format": "currency0"},
+                    {"label": "Target", "value": 500, "format": "currency0"},
+                ],
+            }],
+        })
+
+    def test_metric_values_resolve_from_the_query(self):
+        from tracebi.spec import ReportSpec
+
+        report = self._spec().build({"Sales": _spec_model()})
+        cards = ReportSpec.from_report(report).to_dict()["sections"][0]["metrics"]
+        by_label = {c["label"]: c["value"] for c in cards}
+        assert by_label["Revenue"] == 1000.0   # the live total, not the string "revenue"
+        assert by_label["Margin"] == 290.0
+        assert by_label["Target"] == 500        # a literal passes through untouched
+
+    def test_the_rendered_card_shows_the_number_not_the_column_name(self):
+        report = self._spec().build({"Sales": _spec_model()})
+        html = HTMLRenderer().to_html(report)
+        assert "$1,000" in html
+        assert ">revenue<" not in html          # column name must never reach the page
+
+    def test_a_static_metrics_section_still_works(self):
+        from tracebi.spec import ReportSpec
+
+        spec = ReportSpec.from_dict({
+            "name": "Static",
+            "sections": [{"type": "metrics", "metrics": [
+                {"label": "Target", "value": 1234, "format": "currency0"},
+            ]}],
+        })
+        report = spec.build({})   # no models, no data — literal value stands
+        cards = ReportSpec.from_report(report).to_dict()["sections"][0]["metrics"]
+        assert cards[0]["value"] == 1234
+
+
 class TestReportSpecValidation:
     """
     The point of a spec is being checkable before it runs. An agent that

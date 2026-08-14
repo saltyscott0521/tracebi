@@ -102,6 +102,9 @@ export const useReportRun = (name, runId) =>
     queryFn: () => get(`/reports/${encodeURIComponent(name)}/runs/${runId}`),
     enabled: !!(name && runId),
     refetchInterval: (query) => (query.state.data?.status === 'running' ? 1200 : false),
+    // Keep polling even when the tab is backgrounded — the run is on the
+    // server, and the copy promises "you can keep browsing".
+    refetchIntervalInBackground: true,
   })
 
 export const useReportRunHistory = (name) =>

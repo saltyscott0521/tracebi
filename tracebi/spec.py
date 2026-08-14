@@ -152,6 +152,19 @@ def _data_ref_of(section: ReportSection) -> Optional[DataRef]:
     return None
 
 
+def _metric_from_spec(m: dict, row: Any) -> Metric:
+    """
+    Build a Metric, resolving a column-name ``value`` against a one-row query
+    result when one is supplied. A literal value passes through unchanged.
+    """
+    spec = {k: v for k, v in m.items() if k != "data"}
+    val = spec.get("value")
+    if row is not None and isinstance(val, str) and val in row.index:
+        cell = row[val]
+        spec["value"] = cell.item() if hasattr(cell, "item") else cell
+    return Metric(**spec)
+
+
 def section_from_dict(
     d: dict,
     resolve: Optional[Callable[[DataRef], Any]] = None,
@@ -203,10 +216,19 @@ def section_from_dict(
         kwargs["sections"] = [
             section_from_dict(s, resolve) for s in d.get("sections", [])
         ]
-    if stype == SectionType.METRICS.value:
-        kwargs["metrics"] = [Metric(**m) for m in d.get("metrics", [])]
-
-    if "data" in d and resolve is not None:
+    elif stype == SectionType.METRICS.value:
+        # A metrics section may carry a `data` query returning one row of
+        # totals; then a metric whose `value` names a column reads that cell,
+        # so the KPI strip stays live instead of hard-coding a number that
+        # goes stale. A literal value (or a string that names no column) is
+        # passed through unchanged.
+        row = None
+        if "data" in d and resolve is not None:
+            frame = resolve(DataRef.from_dict(d["data"])).to_pandas()
+            if len(frame):
+                row = frame.iloc[0]
+        kwargs["metrics"] = [_metric_from_spec(m, row) for m in d.get("metrics", [])]
+    elif "data" in d and resolve is not None:
         kwargs["dataset"] = resolve(DataRef.from_dict(d["data"]))
 
     # The section's own __post_init__ enforces enum values, so a bad

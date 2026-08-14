@@ -21,6 +21,7 @@ Environment switches:
     TRACEBI_MODELS_DIR          — model definitions folder (default: models)
     TRACEBI_PIPELINES_DIR       — pipeline definitions folder (default: pipelines)
     TRACEBI_REPORTS_DIR         — named reports folder (default: reports)
+    TRACEBI_DASHBOARDS_DIR      — dashboard specs folder (default: dashboards)
     TRACEBI_REQUESTS_DIR        — request scripts folder (default: requests)
     TRACEBI_SCHEDULED_DIR       — scheduled scripts folder (default: scheduled)
     TRACEBI_DEV_MODE=1          — mount /_dev/reload
@@ -221,9 +222,10 @@ if _app_module:
 # Folder-based auto-discovery — decorator-based artifacts fire registry side
 # effects on import (reports use @register.report, requests expose run()).
 for _env, _default in (
-    ("TRACEBI_REQUESTS_DIR",  "requests"),
-    ("TRACEBI_SCHEDULED_DIR", "scheduled"),
-    ("TRACEBI_REPORTS_DIR",   "reports"),
+    ("TRACEBI_REQUESTS_DIR",   "requests"),
+    ("TRACEBI_SCHEDULED_DIR",  "scheduled"),
+    ("TRACEBI_REPORTS_DIR",    "reports"),
+    ("TRACEBI_DASHBOARDS_DIR", "dashboards"),
 ):
     _dir = os.environ.get(_env, _default)
     if os.path.isdir(_dir):
