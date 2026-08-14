@@ -1,0 +1,33 @@
+fund,position,industry,par,cost,fair_value,rate,maturity
+Cedar Credit Partners,"Epsilon Health Partners, LLC — Delayed Draw Term Loan",Healthcare,20080000.00,19926401.76,19231973.65,L + 496,10/20/2031
+Harbor Point BDC,"Sigma Logistics Holdings, LLC — Senior Secured Second Lien Term Loan",Industrial,"$ 8,279,000.00","$ 8,135,782.69","$ 8,141,824.25",L + 597,2031-03-08
+Meridian Direct Lending,"Mu Financial Services, LLC — Delayed Draw Term Loan",financials,"$ 23,067,000.00","$ 22,494,138.83","$ 23,206,263.49",SOFR + 597,"Mar 18, 2028"
+Harbor Point BDC,"Gamma Software Group, LLC — Senior Secured First Lien Term Loan", Software,"$ 22,857,000.00","$ 22,769,225.27","$ 21,476,047.11",L + 455,"Aug 2, 2027"
+Meridian Direct Lending,"Kappa Energy Holdings, LLC — Revolving Credit Facility",Oil & Gas,"$ 9,859,000.00","$ 9,604,429.24","$ 9,243,079.31",SOFR + 731,"Jul 24, 2027"
+Cedar Credit Partners,Delta Systems Ltd — Senior Secured Second Lien Term Loan, Software,"$19,371,000.00","$18,790,498.26","$19,582,802.49",SOFR + 651,2027-08-14
+Meridian Direct Lending,Lambda Pipeline Co — Senior Secured First Lien Term Loan,Energy ,3785000.00,3739727.07,3758647.24,L+7.44%,2031-12-11
+Harbor Point BDC,—,Health Care,"20,539,000","20,187,201","18,008,163 (a)",SOFR+4.84%,2031-05-20
+Meridian Direct Lending,"Kappa Energy Holdings, LLC — Revolving Credit Facility",Oil & Gas,"$ 9,859,000.00","$ 9,604,429.24","$ 9,243,079.31",SOFR + 731,"Jul 24, 2027"
+Harbor Point BDC,Zeta Diagnostics Corporation — Senior Secured Second Lien Term Loan,HEALTHCARE,"7,263,000","7,091,560","6,545,393",SOFR + 607,"Sep 23, 2030"
+Harbor Point BDC,"Theta Retail Brands, LLC — Revolving Credit Facility (1)",Cons.,"$ 15,197,000.00","$ 14,613,780.46","$ 13,137,324.67",L+5.04%,2030-05-05
+Meridian Direct Lending,Zeta Diagnostics Corporation — Delayed Draw Term Loan,healthcare,"$ 18,007,000.00","$ 17,881,671.92","$ 16,656,443.92",Term SOFR+7.04%,"Oct 4, 2029"
+Cedar Credit Partners,"Gamma Software Group, LLC — Unitranche Term Loan",Technology/Software,"$ 13,883,000.00","$ 13,415,372.58","$ 12,690,016.66",SOFR+4.23%,10/25/2030
+Cedar Credit Partners,Beta Widgets Inc — Unitranche Term Loan,INDUSTRIALS,"$ 20,159,000.00","$ 19,520,406.44","$ 20,087,926.55",SOFR+5.43%,07/16/2028
+Meridian Direct Lending,"Omega Media Group, LLC — Delayed Draw Term Loan (3)",Consumer Discretionary,"$18,081,000.00","$18,009,921.26","$18,855,122.31",SOFR + 544,10/10/2027
+Harbor Point BDC,Beta Widgets Inc — Senior Secured First Lien Term Loan,INDUSTRIALS,"$ 10,295,000.00","$ 10,201,420.59","$ 9,838,721.63",L + 423,08/16/2027
+Harbor Point BDC,"Acme Industrial Holdings, LLC — Senior Secured Second Lien Term Loan",industrials,"$ 3,044,000.00","$ 2,970,828.24","$ 2,858,657.41",SOFR + 424,2028-09-11
+Meridian Direct Lending,Beta Widgets Inc — Revolving Credit Facility,Industrial,"6,033,000","5,860,469","5,809,748",SOFR + 402,"Jun 25, 2031"
+Meridian Direct Lending,  ,Industrial,"$ 12,483,000.00","$ 12,333,277.20","$ 12,983,961.10",Term SOFR + 664,"Apr 26, 2027"
+Cedar Credit Partners,"Acme Industrial Holdings, LLC — Senior Secured First Lien Term Loan",Industrial,8632000.00,8311862.67,8357072.41,Term SOFR + 739,"Aug 1, 2031"
+Meridian Direct Lending,Beta Widgets Inc — Revolving Credit Facility,Industrial,"6,033,000","5,860,469","5,809,748",SOFR + 402,"Jun 25, 2031"
+Harbor Point BDC,"Omega Media Group, LLC — Unitranche Term Loan (1)",Consumer Discretionary,"$12,314,000.00","$12,071,718.46","$12,484,472.23",Term SOFR + 527,"Feb 21, 2028"
+Meridian Direct Lending,"Mu Financial Services, LLC — Delayed Draw Term Loan",financials,"$ 23,067,000.00","$ 22,494,138.83","$ 23,206,263.49",SOFR + 597,"Mar 18, 2028"
+Cedar Credit Partners,"Sigma Logistics Holdings, LLC — Senior Secured First Lien Term Loan",Industrials ,"$ 8,671,000.00","$ 8,401,514.88","$ 8,114,795.85 (a)",SOFR + 632,2027-02-01
+Cedar Credit Partners,"Theta Retail Brands, LLC — Unitranche Term Loan (1)",Consumer Discretionary,"$20,365,000.00","$20,323,891.99","$18,756,354.35",Term SOFR + 579,2031-09-02
+Meridian Direct Lending,"Acme Industrial Holdings, LLC — Revolving Credit Facility",Industrial,"$ 4,687,000.00","$ 4,609,098.93","$ 4,822,579.11",SOFR+4.68%,2028-12-01
+Meridian Direct Lending,,Tech - Software,"$ 581,000.00","$ 564,448.38","$ 568,910.35",SOFR + 711,"Jan 12, 2028"
+Meridian Direct Lending,Zeta Diagnostics Corporation — Delayed Draw Term Loan,healthcare,"$ 18,007,000.00","$ 17,881,671.92","$ 16,656,443.92",Term SOFR+7.04%,"Oct 4, 2029"
+Meridian Direct Lending,Delta Systems Ltd — Delayed Draw Term Loan, Software,"$7,113,000.00","$6,920,518.21","$6,255,991.45",Term SOFR + 746,08/07/2029
+Cedar Credit Partners,Iota Foods Company — Senior Secured First Lien Term Loan,consumer,"$12,590,000.00","$12,542,477.20","$11,996,473.00",Term SOFR + 729,02/08/2030
+Cedar Credit Partners,"Kappa Energy Holdings, LLC — Delayed Draw Term Loan",Energy,717000.00,715212.06,717703.12,SOFR+6.63%,09/13/2031
+Harbor Point BDC,Lambda Pipeline Co — Senior Secured Second Lien Term Loan,energy,3270000.00,3255252.59,3279012.00,SOFR+5.84%,"Nov 6, 2030"

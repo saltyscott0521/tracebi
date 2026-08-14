@@ -1,0 +1,102 @@
+{
+  "name": "Portfolio Dashboard",
+  "author": "workflow",
+  "description": "Fund holdings by sector, fund and issuer — every figure a live query against portfolio_model. Edit this file to reshape the page; nothing re-runs the pandas.",
+  "sections": [
+    {
+      "type": "text",
+      "style": "heading1",
+      "title": "Direct Lending — Portfolio Book",
+      "content": "Three funds, cleaned from a Schedule-of-Investments export. Every number below is a query against the model phase ① sank; change a panel and re-render in milliseconds."
+    },
+    {
+      "type": "metrics",
+      "title": "At a glance",
+      "data": {
+        "model": "portfolio_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": ["fair_value", "positions", "unrealized", "mark"]
+        }
+      },
+      "metrics": [
+        { "label": "Fair value", "value": "fair_value", "format": "currency0" },
+        { "label": "Positions", "value": "positions", "format": "comma" },
+        { "label": "Unrealized G/L", "value": "unrealized", "format": "currency0", "good_when_up": true },
+        { "label": "Portfolio mark", "value": "mark", "format": "percent" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Exposure",
+      "widths": [1, 1],
+      "sections": [
+        {
+          "type": "chart",
+          "title": "Fair value by sector",
+          "chart_type": "bar",
+          "x": "dim_issuer.sector",
+          "y": "fair_value",
+          "xlabel": "Sector",
+          "ylabel": "Fair value",
+          "show_values": true,
+          "data": {
+            "model": "portfolio_model",
+            "query": {
+              "fact": "fact_holdings",
+              "measures": ["fair_value"],
+              "dimensions": ["dim_issuer.sector"]
+            }
+          }
+        },
+        {
+          "type": "chart",
+          "title": "Fair value by fund",
+          "chart_type": "bar",
+          "x": "dim_fund.fund",
+          "y": "fair_value",
+          "xlabel": "Fund",
+          "ylabel": "Fair value",
+          "show_values": true,
+          "data": {
+            "model": "portfolio_model",
+            "query": {
+              "fact": "fact_holdings",
+              "measures": ["fair_value"],
+              "dimensions": ["dim_fund.fund"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Holdings by issuer",
+      "column_labels": {
+        "dim_issuer.issuer": "Issuer",
+        "dim_issuer.sector": "Sector",
+        "fair_value": "Fair value",
+        "cost_basis": "Cost",
+        "unrealized": "Unrealized",
+        "mark": "Mark",
+        "positions": "Positions"
+      },
+      "number_formats": {
+        "fair_value": "currency0",
+        "cost_basis": "currency0",
+        "unrealized": "currency0",
+        "mark": "percent"
+      },
+      "totals": ["fair_value", "cost_basis", "unrealized", "positions"],
+      "highlight_negatives": ["unrealized"],
+      "data": {
+        "model": "portfolio_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": ["fair_value", "cost_basis", "unrealized", "mark", "positions"],
+          "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"]
+        }
+      }
+    }
+  ]
+}
