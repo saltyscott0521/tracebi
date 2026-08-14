@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useConnectors, useModels, useReports, usePipelines } from '../api'
 import { Skeleton } from '../components/Shared'
+import WorkflowDiagram from '../components/WorkflowDiagram'
 
 // ── Greeting ─────────────────────────────────────────────────────────────────
 
@@ -182,11 +183,27 @@ export default function Home() {
   return (
     <div className="fade-in">
       {/* Header */}
-      <div style={{ marginBottom: 36 }}>
+      <div style={{ marginBottom: 28 }}>
         <h1 className="home-greeting" style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
           {greeting()}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--muted)' }}>{formatDate()}</p>
+      </div>
+
+      {/* Workflow — the framework, as a flowchart */}
+      <div style={{ marginBottom: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: 0 }}>
+            From messy analysis to a reportable model
+          </h2>
+          <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+            three phases, three folders, frozen between each
+          </span>
+          <Link to="/workflow" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--accent-text)', textDecoration: 'none' }}>
+            Walk through it →
+          </Link>
+        </div>
+        <WorkflowDiagram />
       </div>
 
       {/* Stats row */}
@@ -255,13 +272,13 @@ export default function Home() {
             borderRadius: 14, padding: '20px 22px', marginBottom: 20,
           }}>
             <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.65, marginBottom: 16 }}>
-              TraceBi is a trust layer for AI-generated analytics. Analysts and agents author reports against a semantic contract — and every number carries a re-provable receipt.
+              Take data from messy to reportable in three phases — write the analysis, freeze it into a model, dashboard the model. Every figure on the page stays a live query.
             </p>
             {[
-              'Define a connector + DataModel in your app module',
-              'Load, filter, transform — each step appends a LineageNode',
-              'Run queries via .query() or the Explore page',
-              'Build reports and render to HTML or Excel — a lineage manifest ships with every output',
+              'Manipulate: pull queries and run Python in transforms/ — sink the result to the warehouse',
+              'Model: declare a star schema over the warehouse in models/ — grain, keys, measures',
+              'Dashboard: point a spec in dashboards/ at the model — KPI cards, charts, tables',
+              'Serve: every figure is a live query; edit the spec and re-render in milliseconds',
               'Re-prove any output later: tracebi verify re-runs the recorded queries',
             ].map((text, n) => (
               <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>

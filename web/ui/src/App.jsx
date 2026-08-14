@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import { ToastProvider } from './components/Shared'
 import Home from './pages/Home'
+import Workflow from './pages/Workflow'
 import GettingStarted from './pages/GettingStarted'
 import Connectors from './pages/Connectors'
 import Models from './pages/Models'
@@ -16,6 +17,7 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/workflow" element={<Workflow />} />
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/connectors" element={<Connectors />} />
           <Route path="/models" element={<Models />} />

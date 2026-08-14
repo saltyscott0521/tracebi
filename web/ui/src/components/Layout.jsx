@@ -46,10 +46,17 @@ const ICONS = {
       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
     </svg>
   ),
+  workflow: (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M3 4.5A1.5 1.5 0 014.5 3h2A1.5 1.5 0 018 4.5v2A1.5 1.5 0 016.5 8h-2A1.5 1.5 0 013 6.5v-2zM12 13.5a1.5 1.5 0 011.5-1.5h2a1.5 1.5 0 011.5 1.5v2a1.5 1.5 0 01-1.5 1.5h-2a1.5 1.5 0 01-1.5-1.5v-2z" />
+      <path fillRule="evenodd" d="M6 8.5a.5.5 0 01.5.5v2a2 2 0 002 2h3a.5.5 0 010 1h-3a3 3 0 01-3-3V9a.5.5 0 01.5-.5z" clipRule="evenodd" />
+    </svg>
+  ),
 }
 
 const NAV = [
   { path: '/',                 label: 'Home',          icon: 'home',       color: '#93c5fd' },
+  { path: '/workflow',         label: 'Workflow',      icon: 'workflow',   color: '#67e8f9' },
   { path: '/getting-started',  label: 'Get Started',   icon: 'guide',      color: '#86efac' },
   { path: '/connectors',       label: 'Connectors',    icon: 'connectors', color: '#6ee7b7' },
   { path: '/models',     label: 'Models',     icon: 'models',     color: '#93c5fd' },
