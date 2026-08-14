@@ -1,20 +1,77 @@
 # TraceBi Analyst Guide
 
-The complete development flow for writing request scripts — from blank file to
-a published, parameterized, fully-traceable report. One linear path; every
-code block is runnable.
+The analyst path from messy data to a served dashboard, plus the full
+development flow for ad-hoc request scripts — from blank file to a published,
+parameterized, fully-traceable report. Every code block is runnable.
 
-**Who this is for:** analysts writing reports against an existing TraceBi
-project (a `DataModel` someone has already wired up). If you're setting up
-connectors and models from scratch, start with the [README](../README.md)
-Quick Start instead. If your "analyst" is an AI agent, the playbook is
+**Who this is for:** analysts writing against an existing TraceBi project (a
+warehouse and `DataModel` someone has already wired up, or one you build with
+the workflow below). If you're setting up connectors from scratch, the
+[README](../README.md) Quick Start and [WORKFLOW.md](../WORKFLOW.md) are the
+starting points. If your "analyst" is an AI agent, the playbook is
 [AGENTS.md](../AGENTS.md) — the two planes, the assurance ladder, and the
 MCP gateway tools — with step-by-step SOPs in [docs/agents/](agents/);
 agents work through the gateway against the same models this guide uses.
 
 ---
 
-## The development loop at a glance
+## The three-phase workflow
+
+The primary analyst path is three project-root folders, each with its own
+cadence, decoupled by **freeze points** — a materialized artifact handed from
+one phase to the next. [WORKFLOW.md](../WORKFLOW.md) is the full account; the
+shape:
+
+```
+①  MANIPULATE   transforms/       ordinary, unconstrained pandas
+     read a messy source → parse, clean, key, dedupe → WRITE star-schema tables
+                                                        │
+                                                        ▼  freeze: workflow_data/warehouse.duckdb
+②  MODEL        models/           a thin DataModel over the warehouse
+     grain, keys, measures in a few dozen lines a reviewer reads without the pandas
+                                                        │
+                                                        ▼  freeze: the model (the semantic contract)
+③  DASHBOARD    dashboards/       a ReportSpec (JSON) pointed at the model
+     KPI cards, charts, tables — every figure a live query; served on the Reports page
+```
+
+**Phase ①** is the real analysis: pull the queries you need and do whatever the
+data demands — window functions, prose parsing, cleaning — then *sink* clean,
+named star-schema tables into a file-backed DuckDB warehouse with
+`DuckDBConnector(...).write(df, "table")`. The framework does not constrain how
+you clean; the contract is *what lands*. Reference impl:
+[transforms/holdings_transform.py](../transforms/holdings_transform.py).
+
+**Phase ②** declares a star schema over the warehouse — it reads the sink and
+never sees the transform above it. Reference impl:
+[models/portfolio_model.py](../models/portfolio_model.py).
+
+**Phase ③** is a JSON `ReportSpec` whose every figure is a live query against
+the model. Because the model is materialized, the page re-renders in
+milliseconds with no pandas in the loop — editing the dashboard never re-runs
+phase ①. Reference impl:
+[dashboards/portfolio_dashboard.json](../dashboards/portfolio_dashboard.json).
+
+```bash
+python run_workflow.py       # ① builds workflow_data/warehouse.duckdb, ③ renders once
+python -m tracebi.web.run    # serve it: Reports → portfolio_dashboard
+```
+
+**Honest scope of the trust machinery.** Lineage is *not* traced through the
+phase-① pandas — the framework draws the line at the sink, where the numbers
+become a contract you can report against. Stamped queries, validate-before-
+execute on specs, and `tracebi verify` apply from the **model boundary onward**
+(phases ② and ③). `tracebi verify` re-runs a manifest's recorded queries and
+compares fingerprints; it does not read a transform and does not assert a
+number is correct.
+
+The rest of this guide covers the **request-script** path — the ad-hoc,
+parameterized route for reports you author in Python rather than as a JSON spec
+over a materialized model. It shares the same models, lineage, and manifests.
+
+---
+
+## The request-script loop at a glance
 
 ```
 tracebi new-request "My Report"     # 1. scaffold

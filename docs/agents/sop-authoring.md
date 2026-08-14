@@ -6,7 +6,21 @@ governing principle: **you never touch the warehouse — you speak the semantic
 contract, every answer you receive is stamped, and every number you show a
 human carries its receipt.**
 
-The gateway exposes seven tools:
+**Where this sits in the three-phase workflow (see `WORKFLOW.md`).** This is
+**phase ③ — DASHBOARD**, authoring over the model boundary. You are handed two
+freeze points: a warehouse phase ① already sank (`workflow_data/warehouse.duckdb`)
+and a model phase ② already declared over it (`models/*.py`, e.g.
+`models/portfolio_model.py`). You do not re-run the phase-① pandas and you do not
+see it — the model is the contract you author against, and everything below is
+exactly how `dashboards/portfolio_dashboard.json` was written. **The trust
+machinery in this SOP — stamped queries, validate-before-execute, `verify` —
+governs from that model boundary onward. It says nothing about phase ①, which is
+unconstrained pandas trusted as reviewed code, not by fingerprint.** If a number
+you need is wrong or absent below the model, this SOP cannot fix it; escalate to
+the engineer SOP (a model change) or, if the raw data was never sunk, to a
+phase-① transform change.
+
+The gateway exposes eight tools:
 
 | Tool | Purpose |
 |---|---|
@@ -17,6 +31,7 @@ The gateway exposes seven tools:
 | `validate_report_spec` | Check a spec against the models without loading a row |
 | `render_report_spec` | Validate, build and render a spec to HTML + manifest |
 | `list_reports` | Reports the project already exposes |
+| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify each section (`reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`) — the built-in replay for step 6 at L2/L3 |
 
 Where you stand on the assurance ladder:
 
@@ -242,10 +257,15 @@ eye). A fingerprint mismatch means *source drift*, and every figure must be
 re-derived. Encode the discipline the script encodes: round the true total,
 never sum the rounded rows.
 
-At L2, TraceBi rendered the figures from the same query the manifest
+At L2, `verify_manifest` is the built-in that runs check 1 for you: point it at
+the manifest `render_report_spec` just produced and read the per-section
+`verdict`, not just `ok` — only `reproduces` means a number was re-run and
+matched. TraceBi rendered the figures from the same query the manifest
 fingerprints, so check 2 reduces to any numbers you quote in surrounding
-narrative. At L1 — a page you wrote yourself — check every figure on the
-page, and keep the audit script beside the artifact so anyone can re-run it.
+narrative. At L1 — a page you wrote yourself — there is no manifest for
+`verify_manifest` to read, so check every figure on the page with your own
+replay script (`examples/agent_gateway/verify_report.py` is the template) and
+keep it beside the artifact so anyone can re-run it.
 
 ## Step 7 — Presenting numbers to humans
 

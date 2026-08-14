@@ -8,6 +8,34 @@ development flow; this guide covers what's different in a notebook.
 
 ---
 
+## Where the notebook fits the workflow
+
+TraceBi's primary path is the three-phase workflow in
+[WORKFLOW.md](../WORKFLOW.md): phase ① `transforms/` writes clean star-schema
+tables into a DuckDB warehouse, phase ② `models/` declares a thin `DataModel`
+over it, and phase ③ `dashboards/` is a JSON `ReportSpec` served on the Reports
+page. A notebook is the natural home for **phase ①** — the slow, unconstrained
+pandas analysis — because the rich previews below let you *see* the data as you
+clean it before you commit anything. When the analysis settles, sink the named
+tables and move the cleaning into `transforms/`:
+
+```python
+from tracebi.connectors import DuckDBConnector
+
+wh = DuckDBConnector("warehouse", database="workflow_data/warehouse.duckdb")
+wh.write(fact_holdings_df, "fact_holdings")   # freeze: the sink is now the contract
+```
+
+From there the model (②) and dashboard (③) are small, reviewable artifacts that
+never re-run the notebook. The trust machinery (`tracebi verify`, stamped
+queries) applies from the model boundary onward — it does not read the pandas in
+your notebook, by design.
+
+The rest of this guide covers the other notebook role: a `.ipynb` in
+`requests/` that doubles as a first-class, parameterized **request script**.
+
+---
+
 ## Setup
 
 ```bash

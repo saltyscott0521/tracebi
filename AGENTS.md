@@ -1,37 +1,85 @@
 # AGENTS.md — Working with TraceBi as an AI Agent
 
-Read this before touching a TraceBi project. Deeper references: `CLAUDE.md`
-(codebase rules), `NOTES.md` (design decisions), `examples/agent_gateway/`
-(a complete recorded agent session).
+Read this before touching a TraceBi project. Deeper references: `WORKFLOW.md`
+(the three-phase workflow, end to end), `CLAUDE.md` (codebase rules), `NOTES.md`
+(design decisions), `examples/agent_gateway/` (a complete recorded agent
+session).
 
 ## What TraceBi is
 
-TraceBi is a **trust layer for AI-generated analytics**. AI made producing
-reports nearly free; believing them is the expensive part. So agents never
-touch the warehouse: they speak a semantic contract (models, facts,
-dimensions, named measures) through a gateway, and every answer comes back
-**stamped** — the resolved query, the full lineage chain, and a SHA-256
-fingerprint of the complete result. Reports are authored as declarative specs
-that validate *before* execution and render to artifacts with a lineage
-manifest. Any number an agent puts in front of a person is traceable back to
-exactly which query produced it.
+TraceBi is a code-first BI framework built around a **three-phase workflow**
+that carries data from messy to reportable. Each phase is a project-root folder
+with its own cadence, decoupled from the next by a **freeze point** — a
+materialized artifact handed across the boundary:
+
+| Phase | Folder | You write | Freeze it hands on |
+|---|---|---|---|
+| ① **Manipulate** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `workflow_data/warehouse.duckdb` (materialized tables) |
+| ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
+| ③ **Dashboard** | `dashboards/` | a `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables, every figure a live query | the rendered page + its lineage manifest |
+
+Reference implementation, end to end: `transforms/holdings_transform.py` →
+`models/portfolio_model.py` → `dashboards/portfolio_dashboard.json`, wired by
+`run_workflow.py`. `WORKFLOW.md` is the full tour; read it first.
+
+The split earns its keep at the freeze points: the slow, unconstrained analysis
+(①) and the fast, iterated reporting (③) never block each other, because the
+model (②) is a frozen contract between them. Editing the dashboard never re-runs
+the pandas. As an agent (or analyst) you author each phase in turn: write the
+phase-① transform, declare the phase-② model, author the phase-③ dashboard spec.
+
+## Where the trust machinery applies — and where it does not
+
+TraceBi is also a **trust layer for AI-generated analytics**: AI made producing
+reports nearly free; believing them is the expensive part. But be exact about
+the boundary. **The trust machinery governs from the model boundary onward — it
+covers phases ② and ③, not ①.**
+
+- **Phase ① (`transforms/`) is unconstrained and unverified by design.** It is
+  ordinary pandas that writes the warehouse. The framework draws the line at the
+  **sink**, where the numbers become a contract you can report against. Lineage
+  is *not* traced through the raw analysis, and nothing machine-checks that the
+  transform's numbers are right. Phase ① is trusted the way reviewed code is
+  trusted — in git — not the way a fingerprint is trusted.
+- **From the model boundary onward, every answer is stamped.** Agents never
+  touch the warehouse over the gateway: they speak the semantic contract
+  (facts, dimensions, named measures), and every result comes back with its
+  resolved query, full lineage chain, and a SHA-256 fingerprint of the complete
+  result. Dashboards are declarative specs that validate *before* execution and
+  render to artifacts with a lineage manifest. `tracebi verify` re-runs a
+  manifest's recorded queries and compares fingerprints — it does **not** read a
+  transform and does **not** assert that a number is correct; it proves the
+  reported figures still match the warehouse they were drawn from.
+
+So any number a dashboard puts in front of a person is traceable back to the
+query that produced it and re-runnable against the sink. What produced the sink
+is phase ① — believed the way you believe reviewed code, not the way you believe
+a hash.
 
 ## The two planes rule
 
 **Change the contract in git. Use the contract over MCP.**
 
-- **Definition plane** (git): `models/*.py`, `pipelines/*.py`, `reports/*`.
-  Missing a measure? The fix is a code-reviewed edit to the model file
-  (e.g. `model.add_measure(...)` in `models/wealth_model.py`) — never a
-  workaround in the report layer. A fresh gateway process sees the new
-  vocabulary on its next call (stdio one-shot clients get this for free; a
-  long-running server must be restarted — Python module caching keeps the
-  old model loaded).
-- **Access plane** (MCP): read-and-compute only. Queries, validation, and
-  spec rendering persist nothing beyond an output file. Pipeline execution
-  writes to the warehouse and is deliberately absent from this surface.
+- **Definition plane** (git): `transforms/*.py`, `models/*.py`,
+  `dashboards/*.json` (and `pipelines/*.py`, `reports/*`). Every phase is
+  authored and code-reviewed here. Missing a measure? The fix is a code-reviewed
+  edit to the model file (e.g. `model.add_measure(...)` in
+  `models/portfolio_model.py`) — never a workaround in the dashboard layer.
+  Missing a *column the measure needs*? That is a phase-① change: sink it in the
+  transform. A fresh gateway process sees new vocabulary on its next call (stdio
+  one-shot clients get this for free; a long-running server must be restarted —
+  Python module caching keeps the old model loaded).
+- **Access plane** (MCP): read-and-compute only, and only from the model
+  boundary onward. Queries, validation, and spec rendering persist nothing
+  beyond an output file. Phase ① never runs over the gateway — it writes the
+  warehouse, and the gateway has no write surface, on purpose. Pipeline
+  execution (the older warehouse-writing path) is likewise absent from this
+  surface.
 
 ## Assurance ladder
+
+These levels grade how you author the reporting side (phase ③) once the model is
+frozen; they say nothing about phase ①, which the ladder does not reach.
 
 | Level | Agent does | Requires today |
 |---|---|---|

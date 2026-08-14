@@ -4,11 +4,21 @@
 **definition plane** — the `models/*.py` files that declare what numbers mean
 in this project.
 
+**Where this sits in the three-phase workflow (see `WORKFLOW.md`).** This is
+**phase ② — MODEL**, the freeze point between the unconstrained phase-① transform
+(`transforms/*.py`, ordinary pandas that sinks the warehouse) and the fast
+phase-③ dashboard (`dashboards/*.json`) that queries the model by name. The
+model **reads the sink; it never sees the transform** — it is the semantic
+contract, a few dozen declarative lines a reviewer reads without opening the
+pandas above it (`models/portfolio_model.py` is the reference). It is also where
+the trust machinery begins: everything from this boundary onward is stamped and
+verifiable; phase ① below it is unverified by design, trusted as reviewed code.
+
 **The rule this whole document unpacks:** *change the contract in git; use the
 contract over MCP.* The gateway (`tracebi mcp`) is read-and-compute only. When
-an agent authoring a report hits a vocabulary gap — a measure that does not
+an agent authoring a dashboard hits a vocabulary gap — a measure that does not
 exist, a definition that should — the fix is a reviewed, committed change to a
-model file, never a workaround at the report layer and never a runtime
+model file, never a workaround at the dashboard layer and never a runtime
 mutation. Every consumer then inherits the fix (fresh gateway processes immediately;
 long-running ones after restart).
 
@@ -16,7 +26,16 @@ long-running ones after restart).
 
 ## 1. Is a model change the right fix?
 
-Ask one question: **is this shared meaning, or presentation?**
+First, a phase question: **is the data even in the warehouse?** A model can only
+name measures over columns and tables phase ① actually sank. If the number needs
+a column the transform never wrote — a field it dropped, a table it never built —
+no `add_measure` will conjure it; the fix is **upstream in phase ①**, sinking the
+missing column or table in `transforms/*.py` (unconstrained pandas), after which
+the model can reference it. Only once the underlying data is in the sink is a
+model change the right tool. Check the warehouse's tables (`describe_model`, or
+the Models page) before assuming this is a phase-② edit.
+
+Then the plane question: **is this shared meaning, or presentation?**
 
 | Situation | Plane | Fix |
 |---|---|---|
@@ -160,7 +179,7 @@ Useful while working:
 ```bash
 tracebi context --model <name>     # see the vocabulary as an agent sees it
 tracebi spec validate report.json  # check a downstream spec without running it
-pytest tests/                      # full suite (600+ tests)
+pytest tests/                      # full suite (run it for the current count)
 ```
 
 ---

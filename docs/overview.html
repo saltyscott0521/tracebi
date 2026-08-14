@@ -80,6 +80,76 @@
       min-width: 110px;
     }
     .arch-arrow { color: var(--muted); font-size: 1.4rem; font-weight: 300; }
+    .phase-flow { margin: 1.5rem 0; }
+    .phase {
+      display: flex;
+      align-items: stretch;
+      gap: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+    }
+    .phase-num {
+      flex: 0 0 auto;
+      width: 2.6rem;
+      height: 2.6rem;
+      border-radius: 50%;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .phase-body { flex: 1; }
+    .phase-body h3 {
+      display: inline-block;
+      font-size: 1.15rem;
+      color: var(--navy);
+      margin-right: .6rem;
+    }
+    .phase-folder {
+      display: inline-block;
+      background: var(--code-bg);
+      color: var(--navy);
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: .8rem;
+      font-weight: 600;
+      padding: .1rem .5rem;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+    .phase-body p { margin: .5rem 0 .6rem; }
+    .phase-ref {
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+    .phase-freeze {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .5rem 1.4rem;
+      margin: .3rem 0 .3rem 1.3rem;
+      border-left: 2px dashed var(--green);
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    .phase-freeze span {
+      color: var(--green);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      font-size: .75rem;
+    }
+    .phase-freeze code {
+      background: var(--code-bg);
+      color: #be185d;
+      padding: .1em .4em;
+      border-radius: 4px;
+      font-size: .82rem;
+    }
     pre {
       background: #1e293b;
       color: #e2e8f0;
@@ -128,13 +198,14 @@
 
 <header>
   <h1>TraceBi</h1>
-  <p>A trust layer for AI-generated analytics</p>
-  <div class="version-badge">v0.5.2 &nbsp;·&nbsp; 727 tests passing &nbsp;·&nbsp; MIT</div>
+  <p>A code-first BI framework with a three-phase workflow</p>
+  <div class="version-badge">v0.5.2 &nbsp;·&nbsp; 777 tests passing &nbsp;·&nbsp; MIT</div>
 </header>
 
 <nav>
   <a href="#overview">Overview</a>
-  <a href="#architecture">Architecture</a>
+  <a href="#workflow">The Workflow</a>
+  <a href="#architecture">Surfaces</a>
   <a href="#planes">Two Planes</a>
   <a href="#ladder">Assurance Ladder</a>
   <a href="#verify">Verify Loop</a>
@@ -146,28 +217,123 @@
 <section id="overview">
   <h2>What is TraceBi?</h2>
   <p>
-    AI made producing reports nearly free; believing them is the expensive part.
-    TraceBi is a <strong>trust layer for AI-generated analytics</strong>: agents and
-    analysts author reports against a <strong>semantic contract</strong> — models,
-    facts, dimensions, named measures — and every number carries a re-provable
-    receipt. Agents never touch the warehouse. They speak the contract through a
-    gateway, and every answer comes back <strong>stamped</strong>: the resolved
-    query, the full lineage chain, and a SHA-256 fingerprint of the complete result.
+    TraceBi is a <strong>code-first BI framework</strong> organised around a
+    <strong>three-phase workflow</strong> that carries data from messy to reportable:
+    <strong>manipulate</strong> it with unconstrained pandas and sink clean tables to a
+    warehouse; declare a thin <strong>model</strong> over that warehouse; point a
+    <strong>dashboard</strong> at the model. Each phase is a project-root folder with
+    its own cadence, and the phases are decoupled by <strong>freeze points</strong> —
+    a materialized artifact handed from one to the next — so the slow analysis and the
+    fast reporting never block each other.
   </p>
   <p>
-    Underneath is a code-first Python framework — the kernel. A <code>DataSet</code>
-    is an immutable pandas wrapper that records every operation in a lineage chain;
-    a <code>DataModel</code> is the star-schema contract (tables, relationships,
-    facts, dimensions, measures); the report engine renders declarative specs to
-    self-contained HTML with a lineage manifest beside every artifact (Excel
-    remains a Python-framework renderer; spec and gateway renders are HTML today).
-    The framework is the analyst door; the gateway is the agent door; both open
-    onto the same kernel.
+    From the model boundary onward it is also a <strong>trust layer</strong>. Once the
+    numbers are frozen into the warehouse they become a contract you can report against:
+    models, facts, dimensions, named measures. Every figure a dashboard shows is a live
+    query that comes back <strong>stamped</strong> — the resolved query, the lineage
+    chain, and a SHA-256 fingerprint of the complete result — and <code>tracebi verify</code>
+    can re-run any manifest to prove it still reproduces. This machinery covers phases 2
+    and 3. It deliberately does <em>not</em> reach through the raw phase-1 analysis; the
+    line is drawn at the sink (see <a href="#verify">the verify loop</a>).
+  </p>
+  <p>
+    Underneath is the kernel the whole workflow rests on. A <code>DataSet</code> is an
+    immutable pandas wrapper that records every operation in a lineage chain; a
+    <code>DataModel</code> is the star-schema contract (tables, relationships, facts,
+    dimensions, measures); the report engine renders declarative specs to self-contained
+    HTML with a lineage manifest beside every artifact (Excel remains a Python-framework
+    renderer; spec and dashboard renders are HTML today).
+  </p>
+</section>
+
+<section id="workflow">
+  <h2>The three-phase workflow</h2>
+  <p><strong>Manipulate → freeze → model → freeze → dashboard.</strong> The reference
+  implementation ships in the repo; <code>python run_workflow.py</code> runs it end to end.</p>
+
+  <div class="phase-flow">
+    <div class="phase">
+      <div class="phase-num" style="background:#475569">①</div>
+      <div class="phase-body">
+        <h3>Manipulate</h3>
+        <div class="phase-folder">transforms/</div>
+        <p>Ordinary, unconstrained pandas. Pull the queries you need and do the real
+        analysis — window functions, prose parsing, cleaning, dedupe — then
+        <strong>write ("sink")</strong> clean star-schema tables into a file-backed DuckDB
+        warehouse. The framework does not constrain <em>how</em> you clean; the contract is
+        <em>what</em> lands: the named tables at the end of the script.</p>
+        <div class="phase-ref">transforms/holdings_transform.py</div>
+      </div>
+    </div>
+    <div class="phase-freeze">
+      <span>❄ freeze</span>
+      <code>workflow_data/warehouse.duckdb</code> — materialized tables
+    </div>
+    <div class="phase">
+      <div class="phase-num" style="background:#003366">②</div>
+      <div class="phase-body">
+        <h3>Model</h3>
+        <div class="phase-folder">models/</div>
+        <p>A declarative <code>DataModel</code> (star schema) over the warehouse: grain,
+        keys, measures, in a few dozen lines a reviewer reads <em>without</em> opening the
+        pandas above it. It reads the sink; it never sees the transform.</p>
+        <div class="phase-ref">models/portfolio_model.py</div>
+      </div>
+    </div>
+    <div class="phase-freeze">
+      <span>❄ freeze</span>
+      the model — the semantic contract
+    </div>
+    <div class="phase">
+      <div class="phase-num" style="background:#2E7D32">③</div>
+      <div class="phase-body">
+        <h3>Dashboard</h3>
+        <div class="phase-folder">dashboards/</div>
+        <p>A <code>ReportSpec</code> (JSON) pointed at the model — KPI cards, charts,
+        tables — where every figure is a live query. Because the model is materialized, the
+        page re-renders in milliseconds with no pandas in the loop. Served on the Reports
+        page of the web UI.</p>
+        <div class="phase-ref">dashboards/portfolio_dashboard.json</div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    Why the split: the slow, unconstrained analysis (①) and the fast, iterated reporting
+    (③) never block each other, because the model (②) is a frozen contract between them.
+    Editing the dashboard never re-runs the pandas. To add a panel, add a section to the
+    JSON with a <code>data.query</code> naming a fact, its measures and dimensions — no
+    code, no re-run of phase ①. A <code>metrics</code> section can carry a query too: a KPI
+    card whose <code>value</code> names a measure reads it live from a one-row result, so
+    the strip never goes stale.
+  </p>
+
+  <table>
+    <thead><tr><th>Phase</th><th>Folder</th><th>Artifact</th><th>Cadence</th><th>Server discovers it as</th></tr></thead>
+    <tbody>
+      <tr><td><strong>① Manipulate</strong></td><td><code>transforms/</code></td><td>pandas → DuckDB tables</td><td>slow, runs rarely</td><td>— (run explicitly)</td></tr>
+      <tr><td><strong>② Model</strong></td><td><code>models/</code></td><td><code>DataModel</code> (a <code>model</code> variable)</td><td>changes deliberately</td><td>a model on the Models page</td></tr>
+      <tr><td><strong>③ Dashboard</strong></td><td><code>dashboards/</code></td><td><code>ReportSpec</code> JSON</td><td>iterate constantly</td><td>a report on the Reports page</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code>$ python run_workflow.py       # ① build the warehouse, ③ render the dashboard once
+$ python -m tracebi.web.run     # serve it → http://127.0.0.1:8000 → Reports → portfolio_dashboard</code></pre>
+  <p>
+    <code>run_workflow.py</code> generates a synthetic messy source file the first time
+    (<code>workflow_data/generate_raw.py</code>), so phase ① has real work to do. A worked
+    example driven by real AltsVault API output is the intended next step — not yet built.
+    The full walkthrough lives in <code>WORKFLOW.md</code>.
   </p>
 </section>
 
 <section id="architecture">
-  <h2>Kernel, contract, surfaces</h2>
+  <h2>The surfaces that serve the workflow</h2>
+  <p>
+    The workflow is what you do; these are the doors you do it through. All four open onto
+    the same kernel — an immutable, lineage-recording <code>DataSet</code> feeding the
+    star-schema <code>DataModel</code> — and produce the same stamped artifacts.
+  </p>
   <div class="arch-flow">
     <div class="arch-box" style="background:#475569">Sources<br>SQL · CSV · BigQuery · Snowflake · DuckDB · Memory</div>
     <span class="arch-arrow">→</span>
@@ -250,6 +416,17 @@
 
 <section id="verify">
   <h2>The verify loop</h2>
+  <div class="card" style="border-left:4px solid var(--green)">
+    <p style="margin:0">
+      <strong>Where the trust story starts and stops.</strong> Stamped queries, spec
+      validation, and <code>tracebi verify</code> apply <strong>from the model boundary
+      onward</strong> — phases 2 and 3. Tracing lineage <em>through</em> the raw phase-1
+      analysis is intentionally not done: the framework draws the line at the sink, where
+      the numbers become a contract you can report against. <code>tracebi verify</code>
+      re-runs a manifest's recorded queries and compares fingerprints. It does not read a
+      transform, and it does not assert a number is correct.
+    </p>
+  </div>
   <p>
     Every render records each source table's input fingerprint in the manifest.
     <code>tracebi verify &lt;manifest&gt;</code> — or the gateway's
@@ -289,6 +466,7 @@
   <table>
     <thead><tr><th>Document</th><th>Read it for</th></tr></thead>
     <tbody>
+      <tr><td><code>WORKFLOW.md</code></td><td>The three-phase workflow end to end: the reference transform, model, and dashboard, and how to run them</td></tr>
       <tr><td><code>README.md</code></td><td>The whole framework: quick start, installation, web UI, agent gateway, deployment</td></tr>
       <tr><td><code>AGENTS.md</code></td><td>The agent playbook: two planes, assurance ladder, the eight gateway tools, the canonical loop, the Nevers</td></tr>
       <tr><td><code>docs/agents/</code></td><td>Agent SOPs: report authoring, model changes</td></tr>

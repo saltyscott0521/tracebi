@@ -20,6 +20,84 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-08-14 — The three-phase workflow becomes the spine
+
+The framing shifts. TraceBi has been described, for a year of these notes, as a
+trust layer bolted onto code-first reporting — stamped queries, manifests,
+`tracebi verify`. That machinery is real and stays, but it was the answer to a
+question nobody outside this repo was asking first. The question they ask first
+is: *how do I get from a messy export to a page I trust?* So the product is now
+organised around that arc — a **three-phase workflow**, messy to reportable,
+with the trust story hanging off phase boundaries rather than being the whole
+pitch.
+
+### The three phases, each a project-root folder
+
+| Phase | Folder | What it is | Reference impl |
+|---|---|---|---|
+| ① **Manipulate** | `transforms/` | Ordinary, unconstrained pandas — window functions, prose parsing, cleaning — that *sinks* clean star-schema tables into a file-backed DuckDB warehouse. The framework does not constrain this phase. | `transforms/holdings_transform.py` |
+| ② **Model** | `models/` | A declarative `DataModel` (grain, keys, measures) over the warehouse, read by a reviewer without opening the pandas above it. It reads the sink; it never sees the transform. | `models/portfolio_model.py` |
+| ③ **Dashboard** | `dashboards/` | A `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables — where every figure is a live query, re-rendered in milliseconds. | `dashboards/portfolio_dashboard.json` |
+
+Note on the word: this workflow phase ③ "Dashboard" is a *rendered `ReportSpec`
+artifact*, not a live server — it has nothing to do with the Dash-based
+"Phase 3 dashboard server" cut on 2026-07-27 (Build Status table above). The
+old thing was a running process; this is a JSON spec that renders to HTML.
+
+### The freeze points, and why they matter
+
+The phases are decoupled by two **freeze points** — a materialized artifact
+handed from one phase to the next: `warehouse.duckdb` between ① and ②, and the
+model itself (the semantic contract) between ② and ③. The reason to build it
+this way is that the two phases with opposite cadences never block each other.
+Phase ① is slow, unconstrained, run when the source changes. Phase ③ is fast
+and iterated — a designer reshapes cards all afternoon. Because the model is a
+frozen contract between them, **editing the dashboard never re-runs the
+pandas**. That is the whole payoff of the split, and it is why the sink is
+file-backed DuckDB rather than an in-process frame.
+
+### Honest scope of lineage — the line is drawn at the sink
+
+State this plainly, because the project has been burned by overselling before.
+Lineage is **not** traced *through* phase ①. The raw analysis — the window
+functions, the prose parsing — is deliberately outside the audit boundary. The
+framework draws the line at the **sink**, where numbers become a contract you
+can report against. The trust machinery (stamped queries with a resolved query
++ lineage + SHA-256 fingerprint; validate-before-execute on specs; `tracebi
+verify`) applies **from the model boundary onward** — phases ② and ③. `tracebi
+verify` re-runs a manifest's recorded queries and compares fingerprints; it
+does **not** read a transform and does **not** assert a number is correct.
+Never claim it verifies the phase-① analysis. The contract is not *how* you
+clean; it is *what* lands — the named tables at the end of the script.
+
+### What shipped
+
+- `transforms/holdings_transform.py`, `models/portfolio_model.py`,
+  `dashboards/portfolio_dashboard.json`, `run_workflow.py`,
+  `workflow_data/generate_raw.py` (+ `workflow_data/raw/holdings.csv`),
+  `WORKFLOW.md`. `python run_workflow.py` builds the warehouse (phase ①) and
+  renders the dashboard once, offline; `python -m tracebi.web.run` serves it.
+- **A new discovered directory, `dashboards/`**, via `TRACEBI_DASHBOARDS_DIR`
+  (default `"dashboards"`), auto-discovered at startup and served on the
+  Reports page exactly like `reports/`.
+- **Query-bound KPI cards.** A `"metrics"` spec section may now carry a `data`
+  query; a card whose `value` names a measure reads it live from a one-row
+  result instead of hard-coding a number that goes stale. Proven in
+  `dashboards/portfolio_dashboard.json` — `value: "fair_value"` etc. over a
+  measures-only query.
+- **The web UI leads with the workflow.** Home renders a workflow flowchart
+  (`components/WorkflowDiagram`), and there is a dedicated `/workflow` page.
+
+### Next step — the AltsVault worked example
+
+The reference impl runs on synthetic holdings from `generate_raw.py`. The
+**intended** worked example drives phase ① from real AltsVault API output — a
+genuine messy-to-reportable arc on data that was not shaped for us. Recording
+it as the next step, **not** as something built: nothing in the repo pulls from
+AltsVault today.
+
+---
+
 ## 2026-08-13 — The app moved to `tracebi.web.api` (a name is a shared resource)
 
 The wheel had just started shipping the FastAPI app so `tracebi serve` would

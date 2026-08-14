@@ -23,9 +23,20 @@ your app module ──populates──▶ registry ◀──reads── API route
 (import time)                 (singleton)          (request time)
 ```
 
+## The three-phase workflow this serves
+
+The server front-ends the analyst workflow described in
+[WORKFLOW.md](../WORKFLOW.md): phase ① `transforms/` writes clean star-schema
+tables into a DuckDB warehouse, phase ② `models/` declares a thin `DataModel`
+over that warehouse, and phase ③ `dashboards/` is a `ReportSpec` (JSON) pointed
+at the model. Phases ② and ③ are auto-discovered directories (below) and land
+on the **Models** and **Reports** pages; phase ① runs explicitly (e.g. via
+`python run_workflow.py`) and is not something the server discovers — the sink
+it produces is the input the model reads.
+
 ## Step 1: Project-root directories (recommended)
 
-The server auto-discovers four directories at the project root. This is the
+The server auto-discovers five directories at the project root. This is the
 lowest-friction way to add resources — no app module configuration needed:
 
 | Directory | Convention | What the server does |
@@ -33,6 +44,7 @@ lowest-friction way to add resources — no app module configuration needed:
 | `models/` | each `.py` exposes a `model` variable (a `DataModel`) | registers it via `registry.add_model()` |
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | registers it via `registry.add_pipeline()` |
 | `reports/` | each `.py` calls `@register.report(...)` at import time | decorator fires; report appears in UI |
+| `dashboards/` | each `.json` is a `ReportSpec` pointed at a model | validated structurally, registered as a report on the Reports page |
 | `requests/` | ad-hoc scripts with `request_params()` and `run()` | appears on Requests page with run button |
 
 Scaffold files with the CLI, then edit and commit them:
@@ -55,7 +67,8 @@ runner = get_runner("sales_etl")
 ```
 
 Override any directory path via env var (`TRACEBI_MODELS_DIR`,
-`TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`).
+`TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_DASHBOARDS_DIR`,
+`TRACEBI_REQUESTS_DIR`).
 
 ## Step 1b: Create an app module (for connectors)
 
@@ -117,7 +130,8 @@ your peril):
 |---|---|---|
 | `models/` | `model = DataModel(...)` variable | **Models** + **Explore** |
 | `pipelines/` | `runner = PipelineRunner(...)` variable | **Pipelines** page |
-| `reports/` | `@register.report("name")` factory | **Reports** page |
+| `reports/` | `@register.report("name")` factory, or a `.json` `ReportSpec` | **Reports** page |
+| `dashboards/` | a `.json` `ReportSpec` pointed at a model | **Reports** page |
 | `requests/` | any `.py` / `.ipynb` with `run()` | **Requests** page |
 
 **Or register explicitly** (in your app module's `registry.py`, or the notebook facade `tracebi.web.register`):
@@ -258,7 +272,8 @@ docker compose up --build
 | `TRACEBI_APP` | `tracebi.web.demo_app` | App module imported at startup |
 | `TRACEBI_MODELS_DIR` | `models` | Folder scanned for `model` variable files |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for `runner` variable files |
-| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `@register.report()` factories |
+| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `@register.report()` factories and `.json` specs |
+| `TRACEBI_DASHBOARDS_DIR` | `dashboards` | Folder scanned for `.json` `ReportSpec` dashboards (phase ③); served on the Reports page |
 | `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for ad-hoc request scripts |
 | `TRACEBI_SCHEDULED_DIR` | `scheduled` | Folder scanned for `@register.scheduled()` factories |
 | `TRACEBI_DEV_MODE` | unset | `1` mounts `POST /api/_dev/reload` |

@@ -94,6 +94,50 @@ All six development phases are complete and tested.
 
 ---
 
+## The Three-Phase Workflow
+
+This is the spine — the mental model to hold before anything else. TraceBi takes
+data from messy to reportable in three project-root folders, each with its own
+cadence, decoupled by **freeze points** (a materialized artifact handed from one
+phase to the next):
+
+1. **MANIPULATE** — `transforms/`. Ordinary, unconstrained pandas: pull the
+   queries, do the real analysis (window functions, prose parsing, cleaning,
+   dedupe), then **sink** clean star-schema tables into a file-backed DuckDB
+   warehouse. The framework does not constrain this phase. The contract is not
+   *how* you clean, it is *what lands* — the named tables at the end of the
+   script. Reference: `transforms/holdings_transform.py` → `DuckDBConnector(...).write(df, "table")`.
+
+   *— freeze: `workflow_data/warehouse.duckdb` (materialized tables) —*
+
+2. **MODEL** — `models/`. A declarative `DataModel` (star schema) over the
+   warehouse: grain, keys, measures, in a few dozen lines a reviewer reads
+   without opening the pandas above it. It reads the sink; it never sees the
+   transform. Reference: `models/portfolio_model.py`.
+
+   *— freeze: the model (the semantic contract) —*
+
+3. **DASHBOARD** — `dashboards/`. A `ReportSpec` (JSON) pointed at the model —
+   KPI cards, charts, tables — where every figure is a live query. Because the
+   model is materialized, the page re-renders in milliseconds with no pandas in
+   the loop. Reference: `dashboards/portfolio_dashboard.json`; served on the
+   Reports page of the web UI.
+
+**Why the split:** the slow, unconstrained analysis (①) and the fast, iterated
+reporting (③) never block each other, because the model (②) is a frozen contract
+between them. Editing the dashboard never re-runs the pandas.
+
+**Honest scope of lineage / trust.** Tracing lineage *through* the raw analysis
+(phase ①) is intentionally not done — the line is drawn at the **sink**, where
+the numbers become a contract you can report against. The trust machinery
+(stamped queries with a resolved query + lineage + SHA-256 fingerprint;
+validate-before-execute on specs; `tracebi verify`) applies **from the model
+boundary onward** — phases ② and ③. `tracebi verify` re-runs a manifest's
+recorded queries and compares fingerprints; it does not read a transform and
+does not assert a number is correct. Never claim it verifies the phase-① analysis.
+
+---
+
 ## Repository Layout
 
 ```
@@ -129,10 +173,18 @@ web/
 examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
 tests/                 # pytest suite (700+ tests; run it for the current count), one file per area
 seeds/                 # DB init + Bronze seeding
-models/                # DataModel definitions — each .py exposes a `model` variable
+transforms/            # Phase ① MANIPULATE — unconstrained pandas that sinks clean
+                       #   star tables into the DuckDB warehouse (holdings_transform.py)
+models/                # Phase ② MODEL — DataModel definitions over the warehouse;
+                       #   each .py exposes a `model` variable (portfolio_model.py)
+dashboards/            # Phase ③ DASHBOARD — ReportSpec JSON pointed at a model;
+                       #   discovered and served like reports/ (portfolio_dashboard.json)
 pipelines/             # PipelineRunner definitions — each .py exposes a `runner` variable
 reports/               # Named web-exposed report factories (use @register.report() decorator)
 requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
+workflow_data/         # Raw sources (raw/, tracked) + the DuckDB warehouse and rendered
+                       #   HTML (gitignored build artifacts). generate_raw.py seeds a source.
+run_workflow.py        # Runs the three-phase workflow end to end (phase ① build + ③ render)
 data/                  # SQLite DB (gitignored)
 .env.example           # Documented env vars (auth, connector URLs, dev mode)
 .github/workflows/     # CI — pytest matrix + ruff lint
@@ -154,6 +206,12 @@ NOTES.md               # Architecture decisions and open questions
 ```bash
 # Install
 pip install -e ".[dev]"                        # Everything the test suite needs (incl. web)
+
+# Three-phase workflow
+python run_workflow.py                          # phase ① builds workflow_data/warehouse.duckdb,
+                                                #   phase ③ renders the dashboard HTML once, offline
+python -m tracebi.web.run                       # serves it; auto-discovers models/ + dashboards/
+                                                #   → Reports page (TRACEBI_DASHBOARDS_DIR, default dashboards)
 
 # Run (dev)
 python -m tracebi.web.run                              # http://127.0.0.1:8000
@@ -190,7 +248,7 @@ tracebi verify output/report.manifest.json     # re-run recorded queries; classi
 tracebi serve                                  # browse the project
 
 # Tests
-pytest tests/                                  # Full suite (404 tests)
+pytest tests/                                  # Full suite (run it for the current count)
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
 ```
@@ -361,7 +419,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_DASHBOARDS_DIR` (phase ③ specs, default `dashboards`), `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
 
 ---
 
@@ -381,6 +439,15 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 ---
 
 ## How to Add Things
+
+### New transform (phase ①)
+1. Add a `.py` under `transforms/`. Write whatever pandas the data needs — the
+   framework does not constrain this phase.
+2. End by sinking clean star-schema tables into the warehouse:
+   `DuckDBConnector("warehouse", database=WAREHOUSE).write(df, "table")`. The
+   contract is the named tables that land, not how you produced them.
+3. Model this on `transforms/holdings_transform.py`. Keep it idempotent (a rerun
+   replaces the warehouse tables). Nothing downstream imports this file.
 
 ### New connector
 1. Subclass `tracebi.connectors.BaseConnector`
@@ -404,6 +471,15 @@ Copy `requests/_template.py`. Fill in the four sections: connectors → transfor
 
 ### New report (web-exposed)
 Put a `.py` file in `reports/` (or use `requests/`). Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
+
+### New dashboard (phase ③)
+1. Add a `ReportSpec` `.json` under `dashboards/`, pointed at a model (grain +
+   measures it declares). Model this on `dashboards/portfolio_dashboard.json`.
+2. Every figure is a live query against the model — KPI cards, charts, tables. A
+   `metrics` section may carry a `data` query; a card whose `value` names a
+   measure reads it live from the one-row result rather than hard-coding it.
+3. Validate before running: `tracebi spec validate dashboards/<name>.json`. The
+   folder is auto-discovered and served on the Reports page like `reports/`.
 
 ### New medallion layer
 ```python
@@ -477,6 +553,10 @@ Don't add these unless asked.
 | Goal | Start here |
 |---|---|
 | Understand the whole framework | `README.md` |
+| Understand the three-phase workflow | `WORKFLOW.md` + `run_workflow.py` |
+| Author a phase-① transform | `transforms/holdings_transform.py` |
+| Define the model over the warehouse | `models/portfolio_model.py` |
+| Build a dashboard | `dashboards/portfolio_dashboard.json` |
 | Understand architecture decisions | `NOTES.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |

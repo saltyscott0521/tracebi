@@ -4,19 +4,65 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/saltyscott0521/tracebi)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A **trust layer for AI-generated analytics** — built on a code-first,
-traceable BI framework for Python.
+A **code-first BI framework for Python**, organised around a three-phase
+workflow that takes data from messy to reportable.
 
-AI made producing reports nearly free; believing them is the expensive part.
-TraceBi answers that: agents and analysts author reports against a
-**semantic contract** (models, facts, dimensions, named measures), every
-query comes back **stamped** — the resolved query, the full lineage chain,
-and a SHA-256 fingerprint of the complete result — and every rendered
-artifact carries a manifest that `tracebi verify` can re-prove later.
-Underneath is the Python framework that makes it work: define your data
-model, transformations, and reports entirely in code, with every dataset,
-report, and pipeline run traceable back to the exact connector, query, and
-transform steps that produced it.
+---
+
+## How it works — the three-phase workflow
+
+TraceBi splits the work of turning raw data into a report into three phases,
+each a project-root folder with its own cadence. The phases are decoupled by
+**freeze points**: a materialized artifact handed from one to the next, so the
+slow analysis and the fast reporting never block each other.
+
+```
+①  MANIPULATE   transforms/          slow, runs rarely — unconstrained pandas
+      read messy sources → parse, clean, key, dedupe → WRITE star-schema tables
+                                                        │
+                                       freeze ▼  workflow_data/warehouse.duckdb
+②  MODEL        models/              the contract, changes deliberately
+      a declarative DataModel (star schema) over the warehouse — grain, keys,
+      measures, in a few dozen lines a reviewer reads without opening the pandas
+                                                        │
+                                       freeze ▼  the model (the semantic contract)
+③  DASHBOARD    dashboards/          fast, iterate constantly
+      a ReportSpec (JSON) pointed at the model — KPI cards, charts, tables,
+      every figure a live query. Re-renders in milliseconds; nothing re-runs ①.
+```
+
+**Phase 1 (MANIPULATE)** is ordinary, unconstrained pandas — pull the queries
+you need, do the real analysis (window functions, prose parsing, cleaning),
+then *sink* clean star-schema tables into a file-backed DuckDB warehouse. The
+framework does not constrain how you clean; the contract is *what lands* — the
+named tables at the end of the script.
+
+**Phase 2 (MODEL)** is a thin declarative star schema over the warehouse. It
+reads the sink; it never sees the transform.
+
+**Phase 3 (DASHBOARD)** is a JSON `ReportSpec` pointed at the model. Because the
+model is materialized, the page re-renders in milliseconds with no pandas in the
+loop — editing the dashboard never re-runs the analysis.
+
+| Phase | Folder | Artifact | Discovered by the server as |
+|---|---|---|---|
+| ① Manipulate | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
+| ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Models page |
+| ③ Dashboard | `dashboards/` | `ReportSpec` JSON | a report on the Reports page |
+
+```bash
+python run_workflow.py          # ① build the warehouse, ③ render the dashboard once
+python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → Reports → portfolio_dashboard
+```
+
+The reference implementation ships in the repo — `transforms/holdings_transform.py`,
+`models/portfolio_model.py`, `dashboards/portfolio_dashboard.json` — driven by
+`run_workflow.py`. Full walkthrough: **[WORKFLOW.md](WORKFLOW.md)**.
+
+Everything below hangs off this spine: the framework gives you the connectors
+and lineage-tracked `DataSet` for phase 1, the `DataModel` for phase 2, the
+report engine for phase 3, and — **from the model boundary onward (phases 2 and
+3)** — the trust machinery that makes a published figure re-provable.
 
 ---
 
@@ -35,13 +81,16 @@ transform steps that produced it.
 
 ## What's built
 
+These are the framework's build milestones (a different axis from the three
+workflow phases above — a "Phase" here is a development stage, not a folder):
+
 - [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory, DuckDB) with push-down filter/columns, DataModel, DataSet with immutable lineage chain
 - [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
 - [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 - [x] **Phase 5** — Web UI (FastAPI + React), folder-based auto-discovery, optional HTTP Basic / proxy-header auth with roles, `tracebi` CLI, docker-compose deployment
 - [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model and authors validated report specs; every response is stamped with the resolved query, lineage, and a fingerprint of the full result
-- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable, then gives the receipt one verdict — a manifest where nothing could be checked is never reported as a pass
+- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable, then gives the receipt one verdict — a manifest where nothing could be checked is never reported as a pass. This operates on phase-2/3 queries against the model; it re-runs recorded queries and compares fingerprints — it does **not** read a phase-1 transform or assert a number is correct.
 
 ---
 
@@ -116,6 +165,7 @@ The differences that matter:
 
 | I want to… | Start here |
 |---|---|
+| Understand the three-phase workflow (manipulate → model → dashboard) | [WORKFLOW.md](WORKFLOW.md) — the spine, with the reference implementation |
 | Follow the full analyst flow start-to-finish | [docs/analyst-guide.md](docs/analyst-guide.md) — scaffold → transform → report → publish |
 | Work in a notebook with rich previews | [docs/notebook-guide.md](docs/notebook-guide.md) + `examples/analyst_quickstart.py` |
 | Write a one-off report or query | Copy `requests/_template.py` and run it with `tracebi run` |
@@ -581,6 +631,7 @@ Your module just needs to import `registry` and call `registry.add_connector()`,
 | `models/` | each `.py` exposes a `model` variable (a `DataModel`) | `TRACEBI_MODELS_DIR` |
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | `TRACEBI_PIPELINES_DIR` |
 | `reports/` | each `.py` calls `@register.report(...)` at import time | `TRACEBI_REPORTS_DIR` |
+| `dashboards/` | each `.json` is a `ReportSpec` (workflow phase ③), served like a report | `TRACEBI_DASHBOARDS_DIR` |
 | `requests/` | ad-hoc scripts with `request_params()` and `run()` | `TRACEBI_REQUESTS_DIR` |
 
 Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/web-customization.md](docs/web-customization.md) for the full wiring guide.
@@ -673,7 +724,7 @@ python examples/phase4_example.py      # full pipeline (run seeds/seed_db.py fir
 
 ```bash
 pytest tests/
-# 727 passed
+# 777 passed
 ```
 
 ---
@@ -701,9 +752,13 @@ tracebi/
 │   │                     a packaged `web` collided with the `web.py` distribution.
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                771 tests across all phases
+├── tests/                777 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
-├── models/               DataModel definitions — each .py exposes a `model` variable
+├── transforms/           Workflow phase ① — pandas that sinks star-schema tables to DuckDB
+├── models/               DataModel definitions — each .py exposes a `model` variable (phase ②)
+├── dashboards/           Workflow phase ③ — ReportSpec JSON served like a report
+├── workflow_data/        The freeze point — warehouse.duckdb + raw source generator
+├── run_workflow.py       Runs the three-phase workflow end to end (see WORKFLOW.md)
 ├── pipelines/            PipelineRunner definitions — each .py exposes a `runner` variable
 ├── reports/              Named web-exposed reports (files use @register.report() decorator)
 ├── requests/             _template.py — scaffold for ad hoc report scripts
