@@ -98,6 +98,54 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
     return {"status": "registered", "module": stem}
 
 
+def _register_template_package(dir_path: str, stem: str) -> dict:
+    """
+    Register a freeform report package — ``reports/<name>/`` holding
+    ``report.json`` + ``template.html`` (architecture §7, lane B).
+
+    The same contract as :func:`_register_spec_file`: a zero-arg factory that
+    resolves models at *call* time, not at discovery time, and flows through
+    ``registry.add_report`` unchanged. A package is *a name and a zero-arg
+    callable*, exactly like every other report — so it lists on the Reports
+    page and in ``registry.list_reports`` beside specs and code factories.
+
+    Loading validates only the *structure* of the package and its data
+    bindings (``TemplatePackage.__init__`` reuses ``DataRef`` parsing and
+    touches no model). Resolving a binding against its model — and the freeform
+    render of ``template.html`` — happens in ``tracebi report build`` and at
+    factory-call time, so a model registered after this scan still resolves.
+    The factory returns the package's carrier :class:`Report` (the synthetic
+    sections whose fingerprints back the receipt); the self-contained freeform
+    ``.html`` is produced by the build step, not the web report-run path.
+    """
+    from tracebi.registry import registry
+    from tracebi.reports.template_package import TemplatePackage
+
+    try:
+        pkg = TemplatePackage(dir_path)
+    except Exception as exc:  # noqa: BLE001 — one bad package must not stop startup
+        return {"status": "failed", "module": stem,
+                "reason": f"{type(exc).__name__}: {exc}"}
+
+    def factory(_pkg=pkg):
+        from tracebi.model_registry import get_model, list_models
+        models = {}
+        for name in list_models():
+            try:
+                m = get_model(name)
+            except Exception:  # noqa: BLE001 — a broken model is that model's problem
+                continue
+            # Accept either the file stem or the model's own name, as the spec
+            # factory does — an author should not have to care which they saw.
+            models[name] = m
+            models[getattr(m, "name", name)] = m
+        report, _ = _pkg.build(models)
+        return report
+
+    registry.add_report(stem, factory, pkg.description or "")
+    return {"status": "registered", "module": stem}
+
+
 def auto_discover(
     path: str,
     package: Optional[str] = None,
@@ -159,6 +207,15 @@ def auto_discover(
             if not os.path.isdir(full):
                 _outcomes.append({**record, "status": "skipped",
                                   "reason": "not a .py, .ipynb or .json file"})
+            elif (os.path.isfile(os.path.join(full, "report.json"))
+                  and os.path.isfile(os.path.join(full, "template.html"))):
+                # A freeform report package: report.json + template.html in a
+                # subdirectory. Registered like a spec file; other
+                # subdirectories are still skipped below.
+                outcome = _register_template_package(full, stem=entry)
+                _outcomes.append({**record, **outcome})
+                if outcome["status"] == "registered":
+                    discovered.append(outcome["module"])
             else:
                 _outcomes.append({**record, "status": "skipped",
                                   "reason": "subdirectories are not scanned"})

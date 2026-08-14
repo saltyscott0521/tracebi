@@ -43,6 +43,10 @@ def _default_pipelines_dir() -> Path:
     return Path.cwd() / "pipelines"
 
 
+def _default_reports_dir() -> Path:
+    return Path.cwd() / "reports"
+
+
 def _slugify(title: str) -> str:
     """Convert "Open orders by region" → "open_orders_by_region"."""
     s = title.strip().lower()
@@ -1120,6 +1124,70 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify_file(args: argparse.Namespace) -> int:
+    """
+    Offline check of a self-contained report ``.html`` (architecture §3.2).
+
+    Recovers the exact fingerprinted bytes from every embedded data block and
+    rehashes them — no model, no DataFrame rebuild — against a sibling
+    ``<file>.manifest.json``. Catches a number edited in the shipped file, which
+    ``verify <manifest>`` (query → model) cannot see. Exit 0 only when every
+    embedded block matches the manifest.
+    """
+    from tracebi.verify import (
+        FILE_MATCHES, FILE_STATUS_LABELS, verify_file,
+    )
+
+    html_path = Path(args.verify_file)
+    if not html_path.is_file():
+        print(f"report file not found: {html_path}", file=sys.stderr)
+        return 1
+
+    manifest_path = (
+        Path(args.file_manifest) if getattr(args, "file_manifest", None)
+        else html_path.with_name(html_path.name + ".manifest.json")
+    )
+    if not manifest_path.is_file():
+        print(f"no manifest found next to the report: expected {manifest_path}\n"
+              "(pass --manifest <path> to point at it explicitly)",
+              file=sys.stderr)
+        return 1
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"manifest is not valid JSON: {exc}", file=sys.stderr)
+        return 1
+    if not isinstance(manifest, dict):
+        print(f"manifest must be a JSON object, got {type(manifest).__name__}",
+              file=sys.stderr)
+        return 1
+
+    html = html_path.read_text(encoding="utf-8")
+    result = verify_file(html, manifest)
+
+    name = result["report_name"] or html_path.name
+    print(f"Verifying embedded data in '{name}' ({html_path})")
+    print(f"  against manifest {manifest_path}")
+    width = max(len(v) for v in FILE_STATUS_LABELS.values())
+    for b in result["bindings"]:
+        status = b["status"]
+        mark = "✓" if status == FILE_MATCHES else "✗"
+        line = f"{mark} {FILE_STATUS_LABELS[status]:<{width}}  {b['binding']}"
+        if status != FILE_MATCHES:
+            line += f" — {b['detail']}"
+        print(line, file=sys.stdout if mark != "✗" else sys.stderr)
+
+    counts = ", ".join(
+        f"{n} {FILE_STATUS_LABELS[status].lower()}"
+        for status, n in result["summary"].items() if n
+    ) or "no embedded data blocks"
+    print(f"\n{len(result['bindings'])} binding(s) checked: {counts}")
+    print(result["verdict_detail"],
+          file=sys.stdout if result["exit_code"] == 0 else sys.stderr)
+    return result["exit_code"]
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """
     Re-verify a rendered manifest: the other half of the stamp.
@@ -1139,6 +1207,18 @@ def cmd_verify(args: argparse.Namespace) -> int:
     from tracebi.verify import (
         REPRODUCES, STATUS_LABELS, UNVERIFIABLE, load_models, verify_manifest,
     )
+
+    # Two distinct checks under one verb (architecture §4). `--file` opens the
+    # shipped .html and rehashes its embedded bytes against a sibling manifest
+    # (embedded bytes → manifest); it never touches a model. The positional
+    # `manifest` re-runs recorded queries (query → model). Neither implies the
+    # other, so they are kept apart rather than merged.
+    if getattr(args, "verify_file", None) is not None:
+        return cmd_verify_file(args)
+    if not args.manifest:
+        print("verify: provide a manifest path, or --file <report.html>",
+              file=sys.stderr)
+        return 1
 
     path = Path(args.manifest)
     if not path.is_file():
@@ -1189,6 +1269,289 @@ def cmd_verify(args: argparse.Namespace) -> int:
     print(result["verdict_detail"],
           file=sys.stdout if result["exit_code"] == 0 else sys.stderr)
     return result["exit_code"]
+
+
+# ── Report generator: new-report / report build|preview ────────────────────
+
+def _scaffold_binding() -> tuple[str, dict, str]:
+    """A concrete ``(model_name, query_dict, note)`` for a starter package.
+
+    So ``tracebi new-report`` renders out of the box, the query is derived from
+    the first model in ``models/``: its first fact, first measure, and — when
+    the model has one — a dimension attribute to slice by. With no model yet,
+    a placeholder is emitted and the note tells the author to point it at one.
+    """
+    models = _load_project_models()
+    for name, model in sorted(models.items()):
+        try:
+            info = model.info()
+        except Exception:  # noqa: BLE001 — an unloadable model is not a scaffold source
+            continue
+        facts = info.get("facts") or []
+        measures = info.get("measures") or []
+        if not facts or not measures:
+            continue
+        query: dict = {"fact": facts[0]["name"],
+                       "measures": [measures[0]["name"]]}
+        dims = info.get("dimensions") or []
+        for d in dims:
+            if d.get("attributes"):
+                query["dimensions"] = [f"{d['name']}.{d['attributes'][0]}"]
+                break
+        return info.get("name", name), query, ""
+    return (
+        "your_model",
+        {"fact": "your_fact", "measures": ["your_measure"],
+         "dimensions": ["your_dimension.attribute"]},
+        "No model found in models/ — edit report.json's 'data' block to name a "
+        "real model and query before running `tracebi report build`.",
+    )
+
+
+def _report_json_text(title: str, model: str, query: dict) -> str:
+    declaration = {
+        "name": title,
+        "author": "",
+        "description": "Freeform report package scaffolded by tracebi new-report.",
+        "data": {"rows": {"model": model, "query": query}},
+    }
+    return json.dumps(declaration, indent=2) + "\n"
+
+
+_REPORT_TEMPLATE_HTML = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+</head>
+<body>
+  <main class="report">
+    <h1>{{ title }}</h1>
+    <p class="note">Every number below is embedded, fingerprinted, and recorded.
+      Check it offline with <code>tracebi verify --file</code>.</p>
+    <table id="rows"><thead></thead><tbody></tbody></table>
+  </main>
+</body>
+</html>
+"""
+
+_REPORT_STYLE_CSS = """:root { color-scheme: light dark; }
+body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; }
+h1 { margin-bottom: .25rem; }
+.note { color: #666; margin-top: 0; }
+table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
+th, td { padding: .5rem .75rem; border-bottom: 1px solid #ddd; text-align: left; }
+th { border-bottom: 2px solid #999; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+"""
+
+# Reads the embedded data and draws the table with DOM APIs only — the data
+# never reaches innerHTML, so a hostile cell value cannot execute (architecture
+# §5). The block is <script type="application/json">, parsed with JSON.parse.
+_REPORT_SCRIPT_JS = """(function () {
+  // Minimal RFC-4180 CSV parser — handles quoted fields and commas inside them.
+  function parseCsv(text) {
+    var rows = [], row = [], field = "", inQ = false, i = 0, c;
+    while (i < text.length) {
+      c = text[i];
+      if (inQ) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else { inQ = false; } }
+        else { field += c; }
+      } else if (c === '"') { inQ = true; }
+      else if (c === ',') { row.push(field); field = ""; }
+      else if (c === '\\n') { row.push(field); rows.push(row); row = []; field = ""; }
+      else if (c !== '\\r') { field += c; }
+      i++;
+    }
+    if (field !== "" || row.length) { row.push(field); rows.push(row); }
+    var head = rows.shift() || [];
+    return rows.filter(function (r) { return r.length === head.length; })
+      .map(function (r) { var o = {}; head.forEach(function (h, j) { o[h] = r[j]; }); return o; });
+  }
+
+  var el = document.getElementById("tracebi-data-rows");
+  if (!el) return;
+  // Draw from the fingerprinted `csv` — the exact bytes the receipt covers — so
+  // a displayed number cannot diverge from a verified one.
+  var rows = parseCsv(JSON.parse(el.textContent).csv || "");
+  var table = document.getElementById("rows");
+  if (!rows.length || !table) return;
+  var cols = Object.keys(rows[0]);
+  var thead = table.querySelector("thead");
+  var htr = document.createElement("tr");
+  cols.forEach(function (c) {
+    var th = document.createElement("th");
+    th.textContent = c;
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr);
+  var tbody = table.querySelector("tbody");
+  rows.forEach(function (row) {
+    var tr = document.createElement("tr");
+    cols.forEach(function (c) {
+      var td = document.createElement("td");
+      var v = row[c];
+      if (v !== "" && v != null && !isNaN(Number(v))) {
+        td.className = "num";
+        td.textContent = Number(v).toLocaleString();
+      } else {
+        td.textContent = v == null ? "" : String(v);
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+})();
+"""
+
+
+def cmd_new_report(args: argparse.Namespace) -> int:
+    """
+    Scaffold a freeform report package under ``reports/<name>/``.
+
+    Four starter files — ``report.json`` (a data binding), ``template.html``,
+    ``style.css``, ``script.js`` — that render a titled page with a table out of
+    the box against the first model in ``models/``. A directory holding
+    ``report.json`` + ``template.html`` is discovered as a report (architecture
+    §7) and built with ``tracebi report build <name>``.
+    """
+    reports_dir: Path = args.reports_dir
+    slug = _slugify(args.title)
+    pkg_dir = reports_dir / slug
+    if pkg_dir.exists() and not args.force:
+        print(f"refusing to overwrite existing {pkg_dir}; pass --force to replace",
+              file=sys.stderr)
+        return 1
+    pkg_dir.mkdir(parents=True, exist_ok=True)
+
+    model, query, note = _scaffold_binding()
+    (pkg_dir / "report.json").write_text(
+        _report_json_text(args.title, model, query), encoding="utf-8")
+    (pkg_dir / "template.html").write_text(
+        _REPORT_TEMPLATE_HTML.replace("{{ title }}", args.title), encoding="utf-8")
+    (pkg_dir / "style.css").write_text(_REPORT_STYLE_CSS, encoding="utf-8")
+    (pkg_dir / "script.js").write_text(_REPORT_SCRIPT_JS, encoding="utf-8")
+
+    print(f"Created {pkg_dir}/ (report.json, template.html, style.css, script.js)")
+    if note:
+        print(f"  {note}")
+    else:
+        print(f"  Bound to model '{model}'. Build it with:")
+        print(f"    tracebi report build {slug}")
+    return 0
+
+
+def _default_dashboards_dir() -> Path:
+    return Path(os.environ.get("TRACEBI_DASHBOARDS_DIR", "dashboards"))
+
+
+def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
+    """Resolve *name* to a package directory or a spec file.
+
+    Looks for a ``reports/<name>/`` package first, then a ``reports/<name>.json``
+    or ``dashboards/<name>.json`` spec. Returns ``("package"|"spec", path)`` or
+    raises ``FileNotFoundError`` listing where it looked.
+    """
+    pkg_dir = reports_dir / name
+    if (pkg_dir / "report.json").is_file() and (pkg_dir / "template.html").is_file():
+        return "package", pkg_dir
+    tried = [str(pkg_dir)]
+    for base in (reports_dir, _default_dashboards_dir()):
+        spec_path = base / f"{name}.json"
+        tried.append(str(spec_path))
+        if spec_path.is_file():
+            return "spec", spec_path
+    raise FileNotFoundError(
+        f"No report '{name}' found. Looked for a package or spec at:\n  "
+        + "\n  ".join(tried)
+    )
+
+
+def _build_report_target(kind: str, path: Path, output: Path) -> Path:
+    """Render one report target to *output* (+ a sibling manifest). Returns output."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    models = _load_project_models()
+    if kind == "package":
+        from tracebi.reports.template_package import TemplatePackage
+        TemplatePackage(str(path)).render(models, str(output))
+    else:
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.spec import ReportSpec
+        spec = ReportSpec.from_json(path.read_text(encoding="utf-8"))
+        report = spec.build(models)
+        HTMLRenderer().render(report, str(output), save_manifest=True)
+    return output
+
+
+def _serve_file(html_path: Path, name: str, port: int, open_browser: bool) -> None:
+    """Serve *html_path*'s directory over HTTP, as ``HTMLRenderer.serve`` does.
+
+    The freeform ``.html`` is already built and self-contained, so preview
+    serves that artifact statically rather than re-rendering it — the built-in
+    renderers never touch the analyst's ``template.html``.
+    """
+    import http.server
+    import threading
+    import webbrowser
+
+    directory = str(html_path.parent.resolve())
+    url = f"http://localhost:{port}/{html_path.name}"
+
+    class _Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, directory=directory, **kw)
+
+        def log_message(self, fmt, *a):  # silence request logs
+            pass
+
+    server = http.server.HTTPServer(("", port), _Handler)
+    if open_browser:
+        threading.Timer(0.3, lambda: webbrowser.open(url)).start()
+    print(f"\n  TraceBi Report — '{name}'")
+    print(f"  Serving at {url}")
+    print("  Press Ctrl+C to stop.\n")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\n  Server stopped.")
+    finally:
+        server.server_close()
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    """
+    Build or preview a report — the build step (architecture §2).
+
+        tracebi report build <name>     # → data/<name>.html + manifest
+        tracebi report preview <name>   # build, then serve it locally
+
+    A report is a package (``reports/<name>/``) or a spec
+    (``reports/<name>.json`` / ``dashboards/<name>.json``). Output defaults to
+    ``data/<name>.html`` — self-contained, offline, and checkable with
+    ``tracebi verify --file``.
+    """
+    reports_dir: Path = args.reports_dir
+    try:
+        kind, path = _resolve_report_target(args.name, reports_dir)
+    except FileNotFoundError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+
+    output = Path(args.output) if args.output else Path.cwd() / "data" / f"{args.name}.html"
+    try:
+        _build_report_target(kind, path, output)
+    except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
+        print(f"failed to build report '{args.name}': "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+    manifest = output.with_name(output.name + ".manifest.json")
+    print(f"Rendered {args.name} ({kind}) → {output}")
+    print(f"  manifest → {manifest}")
+
+    if args.action == "preview":
+        _serve_file(output, args.name, args.port, not args.no_browser)
+    return 0
 
 
 # ── Argparse wiring ─────────────────────────────────────────────────────────
@@ -1320,6 +1683,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_list_pipelines = sub.add_parser("list-pipelines", help="List pipeline definition files.")
     p_list_pipelines.set_defaults(func=cmd_list_pipelines)
 
+    p_new_report = sub.add_parser(
+        "new-report",
+        help="Scaffold a freeform report package (reports/<name>/): report.json "
+             "+ template.html + style.css + script.js.",
+    )
+    p_new_report.add_argument("title", help='Free-form title, e.g. "Portfolio Book".')
+    p_new_report.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
+                              help="Directory holding report packages (default: ./reports).")
+    p_new_report.set_defaults(func=cmd_new_report)
+
+    p_report = sub.add_parser(
+        "report",
+        help="Build a report package or spec to one self-contained .html + "
+             "manifest, or preview it locally.",
+    )
+    p_report.add_argument("action", choices=["build", "preview"])
+    p_report.add_argument("name", help="Report name (package dir or spec stem).")
+    p_report.add_argument("--output", help="Output .html path (default: data/<name>.html).")
+    p_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
+                          help="Directory holding report packages (default: ./reports).")
+    p_report.add_argument("--port", type=int, default=8080,
+                          help="Port for `preview` (default 8080).")
+    p_report.add_argument("--no-browser", action="store_true",
+                          help="With `preview`, do not open the browser.")
+    p_report.set_defaults(func=cmd_report)
+
     p_run_pipeline = sub.add_parser(
         "run-pipeline",
         help="Run a pipeline's layers (the execution plane — no web server needed).",
@@ -1365,7 +1755,24 @@ def build_parser() -> argparse.ArgumentParser:
              "or unverifiable. Exits 0 only when something was actually "
              "checked and nothing failed.",
     )
-    p_verify.add_argument("manifest", help="Path to a *.manifest.json file.")
+    p_verify.add_argument(
+        "manifest", nargs="?", default=None,
+        help="Path to a *.manifest.json file (query → model check). "
+             "Omit when using --file.",
+    )
+    # A wholly separate offline check: the shipped .html's embedded bytes vs
+    # the manifest (architecture §3.2). Kept apart from the positional so
+    # neither can be mistaken for the other.
+    p_verify.add_argument(
+        "--file", dest="verify_file", default=None,
+        help="Path to a self-contained report *.html*; rehash its embedded "
+             "data against a sibling <file>.manifest.json (no model needed).",
+    )
+    p_verify.add_argument(
+        "--manifest", dest="file_manifest", default=None,
+        help="With --file: the manifest to check against, if it is not the "
+             "sibling <file>.manifest.json.",
+    )
     # Distinct dest: a subparser option sharing dest with a main-parser
     # option would clobber an already-parsed `tracebi --models-dir X verify`.
     p_verify.add_argument(

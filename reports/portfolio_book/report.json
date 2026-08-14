@@ -1,0 +1,23 @@
+{
+  "name": "Portfolio Book",
+  "author": "workflow",
+  "description": "Direct-lending book against portfolio_model — fair value by sector and the largest issuer exposures. A freeform package: the whole page is drawn by template.html + script.js from embedded, fingerprinted data.",
+  "data": {
+    "by_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["fair_value"],
+        "dimensions": ["dim_issuer.sector"]
+      }
+    },
+    "top_issuers": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["fair_value", "positions"],
+        "dimensions": ["dim_issuer.issuer"]
+      }
+    }
+  }
+}

@@ -41,7 +41,9 @@ Consumed by ``tracebi verify <manifest.json>`` and by the gateway's
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Mapping, Optional, Union
 
@@ -427,4 +429,209 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
         "sections": results,
         "summary": summary,
         **_verdict_fields(_verdict(summary), summary),
+    }
+
+
+# ── Offline file check (report generator, architecture §3.1 / §3.2) ─────────
+#
+# A wholly separate check from ``verify_manifest`` above: that one re-runs the
+# recorded queries against the *models* (query → model); this one never touches
+# a model. It opens the shipped ``.html``, recovers the exact bytes the
+# fingerprint was taken over from each embedded data block, rehashes them
+# *without rebuilding a DataFrame*, and compares to the manifest's
+# ``embedded_sha256`` (embedded bytes → manifest). Neither check implies the
+# other, and a tampered number in the file passes ``verify_manifest`` while
+# failing here — which is the whole reason this exists.
+
+#: A data block's embedded bytes hash to the manifest value — the number
+#: shipped in this file is exactly what was fingerprinted at render time.
+FILE_MATCHES = "matches"
+#: The embedded bytes no longer hash to the recorded value: the data in the
+#: file was edited after it was rendered. The alarming case.
+FILE_TAMPERED = "tampered"
+#: The manifest records a binding for which the file carries no data block.
+FILE_MISSING = "missing_in_file"
+#: The file carries a data block the manifest does not record — an embed with
+#: no receipt, which the receipt cannot vouch for.
+FILE_UNRECORDED = "unrecorded_in_manifest"
+#: The embedded bytes match the manifest binding, but no report section carries
+#: that fingerprint — an internally inconsistent manifest (its sections were
+#: stripped or never recorded), so nothing in the receipt actually vouches for
+#: the number. A broken receipt, not a passing one.
+FILE_UNBACKED = "unbacked_by_section"
+
+FILE_STATUS_LABELS = {
+    FILE_MATCHES:    "MATCHES",
+    FILE_TAMPERED:   "TAMPERED",
+    FILE_MISSING:    "MISSING IN FILE",
+    FILE_UNRECORDED: "UNRECORDED IN MANIFEST",
+    FILE_UNBACKED:   "UNBACKED BY SECTION",
+}
+
+#: Receipt-level verdicts for the file check.
+FILE_INTACT = "file_intact"
+FILE_ALTERED = "file_altered"
+FILE_NOTHING = "file_nothing_embedded"
+
+FILE_VERDICT_EXIT_CODES = {
+    FILE_INTACT:   0,
+    FILE_ALTERED:  1,
+    FILE_NOTHING:  1,
+}
+
+FILE_VERDICT_LABELS = {
+    FILE_INTACT:
+        "FILE INTACT — every embedded data block matches the manifest; the "
+        "numbers shipped in this file are exactly what was fingerprinted",
+    FILE_ALTERED:
+        "FILE ALTERED — an embedded data block does not match the manifest; "
+        "the data in this file is not what was recorded",
+    FILE_NOTHING:
+        "NOTHING EMBEDDED — this manifest records no embedded data and the "
+        "file carries none; there was nothing to check",
+}
+
+#: The ``<script type="application/json">`` blocks the embedder emits. Captures
+#: the ``id`` (the binding fallback name) and the raw JSON text between the tags.
+_DATA_BLOCK_RE = re.compile(
+    r'<script\s+id="(?P<id>[^"]*)"\s+type="application/json"\s*>'
+    r'(?P<body>.*?)</script>',
+    re.DOTALL,
+)
+
+
+def _fingerprint_triple(triple: Mapping[str, str]) -> str:
+    """SHA-256 over the canonical triple — one algorithm, shared with the embedder."""
+    from tracebi.reports.embed import fingerprint_triple
+
+    return fingerprint_triple(dict(triple))
+
+
+def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
+    """Every embedded data block that carries a canonical triple.
+
+    Returns ``(name, parsed)`` pairs. A block is a data block only if its
+    parsed JSON holds all three canonical-triple keys; other
+    ``application/json`` blocks (a config blob, say) are skipped. ``name`` is
+    the payload's own ``name`` when present, else the element id.
+    """
+    out: list[tuple[str, dict]] = []
+    for m in _DATA_BLOCK_RE.finditer(html):
+        try:
+            parsed = json.loads(m.group("body"))
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(parsed, dict):
+            continue
+        if not all(k in parsed for k in ("columns", "dtypes", "csv")):
+            continue
+        name = parsed.get("name") or m.group("id")
+        out.append((str(name), parsed))
+    return out
+
+
+def verify_file(html: str, manifest: dict) -> dict:
+    """Rehash every embedded data block in *html* against *manifest*.
+
+    No model is loaded and no DataFrame is rebuilt: each block's three
+    canonical strings are hashed exactly as ``frame_fingerprint`` hashed them,
+    and compared to the manifest's ``embedded_data[].embedded_sha256`` (which
+    equals the matching section's ``dataset_fingerprint``). Returns the same
+    ``verdict``/``exit_code``/``ok`` shape as :func:`verify_manifest`, so the
+    CLI presents both checks uniformly.
+    """
+    records = {
+        str(e.get("name")): e
+        for e in (manifest.get("embedded_data") or [])
+        if isinstance(e, dict)
+    }
+    # Section fingerprints, to confirm the manifest is internally consistent:
+    # a recorded embedded_sha256 that no section fingerprinted would be a
+    # broken receipt, not a passing one.
+    section_fps = {
+        s.get("dataset_fingerprint")
+        for s in _walk_sections(manifest.get("sections") or [])
+        if s.get("dataset_fingerprint")
+    }
+
+    results: list[dict] = []
+    seen: set[str] = set()
+    for name, parsed in _extract_data_blocks(html):
+        computed = _fingerprint_triple(parsed)
+        record = records.get(name)
+        if record is None:
+            results.append({
+                "binding": name,
+                "status": FILE_UNRECORDED,
+                "computed_sha256": computed,
+                "expected_sha256": None,
+                "detail": "the file embeds this data block but the manifest "
+                          "records no binding for it — no receipt vouches for it",
+            })
+            continue
+        seen.add(name)
+        expected = record.get("embedded_sha256")
+        if computed == expected and expected in section_fps:
+            results.append({
+                "binding": name,
+                "status": FILE_MATCHES,
+                "computed_sha256": computed,
+                "expected_sha256": expected,
+                "detail": "embedded bytes match the manifest",
+            })
+        elif computed == expected:
+            # The bytes match the recorded binding, but no section carries the
+            # fingerprint — the manifest is internally inconsistent, so the
+            # match vouches for nothing. Fail, do not merely note it.
+            results.append({
+                "binding": name,
+                "status": FILE_UNBACKED,
+                "computed_sha256": computed,
+                "expected_sha256": expected,
+                "detail": "embedded bytes match the manifest binding, but no "
+                          "report section carries this fingerprint — the "
+                          "receipt does not vouch for this number",
+            })
+        else:
+            results.append({
+                "binding": name,
+                "status": FILE_TAMPERED,
+                "computed_sha256": computed,
+                "expected_sha256": expected,
+                "detail": "embedded bytes hash to a different value than the "
+                          "manifest records — the data in this file was edited "
+                          "after it was rendered",
+            })
+
+    for name, record in records.items():
+        if name not in seen:
+            results.append({
+                "binding": name,
+                "status": FILE_MISSING,
+                "computed_sha256": None,
+                "expected_sha256": record.get("embedded_sha256"),
+                "detail": "the manifest records this binding but the file "
+                          "embeds no matching data block",
+            })
+
+    summary = {status: 0 for status in FILE_STATUS_LABELS}
+    for r in results:
+        summary[r["status"]] += 1
+
+    if not results:
+        verdict = FILE_NOTHING
+    elif summary[FILE_MATCHES] == len(results):
+        verdict = FILE_INTACT
+    else:
+        verdict = FILE_ALTERED
+
+    code = FILE_VERDICT_EXIT_CODES[verdict]
+    return {
+        "report_name": manifest.get("report_name"),
+        "bindings": results,
+        "summary": summary,
+        "verdict": verdict,
+        "verdict_detail": FILE_VERDICT_LABELS[verdict],
+        "exit_code": code,
+        "ok": code == 0,
     }

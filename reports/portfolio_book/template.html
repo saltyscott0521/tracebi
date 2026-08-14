@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+</head>
+<body>
+  <main class="book">
+    <header>
+      <h1>{{ title }}</h1>
+      <p class="lede">Direct-lending holdings, cleaned from a Schedule-of-Investments
+        export. Every figure on this page is embedded, fingerprinted, and recorded in
+        the sibling manifest &mdash; check it offline with
+        <code>tracebi verify --file</code>.</p>
+    </header>
+
+    <section>
+      <h2>Fair value by sector</h2>
+      <div id="by-sector" class="bars"></div>
+    </section>
+
+    <section>
+      <h2>Largest issuer exposures</h2>
+      <table id="top-issuers">
+        <thead>
+          <tr><th>Issuer</th><th class="num">Fair value</th><th class="num">Positions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

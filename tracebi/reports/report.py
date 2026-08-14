@@ -527,9 +527,17 @@ class ReportManifest:
     sections: list[dict]
     parameters: dict = field(default_factory=dict)
     git_sha: str = field(default_factory=_current_git_sha)
+    #: Per-binding receipt for data embedded into a self-contained report
+    #: ``.html`` (report generator, architecture §3.1). Each entry is
+    #: ``{name, embedded_sha256, query_spec, model}`` where ``embedded_sha256``
+    #: is the canonical-triple hash — equal to the binding's
+    #: ``DataSet.fingerprint()`` and to the section's ``dataset_fingerprint``.
+    #: ``tracebi verify --file`` rehashes the bytes shipped in the ``.html``
+    #: against this. Empty for the Excel/PDF renderers, which embed nothing.
+    embedded_data: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "schema_version": MANIFEST_SCHEMA_VERSION,
             "report_name": self.report_name,
             "rendered_at": self.rendered_at,
@@ -540,6 +548,11 @@ class ReportManifest:
             "parameters": self.parameters,
             "sections": self.sections,
         }
+        # Omitted when empty so a manifest with no embedded data keeps the
+        # exact shape it had before this field existed.
+        if self.embedded_data:
+            d["embedded_data"] = self.embedded_data
+        return d
 
     def to_json(self, indent: int = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, default=str)
