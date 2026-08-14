@@ -36,8 +36,6 @@ web/ui/node_modules/
 # can carry it; the build output is still disposable and stays untracked.
 tracebi/web/ui/dist/
 
-# Three-phase workflow — the warehouse and rendered output are build artifacts;
-# the raw source (workflow_data/raw/) and all phase code are tracked.
-workflow_data/warehouse.duckdb
-workflow_data/*.html
-workflow_data/*.manifest.json
+# Three-phase workflow — the warehouse and rendered output are build artifacts
+# under data/ (already ignored above). Raw pulls live in inputs/ (tracked; a
+# large or sensitive real pull can be ignored per-file).

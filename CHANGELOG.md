@@ -19,7 +19,7 @@ each phase in its own folder (see `WORKFLOW.md`):
 - `dashboards/` — phase ③, a `ReportSpec` JSON whose every figure is a live
   query against the model. A new `TRACEBI_DASHBOARDS_DIR` (default `dashboards`)
   is auto-discovered and served on the Reports page.
-- `run_workflow.py` drives ①→③; `workflow_data/generate_raw.py` produces a
+- `run_workflow.py` drives ①→③; `inputs/generate_raw.py` produces a
   synthetic Schedule-of-Investments file so phase ① has real work to do.
 
 A **metrics section can now bind its cards to a query**: a card whose `value`

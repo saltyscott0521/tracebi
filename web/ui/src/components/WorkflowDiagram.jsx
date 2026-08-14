@@ -82,8 +82,8 @@ export default function WorkflowDiagram() {
   return (
     <div className="wf-wrap">
       <div className="wf-endcap wf-source">
-        <span>raw sources</span>
-        <small>API pulls · CSV · SQL</small>
+        <span>inputs/</span>
+        <small>raw pulls · API · CSV · SQL</small>
       </div>
       <Arrow />
       <Phase {...PHASES[0]} />

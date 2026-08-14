@@ -22,7 +22,7 @@ from tracebi import DataModel
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WAREHOUSE = os.path.join(ROOT, "workflow_data", "warehouse.duckdb")
+WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
 
 # The connector points at the file phase ① wrote. Exposed at module scope so the
 # web app can surface it on the Connectors page.

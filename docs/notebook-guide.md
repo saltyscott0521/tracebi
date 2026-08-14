@@ -22,7 +22,7 @@ tables and move the cleaning into `transforms/`:
 ```python
 from tracebi.connectors import DuckDBConnector
 
-wh = DuckDBConnector("warehouse", database="workflow_data/warehouse.duckdb")
+wh = DuckDBConnector("warehouse", database="data/warehouse.duckdb")
 wh.write(fact_holdings_df, "fact_holdings")   # freeze: the sink is now the contract
 ```
 

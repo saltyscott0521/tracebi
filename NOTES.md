@@ -74,7 +74,7 @@ clean; it is *what* lands — the named tables at the end of the script.
 
 - `transforms/holdings_transform.py`, `models/portfolio_model.py`,
   `dashboards/portfolio_dashboard.json`, `run_workflow.py`,
-  `workflow_data/generate_raw.py` (+ `workflow_data/raw/holdings.csv`),
+  `inputs/generate_raw.py` (+ `inputs/holdings.csv`),
   `WORKFLOW.md`. `python run_workflow.py` builds the warehouse (phase ①) and
   renders the dashboard once, offline; `python -m tracebi.web.run` serves it.
 - **A new discovered directory, `dashboards/`**, via `TRACEBI_DASHBOARDS_DIR`

@@ -136,8 +136,8 @@ export default function Workflow() {
           </div>
           <Code>python run_workflow.py</Code>
           <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
-            Runs phase ① and renders the dashboard offline to
-            <code style={{ fontSize: 11 }}> workflow_data/</code>.
+            Reads the raw pull from <code style={{ fontSize: 11 }}>inputs/</code>, writes the
+            warehouse and rendered page to <code style={{ fontSize: 11 }}>data/</code>.
           </p>
         </Card>
         <Card>

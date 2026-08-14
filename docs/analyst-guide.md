@@ -26,7 +26,7 @@ shape:
 ①  MANIPULATE   transforms/       ordinary, unconstrained pandas
      read a messy source → parse, clean, key, dedupe → WRITE star-schema tables
                                                         │
-                                                        ▼  freeze: workflow_data/warehouse.duckdb
+                                                        ▼  freeze: data/warehouse.duckdb
 ②  MODEL        models/           a thin DataModel over the warehouse
      grain, keys, measures in a few dozen lines a reviewer reads without the pandas
                                                         │
@@ -53,7 +53,7 @@ phase ①. Reference impl:
 [dashboards/portfolio_dashboard.json](../dashboards/portfolio_dashboard.json).
 
 ```bash
-python run_workflow.py       # ① builds workflow_data/warehouse.duckdb, ③ renders once
+python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once
 python -m tracebi.web.run    # serve it: Reports → portfolio_dashboard
 ```
 

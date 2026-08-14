@@ -14,7 +14,7 @@ materialized artifact handed across the boundary:
 
 | Phase | Folder | You write | Freeze it hands on |
 |---|---|---|---|
-| ① **Manipulate** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `workflow_data/warehouse.duckdb` (materialized tables) |
+| ① **Manipulate** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
 | ③ **Dashboard** | `dashboards/` | a `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables, every figure a live query | the rendered page + its lineage manifest |
 

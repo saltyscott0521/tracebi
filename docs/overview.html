@@ -267,7 +267,7 @@
     </div>
     <div class="phase-freeze">
       <span>❄ freeze</span>
-      <code>workflow_data/warehouse.duckdb</code> — materialized tables
+      <code>data/warehouse.duckdb</code> — materialized tables
     </div>
     <div class="phase">
       <div class="phase-num" style="background:#003366">②</div>
@@ -321,7 +321,7 @@
 $ python -m tracebi.web.run     # serve it → http://127.0.0.1:8000 → Reports → portfolio_dashboard</code></pre>
   <p>
     <code>run_workflow.py</code> generates a synthetic messy source file the first time
-    (<code>workflow_data/generate_raw.py</code>), so phase ① has real work to do. A worked
+    (<code>inputs/generate_raw.py</code>), so phase ① has real work to do. A worked
     example driven by real AltsVault API output is the intended next step — not yet built.
     The full walkthrough lives in <code>WORKFLOW.md</code>.
   </p>

@@ -5,11 +5,14 @@ result into a warehouse, declares a thin model over it, and points a dashboard
 at the model. Each phase has its own folder and its own cadence.
 
 ```
+⓪  INPUT                 a raw pull lands here
+    inputs/holdings.csv         (an AltsVault API export, a CSV, a SQL dump)
+                                                          │
 ①  MANIPULATE            slow, runs rarely, code is free
     transforms/holdings_transform.py
-      read a messy source → parse, clean, key, dedupe → WRITE star-schema tables
+      read inputs/ → parse, clean, key, dedupe → WRITE star-schema tables
                                                           │
-                                                          ▼  workflow_data/warehouse.duckdb
+                                                          ▼  data/warehouse.duckdb
 ②  MODEL                 the contract, changes deliberately
     models/portfolio_model.py
       a star schema over the warehouse — grain, keys, measures, in ~50 lines
@@ -35,22 +38,25 @@ python run_workflow.py          # ① build the warehouse, ③ render the dashbo
 python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → Reports → portfolio_dashboard
 ```
 
-`run_workflow.py` generates a synthetic messy Schedule-of-Investments file the
-first time (`workflow_data/generate_raw.py`), so there is real work for phase ①
-to do: prose instrument blobs to parse into issuers, trailing `(2)` position
-counters to strip, sectors spelled six ways, money stored as strings.
+`run_workflow.py` generates a synthetic messy Schedule-of-Investments file into
+`inputs/` the first time (`inputs/generate_raw.py`), so there is real work for
+phase ① to do: prose instrument blobs to parse into issuers, trailing `(2)`
+position counters to strip, sectors spelled six ways, money stored as strings.
 
 ## Where each phase lives
 
-| Phase | Folder | Artifact | Discovered by the server as |
+| Stage | Folder | Artifact | Discovered by the server as |
 |---|---|---|---|
+| ⓪ Input | `inputs/` | a raw pull (CSV / API export / SQL dump) | — (you put it there) |
 | ① Manipulate | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
 | ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Models page |
 | ③ Dashboard | `dashboards/` | `ReportSpec` JSON | a report on the Reports page |
 
-The warehouse is `workflow_data/warehouse.duckdb` — one file phase ① writes and
-phase ② reads. The model opens it read-through; the two phases can run in
-separate processes because the sink is on disk.
+The warehouse is `data/warehouse.duckdb` — one file phase ① writes and phase ②
+reads. The model opens it read-through; the two phases can run in separate
+processes because the sink is on disk. `inputs/` holds the raw material (the
+demo's `holdings.csv` is tracked; a large or sensitive real pull can be
+gitignored per-file); `data/` holds the build artifacts and is gitignored.
 
 ## Iterating on the dashboard
 

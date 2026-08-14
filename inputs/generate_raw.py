@@ -8,9 +8,10 @@ do — prose instrument blobs to parse, trailing position counters to strip,
 sectors spelled five ways, money stored as strings with $ and footnote marks,
 duplicate rows, and missing issuers.
 
-    python workflow_data/generate_raw.py   →   workflow_data/raw/holdings.csv
+    python inputs/generate_raw.py   →   inputs/holdings.csv
 
-Reproducible (seeded); no network. Regenerate any time.
+Reproducible (seeded); no network. Regenerate any time. In real use this file
+is where a raw pull lands — an AltsVault API export, a CSV, a SQL dump.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ import pandas as pd
 
 rng = np.random.default_rng(20260814)
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "raw", "holdings.csv")
+OUT = os.path.join(HERE, "holdings.csv")
 
 FUNDS = ["Meridian Direct Lending", "Harbor Point BDC", "Cedar Credit Partners"]
 

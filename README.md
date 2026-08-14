@@ -20,7 +20,7 @@ slow analysis and the fast reporting never block each other.
 ①  MANIPULATE   transforms/          slow, runs rarely — unconstrained pandas
       read messy sources → parse, clean, key, dedupe → WRITE star-schema tables
                                                         │
-                                       freeze ▼  workflow_data/warehouse.duckdb
+                                       freeze ▼  data/warehouse.duckdb
 ②  MODEL        models/              the contract, changes deliberately
       a declarative DataModel (star schema) over the warehouse — grain, keys,
       measures, in a few dozen lines a reviewer reads without opening the pandas
@@ -754,15 +754,15 @@ tracebi/
 ├── examples/             Runnable demos (phase1–4)
 ├── tests/                777 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
-├── transforms/           Workflow phase ① — pandas that sinks star-schema tables to DuckDB
+├── inputs/               Phase ⓪ — raw pulls land here (API export · CSV · SQL); demo source tracked
+├── transforms/           Workflow phase ① — pandas that reads inputs/, sinks star tables to DuckDB
 ├── models/               DataModel definitions — each .py exposes a `model` variable (phase ②)
 ├── dashboards/           Workflow phase ③ — ReportSpec JSON served like a report
-├── workflow_data/        The freeze point — warehouse.duckdb + raw source generator
 ├── run_workflow.py       Runs the three-phase workflow end to end (see WORKFLOW.md)
 ├── pipelines/            PipelineRunner definitions — each .py exposes a `runner` variable
 ├── reports/              Named web-exposed reports (files use @register.report() decorator)
 ├── requests/             _template.py — scaffold for ad hoc report scripts
-├── data/                 SQLite DB lives here (gitignored)
+├── data/                 Gitignored local data — SQLite DB + the workflow's warehouse.duckdb
 └── NOTES.md              Design decisions and architecture reference
 ```
 

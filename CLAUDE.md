@@ -108,7 +108,7 @@ phase to the next):
    *how* you clean, it is *what lands* — the named tables at the end of the
    script. Reference: `transforms/holdings_transform.py` → `DuckDBConnector(...).write(df, "table")`.
 
-   *— freeze: `workflow_data/warehouse.duckdb` (materialized tables) —*
+   *— freeze: `data/warehouse.duckdb` (materialized tables) —*
 
 2. **MODEL** — `models/`. A declarative `DataModel` (star schema) over the
    warehouse: grain, keys, measures, in a few dozen lines a reviewer reads
@@ -173,8 +173,10 @@ web/
 examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
 tests/                 # pytest suite (700+ tests; run it for the current count), one file per area
 seeds/                 # DB init + Bronze seeding
-transforms/            # Phase ① MANIPULATE — unconstrained pandas that sinks clean
-                       #   star tables into the DuckDB warehouse (holdings_transform.py)
+inputs/                # Phase ⓪ INPUT — raw pulls land here (API export / CSV / SQL dump).
+                       #   Tracked: holdings.csv + generate_raw.py (the demo source).
+transforms/            # Phase ① MANIPULATE — unconstrained pandas that reads inputs/ and
+                       #   sinks clean star tables into the warehouse (holdings_transform.py)
 models/                # Phase ② MODEL — DataModel definitions over the warehouse;
                        #   each .py exposes a `model` variable (portfolio_model.py)
 dashboards/            # Phase ③ DASHBOARD — ReportSpec JSON pointed at a model;
@@ -182,10 +184,9 @@ dashboards/            # Phase ③ DASHBOARD — ReportSpec JSON pointed at a mo
 pipelines/             # PipelineRunner definitions — each .py exposes a `runner` variable
 reports/               # Named web-exposed report factories (use @register.report() decorator)
 requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
-workflow_data/         # Raw sources (raw/, tracked) + the DuckDB warehouse and rendered
-                       #   HTML (gitignored build artifacts). generate_raw.py seeds a source.
 run_workflow.py        # Runs the three-phase workflow end to end (phase ① build + ③ render)
-data/                  # SQLite DB (gitignored)
+data/                  # Gitignored local data: the demo SQLite DB and the workflow's
+                       #   warehouse.duckdb + rendered dashboard HTML (build artifacts)
 .env.example           # Documented env vars (auth, connector URLs, dev mode)
 .github/workflows/     # CI — pytest matrix + ruff lint
 Dockerfile             # Multi-stage build (React UI + Python app)
@@ -208,7 +209,7 @@ NOTES.md               # Architecture decisions and open questions
 pip install -e ".[dev]"                        # Everything the test suite needs (incl. web)
 
 # Three-phase workflow
-python run_workflow.py                          # phase ① builds workflow_data/warehouse.duckdb,
+python run_workflow.py                          # phase ① builds data/warehouse.duckdb,
                                                 #   phase ③ renders the dashboard HTML once, offline
 python -m tracebi.web.run                       # serves it; auto-discovers models/ + dashboards/
                                                 #   → Reports page (TRACEBI_DASHBOARDS_DIR, default dashboards)

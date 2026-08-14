@@ -12,6 +12,8 @@ data needs. The contract is not *how* you clean, it is *what lands* — the name
 tables at the bottom of this file. Phase ② (models/) reads those tables and
 never sees this code.
 
+Reads a raw pull from inputs/ and sinks to the warehouse in data/.
+
     python transforms/holdings_transform.py
 
 Idempotent: rerun any time; it replaces the warehouse tables.
@@ -28,8 +30,8 @@ from tracebi.connectors.duckdb_connector import DuckDBConnector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-RAW = os.path.join(ROOT, "workflow_data", "raw", "holdings.csv")
-WAREHOUSE = os.path.join(ROOT, "workflow_data", "warehouse.duckdb")
+RAW = os.path.join(ROOT, "inputs", "holdings.csv")
+WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
 
 
 # ── cleaning helpers ─────────────────────────────────────────────────────────
