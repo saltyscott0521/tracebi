@@ -487,6 +487,12 @@ pip install "tracebi[web] @ git+https://github.com/saltyscott0521/tracebi"
 tracebi serve                 # http://127.0.0.1:8000
 ```
 
+That install carries the REST API but no built React bundle (`tracebi/web/ui/dist`
+is gitignored, so it is not in the repo the installer builds from). Every
+`/api/...` route works and `/docs` is browsable; `/` says what is missing.
+For the full browser UI, clone the repo and run
+`cd web/ui && npm ci && npm run build`, then serve from there.
+
 ## Wire your own data
 
 1. Copy `.env.example` to `.env` and add your database URL.
@@ -643,17 +649,19 @@ def cmd_spec(args: argparse.Namespace) -> int:
 
 
 def _web_app_importable() -> bool:
-    """True when the ``web`` FastAPI app package can be imported.
+    """True when the FastAPI app package can be imported.
 
-    The wheel ships only the ``tracebi`` package (pyproject ``packages``),
-    while ``tracebi serve`` boots ``web.api.main:app`` — so a plain pip
-    install has no web app to serve. Checked up front so the failure is an
-    actionable message instead of uvicorn's ModuleNotFoundError mid-boot.
+    ``tracebi serve`` boots ``tracebi.web.api.main:app``. The wheel ships that
+    package, but an install predating the move out of the top-level ``web``
+    package does not — checked up front so the failure is an actionable
+    message instead of uvicorn's ModuleNotFoundError mid-boot. (The web app is
+    not the same thing as the built UI: a wheel can ship the app with no
+    bundle, which boots and explains itself at ``/``.)
     """
     import importlib.util
 
     try:
-        return importlib.util.find_spec("web.api.main") is not None
+        return importlib.util.find_spec("tracebi.web.api.main") is not None
     except ImportError:
         return False
 
@@ -688,9 +696,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     if not _web_app_importable():
         print(
-            "tracebi serve: the web app ('web' package) is not importable.\n"
-            "The installed wheel ships only the `tracebi` library, not the web\n"
-            "app. Either run `tracebi serve` from a clone of the repo:\n"
+            "tracebi serve: the web app (tracebi.web.api) is not importable.\n"
+            "Current wheels ship it inside the `tracebi` package; an install\n"
+            "predating the move shipped it as a top-level `web` package.\n"
+            "Upgrade, or run `tracebi serve` from a clone of the repo:\n"
             "    git clone https://github.com/saltyscott0521/tracebi\n"
             "or point PYTHONPATH at an existing checkout:\n"
             "    PYTHONPATH=/path/to/tracebi-checkout tracebi serve\n"
@@ -722,7 +731,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     import uvicorn
     uvicorn.run(
-        "web.api.main:app",
+        "tracebi.web.api.main:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
@@ -1120,10 +1129,12 @@ def cmd_verify(args: argparse.Namespace) -> int:
     an input fingerprint moved), MODEL CHANGED (a table now loads from a
     different source/connector — a governance event), UNEXPLAINED (result
     differs but the inputs did not — the alarming case), or UNVERIFIABLE
-    (no recorded query to re-run). One line per section, then a summary.
+    (no recorded query to re-run). One line per section, then a summary
+    and the receipt-level verdict.
 
     Exit codes: 0 all reproduce/unverifiable · 2 diagnosed drift only ·
-    1 anything unexplained, of unknown cause, or errored.
+    1 anything unexplained, of unknown cause, errored, or a manifest with
+    no data-bearing section at all (nothing was verified, so nothing passed).
     """
     from tracebi.verify import (
         REPRODUCES, STATUS_LABELS, UNVERIFIABLE, load_models, verify_manifest,
@@ -1172,6 +1183,11 @@ def cmd_verify(args: argparse.Namespace) -> int:
         for status, n in result["summary"].items() if n
     ) or "no data-bearing sections"
     print(f"\n{len(result['sections'])} section(s) checked: {counts}")
+    # Routed by exit code, not by verdict: a run that exits 0 must write
+    # nothing to stderr, or CI wrappers that treat stderr as failure will
+    # fail a receipt this command just called fine.
+    print(result["verdict_detail"],
+          file=sys.stdout if result["exit_code"] == 0 else sys.stderr)
     return result["exit_code"]
 
 
@@ -1346,7 +1362,8 @@ def build_parser() -> argparse.ArgumentParser:
         "verify",
         help="Re-run every recorded query in a rendered manifest and "
              "classify each section: reproduces, source drift, unexplained, "
-             "or unverifiable.",
+             "or unverifiable. Exits 0 only when something was actually "
+             "checked and nothing failed.",
     )
     p_verify.add_argument("manifest", help="Path to a *.manifest.json file.")
     # Distinct dest: a subparser option sharing dest with a main-parser

@@ -14,9 +14,9 @@ automatically on the next server start (or dev-mode reload).
 
 import os
 
-from web.api.registry import registry
+from tracebi.web.api.registry import registry
 from tracebi.model_registry import get_model
-from web.demo_app.pipeline import runner
+from tracebi.web.demo_app.pipeline import runner
 from tracebi.web.discovery import auto_discover
 
 # ── Models (defined in models/, shared with notebooks and scripts) ────────────

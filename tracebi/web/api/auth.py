@@ -12,7 +12,11 @@ Two modes, mutually exclusive:
   (default ``X-Forwarded-User``). The header value is exposed at
   ``request.state.user`` for downstream handlers. Optionally set
   ``TRACEBI_AUTH_PROXY_TRUSTED_IPS`` (comma-separated) to require the
-  request to originate from a known proxy address.
+  request to originate from a known proxy address. The proxy **must replace
+  any client-supplied role header** (``TRACEBI_AUTH_ROLE_HEADER``), which is
+  trusted in this mode precisely because the proxy sets it. Appending is
+  tolerated — the last occurrence is the one read — but a proxy that neither
+  strips nor sets it hands the role back to the caller.
 
 Both modes exempt ``/api/health`` so liveness probes work without credentials.
 For multi-user identity, use the proxy mode.
@@ -99,19 +103,33 @@ class _Authorizer:
     enterprise shape — the org's IdP already knows the groups) or from an
     explicit user→role map for the Basic-auth case.
 
-    **Enforcement is opt-in, deliberately.** With neither source configured
-    every principal is treated as `admin`, so adding this cannot silently
-    lock existing deployments out of their own pipelines. Configure either
-    source and enforcement switches on for everyone, with unmatched
-    principals falling back to TRACEBI_AUTH_DEFAULT_ROLE (`viewer`).
+    **The role header is only read when the caller can attribute it to an
+    upstream.** *trust_role_header* says so, and each middleware must decide:
+    proxy mode has an upstream that sets the header, Basic auth does not, so
+    under Basic a role claim in a request header is self-asserted — the
+    authenticated principal would be choosing their own privileges. There is
+    no default; a middleware added later has to answer the question.
+
+    **Enforcement is opt-in, deliberately.** With no *usable* source
+    configured every principal is treated as `admin`, so adding this cannot
+    silently lock existing deployments out of their own pipelines — the one
+    case being a Basic deployment whose only role config is the header this
+    now ignores *and* which never named the role everyone should get.
+    Configure a usable source and enforcement switches on for everyone, with
+    unmatched principals falling back to TRACEBI_AUTH_DEFAULT_ROLE
+    (`viewer`).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, trust_role_header: bool) -> None:
+        self.trust_role_header = trust_role_header
         self.role_header = os.environ.get("TRACEBI_AUTH_ROLE_HEADER", "").strip()
         self.role_map = self._parse_map(os.environ.get("TRACEBI_AUTH_ROLE_MAP", ""))
-        self.default_role = (
-            os.environ.get("TRACEBI_AUTH_DEFAULT_ROLE", "").strip() or _DEFAULT_ROLE
-        )
+        stated_default = os.environ.get("TRACEBI_AUTH_DEFAULT_ROLE", "").strip()
+        #: True when the operator named the fallback role rather than
+        #: inheriting it. Not a role source on its own — it only keeps
+        #: enforcement on beside an untrusted role header (see `enabled`).
+        self.explicit_default_role = bool(stated_default)
+        self.default_role = stated_default or _DEFAULT_ROLE
         if self.default_role not in _ROLE_RANK:
             raise ValueError(
                 f"TRACEBI_AUTH_DEFAULT_ROLE must be one of {ROLES}, "
@@ -120,7 +138,18 @@ class _Authorizer:
 
     @property
     def enabled(self) -> bool:
-        return bool(self.role_header or self.role_map)
+        if self.role_map:
+            return True
+        if not self.role_header:
+            return False
+        # A role header this mode may not trust is not a role source. It is
+        # still the operator asking for roles, so enforcement stays on when
+        # they also named the role everyone gets — TRACEBI_AUTH_DEFAULT_ROLE
+        # applies to every principal the (absent) map does not list. Only
+        # when no role was stated anywhere would switching on mean demoting
+        # a running deployment to the implicit `viewer`, out of its own
+        # pipelines; there, enforcement stays off.
+        return self.trust_role_header or self.explicit_default_role
 
     @staticmethod
     def _parse_map(raw: str) -> dict:
@@ -140,8 +169,12 @@ class _Authorizer:
             # No authorization configured: preserve pre-existing behaviour
             # rather than breaking a running deployment.
             return "admin"
-        if self.role_header:
-            raw = request.headers.get(self.role_header, "")
+        if self.role_header and self.trust_role_header:
+            # Last occurrence, not first: a proxy that *appends* its claim
+            # leaves a client-supplied copy ahead of it, and reading the
+            # first would hand the role back to the caller.
+            values = request.headers.getlist(self.role_header)
+            raw = values[-1] if values else ""
             # Group claims are conventionally comma- or space-separated.
             claimed = _highest_role(raw.replace(" ", ",").split(","))
             if claimed:
@@ -180,7 +213,9 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         self._username = username
         self._password = password
         self._realm = realm
-        self._authz = _Authorizer()
+        # No upstream proxy here, so a role header on the request is written
+        # by the caller themselves.
+        self._authz = _Authorizer(trust_role_header=False)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -238,7 +273,9 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
             for ip in (trusted_ips or [])
             if ip.strip()
         ]
-        self._authz = _Authorizer()
+        # The upstream proxy is the identity source, so it is also the role
+        # source — it must replace any client-supplied role header.
+        self._authz = _Authorizer(trust_role_header=True)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -308,6 +345,21 @@ def install_if_configured(app) -> Optional[str]:
         return "proxy"
 
     if user and pw:
+        role_header = os.environ.get("TRACEBI_AUTH_ROLE_HEADER", "").strip()
+        if role_header:
+            import warnings
+            warnings.warn(
+                f"TRACEBI_AUTH_ROLE_HEADER ('{role_header}') is ignored under "
+                "Basic auth: there is no upstream proxy to set it, so the "
+                "header would be self-asserted by the authenticated caller. "
+                "Roles come from TRACEBI_AUTH_ROLE_MAP, and from "
+                "TRACEBI_AUTH_DEFAULT_ROLE for principals it does not list. "
+                "With neither set there is no usable role source, so no role "
+                "is enforced at all and every authenticated caller is admin "
+                "— including on the pipeline routes that write to the "
+                "warehouse.",
+                stacklevel=2,
+            )
         app.add_middleware(
             BasicAuthMiddleware,
             username=user,
@@ -315,5 +367,18 @@ def install_if_configured(app) -> Optional[str]:
             realm=os.environ.get("TRACEBI_AUTH_REALM", "TraceBi"),
         )
         return "basic"
+
+    if os.environ.get("TRACEBI_AUTH_ROLE_HEADER", "").strip() or os.environ.get(
+        "TRACEBI_AUTH_ROLE_MAP", ""
+    ).strip():
+        import warnings
+        warnings.warn(
+            "TRACEBI_AUTH_ROLE_HEADER / TRACEBI_AUTH_ROLE_MAP are set but no "
+            "authentication mode is configured, so no middleware is installed "
+            "and no role is enforced — including on the pipeline routes that "
+            "write to the warehouse. Set TRACEBI_AUTH_USER/TRACEBI_AUTH_PASS "
+            "or TRACEBI_AUTH_PROXY_HEADER.",
+            stacklevel=2,
+        )
 
     return None

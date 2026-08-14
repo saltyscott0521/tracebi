@@ -65,7 +65,7 @@ Eight tools (`tracebi/mcp_server.py`):
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
-| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Anything but reproduces is not an ok receipt |
+| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 
 ### The canonical loop
 
@@ -74,8 +74,10 @@ Eight tools (`tracebi/mcp_server.py`):
 3. **Author** — write a ReportSpec using only vocabulary the gateway showed you.
 4. **Validate** — `validate_report_spec`; fix pathed errors until clean.
 5. **Render** — `render_report_spec`; keep the manifest with the HTML.
-6. **Verify** — `verify_manifest` on the manifest you just produced; anything
-   but REPRODUCES needs explaining before a human sees the number.
+6. **Verify** — `verify_manifest` on the manifest you just produced; any
+   verdict but `reproduces` needs explaining before a human sees the number —
+   including the two that check nothing at all (`nothing_to_verify`,
+   `unverifiable`), which is why `ok` alone is not the question to ask.
 7. **Cite** — every number you quote anywhere carries its fingerprint.
 
 Rows are transport; the stamp is the truth. `query_model` caps rows (default

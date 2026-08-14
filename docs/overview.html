@@ -267,7 +267,16 @@
     </tbody>
   </table>
   <pre><code>$ tracebi verify output/report.manifest.json
-# exit 0 = all reproduce · 2 = drift · 1 = alarm</code></pre>
+# exit 0 = all reproduce (or all honestly unverifiable) · 2 = drift
+# exit 1 = alarm, or nothing to check at all</code></pre>
+  <p>
+    The receipt as a whole gets one verdict, and <code>reproduces</code> is the only
+    one meaning a number was re-run and matched. A manifest with no data-bearing
+    section verifies nothing, so it is a broken receipt, not a passing one
+    (<code>nothing_to_verify</code>, exit 1); a manifest whose every section is
+    hand-transformed is <code>unverifiable</code> — still exit 0, but it says so
+    rather than borrowing the passing answer.
+  </p>
   <p>
     The canonical agent loop ends with this step: discover → explore → author →
     validate → render → <strong>verify</strong> → cite. Anything but

@@ -20,6 +20,49 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-08-13 — The app moved to `tracebi.web.api` (a name is a shared resource)
+
+The wheel had just started shipping the FastAPI app so `tracebi serve` would
+work from a pip install. It did — by installing a directory literally named
+`web/` into site-packages. `web.py` is a real, long-lived PyPI distribution
+that owns that exact path. Two wheels writing the same path is not an error
+pip has an opinion about: the second install overwrites the first's files,
+`pip check` reports nothing, and one of the two distributions silently stops
+working. Reproduced by execution — install `web.py`, then the old TraceBi
+wheel, and `hasattr(web, "application")` flips from `True` to `False`.
+
+**The fix is a namespace, not a shim.** The app is now `tracebi.web.api`,
+which is pure prefix insertion (`web.api.X` → `tracebi.web.api.X`) and so
+preserves every seam that already existed, including the registry re-export
+that a test rebinds for isolation. No compatibility shim ships at top-level
+`web`: a shim only helps an installed user if it is *packaged*, and packaging
+it re-creates the collision. Pre-1.0 and unpublished, the rename plus a
+breaking-change entry is the honest trade.
+
+Two things worth remembering:
+
+1. **The bundle moved into the package, the Node workspace did not.**
+   `web/ui/` is still a Node workspace at the repo root — it is not Python and
+   has no business inside the distribution. But vite's `build.outDir` now
+   writes to `tracebi/web/ui/dist`, because `main.py` finds the UI at
+   `<its own dir>/../ui/dist` and that expression, after the move, already
+   resolved to the right place. The lookup did not change; the output did.
+   Every build path has to agree on this — Dockerfile, `vercel.json`, both CI
+   workflows, `.gitignore`, `.dockerignore`.
+
+2. **`web/__init__.py` was deleted, and that deletion is load-bearing.** The
+   top-level `web/` directory still exists in the checkout (it holds `ui/` and
+   `requirements.txt`). Without an `__init__.py` it is only a PEP 420
+   namespace *portion*, and a regular package anywhere on `sys.path` beats a
+   namespace portion regardless of order — measured: from the repo root with
+   `web.py` installed, `import web` resolves to site-packages and
+   `web.application` is there. Put a single `web/__init__.py` back and the
+   same command resolves to the checkout and `web.application` is gone. So
+   nothing importable may ever move back under `web/`, and a test pins both
+   the absence of that file and the absence of any `*.py` beside it.
+
+---
+
 ## 2026-08-03 — The agent gateway, and the inversion behind it
 
 ### The product question this answers
@@ -242,7 +285,7 @@ only thing that can do work, without the registry being touched at all.
 
 Note this does *not* by itself fix the demo: on serverless with a
 per-invocation temp filesystem there is nowhere durable for an execution
-plane to write, so `web/demo_app` still runs its pipeline at import. The demo
+plane to write, so `tracebi/web/demo_app` still runs its pipeline at import. The demo
 can only be split once it has a real database behind it. That ordering —
 Postgres first, then split — is worth respecting.
 
@@ -654,9 +697,9 @@ python examples/phase25_example.py   # medallion + star schema + lineage diagram
 A FastAPI + Jinja2 web server (`web/`) that provides a browser UI over any
 TraceBi registry. Key pieces:
 
-- **Registry** (`web/api/registry.py`) — central singleton; connectors, models,
+- **Registry** (`tracebi/web/api/registry.py`) — central singleton; connectors, models,
   reports, pipelines, and dashboards are all registered here at startup
-- **App module** (`web/demo_app.py`) — imported on startup; detects `data/tracebi.db`
+- **App module** (`tracebi/web/demo_app.py`) — imported on startup; detects `data/tracebi.db`
   and adapts: full medallion setup when Silver tables are present, in-memory
   MemoryConnector fallback otherwise
 - **Dash embedding** — each registered `DashboardServer` is mounted inside FastAPI
@@ -669,7 +712,7 @@ TraceBi registry. Key pieces:
 The web layer is decoupled from `demo_app.py` via an env var:
 
 ```bash
-TRACEBI_APP=myproject.tracebi_config python web/run.py
+TRACEBI_APP=myproject.tracebi_config python -m tracebi.web.run
 ```
 
 `myproject/tracebi_config.py` defines its own connectors, models, reports, and
@@ -839,7 +882,7 @@ architecture — worth keeping in mind as the web UI develops.
 ### Decision
 
 Models and pipelines were only definable inside the web app module package
-(`web/demo_app/`), meaning an analyst had to understand the web layer to
+(`tracebi/web/demo_app/`), meaning an analyst had to understand the web layer to
 reuse anything across notebooks. The new convention makes all four artifact
 types first-class project-root citizens, usable with or without the web server:
 
@@ -867,7 +910,7 @@ exactly like `requests/` files already worked.
 
 ### Web server auto-discovery
 
-`web/api/main.py` scans all four directories at startup using
+`tracebi/web/api/main.py` scans all four directories at startup using
 `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`,
 `TRACEBI_REQUESTS_DIR` (defaults: directory names without leading path).
 Models and pipelines are loaded via their respective registries and registered
@@ -876,10 +919,10 @@ decorator-firing path.
 
 ### App module role narrowed
 
-`TRACEBI_APP` / `web/demo_app/` remains the right place for connector
+`TRACEBI_APP` / `tracebi/web/demo_app/` remains the right place for connector
 construction (credentials come from env vars, not from a file convention) and
 for Dash dashboard wiring. Models, pipelines, and named reports no longer need
-to live there — `web/demo_app/` is now a reference for connector + dashboard
+to live there — `tracebi/web/demo_app/` is now a reference for connector + dashboard
 wiring, not the mandatory home of all project configuration.
 
 ### Notebook/script workflow
@@ -906,7 +949,7 @@ runner.run("orders_silver")
 - [x] Create `tracebi/model_registry.py` with lazy-loading registry
 - [x] Create `tracebi/pipeline_registry.py` with lazy-loading registry
 - [x] Add CLI scaffold commands for models and pipelines
-- [x] Auto-discover `models/`, `pipelines/`, `reports/` in `web/api/main.py`
+- [x] Auto-discover `models/`, `pipelines/`, `reports/` in `tracebi/web/api/main.py`
 - [x] Update `tracebi.web.register` to fall back to standalone registries
 - [x] Update all docs (README, CLAUDE.md, analyst-guide, notebook-guide, web-customization, CHANGELOG, .env.example)
 
@@ -1038,7 +1081,7 @@ analyzable statically).
 |---|---|---|
 | 1 | Parameterize all SQL in pipeline history queries | `tracebi/pipeline/runner.py` |
 | 2 | Remove plaintext credential storage; accept callables/env vars | `tracebi/connectors/snowflake_connector.py`, `sql_connector.py` |
-| 3 | `threading.RLock` around Registry mutators and compound reads | `web/api/registry.py` |
+| 3 | `threading.RLock` around Registry mutators and compound reads | `tracebi/web/api/registry.py` |
 | 4 | File lock or DB advisory lock per layer in PipelineRunner | `tracebi/pipeline/runner.py` |
 | 5 | `@dataclass(frozen=True)` on `LineageNode`, immutable metadata mapping | `tracebi/model/dataset.py` |
 
@@ -1087,8 +1130,8 @@ analyzable statically).
 4. `StarSchema.query()` silently skips dimension attributes that don't exist on the dim table — covered in P1.
 5. Connectors store plaintext credentials as instance attributes — covered in P0; also affects `repr` and pickle.
 6. `DataModel.resolve()` does merges in pandas memory even when both sides share a SQL connector. Add TODO for connector-aware planner.
-7. `web/api/registry.py` mutated at import time — under uvicorn `--reload` can produce duplicate registrations. Guard with `is_registered` check, or `Registry.from_module(name)` factory that wipes state first.
-8. `web/api/routers/*` endpoints are sync, calling blocking pandas. Single-worker uvicorn serializes all requests. Convert to `async def` + `await asyncio.to_thread(...)` or document multi-worker as required.
+7. `tracebi/web/api/registry.py` mutated at import time — under uvicorn `--reload` can produce duplicate registrations. Guard with `is_registered` check, or `Registry.from_module(name)` factory that wipes state first.
+8. `tracebi/web/api/routers/*` endpoints are sync, calling blocking pandas. Single-worker uvicorn serializes all requests. Convert to `async def` + `await asyncio.to_thread(...)` or document multi-worker as required.
 9. No timeout on `model.load()` in preview endpoint — a 100M-row table hangs the request indefinitely. Add row-limit + timeout.
 10. `requests/_template.py` could enforce structure via a `@tracebi.request(name, schedule=None)` decorator that the auto-discovery scanner picks up. Unifies ad-hoc and scheduled flows.
 
@@ -1120,7 +1163,7 @@ The pandas-memory ceiling is the eventual scaling wall, but doesn't have to be s
 
 ### Decision
 
-`web/demo_app.py` is a monolithic file (~460 LOC) mixing data setup, reports,
+`tracebi/web/demo_app.py` is a monolithic file (~460 LOC) mixing data setup, reports,
 dashboard, and pipeline. Goal: split it into a folder where each concern lives
 in its own file and a single `registry.py` is the explicit wiring manifest.
 
@@ -1139,8 +1182,8 @@ for ad-hoc `requests/` scripts.
 
 ```
 web/
-  demo_app/                    ← replaces demo_app.py; TRACEBI_APP=web.demo_app
-    __init__.py                ← from web.demo_app import registry  (triggers wiring)
+  demo_app/                    ← replaces demo_app.py; TRACEBI_APP=tracebi.web.demo_app
+    __init__.py                ← from tracebi.web.demo_app import registry  (triggers wiring)
     model.py                   ← DataModel, MemoryConnector, relationships
     pipeline.py                ← PipelineRunner + Landing/Manipulation/Final layers
     dashboard.py               ← Dashboard + DashboardServer
@@ -1155,25 +1198,25 @@ web/
 
 ### Key invariants to preserve
 
-- `TRACEBI_APP=web.demo_app` must keep working (no change to the env var).
+- `TRACEBI_APP=tracebi.web.demo_app` must keep working (no change to the env var).
 - `model` object from `model.py` is the shared default — `pipeline.py`,
   `dashboard.py`, and reports all import from `model.py`, never redefine it.
-- `registry.py` is the only file that imports from `web.api.registry` —
+- `registry.py` is the only file that imports from `tracebi.web.api.registry` —
   individual report files stay pure Python (importable without the web stack).
 - `pipeline.py` creates `_runner` and runs the startup sequence; `registry.py`
   calls `registry.add_pipeline("sales", _runner)`.
 
 ### TODO (completed 2026-06-05)
 
-- [x] Create `web/demo_app/` folder with the layout above
+- [x] Create `tracebi/web/demo_app/` folder with the layout above
 - [x] Migrate each report function to its own file under `reports/`
 - [x] Pull connector + DataModel into `model.py`
 - [x] Pull pipeline layers + PipelineRunner into `pipeline.py`
 - [x] Pull Dashboard + DashboardServer into `dashboard.py`
 - [x] Write `registry.py` that imports + wires everything (except reports)
 - [x] Write `__init__.py` that imports registry (side-effect import)
-- [x] Delete `web/demo_app.py`
-- [x] `TRACEBI_APP=web.demo_app` still works — resolves to `__init__.py`
+- [x] Delete `tracebi/web/demo_app.py`
+- [x] `TRACEBI_APP=tracebi.web.demo_app` still works — resolves to `__init__.py`
 - [x] Full test suite: 243 passed, 0 regressions
 
 ---
@@ -1221,7 +1264,7 @@ self-serve production hosting, revisit refuse-to-start.
 > **Superseded 2026-07-27.** Railway is gone — `tracebi.com` pointed at a
 > deleted Railway app returning "Application not found" until it was repointed.
 > The demo now runs on Vercel at `www.tracebi.com` with the apex redirecting,
-> serving `web.demo_app` via `TRACEBI_APP`. The reasoning above still holds and
+> serving `tracebi.web.demo_app` via `TRACEBI_APP`. The reasoning above still holds and
 > is now load-bearing rather than hypothetical: the deployment is public with
 > **no auth at all**, a deliberate call given both models are synthetic
 > `MemoryConnector` data and no credentials are deployed. The exposure is

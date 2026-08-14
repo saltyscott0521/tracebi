@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from web.api.errors import error_detail
-from web.api.lineage_graph import lineage_to_graph
-from web.api.registry import registry
+from tracebi.web.api.errors import error_detail
+from tracebi.web.api.lineage_graph import lineage_to_graph
+from tracebi.web.api.registry import registry
 
 router = APIRouter(prefix="/models", tags=["models"])
 

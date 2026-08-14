@@ -8,11 +8,12 @@ person who has outgrown the demo app.
 
 ## Architecture in one paragraph
 
-The web layer is a FastAPI app ([web/api/main.py](../web/api/main.py)) that
+The web layer is a FastAPI app ([tracebi/web/api/main.py](../tracebi/web/api/main.py)) that
 serves a JSON API under `/api` and serves the built React SPA
-(`web/ui/dist/`) at `/`. Everything the API exposes — connectors, models,
+(`tracebi/web/ui/dist/`) at `/`. Everything the API exposes — connectors, models,
 reports, pipelines — is read from a **singleton registry**
-([web/api/registry.py](../web/api/registry.py)) that your *app module*
+([tracebi/registry.py](../tracebi/registry.py), also re-exported as
+`tracebi.web.api.registry` for older code) that your *app module*
 populates once at startup. Routes never construct resources themselves;
 they only read the registry. That seam is what makes the whole web layer
 swappable onto your data.
@@ -59,7 +60,7 @@ Override any directory path via env var (`TRACEBI_MODELS_DIR`,
 ## Step 1b: Create an app module (for connectors)
 
 Connectors still need an app module — credential-bearing construction can't
-be expressed as a simple file convention. The demo ([web/demo_app/](../web/demo_app/)) is
+be expressed as a simple file convention. The demo ([tracebi/web/demo_app/](../tracebi/web/demo_app/)) is
 the reference — copy its layout:
 
 ```
@@ -74,7 +75,7 @@ myapp/
 
 ```python
 import os
-from web.api.registry import registry
+from tracebi.registry import registry
 from myapp.model import connector, model
 
 registry.add_connector(connector)
@@ -86,11 +87,18 @@ registry.add_model(model, default=True)
 Then point the server at it:
 
 ```bash
-TRACEBI_APP=myapp python web/run.py
+TRACEBI_APP=myapp python -m tracebi.web.run
 ```
 
-`TRACEBI_APP` defaults to `web.demo_app`. Import failure is fatal and loud —
-a broken app module never half-starts.
+`TRACEBI_APP` defaults to `tracebi.web.demo_app`. If it fails to import, the
+server emits a `UserWarning` and starts with an **empty registry** — no
+connectors, no models — rather than refusing to boot, so check the startup log
+after changing it. `/api/health` returns 200 either way, which means a
+healthcheck alone will not tell you the app module loaded.
+
+The one exception is a `TRACEBI_APP` still naming the old top-level `web`
+package (`web.demo_app`): that is refused outright with the replacement
+spelling, because it is an unfinished upgrade rather than a broken module.
 
 **Rules that keep you out of trouble** (enforced by convention, violated at
 your peril):
@@ -125,9 +133,9 @@ your peril):
 ## Step 3: The development loop
 
 ```bash
-python web/run.py                       # uvicorn with hot-reload, port 8000
-python web/run.py --port 9000           # different port
-TRACEBI_DEV_MODE=1 python web/run.py    # adds POST /api/_dev/reload
+python -m tracebi.web.run                       # uvicorn with hot-reload, port 8000
+python -m tracebi.web.run --port 9000           # different port
+TRACEBI_DEV_MODE=1 python -m tracebi.web.run    # adds POST /api/_dev/reload
 ```
 
 Hot-reload restarts the server on Python file changes. Dev mode additionally
@@ -145,7 +153,7 @@ data, React Flow for lineage/ERD graphs, Recharts for charts.
 cd web/ui
 npm install
 npm run dev      # Vite dev server on :5173, proxies /api to the API server
-npm run build    # writes web/ui/dist/ — FastAPI serves it at / when present
+npm run build    # writes tracebi/web/ui/dist/ — FastAPI serves it at / when present
 ```
 
 Layout of `src/`:
@@ -175,16 +183,16 @@ consistency.
 ## Step 5: Extend the API
 
 New endpoints follow one pattern: a router file under
-[web/api/routers/](../web/api/routers/), included in `main.py` with the
+[tracebi/web/api/routers/](../tracebi/web/api/routers/), included in `main.py` with the
 `/api` prefix, reading **only from the registry** — never importing your
 app module directly. Failed runs should return the structured error shape
-(`{message, exception_type, traceback}`) via `web/api/errors.py`; the UI
+(`{message, exception_type, traceback}`) via `tracebi/web/api/errors.py`; the UI
 knows how to render it.
 
 ## Auth
 
 Optional, enabled entirely by env vars (see
-[web/api/auth.py](../web/api/auth.py) and `.env.example`):
+[tracebi/web/api/auth.py](../tracebi/web/api/auth.py) and `.env.example`):
 
 ```bash
 # Basic auth — single shared credential
@@ -204,12 +212,19 @@ reports, lineage; run Explore queries and spec validation — they compute
 but persist nothing), `analyst` (viewer + execute report and request code),
 `admin` (analyst + run pipeline layers, which write to the warehouse, and
 `/api/_dev/reload`). Assign roles per principal with
-`TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst` or from a trusted proxy
-header with `TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups`; unlisted
-principals get `TRACEBI_AUTH_DEFAULT_ROLE` (default `viewer`). With
-*neither* role var set, every authenticated principal is `admin` — role
-enforcement is opt-in so enabling auth cannot lock a deployment out of its
-own pipelines.
+`TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst` or, **in proxy mode only**,
+from the proxy's group claim with
+`TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups` — your proxy must *replace*
+that header on client requests, not append to it; TraceBi reads the last
+occurrence, so an appending proxy still wins over a client copy, but a proxy
+that does neither hands the role to the caller. Under Basic auth there is no
+upstream, so the header would be self-asserted by the caller it promotes: it
+is ignored there, with a startup warning. Unlisted principals get
+`TRACEBI_AUTH_DEFAULT_ROLE` (default `viewer`); setting it explicitly is
+itself a usable role source, so a Basic deployment that sets it is enforced
+even though its role header is ignored. With *no usable* role source set,
+every authenticated principal is `admin` — role enforcement is opt-in so
+enabling auth cannot lock a deployment out of its own pipelines.
 
 **The MCP gateway authenticates separately.** `tracebi mcp --transport http`
 is not behind the web app's auth — it requires its own bearer token
@@ -221,7 +236,7 @@ See the README's Agent gateway section.
 
 ```bash
 # Bare uvicorn
-uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn tracebi.web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 # Docker — multi-stage build compiles the React UI, then runs the API
 docker compose up --build
@@ -240,7 +255,7 @@ docker compose up --build
 
 | Variable | Default | Effect |
 |---|---|---|
-| `TRACEBI_APP` | `web.demo_app` | App module imported at startup |
+| `TRACEBI_APP` | `tracebi.web.demo_app` | App module imported at startup |
 | `TRACEBI_MODELS_DIR` | `models` | Folder scanned for `model` variable files |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for `runner` variable files |
 | `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `@register.report()` factories |
@@ -251,8 +266,8 @@ docker compose up --build
 | `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` | unset | Proxy-header auth |
 | `TRACEBI_AUTH_REALM` | `TraceBi` | Basic-auth realm string |
 | `TRACEBI_AUTH_ROLE_MAP` | unset | `principal:role` pairs (e.g. `alice:admin,bob:analyst`) |
-| `TRACEBI_AUTH_ROLE_HEADER` | unset | Read roles from a trusted proxy header (e.g. `X-Forwarded-Groups`) |
-| `TRACEBI_AUTH_DEFAULT_ROLE` | `viewer` | Role for principals not covered above (when role config is set) |
+| `TRACEBI_AUTH_ROLE_HEADER` | unset | Read roles from the proxy's group header (e.g. `X-Forwarded-Groups`) — proxy mode only; ignored under Basic auth |
+| `TRACEBI_AUTH_DEFAULT_ROLE` | `viewer` | Role for principals not covered above. Not a role source by itself — set alone it leaves enforcement off and everyone `admin`; it switches enforcement on only alongside `TRACEBI_AUTH_ROLE_HEADER` |
 | `TRACEBI_DOCS_DIR` | `docs` | Folder the Getting Started page serves markdown guides from |
 | `TRACEBI_MCP_TOKEN` | unset | Bearer token for `tracebi mcp --transport http` (gateway, not the web app — required unless `--insecure`) |
 | `TRACEBI_MCP_ACTOR` | `agent` | Audit attribution for gateway work (recorded as `mcp:<actor>`) |

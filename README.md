@@ -41,7 +41,7 @@ transform steps that produced it.
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 - [x] **Phase 5** — Web UI (FastAPI + React), folder-based auto-discovery, optional HTTP Basic / proxy-header auth with roles, `tracebi` CLI, docker-compose deployment
 - [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model and authors validated report specs; every response is stamped with the resolved query, lineage, and a fingerprint of the full result
-- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable
+- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable, then gives the receipt one verdict — a manifest where nothing could be checked is never reported as a pass
 
 ---
 
@@ -149,6 +149,12 @@ Or without cloning:
 pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"
 ```
 
+That install builds from the repo tree, where the React bundle
+(`tracebi/web/ui/dist`) is gitignored — so it carries the library and the API but
+**no web UI**. `tracebi serve` will start and `/` will tell you so. For the
+browser interface, clone and build it (see [Web UI](#web-ui)), or install a
+wheel built by `.github/workflows/release.yml`, which runs the UI build first.
+
 Pick the pieces you need (extras work the same with either install style):
 
 ```bash
@@ -198,7 +204,7 @@ Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
 
 | Variable | Purpose |
 |---|---|
-| `TRACEBI_APP` | Python module to import on startup (default `web.demo_app`) |
+| `TRACEBI_APP` | Python module to import on startup (default `tracebi.web.demo_app`) |
 | `TRACEBI_DEMO_DB_URL` | Any SQLAlchemy URL. Set → definitions only, no execution at import. Unset → ephemeral SQLite that seeds itself. |
 | `POSTGRES_PASSWORD` | Local compose Postgres password (default `tracebi`) |
 | `POSTGRES_PORT` | Host port for the compose Postgres (default `5432`). Set it if you already run Postgres locally: `POSTGRES_PORT=55432 docker compose up`. |
@@ -507,7 +513,12 @@ manifest is the audit trail: the recorded queries, lineage, input
 fingerprints, and git SHA that let a reviewer check a number months later.
 `tracebi verify <manifest>` is that check — it re-runs every recorded query
 and reports whether each still reproduces, whether the inputs drifted, or
-whether the model itself changed. Rendered HTML is disposable; manifests
+whether the model itself changed. It exits 0 only when something was
+actually checked and nothing failed: 2 for diagnosed source drift, 1 for an
+undiagnosed mismatch *or* for a manifest with no data-bearing section, which
+verifies nothing and so cannot pass. A receipt whose every section is
+hand-transformed still exits 0, but says `NOTHING VERIFIED` rather than
+`REPRODUCES`. Rendered HTML is disposable; manifests
 are not. Retain them — commit them, or archive whatever lands in `output/`
 — because a receipt you discarded proves nothing.
 
@@ -536,8 +547,13 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 # Install web dependencies
 pip install -e ".[web]"
 
+# Build the React UI — tracebi/web/ui/dist is gitignored, so a fresh clone has none,
+# and neither does a `pip install ... @ git+https://...`. Without it the API
+# still runs; / serves a page saying so. This step needs a clone.
+cd web/ui && npm ci && npm run build && cd ../..
+
 # Start the server (hot-reload on by default)
-python web/run.py
+python -m tracebi.web.run
 # Open http://localhost:8000
 ```
 
@@ -546,14 +562,14 @@ The API is self-documenting: once the server is running, open
 or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
 every endpoint, parameter, and response schema is listed there.
 
-`web/demo_app/` is the default app module package. The DataModels themselves live at the project root in `models/` (`sales_model.py`, `wealth_model.py`) and are shared with notebooks and scripts via `get_model(...)`; the demo app pulls them in and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports read from those resources.
+`tracebi/web/demo_app/` is the default app module package. The DataModels themselves live at the project root in `models/` (`sales_model.py`, `wealth_model.py`) and are shared with notebooks and scripts via `get_model(...)`; the demo app pulls them in and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports read from those resources.
 
 The second model — `WealthModel` (`models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
 
 To point the UI at your own data module instead of the built-in demo:
 
 ```bash
-TRACEBI_APP=mypackage.tracebi_config python web/run.py
+TRACEBI_APP=mypackage.tracebi_config python -m tracebi.web.run
 ```
 
 Your module just needs to import `registry` and call `registry.add_connector()`, `registry.add_model()`, `@registry.report(...)`, and optionally `registry.add_pipeline()`.
@@ -673,15 +689,19 @@ tracebi/
 │   ├── reports/          Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
 │   ├── pipeline/         PipelineRunner (APScheduler + DB)
 │   ├── lineage/          LineageDiagram
-│   └── mcp_server.py     Agent gateway — 8 MCP tools over the kernel
+│   ├── mcp_server.py     Agent gateway — 8 MCP tools over the kernel
+│   └── web/
+│       ├── api/          FastAPI app, routers, registry
+│       ├── demo_app/     Built-in demo (medallion + in-memory fallback)
+│       ├── run.py        Dev server — python -m tracebi.web.run
+│       └── ui/dist/      Built React bundle (gitignored; npm run build writes here)
 ├── web/
-│   ├── api/              FastAPI app, routers, registry
-│   ├── ui/               React UI (Vite)
-│   ├── demo_app/         Built-in demo (medallion + in-memory fallback)
-│   ├── run.py            Dev server entrypoint
+│   ├── ui/               React UI source (Vite) — a Node workspace, not a Python
+│   │                     package. Nothing importable lives under top-level web/:
+│   │                     a packaged `web` collided with the `web.py` distribution.
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                727 tests across all phases
+├── tests/                771 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── models/               DataModel definitions — each .py exposes a `model` variable
 ├── pipelines/            PipelineRunner definitions — each .py exposes a `runner` variable

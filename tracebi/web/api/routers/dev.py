@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from tracebi.web.discovery import discovered_modules, reload_modules
-from web.api.registry import registry
+from tracebi.web.api.registry import registry
 
 
 router = APIRouter(prefix="/_dev", tags=["dev"])

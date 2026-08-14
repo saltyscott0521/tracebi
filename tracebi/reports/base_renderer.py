@@ -81,8 +81,12 @@ class BaseRenderer(ABC):
             ReportManifest: The manifest for this render run.
         """
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-        self._render(report, output_path)
+        # Manifest first, artifact second. If building the receipt fails, the
+        # caller gets the error and no file — rather than a rendered report on
+        # disk that nothing can audit, which is the one state this whole
+        # mechanism exists to prevent.
         manifest = report.build_manifest(format=self.FORMAT, output_path=output_path)
+        self._render(report, output_path)
         _warn_if_unknown_git_sha(manifest)
         if save_manifest:
             mp = manifest_path or output_path + ".manifest.json"

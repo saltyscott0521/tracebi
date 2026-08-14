@@ -77,7 +77,7 @@ tracebi new-request "revenue by region"
 tracebi run requests/revenue_by_region.py
 
 # Start the web UI (Requests page surfaces all scripts)
-python web/run.py   # → http://localhost:8000`,
+python -m tracebi.web.run   # → http://localhost:8000`,
   },
 ]
 

@@ -74,12 +74,12 @@ services:
       db:
         condition: service_healthy
     environment:
-      TRACEBI_APP: ${TRACEBI_APP:-web.demo_app}
+      TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
       <<: *demo-db-url
     command:
       - python
       - -c
-      - "from web.demo_app.pipeline import seed_and_run; seed_and_run()"
+      - "from tracebi.web.demo_app.pipeline import seed_and_run; seed_and_run()"
     restart: "no"
 
   app:
@@ -96,7 +96,7 @@ services:
       - "8000:8000"
     environment:
       # Bundled demo app by default; override to point at your config module.
-      TRACEBI_APP: ${TRACEBI_APP:-web.demo_app}
+      TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
       <<: *demo-db-url
       TRACEBI_REQUESTS_DIR: /app/requests
       TRACEBI_SCHEDULED_DIR: /app/scheduled

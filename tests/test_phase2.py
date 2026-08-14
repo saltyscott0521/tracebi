@@ -1328,6 +1328,131 @@ class TestDerivedDefaults:
         fmts = derive_number_formats(df, DataSet(df, name="t"))
         assert fmts["margin_pct"] == "percent"
 
+    # ── a rendered percentage must mean what it shows ──
+    #
+    # test_percent_suffix_is_recognised above asserts a *decision* — that the
+    # format named "percent" was chosen. That is true of the right answer and
+    # of the 100x-wrong one alike, which is how a shipped report came to show
+    # month-over-month growth of 12.5% as "1250.0%". These assert the outcome
+    # instead: what reached the page, checked against the DataSet it came from.
+
+    @staticmethod
+    def _percent_cells(html):
+        """Every table cell that reads as a percentage, as floats."""
+        import re
+        return [float(m.replace(",", ""))
+                for m in re.findall(r"<td[^>]*>(-?[\d,]+(?:\.\d+)?)%</td>", html)]
+
+    def _assert_percentages_are_sound(self, html, dataset, column):
+        """
+        No rendered percentage may be implausible, and each must be the value
+        the DataSet holds, scaled once. 1000% is the plausibility line: a
+        report showing growth of 1250% has a formatting bug, not a result.
+        """
+        raw = dataset.to_pandas()[column].dropna().tolist()
+        for shown in self._percent_cells(html):
+            assert abs(shown) <= 1000, (
+                f"{shown}% is not a plausible {column}; the renderer has "
+                f"scaled a value it should have left alone. Source: {raw}"
+            )
+            assert any(abs(shown - v * 100) < 0.05 for v in raw), (
+                f"{shown}% matches no value in {column}: {raw}"
+            )
+
+    @pytest.fixture
+    def scaled_pct(self):
+        # The convention tracebi/web/demo_app/reports/revenue_trend.py used to store:
+        # pct_change() already multiplied by 100, so 12.5 *means* 12.5%.
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        return DataSet(pd.DataFrame({
+            "month": ["Feb", "Mar"],
+            "growth_pct": [12.5, -5.4],
+        }), name="t")
+
+    def test_an_already_scaled_percent_column_is_not_multiplied(self, scaled_pct):
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(dataset=scaled_pct))
+        self._assert_percentages_are_sound(html, scaled_pct, "growth_pct")
+        assert "1250.0%" not in html and "-540.0%" not in html
+
+    def test_a_column_the_guard_rejects_keeps_its_own_magnitude(self, scaled_pct):
+        # Falling through must not quietly change the number either: the page
+        # shows 12.5, which is what the data says, with no % claiming otherwise.
+        from tracebi.reports.report import TableSection
+        html = self._render(TableSection(dataset=scaled_pct))
+        assert "12.50" in html and "-5.40" in html
+
+    def test_a_fraction_percent_column_still_renders_as_a_percentage(self):
+        # The other convention, and the one models/wealth_model.py declares.
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        from tracebi.reports.report import TableSection
+        ds = DataSet(pd.DataFrame({"margin_pct": [0.42, -0.051]}), name="t")
+        html = self._render(TableSection(dataset=ds))
+        self._assert_percentages_are_sound(html, ds, "margin_pct")
+        assert "42.0%" in html
+
+    def test_a_declared_measure_format_wins_over_the_value_guard(self):
+        # Explicit-wins order is unchanged: the model's own declaration is
+        # consulted before the name hint, so a declared percent measure keeps
+        # its % even where the values would fail the fraction guard.
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector, model_registry
+        from tracebi.reports.report import TableSection
+        connector = MemoryConnector("dpg_mem", tables={"orders": pd.DataFrame({
+            "order_id": [1, 2], "region": ["NE", "SE"],
+            "gain": [250.0, 300.0], "basis": [100.0, 100.0],
+        })})
+        model = DataModel("dpg_demo")
+        model.add_connector(connector)
+        model.add_table("orders", connector="dpg_mem", source="orders")
+        model.add_fact("fact_orders", table_name="orders", measures=["gain", "basis"])
+        model.connect()
+        model.add_measure("gain", column="gain", agg="sum")
+        model.add_measure("basis", column="basis", agg="sum")
+        model.add_measure("gain_pct", ratio=("gain", "basis"), format="percent")
+        model_registry.register(model)
+
+        result = model.query(fact="fact_orders", measures=["gain_pct"])
+        assert result.to_pandas()["gain_pct"].iloc[0] > 1.5   # guard would reject
+        html = self._render(TableSection(dataset=result))
+        assert "275.0%" in html          # 550 / 200, declared as a percentage
+
+    def test_year_and_id_columns_do_not_get_thousands_separators(self):
+        # A separator changes how these read: 2024 is a year, "2,024" is not.
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        from tracebi.reports.report import TableSection
+        ds = DataSet(pd.DataFrame({
+            "year": [2024], "customer_id": [1001], "orders": [4200],
+        }), name="t")
+        html = self._render(TableSection(dataset=ds))
+        assert "2,024" not in html and "1,001" not in html
+        assert ">2024<" in html and ">1001<" in html
+        assert "4,200" in html          # a real count still gets separators
+
+    def test_a_repeated_column_label_does_not_crash_the_render(self):
+        # `df[col]` is a frame, not a series, when a label repeats, so every
+        # value test the guard runs is ambiguous. Deriving no format for such
+        # a column costs one undecorated cell; raising costs the whole report.
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        from tracebi.reports.report import TableSection
+        ds = DataSet(pd.DataFrame([[0.1, 12.0]], columns=["a_pct", "a_pct"]),
+                     name="t")
+        html = self._render(TableSection(dataset=ds))
+        assert ">0.1<" in html and ">12.0<" in html
+
+    def test_the_percentage_helper_matches_the_cells_it_claims_to(self):
+        # _assert_percentages_are_sound is vacuous if _percent_cells stops
+        # matching the renderer's markup, so pin the regex against real output.
+        import pandas as pd
+        from tracebi.model.dataset import DataSet
+        from tracebi.reports.report import TableSection
+        ds = DataSet(pd.DataFrame({"margin_pct": [0.42]}), name="t")
+        assert self._percent_cells(self._render(TableSection(dataset=ds))) == [42.0]
+
     def test_get_display_df_is_unchanged_when_no_labels_passed(self, ds):
         # The renderer passes derived labels in; called directly, the section
         # behaves exactly as before.

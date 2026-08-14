@@ -1,11 +1,11 @@
 """
 TraceBi Web API — FastAPI application.
 
-Startup loads the app module (default: web.demo_app) which populates the
+Startup loads the app module (default: tracebi.web.demo_app) which populates the
 registry with connectors, models, reports, and pipeline runners. Set the
 TRACEBI_APP environment variable to point at a different module.
 
-    TRACEBI_APP=myproject.tracebi_config uvicorn web.api.main:app --reload
+    TRACEBI_APP=myproject.tracebi_config uvicorn tracebi.web.api.main:app --reload
 
 Project-root directories are also auto-discovered at startup so you can define
 artifacts outside of the app module package:
@@ -17,7 +17,7 @@ artifacts outside of the app module package:
     scheduled/    Scheduled report scripts
 
 Environment switches:
-    TRACEBI_APP                 — app module to import (default: web.demo_app)
+    TRACEBI_APP                 — app module to import (default: tracebi.web.demo_app)
     TRACEBI_MODELS_DIR          — model definitions folder (default: models)
     TRACEBI_PIPELINES_DIR       — pipeline definitions folder (default: pipelines)
     TRACEBI_REPORTS_DIR         — named reports folder (default: reports)
@@ -30,15 +30,16 @@ Environment switches:
 
 import importlib
 import os
+import sys
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from web.api.errors import error_detail
+from tracebi.web.api.errors import error_detail
 
-from web.api.routers import connectors, models, reports, pipelines, requests, docs
-from web.api.auth import install_if_configured as _install_auth
+from tracebi.web.api.routers import connectors, models, reports, pipelines, requests, docs
+from tracebi.web.api.auth import install_if_configured as _install_auth
 
 from tracebi._version import get_version as _tracebi_version
 
@@ -81,7 +82,7 @@ app.include_router(docs.router,       prefix="/api")
 
 # Dev-mode reload endpoint — opt-in via TRACEBI_DEV_MODE=1.
 if os.environ.get("TRACEBI_DEV_MODE") == "1":
-    from web.api.routers import dev
+    from tracebi.web.api.routers import dev
     app.include_router(dev.router, prefix="/api")
     print("[tracebi] dev mode: /api/_dev/reload mounted")
 
@@ -161,7 +162,7 @@ def spec_render(body: dict):
 
 def _registered_models() -> dict:
     """Registered models keyed by name, for spec validation and building."""
-    from web.api.registry import registry as _reg
+    from tracebi.web.api.registry import registry as _reg
     return {m["name"]: _reg.get_model(m["name"]) for m in _reg.list_models()}
 
 
@@ -187,12 +188,29 @@ def schema():
 # a project that only uses the models/ pipelines/ reports/ requests/
 # directories needs no app module, and loading the bundled demo into
 # someone else's project would fail on data they do not have.
-_app_module = os.environ.get("TRACEBI_APP", "web.demo_app").strip()
+_app_module = os.environ.get("TRACEBI_APP", "tracebi.web.demo_app").strip()
 
 if _app_module:
+    # Checked *before* importing, not in the handler below, because the legacy
+    # spelling may still import and do nothing: `git pull` leaves the old
+    # web/api and web/demo_app directories behind whenever an untracked file
+    # (a stale __pycache__) is in them, and a directory with no modules is a
+    # perfectly importable namespace package. That registers nothing, raises
+    # nothing, and boots a server that passes every healthcheck with an empty
+    # registry — so refuse the spelling itself rather than waiting to fail.
+    if _app_module == "web" or _app_module.startswith("web."):
+        raise ImportError(
+            f"TRACEBI_APP={_app_module!r} predates the namespace move: the web "
+            f"app now ships inside the tracebi package. Use "
+            f"'tracebi.{_app_module}' (e.g. TRACEBI_APP=tracebi.web.demo_app). "
+            f"If you upgraded in place, delete any leftover top-level "
+            f"web/api and web/demo_app directories too."
+        )
     try:
         importlib.import_module(_app_module)
-    except ImportError as exc:
+    except Exception as exc:
+        # Deliberately broad: the bundled demo raises KeyError, not
+        # ImportError, when loaded into a project without its models.
         import warnings
         warnings.warn(
             f"TRACEBI_APP module '{_app_module}' could not be imported: {exc}. "
@@ -223,7 +241,7 @@ if os.path.isdir(_models_dir):
     for _mname in _disc_models:
         try:
             _m = _model_reg.get_model(_mname)
-            from web.api.registry import registry as _registry_ref
+            from tracebi.web.api.registry import registry as _registry_ref
             if _mname not in [t["name"] for t in _registry_ref.list_models()]:
                 _registry_ref.add_model(_m)
         except Exception as _exc:
@@ -240,7 +258,7 @@ if os.path.isdir(_pipelines_dir):
     for _pname in _disc_pipes:
         try:
             _pr = _pipe_reg.get_runner(_pname)
-            from web.api.registry import registry as _registry_ref
+            from tracebi.web.api.registry import registry as _registry_ref
             if _pname not in _registry_ref.list_pipeline_names():
                 _registry_ref.add_pipeline(_pname, _pr)
         except Exception as _exc:
@@ -252,9 +270,16 @@ if os.path.isdir(_pipelines_dir):
 
 # ── Serve built React UI (production) ──────────────────────────────────────
 
+# tracebi/web/ui/dist — inside the installed package, which is why the wheel
+# can carry the bundle at all. The Node workspace stays at the repo root
+# (web/ui/) and vite's build.outDir writes here.
 _ui_dist = os.path.join(os.path.dirname(__file__), "..", "ui", "dist")
 
-if os.path.isdir(_ui_dist):
+# The bundle is index.html, not the directory: `npm run build` empties dist
+# before it writes (vite's emptyOutDir), so a build that fails leaves the
+# directory there and nothing in it. Mounting that serves the bare 404 this
+# branch exists to prevent.
+if os.path.isfile(os.path.join(_ui_dist, "index.html")):
     from starlette.exceptions import HTTPException as _StarletteHTTPException
 
     class _SPAFiles(StaticFiles):
@@ -267,3 +292,70 @@ if os.path.isdir(_ui_dist):
                 raise
 
     app.mount("/", _SPAFiles(directory=_ui_dist, html=True), name="ui")
+else:
+    # tracebi/web/ui/dist is gitignored, so a fresh clone has no bundle. Without this
+    # branch "/" is a bare 404 and nothing says why — say why instead.
+    from fastapi import Request as _Request
+    from fastapi.responses import HTMLResponse as _HTMLResponse, JSONResponse as _JSONResponse
+
+    # The remedy depends on which tree we are running from. A checkout can
+    # build the bundle; an installed package cannot — telling someone to run
+    # npm inside site-packages is not an instruction they can follow.
+    # tracebi/web/api/ → three levels up is the repo root (or site-packages,
+    # which has no pyproject.toml and so takes the installed-package branch).
+    _repo_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..")
+    )
+    if os.path.isfile(os.path.join(_repo_root, "pyproject.toml")):
+        _UI_REMEDY = (
+            f"cd {os.path.join(_repo_root, 'web', 'ui')} && npm ci && npm run build"
+        )
+    else:
+        _UI_REMEDY = (
+            "This installed package carries no UI bundle. Install a wheel built "
+            "with one (see .github/workflows/release.yml), or run the server from "
+            "a clone of https://github.com/saltyscott0521/tracebi"
+        )
+    _UI_MISSING_MSG = (
+        "The TraceBi web UI has not been built, so there is no page to serve here. "
+        f"The API is running normally — try /api/health. {_UI_REMEDY}"
+    )
+
+    print(f"[tracebi] WARNING: no built UI at {_ui_dist} — the API works but / "
+          f"has no page. {_UI_REMEDY}", file=sys.stderr)
+
+    def _accepts_html(request: _Request) -> bool:
+        """True when the client listed text/html as acceptable.
+
+        A substring test on the raw header reads ``text/html;q=0`` (an
+        explicit refusal) as a request for HTML and ``TEXT/HTML`` as a
+        refusal, so parse the list instead. Multiple Accept headers count.
+        """
+        for entry in ",".join(request.headers.getlist("accept")).split(","):
+            media, _, params = entry.partition(";")
+            if media.strip().lower() != "text/html":
+                continue
+            for param in params.split(";"):
+                key, _, value = param.partition("=")
+                if key.strip().lower() == "q":
+                    try:
+                        return float(value) > 0
+                    except ValueError:
+                        return False
+            return True
+        return False
+
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+    async def ui_not_built(request: _Request):
+        if not _accepts_html(request):
+            return _JSONResponse({"detail": _UI_MISSING_MSG, "remedy": _UI_REMEDY})
+        return _HTMLResponse(
+            "<!doctype html><meta charset='utf-8'>"
+            "<title>TraceBi — UI not built</title>"
+            "<h1>TraceBi API is running</h1>"
+            "<p>The web UI has not been built, so there is no page to serve here.</p>"
+            f"<pre>{_UI_REMEDY}</pre>"
+            "<p>Restart the server once that is in place. The API is unaffected — "
+            "see <a href='/api/health'>/api/health</a> and "
+            "<a href='/docs'>/docs</a>.</p>"
+        )

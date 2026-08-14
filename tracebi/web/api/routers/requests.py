@@ -15,8 +15,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Body, HTTPException
 
-from web.api.errors import error_detail as _error_detail
-from web.api.lineage_graph import lineage_to_graph as _lineage_to_graph
+from tracebi.web.api.errors import error_detail as _error_detail
+from tracebi.web.api.lineage_graph import lineage_to_graph as _lineage_to_graph
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 

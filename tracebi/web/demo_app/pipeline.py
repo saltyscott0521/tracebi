@@ -63,7 +63,7 @@ DURABLE_DB = bool(_DB_URL)
 
 if not _DB_URL:
     _DB_DIR = os.environ.get("TRACEBI_DEMO_DB_DIR") or os.path.join(
-        os.path.dirname(__file__), "..", "..", "data"
+        os.path.dirname(__file__), "..", "..", "..", "data"
     )
     try:
         os.makedirs(_DB_DIR, exist_ok=True)
@@ -179,7 +179,7 @@ def seed_and_run() -> None:
     the web process never has to: it imports definitions and reads results.
 
         TRACEBI_DEMO_DB_URL=postgresql+psycopg://… \\
-            python -c "from web.demo_app.pipeline import seed_and_run; seed_and_run()"
+            python -c "from tracebi.web.demo_app.pipeline import seed_and_run; seed_and_run()"
     """
     seed_source_tables()
     for layer in LAYERS:

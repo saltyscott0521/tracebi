@@ -5,10 +5,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
 
-from web.api.errors import error_detail as _error_detail
-from web.api.lineage_graph import lineage_to_graph as _lineage_to_graph
-from web.api.registry import registry
-from web.api.run_store import run_store
+from tracebi.web.api.errors import error_detail as _error_detail
+from tracebi.web.api.lineage_graph import lineage_to_graph as _lineage_to_graph
+from tracebi.web.api.registry import registry
+from tracebi.web.api.run_store import run_store
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 

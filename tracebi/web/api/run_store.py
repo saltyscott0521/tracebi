@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from web.api.errors import error_detail
+from tracebi.web.api.errors import error_detail
 
 MAX_RUNS = 50
 

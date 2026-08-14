@@ -70,7 +70,11 @@ products_df = pd.DataFrame({
     "asset_class":  ["equity", "fixed income", "equity", "fixed income", "alternatives",
                      "equity", "money market", "alternatives", "fixed income", "money market"],
     "risk_rating":  [3, 2, 4, 1, 3, 3, 1, 3, 3, 1],
-    "expense_ratio":[0.0945, 0.03, 0.20, 0.03, 0.40, 0.07, 0.15, 0.12, 0.48, 0.00],
+    # Basis points, not a fraction: SPY charges 9.45 bp, i.e. 0.0945%. Stored
+    # as `expense_ratio` these read as fractions to any percent-formatting
+    # default, and 0.0945 rendered as "9.4%" — a hundredfold overstatement of
+    # a fund fee. The unit is in the name so no consumer has to guess it.
+    "expense_ratio_bps": [9.45, 3.0, 20.0, 3.0, 40.0, 7.0, 15.0, 12.0, 48.0, 0.0],
 })
 
 # ── Dimension: accounts (~40 rows) ────────────────────────────────────────────

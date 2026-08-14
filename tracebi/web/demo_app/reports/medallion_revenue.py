@@ -1,7 +1,7 @@
 from tracebi import FinalLayer
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
 from tracebi.web import register
-from web.demo_app.pipeline import pipeline_model
+from tracebi.web.demo_app.pipeline import pipeline_model
 
 
 @register.report(

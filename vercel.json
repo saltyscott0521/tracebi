@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd web/ui && npm ci && npm run build",
-  "outputDirectory": "web/ui/dist",
+  "outputDirectory": "tracebi/web/ui/dist",
   "functions": {
     "api/index.py": {
       "maxDuration": 60

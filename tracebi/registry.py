@@ -8,7 +8,7 @@ at request time.
 
 This lives in the library, not the web layer: the FastAPI app is one
 consumer, but so are the CLI, request scripts, notebooks, and agent
-tooling. ``web.api.registry`` re-exports it for backward compatibility.
+tooling. ``tracebi.web.api.registry`` re-exports it for backward compatibility.
 
 Usage in your app module::
 

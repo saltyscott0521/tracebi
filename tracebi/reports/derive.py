@@ -37,6 +37,38 @@ _SUFFIX_HINTS = {
     "_ratio": "percent",
 }
 
+#: ``percent`` is ``{:.1%}``, which multiplies by 100. Both conventions for a
+#: ``_pct`` column live in this repo — a declared ratio measure holds 0.069,
+#: a hand-computed ``pct_change().mul(100)`` holds 12.5 — and the *name* is
+#: identical either way, so only the values can tell them apart. A column
+#: whose non-null values all sit inside this bound is taken to be fractions;
+#: anything larger keeps its magnitude and loses the ``%``. The bound is
+#: above 1.0 because a genuine ratio does exceed it (a 120% gain is 1.2).
+_FRACTION_BOUND = 1.5
+
+#: Names that address a row rather than measure one. Thousands separators
+#: change how these read — 2024 is a year, "2,024" is a quantity — so they
+#: are left exactly as the data has them.
+_IDENTITY_NAMES = ("id", "key", "year")
+_IDENTITY_SUFFIXES = ("_id", "_key", "_year")
+
+
+def _is_fraction_shaped(series) -> bool:
+    """
+    True when no non-null value is too large to be a fraction.
+
+    Empty and all-null columns are vacuously fraction-shaped: there is no
+    value to misrepresent, so the declared convention for the name stands.
+    """
+    values = series.dropna()
+    return bool((values.abs() <= _FRACTION_BOUND).all())
+
+
+def _is_identity(column) -> bool:
+    """True for id/key/year columns, which are addressing, not quantities."""
+    name = str(column).lower()
+    return name in _IDENTITY_NAMES or name.endswith(_IDENTITY_SUFFIXES)
+
 
 def humanise(column: str) -> str:
     """
@@ -122,10 +154,23 @@ def derive_number_formats(
         if col in declared:
             derived[col] = declared[col]
             continue
+        if getattr(df[col], "ndim", 1) != 1:
+            # A repeated column label makes ``df[col]`` a frame, and every
+            # value test below is then ambiguous. Describe no format rather
+            # than raise: one undecorated column beats losing the render.
+            continue
         hint = next((f for suf, f in _SUFFIX_HINTS.items()
                      if str(col).lower().endswith(suf)), None)
-        if hint:
+        # A name alone cannot say whether the values are fractions or already
+        # scaled, and guessing wrong renders 12.5% as "1250.0%". So the hint
+        # only stands if the values agree with it; otherwise fall through to a
+        # default that shows the number the data actually holds. `percent` is
+        # the only hint whose format changes the number, so a hint added later
+        # to _SUFFIX_HINTS still applies on the name alone, as before.
+        if hint and (hint != "percent" or _is_fraction_shaped(df[col])):
             derived[col] = hint
+            continue
+        if _is_identity(col):
             continue
         series = df[col].dropna()
         # `comma` for counts and whole amounts, two decimals otherwise. Both

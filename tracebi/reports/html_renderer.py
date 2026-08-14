@@ -248,9 +248,10 @@ class HTMLRenderer(BaseRenderer):
                 "Install with: pip install weasyprint"
             )
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        # Manifest first, artifact second — see BaseRenderer.render.
+        manifest = report.build_manifest(format="pdf", output_path=output_path)
         html_str = self._build_html(report)
         WeasyHTML(string=html_str).write_pdf(output_path)
-        manifest = report.build_manifest(format="pdf", output_path=output_path)
         _warn_if_unknown_git_sha(manifest)
         if save_manifest:
             mp = manifest_path or output_path + ".manifest.json"

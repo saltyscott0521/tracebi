@@ -105,20 +105,27 @@ tracebi/               # Core Python package (~5200 LOC)
   pipeline/            # PipelineRunner + APScheduler integration
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
   web/                 # register facade + auto-discovery for request scripts (.py and .ipynb)
+    api/
+      main.py          # FastAPI app entry point — CORS, routers, auth
+      auth.py          # Optional HTTP Basic / proxy-header middleware
+      registry.py      # Back-compat re-export of tracebi.registry (the real seam)
+      errors.py        # Structured error payload (message + traceback) for routers
+      lineage_graph.py # LineageNode list → React Flow graph (shared by routers)
+      routers/         # One file per domain (connectors, models, reports, pipelines, dev)
+    demo_app/          # Default app module package — shows how to wire everything together
+    run.py             # Dev server (uvicorn wrapper) — python -m tracebi.web.run
+    ui/dist/           # Built React bundle, written here by `cd web/ui && npm run build`
+                       # (gitignored; Docker, Vercel and the release workflow build it. A
+                       # wheel built from a tree without it ships no UI — / says so.)
   cli.py               # tracebi init / new-request / list-requests / run / dev / validate
   _notebook.py         # notebook_to_source() — concatenates code cells for exec
   __init__.py          # Public API re-exports — check here before writing new code
 web/
-  api/
-    main.py            # FastAPI app entry point — CORS, routers, auth
-    auth.py            # Optional HTTP Basic / proxy-header middleware
-    registry.py        # Back-compat re-export of tracebi.registry (the real seam)
-    errors.py          # Structured error payload (message + traceback) for routers
-    lineage_graph.py   # LineageNode list → React Flow graph (shared by routers)
-    routers/           # One file per domain (connectors, models, reports, pipelines, dev)
-  ui/                  # React UI (built into web/ui/dist/ at Docker build time)
-  run.py               # Dev server (uvicorn wrapper)
-  demo_app/            # Default app module package — shows how to wire everything together
+  ui/                  # React UI source — a Node workspace, NOT a Python package. Nothing
+                       # importable lives under the top-level web/ any more: shipping a
+                       # directory named `web` in the wheel collided with the unrelated
+                       # `web.py` distribution, which owns that same path in site-packages.
+                       # `npm run build` writes its output into tracebi/web/ui/dist.
 examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
 tests/                 # pytest suite (700+ tests; run it for the current count), one file per area
 seeds/                 # DB init + Bronze seeding
@@ -149,13 +156,13 @@ NOTES.md               # Architecture decisions and open questions
 pip install -e ".[dev]"                        # Everything the test suite needs (incl. web)
 
 # Run (dev)
-python web/run.py                              # http://127.0.0.1:8000
-TRACEBI_APP=mymodule.config python web/run.py  # Custom app module
-TRACEBI_DEV_MODE=1 python web/run.py           # Enables POST /api/_dev/reload
+python -m tracebi.web.run                              # http://127.0.0.1:8000
+TRACEBI_APP=mymodule.config python -m tracebi.web.run  # Custom app module
+TRACEBI_DEV_MODE=1 python -m tracebi.web.run           # Enables POST /api/_dev/reload
 
 # Run (prod)
 # Multiple workers requires Postgres — see the note below.
-uvicorn web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn tracebi.web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 docker compose up --build                      # Or the docker-compose path
 vercel --prod                                  # Vercel + Supabase (see docs/deploy-vercel-supabase.md)
 
@@ -201,7 +208,7 @@ has only ever been *a name and a zero-arg callable*.
 Two properties to preserve:
 
 1. **The factory resolves models at call time, not at discovery time.** Doing
-   query work during startup is the mistake `web/demo_app` made, and a model
+   query work during startup is the mistake `tracebi/web/demo_app` made, and a model
    the spec names may be registered after the file is scanned.
 2. **Discovery-time validation is structural only.** Checking a spec against
    its models needs the models; that belongs to `tracebi spec validate` and to
@@ -223,7 +230,27 @@ formats the author left unset, from what the query already knows —
 Anything explicit wins outright. Order of preference for a format: the author's
 `number_formats`, then a format the model declares on that measure, then a
 column-name suffix hint (`_pct`), then shape — whole numbers get separators,
-fractional ones two decimals.
+fractional ones two decimals. Columns named like `year`, `id` or `*_key` get no
+format at all: a separator would render 2024 as `2,024`.
+
+**The suffix hint is unit-aware, and only that rung is.** `percent` multiplies
+by 100, and both conventions for a `_pct` column exist — a declared ratio
+measure holds `0.069`, a hand-computed `pct_change().mul(100)` holds `12.5` —
+so the hint applies only when every non-null value is fraction-shaped
+(`|v| <= 1.5`, `_FRACTION_BOUND`). Otherwise the column falls through to the
+shape default and keeps its own magnitude with no `%`. A declared measure
+format still wins over this guard, because the model saying `format="percent"`
+is a statement, not a guess. **A presentation default must never change the
+number it presents.**
+
+The guard is shape-based, so it cannot see a pre-scaled column whose values
+happen to be small — a fund fee of `0.0945` meaning 0.0945% is indistinguishable
+from a fraction. Store such a column in a unit its name states;
+`models/wealth_model.py` uses `expense_ratio_bps`.
+
+`ExcelRenderer` derives nothing — it applies only `section.number_formats`. So
+a stored convention chosen to please the HTML renderer's derivation lands
+unformatted in the spreadsheet: check both renderers before changing data.
 
 Pass `derive_defaults=False` for the previous raw output verbatim.
 
@@ -233,7 +260,7 @@ at volume, with nobody reading the output, does not.
 
 ## Authorization
 
-Authentication (`web/api/auth.py`) says who a caller is; the `_Authorizer` in
+Authentication (`tracebi/web/api/auth.py`) says who a caller is; the `_Authorizer` in
 the same module says what they may do. Roles are ordered and split by **side
 effect**, which is the question a security review actually asks:
 
@@ -243,13 +270,26 @@ effect**, which is the question a security review actually asks:
 | `analyst` | viewer + execute report and request code. |
 | `admin` | analyst + run pipeline layers, which write to the warehouse, and `/api/_dev/reload`. |
 
-Two things to preserve when touching this:
+Three things to preserve when touching this:
 
-1. **Enforcement is opt-in.** With neither `TRACEBI_AUTH_ROLE_HEADER` nor
-   `TRACEBI_AUTH_ROLE_MAP` set, every principal resolves to `admin`, so adding
-   authorization could not lock a running deployment out of its own pipelines.
-   Do not make it default-deny without a migration path.
-2. **Unlisted writes require `analyst`.** `_required_role` falls through to
+1. **Enforcement is opt-in.** With no *usable* role source — no
+   `TRACEBI_AUTH_ROLE_MAP`, and no `TRACEBI_AUTH_ROLE_HEADER` at all — every
+   principal resolves to `admin`, so adding authorization could not lock a
+   running deployment out of its own pipelines. Do not make it default-deny
+   without a migration path. `TRACEBI_AUTH_DEFAULT_ROLE` is **not** a role
+   source on its own: set by itself it names the fallback role but leaves
+   enforcement off, and every principal is still `admin`. It switches
+   enforcement on only alongside `TRACEBI_AUTH_ROLE_HEADER` (see invariant 2).
+2. **The role header is only read when an upstream set it.** `_Authorizer`
+   takes a required `trust_role_header`: proxy mode passes `True`, Basic auth
+   passes `False`, because with no proxy in front the header is written by the
+   principal it would promote. Proxy mode reads the *last* occurrence, so an
+   appending proxy's own claim beats a client-supplied copy; a proxy should
+   still replace the header. An untrusted header is not a role source on its
+   own, but it does not cancel one either — an operator who also set
+   `TRACEBI_AUTH_DEFAULT_ROLE` named the role everyone gets, and that is
+   enforced (see 1).
+3. **Unlisted writes require `analyst`.** `_required_role` falls through to
    `analyst` for any non-GET it does not recognise, so a route added later is
    guarded by default rather than open by default. Add an explicit rule when a
    new route needs `admin`.
@@ -313,9 +353,9 @@ Every transform method must return a new `DataSet`. Never mutate `.df` or `.line
 Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern. `LineageNode` is frozen — pass all fields (including `metadata`) at construction; you cannot edit a node afterwards, by design.
 
 **3. Registry is populated at startup, read at request time.**
-`tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, and reports in your app module (e.g. `web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.
+`tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, and reports in your app module (e.g. `tracebi/web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler.
 
-`web/api/registry.py` is a backward-compatible re-export of the same object. **Do not repoint the routers at `tracebi.registry` directly** — several tests isolate state by rebinding `web.api.registry.registry`, and routers bind at import time, so changing the import path silently breaks that isolation. If you ever do repoint them, convert those tests in the same change.
+`tracebi/web/api/registry.py` is a backward-compatible re-export of the same object. **Do not repoint the routers at `tracebi.registry` directly** — `tests/test_phase5.py::TestPipelineRunEndpoint::test_run_all_layers` isolates state by rebinding `tracebi.web.api.registry.registry` before the router under test is first imported, and routers bind at import time, so changing the import path silently breaks that isolation. If you ever do repoint them, convert that test in the same change — and check it fails when you break the rebind, because a suite that passes because isolation became a no-op looks exactly like a suite that passes.
 
 **4. Optional dependencies must fail loudly.**
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
@@ -330,7 +370,7 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 | Don't | Do instead |
 |---|---|
 | Mutate `dataset.df` directly | Return `DataSet(new_df, dataset.lineage + [new_node])` |
-| Import from `web/demo_app/` in tests | Use `MemoryConnector` or fixture data |
+| Import from `tracebi/web/demo_app/` in tests | Use `MemoryConnector` or fixture data |
 | Add cross-phase imports in test files | Keep tests isolated to their phase module |
 | Make the framework read connector URLs from env vars implicitly | Construct connectors in app module code; pass credential-bearing URLs via `os.environ[...]` explicitly (see `.env.example`) |
 | Add a new route without touching the registry | Wire it through `registry.py` so it's discoverable |
@@ -375,7 +415,7 @@ runner.register(layer, name="orders_silver", schedule="0 * * * *",
 ```
 
 ### New FastAPI route
-Add a file under `web/api/routers/`, include it in `web/api/main.py`, and read resources only from the registry — never import app-specific objects directly.
+Add a file under `tracebi/web/api/routers/`, include it in `tracebi/web/api/main.py`, and read resources only from the registry — never import app-specific objects directly.
 
 ---
 
@@ -411,7 +451,8 @@ GET  /api/pipelines
 POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run
 GET  /api/pipelines/{name}/layers/{layer}/history
-GET  /                                               → React SPA (web/ui/dist, when built)
+GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not
+                                                       been built, a page naming the build command
 ```
 
 Failed report/query runs return a structured ``detail``:
@@ -437,9 +478,9 @@ Don't add these unless asked.
 |---|---|
 | Understand the whole framework | `README.md` |
 | Understand architecture decisions | `NOTES.md` |
-| See a complete working wiring | `web/demo_app/` |
+| See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
-| Add something to the web API | `tracebi/registry.py` (singleton) + `web/api/routers/` |
+| Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
 | Write an ad hoc report | `requests/_template.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
 | Define a reusable pipeline | `tracebi new-pipeline` → `pipelines/` → `tracebi/pipeline_registry.py` |

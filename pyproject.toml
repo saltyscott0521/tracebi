@@ -129,7 +129,25 @@ dev = [
 tracebi = "tracebi.cli:main"
 
 [tool.hatch.build.targets.wheel]
+# One package, and it is `tracebi`. Before the move the wheel shipped the
+# library but *not* the FastAPI app, so an installed TraceBi had no server at
+# all — `tracebi serve` could never work. The obvious fix, adding a top-level
+# `web` to this list, would have installed a directory named `web/` into
+# site-packages: the same path the unrelated `web.py` distribution on PyPI
+# owns. pip overwrites whichever is installed second and reports nothing, so
+# the loser breaks. Hence tracebi.web.api — the app ships, nothing top-level
+# does, and both distributions coexist.
 packages = ["tracebi"]
+# `packages` alone is not enough: hatchling's file selection honours
+# .gitignore, and tracebi/web/ui/dist is gitignored — so the wheel would ship
+# the FastAPI app with no built UI and serve a 404 homepage. Run
+# `cd web/ui && npm ci && npm run build` before building a wheel (vite's
+# build.outDir writes into the package); CI asserts
+# tracebi/web/ui/dist/index.html is inside it.
+artifacts = ["tracebi/web/ui/dist/**"]
+# The Node workspace itself (web/ui/src, package.json, the lockfile) stays at
+# the repo root and is deliberately not packaged: it is a build input, not a
+# runtime one, and the no-bundle page points a checkout at it by path.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

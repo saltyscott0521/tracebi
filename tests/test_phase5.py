@@ -839,7 +839,7 @@ class TestBasicAuth:
         monkeypatch.delenv("TRACEBI_AUTH_PASS", raising=False)
         monkeypatch.delenv("TRACEBI_AUTH_PROXY_HEADER", raising=False)
         from fastapi import FastAPI
-        from web.api.auth import install_if_configured
+        from tracebi.web.api.auth import install_if_configured
         app = FastAPI()
         assert install_if_configured(app) is None
 
@@ -848,14 +848,14 @@ class TestBasicAuth:
         monkeypatch.setenv("TRACEBI_AUTH_PASS", "pass")
         monkeypatch.delenv("TRACEBI_AUTH_PROXY_HEADER", raising=False)
         from fastapi import FastAPI
-        from web.api.auth import install_if_configured
+        from tracebi.web.api.auth import install_if_configured
         app = FastAPI()
         assert install_if_configured(app) == "basic"
 
     def test_rejects_missing_credentials(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.auth import BasicAuthMiddleware
+        from tracebi.web.api.auth import BasicAuthMiddleware
         app = FastAPI()
         app.add_middleware(BasicAuthMiddleware, username="u", password="p")
 
@@ -871,7 +871,7 @@ class TestBasicAuth:
     def test_accepts_valid_credentials(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.auth import BasicAuthMiddleware
+        from tracebi.web.api.auth import BasicAuthMiddleware
         app = FastAPI()
         app.add_middleware(BasicAuthMiddleware, username="u", password="p")
 
@@ -886,7 +886,7 @@ class TestBasicAuth:
     def test_health_endpoint_exempt(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.auth import BasicAuthMiddleware
+        from tracebi.web.api.auth import BasicAuthMiddleware
         app = FastAPI()
         app.add_middleware(BasicAuthMiddleware, username="u", password="p")
 
@@ -906,7 +906,7 @@ class TestProxyHeaderAuth:
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route
-        from web.api.auth import ProxyHeaderAuthMiddleware
+        from tracebi.web.api.auth import ProxyHeaderAuthMiddleware
 
         async def me(request):
             return JSONResponse({"user": getattr(request.state, "user", None)})
@@ -955,7 +955,7 @@ class TestProxyHeaderAuth:
     def test_trusted_ips_accept_known_client(self):
         """Unit-test the trust check directly — TestClient lies about client IP."""
         from types import SimpleNamespace
-        from web.api.auth import ProxyHeaderAuthMiddleware
+        from tracebi.web.api.auth import ProxyHeaderAuthMiddleware
 
         mw = ProxyHeaderAuthMiddleware(
             app=None, header="X-Forwarded-User", trusted_ips=["10.0.0.0/8"],
@@ -977,7 +977,7 @@ class TestProxyHeaderAuth:
         monkeypatch.setenv("TRACEBI_AUTH_USER", "ignored")
         monkeypatch.setenv("TRACEBI_AUTH_PASS", "ignored")
         from fastapi import FastAPI
-        from web.api.auth import install_if_configured
+        from tracebi.web.api.auth import install_if_configured
         app = FastAPI()
         # Proxy mode wins when both are set.
         assert install_if_configured(app) == "proxy"
@@ -986,7 +986,7 @@ class TestProxyHeaderAuth:
         monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
         monkeypatch.delenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", raising=False)
         from fastapi import FastAPI
-        from web.api.auth import install_if_configured
+        from tracebi.web.api.auth import install_if_configured
         app = FastAPI()
         with pytest.warns(UserWarning, match="TRUSTED_IPS"):
             assert install_if_configured(app) == "proxy"
@@ -995,7 +995,7 @@ class TestProxyHeaderAuth:
         monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
         monkeypatch.setenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", "10.0.0.0/8")
         from fastapi import FastAPI
-        from web.api.auth import install_if_configured
+        from tracebi.web.api.auth import install_if_configured
         app = FastAPI()
         assert install_if_configured(app) == "proxy"
         assert not [w for w in recwarn if "TRUSTED_IPS" in str(w.message)]
@@ -1007,8 +1007,8 @@ class TestAnalystEndpoints:
     def _client_with_model(self, memory_model):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.registry import registry
-        from web.api.routers import models as models_router
+        from tracebi.web.api.registry import registry
+        from tracebi.web.api.routers import models as models_router
 
         registry.add_model(memory_model)
         app = FastAPI()
@@ -1016,7 +1016,7 @@ class TestAnalystEndpoints:
         return TestClient(app)
 
     def _cleanup_model(self, name):
-        from web.api.registry import registry
+        from tracebi.web.api.registry import registry
         registry._models.pop(name, None)
 
     def test_preview_includes_dtypes_and_total_rows(self, memory_model):
@@ -1047,8 +1047,8 @@ class TestAnalystEndpoints:
     def _client_with_report(self, factory, name="t_report"):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.registry import registry
-        from web.api.routers import reports as reports_router
+        from tracebi.web.api.registry import registry
+        from tracebi.web.api.routers import reports as reports_router
 
         registry.add_report(name, factory)
         app = FastAPI()
@@ -1056,7 +1056,7 @@ class TestAnalystEndpoints:
         return TestClient(app)
 
     def _cleanup_report(self, name="t_report"):
-        from web.api.registry import registry
+        from tracebi.web.api.registry import registry
         registry._report_factories.pop(name, None)
 
     @staticmethod
@@ -1116,8 +1116,8 @@ class TestQueryEndpoint:
     def _client(self, memory_model):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.registry import registry
-        from web.api.routers import models as models_router
+        from tracebi.web.api.registry import registry
+        from tracebi.web.api.routers import models as models_router
 
         memory_model.add_dimension("dim_customer", "customers",
                                    key_col="customer_id", attributes=["segment"])
@@ -1130,7 +1130,7 @@ class TestQueryEndpoint:
         return TestClient(app)
 
     def _cleanup(self):
-        from web.api.registry import registry
+        from tracebi.web.api.registry import registry
         registry._models.pop("Sales", None)
 
     def test_aggregated_query_returns_rows_and_lineage(self, memory_model):
@@ -1202,7 +1202,7 @@ class TestConnectorIdentifierQuoting:
 class TestRegistryExtras:
     @pytest.fixture(autouse=True)
     def _reset_registry(self):
-        from web.api.registry import registry
+        from tracebi.web.api.registry import registry
         saved = {
             "models":     dict(registry._models),
             "default":    registry._default_model_name,
@@ -1216,26 +1216,26 @@ class TestRegistryExtras:
         registry._scheduled_factories = saved["scheduled"]
 
     def test_default_model_via_add_model(self, memory_model):
-        from web.api.registry import Registry
+        from tracebi.web.api.registry import Registry
         r = Registry()
         r.add_model(memory_model, default=True)
         assert r.get_default_model() is memory_model
 
     def test_first_model_becomes_default(self, memory_model):
-        from web.api.registry import Registry
+        from tracebi.web.api.registry import Registry
         r = Registry()
         r.add_model(memory_model)
         assert r.get_default_model() is memory_model
 
     def test_set_default_model_after_adding(self, memory_model):
-        from web.api.registry import Registry
+        from tracebi.web.api.registry import Registry
         r = Registry()
         r.add_model(memory_model)
         r.set_default_model("Sales")
         assert r.get_default_model() is memory_model
 
     def test_set_default_unknown_raises(self):
-        from web.api.registry import Registry
+        from tracebi.web.api.registry import Registry
         r = Registry()
         with pytest.raises(KeyError):
             r.set_default_model("nope")
@@ -1246,7 +1246,7 @@ class TestRegistryExtras:
         assert register.get_default_model() is memory_model
 
     def test_scheduled_decorator_registers_report_and_cron(self):
-        from web.api.registry import Registry
+        from tracebi.web.api.registry import Registry
         r = Registry()
 
         @r.scheduled("weekly", cron="0 9 * * MON", description="weekly KPIs")
@@ -1263,7 +1263,7 @@ class TestRegistryExtras:
     def test_concurrent_registration_is_safe(self):
         import threading
         from types import SimpleNamespace
-        from web.api.registry import Registry
+        from tracebi.web.api.registry import Registry
 
         r = Registry()
         errors = []
@@ -1289,7 +1289,7 @@ class TestRegistryExtras:
 
     def test_scheduled_via_notebook_helper(self):
         from tracebi.web import register
-        from web.api.registry import registry
+        from tracebi.web.api.registry import registry
 
         @register.scheduled("nightly", cron="0 2 * * *", description="nightly")
         def fac():
@@ -1344,7 +1344,7 @@ class TestPipelineRunEndpoint:
         import pandas as pd
         from tracebi import LandingLayer, ManipulationLayer, PipelineRunner, SQLConnector
         from sqlalchemy import create_engine
-        from web.api.registry import Registry
+        from tracebi.web.api.registry import Registry
 
         url = f"sqlite:///{tmp_path}/runner.db"
         eng = create_engine(url)
@@ -1367,13 +1367,13 @@ class TestPipelineRunEndpoint:
         local.add_pipeline("sales", runner)
 
         # Swap singleton just for the test
-        import web.api.registry as reg_mod
+        import tracebi.web.api.registry as reg_mod
         original = reg_mod.registry
         reg_mod.registry = local
         try:
             from fastapi.testclient import TestClient
             from fastapi import FastAPI
-            from web.api.routers import pipelines as pipelines_router
+            from tracebi.web.api.routers import pipelines as pipelines_router
             app = FastAPI()
             app.include_router(pipelines_router.router, prefix="/api")
 
@@ -1390,7 +1390,7 @@ class TestPipelineRunEndpoint:
     def test_run_missing_pipeline_404(self):
         from fastapi.testclient import TestClient
         from fastapi import FastAPI
-        from web.api.routers import pipelines as pipelines_router
+        from tracebi.web.api.routers import pipelines as pipelines_router
         app = FastAPI()
         app.include_router(pipelines_router.router, prefix="/api")
         client = TestClient(app)
@@ -1423,7 +1423,7 @@ class TestDevReload:
         from tracebi.web.discovery import auto_discover
         from fastapi.testclient import TestClient
         from fastapi import FastAPI
-        from web.api.routers import dev as dev_router
+        from tracebi.web.api.routers import dev as dev_router
 
         path = tmp_path / "x.py"
         path.write_text("MARK = 1\n")
@@ -1712,7 +1712,7 @@ class TestRequestsAPI:
     def _client(self, requests_dir, monkeypatch):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.routers import requests as requests_router
+        from tracebi.web.api.routers import requests as requests_router
         monkeypatch.setenv("TRACEBI_REQUESTS_DIR", str(requests_dir))
         app = FastAPI()
         app.include_router(requests_router.router, prefix="/api")
@@ -1793,7 +1793,7 @@ class TestLineageGraphBranching:
         return left.join(right, on="id").lineage_to_dict()
 
     def test_join_node_has_two_incoming_edges(self):
-        from web.api.lineage_graph import lineage_to_graph
+        from tracebi.web.api.lineage_graph import lineage_to_graph
         graph = lineage_to_graph(self._joined_lineage())
         join_ids = [n["id"] for n in graph["nodes"]
                     if n["data"]["operation"] == "join"]
@@ -1802,14 +1802,14 @@ class TestLineageGraphBranching:
         assert len(incoming) == 2
 
     def test_branches_on_separate_lanes(self):
-        from web.api.lineage_graph import lineage_to_graph
+        from tracebi.web.api.lineage_graph import lineage_to_graph
         graph = lineage_to_graph(self._joined_lineage())
         load_ys = {n["data"]["description"]: n["position"]["y"]
                    for n in graph["nodes"] if n["data"]["operation"] == "load"}
         assert load_ys["load orders"] != load_ys["load customers"]
 
     def test_linear_lineage_unchanged(self):
-        from web.api.lineage_graph import lineage_to_graph
+        from tracebi.web.api.lineage_graph import lineage_to_graph
         from tracebi.model.dataset import DataSet, LineageNode
         ds = DataSet(
             df=pd.DataFrame({"v": [1, 2, 3]}),
@@ -1831,8 +1831,8 @@ class TestBackgroundReportRuns:
     def _client_with_report(self, factory, name="bg_report"):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.registry import registry
-        from web.api.routers import reports as reports_router
+        from tracebi.web.api.registry import registry
+        from tracebi.web.api.routers import reports as reports_router
 
         registry.add_report(name, factory)
         app = FastAPI()
@@ -1840,7 +1840,7 @@ class TestBackgroundReportRuns:
         return TestClient(app)
 
     def _cleanup_report(self, name="bg_report"):
-        from web.api.registry import registry
+        from tracebi.web.api.registry import registry
         registry._report_factories.pop(name, None)
 
     @staticmethod
@@ -2015,7 +2015,7 @@ class TestRequestParamsAPI:
     def client(self, tmp_path, monkeypatch):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.routers import requests as requests_router
+        from tracebi.web.api.routers import requests as requests_router
 
         (tmp_path / "param_req.py").write_text(PARAM_SCRIPT, encoding="utf-8")
         monkeypatch.setenv("TRACEBI_REQUESTS_DIR", str(tmp_path))
@@ -2064,7 +2064,7 @@ class TestDocsEndpoints:
     def client(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from web.api.routers import docs
+        from tracebi.web.api.routers import docs
         app = FastAPI()
         app.include_router(docs.router, prefix="/api")
         return TestClient(app)
@@ -2104,32 +2104,68 @@ class TestRegistryLibrarySeam:
     """
 
     def test_library_does_not_import_the_app_package(self):
-        """No module under tracebi/ may import from web/."""
+        """
+        No module under tracebi/ may import the FastAPI app.
+
+        The app used to live in a separate top-level ``web`` package, so this
+        read as "tracebi must not import web". The app moved *inside* the
+        distribution (``tracebi.web.api``) to stop shipping a top-level
+        ``web/`` that collides with the unrelated ``web.py`` on PyPI — the
+        directory changed, the import direction did not. Everything outside
+        ``tracebi/web/api`` and ``tracebi/web/demo_app`` is still the library,
+        and still may not reach into the app.
+        """
         import pathlib
         import re
 
         root = pathlib.Path(__file__).resolve().parents[1] / "tracebi"
-        pattern = re.compile(r"^\s*(?:from|import)\s+web\b", re.MULTILINE)
+        app_dirs = (root / "web" / "api", root / "web" / "demo_app")
+        pattern = re.compile(
+            r"^\s*(?:from|import)\s+(?:web\b|tracebi\.web\.(?:api|demo_app)\b)",
+            re.MULTILINE,
+        )
         offenders = [
             str(p.relative_to(root))
             for p in root.rglob("*.py")
-            if "__pycache__" not in p.parts and pattern.search(p.read_text())
+            if "__pycache__" not in p.parts
+            and not any(d in p.parents for d in app_dirs)
+            and pattern.search(p.read_text())
         ]
         assert offenders == [], (
-            f"tracebi/ must not import from web/: {offenders}. "
-            "This is the seam that lets the library ship without the app."
+            f"the tracebi library must not import the app package: {offenders}. "
+            "This is the seam that lets the library be used without fastapi."
+        )
+
+    def test_the_app_lives_inside_the_distribution(self):
+        """
+        The app must not move back out to a top-level ``web`` package.
+
+        ``web.py`` is a real PyPI distribution owning the same install path;
+        two wheels writing ``web/`` into one site-packages means pip
+        overwrites one with the other and reports nothing.
+        """
+        import pathlib
+
+        root = pathlib.Path(__file__).resolve().parents[1]
+        assert (root / "tracebi" / "web" / "api" / "main.py").is_file()
+        assert not (root / "web" / "__init__.py").exists(), (
+            "top-level web/ is a Node workspace only — an __init__.py makes it "
+            "an importable package again"
+        )
+        assert not list((root / "web").glob("*.py")), (
+            "no Python may live in the top-level web/ directory"
         )
 
     def test_shim_and_library_expose_the_same_singleton(self):
         import tracebi.registry as lib
-        import web.api.registry as shim
+        import tracebi.web.api.registry as shim
 
         assert shim.registry is lib.registry
         assert shim.Registry is lib.Registry
 
     def test_shim_reexports_both_names(self):
         """Tests import the class as well as the singleton; both must survive."""
-        from web.api.registry import Registry, registry
+        from tracebi.web.api.registry import Registry, registry
 
         assert isinstance(registry, Registry)
 
@@ -2238,7 +2274,7 @@ class TestConsumerProjectPath:
 
     def test_serve_does_not_load_the_bundled_demo_app(self, tmp_path, monkeypatch):
         """
-        Serving someone else's project must not import web.demo_app — it
+        Serving someone else's project must not import tracebi.web.demo_app — it
         references demo data they do not have, and the import blew up.
         """
         from tracebi.cli import main
@@ -2256,7 +2292,7 @@ class TestConsumerProjectPath:
 
 class TestDocsDirResolution:
     def test_env_override_wins(self, tmp_path, monkeypatch):
-        from web.api.routers import docs
+        from tracebi.web.api.routers import docs
 
         (tmp_path / "guide.md").write_text("# A Guide\n")
         monkeypatch.setenv("TRACEBI_DOCS_DIR", str(tmp_path))
@@ -2268,7 +2304,7 @@ class TestDocsDirResolution:
         The path was hardcoded to the repo root, so an installed layout
         silently served an empty Getting Started page.
         """
-        from web.api.routers import docs
+        from tracebi.web.api.routers import docs
 
         monkeypatch.delenv("TRACEBI_DOCS_DIR", raising=False)
         monkeypatch.chdir(tmp_path)
@@ -2551,7 +2587,7 @@ class TestServerlessDeployContract:
             "        return None\n"
             "sys.meta_path.insert(0, B())\n"
             "os.environ['TRACEBI_APP'] = ''\n"
-            "from web.api.main import app\n"
+            "from tracebi.web.api.main import app\n"
             "from fastapi.testclient import TestClient\n"
             "c = TestClient(app)\n"
             "for path in ('/api/health', '/api/models', '/api/schema',\n"
@@ -2624,7 +2660,16 @@ class TestServerlessDeployContract:
 
         cfg = json.loads((pathlib.Path(__file__).resolve().parents[1]
                           / "vercel.json").read_text())
-        assert cfg["outputDirectory"] == "web/ui/dist"
+        # vite writes the bundle into the Python package (see
+        # web/ui/vite.config.js build.outDir) so the wheel can carry it.
+        # Vercel publishes whatever that directory is; the two must agree or
+        # the deploy serves an empty site.
+        assert cfg["outputDirectory"] == "tracebi/web/ui/dist"
+        vite = (pathlib.Path(__file__).resolve().parents[1]
+                / "web" / "ui" / "vite.config.js").read_text()
+        assert "'../../tracebi/web/ui/dist'" in vite, (
+            "vite's build.outDir and vercel.json's outputDirectory have drifted"
+        )
         sources = [r["source"] for r in cfg["rewrites"]]
         assert any("api" in s for s in sources)
         # An SPA fallback that also swallowed /api would break every request.
@@ -2643,6 +2688,262 @@ class TestServerlessDeployContract:
         assert "VITE_API_BASE" in api_js
 
 
+# ── Homepage when the UI bundle is missing ────────────────────────────────────
+# tracebi/web/ui/dist is gitignored, so a fresh clone (and any wheel built
+# without running the UI build) has no bundle. "/" used to be a bare 404 with
+# nothing anywhere saying why. Every branch is exercised against a throwaway
+# copy of the package so the repo's own dist — present or not — cannot decide
+# the result, and so the "am I a checkout?" probe sees a tree we control.
+
+class TestHomepageNeverSilently404s:
+    def _serve_root(self, dist: str, checkout: bool = True) -> dict:
+        """Boot the app over a synthetic tree and report what / answers.
+
+        ``dist`` is 'absent' (no ui/ at all), 'empty' (the directory a
+        failed `npm run build` leaves behind) or 'index' (a real bundle).
+        ``checkout`` writes a pyproject.toml at the tree root, which is how
+        the app tells a source checkout from an installed package.
+
+        The synthetic tree is a copy of ``tracebi/`` — the app lives at
+        ``tracebi/web/api`` and finds its bundle at ``tracebi/web/ui/dist``,
+        so the tree root the app reasons about is three levels above it.
+        """
+        import json
+        import subprocess
+        import sys
+
+        code = (
+            "import json, os, shutil, sys, tempfile\n"
+            "tmp = tempfile.mkdtemp()\n"
+            "shutil.copytree(os.path.join(os.getcwd(), 'tracebi'),\n"
+            "                os.path.join(tmp, 'tracebi'),\n"
+            "                ignore=shutil.ignore_patterns('ui', '__pycache__'))\n"
+            f"if {checkout!r}:\n"
+            "    open(os.path.join(tmp, 'pyproject.toml'), 'w').close()\n"
+            f"if {dist!r} != 'absent':\n"
+            "    d = os.path.join(tmp, 'tracebi', 'web', 'ui', 'dist')\n"
+            "    os.makedirs(d)\n"
+            f"if {dist!r} == 'index':\n"
+            "    with open(os.path.join(d, 'index.html'), 'w') as fh:\n"
+            "        fh.write('<html><body>REAL-SPA-BUNDLE</body></html>')\n"
+            "sys.path.insert(0, tmp)\n"
+            "os.environ['TRACEBI_APP'] = ''\n"
+            "for v in ('TRACEBI_MODELS_DIR', 'TRACEBI_PIPELINES_DIR', 'TRACEBI_REPORTS_DIR',\n"
+            "          'TRACEBI_REQUESTS_DIR', 'TRACEBI_SCHEDULED_DIR'):\n"
+            "    os.environ[v] = os.path.join(tmp, 'absent')\n"
+            "from tracebi.web.api.main import app\n"
+            "from fastapi.testclient import TestClient\n"
+            "c = TestClient(app)\n"
+            "html = c.get('/', headers={'accept': 'text/html'})\n"
+            "api = c.get('/', headers={'accept': 'application/json'})\n"
+            "refused = c.get('/', headers={'accept': 'text/html;q=0, application/json'})\n"
+            "shouty = c.get('/', headers={'accept': 'TEXT/HTML'})\n"
+            "head = c.head('/', headers={'accept': 'text/html'})\n"
+            "health = c.get('/api/health')\n"
+            "print('RESULT' + json.dumps({\n"
+            "    'html_status': html.status_code, 'html_body': html.text,\n"
+            "    'html_type': html.headers.get('content-type', ''),\n"
+            "    'api_status': api.status_code, 'api_body': api.text,\n"
+            "    'refused_type': refused.headers.get('content-type', ''),\n"
+            "    'shouty_type': shouty.headers.get('content-type', ''),\n"
+            "    'head_status': head.status_code,\n"
+            "    'health_status': health.status_code,\n"
+            "}))\n"
+        )
+        out = subprocess.run([sys.executable, "-c", code],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        line = next(ln for ln in out.stdout.splitlines() if ln.startswith("RESULT"))
+        result = json.loads(line[len("RESULT"):])
+        result["stderr"] = out.stderr
+        return result
+
+    def test_without_a_bundle_the_homepage_explains_itself(self):
+        r = self._serve_root(dist="absent")
+
+        # The outcome that matters: no bare 404, and no response a human
+        # could read without learning what to do about it.
+        assert r["html_status"] != 404
+        assert "Not Found" not in r["html_body"]
+        assert "npm run build" in r["html_body"]
+        assert "text/html" in r["html_type"]
+
+        # Non-browser clients get the same answer as data, not an HTML blob.
+        assert r["api_status"] != 404
+        assert "<html" not in r["api_body"].lower()
+        assert "npm run build" in r["api_body"]
+
+        # And the operator is told at startup, not only when someone visits.
+        assert "npm run build" in r["stderr"]
+
+        # The API itself is unaffected — a missing bundle is not an outage.
+        assert r["health_status"] == 200
+
+        # Uptime probes HEAD "/" — a mounted bundle answers that, so the
+        # explanation page must too rather than 405ing.
+        assert r["head_status"] == 200
+
+        # Accept is a list with q-values, not a substring: an explicit
+        # refusal of HTML must not be served HTML, and a shouty media type
+        # is still text/html.
+        assert "application/json" in r["refused_type"]
+        assert "text/html" in r["shouty_type"]
+
+    def test_an_empty_dist_directory_is_not_mistaken_for_a_bundle(self):
+        # `npm run build` empties tracebi/web/ui/dist before writing it (vite's
+        # emptyOutDir), so a build that fails leaves the directory present
+        # and empty. Keying off the directory served the bare 404 this whole
+        # branch exists to prevent — key off index.html.
+        r = self._serve_root(dist="empty")
+
+        assert r["html_status"] != 404
+        assert "npm run build" in r["html_body"]
+        assert "npm run build" in r["stderr"]
+        assert r["health_status"] == 200
+
+    def test_an_installed_package_is_not_told_to_run_npm_in_site_packages(self):
+        # No pyproject.toml above tracebi/ ⇒ this is site-packages, not a
+        # checkout. `npm ci && npm run build` there is not an instruction
+        # anyone can act on; name the remedy that exists instead.
+        r = self._serve_root(dist="absent", checkout=False)
+
+        assert r["html_status"] != 404
+        assert "npm" not in r["html_body"]
+        assert "npm" not in r["api_body"]
+        assert "npm" not in r["stderr"]
+        for text in (r["html_body"], r["api_body"], r["stderr"]):
+            assert "clone" in text or "wheel" in text
+
+    def test_with_a_bundle_the_real_index_is_served(self):
+        r = self._serve_root(dist="index")
+
+        # The absence assertion in the other direction: the explanation page
+        # must never shadow a bundle that is actually there.
+        assert r["html_status"] == 200
+        assert "REAL-SPA-BUNDLE" in r["html_body"]
+        assert "npm run build" not in r["html_body"]
+        assert "npm run build" not in r["stderr"]
+
+
+# ── Packaging: the wheel is the only artifact that can serve the UI ──────────
+# `tracebi serve` boots tracebi.web.api.main:app, so the wheel must carry the
+# app; the bundle it serves is gitignored, so hatchling needs `artifacts` to
+# include it at all; and the wheel must install nothing at the top level named
+# `web` (the `web.py` distribution owns that path). None of that is exercised
+# by importing anything, so pin the declarations.
+
+class TestWheelPackagingDeclaration:
+    def _wheel_target(self) -> str:
+        import pathlib
+        text = (pathlib.Path(__file__).resolve().parents[1]
+                / "pyproject.toml").read_text()
+        return text.split("[tool.hatch.build.targets.wheel]")[1].split("\n[")[0]
+
+    def test_wheel_ships_the_web_app_and_the_built_bundle(self):
+        block = self._wheel_target()
+        assert 'packages = ["tracebi"]' in block, (
+            "the wheel ships exactly one package, and the app is inside it"
+        )
+        # .gitignore hides the bundle from hatchling's file selection.
+        assert "artifacts" in block and "tracebi/web/ui/dist" in block
+
+    def test_wheel_ships_nothing_top_level_named_web(self):
+        """
+        `web.py` on PyPI installs a top-level `web/`. Shipping one too means
+        pip overwrites whichever lands second and `pip check` says nothing.
+        """
+        import re
+        packages = re.search(r"^packages\s*=\s*\[(.*?)\]",
+                             self._wheel_target(), re.S | re.M)
+        assert packages, "the wheel target must declare `packages`"
+        listed = re.findall(r'"([^"]+)"', packages.group(1))
+        assert "web" not in listed, f"top-level web/ is back in the wheel: {listed}"
+
+    def test_wheel_does_not_strip_the_ui_build_inputs(self):
+        import re
+        # The no-bundle page tells a checkout to run `npm ci && npm run build`.
+        # Excluding src/ and the lockfile removes the only remedy on offer.
+        assert not re.search(r"^exclude\s*=.*web/ui/(src|package-lock)",
+                             self._wheel_target(), re.M)
+
+    def test_release_workflow_builds_the_ui_first_and_publishes_nothing(self):
+        import pathlib
+        wf = (pathlib.Path(__file__).resolve().parents[1]
+              / ".github" / "workflows" / "release.yml").read_text()
+
+        # A wheel is only worth releasing if the bundle is inside it, which
+        # means npm runs before the build and the result is asserted.
+        assert wf.index("npm run build") < wf.index("python -m build")
+        assert "tracebi/web/ui/dist/index.html" in wf
+
+        # Publishing is the maintainer's decision, not this workflow's.
+        # (Comments stripped — they say *why* there is no publish step.)
+        live = "\n".join(ln for ln in wf.splitlines()
+                         if not ln.strip().startswith("#")).lower()
+        assert "secrets." not in live
+        assert "pypi" not in live
+        assert "twine" not in live
+        # ...and it never fires on a push to a branch.
+        assert "branches" not in live
+
+
+class TestLegacyAppModuleSpelling:
+    """
+    The namespace move made `TRACEBI_APP=web.demo_app` stale. Its failure modes
+    are both silent, which is why the spelling is refused outright rather than
+    left to fail on its own.
+    """
+
+    def _boot(self, app_value, cwd=None):
+        import subprocess
+        import sys
+
+        code = (
+            "import tracebi.web.api.main\n"
+            "from tracebi.registry import registry\n"
+            "print('CONNECTORS', len(registry.list_connectors()))\n"
+        )
+        return subprocess.run([sys.executable, "-c", code],
+                              capture_output=True, text=True, cwd=cwd,
+                              env={**os.environ, "TRACEBI_APP": app_value})
+
+    def test_the_pre_move_spelling_is_refused_not_warned(self, tmp_path):
+        """
+        A leftover web/api or web/demo_app directory — which `git pull` cannot
+        remove while a stale __pycache__ sits in it — is an importable
+        namespace package holding no modules. It registers nothing and raises
+        nothing, so the server would boot healthy and empty. Refusing the
+        spelling is the only check that catches that.
+        """
+        stale = tmp_path / "web" / "demo_app"
+        stale.mkdir(parents=True)
+        (stale / "__pycache__").mkdir()
+
+        out = self._boot("web.demo_app", cwd=str(tmp_path))
+        assert out.returncode != 0, (
+            "a stale top-level web/ import must not boot: " + out.stdout
+        )
+        assert "predates the namespace move" in out.stderr
+        assert "tracebi.web.demo_app" in out.stderr
+
+    def test_a_genuinely_broken_app_module_still_warns_and_boots(self, tmp_path):
+        """Refusing the legacy prefix must not make every failure fatal."""
+        out = self._boot("no_such_module_at_all", cwd=str(tmp_path))
+        assert out.returncode == 0, out.stderr
+        assert "could not be imported" in out.stderr
+        assert "CONNECTORS 0" in out.stdout
+
+    def test_the_bundled_demo_degrades_outside_its_own_project(self, tmp_path):
+        """
+        Now that demo_app actually ships in the wheel it imports far enough to
+        raise KeyError on models it cannot find. That is not an ImportError, so
+        a narrow guard would crash the server instead of starting it empty.
+        """
+        out = self._boot("tracebi.web.demo_app", cwd=str(tmp_path))
+        assert out.returncode == 0, out.stderr
+        assert "CONNECTORS 0" in out.stdout
+
+
 # ── Authorization (roles) ─────────────────────────────────────────────────────
 # Both auth middlewares set request.state.user and, until now, nothing read it:
 # any authenticated principal could run every report and every pipeline layer.
@@ -2650,14 +2951,16 @@ class TestServerlessDeployContract:
 # executing report/request code, writing to the warehouse.
 
 class TestAuthorization:
-    def _authorizer(self, monkeypatch, **env):
+    def _authorizer(self, monkeypatch, trust_role_header=True, **env):
+        # trust_role_header=True is the proxy case: an upstream sets the
+        # header. Basic auth passes False — see TestRoleHeaderTrust.
         for k in ("TRACEBI_AUTH_ROLE_HEADER", "TRACEBI_AUTH_ROLE_MAP",
                   "TRACEBI_AUTH_DEFAULT_ROLE"):
             monkeypatch.delenv(k, raising=False)
         for k, v in env.items():
             monkeypatch.setenv(k, v)
-        from web.api.auth import _Authorizer
-        return _Authorizer()
+        from tracebi.web.api.auth import _Authorizer
+        return _Authorizer(trust_role_header=trust_role_header)
 
     def _request(self, path="/api/models", method="GET", headers=None):
         from starlette.requests import Request
@@ -2670,29 +2973,29 @@ class TestAuthorization:
 
     # ── required role by side effect ──
     def test_reads_require_viewer(self):
-        from web.api.auth import _required_role
+        from tracebi.web.api.auth import _required_role
         assert _required_role("GET", "/api/models") == "viewer"
         assert _required_role("GET", "/api/reports") == "viewer"
 
     def test_executing_report_code_requires_analyst(self):
-        from web.api.auth import _required_role
+        from tracebi.web.api.auth import _required_role
         assert _required_role("POST", "/api/reports/x/run") == "analyst"
         assert _required_role("POST", "/api/requests/x/run") == "analyst"
 
     def test_writing_to_the_warehouse_requires_admin(self):
-        from web.api.auth import _required_role
+        from tracebi.web.api.auth import _required_role
         assert _required_role("POST", "/api/pipelines/p/layers/l/run") == "admin"
         assert _required_role("POST", "/api/_dev/reload") == "admin"
 
     def test_explore_and_validate_are_reads(self):
         # They compute but persist nothing, so they sit with the reads.
-        from web.api.auth import _required_role
+        from tracebi.web.api.auth import _required_role
         assert _required_role("POST", "/api/models/m/query") == "viewer"
         assert _required_role("POST", "/api/spec/validate") == "viewer"
 
     def test_unlisted_write_defaults_to_analyst_not_open(self):
         # A route added later must be guarded by default.
-        from web.api.auth import _required_role
+        from tracebi.web.api.auth import _required_role
         assert _required_role("POST", "/api/something/new") == "analyst"
         assert _required_role("DELETE", "/api/whatever") == "analyst"
 
@@ -2766,3 +3069,268 @@ class TestAuthorization:
         req = self._request(headers={"X-Groups": "analyst"})
         authz.check(req, "bob")
         assert req.state.role == "analyst"
+
+    # ── where the role header came from ──
+    def test_untrusted_role_header_is_not_a_role_source(self, monkeypatch):
+        # With no upstream to set it, the header is written by the principal
+        # it would promote, so the explicit map decides instead.
+        authz = self._authorizer(monkeypatch, trust_role_header=False,
+                                 TRACEBI_AUTH_ROLE_HEADER="X-Groups",
+                                 TRACEBI_AUTH_ROLE_MAP="bob:viewer")
+        req = self._request(headers={"X-Groups": "admin"})
+        assert authz.role_for(req, "bob") == "viewer"
+
+    def test_untrusted_role_header_alone_leaves_enforcement_off(self, monkeypatch):
+        # It is not a usable source, so it must not switch enforcement on —
+        # that would demote a running deployment to viewer with no way up.
+        authz = self._authorizer(monkeypatch, trust_role_header=False,
+                                 TRACEBI_AUTH_ROLE_HEADER="X-Groups")
+        assert authz.enabled is False
+        assert authz.role_for(self._request(headers={"X-Groups": "viewer"}),
+                              "bob") == "admin"
+
+    def test_stated_default_role_keeps_enforcement_on_without_the_header(
+        self, monkeypatch
+    ):
+        # The lockout the case above avoids is "nobody named a role". Here the
+        # operator named one, so it applies to everyone and the ignored header
+        # must not silently turn enforcement off.
+        authz = self._authorizer(monkeypatch, trust_role_header=False,
+                                 TRACEBI_AUTH_ROLE_HEADER="X-Groups",
+                                 TRACEBI_AUTH_DEFAULT_ROLE="analyst")
+        assert authz.enabled is True
+        assert authz.role_for(self._request(headers={"X-Groups": "admin"}),
+                              "bob") == "analyst"
+
+
+# ── Authorization over real HTTP ──────────────────────────────────────────────
+# The unit tests above hand _Authorizer a synthetic Request; these drive the
+# middleware that install_if_configured actually installs, and check the side
+# effect a denial is supposed to prevent — a pipeline layer writing to the
+# warehouse — not only the status code.
+
+class TestRoleHeaderTrust:
+    def _warehouse(self, tmp_path):
+        """A registered landing layer whose run writes a visible sink table."""
+        import pandas as pd
+        from sqlalchemy import create_engine
+        from tracebi import LandingLayer, PipelineRunner, SQLConnector
+
+        url = f"sqlite:///{tmp_path}/warehouse.db"
+        eng = create_engine(url)
+        pd.DataFrame({"id": [1, 2, 3]}).to_sql("orders_raw", eng, index=False)
+        db = SQLConnector("db", url=url)
+        runner = PipelineRunner(db_url=f"sqlite:///{tmp_path}/runner_meta.db")
+        runner.register(
+            LandingLayer(connector=db, source="orders_raw",
+                         sink=db, sink_table="orders_bronze"),
+            name="orders_bronze",
+        )
+        return eng, runner
+
+    def _app(self, runner):
+        from fastapi import FastAPI
+        app = FastAPI()
+
+        @app.post("/api/pipelines/sales/layers/{layer}/run")
+        def run_layer(layer: str):
+            runner.run(layer)
+            return {"status": "ok"}
+
+        return app
+
+    def _basic_env(self, monkeypatch, **env):
+        for k in ("TRACEBI_AUTH_PROXY_HEADER", "TRACEBI_AUTH_PROXY_TRUSTED_IPS",
+                  "TRACEBI_AUTH_ROLE_HEADER", "TRACEBI_AUTH_ROLE_MAP",
+                  "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_USER", "bob")
+        monkeypatch.setenv("TRACEBI_AUTH_PASS", "hunter2")
+        for k, v in env.items():
+            monkeypatch.setenv(k, v)
+
+    def test_basic_user_cannot_self_promote_and_nothing_runs(self, monkeypatch, tmp_path):
+        from fastapi.testclient import TestClient
+        from sqlalchemy import inspect
+        from tracebi.web.api.auth import install_if_configured
+
+        self._basic_env(monkeypatch,
+                        TRACEBI_AUTH_ROLE_HEADER="X-Forwarded-Groups",
+                        TRACEBI_AUTH_ROLE_MAP="bob:viewer")
+        eng, runner = self._warehouse(tmp_path)
+        app = self._app(runner)
+        assert install_if_configured(app) == "basic"
+
+        r = TestClient(app).post(
+            "/api/pipelines/sales/layers/orders_bronze/run",
+            auth=("bob", "hunter2"),
+            headers={"X-Forwarded-Groups": "admin"},
+        )
+        assert r.status_code == 403
+        # The point is not the status code: the layer must not have run.
+        assert "orders_bronze" not in inspect(eng).get_table_names()
+        assert runner.last_run("orders_bronze") is None
+
+    def test_client_header_does_not_override_the_role_map(self, monkeypatch, tmp_path):
+        # An operator pinned bob to analyst; bob claiming admin stays analyst.
+        from fastapi.testclient import TestClient
+        from tracebi.web.api.auth import install_if_configured
+
+        self._basic_env(monkeypatch,
+                        TRACEBI_AUTH_ROLE_HEADER="X-Forwarded-Groups",
+                        TRACEBI_AUTH_ROLE_MAP="bob:analyst")
+        eng, runner = self._warehouse(tmp_path)
+        app = self._app(runner)
+        install_if_configured(app)
+
+        r = TestClient(app).post(
+            "/api/pipelines/sales/layers/orders_bronze/run",
+            auth=("bob", "hunter2"),
+            headers={"X-Forwarded-Groups": "admin"},
+        )
+        assert r.status_code == 403
+        assert r.json()["detail"]["role"] == "analyst"
+        assert runner.last_run("orders_bronze") is None
+
+    def test_basic_with_role_header_and_no_map_is_not_locked_out(self, monkeypatch, tmp_path):
+        # Enforcement is opt-in: the only configured source is one Basic auth
+        # cannot trust, so this deployment keeps running its own pipelines.
+        from fastapi.testclient import TestClient
+        from sqlalchemy import inspect
+        from tracebi.web.api.auth import install_if_configured
+
+        self._basic_env(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Forwarded-Groups")
+        eng, runner = self._warehouse(tmp_path)
+        app = self._app(runner)
+        # The warning has to name the consequence, not just the fact: this is
+        # the configuration where nothing is enforced.
+        with pytest.warns(UserWarning,
+                          match="every authenticated caller is admin"):
+            install_if_configured(app)
+
+        r = TestClient(app).post(
+            "/api/pipelines/sales/layers/orders_bronze/run",
+            auth=("bob", "hunter2"),
+        )
+        assert r.status_code == 200
+        assert "orders_bronze" in inspect(eng).get_table_names()
+
+    def test_proxy_mode_still_takes_the_role_from_the_header(self, monkeypatch, tmp_path):
+        # Unchanged: the proxy is the identity source, so it is the role
+        # source too. It must strip client-supplied role headers.
+        from fastapi.testclient import TestClient
+        from sqlalchemy import inspect
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_ROLE_MAP", "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
+        monkeypatch.delenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_ROLE_HEADER", "X-Forwarded-Groups")
+        eng, runner = self._warehouse(tmp_path)
+        app = self._app(runner)
+        # TestClient reports a non-IP peer, so trusted_ips is left unset here.
+        with pytest.warns(UserWarning, match="TRUSTED_IPS"):
+            assert install_if_configured(app) == "proxy"
+
+        client = TestClient(app)
+        denied = client.post("/api/pipelines/sales/layers/orders_bronze/run",
+                             headers={"X-Forwarded-User": "alice",
+                                      "X-Forwarded-Groups": "analyst"})
+        assert denied.status_code == 403
+        assert "orders_bronze" not in inspect(eng).get_table_names()
+
+        allowed = client.post("/api/pipelines/sales/layers/orders_bronze/run",
+                              headers={"X-Forwarded-User": "alice",
+                                       "X-Forwarded-Groups": "admin"})
+        assert allowed.status_code == 200
+        assert "orders_bronze" in inspect(eng).get_table_names()
+
+    def test_role_config_without_an_auth_mode_warns_that_nothing_is_enforced(
+        self, monkeypatch
+    ):
+        # No auth mode means no middleware, so the role config does nothing.
+        from fastapi import FastAPI
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_PROXY_HEADER"):
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_ROLE_MAP", "bob:viewer")
+        app = FastAPI()
+        with pytest.warns(UserWarning, match="no role is enforced"):
+            assert install_if_configured(app) is None
+
+    def test_blank_role_header_with_no_auth_mode_does_not_warn(self, monkeypatch):
+        # A whitespace-only value is inert everywhere else; it must not be
+        # the one place that reports role config the deployment does not have.
+        import warnings
+        from fastapi import FastAPI
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_PROXY_HEADER", "TRACEBI_AUTH_ROLE_MAP"):
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_ROLE_HEADER", "   ")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert install_if_configured(FastAPI()) is None
+        assert [str(w.message) for w in caught] == []
+
+    def test_basic_stated_default_role_still_enforces_without_a_map(
+        self, monkeypatch, tmp_path
+    ):
+        # The operator set a role header (ignored here) *and* named the role
+        # everyone else gets. Ignoring the header must not also discard the
+        # default and hand every authenticated caller admin.
+        from fastapi.testclient import TestClient
+        from sqlalchemy import inspect
+        from tracebi.web.api.auth import install_if_configured
+
+        self._basic_env(monkeypatch,
+                        TRACEBI_AUTH_ROLE_HEADER="X-Forwarded-Groups",
+                        TRACEBI_AUTH_DEFAULT_ROLE="analyst")
+        eng, runner = self._warehouse(tmp_path)
+        app = self._app(runner)
+        install_if_configured(app)
+
+        # An honest caller, sending no role header at all.
+        r = TestClient(app).post(
+            "/api/pipelines/sales/layers/orders_bronze/run",
+            auth=("bob", "hunter2"),
+        )
+        assert r.status_code == 403
+        assert r.json()["detail"]["role"] == "analyst"
+        assert "orders_bronze" not in inspect(eng).get_table_names()
+
+    def test_proxy_takes_the_last_role_header_not_the_first(
+        self, monkeypatch, tmp_path
+    ):
+        # A proxy that appends rather than replaces leaves the client's copy
+        # in front of its own; reading the first would restore the very
+        # self-promotion this module closes one mode over.
+        from fastapi.testclient import TestClient
+        from sqlalchemy import inspect
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_ROLE_MAP", "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
+        monkeypatch.delenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_ROLE_HEADER", "X-Forwarded-Groups")
+        eng, runner = self._warehouse(tmp_path)
+        app = self._app(runner)
+        with pytest.warns(UserWarning, match="TRUSTED_IPS"):
+            install_if_configured(app)
+
+        r = TestClient(app).post(
+            "/api/pipelines/sales/layers/orders_bronze/run",
+            headers=[("x-forwarded-user", "alice"),
+                     ("x-forwarded-groups", "admin"),    # the client's claim
+                     ("x-forwarded-groups", "viewer")],  # the proxy's, appended
+        )
+        assert r.status_code == 403
+        assert r.json()["detail"]["role"] == "viewer"
+        assert "orders_bronze" not in inspect(eng).get_table_names()

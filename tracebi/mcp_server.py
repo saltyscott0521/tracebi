@@ -352,9 +352,16 @@ def gateway_verify_manifest(manifest: Any) -> dict:
 
     *manifest* is the manifest as a dict, or a path to the
     ``*.manifest.json`` file ``render_report_spec`` wrote. On success the
-    result carries per-section classifications plus a summary; ``ok`` is
-    True only when every section reproduces or is unverifiable — a drifted
-    or unexplained receipt is not an ok one.
+    result carries per-section classifications, a summary, and a
+    receipt-level ``verdict`` with a human-readable ``verdict_detail``.
+    ``ok`` is False for a drifted or unexplained receipt, and for one with
+    no data-bearing section at all — nothing was verified, so nothing
+    passed. Read the verdict, not just ``ok``: only ``reproduces`` means a
+    number was re-run and matched, and it names any section it could not
+    check, so read ``verdict_detail`` with it. ``unverifiable`` (every
+    section hand-transformed or python-authored) is ``ok`` but proves
+    nothing; ``refused_newer_schema`` means this tracebi declined to read
+    the manifest at all, which is not the same as finding nothing in it.
     """
     from tracebi.verify import load_models, verify_manifest
 
@@ -494,7 +501,9 @@ def build_server(token: Optional[str] = None):
             "classify each section: reproduces, source_drift (an input "
             "fingerprint moved), unexplained (result differs but inputs "
             "match), or unverifiable (no recorded query). Closes the loop "
-            "on your own receipts."
+            "on your own receipts. Check the receipt-level verdict, not "
+            "just ok: only 'reproduces' means a number was re-run and "
+            "matched, and a manifest with nothing to check is not a pass."
         ),
     )(gateway_verify_manifest)
 

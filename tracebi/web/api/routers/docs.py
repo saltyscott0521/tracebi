@@ -31,7 +31,8 @@ def _docs_dir() -> Path:
     cwd_docs = Path.cwd() / "docs"
     if cwd_docs.is_dir():
         return cwd_docs
-    return Path(__file__).resolve().parents[3] / "docs"
+    # tracebi/web/api/routers/docs.py → four levels up is the repo root.
+    return Path(__file__).resolve().parents[4] / "docs"
 
 
 def _title(path: Path) -> str:

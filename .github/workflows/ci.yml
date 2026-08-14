@@ -78,6 +78,53 @@ jobs:
           print("base install is clean")
           PY
 
+  wheel:
+    name: wheel ships the built UI
+    runs-on: ubuntu-latest
+    # tracebi/web/ui/dist is gitignored, so a wheel cut from a clean tree ships
+    # the FastAPI app with no bundle and serves the "UI not built" page instead
+    # of the app. Build the UI, build the wheel, assert the bundle is inside it
+    # — and that the wheel still ships nothing at the top level named web/.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build the UI
+        run: npm ci && npm run build
+        working-directory: web/ui
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Build the wheel
+        run: |
+          pip install build
+          python -m build --wheel
+
+      - name: Wheel contains the built UI and the web app
+        run: |
+          python - <<'PY'
+          import glob, zipfile
+          whl, = glob.glob("dist/*.whl")
+          names = set(zipfile.ZipFile(whl).namelist())
+          for required in ("tracebi/web/api/main.py", "tracebi/web/ui/dist/index.html"):
+              assert required in names, f"{required} missing from {whl}"
+          # `web.py` on PyPI owns a top-level `web/` in site-packages. Shipping
+          # one here means pip silently overwrites whichever is installed
+          # second, so nothing top-level may leave this wheel.
+          top = {n.split("/")[0] for n in names}
+          assert "web" not in top, f"{whl} ships a top-level web/ again: {sorted(top)}"
+          print(f"{whl} ships the web app and the built UI, and nothing top-level named web/")
+          PY
+
   lint:
     name: ruff
     runs-on: ubuntu-latest
@@ -95,4 +142,4 @@ jobs:
         run: pip install "ruff>=0.4"
 
       - name: Lint
-        run: ruff check tracebi/ tests/ web/
+        run: ruff check tracebi/ tests/ api/

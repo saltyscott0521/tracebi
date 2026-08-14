@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from web.api.registry import registry
+from tracebi.web.api.registry import registry
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 

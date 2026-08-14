@@ -33,7 +33,7 @@ import os
 import sys
 from pathlib import Path
 
-# The repo root must be importable so `web.api.main`, `models/`, and
+# The repo root must be importable so `tracebi.web.api.main`, `models/`, and
 # `pipelines/` resolve the same way they do locally. Vercel runs functions
 # from the project root, but be explicit rather than relying on it.
 _ROOT = Path(__file__).resolve().parent.parent
@@ -50,12 +50,12 @@ os.chdir(_ROOT)
 # This is now a default rather than a hard rule. It used to be the latter: the
 # bundled demo app wrote its pipeline SQLite into the checkout, which raises on
 # a read-only serverless filesystem and took the demo's reports and connectors
-# down with it. web/demo_app/pipeline.py now falls back to a writable location,
-# so setting TRACEBI_APP=web.demo_app here is a supported way to deploy the
+# down with it. tracebi/web/demo_app/pipeline.py now falls back to a writable location,
+# so setting TRACEBI_APP=tracebi.web.demo_app here is a supported way to deploy the
 # demo — that is exactly what tracebi.com does. Import cost is ~1.4s including
 # the six-layer pipeline run, most of which is importing pandas either way.
 os.environ.setdefault("TRACEBI_APP", "")
 
-from web.api.main import app  # noqa: E402  (after sys.path/env setup)
+from tracebi.web.api.main import app  # noqa: E402  (after sys.path/env setup)
 
 __all__ = ["app"]

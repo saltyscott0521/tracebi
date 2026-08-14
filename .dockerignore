@@ -25,7 +25,7 @@ htmlcov/
 
 # The UI is built in the ui-builder stage; never copy host node_modules/dist.
 web/ui/node_modules/
-web/ui/dist/
+tracebi/web/ui/dist/
 
 # Not needed at runtime
 tests/

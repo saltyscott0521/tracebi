@@ -185,7 +185,11 @@ Rendered HTML is disposable; the manifest is not — retain it. Later,
 each section's recorded model query and reporting whether the numbers still
 reproduce, whether the source data drifted, or whether the model itself
 changed. (Sections built from hand-transformed DataSets carry no recorded
-query and are reported as `unverifiable` rather than guessed at.)
+query and are reported as `unverifiable` rather than guessed at. A report
+whose sections are *all* unverifiable still exits 0, but the verdict reads
+`NOTHING VERIFIED` — nothing in it was checked. A manifest with no
+data-bearing section at all exits 1: there was nothing to check, so there is
+nothing to pass.)
 
 ## 7. Publish to the web UI
 
@@ -258,5 +262,5 @@ registration needed.
 
 **Stuck?** `ds.help()` and `model.help()` print these cheat sheets in any
 session. The [examples/](../examples/) directory has complete runnable
-walkthroughs, and `web/demo_app/reports/` shows production-shaped report
+walkthroughs, and `tracebi/web/demo_app/reports/` shows production-shaped report
 factories.

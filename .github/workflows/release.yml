@@ -1,0 +1,73 @@
+name: Build release wheel (no publish)
+
+# Builds the one artifact a user can install and get a working `tracebi serve`
+# from: a wheel with tracebi/web/ui/dist inside it. The repo tree cannot
+# produce that on its own — the bundle is gitignored, so
+# `pip install "tracebi @ git+..."` builds from sources that have none. This
+# job runs npm first (vite writes into the package).
+#
+# There is DELIBERATELY NO PUBLISH STEP: no PyPI upload, no credentials, no
+# secrets of any kind. Publishing is the maintainer's decision — download the
+# artifact from the run and upload it by hand. For the same reason this never
+# runs on push to main; only on demand or on a tag.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    name: wheel with the built UI (artifact only — nothing is published)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build the UI
+        run: npm ci && npm run build
+        working-directory: web/ui
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # --wheel, not a full build: `python -m build` builds the wheel *from the
+      # sdist*, and the sdist has no tracebi/web/ui/dist — the bundle would be dropped
+      # on the way through.
+      - name: Build the wheel
+        run: |
+          pip install build
+          python -m build --wheel
+
+      - name: Wheel contains the built UI and the web app
+        run: |
+          python - <<'PY'
+          import glob, zipfile
+          whl, = glob.glob("dist/*.whl")
+          names = set(zipfile.ZipFile(whl).namelist())
+          for required in ("tracebi/web/api/main.py", "tracebi/web/ui/dist/index.html"):
+              assert required in names, f"{required} missing from {whl}"
+          # `web.py` on PyPI owns a top-level `web/` in site-packages. Shipping
+          # one here means pip silently overwrites whichever is installed
+          # second, so nothing top-level may leave this wheel.
+          top = {n.split("/")[0] for n in names}
+          assert "web" not in top, f"{whl} ships a top-level web/ again: {sorted(top)}"
+          print(f"{whl} ships the web app and the built UI, and nothing top-level named web/")
+          PY
+
+      - name: Upload the distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: tracebi-wheel
+          path: dist/*.whl

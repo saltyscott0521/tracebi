@@ -32,4 +32,6 @@ data/
 *.sqlite3
 
 web/ui/node_modules/
-web/ui/dist/
+# vite's build.outDir writes the bundle into the Python package so the wheel
+# can carry it; the build output is still disposable and stays untracked.
+tracebi/web/ui/dist/

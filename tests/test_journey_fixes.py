@@ -82,7 +82,7 @@ class TestServeWithoutWebPackage:
         assert rc != 0
         # Actionable: name the problem, offer the clone and PYTHONPATH
         # escapes, and give the real (git-URL) install line.
-        assert "'web' package" in err
+        assert "tracebi.web.api" in err
         assert "git clone https://github.com/saltyscott0521/tracebi" in err
         assert "PYTHONPATH" in err
         assert _GIT_URL_FORM in err

@@ -24,6 +24,16 @@ models and data and classifies the outcome:
 * **error** — the recorded query could not be re-run at all (model missing,
   query raises). Loud, never silently skipped.
 
+The whole receipt then gets one **verdict** (:data:`VERDICT_EXIT_CODES`),
+which is what the exit code and the ``ok`` boolean are both derived from.
+``reproduces`` is the only verdict that means a number was re-run and
+matched: a manifest with no data-bearing section (``nothing_to_verify``),
+one whose every section is unverifiable (``unverifiable``), and one this
+checker refused to read at all (``refused_newer_schema``) each say so in
+their own words rather than borrowing the passing one's — and each says
+*which* of the three it is, because "there was nothing to check" and "I
+could not check it" are different facts about the receipt.
+
 Consumed by ``tracebi verify <manifest.json>`` and by the gateway's
 ``verify_manifest`` MCP tool; both are thin presentation layers over
 :func:`verify_manifest` here.
@@ -62,6 +72,96 @@ STATUS_LABELS = {
 #: failure, never toward the reassuring guess.
 _ALARMING = (UNEXPLAINED, MODEL_CHANGED, MISMATCH_UNKNOWN, ERROR)
 
+# ── Receipt-level verdicts ─────────────────────────────────────────────────
+# The one-line answer for a whole manifest. Section statuses say what
+# happened to each number; the verdict says what the receipt as a whole
+# proves. Three of them exist because "nothing was verified", "I refused to
+# read this", and "everything reproduced" must never be the same answer.
+
+#: No data-bearing section at all — there was nothing to check. A manifest
+#: that records no checkable number is a broken receipt, not a passing one.
+NOTHING_TO_VERIFY = "nothing_to_verify"
+#: The manifest was written by a newer tracebi, so this checker declined to
+#: read it. Distinct from ``nothing_to_verify``: the receipt may be full of
+#: data-bearing sections, and saying otherwise would be a false answer.
+REFUSED_NEWER_SCHEMA = "refused_newer_schema"
+#: At least one section could not be shown to reproduce, cause undiagnosed.
+NOT_REPRODUCED = "not_reproduced"
+
+#: verdict → exit code, and the *only* place either the process exit status
+#: or the ``ok`` boolean is decided (``ok`` is ``exit_code == 0``), so the
+#: CLI's status and the gateway's boolean cannot disagree by construction.
+VERDICT_EXIT_CODES = {
+    REPRODUCES:           0,
+    UNVERIFIABLE:         0,
+    SOURCE_DRIFT:         2,
+    NOT_REPRODUCED:       1,
+    NOTHING_TO_VERIFY:    1,
+    REFUSED_NEWER_SCHEMA: 1,
+}
+
+#: The one-line verdict the CLI prints and the gateway returns as
+#: ``verdict_detail``.
+VERDICT_LABELS = {
+    REPRODUCES:
+        "REPRODUCES — every checked section matches the manifest",
+    UNVERIFIABLE:
+        "NOTHING VERIFIED — every section is unverifiable; no number in "
+        "this receipt was checked",
+    NOTHING_TO_VERIFY:
+        "NOTHING VERIFIED — this manifest has no data-bearing section; "
+        "there was nothing to check",
+    REFUSED_NEWER_SCHEMA:
+        "NOT CHECKED — this manifest was written by a newer tracebi than "
+        "this one; it was refused, not verified (see 'error')",
+    SOURCE_DRIFT:
+        "SOURCE DRIFT — section(s) differ and the inputs they load moved",
+    NOT_REPRODUCED:
+        "NOT REPRODUCED — section(s) could not be shown to reproduce; "
+        "explain before anyone reads the number",
+}
+
+
+def _verdict(summary: Mapping[str, int]) -> str:
+    """The receipt-level answer, derived once from the section counts."""
+    if not any(summary.values()):
+        return NOTHING_TO_VERIFY
+    if any(summary[s] for s in _ALARMING):
+        return NOT_REPRODUCED
+    if summary[SOURCE_DRIFT]:
+        return SOURCE_DRIFT
+    if not summary[REPRODUCES]:
+        return UNVERIFIABLE
+    return REPRODUCES
+
+
+def _verdict_fields(
+    verdict: str, summary: Optional[Mapping[str, int]] = None,
+) -> dict:
+    """The four verdict keys every result carries, all from one lookup.
+
+    A passing receipt that still holds unverifiable sections says how many:
+    the verdict stays ``reproduces`` (nothing failed, and an unverifiable
+    section is a legitimate authoring state, so exit 0 is right), but one
+    checked section out of a hundred must not read like a hundred.
+    """
+    code = VERDICT_EXIT_CODES[verdict]
+    detail = VERDICT_LABELS[verdict]
+    unchecked = (summary or {}).get(UNVERIFIABLE, 0)
+    if verdict == REPRODUCES and unchecked:
+        checked = summary[REPRODUCES]
+        detail = (
+            f"REPRODUCES — {checked} of {checked + unchecked} section(s) "
+            f"checked and matching; {unchecked} unverifiable, so this "
+            f"receipt does not prove them"
+        )
+    return {
+        "verdict": verdict,
+        "verdict_detail": detail,
+        "exit_code": code,
+        "ok": code == 0,
+    }
+
 
 def load_models(models_dir: Union[str, Path, None] = None) -> dict:
     """
@@ -95,8 +195,9 @@ def load_models(models_dir: Union[str, Path, None] = None) -> dict:
 
 
 def _walk_sections(sections: list) -> list:
-    """All section dicts in order, descending into row containers —
-    mirrors ``Report.data_sections()`` so nested sections aren't skipped."""
+    """All section dicts in order, descending into containers — every
+    section that nests children records them under ``sections``, whatever
+    its section_type, so nested sections aren't skipped."""
     out: list = []
     for s in sections or []:
         if not isinstance(s, dict):
@@ -271,15 +372,24 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
                         "expected_fingerprint", "actual_fingerprint",
                         "model", "query_spec", "inputs"}, ...],
           "summary": {status: count, ...},
+          "verdict": "reproduces" | "unverifiable" | "nothing_to_verify"
+                     | "refused_newer_schema" | "source_drift"
+                     | "not_reproduced",
+          "verdict_detail": str,
           "exit_code": 0 | 1 | 2,
           "ok": bool,     # exit_code == 0
         }
 
     Only data-bearing sections (those carrying a ``dataset_fingerprint``)
     are classified; presentation-only sections have nothing to verify.
-    Exit code: 0 when everything reproduces or is unverifiable, 2 when the
-    only failures are diagnosed source drift, 1 when anything is
-    unexplained, of unknown cause, or errored.
+    The verdict is the receipt-level answer and the only input to the exit
+    code (see :data:`VERDICT_EXIT_CODES`): 0 when at least one section
+    reproduced and none failed, or when every section is honestly
+    unverifiable; 2 for diagnosed source drift only; 1 when anything is
+    unexplained, of unknown cause, errored, when there was nothing to check
+    at all, or when the manifest was refused as too new. ``reproduces`` is
+    the only verdict meaning a number in this receipt was re-run and
+    matched, and it names any sections it could not check.
     """
     from tracebi.reports.report import MANIFEST_SCHEMA_VERSION
 
@@ -292,8 +402,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
             "schema_version": sv,
             "sections": [],
             "summary": {status: 0 for status in STATUS_LABELS},
-            "exit_code": 1,
-            "ok": False,
+            **_verdict_fields(REFUSED_NEWER_SCHEMA),
             "error": (
                 f"manifest schema_version {sv} is newer than this tracebi "
                 f"supports ({MANIFEST_SCHEMA_VERSION}); upgrade tracebi to "
@@ -312,18 +421,10 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
     for r in results:
         summary[r["status"]] += 1
 
-    if any(summary[s] for s in _ALARMING):
-        exit_code = 1
-    elif summary[SOURCE_DRIFT]:
-        exit_code = 2
-    else:
-        exit_code = 0
-
     return {
         "report_name": manifest.get("report_name"),
         "schema_version": manifest.get("schema_version"),
         "sections": results,
         "summary": summary,
-        "exit_code": exit_code,
-        "ok": exit_code == 0,
+        **_verdict_fields(_verdict(summary), summary),
     }

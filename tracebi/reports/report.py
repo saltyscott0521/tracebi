@@ -12,7 +12,9 @@ what data was used, what code produced it, and when it was run.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence, Set as AbstractSet
+from contextvars import ContextVar
+from dataclasses import dataclass, field, fields as dataclass_fields, is_dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional, Union
@@ -75,6 +77,75 @@ def _reject_unknown(value: str, allowed: tuple[str, ...], field: str, cls: str) 
     )
 
 
+# Ancestry of the manifest serialisation currently in flight, as id()s, so a
+# child that points back at one of its own ancestors is recognised as a
+# back-edge rather than descended into forever. A ContextVar, not a module
+# global — concurrent renders in one process must not see each other's stack.
+# The same section object appearing twice in different branches is a DAG, not
+# a cycle, and is fine.
+_SECTION_ANCESTRY: ContextVar[tuple] = ContextVar("_section_ancestry", default=())
+
+
+def _nested_sections(value: Any, path: Optional[set] = None) -> list:
+    """Every ReportSection reachable from *value* through plain containers.
+
+    A container is a Sequence, Set or Mapping — list, tuple, deque, set,
+    frozenset, dict and their kin — with strings excluded and both keys and
+    values of a mapping searched. Deliberately not iterators or generators:
+    reading one consumes it, and building a manifest must not empty the
+    report it is describing. Deliberately not pandas/numpy objects either,
+    which are iterable but hold values, not layout.
+
+    Sections found are not descended into here — that happens through their
+    own ``to_manifest_dict()``, so an override anywhere in the tree is
+    honoured. Anything else is not lineage-bearing and is ignored: a custom
+    container may hold labels, widths, or DataFrames alongside its children.
+
+    *path* carries the containers currently open, so a list that contains
+    itself stops instead of recursing until the stack dies.
+    """
+    if isinstance(value, ReportSection):
+        return [value]
+    if isinstance(value, (str, bytes, bytearray)):
+        return []
+    if isinstance(value, Mapping):
+        items = [*value.keys(), *value.values()]
+    elif isinstance(value, (Sequence, AbstractSet)):
+        items = list(value)
+    else:
+        return []
+    path = set() if path is None else path
+    if id(value) in path:
+        return []
+    path.add(id(value))
+    try:
+        return [s for v in items for s in _nested_sections(v, path)]
+    finally:
+        path.discard(id(value))
+
+
+def _child_sections(section: Any, ancestry: tuple = ()) -> list:
+    """The sections *section* holds, in attribute-declaration order.
+
+    Declared dataclass fields *and* ``__dict__`` — the union, because
+    neither alone covers every way a section can be written:
+    ``@dataclass(slots=True)`` keeps its values out of ``__dict__``, and a
+    plain (non-dataclass) subclass declares no fields.
+
+    Attribute inspection also finds edges that point *up* — a parent
+    back-pointer, a cached owner reference. Those are not containment, so
+    anything already on the path from the root (*ancestry*, plus the section
+    itself) is dropped: it has been, or is being, serialised by the ancestor
+    that really holds it.
+    """
+    names = [f.name for f in dataclass_fields(section)] if is_dataclass(section) else []
+    names += [n for n in vars(section) if n not in names]
+    found = _nested_sections([getattr(section, n, None) for n in names])
+    seen = set(ancestry)
+    seen.add(id(section))
+    return [s for s in found if id(s) not in seen]
+
+
 @dataclass
 class ReportSection:
     """
@@ -121,6 +192,31 @@ class ReportSection:
             d["dataset_shape"] = list(dataset.shape)
             d["dataset_lineage"] = dataset.lineage_to_dict()
             d["dataset_fingerprint"] = dataset.fingerprint()
+        # A container section holds its children in some attribute — 'sections'
+        # on RowSection, 'panes' on a project's tabs block, possibly inside
+        # tuples or dicts. They are found by inspection rather than by a
+        # protocol the author opts into, because forgetting to opt in is
+        # exactly how a page of real figures ended up with a manifest carrying
+        # no lineage and no fingerprint at all, which `tracebi verify` then
+        # passed as "no data-bearing sections".
+        #
+        # Recorded under "sections" whatever the attribute was named: that is
+        # the one key every manifest consumer already descends into
+        # (tracebi/verify.py:_walk_sections), and it is omitted when there are
+        # no children so a leaf section's manifest shape is unchanged.
+        #
+        # An edge back to an ancestor is dropped rather than raised over: a
+        # section holding a `parent` reference is ordinary, it renders fine,
+        # and refusing to serialise its manifest would produce exactly the
+        # artifact-without-a-receipt this code exists to prevent.
+        ancestry = _SECTION_ANCESTRY.get()
+        children = _child_sections(self, ancestry)
+        if children:
+            token = _SECTION_ANCESTRY.set(ancestry + (id(self),))
+            try:
+                d["sections"] = [s.to_manifest_dict() for s in children]
+            finally:
+                _SECTION_ANCESTRY.reset(token)
         return d
 
 
@@ -367,10 +463,9 @@ class RowSection(ReportSection):
     def __post_init__(self):
         self.section_type = SectionType.ROW
 
-    def to_manifest_dict(self) -> dict:
-        d = super().to_manifest_dict()
-        d["sections"] = [s.to_manifest_dict() for s in self.sections]
-        return d
+    # No to_manifest_dict override: the base class now finds the children in
+    # `sections` itself and records them under the same key. Keeping the
+    # override would only fingerprint every nested DataSet a second time.
 
 
 # ─────────────────────────────────────────────────────────────
@@ -572,25 +667,34 @@ class Report:
         return list(self._sections)
 
     def data_sections(self) -> list[ReportSection]:
-        """All leaf sections in order, descending into RowSection containers.
+        """All leaf sections in order, descending into container sections.
 
         Use this when walking the report for datasets/lineage so sections
-        nested inside layout rows are not missed. Recursion is unbounded:
-        RowSection renders nested rows fine, so anything shallower would
-        drop those datasets from the lineage graph and the manifest —
-        silently breaking the audit trail on exactly the reports that are
-        most elaborate.
+        nested inside a layout row — or inside any other section that holds
+        children, including a project-defined container the framework has
+        never heard of — are not missed. Recursion is unbounded: RowSection
+        renders nested rows fine, so anything shallower would drop those
+        datasets from the lineage graph, silently breaking the audit trail on
+        exactly the reports that are most elaborate. (The manifest is built by
+        ``ReportSection.to_manifest_dict()``, which descends on its own; the
+        two use the same ``_child_sections`` so they cannot disagree.)
+
+        A container that carries a DataSet of its own is returned as well as
+        descended into — it is both a leaf and a container.
         """
         out: list[ReportSection] = []
 
-        def _walk(sections: list[ReportSection]) -> None:
+        def _walk(sections: list[ReportSection], ancestry: tuple) -> None:
             for s in sections:
-                if isinstance(s, RowSection):
-                    _walk(s.sections)
-                else:
+                children = _child_sections(s, ancestry)
+                if not children:
                     out.append(s)
+                    continue
+                if isinstance(getattr(s, "dataset", None), DataSet):
+                    out.append(s)
+                _walk(children, ancestry + (id(s),))
 
-        _walk(self._sections)
+        _walk(self._sections, ())
         return out
 
     def build_manifest(self, format: str, output_path: str) -> ReportManifest:

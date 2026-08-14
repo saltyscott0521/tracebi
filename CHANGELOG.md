@@ -6,6 +6,81 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — **BREAKING**: the FastAPI app moved to `tracebi.web.api`
+
+The wheel shipped the library but not the FastAPI app, so an installed TraceBi
+had no server at all — `tracebi serve` could not work from a pip install, and
+`uvicorn web.api.main:app` had nothing to import. The obvious fix was to add a
+top-level `web` package to the wheel; that would have installed a directory
+literally named `web/` into site-packages, and `web.py` is a real PyPI
+distribution that owns exactly that path. Install both and pip overwrites
+`web/__init__.py` with whichever landed second, reports nothing, and
+`pip check` stays clean — so one of the two silently stops working. Verified by
+execution against a wheel built that way: with `web.py` installed first,
+`hasattr(web, "application")` goes from `True` to `False` and every web.py
+program in that environment raises `AttributeError`.
+
+So the app ships inside the distribution instead, and both coexist.
+
+The app now lives inside the distribution, as a pure prefix insertion:
+
+| Before | Now |
+|---|---|
+| `web.api.*` | `tracebi.web.api.*` |
+| `web.demo_app` | `tracebi.web.demo_app` |
+| `python web/run.py` | `python -m tracebi.web.run` |
+| `uvicorn web.api.main:app` | `uvicorn tracebi.web.api.main:app` |
+
+`tracebi/web/__init__.py` — the `register` facade — is untouched:
+`from tracebi.web import register` works exactly as before.
+
+**There is no back-compat shim at top-level `web`.** A shim only helps an
+installed user if it is packaged, and packaging it re-creates the collision
+this change exists to remove. TraceBi is pre-1.0 and unpublished, so the
+honest fix is the rename plus this entry. If you pinned `uvicorn
+web.api.main:app` (the old README and docker-compose spelling), change it to
+`uvicorn tracebi.web.api.main:app`; if you set `TRACEBI_APP=web.demo_app`,
+set `TRACEBI_APP=tracebi.web.demo_app`.
+
+**Upgrading in place: delete any leftover `web/api` and `web/demo_app`
+directories.** `git pull` cannot remove a directory that still holds an
+untracked file, and a stale `__pycache__` is exactly that — so the old paths
+survive as *empty namespace packages*. `TRACEBI_APP=web.demo_app` would then
+import successfully, register nothing, raise nothing, and boot a server that
+passes every healthcheck with an empty registry. Rather than leave that to
+chance, a `TRACEBI_APP` naming the top-level `web` package is now refused at
+startup with the replacement spelling, whether or not it imports.
+
+The React source stays a Node workspace at the repo root (`web/ui/`), but
+vite's `build.outDir` now writes to `tracebi/web/ui/dist` — inside the
+package, which is what lets the wheel carry the bundle. `main.py`'s lookup
+(`<its own dir>/../ui/dist`) is unchanged; Dockerfile, `vercel.json`,
+`.gitignore`, `.dockerignore` and both CI workflows follow the new path. CI
+now also asserts the wheel ships **nothing** top-level named `web`.
+
+### Fixed — a derived default multiplied the number it was presenting
+
+`HTMLRenderer`'s derived defaults picked the `percent` format from a column
+*name* alone (`_pct`, `_rate`, `_ratio`), and `percent` is `{:.1%}`, which
+multiplies by 100. Both conventions live here — a declared ratio measure holds
+`0.069`, a hand-computed `pct_change().mul(100)` holds `12.5` — so the shipped
+`revenue_trend` demo rendered 12.5% growth as **`1250.0%`**, with a complete
+lineage chain attached. The suffix hint now applies only when every non-null
+value is fraction-shaped (`|v| <= 1.5`); otherwise the column keeps its own
+magnitude and loses the `%`. A model-declared measure format still wins over
+the guard. `year` / `id` / `*_key` columns no longer get thousands separators
+(`2024`, not `2,024`), and a repeated column label derives no format instead of
+raising out of the render.
+
+The demo keeps storing `12.5`, so `revenue_trend` now reads `12.50` under its
+`MoM Growth %` heading in HTML and `12.5` in Excel — the same number in both.
+`ExcelRenderer` does not derive defaults, so changing the stored convention to
+suit the HTML renderer would have moved the hundredfold error into the
+spreadsheet rather than removing it. `models/wealth_model.py` did hold a
+genuinely pre-scaled column: fund expense ratios written as `0.0945` meaning
+0.0945%, which no value-shaped guard can distinguish from a fraction. That is
+now `expense_ratio_bps` in basis points (`9.45`), stating its unit in its name.
+
 ### Added — the verify loop (`tracebi verify`, `verify_manifest`)
 
 Every `DataModel` query now fingerprints each source table as it loads
@@ -18,6 +93,19 @@ connector: a governance event, alarming, never counted as benign drift),
 `unexplained` (inputs match, result doesn't — the alarm), `unverifiable`
 (no recorded query, or post-query transforms). Exit codes 0/2/1. A newer
 manifest `schema_version` refuses to verify rather than guess.
+
+The receipt as a whole then gets one **verdict**, the single source of both
+the exit code and `ok` (`ok` is `exit_code == 0` by construction, so they
+cannot disagree). `reproduces` is the only verdict meaning a number was
+re-run and matched: a manifest with no data-bearing section is
+`nothing_to_verify` and exits **1** — nothing was checked, so nothing passed
+— a manifest whose every section is hand-transformed is `unverifiable`,
+still exit 0 because that is a legitimate authoring state, but it now says
+so instead of answering the way a reproduced receipt does; and a manifest
+refused for a newer `schema_version` is `refused_newer_schema`, which is
+"could not check" rather than "nothing to check". A receipt that does
+reproduce still names any sections it could not check, so one checked
+section out of a hundred does not read like a hundred.
 
 ### Changed — validation before execution actually is
 
@@ -32,6 +120,33 @@ shape. A bare filter that collides with a dimension attribute warns (both
 readings stated) instead of erroring, since execution accepts the
 fact-column reading.
 
+### Fixed — the wheel ships the app it tells you to serve
+
+`[tool.hatch.build.targets.wheel]` now ships the app in the wheel, with an
+`artifacts` entry for the bundle because hatchling's file selection honours
+`.gitignore` and the built bundle is gitignored — `packages` alone produced an
+installed server whose `tracebi serve` died on `ModuleNotFoundError`. (This
+first shipped the app as a second top-level package named `web`; see the
+`tracebi.web.api` entry above for why that did not survive contact with
+site-packages, and for the paths as they stand now.) A CI job builds the wheel
+and asserts the bundle is inside it, and `.github/workflows/release.yml`
+(`workflow_dispatch` or a tag; it builds an artifact and deliberately
+publishes nothing) is the path that produces such a wheel.
+
+The bundle is not in the repo, so it is not in a
+`pip install "tracebi[web] @ git+https://…"` either: that install gives you
+the library and the whole REST API, and no UI. README and `tracebi init`'s
+README now say so instead of implying otherwise.
+
+Relatedly, `/` no longer answers a bare 404 when the UI has not been built.
+It serves a page — JSON for clients that did not ask for HTML — naming the
+remedy that fits the tree it is running in: the `npm run build` command with
+a real path from a checkout, and from an installed package the fact that
+this install carries no bundle. The same line goes to stderr once at
+startup. The gate is `web/ui/dist/index.html`, not the directory, because a
+failed `npm run build` leaves the directory behind empty. The API is
+unaffected — a missing bundle is not an outage.
+
 ### Added — HTTP gateway auth
 
 `tracebi mcp --transport http` refuses to start without a decision: set
@@ -39,6 +154,42 @@ fact-column reading.
 or pass `--insecure` explicitly. Whitespace-only tokens count as unset.
 A posture line (transport / auth mode / actor) prints on startup, after
 the server actually builds. stdio is unchanged.
+
+### Fixed — a custom container section no longer forfeits its lineage
+
+`ReportSection.to_manifest_dict()` and `Report.data_sections()` now find
+nested sections wherever a container keeps them — any attribute holding
+sections, directly or inside a list, tuple, deque, set, frozenset or dict
+(keys as well as values) — and the manifest records them under `sections`,
+the key `tracebi verify` already descends into. Previously only `RowSection`
+descended, so a project-defined container (the `section_renderers` seam:
+tabs, panels, anything the framework has never heard of) rendered real
+figures and produced a manifest with no lineage and no fingerprint at all,
+which `tracebi verify` then passed as "no data-bearing sections" — and the
+HTML lineage appendix, the Excel lineage sheet, `LineageDiagram` and the
+`/api/reports/{name}/lineage` graph were blank for the same reason. Both
+halves now walk the same helper, so the receipt and the page cannot disagree
+about one report. Discovery is by inspection, not by a protocol the section
+author opts into, because forgetting to opt in was the bug.
+
+Iterators and generators are deliberately *not* searched: reading one
+consumes it, and building a receipt must never empty the report it
+describes. An edge that points back up the tree — a `parent` attribute, a
+cached owner — is skipped rather than descended into, so an ordinary
+back-pointer costs nothing and cannot fail a render. The same section
+appearing twice in different branches is a DAG, not a cycle, and is
+serialised in both places; a deeply nested diamond therefore costs
+exponentially many paths (a 12-deep one is a 2 MB manifest), which no
+report-shaped input reaches but which nothing currently caps.
+
+Renderers now build the manifest *before* writing the artifact, so a failure
+on the way to the receipt can no longer leave a rendered file on disk that
+nothing can audit — the state this whole mechanism exists to prevent.
+
+`schema_version` stays 1: the `sections` key and its meaning are unchanged —
+sections that were silently dropped now appear. Re-render any manifest
+produced from a custom container to get its receipt back
+(`output/interactive_report.html.manifest.json` is one).
 
 ### Fixed — analyst-journey and receipt-retention defects
 
@@ -52,6 +203,27 @@ are actually retainable (the old `output/` directory rule made the
 negation impossible, which is also why the agent-gateway example's own
 manifest had silently never been committed).
 
+
+### Security — the role header is only trusted from an upstream proxy
+
+`TRACEBI_AUTH_ROLE_HEADER` used to be read off the raw client request
+whatever the auth mode, so under Basic auth any authenticated caller could
+send it and promote themselves to `admin` — running pipeline layers,
+overriding a `TRACEBI_AUTH_ROLE_MAP` entry that deliberately pinned them to
+`viewer`, and having the forged role written into the audit trail.
+`_Authorizer` now takes a required `trust_role_header`: proxy mode passes
+`True` (the proxy sets the header, and must replace any client copy), Basic
+auth passes `False`. An untrusted header is not a role source on its own, so
+a Basic deployment whose *only* role config is that header keeps behaving
+exactly as before rather than dropping to `viewer`; an explicitly-set
+`TRACEBI_AUTH_DEFAULT_ROLE` is a usable source, so that deployment stays
+enforced at the role the operator named. `install_if_configured` warns at
+startup that the header is ignored and says what that leaves in force. It
+also warns when role vars are set with no auth mode at all, where no
+middleware is installed and nothing is enforced. In proxy mode the role
+header is read from its *last* occurrence, so a proxy that appends its claim
+rather than replacing the header is not overridden by a client copy in front
+of it.
 
 ### Security — bearer-token auth on the MCP HTTP transport
 

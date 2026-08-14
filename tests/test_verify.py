@@ -15,7 +15,7 @@ import json
 import pandas as pd
 import pytest
 
-from tracebi import DataModel, MemoryConnector, model_registry
+from tracebi import DataModel, MemoryConnector, model_registry, verify
 from tracebi.cli import main as cli_main
 from tracebi.mcp_server import gateway_render_spec, gateway_verify_manifest
 from tracebi.model.dataset import DataSet, LineageNode, frame_fingerprint
@@ -230,9 +230,14 @@ def test_python_authored_section_is_unverifiable(
         "verify", str(manifest_path), "--models-dir", str(empty_models_dir),
     ])
     assert rc == 0, "unverifiable alone is not a failure"
-    out = capsys.readouterr().out
-    assert "UNVERIFIABLE" in out
-    assert "no recorded query" in out
+    captured = capsys.readouterr()
+    assert "UNVERIFIABLE" in captured.out
+    assert "no recorded query" in captured.out
+    assert captured.err == "", (
+        "a run that exits 0 must write nothing to stderr — CI wrappers "
+        "that treat stderr as failure would fail a receipt this command "
+        "just called fine"
+    )
 
 
 def test_post_query_transform_is_unverifiable(vf_model, empty_models_dir):
@@ -408,3 +413,147 @@ def test_newer_schema_version_refuses_to_guess(vf_model, empty_models_dir):
     assert not result["ok"]
     assert result["exit_code"] == 1
     assert "schema_version 99" in result["error"]
+
+
+# ─────────────────────────────────────────────
+# "Nothing was verified" is not "everything reproduced"
+# ─────────────────────────────────────────────
+
+def test_empty_receipt_is_never_an_ok_receipt(
+    vf_model, tmp_path, empty_models_dir, capsys,
+):
+    """A manifest with no data-bearing section proves nothing. Verifying it
+    checked zero numbers, so no consumer — library, CLI or gateway — may
+    answer the way it answers a receipt that reproduced."""
+    manifest = {
+        "report_name": "Empty Receipt", "schema_version": 1,
+        "sections": [{"section_type": "text", "title": "Just prose"}],
+    }
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    assert result["sections"] == []
+    assert not result["ok"], "zero sections checked must not read as a pass"
+    assert result["exit_code"] == 1
+    assert result.get("verdict") == verify.NOTHING_TO_VERIFY
+
+    manifest_path = tmp_path / "empty.manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    rc = cli_main([
+        "verify", str(manifest_path), "--models-dir", str(empty_models_dir),
+    ])
+    assert rc == 1
+    assert "NOTHING VERIFIED" in capsys.readouterr().err
+
+    assert not gateway_verify_manifest(manifest)["ok"]
+
+
+def test_all_unverifiable_is_not_the_same_answer_as_all_reproduces(
+    vf_model, tmp_path, empty_models_dir,
+):
+    """Hand-transformed sections stay exit 0 — a documented, legitimate
+    state — but the receipt-level answer must still say that nothing was
+    checked, or a reader cannot tell the two apart."""
+    reproduced = verify_manifest(
+        json.loads(_render(tmp_path).read_text(encoding="utf-8")),
+        load_models(empty_models_dir),
+    )
+    ds = vf_model.query(
+        fact="fact_orders", measures={"revenue": "sum"},
+        dimensions=["dim_customer.region"],
+    ).sort("revenue", ascending=False)
+    unchecked = verify_manifest(
+        Report("VF All Unverifiable")
+        .add(TableSection(title="Sorted", dataset=ds))
+        .build_manifest("html", "(in-memory)").to_dict(),
+        load_models(empty_models_dir),
+    )
+
+    assert reproduced.get("verdict") == REPRODUCES
+    assert unchecked.get("verdict") == UNVERIFIABLE
+    assert unchecked.get("verdict") != reproduced.get("verdict"), (
+        "a receipt where nothing was checked must not give the same answer "
+        "as one that reproduced"
+    )
+    assert unchecked["summary"][REPRODUCES] == 0
+    assert "NOTHING VERIFIED" in unchecked["verdict_detail"]
+    assert unchecked["exit_code"] == 0, "unverifiable alone stays a non-failure"
+
+
+def test_exit_code_ladder_is_pinned(vf_model, tmp_path, empty_models_dir):
+    """The ladder is a contract other people's CI depends on. Behaviour
+    first — a receipt that checked nothing must not share a rung with one
+    that reproduced — then the whole map, so it cannot shift unnoticed."""
+    reproduced = verify_manifest(
+        json.loads(_render(tmp_path).read_text(encoding="utf-8")),
+        load_models(empty_models_dir),
+    )
+    nothing = verify_manifest(
+        {"report_name": "Empty", "schema_version": 1, "sections": []},
+        load_models(empty_models_dir),
+    )
+    for result, code in ((reproduced, 0), (nothing, 1)):
+        assert result["exit_code"] == code
+        assert result["ok"] is (code == 0), (
+            "ok and the exit code must never disagree"
+        )
+
+    assert verify.VERDICT_EXIT_CODES == {
+        REPRODUCES:                  0,
+        UNVERIFIABLE:                0,
+        SOURCE_DRIFT:                2,
+        verify.NOT_REPRODUCED:       1,
+        verify.NOTHING_TO_VERIFY:    1,
+        verify.REFUSED_NEWER_SCHEMA: 1,
+    }
+    assert set(verify.VERDICT_LABELS) == set(verify.VERDICT_EXIT_CODES)
+
+
+def test_refusing_a_newer_manifest_does_not_claim_nothing_needed_checking(
+    vf_model, empty_models_dir,
+):
+    """Refusing to read a manifest is 'I could not check this', never
+    'there was nothing here to check' — the receipt may be full of
+    data-bearing sections, and this dict reaches an agent verbatim."""
+    manifest = {
+        "report_name": "Too New", "schema_version": 99,
+        "sections": [{"section_type": "table", "title": "Revenue",
+                      "dataset_fingerprint": "abc"}],
+    }
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    assert not result["ok"]
+    assert result["exit_code"] == 1
+    assert result.get("verdict") != verify.NOTHING_TO_VERIFY, (
+        "this manifest has a data-bearing section; reporting that there was "
+        "nothing to check is a false machine-readable answer"
+    )
+    assert "no data-bearing section" not in result.get("verdict_detail", "")
+    assert result["verdict"] == verify.REFUSED_NEWER_SCHEMA
+    assert "schema_version 99" in result["error"]
+    assert gateway_verify_manifest(manifest)["verdict"] == (
+        verify.REFUSED_NEWER_SCHEMA
+    ), "the gateway hands this dict to an agent unchanged"
+
+
+def test_reproduces_verdict_names_the_sections_it_could_not_check(
+    vf_model, tmp_path, empty_models_dir,
+):
+    """One checked section among many unverifiable ones is exit 0 and
+    honestly `reproduces` — nothing failed — but it must not read like a
+    receipt where every section was checked."""
+    manifest = json.loads(_render(tmp_path).read_text(encoding="utf-8"))
+    fully_checked = verify_manifest(manifest, load_models(empty_models_dir))
+
+    manifest["sections"].append({
+        "section_type": "table", "title": "Ad hoc",
+        "dataset_fingerprint": "x" * 64, "dataset_lineage": [],
+    })
+    mixed = verify_manifest(manifest, load_models(empty_models_dir))
+
+    assert mixed["summary"][REPRODUCES] == 1
+    assert mixed["summary"][UNVERIFIABLE] == 1
+    assert mixed["exit_code"] == 0, "nothing failed, so this is not a failure"
+    assert mixed.get("verdict") == REPRODUCES
+    assert "1 unverifiable" in mixed.get("verdict_detail", ""), (
+        "the verdict line is where a reader looks; it must disclose the "
+        "section this receipt does not prove"
+    )
+    assert mixed["verdict_detail"] != fully_checked["verdict_detail"]
