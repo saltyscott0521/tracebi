@@ -2603,9 +2603,10 @@ class TestServerlessDeployContract:
 
     def test_charts_and_excel_need_no_matplotlib(self):
         """
-        Dropping matplotlib is only safe because HTML charts are SVG and
-        Excel charts are openpyxl-native. If either regressed, the trimmed
-        deploy would render broken reports.
+        Dropping matplotlib is only safe because HTML charts are client-side
+        ECharts (bundle inlined, no matplotlib) and Excel charts are
+        openpyxl-native. If either regressed, the trimmed deploy would render
+        broken reports.
         """
         import subprocess
         import sys
@@ -2626,7 +2627,7 @@ class TestServerlessDeployContract:
             "ds = DataSet(pd.DataFrame({'r': ['a','b'], 'v': [1.0, 2.0]}), name='d')\n"
             "rep = Report('X').add(ChartSection(title='C', dataset=ds,\n"
             "                                   chart_type='bar', x='r', y='v'))\n"
-            "assert 'tb-chart' in HTMLRenderer().to_html(rep)\n"
+            "assert 'tracebi-chart-' in HTMLRenderer().to_html(rep)\n"
             "with tempfile.TemporaryDirectory() as t:\n"
             "    p = os.path.join(t, 'x.xlsx')\n"
             "    ExcelRenderer().render(rep, p)\n"

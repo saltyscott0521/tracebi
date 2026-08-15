@@ -55,7 +55,8 @@ from typing import Optional
 import pandas as pd
 
 from tracebi.reports.embed import (
-    StampedData, embed_block, embedded_record, stamp, stamp_frame,
+    KNOWN_LIBS, StampedData, csp_meta, embed_block, embedded_record,
+    insert_before, read_lib, stamp, stamp_frame,
 )
 from tracebi.reports.html_renderer import HTMLRenderer
 from tracebi.reports.report import Report, ReportManifest, TableSection
@@ -64,21 +65,6 @@ from tracebi.spec import DataRef
 #: Files that make up a package. ``report.json`` and ``template.html`` are
 #: required; the stylesheet and script are read when present. ``report.py`` is
 #: the optional escape hatch (architecture §8-M3).
-#: Charting libraries the generator can inline. Their minified IIFE bundles live
-#: in ``tracebi/reports/assets/<name>.min.js`` and expose a global of the name.
-_KNOWN_LIBS = {"echarts"}
-
-#: The strict CSP embedded in every generated page (architecture §5). Inline
-#: script/style are unavoidable in a static self-contained file; ``connect-src
-#: 'none'`` is the real win — a bundled library cannot phone home with the
-#: embedded data. ECharts needs no ``'unsafe-eval'``, so it is not granted.
-_CSP = (
-    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
-    "img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; "
-    "form-action 'none'"
-)
-
-_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
 REPORT_JSON = "report.json"
 TEMPLATE_HTML = "template.html"
@@ -164,10 +150,10 @@ class TemplatePackage:
         # CDN). ``"echarts"`` is the default engine; a package opts in per report
         # so a data-only report stays small. Unknown libs fail loudly.
         libs = declaration.get("libs", [])
-        if not isinstance(libs, list) or any(lib not in _KNOWN_LIBS for lib in libs):
+        if not isinstance(libs, list) or any(lib not in KNOWN_LIBS for lib in libs):
             raise ValueError(
                 f"{report_json_path}: 'libs' must be a list drawn from "
-                f"{sorted(_KNOWN_LIBS)}."
+                f"{sorted(KNOWN_LIBS)}."
             )
         self.libs = libs
 
@@ -341,38 +327,22 @@ class TemplatePackage:
         ``</head>`` or ``</body>`` is a hard error — dropping the injection would
         ship a page with no data and no warning.
         """
-        head = f'<meta http-equiv="Content-Security-Policy" content="{_CSP}">\n'
+        head = csp_meta()
         if self.style_css.strip():
             head += f"<style>\n{self.style_css}\n</style>\n"
-        page = _insert_before(page, "</head>", head)
+        page = insert_before(page, "</head>", head)
 
         # Library first (so its global exists), then data (so the blocks are in
         # the DOM), then the app script that draws from them.
         tail = ""
         for lib in self.libs:
-            tail += f"<script>\n{_read_lib(lib)}\n</script>\n"
+            tail += f"<script>\n{read_lib(lib)}\n</script>\n"
         tail += "".join(embed_block(sd) + "\n" for sd in stamped)
         if self.script_js.strip():
             tail += f"<script>\n{self.script_js}\n</script>\n"
         if tail:
-            page = _insert_before(page, "</body>", tail)
+            page = insert_before(page, "</body>", tail)
         return page
-
-
-def _insert_before(html: str, tag: str, snippet: str) -> str:
-    """Insert *snippet* immediately before *tag*, matched case-insensitively.
-
-    Fails loudly when the tag is absent: the whole point of string injection is
-    that a forgotten placeholder cannot silently swallow the data.
-    """
-    idx = html.lower().find(tag)
-    if idx == -1:
-        raise ValueError(
-            f"The rendered template has no {tag} — cannot inject the report's "
-            f"data/style/script. A template package's template.html must be a "
-            f"complete HTML document with <head> and <body>."
-        )
-    return html[:idx] + snippet + html[idx:]
 
 
 def _read_text(path: str) -> str:
@@ -382,14 +352,3 @@ def _read_text(path: str) -> str:
 
 def _read_optional(path: str) -> str:
     return _read_text(path) if os.path.isfile(path) else ""
-
-
-def _read_lib(name: str) -> str:
-    """The minified IIFE bundle for a charting library, to inline verbatim."""
-    path = os.path.join(_ASSETS_DIR, f"{name}.min.js")
-    if not os.path.isfile(path):
-        raise FileNotFoundError(
-            f"Charting library '{name}' is declared but its bundle is missing "
-            f"at {path}. Rebuild it (see web/ui/echarts-bundle.js)."
-        )
-    return _read_text(path)

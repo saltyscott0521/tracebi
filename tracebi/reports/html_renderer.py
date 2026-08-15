@@ -24,20 +24,190 @@ import base64
 import io
 import logging
 import os
+import weakref
 from datetime import datetime, timezone
 from typing import Optional
 
 import pandas as pd
 
+from tracebi.model.dataset import DataSet
 from tracebi.reports.base_renderer import BaseRenderer, _warn_if_unknown_git_sha
+from tracebi.reports.embed import (
+    csp_meta, embed_block, embed_json, embedded_record, insert_before,
+    read_lib, stamp_dataset,
+)
 from tracebi.reports.report import (
-    Report, SectionType,
+    Report, ReportManifest, SectionType,
     TextSection, TableSection, ChartSection,
     MetricSection, RowSection,
     resolve_number_format,
 )
 
 logger = logging.getLogger(__name__)
+
+# ── ECharts init (governed lane) ────────────────────────────────────────────
+#
+# The whole product renders charts client-side (architecture §6). A
+# ChartSection compiles to a sized container ``<div>``, its data embedded as the
+# canonical triple (the same fingerprinted bytes ``verify --file`` hashes), plus
+# a per-document config block and this one generic init script. The script
+# parses the *embedded csv* — never a hardcoded copy — and builds each ECharts
+# ``option`` from it, so a drawn number cannot diverge from a verified one. It
+# mirrors the freeform lane's app.js: an RFC-4180 CSV parser, values reaching
+# the DOM only through ECharts (no innerHTML of data), and drawing after layout
+# with ``animation: false`` — a static document renders immediately, and the
+# tree-shaken bundle's grow animation would otherwise leave bars at zero.
+_CHART_INIT_JS = r"""(function () {
+  function parseCsv(text) {
+    var rows = [], row = [], field = "", inQ = false, i = 0, c;
+    while (i < text.length) {
+      c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; } else { inQ = false; }
+        } else { field += c; }
+      } else if (c === '"') {
+        inQ = true;
+      } else if (c === ',') {
+        row.push(field); field = "";
+      } else if (c === '\n') {
+        row.push(field); rows.push(row); row = []; field = "";
+      } else if (c !== '\r') {
+        field += c;
+      }
+      i++;
+    }
+    if (field !== "" || row.length) { row.push(field); rows.push(row); }
+    var head = rows.shift() || [];
+    return rows
+      .filter(function (r) { return r.length === head.length; })
+      .map(function (r) {
+        var o = {};
+        head.forEach(function (h, j) { o[h] = r[j]; });
+        return o;
+      });
+  }
+  function readBlock(id) {
+    var el = document.getElementById(id);
+    if (!el) return [];
+    return parseCsv(JSON.parse(el.textContent).csv);
+  }
+  function num(v) {
+    if (v === null || v === undefined || v === "") return null;
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+  function groupOf(v) {
+    return (v === null || v === undefined || v === "") ? "(none)" : String(v);
+  }
+  function categories(plan, rows) {
+    var cats = [];
+    rows.forEach(function (r) {
+      var c = String(r[plan.x]);
+      if (cats.indexOf(c) === -1) cats.push(c);
+    });
+    return cats;
+  }
+  function categoricalSeries(plan, rows, cats, kind) {
+    var type = (kind === "line" || kind === "area") ? "line" : "bar";
+    var mk = function (name, byCat) {
+      var s = {
+        name: name, type: type,
+        data: cats.map(function (c) { return (c in byCat) ? byCat[c] : null; }),
+        label: { show: !!plan.show_values,
+                 position: kind === "barh" ? "right" : "top" }
+      };
+      if (kind === "area") s.areaStyle = {};
+      return s;
+    };
+    if (plan.color) {
+      var y0 = plan.y[0], groups = [], byGroup = {};
+      rows.forEach(function (r) {
+        var g = groupOf(r[plan.color]);
+        if (groups.indexOf(g) === -1) { groups.push(g); byGroup[g] = {}; }
+        byGroup[g][String(r[plan.x])] = num(r[y0]);
+      });
+      return groups.map(function (g) { return mk(g, byGroup[g]); });
+    }
+    return plan.y.map(function (col) {
+      var byCat = {};
+      rows.forEach(function (r) { byCat[String(r[plan.x])] = num(r[col]); });
+      return mk(col, byCat);
+    });
+  }
+  function scatterSeries(plan, rows) {
+    if (plan.color) {
+      var y0 = plan.y[0], groups = [], byGroup = {};
+      rows.forEach(function (r) {
+        var g = groupOf(r[plan.color]);
+        if (groups.indexOf(g) === -1) { groups.push(g); byGroup[g] = []; }
+        byGroup[g].push([num(r[plan.x]), num(r[y0])]);
+      });
+      return groups.map(function (g) {
+        return { name: g, type: "scatter", data: byGroup[g] };
+      });
+    }
+    return plan.y.map(function (col) {
+      return { name: col, type: "scatter",
+               data: rows.map(function (r) { return [num(r[plan.x]), num(r[col])]; }) };
+    });
+  }
+  function optionFor(plan, rows) {
+    var kind = String(plan.type).toLowerCase();
+    var opt = { animation: false, color: plan.palette || [] };
+    if (kind === "pie") {
+      var y0 = plan.y[0];
+      opt.tooltip = { trigger: "item" };
+      opt.series = [{
+        type: "pie", radius: "62%",
+        data: rows.map(function (r) {
+          return { name: String(r[plan.x]), value: Math.abs(num(r[y0]) || 0) };
+        }),
+        label: { show: true }
+      }];
+      return opt;
+    }
+    if (kind === "scatter") {
+      var ss = scatterSeries(plan, rows);
+      opt.tooltip = { trigger: "item" };
+      opt.xAxis = { type: "value", name: plan.xlabel || "" };
+      opt.yAxis = { type: "value", name: plan.ylabel || "" };
+      if (ss.length > 1) opt.legend = {};
+      opt.series = ss;
+      return opt;
+    }
+    var cats = categories(plan, rows);
+    var series = categoricalSeries(plan, rows, cats, kind);
+    opt.tooltip = { trigger: "axis" };
+    if (series.length > 1) opt.legend = {};
+    var catAxis = { type: "category", data: cats,
+                    name: (kind === "barh" ? plan.ylabel : plan.xlabel) || "" };
+    var valAxis = { type: "value",
+                    name: (kind === "barh" ? plan.xlabel : plan.ylabel) || "" };
+    if (kind === "barh") { opt.xAxis = valAxis; opt.yAxis = catAxis; }
+    else { opt.xAxis = catAxis; opt.yAxis = valAxis; }
+    opt.series = series;
+    return opt;
+  }
+  function drawAll() {
+    if (!window.echarts) return;
+    var cfgEl = document.getElementById("tracebi-charts");
+    if (!cfgEl) return;
+    JSON.parse(cfgEl.textContent).forEach(function (plan) {
+      var host = document.getElementById(plan.container);
+      if (!host) return;
+      var rows = readBlock(plan.block);
+      if (!rows.length) return;
+      var chart = echarts.init(host);
+      chart.setOption(optionFor(plan, rows));
+      window.addEventListener("resize", function () { chart.resize(); });
+    });
+  }
+  if (document.readyState === "complete") requestAnimationFrame(drawAll);
+  else window.addEventListener("load", function () {
+    requestAnimationFrame(drawAll);
+  });
+})();"""
 
 # ── CSS ───────────────────────────────────────────────────────────────────
 
@@ -250,7 +420,9 @@ class HTMLRenderer(BaseRenderer):
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         # Manifest first, artifact second — see BaseRenderer.render.
         manifest = report.build_manifest(format="pdf", output_path=output_path)
-        html_str = self._build_html(report)
+        # Static SVG charts: WeasyPrint runs no JS, so the interactive ECharts
+        # path cannot render. The PDF embeds nothing, so no embedded_data.
+        html_str = self._build_html(report, static_charts=True)
         WeasyHTML(string=html_str).write_pdf(output_path)
         _warn_if_unknown_git_sha(manifest)
         if save_manifest:
@@ -264,21 +436,140 @@ class HTMLRenderer(BaseRenderer):
         """Return the report as a self-contained HTML string (no file I/O)."""
         return self._build_html(report)
 
-    def _build_html(self, report: Report) -> str:
+    def _build_html(self, report: Report, static_charts: bool = False) -> str:
         from tracebi.reports.theme import render_shell
 
-        return render_shell(
-            title=self._esc(report.name),
-            css=self.theme.css,
-            cover=self._render_cover(report),
-            sections="\n".join(self._render_section(s) for s in report.sections),
-            lineage=self._render_lineage(report),
-            template=self.template,
-            head_extra=self.head_extra,
-            body_extra=self.body_extra,
-            context={"report": report, "theme": self.theme,
-                     **self.template_context},
-        )
+        # The PDF path (WeasyPrint) runs no JS, so it cannot draw a client-side
+        # ECharts chart. It asks for static charts: every ChartSection renders as
+        # inline SVG via the retained ChartSpec.to_svg, and none of the ECharts
+        # machinery (bundle, embedded data, init, CSP) is injected.
+        if static_charts:
+            self._static_charts = True
+            self._chart_plans_by_id = {}
+            try:
+                return render_shell(
+                    title=self._esc(report.name),
+                    css=self.theme.css,
+                    cover=self._render_cover(report),
+                    sections="\n".join(
+                        self._render_section(s) for s in report.sections),
+                    lineage=self._render_lineage(report),
+                    template=self.template,
+                    head_extra=self.head_extra,
+                    body_extra=self.body_extra,
+                    context={"report": report, "theme": self.theme,
+                             **self.template_context},
+                )
+            finally:
+                self._static_charts = False
+
+        # Charts render client-side with ECharts (architecture §6). Resolve
+        # every drawable ChartSection up front — this also validates columns
+        # loudly — so section rendering can emit each chart's container and the
+        # document can inline the bundle + embedded data once at the end.
+        bindings = self._chart_bindings(report)
+        self._chart_plans_by_id = {
+            id(section): (sd, plan) for section, sd, plan in bindings
+        }
+        try:
+            page = render_shell(
+                title=self._esc(report.name),
+                css=self.theme.css,
+                cover=self._render_cover(report),
+                sections="\n".join(self._render_section(s) for s in report.sections),
+                lineage=self._render_lineage(report),
+                template=self.template,
+                head_extra=self.head_extra,
+                body_extra=self.body_extra,
+                context={"report": report, "theme": self.theme,
+                         **self.template_context},
+            )
+        finally:
+            self._chart_plans_by_id = {}
+
+        if bindings:
+            page = self._inject_charts(page, [(sd, plan) for _s, sd, plan in bindings])
+        return page
+
+    # ── Charts → ECharts (architecture §6) ──────────────────────────────────
+
+    def _chart_bindings(self, report: Report):
+        """Every drawable ChartSection with its stamped data + ECharts plan.
+
+        Returns ``[(section, StampedData, plan)]`` in document order (descending
+        into rows). One shared walk backs both the page (``_build_html``) and the
+        receipt (``_augment_manifest``), so the embedded data blocks and the
+        manifest's ``embedded_data`` agree on names and fingerprints. Empty
+        charts are skipped, exactly as the SVG path returned "" for them.
+        """
+        from tracebi.reports.chart import ChartSpec
+
+        # render() calls this once for the receipt and once for the page; the
+        # datasets are immutable and stamping is deterministic, so memoise per
+        # report object (auto-evicted on GC) rather than fingerprint twice.
+        cache = self.__dict__.setdefault("_binding_cache", weakref.WeakKeyDictionary())
+        if report in cache:
+            return cache[report]
+
+        out = []
+        n = 0
+        for section in report.data_sections():
+            if getattr(section, "section_type", None) != SectionType.CHART:
+                continue
+            ds = getattr(section, "dataset", None)
+            if not isinstance(ds, DataSet):
+                continue
+            # from_section validates x/y/color against the columns and raises a
+            # loud error — the same guard the SVG path (and PDF) still runs.
+            spec = ChartSpec.from_section(section)
+            if not spec.rows or not spec.series:
+                continue
+            n += 1
+            name = section.id or f"chart{n}"
+            sd = stamp_dataset(ds, name=name)
+            plan = {
+                "block": f"tracebi-data-{name}",
+                "container": f"tracebi-chart-{name}",
+                "type": section.chart_type,
+                "x": section.x,
+                "y": list(section.y or []),
+                "color": section.color,
+                "xlabel": spec.xlabel,
+                "ylabel": spec.ylabel,
+                "palette": list(spec.palette),
+                "show_values": bool(section.show_values),
+            }
+            out.append((section, sd, plan))
+        cache[report] = out
+        return out
+
+    def _augment_manifest(self, report: Report, manifest: ReportManifest) -> None:
+        """Record the chart data the page embeds, so ``verify --file`` covers it.
+
+        Each ChartSection's fingerprint lands in ``embedded_data`` (and equals
+        the section's ``dataset_fingerprint``), giving the governed lane the same
+        offline file-integrity the freeform lane already has.
+        """
+        manifest.embedded_data = [
+            embedded_record(sd) for _section, sd, _plan in self._chart_bindings(report)
+        ]
+
+    def _inject_charts(self, page: str, items) -> str:
+        """Inline the CSP, the ECharts bundle, the embedded data, and the init.
+
+        *items* is ``[(StampedData, plan)]``. The CSP (architecture §5) goes
+        into ``<head>``; the body gets the bundle first (so the global exists),
+        then each chart's canonical-triple data block, then the per-document
+        config, then the one init script that draws from them. String insertion,
+        not template placeholders, so a shell without a seam still gets the data
+        — a missing ``</head>``/``</body>`` fails loudly.
+        """
+        page = insert_before(page, "</head>", csp_meta())
+        tail = f"<script>\n{read_lib('echarts')}\n</script>\n"
+        tail += "".join(embed_block(sd) + "\n" for sd, _plan in items)
+        tail += embed_json([plan for _sd, plan in items], "tracebi-charts") + "\n"
+        tail += f"<script>\n{_CHART_INIT_JS}\n</script>\n"
+        return insert_before(page, "</body>", tail)
 
     def _render_cover(self, report: Report) -> str:
         desc = f"<p>{self._esc(report._description)}</p>" if report._description else ""
@@ -560,13 +851,43 @@ class HTMLRenderer(BaseRenderer):
 
     def _render_chart(self, section: ChartSection) -> str:
         """
-        Render a chart as inline SVG.
+        Render a chart as an ECharts container (architecture §6).
 
-        This used to embed a base64 matplotlib PNG. SVG is diffable, can be
-        restyled by the stylesheet, scales with its container, and needs no
-        optional dependency — a base install previously rendered
-        "matplotlib required" in place of every chart. See
-        :mod:`tracebi.reports.chart`.
+        The whole product draws charts client-side from the embedded,
+        fingerprinted data: this emits a sized ``<div>`` the init script (added
+        once per document by :meth:`_inject_charts`) initialises. The plan and
+        stamped data were computed up front in :meth:`_build_html`; a chart with
+        no data — or one rendered outside ``_build_html`` — has no entry and
+        renders nothing, exactly as the old SVG path returned "" for an empty
+        chart. ``ChartSpec.to_svg`` is retained for the PDF path, which runs no
+        JS (see :meth:`render_pdf`).
+        """
+        if getattr(self, "_static_charts", False):
+            return self._render_chart_svg(section)
+
+        entry = getattr(self, "_chart_plans_by_id", {}).get(id(section))
+        if entry is None:
+            return ""
+        _sd, plan = entry
+
+        title_html = ""
+        if section.title:
+            title_html = f'<div class="section-title">{self._esc(section.title)}</div>'
+
+        return f"""
+  <div class="section">
+    {title_html}
+    <div class="chart-container tb-echarts" id="{plan['container']}"
+         style="width:100%;height:420px"></div>
+  </div>"""
+
+    def _render_chart_svg(self, section: ChartSection) -> str:
+        """Render a chart as inline SVG — the retained PDF path.
+
+        WeasyPrint runs no JavaScript, so the interactive ECharts chart cannot
+        draw in a PDF. One ChartSection config feeds two renderers: ECharts for
+        the interactive HTML, this SVG for print (architecture §6, decision 5).
+        No optional dependency and no new one — see :mod:`tracebi.reports.chart`.
         """
         from tracebi.reports.chart import ChartSpec
 

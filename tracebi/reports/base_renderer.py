@@ -60,6 +60,17 @@ class BaseRenderer(ABC):
         """Write the rendered output to *output_path*."""
         ...
 
+    def _augment_manifest(self, report: Report, manifest: ReportManifest) -> None:
+        """Hook: add renderer-specific fields to the receipt before it is saved.
+
+        Runs after ``build_manifest`` and before ``_render`` — manifest first,
+        artifact second — so a subclass can record what it is about to embed.
+        The HTML renderer uses it to populate ``embedded_data`` (so a rendered
+        report with a chart is checkable by ``tracebi verify --file``). Default:
+        nothing, so Excel and other formats keep their existing receipt shape.
+        """
+        return None
+
     def render(
         self,
         report: Report,
@@ -86,6 +97,7 @@ class BaseRenderer(ABC):
         # disk that nothing can audit, which is the one state this whole
         # mechanism exists to prevent.
         manifest = report.build_manifest(format=self.FORMAT, output_path=output_path)
+        self._augment_manifest(report, manifest)
         self._render(report, output_path)
         _warn_if_unknown_git_sha(manifest)
         if save_manifest:

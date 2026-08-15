@@ -6,6 +6,22 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — governed charts render client-side with ECharts
+
+The whole report generator now draws charts client-side (architecture §6): a
+`ChartSection` in a `ReportSpec`/dashboard HTML render compiles to a sized
+ECharts container plus its data **embedded as the canonical triple** and a
+generic init script that builds the ECharts `option` from those exact
+fingerprinted bytes — no server-side inline SVG in the HTML output. A knock-on
+benefit: a governed report with a chart is now file-checkable by
+`tracebi verify --file`, and its output carries the strict §5 CSP
+(`connect-src 'none'`, no `unsafe-eval`) — the same self-contained-file
+contract the freeform lane already had, now from **one** shared implementation
+in `tracebi/reports/embed.py`. The ECharts bundle is inlined once per document.
+
+`ChartSpec.to_svg` is **retained for the PDF path only** — WeasyPrint runs no
+JS, so `render_pdf` emits static SVG charts from the same `ChartSection` config.
+
 ### Added — the three-phase workflow: manipulate → model → dashboard
 
 A worked, end-to-end path from a messy source file to a served dashboard, with

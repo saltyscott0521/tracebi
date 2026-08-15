@@ -28,10 +28,70 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from tracebi.model.dataset import DataSet, LineageNode
+
+
+# ── Self-contained page assembly (shared by both render lanes) ──────────────
+#
+# The CSP, the charting-library inliner, and the loud string-insertion helper
+# below are the *one* implementation of the self-contained-file contract. The
+# governed HTMLRenderer and the freeform TemplatePackage both build the same
+# emailed, offline ``.html`` — CSP in the head, an inlined ECharts bundle and
+# safe embedded data in the body — so this logic lives here, next to the safe
+# embedder it belongs with, rather than being copied per lane.
+
+_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+
+#: Charting libraries the generator can inline. Their minified IIFE bundles live
+#: in ``tracebi/reports/assets/<name>.min.js`` and expose a global of the name.
+KNOWN_LIBS = {"echarts"}
+
+#: The strict CSP embedded in every generated page (architecture §5). Inline
+#: script/style are unavoidable in a static self-contained file; ``connect-src
+#: 'none'`` is the real win — a bundled library cannot phone home with the
+#: embedded data. ECharts needs no ``'unsafe-eval'``, so it is not granted.
+CSP = (
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+    "img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; "
+    "form-action 'none'"
+)
+
+
+def csp_meta() -> str:
+    """The §5 CSP as a ``<meta>`` element, ready to insert into ``<head>``."""
+    return f'<meta http-equiv="Content-Security-Policy" content="{CSP}">\n'
+
+
+def read_lib(name: str) -> str:
+    """The minified IIFE bundle for a charting library, to inline verbatim."""
+    path = os.path.join(_ASSETS_DIR, f"{name}.min.js")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(
+            f"Charting library '{name}' is declared but its bundle is missing "
+            f"at {path}. Rebuild it (see web/ui/echarts-bundle.js)."
+        )
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def insert_before(html: str, tag: str, snippet: str) -> str:
+    """Insert *snippet* immediately before *tag*, matched case-insensitively.
+
+    Fails loudly when the tag is absent: the whole point of string injection is
+    that a forgotten placeholder cannot silently swallow the data (or the CSP).
+    """
+    idx = html.lower().find(tag)
+    if idx == -1:
+        raise ValueError(
+            f"The rendered document has no {tag} — cannot inject the report's "
+            f"data/style/script. The page must be a complete HTML document with "
+            f"<head> and <body>."
+        )
+    return html[:idx] + snippet + html[idx:]
 
 
 def embed_json(obj: Any, elem_id: str) -> str:
@@ -121,15 +181,16 @@ def _query_metadata(ds: DataSet) -> dict:
     return {}
 
 
-def stamp(model, query, name: str = "data") -> StampedData:
-    """Resolve *query* against *model*, fingerprint it, and package it.
+def stamp_dataset(ds: DataSet, name: str = "data") -> StampedData:
+    """Package an already-resolved :class:`DataSet` as :class:`StampedData`.
 
-    ``model.execute(query)`` stamps the resolved query spec, model, and input
-    fingerprints into lineage. The returned :class:`StampedData` carries the
-    canonical triple (the fingerprinted bytes) alongside a display ``records``
-    payload — everything the embedder and the manifest need, computed once.
+    Fingerprints *ds* and recovers the ``{model, query_spec}`` metadata its
+    lineage carries (present when it came from ``DataModel.execute``, absent for
+    a hand-built frame). The governed HTMLRenderer stamps a ChartSection's
+    resolved dataset through this — the same canonical triple + fingerprint the
+    freeform lane produces, so both lanes' embedded data is file-checkable by
+    the one algorithm.
     """
-    ds = model.execute(query)
     df = ds.to_pandas()
     triple = canonical_triple(df)
     md = _query_metadata(ds)
@@ -141,6 +202,16 @@ def stamp(model, query, name: str = "data") -> StampedData:
         query_spec=md.get("query_spec"),
         model=md.get("model"),
     )
+
+
+def stamp(model, query, name: str = "data") -> StampedData:
+    """Resolve *query* against *model*, fingerprint it, and package it.
+
+    ``model.execute(query)`` stamps the resolved query spec, model, and input
+    fingerprints into lineage; :func:`stamp_dataset` then packages the result
+    into everything the embedder and the manifest need, computed once.
+    """
+    return stamp_dataset(model.execute(query), name=name)
 
 
 def stamp_frame(
