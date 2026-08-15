@@ -1313,6 +1313,7 @@ def _report_json_text(title: str, model: str, query: dict) -> str:
         "name": title,
         "author": "",
         "description": "Freeform report package scaffolded by tracebi new-report.",
+        "libs": ["echarts"],
         "data": {"rows": {"model": model, "query": query}},
     }
     return json.dumps(declaration, indent=2) + "\n"
@@ -1329,16 +1330,21 @@ _REPORT_TEMPLATE_HTML = """<!doctype html>
     <h1>{{ title }}</h1>
     <p class="note">Every number below is embedded, fingerprinted, and recorded.
       Check it offline with <code>tracebi verify --file</code>.</p>
+    <div id="chart" class="chart"></div>
     <table id="rows"><thead></thead><tbody></tbody></table>
   </main>
 </body>
 </html>
 """
 
-_REPORT_STYLE_CSS = """:root { color-scheme: light dark; }
-body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; }
+_REPORT_STYLE_CSS = """:root { color-scheme: light; }
+/* A report is a document: commit to a light ground so it reads the same in any
+   browser mode (a file that only set text colour goes dark-on-dark in dark mode). */
+body { font: 15px/1.5 system-ui, sans-serif; background: #fff; color: #1a1a1a;
+       margin: 2rem auto; max-width: 60rem; }
 h1 { margin-bottom: .25rem; }
 .note { color: #666; margin-top: 0; }
+.chart { width: 100%; height: 340px; margin-top: 1.5rem; }
 table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
 th, td { padding: .5rem .75rem; border-bottom: 1px solid #ddd; text-align: left; }
 th { border-bottom: 2px solid #999; }
@@ -1377,6 +1383,38 @@ _REPORT_SCRIPT_JS = """(function () {
   var table = document.getElementById("rows");
   if (!rows.length || !table) return;
   var cols = Object.keys(rows[0]);
+
+  // A starter bar chart: first column as category, first numeric column as
+  // value. ECharts is the inlined global (report.json "libs": ["echarts"]).
+  (function () {
+    var host = document.getElementById("chart");
+    var val = null;
+    for (var k = 1; k < cols.length; k++) {
+      if (rows[0][cols[k]] !== "" && !isNaN(Number(rows[0][cols[k]]))) { val = cols[k]; break; }
+    }
+    if (!host || !window.echarts || !val) { if (host) host.style.display = "none"; return; }
+    var cat = cols[0];
+    function draw() {
+      // A report is a static document — render immediately, don't animate (and
+      // the tree-shaken bundle's grow-animation does not complete).
+      var chart = echarts.init(host);
+      window.addEventListener("resize", function () { chart.resize(); });
+      chart.setOption({
+        animation: false,
+        tooltip: { trigger: "axis" },
+        grid: { left: 64, right: 24, top: 16, bottom: 72 },
+        xAxis: { type: "category", axisLabel: { rotate: 30 },
+                 data: rows.map(function (r) { return r[cat]; }) },
+        yAxis: { type: "value" },
+        series: [{ type: "bar", name: val, itemStyle: { color: "#1f4e79" },
+                   data: rows.map(function (r) { return Number(r[val]); }) }],
+      });
+    }
+    // Draw after layout so ECharts reads the container's real size.
+    if (document.readyState === "complete") requestAnimationFrame(draw);
+    else window.addEventListener("load", function () { requestAnimationFrame(draw); });
+  })();
+
   var thead = table.querySelector("thead");
   var htr = document.createElement("tr");
   cols.forEach(function (c) {
