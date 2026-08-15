@@ -1,5 +1,39 @@
 # TraceBi end-to-end: what to build next
 
+## The commercial line — open core (decided 2026-08-14)
+
+TraceBi is **open core**: the library is the product's distribution, not a
+teaser for it. The dbt Core / dbt Cloud shape, drawn along the assurance
+ladder.
+
+- **Free, in the library (MIT):** everything that *produces* trustworthy
+  analytics. The three-phase workflow, the stamp, the manifest, `verify`, the
+  MCP gateway, the self-hostable web app, self-contained report artifacts.
+  This is L0→L2 — a single team can prove its own numbers reproduce, on its
+  own machine, today. Producing analysis is cheap; TraceBi makes believing it
+  cheap too, for free.
+- **Paid, in the product (later):** everything that makes trust
+  *institutional* rather than local — the L3 rung and its prerequisites.
+  **Keeping** receipts (org-wide durable retention, not a file in git),
+  **signing** them (L3 cryptographic attestation), knowing **who** rendered
+  one (authenticated identity, not operator-asserted), and giving an auditor
+  **one place** to check them all. These are exactly the audit's unfinished
+  Tier-1 gaps (G3 identity, G4 retention/evidence, L3=0%) — they are not
+  missing library features, they are the product's feature list.
+
+The line: *producing* a receipt is free; *institutionalizing* a book of them
+is the product. The manifesto already draws this boundary ("hosted topologies
+are demos of TraceBi, not the shape of it") — this section names which side of
+it each roadmap item falls on, so the work sorts itself. The **library
+release (0.6.0, PyPI) is the near-term target**; it needs only the L0→L2
+polish below (the "pilot-ready" set), never the product tier.
+
+The gap-audit items at the bottom of this file are tagged **[free]** (belongs
+in the library release) or **[product]** (the commercial tier) where the split
+is not obvious.
+
+---
+
 **Thesis check, in one paragraph.** TraceBi's pitch is a trust layer for AI-generated analytics: agents speak a semantic contract, every answer carries a stamp (query + lineage + SHA-256 fingerprint), specs validate before execution, and the assurance ladder (L0–L3, NOTES.md 2026-08-03) grades what a company can prove. Four independent audits (new analyst, MCP-only agent, platform operator, fund-ops design partner) agree on the verdict: **the stamping kernel is real and production-shaped** — fingerprints verified identical across Python, CLI, and a live MCP round trip; render refuses invalid specs; cap-invariance is test-pinned. What's missing is everything that lets someone *check* a receipt, *trust* the checker's identity, or *keep* the receipt. L2 is ~80% built, L1 is ~50% (stamps yes, receipts no), L3 is 0%. The roadmap below is one merged, deduped, ranked list. The ordering principle: a trust layer that cannot verify its own receipts, whose validator misses the most common agent errors, and whose flagship surface has no auth is not yet making a true claim — fix that before selling it. *(Update 2026-08: the verify loop, validate coverage, and gateway bearer auth from the Now tier have since shipped — see CHANGELOG [Unreleased]; the identity now lives in MANIFESTO.md.)*
 
 ---
@@ -163,7 +197,11 @@ evidence-grade receipts (web manifests unpersisted, no signing) → 4/17;
 no release/PyPI → 12; read/query audit → new sub-item of 4; multi-worker
 RunStore → 16; full-scan pushdown → 15.
 
-**New items this audit adds (unranked; slot on the next grooming pass):**
+**New items this audit adds (unranked; slot on the next grooming pass).**
+All **[free]** — they are first-run, agent-loop, connector, and auth-config
+fixes that belong in the library. The **[product]** tier (authenticated
+identity G3, evidence-grade retention G4, L3 signing) lives in the ranked
+list above as items 3, 4, and 17.
 
 - **Model-cache invalidation over MCP** — the canonical agent loop (edit
   model → use measure) breaks against `ModelRegistry`'s forever-cache; no
