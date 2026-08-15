@@ -1,7 +1,8 @@
 {
   "name": "Portfolio Book",
   "author": "workflow",
-  "description": "Direct-lending book against portfolio_model — fair value by sector and the largest issuer exposures. A freeform package: the whole page is drawn by template.html + script.js from embedded, fingerprinted data.",
+  "description": "Direct-lending book against portfolio_model — fair value by sector and the largest issuer exposures. A freeform package: the whole page is drawn by template.html + script.js from embedded, fingerprinted data, with an inlined ECharts chart.",
+  "libs": ["echarts"],
   "data": {
     "by_sector": {
       "model": "portfolio_model",

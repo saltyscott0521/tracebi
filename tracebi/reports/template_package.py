@@ -64,6 +64,22 @@ from tracebi.spec import DataRef
 #: Files that make up a package. ``report.json`` and ``template.html`` are
 #: required; the stylesheet and script are read when present. ``report.py`` is
 #: the optional escape hatch (architecture §8-M3).
+#: Charting libraries the generator can inline. Their minified IIFE bundles live
+#: in ``tracebi/reports/assets/<name>.min.js`` and expose a global of the name.
+_KNOWN_LIBS = {"echarts"}
+
+#: The strict CSP embedded in every generated page (architecture §5). Inline
+#: script/style are unavoidable in a static self-contained file; ``connect-src
+#: 'none'`` is the real win — a bundled library cannot phone home with the
+#: embedded data. ECharts needs no ``'unsafe-eval'``, so it is not granted.
+_CSP = (
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+    "img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; "
+    "form-action 'none'"
+)
+
+_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+
 REPORT_JSON = "report.json"
 TEMPLATE_HTML = "template.html"
 STYLE_CSS = "style.css"
@@ -143,6 +159,17 @@ class TemplatePackage:
         self.template_html = _read_text(template_path)
         self.style_css = _read_optional(os.path.join(directory, STYLE_CSS))
         self.script_js = _read_optional(os.path.join(directory, SCRIPT_JS))
+
+        # Charting libraries to inline into the self-contained file (offline, no
+        # CDN). ``"echarts"`` is the default engine; a package opts in per report
+        # so a data-only report stays small. Unknown libs fail loudly.
+        libs = declaration.get("libs", [])
+        if not isinstance(libs, list) or any(lib not in _KNOWN_LIBS for lib in libs):
+            raise ValueError(
+                f"{report_json_path}: 'libs' must be a list drawn from "
+                f"{sorted(_KNOWN_LIBS)}."
+            )
+        self.libs = libs
 
         # The escape hatch (architecture §8-M3). When present, the ``data``
         # bindings above are the *stamped inputs* to report.py's ``build``,
@@ -305,22 +332,26 @@ class TemplatePackage:
     # ── Injection ───────────────────────────────────────────────────────────
 
     def _inject(self, page: str, stamped) -> str:
-        """Insert style, data blocks, and script into the rendered HTML.
+        """Insert the CSP, style, charting libs, data blocks, and script.
 
-        Independent of any template placeholder (see the module docstring): the
-        stylesheet lands before ``</head>``; the safe embedded-data blocks and
-        the app script land before ``</body>``. A missing ``</head>`` or
-        ``</body>`` is a hard error — dropping the injection would ship a page
-        with no data and no warning.
+        Independent of any template placeholder (see the module docstring). Into
+        ``<head>``: a strict CSP (architecture §5) and the stylesheet. Before
+        ``</body>``, in order: any inlined charting library, the safe
+        embedded-data blocks, then the app script that reads them. A missing
+        ``</head>`` or ``</body>`` is a hard error — dropping the injection would
+        ship a page with no data and no warning.
         """
+        head = f'<meta http-equiv="Content-Security-Policy" content="{_CSP}">\n'
         if self.style_css.strip():
-            page = _insert_before(
-                page, "</head>", f"<style>\n{self.style_css}\n</style>\n"
-            )
+            head += f"<style>\n{self.style_css}\n</style>\n"
+        page = _insert_before(page, "</head>", head)
 
-        # Data first, then the script that reads it — so the blocks are already
-        # in the DOM if the script runs immediately.
-        tail = "".join(embed_block(sd) + "\n" for sd in stamped)
+        # Library first (so its global exists), then data (so the blocks are in
+        # the DOM), then the app script that draws from them.
+        tail = ""
+        for lib in self.libs:
+            tail += f"<script>\n{_read_lib(lib)}\n</script>\n"
+        tail += "".join(embed_block(sd) + "\n" for sd in stamped)
         if self.script_js.strip():
             tail += f"<script>\n{self.script_js}\n</script>\n"
         if tail:
@@ -351,3 +382,14 @@ def _read_text(path: str) -> str:
 
 def _read_optional(path: str) -> str:
     return _read_text(path) if os.path.isfile(path) else ""
+
+
+def _read_lib(name: str) -> str:
+    """The minified IIFE bundle for a charting library, to inline verbatim."""
+    path = os.path.join(_ASSETS_DIR, f"{name}.min.js")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(
+            f"Charting library '{name}' is declared but its bundle is missing "
+            f"at {path}. Rebuild it (see web/ui/echarts-bundle.js)."
+        )
+    return _read_text(path)

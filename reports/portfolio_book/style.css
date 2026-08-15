@@ -1,14 +1,18 @@
 :root {
-  color-scheme: light dark;
+  /* A report is a document — commit to a light ground so it reads the same in
+     any browser mode (a shipped file that only set text colour went dark-on-dark
+     in a dark-mode browser). */
+  color-scheme: light;
+  --bg: #ffffff;
   --ink: #1a1a1a;
   --muted: #6b7280;
   --line: #e5e7eb;
-  --bar: #2563eb;
-  --bar-bg: #eef2ff;
+  --bar: #1f4e79;
 }
 * { box-sizing: border-box; }
 body {
   font: 15px/1.55 system-ui, -apple-system, Segoe UI, sans-serif;
+  background: var(--bg);
   color: var(--ink);
   margin: 0;
   padding: 2.5rem 1.25rem;
@@ -20,13 +24,8 @@ h2 { font-size: 1.15rem; margin: 2rem 0 .75rem; }
 .lede { color: var(--muted); margin: 0; max-width: 46rem; }
 code { background: var(--bar-bg); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
 
-/* Hand-drawn horizontal bars — no charting library, fully offline. */
-.bars { display: grid; gap: .5rem; }
-.bar-row { display: grid; grid-template-columns: 10rem 1fr auto; align-items: center; gap: .75rem; }
-.bar-label { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bar-track { background: var(--bar-bg); border-radius: 4px; height: 1.35rem; }
-.bar-fill { background: var(--bar); border-radius: 4px; height: 100%; min-width: 2px; }
-.bar-value { font-variant-numeric: tabular-nums; }
+/* ECharts draws into a sized container (inlined bundle, fully offline). */
+.chart { height: 320px; width: 100%; }
 
 table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
 th, td { padding: .5rem .75rem; border-bottom: 1px solid var(--line); text-align: left; }

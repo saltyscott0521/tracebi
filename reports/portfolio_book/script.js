@@ -48,39 +48,49 @@
     return "$" + Math.round(Number(v)).toLocaleString();
   }
 
-  // Fair value by sector → horizontal bars.
-  var sectors = read("tracebi-data-by_sector");
+  // Fair value by sector → an ECharts bar chart, drawn from the verified csv.
+  // echarts is the inlined global (report.json "libs": ["echarts"]).
+  var sectors = read("tracebi-data-by_sector")
+    .slice()
+    .sort(function (a, b) { return Number(a.fair_value) - Number(b.fair_value); });
   var host = document.getElementById("by-sector");
-  if (host && sectors.length) {
-    var max = Math.max.apply(null, sectors.map(function (r) { return Number(r.fair_value); }));
-    sectors
-      .slice()
-      .sort(function (a, b) { return Number(b.fair_value) - Number(a.fair_value); })
-      .forEach(function (r) {
-        var row = document.createElement("div");
-        row.className = "bar-row";
-
-        var label = document.createElement("div");
-        label.className = "bar-label";
-        label.textContent = r["dim_issuer.sector"];
-
-        var track = document.createElement("div");
-        track.className = "bar-track";
-        var fill = document.createElement("div");
-        fill.className = "bar-fill";
-        fill.style.width = (max ? (100 * Number(r.fair_value) / max) : 0) + "%";
-        track.appendChild(fill);
-
-        var value = document.createElement("div");
-        value.className = "bar-value";
-        value.textContent = money(r.fair_value);
-
-        row.appendChild(label);
-        row.appendChild(track);
-        row.appendChild(value);
-        host.appendChild(row);
-      });
+  function drawSectorChart() {
+    if (!host || !sectors.length || !window.echarts) return;
+    var chart = echarts.init(host);
+    window.addEventListener("resize", function () { chart.resize(); });
+    chart.setOption({
+      // A report is a static document — render immediately, don't animate.
+      animation: false,
+      grid: { left: 96, right: 40, top: 16, bottom: 24 },
+      tooltip: {
+        trigger: "axis",
+        valueFormatter: function (v) { return money(v); },
+      },
+      xAxis: {
+        type: "value",
+        axisLabel: {
+          formatter: function (v) { return "$" + Math.round(v / 1e6) + "M"; },
+        },
+      },
+      yAxis: {
+        type: "category",
+        data: sectors.map(function (r) { return r["dim_issuer.sector"]; }),
+      },
+      series: [{
+        type: "bar",
+        data: sectors.map(function (r) { return Number(r.fair_value); }),
+        itemStyle: { color: "#1f4e79" },
+        label: {
+          show: true, position: "right",
+          formatter: function (p) { return money(p.value); },
+        },
+      }],
+    });
   }
+  // Draw after layout, so ECharts reads the container's real size (a chart
+  // init'd at zero width renders nothing).
+  if (document.readyState === "complete") requestAnimationFrame(drawSectorChart);
+  else window.addEventListener("load", function () { requestAnimationFrame(drawSectorChart); });
 
   // Largest issuer exposures → table, top 10 by fair value.
   var issuers = read("tracebi-data-top_issuers");

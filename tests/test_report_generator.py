@@ -329,7 +329,7 @@ _SCRIPT = (
 
 def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
                    script=_SCRIPT, data=None, name="Regions",
-                   dirname="regions", report_py=None):
+                   dirname="regions", report_py=None, libs=None):
     """Write a package dir and return its path."""
     if data is None:
         data = {
@@ -344,10 +344,10 @@ def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
         }
     pkg = tmp_path / dirname
     pkg.mkdir()
-    (pkg / "report.json").write_text(
-        json.dumps({"name": name, "author": "t", "data": data}),
-        encoding="utf-8",
-    )
+    decl = {"name": name, "author": "t", "data": data}
+    if libs is not None:
+        decl["libs"] = libs
+    (pkg / "report.json").write_text(json.dumps(decl), encoding="utf-8")
     (pkg / "template.html").write_text(template, encoding="utf-8")
     if style is not None:
         (pkg / "style.css").write_text(style, encoding="utf-8")
@@ -366,6 +366,36 @@ class TestTemplatePackageRender:
         html = out.read_text(encoding="utf-8")
         # No external CSS/JS/img: nothing that would phone home when opened.
         assert not re.search(r'(?:src|href)\s*=\s*["\'](?:https?:)?//', html)
+
+    def test_strict_csp_on_every_page(self, tmp_path, model):
+        # The CSP (architecture §5) ships even on a data-only report: no
+        # network, and — since ECharts needs none — no unsafe-eval.
+        pkg = _write_package(tmp_path)
+        out = tmp_path / "out.html"
+        TemplatePackage(str(pkg)).render({model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert 'http-equiv="Content-Security-Policy"' in html
+        assert "connect-src 'none'" in html
+        assert "unsafe-eval" not in html
+
+
+class TestChartLibraries:
+    def test_echarts_bundle_inlined_offline(self, tmp_path, model):
+        pkg = _write_package(tmp_path, libs=["echarts"])
+        out = tmp_path / "out.html"
+        TemplatePackage(str(pkg)).render({model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        # The library is inlined verbatim (its global is defined), and still no
+        # loaded external resource — the bundle carries its own license URL as
+        # an inert comment, which is not a src/href.
+        assert "window.echarts" in html or "echarts" in html
+        assert len(html) > 400_000  # the bundle is actually present
+        assert not re.search(r'(?:src|href)\s*=\s*["\'](?:https?:)?//', html)
+
+    def test_unknown_lib_is_rejected(self, tmp_path):
+        pkg = _write_package(tmp_path, libs=["nope"])
+        with pytest.raises(ValueError, match="libs"):
+            TemplatePackage(str(pkg))
 
     def test_data_embedded_as_safe_json_with_triple(self, tmp_path, model):
         pkg = _write_package(tmp_path)
@@ -508,7 +538,7 @@ class TestTemplatePackageLoading:
         # A fragment with no </head>/</body>: injection has nowhere to go.
         pkg = _write_package(tmp_path, template="<div>no doc</div>", style=None)
         out = tmp_path / "out.html"
-        with pytest.raises(ValueError, match="no </body>"):
+        with pytest.raises(ValueError, match=r"no </(head|body)>"):
             TemplatePackage(str(pkg)).render({model.name: model}, str(out))
 
     def test_name_defaults_to_directory(self, tmp_path):
