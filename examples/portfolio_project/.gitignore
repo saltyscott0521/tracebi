@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+data/
+# Rendered outputs are disposable, but the *.manifest.json files inside are
+# receipts — the audit trail. `output/*` with the negation (git cannot
+# re-include under an excluded directory) keeps outputs ignored while the
+# manifests you need to stand behind a report stay retained.
+output/*
+!output/*.manifest.json
+*.db
+.ipynb_checkpoints/

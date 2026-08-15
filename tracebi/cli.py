@@ -29,22 +29,28 @@ from typing import Optional
 from tracebi._version import get_version as _tracebi_version
 
 
-# Resolve the requests/ folder relative to the user's current working
-# directory by default. Override with --requests-dir.
+# Resolve the project folders relative to the user's current working
+# directory by default, honouring the same TRACEBI_*_DIR env vars the server
+# and gateway read (so the CLI and the server agree on where a project
+# lives). Override per-invocation with the --*-dir flags.
 def _default_requests_dir() -> Path:
-    return Path.cwd() / "requests"
+    return Path(os.environ.get("TRACEBI_REQUESTS_DIR", "requests"))
 
 
 def _default_models_dir() -> Path:
-    return Path.cwd() / "models"
+    return Path(os.environ.get("TRACEBI_MODELS_DIR", "models"))
 
 
 def _default_pipelines_dir() -> Path:
-    return Path.cwd() / "pipelines"
+    return Path(os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
 
 
 def _default_reports_dir() -> Path:
-    return Path.cwd() / "reports"
+    return Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+
+
+def _default_transforms_dir() -> Path:
+    return Path(os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms"))
 
 
 def _slugify(title: str) -> str:
@@ -286,7 +292,11 @@ model.add_table("my_table", connector="{slug}_db", source="my_table")
 #                     attributes=["region", "segment"])
 # model.add_fact("fact_orders", table_name="orders", measures=["revenue", "qty"],
 #                foreign_keys={{"dim_customer": "customer_id"}})
-model.connect()
+
+# Construction is declarative and lazy: importing this file must not touch
+# the database (discovery imports every model file, and a connect here would
+# open a connection — or fail outright — on every scan). A query is what
+# connects. Do not call model.connect() at import time.
 
 # ── Publish to the project registry ──────────────────────────────────────────
 # Also discoverable without this line via `get_model("{slug}")`, since files
@@ -354,6 +364,66 @@ register.pipeline("{slug}", runner)
 '''
 
 
+def _transform_template_text(title: str) -> str:
+    today = date.today().isoformat()
+    slug = _slugify(title)
+    return f'''\
+"""
+{title}
+{'=' * len(title)}
+
+Phase ① — TRANSFORM. Scaffolded by ``tracebi new-transform`` on {today}.
+
+Ordinary, unconstrained pandas: read the raw pull, do whatever the data
+needs — window functions, prose parsing, cleaning, dedupe — then SINK the
+clean, star-shaped result into the warehouse. The framework does not
+constrain this phase; the contract is not *how* you clean, it is *what
+lands* — the named tables at the bottom of this file. Phase ② (models/)
+reads those tables and never sees this code.
+
+    python transforms/{slug}.py
+
+Keep it idempotent: a rerun replaces the warehouse tables.
+"""
+
+from __future__ import annotations
+
+import os
+
+import pandas as pd
+
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+
+
+def run() -> dict:
+    # ── 1. Read the raw input (inputs/, an API pull, a SQL export…) ─────────
+    df = pd.read_csv(os.path.join(ROOT, "inputs", "{slug}.csv"))
+
+    # ── 2. Clean — any pandas you like; none of this is traced, by design ───
+    # df = df.dropna(subset=["id"]).drop_duplicates(subset=["id"])
+
+    # ── 3. Shape into star-schema tables (facts keyed to dimensions) ────────
+    # dim_x = df[["x"]].drop_duplicates().rename_axis("x_id").reset_index()
+    # fact = df.merge(dim_x, on="x")[["id", "x_id", "value"]]
+
+    # ── 4. Sink — the contract: these named tables are what phase ② models ──
+    os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
+    wh = DuckDBConnector("warehouse", database=WAREHOUSE)
+    # wh.write(dim_x, "dim_x")
+    # wh.write(fact, "fact_{slug}")
+
+    return {{"warehouse": WAREHOUSE}}
+
+
+if __name__ == "__main__":
+    for k, v in run().items():
+        print(f"  {{k:12}} {{v}}")
+'''
+
+
 # ── init project scaffolding ────────────────────────────────────────────────
 
 _INIT_GITIGNORE = """\
@@ -376,24 +446,252 @@ output/*
 _INIT_ENV_EXAMPLE = """\
 # Copy to .env and fill in. The .env file is gitignored.
 #
-# python-dotenv will load these into os.environ when your scripts run if you
-# call `from dotenv import load_dotenv; load_dotenv()` at the top of your app.
+# The framework does not auto-load this file: call
+# `from dotenv import load_dotenv; load_dotenv()` at the top of your scripts
+# (python-dotenv ships with the analyst/all extras).
 
-# Example: Postgres warehouse for SQLConnector
+# ── Connectors ──────────────────────────────────────────────────────────────
+# Construct connectors in your own code and pass credential-bearing URLs
+# explicitly via os.environ[...] — the framework never reads these implicitly.
 # TRACEBI_SALES_DB_URL=postgresql+psycopg://user:password@host:5432/sales
-
-# Example: BigQuery
 # GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
-# Optional auth for the web UI (basic auth)
+# ── Web UI auth ─────────────────────────────────────────────────────────────
+# HTTP Basic (single shared credential — development / small teams):
 # TRACEBI_AUTH_USER=admin
 # TRACEBI_AUTH_PASS=changeme
+# Reverse-proxy header trust (SSO in front — the header names the principal):
+# TRACEBI_AUTH_PROXY_HEADER=X-Forwarded-User
+# TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.1
+
+# ── Authorization (roles) ───────────────────────────────────────────────────
+# Without a role source every authenticated caller is admin (documented,
+# deliberate). To enforce roles, name one:
+# TRACEBI_AUTH_ROLE_MAP=alice=admin,bob=analyst
+# TRACEBI_AUTH_DEFAULT_ROLE=viewer
+
+# ── Agent gateway (MCP over HTTP) ───────────────────────────────────────────
+# TRACEBI_MCP_TOKEN=a-long-random-string
+# TRACEBI_MCP_ACTOR=agent
+"""
+
+_INIT_SAMPLE_CSV = """\
+order_id,order_date,region,product,qty,revenue
+1001,2025-01-15,north east,Widget,12,"$1,198.80"
+1002,2025-01-20,Northeast,Gadget,8,"$1,599.20"
+1003,2025-02-03,midwest,Widget,20,"$1,998.00"
+1004,2025-02-11,MIDWEST,Sprocket,5,"$749.50"
+1005,2025-03-02,south east,Gadget,15,"$2,998.50"
+1006,2025-03-18,Southeast,Widget,9,"$899.10"
+1007,2025-04-05,west,Sprocket,11,"$1,649.45"
+1008,2025-04-22,West,Widget,25,"$2,497.50"
+1009,2025-05-09,north east,Gadget,6,"$1,199.40"
+1009,2025-05-09,north east,Gadget,6,"$1,199.40"
+1010,2025-05-30,midwest,Sprocket,14,"$2,098.60"
+,2025-06-01,west,Widget,3,"$299.70"
+"""
+
+_INIT_SAMPLE_TRANSFORM = '''\
+"""
+Phase ① — TRANSFORM.
+
+Ordinary pandas. Read the raw pull from inputs/, do whatever the data needs —
+here: drop the row with no key, dedupe, normalise regions spelled four ways,
+parse money stored as strings — and SINK the clean, star-shaped result into
+the warehouse.
+
+This is the phase the framework does NOT constrain: write as much pandas as
+the data needs. The contract is not *how* you clean, it is *what lands* — the
+named tables at the bottom of this file. Phase ② (models/) reads those tables
+and never sees this code.
+
+    python transforms/sample_transform.py
+
+Idempotent: rerun any time; it replaces the warehouse tables.
+"""
+
+from __future__ import annotations
+
+import os
+
+import pandas as pd
+
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW = os.path.join(ROOT, "inputs", "orders.csv")
+WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+
+_REGIONS = {
+    "north east": "Northeast", "northeast": "Northeast",
+    "south east": "Southeast", "southeast": "Southeast",
+    "midwest": "Midwest", "west": "West",
+}
+
+
+def run() -> dict:
+    df = pd.read_csv(RAW)
+
+    # Clean — any pandas you like; none of this is traced, by design.
+    df = df.dropna(subset=["order_id"]).drop_duplicates(subset=["order_id"])
+    df["order_id"] = df["order_id"].astype(int)
+    df["region"] = df["region"].str.strip().str.lower().map(_REGIONS)
+    df["revenue"] = (
+        df["revenue"].str.replace(r"[$,]", "", regex=True).astype(float)
+    )
+    df["qty"] = df["qty"].astype(int)
+
+    # Shape — one dimension, one fact, keyed.
+    dim_region = (
+        df[["region"]].drop_duplicates().reset_index(drop=True)
+        .rename_axis("region_id").reset_index()
+    )
+    fact = df.merge(dim_region, on="region")[
+        ["order_id", "order_date", "region_id", "product", "qty", "revenue"]
+    ]
+
+    # Sink — the contract. These named tables are what phase ② models.
+    os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
+    wh = DuckDBConnector("warehouse", database=WAREHOUSE)
+    wh.write(dim_region, "dim_region")
+    wh.write(fact, "fact_orders")
+
+    return {"orders": len(fact), "regions": len(dim_region),
+            "revenue": round(fact["revenue"].sum(), 2), "warehouse": WAREHOUSE}
+
+
+if __name__ == "__main__":
+    for k, v in run().items():
+        print(f"  {k:12} {v}")
+'''
+
+_INIT_SAMPLE_MODEL = '''\
+"""
+Phase ② — MODEL.
+
+A star schema over the warehouse phase ① sank into. This file is the
+*contract*: grain, keys, and measures in a few declarative lines a reviewer
+reads without ever opening the pandas that produced the tables.
+
+    from tracebi.model_registry import get_model
+    model = get_model("sample_model")
+
+Construction is declarative and lazy — importing this file does not touch the
+warehouse, so it loads fine before phase ① has ever run; a query is what
+reads the file. Keep it that way: never call model.connect() at import time.
+"""
+
+from __future__ import annotations
+
+import os
+
+from tracebi import DataModel
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+
+connector = DuckDBConnector("warehouse", database=WAREHOUSE)
+
+model = (
+    DataModel("sample_model")
+    .add_connector(connector)
+    # tables ← the exact names phase ① sank
+    .add_table("fact_orders", connector="warehouse", source="fact_orders")
+    .add_table("dim_region", connector="warehouse", source="dim_region")
+    # dimensions
+    .add_dimension("dim_region", table_name="dim_region", key_col="region_id",
+                   attributes=["region"])
+    # fact
+    .add_fact("fact_orders", table_name="fact_orders",
+              measures=["revenue", "qty"],
+              foreign_keys={"dim_region": "region_id"})
+    # measures ← the vocabulary a report queries by name
+    .add_measure("revenue", column="revenue", agg="sum",
+                 description="Total revenue", format="currency0")
+    .add_measure("units", column="qty", agg="sum", description="Units sold")
+    .add_measure("orders", column="order_id", agg="count",
+                 description="Order count")
+)
+'''
+
+_INIT_SAMPLE_DASHBOARD = """\
+{
+  "name": "Sample Dashboard",
+  "author": "tracebi init",
+  "description": "Every figure a live query against sample_model. Edit this file to reshape the page; nothing re-runs the pandas.",
+  "sections": [
+    {
+      "type": "text",
+      "style": "heading1",
+      "title": "Orders — Sample Dashboard",
+      "content": "Cleaned from inputs/orders.csv by the phase-\\u2460 transform. Every number below is a query against the model; change a panel and re-render in milliseconds."
+    },
+    {
+      "type": "metrics",
+      "title": "At a glance",
+      "data": {
+        "model": "sample_model",
+        "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }
+      },
+      "metrics": [
+        { "label": "Revenue", "value": "revenue", "format": "currency0" },
+        { "label": "Orders", "value": "orders", "format": "comma" },
+        { "label": "Units", "value": "units", "format": "comma" }
+      ]
+    },
+    {
+      "type": "chart",
+      "title": "Revenue by region",
+      "chart_type": "bar",
+      "x": "dim_region.region",
+      "y": "revenue",
+      "xlabel": "Region",
+      "ylabel": "Revenue",
+      "show_values": true,
+      "data": {
+        "model": "sample_model",
+        "query": {
+          "fact": "fact_orders",
+          "measures": ["revenue"],
+          "dimensions": ["dim_region.region"]
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Regions",
+      "column_labels": {
+        "dim_region.region": "Region",
+        "revenue": "Revenue",
+        "orders": "Orders",
+        "units": "Units"
+      },
+      "number_formats": { "revenue": "currency0" },
+      "totals": ["revenue", "orders", "units"],
+      "data": {
+        "model": "sample_model",
+        "query": {
+          "fact": "fact_orders",
+          "measures": ["revenue", "orders", "units"],
+          "dimensions": ["dim_region.region"]
+        }
+      }
+    }
+  ]
+}
 """
 
 _INIT_SAMPLE_REQUEST = '''"""
-Sample report — runs against an in-memory DataFrame so you can see TraceBi
-working immediately. Replace MemoryConnector with SQLConnector / CSVConnector
-once you wire your real data source (see models/ and `tracebi new-model`).
+Sample ad-hoc request — runs against an in-memory DataFrame so you can see
+TraceBi rendering immediately.
+
+requests/ is the human scratchpad: freeform scripts, unconstrained and
+UNVERIFIED — nothing here is covered by `tracebi verify`. When a request
+grows up, promote it: export with from_report() into a governed spec in
+reports/, where every figure becomes a re-provable query. The three-phase
+workflow (transforms/ → models/ → reports/) is the governed path; this lane
+is for exploration.
 
 Run:
     python requests/sample_report.py
@@ -456,56 +754,95 @@ def _init_project_readme(project: str) -> str:
 
 A TraceBi project. Scaffolded by `tracebi init`.
 
-## Layout
+TraceBi is the trust layer for AI-generated analytics: work moves through
+three phases, and from the model boundary onward every number carries a
+receipt you can re-check.
 
 ```
-{project}/
-├── .env.example      Copy to `.env` and fill in credentials
-├── models/           DataModel definitions — each .py exposes `model`
-├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
-├── reports/          Named reports — each .py uses @register.report()
-├── requests/         Ad-hoc report scripts — copy sample_report.py
-├── scheduled/        Reports on a cron schedule
-├── data/             Local databases / cached files (gitignored)
-└── output/           Rendered reports (gitignored)
+⓪  INPUT       inputs/       raw pulls land here (API export · CSV · SQL dump)
+①  TRANSFORM   transforms/   unconstrained pandas → SINK star tables
+                                      ── freeze: data/warehouse.duckdb ──
+②  MODEL       models/       a declarative star schema over the sink
+                                      ── freeze: the model (the contract) ──
+③  REPORT      reports/      specs whose every figure is a live query
 ```
 
-Everything in those four artifact directories is picked up automatically —
-by `tracebi serve`, and by notebooks via `get_model()` / `get_runner()`.
-There is no registration file to edit.
-
-## Run the sample report
+## Install
 
 TraceBi is not on PyPI — install it from GitHub:
 
 ```bash
 pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"
-tracebi run sample_report
-open output/sample_report.html
 ```
 
-## Browse in the web UI
+For the web UI and REST API as well:
 
 ```bash
 pip install "tracebi[web] @ git+https://github.com/saltyscott0521/tracebi"
-tracebi serve                 # http://127.0.0.1:8000
 ```
 
-That install carries the REST API but no built React bundle (`tracebi/web/ui/dist`
-is gitignored, so it is not in the repo the installer builds from). Every
-`/api/...` route works and `/docs` is browsable; `/` says what is missing.
-For the full browser UI, clone the repo and run
-`cd web/ui && npm ci && npm run build`, then serve from there.
+(That install carries the API; the built React bundle is not in the repo the
+installer builds from, so `/` explains how to build it. Every `/api/...`
+route works either way.)
+
+## Run the whole loop now
+
+The scaffold is a complete working example — messy input included:
+
+```bash
+python transforms/sample_transform.py       # ① clean + sink → data/warehouse.duckdb
+tracebi report build sample_dashboard       # ③ render → data/sample_dashboard.html + receipt
+tracebi verify data/sample_dashboard.html.manifest.json   # every section: REPRODUCES
+tracebi serve                               # browse it at http://127.0.0.1:8000
+```
+
+That last `verify` is the point: it re-runs the recorded queries against the
+model and confirms the rendered numbers still reproduce. Every number has a
+receipt — or is marked as not having one.
+
+## Layout
+
+```
+{project}/
+├── inputs/           Phase ⓪ — raw pulls (orders.csv is the sample)
+├── transforms/       Phase ① — pandas that reads inputs/, sinks star tables
+├── models/           Phase ② — each .py exposes `model` (a DataModel)
+├── reports/          Phase ③ — ReportSpec .json, packages, and factories
+├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
+├── requests/         The human scratchpad — freeform, unverified scripts
+├── scheduled/        Reports on a cron schedule
+├── data/             The warehouse + rendered pages (gitignored)
+├── output/           Ad-hoc renders; *.manifest.json receipts stay tracked
+└── .env.example      Copy to `.env` and fill in credentials
+```
+
+Everything in the artifact directories is discovered automatically — by
+`tracebi serve`, and by notebooks via `get_model()` / `get_runner()`. There
+is no registration file to edit.
+
+Run `git init && git add .` — manifests stamp the commit (`git_sha`), which
+is half the audit story.
 
 ## Wire your own data
 
 1. Copy `.env.example` to `.env` and add your database URL.
-2. `tracebi new-model "Sales"` — edit `models/sales.py` to point at your
-   connector and declare tables, dimensions, facts, and measures.
-3. `tracebi validate` — confirms the model loads and its dimension keys
-   are unique (a duplicate key silently inflates every total).
-4. Copy `requests/sample_report.py` to `requests/my_report.py` and adapt.
-5. `tracebi run my_report`.
+2. Drop a raw pull in `inputs/` (or query it in your transform directly).
+3. `tracebi new-transform "Orders Clean"` — write the pandas; end by sinking
+   named tables to the warehouse. The framework does not constrain this
+   phase; the contract is what lands.
+4. `tracebi new-model "Sales"` — declare the star schema over those tables.
+   `tracebi validate` confirms it loads and its dimension keys are unique.
+5. Copy `reports/sample_dashboard.json`, point it at your model, and
+   `tracebi spec validate` it before running.
+6. For freeform exploration, copy `requests/sample_report.py` — that lane
+   is unverified by design; promote what matters into `reports/`.
+
+## Agents
+
+The same contracts drive the agent surface: `tracebi context` emits the
+vocabulary as JSON, `tracebi mcp` opens the gateway (validate a spec, query
+a model, render, verify — read-and-compute only). An agent and an analyst
+author against the same model and produce the same receipts.
 """
 
 
@@ -521,22 +858,27 @@ def cmd_init(args: argparse.Namespace) -> int:
             )
             return 1
 
-    # The four artifact directories the server auto-discovers at startup,
-    # plus scheduled/. init used to create only requests/, so an init'd
-    # project was structurally incompatible with `tracebi serve`.
-    for d in ("models", "pipelines", "reports", "requests", "scheduled",
-              "data", "output"):
+    # The full three-phase layout: the workflow folders (inputs/, transforms/)
+    # plus every directory the server auto-discovers at startup. The scaffold
+    # is a complete working example — the first thing a new user runs ends
+    # with `tracebi verify` reading REPRODUCES.
+    for d in ("inputs", "transforms", "models", "pipelines", "reports",
+              "requests", "scheduled", "data", "output"):
         (target / d).mkdir(parents=True, exist_ok=True)
 
     files = {
         target / ".gitignore":              _INIT_GITIGNORE,
         target / ".env.example":            _INIT_ENV_EXAMPLE,
         target / "README.md":               _init_project_readme(target.name),
+        target / "inputs" / "orders.csv":   _INIT_SAMPLE_CSV,
+        target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,
+        target / "models" / "sample_model.py": _INIT_SAMPLE_MODEL,
+        target / "reports" / "sample_dashboard.json": _INIT_SAMPLE_DASHBOARD,
         target / "requests" / "sample_report.py": _INIT_SAMPLE_REQUEST,
     }
-    # Keep the discovery directories in git even while empty, so the layout
+    # Keep the still-empty discovery directories in git so the layout
     # survives a clone.
-    for d in ("models", "pipelines", "reports", "scheduled"):
+    for d in ("pipelines", "scheduled"):
         files[target / d / ".gitkeep"] = ""
 
     for path, content in files.items():
@@ -547,9 +889,11 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     print(f"Initialised TraceBi project at {target}")
     print(f"  cd {target.name}")
-    print(f"  git init && git add .         # manifests stamp the commit (git_sha)")
-    print(f"  tracebi run sample_report     # render to output/")
-    print(f"  tracebi serve                 # browse at http://127.0.0.1:8000")
+    print(f"  git init && git add .                  # manifests stamp the commit (git_sha)")
+    print(f"  python transforms/sample_transform.py  # ① clean + sink the sample input")
+    print(f"  tracebi report build sample_dashboard  # ③ render + receipt")
+    print(f"  tracebi verify data/sample_dashboard.html.manifest.json")
+    print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
     return 0
 
 
@@ -940,6 +1284,24 @@ def cmd_new_model(args: argparse.Namespace) -> int:
     print(f"  Edit the file, then use it with:")
     print(f"    from tracebi.model_registry import get_model")
     print(f'    model = get_model("{slug}")')
+    return 0
+
+
+def cmd_new_transform(args: argparse.Namespace) -> int:
+    transforms_dir: Path = args.transforms_dir
+    transforms_dir.mkdir(parents=True, exist_ok=True)
+
+    slug = _slugify(args.title)
+    out_path = transforms_dir / f"{slug}.py"
+    if out_path.exists() and not args.force:
+        print(f"refusing to overwrite existing {out_path}; pass --force to replace",
+              file=sys.stderr)
+        return 1
+
+    out_path.write_text(_transform_template_text(args.title), encoding="utf-8")
+    print(f"Created {out_path}")
+    print(f"  Write the pandas, end by sinking named tables, then run it:")
+    print(f"    python {out_path}")
     return 0
 
 
@@ -1710,6 +2072,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_new_pipeline.add_argument("title", help='Free-form title, e.g. "Sales Pipeline".')
     p_new_pipeline.add_argument("--force", action="store_true", help="Overwrite if exists.")
     p_new_pipeline.set_defaults(func=cmd_new_pipeline)
+
+    p_new_transform = sub.add_parser(
+        "new-transform",
+        help="Scaffold a phase-① transform (transforms/<name>.py): pandas "
+             "that reads a raw input and sinks star tables to the warehouse.",
+    )
+    p_new_transform.add_argument("title", help='Free-form title, e.g. "Orders Clean".')
+    p_new_transform.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_transform.add_argument(
+        "--transforms-dir", type=Path, default=_default_transforms_dir(),
+        help="Directory holding transforms (default: ./transforms).",
+    )
+    p_new_transform.set_defaults(func=cmd_new_transform)
 
     p_list_pipelines = sub.add_parser("list-pipelines", help="List pipeline definition files.")
     p_list_pipelines.set_defaults(func=cmd_list_pipelines)

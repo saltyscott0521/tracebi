@@ -2232,13 +2232,15 @@ class TestConsumerProjectPath:
             assert (target / d).is_dir(), f"init must create {d}/"
 
     def test_discovery_dirs_survive_a_clone(self, tmp_path):
-        """Empty directories vanish in git without a keepfile."""
+        """Empty directories vanish in git without a keepfile. models/ and
+        reports/ now survive via their scaffolded sample files; the dirs
+        init leaves empty still need a .gitkeep."""
         from tracebi.cli import main
 
         target = tmp_path / "proj"
         main(["init", str(target)])
         for d in ("models", "pipelines", "reports", "scheduled"):
-            assert (target / d / ".gitkeep").exists()
+            assert any((target / d).iterdir()), f"{d}/ would vanish in a clone"
 
     def test_init_does_not_write_dead_config(self, tmp_path):
         """tracebi.yaml was scaffolded and parsed by nothing."""

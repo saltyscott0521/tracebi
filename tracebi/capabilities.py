@@ -188,6 +188,22 @@ def _conventions() -> dict:
     return {
         "directories": [
             {
+                "path": "inputs/",
+                "must_define": None,
+                "type": "raw input",
+                "note": "Phase ⓪ — raw pulls land here (API export, CSV, SQL "
+                        "dump). Not discovered by the server; transforms read it.",
+            },
+            {
+                "path": "transforms/",
+                "must_define": None,
+                "type": "phase-① transform",
+                "note": "Unconstrained pandas run explicitly (python "
+                        "transforms/<name>.py). The contract is what lands: "
+                        "named star tables sunk to the DuckDB warehouse. Not "
+                        "discovered by the server; models read the sink.",
+            },
+            {
                 "path": "models/",
                 "must_define": "model",
                 "type": "DataModel",
