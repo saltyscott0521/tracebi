@@ -216,7 +216,10 @@ list above as items 3, 4, and 17.
 - **MCP surface honesty bundle** — broken models vanish silently
   (`skipped: []` payload needed); `gateway_reports()` empty on a bare
   gateway; `get_context` cheat-sheet advertises kwargs that raise TypeError;
-  spec JSON-schema unobtainable over MCP. (G9–G11)
+  ~~spec JSON-schema unobtainable over MCP~~. (G9–G11)
+  *Partly closed 2026-08-15 by the MCP 2.0 work: the ReportSpec schema is now
+  the `tracebi://spec-schema` resource (G11 done); the skipped-models payload
+  and the cheat-sheet kwargs fix (G9/G10) remain.*
 - **Warehouse introspection** — no surface returns table columns + dtypes;
   agents learn schemas from error messages. `tracebi warehouse tables` + a
   `describe_table` MCP tool. (G12 rest)
@@ -234,8 +237,10 @@ list above as items 3, 4, and 17.
   non-root Docker USER, lockfile. All mechanical. (G18)
 - **Housekeeping riding the next release:** extras drift (`medallion`
   fossil, `csv`→`excel` + xlrd) (G26); `verify` accepts multiple manifests
-  for CI globs (G28); AGENTS.md registered as an MCP resource + caveats in
-  the server instructions string (G29); `validate --json` + no raw
+  for CI globs (G28); ~~AGENTS.md registered as an MCP resource + caveats in
+  the server instructions string~~ (G29 **closed 2026-08-15**: the authoring
+  SOP is the `tracebi://guide` resource and the caveats are in the
+  instructions string); `validate --json` + no raw
   tracebacks from `context --model` (G30); name the local-by-default
   residency commitment in deploy docs and label Vercel as demo topology
   (G33, the manifesto now states the commitment); a missing-warehouse error

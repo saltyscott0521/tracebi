@@ -250,3 +250,93 @@ def test_build_server_registers_the_tools(gateway_model):
         "validate_report_spec", "render_report_spec", "list_reports",
         "verify_manifest",
     }
+
+
+# ── MCP 2.0 protocol features ────────────────────────────────────────────────
+# The gateway advertises typed structured output, read-only tool annotations
+# (the "read-and-compute only" refusal, in the protocol), reference resources,
+# and an authoring prompt.
+
+class TestMcp2Features:
+    def _tools(self):
+        pytest.importorskip("mcp")
+        import anyio
+        from tracebi.mcp_server import build_server
+        server = build_server()
+        return server, {t.name: t for t in anyio.run(server.list_tools)}
+
+    def test_every_tool_advertises_an_output_schema(self, gateway_model):
+        _server, tools = self._tools()
+        for name, t in tools.items():
+            d = t.model_dump(by_alias=True, exclude_none=True)
+            assert d.get("outputSchema"), f"{name} has no outputSchema"
+
+    def test_read_tools_are_annotated_read_only(self, gateway_model):
+        _server, tools = self._tools()
+        read_only = {
+            "get_context", "list_models", "describe_model", "query_model",
+            "validate_report_spec", "list_reports", "verify_manifest",
+        }
+        for name in read_only:
+            ann = tools[name].annotations
+            assert ann is not None
+            assert ann.model_dump(by_alias=True).get("readOnlyHint") is True, name
+        # render is the one writer — it must NOT claim read-only, and it is
+        # non-destructive (writes only its own artifact, never source data).
+        render = tools["render_report_spec"].annotations.model_dump(by_alias=True)
+        assert render.get("readOnlyHint") is False
+        assert render.get("destructiveHint") is False
+
+    def test_query_tool_emits_structured_content(self, gateway_model):
+        pytest.importorskip("mcp")
+        import anyio
+        server, _ = self._tools()
+
+        async def call():
+            return await server.call_tool("query_model", {
+                "model": "gw_demo", "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "dimensions": ["dim_customer.region"],
+            })
+
+        result = anyio.run(call)
+        payload = result.model_dump(by_alias=True, exclude_none=True)
+        assert payload.get("isError") is not True
+        sc = payload.get("structuredContent")
+        assert sc and sc.get("fingerprint"), "the stamp must arrive as structured content"
+        assert sc.get("row_count") == 3
+
+    def test_resources_and_template_are_registered_and_readable(self, gateway_model):
+        pytest.importorskip("mcp")
+        import anyio
+        server, _ = self._tools()
+
+        static = {str(r.uri) for r in anyio.run(server.list_resources)}
+        assert {"tracebi://guide", "tracebi://spec-schema"} <= static
+        templates = {t.uri_template for t in anyio.run(server.list_resource_templates)}
+        assert "tracebi://models/{name}" in templates
+
+        # the spec-schema resource returns the real ReportSpec JSON Schema
+        schema = list(anyio.run(server.read_resource, "tracebi://spec-schema"))[0].content
+        assert json.loads(schema).get("$schema")
+        # the model template resolves to that model's schema
+        model_doc = list(anyio.run(server.read_resource, "tracebi://models/gw_demo"))[0].content
+        assert json.loads(model_doc)["name"] == "gw_demo"
+
+    def test_author_report_prompt_walks_the_loop(self, gateway_model):
+        pytest.importorskip("mcp")
+        import anyio
+        server, _ = self._tools()
+
+        prompts = {p.name for p in anyio.run(server.list_prompts)}
+        assert "author_report" in prompts
+
+        async def render():
+            return await server.get_prompt("author_report", {"question": "revenue by region?"})
+
+        got = anyio.run(render)
+        text = got.messages[0].content.text
+        assert "revenue by region?" in text
+        for step in ("get_context", "query_model", "validate_report_spec",
+                     "render_report_spec", "verify_manifest"):
+            assert step in text, f"the SOP prompt should name {step}"

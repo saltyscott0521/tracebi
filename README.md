@@ -770,7 +770,8 @@ tracebi/                        ← the framework repo
 │   ├── reports/                Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
 │   ├── pipeline/               PipelineRunner (APScheduler + DB)
 │   ├── lineage/                LineageDiagram
-│   ├── mcp_server.py           Agent gateway — 8 MCP tools over the kernel
+│   ├── mcp_server.py           Agent gateway — 8 MCP tools (typed output, read-only
+│                               annotations) + resources + an authoring prompt
 │   └── web/
 │       ├── api/                FastAPI app, routers, registry
 │       ├── demo_app/           Bundled demo app — self-contained (its own models/ + reports/)

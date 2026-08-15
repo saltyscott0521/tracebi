@@ -118,6 +118,24 @@ Eight tools (`tracebi/mcp_server.py`):
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 
+Every tool returns **structured output** (a typed `outputSchema` and
+`structuredContent`, not JSON inside a text blob), so the stamp and the verdict
+arrive machine-typed. The read tools carry a `readOnlyHint` **annotation** — the
+"read-and-compute only" promise, visible in the protocol before you call.
+
+### Resources and a prompt
+
+The gateway also exposes reference material as MCP **resources** — pull them
+into context rather than guessing:
+
+- `tracebi://guide` — the authoring rules (this SOP, on the surface itself).
+- `tracebi://spec-schema` — the ReportSpec JSON Schema. Read it before writing
+  a spec instead of guessing the grammar.
+- `tracebi://models/{name}` — one model's full schema as a document.
+
+And a **prompt**, `author_report(question)`, that expands into the whole loop
+below for a given question — the fastest way to start correctly.
+
 ### The canonical loop
 
 1. **Discover** — `get_context`, then `list_models` / `describe_model`.

@@ -6,6 +6,31 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the MCP gateway adopts MCP 2.0 protocol features
+
+The gateway already ran on the MCP 2.0 SDK; now it uses the protocol, not just
+the transport.
+
+- **Structured output** on every tool: a typed `outputSchema` is advertised
+  and results come back as `structuredContent`, not JSON inside a text blob —
+  the stamp (query + lineage + fingerprint) and the verify verdict arrive
+  machine-typed. (Required dropping `from __future__ import annotations` in
+  `mcp_server.py` so the SDK can resolve the TypedDict return types; the module
+  floor is already Python 3.10.)
+- **Tool annotations**: the seven read/compute tools are marked
+  `readOnlyHint` — the manifesto's "read-and-compute only" refusal, now
+  visible in the protocol before a call. `render_report_spec` is marked
+  writable but non-destructive (it writes only its own artifact and receipt).
+- **Resources**: `tracebi://guide` (the authoring SOP, so an MCP-only agent
+  that never sees AGENTS.md still gets the rules — closes audit G29),
+  `tracebi://spec-schema` (the ReportSpec JSON Schema, so the grammar is
+  obtainable over MCP — closes G11), and a `tracebi://models/{name}` template.
+- **Prompt**: `author_report(question)` expands into the full
+  discover → query → spec → validate → render → verify loop.
+
+The `gateway_*` functions stay pure Python (typed with stdlib `TypedDict`),
+so the layer remains importable and testable without the `mcp` package.
+
 ### Added — MANIFESTO.md: the product identity, written down
 
 The trust layer for AI-generated analytics is the identity; the three-phase

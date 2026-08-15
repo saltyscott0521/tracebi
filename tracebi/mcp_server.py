@@ -26,15 +26,13 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 ``tracebi mcp --transport http --port 8765`` (for a remote one).
 """
 
-from __future__ import annotations
-
 import hmac
 import json
 import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 
 from tracebi.audit import actor
 
@@ -136,10 +134,136 @@ def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "report"
 
 
+#: The authoring SOP, served as the ``tracebi://guide`` resource. An agent
+#: reaching TraceBi only over MCP never sees AGENTS.md or the repo docs, so the
+#: essential rules have to live on the surface itself.
+_AUTHORING_GUIDE = """\
+# Working with the TraceBi gateway
+
+TraceBi is a trust layer for AI-generated analytics: every number you put in
+front of a person should carry a receipt. This gateway is how you produce one.
+
+## The loop
+1. **get_context** — first call. Returns the whole vocabulary (models, facts,
+   dimensions, named measures, section types). Nothing outside it validates.
+2. **query_model** — ask star-schema questions. Every result is *stamped*: the
+   resolved query, the lineage chain, and a SHA-256 fingerprint of the full
+   result. Cite the fingerprint with any number you quote.
+3. **author a ReportSpec** — read `tracebi://spec-schema` for the grammar.
+   Every figure is a query against the model, never a hard-coded number.
+4. **validate_report_spec** — check without executing. Errors carry a path
+   (`sections[0].data.query.fact`); fix each and retry until `ok: true`.
+5. **render_report_spec** — produces a self-contained HTML artifact and its
+   manifest (the receipt). This is the only tool that writes.
+6. **verify_manifest** — re-runs the recorded queries and classifies each
+   section. Only `reproduces` means a number was re-run and matched; a
+   manifest with nothing to check is not a pass.
+
+## The two planes
+- **Definition plane (git):** transforms, models, report specs are authored
+  and code-reviewed in the repo. Missing a measure? The fix is a reviewed edit
+  to the model file — never a workaround in the report layer.
+- **Contract plane (this gateway):** you *use* the semantic contract; you do
+  not change it here. The gateway is read-and-compute only — it never writes
+  the warehouse. The read tools are annotated read-only so a client can see it.
+
+## The rules
+- Never quote a number without its fingerprint.
+- Never hard-code a figure a query could produce.
+- If something can't be verified, say so — an honest "unverifiable" beats a
+  green badge on unchecked work.
+- The trust machinery covers the model boundary onward (the query and the
+  report), not the phase-① pandas that built the warehouse.
+"""
+
+
+# ── Structured output schemas ───────────────────────────────────────────────
+# Typed returns so the gateway can advertise an MCP outputSchema and hand the
+# agent structured content, not JSON inside a text blob — the stamp and the
+# verdict become machine-typed. Plain ``typing`` only: the gateway_* layer must
+# stay importable with no ``mcp`` package installed. All ``total=False`` because
+# several tools share one dict between a success shape and an
+# ``{ok, errors}`` envelope, and the MCP SDK drops any returned key the schema
+# does not name — so every key a function can return is listed here.
+
+
+class ContextResult(TypedDict, total=False):
+    tracebi_version: str
+    semantic_model: Any
+    report_sections: Any
+    dataset_verbs: Any
+    number_formats: Any
+    conventions: Any
+    cheat_sheets: Any
+    model: Any  # present only when a model= argument was passed
+
+
+class ModelsResult(TypedDict, total=False):
+    models: dict[str, Any]
+
+
+class ModelInfoResult(TypedDict, total=False):
+    name: str
+    tables: Any
+    relationships: Any
+    facts: Any
+    dimensions: Any
+    measures: Any
+    connectors: Any
+    filter_operators: Any
+
+
+class QueryResult(TypedDict, total=False):
+    model: str
+    query: dict[str, Any]
+    columns: list[str]
+    row_count: int
+    rows: list[dict[str, Any]]
+    rows_returned: int
+    truncated: bool
+    fingerprint: str
+    lineage: Any
+    actor: str
+
+
+class ValidateResult(TypedDict, total=False):
+    ok: bool
+    errors: list[str]
+    warnings: list[str]
+
+
+class RenderResult(TypedDict, total=False):
+    ok: bool
+    html_path: str
+    manifest_path: str
+    report_name: str
+    sections: int
+    dataset_fingerprints: list[str]
+    warnings: list[str]
+    errors: list[str]
+
+
+class ReportsResult(TypedDict, total=False):
+    reports: Any
+
+
+class VerifyResult(TypedDict, total=False):
+    ok: bool
+    verdict: str
+    verdict_detail: str
+    exit_code: int
+    report_name: str
+    schema_version: Any
+    python_derived: Any
+    sections: Any
+    summary: Any
+    errors: list[str]
+
+
 # ── Gateway operations ─────────────────────────────────────────────────────
 
 
-def gateway_context(model: Optional[str] = None) -> dict:
+def gateway_context(model: Optional[str] = None) -> ContextResult:
     """
     The semantic contract: TraceBi's full vocabulary, optionally plus one
     model's schema. This is the first call an agent should make — every
@@ -154,7 +278,7 @@ def gateway_context(model: Optional[str] = None) -> dict:
     return payload
 
 
-def gateway_models() -> dict:
+def gateway_models() -> ModelsResult:
     """
     Models this project exposes, with table/fact/dimension counts.
 
@@ -190,7 +314,7 @@ def gateway_models() -> dict:
     return {"models": out}
 
 
-def gateway_model_info(model: str) -> dict:
+def gateway_model_info(model: str) -> ModelInfoResult:
     """One model's full schema — tables, relationships, facts, dimensions, measures."""
     return _get_model(model).info()
 
@@ -204,7 +328,7 @@ def gateway_query(
     aggregate: bool = True,
     allow_fanout: bool = False,
     limit: int = _ROW_DEFAULT,
-) -> dict:
+) -> QueryResult:
     """
     Run a star-schema query and return a **stamped** result.
 
@@ -247,7 +371,7 @@ def gateway_query(
     }
 
 
-def gateway_validate_spec(spec: Any) -> dict:
+def gateway_validate_spec(spec: Any) -> ValidateResult:
     """
     Check a report spec against the project's models without loading a row.
 
@@ -268,7 +392,7 @@ def gateway_validate_spec(spec: Any) -> dict:
     return rs.validate(_load_models())
 
 
-def gateway_render_spec(spec: Any, output_dir: str = "output") -> dict:
+def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
     """
     Validate, build and render a spec to a self-contained HTML artifact,
     writing the lineage manifest beside it.
@@ -335,14 +459,14 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> dict:
     }
 
 
-def gateway_reports() -> dict:
+def gateway_reports() -> ReportsResult:
     """Reports the project exposes, from the discovery report."""
     from tracebi.web.discovery import discovery_report
 
     return {"reports": discovery_report()}
 
 
-def gateway_verify_manifest(manifest: Any) -> dict:
+def gateway_verify_manifest(manifest: Any) -> VerifyResult:
     """
     Close the loop: re-run every recorded query in a rendered manifest and
     classify each section — ``reproduces`` (fingerprint matches),
@@ -403,11 +527,25 @@ def build_server(token: Optional[str] = None):
     """
     try:
         from mcp.server.mcpserver import MCPServer
+        from mcp.types import ToolAnnotations
     except ImportError as exc:  # pragma: no cover — exercised by hand
         raise ImportError(
             "The MCP gateway needs the 'mcp' package. "
             "Install it with: pip install 'tracebi[mcp]'"
         ) from exc
+
+    # readOnlyHint carries the manifesto's "read-and-compute only" refusal into
+    # the protocol itself: a client can see, before calling, that these tools
+    # touch nothing. openWorldHint marks the ones that read the live warehouse.
+    _READ = ToolAnnotations(readOnlyHint=True, idempotentHint=True,
+                            openWorldHint=False)
+    _READ_WAREHOUSE = ToolAnnotations(readOnlyHint=True, idempotentHint=True,
+                                      openWorldHint=True)
+    # render is the one tool that writes — but only its own artifact + receipt,
+    # never source data, so destructiveHint is false. Re-rendering the same
+    # spec reproduces the same output, so it is idempotent.
+    _RENDER = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                              idempotentHint=True, openWorldHint=True)
 
     auth_kwargs: dict[str, Any] = {}
     if token is not None:
@@ -441,12 +579,21 @@ def build_server(token: Optional[str] = None):
             "its manifest. The loop is closed: verify_manifest re-runs a "
             "manifest's recorded queries and classifies every section as "
             "reproduces, source drift, or unexplained — a receipt you "
-            "rendered is a receipt you (or anyone later) can check."
+            "rendered is a receipt you (or anyone later) can check. Every "
+            "tool returns structured output; the read tools are annotated "
+            "read-only. Resources carry reference material: tracebi://guide "
+            "(how to author), tracebi://spec-schema (the ReportSpec JSON "
+            "Schema), tracebi://models/{name} (a model's schema). The "
+            "author_report prompt walks the whole loop for a question."
         ),
     )
 
+    # Tools. structured_output=True advertises each return's JSON Schema and
+    # hands the agent structuredContent, not JSON-in-text — the stamp and the
+    # verdict arrive machine-typed.
     server.tool(
-        name="get_context",
+        name="get_context", title="Semantic contract", annotations=_READ,
+        structured_output=True,
         description=(
             "TraceBi's semantic contract: every model, section type, chart "
             "type, DataSet verb, measure kind and filter operator. Pass "
@@ -455,15 +602,18 @@ def build_server(token: Optional[str] = None):
         ),
     )(gateway_context)
     server.tool(
-        name="list_models",
+        name="list_models", title="List models", annotations=_READ,
+        structured_output=True,
         description="Models this project exposes, with facts, dimensions and measures.",
     )(gateway_models)
     server.tool(
-        name="describe_model",
+        name="describe_model", title="Describe a model", annotations=_READ,
+        structured_output=True,
         description="One model's full schema: tables, relationships, facts, dimensions, named measures.",
     )(gateway_model_info)
     server.tool(
-        name="query_model",
+        name="query_model", title="Run a stamped query",
+        annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
             "Run a star-schema query. measures is {column: agg} (sum, count, "
             "mean, min, max, nunique); dimensions are 'dim_name.attribute' "
@@ -474,7 +624,8 @@ def build_server(token: Optional[str] = None):
         ),
     )(gateway_query)
     server.tool(
-        name="validate_report_spec",
+        name="validate_report_spec", title="Validate a report spec",
+        annotations=_READ, structured_output=True,
         description=(
             "Check a report spec (JSON) against the project's models without "
             "loading any data. Errors carry a path like "
@@ -482,7 +633,8 @@ def build_server(token: Optional[str] = None):
         ),
     )(gateway_validate_spec)
     server.tool(
-        name="render_report_spec",
+        name="render_report_spec", title="Render a report (writes an artifact)",
+        annotations=_RENDER, structured_output=True,
         description=(
             "Validate, build and render a report spec to a self-contained "
             "HTML artifact plus a lineage manifest written beside it. "
@@ -490,11 +642,13 @@ def build_server(token: Optional[str] = None):
         ),
     )(gateway_render_spec)
     server.tool(
-        name="list_reports",
+        name="list_reports", title="List reports", annotations=_READ,
+        structured_output=True,
         description="Reports the project exposes, with registration status per file.",
     )(gateway_reports)
     server.tool(
-        name="verify_manifest",
+        name="verify_manifest", title="Verify a receipt",
+        annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
             "Re-run every recorded query in a rendered manifest (a dict, or "
             "a path to the *.manifest.json render_report_spec wrote) and "
@@ -506,6 +660,58 @@ def build_server(token: Optional[str] = None):
             "matched, and a manifest with nothing to check is not a pass."
         ),
     )(gateway_verify_manifest)
+
+    # Resources — reference material a client can pull into context. The guide
+    # puts the authoring SOP on the surface itself (an MCP-only agent never
+    # sees AGENTS.md); the schema makes the ReportSpec grammar obtainable
+    # without a REST call; the template exposes any model as a readable doc.
+    server.resource(
+        "tracebi://guide", name="TraceBi authoring guide",
+        mime_type="text/markdown",
+        description="How to work with this gateway: the loop, the two planes, the rules.",
+    )(lambda: _AUTHORING_GUIDE)
+
+    @server.resource(
+        "tracebi://spec-schema", name="ReportSpec JSON Schema",
+        mime_type="application/json",
+        description="The JSON Schema a report spec must satisfy — author against this.",
+    )
+    def _spec_schema_resource() -> str:
+        from tracebi.spec import json_schema
+        return json.dumps(json_schema(), indent=2, default=str)
+
+    @server.resource(
+        "tracebi://models/{name}", name="Model schema",
+        mime_type="application/json",
+        description="One model's full schema (tables, dimensions, measures) as a document.",
+    )
+    def _model_resource(name: str) -> str:
+        return json.dumps(_get_model(name).info(), indent=2, default=str)
+
+    # Prompt — the authoring SOP as one executable template.
+    @server.prompt(
+        name="author_report", title="Author a governed report",
+        description="Walk the full loop — context, query, spec, validate, render, verify — for a question.",
+    )
+    def _author_report_prompt(question: str) -> str:
+        return (
+            f"Author a governed TraceBi report that answers: {question}\n\n"
+            "Follow the loop, and do not skip a step:\n"
+            "1. Call get_context (and get_context with the model= you'll use) "
+            "to learn the exact facts, dimensions and named measures. Nothing "
+            "outside that vocabulary will validate.\n"
+            "2. Use query_model to explore the numbers. Every result is "
+            "stamped — keep the fingerprints for anything you cite.\n"
+            "3. Read tracebi://spec-schema, then write a ReportSpec whose "
+            "sections query the model (not hard-coded numbers).\n"
+            "4. validate_report_spec until it returns ok:true — fix each "
+            "path-scoped error it reports.\n"
+            "5. render_report_spec to produce the HTML artifact and its "
+            "manifest.\n"
+            "6. verify_manifest on that manifest and report the verdict. "
+            "Only 'reproduces' means the numbers were re-run and matched; say "
+            "so honestly if anything is unverifiable."
+        )
 
     return server
 
