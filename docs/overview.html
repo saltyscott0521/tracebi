@@ -198,8 +198,8 @@
 
 <header>
   <h1>TraceBi</h1>
-  <p>A code-first BI framework with a three-phase workflow</p>
-  <div class="version-badge">v0.5.2 &nbsp;·&nbsp; 777 tests passing &nbsp;·&nbsp; MIT</div>
+  <p>The trust layer for AI-generated analytics — a code-first BI framework where every number has a receipt</p>
+  <div class="version-badge">v0.5.2 &nbsp;·&nbsp; 843 tests passing &nbsp;·&nbsp; MIT</div>
 </header>
 
 <nav>
@@ -219,7 +219,7 @@
   <p>
     TraceBi is a <strong>code-first BI framework</strong> organised around a
     <strong>three-phase workflow</strong> that carries data from messy to reportable:
-    <strong>manipulate</strong> it with unconstrained pandas and sink clean tables to a
+    <strong>transform</strong> it with unconstrained pandas and sink clean tables to a
     warehouse; declare a thin <strong>model</strong> over that warehouse; point a
     <strong>dashboard</strong> at the model. Each phase is a project-root folder with
     its own cadence, and the phases are decoupled by <strong>freeze points</strong> —
@@ -248,14 +248,14 @@
 
 <section id="workflow">
   <h2>The three-phase workflow</h2>
-  <p><strong>Manipulate → freeze → model → freeze → dashboard.</strong> The reference
+  <p><strong>Transform → freeze → model → freeze → report.</strong> The reference
   implementation ships in the repo; <code>python run_workflow.py</code> runs it end to end.</p>
 
   <div class="phase-flow">
     <div class="phase">
       <div class="phase-num" style="background:#475569">①</div>
       <div class="phase-body">
-        <h3>Manipulate</h3>
+        <h3>Transform</h3>
         <div class="phase-folder">transforms/</div>
         <p>Ordinary, unconstrained pandas. Pull the queries you need and do the real
         analysis — window functions, prose parsing, cleaning, dedupe — then
@@ -287,7 +287,7 @@
     <div class="phase">
       <div class="phase-num" style="background:#2E7D32">③</div>
       <div class="phase-body">
-        <h3>Dashboard</h3>
+        <h3>Report</h3>
         <div class="phase-folder">reports/</div>
         <p>A <code>ReportSpec</code> (JSON) pointed at the model — KPI cards, charts,
         tables — where every figure is a live query. Because the model is materialized, the
@@ -311,9 +311,9 @@
   <table>
     <thead><tr><th>Phase</th><th>Folder</th><th>Artifact</th><th>Cadence</th><th>Server discovers it as</th></tr></thead>
     <tbody>
-      <tr><td><strong>① Manipulate</strong></td><td><code>transforms/</code></td><td>pandas → DuckDB tables</td><td>slow, runs rarely</td><td>— (run explicitly)</td></tr>
+      <tr><td><strong>① Transform</strong></td><td><code>transforms/</code></td><td>pandas → DuckDB tables</td><td>slow, runs rarely</td><td>— (run explicitly)</td></tr>
       <tr><td><strong>② Model</strong></td><td><code>models/</code></td><td><code>DataModel</code> (a <code>model</code> variable)</td><td>changes deliberately</td><td>a model on the Models page</td></tr>
-      <tr><td><strong>③ Dashboard</strong></td><td><code>reports/</code></td><td><code>ReportSpec</code> JSON, template package, or factory</td><td>iterate constantly</td><td>a report on the Reports page</td></tr>
+      <tr><td><strong>③ Report</strong></td><td><code>reports/</code></td><td><code>ReportSpec</code> JSON, template package, or factory</td><td>iterate constantly</td><td>a report on the Reports page</td></tr>
     </tbody>
   </table>
 

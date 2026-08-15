@@ -8,7 +8,7 @@ at the model. Each phase has its own folder and its own cadence.
 ⓪  INPUT                 a raw pull lands here
     inputs/holdings.csv         (an AltsVault API export, a CSV, a SQL dump)
                                                           │
-①  MANIPULATE            slow, runs rarely, code is free
+①  TRANSFORM             slow, runs rarely, code is free
     transforms/holdings_transform.py
       read inputs/ → parse, clean, key, dedupe → WRITE star-schema tables
                                                           │
@@ -19,7 +19,7 @@ at the model. Each phase has its own folder and its own cadence.
       a reviewer reads without ever opening the pandas
                                                           │
                                                           ▼
-③  DASHBOARD             fast, iterate constantly
+③  REPORT                fast, iterate constantly
     reports/portfolio_dashboard.json
       a ReportSpec — KPI cards, charts, a table — every figure a live query
       against ②. Edit the JSON and re-render in milliseconds; nothing re-runs ①.
@@ -34,7 +34,8 @@ painful is gone.
 ## Run it
 
 ```bash
-python run_workflow.py          # ① build the warehouse, ③ render the dashboard once
+cd examples/portfolio_project
+python run_workflow.py          # ① build the warehouse, ③ render the report once
 python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → Reports → portfolio_dashboard
 ```
 
@@ -48,9 +49,9 @@ position counters to strip, sectors spelled six ways, money stored as strings.
 | Stage | Folder | Artifact | Discovered by the server as |
 |---|---|---|---|
 | ⓪ Input | `inputs/` | a raw pull (CSV / API export / SQL dump) | — (you put it there) |
-| ① Manipulate | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
+| ① Transform | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
 | ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Models page |
-| ③ Dashboard | `reports/` | `ReportSpec` JSON, template package, or `@register.report` factory | a report on the Reports page |
+| ③ Report | `reports/` | `ReportSpec` JSON, template package, or `@register.report` factory | a report on the Reports page |
 
 The warehouse is `data/warehouse.duckdb` — one file phase ① writes and phase ②
 reads. The model opens it read-through; the two phases can run in separate

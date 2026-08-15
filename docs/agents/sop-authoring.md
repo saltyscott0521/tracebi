@@ -7,7 +7,7 @@ contract, every answer you receive is stamped, and every number you show a
 human carries its receipt.**
 
 **Where this sits in the three-phase workflow (see `WORKFLOW.md`).** This is
-**phase ③ — DASHBOARD**, authoring over the model boundary. You are handed two
+**phase ③ — REPORT**, authoring over the model boundary. You are handed two
 freeze points: a warehouse phase ① already sank (`data/warehouse.duckdb`)
 and a model phase ② already declared over it (`models/*.py`, e.g.
 `models/portfolio_model.py`). You do not re-run the phase-① pandas and you do not

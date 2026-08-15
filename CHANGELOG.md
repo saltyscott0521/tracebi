@@ -51,7 +51,7 @@ in `tracebi/reports/embed.py`. The ECharts bundle is inlined once per document.
 `ChartSpec.to_svg` is **retained for the PDF path only** — WeasyPrint runs no
 JS, so `render_pdf` emits static SVG charts from the same `ChartSection` config.
 
-### Added — the three-phase workflow: manipulate → model → dashboard
+### Added — the three-phase workflow: transform → model → report
 
 A worked, end-to-end path from a messy source file to a served dashboard, with
 each phase in its own folder (see `WORKFLOW.md`):
@@ -59,14 +59,15 @@ each phase in its own folder (see `WORKFLOW.md`):
 - `transforms/` — phase ①, ordinary pandas that cleans a source and **sinks**
   star-schema tables into a file-backed DuckDB warehouse. As much code as the
   data needs; the contract is what lands, not how it was cleaned.
-- `models/portfolio_model.py` — phase ②, a `DataModel` over the warehouse. The
+- `models/portfolio_model.py` (reference project) — phase ②, a `DataModel` over the warehouse. The
   reviewable contract: grain, keys and measures in ~50 declarative lines.
 - `reports/` — phase ③. A `ReportSpec` JSON whose every figure is a live query
   against the model, served on the Reports page. Every report form lives in this
   one folder: specs, `@register.report` factories, and template packages alike
   (`TRACEBI_REPORTS_DIR`, default `reports`) — there is no separate
   `dashboards/`.
-- `run_workflow.py` drives ①→③; `inputs/generate_raw.py` produces a
+- `run_workflow.py` drives ①→③ (the reference project lives at
+  `examples/portfolio_project/`); `inputs/generate_raw.py` produces a
   synthetic Schedule-of-Investments file so phase ① has real work to do.
 
 A **metrics section can now bind its cards to a query**: a card whose `value`

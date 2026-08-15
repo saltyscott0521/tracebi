@@ -7,7 +7,7 @@ const PHASES = [
   {
     n: '1',
     tag: 'transforms/',
-    title: 'Manipulate',
+    title: 'Transform',
     color: '#0891b2',
     body: 'Pull the queries you need and run real Python — window functions, algorithms, cleaning — then sink the result.',
     cadence: 'runs rarely · code is unconstrained',
@@ -23,7 +23,7 @@ const PHASES = [
   {
     n: '3',
     tag: 'reports/',
-    title: 'Dashboard',
+    title: 'Report',
     color: '#db2777',
     body: 'Point a spec at the model — KPI cards, charts, tables. Every figure a live query; edit and re-render in milliseconds.',
     cadence: 'iterate constantly',

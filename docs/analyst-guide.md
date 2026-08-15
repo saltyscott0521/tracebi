@@ -23,7 +23,7 @@ one phase to the next. [WORKFLOW.md](../WORKFLOW.md) is the full account; the
 shape:
 
 ```
-①  MANIPULATE   transforms/       ordinary, unconstrained pandas
+①  TRANSFORM    transforms/       ordinary, unconstrained pandas
      read a messy source → parse, clean, key, dedupe → WRITE star-schema tables
                                                         │
                                                         ▼  freeze: data/warehouse.duckdb
@@ -31,7 +31,7 @@ shape:
      grain, keys, measures in a few dozen lines a reviewer reads without the pandas
                                                         │
                                                         ▼  freeze: the model (the semantic contract)
-③  DASHBOARD    reports/          a ReportSpec (JSON) pointed at the model
+③  REPORT       reports/          a ReportSpec (JSON) pointed at the model
      KPI cards, charts, tables — every figure a live query; served on the Reports page
 ```
 
@@ -40,17 +40,17 @@ data demands — window functions, prose parsing, cleaning — then *sink* clean
 named star-schema tables into a file-backed DuckDB warehouse with
 `DuckDBConnector(...).write(df, "table")`. The framework does not constrain how
 you clean; the contract is *what lands*. Reference impl:
-[transforms/holdings_transform.py](../transforms/holdings_transform.py).
+[transforms/holdings_transform.py](../examples/portfolio_project/transforms/holdings_transform.py).
 
 **Phase ②** declares a star schema over the warehouse — it reads the sink and
 never sees the transform above it. Reference impl:
-[models/portfolio_model.py](../models/portfolio_model.py).
+[models/portfolio_model.py](../examples/portfolio_project/models/portfolio_model.py).
 
 **Phase ③** is a JSON `ReportSpec` whose every figure is a live query against
 the model. Because the model is materialized, the page re-renders in
 milliseconds with no pandas in the loop — editing the dashboard never re-runs
 phase ①. Reference impl:
-[reports/portfolio_dashboard.json](../reports/portfolio_dashboard.json).
+[reports/portfolio_dashboard.json](../examples/portfolio_project/reports/portfolio_dashboard.json).
 
 ```bash
 python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once

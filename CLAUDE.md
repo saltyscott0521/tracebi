@@ -84,7 +84,7 @@ Run `pytest tests/` before and after any change. A passing suite is the minimum 
 **TraceBi** is a code-first, traceable BI framework for Python. Core ideas:
 
 - **DataSet**: immutable wrapper around a pandas DataFrame + lineage chain. Every operation returns a new DataSet; nothing mutates in place.
-- **DataModel**: Qlik-style associative model linking multiple DataSets by key, with an analytic star-schema query surface (facts, dimensions, measures) on the same class.
+- **DataModel**: the star-schema semantic contract — tables, relationships, facts, dimensions, named measures — with a query surface on the same class.
 - **Medallion ETL**: Landing (raw ingest) → Manipulation (declarative cleaning) → Final (DataModel star-schema aggregation). `BronzeLayer` / `SilverLayer` / `GoldLayer` remain as aliases.
 - **PipelineRunner**: registers layers, schedules with APScheduler, persists run history to SQLite.
 - **Report engine**: builds structured reports (text, tables, charts) and renders to Excel, HTML, or PDF.
@@ -101,32 +101,32 @@ data from messy to reportable in three project-root folders, each with its own
 cadence, decoupled by **freeze points** (a materialized artifact handed from one
 phase to the next):
 
-1. **MANIPULATE** — `transforms/`. Ordinary, unconstrained pandas: pull the
+1. **TRANSFORM** — `transforms/`. Ordinary, unconstrained pandas: pull the
    queries, do the real analysis (window functions, prose parsing, cleaning,
    dedupe), then **sink** clean star-schema tables into a file-backed DuckDB
    warehouse. The framework does not constrain this phase. The contract is not
    *how* you clean, it is *what lands* — the named tables at the end of the
-   script. Reference: `transforms/holdings_transform.py` → `DuckDBConnector(...).write(df, "table")`.
+   script. Reference: `examples/portfolio_project/transforms/holdings_transform.py` → `DuckDBConnector(...).write(df, "table")`.
 
    *— freeze: `data/warehouse.duckdb` (materialized tables) —*
 
 2. **MODEL** — `models/`. A declarative `DataModel` (star schema) over the
    warehouse: grain, keys, measures, in a few dozen lines a reviewer reads
    without opening the pandas above it. It reads the sink; it never sees the
-   transform. Reference: `models/portfolio_model.py`.
+   transform. Reference: `examples/portfolio_project/models/portfolio_model.py`.
 
    *— freeze: the model (the semantic contract) —*
 
-3. **DASHBOARD** — `reports/`. A `ReportSpec` (JSON) pointed at the model —
+3. **REPORT** — `reports/`. A `ReportSpec` (JSON) pointed at the model —
    KPI cards, charts, tables — where every figure is a live query. Because the
    model is materialized, the page re-renders in milliseconds with no pandas in
-   the loop. Reference: `reports/portfolio_dashboard.json`; served on the
+   the loop. Reference: `examples/portfolio_project/reports/portfolio_dashboard.json`; served on the
    Reports page of the web UI. `reports/` also holds template packages and
    `@register.report` factories — every report form lives in the one folder.
 
 **Why the split:** the slow, unconstrained analysis (①) and the fast, iterated
 reporting (③) never block each other, because the model (②) is a frozen contract
-between them. Editing the dashboard never re-runs the pandas.
+between them. Editing a report never re-runs the pandas.
 
 **Honest scope of lineage / trust.** Tracing lineage *through* the raw analysis
 (phase ①) is intentionally not done — the line is drawn at the **sink**, where
@@ -157,12 +157,14 @@ tracebi/               # Core Python package (~5200 LOC)
       errors.py        # Structured error payload (message + traceback) for routers
       lineage_graph.py # LineageNode list → React Flow graph (shared by routers)
       routers/         # One file per domain (connectors, models, reports, pipelines, dev)
-    demo_app/          # Default app module package — shows how to wire everything together
+    demo_app/          # Bundled demo app — SELF-CONTAINED (its own models/ subdir +
+                       #   reports/). Opt-in via TRACEBI_APP=tracebi.web.demo_app; the
+                       #   default is no app module.
     run.py             # Dev server (uvicorn wrapper) — python -m tracebi.web.run
     ui/dist/           # Built React bundle, written here by `cd web/ui && npm run build`
                        # (gitignored; Docker, Vercel and the release workflow build it. A
                        # wheel built from a tree without it ships no UI — / says so.)
-  cli.py               # tracebi init / new-request / list-requests / run / dev / validate
+  cli.py               # tracebi init / new-model / new-transform / report / verify / serve / mcp
   _notebook.py         # notebook_to_source() — concatenates code cells for exec
   __init__.py          # Public API re-exports — check here before writing new code
 web/
@@ -171,23 +173,21 @@ web/
                        # directory named `web` in the wheel collided with the unrelated
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
-examples/              # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
-tests/                 # pytest suite (700+ tests; run it for the current count), one file per area
-seeds/                 # DB init + Bronze seeding
-inputs/                # Phase ⓪ INPUT — raw pulls land here (API export / CSV / SQL dump).
-                       #   Tracked: holdings.csv + generate_raw.py (the demo source).
-transforms/            # Phase ① MANIPULATE — unconstrained pandas that reads inputs/ and
-                       #   sinks clean star tables into the warehouse (holdings_transform.py)
-models/                # Phase ② MODEL — DataModel definitions over the warehouse;
-                       #   each .py exposes a `model` variable (portfolio_model.py)
-pipelines/             # PipelineRunner definitions — each .py exposes a `runner` variable
-reports/               # Phase ③ DASHBOARD — every report form in one folder: ReportSpec
-                       #   JSON (portfolio_dashboard.json), template packages (<name>/), and
-                       #   @register.report() factories. All discovered and served alike.
-requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
-run_workflow.py        # Runs the three-phase workflow end to end (phase ① build + ③ render)
-data/                  # Gitignored local data: the demo SQLite DB and the workflow's
-                       #   warehouse.duckdb + rendered dashboard HTML (build artifacts)
+tests/                 # pytest suite (843 tests; run it for the current count), one file per area
+examples/
+  portfolio_project/   # THE reference working project — a complete three-phase project
+                       #   with the exact shape `tracebi init` scaffolds:
+    inputs/            #   ⓪ raw pulls (holdings.csv + generate_raw.py, the demo source)
+    transforms/        #   ① unconstrained pandas → sink star tables (holdings_transform.py)
+    models/            #   ② the star-schema contract (portfolio_model.py)
+    reports/           #   ③ every report form: spec (portfolio_dashboard.json),
+                       #     template packages (portfolio_book/), escape hatch
+                       #     (portfolio_concentration/)
+    requests/          #   the human scratchpad (unverified lane); _template.py scaffold
+    run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
+  seeds/               # Medallion demo DB seeding + Supabase deploy companions
+  phase*.py            # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
+MANIFESTO.md           # What TraceBi is, the vocabulary canon, and what it refuses to build
 .env.example           # Documented env vars (auth, connector URLs, dev mode)
 .github/workflows/     # CI — pytest matrix + ruff lint
 Dockerfile             # Multi-stage build (React UI + Python app)
@@ -210,7 +210,8 @@ NOTES.md               # Architecture decisions and open questions
 pip install -e ".[dev]"                        # Everything the test suite needs (incl. web)
 
 # Three-phase workflow
-python run_workflow.py                          # phase ① builds data/warehouse.duckdb,
+cd examples/portfolio_project && python run_workflow.py
+                                                # phase ① builds data/warehouse.duckdb,
                                                 #   phase ③ renders the dashboard HTML once, offline
 python -m tracebi.web.run                       # serves it; auto-discovers models/ + reports/
                                                 #   → Reports page (TRACEBI_REPORTS_DIR, default reports)
@@ -227,7 +228,7 @@ docker compose up --build                      # Or the docker-compose path
 vercel --prod                                  # Vercel + Supabase (see docs/deploy-vercel-supabase.md)
 
 # Database
-python seeds/seed_db.py                        # Create + seed data/tracebi.db
+python examples/seeds/seed_db.py               # Create + seed data/tracebi.db
 
 # Model and pipeline scaffolding
 tracebi new-model "Sales Model"                # → models/sales_model.py
@@ -448,7 +449,7 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 2. End by sinking clean star-schema tables into the warehouse:
    `DuckDBConnector("warehouse", database=WAREHOUSE).write(df, "table")`. The
    contract is the named tables that land, not how you produced them.
-3. Model this on `transforms/holdings_transform.py`. Keep it idempotent (a rerun
+3. Model this on `examples/portfolio_project/transforms/holdings_transform.py`. Keep it idempotent (a rerun
    replaces the warehouse tables). Nothing downstream imports this file.
 
 ### New connector
@@ -469,14 +470,15 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 4. The web server auto-discovers `pipelines/` at startup (`TRACEBI_PIPELINES_DIR` to override).
 
 ### New report (ad hoc)
-Copy `requests/_template.py`. Fill in the four sections: connectors → transforms → report assembly → render + save.
+Copy `requests/sample_report.py` from an init'd project (the fuller
+`_template.py` ships in `examples/portfolio_project/requests/`). Fill in the four sections: connectors → transforms → report assembly → render + save.
 
 ### New report (web-exposed)
 Put a `.py` file in `reports/` (or use `requests/`). Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
 
 ### New dashboard (phase ③)
 1. Add a `ReportSpec` `.json` under `reports/`, pointed at a model (grain +
-   measures it declares). Model this on `reports/portfolio_dashboard.json`.
+   measures it declares). Model this on the reference project's `reports/portfolio_dashboard.json`.
 2. Every figure is a live query against the model — KPI cards, charts, tables. A
    `metrics` section may carry a `data` query; a card whose `value` names a
    measure reads it live from the one-row result rather than hard-coding it.
@@ -566,11 +568,11 @@ Don't add these unless asked.
 | Goal | Start here |
 |---|---|
 | Understand the whole framework | `README.md` |
-| Understand the three-phase workflow | `WORKFLOW.md` + `run_workflow.py` |
-| Author a phase-① transform | `transforms/holdings_transform.py` |
-| Define the model over the warehouse | `models/portfolio_model.py` |
-| Build a dashboard | `reports/portfolio_dashboard.json` |
-| Build a freeform report package | `tracebi new-report` → `reports/portfolio_book/` + `docs/report-generator-architecture.md` |
+| Understand the three-phase workflow | `WORKFLOW.md` + `examples/portfolio_project/` |
+| Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
+| Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.py` |
+| Build a dashboard | `examples/portfolio_project/reports/portfolio_dashboard.json` |
+| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_book/` + `docs/report-generator-architecture.md` |
 | Understand architecture decisions | `NOTES.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |

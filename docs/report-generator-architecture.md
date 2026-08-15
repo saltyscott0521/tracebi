@@ -199,7 +199,8 @@ noun (`tracebi report build/preview`) an analyst learns regardless of form.
 | Freeform package | `reports/<name>/` (a directory) | the analyst's `template.html` | **new** `_register_template_package` |
 
 `dashboards/` has folded into `reports/` (one location): the demo
-`portfolio_dashboard.json` now lives at `reports/portfolio_dashboard.json`, and the
+`portfolio_dashboard.json` now lives in the reference project's `reports/`
+(`examples/portfolio_project/`), and the
 `TRACEBI_DASHBOARDS_DIR` discovery branch is gone.
 
 ---

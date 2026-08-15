@@ -7,20 +7,23 @@ session).
 
 ## What TraceBi is
 
-TraceBi is a code-first BI framework built around a **three-phase workflow**
+TraceBi is **the trust layer for AI-generated analytics** — a code-first BI
+framework where every number has a receipt (see `MANIFESTO.md` for the full
+identity and vocabulary canon). The mechanism is a **three-phase workflow**
 that carries data from messy to reportable. Each phase is a project-root folder
 with its own cadence, decoupled from the next by a **freeze point** — a
 materialized artifact handed across the boundary:
 
 | Phase | Folder | You write | Freeze it hands on |
 |---|---|---|---|
-| ① **Manipulate** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `data/warehouse.duckdb` (materialized tables) |
+| ① **Transform** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
-| ③ **Dashboard** | `reports/` | a `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables, every figure a live query — or a template package for freeform HTML | the rendered page + its lineage manifest |
+| ③ **Report** | `reports/` | a `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables, every figure a live query — or a template package for freeform HTML | the rendered page + its lineage manifest |
 
-Reference implementation, end to end: `transforms/holdings_transform.py` →
-`models/portfolio_model.py` → `reports/portfolio_dashboard.json`, wired by
-`run_workflow.py`. `WORKFLOW.md` is the full tour; read it first.
+Reference implementation, end to end, at `examples/portfolio_project/`:
+`transforms/holdings_transform.py` → `models/portfolio_model.py` →
+`reports/portfolio_dashboard.json`, wired by `run_workflow.py`.
+`WORKFLOW.md` is the full tour; read it first.
 
 The split earns its keep at the freeze points: the slow, unconstrained analysis
 (①) and the fast, iterated reporting (③) never block each other, because the

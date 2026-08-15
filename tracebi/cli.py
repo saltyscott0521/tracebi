@@ -1952,7 +1952,8 @@ def cmd_report(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tracebi",
-        description="TraceBi — code-first, traceable BI.",
+        description=("TraceBi — the trust layer for AI-generated analytics: "
+                     "a code-first BI framework where every number has a receipt."),
     )
     parser.add_argument(
         "--version",

@@ -275,7 +275,7 @@ export default function Home() {
               Take data from messy to reportable in three phases — write the analysis, freeze it into a model, dashboard the model. Every figure on the page stays a live query.
             </p>
             {[
-              'Manipulate: pull queries and run Python in transforms/ — sink the result to the warehouse',
+              'Transform: pull queries and run Python in transforms/ — sink the result to the warehouse',
               'Model: declare a star schema over the warehouse in models/ — grain, keys, measures',
               'Dashboard: point a spec in reports/ at the model — KPI cards, charts, tables',
               'Serve: every figure is a live query; edit the spec and re-render in milliseconds',

@@ -1,5 +1,5 @@
 """
-Phase ① — MANIPULATE.
+Phase ① — TRANSFORM.
 
 Ordinary pandas. Read the messy Schedule-of-Investments export, do the work a
 fund-ops analyst (or their agent) actually does — parse prose instrument blobs
@@ -178,6 +178,6 @@ def run() -> dict:
 
 if __name__ == "__main__":
     summary = run()
-    print("Phase ① — manipulate → sink")
+    print("Phase ① — transform → sink")
     for k, v in summary.items():
         print(f"  {k:22} {v}")

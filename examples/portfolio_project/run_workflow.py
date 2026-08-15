@@ -5,9 +5,9 @@ over.
     python run_workflow.py
 
     ⓪  INPUT        inputs/holdings.csv                (a raw pull; API export / CSV / SQL)
-    ①  MANIPULATE   transforms/holdings_transform.py   → data/warehouse.duckdb
+    ①  TRANSFORM    transforms/holdings_transform.py   → data/warehouse.duckdb
     ②  MODEL        models/portfolio_model.py          (a star schema over the sink)
-    ③  DASHBOARD    reports/portfolio_dashboard.json    → data/portfolio_dashboard.html
+    ③  REPORT       reports/portfolio_dashboard.json    → data/portfolio_dashboard.html
 
 This script does phase ① (build the warehouse) and renders phase ③ once, offline,
 so you can open the HTML directly. To serve the dashboard on the front end:
@@ -39,12 +39,12 @@ def _load(path: str):
 def main() -> None:
     raw = os.path.join(ROOT, "inputs", "holdings.csv")
 
-    # Phase ① — ensure a raw input exists, then manipulate → sink.
+    # Phase ① — ensure a raw input exists, then transform → sink.
     if not os.path.exists(raw):
         print("· generating a messy source file into inputs/")
         _load(os.path.join(ROOT, "inputs", "generate_raw.py"))
 
-    print("① manipulate → sink")
+    print("① transform → sink")
     transform = _load(os.path.join(ROOT, "transforms", "holdings_transform.py"))
     summary = transform.run()
     for k, v in summary.items():

@@ -24,7 +24,7 @@ function Card({ children, style }) {
 
 const PHASE_DETAIL = [
   {
-    n: '1', color: '#0891b2', folder: 'transforms/', title: 'Manipulate',
+    n: '1', color: '#0891b2', folder: 'transforms/', title: 'Transform',
     lead: 'The phase the framework does not constrain. Pull the queries you need and write as much Python as the work takes — window functions, algorithmic passes, prose parsing, cleaning — then write the result into the warehouse.',
     point: 'The contract is not how you clean, it is what lands: the named tables at the end of the script.',
     code: `# transforms/holdings_transform.py
@@ -50,7 +50,7 @@ model = (DataModel("portfolio_model")
   .add_measure("fair_value", column="fair_value", agg="sum", format="currency0"))`,
   },
   {
-    n: '3', color: '#db2777', folder: 'reports/', title: 'Dashboard',
+    n: '3', color: '#db2777', folder: 'reports/', title: 'Report',
     lead: 'A spec pointed at the model. KPI cards, charts and tables, each a query. Because the model is materialized, the page re-renders in milliseconds — no pandas in the loop.',
     point: 'Edit the JSON to reshape the page. A metrics card whose value names a measure reads it live.',
     code: `// reports/portfolio_dashboard.json
