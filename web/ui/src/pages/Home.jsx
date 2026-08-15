@@ -277,7 +277,7 @@ export default function Home() {
             {[
               'Manipulate: pull queries and run Python in transforms/ — sink the result to the warehouse',
               'Model: declare a star schema over the warehouse in models/ — grain, keys, measures',
-              'Dashboard: point a spec in dashboards/ at the model — KPI cards, charts, tables',
+              'Dashboard: point a spec in reports/ at the model — KPI cards, charts, tables',
               'Serve: every figure is a live query; edit the spec and re-render in milliseconds',
               'Re-prove any output later: tracebi verify re-runs the recorded queries',
             ].map((text, n) => (

@@ -22,7 +22,7 @@ const PHASES = [
   },
   {
     n: '3',
-    tag: 'dashboards/',
+    tag: 'reports/',
     title: 'Dashboard',
     color: '#db2777',
     body: 'Point a spec at the model — KPI cards, charts, tables. Every figure a live query; edit and re-render in milliseconds.',

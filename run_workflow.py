@@ -7,14 +7,14 @@ over.
     ⓪  INPUT        inputs/holdings.csv                (a raw pull; API export / CSV / SQL)
     ①  MANIPULATE   transforms/holdings_transform.py   → data/warehouse.duckdb
     ②  MODEL        models/portfolio_model.py          (a star schema over the sink)
-    ③  DASHBOARD    dashboards/portfolio_dashboard.json → data/portfolio_dashboard.html
+    ③  DASHBOARD    reports/portfolio_dashboard.json    → data/portfolio_dashboard.html
 
 This script does phase ① (build the warehouse) and renders phase ③ once, offline,
 so you can open the HTML directly. To serve the dashboard on the front end:
 
     python -m tracebi.web.run          # then open http://127.0.0.1:8000 → Reports
 
-The server auto-discovers models/ and dashboards/; it reads the same warehouse.
+The server auto-discovers models/ and reports/; it reads the same warehouse.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ def main() -> None:
     print(f"    loaded {sorted(models)}")
 
     print("③ dashboard → html")
-    spec_path = os.path.join(ROOT, "dashboards", "portfolio_dashboard.json")
+    spec_path = os.path.join(ROOT, "reports", "portfolio_dashboard.json")
     spec = ReportSpec.from_dict(json.load(open(spec_path)))
     check = spec.validate(models)
     if not check["ok"]:

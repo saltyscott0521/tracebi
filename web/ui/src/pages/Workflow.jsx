@@ -50,10 +50,10 @@ model = (DataModel("portfolio_model")
   .add_measure("fair_value", column="fair_value", agg="sum", format="currency0"))`,
   },
   {
-    n: '3', color: '#db2777', folder: 'dashboards/', title: 'Dashboard',
+    n: '3', color: '#db2777', folder: 'reports/', title: 'Dashboard',
     lead: 'A spec pointed at the model. KPI cards, charts and tables, each a query. Because the model is materialized, the page re-renders in milliseconds — no pandas in the loop.',
     point: 'Edit the JSON to reshape the page. A metrics card whose value names a measure reads it live.',
-    code: `// dashboards/portfolio_dashboard.json
+    code: `// reports/portfolio_dashboard.json
 { "type": "chart", "chart_type": "bar",
   "x": "dim_issuer.sector", "y": "fair_value",
   "data": { "model": "portfolio_model",
@@ -147,7 +147,7 @@ export default function Workflow() {
           <Code>python -m tracebi.web.run</Code>
           <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
             Auto-discovers <code style={{ fontSize: 11 }}>models/</code> and{' '}
-            <code style={{ fontSize: 11 }}>dashboards/</code>. Open{' '}
+            <code style={{ fontSize: 11 }}>reports/</code>. Open{' '}
             <Link to="/reports" style={{ color: 'var(--accent-text)' }}>Reports</Link> → run the dashboard.
           </p>
         </Card>

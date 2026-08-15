@@ -726,7 +726,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     # Don't drag the bundled demo app into someone else's project — it
     # references demo data they do not have. An app module is only needed
-    # for connectors and dashboards; opt in by setting TRACEBI_APP.
+    # for connectors; opt in by setting TRACEBI_APP.
     os.environ.setdefault("TRACEBI_APP", "")
 
     summary = ", ".join(f"{n} {d}" for d, n in discovered.items() if n) or "no artifacts yet"
@@ -1479,29 +1479,22 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def _default_dashboards_dir() -> Path:
-    return Path(os.environ.get("TRACEBI_DASHBOARDS_DIR", "dashboards"))
-
-
 def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
-    """Resolve *name* to a package directory or a spec file.
+    """Resolve *name* to a package directory or a spec file under ``reports/``.
 
     Looks for a ``reports/<name>/`` package first, then a ``reports/<name>.json``
-    or ``dashboards/<name>.json`` spec. Returns ``("package"|"spec", path)`` or
-    raises ``FileNotFoundError`` listing where it looked.
+    spec. Returns ``("package"|"spec", path)`` or raises ``FileNotFoundError``
+    listing where it looked. All report forms live in one ``reports/`` folder.
     """
     pkg_dir = reports_dir / name
     if (pkg_dir / "report.json").is_file() and (pkg_dir / "template.html").is_file():
         return "package", pkg_dir
-    tried = [str(pkg_dir)]
-    for base in (reports_dir, _default_dashboards_dir()):
-        spec_path = base / f"{name}.json"
-        tried.append(str(spec_path))
-        if spec_path.is_file():
-            return "spec", spec_path
+    spec_path = reports_dir / f"{name}.json"
+    if spec_path.is_file():
+        return "spec", spec_path
     raise FileNotFoundError(
         f"No report '{name}' found. Looked for a package or spec at:\n  "
-        + "\n  ".join(tried)
+        + "\n  ".join([str(pkg_dir), str(spec_path)])
     )
 
 
@@ -1564,7 +1557,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         tracebi report preview <name>   # build, then serve it locally
 
     A report is a package (``reports/<name>/``) or a spec
-    (``reports/<name>.json`` / ``dashboards/<name>.json``). Output defaults to
+    (``reports/<name>.json``). Output defaults to
     ``data/<name>.html`` — self-contained, offline, and checkable with
     ``tracebi verify --file``.
     """
@@ -1678,7 +1671,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve = sub.add_parser(
         "serve",
         help="Serve this project's web UI (models, reports, pipelines, "
-             "dashboards) at http://127.0.0.1:8000.",
+             "requests) at http://127.0.0.1:8000.",
     )
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8000)

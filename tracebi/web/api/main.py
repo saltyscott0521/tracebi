@@ -20,8 +20,7 @@ Environment switches:
     TRACEBI_APP                 — app module to import (default: tracebi.web.demo_app)
     TRACEBI_MODELS_DIR          — model definitions folder (default: models)
     TRACEBI_PIPELINES_DIR       — pipeline definitions folder (default: pipelines)
-    TRACEBI_REPORTS_DIR         — named reports folder (default: reports)
-    TRACEBI_DASHBOARDS_DIR      — dashboard specs folder (default: dashboards)
+    TRACEBI_REPORTS_DIR         — reports folder: specs, packages, factories (default: reports)
     TRACEBI_REQUESTS_DIR        — request scripts folder (default: requests)
     TRACEBI_SCHEDULED_DIR       — scheduled scripts folder (default: scheduled)
     TRACEBI_DEV_MODE=1          — mount /_dev/reload
@@ -225,7 +224,6 @@ for _env, _default in (
     ("TRACEBI_REQUESTS_DIR",   "requests"),
     ("TRACEBI_SCHEDULED_DIR",  "scheduled"),
     ("TRACEBI_REPORTS_DIR",    "reports"),
-    ("TRACEBI_DASHBOARDS_DIR", "dashboards"),
 ):
     _dir = os.environ.get(_env, _default)
     if os.path.isdir(_dir):
