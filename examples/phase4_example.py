@@ -9,10 +9,10 @@ Demonstrates the medallion pipeline with a live SQLite database:
                   and scheduled execution
 
 The SQLite database at data/tracebi.db is used for everything.
-Run seeds/seed_db.py first to set up the DB and load initial data.
+Run examples/seeds/seed_db.py first to set up the DB and load initial data.
 
 Run with:
-    python seeds/seed_db.py          # one-time setup
+    python examples/seeds/seed_db.py          # one-time setup
     python examples/phase4_example.py
 """
 
@@ -157,6 +157,6 @@ if __name__ == "__main__":
     db_path = os.path.join(ROOT, "data", "tracebi.db")
     if not os.path.exists(db_path):
         print(f"Database not found at {db_path}")
-        print("Run this first:  python seeds/seed_db.py")
+        print("Run this first:  python examples/seeds/seed_db.py")
         sys.exit(1)
     run()

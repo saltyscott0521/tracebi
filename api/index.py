@@ -40,8 +40,12 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-# Artifact discovery is relative to the working directory.
-os.chdir(_ROOT)
+# Artifact discovery is relative to the working directory. In this repo the
+# working project lives at examples/portfolio_project (the repo root is the
+# framework, not a project); a real deployment of your own project keeps its
+# models/ and reports/ at ITS root, so the fallback is _ROOT.
+_project = _ROOT / "examples" / "portfolio_project"
+os.chdir(_project if _project.is_dir() else _ROOT)
 
 # Default to no app module, because a real project deploying this should get
 # its own models/ and reports/ (both discovered without an app module) rather

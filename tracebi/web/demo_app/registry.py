@@ -1,11 +1,12 @@
 """
 Demo app registry — the single wiring file for the demo app instance.
 
-Everything registered here is visible to the web UI. The DataModels
-themselves live at the project root in models/ (sales_model.py,
-wealth_model.py) and are pulled in via the shared model registry — the web
-layer runs on top of those base files. Reports live in reports/ and are
-auto-discovered; the pipeline is registered explicitly below.
+Everything registered here is visible to the web UI. The demo app is fully
+self-contained: its DataModels live in this package's models/ subdirectory
+(sales_model.py, wealth_model.py — both MemoryConnector-backed), its reports
+in reports/, and its pipeline below. It runs identically from any working
+directory, which is also what makes it a faithful miniature of a real
+project: models/ + reports/ + a pipeline, wired through the one registry.
 
 To add a new report: create reports/<name>.py with a
 @register.report(...) decorated factory function. It will be picked up
@@ -19,7 +20,9 @@ from tracebi.model_registry import get_model
 from tracebi.web.demo_app.pipeline import runner
 from tracebi.web.discovery import auto_discover
 
-# ── Models (defined in models/, shared with notebooks and scripts) ────────────
+# ── Models (this package's models/, discovered by the package __init__) ───────
+# The __init__ registers models/ with the shared model registry under their
+# file stems, so get_model("sales_model") resolves regardless of cwd.
 
 sales_model = get_model("sales_model")
 wealth_model = get_model("wealth_model")

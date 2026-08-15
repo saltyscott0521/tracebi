@@ -9,6 +9,8 @@
 #   app    the serving plane — FastAPI + React on :8000. Reads. Because
 #          TRACEBI_DEMO_DB_URL is set, importing the app module defines layers
 #          without executing any, so starting a web process does no batch work.
+#          It serves examples/portfolio_project (the three-phase reference
+#          project, warehouse baked at image build) plus the bundled demo app.
 #
 # That separation is the point. Without a database there is nowhere for an
 # execution plane to have written, so the demo falls back to seeding itself
@@ -98,8 +100,6 @@ services:
       # Bundled demo app by default; override to point at your config module.
       TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
       <<: *demo-db-url
-      TRACEBI_REQUESTS_DIR: /app/requests
-      TRACEBI_SCHEDULED_DIR: /app/scheduled
       # Optional HTTP basic auth — leave unset to keep the API open.
       TRACEBI_AUTH_USER: ${TRACEBI_AUTH_USER:-}
       TRACEBI_AUTH_PASS: ${TRACEBI_AUTH_PASS:-}
@@ -111,9 +111,12 @@ services:
       TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
       PORT: "8000"
     volumes:
-      - ./output:/app/output
-      - ./requests:/app/requests
-      - ./scheduled:/app/scheduled
+      # The image serves examples/portfolio_project (see Dockerfile WORKDIR);
+      # bind the host copies of its writable/editable dirs so rendered
+      # receipts land on the host and request scripts hot-edit.
+      - ./examples/portfolio_project/output:/app/examples/portfolio_project/output
+      - ./examples/portfolio_project/requests:/app/examples/portfolio_project/requests
+      - ./examples/portfolio_project/scheduled:/app/examples/portfolio_project/scheduled
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]
       interval: 30s

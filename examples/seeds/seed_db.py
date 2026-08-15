@@ -3,7 +3,7 @@ TraceBi — Database Seed Script
 ================================
 One command to get a fully working local database:
 
-    python seeds/seed_db.py
+    python examples/seeds/seed_db.py
 
 What this does:
   1. Creates data/tracebi.db (SQLite)
@@ -15,10 +15,10 @@ What this does:
      populated and ready for Silver to consume
 
 After running this script:
-  - Run Silver:  python -c "from seeds.seed_db import runner; runner.run('orders_silver')"
-  - Run Gold:    python -c "from seeds.seed_db import runner; runner.run('revenue_by_region')"
-  - Full refresh: python -c "from seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)"
-  - Start scheduler: python -c "from seeds.seed_db import runner; runner.start()"
+  - Run Silver:  python -c "from examples.seeds.seed_db import runner; runner.run('orders_silver')"
+  - Run Gold:    python -c "from examples.seeds.seed_db import runner; runner.run('revenue_by_region')"
+  - Full refresh: python -c "from examples.seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)"
+  - Start scheduler: python -c "from examples.seeds.seed_db import runner; runner.start()"
 """
 
 import os
@@ -29,7 +29,8 @@ from sqlalchemy import create_engine
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Repo root — this file lives at examples/seeds/, two levels down.
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 
 DB_PATH = os.path.join(ROOT, "data", "tracebi.db")
@@ -82,10 +83,17 @@ def seed_source_tables(engine) -> None:
 # ── Step 1b: Seed banking tables (WealthModel demo) ───────────────────────────
 
 def seed_banking_tables(engine) -> None:
-    """Persist the WealthModel demo tables (models/wealth_model.py) so the
-    second data model is also available in the database."""
-    from tracebi.model_registry import get_model
+    """Persist the WealthModel demo tables (shipped inside the demo app at
+    tracebi/web/demo_app/models/wealth_model.py) so the second data model is
+    also available in the database."""
+    from importlib.util import find_spec
 
+    from tracebi.model_registry import auto_discover, get_model
+
+    # Register the demo app's models by path — find_spec locates the package
+    # without importing it (importing demo_app would boot the whole demo).
+    _demo_pkg = os.path.dirname(find_spec("tracebi.web.demo_app").origin)
+    auto_discover(os.path.join(_demo_pkg, "models"))
     wealth = get_model("wealth_model")
 
     print("[seed] Writing banking tables (WealthModel)...")
@@ -249,20 +257,29 @@ def main():
     print("  Seed complete. Next steps:")
     print()
     print("  Run Silver:")
-    print("    python -c \"from seeds.seed_db import runner; runner.run('orders_silver')\"")
+    print("    python -c \"from examples.seeds.seed_db import runner; runner.run('orders_silver')\"")
     print()
     print("  Run Gold (full refresh):")
-    print("    python -c \"from seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)\"")
+    print("    python -c \"from examples.seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)\"")
     print()
     print("  Start scheduler (blocking):")
-    print("    python -c \"from seeds.seed_db import runner; runner.start()\"")
+    print("    python -c \"from examples.seeds.seed_db import runner; runner.start()\"")
     print("=" * 55 + "\n")
 
     return runner
 
 
-# Module-level runner so it can be imported after seeding
-runner = None
+# Lazy module-level runner (PEP 562) so the documented one-liners work:
+#     python -c "from examples.seeds.seed_db import runner; runner.run(...)"
+# Built on first attribute access — importing this module does not touch the
+# database; running a layer assumes the seed (main()) has been run once.
+def __getattr__(name):
+    if name == "runner":
+        r, _ = build_pipeline(DB_URL)
+        globals()["runner"] = r
+        return r
+    raise AttributeError(name)
+
 
 if __name__ == "__main__":
     runner = main()

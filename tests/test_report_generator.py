@@ -686,21 +686,24 @@ class TestReportCLI:
 
 class TestShippedExample:
     def test_portfolio_book_package_loads_structurally(self):
-        """The committed reports/portfolio_book/ is a well-formed package: it
+        """The committed examples/portfolio_project/reports/portfolio_book/ is a well-formed package: it
         loads (structural validation only, no warehouse) with its two bindings
         against portfolio_model."""
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        pkg_dir = os.path.join(repo_root, "reports", "portfolio_book")
+        pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
+                               "reports", "portfolio_book")
         pkg = TemplatePackage(pkg_dir)
         assert set(pkg.bindings) == {"by_sector", "top_issuers"}
         assert all(ref.model == "portfolio_model" for ref in pkg.bindings.values())
 
     def test_portfolio_concentration_escape_hatch_loads_structurally(self):
-        """The committed reports/portfolio_concentration/ is a report.py package:
+        """The committed examples/portfolio_project/reports/portfolio_concentration/
+        is a report.py package:
         it loads structurally (no warehouse), its `by_issuer` binding is the
         stamped input, and report.py is detected as the escape hatch."""
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        pkg_dir = os.path.join(repo_root, "reports", "portfolio_concentration")
+        pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
+                               "reports", "portfolio_concentration")
         pkg = TemplatePackage(pkg_dir)
         assert set(pkg.bindings) == {"by_issuer"}
         assert pkg.bindings["by_issuer"].model == "portfolio_model"

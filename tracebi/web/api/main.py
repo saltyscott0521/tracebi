@@ -1,7 +1,7 @@
 """
 TraceBi Web API — FastAPI application.
 
-Startup loads the app module (default: tracebi.web.demo_app) which populates the
+Startup loads the app module, if one is named, which populates the
 registry with connectors, models, reports, and pipeline runners. Set the
 TRACEBI_APP environment variable to point at a different module.
 
@@ -17,7 +17,8 @@ artifacts outside of the app module package:
     scheduled/    Scheduled report scripts
 
 Environment switches:
-    TRACEBI_APP                 — app module to import (default: tracebi.web.demo_app)
+    TRACEBI_APP                 — app module to import (default: none; set
+                                  tracebi.web.demo_app for the bundled demo)
     TRACEBI_MODELS_DIR          — model definitions folder (default: models)
     TRACEBI_PIPELINES_DIR       — pipeline definitions folder (default: pipelines)
     TRACEBI_REPORTS_DIR         — reports folder: specs, packages, factories (default: reports)
@@ -184,11 +185,12 @@ def schema():
 # ── Load app module ────────────────────────────────────────────────────────
 
 # An app module wires up connectors, which cannot be
-# expressed as a file convention. Set TRACEBI_APP="" to skip it entirely —
-# a project that only uses the models/ pipelines/ reports/ requests/
-# directories needs no app module, and loading the bundled demo into
-# someone else's project would fail on data they do not have.
-_app_module = os.environ.get("TRACEBI_APP", "tracebi.web.demo_app").strip()
+# expressed as a file convention. The default is no app module: a project
+# that only uses the models/ pipelines/ reports/ requests/ directories needs
+# none, and a serve should show *your* project, not the bundled demo. Opt
+# into the demo explicitly with TRACEBI_APP=tracebi.web.demo_app (it is
+# self-contained and runs from any working directory).
+_app_module = os.environ.get("TRACEBI_APP", "").strip()
 
 if _app_module:
     # Checked *before* importing, not in the handler below, because the legacy
@@ -209,8 +211,9 @@ if _app_module:
     try:
         importlib.import_module(_app_module)
     except Exception as exc:
-        # Deliberately broad: the bundled demo raises KeyError, not
-        # ImportError, when loaded into a project without its models.
+        # Deliberately broad: an app module can fail with anything (a KeyError
+        # from a missing model, say), and a broken app module must start the
+        # server empty with a warning rather than crash it.
         import warnings
         warnings.warn(
             f"TRACEBI_APP module '{_app_module}' could not be imported: {exc}. "

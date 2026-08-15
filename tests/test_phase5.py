@@ -2934,15 +2934,28 @@ class TestLegacyAppModuleSpelling:
         assert "could not be imported" in out.stderr
         assert "CONNECTORS 0" in out.stdout
 
-    def test_the_bundled_demo_degrades_outside_its_own_project(self, tmp_path):
+    def test_the_bundled_demo_is_self_contained(self, tmp_path):
         """
-        Now that demo_app actually ships in the wheel it imports far enough to
-        raise KeyError on models it cannot find. That is not an ImportError, so
-        a narrow guard would crash the server instead of starting it empty.
+        The demo app ships its models inside the package (demo_app/models/),
+        so booting it from a foreign working directory serves the full demo
+        rather than degrading to an empty server.
         """
         out = self._boot("tracebi.web.demo_app", cwd=str(tmp_path))
         assert out.returncode == 0, out.stderr
+        assert "CONNECTORS" in out.stdout
+        assert "CONNECTORS 0" not in out.stdout
+
+    def test_an_app_module_failing_after_import_still_warns_and_boots(self, tmp_path):
+        """
+        A non-ImportError raised inside an app module (a KeyError from a
+        missing model, say) must start the server empty with a warning, not
+        crash it — the guard on the app-module import is broad on purpose.
+        """
+        (tmp_path / "broken_app.py").write_text("raise KeyError('no model')\n")
+        out = self._boot("broken_app", cwd=str(tmp_path))
+        assert out.returncode == 0, out.stderr
         assert "CONNECTORS 0" in out.stdout
+        assert "could not be imported" in out.stderr
 
 
 # ── Authorization (roles) ─────────────────────────────────────────────────────
