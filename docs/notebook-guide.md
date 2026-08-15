@@ -13,7 +13,7 @@ development flow; this guide covers what's different in a notebook.
 TraceBi's primary path is the three-phase workflow in
 [WORKFLOW.md](../WORKFLOW.md): phase ① `transforms/` writes clean star-schema
 tables into a DuckDB warehouse, phase ② `models/` declares a thin `DataModel`
-over it, and phase ③ `dashboards/` is a JSON `ReportSpec` served on the Reports
+over it, and phase ③ `reports/` is a JSON `ReportSpec` served on the Reports
 page. A notebook is the natural home for **phase ①** — the slow, unconstrained
 pandas analysis — because the rich previews below let you *see* the data as you
 clean it before you commit anything. When the analysis settles, sink the named

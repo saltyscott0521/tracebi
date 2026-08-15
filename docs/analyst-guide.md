@@ -31,7 +31,7 @@ shape:
      grain, keys, measures in a few dozen lines a reviewer reads without the pandas
                                                         │
                                                         ▼  freeze: the model (the semantic contract)
-③  DASHBOARD    dashboards/       a ReportSpec (JSON) pointed at the model
+③  DASHBOARD    reports/          a ReportSpec (JSON) pointed at the model
      KPI cards, charts, tables — every figure a live query; served on the Reports page
 ```
 
@@ -50,7 +50,7 @@ never sees the transform above it. Reference impl:
 the model. Because the model is materialized, the page re-renders in
 milliseconds with no pandas in the loop — editing the dashboard never re-runs
 phase ①. Reference impl:
-[dashboards/portfolio_dashboard.json](../dashboards/portfolio_dashboard.json).
+[reports/portfolio_dashboard.json](../reports/portfolio_dashboard.json).
 
 ```bash
 python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once

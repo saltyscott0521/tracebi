@@ -16,10 +16,10 @@ materialized artifact handed across the boundary:
 |---|---|---|---|
 | ① **Manipulate** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
-| ③ **Dashboard** | `dashboards/` | a `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables, every figure a live query | the rendered page + its lineage manifest |
+| ③ **Dashboard** | `reports/` | a `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables, every figure a live query — or a template package for freeform HTML | the rendered page + its lineage manifest |
 
 Reference implementation, end to end: `transforms/holdings_transform.py` →
-`models/portfolio_model.py` → `dashboards/portfolio_dashboard.json`, wired by
+`models/portfolio_model.py` → `reports/portfolio_dashboard.json`, wired by
 `run_workflow.py`. `WORKFLOW.md` is the full tour; read it first.
 
 The split earns its keep at the freeze points: the slow, unconstrained analysis
@@ -61,7 +61,7 @@ a hash.
 **Change the contract in git. Use the contract over MCP.**
 
 - **Definition plane** (git): `transforms/*.py`, `models/*.py`,
-  `dashboards/*.json` (and `pipelines/*.py`, `reports/*`). Every phase is
+  `reports/*` (specs, packages, and factories; plus `pipelines/*.py`). Every phase is
   authored and code-reviewed here. Missing a measure? The fix is a code-reviewed
   edit to the model file (e.g. `model.add_measure(...)` in
   `models/portfolio_model.py`) — never a workaround in the dashboard layer.

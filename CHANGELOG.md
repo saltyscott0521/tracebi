@@ -6,6 +6,35 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the report generator: self-contained, provable HTML
+
+A build step that takes a report definition plus live model data and emits
+**one self-contained `.html`** (CSS, JS, and the model's data all inlined) plus
+a `.manifest.json` receipt. The file is portable — open it offline, email it,
+archive it — and *provable*: the numbers the page is built on are embedded as a
+canonical `{columns, dtypes, csv}` triple, fingerprinted, and recorded, so a
+reviewer with the file alone can confirm offline that the data it ships is
+exactly what the recorded queries produced. Full design: `docs/report-generator-architecture.md`.
+
+- **Template packages** — when the built-in section vocabulary is too rigid,
+  `tracebi new-report "My Report"` scaffolds `reports/<name>/` (`report.json`
+  data bindings + `template.html` / `style.css` / `script.js`). `tracebi report
+  build <name>` renders it; `tracebi report preview <name>` opens it.
+- **`tracebi verify --file <report.html>`** — the offline complement to
+  `verify <manifest>`. It re-hashes the data blocks embedded in a shipped file
+  and checks each against the manifest, catching an edited number
+  (`FILE ALTERED`) with no database in reach. `verify` proves *do these numbers
+  reproduce*; `verify --file` proves *is this the file we rendered*.
+- **The `report.py` escape hatch** — a `build()` beside `report.json` for
+  pandas the model can't express. Its inputs are stamped and its output
+  fingerprinted, but the output stamps `verifiable: false`, so a Python-derived
+  page never reads green under `verify`.
+- **Strict CSP + safe embedding** — every self-contained file carries a strict
+  Content-Security-Policy (`default-src 'none'`, `connect-src 'none'`, no
+  `unsafe-eval`); data is embedded via a `<script type="application/json">`
+  encoder that escapes `< > &` and line separators, parsed with `JSON.parse`,
+  never `innerHTML`.
+
 ### Changed — governed charts render client-side with ECharts
 
 The whole report generator now draws charts client-side (architecture §6): a
@@ -32,9 +61,11 @@ each phase in its own folder (see `WORKFLOW.md`):
   data needs; the contract is what lands, not how it was cleaned.
 - `models/portfolio_model.py` — phase ②, a `DataModel` over the warehouse. The
   reviewable contract: grain, keys and measures in ~50 declarative lines.
-- `dashboards/` — phase ③, a `ReportSpec` JSON whose every figure is a live
-  query against the model. A new `TRACEBI_DASHBOARDS_DIR` (default `dashboards`)
-  is auto-discovered and served on the Reports page.
+- `reports/` — phase ③. A `ReportSpec` JSON whose every figure is a live query
+  against the model, served on the Reports page. Every report form lives in this
+  one folder: specs, `@register.report` factories, and template packages alike
+  (`TRACEBI_REPORTS_DIR`, default `reports`) — there is no separate
+  `dashboards/`.
 - `run_workflow.py` drives ①→③; `inputs/generate_raw.py` produces a
   synthetic Schedule-of-Investments file so phase ① has real work to do.
 

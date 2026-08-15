@@ -26,7 +26,7 @@ slow analysis and the fast reporting never block each other.
       measures, in a few dozen lines a reviewer reads without opening the pandas
                                                         │
                                        freeze ▼  the model (the semantic contract)
-③  DASHBOARD    dashboards/          fast, iterate constantly
+③  DASHBOARD    reports/             fast, iterate constantly
       a ReportSpec (JSON) pointed at the model — KPI cards, charts, tables,
       every figure a live query. Re-renders in milliseconds; nothing re-runs ①.
 ```
@@ -48,7 +48,7 @@ loop — editing the dashboard never re-runs the analysis.
 |---|---|---|---|
 | ① Manipulate | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
 | ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Models page |
-| ③ Dashboard | `dashboards/` | `ReportSpec` JSON | a report on the Reports page |
+| ③ Dashboard | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report on the Reports page |
 
 ```bash
 python run_workflow.py          # ① build the warehouse, ③ render the dashboard once
@@ -56,7 +56,7 @@ python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → Reports �
 ```
 
 The reference implementation ships in the repo — `transforms/holdings_transform.py`,
-`models/portfolio_model.py`, `dashboards/portfolio_dashboard.json` — driven by
+`models/portfolio_model.py`, `reports/portfolio_dashboard.json` — driven by
 `run_workflow.py`. Full walkthrough: **[WORKFLOW.md](WORKFLOW.md)**.
 
 Everything below hangs off this spine: the framework gives you the connectors
@@ -298,8 +298,12 @@ tracebi context [--model NAME]                       # framework vocabulary as J
 tracebi spec schema                                  # JSON Schema for a report spec
 tracebi spec validate report.json                    # check a spec without executing it
 tracebi spec render report.json                      # build a spec and render HTML + manifest
+tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (template package scaffold)
+tracebi report build portfolio_dashboard             # render a report (spec or package) → self-contained HTML + manifest
+tracebi report preview portfolio_dashboard           # build and open it in a browser
 tracebi mcp                                          # agent gateway over MCP (stdio)
 tracebi verify output/report.manifest.json           # re-run recorded queries; classify drift
+tracebi verify --file output/report.html             # offline: does the shipped file's data still match its manifest?
 ```
 
 `run-pipeline` executes layers without a web server, which is what lets the
@@ -568,9 +572,19 @@ actually checked and nothing failed: 2 for diagnosed source drift, 1 for an
 undiagnosed mismatch *or* for a manifest with no data-bearing section, which
 verifies nothing and so cannot pass. A receipt whose every section is
 hand-transformed still exits 0, but says `NOTHING VERIFIED` rather than
-`REPRODUCES`. Rendered HTML is disposable; manifests
-are not. Retain them — commit them, or archive whatever lands in `output/`
-— because a receipt you discarded proves nothing.
+`REPRODUCES`.
+
+`tracebi verify <manifest>` re-proves the numbers against the model; it does
+not read the file you actually shipped. `tracebi verify --file <report.html>`
+is the offline complement: it re-hashes the data blocks embedded in a
+self-contained report and checks each against the manifest, so an edited total
+in a file mailed around a company is caught (`FILE ALTERED`) even with no
+database in reach. One asks *do these numbers still reproduce*; the other asks
+*is this the file we rendered*.
+
+Rendered HTML is disposable; manifests are not. Retain them — commit them, or
+archive whatever lands in `output/` — because a receipt you discarded proves
+nothing.
 
 ---
 
@@ -630,8 +644,7 @@ Your module just needs to import `registry` and call `registry.add_connector()`,
 |---|---|---|
 | `models/` | each `.py` exposes a `model` variable (a `DataModel`) | `TRACEBI_MODELS_DIR` |
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | `TRACEBI_PIPELINES_DIR` |
-| `reports/` | each `.py` calls `@register.report(...)` at import time | `TRACEBI_REPORTS_DIR` |
-| `dashboards/` | each `.json` is a `ReportSpec` (workflow phase ③), served like a report | `TRACEBI_DASHBOARDS_DIR` |
+| `reports/` | a `.py` factory (`@register.report(...)`), a `.json` `ReportSpec` (workflow phase ③), or a `<name>/` template package — all served as reports | `TRACEBI_REPORTS_DIR` |
 | `requests/` | ad-hoc scripts with `request_params()` and `run()` | `TRACEBI_REQUESTS_DIR` |
 
 Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/web-customization.md](docs/web-customization.md) for the full wiring guide.
@@ -752,15 +765,14 @@ tracebi/
 │   │                     a packaged `web` collided with the `web.py` distribution.
 │   └── requirements.txt  Web-only dependencies
 ├── examples/             Runnable demos (phase1–4)
-├── tests/                777 tests across all phases
+├── tests/                836 tests across all phases
 ├── seeds/                seed_db.py — one-command DB setup
 ├── inputs/               Phase ⓪ — raw pulls land here (API export · CSV · SQL); demo source tracked
 ├── transforms/           Workflow phase ① — pandas that reads inputs/, sinks star tables to DuckDB
 ├── models/               DataModel definitions — each .py exposes a `model` variable (phase ②)
-├── dashboards/           Workflow phase ③ — ReportSpec JSON served like a report
 ├── run_workflow.py       Runs the three-phase workflow end to end (see WORKFLOW.md)
 ├── pipelines/            PipelineRunner definitions — each .py exposes a `runner` variable
-├── reports/              Named web-exposed reports (files use @register.report() decorator)
+├── reports/              Workflow phase ③ — ReportSpec JSON, template packages, and @register.report() factories
 ├── requests/             _template.py — scaffold for ad hoc report scripts
 ├── data/                 Gitignored local data — SQLite DB + the workflow's warehouse.duckdb
 └── NOTES.md              Design decisions and architecture reference

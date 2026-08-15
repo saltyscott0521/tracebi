@@ -7,7 +7,7 @@ in this project.
 **Where this sits in the three-phase workflow (see `WORKFLOW.md`).** This is
 **phase ② — MODEL**, the freeze point between the unconstrained phase-① transform
 (`transforms/*.py`, ordinary pandas that sinks the warehouse) and the fast
-phase-③ dashboard (`dashboards/*.json`) that queries the model by name. The
+phase-③ dashboard (`reports/*.json`) that queries the model by name. The
 model **reads the sink; it never sees the transform** — it is the semantic
 contract, a few dozen declarative lines a reviewer reads without opening the
 pandas above it (`models/portfolio_model.py` is the reference). It is also where

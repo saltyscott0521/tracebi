@@ -1,9 +1,12 @@
 # Report Generator — Architecture (locked)
 
-Status: **locked.** Product and architecture were nailed down with the maintainer,
+Status: **shipped.** Product and architecture were nailed down with the maintainer,
 then pressure-tested against the code by a five-lens design review (17 findings, 4
-blocking — all resolved below, none papered over). Nothing here is unbacked by
-code. This is the build reference.
+blocking — all resolved below, none papered over). The build plan in §8 (M0–M4) is
+complete: the trust kernel, template packages, the `report.py` escape hatch, and the
+ECharts chart layer are all in `tracebi/reports/` with tests, and `dashboards/` has
+folded into `reports/`. Nothing here is unbacked by code. This is the reference for
+what was built.
 
 ---
 
@@ -187,7 +190,7 @@ earlier no-matplotlib decision.
 
 A file is a spec or a factory; a **directory containing `report.json` + `template.html`**
 is a freeform package. All three authoring forms live under `reports/`, with one CLI
-noun (`tracebi report list/build/preview/lint`) an analyst learns regardless of form.
+noun (`tracebi report build/preview`) an analyst learns regardless of form.
 
 | Form | Location | Who draws | Discovery |
 |---|---|---|---|
@@ -195,12 +198,16 @@ noun (`tracebi report list/build/preview/lint`) an analyst learns regardless of 
 | Governed spec | `reports/*.json` | built-in section renderers | existing `_register_spec_file` |
 | Freeform package | `reports/<name>/` (a directory) | the analyst's `template.html` | **new** `_register_template_package` |
 
-`dashboards/` folds back into `reports/` (one location). Migrate the current
-`dashboards/portfolio_dashboard.json` when the discovery branch lands.
+`dashboards/` has folded into `reports/` (one location): the demo
+`portfolio_dashboard.json` now lives at `reports/portfolio_dashboard.json`, and the
+`TRACEBI_DASHBOARDS_DIR` discovery branch is gone.
 
 ---
 
 ## 8. Build plan
+
+_All five milestones below have shipped; this section is kept as the record of how
+the work was staged and what each milestone proved._
 
 **M0 — kernel primitives (proves the trust story first).** The safe embedder + the
 stamped-data helper (canonical bytes), and `tracebi verify --file`. Proof gate:

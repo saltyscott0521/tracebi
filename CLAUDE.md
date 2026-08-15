@@ -117,11 +117,12 @@ phase to the next):
 
    *— freeze: the model (the semantic contract) —*
 
-3. **DASHBOARD** — `dashboards/`. A `ReportSpec` (JSON) pointed at the model —
+3. **DASHBOARD** — `reports/`. A `ReportSpec` (JSON) pointed at the model —
    KPI cards, charts, tables — where every figure is a live query. Because the
    model is materialized, the page re-renders in milliseconds with no pandas in
-   the loop. Reference: `dashboards/portfolio_dashboard.json`; served on the
-   Reports page of the web UI.
+   the loop. Reference: `reports/portfolio_dashboard.json`; served on the
+   Reports page of the web UI. `reports/` also holds template packages and
+   `@register.report` factories — every report form lives in the one folder.
 
 **Why the split:** the slow, unconstrained analysis (①) and the fast, iterated
 reporting (③) never block each other, because the model (②) is a frozen contract
@@ -179,10 +180,10 @@ transforms/            # Phase ① MANIPULATE — unconstrained pandas that read
                        #   sinks clean star tables into the warehouse (holdings_transform.py)
 models/                # Phase ② MODEL — DataModel definitions over the warehouse;
                        #   each .py exposes a `model` variable (portfolio_model.py)
-dashboards/            # Phase ③ DASHBOARD — ReportSpec JSON pointed at a model;
-                       #   discovered and served like reports/ (portfolio_dashboard.json)
 pipelines/             # PipelineRunner definitions — each .py exposes a `runner` variable
-reports/               # Named web-exposed report factories (use @register.report() decorator)
+reports/               # Phase ③ DASHBOARD — every report form in one folder: ReportSpec
+                       #   JSON (portfolio_dashboard.json), template packages (<name>/), and
+                       #   @register.report() factories. All discovered and served alike.
 requests/              # Ad hoc report scripts (.py or .ipynb); _template.py is the scaffold
 run_workflow.py        # Runs the three-phase workflow end to end (phase ① build + ③ render)
 data/                  # Gitignored local data: the demo SQLite DB and the workflow's
@@ -211,8 +212,8 @@ pip install -e ".[dev]"                        # Everything the test suite needs
 # Three-phase workflow
 python run_workflow.py                          # phase ① builds data/warehouse.duckdb,
                                                 #   phase ③ renders the dashboard HTML once, offline
-python -m tracebi.web.run                       # serves it; auto-discovers models/ + dashboards/
-                                                #   → Reports page (TRACEBI_DASHBOARDS_DIR, default dashboards)
+python -m tracebi.web.run                       # serves it; auto-discovers models/ + reports/
+                                                #   → Reports page (TRACEBI_REPORTS_DIR, default reports)
 
 # Run (dev)
 python -m tracebi.web.run                              # http://127.0.0.1:8000
@@ -420,7 +421,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR`, `TRACEBI_DASHBOARDS_DIR` (phase ③ specs, default `dashboards`), `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
 
 ---
 
@@ -474,13 +475,24 @@ Copy `requests/_template.py`. Fill in the four sections: connectors → transfor
 Put a `.py` file in `reports/` (or use `requests/`). Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
 
 ### New dashboard (phase ③)
-1. Add a `ReportSpec` `.json` under `dashboards/`, pointed at a model (grain +
-   measures it declares). Model this on `dashboards/portfolio_dashboard.json`.
+1. Add a `ReportSpec` `.json` under `reports/`, pointed at a model (grain +
+   measures it declares). Model this on `reports/portfolio_dashboard.json`.
 2. Every figure is a live query against the model — KPI cards, charts, tables. A
    `metrics` section may carry a `data` query; a card whose `value` names a
    measure reads it live from the one-row result rather than hard-coding it.
-3. Validate before running: `tracebi spec validate dashboards/<name>.json`. The
-   folder is auto-discovered and served on the Reports page like `reports/`.
+3. Validate before running: `tracebi spec validate reports/<name>.json`. The
+   folder is auto-discovered and served on the Reports page.
+
+### New report as a template package (freeform HTML)
+When the spec's section vocabulary is too rigid — a bespoke layout, your own
+CSS — scaffold a package instead: `tracebi new-report "My Report"` creates
+`reports/my_report/` (`report.json` data bindings + `template.html` / `style.css`
+/ `script.js`). `tracebi report build my_report` renders ONE self-contained HTML
+(CSS, JS, and fingerprinted data inlined; strict CSP; ECharts vendored, no CDN)
+plus a manifest. `report.py` beside `report.json` is the escape hatch for pandas
+the model can't express — its output stamps `verifiable: false` and never reads
+green under `verify`. Charts render with ECharts in the browser; the SVG path is
+kept only for the (unshipped) PDF renderer.
 
 ### New medallion layer
 ```python
@@ -557,7 +569,8 @@ Don't add these unless asked.
 | Understand the three-phase workflow | `WORKFLOW.md` + `run_workflow.py` |
 | Author a phase-① transform | `transforms/holdings_transform.py` |
 | Define the model over the warehouse | `models/portfolio_model.py` |
-| Build a dashboard | `dashboards/portfolio_dashboard.json` |
+| Build a dashboard | `reports/portfolio_dashboard.json` |
+| Build a freeform report package | `tracebi new-report` → `reports/portfolio_book/` + `docs/report-generator-architecture.md` |
 | Understand architecture decisions | `NOTES.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |

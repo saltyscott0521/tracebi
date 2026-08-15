@@ -288,12 +288,12 @@
       <div class="phase-num" style="background:#2E7D32">③</div>
       <div class="phase-body">
         <h3>Dashboard</h3>
-        <div class="phase-folder">dashboards/</div>
+        <div class="phase-folder">reports/</div>
         <p>A <code>ReportSpec</code> (JSON) pointed at the model — KPI cards, charts,
         tables — where every figure is a live query. Because the model is materialized, the
         page re-renders in milliseconds with no pandas in the loop. Served on the Reports
         page of the web UI.</p>
-        <div class="phase-ref">dashboards/portfolio_dashboard.json</div>
+        <div class="phase-ref">reports/portfolio_dashboard.json</div>
       </div>
     </div>
   </div>
@@ -313,7 +313,7 @@
     <tbody>
       <tr><td><strong>① Manipulate</strong></td><td><code>transforms/</code></td><td>pandas → DuckDB tables</td><td>slow, runs rarely</td><td>— (run explicitly)</td></tr>
       <tr><td><strong>② Model</strong></td><td><code>models/</code></td><td><code>DataModel</code> (a <code>model</code> variable)</td><td>changes deliberately</td><td>a model on the Models page</td></tr>
-      <tr><td><strong>③ Dashboard</strong></td><td><code>dashboards/</code></td><td><code>ReportSpec</code> JSON</td><td>iterate constantly</td><td>a report on the Reports page</td></tr>
+      <tr><td><strong>③ Dashboard</strong></td><td><code>reports/</code></td><td><code>ReportSpec</code> JSON, template package, or factory</td><td>iterate constantly</td><td>a report on the Reports page</td></tr>
     </tbody>
   </table>
 

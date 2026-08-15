@@ -20,7 +20,7 @@ at the model. Each phase has its own folder and its own cadence.
                                                           │
                                                           ▼
 ③  DASHBOARD             fast, iterate constantly
-    dashboards/portfolio_dashboard.json
+    reports/portfolio_dashboard.json
       a ReportSpec — KPI cards, charts, a table — every figure a live query
       against ②. Edit the JSON and re-render in milliseconds; nothing re-runs ①.
 ```
@@ -50,7 +50,7 @@ position counters to strip, sectors spelled six ways, money stored as strings.
 | ⓪ Input | `inputs/` | a raw pull (CSV / API export / SQL dump) | — (you put it there) |
 | ① Manipulate | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
 | ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Models page |
-| ③ Dashboard | `dashboards/` | `ReportSpec` JSON | a report on the Reports page |
+| ③ Dashboard | `reports/` | `ReportSpec` JSON, template package, or `@register.report` factory | a report on the Reports page |
 
 The warehouse is `data/warehouse.duckdb` — one file phase ① writes and phase ②
 reads. The model opens it read-through; the two phases can run in separate
@@ -61,7 +61,7 @@ gitignored per-file); `data/` holds the build artifacts and is gitignored.
 ## Iterating on the dashboard
 
 Everything visible is a query. To add a panel, add a section to
-`dashboards/portfolio_dashboard.json` with a `data.query` naming a `fact`, its
+`reports/portfolio_dashboard.json` with a `data.query` naming a `fact`, its
 `measures`, and `dimensions` — no code, no re-run of phase ①. A `metrics`
 section can carry a `data` query too: a card whose `value` names a measure reads
 it live, so the KPI strip never goes stale.
