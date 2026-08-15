@@ -132,3 +132,72 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 ## The opinionated summary
 
 If only three things get built this quarter: **verify loop (1), validate coverage + error contract (2), gateway auth (3)** — in that order. They convert the ladder's L1/L2 rows from aspiration to fact, and they're all M-effort because the kernel underneath them already works. Item 5 (packaging) should be done this week regardless; it's small and it's the first thing every evaluator hits. Excel over the gateway (8) is the cheapest design-partner win on the board. Resist the temptation to start as-of reporting (13) before the verify loop exists: drift you can *classify* buys most of the pilot-era trust that time-travel eventually delivers, at a tenth of the cost.
+
+---
+
+## 2026-08-14 — five-lens gap audit
+
+A ten-agent audit (readers over every surface, then five critics: skeptical
+analyst, agent substrate, packaging, enterprise platform engineer, product
+coherence) produced 33 findings. Mapped here so the list above stays the one
+ranked backlog. Full detail in the audit synthesis (session artifact).
+
+**Closed by the manifesto + packaging arc (2026-08-14):**
+
+- Identity unsettled, thesis nowhere in the repo → `MANIFESTO.md` + the
+  canonical sentence on all six first-contact surfaces (G1)
+- `tracebi init` scaffolded the pre-three-phase product; first verify read
+  NOTHING VERIFIED → full three-phase scaffold ending in REPRODUCES, pinned
+  by tests (G2); `new-transform` added; conventions name `inputs/` +
+  `transforms/` (part of G12)
+- Framework/demo mixing at the repo root → `examples/portfolio_project/` +
+  self-contained demo_app + `TRACEBI_APP` default flipped (G23)
+- Phase-name collision (Manipulate vs ManipulationLayer) and the
+  dashboard/report noun split → TRANSFORM / REPORT everywhere (G20, G21)
+- CLI ignored `TRACEBI_*_DIR` (G24); new-model connected at import (G25);
+  init `.env.example` omitted the auth story (G27); "Qlik-style" framing
+  survived in CLAUDE.md (G31)
+
+**Already covered by items above:** authenticated audit identity → 3/14;
+evidence-grade receipts (web manifests unpersisted, no signing) → 4/17;
+no release/PyPI → 12; read/query audit → new sub-item of 4; multi-worker
+RunStore → 16; full-scan pushdown → 15.
+
+**New items this audit adds (unranked; slot on the next grooming pass):**
+
+- **Model-cache invalidation over MCP** — the canonical agent loop (edit
+  model → use measure) breaks against `ModelRegistry`'s forever-cache; no
+  reload tool exists. mtime-based invalidation in `get()` fixes CLI, web,
+  and MCP at once. *The single worst agent-loop break found.* (G5)
+- **Snowflake/BigQuery auth modes** — password-only today; no
+  `authenticator`, key-pair, or `role`, while Snowflake sunsets single-factor
+  passwords. A `**connect_kwargs` passthrough covers every mode. (G7)
+- **The documented `.env` wiring fails** — nothing loads dotenv; scaffolds
+  don't either; `tracebi validate` prints "✓ .env file found" above the
+  KeyError caused by not reading it. (G8)
+- **MCP surface honesty bundle** — broken models vanish silently
+  (`skipped: []` payload needed); `gateway_reports()` empty on a bare
+  gateway; `get_context` cheat-sheet advertises kwargs that raise TypeError;
+  spec JSON-schema unobtainable over MCP. (G9–G11)
+- **Warehouse introspection** — no surface returns table columns + dtypes;
+  agents learn schemas from error messages. `tracebi warehouse tables` + a
+  `describe_table` MCP tool. (G12 rest)
+- **Authorization strict mode** — `_parse_map` silently drops malformed
+  entries: two typos → empty map → everyone admin, zero warning. Warn on
+  unknown roles; `TRACEBI_AUTH_STRICT=1`; log the resolved posture at
+  startup. (G13)
+- **`gateway_render_spec` output_dir is still live** — writes anywhere as
+  the server user, including the served SPA dist; retries clobber receipts.
+  Roadmap item 3's "defuse output_dir" half never landed. (G14)
+- **Transport hardening** — same-origin check on non-GET (Basic auth is
+  CSRF-able), dev CORS behind TRACEBI_DEV_MODE, reference reverse-proxy
+  compose profile. (G17)
+- **Security-review readiness** — SECURITY.md, dependabot/pip-audit,
+  non-root Docker USER, lockfile. All mechanical. (G18)
+- **Housekeeping riding the next release:** extras drift (`medallion`
+  fossil, `csv`→`excel` + xlrd) (G26); `verify` accepts multiple manifests
+  for CI globs (G28); AGENTS.md registered as an MCP resource + caveats in
+  the server instructions string (G29); `validate --json` + no raw
+  tracebacks from `context --model` (G30); name the local-by-default
+  residency commitment in deploy docs and label Vercel as demo topology
+  (G33, the manifesto now states the commitment).

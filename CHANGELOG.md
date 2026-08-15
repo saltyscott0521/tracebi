@@ -6,6 +6,46 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — MANIFESTO.md: the product identity, written down
+
+The trust layer for AI-generated analytics is the identity; the three-phase
+workflow is the mechanism. The manifesto opens with the thesis ("Governance
+tooling assumes a human wrote the transformation and is still around to ask.
+TraceBi assumes a machine wrote it and is gone."), states the honest boundary
+as a feature, lists eight refusals a code review can cite, and locks the
+vocabulary canon: phase ① is **TRANSFORM**, phase ③'s noun is **REPORT**
+("dashboard" is a style of report), and the assurance ladder is L0–L3 with
+L3 plainly marked not-yet. The identity sentence now appears on every
+first-contact surface: README, pyproject, `tracebi --help`, the docs site
+hero, AGENTS.md, and the UI title.
+
+### Changed — the repo separates the framework from the working project
+
+The repo root mixed the tracebi software with a demo working project. Now
+the root is the framework and the reference project lives at
+`examples/portfolio_project/` — a complete three-phase project (inputs →
+transforms → model → reports, driven by `run_workflow.py`) with the exact
+shape `tracebi init` scaffolds. The medallion seed tooling moved to
+`examples/seeds/`. The bundled demo app is now fully self-contained (its
+models ship inside `tracebi/web/demo_app/models/`), and **TRACEBI_APP
+defaults to none** — serving shows *your* project; opt into the demo with
+`TRACEBI_APP=tracebi.web.demo_app`. Docker bakes and serves the reference
+project; the Vercel entry points there too.
+
+### Changed — `tracebi init` scaffolds the whole workflow, ending green
+
+init used to scaffold the pre-three-phase product: no `inputs/`, no
+`transforms/`, and a requests-only sample — the one lane `verify` cannot
+cover, so a new user's first verify read NOTHING VERIFIED. It now scaffolds
+a complete working project — a deliberately messy `inputs/orders.csv`, a
+transform that cleans and sinks it, a lazy star-schema model, and a governed
+dashboard spec — and the scaffolded README's four commands end with
+`tracebi verify` reading REPRODUCES (pinned by tests that run them
+verbatim). Also: a new `tracebi new-transform` scaffold; the new-model
+template no longer calls `model.connect()` at import; the CLI's directory
+defaults honour the `TRACEBI_*_DIR` env vars; `tracebi context` conventions
+now name `inputs/` and `transforms/`.
+
 ### Added — the report generator: self-contained, provable HTML
 
 A build step that takes a report definition plus live model data and emits
