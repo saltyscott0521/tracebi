@@ -8,6 +8,20 @@ draws the whole page — the built-in section renderers are not involved:
     template.html  a Jinja2 page shell the analyst controls
     style.css      the page's stylesheet
     script.js      client-side code that reads the embedded data and draws
+    report.py      OPTIONAL escape hatch — arbitrary Python that computes the
+                   drawn data from the stamped bindings (architecture §8-M3)
+
+**The escape hatch (report.py).** Some data the declarative query surface
+cannot express — several queries combined, a window function, an algorithm.
+When a package includes ``report.py`` with a ``build(inputs) -> {name:
+DataFrame}`` function, the ``data`` bindings become its *stamped inputs*
+(resolved via ``model.execute``, so query-reproducible and recorded in the
+manifest) and its *outputs* are what the page embeds and draws. An output is
+run through the same embed/fingerprint kernel — the canonical triple is
+embedded and hashed, so ``verify --file`` catches tampering of it — but it
+carries no query, so ``verify_manifest`` classifies it UNVERIFIABLE and the
+receipt says the number is python-derived and not query-reproducible. The
+honesty rule (§4): inputs stamped, output not replay-proved, never green.
 
 This module is thin orchestration over the existing kernel — it adds no new
 rendering primitive. For each binding it calls the M0 :func:`stamp` helper
@@ -32,21 +46,46 @@ works on the output.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
+import sys
 from typing import Optional
 
-from tracebi.reports.embed import embed_block, embedded_record, stamp
+import pandas as pd
+
+from tracebi.reports.embed import (
+    StampedData, embed_block, embedded_record, stamp, stamp_frame,
+)
 from tracebi.reports.html_renderer import HTMLRenderer
 from tracebi.reports.report import Report, ReportManifest, TableSection
 from tracebi.spec import DataRef
 
 #: Files that make up a package. ``report.json`` and ``template.html`` are
-#: required; the stylesheet and script are read when present.
+#: required; the stylesheet and script are read when present. ``report.py`` is
+#: the optional escape hatch (architecture §8-M3).
 REPORT_JSON = "report.json"
 TEMPLATE_HTML = "template.html"
 STYLE_CSS = "style.css"
 SCRIPT_JS = "script.js"
+REPORT_PY = "report.py"
+
+
+class _PythonDerivedSection(TableSection):
+    """A carrier section for a ``report.py`` output (architecture §4).
+
+    Identical to :class:`TableSection` — it fingerprints its dataset through
+    the ordinary manifest path, so the embedded bytes stay file-checkable —
+    but it stamps ``verifiable: false`` on its manifest dict. That flag is what
+    ``verify_manifest`` reads to classify the section UNVERIFIABLE *by
+    construction*, not merely because a query happens to be absent from
+    lineage: a python-derived number must never read as query-reproducible.
+    """
+
+    def to_manifest_dict(self) -> dict:
+        d = super().to_manifest_dict()
+        d["verifiable"] = False
+        return d
 
 
 class TemplatePackage:
@@ -105,6 +144,14 @@ class TemplatePackage:
         self.style_css = _read_optional(os.path.join(directory, STYLE_CSS))
         self.script_js = _read_optional(os.path.join(directory, SCRIPT_JS))
 
+        # The escape hatch (architecture §8-M3). When present, the ``data``
+        # bindings above are the *stamped inputs* to report.py's ``build``,
+        # and what the page embeds is report.py's python-derived *output*.
+        report_py = os.path.join(directory, REPORT_PY)
+        self.report_py_path: Optional[str] = (
+            report_py if os.path.isfile(report_py) else None
+        )
+
     # ── Build + render ──────────────────────────────────────────────────────
 
     def build(self, models: dict):
@@ -151,17 +198,31 @@ class TemplatePackage:
         fingerprints recorded before a byte of the page is written, so a render
         that half-fails cannot leave a page without a receipt.
         """
-        report, stamped = self.build(models)
+        report, inputs = self.build(models)
+
+        # Declarative lane: the stamped inputs *are* what the page draws, and
+        # every one is query-reproducible. Escape-hatch lane: the inputs stay
+        # in the receipt as reproducible carrier sections (proof they were
+        # stamped), but report.py's python-derived output is what gets embedded
+        # and drawn — recorded verifiable=false so it never reads as verified.
+        if self.report_py_path is not None:
+            embed_items = self._apply_report_py(report, inputs)
+            verifiable = False
+        else:
+            embed_items = inputs
+            verifiable = True
 
         manifest = report.build_manifest("html", output_path)
-        manifest.embedded_data = [embedded_record(sd) for sd in stamped]
+        manifest.embedded_data = [
+            embedded_record(sd, verifiable=verifiable) for sd in embed_items
+        ]
 
         renderer = HTMLRenderer(
             template=self.template_html,
             template_context={"bindings": list(self.bindings)},
         )
         page = renderer.to_html(report)
-        page = self._inject(page, stamped)
+        page = self._inject(page, embed_items)
 
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
@@ -169,6 +230,77 @@ class TemplatePackage:
         if save_manifest:
             manifest.save(manifest_path or output_path + ".manifest.json")
         return manifest
+
+    # ── Escape hatch: report.py (architecture §8-M3) ────────────────────────
+
+    def _apply_report_py(self, report: Report, inputs: list[StampedData]) -> list[StampedData]:
+        """Run report.py over the stamped inputs; stamp+carry its outputs.
+
+        Adds one :class:`_PythonDerivedSection` per output to *report* (so the
+        output fingerprint is backed by a section and ``verify --file`` can
+        vouch for the embedded bytes) and returns the output
+        :class:`StampedData` list — what the page embeds and draws. The input
+        carrier sections *report* already holds stay untouched: they remain
+        query-reproducible in the receipt.
+        """
+        input_frames = {sd.name: sd.dataset.to_pandas() for sd in inputs}
+        outputs_raw = self._run_report_py(input_frames)
+
+        outputs: list[StampedData] = []
+        for out_name, df in outputs_raw.items():
+            if out_name in input_frames:
+                raise ValueError(
+                    f"report.py in package '{self.name}' returned an output named "
+                    f"'{out_name}', which collides with a stamped input of the same "
+                    f"name; give the output a distinct name."
+                )
+            sd = stamp_frame(df, name=out_name)
+            outputs.append(sd)
+            report.add(_PythonDerivedSection(
+                title=out_name, dataset=sd.dataset, id=out_name))
+        return outputs
+
+    def _run_report_py(self, input_frames: dict) -> dict:
+        """Import report.py, call ``build(inputs)``, and validate its return.
+
+        Runs at *build* time only (never on a web request — the build step
+        emits a static file). It is the analyst's own code, unsandboxed by
+        design (architecture §6): its inputs are stamped, its output is not
+        replay-proved. The contract is narrow: a module-level ``build`` that
+        takes ``{name: DataFrame}`` and returns a non-empty ``{name:
+        DataFrame}``.
+        """
+        mod_name = f"tracebi_report_py_{self.name}"
+        spec = importlib.util.spec_from_file_location(mod_name, self.report_py_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Cannot load report.py: {self.report_py_path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(mod_name, None)
+
+        build_fn = getattr(module, "build", None)
+        if not callable(build_fn):
+            raise ValueError(
+                f"report.py in package '{self.name}' must define a module-level "
+                f"build(inputs) function that returns {{name: DataFrame}}."
+            )
+        result = build_fn(input_frames)
+        if not isinstance(result, dict) or not result:
+            raise ValueError(
+                f"report.py build() in package '{self.name}' must return a "
+                f"non-empty dict of {{name: DataFrame}}; got {type(result).__name__}."
+            )
+        for k, v in result.items():
+            if not isinstance(k, str) or not isinstance(v, pd.DataFrame):
+                raise ValueError(
+                    f"report.py build() in package '{self.name}' must return "
+                    f"{{str: DataFrame}}; output '{k}' is a "
+                    f"{type(v).__name__}, not a DataFrame."
+                )
+        return result
 
     # ── Injection ───────────────────────────────────────────────────────────
 

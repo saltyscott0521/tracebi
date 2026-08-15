@@ -139,23 +139,38 @@ def _verdict(summary: Mapping[str, int]) -> str:
 
 def _verdict_fields(
     verdict: str, summary: Optional[Mapping[str, int]] = None,
+    python_derived: int = 0,
 ) -> dict:
     """The four verdict keys every result carries, all from one lookup.
 
     A passing receipt that still holds unverifiable sections says how many:
     the verdict stays ``reproduces`` (nothing failed, and an unverifiable
     section is a legitimate authoring state, so exit 0 is right), but one
-    checked section out of a hundred must not read like a hundred.
+    checked section out of a hundred must not read like a hundred. When any
+    unverifiable section is a ``report.py`` output (*python_derived*), the line
+    names them so a green exit never reads as "these numbers were verified"
+    (architecture §4, §8-M3).
     """
     code = VERDICT_EXIT_CODES[verdict]
     detail = VERDICT_LABELS[verdict]
     unchecked = (summary or {}).get(UNVERIFIABLE, 0)
+    pyd = (
+        f"; {python_derived} of them python-derived (report.py output), "
+        f"its inputs stamped but its output not query-reproducible"
+        if python_derived else ""
+    )
     if verdict == REPRODUCES and unchecked:
         checked = summary[REPRODUCES]
         detail = (
             f"REPRODUCES — {checked} of {checked + unchecked} section(s) "
-            f"checked and matching; {unchecked} unverifiable, so this "
+            f"checked and matching; {unchecked} unverifiable{pyd}, so this "
             f"receipt does not prove them"
+        )
+    elif verdict == UNVERIFIABLE and python_derived:
+        detail = (
+            f"NOTHING VERIFIED — every section is unverifiable ({python_derived} "
+            f"python-derived, its inputs stamped but its output not "
+            f"query-reproducible); no number in this receipt was checked"
         )
     return {
         "verdict": verdict,
@@ -288,6 +303,17 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
         "expected_fingerprint": expected,
     }
 
+    # A report.py output (architecture §8-M3): its embedded bytes are still
+    # file-checkable, but it was computed by arbitrary Python from stamped
+    # inputs, so it is unverifiable *by construction*. The explicit flag is
+    # honoured before lineage is even inspected — a python-derived number must
+    # never read as query-reproducible even if a query node were present.
+    if section.get("verifiable") is False:
+        return {**base, "status": UNVERIFIABLE, "python_derived": True,
+                "detail": "python-derived (report.py output): its stamped inputs "
+                          "are query-reproducible, but this output was computed by "
+                          "arbitrary Python and cannot be reproduced from a query"}
+
     node = _query_node(lineage)
     if node is None:
         return {**base, "status": UNVERIFIABLE,
@@ -404,6 +430,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
             "schema_version": sv,
             "sections": [],
             "summary": {status: 0 for status in STATUS_LABELS},
+            "python_derived": 0,
             **_verdict_fields(REFUSED_NEWER_SCHEMA),
             "error": (
                 f"manifest schema_version {sv} is newer than this tracebi "
@@ -422,13 +449,15 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
     summary = {status: 0 for status in STATUS_LABELS}
     for r in results:
         summary[r["status"]] += 1
+    python_derived = sum(1 for r in results if r.get("python_derived"))
 
     return {
         "report_name": manifest.get("report_name"),
         "schema_version": manifest.get("schema_version"),
         "sections": results,
         "summary": summary,
-        **_verdict_fields(_verdict(summary), summary),
+        "python_derived": python_derived,
+        **_verdict_fields(_verdict(summary), summary, python_derived),
     }
 
 

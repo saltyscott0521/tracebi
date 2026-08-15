@@ -31,6 +31,7 @@ from tracebi.reports.embed import (
     embedded_record,
     fingerprint_triple,
     stamp,
+    stamp_frame,
 )
 from tracebi.reports.report import Report, TableSection
 from tracebi.reports.template_package import TemplatePackage
@@ -43,6 +44,7 @@ from tracebi.verify import (
     FILE_UNBACKED,
     FILE_UNRECORDED,
     REPRODUCES,
+    UNVERIFIABLE,
     verify_file,
     verify_manifest,
 )
@@ -327,7 +329,7 @@ _SCRIPT = (
 
 def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
                    script=_SCRIPT, data=None, name="Regions",
-                   dirname="regions"):
+                   dirname="regions", report_py=None):
     """Write a package dir and return its path."""
     if data is None:
         data = {
@@ -351,6 +353,8 @@ def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
         (pkg / "style.css").write_text(style, encoding="utf-8")
     if script is not None:
         (pkg / "script.js").write_text(script, encoding="utf-8")
+    if report_py is not None:
+        (pkg / "report.py").write_text(report_py, encoding="utf-8")
     return pkg
 
 
@@ -660,3 +664,193 @@ class TestShippedExample:
         pkg = TemplatePackage(pkg_dir)
         assert set(pkg.bindings) == {"by_sector", "top_issuers"}
         assert all(ref.model == "portfolio_model" for ref in pkg.bindings.values())
+
+    def test_portfolio_concentration_escape_hatch_loads_structurally(self):
+        """The committed reports/portfolio_concentration/ is a report.py package:
+        it loads structurally (no warehouse), its `by_issuer` binding is the
+        stamped input, and report.py is detected as the escape hatch."""
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        pkg_dir = os.path.join(repo_root, "reports", "portfolio_concentration")
+        pkg = TemplatePackage(pkg_dir)
+        assert set(pkg.bindings) == {"by_issuer"}
+        assert pkg.bindings["by_issuer"].model == "portfolio_model"
+        assert pkg.report_py_path is not None
+
+
+# ── M3: the report.py escape hatch + honesty (architecture §4, §8-M3) ─────────
+
+# A template that mounts the report.py OUTPUT block (not an input binding).
+_OUTPUT_TEMPLATE = """<!doctype html>
+<html><head><meta charset="utf-8"><title>{{ title }}</title></head>
+<body><main><h1>Derived</h1><table id="mount"><tbody></tbody></table></main></body>
+</html>
+"""
+
+# report.py: combines the stamped input into a python-derived output carrying a
+# running cumulative — a window the declarative query surface cannot express.
+_REPORT_PY = """
+import pandas as pd
+
+
+def build(inputs):
+    df = inputs["by_region"].copy()
+    df = df.sort_values("revenue", ascending=False).reset_index(drop=True)
+    df["cumulative"] = df["revenue"].cumsum()
+    return {"ranked": df}
+"""
+
+
+def _escape_hatch_package(tmp_path):
+    return _write_package(
+        tmp_path, template=_OUTPUT_TEMPLATE,
+        script='var el=document.getElementById("tracebi-data-ranked");void el;',
+        report_py=_REPORT_PY, name="Ranked", dirname="ranked",
+    )
+
+
+class TestEscapeHatchRender:
+    def test_output_embedded_input_not(self, tmp_path, model):
+        """The page embeds report.py's OUTPUT (`ranked`), not the stamped input
+        (`by_region`) — the input is a receipt-only carrier."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        TemplatePackage(str(pkg)).render({model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert 'id="tracebi-data-ranked"' in html
+        assert 'id="tracebi-data-by_region"' not in html
+
+    def test_output_is_python_derived_and_windowed(self, tmp_path, model):
+        """The embedded output carries the cumulative column report.py computed
+        — data the input query never produced."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        TemplatePackage(str(pkg)).render({model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        block = re.search(
+            r'id="tracebi-data-ranked"[^>]*>(.*?)</script>', html, re.DOTALL)
+        csv = json.loads(block.group(1))["csv"]
+        assert "cumulative" in csv.splitlines()[0]
+
+    def test_manifest_marks_output_unverifiable_input_reproducible(self, tmp_path, model):
+        """The manifest records the output binding verifiable=false, and both
+        the input carrier section (query-stamped) and the output carrier
+        section (verifiable=false) are present."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(out)).to_dict()
+        assert manifest["embedded_data"] == [{
+            "name": "ranked",
+            "embedded_sha256": manifest["embedded_data"][0]["embedded_sha256"],
+            "query_spec": None,
+            "model": None,
+            "verifiable": False,
+        }]
+        by_id = {s.get("id"): s for s in manifest["sections"]}
+        assert by_id["by_region"].get("verifiable") is None       # reproducible carrier
+        assert by_id["by_region"]["dataset_fingerprint"]          # query-stamped
+        assert by_id["ranked"]["verifiable"] is False             # python-derived carrier
+
+    def test_verify_file_passes_then_fails_on_output_tamper(self, tmp_path, model):
+        """File integrity holds for python-derived data too: the untouched file
+        is intact; editing the embedded output makes it TAMPERED."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(out)).to_dict()
+        html = out.read_text(encoding="utf-8")
+        assert verify_file(html, manifest)["verdict"] == FILE_INTACT
+
+        block = re.search(
+            r'(id="tracebi-data-ranked"[^>]*>)(.*?)(</script>)', html, re.DOTALL)
+        tampered = html[:block.start(2)] + block.group(2).replace(
+            "700.75", "999999.0", 1) + html[block.end(2):]
+        res = verify_file(tampered, manifest)
+        assert res["verdict"] == FILE_ALTERED
+        assert res["bindings"][0]["status"] == FILE_TAMPERED
+
+
+class TestEscapeHatchHonesty:
+    def test_output_classified_unverifiable_input_reproduces(self, tmp_path, model):
+        """verify (query -> model): the input query reproduces; the
+        python-derived output is UNVERIFIABLE, named as report.py output."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(out)).to_dict()
+        result = verify_manifest(manifest, {model.name: model})
+        by_section = {s["section"]: s for s in result["sections"]}
+        assert by_section["by_region"]["status"] == REPRODUCES
+        assert by_section["ranked"]["status"] == UNVERIFIABLE
+        assert by_section["ranked"]["python_derived"] is True
+        assert "report.py" in by_section["ranked"]["detail"]
+
+    def test_green_never_reads_as_verified(self, tmp_path, model):
+        """Exit 0 (the input reproduced, nothing failed), but the verdict line
+        explicitly says the python-derived output was not query-reproducible —
+        so a clean exit never reads as 'these numbers were verified'."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(out)).to_dict()
+        result = verify_manifest(manifest, {model.name: model})
+        assert result["ok"] is True
+        assert result["exit_code"] == 0
+        assert result["python_derived"] == 1
+        assert "python-derived" in result["verdict_detail"]
+        assert "not query-reproducible" in result["verdict_detail"]
+
+    def test_verifiable_false_forces_unverifiable_even_with_a_query_node(
+            self, tmp_path, model, spec):
+        """Defence in depth: a section flagged verifiable=false is UNVERIFIABLE
+        by construction — even if its lineage happens to carry a query node, it
+        must not read as reproduced."""
+        sd = stamp(model, spec, name="ranked")   # a fully query-stamped dataset
+        # Manifest section with a real query in lineage BUT flagged python-derived.
+        section = {
+            "id": "ranked", "section_type": "table",
+            "dataset_fingerprint": sd.fingerprint,
+            "dataset_lineage": sd.dataset.lineage_to_dict(),
+            "verifiable": False,
+        }
+        manifest = {"report_name": "x", "schema_version": 1, "sections": [section]}
+        result = verify_manifest(manifest, {model.name: model})
+        assert result["sections"][0]["status"] == UNVERIFIABLE
+        assert result["sections"][0]["python_derived"] is True
+
+
+class TestEscapeHatchContract:
+    def test_missing_build_function_raises(self, tmp_path, model):
+        pkg = _write_package(
+            tmp_path, template=_OUTPUT_TEMPLATE, report_py="x = 1\n",
+            dirname="nobuild")
+        with pytest.raises(ValueError, match="must define a module-level build"):
+            TemplatePackage(str(pkg)).render({model.name: model},
+                                             str(tmp_path / "o.html"))
+
+    def test_build_returning_non_dataframe_raises(self, tmp_path, model):
+        pkg = _write_package(
+            tmp_path, template=_OUTPUT_TEMPLATE,
+            report_py="def build(inputs):\n    return {'ranked': 42}\n",
+            dirname="badout")
+        with pytest.raises(ValueError, match="not a DataFrame"):
+            TemplatePackage(str(pkg)).render({model.name: model},
+                                             str(tmp_path / "o.html"))
+
+    def test_output_name_colliding_with_input_raises(self, tmp_path, model):
+        pkg = _write_package(
+            tmp_path, template=_OUTPUT_TEMPLATE,
+            report_py="def build(inputs):\n    return {'by_region': inputs['by_region']}\n",
+            dirname="collide")
+        with pytest.raises(ValueError, match="collides with a stamped input"):
+            TemplatePackage(str(pkg)).render({model.name: model},
+                                             str(tmp_path / "o.html"))
+
+    def test_stamp_frame_is_python_derived(self):
+        """stamp_frame carries the canonical triple but no query/model, and its
+        lineage node is marked python_derived."""
+        df = pd.DataFrame({"a": [1, 2], "b": [3.0, 4.0]})
+        sd = stamp_frame(df, name="out")
+        assert sd.query_spec is None and sd.model is None
+        assert sd.fingerprint == fingerprint_triple(sd.triple)
+        assert sd.dataset.lineage_to_dict()[-1]["metadata"]["python_derived"] is True

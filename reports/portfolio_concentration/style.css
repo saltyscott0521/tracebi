@@ -1,0 +1,8 @@
+:root { color-scheme: light dark; }
+body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; }
+h1 { margin-bottom: .25rem; }
+.note { color: #666; margin-top: 0; }
+table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
+th, td { padding: .5rem .75rem; border-bottom: 1px solid #ddd; text-align: left; }
+th { border-bottom: 2px solid #999; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }

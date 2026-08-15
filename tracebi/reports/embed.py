@@ -31,7 +31,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from tracebi.model.dataset import DataSet
+from tracebi.model.dataset import DataSet, LineageNode
 
 
 def embed_json(obj: Any, elem_id: str) -> str:
@@ -143,6 +143,38 @@ def stamp(model, query, name: str = "data") -> StampedData:
     )
 
 
+def stamp_frame(
+    df, name: str = "data",
+    description: str = "report.py output (python-derived)",
+) -> StampedData:
+    """Package a python-derived DataFrame as :class:`StampedData` (architecture §8-M3).
+
+    The escape hatch's *output*: a ``report.py`` computed *df* from stamped
+    inputs, so it flows through the *same* embed/fingerprint kernel as a
+    declarative binding — the canonical triple is embedded and hashed, and
+    ``verify --file`` catches tampering of it. But it carries **no** query
+    spec or model: arbitrary Python is not reproducible by replaying a query,
+    so ``query_spec``/``model`` are ``None`` and the lineage node is marked
+    ``python_derived`` — which is why ``verify_manifest`` classifies it
+    UNVERIFIABLE and never lets it read as reproduced.
+    """
+    node = LineageNode(
+        operation="transform",
+        description=description,
+        metadata={"python_derived": True},
+    )
+    ds = DataSet(df=df, name=name, lineage=[node])
+    frame = ds.to_pandas()
+    return StampedData(
+        name=name,
+        dataset=ds,
+        fingerprint=ds.fingerprint(),
+        triple=canonical_triple(frame),
+        query_spec=None,
+        model=None,
+    )
+
+
 def embed_block(stamped: StampedData, elem_id: Optional[str] = None) -> str:
     """The ``<script type="application/json">`` data block for one binding.
 
@@ -159,16 +191,25 @@ def embed_block(stamped: StampedData, elem_id: Optional[str] = None) -> str:
     return embed_json(payload, elem_id or f"tracebi-data-{stamped.name}")
 
 
-def embedded_record(stamped: StampedData) -> dict:
+def embedded_record(stamped: StampedData, verifiable: bool = True) -> dict:
     """The per-binding entry for the manifest's ``embedded_data`` block.
 
     ``embedded_sha256`` is the canonical-triple hash, which equals both
     ``stamped.fingerprint`` and the section's ``dataset_fingerprint`` — the
     single value the offline checker rehashes the shipped bytes against.
+
+    *verifiable* is ``False`` for a ``report.py`` output (architecture §4):
+    its bytes are still fingerprinted and file-checkable, but the output is
+    not query-reproducible, so the receipt says so explicitly. The key is
+    omitted when ``True`` so a declarative binding's record keeps the exact
+    shape it had before the escape hatch existed.
     """
-    return {
+    rec = {
         "name": stamped.name,
         "embedded_sha256": stamped.fingerprint,
         "query_spec": stamped.query_spec,
         "model": stamped.model,
     }
+    if not verifiable:
+        rec["verifiable"] = False
+    return rec

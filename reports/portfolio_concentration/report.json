@@ -1,0 +1,15 @@
+{
+  "name": "Portfolio Concentration",
+  "author": "risk",
+  "description": "Issuer concentration with a running cumulative share — a windowed metric the declarative query surface cannot express, so report.py computes it from a stamped input query.",
+  "data": {
+    "by_issuer": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["fair_value"],
+        "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"]
+      }
+    }
+  }
+}
