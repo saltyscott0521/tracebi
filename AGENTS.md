@@ -27,9 +27,9 @@ Reference implementation, end to end, at `examples/portfolio_project/`:
 
 The split earns its keep at the freeze points: the slow, unconstrained analysis
 (①) and the fast, iterated reporting (③) never block each other, because the
-model (②) is a frozen contract between them. Editing the dashboard never re-runs
+model (②) is a frozen contract between them. Editing a report never re-runs
 the pandas. As an agent (or analyst) you author each phase in turn: write the
-phase-① transform, declare the phase-② model, author the phase-③ dashboard spec.
+phase-① transform, declare the phase-② model, author the phase-③ report spec.
 
 ## Where the trust machinery applies — and where it does not
 
@@ -54,7 +54,7 @@ covers phases ② and ③, not ①.**
   transform and does **not** assert that a number is correct; it proves the
   reported figures still match the warehouse they were drawn from.
 
-So any number a dashboard puts in front of a person is traceable back to the
+So any number a report puts in front of a person is traceable back to the
 query that produced it and re-runnable against the sink. What produced the sink
 is phase ① — believed the way you believe reviewed code, not the way you believe
 a hash.
@@ -67,7 +67,7 @@ a hash.
   `reports/*` (specs, packages, and factories; plus `pipelines/*.py`). Every phase is
   authored and code-reviewed here. Missing a measure? The fix is a code-reviewed
   edit to the model file (e.g. `model.add_measure(...)` in
-  `models/portfolio_model.py`) — never a workaround in the dashboard layer.
+  `models/portfolio_model.py`) — never a workaround in the report layer.
   Missing a *column the measure needs*? That is a phase-① change: sink it in the
   transform. A fresh gateway process sees new vocabulary on its next call (stdio
   one-shot clients get this for free; a long-running server must be restarted —

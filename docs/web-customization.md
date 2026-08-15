@@ -101,7 +101,9 @@ Then point the server at it:
 TRACEBI_APP=myapp python -m tracebi.web.run
 ```
 
-`TRACEBI_APP` defaults to `tracebi.web.demo_app`. If it fails to import, the
+`TRACEBI_APP` defaults to none — a serve shows your project's discovered
+directories; set `TRACEBI_APP=tracebi.web.demo_app` for the bundled demo. If
+the named module fails to import, the
 server emits a `UserWarning` and starts with an **empty registry** — no
 connectors, no models — rather than refusing to boot, so check the startup log
 after changing it. `/api/health` returns 200 either way, which means a
@@ -266,7 +268,7 @@ docker compose up --build
 
 | Variable | Default | Effect |
 |---|---|---|
-| `TRACEBI_APP` | `tracebi.web.demo_app` | App module imported at startup |
+| `TRACEBI_APP` | *(none)* | App module imported at startup; `tracebi.web.demo_app` opts into the bundled demo |
 | `TRACEBI_MODELS_DIR` | `models` | Folder scanned for `model` variable files |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for `runner` variable files |
 | `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `@register.report()` factories, `.json` `ReportSpec`s (phase ③), and `<name>/` template packages; all served on the Reports page |

@@ -95,8 +95,12 @@ Never commit the password. The framework reads connector URLs only from
 
 ## 2. Define a model against Supabase
 
-Create `models/supabase.py` — the file convention the server discovers at
-startup. It must expose a module-level `model`:
+Create `models/supabase.py` at the repo root — the file convention the server
+discovers at startup. It must expose a module-level `model`. (The Vercel entry
+serves the repo root unless `examples/portfolio_project/` carries a built
+warehouse in the deployment, which a normal deploy of your own project never
+does — so your root `models/` is what gets discovered. A copyable starting
+point ships at `examples/seeds/supabase.py.example`.)
 
 ```python
 import os

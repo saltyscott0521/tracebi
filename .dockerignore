@@ -1,14 +1,14 @@
 # Never bake secrets or local state into image layers.
 .env
 .env.*
-*.db
-*.sqlite
-*.sqlite3
+**/*.db
+**/*.sqlite
+**/*.sqlite3
 
 # Local data/outputs are volume-mounted by docker-compose, not copied.
-data/*
-!data/.gitkeep
-output/
+**/data/*
+!**/data/.gitkeep
+**/output/
 
 # VCS, caches, tooling state
 .git/
@@ -16,7 +16,7 @@ output/
 .claude/
 .pytest_cache/
 .ipynb_checkpoints/
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *.egg-info/
 htmlcov/

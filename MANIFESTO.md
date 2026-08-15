@@ -61,9 +61,11 @@ CHANGED**, **MISMATCH (cause unknown)**, **UNEXPLAINED**, **UNVERIFIABLE**,
 changed under a receipt, an error mid-check — exits nonzero. The bias is
 toward loud failure, never toward the reassuring guess.
 
-**Every number has a receipt — or is marked as not having one. There is no
-third state.** That is the promise, and it is checkable: run `verify`
-yourself.
+**Every number drawn through the model has a receipt; everything else must
+be marked as not having one.** That is the promise, and it is checkable: run
+`verify` yourself. (A hand-typed literal in a report has no receipt and is
+never counted as checked — closing the gap where such a number silently
+looks covered is tracked work, not a claimed feature.)
 
 ## Why it is shaped this way
 
@@ -86,9 +88,10 @@ copy of the human surface — a report has only ever been a name and a zero-arg
 callable, and neither author gets a shortcut around the receipt. The analyst
 gets a model they can read in one screen and a `verify` they can run before a
 sign-off. The agent gets the same thing through the MCP gateway — validate a
-spec, query a model, render, verify — a surface that is deliberately
-read-and-compute-only, because an agent that can check everything and
-overwrite nothing is one you can leave alone.
+spec, query a model, render, verify — a surface with no write access to the
+warehouse: the only thing it writes is its own rendered artifact and receipt.
+An agent that can check everything and rewrite nothing it reports on is one
+you can leave alone.
 
 ## The honest boundary
 
@@ -104,9 +107,11 @@ query against this model produces.
 
 The escape hatch honors the same line. When the spec vocabulary can't express
 a layout, a template package's `report.py` can run arbitrary pandas — and its
-output stamps `verifiable: false` and never reads green under `verify`.
-Honesty over reach: an unverifiable section that says so is trustworthy; a
-green badge on unchecked work is not.
+output stamps `verifiable: false` and never reads green *as verified* under
+`verify` — the verdict names it unverifiable; the exit code stays 0 because
+unverifiable is a legitimate authoring state, not a failure. Honesty over
+reach: an unverifiable section that says so is trustworthy; a green badge on
+unchecked work is not.
 
 The maturity frame is the **assurance ladder**:
 
@@ -130,8 +135,11 @@ The maturity frame is the **assurance ladder**:
   No heuristic ever rounds a discrepancy down to "probably fine."
 - **We will not let presentation change a number.** Derived labels and
   formats fill in what the author left unset; a presentation default must
-  never change the number it presents. When a value's unit is ambiguous, the
-  unit-changing rung is declined and only unit-preserving formatting applies.
+  never change the number it presents. The one unit-changing rung (the
+  percent hint) applies only when every value is fraction-shaped; otherwise
+  it is declined and only unit-preserving formatting applies. The guard is
+  shape-based, so a column pre-scaled into that very shape must state its
+  unit in its name — the framework cannot see intent.
 - **We will not let the escape hatch read green.** `verifiable: false` is
   permanent for that path. There is no flag to override it.
 - **We will not give the agent surface write access to the warehouse** until
@@ -177,9 +185,10 @@ One canon, used everywhere — code, docs, UI, agent context:
    `describe()` is contractually forbidden from exposing credentials. Data
    residency is the default, not a tier. Hosted topologies are demos of
    TraceBi, not the shape of it.
-4. **Both authors, one contract.** Anything the analyst can validate, render,
-   or verify, the agent can too — and neither gets a shortcut around the
-   receipt.
+4. **Both authors, one contract.** Any *spec* the analyst can validate,
+   render, or verify, the agent can too — and neither gets a shortcut around
+   the receipt. (Excel and template-package rendering are not on the agent
+   surface yet; parity is the direction, not a claim.)
 5. **Errors are for repair.** Validation failures carry the path to the
    fault. A machine-facing error that a machine cannot act on is a bug.
 6. **Loud failure over quiet convenience.** Missing dependencies raise named

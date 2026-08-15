@@ -501,14 +501,18 @@ class TestChartEnhancements:
         assert "connect-src 'none'" in html
         assert "unsafe-eval" not in html
 
-    def test_no_chart_report_gets_no_echarts_or_csp(self):
-        # The chart machinery is scoped to reports that actually have a chart:
-        # a table-only report is byte-for-byte the previous output.
+    def test_no_chart_report_gets_no_echarts_but_keeps_the_csp(self):
+        # The chart machinery is scoped to reports that actually have a chart,
+        # but the self-contained-file contract (strict CSP) holds for every
+        # governed render — a tables-only report is still a shipped artifact
+        # (MANIFESTO.md, Commitment 3).
         report = Report("R").table(make_ds(), title="T")
         html = HTMLRenderer().to_html(report)
         assert "tracebi-chart-" not in html
-        assert "Content-Security-Policy" not in html
         assert "!function(" not in html
+        assert "Content-Security-Policy" in html
+        assert "connect-src 'none'" in html
+        assert "unsafe-eval" not in html
 
 
 class TestGovernedChartFileIntegrity:

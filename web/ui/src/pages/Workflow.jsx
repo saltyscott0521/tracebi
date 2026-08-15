@@ -134,10 +134,11 @@ export default function Workflow() {
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
             Build the warehouse & render once
           </div>
-          <Code>python run_workflow.py</Code>
+          <Code>python transforms/&lt;your_transform&gt;.py</Code>
           <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
-            Reads the raw pull from <code style={{ fontSize: 11 }}>inputs/</code>, writes the
-            warehouse and rendered page to <code style={{ fontSize: 11 }}>data/</code>.
+            Runs phase ① explicitly: reads the raw pull from <code style={{ fontSize: 11 }}>inputs/</code>,
+            sinks the warehouse to <code style={{ fontSize: 11 }}>data/</code>. The reference
+            project wraps this in <code style={{ fontSize: 11 }}>run_workflow.py</code>.
           </p>
         </Card>
         <Card>

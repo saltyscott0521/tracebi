@@ -151,6 +151,6 @@ is harmless if the web extras aren't installed — it raises a clear
 ## From notebook to script
 
 When a notebook matures into something scheduled or reviewed, convert it:
-copy the code cells into a file based on `requests/_template.py`. The
+copy the code cells into a file based on `requests/sample_report.py` (or the fuller `_template.py` in the reference project). The
 template's numbered sections map one-to-one to the scaffolded notebook's
 cells, so this is usually a paste-and-tidy job, not a rewrite.

@@ -249,7 +249,8 @@
 <section id="workflow">
   <h2>The three-phase workflow</h2>
   <p><strong>Transform → freeze → model → freeze → report.</strong> The reference
-  implementation ships in the repo; <code>python run_workflow.py</code> runs it end to end.</p>
+  implementation ships in the repo at <code>examples/portfolio_project/</code>;
+  <code>python run_workflow.py</code> from that directory runs it end to end.</p>
 
   <div class="phase-flow">
     <div class="phase">
@@ -317,7 +318,8 @@
     </tbody>
   </table>
 
-  <pre><code>$ python run_workflow.py       # ① build the warehouse, ③ render the dashboard once
+  <pre><code>$ cd examples/portfolio_project
+$ python run_workflow.py       # ① build the warehouse, ③ render the report once
 $ python -m tracebi.web.run     # serve it → http://127.0.0.1:8000 → Reports → portfolio_dashboard</code></pre>
   <p>
     <code>run_workflow.py</code> generates a synthetic messy source file the first time

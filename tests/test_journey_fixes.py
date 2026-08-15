@@ -35,7 +35,10 @@ class TestInitReadmeInstallLines:
     def test_readme_uses_git_url_install_form(self, tmp_path):
         readme = (self._init_project(tmp_path) / "README.md").read_text()
         assert f'pip install "tracebi[analyst] {_GIT_URL_FORM}"' in readme
-        assert f'pip install "tracebi[web] {_GIT_URL_FORM}"' in readme
+        # The web line composes with the analyst extras: [web] alone lacks
+        # duckdb/openpyxl, so a user who picked only it would fail at the
+        # README's own step ①.
+        assert f'pip install "tracebi[analyst,web] {_GIT_URL_FORM}"' in readme
 
     def test_readme_has_no_bare_pypi_install_line(self, tmp_path):
         readme = (self._init_project(tmp_path) / "README.md").read_text()

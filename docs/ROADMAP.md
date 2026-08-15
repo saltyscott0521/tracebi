@@ -1,6 +1,6 @@
 # TraceBi end-to-end: what to build next
 
-**Thesis check, in one paragraph.** TraceBi's pitch is a trust layer for AI-generated analytics: agents speak a semantic contract, every answer carries a stamp (query + lineage + SHA-256 fingerprint), specs validate before execution, and the assurance ladder (L0–L3, NOTES.md 2026-08-03) grades what a company can prove. Four independent audits (new analyst, MCP-only agent, platform operator, fund-ops design partner) agree on the verdict: **the stamping kernel is real and production-shaped** — fingerprints verified identical across Python, CLI, and a live MCP round trip; render refuses invalid specs; cap-invariance is test-pinned. What's missing is everything that lets someone *check* a receipt, *trust* the checker's identity, or *keep* the receipt. L2 is ~80% built, L1 is ~50% (stamps yes, receipts no), L3 is 0%. The roadmap below is one merged, deduped, ranked list. The ordering principle: a trust layer that cannot verify its own receipts, whose validator misses the most common agent errors, and whose flagship surface has no auth is not yet making a true claim — fix that before selling it.
+**Thesis check, in one paragraph.** TraceBi's pitch is a trust layer for AI-generated analytics: agents speak a semantic contract, every answer carries a stamp (query + lineage + SHA-256 fingerprint), specs validate before execution, and the assurance ladder (L0–L3, NOTES.md 2026-08-03) grades what a company can prove. Four independent audits (new analyst, MCP-only agent, platform operator, fund-ops design partner) agree on the verdict: **the stamping kernel is real and production-shaped** — fingerprints verified identical across Python, CLI, and a live MCP round trip; render refuses invalid specs; cap-invariance is test-pinned. What's missing is everything that lets someone *check* a receipt, *trust* the checker's identity, or *keep* the receipt. L2 is ~80% built, L1 is ~50% (stamps yes, receipts no), L3 is 0%. The roadmap below is one merged, deduped, ranked list. The ordering principle: a trust layer that cannot verify its own receipts, whose validator misses the most common agent errors, and whose flagship surface has no auth is not yet making a true claim — fix that before selling it. *(Update 2026-08: the verify loop, validate coverage, and gateway bearer auth from the Now tier have since shipped — see CHANGELOG [Unreleased]; the identity now lives in MANIFESTO.md.)*
 
 ---
 
@@ -200,4 +200,8 @@ RunStore → 16; full-scan pushdown → 15.
   the server instructions string (G29); `validate --json` + no raw
   tracebacks from `context --model` (G30); name the local-by-default
   residency commitment in deploy docs and label Vercel as demo topology
-  (G33, the manifesto now states the commitment).
+  (G33, the manifesto now states the commitment); a missing-warehouse error
+  hint (`report build` before the transform surfaces a raw DuckDB
+  CatalogException instead of "run phase ① first"); receipt coverage for
+  metric literals (a hand-typed KPI value is neither checked nor marked —
+  record it in the manifest as unverified so verify can name it).

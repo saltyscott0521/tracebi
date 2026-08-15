@@ -123,7 +123,23 @@ class _Authorizer:
     def __init__(self, *, trust_role_header: bool) -> None:
         self.trust_role_header = trust_role_header
         self.role_header = os.environ.get("TRACEBI_AUTH_ROLE_HEADER", "").strip()
-        self.role_map = self._parse_map(os.environ.get("TRACEBI_AUTH_ROLE_MAP", ""))
+        _raw_map = os.environ.get("TRACEBI_AUTH_ROLE_MAP", "")
+        self.role_map = self._parse_map(_raw_map)
+        if _raw_map.strip() and not self.role_map:
+            # An operator who set the variable meant to enforce roles; a map
+            # that parses to nothing (wrong separator, unknown role names)
+            # would silently leave every caller admin. Always a
+            # misconfiguration — say so.
+            import warnings
+            warnings.warn(
+                f"TRACEBI_AUTH_ROLE_MAP is set but no entry parsed "
+                f"({_raw_map!r}). Entries are comma-separated user:role "
+                f"pairs (e.g. 'alice:admin,bob:analyst') with roles from "
+                f"{ROLES}. With an empty map there is no role source, so "
+                f"role enforcement is OFF and every authenticated caller "
+                f"is admin.",
+                stacklevel=2,
+            )
         stated_default = os.environ.get("TRACEBI_AUTH_DEFAULT_ROLE", "").strip()
         #: True when the operator named the fallback role rather than
         #: inheriting it. Not a role source on its own — it only keeps

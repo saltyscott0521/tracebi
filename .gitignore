@@ -16,6 +16,7 @@ htmlcov/
 # keeps outputs ignored while manifests stay retained.
 output/*
 !output/*.manifest.json
+!output/.gitkeep
 .DS_Store
 .ipynb_checkpoints/
 *.ipynb

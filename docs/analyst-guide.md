@@ -1,6 +1,6 @@
 # TraceBi Analyst Guide
 
-The analyst path from messy data to a served dashboard, plus the full
+The analyst path from messy data to a served report, plus the full
 development flow for ad-hoc request scripts — from blank file to a published,
 parameterized, fully-traceable report. Every code block is runnable.
 
@@ -48,11 +48,12 @@ never sees the transform above it. Reference impl:
 
 **Phase ③** is a JSON `ReportSpec` whose every figure is a live query against
 the model. Because the model is materialized, the page re-renders in
-milliseconds with no pandas in the loop — editing the dashboard never re-runs
+milliseconds with no pandas in the loop — editing the report never re-runs
 phase ①. Reference impl:
 [reports/portfolio_dashboard.json](../examples/portfolio_project/reports/portfolio_dashboard.json).
 
 ```bash
+cd examples/portfolio_project   # the reference project ships in the repo
 python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once
 python -m tracebi.web.run    # serve it: Reports → portfolio_dashboard
 ```

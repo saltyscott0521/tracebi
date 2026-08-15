@@ -176,7 +176,7 @@ web/
 tests/                 # pytest suite (843 tests; run it for the current count), one file per area
 examples/
   portfolio_project/   # THE reference working project — a complete three-phase project
-                       #   with the exact shape `tracebi init` scaffolds:
+                       #   with the same shape `tracebi init` scaffolds:
     inputs/            #   ⓪ raw pulls (holdings.csv + generate_raw.py, the demo source)
     transforms/        #   ① unconstrained pandas → sink star tables (holdings_transform.py)
     models/            #   ② the star-schema contract (portfolio_model.py)
@@ -212,7 +212,7 @@ pip install -e ".[dev]"                        # Everything the test suite needs
 # Three-phase workflow
 cd examples/portfolio_project && python run_workflow.py
                                                 # phase ① builds data/warehouse.duckdb,
-                                                #   phase ③ renders the dashboard HTML once, offline
+                                                #   phase ③ renders the report HTML once, offline
 python -m tracebi.web.run                       # serves it; auto-discovers models/ + reports/
                                                 #   → Reports page (TRACEBI_REPORTS_DIR, default reports)
 
@@ -307,7 +307,7 @@ number it presents.**
 The guard is shape-based, so it cannot see a pre-scaled column whose values
 happen to be small — a fund fee of `0.0945` meaning 0.0945% is indistinguishable
 from a fraction. Store such a column in a unit its name states;
-`models/wealth_model.py` uses `expense_ratio_bps`.
+`tracebi/web/demo_app/models/wealth_model.py` uses `expense_ratio_bps`.
 
 `ExcelRenderer` derives nothing — it applies only `section.number_formats`. So
 a stored convention chosen to please the HTML renderer's derivation lands
@@ -422,7 +422,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
 
 ---
 
@@ -577,7 +577,7 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Write an ad hoc report | `requests/_template.py` |
+| Write an ad hoc report | `requests/sample_report.py` (init scaffold) or `examples/portfolio_project/requests/_template.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
 | Define a reusable pipeline | `tracebi new-pipeline` → `pipelines/` → `tracebi/pipeline_registry.py` |
 | Understand the lineage chain | `tracebi/model/dataset.py` |

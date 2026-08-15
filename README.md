@@ -66,7 +66,8 @@ python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → Reports �
 ```
 
 The reference implementation ships in the repo at `examples/portfolio_project/`
-— a complete project with the exact shape `tracebi init` scaffolds:
+— a complete project with the same shape `tracebi init` scaffolds (plus its own
+`run_workflow.py` driver):
 `transforms/holdings_transform.py`, `models/portfolio_model.py`,
 `reports/portfolio_dashboard.json`, driven by `run_workflow.py`. Full
 walkthrough: **[WORKFLOW.md](WORKFLOW.md)**.
@@ -180,7 +181,7 @@ The differences that matter:
 | Understand the three-phase workflow (transform → model → report) | [WORKFLOW.md](WORKFLOW.md) — the spine, with the reference implementation |
 | Follow the full analyst flow start-to-finish | [docs/analyst-guide.md](docs/analyst-guide.md) — scaffold → transform → report → publish |
 | Work in a notebook with rich previews | [docs/notebook-guide.md](docs/notebook-guide.md) + `examples/analyst_quickstart.py` |
-| Write a one-off report or query | Copy `requests/_template.py` and run it with `tracebi run` |
+| Write a one-off report or query | Copy `requests/sample_report.py` (scaffolded by `tracebi init`; the fuller `_template.py` ships in the reference project) and run it with `tracebi run` |
 | Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
 | Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
 | Point the web app at my own data / restyle the UI | [docs/web-customization.md](docs/web-customization.md) — app modules, registry, theming, auth, deploy |
@@ -292,7 +293,7 @@ keep the rest of TraceBi as the data layer.
 ### CLI
 
 ```bash
-tracebi init my_project                              # scaffold models/ pipelines/ reports/ requests/
+tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
 tracebi new-request "Open orders by region"          # → requests/open_orders_by_region.py
 tracebi new-request "Customer churn" --notebook      # → requests/customer_churn.ipynb
 tracebi list-requests
@@ -638,11 +639,11 @@ The API is self-documenting: once the server is running, open
 or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
 every endpoint, parameter, and response schema is listed there.
 
-`tracebi/web/demo_app/` is the default app module package. The DataModels themselves live at the project root in `models/` (`sales_model.py`, `wealth_model.py`) and are shared with notebooks and scripts via `get_model(...)`; the demo app pulls them in and stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports read from those resources.
+`tracebi/web/demo_app/` is the bundled demo app — opt-in via `TRACEBI_APP=tracebi.web.demo_app` (the default is no app module, so a serve shows *your* project). It is fully self-contained: its DataModels ship inside the package at `tracebi/web/demo_app/models/` (`sales_model.py`, `wealth_model.py`), and it stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports read from those resources.
 
-The second model — `WealthModel` (`models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
+The second model — `WealthModel` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
 
-To point the UI at your own data module instead of the built-in demo:
+To point the UI at your own app module (connectors that cannot be expressed as a file convention):
 
 ```bash
 TRACEBI_APP=mypackage.tracebi_config python -m tracebi.web.run
@@ -724,13 +725,13 @@ except ImportError:
 python examples/seeds/seed_db.py
 
 # Run Silver
-python -c "from seeds.seed_db import runner; runner.run('orders_silver')"
+python -c "from examples.seeds.seed_db import runner; runner.run('orders_silver')"
 
 # Full Gold refresh
-python -c "from seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)"
+python -c "from examples.seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)"
 
 # Start scheduler
-python -c "from seeds.seed_db import runner; runner.start()"
+python -c "from examples.seeds.seed_db import runner; runner.start()"
 ```
 
 ---
@@ -749,7 +750,7 @@ python examples/phase4_example.py      # full pipeline (run examples/seeds/seed_
 
 ```bash
 pytest tests/
-# 777 passed
+# 843 passed
 ```
 
 ---
@@ -819,7 +820,7 @@ Run standalone, the script just uses the defaults — no harness required.
 
 ```
 requests/
-├── _template.py
+├── sample_report.py
 ├── 2024_06_open_orders_by_region.py
 └── 2024_07_customer_churn_analysis.py
 ```

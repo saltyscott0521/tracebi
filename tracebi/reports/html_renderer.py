@@ -489,6 +489,12 @@ class HTMLRenderer(BaseRenderer):
 
         if bindings:
             page = self._inject_charts(page, [(sd, plan) for _s, sd, plan in bindings])
+        else:
+            # No charts, but the self-contained-file contract (strict CSP)
+            # holds for every governed render, not only the ones that happen
+            # to carry a chart — a tables-only report is still a shipped
+            # artifact. _inject_charts adds the meta itself on the chart path.
+            page = insert_before(page, "</head>", csp_meta())
         return page
 
     # ── Charts → ECharts (architecture §6) ──────────────────────────────────

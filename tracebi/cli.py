@@ -273,17 +273,26 @@ Or set as default so notebooks that call get_default_model() pick it up:
     set_default("{slug}")
 """
 
-from tracebi import DataModel, SQLConnector
-# from tracebi import CSVConnector, DuckDBConnector, MemoryConnector
+import os
+
+from tracebi import DataModel
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+# from tracebi import CSVConnector, SQLConnector, MemoryConnector
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ── Connectors ───────────────────────────────────────────────────────────────
-connector = SQLConnector("{slug}_db", url="sqlite:///data/{slug}.db")
+# Default: the warehouse your phase-① transforms sink into. Swap for
+# SQLConnector("{slug}_db", url=os.environ["{slug}_DB_URL".upper()]) etc. to
+# model a database directly.
+connector = DuckDBConnector("warehouse",
+                            database=os.path.join(ROOT, "data", "warehouse.duckdb"))
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 # The variable MUST be named `model` — the registry looks for it at load time.
 model = DataModel("{model_name}")
 model.add_connector(connector)
-model.add_table("my_table", connector="{slug}_db", source="my_table")
+model.add_table("my_table", connector="warehouse", source="my_table")
 # model.add_relationship(
 #     name="orders_customers",
 #     left_table="orders", right_table="customers", left_key="customer_id",
@@ -298,12 +307,9 @@ model.add_table("my_table", connector="{slug}_db", source="my_table")
 # open a connection — or fail outright — on every scan). A query is what
 # connects. Do not call model.connect() at import time.
 
-# ── Publish to the project registry ──────────────────────────────────────────
-# Also discoverable without this line via `get_model("{slug}")`, since files
-# in models/ are auto-loaded. Registering makes it visible to the web UI too.
-from tracebi import register
-
-register.model(model)
+# Files in models/ are auto-discovered — by the web server, and by
+# `get_model("{slug}")` from notebooks and scripts. An explicit
+# `register.model(model)` is only needed for files living OUTSIDE models/.
 '''
 
 
@@ -400,7 +406,7 @@ WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
 
 def run() -> dict:
     # ── 1. Read the raw input (inputs/, an API pull, a SQL export…) ─────────
-    df = pd.read_csv(os.path.join(ROOT, "inputs", "{slug}.csv"))
+    # df = pd.read_csv(os.path.join(ROOT, "inputs", "orders.csv"))  # ← your raw pull
 
     # ── 2. Clean — any pandas you like; none of this is traced, by design ───
     # df = df.dropna(subset=["id"]).drop_duplicates(subset=["id"])
@@ -432,13 +438,16 @@ __pycache__/
 .venv/
 venv/
 .env
-data/
 # Rendered outputs are disposable, but the *.manifest.json files inside are
-# receipts — the audit trail. `output/*` with the negation (git cannot
-# re-include under an excluded directory) keeps outputs ignored while the
-# manifests you need to stand behind a report stay retained.
+# receipts — the audit trail. `<dir>/*` with a negation (git cannot re-include
+# under an excluded directory) keeps outputs ignored while the manifests you
+# need to stand behind a report stay retained. data/ holds the warehouse and
+# `tracebi report build` renders; output/ holds ad-hoc renders.
+data/*
+!data/*.manifest.json
 output/*
 !output/*.manifest.json
+!output/.gitkeep
 *.db
 .ipynb_checkpoints/
 """
@@ -465,9 +474,12 @@ _INIT_ENV_EXAMPLE = """\
 # TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.1
 
 # ── Authorization (roles) ───────────────────────────────────────────────────
-# Without a role source every authenticated caller is admin (documented,
-# deliberate). To enforce roles, name one:
-# TRACEBI_AUTH_ROLE_MAP=alice=admin,bob=analyst
+# Without a usable role source every authenticated caller is admin
+# (documented, deliberate). The role sources are TRACEBI_AUTH_ROLE_MAP
+# (user:role pairs) and, under proxy auth, TRACEBI_AUTH_ROLE_HEADER (a header
+# the proxy sets). TRACEBI_AUTH_DEFAULT_ROLE is only the fallback for
+# principals a source does not name — set by itself it enforces nothing.
+# TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst
 # TRACEBI_AUTH_DEFAULT_ROLE=viewer
 
 # ── Agent gateway (MCP over HTTP) ───────────────────────────────────────────
@@ -775,10 +787,10 @@ TraceBi is not on PyPI — install it from GitHub:
 pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"
 ```
 
-For the web UI and REST API as well:
+For the web UI and REST API as well (in addition to the analyst extras):
 
 ```bash
-pip install "tracebi[web] @ git+https://github.com/saltyscott0521/tracebi"
+pip install "tracebi[analyst,web] @ git+https://github.com/saltyscott0521/tracebi"
 ```
 
 (That install carries the API; the built React bundle is not in the repo the
@@ -792,13 +804,14 @@ The scaffold is a complete working example — messy input included:
 ```bash
 python transforms/sample_transform.py       # ① clean + sink → data/warehouse.duckdb
 tracebi report build sample_dashboard       # ③ render → data/sample_dashboard.html + receipt
-tracebi verify data/sample_dashboard.html.manifest.json   # every section: REPRODUCES
+tracebi verify data/sample_dashboard.html.manifest.json   # every checked section: REPRODUCES
 tracebi serve                               # browse it at http://127.0.0.1:8000
 ```
 
 That last `verify` is the point: it re-runs the recorded queries against the
-model and confirms the rendered numbers still reproduce. Every number has a
-receipt — or is marked as not having one.
+model and confirms the rendered numbers still reproduce. Every number drawn
+through the model has a receipt; anything else must be marked as not having
+one.
 
 ## Layout
 
@@ -820,7 +833,8 @@ Everything in the artifact directories is discovered automatically — by
 `tracebi serve`, and by notebooks via `get_model()` / `get_runner()`. There
 is no registration file to edit.
 
-Run `git init && git add .` — manifests stamp the commit (`git_sha`), which
+Run `git init && git add . && git commit -m init` — manifests stamp the
+commit (`git_sha`), which
 is half the audit story.
 
 ## Wire your own data
@@ -889,7 +903,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     print(f"Initialised TraceBi project at {target}")
     print(f"  cd {target.name}")
-    print(f"  git init && git add .                  # manifests stamp the commit (git_sha)")
+    print(f"  git init && git add . && git commit -m init   # manifests stamp the commit (git_sha)")
     print(f"  python transforms/sample_transform.py  # ① clean + sink the sample input")
     print(f"  tracebi report build sample_dashboard  # ③ render + receipt")
     print(f"  tracebi verify data/sample_dashboard.html.manifest.json")
@@ -1982,8 +1996,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_init = sub.add_parser(
         "init",
-        help="Scaffold a new TraceBi project (models/, pipelines/, reports/, "
-             "sample report, .gitignore).",
+        help="Scaffold a complete three-phase project (inputs/, transforms/, "
+             "models/, reports/, …) whose sample loop ends in "
+             "`tracebi verify` reading REPRODUCES.",
     )
     p_init.add_argument("project", help="Target directory name.")
     p_init.add_argument("--force", action="store_true",
@@ -2158,8 +2173,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify = sub.add_parser(
         "verify",
         help="Re-run every recorded query in a rendered manifest and "
-             "classify each section: reproduces, source drift, unexplained, "
-             "or unverifiable. Exits 0 only when something was actually "
+             "classify each section: reproduces, source drift, model changed, "
+             "unexplained, or unverifiable. Exits 0 only when something was actually "
              "checked and nothing failed.",
     )
     p_verify.add_argument(

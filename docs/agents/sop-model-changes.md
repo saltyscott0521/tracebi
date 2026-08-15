@@ -7,7 +7,7 @@ in this project.
 **Where this sits in the three-phase workflow (see `WORKFLOW.md`).** This is
 **phase ② — MODEL**, the freeze point between the unconstrained phase-① transform
 (`transforms/*.py`, ordinary pandas that sinks the warehouse) and the fast
-phase-③ dashboard (`reports/*.json`) that queries the model by name. The
+phase-③ report (`reports/*.json`) that queries the model by name. The
 model **reads the sink; it never sees the transform** — it is the semantic
 contract, a few dozen declarative lines a reviewer reads without opening the
 pandas above it (`models/portfolio_model.py` is the reference). It is also where
@@ -18,7 +18,7 @@ verifiable; phase ① below it is unverified by design, trusted as reviewed code
 contract over MCP.* The gateway (`tracebi mcp`) is read-and-compute only. When
 an agent authoring a dashboard hits a vocabulary gap — a measure that does not
 exist, a definition that should — the fix is a reviewed, committed change to a
-model file, never a workaround at the dashboard layer and never a runtime
+model file, never a workaround at the report layer and never a runtime
 mutation. Every consumer then inherits the fix (fresh gateway processes immediately;
 long-running ones after restart).
 

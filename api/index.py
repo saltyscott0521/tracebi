@@ -42,10 +42,17 @@ if str(_ROOT) not in sys.path:
 
 # Artifact discovery is relative to the working directory. In this repo the
 # working project lives at examples/portfolio_project (the repo root is the
-# framework, not a project); a real deployment of your own project keeps its
-# models/ and reports/ at ITS root, so the fallback is _ROOT.
+# framework, not a project) — but only serve it when its warehouse actually
+# exists in the deployment: portfolio_model reads data/warehouse.duckdb, which
+# the serverless bundle does not carry (data/ is gitignored and the function
+# filesystem is read-only), and serving models whose every query 500s is worse
+# than serving none. A deployment of your own project keeps its models/ and
+# reports/ at the repo root, so the fallback is _ROOT — that flow is
+# unaffected. The public tracebi.com demo opts into the self-contained
+# in-memory demo app via TRACEBI_APP instead.
 _project = _ROOT / "examples" / "portfolio_project"
-os.chdir(_project if _project.is_dir() else _ROOT)
+_warehouse = _project / "data" / "warehouse.duckdb"
+os.chdir(_project if _warehouse.is_file() else _ROOT)
 
 # Default to no app module, because a real project deploying this should get
 # its own models/ and reports/ (both discovered without an app module) rather

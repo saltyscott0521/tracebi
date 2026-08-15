@@ -29,7 +29,7 @@ def _warn_if_unknown_git_sha(manifest: ReportManifest) -> None:
         print(
             "tracebi: warning: git_sha is 'unknown' — code provenance is "
             "missing from this render's audit trail. Run the report from a "
-            "git repository (`git init && git add .` in your project) so the "
+            "git repository with at least one commit (`git init && git add . && git commit -m init` in your project) so the "
             "manifest records the commit.",
             file=sys.stderr,
         )

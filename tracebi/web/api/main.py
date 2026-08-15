@@ -46,7 +46,8 @@ from tracebi._version import get_version as _tracebi_version
 
 app = FastAPI(
     title="TraceBi API",
-    description="Code-first, traceable BI — REST interface to your TraceBi data layer.",
+    description=("The trust layer for AI-generated analytics: a code-first BI "
+                 "framework where every number has a receipt."),
     version=_tracebi_version(),
 )
 

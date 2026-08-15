@@ -52,7 +52,7 @@ model itself (the semantic contract) between ② and ③. The reason to build it
 this way is that the two phases with opposite cadences never block each other.
 Phase ① is slow, unconstrained, run when the source changes. Phase ③ is fast
 and iterated — a designer reshapes cards all afternoon. Because the model is a
-frozen contract between them, **editing the dashboard never re-runs the
+frozen contract between them, **editing a report never re-runs the
 pandas**. That is the whole payoff of the split, and it is why the sink is
 file-backed DuckDB rather than an in-process frame.
 
@@ -181,9 +181,10 @@ schema" *is* the `DataModel` the framework always had.
 
 ### What was built
 
-`tracebi/mcp_server.py` + `tracebi mcp` (extras key `mcp`). Seven tools:
+`tracebi/mcp_server.py` + `tracebi mcp` (extras key `mcp`). Eight tools:
 `get_context`, `list_models`, `describe_model`, `query_model`,
-`validate_report_spec`, `render_report_spec`, `list_reports`.
+`validate_report_spec`, `render_report_spec`, `list_reports`,
+`verify_manifest`.
 
 Decisions worth recording:
 
@@ -218,8 +219,10 @@ Fastapi upgraded to match; suite back to green (620).
 
 - **Per-agent scopes** — which models/measures per credential; the gate for
   ever exposing pipeline runs over MCP.
-- **`tracebi verify`** — drift-aware re-verification (reproduces / source
-  drift / unexplained). Needs input fingerprints recorded at render.
+- ~~**`tracebi verify`** — drift-aware re-verification.~~ Shipped: input
+  fingerprints are recorded at render, and `verify` (plus the gateway's
+  `verify_manifest`) classifies reproduces / source drift / model changed /
+  mismatch / unexplained / unverifiable / error.
 - **L1 receipts for foreign renderers** — a stable URL or token per stamped
   query an agent can cite from its own HTML.
 - ~~The HTTP transport has no auth of its own yet~~ — since the Now-tier

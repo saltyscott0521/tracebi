@@ -1,7 +1,7 @@
 # The three-phase workflow
 
 An agent (or an analyst) writes as much pandas as the data needs, sinks the
-result into a warehouse, declares a thin model over it, and points a dashboard
+result into a warehouse, declares a thin model over it, and points a report
 at the model. Each phase has its own folder and its own cadence.
 
 ```
@@ -59,7 +59,7 @@ processes because the sink is on disk. `inputs/` holds the raw material (the
 demo's `holdings.csv` is tracked; a large or sensitive real pull can be
 gitignored per-file); `data/` holds the build artifacts and is gitignored.
 
-## Iterating on the dashboard
+## Iterating on the report
 
 Everything visible is a query. To add a panel, add a section to
 `reports/portfolio_dashboard.json` with a `data.query` naming a `fact`, its
