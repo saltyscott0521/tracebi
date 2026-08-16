@@ -61,8 +61,13 @@ from tracebi.reports.embed import (
     KNOWN_LIBS, StampedData, csp_meta, embed_block, embedded_record,
     insert_before, read_lib, stamp, stamp_frame,
 )
+from tracebi.reports.figures import (
+    Figure, FigureError, assign_figure_ids, extract_figures, strip_stage,
+)
 from tracebi.reports.html_renderer import HTMLRenderer
-from tracebi.reports.report import Report, ReportManifest, TableSection
+from tracebi.reports.report import (
+    ARTIFACT_MANIFEST_SCHEMA_VERSION, Report, ReportManifest, TableSection,
+)
 from tracebi.spec import DataRef
 
 #: Files that make up a package. ``report.json`` and ``template.html`` are
@@ -227,18 +232,35 @@ class TemplatePackage:
             outputs = self._apply_report_py(report, inputs)
         embed_items = inputs + outputs
 
-        manifest = report.build_manifest("html", output_path)
-        manifest.embedded_data = (
-            [embedded_record(sd, verifiable=True) for sd in inputs]
-            + [embedded_record(sd, verifiable=False) for sd in outputs]
-        )
-
         renderer = HTMLRenderer(
             template=self.template_html,
             template_context={"bindings": list(self.bindings)},
         )
         page = renderer.to_html(report)
-        page = self._inject(page, embed_items)
+        # Final build: exploration blocks are DELETED by the build, not by a
+        # rewrite (v2 §2.1) — then ids are assigned and the figure claims
+        # validated against what is actually embedded. Extraction, the strip,
+        # and verify --file all share the one tokenizer in figures.py.
+        page = strip_stage(page, "exploration")
+        page, id_warnings = assign_figure_ids(page)
+        for w in id_warnings:
+            print(f"[tracebi] {self.name}: {w}", file=sys.stderr)
+        figs = extract_figures(page)
+        self._validate_figures(figs, inputs, outputs)
+
+        # Manifest first, artifact second — and the figure claims layer rides
+        # in it (schema v2: the refuse-newer-schema path in verify is the
+        # compatibility mechanism it was reserved for).
+        manifest = report.build_manifest("html", output_path)
+        manifest.embedded_data = (
+            [embedded_record(sd, verifiable=True) for sd in inputs]
+            + [embedded_record(sd, verifiable=False) for sd in outputs]
+        )
+        manifest.schema_version = ARTIFACT_MANIFEST_SCHEMA_VERSION
+        manifest.stage = "final"
+        manifest.figures = [_figure_record(f) for f in figs]
+
+        page = self._inject(page, embed_items, stage="final")
 
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
@@ -246,6 +268,68 @@ class TemplatePackage:
         if save_manifest:
             manifest.save(manifest_path or output_path + ".manifest.json")
         return manifest
+
+    def _validate_figures(
+        self,
+        figs: list[Figure],
+        inputs: list[StampedData],
+        outputs: list[StampedData],
+    ) -> None:
+        """Every figure names an embedded binding or is honestly unverified.
+
+        Build-enforced (v2 §2.1): a figure with neither is a hard error with
+        did-you-mean hints; a ``value`` figure must sit over a one-row binding
+        and name a real cell. No fourth state, and no silent third one.
+        """
+        import difflib
+
+        frames = {sd.name: sd.dataset.to_pandas() for sd in inputs + outputs}
+
+        def _hint(name: str) -> str:
+            close = difflib.get_close_matches(name or "", list(frames), n=1)
+            return f" Did you mean '{close[0]}'?" if close else ""
+
+        for f in figs:
+            where = f"figure '{f.id}' ({f.kind})"
+            if f.unverified:
+                continue
+            if not f.binding:
+                raise FigureError(
+                    f"{where} names no binding and carries no "
+                    f"data-tb-unverified mark. Every element that displays "
+                    f"data is stamped or says it is not — there is no third "
+                    f"state. Bindings: {sorted(frames)}."
+                )
+            if f.binding not in frames:
+                raise FigureError(
+                    f"{where} names binding '{f.binding}', which is not "
+                    f"declared in report.json or produced by report.py."
+                    f"{_hint(f.binding)} Available: {sorted(frames)}."
+                )
+            if f.kind == "value":
+                df = frames[f.binding]
+                if len(df) != 1:
+                    raise FigureError(
+                        f"{where} reads a single cell but binding "
+                        f"'{f.binding}' has {len(df)} rows — a value figure "
+                        f"needs a one-row binding (aggregate the query, or "
+                        f"use a table figure)."
+                    )
+                cell = f.cell
+                if cell is None:
+                    if len(df.columns) == 1:
+                        continue     # unambiguous: the only column
+                    raise FigureError(
+                        f"{where} needs data-tb-cell — binding '{f.binding}' "
+                        f"has columns {list(df.columns)}."
+                    )
+                if cell not in df.columns:
+                    close = difflib.get_close_matches(cell, list(df.columns), n=1)
+                    hint = f" Did you mean '{close[0]}'?" if close else ""
+                    raise FigureError(
+                        f"{where}: cell '{cell}' is not a column of binding "
+                        f"'{f.binding}'.{hint} Columns: {list(df.columns)}."
+                    )
 
     # ── Escape hatch: report.py (architecture §8-M3) ────────────────────────
 
@@ -320,17 +404,19 @@ class TemplatePackage:
 
     # ── Injection ───────────────────────────────────────────────────────────
 
-    def _inject(self, page: str, stamped) -> str:
-        """Insert the CSP, style, charting libs, data blocks, and script.
+    def _inject(self, page: str, stamped, stage: Optional[str] = None) -> str:
+        """Insert the CSP, stage meta, style, charting libs, data blocks, script.
 
         Independent of any template placeholder (see the module docstring). Into
-        ``<head>``: a strict CSP (architecture §5) and the stylesheet. Before
-        ``</body>``, in order: any inlined charting library, the safe
-        embedded-data blocks, then the app script that reads them. A missing
-        ``</head>`` or ``</body>`` is a hard error — dropping the injection would
-        ship a page with no data and no warning.
+        ``<head>``: a strict CSP (architecture §5), the page's stage meta, and
+        the stylesheet. Before ``</body>``, in order: any inlined charting
+        library, the safe embedded-data blocks, then the app script that reads
+        them. A missing ``</head>`` or ``</body>`` is a hard error — dropping
+        the injection would ship a page with no data and no warning.
         """
         head = csp_meta()
+        if stage:
+            head += f'<meta name="tracebi-stage" content="{stage}">\n'
         if self.style_css.strip():
             head += f"<style>\n{self.style_css}\n</style>\n"
         page = insert_before(page, "</head>", head)
@@ -346,6 +432,21 @@ class TemplatePackage:
         if tail:
             page = insert_before(page, "</body>", tail)
         return page
+
+
+def _figure_record(f: Figure) -> dict:
+    """One figure as its manifest claim — omitting empty fields, so the
+    record stays diff-friendly and a claim's absence is meaningful."""
+    d: dict = {"id": f.id, "kind": f.kind}
+    if f.binding:
+        d["binding"] = f.binding
+    if f.cell:
+        d["cell"] = f.cell
+    if f.unverified:
+        d["unverified"] = True
+    if f.note:
+        d["note"] = f.note
+    return d
 
 
 def _read_text(path: str) -> str:

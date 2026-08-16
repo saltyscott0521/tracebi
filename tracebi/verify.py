@@ -57,6 +57,11 @@ MISMATCH_UNKNOWN = "mismatch_unknown_cause"
 UNVERIFIABLE = "unverifiable"
 ERROR = "error"
 
+#: A FIGURE status only, never a section's: the author marked the element
+#: ``data-tb-unverified`` — nobody claimed anything, which is a different
+#: honesty than ``unverifiable`` (we ran python and cannot replay it).
+UNVERIFIED = "unverified"
+
 #: Human-facing labels for the CLI's one-line-per-section output.
 STATUS_LABELS = {
     REPRODUCES:       "REPRODUCES",
@@ -67,6 +72,9 @@ STATUS_LABELS = {
     UNVERIFIABLE:     "UNVERIFIABLE",
     ERROR:            "ERROR",
 }
+
+#: Labels for figure rollup rows (section statuses plus UNVERIFIED).
+FIGURE_STATUS_LABELS = {**STATUS_LABELS, UNVERIFIED: "UNVERIFIED (marked)"}
 
 #: Statuses that mean "this receipt could not be shown to reproduce for a
 #: reason nobody has diagnosed" — the exit-1 class. An unknown-cause
@@ -374,7 +382,8 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
                       "the data did not move; the model, measures, or engine did"}
 
 
-def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
+def verify_manifest(manifest: dict, models: Mapping[str, Any],
+                    strict: bool = False) -> dict:
     """
     Re-run every recorded query in *manifest* and classify each section.
 
@@ -405,10 +414,10 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
     the only verdict meaning a number in this receipt was re-run and
     matched, and it names any sections it could not check.
     """
-    from tracebi.reports.report import MANIFEST_SCHEMA_VERSION
+    from tracebi.reports.report import ARTIFACT_MANIFEST_SCHEMA_VERSION
 
     sv = manifest.get("schema_version")
-    if isinstance(sv, int) and sv > MANIFEST_SCHEMA_VERSION:
+    if isinstance(sv, int) and sv > ARTIFACT_MANIFEST_SCHEMA_VERSION:
         # A newer writer may have changed semantics this checker does not
         # know; pretending to verify it would be a reassuring guess.
         return {
@@ -420,8 +429,8 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
             **_verdict_fields(REFUSED_NEWER_SCHEMA),
             "error": (
                 f"manifest schema_version {sv} is newer than this tracebi "
-                f"supports ({MANIFEST_SCHEMA_VERSION}); upgrade tracebi to "
-                f"verify it"
+                f"supports ({ARTIFACT_MANIFEST_SCHEMA_VERSION}); upgrade "
+                f"tracebi to verify it"
             ),
         }
 
@@ -437,7 +446,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
         summary[r["status"]] += 1
     python_derived = sum(1 for r in results if r.get("python_derived"))
 
-    return {
+    out = {
         "report_name": manifest.get("report_name"),
         "schema_version": manifest.get("schema_version"),
         "sections": results,
@@ -445,6 +454,84 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any]) -> dict:
         "python_derived": python_derived,
         **_verdict_fields(_verdict(summary), summary, python_derived),
     }
+
+    # ── Figure rollup (manifest schema 2, architecture v2 §2.3) ──────────
+    # Figures are a CLAIMS layer joined onto the per-binding receipt, never
+    # the embed driver. Each figure inherits its binding's status; an
+    # author-marked figure is UNVERIFIED (distinct from python-derived
+    # UNVERIFIABLE); a figure naming a binding absent from the receipt is
+    # ERROR — an internally inconsistent receipt fails. A v1 manifest (no
+    # ``figures`` key) returns exactly the shape above, byte-for-byte.
+    fig_records = manifest.get("figures")
+    if fig_records is None:
+        if strict:
+            out["error"] = (
+                "--strict requires a figures-bearing (schema 2) manifest; "
+                "this receipt has no figure claims to hold to 100%"
+            )
+            out.update(_strict_fail_fields(out))
+        return out
+
+    by_binding = {r["section"]: r for r in results}
+    figure_rows: list[dict] = []
+    fig_summary: dict[str, int] = {}
+    for f in fig_records:
+        fid, binding = f.get("id"), f.get("binding")
+        if f.get("unverified"):
+            status = UNVERIFIED
+            detail = ("author-marked unverified"
+                      + (f": {f['note']}" if f.get("note") else ""))
+        elif binding in by_binding:
+            status = by_binding[binding]["status"]
+            detail = f"inherits binding '{binding}'"
+        else:
+            status = ERROR
+            detail = (f"names binding '{binding}' which the receipt does not "
+                      f"carry — internally inconsistent")
+        figure_rows.append({"figure": fid, "kind": f.get("kind"),
+                            "binding": binding, "status": status,
+                            "detail": detail})
+        fig_summary[status] = fig_summary.get(status, 0) + 1
+
+    # Figure ERRORs join the alarming class for the receipt-level verdict.
+    verdict_summary = dict(summary)
+    verdict_summary[ERROR] += fig_summary.get(ERROR, 0)
+    out.update(_verdict_fields(_verdict(verdict_summary), summary,
+                               python_derived))
+    out["figures"] = figure_rows
+    out["figure_summary"] = fig_summary
+
+    # The verdict speaks figures first, bindings second (§2.3) — and names
+    # the honest limit: markup and bytes are provable, page scripting is not.
+    green = fig_summary.get(REPRODUCES, 0)
+    parts = [f"{green} reproduce"]
+    for st in (SOURCE_DRIFT, MODEL_CHANGED, MISMATCH_UNKNOWN, UNEXPLAINED,
+               UNVERIFIABLE, UNVERIFIED, ERROR):
+        if fig_summary.get(st):
+            parts.append(f"{fig_summary[st]} {FIGURE_STATUS_LABELS[st].lower()}")
+    out["verdict_detail"] = (
+        f"figures: {len(figure_rows)} — " + ", ".join(parts) + ". "
+        + out["verdict_detail"]
+    )
+
+    if strict and any(r["status"] != REPRODUCES for r in figure_rows):
+        not_green = sum(1 for r in figure_rows if r["status"] != REPRODUCES)
+        out["verdict_detail"] = (
+            f"STRICT — {not_green} figure(s) carry no green receipt. "
+            + out["verdict_detail"]
+        )
+        out.update(_strict_fail_fields(out))
+    return out
+
+
+def _strict_fail_fields(out: dict) -> dict:
+    """Escalate a result to failure under --strict without hiding a worse
+    verdict already present (drift stays drift; alarming stays alarming)."""
+    if out["exit_code"] == 0:
+        return {"verdict": NOT_REPRODUCED,
+                "verdict_detail": out["verdict_detail"],
+                "exit_code": 1, "ok": False}
+    return {"ok": False}
 
 
 # ── Offline file check (report generator, architecture §3.1 / §3.2) ─────────
@@ -487,11 +574,35 @@ FILE_STATUS_LABELS = {
 FILE_INTACT = "file_intact"
 FILE_ALTERED = "file_altered"
 FILE_NOTHING = "file_nothing_embedded"
+#: The file announces itself as a review snapshot (``tracebi-stage:
+#: exploration``). A snapshot carries NO manifest by design — a
+#: weaker-looking receipt is worse than none — so the check refuses by name
+#: rather than reporting anything that could read as a verification.
+REFUSED_SNAPSHOT = "refused_snapshot"
+
+#: Figure cross-check row statuses (manifest schema 2). The check is
+#: symmetric on purpose: a manifest figure missing from the file and a file
+#: figure missing from the manifest BOTH fail — an agent adding a figure to
+#: a shipped page, even one wired to an already-embedded block, is caught.
+FIGURE_MATCHES = "figure_matches"
+FIGURE_MISSING = "figure_missing_in_file"
+FIGURE_UNRECORDED = "figure_unrecorded"
+FIGURE_DATA_FAILED = "figure_data_failed"
+FIGURE_UNVERIFIED_MARK = "figure_unverified"
+
+FILE_FIGURE_LABELS = {
+    FIGURE_MATCHES:         "FIGURE OK",
+    FIGURE_MISSING:         "FIGURE MISSING — in the manifest, not the file",
+    FIGURE_UNRECORDED:      "FIGURE UNRECORDED — in the file, not the manifest",
+    FIGURE_DATA_FAILED:     "FIGURE DATA FAILED — its data block did not check out",
+    FIGURE_UNVERIFIED_MARK: "FIGURE UNVERIFIED (author-marked)",
+}
 
 FILE_VERDICT_EXIT_CODES = {
-    FILE_INTACT:   0,
-    FILE_ALTERED:  1,
-    FILE_NOTHING:  1,
+    FILE_INTACT:       0,
+    FILE_ALTERED:      1,
+    FILE_NOTHING:      1,
+    REFUSED_SNAPSHOT:  1,
 }
 
 FILE_VERDICT_LABELS = {
@@ -504,6 +615,9 @@ FILE_VERDICT_LABELS = {
     FILE_NOTHING:
         "NOTHING EMBEDDED — this manifest records no embedded data and the "
         "file carries none; there was nothing to check",
+    REFUSED_SNAPSHOT:
+        "REFUSED — this is a review snapshot, not a published report; "
+        "snapshots carry no receipt and cannot be verified",
 }
 
 #: The ``<script type="application/json">`` blocks the embedder emits. Captures
@@ -555,6 +669,33 @@ def verify_file(html: str, manifest: dict) -> dict:
     ``verdict``/``exit_code``/``ok`` shape as :func:`verify_manifest`, so the
     CLI presents both checks uniformly.
     """
+    from tracebi.reports.figures import (
+        FigureError, extract_figures, read_stage_meta,
+    )
+
+    # ── Stage gate (manifest schema 2, architecture v2 §2.3 / §2.5) ──────
+    # A review snapshot announces itself and is refused BY NAME — it carries
+    # no manifest, so nothing about it can be "verified" and pretending
+    # otherwise would mint the draft receipt the design refuses to create.
+    file_stage = read_stage_meta(html)
+    if file_stage == "exploration":
+        return {
+            "report_name": manifest.get("report_name"),
+            "bindings": [], "summary": {},
+            "verdict": REFUSED_SNAPSHOT,
+            "verdict_detail": FILE_VERDICT_LABELS[REFUSED_SNAPSHOT],
+            "exit_code": FILE_VERDICT_EXIT_CODES[REFUSED_SNAPSHOT],
+            "ok": False,
+        }
+    # A stage mismatch between the page and its manifest means the file is
+    # not the file this receipt describes — a draft can never be passed off
+    # as final, and a final page cannot borrow a draft's manifest.
+    manifest_stage = manifest.get("stage")
+    stage_mismatch = (
+        (manifest_stage is not None or file_stage is not None)
+        and manifest_stage != file_stage
+    )
+
     records = {
         str(e.get("name")): e
         for e in (manifest.get("embedded_data") or [])
@@ -633,20 +774,102 @@ def verify_file(html: str, manifest: dict) -> dict:
     for r in results:
         summary[r["status"]] += 1
 
-    if not results:
+    # ── Figure cross-check (manifest schema 2, §2.3) — symmetric ─────────
+    # Every manifest figure must exist in the file with the same binding;
+    # every file figure must be recorded in the manifest; a bound figure
+    # whose data block failed inherits that failure. All three fail the
+    # file. A v1 manifest (no ``figures``) skips this block entirely.
+    figure_rows: list[dict] = []
+    fig_failed = False
+    fig_records = manifest.get("figures")
+    if fig_records is not None:
+        block_status = {r["binding"]: r["status"] for r in results}
+        try:
+            file_figs = {f.id: f for f in extract_figures(html)}
+        except FigureError as exc:
+            fig_failed = True
+            file_figs = {}
+            figure_rows.append({
+                "figure": None, "status": FIGURE_UNRECORDED,
+                "detail": f"figure markup could not be extracted: {exc}",
+            })
+        recorded_ids = set()
+        for f in fig_records:
+            fid, binding = f.get("id"), f.get("binding")
+            recorded_ids.add(fid)
+            got = file_figs.get(fid)
+            if got is None or got.binding != binding:
+                figure_rows.append({
+                    "figure": fid, "binding": binding,
+                    "status": FIGURE_MISSING,
+                    "detail": "recorded in the manifest but absent from the "
+                              "file (or bound differently there)",
+                })
+                fig_failed = True
+            elif f.get("unverified"):
+                figure_rows.append({
+                    "figure": fid, "status": FIGURE_UNVERIFIED_MARK,
+                    "detail": "author-marked unverified; nothing to check",
+                })
+            elif block_status.get(binding) != FILE_MATCHES:
+                figure_rows.append({
+                    "figure": fid, "binding": binding,
+                    "status": FIGURE_DATA_FAILED,
+                    "detail": f"its data block '{binding}' did not check out "
+                              f"({block_status.get(binding, 'absent')})",
+                })
+                fig_failed = True
+            else:
+                figure_rows.append({
+                    "figure": fid, "binding": binding,
+                    "status": FIGURE_MATCHES,
+                    "detail": "present, bound as recorded, bytes verified",
+                })
+        for fid, got in file_figs.items():
+            if fid not in recorded_ids:
+                figure_rows.append({
+                    "figure": fid, "binding": got.binding,
+                    "status": FIGURE_UNRECORDED,
+                    "detail": "the file carries this figure but the manifest "
+                              "records no claim for it — an addition after "
+                              "render",
+                })
+                fig_failed = True
+
+    if not results and not figure_rows:
         verdict = FILE_NOTHING
-    elif summary[FILE_MATCHES] == len(results):
+    elif (summary[FILE_MATCHES] == len(results) and not fig_failed
+          and not stage_mismatch):
         verdict = FILE_INTACT
     else:
         verdict = FILE_ALTERED
 
     code = FILE_VERDICT_EXIT_CODES[verdict]
-    return {
+    detail = FILE_VERDICT_LABELS[verdict]
+    if stage_mismatch and verdict == FILE_ALTERED:
+        detail = (
+            f"FILE ALTERED — the page's stage meta ({file_stage!r}) does not "
+            f"match the manifest's ({manifest_stage!r}); this is not the "
+            f"file this receipt describes"
+        )
+    elif verdict == FILE_INTACT and fig_records is not None:
+        detail += (
+            ". Figure markup verified; page scripting is not provable — the "
+            "receipt covers the embedded bytes and the declared "
+            "figure↔binding map"
+        )
+
+    out = {
         "report_name": manifest.get("report_name"),
         "bindings": results,
         "summary": summary,
         "verdict": verdict,
-        "verdict_detail": FILE_VERDICT_LABELS[verdict],
+        "verdict_detail": detail,
         "exit_code": code,
         "ok": code == 0,
     }
+    if fig_records is not None:
+        out["figures"] = figure_rows
+    if manifest_stage is not None or file_stage is not None:
+        out["stage"] = {"file": file_stage, "manifest": manifest_stage}
+    return out

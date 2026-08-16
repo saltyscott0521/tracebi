@@ -487,6 +487,11 @@ class RowSection(ReportSection):
 # moves; `tracebi verify` and archived-manifest consumers key off it so
 # receipts stay checkable across upgrades.
 MANIFEST_SCHEMA_VERSION = 1
+#: Artifact (template-package) manifests: adds the ``figures`` claims layer
+#: and ``stage`` (architecture v2 §2.3). The legacy renderer keeps emitting
+#: version 1 — the refuse-newer-schema path in verify is the compatibility
+#: mechanism between readers and writers.
+ARTIFACT_MANIFEST_SCHEMA_VERSION = 2
 
 _GIT_SHA: Optional[str] = None
 
@@ -546,10 +551,22 @@ class ReportManifest:
     #: ``tracebi verify --file`` rehashes the bytes shipped in the ``.html``
     #: against this. Empty for the Excel/PDF renderers, which embed nothing.
     embedded_data: list[dict] = field(default_factory=list)
+    #: Manifest schema. Legacy renderer output stays at
+    #: ``MANIFEST_SCHEMA_VERSION`` (1); artifact builds (template packages)
+    #: set 2 and add the figure claims layer below (architecture v2 §2.3).
+    schema_version: int = MANIFEST_SCHEMA_VERSION
+    #: "final" for a built artifact; a review snapshot carries the stage in
+    #: the page meta and NO manifest at all. None on legacy (v1) renders.
+    stage: Optional[str] = None
+    #: The figure claims layer: ``{id, kind, binding, cell?, unverified?,
+    #: note?}`` per data-tb-figure element in the built page. Joined against
+    #: the per-binding receipt at verify time — figures are claims, never the
+    #: embed driver. None (omitted) on v1 renders.
+    figures: Optional[list[dict]] = None
 
     def to_dict(self) -> dict:
         d = {
-            "schema_version": MANIFEST_SCHEMA_VERSION,
+            "schema_version": self.schema_version,
             "report_name": self.report_name,
             "rendered_at": self.rendered_at,
             "rendered_by": self.rendered_by,
@@ -563,6 +580,10 @@ class ReportManifest:
         # exact shape it had before this field existed.
         if self.embedded_data:
             d["embedded_data"] = self.embedded_data
+        if self.stage is not None:
+            d["stage"] = self.stage
+        if self.figures is not None:
+            d["figures"] = self.figures
         return d
 
     def to_json(self, indent: int = 2) -> str:
