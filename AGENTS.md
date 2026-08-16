@@ -105,7 +105,7 @@ The http transport requires `TRACEBI_MCP_TOKEN` (send
 `Authorization: Bearer <token>`) — it refuses to start without it unless
 `--insecure` is passed explicitly.
 
-Eight tools (`tracebi/mcp_server.py`):
+Nine tools (`tracebi/mcp_server.py`):
 
 | Tool | Purpose |
 |---|---|
@@ -116,6 +116,7 @@ Eight tools (`tracebi/mcp_server.py`):
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
+| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 
 Every tool returns **structured output** (a typed `outputSchema` and

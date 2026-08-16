@@ -6,6 +6,37 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — reshape M3: the loop, and the workbench
+
+"Steer from chat, see results in the portal" is now a real page:
+
+- **The workbench** — `tracebi dev <package>` serves `/__workbench`: the
+  earn-your-receipt coverage bar, every figure with its provenance badge,
+  copy-addresses (`report#fig:id` — the human's pointing language), and
+  PINS: flag a figure with a note in the portal and the agent reads it via
+  `tracebi report status` (📌) or the new MCP `workbench_state` tool before
+  its next edit. Data cards show each binding's rows, dtypes, and
+  fingerprint, with QUICK-CHARTS that emit copyable `data-tb-figure`
+  markup — adoption is pasting markup you already watched work. The
+  exhibit feed carries `tracebi.workbench.show(...)` calls from report.py
+  (a no-op outside dev) plus auto-entries when a binding's fingerprint
+  changes. Dev-state only: nothing here exists in builds or manifests.
+- **Coexistence (field-notes #12 dead)** — file-backed DuckDB connections
+  open read-only; `write()` uses a short-lived read-write connection. Dev,
+  build, and serve now run together against one warehouse, proven live;
+  lock conflicts in either direction explain the actual fix.
+- **The dev loop is artifact-native** — in-memory exploration renders
+  (exploration blocks kept, ids assigned, badges on), a directory +
+  `models/` + `transforms/` + `_theme.css` watcher, and a stale-`.pyc`
+  guard for hot-reloaded models.
+- **Web parity** — an artifact-backed report served over HTTP is the REAL
+  render: embedded fingerprinted bytes, the figure claims layer, the
+  schema-2 manifest — so what the browser shows is what `verify --file`
+  checks (test-pinned FILE INTACT).
+- `tracebi report status [--json]` prints the earned state from the one
+  shared state builder; the MCP gateway grows to nine tools.
+
+
 ### Added — reshape M2: the presentation system
 
 A zero-effort artifact page now looks shipped and hydrates itself:

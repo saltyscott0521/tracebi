@@ -311,7 +311,7 @@ Per-binding `verifiable` in `TemplatePackage.render`; `QuerySpec.order_by/limit`
 `tracebi.css` (tokens, components incl. `--striped/--compact`, badges, print), `tracebi.js` (parser promotion, hydration, `_fmt` port, config merge), `stack.py` + `HTMLRenderer.for_project` threaded through all **twelve** sites, `reports/_theme.css` layer, spec `theme`/`script` keys, `--theme`, badges default-on + `--no-badges`, `presentation` key in `tracebi context`.
 *Proof gate:* zero-effort page looks shipped; later-wins override chain tested; screen and print agree on `550.7B`; CSP and self-containment byte-verified; findings #10/#11/#13 dead at every surface including the notebook preview.
 
-**M3 — The loop.**
+**M3 — The loop.** ✅ **Shipped 2026-08-16** — proof gates green live: the workbench served with coverage bar, provenance badges, copy-addresses, quick-charts; a pin placed in the portal read back through `report status` (📌) and MCP `workbench_state`; `report build` succeeded WHILE `tracebi dev` served the same warehouse (bug #12 dead); web-rendered artifact HTML passes `verify --file`.
 `tracebi dev` artifact-native with the rewritten directory + `models/` watcher; read-only DuckDB in dev/serve (**hard dependency: bug #12's fix lands first**); `__workbench` with the four panels and copy-addresses; `report status`; MCP `workbench_state`; web-run parity (`embedded_data` over HTTP, mtime-cached).
 *Proof gate:* land → interrogate → review at one URL → finalize with no rewrite; `dev` + `build` + `serve` coexist against one warehouse; web-rendered artifact HTML passes `verify --file`.
 

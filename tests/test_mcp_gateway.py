@@ -245,10 +245,11 @@ def test_build_server_registers_the_tools(gateway_model):
     server = build_server()
     tools = anyio.run(server.list_tools)
     names = {t.name for t in tools}
+    # M3 flip: workbench_state joined the surface (nine tools).
     assert names == {
         "get_context", "list_models", "describe_model", "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
-        "verify_manifest",
+        "verify_manifest", "workbench_state",
     }
 
 

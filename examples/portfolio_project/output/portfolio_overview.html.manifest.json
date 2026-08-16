@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "report_name": "portfolio_overview",
-  "rendered_at": "2026-08-16T23:08:53.962595+00:00",
+  "rendered_at": "2026-08-16T23:40:45.733933+00:00",
   "rendered_by": "unknown",
   "format": "html",
   "output_path": "/Users/andrewscott/Documents/Claude/tracebi/examples/portfolio_project/output/portfolio_overview.html",
-  "git_sha": "a7834ab1decdaf69383f25a590bb3fc348ba903e",
+  "git_sha": "89e10ef9df9c5d8c467e723c9208686af2138be8",
   "parameters": {},
   "sections": [
     {
@@ -26,7 +26,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-08-16T23:08:53.913456+00:00",
+          "timestamp": "2026-08-16T23:40:45.685454+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -44,7 +44,7 @@
           "description": "Derived measure column(s): positions = holding_id, cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.913852+00:00",
+          "timestamp": "2026-08-16T23:40:45.685972+00:00",
           "metadata": {
             "derived": {
               "positions": "holding_id",
@@ -57,7 +57,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.921661+00:00",
+          "timestamp": "2026-08-16T23:40:45.695307+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -72,7 +72,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.921673+00:00",
+          "timestamp": "2026-08-16T23:40:45.695317+00:00",
           "metadata": {
             "engine": "duckdb",
             "rows_out": 1,
@@ -119,7 +119,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-08-16T23:08:53.922975+00:00",
+          "timestamp": "2026-08-16T23:40:45.696771+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -140,7 +140,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-08-16T23:08:53.923873+00:00",
+          "timestamp": "2026-08-16T23:40:45.697273+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -158,7 +158,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.930426+00:00",
+          "timestamp": "2026-08-16T23:40:45.703909+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -172,7 +172,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.sector",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.933048+00:00",
+          "timestamp": "2026-08-16T23:40:45.706915+00:00",
           "metadata": {
             "order_by": [
               {
@@ -192,7 +192,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.933056+00:00",
+          "timestamp": "2026-08-16T23:40:45.706923+00:00",
           "metadata": {
             "engine": "duckdb",
             "rows_out": 6,
@@ -247,7 +247,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-08-16T23:08:53.934139+00:00",
+          "timestamp": "2026-08-16T23:40:45.707949+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -265,7 +265,7 @@
           "description": "Derived measure column(s): cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.934294+00:00",
+          "timestamp": "2026-08-16T23:40:45.708102+00:00",
           "metadata": {
             "derived": {
               "cost_basis": "cost"
@@ -280,7 +280,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-08-16T23:08:53.934630+00:00",
+          "timestamp": "2026-08-16T23:40:45.708438+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -298,7 +298,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.941280+00:00",
+          "timestamp": "2026-08-16T23:40:45.715227+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -312,7 +312,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.943589+00:00",
+          "timestamp": "2026-08-16T23:40:45.717785+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -327,7 +327,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.issuer, limit 8",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.943914+00:00",
+          "timestamp": "2026-08-16T23:40:45.718235+00:00",
           "metadata": {
             "order_by": [
               {
@@ -347,7 +347,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:08:53.943919+00:00",
+          "timestamp": "2026-08-16T23:40:45.718240+00:00",
           "metadata": {
             "engine": "duckdb",
             "rows_out": 8,

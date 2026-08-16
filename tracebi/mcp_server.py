@@ -247,6 +247,20 @@ class ReportsResult(TypedDict, total=False):
     reports: Any
 
 
+class WorkbenchStateResult(TypedDict, total=False):
+    name: str
+    figures: Any
+    coverage: Any
+    bindings: Any
+    unused_bindings: Any
+    lint: Any
+    exhibits: Any
+    pins: Any
+    code: Any
+    error: Any
+    errors: list[str]
+
+
 class VerifyResult(TypedDict, total=False):
     ok: bool
     verdict: str
@@ -523,6 +537,30 @@ def gateway_verify_manifest(manifest: Any) -> VerifyResult:
         ]}
 
 
+def gateway_workbench_state(report: str) -> WorkbenchStateResult:
+    """
+    The workbench state for an artifact package: figures with provenance,
+    the coverage bar, per-binding cards, the human's PINS, and the exhibit
+    feed — the same JSON the workbench page renders from (v2 §2.5).
+
+    Read-only: this is how a driving agent sees what the human flagged in
+    the portal ("steer from chat, see results in the workbench" — pointing
+    happens where the evidence is). Exhibits and pins are dev-state only;
+    nothing here mints a receipt.
+    """
+    from tracebi.workbench import collect_state
+
+    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+    pkg_dir = reports_dir / report
+    if not (pkg_dir / "report.json").is_file():
+        return {"errors": [
+            f"no artifact package at {pkg_dir} — workbench_state applies to "
+            f"reports/<name>/ packages"
+        ]}
+    with actor(_mcp_actor()):
+        return collect_state(str(pkg_dir), _load_models())
+
+
 # ── MCP registration ───────────────────────────────────────────────────────
 
 
@@ -662,6 +700,16 @@ def build_server(token: Optional[str] = None):
         structured_output=True,
         description="Reports the project exposes, with registration status per file.",
     )(gateway_reports)
+    server.tool(
+        name="workbench_state", title="Workbench state", annotations=_READ_WAREHOUSE,
+        structured_output=True,
+        description=(
+            "The workbench state for an artifact package (reports/<name>/): "
+            "figures with provenance, coverage, per-binding cards, the "
+            "human's pins, and the exhibit feed. Read this to see what the "
+            "human flagged in the portal before your next edit."
+        ),
+    )(gateway_workbench_state)
     server.tool(
         name="verify_manifest", title="Verify a receipt",
         annotations=_READ_WAREHOUSE, structured_output=True,

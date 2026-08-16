@@ -2006,6 +2006,47 @@ def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
     )
 
 
+def _report_status(kind: str, path: Path, as_json: bool = False) -> int:
+    """The earned state of an artifact, from the one workbench state builder.
+
+    What a driving agent and CI call between edits: figures by provenance,
+    coverage, unused bindings, pins — printed compact, or as the full state
+    JSON with --json.
+    """
+    if kind != "package":
+        print("status applies to artifact packages (reports/<name>/); "
+              "verify a spec's receipt with `tracebi verify` instead.",
+              file=sys.stderr)
+        return 1
+    from tracebi.workbench import collect_state
+
+    state = collect_state(str(path), _load_project_models())
+    if as_json:
+        print(json.dumps(state, indent=2, default=str))
+        return 0
+    cov = state.get("coverage", {})
+    parts = [f"{cov.get('verified', 0)} query-backed",
+             f"{cov.get('derived', 0)} python-derived",
+             f"{cov.get('unverified', 0)} unverified"]
+    if cov.get("unbound_errors"):
+        parts.append(f"{cov['unbound_errors']} unbound-ERROR")
+    print(f"{state.get('name', path.name)}: {cov.get('total', 0)} figure(s) — "
+          + ", ".join(parts))
+    for f in state.get("figures", []):
+        mark = {"verified": "✓", "derived": "·", "unverified": "·"}.get(
+            f.get("provenance"), "✗")
+        pin = " 📌" if f.get("pinned") else ""
+        print(f"  {mark} {f.get('id')}  [{f.get('provenance')}]"
+              f"{'  ← ' + f['binding'] if f.get('binding') else ''}{pin}")
+    unused = state.get("unused_bindings") or []
+    if unused:
+        print(f"  ! unused binding(s): {', '.join(unused)}")
+    errs = [b for b in state.get("bindings", []) if b.get("error")]
+    for b in errs:
+        print(f"  ✗ binding '{b['name']}' failed: {b['error']}", file=sys.stderr)
+    return 1 if (cov.get("unbound_errors") or errs) else 0
+
+
 def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
     """Write a review snapshot — the sendable working state (v2 §2.5).
 
@@ -2141,6 +2182,8 @@ def cmd_report(args: argparse.Namespace) -> int:
         print(exc, file=sys.stderr)
         return 1
 
+    if args.action == "status":
+        return _report_status(kind, path, as_json=getattr(args, "json", False))
     if args.action == "snapshot":
         output = (Path(args.output) if args.output
                   else Path.cwd() / "output" / f"{args.name}.snapshot.html")
@@ -2331,9 +2374,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Build a report package or spec to one self-contained .html + "
              "manifest, or preview it locally.",
     )
-    p_report.add_argument("action", choices=["build", "preview", "snapshot"])
+    p_report.add_argument("action", choices=["build", "preview", "snapshot", "status"])
     p_report.add_argument("name", help="Report name (package dir or spec stem).")
     p_report.add_argument("--output", help="Output .html path (default: output/<name>.html).")
+    p_report.add_argument(
+        "--json", action="store_true",
+        help="With `status`: print the full workbench state as JSON (what "
+             "the workbench page and the MCP workbench_state tool consume).",
+    )
     p_report.add_argument(
         "--no-badges", action="store_true",
         help="Omit the provenance badges from the rendered page (client "
