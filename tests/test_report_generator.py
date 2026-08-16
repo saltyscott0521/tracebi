@@ -742,15 +742,17 @@ def _escape_hatch_package(tmp_path):
 
 
 class TestEscapeHatchRender:
-    def test_output_embedded_input_not(self, tmp_path, model):
-        """The page embeds report.py's OUTPUT (`ranked`), not the stamped input
-        (`by_region`) — the input is a receipt-only carrier."""
+    def test_input_and_output_both_embedded(self, tmp_path, model):
+        """M0 flip (report-architecture-v2 §2.1, §5 ledger): the page embeds
+        report.py's OUTPUT (`ranked`) AND the stamped input (`by_region`) —
+        the declared binding is no longer a receipt-only carrier, so the
+        offline file check covers it too."""
         pkg = _escape_hatch_package(tmp_path)
         out = tmp_path / "out.html"
         TemplatePackage(str(pkg)).render({model.name: model}, str(out))
         html = out.read_text(encoding="utf-8")
         assert 'id="tracebi-data-ranked"' in html
-        assert 'id="tracebi-data-by_region"' not in html
+        assert 'id="tracebi-data-by_region"' in html
 
     def test_output_is_python_derived_and_windowed(self, tmp_path, model):
         """The embedded output carries the cumulative column report.py computed
@@ -765,20 +767,22 @@ class TestEscapeHatchRender:
         assert "cumulative" in csv.splitlines()[0]
 
     def test_manifest_marks_output_unverifiable_input_reproducible(self, tmp_path, model):
-        """The manifest records the output binding verifiable=false, and both
-        the input carrier section (query-stamped) and the output carrier
-        section (verifiable=false) are present."""
+        """M0 flip (report-architecture-v2 §2.1, §5 ledger): verifiability is
+        per binding, not per package. The manifest records the query binding
+        with no ``verifiable: false`` flag (green-eligible) beside the
+        report.py output recorded verifiable=false — the escape hatch no
+        longer flattens the declared binding to false."""
         pkg = _escape_hatch_package(tmp_path)
         out = tmp_path / "out.html"
         manifest = TemplatePackage(str(pkg)).render(
             {model.name: model}, str(out)).to_dict()
-        assert manifest["embedded_data"] == [{
-            "name": "ranked",
-            "embedded_sha256": manifest["embedded_data"][0]["embedded_sha256"],
-            "query_spec": None,
-            "model": None,
-            "verifiable": False,
-        }]
+        by_name = {r["name"]: r for r in manifest["embedded_data"]}
+        assert set(by_name) == {"by_region", "ranked"}
+        assert by_name["by_region"].get("verifiable") is None     # query binding
+        assert by_name["by_region"]["query_spec"] is not None     # replay-checkable
+        assert by_name["by_region"]["model"] == model.name
+        assert by_name["ranked"]["verifiable"] is False           # python-derived
+        assert by_name["ranked"]["query_spec"] is None
         by_id = {s.get("id"): s for s in manifest["sections"]}
         assert by_id["by_region"].get("verifiable") is None       # reproducible carrier
         assert by_id["by_region"]["dataset_fingerprint"]          # query-stamped
@@ -800,7 +804,11 @@ class TestEscapeHatchRender:
             "700.75", "999999.0", 1) + html[block.end(2):]
         res = verify_file(tampered, manifest)
         assert res["verdict"] == FILE_ALTERED
-        assert res["bindings"][0]["status"] == FILE_TAMPERED
+        # M0 flip (report-architecture-v2 §5 ledger): the input binding is now
+        # embedded too, so look the tampered output up by name.
+        by_binding = {b["binding"]: b for b in res["bindings"]}
+        assert by_binding["ranked"]["status"] == FILE_TAMPERED
+        assert by_binding["by_region"]["status"] == FILE_MATCHES
 
 
 class TestEscapeHatchHonesty:
@@ -850,6 +858,107 @@ class TestEscapeHatchHonesty:
         result = verify_manifest(manifest, {model.name: model})
         assert result["sections"][0]["status"] == UNVERIFIABLE
         assert result["sections"][0]["python_derived"] is True
+
+
+class TestPerBindingVerifiability:
+    """M0 seam (report-architecture-v2 §2.1 "The per-binding verifiability
+    seam", §5 ledger): a report.py beside a report.json no longer poisons the
+    declarative bindings — a receipt STRENGTHENING. What was grey (or absent
+    from the offline check) becomes green; python-derived outputs stay grey,
+    hardcoded, never green."""
+
+    def test_mixed_package_query_binding_reproduces_python_output_stays_grey(
+            self, tmp_path, model):
+        """The pre-pattern mixed package (one query binding + one report.py
+        output): the query binding classifies REPRODUCES under replay, the
+        python output stays UNVERIFIABLE, and the offline file check passes
+        with BOTH bindings covered."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(out)).to_dict()
+
+        # Replay check (query -> model): per-binding truth.
+        result = verify_manifest(manifest, {model.name: model})
+        by_section = {s["section"]: s for s in result["sections"]}
+        assert by_section["by_region"]["status"] == REPRODUCES
+        assert by_section["ranked"]["status"] == UNVERIFIABLE
+        assert by_section["ranked"]["python_derived"] is True
+
+        # Offline check: the query binding's bytes are now embedded and
+        # vouched for too — it was not even file-checkable before the seam.
+        file_result = verify_file(out.read_text(encoding="utf-8"), manifest)
+        assert file_result["verdict"] == FILE_INTACT
+        assert file_result["summary"][FILE_MATCHES] == 2
+        assert {b["binding"] for b in file_result["bindings"]} == {
+            "by_region", "ranked"}
+
+    def test_mixed_verdict_names_both_kinds(self, tmp_path, model):
+        """The verdict for a mixed receipt names both kinds honestly: the
+        checked-and-matching count AND the python-derived remainder
+        (_verdict_fields already supports mixed — this pins it)."""
+        pkg = _escape_hatch_package(tmp_path)
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(out)).to_dict()
+        result = verify_manifest(manifest, {model.name: model})
+        assert result["verdict"] == REPRODUCES
+        assert result["summary"][REPRODUCES] == 1
+        assert result["summary"][UNVERIFIABLE] == 1
+        assert "1 of 2 section(s) checked and matching" in result["verdict_detail"]
+        assert "python-derived" in result["verdict_detail"]
+        assert "not query-reproducible" in result["verdict_detail"]
+
+    def test_portfolio_concentration_mixed_receipt_end_to_end(self, tmp_path):
+        """The committed real-world mixed case renders and verifies with
+        per-binding truth: `by_issuer` (query binding) green-eligible and
+        reproducing, `concentration` (report.py output) verifiable=false and
+        UNVERIFIABLE, file intact. Runs against an in-memory stand-in for
+        portfolio_model (no warehouse), per the no-demo-data-in-tests rule."""
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
+                               "reports", "portfolio_concentration")
+
+        holdings = pd.DataFrame({
+            "holding_id": [1, 2, 3],
+            "issuer_id":  [1, 2, 1],
+            "fair_value": [500.0, 300.0, 200.0],
+        })
+        issuers = pd.DataFrame({
+            "issuer_id": [1, 2],
+            "issuer":    ["Acme Corp", "Globex"],
+            "sector":    ["Industrials", "Tech"],
+        })
+        m = DataModel("portfolio_model")
+        m.add_connector(MemoryConnector("mem", tables={
+            "holdings": holdings, "issuers": issuers,
+        }))
+        m.add_table("holdings", connector="mem", source="holdings")
+        m.add_table("issuers", connector="mem", source="issuers")
+        m.add_dimension("dim_issuer", table_name="issuers",
+                        key_col="issuer_id", attributes=["issuer", "sector"])
+        m.add_fact("fact_holdings", table_name="holdings",
+                   measures=["fair_value"],
+                   foreign_keys={"dim_issuer": "issuer_id"})
+        m.add_measure("fair_value", column="fair_value", agg="sum")
+
+        out = tmp_path / "concentration.html"
+        manifest = TemplatePackage(pkg_dir).render(
+            {m.name: m}, str(out)).to_dict()
+
+        by_name = {r["name"]: r for r in manifest["embedded_data"]}
+        assert by_name["by_issuer"].get("verifiable") is None
+        assert by_name["concentration"]["verifiable"] is False
+
+        result = verify_manifest(manifest, {m.name: m})
+        by_section = {s["section"]: s for s in result["sections"]}
+        assert by_section["by_issuer"]["status"] == REPRODUCES
+        assert by_section["concentration"]["status"] == UNVERIFIABLE
+        assert result["ok"] is True
+
+        file_result = verify_file(out.read_text(encoding="utf-8"), manifest)
+        assert file_result["verdict"] == FILE_INTACT
+        assert file_result["summary"][FILE_MATCHES] == 2
 
 
 class TestEscapeHatchContract:

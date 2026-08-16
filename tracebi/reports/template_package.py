@@ -15,13 +15,16 @@ draws the whole page — the built-in section renderers are not involved:
 cannot express — several queries combined, a window function, an algorithm.
 When a package includes ``report.py`` with a ``build(inputs) -> {name:
 DataFrame}`` function, the ``data`` bindings become its *stamped inputs*
-(resolved via ``model.execute``, so query-reproducible and recorded in the
-manifest) and its *outputs* are what the page embeds and draws. An output is
-run through the same embed/fingerprint kernel — the canonical triple is
-embedded and hashed, so ``verify --file`` catches tampering of it — but it
-carries no query, so ``verify_manifest`` classifies it UNVERIFIABLE and the
-receipt says the number is python-derived and not query-reproducible. The
-honesty rule (§4): inputs stamped, output not replay-proved, never green.
+(resolved via ``model.execute``, so query-reproducible) and its *outputs* are
+embedded beside them. Verifiability is carried **per binding**
+(report-architecture-v2 §2.1): the declared bindings stay embedded with
+``verifiable: true`` — a report.py in the directory does not poison them —
+while each output is run through the same embed/fingerprint kernel (the
+canonical triple is embedded and hashed, so ``verify --file`` catches
+tampering of it) but carries no query, so ``verify_manifest`` classifies it
+UNVERIFIABLE and the receipt says the number is python-derived and not
+query-reproducible. The honesty rule (§4): inputs stamped and green-eligible,
+outputs not replay-proved, never green.
 
 This module is thin orchestration over the existing kernel — it adds no new
 rendering primitive. For each binding it calls the M0 :func:`stamp` helper
@@ -158,8 +161,8 @@ class TemplatePackage:
         self.libs = libs
 
         # The escape hatch (architecture §8-M3). When present, the ``data``
-        # bindings above are the *stamped inputs* to report.py's ``build``,
-        # and what the page embeds is report.py's python-derived *output*.
+        # bindings above are the *stamped inputs* to report.py's ``build``;
+        # the page embeds its python-derived *outputs* beside them.
         report_py = os.path.join(directory, REPORT_PY)
         self.report_py_path: Optional[str] = (
             report_py if os.path.isfile(report_py) else None
@@ -213,22 +216,22 @@ class TemplatePackage:
         """
         report, inputs = self.build(models)
 
-        # Declarative lane: the stamped inputs *are* what the page draws, and
-        # every one is query-reproducible. Escape-hatch lane: the inputs stay
-        # in the receipt as reproducible carrier sections (proof they were
-        # stamped), but report.py's python-derived output is what gets embedded
-        # and drawn — recorded verifiable=false so it never reads as verified.
+        # Verifiability is carried per binding, never per package
+        # (report-architecture-v2 §2.1). Every declared ``data`` binding is
+        # query-reproducible and embeds ``verifiable: true`` — a report.py
+        # beside it no longer flattens it to false. Every report.py output
+        # embeds ``verifiable: false``, hardcoded: a python-derived number
+        # never reads as query-reproducible, whatever sits next to it.
+        outputs: list[StampedData] = []
         if self.report_py_path is not None:
-            embed_items = self._apply_report_py(report, inputs)
-            verifiable = False
-        else:
-            embed_items = inputs
-            verifiable = True
+            outputs = self._apply_report_py(report, inputs)
+        embed_items = inputs + outputs
 
         manifest = report.build_manifest("html", output_path)
-        manifest.embedded_data = [
-            embedded_record(sd, verifiable=verifiable) for sd in embed_items
-        ]
+        manifest.embedded_data = (
+            [embedded_record(sd, verifiable=True) for sd in inputs]
+            + [embedded_record(sd, verifiable=False) for sd in outputs]
+        )
 
         renderer = HTMLRenderer(
             template=self.template_html,
@@ -252,7 +255,7 @@ class TemplatePackage:
         Adds one :class:`_PythonDerivedSection` per output to *report* (so the
         output fingerprint is backed by a section and ``verify --file`` can
         vouch for the embedded bytes) and returns the output
-        :class:`StampedData` list — what the page embeds and draws. The input
+        :class:`StampedData` list — embedded after the inputs. The input
         carrier sections *report* already holds stay untouched: they remain
         query-reproducible in the receipt.
         """
