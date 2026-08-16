@@ -340,19 +340,16 @@ class TemplatePackage:
                         f"'{f.binding}'.{hint} Columns: {list(df.columns)}."
                     )
 
-    def snapshot(self, models: dict, output_path: str) -> None:
-        """Write the review snapshot — the sendable working state (v2 §2.5).
+    def render_exploration(self, models: dict):
+        """Render the working state in memory (v2 §2.5) — the dev loop's page.
 
-        Exploration blocks are KEPT, a persistent banner names the stage, a
-        read-only code appendix satisfies "look through the code if
-        necessary", and **no manifest is written** — a draft receipt must
-        never exist to launder, so the file carries none and ``verify --file``
-        refuses it by name. Figure validation is deliberately skipped: a
-        working page may hold unbound figures mid-thought; the workbench
-        lints, the final build enforces.
+        Exploration blocks are KEPT, ids assigned, badges on, stage
+        ``exploration``. Figure validation is deliberately skipped: a working
+        page may hold unbound figures mid-thought; the workbench lints, the
+        final build enforces. Returns ``(page, inputs, outputs)`` so the dev
+        server can watch binding fingerprints without a second resolve;
+        :meth:`snapshot` is this plus the banner and code appendix, on disk.
         """
-        import html as _html
-
         report, inputs = self.build(models)
         outputs: list[StampedData] = []
         if self.report_py_path is not None:
@@ -365,15 +362,29 @@ class TemplatePackage:
         page = renderer.to_html(report)
         page, _warnings = assign_figure_ids(page)
         try:
-            snap_figs = extract_figures(page)
+            work_figs = extract_figures(page)
         except FigureError:
-            snap_figs = []          # a working page may be mid-edit; lint, don't block
+            work_figs = []          # a working page may be mid-edit; lint, don't block
         from tracebi.reports.stack import figures_config
         cfg = {"badges": True,
-               "figures": figures_config(snap_figs,
+               "figures": figures_config(work_figs,
                                          {sd.name for sd in outputs})}
         page = self._inject(page, inputs + outputs, stage="exploration",
                             figures_cfg=cfg)
+        return page, inputs, outputs
+
+    def snapshot(self, models: dict, output_path: str) -> None:
+        """Write the review snapshot — the sendable working state (v2 §2.5).
+
+        Exploration blocks are KEPT, a persistent banner names the stage, a
+        read-only code appendix satisfies "look through the code if
+        necessary", and **no manifest is written** — a draft receipt must
+        never exist to launder, so the file carries none and ``verify --file``
+        refuses it by name.
+        """
+        import html as _html
+
+        page, _inputs, _outputs = self.render_exploration(models)
 
         banner = (
             '<div style="position:sticky;top:0;z-index:9999;background:#b45309;'

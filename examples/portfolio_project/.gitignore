@@ -15,3 +15,5 @@ output/*
 !output/.gitkeep
 *.db
 .ipynb_checkpoints/
+# Workbench dev-state (exhibit feed, pins) — session scratch, never receipts.
+.tracebi/

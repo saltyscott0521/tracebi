@@ -450,6 +450,8 @@ output/*
 !output/.gitkeep
 *.db
 .ipynb_checkpoints/
+# Workbench dev-state (exhibit feed, pins) — session scratch, never receipts.
+.tracebi/
 """
 
 _INIT_ENV_EXAMPLE = """\
@@ -1254,9 +1256,19 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_dev(args: argparse.Namespace) -> int:
+    # Form-aware (v2 §2.5): an artifact package under reports/ gets the
+    # artifact-native loop with the workbench; a request script keeps the
+    # legacy single-file loop (deprecated, removed in 0.8).
+    pkg_dir = _default_reports_dir() / args.name
+    if (pkg_dir / "report.json").is_file() and \
+            (pkg_dir / "template.html").is_file():
+        from tracebi._dev_server import serve_dev
+        return serve_dev(pkg_dir, port=args.port,
+                         open_browser=not args.no_browser)
     path = _resolve_request_path(args.requests_dir, args.name)
     if path is None:
-        print(f"Request not found in {args.requests_dir}: {args.name}",
+        print(f"Report not found: {args.name}. Looked for a package at "
+              f"{pkg_dir} and a request script in {args.requests_dir}.",
               file=sys.stderr)
         return 1
     from tracebi._dev_server import serve_dev
@@ -2254,10 +2266,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_dev = sub.add_parser(
         "dev",
-        help="Watch a request script and serve a live HTML preview that "
-             "reloads on every save.",
+        help="Live-preview a report while you edit it. An artifact package "
+             "(reports/<name>/) gets the in-memory exploration render plus "
+             "the workbench at /__workbench; a request script keeps the "
+             "legacy single-file loop (deprecated).",
     )
-    p_dev.add_argument("name", help="Request file name (suffix optional; tries .py then .ipynb).")
+    p_dev.add_argument("name", help="Package name under reports/, or a "
+                                    "request file name (suffix optional).")
     p_dev.add_argument("--port", type=int, default=8001,
                        help="Port for the preview server (default 8001).")
     p_dev.add_argument("--no-browser", action="store_true",

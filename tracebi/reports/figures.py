@@ -83,6 +83,8 @@ class _FigureParser(HTMLParser):
         self._stack: list[tuple[str, int]] = []
         #: open stage blocks: (tagname, stage, abs_start, stack_depth_at_open)
         self._stage_stack: list[tuple[str, str, int, int]] = []
+        #: stack depths at which currently-open figure elements sit
+        self._figure_depths: list[int] = []
         self.figures: list[Figure] = []
         #: (figure_index, insertion_abs_pos) for figures missing an id
         self.missing_id_insertions: list[tuple[int, int]] = []
@@ -90,6 +92,9 @@ class _FigureParser(HTMLParser):
         #: keyed by stage name
         self.stage_ranges: dict[str, list[tuple[int, int]]] = {}
         self.stage_meta: Optional[str] = None
+        #: text-node chunks that sit outside every figure element (and
+        #: outside script/style) — the workbench's numeric-literal lint
+        self.outside_figure_text: list[str] = []
 
     # ── helpers ──────────────────────────────────────────────────────────
 
@@ -165,6 +170,8 @@ class _FigureParser(HTMLParser):
         self._handle_figure(tag, attrs, abs_start)
         self._handle_stage_open(tag, attrs, abs_start)
         if tag not in _VOID:
+            if "data-tb-figure" in dict(attrs):
+                self._figure_depths.append(len(self._stack))
             self._stack.append((tag, abs_start))
 
     def handle_startendtag(self, tag, attrs):
@@ -194,6 +201,8 @@ class _FigureParser(HTMLParser):
                 f"</{tag}> closes <{open_tag}> — mis-nested markup; figures "
                 f"cannot be extracted with certainty."
             )
+        if self._figure_depths and self._figure_depths[-1] == len(self._stack):
+            self._figure_depths.pop()
         # Close any stage block opened at this depth by this element.
         if self._stage_stack and self._stage_stack[-1][3] == len(self._stack) \
                 and self._stage_stack[-1][0] == tag:
@@ -203,6 +212,13 @@ class _FigureParser(HTMLParser):
                                             for s in self._stage_stack):
                 # Outermost block of this stage: record the range.
                 self.stage_ranges.setdefault(stage, []).append((abs_start, end))
+
+    def handle_data(self, data):
+        if self._figure_depths:
+            return                       # inside a figure — its numbers are claimed
+        if self._stack and self._stack[-1][0] in ("script", "style"):
+            return                       # code, not prose
+        self.outside_figure_text.append(data)
 
     def close(self):
         super().close()
@@ -297,3 +313,23 @@ def strip_stage(html_text: str, stage: str = "exploration") -> str:
 def read_stage_meta(html_text: str) -> Optional[str]:
     """The ``<meta name="tracebi-stage">`` content, if the page carries one."""
     return _parse(html_text).stage_meta
+
+
+#: A numeric literal worth flagging: at least two digits, allowing group
+#: separators and a decimal point ("1,705,495.22" is ONE token). Applied to
+#: text NODES the tokenizer collected — never to raw HTML (v2 §2.1, flaw 1).
+_NUMERIC_TOKEN = re.compile(r"\d[\d,.]*\d")
+
+
+def lint_numeric_literals(html_text: str) -> int:
+    """
+    Count numeric literals in prose outside every figure element.
+
+    Prose numbers are the accepted unprovable remainder (v2 §2.1) — the
+    workbench and ``report status`` surface this count non-blockingly, while
+    the marked figure path stays the only compliant one for anything
+    KPI-shaped. Text inside figures and inside script/style is exempt.
+    """
+    parsed = _parse(html_text)
+    return sum(len(_NUMERIC_TOKEN.findall(chunk))
+               for chunk in parsed.outside_figure_text)
