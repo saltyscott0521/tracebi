@@ -224,6 +224,30 @@ polish is finalization work.)
 3. **Code** — `report.py`, `report.json`, `script.js`, read-only and highlighted; the eight-cleaning-decisions problem becomes visible to the reviewer instead of buried.
 4. **Lint** — non-blocking: numeric literals outside figures, bindings no figure references.
 
+**The exhibit feed (owner iteration, 2026-08-16: "steer from chat, see
+results in the workbench").** A fifth panel — chronological, newest first —
+that makes the workbench the agent's *show* surface, not only an inspection
+surface. Two sources feed it:
+
+- **Explicit exhibits** — `from tracebi.workbench import show;
+  show(df, note="after dropping the 9 null-mark funds")` callable from
+  `report.py` or any exploration code. Accepts a frame (excerpt + dtypes), a
+  binding name (renders its table/quick-chart), a code string, or markdown.
+  Zero ceremony — the notebook-cell-output equivalent. `show()` is a **no-op
+  outside dev** (a build or CI run ignores it entirely), exhibits carry no
+  receipts and never enter builds; snapshots include the feed as part of the
+  exploration record.
+- **Auto-entries** — the dev loop appends one-line events as work lands:
+  "binding `marks_by_band` updated · 6 rows · fingerprint 18ac…", "figure
+  `#fig:top10` bound". The feed reads as a live lab log of the session.
+
+**Pins — the one portal→chat gesture.** The human can pin any exhibit or
+figure in the workbench; pins (with an optional one-line note) surface in
+`tracebi report status --json` and the MCP `workbench_state` tool, so the
+agent's next look at the project sees exactly what the human flagged.
+Steering stays in chat; *pointing* happens where the evidence is. Pins are
+dev-state, never in builds or manifests.
+
 **The sendable snapshot** — for a human not at the dev server: `tracebi report snapshot <name>` → one self-contained file with exploration blocks kept, a persistent visible EXPLORATION banner, `<meta name="tracebi-stage" content="exploration">`, and **no manifest at all**; `verify --file` recognizes the meta and refuses by name ("this is a review snapshot, not a published report"). The snapshot ends with a **code appendix** — `report.py`, `report.json`, `script.js`, read-only and highlighted — so a reviewer away from the dev server can still "look through the code if necessary" (notebook-export parity), receipt-free like the rest of the file. A weaker-looking receipt is worse than none, so the snapshot carries none — and the stage meta plus manifest `stage` cross-check (§2.3) means no draft-shaped output can ever read as final. This resolves the skeleton's missing non-colocated handoff without ever minting a draft receipt.
 
 **Agent-facing coverage:** `tracebi report status <name>` prints the earned state from the CLI (`17 figures: 12 query-backed, 3 python-derived, 1 unverified, 1 unbound-ERROR; 1 declared binding unused`) — what a driving agent and CI actually call. The MCP gateway gains a read-only `workbench_state` tool returning the same JSON the panels render from; no-write-to-warehouse untouched.
