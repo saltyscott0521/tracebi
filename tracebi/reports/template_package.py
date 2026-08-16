@@ -58,8 +58,8 @@ from typing import Optional
 import pandas as pd
 
 from tracebi.reports.embed import (
-    KNOWN_LIBS, StampedData, csp_meta, embed_block, embedded_record,
-    insert_before, read_lib, stamp, stamp_frame,
+    KNOWN_LIBS, StampedData, embed_block, embedded_record,
+    insert_before, stamp, stamp_frame,
 )
 from tracebi.reports.figures import (
     Figure, FigureError, assign_figure_ids, extract_figures, strip_stage,
