@@ -1,5 +1,11 @@
 # TraceBi end-to-end: what to build next
 
+> **2026-08-16:** The report layer is being reshaped — one lane, free
+> presentation, per-figure verification, transform contracts. The build plan
+> is `docs/report-architecture-v2.md`; it absorbs field-notes findings
+> #1/#2/#5/#10/#11/#13 structurally. Items below that intersect it are
+> sequenced there.
+
 ## The commercial line — open core (decided 2026-08-14)
 
 TraceBi is **open core**: the library is the product's distribution, not a
