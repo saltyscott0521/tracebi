@@ -38,6 +38,19 @@ class TestInitScaffold:
         assert (proj / "models" / "sample_model.py").is_file()
         assert (proj / "reports" / "sample_dashboard.json").is_file()
 
+    def test_init_scaffolds_an_agent_guide(self, tmp_path):
+        """A fresh agent landing in the project must find orientation there —
+        the project onboards its own agent."""
+        proj = tmp_path / "proj"
+        assert cli.main(["init", str(proj)]) == 0
+        guide = proj / "AGENTS.md"
+        assert guide.is_file(), "init must scaffold AGENTS.md"
+        text = guide.read_text()
+        # It must teach the load-bearing concepts, not just exist.
+        for concept in ("tracebi context", "tracebi verify", "transforms/",
+                        "models/", "reports/", "receipt"):
+            assert concept in text, f"AGENTS.md should mention {concept}"
+
     def test_init_loop_ends_in_reproduces(self, tmp_path):
         """The README's four commands, verbatim: transform → validate →
         build → verify. The first thing a new user runs ends green."""

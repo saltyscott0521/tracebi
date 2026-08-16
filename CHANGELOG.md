@@ -6,6 +6,16 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — `tracebi init` scaffolds an AGENTS.md so a project onboards its own agent
+
+A fresh agent (or analyst) landing in a scaffolded project had nothing there
+to orient it — the framework repo's own guides are in a different directory a
+new session never reads. init now writes an `AGENTS.md` into the project: the
+one rule (every figure is a query, never a hard-coded number), the three-phase
+loop with the real commands, the first moves (`tracebi context`, read the
+samples), how to `verify`, and the honest boundary. It is self-contained, so
+an agent with no other context can work correctly.
+
 ### Added — the MCP gateway adopts MCP 2.0 protocol features
 
 The gateway already ran on the MCP 2.0 SDK; now it uses the protocol, not just

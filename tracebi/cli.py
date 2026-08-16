@@ -856,8 +856,83 @@ is half the audit story.
 The same contracts drive the agent surface: `tracebi context` emits the
 vocabulary as JSON, `tracebi mcp` opens the gateway (validate a spec, query
 a model, render, verify — read-and-compute only). An agent and an analyst
-author against the same model and produce the same receipts.
+author against the same model and produce the same receipts. **`AGENTS.md`
+in this project orients an AI agent working here** — point a fresh session at
+it (most coding agents read it automatically).
 """
+
+
+_INIT_AGENTS_MD = '''\
+# Working in this TraceBi project
+
+You are an agent working in a **TraceBi** project. TraceBi is the trust layer
+for AI-generated analytics: every number you put in front of a person should
+carry a receipt. Read this before you touch anything.
+
+## The one rule
+
+**Every figure in a report is a live query against a model — never a
+hard-coded number.** A number you typed in has no receipt and cannot be
+verified. If you cannot express something as a query, mark it unverifiable
+(the `report.py` escape hatch); do not fake it.
+
+## The workflow — three phases, three folders
+
+```
+⓪  inputs/       raw data lands here (a CSV, an API export, a SQL dump)
+①  transforms/   ordinary pandas: clean it, then SINK clean star-schema
+                 tables into the warehouse (data/warehouse.duckdb)
+                        ── freeze: the warehouse ──
+②  models/       a declarative DataModel over the sink: grain, keys, measures.
+                 It reads the warehouse; it never sees the transform.
+                        ── freeze: the model (the contract) ──
+③  reports/      a ReportSpec (JSON) pointed at the model. Every figure a
+                 query. Renders to a self-contained HTML + a manifest (receipt).
+```
+
+The phases are decoupled: editing a report never re-runs the pandas. Phase ①
+is unconstrained — write whatever pandas the data needs; the contract is the
+named tables you sink, not how you cleaned them.
+
+## First moves
+
+1. Run `tracebi context` — it prints the whole vocabulary (models, facts,
+   dimensions, measures, section types) as JSON. Nothing outside it validates.
+   Add `--model <name>` for one model's schema.
+2. Read the sample files: `transforms/sample_transform.py`,
+   `models/sample_model.py`, `reports/sample_dashboard.json`. They are a
+   complete working example of the loop.
+3. Read `README.md` for the run commands.
+
+## The loop you run
+
+```bash
+python transforms/<name>.py                 # ① clean + sink to the warehouse
+tracebi new-model "<Name>"                  # ② scaffold a model; edit it
+tracebi spec validate reports/<name>.json   # check a report spec, no execution
+tracebi report build <name>                 # ③ render → data/<name>.html + manifest
+tracebi verify data/<name>.html.manifest.json   # re-run the queries: REPRODUCES
+tracebi serve                               # browse at http://127.0.0.1:8000
+```
+
+`tracebi verify` is the point: it re-runs the recorded queries and confirms
+every section still reproduces. Only `REPRODUCES` means a number was re-run
+and matched. Run it before you tell a human a report is done.
+
+## The honest boundary — do not overclaim
+
+The trust machinery covers the model boundary onward (the query and the
+report), **not** the phase-① pandas that built the warehouse. `verify` checks
+that a number still reproduces from its recorded query; it does not assert the
+number is *correct*, and it never reads the transform. Say so honestly. An
+"unverifiable" that says so beats a green badge on unchecked work.
+
+## Scaffolding commands
+
+`tracebi new-transform "<Name>"` · `tracebi new-model "<Name>"` ·
+`tracebi new-report "<Name>"` (a freeform HTML package) · `tracebi spec schema`
+(the ReportSpec JSON Schema). Discover more with `tracebi --help`.
+'''
 
 
 # ── Commands ────────────────────────────────────────────────────────────────
@@ -884,6 +959,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / ".gitignore":              _INIT_GITIGNORE,
         target / ".env.example":            _INIT_ENV_EXAMPLE,
         target / "README.md":               _init_project_readme(target.name),
+        target / "AGENTS.md":               _INIT_AGENTS_MD,
         target / "inputs" / "orders.csv":   _INIT_SAMPLE_CSV,
         target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,
         target / "models" / "sample_model.py": _INIT_SAMPLE_MODEL,
@@ -908,6 +984,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(f"  tracebi report build sample_dashboard  # ③ render + receipt")
     print(f"  tracebi verify data/sample_dashboard.html.manifest.json")
     print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
+    print(f"AGENTS.md orients an AI agent working in this project.")
     return 0
 
 
