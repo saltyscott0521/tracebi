@@ -298,6 +298,21 @@ def describe() -> dict:
                 {"form": "{'dim_customer.region': 'West'}",
                  "means": "filter on a dimension attribute"},
             ],
+            "ordering": {
+                "order_by": [
+                    {"form": "{'column': 'fair_value', 'desc': True}",
+                     "means": "sort the result by a result column — dimension "
+                              "refs, measure names, ratio measures included"},
+                    {"form": "'-fair_value'",
+                     "means": "string shorthand: '-col' descending, 'col' "
+                              "ascending"},
+                ],
+                "limit": "keep the first N rows after sorting; REFUSED without "
+                         "order_by — 'first N' must never masquerade as 'top N'",
+                "note": "Ties are broken by the remaining dimension columns and "
+                        "the fully resolved ordering is stamped in the recorded "
+                        "query, so a 'top 10' replays exactly.",
+            },
             "constraints": [
                 "Measures are declarative data. Callables are rejected — they "
                 "cannot be serialized, diffed, or validated before execution.",

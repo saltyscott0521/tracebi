@@ -112,7 +112,7 @@ Eight tools (`tracebi/mcp_server.py`):
 | `get_context` | Full vocabulary: section/chart types, DataSet verbs, measure kinds, filter operators; `model=<name>` adds that model's schema. **Call first.** |
 | `list_models` | Project models with tables, facts, dimensions, measures |
 | `describe_model` | One model's full schema |
-| `query_model` | Star-schema query → stamped result. `measures` is `{column: agg}` (`sum, count, mean, min, max, nunique`); dimensions are `dim_name.attribute`; filters take equality, lists (IN), or operator dicts (`gte`, `between`, `contains`, …) |
+| `query_model` | Star-schema query → stamped result. `measures` is declared measure names (ratios included) or `{column: agg}` (`sum, count, mean, min, max, nunique`); dimensions are `dim_name.attribute`; filters take equality, lists (IN), or operator dicts (`gte`, `between`, `contains`, …); `order_by` (`{column, desc}` or `'-col'`) + `limit` express "top N" (limit **requires** order_by); `preview_rows` caps transport only |
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
