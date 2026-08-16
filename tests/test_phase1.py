@@ -2,12 +2,14 @@
 Tests for TraceBi Phase 1: Connectors, DataSet, DataModel
 """
 
+import importlib.util
 import os
 import tempfile
 import pytest
 import pandas as pd
 
 from tracebi import DataModel, MemoryConnector, CSVConnector, DataSet, LineageNode
+from tracebi import DuckDBConnector
 from tracebi.connectors.base import BaseConnector
 from tracebi.model.dataset import DataSet, LineageNode
 from tracebi.model.data_model import DataModel
@@ -792,3 +794,86 @@ class TestVersionSingleSource:
 
         assert tracebi.__version__ == _tracebi_version()
         assert tracebi.__version__ != "0.0.0"
+
+
+# ─────────────────────────────────────────────
+# DuckDB read-only coexistence (field-notes bug #12)
+# ─────────────────────────────────────────────
+
+class TestDuckDBReadOnlyCoexistence:
+    """File-backed connectors hold a READ-ONLY handle so dev, build, and
+    serve coexist against one warehouse; write() releases it, writes through
+    a short-lived read-write connection, and goes lazy again."""
+
+    pytestmark = pytest.mark.skipif(
+        importlib.util.find_spec("duckdb") is None,
+        reason="duckdb not installed",
+    )
+
+    @pytest.fixture
+    def warehouse(self, tmp_path, sample_df):
+        db = str(tmp_path / "warehouse.duckdb")
+        DuckDBConnector("seed", database=db).write(sample_df, "sales")
+        return db
+
+    def test_write_then_load_round_trip(self, tmp_path, sample_df):
+        conn = DuckDBConnector("dd", database=str(tmp_path / "w.duckdb"))
+        conn.write(sample_df, "sales")
+        df = conn.load("sales")
+        assert len(df) == len(sample_df)
+        assert list(df.columns) == list(sample_df.columns)
+
+    def test_persistent_connection_is_read_only(self, warehouse):
+        import duckdb
+
+        conn = DuckDBConnector("dd", database=warehouse)
+        conn.load("sales")
+        with pytest.raises(duckdb.Error):
+            conn.connection.execute('CREATE TABLE "nope" (i INTEGER)')
+
+    def test_two_instances_load_concurrently(self, warehouse):
+        a = DuckDBConnector("a", database=warehouse)
+        b = DuckDBConnector("b", database=warehouse)
+        df_a = a.load("sales")
+        df_b = b.load("sales")
+        # Both read-only handles stay open at once; each can still load
+        assert a._conn is not None and b._conn is not None
+        assert len(a.load("sales")) == len(df_a) == len(df_b)
+
+    def test_write_after_load_releases_reader(self, warehouse, sample_df):
+        conn = DuckDBConnector("dd", database=warehouse)
+        conn.load("sales")
+        conn.write(sample_df, "sales_copy")
+        assert len(conn.load("sales_copy")) == len(sample_df)
+
+    def test_memory_write_and_load_unchanged(self, sample_df):
+        conn = DuckDBConnector("dd")
+        conn.write(sample_df, "sales")
+        assert len(conn.load("sales")) == len(sample_df)
+        conn.write(sample_df, "sales", if_exists="append")
+        assert len(conn.load("sales")) == 2 * len(sample_df)
+        # An in-memory database lives on its connection — it stays open
+        assert conn._conn is not None
+
+    def test_write_lock_conflict_names_the_fix(self, warehouse, sample_df):
+        import duckdb
+
+        holder = duckdb.connect(warehouse, read_only=True)
+        try:
+            conn = DuckDBConnector("dd", database=warehouse)
+            with pytest.raises(RuntimeError, match="tracebi serve") as excinfo:
+                conn.write(sample_df, "sales")
+            assert excinfo.value.__cause__ is not None
+        finally:
+            holder.close()
+
+    def test_load_before_any_write_names_missing_file(self, tmp_path):
+        conn = DuckDBConnector("dd", database=str(tmp_path / "missing.duckdb"))
+        with pytest.raises(FileNotFoundError, match="does not exist"):
+            conn.load("sales")
+
+    def test_registered_view_survives_write(self, warehouse, sample_df):
+        conn = DuckDBConnector("dd", database=warehouse)
+        conn.register_df("extra", sample_df)
+        conn.write(sample_df, "sales_copy")
+        assert len(conn.load("extra")) == len(sample_df)

@@ -20,6 +20,14 @@ class DuckDBConnector(BaseConnector):
     contract as every other connector and returns a pandas DataFrame for
     the user-facing API.
 
+    Concurrency: for a file-backed database the persistent connection is
+    opened READ-ONLY — DuckDB allows unlimited concurrent read-only
+    processes, so dev, ``report build``, and ``serve`` coexist against one
+    warehouse. ``write()`` releases that handle, opens a short-lived
+    read-write connection just for the write, and closes it again.
+    ``":memory:"`` keeps a persistent read-write connection: an in-memory
+    database lives on its connection.
+
     Usage::
 
         # In-memory analytics
@@ -48,6 +56,7 @@ class DuckDBConnector(BaseConnector):
         self.database = database
         self.directory = directory
         self._conn = None
+        self._views: dict[str, pd.DataFrame] = {}
 
     def supports_pushdown(self) -> bool:
         return True
@@ -58,7 +67,8 @@ class DuckDBConnector(BaseConnector):
             out["directory"] = self.directory
         return out
 
-    def connect(self) -> None:
+    @staticmethod
+    def _duckdb():
         try:
             import duckdb
         except ImportError:
@@ -66,8 +76,43 @@ class DuckDBConnector(BaseConnector):
                 "duckdb is required for DuckDBConnector.\n"
                 "Install with: pip install 'tracebi[duckdb]'"
             )
-        if self._conn is None:
+        return duckdb
+
+    @staticmethod
+    def _is_lock_conflict(exc: Exception) -> bool:
+        # Cross-process conflicts are IOExceptions mentioning the file lock;
+        # same-process conflicts are ConnectionExceptions about opening the
+        # same file with a different configuration (read-only vs read-write).
+        msg = str(exc).lower()
+        return "lock" in msg or "different configuration" in msg
+
+    def connect(self) -> None:
+        duckdb = self._duckdb()
+        if self._conn is not None:
+            return
+        if self.database == ":memory:":
+            # An in-memory database lives on its connection — keep one
+            # persistent read-write connection.
             self._conn = duckdb.connect(self.database)
+        else:
+            if not os.path.exists(self.database):
+                raise FileNotFoundError(
+                    f"DuckDB database file '{self.database}' does not exist. "
+                    "The first write() creates it — run the transform that "
+                    "sinks this warehouse first."
+                )
+            try:
+                self._conn = duckdb.connect(self.database, read_only=True)
+            except duckdb.Error as exc:
+                if self._is_lock_conflict(exc):
+                    raise RuntimeError(
+                        f"Cannot open '{self.database}' read-only: another "
+                        "process holds it read-write — finish the transform "
+                        "(or its write()) first."
+                    ) from exc
+                raise
+        for view_name, view_df in self._views.items():
+            self._conn.register(view_name, view_df)
 
     @property
     def connection(self):
@@ -81,6 +126,8 @@ class DuckDBConnector(BaseConnector):
         if self._conn is None:
             self.connect()
         self._conn.register(name, df)
+        # Remembered so the view survives write()'s release/reopen cycle.
+        self._views[name] = df
         return self
 
     def _resolve_source(self, source: str) -> str:
@@ -132,25 +179,51 @@ class DuckDBConnector(BaseConnector):
         if_exists: str = "replace",
     ) -> None:
         """Persist *df* into a DuckDB table named *table*."""
-        if self._conn is None:
-            self.connect()
-        self._conn.register("__tracebi_tmp__", df)
+        if self.database == ":memory:":
+            if self._conn is None:
+                self.connect()
+            self._write_into(self._conn, df, table, if_exists)
+            return
+        # File-backed: release the read-only handle, write through a
+        # short-lived read-write connection, and leave the connector lazy —
+        # the next load reopens read-only.
+        duckdb = self._duckdb()
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+        try:
+            write_conn = duckdb.connect(self.database)
+        except duckdb.Error as exc:
+            if self._is_lock_conflict(exc):
+                raise RuntimeError(
+                    f"Cannot open '{self.database}' read-write: another "
+                    "tracebi process holds the warehouse open — stop "
+                    "`tracebi serve` / `tracebi dev` first."
+                ) from exc
+            raise
+        try:
+            self._write_into(write_conn, df, table, if_exists)
+        finally:
+            write_conn.close()
+
+    def _write_into(self, conn, df: pd.DataFrame, table: str, if_exists: str) -> None:
+        conn.register("__tracebi_tmp__", df)
         try:
             if if_exists == "replace":
-                self._conn.execute(f'DROP TABLE IF EXISTS "{table}"')
-                self._conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
+                conn.execute(f'DROP TABLE IF EXISTS "{table}"')
+                conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
             elif if_exists == "append":
-                exists = self._conn.execute(
+                exists = conn.execute(
                     "SELECT 1 FROM information_schema.tables "
                     "WHERE table_name = ?",
                     [table],
                 ).fetchone()
                 if exists:
-                    self._conn.execute(f'INSERT INTO "{table}" SELECT * FROM __tracebi_tmp__')
+                    conn.execute(f'INSERT INTO "{table}" SELECT * FROM __tracebi_tmp__')
                 else:
-                    self._conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
+                    conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
             elif if_exists == "fail":
-                exists = self._conn.execute(
+                exists = conn.execute(
                     "SELECT 1 FROM information_schema.tables "
                     "WHERE table_name = ?",
                     [table],
@@ -159,10 +232,10 @@ class DuckDBConnector(BaseConnector):
                     raise ValueError(
                         f"Table '{table}' already exists in DuckDBConnector '{self.name}'."
                     )
-                self._conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
+                conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
             else:
                 raise ValueError(
                     f"Invalid if_exists={if_exists!r}; expected replace, append, or fail."
                 )
         finally:
-            self._conn.unregister("__tracebi_tmp__")
+            conn.unregister("__tracebi_tmp__")
