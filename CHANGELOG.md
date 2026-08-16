@@ -6,6 +6,40 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — reshape M1: the artifact, figures, and verify v2
+
+Verification becomes a property of each FIGURE — a DOM element declaring
+which stamped binding feeds it — not of which folder a file sits in:
+
+- `tracebi/reports/figures.py`, the ONE tokenizer for `data-tb-*` markup
+  (stdlib html.parser, never a regex), shared by the build, the
+  exploration-strip, and `verify --file`. Hostile markup fails loudly.
+- The final build strips `data-tb-stage="exploration"` blocks (deleted by
+  the build, not by a rewrite), assigns figure ids, and validates every
+  figure: a binding that exists or an explicit `data-tb-unverified` mark —
+  no third state. Manifests gain schema 2: a `figures` claims layer and a
+  `stage`, with the page carrying a matching stage meta.
+- `verify` rolls receipts up per figure (figures first in the verdict);
+  author-marked figures are UNVERIFIED, distinct from python-derived
+  UNVERIFIABLE; a figure naming an absent binding fails the receipt.
+  `--strict` is the CI gate: every figure must reproduce.
+- `verify --file` cross-checks figures symmetrically — missing-in-file AND
+  unrecorded-in-manifest both fail, so a figure added to a shipped page is
+  caught by id — checks the stage, and refuses a snapshot by name. An
+  intact verdict names the honest limit: markup and bytes are provable,
+  page scripting is not.
+- `tracebi report snapshot` — the sendable working state: exploration
+  kept, a persistent banner, a read-only code appendix, and NO manifest
+  (a draft receipt must never exist to launder).
+- `report build` renders to `output/`; `data/` is the warehouse.
+
+The M1 proof-gate drill ran live on the reference project (build → strict
+verify → smuggled-figure tamper caught by id → snapshot refused → stage
+mismatch caught). The remaining M1 gate — rebuilding the AltsVault report
+as one artifact with the maintainer reviewing, and the authoring-experience
+kill criterion — awaits the next live drive.
+
+
 ### Changed — reshape M0: the kernel seams (architecture v2 §4)
 
 The first milestone of the one-lane report reshape, closing field-notes
