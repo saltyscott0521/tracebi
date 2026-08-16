@@ -331,6 +331,63 @@ class TemplatePackage:
                         f"'{f.binding}'.{hint} Columns: {list(df.columns)}."
                     )
 
+    def snapshot(self, models: dict, output_path: str) -> None:
+        """Write the review snapshot — the sendable working state (v2 §2.5).
+
+        Exploration blocks are KEPT, a persistent banner names the stage, a
+        read-only code appendix satisfies "look through the code if
+        necessary", and **no manifest is written** — a draft receipt must
+        never exist to launder, so the file carries none and ``verify --file``
+        refuses it by name. Figure validation is deliberately skipped: a
+        working page may hold unbound figures mid-thought; the workbench
+        lints, the final build enforces.
+        """
+        import html as _html
+
+        report, inputs = self.build(models)
+        outputs: list[StampedData] = []
+        if self.report_py_path is not None:
+            outputs = self._apply_report_py(report, inputs)
+
+        renderer = HTMLRenderer(
+            template=self.template_html,
+            template_context={"bindings": list(self.bindings)},
+        )
+        page = renderer.to_html(report)
+        page, _warnings = assign_figure_ids(page)
+        page = self._inject(page, inputs + outputs, stage="exploration")
+
+        banner = (
+            '<div style="position:sticky;top:0;z-index:9999;background:#b45309;'
+            'color:#fff;font:600 13px/1.4 system-ui,sans-serif;padding:8px 16px;'
+            'text-align:center">EXPLORATION SNAPSHOT — working state for '
+            'review. Carries no receipt; numbers here are not verified.</div>'
+        )
+        body_open = page.find("<body")
+        if body_open != -1:
+            body_open = page.index(">", body_open) + 1
+            page = page[:body_open] + banner + page[body_open:]
+
+        appendix = ['<hr><section style="font:12px/1.5 ui-monospace,monospace">'
+                    "<h2>Code appendix (read-only)</h2>"]
+        for label, text in (
+            ("report.json", json.dumps(
+                {"name": self.name,
+                 "data": {k: v.to_dict() for k, v in self.bindings.items()}},
+                indent=2)),
+            ("report.py", _read_optional(self.report_py_path or "")),
+            ("script.js", self.script_js),
+        ):
+            if text.strip():
+                appendix.append(f"<h3>{label}</h3><pre>"
+                                f"{_html.escape(text)}</pre>")
+        appendix.append("</section>")
+        page = insert_before(page, "</body>", "".join(appendix))
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(page)
+
     # ── Escape hatch: report.py (architecture §8-M3) ────────────────────────
 
     def _apply_report_py(self, report: Report, inputs: list[StampedData]) -> list[StampedData]:

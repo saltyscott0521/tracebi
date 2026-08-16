@@ -217,3 +217,27 @@ class TestFileCheckV2:
         assert not result["ok"]
         assert result["verdict"] == "refused_snapshot"
         assert "snapshot" in result["verdict_detail"].lower()
+
+
+class TestSnapshot:
+    def test_snapshot_keeps_exploration_banners_appends_code_and_writes_no_manifest(
+            self, v2_model, tmp_path):
+        body = _FULL_BODY + ('<section data-tb-stage="exploration">'
+                             '<p>working note kept</p></section>')
+        pkg = TemplatePackage(str(_package(tmp_path, body,
+                                           with_report_py=True)))
+        out = tmp_path / "snap.html"
+        pkg.snapshot({"v2_model": v2_model}, str(out))
+        html = out.read_text(encoding="utf-8")
+
+        assert "working note kept" in html            # exploration KEPT
+        assert "EXPLORATION SNAPSHOT" in html         # persistent banner
+        assert "Code appendix" in html                # reviewer reads the code
+        assert "def build(frames):" in html
+        assert not (tmp_path / "snap.html.manifest.json").exists(), (
+            "a snapshot must carry NO manifest — no draft receipt may exist"
+        )
+        # And the file refuses verification by name, against any manifest.
+        _final_html, manifest = _render(tmp_path, v2_model)
+        result = verify_file(html, manifest)
+        assert result["verdict"] == "refused_snapshot"

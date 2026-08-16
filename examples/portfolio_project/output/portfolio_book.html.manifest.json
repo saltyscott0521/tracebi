@@ -1,0 +1,272 @@
+{
+  "schema_version": 2,
+  "report_name": "Portfolio Book",
+  "rendered_at": "2026-08-16T21:58:11.249482+00:00",
+  "rendered_by": "workflow",
+  "format": "html",
+  "output_path": "/Users/andrewscott/Documents/Claude/tracebi/examples/portfolio_project/output/portfolio_book.html",
+  "git_sha": "d3b2146db8085caa78424ada2c008aedfdd8f2ab",
+  "parameters": {},
+  "sections": [
+    {
+      "section_type": "table",
+      "title": "by_sector",
+      "id": "by_sector",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        6,
+        2
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-08-16T21:58:11.214229+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "0b87d0716db4399a88eead932cbf219555d2ab7f180bb14af35db6d083a163f8",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-08-16T21:58:11.215213+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-16T21:58:11.222079+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-16T21:58:11.224393+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "rows_out": 6,
+            "measures": {
+              "fair_value": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value"
+              ],
+              "dimensions": [
+                "dim_issuer.sector"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "18ac7f411da71b2f6848a2a86cd146be70af105007298aeec4582f2b266cd0d3",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "top_issuers",
+      "id": "top_issuers",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        13,
+        3
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-08-16T21:58:11.225466+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "0b87d0716db4399a88eead932cbf219555d2ab7f180bb14af35db6d083a163f8",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): positions = holding_id",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-16T21:58:11.225719+00:00",
+          "metadata": {
+            "derived": {
+              "positions": "holding_id"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-08-16T21:58:11.226066+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-16T21:58:11.232576+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-16T21:58:11.234647+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "rows_out": 13,
+            "measures": {
+              "fair_value": "sum",
+              "positions": "count"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "positions"
+              ],
+              "dimensions": [
+                "dim_issuer.issuer"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "d8cb17c0dca1ece721371c120dd2bbec1ac8c7b7da1f7bf22fdb349aab83ab6e",
+      "columns": null,
+      "max_rows": null
+    }
+  ],
+  "embedded_data": [
+    {
+      "name": "by_sector",
+      "embedded_sha256": "18ac7f411da71b2f6848a2a86cd146be70af105007298aeec4582f2b266cd0d3",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value"
+        ],
+        "dimensions": [
+          "dim_issuer.sector"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "top_issuers",
+      "embedded_sha256": "d8cb17c0dca1ece721371c120dd2bbec1ac8c7b7da1f7bf22fdb349aab83ab6e",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "positions"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false
+      },
+      "model": "portfolio_model"
+    }
+  ],
+  "stage": "final",
+  "figures": [
+    {
+      "id": "by-sector",
+      "kind": "custom",
+      "binding": "by_sector"
+    },
+    {
+      "id": "top-issuers",
+      "kind": "custom",
+      "binding": "top_issuers"
+    }
+  ]
+}

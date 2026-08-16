@@ -852,6 +852,14 @@ def verify_file(html: str, manifest: dict) -> dict:
             f"match the manifest's ({manifest_stage!r}); this is not the "
             f"file this receipt describes"
         )
+    elif (verdict == FILE_ALTERED and fig_failed
+          and summary[FILE_MATCHES] == len(results)):
+        # The blocks all check out; the FIGURES don't. Blaming the data
+        # would send the reader to the wrong place.
+        detail = (
+            "FILE ALTERED — the figure markup does not match the manifest's "
+            "claims (see the figure rows); the embedded data itself checks out"
+        )
     elif verdict == FILE_INTACT and fig_records is not None:
         detail += (
             ". Figure markup verified; page scripting is not provable — the "

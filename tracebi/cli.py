@@ -803,8 +803,8 @@ The scaffold is a complete working example — messy input included:
 
 ```bash
 python transforms/sample_transform.py       # ① clean + sink → data/warehouse.duckdb
-tracebi report build sample_dashboard       # ③ render → data/sample_dashboard.html + receipt
-tracebi verify data/sample_dashboard.html.manifest.json   # every checked section: REPRODUCES
+tracebi report build sample_dashboard       # ③ render → output/sample_dashboard.html + receipt
+tracebi verify output/sample_dashboard.html.manifest.json   # every checked section: REPRODUCES
 tracebi serve                               # browse it at http://127.0.0.1:8000
 ```
 
@@ -824,8 +824,8 @@ one.
 ├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
 ├── requests/         The human scratchpad — freeform, unverified scripts
 ├── scheduled/        Reports on a cron schedule
-├── data/             The warehouse + rendered pages (gitignored)
-├── output/           Ad-hoc renders; *.manifest.json receipts stay tracked
+├── data/             The warehouse (gitignored)
+├── output/           Rendered reports; *.manifest.json receipts stay tracked
 └── .env.example      Copy to `.env` and fill in credentials
 ```
 
@@ -910,8 +910,8 @@ named tables you sink, not how you cleaned them.
 python transforms/<name>.py                 # ① clean + sink to the warehouse
 tracebi new-model "<Name>"                  # ② scaffold a model; edit it
 tracebi spec validate reports/<name>.json   # check a report spec, no execution
-tracebi report build <name>                 # ③ render → data/<name>.html + manifest
-tracebi verify data/<name>.html.manifest.json   # re-run the queries: REPRODUCES
+tracebi report build <name>                 # ③ render → output/<name>.html + manifest
+tracebi verify output/<name>.html.manifest.json # re-run the queries: REPRODUCES
 tracebi serve                               # browse at http://127.0.0.1:8000
 ```
 
@@ -982,7 +982,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(f"  git init && git add . && git commit -m init   # manifests stamp the commit (git_sha)")
     print(f"  python transforms/sample_transform.py  # ① clean + sink the sample input")
     print(f"  tracebi report build sample_dashboard  # ③ render + receipt")
-    print(f"  tracebi verify data/sample_dashboard.html.manifest.json")
+    print(f"  tracebi verify output/sample_dashboard.html.manifest.json")
     print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
     print(f"AGENTS.md orients an AI agent working in this project.")
     return 0
@@ -1588,7 +1588,8 @@ def cmd_verify_file(args: argparse.Namespace) -> int:
     embedded block matches the manifest.
     """
     from tracebi.verify import (
-        FILE_MATCHES, FILE_STATUS_LABELS, verify_file,
+        FIGURE_MATCHES, FIGURE_UNVERIFIED_MARK, FILE_FIGURE_LABELS,
+        FILE_MATCHES, FILE_STATUS_LABELS, REFUSED_SNAPSHOT, verify_file,
     )
 
     html_path = Path(args.verify_file)
@@ -1619,6 +1620,13 @@ def cmd_verify_file(args: argparse.Namespace) -> int:
     html = html_path.read_text(encoding="utf-8")
     result = verify_file(html, manifest)
 
+    # A refused snapshot prints only the refusal — a header and "0 bindings
+    # checked" would read like a check that ran and found little, and this
+    # one deliberately did not run at all.
+    if result["verdict"] == REFUSED_SNAPSHOT:
+        print(result["verdict_detail"], file=sys.stderr)
+        return result["exit_code"]
+
     name = result["report_name"] or html_path.name
     print(f"Verifying embedded data in '{name}' ({html_path})")
     print(f"  against manifest {manifest_path}")
@@ -1630,6 +1638,21 @@ def cmd_verify_file(args: argparse.Namespace) -> int:
         if status != FILE_MATCHES:
             line += f" — {b['detail']}"
         print(line, file=sys.stdout if mark != "✗" else sys.stderr)
+
+    # Figure cross-check rows (manifest schema 2) — the claims layer, so a
+    # failure names the figure, not just the verdict.
+    if result.get("figures"):
+        fwidth = max(len(v) for v in FILE_FIGURE_LABELS.values())
+        print()
+        for f in result["figures"]:
+            status = f["status"]
+            ok = status in (FIGURE_MATCHES, FIGURE_UNVERIFIED_MARK)
+            mark = "✓" if status == FIGURE_MATCHES else "·" if ok else "✗"
+            line = (f"{mark} {FILE_FIGURE_LABELS[status]:<{fwidth}}  "
+                    f"{f.get('figure')}")
+            if not ok:
+                line += f" — {f['detail']}"
+            print(line, file=sys.stdout if mark != "✗" else sys.stderr)
 
     counts = ", ".join(
         f"{n} {FILE_STATUS_LABELS[status].lower()}"
@@ -1658,7 +1681,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
     no data-bearing section at all (nothing was verified, so nothing passed).
     """
     from tracebi.verify import (
-        REPRODUCES, STATUS_LABELS, UNVERIFIABLE, load_models, verify_manifest,
+        FIGURE_STATUS_LABELS, REPRODUCES, STATUS_LABELS, UNVERIFIABLE,
+        UNVERIFIED, load_models, verify_manifest,
     )
 
     # Two distinct checks under one verb (architecture §4). `--file` opens the
@@ -1689,7 +1713,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
     models = load_models(args.verify_models_dir or args.models_dir)
     try:
-        result = verify_manifest(manifest, models)
+        result = verify_manifest(manifest, models,
+                                 strict=getattr(args, "strict", False))
     except Exception as exc:  # noqa: BLE001 — a corrupt receipt is a user error
         print(f"manifest could not be verified: {type(exc).__name__}: {exc}",
               file=sys.stderr)
@@ -1716,6 +1741,21 @@ def cmd_verify(args: argparse.Namespace) -> int:
         for status, n in result["summary"].items() if n
     ) or "no data-bearing sections"
     print(f"\n{len(result['sections'])} section(s) checked: {counts}")
+
+    # Figure rollup (manifest schema 2): the claims layer, figures first.
+    if result.get("figures"):
+        fwidth = max(len(v) for v in FIGURE_STATUS_LABELS.values())
+        print()
+        for f in result["figures"]:
+            status = f["status"]
+            mark = ("✓" if status == REPRODUCES
+                    else "·" if status in (UNVERIFIABLE, UNVERIFIED)
+                    else "✗")
+            line = (f"{mark} {FIGURE_STATUS_LABELS[status]:<{fwidth}}  "
+                    f"{f['figure']}")
+            if status != REPRODUCES:
+                line += f" — {f['detail']}"
+            print(line, file=sys.stdout if mark != "✗" else sys.stderr)
     # Routed by exit code, not by verdict: a run that exits 0 must write
     # nothing to stderr, or CI wrappers that treat stderr as failure will
     # fail a receipt this command just called fine.
@@ -1951,6 +1991,28 @@ def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
     )
 
 
+def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
+    """Write a review snapshot — the sendable working state (v2 §2.5).
+
+    Packages only: a spec has no exploration blocks or code to review.
+    The snapshot carries NO manifest, on purpose — a weaker-looking receipt
+    is worse than none — and ``verify`` refuses the file by name.
+    """
+    if kind != "package":
+        print("snapshot applies to artifact packages (reports/<name>/); "
+              "a spec has no exploration state to snapshot — use build.",
+              file=sys.stderr)
+        return 1
+    from tracebi.reports.template_package import TemplatePackage
+
+    models = _load_project_models()
+    TemplatePackage(str(path)).snapshot(models, str(output))
+    print(f"Snapshot → {output}")
+    print("  review copy: exploration blocks kept, code appendix attached, "
+          "NO manifest — `tracebi verify` will refuse it by name.")
+    return 0
+
+
 def _build_report_target(kind: str, path: Path, output: Path) -> Path:
     """Render one report target to *output* (+ a sibling manifest). Returns output."""
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -2004,15 +2066,18 @@ def _serve_file(html_path: Path, name: str, port: int, open_browser: bool) -> No
 
 def cmd_report(args: argparse.Namespace) -> int:
     """
-    Build or preview a report — the build step (architecture §2).
+    Build, preview, or snapshot a report — the build step (architecture §2).
 
-        tracebi report build <name>     # → data/<name>.html + manifest
-        tracebi report preview <name>   # build, then serve it locally
+        tracebi report build <name>      # → output/<name>.html + manifest
+        tracebi report preview <name>    # build, then serve it locally
+        tracebi report snapshot <name>   # review snapshot — NO manifest
 
     A report is a package (``reports/<name>/``) or a spec
-    (``reports/<name>.json``). Output defaults to
-    ``data/<name>.html`` — self-contained, offline, and checkable with
-    ``tracebi verify --file``.
+    (``reports/<name>.json``). Output defaults to ``output/<name>.html`` —
+    self-contained, offline, and checkable with ``tracebi verify --file``.
+    A snapshot keeps the exploration blocks, banners itself, appends a
+    read-only code appendix, and writes NO manifest: it is the sendable
+    working state, and ``verify`` refuses it by name.
     """
     reports_dir: Path = args.reports_dir
     try:
@@ -2021,7 +2086,11 @@ def cmd_report(args: argparse.Namespace) -> int:
         print(exc, file=sys.stderr)
         return 1
 
-    output = Path(args.output) if args.output else Path.cwd() / "data" / f"{args.name}.html"
+    if args.action == "snapshot":
+        output = (Path(args.output) if args.output
+                  else Path.cwd() / "output" / f"{args.name}.snapshot.html")
+        return _snapshot_report_target(kind, path, output)
+    output = Path(args.output) if args.output else Path.cwd() / "output" / f"{args.name}.html"
     try:
         _build_report_target(kind, path, output)
     except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
@@ -2198,9 +2267,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Build a report package or spec to one self-contained .html + "
              "manifest, or preview it locally.",
     )
-    p_report.add_argument("action", choices=["build", "preview"])
+    p_report.add_argument("action", choices=["build", "preview", "snapshot"])
     p_report.add_argument("name", help="Report name (package dir or spec stem).")
-    p_report.add_argument("--output", help="Output .html path (default: data/<name>.html).")
+    p_report.add_argument("--output", help="Output .html path (default: output/<name>.html).")
     p_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
                           help="Directory holding report packages (default: ./reports).")
     p_report.add_argument("--port", type=int, default=8080,
@@ -2262,6 +2331,11 @@ def build_parser() -> argparse.ArgumentParser:
     # A wholly separate offline check: the shipped .html's embedded bytes vs
     # the manifest (architecture §3.2). Kept apart from the positional so
     # neither can be mistaken for the other.
+    p_verify.add_argument(
+        "--strict", action="store_true",
+        help="Fail unless every FIGURE in a schema-2 manifest reproduces — "
+             "the CI gate for a finalized report.",
+    )
     p_verify.add_argument(
         "--file", dest="verify_file", default=None,
         help="Path to a self-contained report *.html*; rehash its embedded "

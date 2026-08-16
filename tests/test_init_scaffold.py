@@ -72,11 +72,12 @@ class TestInitScaffold:
         # ③ render + receipt
         out = _run(["report", "build", "sample_dashboard"], proj)
         assert out.returncode == 0, out.stdout + out.stderr
-        manifest = proj / "data" / "sample_dashboard.html.manifest.json"
+        # M1 flip ledger: report build renders to output/ (finding #14).
+        manifest = proj / "output" / "sample_dashboard.html.manifest.json"
         assert manifest.is_file()
 
         # the loop closes: every checked section reproduces
-        out = _run(["verify", "data/sample_dashboard.html.manifest.json"], proj)
+        out = _run(["verify", "output/sample_dashboard.html.manifest.json"], proj)
         assert out.returncode == 0, out.stdout + out.stderr
         assert "REPRODUCES" in out.stdout
         assert "reproduces" in out.stdout.lower()

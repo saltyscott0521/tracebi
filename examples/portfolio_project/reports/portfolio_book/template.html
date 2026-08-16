@@ -16,18 +16,22 @@
 
     <section>
       <h2>Fair value by sector</h2>
-      <div id="by-sector" class="chart"></div>
+      <div id="by-sector" class="chart" data-tb-figure="custom" data-tb-binding="by_sector"></div>
     </section>
 
     <section>
       <h2>Largest issuer exposures</h2>
-      <table id="top-issuers">
+      <table id="top-issuers" data-tb-figure="custom" data-tb-binding="top_issuers">
         <thead>
           <tr><th>Issuer</th><th class="num">Fair value</th><th class="num">Positions</th></tr>
         </thead>
         <tbody></tbody>
       </table>
     </section>
-  </main>
+  <section data-tb-stage="exploration">
+  <h2>Working note</h2>
+  <p>Sector normalisation collapsed six spellings; see the transform. Delete-on-build.</p>
+</section>
+</main>
 </body>
 </html>
