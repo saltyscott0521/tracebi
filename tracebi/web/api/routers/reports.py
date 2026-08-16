@@ -33,13 +33,88 @@ def list_reports():
     return registry.list_reports()
 
 
+#: Web renders of artifact-backed reports, cached per name: the full
+#: TemplatePackage render is real work (queries + embedding), and the UI
+#: polls. Keyed on the package files' max mtime plus a short TTL so a
+#: warehouse-only change still shows up promptly. Persist nothing to disk.
+_ARTIFACT_CACHE: dict = {}
+_ARTIFACT_TTL_S = 5.0
+
+
+def _artifact_payload(name: str):
+    """The REAL artifact render for a package-backed report, or None.
+
+    Web parity (architecture v2 §2.3): a report backed by a template
+    package must serve the same self-contained page + schema-2 manifest the
+    build step produces — embedded fingerprinted data included — so
+    web-rendered HTML passes ``verify --file``. The carrier-report path
+    below remains for spec and code-factory reports.
+    """
+    import os
+    import tempfile
+    import time
+
+    factory = registry.report_factory(name)
+    pkg_dir = getattr(factory, "_tracebi_package_dir", None)
+    if not pkg_dir:
+        return None
+
+    try:
+        mtime = max(
+            os.path.getmtime(os.path.join(pkg_dir, f))
+            for f in os.listdir(pkg_dir)
+        )
+    except (OSError, ValueError):
+        mtime = 0.0
+    cached = _ARTIFACT_CACHE.get(name)
+    now = time.monotonic()
+    if cached and cached["mtime"] == mtime and now - cached["at"] < _ARTIFACT_TTL_S:
+        return cached["payload"]
+
+    from tracebi.model_registry import get_model, list_models
+    from tracebi.reports.template_package import TemplatePackage
+
+    models = {}
+    for mname in list_models():
+        try:
+            m = get_model(mname)
+        except Exception:  # noqa: BLE001 — a broken model is that model's problem
+            continue
+        models[mname] = m
+        models[getattr(m, "name", mname)] = m
+
+    fd, tmp = tempfile.mkstemp(suffix=".html")
+    os.close(fd)
+    try:
+        manifest = TemplatePackage(pkg_dir).render(
+            models, tmp, save_manifest=False)
+        with open(tmp, encoding="utf-8") as f:
+            html = f.read()
+    finally:
+        os.unlink(tmp)
+
+    payload = {"name": name, "html": html, "manifest": manifest.to_dict()}
+    _ARTIFACT_CACHE[name] = {"mtime": mtime, "at": now, "payload": payload}
+    return payload
+
+
 @router.post("/{name}/run")
 def run_report(name: str):
     """
     Run a registered report and return the rendered HTML + manifest.
 
     The HTML is self-contained and can be rendered in an iframe with srcdoc.
+    An artifact-backed report serves the real artifact render (embedded
+    data, figure claims), so what the browser shows is what ``verify
+    --file`` can check.
     """
+    try:
+        payload = _artifact_payload(name)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=_error_detail("Render failed", exc))
+    if payload is not None:
+        return payload
+
     report = _run_report_or_502(name)
 
     try:
@@ -59,6 +134,9 @@ def run_report(name: str):
 
 def _render_report_payload(name: str) -> dict:
     """Run + render a report; shared by the sync and background paths."""
+    payload = _artifact_payload(name)
+    if payload is not None:
+        return payload
     report = registry.run_report(name)
     from tracebi.reports.html_renderer import HTMLRenderer
     html = HTMLRenderer.for_project().to_html(report)

@@ -3350,3 +3350,68 @@ class TestRoleHeaderTrust:
         assert r.status_code == 403
         assert r.json()["detail"]["role"] == "viewer"
         assert "orders_bronze" not in inspect(eng).get_table_names()
+
+
+# ── Web parity: artifact-backed reports serve the real render ────────────────
+# Architecture v2 §2.3 (M3): a report backed by a template package must serve
+# the same self-contained page + schema-2 manifest the build step produces, so
+# what the browser shows is what `verify --file` can check.
+
+class TestArtifactWebParity:
+    def _package(self, tmp_path):
+        import json as _json
+
+        import pandas as pd
+
+        from tracebi import DataModel, MemoryConnector, model_registry
+
+        df = pd.DataFrame({"region": ["NE", "SE"], "revenue": [100.0, 250.0]})
+        m = DataModel("parity_model")
+        m.add_connector(MemoryConnector("par_mem", tables={"t": df}))
+        m.add_table("t", connector="par_mem", source="t")
+        m.add_dimension("dim_r", table_name="t", key_col="region",
+                        attributes=["region"])
+        m.add_fact("f", table_name="t", measures=["revenue"], foreign_keys={})
+        m.add_measure("total", column="revenue", agg="sum")
+        m.connect()
+        model_registry.register(m)
+
+        pkg = tmp_path / "parity_pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(_json.dumps({
+            "name": "parity_pkg",
+            "data": {"kpi": {"model": "parity_model",
+                             "query": {"fact": "f", "measures": ["total"]}}},
+        }))
+        (pkg / "template.html").write_text(
+            "<html><head><title>p</title></head><body>"
+            '<div data-tb-figure="value" data-tb-binding="kpi" '
+            'data-tb-cell="total" id="fig-kpi"></div>'
+            "</body></html>"
+        )
+        return pkg
+
+    def test_web_rendered_artifact_html_passes_verify_file(self, tmp_path):
+        from tracebi.verify import verify_file
+        from tracebi.web.api.routers import reports as reports_router
+        from tracebi.web.discovery import _register_template_package
+
+        pkg = self._package(tmp_path)
+        out = _register_template_package(str(pkg), "parity_pkg")
+        assert out["status"] == "registered", out
+
+        payload = reports_router._artifact_payload("parity_pkg")
+        assert payload is not None, "package-backed report must take the artifact path"
+        manifest = payload["manifest"]
+        assert manifest["schema_version"] == 2
+        assert manifest["figures"], "the figure claims layer must ride the web render"
+        assert "tracebi-data-kpi" in payload["html"], "embedded data over HTTP"
+
+        result = verify_file(payload["html"], manifest)
+        assert result["ok"], result["verdict_detail"]
+
+    def test_non_package_reports_keep_the_carrier_path(self):
+        from tracebi.web.api.routers import reports as reports_router
+
+        # A factory without the package tag must not take the artifact path.
+        assert reports_router._artifact_payload("no_such_report") is None

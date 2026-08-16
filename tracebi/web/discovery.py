@@ -142,6 +142,13 @@ def _register_template_package(dir_path: str, stem: str) -> dict:
         report, _ = _pkg.build(models)
         return report
 
+    # Tag the factory with its package directory so the web layer can detect
+    # an artifact-backed report (via registry.report_factory) and serve the
+    # REAL artifact render — embedded data, figure claims, schema-2 manifest
+    # — instead of the carrier (architecture v2 §2.3, web parity). The
+    # factory contract itself is unchanged: a name and a zero-arg callable.
+    factory._tracebi_package_dir = dir_path
+
     registry.add_report(stem, factory, pkg.description or "")
     return {"status": "registered", "module": stem}
 

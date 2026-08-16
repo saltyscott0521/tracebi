@@ -173,6 +173,19 @@ class Registry:
             return None
         return entry["factory"]()
 
+    def report_factory(self, name: str) -> Optional[Callable]:
+        """The registered factory itself, un-called.
+
+        The public accessor consumers use to *inspect* a report's backing —
+        e.g. the web layer detecting an artifact-backed report (discovery
+        tags the factory with its package directory) so it can serve the
+        real artifact render instead of the carrier — without reaching into
+        ``_report_factories``.
+        """
+        with self._lock:
+            entry = self._report_factories.get(name)
+        return entry["factory"] if entry else None
+
     # ── Scheduled reports ──────────────────────────────────────
 
     def scheduled(
