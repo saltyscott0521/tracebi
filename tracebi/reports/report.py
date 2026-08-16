@@ -428,8 +428,19 @@ class MetricSection(ReportSection):
             Metric("Total Revenue", 1_250_000, format="currency0", delta=0.12),
             Metric("Orders", 8421, format="comma", delta=-0.03),
         ]))
+
+    Fields:
+        metrics: The KPI cards.
+        dataset: Optional one-row DataSet the card values were resolved from
+                 (a spec's ``data`` query). Keeping it — rather than reading
+                 the row and discarding the frame — is what gives the page's
+                 biggest numbers a receipt: the base-class manifest hook
+                 fingerprints it like any table's, so ``tracebi verify`` can
+                 re-run the recorded query (report architecture v2 §2.2, the
+                 metric-receipt hole).
     """
     metrics: list[Metric] = field(default_factory=list)
+    dataset: Optional[DataSet] = None
 
     def __post_init__(self):
         self.section_type = SectionType.METRICS

@@ -308,6 +308,105 @@ class TestVerifyFileCLI:
         assert "no manifest found" in capsys.readouterr().err
 
 
+# ── M0: metric receipts in the legacy spec lane (plan §2.2) ───────────────────
+
+class TestMetricReceipts:
+    """A metrics section with a ``data`` query embeds its one-row canonical
+    triple in the rendered HTML and records it in ``embedded_data``, so
+    ``verify --file`` covers the page's biggest numbers (report architecture
+    v2 §2.2 — the metric-receipt hole). The KPI cards themselves stay
+    server-rendered; the embedded triple is the receipt, not the display.
+    """
+
+    def _render(self, tmp_path, model):
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.spec import ReportSpec
+
+        spec = ReportSpec.from_dict({
+            "name": "KPIs",
+            "sections": [{
+                "type": "metrics", "title": "Totals", "id": "kpis",
+                "data": {"model": "kernel_model", "query": {
+                    "fact": "fact_orders", "measures": ["revenue"]}},
+                "metrics": [
+                    {"label": "Revenue", "value": "revenue",
+                     "format": "currency0"},
+                ],
+            }],
+        })
+        report = spec.build({model.name: model})
+        out = tmp_path / "kpis.html"
+        manifest = HTMLRenderer().render(report, str(out))
+        return out.read_text(encoding="utf-8"), manifest
+
+    def test_kpi_triple_embedded_and_recorded(self, tmp_path, model):
+        html, manifest = self._render(tmp_path, model)
+        # The card resolves from the query (total revenue = 1001.5) …
+        assert "$1,002" in html
+        # … and the same one-row triple ships as a fingerprinted block.
+        assert 'id="tracebi-data-kpis"' in html
+        rec = manifest.to_dict()["embedded_data"][0]
+        assert rec["name"] == "kpis"
+        assert rec["model"] == "kernel_model"
+        assert rec["query_spec"]["fact"] == "fact_orders"
+        # The embedded fingerprint is the metrics section's fingerprint —
+        # one algorithm (M0 flip ledger: the section gains these fields).
+        assert rec["embedded_sha256"] == (
+            manifest.sections[0]["dataset_fingerprint"])
+        # No chart on the page: the KPI block rides without the chart
+        # machinery (no bundle, no config, no init) — but the CSP still ships.
+        assert "tracebi-charts" not in html
+        assert "!function(" not in html
+        assert "Content-Security-Policy" in html
+
+    def test_file_check_passes_then_catches_kpi_tamper(self, tmp_path, model):
+        html, manifest = self._render(tmp_path, model)
+        man = manifest.to_dict()
+        assert verify_file(html, man)["verdict"] == FILE_INTACT
+
+        # Edit the KPI total inside the embedded triple — the $99,999,999 case.
+        assert "1001.5" in html
+        tampered = html.replace("1001.5", "99999999.5", 1)
+        result = verify_file(tampered, man)
+        assert result["ok"] is False
+        assert result["verdict"] == FILE_ALTERED
+        offenders = [b["binding"] for b in result["bindings"]
+                     if b["status"] == FILE_TAMPERED]
+        assert offenders == ["kpis"]
+
+    def test_metrics_and_chart_coexist_in_one_receipt(self, tmp_path, model):
+        """A page with both gets the chart machinery once and both triples
+        embedded and recorded."""
+        from tracebi.reports.html_renderer import HTMLRenderer
+        from tracebi.spec import ReportSpec
+
+        spec = ReportSpec.from_dict({
+            "name": "Mixed",
+            "sections": [
+                {"type": "metrics", "id": "kpis",
+                 "data": {"model": "kernel_model", "query": {
+                     "fact": "fact_orders", "measures": ["revenue"]}},
+                 "metrics": [{"label": "Revenue", "value": "revenue"}]},
+                {"type": "chart", "id": "by_region", "chart_type": "bar",
+                 "x": "dim_customer.region", "y": "revenue",
+                 "data": {"model": "kernel_model", "query": {
+                     "fact": "fact_orders", "measures": ["revenue"],
+                     "dimensions": ["dim_customer.region"]}}},
+            ],
+        })
+        report = spec.build({model.name: model})
+        out = tmp_path / "mixed.html"
+        manifest = HTMLRenderer().render(report, str(out))
+        html = out.read_text(encoding="utf-8")
+
+        assert 'id="tracebi-data-kpis"' in html
+        assert 'id="tracebi-data-by_region"' in html
+        assert 'id="tracebi-charts"' in html   # the chart config, once
+        names = [r["name"] for r in manifest.to_dict()["embedded_data"]]
+        assert names == ["kpis", "by_region"]
+        assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
+
+
 # ── M1: the template-package renderer (architecture §2 lane B, §8-M1) ─────────
 
 # A template that OMITS every framework placeholder — no {{ head_extra }},

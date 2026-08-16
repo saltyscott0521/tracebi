@@ -467,9 +467,12 @@ class HTMLRenderer(BaseRenderer):
         # every drawable ChartSection up front — this also validates columns
         # loudly — so section rendering can emit each chart's container and the
         # document can inline the bundle + embedded data once at the end.
-        bindings = self._chart_bindings(report)
+        # Metrics-with-data bindings ride along (plan is None): their triple is
+        # embedded so the page is file-checkable, but nothing draws from it.
+        bindings = self._data_bindings(report)
         self._chart_plans_by_id = {
             id(section): (sd, plan) for section, sd, plan in bindings
+            if plan is not None
         }
         try:
             page = render_shell(
@@ -499,14 +502,19 @@ class HTMLRenderer(BaseRenderer):
 
     # ── Charts → ECharts (architecture §6) ──────────────────────────────────
 
-    def _chart_bindings(self, report: Report):
-        """Every drawable ChartSection with its stamped data + ECharts plan.
+    def _data_bindings(self, report: Report):
+        """Every embed-bearing section with its stamped data (+ ECharts plan).
 
         Returns ``[(section, StampedData, plan)]`` in document order (descending
-        into rows). One shared walk backs both the page (``_build_html``) and the
-        receipt (``_augment_manifest``), so the embedded data blocks and the
-        manifest's ``embedded_data`` agree on names and fingerprints. Empty
-        charts are skipped, exactly as the SVG path returned "" for them.
+        into rows): each drawable ChartSection with its plan, and each
+        MetricSection carrying a resolved ``data`` dataset with ``plan=None`` —
+        the KPI cards stay server-rendered, but embedding the one-row canonical
+        triple is what makes ``verify --file`` cover the page's biggest numbers
+        (report architecture v2 §2.2, the metric-receipt hole). One shared walk
+        backs both the page (``_build_html``) and the receipt
+        (``_augment_manifest``), so the embedded data blocks and the manifest's
+        ``embedded_data`` agree on names and fingerprints. Empty charts are
+        skipped, exactly as the SVG path returned "" for them.
         """
         from tracebi.reports.chart import ChartSpec
 
@@ -518,63 +526,78 @@ class HTMLRenderer(BaseRenderer):
             return cache[report]
 
         out = []
-        n = 0
+        n_charts = 0
+        n_metrics = 0
         for section in report.data_sections():
-            if getattr(section, "section_type", None) != SectionType.CHART:
-                continue
+            stype = getattr(section, "section_type", None)
             ds = getattr(section, "dataset", None)
             if not isinstance(ds, DataSet):
                 continue
-            # from_section validates x/y/color against the columns and raises a
-            # loud error — the same guard the SVG path (and PDF) still runs.
-            spec = ChartSpec.from_section(section)
-            if not spec.rows or not spec.series:
-                continue
-            n += 1
-            name = section.id or f"chart{n}"
-            sd = stamp_dataset(ds, name=name)
-            plan = {
-                "block": f"tracebi-data-{name}",
-                "container": f"tracebi-chart-{name}",
-                "type": section.chart_type,
-                "x": section.x,
-                "y": list(section.y or []),
-                "color": section.color,
-                "xlabel": spec.xlabel,
-                "ylabel": spec.ylabel,
-                "palette": list(spec.palette),
-                "show_values": bool(section.show_values),
-            }
-            out.append((section, sd, plan))
+            if stype == SectionType.CHART:
+                # from_section validates x/y/color against the columns and
+                # raises a loud error — the same guard the SVG path (and PDF)
+                # still runs.
+                spec = ChartSpec.from_section(section)
+                if not spec.rows or not spec.series:
+                    continue
+                n_charts += 1
+                name = section.id or f"chart{n_charts}"
+                sd = stamp_dataset(ds, name=name)
+                plan = {
+                    "block": f"tracebi-data-{name}",
+                    "container": f"tracebi-chart-{name}",
+                    "type": section.chart_type,
+                    "x": section.x,
+                    "y": list(section.y or []),
+                    "color": section.color,
+                    "xlabel": spec.xlabel,
+                    "ylabel": spec.ylabel,
+                    "palette": list(spec.palette),
+                    "show_values": bool(section.show_values),
+                }
+                out.append((section, sd, plan))
+            elif stype == SectionType.METRICS:
+                n_metrics += 1
+                name = section.id or f"metrics{n_metrics}"
+                out.append((section, stamp_dataset(ds, name=name), None))
         cache[report] = out
         return out
 
     def _augment_manifest(self, report: Report, manifest: ReportManifest) -> None:
-        """Record the chart data the page embeds, so ``verify --file`` covers it.
+        """Record the data the page embeds, so ``verify --file`` covers it.
 
-        Each ChartSection's fingerprint lands in ``embedded_data`` (and equals
-        the section's ``dataset_fingerprint``), giving the governed lane the same
-        offline file-integrity the freeform lane already has.
+        Each ChartSection's — and each metrics-with-data section's — fingerprint
+        lands in ``embedded_data`` (and equals the section's
+        ``dataset_fingerprint``), giving the governed lane the same offline
+        file-integrity the freeform lane already has.
         """
         manifest.embedded_data = [
-            embedded_record(sd) for _section, sd, _plan in self._chart_bindings(report)
+            embedded_record(sd) for _section, sd, _plan in self._data_bindings(report)
         ]
 
     def _inject_charts(self, page: str, items) -> str:
         """Inline the CSP, the ECharts bundle, the embedded data, and the init.
 
-        *items* is ``[(StampedData, plan)]``. The CSP (architecture §5) goes
-        into ``<head>``; the body gets the bundle first (so the global exists),
-        then each chart's canonical-triple data block, then the per-document
-        config, then the one init script that draws from them. String insertion,
-        not template placeholders, so a shell without a seam still gets the data
-        — a missing ``</head>``/``</body>`` fails loudly.
+        *items* is ``[(StampedData, plan)]``; a ``plan`` of ``None`` is a
+        metrics binding — its data block is embedded (the fingerprinted triple
+        the offline check hashes) but nothing draws from it, so the chart
+        machinery (bundle, config, init) is injected only when a chart exists.
+        The CSP (architecture §5) goes into ``<head>``; the body gets the
+        bundle first (so the global exists), then each binding's
+        canonical-triple data block, then the per-document config, then the one
+        init script that draws from them. String insertion, not template
+        placeholders, so a shell without a seam still gets the data — a missing
+        ``</head>``/``</body>`` fails loudly.
         """
         page = insert_before(page, "</head>", csp_meta())
-        tail = f"<script>\n{read_lib('echarts')}\n</script>\n"
+        plans = [plan for _sd, plan in items if plan is not None]
+        tail = ""
+        if plans:
+            tail += f"<script>\n{read_lib('echarts')}\n</script>\n"
         tail += "".join(embed_block(sd) + "\n" for sd, _plan in items)
-        tail += embed_json([plan for _sd, plan in items], "tracebi-charts") + "\n"
-        tail += f"<script>\n{_CHART_INIT_JS}\n</script>\n"
+        if plans:
+            tail += embed_json(plans, "tracebi-charts") + "\n"
+            tail += f"<script>\n{_CHART_INIT_JS}\n</script>\n"
         return insert_before(page, "</body>", tail)
 
     def _render_cover(self, report: Report) -> str:

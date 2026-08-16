@@ -224,9 +224,17 @@ def section_from_dict(
         # so the KPI strip stays live instead of hard-coding a number that
         # goes stale. A literal value (or a string that names no column) is
         # passed through unchanged.
+        #
+        # The resolved DataSet is attached to the section, not discarded: the
+        # base-class manifest hook then records its fingerprint and lineage
+        # like any table's, so the KPI numbers carry a receipt `tracebi
+        # verify` can check (report architecture v2 §2.2, the metric-receipt
+        # hole).
         row = None
         if "data" in d and resolve is not None:
-            frame = resolve(DataRef.from_dict(d["data"])).to_pandas()
+            dataset = resolve(DataRef.from_dict(d["data"]))
+            kwargs["dataset"] = dataset
+            frame = dataset.to_pandas()
             if len(frame):
                 row = frame.iloc[0]
         kwargs["metrics"] = [_metric_from_spec(m, row) for m in d.get("metrics", [])]
@@ -332,6 +340,16 @@ class ReportSpec:
             for s in sections:
                 if s.get("type") == SectionType.ROW.value:
                     walk(s.get("sections", []))
+                    continue
+                # A metrics section with a `data` query is data-bearing: its
+                # cards resolve from the query and its receipt covers them
+                # (report architecture v2 §2.2). One without `data` holds
+                # literal card values, which rebuild from the spec alone, so
+                # it is neither counted nor listed as missing.
+                if s.get("type") == SectionType.METRICS.value:
+                    if s.get("data"):
+                        needs += 1
+                        refs += 1
                     continue
                 if s.get("type") in (SectionType.TABLE.value, SectionType.CHART.value):
                     needs += 1

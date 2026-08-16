@@ -533,6 +533,103 @@ def test_refusing_a_newer_manifest_does_not_claim_nothing_needed_checking(
     ), "the gateway hands this dict to an agent unchanged"
 
 
+# ─────────────────────────────────────────────
+# Metric receipts (report architecture v2 §2.2 — the metric-receipt hole)
+# ─────────────────────────────────────────────
+
+def _metrics_spec():
+    return {
+        "name": "VF KPIs",
+        "sections": [{
+            "type": "metrics",
+            "title": "Totals",
+            "data": {
+                "model": "vf_demo",
+                "query": {
+                    "fact": "fact_orders",
+                    "measures": {"revenue": "sum"},
+                },
+            },
+            "metrics": [
+                {"label": "Revenue", "value": "revenue", "format": "currency0"},
+            ],
+        }],
+    }
+
+
+def test_metrics_with_data_is_checked_and_reproduces(vf_model, empty_models_dir):
+    """A KPI strip resolved from a query used to discard the one-row frame at
+    build time, so `verify` printed REPRODUCES for a page whose biggest
+    numbers carried no receipt. The frame now stays on the section, the
+    manifest records its fingerprint + lineage, and verify classifies it like
+    any table section (report architecture v2 §2.2)."""
+    from tracebi.spec import ReportSpec
+
+    spec = ReportSpec.from_dict(_metrics_spec())
+    # M0 flip ledger: metrics-with-data now counts as data-bearing.
+    assert spec.data_coverage() == {
+        "total": 1, "with_data_ref": 1, "presentation_only": [],
+    }
+
+    report = spec.build({"vf_demo": vf_model})
+    manifest = report.build_manifest("html", "(in-memory)").to_dict()
+    (section,) = manifest["sections"]
+    assert section["section_type"] == "metrics"
+    assert section["dataset_fingerprint"]
+    assert section["dataset_lineage"]
+
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    (checked,) = result["sections"]
+    assert checked["status"] == REPRODUCES
+    assert checked["model"] == "vf_demo"
+    assert checked["query_spec"]["fact"] == "fact_orders"
+    assert result["verdict"] == REPRODUCES
+    assert result["summary"][REPRODUCES] == 1
+
+
+def test_metrics_with_drifted_source_is_diagnosed(vf_model, empty_models_dir):
+    """The metric receipt is a real receipt: when the source moves, the KPI
+    section is diagnosed as SOURCE DRIFT, not waved through."""
+    from tracebi.spec import ReportSpec
+
+    manifest = (
+        ReportSpec.from_dict(_metrics_spec())
+        .build({"vf_demo": vf_model})
+        .build_manifest("html", "(in-memory)")
+        .to_dict()
+    )
+    drifted = ORDERS.copy()
+    drifted.loc[0, "revenue"] = 999.0
+    _connector_of(vf_model).write(drifted, "orders")
+
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    (section,) = result["sections"]
+    assert section["status"] == SOURCE_DRIFT
+    assert result["exit_code"] == 2
+
+
+def test_static_metrics_section_stays_out_of_the_receipt(vf_model, empty_models_dir):
+    """A metrics section with literal card values and no `data` query has
+    nothing to verify — its manifest shape is unchanged and it is neither
+    counted as data-bearing nor classified."""
+    from tracebi.spec import ReportSpec
+
+    spec = ReportSpec.from_dict({
+        "name": "Static KPIs",
+        "sections": [{"type": "metrics", "metrics": [
+            {"label": "Target", "value": 500, "format": "currency0"},
+        ]}],
+    })
+    assert spec.data_coverage() == {
+        "total": 0, "with_data_ref": 0, "presentation_only": [],
+    }
+    manifest = spec.build({}).build_manifest("html", "(in-memory)").to_dict()
+    (section,) = manifest["sections"]
+    assert "dataset_fingerprint" not in section
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    assert result["sections"] == []
+
+
 def test_reproduces_verdict_names_the_sections_it_could_not_check(
     vf_model, tmp_path, empty_models_dir,
 ):
