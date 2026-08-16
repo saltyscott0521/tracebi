@@ -179,6 +179,57 @@ def _dataset_verbs() -> list[dict]:
     return out
 
 
+def _presentation() -> dict:
+    """
+    The presentation system as data (architecture v2 §2.4): the stack, the
+    tokens, the component classes, and the figure attributes — so an agent
+    can style a page from the vocabulary alone, the same way it authors
+    queries.
+    """
+    return {
+        "stack": [
+            "tracebi.css (shipped design system)",
+            "reports/_theme.css (project brand layer — optional)",
+            "style.css / spec 'theme' file (per-report — optional)",
+        ],
+        "rule": "Later layers win. Override tokens, don't fork the sheet. "
+                "Presentation never changes a number.",
+        "tokens": [
+            "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
+            "--tb-rule", "--tb-radius", "--tb-space-1..4",
+            "--tb-chart-1..8 (the chart palette)",
+        ],
+        "components": [
+            ".tb-page", ".tb-grid", ".tb-card",
+            ".tb-kpi (.tb-kpi-label / .tb-kpi-value)",
+            ".tb-table (variants: .tb-table--striped, .tb-table--compact)",
+            ".tb-callout", ".tb-note",
+            ".tb-badge (--verified / --derived / --unverified — provenance "
+            "chooses the class; a stylesheet can restyle, never re-color "
+            "honesty)",
+        ],
+        "figure_attributes": {
+            "data-tb-figure": "value | chart | table | custom",
+            "data-tb-binding": "which stamped binding feeds this element",
+            "data-tb-cell": "value figures: the column to read (row 0)",
+            "data-tb-format": "value figures: compact | comma | currency | "
+                              "currency0 | percent",
+            "data-tb-type / data-tb-x / data-tb-y / data-tb-color": "chart wiring",
+            "data-tb-value-format": "chart labels: compact → '550.7B'",
+            "data-tb-columns": "table figures: column allowlist/order",
+            "data-tb-unverified": "the honest mark for an unbacked figure",
+            "data-tb-stage": "exploration — stripped at final build",
+        },
+        "runtime": [
+            "tracebi.data(name) → rows from the embedded fingerprinted bytes "
+            "(the only data source)",
+            "tracebi.fmt(value, 'compact') → the one '550.7B' formatter",
+            "tracebi.configureChart(figureId, patch) → restyle an ECharts "
+            "option; series data is always re-sourced from the stamped bytes",
+        ],
+    }
+
+
 def _conventions() -> dict:
     """
     How a project is discovered. These rules are enforced by
@@ -321,6 +372,7 @@ def describe() -> dict:
             ],
         },
         "number_formats": dict(NAMED_NUMBER_FORMATS),
+        "presentation": _presentation(),
         "conventions": _conventions(),
     }
 

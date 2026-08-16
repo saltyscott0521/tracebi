@@ -445,7 +445,7 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
 
         with actor(_mcp_actor()):
             report = rs.build(models)
-            HTMLRenderer().render(report, str(html_path))
+            HTMLRenderer.for_project().render(report, str(html_path))
             manifest = report.build_manifest("html", str(html_path)).to_dict()
 
         manifest_path.write_text(

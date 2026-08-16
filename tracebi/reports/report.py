@@ -807,7 +807,7 @@ class Report:
         """Render the report inline in a notebook (iframe preview)."""
         try:
             from tracebi.reports.html_renderer import HTMLRenderer
-            html_doc = HTMLRenderer().to_html(self)
+            html_doc = HTMLRenderer.for_project().to_html(self)
         except Exception as exc:
             return (
                 f"<pre>&lt;Report {self.name!r}: inline preview unavailable "

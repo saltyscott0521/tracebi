@@ -159,7 +159,7 @@ def spec_render(body: dict):
         ) from exc
 
     manifest = report.build_manifest(format="html", output_path="(in-memory)")
-    return {"html": HTMLRenderer().to_html(report), "manifest": manifest.to_dict()}
+    return {"html": HTMLRenderer.for_project().to_html(report), "manifest": manifest.to_dict()}
 
 
 def _registered_models() -> dict:

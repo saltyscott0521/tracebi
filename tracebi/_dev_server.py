@@ -63,7 +63,7 @@ def render_request(path: Path) -> str:
         from tracebi._request_runner import execute_request
         from tracebi.reports.html_renderer import HTMLRenderer
         report = execute_request(path)
-        return HTMLRenderer().to_html(report)
+        return HTMLRenderer.for_project().to_html(report)
     except (Exception, SystemExit):
         return _ERROR_PAGE.format(
             title="Request script failed",

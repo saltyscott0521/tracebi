@@ -25,6 +25,7 @@ import io
 import logging
 import os
 import weakref
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -235,6 +236,36 @@ class HTMLRenderer(BaseRenderer):
     """
 
     FORMAT = "html"
+
+    @classmethod
+    def for_project(cls, root=None, report_css: str = "",
+                    report_js: str = "", **kwargs) -> "HTMLRenderer":
+        """A renderer wired to the project's presentation layers.
+
+        The one construction chokepoint for every built-in call site
+        (architecture v2 §2.4, closing field-notes finding #10 as a
+        category): the project-wide ``reports/_theme.css`` — the brand layer,
+        skipped by discovery because of its underscore — stacks over the
+        default theme, and an optional per-report css/js pair stacks over
+        that. Later rules win (``Theme.with_overrides`` appends), so the
+        chain IS the override order. A site constructing ``HTMLRenderer()``
+        bare instead of through here regresses to unthemeable — don't.
+        """
+        from tracebi.reports.theme import Theme
+
+        root = Path(root) if root else Path(os.getcwd())
+        theme = kwargs.pop("theme", None) or Theme.default()
+        theme_path = (root / os.environ.get("TRACEBI_REPORTS_DIR", "reports")
+                      / "_theme.css")
+        if theme_path.is_file():
+            theme = theme.with_overrides(
+                theme_path.read_text(encoding="utf-8"), name="_theme.css")
+        if report_css.strip():
+            theme = theme.with_overrides(report_css, name="report")
+        body_extra = kwargs.pop("body_extra", "")
+        if report_js.strip():
+            body_extra += f"<script>\n{report_js}\n</script>\n"
+        return cls(theme=theme, body_extra=body_extra, **kwargs)
 
     def __init__(
         self,

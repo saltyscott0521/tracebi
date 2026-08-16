@@ -259,6 +259,13 @@ class ReportSpec:
     author: str = ""
     description: str = ""
     parameters: Optional[dict] = None
+    #: Presentation hooks (architecture v2 §2.4, closing finding #10 for the
+    #: spec lane): filenames resolved against the reports directory at build
+    #: time. ``theme`` stacks its CSS over the default + project layers
+    #: (later wins); ``script`` is appended before </body>. Presentation
+    #: only — a theme or script can restyle a page, never change a number.
+    theme: str = ""
+    script: str = ""
 
     # ── Serialization ──────────────────────────────────────────
 
@@ -273,6 +280,10 @@ class ReportSpec:
             out["description"] = self.description
         if self.parameters:
             out["parameters"] = dict(self.parameters)
+        if self.theme:
+            out["theme"] = self.theme
+        if self.script:
+            out["script"] = self.script
         return out
 
     def to_json(self, indent: Optional[int] = 2) -> str:
@@ -283,11 +294,13 @@ class ReportSpec:
     def from_dict(cls, d: dict) -> "ReportSpec":
         if "name" not in d:
             raise ValueError("A report spec needs a 'name'.")
-        unknown = set(d) - {"name", "sections", "author", "description", "parameters"}
+        unknown = set(d) - {"name", "sections", "author", "description",
+                            "parameters", "theme", "script"}
         if unknown:
             raise ValueError(
                 f"Unknown report spec field(s): {sorted(unknown)}. Allowed: "
-                f"name, sections, author, description, parameters."
+                f"name, sections, author, description, parameters, theme, "
+                f"script."
             )
         sections = d.get("sections") or []
         if not isinstance(sections, list):
@@ -298,6 +311,8 @@ class ReportSpec:
             author=d.get("author", ""),
             description=d.get("description", ""),
             parameters=d.get("parameters") or None,
+            theme=str(d.get("theme") or ""),
+            script=str(d.get("script") or ""),
         )
 
     @classmethod
@@ -573,6 +588,18 @@ def json_schema() -> dict:
             "description": {"type": "string"},
             "parameters": {"type": "object"},
             "sections": {"type": "array", "items": {"$ref": "#/$defs/section"}},
+            "theme": {
+                "type": "string",
+                "description": "CSS filename resolved against the reports "
+                               "directory; stacks over the default and "
+                               "project layers (later wins). Presentation "
+                               "only — never changes a number.",
+            },
+            "script": {
+                "type": "string",
+                "description": "JS filename resolved against the reports "
+                               "directory; appended before </body>.",
+            },
         },
         "required": ["name"],
         "additionalProperties": False,

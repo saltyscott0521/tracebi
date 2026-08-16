@@ -94,7 +94,7 @@ def run_request(name: str, body: Optional[dict] = Body(default=None)):
     report = _execute_or_500(path, params=params)
     try:
         from tracebi.reports.html_renderer import HTMLRenderer
-        html = HTMLRenderer().to_html(report)
+        html = HTMLRenderer.for_project().to_html(report)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=_error_detail("Render failed", exc))
     manifest = report.build_manifest(format="html", output_path="(in-memory)")

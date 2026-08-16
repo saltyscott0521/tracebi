@@ -132,7 +132,7 @@ def run():
     os.makedirs(output_dir, exist_ok=True)
     base = os.path.join(output_dir, "{slug}")
     ExcelRenderer().render(report, base + ".xlsx")
-    HTMLRenderer().render(report, base + ".html")
+    HTMLRenderer.for_project().render(report, base + ".html")
     print(f"Saved: {{base}}.xlsx / .html")
 
 
@@ -1082,7 +1082,10 @@ def cmd_spec(args: argparse.Namespace) -> int:
 
     report = spec.build(models)
     out = Path(args.output or f"{_slugify(spec.name)}.html")
-    HTMLRenderer().render(report, str(out))
+    HTMLRenderer.for_project(
+        report_css=_report_theme_css(spec, extra_theme=getattr(args, "theme", None)),
+        report_js=_report_script_js(spec),
+    ).render(report, str(out))
     print(f"Rendered {spec.name} → {out}")
     return 0
 
@@ -2013,7 +2016,8 @@ def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
     return 0
 
 
-def _build_report_target(kind: str, path: Path, output: Path) -> Path:
+def _build_report_target(kind: str, path: Path, output: Path,
+                         theme: Optional[str] = None) -> Path:
     """Render one report target to *output* (+ a sibling manifest). Returns output."""
     output.parent.mkdir(parents=True, exist_ok=True)
     models = _load_project_models()
@@ -2025,8 +2029,46 @@ def _build_report_target(kind: str, path: Path, output: Path) -> Path:
         from tracebi.spec import ReportSpec
         spec = ReportSpec.from_json(path.read_text(encoding="utf-8"))
         report = spec.build(models)
-        HTMLRenderer().render(report, str(output), save_manifest=True)
+        HTMLRenderer.for_project(
+            report_css=_report_theme_css(spec, extra_theme=theme),
+            report_js=_report_script_js(spec),
+        ).render(report, str(output), save_manifest=True)
     return output
+
+
+def _report_theme_css(spec, extra_theme: Optional[str] = None) -> str:
+    """The spec's theme CSS (plus a --theme override file), resolved against
+    the reports directory. Later layers win, so the flag stacks last."""
+    parts = []
+    for name in (getattr(spec, "theme", ""), extra_theme or ""):
+        if not name:
+            continue
+        p = Path(name)
+        if not p.is_file():
+            p = _default_reports_dir() / name
+        if not p.is_file():
+            raise FileNotFoundError(
+                f"theme file not found: {name} (looked in cwd and "
+                f"{_default_reports_dir()})"
+            )
+        parts.append(p.read_text(encoding="utf-8"))
+    return "\n".join(parts)
+
+
+def _report_script_js(spec) -> str:
+    """The spec's script file, resolved against the reports directory."""
+    name = getattr(spec, "script", "")
+    if not name:
+        return ""
+    p = Path(name)
+    if not p.is_file():
+        p = _default_reports_dir() / name
+    if not p.is_file():
+        raise FileNotFoundError(
+            f"script file not found: {name} (looked in cwd and "
+            f"{_default_reports_dir()})"
+        )
+    return p.read_text(encoding="utf-8")
 
 
 def _serve_file(html_path: Path, name: str, port: int, open_browser: bool) -> None:
@@ -2092,7 +2134,8 @@ def cmd_report(args: argparse.Namespace) -> int:
         return _snapshot_report_target(kind, path, output)
     output = Path(args.output) if args.output else Path.cwd() / "output" / f"{args.name}.html"
     try:
-        _build_report_target(kind, path, output)
+        _build_report_target(kind, path, output,
+                             theme=getattr(args, 'theme', None))
     except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
         print(f"failed to build report '{args.name}': "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
@@ -2178,6 +2221,10 @@ def build_parser() -> argparse.ArgumentParser:
              "validate a spec without running it, or render one.",
     )
     p_spec.add_argument("action", choices=["schema", "validate", "render"])
+    p_spec.add_argument(
+        "--theme",
+        help="Extra CSS file stacked over the spec's own theme (later wins).",
+    )
     p_spec.add_argument("file", nargs="?", help="Path to a spec .json file.")
     p_spec.add_argument("--output", help="Output path for `render`.")
     p_spec.set_defaults(func=cmd_spec)
@@ -2270,6 +2317,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("action", choices=["build", "preview", "snapshot"])
     p_report.add_argument("name", help="Report name (package dir or spec stem).")
     p_report.add_argument("--output", help="Output .html path (default: output/<name>.html).")
+    p_report.add_argument(
+        "--theme",
+        help="Extra CSS file stacked over the spec's own theme (later wins). "
+             "Spec targets only; packages carry their own style.css.",
+    )
     p_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
                           help="Directory holding report packages (default: ./reports).")
     p_report.add_argument("--port", type=int, default=8080,

@@ -44,7 +44,7 @@ def run_report(name: str):
 
     try:
         from tracebi.reports.html_renderer import HTMLRenderer
-        html = HTMLRenderer().to_html(report)
+        html = HTMLRenderer.for_project().to_html(report)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=_error_detail("Render failed", exc))
 
@@ -61,7 +61,7 @@ def _render_report_payload(name: str) -> dict:
     """Run + render a report; shared by the sync and background paths."""
     report = registry.run_report(name)
     from tracebi.reports.html_renderer import HTMLRenderer
-    html = HTMLRenderer().to_html(report)
+    html = HTMLRenderer.for_project().to_html(report)
     manifest = report.build_manifest(format="html", output_path="(in-memory)")
     return {"name": name, "html": html, "manifest": manifest.to_dict()}
 
@@ -119,7 +119,7 @@ def download_report(name: str, format: str = "xlsx"):
     try:
         if format == "html":
             from tracebi.reports.html_renderer import HTMLRenderer
-            html = HTMLRenderer().to_html(report)
+            html = HTMLRenderer.for_project().to_html(report)
             return HTMLResponse(
                 html,
                 headers={
