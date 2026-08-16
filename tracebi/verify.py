@@ -224,21 +224,6 @@ def _walk_sections(sections: list) -> list:
     return out
 
 
-def _query_node(lineage: list) -> Optional[dict]:
-    """The lineage node that stamps the resolved query, or None.
-
-    Same recovery rule as ``tracebi.spec._data_ref_of``: last node whose
-    metadata carries a ``query_spec``.
-    """
-    for node in reversed(lineage or []):
-        if not isinstance(node, dict):
-            continue
-        md = node.get("metadata")
-        if isinstance(md, dict) and md.get("query_spec"):
-            return node
-    return None
-
-
 def _input_index(lineage: list) -> dict[str, list[str]]:
     """``{table: sorted [fingerprints]}`` from a lineage chain's load nodes.
 
@@ -294,6 +279,7 @@ def _mapping_index(lineage: list) -> dict[str, list[str]]:
 def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dict:
     """Classify one data-bearing manifest section."""
     from tracebi.model.data_model import QuerySpec
+    from tracebi.model.dataset import last_query_node
 
     expected = section["dataset_fingerprint"]
     lineage = section.get("dataset_lineage") or []
@@ -314,7 +300,7 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
                           "are query-reproducible, but this output was computed by "
                           "arbitrary Python and cannot be reproduced from a query"}
 
-    node = _query_node(lineage)
+    node = last_query_node(lineage)
     if node is None:
         return {**base, "status": UNVERIFIABLE,
                 "detail": "no recorded query in lineage (python-authored ad hoc data)"}

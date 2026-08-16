@@ -87,6 +87,26 @@ class LineageNode:
         }
 
 
+def last_query_node(lineage: list) -> Optional[dict]:
+    """The lineage node that stamps the resolved query, or None.
+
+    THE last-node-with-a-``query_spec`` rule: ``DataModel.execute`` appends
+    the query node last, so the last node whose metadata carries a
+    ``query_spec`` is the one that speaks for the frame. Operates on the
+    dict form of a lineage chain (``DataSet.lineage_to_dict()`` or a
+    manifest's recorded lineage) and returns the matching node itself, so a
+    caller may compare it by identity against the chain. The one shared
+    implementation behind ``reports.embed``, ``verify`` and ``spec``.
+    """
+    for node in reversed(lineage or []):
+        if not isinstance(node, dict):
+            continue
+        md = node.get("metadata")
+        if isinstance(md, dict) and md.get("query_spec"):
+            return node
+    return None
+
+
 # ─────────────────────────────────────────────────────────────
 # DataSet
 # ─────────────────────────────────────────────────────────────

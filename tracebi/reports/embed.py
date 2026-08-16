@@ -32,7 +32,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from tracebi.model.dataset import DataSet, LineageNode
+from tracebi.model.dataset import DataSet, LineageNode, last_query_node
 
 
 # ── Self-contained page assembly (shared by both render lanes) ──────────────
@@ -171,14 +171,11 @@ class StampedData:
 def _query_metadata(ds: DataSet) -> dict:
     """The ``{model, query_spec}`` metadata ``DataModel.execute`` stamped.
 
-    ``execute`` appends the query node last; the same last-node-with-a-
-    ``query_spec`` rule ``verify.py`` uses recovers it robustly.
+    ``execute`` appends the query node last; :func:`last_query_node`
+    (``dataset.py``) — the one shared recovery rule — recovers it robustly.
     """
-    for node in reversed(ds.lineage_to_dict()):
-        md = node.get("metadata") if isinstance(node, dict) else None
-        if isinstance(md, dict) and md.get("query_spec"):
-            return md
-    return {}
+    node = last_query_node(ds.lineage_to_dict())
+    return node["metadata"] if node else {}
 
 
 def stamp_dataset(ds: DataSet, name: str = "data") -> StampedData:

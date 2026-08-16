@@ -34,6 +34,7 @@ import dataclasses
 from typing import Any, Callable, Optional
 
 from tracebi.model.data_model import QuerySpec
+from tracebi.model.dataset import last_query_node
 from tracebi.reports.report import (
     CHART_TYPES,
     TABLE_STYLES,
@@ -138,18 +139,19 @@ def _data_ref_of(section: ReportSection) -> Optional[DataRef]:
     Recover a declarative data reference from a section's DataSet.
 
     ``DataModel.execute()`` stamps the resolved QuerySpec into the lineage,
-    so a dataset that came from a model query can describe itself. One built
-    from ad-hoc transforms cannot, and returns None.
+    so a dataset that came from a model query can describe itself — recovered
+    by :func:`last_query_node`, the one shared rule. One built from ad-hoc
+    transforms cannot, and returns None.
     """
     ds = getattr(section, "dataset", None)
     if ds is None:
         return None
-    for node in reversed(ds.lineage):
-        spec = node.metadata.get("query_spec")
-        model = node.metadata.get("model")
-        if spec:
-            return DataRef(model=model or "", query=QuerySpec.from_dict(spec))
-    return None
+    node = last_query_node(ds.lineage_to_dict())
+    if node is None:
+        return None
+    md = node["metadata"]
+    return DataRef(model=md.get("model") or "",
+                   query=QuerySpec.from_dict(md["query_spec"]))
 
 
 def _metric_from_spec(m: dict, row: Any) -> Metric:

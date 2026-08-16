@@ -470,3 +470,109 @@ class TestSpecExportToleratesCustomSections:
         rspec = ReportSpec.from_report(report)
         types = [s.get("type") for s in rspec.to_dict()["sections"]]
         assert "map" in types
+
+
+# ─────────────────────────────────────────────
+# The one query-node recovery rule (last_query_node)
+# ─────────────────────────────────────────────
+
+def query_node(model: str) -> LineageNode:
+    """A lineage node shaped like the one ``DataModel.execute`` stamps."""
+    return LineageNode(
+        operation="query",
+        description=f"Query {model}",
+        metadata={"model": model,
+                  "query_spec": {"fact": f"fact_{model}",
+                                 "measures": ["revenue"]}},
+    )
+
+
+class TestLastQueryNode:
+    """The shared rule itself: last node whose metadata carries a query_spec."""
+
+    def test_last_node_wins_with_multiple_query_nodes(self):
+        from tracebi.model.dataset import last_query_node
+
+        lineage = [query_node("first").to_dict(), query_node("second").to_dict()]
+        node = last_query_node(lineage)
+        assert node is lineage[-1]          # identity, not a copy
+        assert node["metadata"]["model"] == "second"
+
+    def test_no_query_node_returns_none(self):
+        from tracebi.model.dataset import last_query_node
+
+        assert last_query_node(make_ds().lineage_to_dict()) is None
+        assert last_query_node([]) is None
+        assert last_query_node(None) is None
+
+    def test_non_dict_nodes_and_metadata_are_skipped(self):
+        from tracebi.model.dataset import last_query_node
+
+        target = query_node("m").to_dict()
+        lineage = [target, "junk", {"metadata": None},
+                   {"metadata": {"query_spec": None}}]
+        assert last_query_node(lineage) is target
+
+
+class TestRewiredSitesUnchanged:
+    """One regression per call site rewired onto last_query_node."""
+
+    def test_stamp_dataset_recovers_last_query_metadata(self):
+        """embed._query_metadata: stamping reads the LAST query node."""
+        from tracebi.reports.embed import stamp_dataset
+
+        base = make_ds("orders")
+        ds = DataSet(df=base.to_pandas(), name="orders",
+                     lineage=base.lineage + [query_node("first"),
+                                             query_node("second")])
+        stamped = stamp_dataset(ds)
+        assert stamped.model == "second"
+        assert stamped.query_spec["fact"] == "fact_second"
+
+    def test_stamp_dataset_without_query_node_stamps_none(self):
+        from tracebi.reports.embed import stamp_dataset
+
+        stamped = stamp_dataset(make_ds("adhoc"))
+        assert stamped.model is None
+        assert stamped.query_spec is None
+
+    def test_verify_section_classifies_from_last_query_node(self):
+        """verify._query_node: model/query_spec come from the LAST query node,
+        and the node-identity check (transformed after the query) still holds."""
+        from tracebi.verify import ERROR, UNVERIFIABLE, _verify_section
+
+        lineage = [query_node("first").to_dict(), query_node("ghost").to_dict()]
+        section = {"section_type": "table", "dataset_fingerprint": "f" * 64,
+                   "dataset_lineage": lineage}
+        out = _verify_section(section, models={}, label="s1")
+        assert out["status"] == ERROR                # model 'ghost' not found
+        assert out["model"] == "ghost"
+        assert out["query_spec"]["fact"] == "fact_ghost"
+
+        # No query node at all → unverifiable, same wording as before.
+        section["dataset_lineage"] = make_ds().lineage_to_dict()
+        out = _verify_section(section, models={}, label="s1")
+        assert out["status"] == UNVERIFIABLE
+        assert "no recorded query" in out["detail"]
+
+        # Transformed after the query → the query node is not last.
+        section["dataset_lineage"] = lineage + [
+            LineageNode(operation="filter", description="post-query").to_dict()]
+        out = _verify_section(section, models={}, label="s1")
+        assert out["status"] == UNVERIFIABLE
+        assert "transformed after" in out["detail"]
+
+    def test_spec_data_ref_exports_last_query(self):
+        """spec._data_ref_of: the exported data ref is the LAST query node's."""
+        from tracebi.spec import section_to_dict
+
+        base = make_ds("orders")
+        ds = DataSet(df=base.to_pandas(), name="orders",
+                     lineage=base.lineage + [query_node("first"),
+                                             query_node("second")])
+        d = section_to_dict(TableSection(title="t", dataset=ds))
+        assert d["data"]["model"] == "second"
+        assert d["data"]["query"]["fact"] == "fact_second"
+
+        # Ad-hoc data (no query node) exports no data ref, as before.
+        assert "data" not in section_to_dict(TableSection(dataset=make_ds()))
