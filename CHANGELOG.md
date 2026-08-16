@@ -6,6 +6,42 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — reshape M2: the presentation system
+
+A zero-effort artifact page now looks shipped and hydrates itself:
+
+- `tracebi.css` — the shipped design system: tokens (`--tb-*`, chart
+  palette seeded from the one DEFAULT_PALETTE), classless report
+  typography, components for KPIs / tables (real `--striped` and
+  `--compact` variants at last) / charts / callouts, provenance badges,
+  an unmistakable exploration-block treatment, and print rules that keep
+  honesty visible on paper.
+- `tracebi.js` — the dependency-free runtime: one RFC-4180 parser for
+  both lanes; `tracebi.data(name)` reading ONLY the embedded fingerprinted
+  bytes; a byte-exact port of the compact formatter (fuzz-verified against
+  Python, so screen and print finally agree on "550.7B");
+  value/table/chart hydration with derive.py's label and format rules
+  ported guard-for-guard; `tracebi.configureChart` that can restyle an
+  option but never re-source its data.
+- `stack.py` — one injection order, which IS the override chain:
+  tracebi.css → the project's `reports/_theme.css` brand layer → the
+  report's own css, with the author's script running last.
+- `HTMLRenderer.for_project` threads every built-in render site (twelve,
+  including the notebook preview), so no surface can regress to
+  unthemeable; report specs gain top-level `theme` / `script` keys and
+  `report build` / `spec render` gain `--theme`.
+- Provenance badges default on — verified / python-derived / unverified,
+  decided at build from what was actually embedded; `--no-badges` omits
+  them for client deliverables without touching the manifest.
+- `tracebi context` gains the `presentation` vocabulary, so an agent
+  styles a page from the vocabulary alone.
+
+The reference project gains `reports/portfolio_overview`, the
+default-component lane with no author CSS or JS — browser-verified:
+hydrated KPIs, compact chart labels, derived table formats, and
+`--strict` correctly failing on its one honest unverified figure.
+
+
 ### Added — reshape M1: the artifact, figures, and verify v2
 
 Verification becomes a property of each FIGURE — a DOM element declaring
