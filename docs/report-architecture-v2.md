@@ -299,7 +299,7 @@ At `report build`, contract results attach to the manifest's `transform_contract
 
 The kernel exists; the two genuinely risky claims are (i) the per-figure receipt on a free-form page and (ii) whether the one-lane loop is actually good to author in. M0 de-risks (i)'s seams inside the current lanes; M1 proves (i) and (ii) together on the real workload, with kill criteria.
 
-**M0 — Kernel seams (small; de-risks everything; v1 manifests throughout).**
+**M0 — Kernel seams (small; de-risks everything; v1 manifests throughout).** ✅ **Shipped 2026-08-16** — all proof gates green (mixed receipt honest; grammar unified with fingerprint parity; pre-change corpus byte-identical; findings #1/#2/#5 closed; monotonicity harness in CI).
 Per-binding `verifiable` in `TemplatePackage.render`; `QuerySpec.order_by/limit` with canonical normalization, the guarded tie-break (only when order_by/limit present), and limit-without-order_by as a hard error; REST/MCP grammar unification on `QuerySpec.from_dict`; `MetricSection.dataset` retention + `data_coverage` counting METRICS + `_data_bindings` KPI embedding in legacy HTML; the query-node-rule consolidation; the **receipt-monotonicity harness** built as a fixture (see §5) and wired into CI from here on.
 *Proof gate:* a mixed receipt verifies honestly today with v1 manifests; the same spec through Python/spec/REST returns identical fingerprints; a corpus of pre-change fingerprints is byte-identical post-change (citing `data_model.py:1758–1760`); findings #1/#2/#5 closed in the current lanes before any new artifact exists.
 

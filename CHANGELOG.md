@@ -6,6 +6,37 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — reshape M0: the kernel seams (architecture v2 §4)
+
+The first milestone of the one-lane report reshape, closing field-notes
+findings #1, #2, and #5 in the current lanes before any new artifact exists:
+
+- **`order_by` / `limit` in the query grammar** — sorting over result columns
+  (ratio measures included), so "top 10 by mark" is a governed query at last.
+  `limit` without `order_by` is refused everywhere; ties break on the
+  remaining dimension columns and the fully resolved ordering is stamped for
+  exact replay. A pre-change fingerprint corpus in CI proves no existing
+  manifest stopped re-verifying.
+- **One grammar, four surfaces** — REST's query endpoint validates through
+  `QuerySpec.from_dict` (declared measures finally reachable over HTTP); the
+  MCP query tool speaks the same grammar (its transport cap renamed
+  `preview_rows`); the spec JSON Schema and `tracebi context` teach it.
+- **Metric receipts** — a metrics section's one-row frame is retained,
+  fingerprinted, embedded in the page, and verified like any table; the five
+  biggest numbers on a dashboard join the audit trail, and `data_coverage`
+  counts them.
+- **Per-binding verifiability** — a `report.py` beside a package no longer
+  poisons the declarative bindings next to it: query bindings stay
+  green-eligible; python outputs stay branded `verifiable: false`, never
+  green.
+- **One query-node rule** — the three copies of "the last lineage node with a
+  `query_spec` speaks for the frame" collapse into `last_query_node` in
+  `dataset.py`.
+- **The receipt-monotonicity harness** — a CI fixture asserting the set of
+  fingerprinted, verifiable claims only ever grows; a change that silently
+  weakens a receipt now fails the suite by construction.
+
+
 ### Added — `tracebi init` scaffolds an AGENTS.md so a project onboards its own agent
 
 A fresh agent (or analyst) landing in a scaffolded project had nothing there
