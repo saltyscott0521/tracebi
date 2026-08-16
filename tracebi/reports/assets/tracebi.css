@@ -1,0 +1,262 @@
+/* tracebi.css — the shipped design system (presentation stack, layer 1).
+ *
+ * Stacked FIRST: the project's reports/_theme.css and the report's own
+ * style.css are injected after this file, so later-wins is the override
+ * chain. Every rule here is deliberately low-specificity and token-driven —
+ * rebranding is a dozen token overrides, not a fork.
+ *
+ * Ships inside self-contained HTML under a strict CSP; no imports, no URLs,
+ * no external fonts. Presentation never changes a number: everything below
+ * is display only.
+ */
+
+/* ── 1. Tokens ─────────────────────────────────────────────────────────── */
+
+:root {
+  --tb-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+             Arial, sans-serif;
+  --tb-ink: #1f2937;
+  --tb-bg: #ffffff;
+  --tb-muted: #6b7280;
+  --tb-accent: #2e74b5;
+  --tb-rule: #e3e7ee;
+
+  --tb-space-1: 4px;
+  --tb-space-2: 8px;
+  --tb-space-3: 16px;
+  --tb-space-4: 32px;
+  --tb-radius: 6px;
+
+  /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). */
+  --tb-chart-1: #2E74B5;
+  --tb-chart-2: #ED7D31;
+  --tb-chart-3: #70AD47;
+  --tb-chart-4: #FFC000;
+  --tb-chart-5: #5B9BD5;
+  --tb-chart-6: #A9D18E;
+  --tb-chart-7: #C00000;
+  --tb-chart-8: #7030A0;
+
+  /* Shipped documents open identically anywhere — one theme, like print. */
+  color-scheme: light;
+}
+
+/* ── 2. Base — a page with no classes already looks like a report ──────── */
+
+body {
+  font-family: var(--tb-font);
+  color: var(--tb-ink);
+  background: var(--tb-bg);
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--tb-space-4) var(--tb-space-3);
+  line-height: 1.55;
+  font-size: 15px;
+}
+
+h1, h2, h3, h4 {
+  line-height: 1.25;
+  margin: var(--tb-space-4) 0 var(--tb-space-2);
+}
+h1 { font-size: 1.9em; margin-top: 0; }
+h2 { font-size: 1.4em; border-bottom: 1px solid var(--tb-rule);
+     padding-bottom: var(--tb-space-1); }
+h3 { font-size: 1.15em; }
+h4 { font-size: 1em; color: var(--tb-muted); }
+
+p { margin: var(--tb-space-2) 0 var(--tb-space-3); }
+a { color: var(--tb-accent); }
+hr { border: 0; border-top: 1px solid var(--tb-rule);
+     margin: var(--tb-space-4) 0; }
+code, pre { font-size: 0.9em; }
+pre { overflow-x: auto; padding: var(--tb-space-2);
+      background: #f6f7f9; border-radius: var(--tb-radius); }
+img, svg { max-width: 100%; }
+
+/* ── 3. Layout ─────────────────────────────────────────────────────────── */
+
+.tb-page { max-width: 1100px; margin: 0 auto; }
+
+.tb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--tb-space-3);
+  margin: var(--tb-space-3) 0;
+}
+
+.tb-card {
+  border: 1px solid var(--tb-rule);
+  border-radius: var(--tb-radius);
+  padding: var(--tb-space-3);
+  background: var(--tb-bg);
+}
+
+/* ── 4. KPI — big number, small label ──────────────────────────────────── */
+
+.tb-kpi, [data-tb-figure="value"] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tb-space-1);
+  padding: var(--tb-space-3);
+  border: 1px solid var(--tb-rule);
+  border-radius: var(--tb-radius);
+  position: relative; /* anchors a .tb-badge in the corner */
+}
+
+.tb-kpi-label {
+  font-size: 0.8em;
+  color: var(--tb-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  order: -1;
+}
+
+.tb-kpi-value {
+  font-size: 1.8em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 5. Tables ─────────────────────────────────────────────────────────── */
+
+.tb-table, [data-tb-figure="table"] {
+  border-collapse: collapse;
+  width: 100%;
+  margin: var(--tb-space-3) 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-table th, [data-tb-figure="table"] th,
+.tb-table td, [data-tb-figure="table"] td {
+  padding: var(--tb-space-2) var(--tb-space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--tb-rule);
+}
+
+.tb-table thead th, [data-tb-figure="table"] thead th {
+  border-bottom: 2px solid var(--tb-ink);
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--tb-muted);
+}
+
+/* Numeric cells right-align; runtime tags them, authors may too. */
+.tb-num { text-align: right; }
+
+/* Totals row */
+.tb-total td, tr.tb-total th {
+  border-top: 2px solid var(--tb-ink);
+  border-bottom: 0;
+  font-weight: 700;
+}
+
+/* Variant: striped — even body rows tinted (field-notes finding #13). */
+.tb-table--striped tbody tr:nth-child(even) { background: #f6f7f9; }
+
+/* Variant: compact — tighter padding, smaller type. */
+.tb-table--compact th, .tb-table--compact td {
+  padding: var(--tb-space-1) var(--tb-space-2);
+  font-size: 0.85em;
+}
+
+/* ── 6. Charts ─────────────────────────────────────────────────────────── */
+
+[data-tb-figure="chart"] {
+  min-height: 320px;
+  width: 100%;
+  position: relative; /* anchors a .tb-badge in the corner */
+}
+
+/* ── 7. Callouts and notes ─────────────────────────────────────────────── */
+
+.tb-callout {
+  border-left: 3px solid var(--tb-accent);
+  background: #f2f7fc;
+  border-radius: 0 var(--tb-radius) var(--tb-radius) 0;
+  padding: var(--tb-space-2) var(--tb-space-3);
+  margin: var(--tb-space-3) 0;
+}
+
+.tb-note {
+  font-size: 0.85em;
+  color: var(--tb-muted);
+}
+
+/* ── 8. Receipt badges — provenance picks the class at runtime ─────────── */
+/* Never invisible: a grey badge must not be stylable into a green one.    */
+
+.tb-badge {
+  display: inline-block;
+  position: absolute;
+  top: var(--tb-space-1);
+  right: var(--tb-space-1);
+  padding: 1px var(--tb-space-2);
+  border-radius: 999px;
+  font-size: 0.68em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+}
+
+.tb-badge--verified {
+  color: #1e6b34;
+  background: #e6f4ea;
+  border-color: #b7dfc3;
+}
+
+.tb-badge--derived { /* "python-derived" */
+  color: #4b5563;
+  background: #eef0f3;
+  border-color: #d4d8de;
+}
+
+.tb-badge--unverified {
+  color: #8a5a00;
+  background: #fdf3d7;
+  border-color: #ecd393;
+}
+
+/* ── 9. Exploration blocks — unmistakably working notes ────────────────── */
+
+[data-tb-stage="exploration"] {
+  border: 2px dashed #d0a938;
+  background: #fdf9ec;
+  border-radius: var(--tb-radius);
+  padding: var(--tb-space-3);
+  margin: var(--tb-space-3) 0;
+  position: relative;
+}
+
+[data-tb-stage="exploration"]::before {
+  content: "EXPLORATION";
+  display: block;
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #8a5a00;
+  margin-bottom: var(--tb-space-2);
+}
+
+/* ── 10. Print — honesty survives printing ─────────────────────────────── */
+
+@media print {
+  body { max-width: none; padding: 0; }
+
+  .tb-card, .tb-kpi, [data-tb-figure] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Badges and exploration treatments must survive on paper. */
+  .tb-badge, [data-tb-stage="exploration"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Economical backgrounds — decorative tints drop, structure remains. */
+  .tb-table--striped tbody tr:nth-child(even) { background: none; }
+  .tb-callout { background: none; }
+  pre { background: none; border: 1px solid var(--tb-rule); }
+}

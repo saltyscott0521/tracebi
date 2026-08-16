@@ -166,8 +166,8 @@ body {
 .layout-row { display: flex; gap: 24px; align-items: flex-start; }
 .layout-row > .layout-col { min-width: 0; }
 
-/* Charts — inline SVG, so every part is themeable from here. Override any
-   of these in a custom stylesheet to restyle charts without touching code. */
+/* Charts — these classes apply to the print/PDF (WeasyPrint) inline-SVG path
+   only; interactive HTML draws via ECharts, which these do not touch. */
 .chart-container {
     text-align: center;
     margin: 8px 0;
