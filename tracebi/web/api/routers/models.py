@@ -62,11 +62,20 @@ def preview_table(name: str, table_name: str, rows: int = 50):
 
 
 class QueryRequest(BaseModel):
+    # One grammar on every surface (architecture v2 §2.2): the body is the
+    # same QuerySpec dict Python, report specs, and the MCP gateway speak —
+    # validated by QuerySpec.from_dict, not by a parallel pydantic shape.
+    # measures accepts BOTH forms: {column: agg} ad-hoc aggregations AND a
+    # list of declared measure names (ratio measures included) — the
+    # semantic layer's vocabulary is reachable over HTTP.
     fact: str
-    measures: dict[str, str]                  # {column: agg} e.g. {"revenue": "sum"}
+    measures: Any                             # {column: agg} or [measure names]
     dimensions: Optional[list[str]] = None    # ["dim_customer.region", ...]
-    filters: Optional[dict[str, Any]] = None  # equality filters on the fact table
+    filters: Optional[dict[str, Any]] = None  # fact columns or dim attributes
     aggregate: bool = True
+    allow_fanout: bool = False
+    order_by: Optional[list] = None           # [{"column":..,"desc":..}] or "-col"
+    limit: Optional[int] = None               # requires order_by
 
 
 @router.post("/{name}/query")
@@ -75,19 +84,27 @@ def run_query(name: str, body: QueryRequest):
     Run a star-schema query against a model's facts/dimensions and return
     the result rows plus the full lineage of the query that was executed.
     """
+    from tracebi.model.data_model import QuerySpec
+
     model = registry.get_model(name)
     if not model:
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
 
     started = time.perf_counter()
     try:
-        ds = model.query(
-            fact=body.fact,
-            measures=body.measures,
-            dimensions=body.dimensions,
-            filters=body.filters,
-            aggregate=body.aggregate,
-        )
+        spec = QuerySpec.from_dict({
+            k: v for k, v in {
+                "fact": body.fact,
+                "measures": body.measures,
+                "dimensions": body.dimensions,
+                "filters": body.filters,
+                "aggregate": body.aggregate,
+                "allow_fanout": body.allow_fanout,
+                "order_by": body.order_by,
+                "limit": body.limit,
+            }.items() if v is not None
+        })
+        ds = model.execute(spec)
     except ValueError as exc:
         # Unknown fact/dimension/agg or malformed reference — caller error.
         raise HTTPException(status_code=400, detail=str(exc))

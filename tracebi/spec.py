@@ -584,6 +584,31 @@ def json_schema() -> dict:
                     "filters": {"type": "object"},
                     "aggregate": {"type": "boolean", "default": True},
                     "allow_fanout": {"type": "boolean", "default": False},
+                    "order_by": {
+                        "type": "array",
+                        "description": "result ordering: {column, desc} entries "
+                                       "or 'col' / '-col' shorthand",
+                        "items": {
+                            "anyOf": [
+                                {"type": "string"},
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "column": {"type": "string"},
+                                        "desc": {"type": "boolean",
+                                                 "default": False},
+                                    },
+                                    "required": ["column"],
+                                    "additionalProperties": False,
+                                },
+                            ]
+                        },
+                    },
+                    "limit": {
+                        "type": "integer", "minimum": 1,
+                        "description": "keep the first N rows after sorting; "
+                                       "refused without order_by",
+                    },
                 },
                 "required": ["fact", "measures"],
                 "additionalProperties": False,

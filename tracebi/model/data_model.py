@@ -149,6 +149,41 @@ _EXPR_ALLOWED = re.compile(r"^[A-Za-z0-9_+\-*/(). ]+$")
 _EXPR_CALL = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*\(")
 
 
+def _normalize_order_by(raw: Any) -> tuple[dict, ...]:
+    """
+    Normalize ``order_by`` to the canonical tuple-of-dicts form.
+
+    Accepts ``{"column": str, "desc": bool}`` dicts and the ``"col"`` /
+    ``"-col"`` string shorthand. The stamped resolved spec always carries
+    the dict form, so replay compares like with like.
+    """
+    if not raw:
+        return ()
+    out: list[dict] = []
+    for i, entry in enumerate(raw):
+        if isinstance(entry, str):
+            desc = entry.startswith("-")
+            out.append({"column": entry.lstrip("-"), "desc": desc})
+            continue
+        if isinstance(entry, dict):
+            unknown = set(entry) - {"column", "desc"}
+            if unknown:
+                raise ValueError(
+                    f"order_by[{i}]: unknown key(s) {sorted(unknown)}. "
+                    f"Each entry is {{'column': str, 'desc': bool}} or the "
+                    f"'col' / '-col' string shorthand."
+                )
+            col = entry.get("column")
+            if not col or not isinstance(col, str):
+                raise ValueError(f"order_by[{i}]: each entry needs a 'column' (string).")
+            out.append({"column": col, "desc": bool(entry.get("desc", False))})
+            continue
+        raise ValueError(
+            f"order_by[{i}]: expected a dict or string, got {type(entry).__name__}."
+        )
+    return tuple(out)
+
+
 @dataclass(frozen=True)
 class QuerySpec:
     """
@@ -171,9 +206,11 @@ class QuerySpec:
     filters: Any = None                             # see DataModel.query()
     aggregate: bool = True
     allow_fanout: bool = False
+    order_by: tuple = ()                            # ({"column": str, "desc": bool}, ...)
+    limit: Optional[int] = None
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "fact": self.fact,
             "measures": (list(self.measures) if isinstance(self.measures, (list, tuple))
                          else dict(self.measures)),
@@ -182,6 +219,14 @@ class QuerySpec:
             "aggregate": self.aggregate,
             "allow_fanout": self.allow_fanout,
         }
+        # Only when present: a spec without ordering serializes byte-for-byte
+        # as it did before order_by/limit existed, so recorded specs in
+        # existing manifests and lineage stay stable.
+        if self.order_by:
+            d["order_by"] = [dict(o) for o in self.order_by]
+        if self.limit is not None:
+            d["limit"] = int(self.limit)
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "QuerySpec":
@@ -190,15 +235,21 @@ class QuerySpec:
         if "measures" not in d:
             raise ValueError("QuerySpec requires 'measures'.")
         unknown = set(d) - {
-            "fact", "measures", "dimensions", "filters", "aggregate", "allow_fanout",
+            "fact", "measures", "dimensions", "filters", "aggregate",
+            "allow_fanout", "order_by", "limit",
         }
         if unknown:
             raise ValueError(
                 f"Unknown QuerySpec field(s): {sorted(unknown)}. "
                 f"Allowed: fact, measures, dimensions, filters, aggregate, "
-                f"allow_fanout."
+                f"allow_fanout, order_by, limit."
             )
         measures = d["measures"]
+        limit = d.get("limit")
+        if limit is not None:
+            limit = int(limit)
+            if limit < 1:
+                raise ValueError(f"limit must be a positive integer, got {limit}.")
         return cls(
             fact=d["fact"],
             measures=list(measures) if isinstance(measures, list) else dict(measures),
@@ -206,6 +257,8 @@ class QuerySpec:
             filters=dict(d.get("filters") or {}) or None,
             aggregate=bool(d.get("aggregate", True)),
             allow_fanout=bool(d.get("allow_fanout", False)),
+            order_by=_normalize_order_by(d.get("order_by")),
+            limit=limit,
         )
 
 
@@ -724,6 +777,8 @@ class DataModel:
         filters: Optional[dict[str, Any]] = None,
         aggregate: bool = True,
         allow_fanout: bool = False,
+        order_by: Optional[list] = None,
+        limit: Optional[int] = None,
     ) -> DataSet:
         """
         Run a star-schema analytic query and return a lineage-tracked DataSet.
@@ -758,6 +813,15 @@ class DataModel:
                         and silently inflates additive measures. Set ``True``
                         only when the multiplication is intended — the opt-in
                         is then recorded as a warning node in the lineage.
+            order_by:   Result ordering: ``[{"column": ..., "desc": bool}]``
+                        dicts or ``"col"`` / ``"-col"`` shorthand, over result
+                        columns (dimension refs, measure names — ratios
+                        included). Remaining dimension columns are appended
+                        as an ascending tie-break so the order is total, and
+                        the fully resolved ordering is stamped in the spec.
+            limit:      Keep the first N rows after sorting. Refused without
+                        ``order_by`` — "first N" must never masquerade as
+                        "top N".
 
         Returns:
             A DataSet with full lineage covering load → join → filter →
@@ -774,6 +838,8 @@ class DataModel:
             filters=filters,
             aggregate=aggregate,
             allow_fanout=allow_fanout,
+            order_by=_normalize_order_by(order_by),
+            limit=limit,
         ))
 
     def execute(self, spec: QuerySpec) -> DataSet:
@@ -933,6 +999,61 @@ class DataModel:
                 metadata={"ratios": {k: list(v) for k, v in ratios.items()}},
             ))
 
+        # ── Ordering (after ratios, so a ratio measure is sortable) ────
+        # limit without order_by is refused: "first N rows" in engine order
+        # silently masquerades as "top N" — the grammar will not express it.
+        if spec.limit is not None and not spec.order_by:
+            raise ValueError(
+                "limit without order_by is refused: without a stated ordering, "
+                "'first N rows' silently masquerades as 'top N'. Add order_by "
+                "to state the ranking."
+            )
+        stamped_spec = spec.to_dict()
+        if spec.order_by:
+            resolved = [dict(o) for o in spec.order_by]
+            result_cols = list(result_df.columns)
+            for o in resolved:
+                if o["column"] not in result_df.columns:
+                    raise ValueError(
+                        f"order_by column '{o['column']}' is not a result "
+                        f"column of this query."
+                        f"{self._hint(o['column'], result_cols)} "
+                        f"Result columns: {result_cols}"
+                    )
+            # Deterministic on ties: append the remaining grouped dimension
+            # columns as an implicit ascending tie-break, and stamp the FULLY
+            # resolved ordering so replay reproduces it exactly. Applied only
+            # when order_by/limit is present — a spec without them keeps
+            # today's byte-for-byte output (the engines already ORDER BY the
+            # group columns), so no existing fingerprint can move.
+            named = {o["column"] for o in resolved}
+            for dim_name, attribute in parsed_dims:
+                ref = f"{dim_name}.{attribute}"
+                if ref in result_df.columns and ref not in named:
+                    resolved.append({"column": ref, "desc": False})
+                    named.add(ref)
+            result_df = result_df.sort_values(
+                by=[o["column"] for o in resolved],
+                ascending=[not o["desc"] for o in resolved],
+                kind="mergesort",   # stable — the tie-break is total anyway
+            ).reset_index(drop=True)
+            stamped_spec["order_by"] = [dict(o) for o in resolved]
+            if spec.limit is not None:
+                result_df = result_df.head(int(spec.limit)).reset_index(drop=True)
+            lineage.append(LineageNode(
+                operation="sort",
+                description=(
+                    "Ordered by "
+                    + ", ".join(
+                        f"{o['column']}{' desc' if o['desc'] else ''}"
+                        for o in resolved
+                    )
+                    + (f", limit {spec.limit}" if spec.limit is not None else "")
+                ),
+                metadata={"order_by": [dict(o) for o in resolved],
+                          "limit": spec.limit},
+            ))
+
         lineage.append(LineageNode(
             operation="transform",
             description=f"Star-schema query executed via {engine}",
@@ -940,12 +1061,13 @@ class DataModel:
                 "engine": engine,
                 "rows_out": len(result_df),
                 "measures": dict(measures),
-                # The model and the exact spec that produced this frame.
-                # With DataSet.fingerprint() that makes the run
+                # The model and the exact spec that produced this frame —
+                # with the fully resolved ordering, so replay compares like
+                # with like. With DataSet.fingerprint() that makes the run
                 # reproducible, and it lets a report recover a declarative
                 # data reference for its own sections (see tracebi.spec).
                 "model": self.name,
-                "query_spec": spec.to_dict(),
+                "query_spec": stamped_spec,
             },
         ))
 
@@ -1572,6 +1694,36 @@ class DataModel:
                     f"verified before execution, which checks it against "
                     f"the actual table.",
                 ))
+
+        # ── Ordering ──────────────────────────────────────────
+        if spec.limit is not None and not (spec.order_by or ()):
+            errors.append((
+                "limit",
+                "limit without order_by is refused: without a stated "
+                "ordering, 'first N rows' silently masquerades as 'top N'. "
+                "Add order_by to state the ranking.",
+            ))
+        if spec.order_by:
+            try:
+                normalized = _normalize_order_by(spec.order_by)
+            except ValueError as exc:
+                errors.append(("order_by", str(exc)))
+                normalized = ()
+            result_cols: Optional[list[str]] = None
+            if not errors:
+                try:
+                    result_cols = self.spec_result_columns(spec)
+                except ValueError:
+                    result_cols = None   # unresolvable measures already reported
+            for i, o in enumerate(normalized):
+                col = o["column"]
+                if result_cols is not None and col not in result_cols:
+                    errors.append((
+                        f"order_by[{i}]",
+                        f"'{col}' is not a result column of this query."
+                        f"{self._hint(col, result_cols)} "
+                        f"Result columns: {sorted(result_cols)}",
+                    ))
 
         return errors, warnings
 

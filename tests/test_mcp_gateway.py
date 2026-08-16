@@ -107,16 +107,16 @@ def test_stamp_reverifies(gateway_model):
 def test_preview_cap_does_not_change_the_fingerprint(gateway_model):
     """rows is transport; the stamp covers the full result."""
     full = _query()
-    capped = _query(limit=1)
+    capped = _query(preview_rows=1)
     assert capped["rows_returned"] == 1
     assert capped["truncated"]
     assert capped["row_count"] == full["row_count"]
     assert capped["fingerprint"] == full["fingerprint"]
 
 
-def test_limit_is_clamped_to_the_hard_cap(gateway_model):
+def test_preview_rows_is_clamped_to_the_hard_cap(gateway_model):
     from tracebi.mcp_server import _ROW_HARD_CAP
-    out = _query(limit=10_000)
+    out = _query(preview_rows=10_000)
     assert out["rows_returned"] <= _ROW_HARD_CAP
 
 

@@ -994,5 +994,7 @@ class TestQuerySpec:
             QuerySpec.from_dict({"fact": "fact_orders"})
 
     def test_unknown_fields_rejected(self):
+        # "limit" was this test's example until the grammar gained
+        # order_by/limit (M0 flip ledger) — "top" stays unknown.
         with pytest.raises(ValueError, match="Unknown QuerySpec field"):
-            QuerySpec.from_dict({"fact": "f", "measures": ["m"], "limit": 10})
+            QuerySpec.from_dict({"fact": "f", "measures": ["m"], "top": 10})

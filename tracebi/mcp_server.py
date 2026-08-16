@@ -327,44 +327,56 @@ def gateway_query(
     filters: Optional[dict] = None,
     aggregate: bool = True,
     allow_fanout: bool = False,
-    limit: int = _ROW_DEFAULT,
+    order_by: Optional[list] = None,
+    limit: Optional[int] = None,
+    preview_rows: int = _ROW_DEFAULT,
 ) -> QueryResult:
     """
     Run a star-schema query and return a **stamped** result.
 
-    The stamp — resolved query, lineage chain, fingerprint — describes the
-    *full* result; ``rows`` is a transport-capped preview of it. So a
+    ``order_by``/``limit`` are the query grammar — the same fields Python,
+    report specs, and REST accept; ``limit`` requires ``order_by`` ("first
+    N" must never masquerade as "top N"). ``preview_rows`` is transport
+    only: the stamp — resolved query, lineage chain, fingerprint —
+    describes the *full* result; ``rows`` is a capped preview of it. So a
     number quoted from this response is verifiable even when the row that
     carried it was beyond the cap: re-run the recorded query and compare
     fingerprints.
     """
-    limit = max(1, min(int(limit), _ROW_HARD_CAP))
+    from tracebi.model.data_model import QuerySpec
+
+    preview_rows = max(1, min(int(preview_rows), _ROW_HARD_CAP))
     m = _get_model(model)
-    with actor(_mcp_actor()):
-        ds = m.query(
-            fact=fact,
-            measures=measures,
-            dimensions=list(dimensions or []),
-            filters=filters or None,
-            aggregate=aggregate,
-            allow_fanout=allow_fanout,
-        )
-    df = ds.to_pandas()
-    return {
-        "model": model,
-        "query": {
+    spec = QuerySpec.from_dict({
+        k: v for k, v in {
             "fact": fact,
             "measures": measures,
             "dimensions": list(dimensions or []),
-            "filters": filters or {},
+            "filters": filters or None,
             "aggregate": aggregate,
             "allow_fanout": allow_fanout,
-        },
+            "order_by": order_by,
+            "limit": limit,
+        }.items() if v is not None
+    })
+    with actor(_mcp_actor()):
+        ds = m.execute(spec)
+    df = ds.to_pandas()
+    # Echo the STAMPED resolved spec (fully resolved ordering included), so
+    # what the agent cites is what replay compares against.
+    stamped = spec.to_dict()
+    for node in ds.lineage_to_dict():
+        qs = (node.get("metadata") or {}).get("query_spec")
+        if qs:
+            stamped = qs
+    return {
+        "model": model,
+        "query": stamped,
         "columns": list(df.columns),
         "row_count": len(df),
-        "rows": _json_rows(df, limit),
-        "rows_returned": min(limit, len(df)),
-        "truncated": len(df) > limit,
+        "rows": _json_rows(df, preview_rows),
+        "rows_returned": min(preview_rows, len(df)),
+        "truncated": len(df) > preview_rows,
         "fingerprint": ds.fingerprint(),
         "lineage": ds.lineage_to_dict(),
         "actor": _mcp_actor(),
@@ -615,12 +627,16 @@ def build_server(token: Optional[str] = None):
         name="query_model", title="Run a stamped query",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
-            "Run a star-schema query. measures is {column: agg} (sum, count, "
-            "mean, min, max, nunique); dimensions are 'dim_name.attribute' "
-            "references; filters accept equality, lists (IN) and operator "
-            "dicts (gte, between, contains, ...). Returns rows plus a stamp: "
-            "the resolved query, lineage chain, and a fingerprint of the "
-            "full result. Quote the fingerprint with any number you cite."
+            "Run a star-schema query. measures is a list of declared "
+            "measure names (ratio measures included) or {column: agg} "
+            "(sum, count, mean, min, max, nunique); dimensions are "
+            "'dim_name.attribute' references; filters accept equality, "
+            "lists (IN) and operator dicts (gte, between, contains, ...); "
+            "order_by ({column, desc} or '-col') sorts the result and "
+            "limit (requires order_by) keeps the top N. preview_rows caps "
+            "only the transport. Returns rows plus a stamp: the resolved "
+            "query, lineage chain, and a fingerprint of the full result. "
+            "Quote the fingerprint with any number you cite."
         ),
     )(gateway_query)
     server.tool(
