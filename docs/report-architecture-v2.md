@@ -206,16 +206,25 @@ The agent adopts, overrides, or ignores; it never forks. `reports/_theme.css` is
 
 ### 2.5 The authoring loop and the human-review surface
 
+**Division of labor, stated plainly:** the *narrative* of an investigation — "I
+tried X, saw Y, so did Z" — lives in the agent↔human conversation, which does
+it better than any artifact could. TraceBi's job is the **evidence layer the
+narrative points at**: addressable figures, inspectable data, visible code,
+honest badges. Everything below builds that layer and deliberately stops
+short of replicating a notebook's narrative spine. (Scaffold guidance:
+exploration blocks are allowed to be ugly — default components only; layout
+polish is finalization work.)
+
 **`tracebi dev <name>` becomes artifact-native.** The dev server's build function is replaced by a form-aware `render_target` (artifact directory → in-memory artifact render; legacy `.json` spec → spec render; legacy request script → deprecated path, one minor version). The watcher is **rewritten from single-file mtime to a directory + `models/` scan** — the current loop watches one file (`_dev_server.py:93–107`), and no milestone estimate assumes otherwise (§6, flaw 5). All DuckDB connections in dev/serve open **read-only**, so `dev`, `report build`, and `serve` coexist (bug #12's fix is a sequenced dependency, see M3). Errors render as the existing auto-reloading traceback page.
 
 **The workbench** — `GET /__workbench` on the dev server (dev-only; never injected into build output): a generated review page, same design system, four panels:
 
 1. **Figures** — every figure: id, kind, binding, live provenance badge, resolved query pretty-printed, and a **copy-address** (`credit_marks#fig:top10`) so the human redirects the agent in precise terms ("kill `#fig:by_manager`, make `#fig:top10` a top-10 by marked dollars"). Coverage headline: *"9 of 12 figures model-backed"* — the earn-your-receipt progress bar.
-2. **Data** — per binding: first rows (the exact triple bytes), dtypes, row count, fingerprint prefix, source (query vs `report.py`), unused-binding warnings.
+2. **Data** — per binding: first rows (the exact triple bytes), dtypes, row count, fingerprint prefix, source (query vs `report.py`), unused-binding warnings. **Quick-charts:** pick a binding and x/y in the panel to see a dev-only chart immediately — with the generated `data-tb-figure` markup beside it, ready to paste into `template.html`. This keeps interrogation at notebook-cell ceremony (declare a binding, see the table; two clicks, see the chart); adopting a figure is copying markup you already watched work. Quick-charts never persist and never touch the build.
 3. **Code** — `report.py`, `report.json`, `script.js`, read-only and highlighted; the eight-cleaning-decisions problem becomes visible to the reviewer instead of buried.
 4. **Lint** — non-blocking: numeric literals outside figures, bindings no figure references.
 
-**The sendable snapshot** — for a human not at the dev server: `tracebi report snapshot <name>` → one self-contained file with exploration blocks kept, a persistent visible EXPLORATION banner, `<meta name="tracebi-stage" content="exploration">`, and **no manifest at all**; `verify --file` recognizes the meta and refuses by name ("this is a review snapshot, not a published report"). A weaker-looking receipt is worse than none, so the snapshot carries none — and the stage meta plus manifest `stage` cross-check (§2.3) means no draft-shaped output can ever read as final. This resolves the skeleton's missing non-colocated handoff without ever minting a draft receipt.
+**The sendable snapshot** — for a human not at the dev server: `tracebi report snapshot <name>` → one self-contained file with exploration blocks kept, a persistent visible EXPLORATION banner, `<meta name="tracebi-stage" content="exploration">`, and **no manifest at all**; `verify --file` recognizes the meta and refuses by name ("this is a review snapshot, not a published report"). The snapshot ends with a **code appendix** — `report.py`, `report.json`, `script.js`, read-only and highlighted — so a reviewer away from the dev server can still "look through the code if necessary" (notebook-export parity), receipt-free like the rest of the file. A weaker-looking receipt is worse than none, so the snapshot carries none — and the stage meta plus manifest `stage` cross-check (§2.3) means no draft-shaped output can ever read as final. This resolves the skeleton's missing non-colocated handoff without ever minting a draft receipt.
 
 **Agent-facing coverage:** `tracebi report status <name>` prints the earned state from the CLI (`17 figures: 12 query-backed, 3 python-derived, 1 unverified, 1 unbound-ERROR; 1 declared binding unused`) — what a driving agent and CI actually call. The MCP gateway gains a read-only `workbench_state` tool returning the same JSON the panels render from; no-write-to-warehouse untouched.
 
@@ -331,9 +340,9 @@ Everything else in the current suite passes unmodified: the v1 manifest path and
 9. **Missing figure cross-check on shipped pages (loop-first; judge 2).** *Kept from the skeleton and made symmetric:* `figure_unrecorded` and `figure_missing_in_file` both fail `verify --file` (§2.3).
 10. **No non-colocated review handoff / draft-receipt risk (artifact-first ding; judges 1 & 2 with conflicting grafts).** *Resolved by combining them:* the sendable form is the receipt-**free** snapshot (EXPLORATION banner, stage meta, no manifest, refused by verify by name) — no draft receipt ever exists to launder — while the stage meta + manifest `stage` cross-check supplies loop-first's draft-never-reads-final guarantee for anything that *does* carry a manifest (§2.5, §2.3).
 
-### Open questions for the maintainer (few, real)
+### Open questions — resolved by the maintainer (2026-08-16)
 
-1. **`requests/` removal horizon.** This plan says deprecated through 0.7, removed in 0.8. loop-first argued keep-indefinitely ("it costs nothing"). Confirm 0.8 removal, or downgrade to "deprecated until it costs something."
-2. **`output/` naming.** M1 points `report build` at `output/`, absorbing finding #14 the cheap way. The alternative (`warehouse/` + `renders/`) is a bigger rename with better names. Decide before M1 lands; this plan defaults to `output/`.
-3. **`migrate spec` disposition.** Should the compiler leave the source `.json` in place beside the emitted artifact directory (two registered reports until the author deletes one — discovery will need a shadowing rule), or move it into the artifact as provenance? This plan defaults to *emit alongside, warn on name collision*, but the discovery-shadowing rule needs a maintainer call.
-4. **0.6.0 sequencing.** Release prep (changelog, version bump, sdist fix, tag) predates this reshape. Ship 0.6.0 before M0 (the reshape becomes the 0.7 line), or hold 0.6.0 for M0's kernel seams (findings #1/#2/#5 closed in the current lanes) as its headline? This plan's milestones are release-agnostic; the cut point is the maintainer's.
+1. **`requests/` removal horizon** — confirmed: deprecated through 0.7, removed in 0.8.
+2. **`output/` naming** — confirmed: `report build` renders to `output/` (finding #14 absorbed the cheap way; no folder renames).
+3. **`migrate spec` disposition** — confirmed: emit alongside, warn on name collision; the discovery-shadowing rule is: an artifact directory shadows a same-named `.json` spec, with a startup warning naming both.
+4. **0.6.0 sequencing** — moot: no release for months by the maintainer's direction; milestones are release-agnostic and the cut point stays the maintainer's.
