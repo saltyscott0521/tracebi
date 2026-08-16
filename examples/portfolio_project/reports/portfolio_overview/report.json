@@ -1,0 +1,53 @@
+{
+  "name": "portfolio_overview",
+  "description": "The default-component lane: KPI, chart, and table figures hydrated by the shipped runtime from the stamped bytes \u2014 no author CSS or JS at all.",
+  "libs": [
+    "echarts"
+  ],
+  "data": {
+    "kpis": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "positions",
+          "mark"
+        ]
+      }
+    },
+    "by_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value"
+        ],
+        "dimensions": [
+          "dim_issuer.sector"
+        ],
+        "order_by": [
+          "-fair_value"
+        ]
+      }
+    },
+    "top_issuers": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "cost_basis",
+          "mark"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer"
+        ],
+        "order_by": [
+          "-fair_value"
+        ],
+        "limit": 8
+      }
+    }
+  }
+}

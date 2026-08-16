@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Portfolio — Overview</title></head>
+<body>
+<main class="tb-page">
+  <h1>Direct Lending — Portfolio Overview</h1>
+  <p class="tb-note">Zero-effort page: every style and behavior below is the default stack.</p>
+  <div class="tb-grid">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="fair_value" data-tb-format="compact" id="fig-fv">
+      <span class="tb-kpi-label">Fair value</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="positions" data-tb-format="comma" id="fig-pos">
+      <span class="tb-kpi-label">Positions</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-unverified
+         data-tb-note="analyst estimate" id="fig-est">
+      <span class="tb-kpi-label">Est. Q3 deployments</span>
+      <span class="tb-kpi-value">4</span>
+    </div>
+  </div>
+  <div class="tb-card">
+    <h2>Fair value by sector</h2>
+    <div data-tb-figure="chart" data-tb-binding="by_sector" data-tb-type="bar"
+         data-tb-x="dim_issuer.sector" data-tb-y="fair_value"
+         data-tb-value-format="compact" id="fig-chart"></div>
+  </div>
+  <div class="tb-card">
+    <h2>Top issuers</h2>
+    <table data-tb-figure="table" data-tb-binding="top_issuers" class="tb-table--striped" id="fig-top"></table>
+  </div>
+  <section data-tb-stage="exploration">
+    <h3>Working note</h3><p>Probe scratch — dies at build.</p>
+  </section>
+</main>
+</body></html>

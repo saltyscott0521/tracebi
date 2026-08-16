@@ -2017,13 +2017,14 @@ def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
 
 
 def _build_report_target(kind: str, path: Path, output: Path,
-                         theme: Optional[str] = None) -> Path:
+                         theme: Optional[str] = None,
+                         badges: bool = True) -> Path:
     """Render one report target to *output* (+ a sibling manifest). Returns output."""
     output.parent.mkdir(parents=True, exist_ok=True)
     models = _load_project_models()
     if kind == "package":
         from tracebi.reports.template_package import TemplatePackage
-        TemplatePackage(str(path)).render(models, str(output))
+        TemplatePackage(str(path)).render(models, str(output), badges=badges)
     else:
         from tracebi.reports.html_renderer import HTMLRenderer
         from tracebi.spec import ReportSpec
@@ -2135,7 +2136,8 @@ def cmd_report(args: argparse.Namespace) -> int:
     output = Path(args.output) if args.output else Path.cwd() / "output" / f"{args.name}.html"
     try:
         _build_report_target(kind, path, output,
-                             theme=getattr(args, 'theme', None))
+                             theme=getattr(args, 'theme', None),
+                             badges=not getattr(args, 'no_badges', False))
     except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
         print(f"failed to build report '{args.name}': "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
@@ -2317,6 +2319,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("action", choices=["build", "preview", "snapshot"])
     p_report.add_argument("name", help="Report name (package dir or spec stem).")
     p_report.add_argument("--output", help="Output .html path (default: output/<name>.html).")
+    p_report.add_argument(
+        "--no-badges", action="store_true",
+        help="Omit the provenance badges from the rendered page (client "
+             "deliverables). The manifest is unaffected.",
+    )
     p_report.add_argument(
         "--theme",
         help="Extra CSS file stacked over the spec's own theme (later wins). "

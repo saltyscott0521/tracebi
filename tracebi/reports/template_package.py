@@ -212,6 +212,7 @@ class TemplatePackage:
         output_path: str,
         save_manifest: bool = True,
         manifest_path: Optional[str] = None,
+        badges: bool = True,
     ) -> ReportManifest:
         """Render the package to one self-contained ``.html`` (+ manifest).
 
@@ -260,7 +261,15 @@ class TemplatePackage:
         manifest.stage = "final"
         manifest.figures = [_figure_record(f) for f in figs]
 
-        page = self._inject(page, embed_items, stage="final")
+        # Provenance for the runtime's badges, decided from what was actually
+        # embedded (v2 §2.4): a stylesheet can restyle a badge, never
+        # re-color honesty. --no-badges omits rendering; the manifest is
+        # unaffected either way.
+        from tracebi.reports.stack import figures_config
+        cfg = {"badges": bool(badges),
+               "figures": figures_config(figs, {sd.name for sd in outputs})}
+
+        page = self._inject(page, embed_items, stage="final", figures_cfg=cfg)
 
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
@@ -355,7 +364,16 @@ class TemplatePackage:
         )
         page = renderer.to_html(report)
         page, _warnings = assign_figure_ids(page)
-        page = self._inject(page, inputs + outputs, stage="exploration")
+        try:
+            snap_figs = extract_figures(page)
+        except FigureError:
+            snap_figs = []          # a working page may be mid-edit; lint, don't block
+        from tracebi.reports.stack import figures_config
+        cfg = {"badges": True,
+               "figures": figures_config(snap_figs,
+                                         {sd.name for sd in outputs})}
+        page = self._inject(page, inputs + outputs, stage="exploration",
+                            figures_cfg=cfg)
 
         banner = (
             '<div style="position:sticky;top:0;z-index:9999;background:#b45309;'
@@ -461,34 +479,32 @@ class TemplatePackage:
 
     # ── Injection ───────────────────────────────────────────────────────────
 
-    def _inject(self, page: str, stamped, stage: Optional[str] = None) -> str:
-        """Insert the CSP, stage meta, style, charting libs, data blocks, script.
+    def _inject(self, page: str, stamped, stage: Optional[str] = None,
+                figures_cfg: Optional[dict] = None) -> str:
+        """Insert the full presentation stack (architecture v2 §2.4).
 
-        Independent of any template placeholder (see the module docstring). Into
-        ``<head>``: a strict CSP (architecture §5), the page's stage meta, and
-        the stylesheet. Before ``</body>``, in order: any inlined charting
-        library, the safe embedded-data blocks, then the app script that reads
-        them. A missing ``</head>`` or ``</body>`` is a hard error — dropping
-        the injection would ship a page with no data and no warning.
+        Independent of any template placeholder (see the module docstring),
+        via :mod:`tracebi.reports.stack` — the one injection order, which IS
+        the override chain: CSP → stage meta → tracebi.css → the project's
+        ``reports/_theme.css`` → this package's ``style.css`` into
+        ``<head>``; charting libs → tracebi.js → the safe embedded-data
+        blocks → the figures/provenance config → this package's
+        ``script.js`` before ``</body>``. The author's layers run last, so
+        they win. A missing ``</head>`` or ``</body>`` is a hard error —
+        dropping the injection would ship a page with no data and no warning.
         """
-        head = csp_meta()
-        if stage:
-            head += f'<meta name="tracebi-stage" content="{stage}">\n'
-        if self.style_css.strip():
-            head += f"<style>\n{self.style_css}\n</style>\n"
-        page = insert_before(page, "</head>", head)
+        from tracebi.reports.stack import apply_stack, project_theme_css
 
-        # Library first (so its global exists), then data (so the blocks are in
-        # the DOM), then the app script that draws from them.
-        tail = ""
-        for lib in self.libs:
-            tail += f"<script>\n{read_lib(lib)}\n</script>\n"
-        tail += "".join(embed_block(sd) + "\n" for sd in stamped)
-        if self.script_js.strip():
-            tail += f"<script>\n{self.script_js}\n</script>\n"
-        if tail:
-            page = insert_before(page, "</body>", tail)
-        return page
+        return apply_stack(
+            page,
+            libs=self.libs,
+            data_blocks_html="".join(embed_block(sd) + "\n" for sd in stamped),
+            stage=stage,
+            project_css=project_theme_css(),
+            report_css=self.style_css,
+            figures_cfg=figures_cfg,
+            report_js=self.script_js,
+        )
 
 
 def _figure_record(f: Figure) -> dict:
