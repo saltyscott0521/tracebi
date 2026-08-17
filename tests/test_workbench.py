@@ -20,6 +20,7 @@ from tracebi.workbench import (
     collect_discovery_state,
     collect_state,
     discovery_dir,
+    frame_profile,
     heartbeat,
     last_seq,
     read_exhibits,
@@ -159,6 +160,89 @@ class TestShowDiscoveryHeartbeat:
         show("a session note")
         assert [e["kind"] for e in read_exhibits(explicit)] == ["note"]
         assert read_exhibits(wb) == []
+
+
+class TestChartExhibits:
+    """show(chart=...) — the sketch stays a workbench exhibit: the frame's
+    excerpt plus a recipe the page renders live. Validation is soft by the
+    never-raise contract: a bad sketch degrades to a plain frame exhibit."""
+
+    def _df(self):
+        return pd.DataFrame({"sector": ["fin", "tech", "fin"],
+                             "fair_value": [10.0, 20.0, 30.0]})
+
+    def test_chart_posts_recipe_and_profile(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show(self._df(), chart="bar", x="sector", y="fair_value",
+             note="fv by sector")
+        [entry] = read_exhibits(wb)
+        assert entry["kind"] == "chart"
+        assert entry["recipe"] == {"chart": "bar", "x": "sector",
+                                   "y": ["fair_value"]}
+        assert entry["note"] == "fv by sector"
+        # The excerpt travels with the recipe — same shape as a frame.
+        assert entry["columns"] == ["sector", "fair_value"]
+        assert entry["shape"] == [3, 2]
+        assert entry["rows"][0] == {"sector": "fin", "fair_value": 10.0}
+        # And the profile is computed over the full frame.
+        assert entry["profile"]["fair_value"]["mean"] == 20.0
+        assert entry["profile"]["sector"]["top"][0] == "fin"
+
+    def test_y_list_normalises_into_the_recipe(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        df = self._df().assign(cost=[1.0, 2.0, 3.0])
+        show(df, chart="line", x="sector", y=["fair_value", "cost"])
+        [entry] = read_exhibits(wb)
+        assert entry["kind"] == "chart"
+        assert entry["recipe"]["y"] == ["fair_value", "cost"]
+
+    def test_unknown_chart_kind_falls_back_to_frame(
+            self, tmp_path, monkeypatch, capsys):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show(self._df(), chart="sunburst", x="sector", y="fair_value")
+        [entry] = read_exhibits(wb)
+        assert entry["kind"] == "frame"
+        assert "recipe" not in entry
+        assert "profile" in entry               # still a full frame exhibit
+        assert "fell back to frame" in capsys.readouterr().err
+
+    def test_missing_or_unknown_axes_fall_back_to_frame(
+            self, tmp_path, monkeypatch, capsys):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show(self._df(), chart="bar")                       # no x/y at all
+        show(self._df(), chart="bar", x="sector", y="ghost")  # not a column
+        assert [e["kind"] for e in read_exhibits(wb)] == ["frame", "frame"]
+        assert capsys.readouterr().err.count("fell back to frame") == 2
+
+
+class TestFrameProfile:
+    def test_mixed_dtype_profile(self):
+        df = pd.DataFrame({
+            "fund": ["alpha", "beta", "alpha", None],
+            "fv": [1.0, 2.0, float("nan"), 6.0],
+            "qty": [1, 2, 3, 4],
+        })
+        p = frame_profile(df)
+        assert p["fund"] == {"dtype": "object", "nulls": 1, "distinct": 2,
+                             "top": ["alpha", "beta"]}
+        fv = p["fv"]
+        assert fv["dtype"] == "float64"
+        assert fv["nulls"] == 1 and fv["distinct"] == 3
+        assert (fv["min"], fv["max"], fv["mean"]) == (1.0, 6.0, 3.0)
+        qty = p["qty"]
+        assert (qty["min"], qty["max"], qty["mean"]) == (1.0, 4.0, 2.5)
+        json.dumps(p)                           # JSON-safe throughout
+
+    def test_all_nan_numeric_is_nan_safe(self):
+        p = frame_profile(pd.DataFrame({"empty": [float("nan")] * 3}))
+        assert p["empty"]["nulls"] == 3 and p["empty"]["distinct"] == 0
+        assert p["empty"]["min"] is None
+        assert p["empty"]["max"] is None
+        assert p["empty"]["mean"] is None
 
 
 class TestPins:
@@ -398,6 +482,38 @@ class TestCollectDiscoveryState:
         assert names.count("disc_model") == 1
         assert state["warehouse"]["exists"] is True
 
+    def test_warehouse_tables_carry_profiles(self, discovery_project):
+        """The same profile shape as frame_profile, via read-only SQL
+        aggregates — the frame itself never leaves the warehouse."""
+        state = collect_discovery_state(str(discovery_project), {})
+        tables = {t["name"]: t for t in state["warehouse"]["tables"]}
+
+        fv = tables["fact_holdings"]["profile"]["fair_value"]
+        assert fv["nulls"] == 0 and fv["distinct"] == 3
+        assert (fv["min"], fv["max"], fv["mean"]) == (10.0, 30.0, 20.0)
+
+        issuer = tables["dim_issuer"]["profile"]["issuer"]
+        assert issuer["dtype"] == "VARCHAR"
+        assert issuer["nulls"] == 0 and issuer["distinct"] == 3
+        assert sorted(issuer["top"]) == ["a", "b", "c"]
+        # Numeric keys profile too (BIGINT lands in the numeric branch).
+        key = tables["dim_issuer"]["profile"]["issuer_id"]
+        assert (key["min"], key["max"], key["mean"]) == (1.0, 3.0, 2.0)
+
+    def test_wide_table_gets_profile_null(self, tmp_path):
+        pytest.importorskip("duckdb")
+        from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+        (tmp_path / "data").mkdir()
+        wh = str(tmp_path / "data" / "warehouse.duckdb")
+        wide = pd.DataFrame({f"c{i}": [1] for i in range(51)})
+        DuckDBConnector("wh", database=wh).write(wide, "wide")
+        state = collect_discovery_state(str(tmp_path), {})
+        [t] = state["warehouse"]["tables"]
+        assert t["rows"] == 1 and len(t["columns"]) == 51
+        assert t["profile"] is None
+        assert "51 columns" in t["note"]
+
     def test_missing_warehouse_is_state_not_crash(self, tmp_path):
         state = collect_discovery_state(str(tmp_path), {})
         wh = state["warehouse"]
@@ -408,3 +524,26 @@ class TestCollectDiscoveryState:
     def test_state_is_json_serialisable(self, discovery_project):
         json.dumps(collect_discovery_state(str(discovery_project), {}),
                    default=str)
+
+
+class TestNoteMarkdown:
+    """Notebook-cell notes: markdown renders in the feed, escaped-first."""
+
+    def test_note_exhibits_gain_preescaped_html(self):
+        from tracebi.workbench import render_note_markdown
+        out = render_note_markdown([
+            {"kind": "note", "seq": 1,
+             "text": "## Approach\n\nDropped **9** null-mark funds."},
+            {"kind": "frame", "seq": 2, "rows": []},
+        ])
+        assert "<h3>Approach</h3>" in out[0]["html"]
+        assert "<strong>9</strong>" in out[0]["html"]
+        assert "html" not in out[1], "only notes convert"
+
+    def test_markdown_cannot_smuggle_markup(self):
+        from tracebi.workbench import render_note_markdown
+        out = render_note_markdown([
+            {"kind": "note", "seq": 1, "text": "<script>alert(1)</script>"},
+        ])
+        assert "<script>" not in out[0]["html"]
+        assert "&lt;script&gt;" in out[0]["html"]

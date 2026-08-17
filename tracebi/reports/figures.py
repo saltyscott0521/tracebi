@@ -91,6 +91,14 @@ class _FigureParser(HTMLParser):
         #: absolute (start, end) ranges of OUTERMOST stage-marked elements,
         #: keyed by stage name
         self.stage_ranges: dict[str, list[tuple[int, int]]] = {}
+        #: open ``data-tb-methodology`` containers:
+        #: (tagname, abs_start, stack_depth_at_open)
+        self._methodology_stack: list[tuple[str, int, int]] = []
+        #: absolute index of each methodology container's CLOSING tag — the
+        #: point where build-derived stated-methodology entries are inserted,
+        #: after the author's own children. More than one entry is an error
+        #: the public helper raises.
+        self.methodology_insertions: list[int] = []
         self.stage_meta: Optional[str] = None
         #: text-node chunks that sit outside every figure element (and
         #: outside script/style) — the workbench's numeric-literal lint
@@ -163,12 +171,28 @@ class _FigureParser(HTMLParser):
             )
         self._stage_stack.append((tag, stage, abs_start, len(self._stack)))
 
+    def _handle_methodology_open(self, tag: str, attrs_list,
+                                 abs_start: int) -> None:
+        # Mirror of the stage-block scan: same tokenizer, same nesting
+        # discipline. The container hosts the stated-methodology appendix,
+        # which is APPENDED inside it at build — so an element that cannot
+        # hold children cannot carry the attribute.
+        if "data-tb-methodology" not in dict(attrs_list):
+            return
+        if tag in _VOID:
+            raise FigureError(
+                f"<{tag}> cannot carry data-tb-methodology — a void element "
+                f"has no content to hold the stated-methodology appendix."
+            )
+        self._methodology_stack.append((tag, abs_start, len(self._stack)))
+
     # ── HTMLParser hooks ─────────────────────────────────────────────────
 
     def handle_starttag(self, tag, attrs):
         abs_start = self._abs()
         self._handle_figure(tag, attrs, abs_start)
         self._handle_stage_open(tag, attrs, abs_start)
+        self._handle_methodology_open(tag, attrs, abs_start)
         if tag not in _VOID:
             if "data-tb-figure" in dict(attrs):
                 self._figure_depths.append(len(self._stack))
@@ -182,6 +206,13 @@ class _FigureParser(HTMLParser):
             raise FigureError(
                 f"self-closing <{tag}/> cannot carry data-tb-stage — it has "
                 f"no content to stage."
+            )
+        if "data-tb-methodology" in attrs_d:
+            raise FigureError(
+                f"self-closing <{tag}/> cannot carry data-tb-methodology — "
+                f"the stated-methodology appendix is appended inside the "
+                f"container, after the author's children; give it a real "
+                f"closing tag."
             )
 
     def handle_endtag(self, tag):
@@ -203,6 +234,14 @@ class _FigureParser(HTMLParser):
             )
         if self._figure_depths and self._figure_depths[-1] == len(self._stack):
             self._figure_depths.pop()
+        # Close any methodology container opened at this depth by this
+        # element: record where its closing tag begins — the appendix
+        # insertion point, after the author's own children.
+        if self._methodology_stack \
+                and self._methodology_stack[-1][2] == len(self._stack) \
+                and self._methodology_stack[-1][0] == tag:
+            self._methodology_stack.pop()
+            self.methodology_insertions.append(self._abs())
         # Close any stage block opened at this depth by this element.
         if self._stage_stack and self._stage_stack[-1][3] == len(self._stack) \
                 and self._stage_stack[-1][0] == tag:
@@ -227,6 +266,12 @@ class _FigureParser(HTMLParser):
             raise FigureError(
                 f"<{tag} data-tb-stage=\"{stage}\"> opened at position {pos} "
                 f"is never closed — malformed nesting."
+            )
+        if self._methodology_stack:
+            tag, pos, _ = self._methodology_stack[-1]
+            raise FigureError(
+                f"<{tag} data-tb-methodology> opened at position {pos} is "
+                f"never closed — malformed nesting."
             )
 
 
@@ -313,6 +358,26 @@ def strip_stage(html_text: str, stage: str = "exploration") -> str:
 def read_stage_meta(html_text: str) -> Optional[str]:
     """The ``<meta name="tracebi-stage">`` content, if the page carries one."""
     return _parse(html_text).stage_meta
+
+
+def methodology_insertion(html_text: str) -> Optional[int]:
+    """
+    The absolute index of the ONE ``data-tb-methodology`` container's
+    closing tag — where the build appends the pipeline's stated-methodology
+    entries, AFTER the author's own children, whose prose stays theirs.
+
+    None when the page opts out (no container). More than one container is
+    a hard error: the stated methodology has one home per page, not a
+    scatter that could read like several independent statements.
+    """
+    insertions = _parse(html_text).methodology_insertions
+    if len(insertions) > 1:
+        raise FigureError(
+            f"{len(insertions)} data-tb-methodology containers found — the "
+            f"stated-methodology appendix has ONE home per page; merge them "
+            f"into a single container."
+        )
+    return insertions[0] if insertions else None
 
 
 #: A numeric literal worth flagging: at least two digits, allowing group

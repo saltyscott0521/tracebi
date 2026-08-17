@@ -227,6 +227,13 @@ def _presentation() -> dict:
             "data-tb-columns": "table figures: column allowlist/order",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
+            "data-tb-methodology": "one per page, on any container element; "
+                                   "the author's own children stay FIRST; "
+                                   "the build appends the pipeline's stated "
+                                   "methodology (transform notes, per-check "
+                                   "rationale, measure descriptions) — an "
+                                   "appendix, never a claim: no badge, no "
+                                   "status",
         },
         "prose_values": "When explaining results in prose, BIND the numbers: "
                         "<span data-tb-figure=\"value\" data-tb-binding=... "
@@ -256,27 +263,41 @@ def _transform_contracts() -> dict:
                 "satisfied its contract', never 'the transform was "
                 "verified': nothing machine-checks the pandas above it.",
         "usage": "from tracebi.contracts import contract\n"
-                 "with contract('holdings', warehouse=WAREHOUSE) as c:\n"
+                 "with contract('holdings', warehouse=WAREHOUSE,\n"
+                 "              note='unkeyed rows dropped and counted') as c:\n"
                  "    c.rows('fact_holdings', at_least=10)\n"
                  "    c.unique('dim_issuer', ['issuer_id'])",
         "checks": [
             {"check": "rows",
-             "args": ["table", "at_least?", "at_most?", "exactly?"],
+             "args": ["table", "at_least?", "at_most?", "exactly?", "note?"],
              "means": "row-count bounds"},
-            {"check": "unique", "args": ["table", "columns"],
+            {"check": "unique", "args": ["table", "columns", "note?"],
              "means": "the columns form a unique key"},
-            {"check": "not_null", "args": ["table", "columns"],
+            {"check": "not_null", "args": ["table", "columns", "note?"],
              "means": "no NULLs in any named column"},
             {"check": "foreign_key",
-             "args": ["table", "column", "refers_to=(table, column)"],
+             "args": ["table", "column", "refers_to=(table, column)",
+                      "note?"],
              "means": "no orphaned keys"},
-            {"check": "values", "args": ["table", "column", "within"],
+            {"check": "values", "args": ["table", "column", "within",
+                                         "note?"],
              "means": "every value drawn from a closed set"},
             {"check": "reconcile",
              "args": ["table", "column", "against=(table, column)", "by",
-                      "tolerance"],
+                      "tolerance", "note?"],
              "means": "per-key sums match across two tables within tolerance"},
         ],
+        "stated_methodology": "contract(..., note='…') records the "
+                              "transform-level STATED methodology, and every "
+                              "check takes note='…' for per-check rationale "
+                              "('dropped the 9 unkeyed rows'). A note is "
+                              "prose the author states, recorded verbatim in "
+                              "the certificate, carried into the manifest's "
+                              "transform_contracts entries and a report's "
+                              "data-tb-methodology appendix. It is never a "
+                              "verified claim: say 'the transform states', "
+                              "never 'verified methodology' — a note earns "
+                              "no badge and never colors any status.",
         "manifest_join": "At report build, each loaded warehouse table is "
                          "classified in the manifest's transform_contracts "
                          "block: satisfied (the recorded certificate still "

@@ -571,6 +571,14 @@ class ReportManifest:
     #: verified", and contract status never colors a figure status. None
     #: (omitted) on v1 renders and when no tables were loaded.
     transform_contracts: Optional[dict] = None
+    #: The stated methodology that shipped with the page (template packages
+    #: with a ``data-tb-methodology`` container): ``{"transform_notes":
+    #: {table: note}, "check_notes": [{transform, check, table, note}],
+    #: "measure_notes": {measure: description}}`` — prose the transform and
+    #: the model STATE about themselves, recorded so the receipt shows what
+    #: stated methodology shipped. Never a verified claim; it never affects
+    #: any figure or section status. None (omitted) otherwise.
+    methodology: Optional[dict] = None
 
     def to_dict(self) -> dict:
         d = {
@@ -594,6 +602,8 @@ class ReportManifest:
             d["figures"] = self.figures
         if self.transform_contracts is not None:
             d["transform_contracts"] = self.transform_contracts
+        if self.methodology is not None:
+            d["methodology"] = self.methodology
         return d
 
     def to_json(self, indent: int = 2) -> str:

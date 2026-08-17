@@ -169,9 +169,19 @@ def run() -> dict:
     # Declare what must be true of the tables that just landed — checked as
     # read-only SQL against the warehouse, recorded beside it. A failed check
     # raises here, so a broken sink never freezes quietly. This says "the sink
-    # satisfied its contract" — it does NOT verify the pandas above.
-    with contract("holdings", warehouse=WAREHOUSE) as c:
-        c.rows("fact_holdings", at_least=10)
+    # satisfied its contract" — it does NOT verify the pandas above. The
+    # note= is the STATED methodology: prose about what the cleaning did,
+    # recorded verbatim and carried into report receipts, never verified.
+    with contract(
+        "holdings", warehouse=WAREHOUSE,
+        note="issuer and instrument type parsed from the prose position "
+             "blob; sectors normalised from each administrator's spelling; "
+             "money coerced from strings; exact double-booked positions "
+             "deduped; rows with no keyable issuer dropped and counted",
+    ) as c:
+        c.rows("fact_holdings", at_least=10,
+               note="a Schedule of Investments under 10 positions means the "
+                    "raw pull is truncated, not that the book shrank")
         c.unique("dim_issuer", ["issuer_id"])
         c.not_null("fact_holdings", ["fund_id", "issuer_id", "fair_value"])
         c.foreign_key("fact_holdings", "issuer_id",

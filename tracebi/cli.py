@@ -584,9 +584,13 @@ def run() -> dict:
     # Declare the sink CONTRACT: what must be true of the tables that just
     # landed, checked as read-only SQL and recorded beside the warehouse.
     # A failed check raises — a broken sink never freezes quietly. This
-    # certifies the SINK; it never verifies the pandas above.
+    # certifies the SINK; it never verifies the pandas above. The note= is
+    # the STATED methodology — prose about what the cleaning did, recorded
+    # verbatim and carried into report receipts, never a verified claim.
     from tracebi.contracts import contract
-    with contract("sample_transform", warehouse=WAREHOUSE) as c:
+    with contract("sample_transform", warehouse=WAREHOUSE,
+                  note="dropped rows without an order_id; regions "
+                       "normalized from four spellings") as c:
         c.rows("fact_orders", at_least=1)
         c.unique("fact_orders", ["order_id"])
         c.not_null("fact_orders", ["order_id", "region_id", "revenue"])
@@ -923,6 +927,12 @@ whose figures each name a binding from `report.json`:
   `tracebi.configureChart` — config can restyle, never re-source: series data
   always comes from the stamped bytes. Provenance badges pick their state
   from the manifest; a stylesheet can restyle a badge, never re-color honesty.
+- Methodology travels the pipeline: `contract(..., note=...)` (and per-check
+  `note=`) records the transform's STATED methodology in the certificate;
+  measure `description=` carries modeling intent. Add ONE
+  `<section data-tb-methodology></section>` to the template and the build
+  appends them after your own prose — an appendix of what the pipeline
+  states about itself, clearly not a verified claim, never badged.
 
 ## The loop you run
 
@@ -942,13 +952,18 @@ tracebi serve                               # browse at http://127.0.0.1:8000
 0. **Discovery comes first — and it has a live surface.** Before any report
    exists, run `tracebi dev` with **no name** (backgrounded — it blocks):
    the discovery workbench. While it serves, ANY script you run can call
-   `tracebi.workbench.show(df, note=...)` — no env var needed — and the
-   frame excerpt appears in the portal, so interrogating the source data
-   happens in the open instead of buried in chat. The Warehouse panel
-   lists tables, row counts, and sink-contract status as transforms land;
-   the Models panel shows the star schema (facts, dimensions, measures)
-   taking shape as you edit `models/`. The human pins tables and exhibits
-   with notes exactly like figures later — read them via the MCP
+   `tracebi.workbench.show(...)` — no env var needed — and the portal
+   updates live. **Work like a notebook**: `show("## Approach\\n...")`
+   renders as a markdown cell (narrate the methodology as you go — the
+   human can flip the feed to read top-down as a document);
+   `show(df, note=...)` posts a frame excerpt with column profiles;
+   `show(df, chart="bar", x=..., y=...)` sketches a real chart (bar,
+   barh, line, area, pie, scatter) — iterate by re-showing, and when the
+   human pins one for the report, re-express it as a model-query binding
+   + figure: the sketch is exploration, the figure is the claim. The
+   Warehouse panel lists tables, row counts, column profiles, and
+   sink-contract status as transforms land; the Models panel shows the
+   star schema taking shape as you edit `models/`. Pins read via the MCP
    `workbench_state` tool called with no `report`. All dev-state; no
    receipts exist before the model boundary, and `show()` is a no-op the
    moment the server is down.

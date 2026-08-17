@@ -6,6 +6,36 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the notebook loop, and methodology that travels the pipeline
+
+Three asks from the maintainer's live session, built and drilled:
+
+- **Chart sketches in discovery.** `show(df, chart="bar", x=..., y=...)`
+  (all six runtime chart types) renders a real ECharts chart in the feed,
+  with its recipe printed beside it. Iterate by re-showing; when the human
+  pins one for the report, the agent re-expresses it as a model-query
+  binding + figure — the sketch is exploration, the figure is the claim.
+- **Markdown notes — the notebook cell.** `show("## Approach\n...")`
+  renders as real markdown in the feed (escaped-first, the same safe
+  subset the spec compiler uses), and a "read as document" toggle flips
+  the feed from newest-first log to top-down narrative — the analysis
+  reads like a notebook while it happens.
+- **Data-wrangler-lite.** Frame and chart exhibits carry full-frame column
+  profiles (nulls, distinct, min/max/mean, top values) behind a toggle,
+  excerpt tables are click-to-sort, and warehouse tables in the discovery
+  panel get the same profiles via read-only SQL aggregates.
+- **Methodology annotations travel the pipeline** (the chosen design:
+  pipeline annotations, no dev-state leakage). `contract(..., note=...)`
+  and per-check `note=` record the transform's **stated methodology** in
+  the certificate; measure descriptions carry modeling intent; one
+  `<section data-tb-methodology>` in a template makes the build append
+  them after the author's own prose, and the manifest records what
+  shipped. The locked language extends: "the transform states" — never
+  "verified methodology"; the appendix is prose, never badged, and never
+  colors a status. Drilled on the reference project: the certificate's
+  cleaning note and the truncated-pull rationale render in the shipped
+  page, and verify stays green.
+
 ### Added — the discovery workbench: a live surface for phases ① and ②
 
 The workbench previously started at the report — interrogating source data

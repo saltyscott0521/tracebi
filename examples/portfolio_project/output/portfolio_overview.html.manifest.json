@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "report_name": "portfolio_overview",
-  "rendered_at": "2026-08-16T23:59:38.306529+00:00",
+  "rendered_at": "2026-08-17T02:54:59.964748+00:00",
   "rendered_by": "unknown",
   "format": "html",
   "output_path": "/Users/andrewscott/Documents/Claude/tracebi/examples/portfolio_project/output/portfolio_overview.html",
-  "git_sha": "27594a1200d46454ddbca21bfc229831a6c97ff5",
+  "git_sha": "e12699f9e886f2dd467991ac49bad2f22c26f43b",
   "parameters": {},
   "sections": [
     {
@@ -26,7 +26,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-08-16T23:59:38.248964+00:00",
+          "timestamp": "2026-08-17T02:54:59.917092+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -44,7 +44,7 @@
           "description": "Derived measure column(s): positions = holding_id, cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.249425+00:00",
+          "timestamp": "2026-08-17T02:54:59.917479+00:00",
           "metadata": {
             "derived": {
               "positions": "holding_id",
@@ -57,7 +57,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.258562+00:00",
+          "timestamp": "2026-08-17T02:54:59.925139+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -72,7 +72,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.258571+00:00",
+          "timestamp": "2026-08-17T02:54:59.925146+00:00",
           "metadata": {
             "engine": "duckdb",
             "rows_out": 1,
@@ -119,7 +119,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-08-16T23:59:38.259887+00:00",
+          "timestamp": "2026-08-17T02:54:59.926151+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -140,7 +140,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-08-16T23:59:38.260399+00:00",
+          "timestamp": "2026-08-17T02:54:59.926581+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -158,7 +158,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.267113+00:00",
+          "timestamp": "2026-08-17T02:54:59.932784+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -172,7 +172,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.sector",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.274247+00:00",
+          "timestamp": "2026-08-17T02:54:59.935232+00:00",
           "metadata": {
             "order_by": [
               {
@@ -192,7 +192,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.274257+00:00",
+          "timestamp": "2026-08-17T02:54:59.935238+00:00",
           "metadata": {
             "engine": "duckdb",
             "rows_out": 6,
@@ -247,7 +247,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-08-16T23:59:38.275439+00:00",
+          "timestamp": "2026-08-17T02:54:59.936234+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -265,7 +265,7 @@
           "description": "Derived measure column(s): cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.275586+00:00",
+          "timestamp": "2026-08-17T02:54:59.936365+00:00",
           "metadata": {
             "derived": {
               "cost_basis": "cost"
@@ -280,7 +280,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-08-16T23:59:38.275966+00:00",
+          "timestamp": "2026-08-17T02:54:59.936743+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -298,7 +298,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.282613+00:00",
+          "timestamp": "2026-08-17T02:54:59.943018+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -312,7 +312,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.284955+00:00",
+          "timestamp": "2026-08-17T02:54:59.945337+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -327,7 +327,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.issuer, limit 8",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.285406+00:00",
+          "timestamp": "2026-08-17T02:54:59.945741+00:00",
           "metadata": {
             "order_by": [
               {
@@ -347,7 +347,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-16T23:59:38.285411+00:00",
+          "timestamp": "2026-08-17T02:54:59.945747+00:00",
           "metadata": {
             "engine": "duckdb",
             "rows_out": 8,
@@ -500,16 +500,38 @@
     "dim_issuer": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-08-16T23:59:37.815995+00:00",
+      "checked_at": "2026-08-17T02:54:59.494920+00:00",
       "checks": 2,
-      "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7"
+      "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+      "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"
     },
     "fact_holdings": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-08-16T23:59:37.815995+00:00",
+      "checked_at": "2026-08-17T02:54:59.494920+00:00",
       "checks": 4,
-      "fingerprint": "0b87d0716db4399a88eead932cbf219555d2ab7f180bb14af35db6d083a163f8"
+      "fingerprint": "0b87d0716db4399a88eead932cbf219555d2ab7f180bb14af35db6d083a163f8",
+      "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"
+    }
+  },
+  "methodology": {
+    "transform_notes": {
+      "dim_issuer": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
+      "fact_holdings": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"
+    },
+    "check_notes": [
+      {
+        "transform": "holdings",
+        "check": "rows",
+        "table": "fact_holdings",
+        "note": "a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank"
+      }
+    ],
+    "measure_notes": {
+      "fair_value": "Total fair value",
+      "positions": "Position count",
+      "mark": "Fair value / cost",
+      "cost_basis": "Total cost basis"
     }
   }
 }

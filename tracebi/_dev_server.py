@@ -456,26 +456,87 @@ __ECHARTS__
               labels[provenance] || provenance);
   }
 
-  function smallTable(columns, rows, cap) {
+  function smallTable(columns, rows, cap, sortable) {
     var wrap = el("div", "wb-table-wrap");
     var t = el("table", "tb-table tb-table--compact");
     var thead = el("thead");
     var tr = el("tr");
-    columns.forEach(function (c) { tr.appendChild(el("th", null, c)); });
+    var tbody = el("tbody");
+    var shown = rows.slice(0, cap || rows.length);
+    var sortCol = null;
+    var sortAsc = true;
+
+    function fill(list) {
+      tbody.textContent = "";
+      list.forEach(function (r) {
+        var tr2 = el("tr");
+        columns.forEach(function (c) {
+          var v = r[c];
+          tr2.appendChild(el("td", typeof v === "number" ? "tb-num" : null,
+                             v === null || v === undefined ? "" : v));
+        });
+        tbody.appendChild(tr2);
+      });
+    }
+
+    function isNum(v) {
+      return v !== null && v !== undefined && v !== "" && !isNaN(Number(v));
+    }
+
+    columns.forEach(function (c) {
+      var th = el("th", null, c);
+      if (sortable) {
+        /* Sorting is presentation of the excerpt only — it reorders the
+           rows already on screen, never the data they came from. */
+        th.style.cursor = "pointer";
+        th.addEventListener("click", function () {
+          sortAsc = sortCol === c ? !sortAsc : true;
+          sortCol = c;
+          var sorted = shown.slice().sort(function (ra, rb) {
+            var a = ra[c], b = rb[c];
+            var d;
+            if (isNum(a) && isNum(b)) d = Number(a) - Number(b);
+            else d = String(a) < String(b) ? -1
+                                           : (String(a) > String(b) ? 1 : 0);
+            return sortAsc ? d : -d;
+          });
+          fill(sorted);
+        });
+      }
+      tr.appendChild(th);
+    });
     thead.appendChild(tr);
     t.appendChild(thead);
-    var tbody = el("tbody");
-    rows.slice(0, cap || rows.length).forEach(function (r) {
-      var tr2 = el("tr");
-      columns.forEach(function (c) {
-        var v = r[c];
-        tr2.appendChild(el("td", typeof v === "number" ? "tb-num" : null,
-                           v === null || v === undefined ? "" : v));
-      });
-      tbody.appendChild(tr2);
-    });
+    fill(shown);
     t.appendChild(tbody);
     wrap.appendChild(t);
+    return wrap;
+  }
+
+  function profileToggle(profile, note) {
+    /* The per-column stats card, collapsed behind a button. A null profile
+       (capped or failed upstream) shows only its note. */
+    if (!profile) {
+      return note ? el("p", "wb-meta", note) : null;
+    }
+    var wrap = el("div");
+    var cols = ["column", "dtype", "nulls", "distinct",
+                "min", "max", "mean", "top"];
+    var rows = Object.keys(profile).map(function (c) {
+      var p = profile[c] || {};
+      return {column: c, dtype: p.dtype, nulls: p.nulls,
+              distinct: p.distinct, min: p.min, max: p.max, mean: p.mean,
+              top: (p.top || []).join(", ")};
+    });
+    var body = smallTable(cols, rows);
+    body.style.display = "none";
+    var btn = button("profile", null, function () {
+      var open = body.style.display !== "none";
+      body.style.display = open ? "none" : "block";
+      btn.textContent = open ? "profile" : "hide profile";
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(body);
     return wrap;
   }
 
@@ -510,6 +571,40 @@ __ECHARTS__
     }
   }
 
+  /* One ECharts option builder for every workbench chart surface — the
+     quick-chart picker and chart exhibits share it, so a sketch's recipe
+     has exactly one rendering. kind is the runtime's vocabulary
+     (bar/barh/line/area/pie/scatter); ys is a list of y columns. */
+  function chartOption(kind, x, ys, rows) {
+    if (kind === "pie") {
+      return {series: [{type: "pie", radius: "70%",
+                        data: rows.map(function (r) {
+                          return {name: String(r[x]), value: r[ys[0]]};
+                        })}]};
+    }
+    var grid = {top: 16, right: 16, bottom: 48, left: 72};
+    if (kind === "scatter") {
+      return {grid: grid,
+              xAxis: {type: "value"}, yAxis: {type: "value"},
+              series: ys.map(function (y) {
+                return {type: "scatter",
+                        data: rows.map(function (r) { return [r[x], r[y]]; })};
+              })};
+    }
+    var catAxis = {type: "category",
+                   data: rows.map(function (r) { return String(r[x]); })};
+    var valAxis = {type: "value"};
+    return {grid: grid,
+            xAxis: kind === "barh" ? valAxis : catAxis,
+            yAxis: kind === "barh" ? catAxis : valAxis,
+            series: ys.map(function (y) {
+              var s = {type: kind === "line" || kind === "area" ? "line" : "bar",
+                       data: rows.map(function (r) { return r[y]; })};
+              if (kind === "area") s.areaStyle = {};
+              return s;
+            })};
+  }
+
   function quickChart(binding) {
     var wrap = el("div");
     var xSel = el("select");
@@ -536,14 +631,7 @@ __ECHARTS__
       var x = xSel.value, y = ySel.value;
       chartDiv.style.display = "block";
       var chart = window.echarts.init(chartDiv);
-      chart.setOption({
-        grid: {top: 16, right: 16, bottom: 48, left: 72},
-        xAxis: {type: "category",
-                data: binding.preview.map(function (r) { return String(r[x]); })},
-        yAxis: {type: "value"},
-        series: [{type: "bar",
-                  data: binding.preview.map(function (r) { return r[y]; })}],
-      });
+      chart.setOption(chartOption("bar", x, [y], binding.preview));
       /* The copy-paste IS the adoption gesture: the markup below is the
          real figure grammar, ready for template.html. */
       var markup = '<div data-tb-figure="chart" data-tb-binding="'
@@ -595,6 +683,50 @@ __ECHARTS__
     });
   }
 
+  function exhibitFrame(card, ex) {
+    if (ex.name) card.appendChild(el("strong", null, ex.name));
+    if (ex.note) card.appendChild(el("p", null, ex.note));
+    if (ex.shape) {
+      card.appendChild(el("p", "wb-meta",
+          ex.shape[0] + " × " + ex.shape[1]
+          + (ex.shape[0] > (ex.rows || []).length
+             ? " (first " + (ex.rows || []).length + " shown)" : "")));
+    }
+    card.appendChild(smallTable(ex.columns || [], ex.rows || [], 10, true));
+    var prof = profileToggle(ex.profile);
+    if (prof) card.appendChild(prof);
+  }
+
+  function exhibitChart(card, ex) {
+    var recipe = ex.recipe || {};
+    var ys = recipe.y || [];
+    if (!window.echarts || !window.echarts.init || !recipe.chart) {
+      /* No ECharts (or a torn entry) — degrade to the frame-table
+         rendering, never a blank card. */
+      exhibitFrame(card, ex);
+      return;
+    }
+    if (ex.name) card.appendChild(el("strong", null, ex.name));
+    var chartDiv = el("div", "wb-chart");
+    card.appendChild(chartDiv);
+    var option = chartOption(recipe.chart, recipe.x, ys, ex.rows || []);
+    if (ex.note) option.title = {text: ex.note, textStyle: {fontSize: 13}};
+    /* init after the card lands in the DOM, or ECharts sees width 0. */
+    setTimeout(function () {
+      window.echarts.init(chartDiv).setOption(option);
+    }, 0);
+    card.appendChild(el("p", "wb-meta",
+        recipe.chart + " · x: " + recipe.x + " · y: " + ys.join(", ")
+        + " — the sketch's recipe; promotion = re-expressing it as a "
+        + "binding + figure"));
+    var prof = profileToggle(ex.profile);
+    if (prof) card.appendChild(prof);
+  }
+
+  /* Feed order: a log reads newest-first; a notebook reads top-down. The
+     toggle is presentation only — seq order is the truth either way. */
+  var feedChronological = false;
+
   function renderFeed(state) {
     var host = document.getElementById("wb-feed");
     host.textContent = "";
@@ -604,7 +736,13 @@ __ECHARTS__
           + "binding updates land here"));
       return;
     }
-    state.exhibits.forEach(function (ex) {
+    host.appendChild(button(
+      feedChronological ? "newest first" : "read as document", null,
+      function () { feedChronological = !feedChronological; renderFeed(state); }
+    ));
+    var exhibits = state.exhibits.slice();
+    if (feedChronological) exhibits.reverse();
+    exhibits.forEach(function (ex) {
       var card = el("div", "wb-card");
       var head = el("div", "wb-row");
       head.appendChild(el("span", "wb-meta",
@@ -615,26 +753,30 @@ __ECHARTS__
       })));
       card.appendChild(head);
       if (ex.kind === "frame") {
-        if (ex.name) card.appendChild(el("strong", null, ex.name));
-        if (ex.note) card.appendChild(el("p", null, ex.note));
-        if (ex.shape) {
-          card.appendChild(el("p", "wb-meta",
-              ex.shape[0] + " × " + ex.shape[1]
-              + (ex.shape[0] > (ex.rows || []).length
-                 ? " (first " + (ex.rows || []).length + " shown)" : "")));
-        }
-        card.appendChild(smallTable(ex.columns || [], ex.rows || [], 10));
+        exhibitFrame(card, ex);
+      } else if (ex.kind === "chart") {
+        exhibitChart(card, ex);
       } else if (ex.kind === "binding") {
         card.appendChild(el("p", null, "binding: " + ex.name));
         if (ex.note) card.appendChild(el("p", "wb-meta", ex.note));
       } else if (ex.kind === "auto") {
         card.appendChild(el("p", "wb-meta", ex.text));
       } else {
-        var text = ex.text || "";
-        if (text.indexOf("\\n") !== -1) {
-          card.appendChild(el("pre", null, text));
+        if (ex.html) {
+          /* The ONE innerHTML exception on this page: ex.html is produced
+             server-side by the escaped-first markdown subset
+             (render_note_markdown), so a note reads like a notebook cell
+             while content can never smuggle live markup. */
+          var md = el("div", "wb-md");
+          md.innerHTML = ex.html;
+          card.appendChild(md);
         } else {
-          card.appendChild(el("p", null, text));
+          var text = ex.text || "";
+          if (text.indexOf("\\n") !== -1) {
+            card.appendChild(el("pre", null, text));
+          } else {
+            card.appendChild(el("p", null, text));
+          }
         }
         if (ex.note) card.appendChild(el("p", "wb-meta", ex.note));
       }
@@ -700,11 +842,14 @@ __ECHARTS__
         return p.id === pid;
       })));
       card.appendChild(head);
+      if (tb.error) card.appendChild(el("pre", "wb-error", tb.error));
       var cols = tb.columns || {};
       card.appendChild(el("p", "wb-meta",
           Object.keys(cols).map(function (c) {
             return c + ": " + cols[c];
           }).join("  ·  ")));
+      var prof = profileToggle(tb.profile, tb.note);
+      if (prof) card.appendChild(prof);
       host.appendChild(card);
     });
     if (!tables.length) {

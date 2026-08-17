@@ -211,6 +211,94 @@ class TestRecord:
         assert data["schema_version"] == 1
 
 
+# ── stated methodology: note= travels the certificate ──────────────────────
+
+TRANSFORM_NOTE = "unkeyed rows dropped and counted; regions normalised"
+CHECK_NOTE = "an empty fact means the raw pull failed, not an empty book"
+
+
+def _noted_contract(wh_path, name="orders"):
+    with contract(name, warehouse=wh_path, note=TRANSFORM_NOTE) as c:
+        c.rows("fact_orders", at_least=1, note=CHECK_NOTE)
+        c.unique("fact_orders", ["order_id"])
+        c.foreign_key("fact_orders", "region_id",
+                      refers_to=("dim_region", "region_id"))
+
+
+class TestStatedMethodology:
+    """note= is the author's STATED methodology — prose recorded verbatim,
+    never a verified claim, never an input to any check."""
+
+    def test_notes_are_recorded_in_the_certificate(self, warehouse):
+        _noted_contract(warehouse)
+        rec = read_contracts(warehouse)["transforms"]["orders"]
+        assert rec["note"] == TRANSFORM_NOTE
+        by_kind = {c["check"]: c for c in rec["checks"]}
+        assert by_kind["rows"]["note"] == CHECK_NOTE
+        # Beside params, never inside them — a note must not become a
+        # replayable argument.
+        assert "note" not in by_kind["rows"]["params"]
+        # Omitted when unset, like other optional fields.
+        assert "note" not in by_kind["unique"]
+
+    def test_an_unnoted_contract_record_carries_no_note(self, warehouse):
+        _good_contract(warehouse)
+        rec = read_contracts(warehouse)["transforms"]["orders"]
+        assert "note" not in rec
+        assert all("note" not in c for c in rec["checks"])
+
+    def test_notes_survive_rerun_untouched(self, warehouse):
+        _noted_contract(warehouse)
+        rows = rerun_checks(warehouse)
+        assert all(r["passed_now"] for r in rows)
+        by_kind = {r["check"]: r for r in rows}
+        assert by_kind["rows"]["note"] == CHECK_NOTE
+        assert "note" not in by_kind["unique"]
+
+    def test_a_crashed_rerun_keeps_the_recorded_note_beside_the_error(
+            self, warehouse):
+        _noted_contract(warehouse)
+        import duckdb
+        con = duckdb.connect(warehouse)
+        con.execute('DROP TABLE "fact_orders"')
+        con.close()
+        by_kind = {r["check"]: r for r in rerun_checks(warehouse)}
+        assert by_kind["rows"]["passed_now"] is False
+        assert by_kind["rows"]["error"]                  # the diagnostic
+        assert by_kind["rows"]["note"] == CHECK_NOTE     # untouched
+
+    def test_transform_note_joins_the_manifest_block(self, warehouse, tmp_path):
+        _noted_contract(warehouse)
+        manifest = _render(tmp_path, _model_over(warehouse))
+        tc = manifest["transform_contracts"]
+        assert tc["fact_orders"]["status"] == "satisfied"
+        assert tc["fact_orders"]["note"] == TRANSFORM_NOTE
+        # The fk-target table is covered by the same record and carries the
+        # same transform-level statement.
+        assert tc["dim_region"]["note"] == TRANSFORM_NOTE
+
+    def test_an_unnoted_record_joins_without_a_note_key(
+            self, warehouse, tmp_path):
+        _good_contract(warehouse)
+        manifest = _render(tmp_path, _model_over(warehouse))
+        assert "note" not in manifest["transform_contracts"]["fact_orders"]
+
+    def test_a_stale_entry_still_carries_the_stated_note(
+            self, warehouse, tmp_path):
+        """Stated methodology is prose, not status: it rides on stale
+        entries exactly as on satisfied ones, and colors neither."""
+        _noted_contract(warehouse)
+        model = _model_over(warehouse)
+        conn = model.connectors()[0]
+        extra = conn.load("fact_orders")
+        extra.loc[len(extra)] = [5, 2, 999.0, "open"]
+        conn.write(extra, "fact_orders")
+        manifest = _render(tmp_path, model)
+        tc = manifest["transform_contracts"]
+        assert tc["fact_orders"]["status"] == "stale"
+        assert tc["fact_orders"]["note"] == TRANSFORM_NOTE
+
+
 # ── the flaw-4 gate: connector-load-path fingerprint round-trip ────────────
 
 class TestFingerprintRoundTrip:
@@ -400,4 +488,7 @@ class TestRerunChecks:
         fact_rows = [r for r in rows if r["table"] == "fact_orders"]
         assert fact_rows
         assert all(r["passed_now"] is False for r in fact_rows)
-        assert all(r.get("note") for r in fact_rows)
+        # Diagnostics ride in "error" — "note" is reserved for the recorded
+        # stated methodology, which a re-run passes through untouched.
+        assert all(r.get("error") for r in fact_rows)
+        assert all("note" not in r for r in fact_rows)

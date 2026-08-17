@@ -62,7 +62,8 @@ from tracebi.reports.embed import (
     insert_before, stamp, stamp_frame,
 )
 from tracebi.reports.figures import (
-    Figure, FigureError, assign_figure_ids, extract_figures, strip_stage,
+    Figure, FigureError, assign_figure_ids, extract_figures,
+    methodology_insertion, strip_stage,
 )
 from tracebi.reports.html_renderer import HTMLRenderer
 from tracebi.reports.report import (
@@ -264,11 +265,31 @@ class TemplatePackage:
         # The phase-① join (v2 §2.6): per warehouse table this render loaded,
         # did the sink satisfy a declared contract? A separate claim beside
         # the figure claims — it never colors them.
-        from tracebi.contracts import transform_contracts_block
-        contracts = transform_contracts_block(
-            models, [sd.dataset.lineage_to_dict() for sd in inputs])
+        from tracebi.contracts import (
+            stated_methodology_block, transform_contracts_block,
+        )
+        lineages = [sd.dataset.lineage_to_dict() for sd in inputs]
+        contracts = transform_contracts_block(models, lineages)
         if contracts:
             manifest.transform_contracts = contracts
+
+        # The stated-methodology appendix. A template opts in with ONE empty
+        # (or author-prefilled) data-tb-methodology container; the build
+        # appends the pipeline's STATED methodology after the author's own
+        # children — transform notes, per-check rationale, and measure
+        # descriptions the model declares. Prose, never a verified claim: no
+        # badge, no status, and it never colors a figure. Recorded in the
+        # manifest so the receipt shows what stated methodology shipped.
+        insert_at = methodology_insertion(page)
+        if insert_at is not None:
+            notes = stated_methodology_block(models, lineages)
+            measure_notes = self._measure_notes(models)
+            if measure_notes:
+                notes["measure_notes"] = measure_notes
+            if notes:
+                page = (page[:insert_at] + _methodology_html(notes, contracts)
+                        + page[insert_at:])
+                manifest.methodology = notes
 
         # Provenance for the runtime's badges, decided from what was actually
         # embedded (v2 §2.4): a stylesheet can restyle a badge, never
@@ -348,6 +369,26 @@ class TemplatePackage:
                         f"{where}: cell '{cell}' is not a column of binding "
                         f"'{f.binding}'.{hint} Columns: {list(df.columns)}."
                     )
+
+    def _measure_notes(self, models: dict) -> dict[str, str]:
+        """Descriptions of the declared measures the bindings reference.
+
+        Only list-form ``measures`` reference declared measures by name
+        (dict form aggregates raw columns); only measures the model states
+        a description for appear. Stated methodology — the model's own
+        words about its vocabulary, never a verified claim.
+        """
+        out: dict[str, str] = {}
+        for ref in self.bindings.values():
+            measures = ref.query.measures
+            if not isinstance(measures, (list, tuple)):
+                continue
+            declared = models[ref.model].measures()
+            for name in measures:
+                mdef = declared.get(name)
+                if mdef is not None and mdef.description:
+                    out[name] = mdef.description
+        return out
 
     def render_exploration(self, models: dict):
         """Render the working state in memory (v2 §2.5) — the dev loop's page.
@@ -525,6 +566,55 @@ class TemplatePackage:
             figures_cfg=figures_cfg,
             report_js=self.script_js,
         )
+
+
+def _methodology_html(notes: dict, contracts: dict) -> str:
+    """The stated-methodology entries as HTML — an appendix, never a claim.
+
+    Wrapped in ``.tb-methodology`` with one ``.tb-note`` line per entry
+    (muted, small; deliberately nowhere near a badge class). Every piece of
+    text is escaped: notes and descriptions are the author's prose, carried
+    verbatim but rendered inert. Locked language throughout: the transform
+    STATES — nothing here is verified.
+    """
+    import html as _html
+
+    # The manifest keys are table-keyed; the rendered line names the
+    # transform, recovered from the contracts block (a table with a note
+    # necessarily has a covering record there). Dedupe so a record covering
+    # several loaded tables states itself once.
+    transform_note_of: dict[str, str] = {}
+    for table, note in (notes.get("transform_notes") or {}).items():
+        transform = (contracts.get(table) or {}).get("transform")
+        if transform:
+            transform_note_of.setdefault(transform, note)
+    check_notes = notes.get("check_notes") or []
+    transforms = list(dict.fromkeys(
+        list(transform_note_of) + [cn["transform"] for cn in check_notes]))
+
+    lines: list[str] = []
+    for transform in transforms:
+        note = transform_note_of.get(transform)
+        if note:
+            lines.append(
+                f'<p class="tb-note">the transform '
+                f"'{_html.escape(str(transform))}' states: "
+                f"{_html.escape(note)}</p>"
+            )
+        for cn in check_notes:
+            if cn["transform"] == transform:
+                lines.append(
+                    f'<p class="tb-note">&middot; '
+                    f"{_html.escape(str(cn['check']))}"
+                    f"({_html.escape(str(cn['table']))}): "
+                    f"{_html.escape(cn['note'])}</p>"
+                )
+    for measure, description in (notes.get("measure_notes") or {}).items():
+        lines.append(
+            f'<p class="tb-note">measure \'{_html.escape(str(measure))}\': '
+            f"{_html.escape(description)}</p>"
+        )
+    return '<div class="tb-methodology">' + "".join(lines) + "</div>"
 
 
 def _figure_record(f: Figure) -> dict:

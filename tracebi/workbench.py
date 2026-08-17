@@ -99,8 +99,15 @@ def _active_discovery_dir() -> Optional[str]:
 
 # ── The exhibit feed ────────────────────────────────────────────────────────
 
+#: The chart-sketch vocabulary — the runtime's (CHART_TYPES in
+#: tracebi/reports/report.py), mirrored here so show() never has to import
+#: the reports stack to validate a sketch.
+_CHART_KINDS = ("bar", "barh", "line", "area", "pie", "scatter")
 
-def show(obj=None, note: Optional[str] = None, name: Optional[str] = None) -> None:
+
+def show(obj=None, note: Optional[str] = None, name: Optional[str] = None,
+         chart: Optional[str] = None, x: Optional[str] = None,
+         y=None) -> None:
     """Append one exhibit to the workbench feed — the notebook-cell output.
 
     Accepts a pandas DataFrame (excerpt + dtypes + shape recorded), a string
@@ -109,6 +116,16 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None) -> No
 
         from tracebi.workbench import show
         show(df, note="after dropping the 9 null-mark funds")
+        show(df, chart="bar", x="sector", y="fair_value")   # a chart sketch
+
+    ``chart=`` with a DataFrame posts a **chart exhibit**: the same excerpt
+    a frame exhibit carries, plus the recipe ``{chart, x, y}`` the workbench
+    renders live (``chart`` is the runtime's vocabulary: bar, barh, line,
+    area, pie, scatter; ``y`` is a column or a list of columns). Validation
+    is soft by this function's contract — an unknown kind or a missing/
+    unknown axis degrades to a plain frame exhibit with a stderr note.
+    Frame and chart exhibits also carry a :func:`frame_profile` over the
+    FULL frame (omitted, never fatal, when profiling fails).
 
     Where the exhibit lands, exactly: ``TRACEBI_WORKBENCH_DIR`` always wins
     when set. When it is unset, the exhibit posts to
@@ -139,6 +156,19 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None) -> No
                 "shape": [int(obj.shape[0]), int(obj.shape[1])],
                 "rows": _json_safe_records(obj, 50),
             }
+            if chart is not None:
+                recipe, problem = _chart_recipe(chart, x, y, entry["columns"])
+                if problem is None:
+                    entry["kind"] = "chart"
+                    entry["recipe"] = recipe
+                else:
+                    print(f"[tracebi workbench] chart fell back to frame: "
+                          f"{problem}", file=sys.stderr)
+            try:
+                entry["profile"] = frame_profile(obj)
+            except Exception as exc:  # noqa: BLE001 — omit the key, keep the exhibit
+                print(f"[tracebi workbench] profile omitted: "
+                      f"{type(exc).__name__}: {exc}", file=sys.stderr)
         elif isinstance(obj, str):
             entry = {"kind": "note", "text": obj, "note": note}
         elif obj is None and name:
@@ -149,6 +179,27 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None) -> No
     except Exception as exc:  # noqa: BLE001 — by contract, show() never raises
         print(f"[tracebi workbench] exhibit dropped: "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
+
+
+def _chart_recipe(chart, x, y, columns: list):
+    """A chart sketch's recipe dict, or ``(None, why-not)``.
+
+    Soft by the :func:`show` contract: a bad sketch degrades to a frame
+    exhibit rather than raising or being dropped.
+    """
+    if chart not in _CHART_KINDS:
+        return None, (f"unknown chart kind {chart!r} — "
+                      f"one of {', '.join(_CHART_KINDS)}")
+    if isinstance(y, (list, tuple)):
+        ys = [str(c) for c in y]
+    else:
+        ys = [str(y)] if y is not None else []
+    if x is None or not ys:
+        return None, f"chart={chart!r} needs both x= and y="
+    missing = [c for c in [str(x)] + ys if c not in columns]
+    if missing:
+        return None, f"column(s) not in the frame: {', '.join(missing)}"
+    return {"chart": chart, "x": str(x), "y": ys}, None
 
 
 def auto_entry(wb_dir: str, text: str) -> None:
@@ -191,6 +242,29 @@ def last_seq(wb_dir: str) -> int:
     """The newest exhibit's seq (0 when the feed is empty) — what a pin
     records as ``at_seq``."""
     return _next_seq(os.path.join(wb_dir, EXHIBITS_FILE)) - 1
+
+
+def render_note_markdown(exhibits: list[dict]) -> list[dict]:
+    """Decorate note exhibits with pre-escaped markdown HTML (``"html"``).
+
+    The notebook-cell experience: ``show("## Approach\\n\\n...")`` renders as
+    real markdown in the feed. Conversion happens at STATE time, never at
+    write time — ``exhibits.jsonl`` keeps the raw text — and goes through
+    the one escaped-first subset (:func:`tracebi.reports.compile_spec.
+    md_to_html`), so content can never smuggle live markup; the page may
+    insert this one field as HTML because it is safe by construction.
+    Never raises: a note that will not convert stays plain text.
+    """
+    out = []
+    for ex in exhibits:
+        if ex.get("kind") == "note" and isinstance(ex.get("text"), str):
+            try:
+                from tracebi.reports.compile_spec import md_to_html
+                ex = {**ex, "html": md_to_html(ex["text"])}
+            except Exception:  # noqa: BLE001 — plain text is the fallback
+                pass
+        out.append(ex)
+    return out
 
 
 def read_exhibits(wb_dir: str, cap: int = EXHIBIT_CAP) -> list[dict]:
@@ -267,6 +341,40 @@ def _json_safe_records(df, limit: int) -> list[dict]:
         {str(col): _json_safe(v) for col, v in row.items()}
         for _idx, row in df.head(limit).iterrows()
     ]
+
+
+def _stat_float(value):
+    """One summary stat as a JSON-safe float (NaN/NA/non-numeric → None)."""
+    safe = _json_safe(value)
+    if isinstance(safe, bool) or not isinstance(safe, (int, float)):
+        return None
+    return float(safe)
+
+
+def frame_profile(df) -> dict:
+    """Per-column stats over the FULL frame — dtype, null count, distinct
+    count, min/max/mean for numeric columns, top-3 values for the rest.
+
+    Presentation-grade only, like every excerpt here: the numbers live in
+    the frame, never in the profile.
+    """
+    import pandas as pd
+
+    profile: dict = {}
+    for col in df.columns:
+        s = df[col]
+        stats = {"dtype": str(s.dtype),
+                 "nulls": int(s.isna().sum()),
+                 "distinct": int(s.nunique())}
+        if (pd.api.types.is_numeric_dtype(s)
+                and not pd.api.types.is_bool_dtype(s)):
+            stats["min"] = _stat_float(s.min())
+            stats["max"] = _stat_float(s.max())
+            stats["mean"] = _stat_float(s.mean())
+        else:
+            stats["top"] = [str(v) for v in s.value_counts().head(3).index]
+        profile[str(col)] = stats
+    return profile
 
 
 # ── The one state builder ───────────────────────────────────────────────────
@@ -407,7 +515,7 @@ def collect_state(package_dir: str, models: dict) -> dict:
             "numeric_literals_outside_figures":
                 lint_numeric_literals(page) if page is not None else 0,
         },
-        "exhibits": read_exhibits(wb),
+        "exhibits": render_note_markdown(read_exhibits(wb)),
         "pins": pins,
         "code": {
             "report.json": _read_optional(os.path.join(pkg.directory,
@@ -464,7 +572,7 @@ def collect_discovery_state(project_root: str, models: dict) -> dict:
         "warehouse": _discovery_warehouse(project_root, loaded),
         "models": model_entries,
         "packages": _discovery_packages(project_root),
-        "exhibits": read_exhibits(wb),
+        "exhibits": render_note_markdown(read_exhibits(wb)),
         "pins": read_pins(wb),
     }
 
@@ -563,9 +671,22 @@ def _discovery_warehouse(project_root: str, loaded: list) -> dict:
     return wh
 
 
+#: Column cap for warehouse profiles — beyond it the per-column aggregate
+#: scan costs more than a glance is worth, so the entry says why instead.
+PROFILE_COLUMN_CAP = 50
+
+#: DuckDB data_type prefixes profiled with MIN/MAX/AVG (prefix match, so
+#: DECIMAL(18,3) counts and INTERVAL does not).
+_NUMERIC_SQL = ("TINYINT", "SMALLINT", "INTEGER", "BIGINT", "HUGEINT",
+                "UTINYINT", "USMALLINT", "UINTEGER", "UBIGINT",
+                "FLOAT", "DOUBLE", "REAL", "DECIMAL", "NUMERIC")
+
+
 def _warehouse_tables(path: str) -> list[dict]:
-    """Tables, row counts, and column dtypes via information_schema, on one
-    short-lived read-only connection closed deterministically."""
+    """Tables, row counts, column dtypes, and per-column profiles (read-only
+    SQL aggregates), on one short-lived read-only connection closed
+    deterministically. A table's profile failure lands in that entry's
+    ``"error"``, never raised."""
     import duckdb
 
     tables: list[dict] = []
@@ -582,10 +703,53 @@ def _warehouse_tables(path: str) -> list[dict]:
                 "ORDER BY ordinal_position", [t]).fetchall()}
             n = con.execute(
                 f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]
-            tables.append({"name": t, "rows": int(n), "columns": columns})
+            entry: dict = {"name": t, "rows": int(n), "columns": columns}
+            if len(columns) > PROFILE_COLUMN_CAP:
+                entry["profile"] = None
+                entry["note"] = (f"profile skipped — {len(columns)} columns "
+                                 f"(cap {PROFILE_COLUMN_CAP})")
+            else:
+                try:
+                    entry["profile"] = _table_profile(con, t, columns, int(n))
+                except Exception as exc:  # noqa: BLE001 — captured into the entry
+                    entry["error"] = f"{type(exc).__name__}: {exc}"
+            tables.append(entry)
     finally:
         con.close()
     return tables
+
+
+def _table_profile(con, table: str, columns: dict, rows: int) -> dict:
+    """The :func:`frame_profile` shape via read-only SQL aggregates — the
+    frame itself never leaves the warehouse. Top-3 values are computed for
+    VARCHAR columns only; other non-numerics keep dtype/nulls/distinct."""
+    qt = table.replace('"', '""')
+    profile: dict = {}
+    for col, dtype in columns.items():
+        qc = col.replace('"', '""')
+        non_null, distinct = con.execute(
+            f'SELECT COUNT("{qc}"), COUNT(DISTINCT "{qc}") FROM "{qt}"'
+        ).fetchone()
+        stats: dict = {"dtype": dtype,
+                       "nulls": rows - int(non_null),
+                       "distinct": int(distinct)}
+        upper = str(dtype).upper()
+        if any(upper.startswith(t) for t in _NUMERIC_SQL):
+            lo, hi, mean = con.execute(
+                f'SELECT MIN("{qc}"), MAX("{qc}"), AVG("{qc}") FROM "{qt}"'
+            ).fetchone()
+            # float() first: DuckDB hands DECIMAL aggregates back as
+            # decimal.Decimal, which _json_safe would stringify.
+            stats["min"] = _stat_float(None if lo is None else float(lo))
+            stats["max"] = _stat_float(None if hi is None else float(hi))
+            stats["mean"] = _stat_float(None if mean is None else float(mean))
+        elif upper.startswith("VARCHAR"):
+            stats["top"] = [str(r[0]) for r in con.execute(
+                f'SELECT "{qc}" FROM "{qt}" WHERE "{qc}" IS NOT NULL '
+                f'GROUP BY "{qc}" ORDER BY COUNT(*) DESC LIMIT 3'
+            ).fetchall()]
+        profile[col] = stats
+    return profile
 
 
 def _contracts_summary(warehouse: str) -> Optional[dict]:

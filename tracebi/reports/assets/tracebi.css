@@ -186,6 +186,18 @@ img, svg { max-width: 100%; }
   color: var(--tb-muted);
 }
 
+/* The stated-methodology appendix — build-appended prose the transform and
+ * the model STATE about themselves. An appendix, never a claim: muted and
+ * small, and no badge class ever styles it. */
+.tb-methodology {
+  margin-top: var(--tb-space-3);
+  padding-top: var(--tb-space-2);
+  border-top: 1px solid var(--tb-rule);
+  font-size: 0.85em;
+  color: var(--tb-muted);
+}
+.tb-methodology .tb-note { margin: var(--tb-space-1) 0; }
+
 /* ── 8. Receipt badges — provenance picks the class at runtime ─────────── */
 /* Never invisible: a grey badge must not be stylable into a green one.    */
 
