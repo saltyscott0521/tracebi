@@ -314,16 +314,22 @@ class VerifyResult(TypedDict, total=False):
 # ── Gateway operations ─────────────────────────────────────────────────────
 
 
-def gateway_context(model: Optional[str] = None) -> ContextResult:
+def gateway_context(model: Optional[str] = None,
+                    brief: bool = False) -> ContextResult:
     """
-    The semantic contract: TraceBi's full vocabulary, optionally plus one
+    The semantic contract: TraceBi's vocabulary, optionally plus one
     model's schema. This is the first call an agent should make — every
     fact, dimension, measure and section it may reference is in here, and
     nothing outside it will validate.
+
+    ``brief=True`` is the token-lean tier (~40% of the payload): the
+    semantic model, the figure grammar, contracts, and conventions —
+    everything the package-first loop needs. Start brief; fetch the full
+    vocabulary only when writing Python against the library directly.
     """
     from tracebi.capabilities import describe
 
-    payload = describe()
+    payload = describe(brief=brief)
     if model:
         payload["model"] = _get_model(model).info()
     return payload

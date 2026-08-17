@@ -126,6 +126,9 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None,
     unknown axis degrades to a plain frame exhibit with a stderr note.
     Frame and chart exhibits also carry a :func:`frame_profile` over the
     FULL frame (omitted, never fatal, when profiling fails).
+    Every exhibit records its producing script as ``"source"``
+    (``sys.argv[0]``, cwd-relative when derivable, absolute otherwise;
+    omitted for interactive/no-file contexts).
 
     Where the exhibit lands, exactly: ``TRACEBI_WORKBENCH_DIR`` always wins
     when set. When it is unset, the exhibit posts to
@@ -175,10 +178,36 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None,
             entry = {"kind": "binding", "name": name, "note": note}
         else:
             entry = {"kind": "note", "text": repr(obj), "note": note}
+        entry["source"] = _script_source()
         _append_exhibit(wb, entry)
     except Exception as exc:  # noqa: BLE001 — by contract, show() never raises
         print(f"[tracebi workbench] exhibit dropped: "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
+
+
+def _script_source() -> Optional[str]:
+    """The running script's path (``sys.argv[0]``) — an exhibit's provenance.
+
+    Relative to the cwd when derivable, absolute when the script lives
+    outside it, None for interactive/no-file contexts (a REPL, ``-c``).
+    Never raises, by :func:`show`'s contract.
+    """
+    try:
+        argv0 = sys.argv[0] if sys.argv else ""
+        if not argv0:
+            return None
+        path = os.path.abspath(argv0)
+        if not os.path.isfile(path):
+            return None
+        try:
+            rel = os.path.relpath(path, os.getcwd())
+        except ValueError:      # e.g. a different drive on Windows
+            return path
+        if rel == os.pardir or rel.startswith(os.pardir + os.sep):
+            return path
+        return rel
+    except Exception:  # noqa: BLE001 — provenance must never drop an exhibit
+        return None
 
 
 def _chart_recipe(chart, x, y, columns: list):

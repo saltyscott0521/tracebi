@@ -1105,7 +1105,7 @@ def cmd_context(args: argparse.Namespace) -> int:
     """
     from tracebi.capabilities import describe
 
-    payload = describe()
+    payload = describe(brief=getattr(args, "brief", False))
     if args.model:
         from tracebi.model_registry import get_model
         try:
@@ -2450,6 +2450,69 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+# ── Workbench sessions: export / clear ──────────────────────────────────────
+
+def cmd_session(args: argparse.Namespace) -> int:
+    """
+    Save or reset a workbench session feed.
+
+        tracebi session export [name]    # → explorations/<date>-<name>.html
+        tracebi session clear [name]     # remove the feed and pins
+
+    *name* defaults to the discovery session (``_discovery``); a package
+    name addresses that package's session. The export is an exploration
+    RECORD — the full feed, uncapped, as one self-contained lab-notebook
+    HTML with NO manifest; ``tracebi verify`` refuses it by name. ``clear``
+    is prompt-free, but refuses while a dev server's heartbeat for the
+    session is fresh — the live watcher would keep posting over the reset.
+    """
+    import time
+
+    from tracebi.workbench import (
+        ACTIVE_FILE, DISCOVERY_NAME, EXHIBITS_FILE, HEARTBEAT_WINDOW,
+        PINS_FILE,
+    )
+
+    name = args.name or DISCOVERY_NAME
+    wb = os.path.join(os.getcwd(), ".tracebi", "workbench", name)
+
+    if args.action == "export":
+        from datetime import datetime
+
+        from tracebi._session_export import export_session
+
+        out = Path(args.output) if args.output else (
+            Path("explorations") / f"{datetime.now():%Y-%m-%d}-{name}.html")
+        try:
+            export_session(wb, str(out), title=args.title)
+        except FileNotFoundError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        print(f"Exported session '{name}' → {out}")
+        print("  An exploration record — commit it; verify refuses it "
+              "by name.")
+        return 0
+
+    # clear
+    try:
+        age = time.time() - os.path.getmtime(os.path.join(wb, ACTIVE_FILE))
+    except OSError:
+        age = None
+    if age is not None and age <= HEARTBEAT_WINDOW:
+        print(f"session '{name}' has a live dev server (fresh heartbeat) — "
+              f"stop the server first, then clear.", file=sys.stderr)
+        return 1
+    removed = [fname for fname in (EXHIBITS_FILE, PINS_FILE)
+               if os.path.isfile(os.path.join(wb, fname))]
+    for fname in removed:
+        os.remove(os.path.join(wb, fname))
+    if removed:
+        print(f"Cleared session '{name}' ({', '.join(removed)}).")
+    else:
+        print(f"Session '{name}' has no feed or pins to clear.")
+    return 0
+
+
 # ── Argparse wiring ─────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2544,6 +2607,13 @@ def build_parser() -> argparse.ArgumentParser:
              "types, DataSet verbs, measures, operators, conventions).",
     )
     p_context.add_argument("--model", help="Also include this model's schema.")
+    p_context.add_argument(
+        "--brief", action="store_true",
+        help="The token-lean tier (~40%% of the payload): semantic model, "
+             "figure grammar, contracts, conventions — everything the "
+             "package-first loop needs. Omits the legacy section classes, "
+             "DataSet verbs, and Python cheat sheets.",
+    )
     p_context.add_argument("--compact", action="store_true",
                            help="Single-line JSON.")
     p_context.set_defaults(func=cmd_context)
@@ -2656,6 +2726,32 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("--no-browser", action="store_true",
                           help="With `preview`, do not open the browser.")
     p_report.set_defaults(func=cmd_report)
+
+    p_session = sub.add_parser(
+        "session",
+        help="Save or reset a workbench session feed. `session export "
+             "[name]` renders the FULL feed (uncapped) to one exploration-"
+             "record HTML — a lab notebook, not a report: no manifest, and "
+             "`tracebi verify` refuses it by name. `session clear [name]` "
+             "removes the feed and pins (refused while a dev server's "
+             "heartbeat is fresh). Name defaults to the discovery session.",
+    )
+    p_session.add_argument("action", choices=["export", "clear"])
+    p_session.add_argument(
+        "name", nargs="?", default=None,
+        help="Session name: a package name, or omit for the discovery "
+             "session (_discovery).",
+    )
+    p_session.add_argument(
+        "-o", "--output",
+        help="Output .html path for `export` "
+             "(default: explorations/<YYYY-MM-DD>-<name>.html).",
+    )
+    p_session.add_argument(
+        "--title",
+        help="Page title (default: '<session> — exploration record').",
+    )
+    p_session.set_defaults(func=cmd_session)
 
     p_migrate = sub.add_parser(
         "migrate",

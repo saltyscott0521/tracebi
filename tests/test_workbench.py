@@ -10,6 +10,7 @@ everything here is dev-state only: no receipts, nothing in builds.
 
 import json
 import os
+import sys
 
 import pandas as pd
 import pytest
@@ -17,6 +18,7 @@ import pytest
 from tracebi import DataModel, MemoryConnector
 from tracebi.workbench import (
     ACTIVE_FILE,
+    EXHIBIT_CAP,
     collect_discovery_state,
     collect_state,
     discovery_dir,
@@ -109,6 +111,9 @@ class TestShow:
         assert frame["name"] == "marks" and frame["note"] == "after dropping nulls"
         assert frame["columns"] == ["fund", "fv"] and frame["shape"] == [2, 2]
         assert frame["rows"][1]["fv"] is None          # NaN is JSON-safe null
+        # Under pytest sys.argv[0] is a real file, so `source` (the
+        # producing script — TestExhibitSource) is present; set it aside.
+        note = {k: v for k, v in note.items() if k != "source"}
         assert note == {"seq": 2, "at": note["at"], "kind": "note",
                         "text": "## working note"}
         # Newest first, and the pin anchor tracks the newest seq.
@@ -551,3 +556,163 @@ class TestNoteMarkdown:
         ])
         assert "<script>" not in out[0]["html"]
         assert "&lt;script&gt;" in out[0]["html"]
+
+
+class TestExhibitSource:
+    """show() records the producing script per exhibit — the notebook's
+    'which cell': sys.argv[0], cwd-relative when derivable, absolute
+    otherwise, omitted for interactive/no-file contexts."""
+
+    def test_source_is_cwd_relative_when_derivable(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        script = tmp_path / "transforms" / "probe.py"
+        script.parent.mkdir()
+        script.write_text("# the probe")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "argv", [str(script)])
+        show("from the probe")
+        [entry] = read_exhibits(wb)
+        assert entry["source"] == os.path.join("transforms", "probe.py")
+
+    def test_source_falls_back_to_absolute_outside_cwd(
+            self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        script = tmp_path / "elsewhere" / "probe.py"
+        script.parent.mkdir()
+        script.write_text("# the probe")
+        inside = tmp_path / "project"
+        inside.mkdir()
+        monkeypatch.chdir(inside)
+        monkeypatch.setattr(sys, "argv", [str(script)])
+        show("from outside the project")
+        [entry] = read_exhibits(wb)
+        assert entry["source"] == str(script)
+
+    def test_source_omitted_for_interactive(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        monkeypatch.setattr(sys, "argv", [""])
+        show("typed at a prompt")
+        [entry] = read_exhibits(wb)
+        assert "source" not in entry
+
+
+class TestSessionExport:
+    """export_session — the FULL feed as ONE exploration-record HTML: honest
+    by construction (stage meta + banner, no manifest, verify refuses it),
+    escaped throughout, uncapped by EXHIBIT_CAP."""
+
+    def _session(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        monkeypatch.chdir(tmp_path)
+        script = tmp_path / "transforms" / "probe.py"
+        script.parent.mkdir(exist_ok=True)
+        script.write_text("# probe")
+        monkeypatch.setattr(sys, "argv", [str(script)])
+        show("## Approach\n\nDropped **9** null-mark funds.")
+        show(pd.DataFrame({"issuer": ["<script>alert(1)</script>", "b"],
+                           "fv": [1.5, 2.5]}), note="hostile & clean")
+        show(pd.DataFrame({"sector": ["fin", "tech"], "fv": [10.0, 20.0]}),
+             chart="bar", x="sector", y="fv")
+        write_pins(wb, [{"id": "fig-x", "note": "keep this cut", "at_seq": 2}])
+        return wb
+
+    def _export(self, wb, tmp_path, title=None):
+        from tracebi._session_export import export_session
+        out = tmp_path / "explorations" / "record.html"
+        export_session(wb, str(out), title=title)
+        return out, out.read_text(encoding="utf-8")
+
+    def test_stage_meta_and_banner(self, tmp_path, monkeypatch):
+        wb = self._session(tmp_path, monkeypatch)
+        _out, html = self._export(wb, tmp_path)
+        assert '<meta name="tracebi-stage" content="exploration">' in html
+        assert "Exploration record — a lab notebook, not a report" in html
+        assert "carry no receipts" in html
+
+    def test_notes_render_markdown_and_frames_escape(
+            self, tmp_path, monkeypatch):
+        wb = self._session(tmp_path, monkeypatch)
+        _out, html = self._export(wb, tmp_path)
+        assert "<h3>Approach</h3>" in html               # markdown-converted
+        assert "<strong>9</strong>" in html
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+        assert "<script>alert(1)" not in html            # escaped, not live
+
+    def test_pin_source_and_chart_render(self, tmp_path, monkeypatch):
+        wb = self._session(tmp_path, monkeypatch)
+        _out, html = self._export(wb, tmp_path)
+        assert "📌" in html and "keep this cut" in html  # the pin, on seq 2
+        assert os.path.join("transforms", "probe.py") in html   # source line
+        # The chart re-embeds through the safe JSON block with its recipe.
+        assert 'id="tb-chart-data-1"' in html
+        assert '"chart": "bar"' in html
+
+    def test_export_is_uncapped(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        monkeypatch.chdir(tmp_path)
+        n = EXHIBIT_CAP + 20
+        for i in range(n):
+            show(f"note {i}")
+        assert len(read_exhibits(wb)) == EXHIBIT_CAP     # the DISPLAY cap
+        _out, html = self._export(wb, tmp_path)
+        assert "#1</span>" in html                       # first seq present
+        assert f"#{n}</span>" in html                    # last seq present
+
+    def test_no_manifest_and_verify_refuses(self, tmp_path, monkeypatch):
+        from tracebi.verify import REFUSED_SNAPSHOT, verify_file
+        wb = self._session(tmp_path, monkeypatch)
+        out, html = self._export(wb, tmp_path)
+        assert list(out.parent.glob("*.manifest.json")) == []
+        result = verify_file(html, {})
+        assert result["verdict"] == REFUSED_SNAPSHOT
+        assert result["ok"] is False and result["exit_code"] == 1
+
+    def test_default_title_names_the_session(self, tmp_path, monkeypatch):
+        wb = self._session(tmp_path, monkeypatch)
+        _out, html = self._export(wb, tmp_path)
+        assert "<title>wb — exploration record</title>" in html
+
+
+class TestSessionCli:
+    """tracebi session export / clear — the CLI over the session feed."""
+
+    def _seed_discovery(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        wb = discovery_dir(str(tmp_path))
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show("a discovery note")
+        write_pins(wb, [{"id": "fig-x", "note": "n", "at_seq": 1}])
+        monkeypatch.delenv("TRACEBI_WORKBENCH_DIR")
+        return wb
+
+    def test_export_defaults_into_explorations(
+            self, tmp_path, monkeypatch, capsys):
+        from tracebi import cli
+        self._seed_discovery(tmp_path, monkeypatch)
+        assert cli.main(["session", "export"]) == 0
+        [out] = list((tmp_path / "explorations").glob("*.html"))
+        assert out.name.endswith("-_discovery.html")
+        assert "a discovery note" in out.read_text(encoding="utf-8")
+        assert "commit it; verify refuses it by name" in capsys.readouterr().out
+
+    def test_clear_removes_feed_and_pins(self, tmp_path, monkeypatch):
+        from tracebi import cli
+        wb = self._seed_discovery(tmp_path, monkeypatch)
+        assert cli.main(["session", "clear"]) == 0
+        assert not os.path.exists(os.path.join(wb, "exhibits.jsonl"))
+        assert not os.path.exists(os.path.join(wb, "pins.json"))
+
+    def test_clear_refuses_while_heartbeat_is_fresh(
+            self, tmp_path, monkeypatch, capsys):
+        from tracebi import cli
+        wb = self._seed_discovery(tmp_path, monkeypatch)
+        heartbeat(wb)                       # a discovery server is "live"
+        assert cli.main(["session", "clear"]) == 1
+        assert os.path.exists(os.path.join(wb, "exhibits.jsonl"))
+        assert os.path.exists(os.path.join(wb, "pins.json"))
+        assert "stop the server first" in capsys.readouterr().err

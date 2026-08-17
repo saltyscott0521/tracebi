@@ -377,11 +377,19 @@ def _conventions() -> dict:
     }
 
 
-def describe() -> dict:
+def describe(brief: bool = False) -> dict:
     """
-    Return TraceBi's full vocabulary as plain, JSON-serializable data.
+    Return TraceBi's vocabulary as plain, JSON-serializable data.
 
     Generated from the code, so it stays correct as the framework changes.
+
+    ``brief=True`` returns the token-lean tier (~40% of the full payload):
+    the semantic model, the figure/presentation grammar, transform
+    contracts, and the project conventions — everything the package-first
+    authoring loop needs. Omitted: the legacy section classes, the DataSet
+    verb catalogue, and the Python cheat sheets, which matter only when
+    writing Python against the library directly; the brief payload names
+    them so an agent knows more exists.
     """
     import pandas as pd
 
@@ -392,7 +400,7 @@ def describe() -> dict:
     # The cheat sheets are static text, but read them off real instances
     # rather than bypassing __init__ — a throwaway object is cheap and
     # cannot break if these ever start reading state.
-    return {
+    full: dict = {
         "tracebi_version": get_version(),
         "cheat_sheets": {
             "DataSet": DataSet(pd.DataFrame(), name="_").help_text(),
@@ -457,6 +465,20 @@ def describe() -> dict:
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
     }
+    if not brief:
+        return full
+    # The token-lean tier: everything the package-first loop needs, with a
+    # pointer at what was omitted so more can be fetched deliberately.
+    omitted = ("cheat_sheets", "report_sections", "dataset_verbs")
+    out = {k: v for k, v in full.items() if k not in omitted}
+    out["brief"] = {
+        "omitted": list(omitted),
+        "note": "Legacy section classes, DataSet verbs, and Python cheat "
+                "sheets — needed only when writing Python against the "
+                "library directly. Fetch the full vocabulary (no --brief / "
+                "brief=false) when you do.",
+    }
+    return out
 
 
 def describe_model(model) -> dict:

@@ -6,6 +6,29 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the session record, and a token-lean context tier
+
+- **`tracebi session export`** — save the discovery notebook. The full
+  feed (markdown cells, frame excerpts, chart sketches re-rendered as
+  real charts, pins with notes) exports chronologically to ONE
+  self-contained HTML in `explorations/` — the committed lab-notebook
+  record of the analysis that shaped the pipeline. Each exhibit records
+  the script that produced it, so the record links narrative → output →
+  the committable code behind it. Honesty machinery included: the page
+  carries the `exploration` stage stamp and a banner ("numbers here were
+  live when shown and carry no receipts"), no manifest is ever written,
+  and `tracebi verify` refuses it by name — a lab notebook can never
+  impersonate a report. `tracebi session clear` resets a session (refused
+  while its dev server is live). The distillation ladder: session record
+  (how we figured it out) → contract notes (what the transform states) →
+  report methodology appendix (what the reader sees).
+- **`tracebi context --brief`** (and MCP `get_context(brief=true)`) — the
+  token-lean vocabulary tier: ~2.3k tokens vs ~5.1k full (44%), carrying
+  the semantic model, figure grammar, contracts, and conventions —
+  everything the package-first loop needs — and naming what it omitted
+  (section classes, DataSet verbs, cheat sheets) so more can be fetched
+  deliberately. For agents on limited budgets, onboarding just halved.
+
 ### Added — the notebook loop, and methodology that travels the pipeline
 
 Three asks from the maintainer's live session, built and drilled:
