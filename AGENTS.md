@@ -127,6 +127,14 @@ open — excerpts and visuals in the portal, not buried in chat — then
 scaffold the package and the same portal continues into the figure loop.
 Everything is dev-state: no receipts are minted before the model boundary.
 
+When a session shaped the pipeline, SAVE it: `tracebi session export`
+writes the full feed chronologically to `explorations/` as a committed
+lab-notebook record (per-exhibit source-script provenance included) —
+`--format md` for the git-review twin, HTML for fidelity. The record is
+exploration-stamped and carries no receipts; `verify` refuses it by name.
+The distillation ladder: session record → contract notes → the report's
+methodology appendix.
+
 ## The two planes rule
 
 **Change the contract in git. Use the contract over MCP.**

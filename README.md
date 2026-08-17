@@ -301,6 +301,9 @@ keep the rest of TraceBi as the data layer.
 tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
 tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (artifact package)
 tracebi dev portfolio_book                           # live loop: exploration render + the workbench
+tracebi dev                                          # no name: the DISCOVERY workbench (phases ①/②)
+tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
+tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
 tracebi migrate spec reports/sales.json              # compile a JSON spec into reports/sales/ (shadows the spec)
 # deprecated, removed in 0.8: new-request / list-requests / run (the requests/ lane)
 tracebi validate                                     # load every model; check dimension keys are unique

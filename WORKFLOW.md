@@ -64,7 +64,10 @@ opens the **discovery workbench** — any script run while it serves can
 `tracebi.workbench.show(df, note=...)` an excerpt into the portal, the
 warehouse panel lists tables and contract status as sinks land, and the
 models panel shows the star schema taking shape. Same pins, same
-steer-from-chat loop, before a single report exists.
+steer-from-chat loop, before a single report exists. `tracebi session
+export` saves the session to `explorations/` as a committed lab-notebook
+record (`--format md` for the git-review twin) — exploration-stamped,
+receipt-free, refused by `verify` by name.
 
 A transform may end with a **sink contract** — a `with contract(...)` block
 declaring what must be true of the tables it just sank (row counts, unique

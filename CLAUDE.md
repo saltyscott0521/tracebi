@@ -176,6 +176,7 @@ tracebi/               # Core Python package (~5200 LOC)
                        # wheel built from a tree without it ships no UI — / says so.)
   cli.py               # tracebi init / new-model / new-transform / report / verify / serve / mcp
   contracts.py         # sink contracts: closed checks + certificate + manifest join
+  _session_export.py   # session export — the committed lab-notebook record (HTML or md twin)
   _notebook.py         # notebook_to_source() — concatenates code cells for exec
   __init__.py          # Public API re-exports — check here before writing new code
 web/
@@ -252,6 +253,9 @@ tracebi run-pipeline sales_etl --status        # last run per layer, executes no
 
 # Agent / tooling context
 tracebi context                                # framework vocabulary as JSON
+tracebi context --brief                        # the token-lean tier (~44% of the payload)
+tracebi session export [--format md]           # save the discovery notebook → explorations/
+tracebi session clear                          # reset a session feed (refused while dev serves)
 tracebi context --model sales_model            # plus that model's schema
 tracebi spec schema                            # JSON Schema for a report spec
 tracebi spec validate report.json              # check a spec without running it

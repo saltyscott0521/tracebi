@@ -162,16 +162,23 @@ def _chart_html(ex: dict, idx: int) -> str:
 def export_session(wb_dir: str, out_path: str,
                    title: Optional[str] = None) -> None:
     """Render *wb_dir*'s FULL exhibit feed to *out_path* — one
-    self-contained exploration-record HTML.
+    self-contained exploration record.
 
     The whole feed in chronological seq order (``EXHIBIT_CAP`` caps the
     workbench display, never this export), pins highlighted (📌 + note) on
     their exhibits, and a per-exhibit meta line: seq · timestamp · kind ·
-    source script when recorded. Writes the ``.html`` alone: NO manifest,
-    ever — the page's ``exploration`` stage meta makes ``tracebi verify``
-    refuse it by name. *title* defaults to ``"<session> — exploration
-    record"``.
+    source script when recorded. Writes the record alone: NO manifest,
+    ever. An ``out_path`` ending ``.md`` writes the **Markdown twin** —
+    the git-review format: notes appear as their raw markdown verbatim,
+    frames and chart sketches as pipe tables with the recipe described —
+    made for reading in a pull request. Any other extension writes the
+    self-contained HTML, whose ``exploration`` stage meta makes ``tracebi
+    verify`` refuse it by name. *title* defaults to ``"<session> —
+    exploration record"``.
     """
+    if str(out_path).lower().endswith(".md"):
+        _export_markdown(wb_dir, out_path, title)
+        return
     from tracebi.reports.stack import read_asset
 
     session = os.path.basename(os.path.normpath(wb_dir)) or "session"
@@ -245,3 +252,77 @@ def export_session(wb_dir: str, out_path: str,
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(page)
+
+
+# ── The Markdown twin — the git-review format ───────────────────────────────
+
+
+def _md_cell(value) -> str:
+    """One table cell: pipes escaped, newlines flattened — layout-safe."""
+    text = "" if value is None else str(value)
+    return text.replace("|", "\\|").replace("\n", " ")
+
+
+def _md_table(columns: list, rows: list[dict], shape=None) -> list[str]:
+    cols = [str(c) for c in (columns or [])]
+    if not cols:
+        return ["*(no columns)*"]
+    out = ["| " + " | ".join(_md_cell(c) for c in cols) + " |",
+           "|" + "---|" * len(cols)]
+    for r in rows or []:
+        out.append("| " + " | ".join(_md_cell(r.get(c)) for c in cols) + " |")
+    if shape and shape[0] > len(rows or []):
+        out.append(f"\n*excerpt — first {len(rows or [])} of {shape[0]} rows*")
+    return out
+
+
+def _export_markdown(wb_dir: str, out_path: str,
+                     title: Optional[str]) -> None:
+    """The reviewable twin: raw-markdown notes verbatim (they ARE
+    markdown), tables for frames and sketches, pins as blockquotes. Same
+    honesty, stated in the file's own first lines; no manifest, ever."""
+    session = os.path.basename(os.path.normpath(wb_dir)) or "session"
+    title = title or f"{session} — exploration record"
+
+    exhibits = _read_full_feed(wb_dir)
+    pins_by_seq: dict[int, list[dict]] = {}
+    for pin in read_pins(wb_dir):
+        pins_by_seq.setdefault(int(pin.get("at_seq", 0)), []).append(pin)
+
+    lines: list[str] = [
+        f"# {title}",
+        "",
+        "> **Exploration record — a lab notebook, not a report.** Numbers "
+        "here were live when shown and carry no receipts; nothing in this "
+        "file is a verified claim.",
+        "",
+    ]
+    for ex in exhibits:
+        meta = " · ".join(str(p) for p in (
+            f"#{ex.get('seq')}", ex.get("at"), ex.get("kind"),
+            ex.get("source")) if p)
+        lines += ["---", "", f"`{meta}`", ""]
+        for pin in pins_by_seq.get(int(ex.get("seq", -1)), []):
+            lines += [f"> 📌 **pinned:** {_md_cell(pin.get('note') or '')}", ""]
+        kind = ex.get("kind")
+        if kind == "note":
+            # Verbatim: the note IS markdown; this format's whole point.
+            lines += [str(ex.get("text") or ""), ""]
+        elif kind in ("frame", "chart"):
+            if kind == "chart":
+                r = ex.get("recipe") or {}
+                lines += [f"**chart sketch** — {r.get('chart')} · "
+                          f"x: {r.get('x')} · y: {', '.join(r.get('y') or [])}",
+                          ""]
+            if ex.get("note"):
+                lines += [f"*{_md_cell(ex['note'])}*", ""]
+            lines += _md_table(ex.get("columns"), ex.get("rows"),
+                               ex.get("shape")) + [""]
+        elif kind == "binding":
+            lines += [f"*binding: {_md_cell(ex.get('name'))}*", ""]
+        else:
+            lines += [f"*{_md_cell(ex.get('text') or '')}*", ""]
+
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines).rstrip() + "\n")

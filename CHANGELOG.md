@@ -12,7 +12,10 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   feed (markdown cells, frame excerpts, chart sketches re-rendered as
   real charts, pins with notes) exports chronologically to ONE
   self-contained HTML in `explorations/` — the committed lab-notebook
-  record of the analysis that shaped the pipeline. Each exhibit records
+  record of the analysis that shaped the pipeline. `--format md` (or a
+  `.md` output path) writes the **Markdown twin** — the git-review
+  format: raw markdown notes verbatim, pipe tables for frames and
+  sketches, made for reading in a pull request. Each exhibit records
   the script that produced it, so the record links narrative → output →
   the committable code behind it. Honesty machinery included: the page
   carries the `exploration` stage stamp and a banner ("numbers here were

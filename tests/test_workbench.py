@@ -716,3 +716,43 @@ class TestSessionCli:
         assert os.path.exists(os.path.join(wb, "exhibits.jsonl"))
         assert os.path.exists(os.path.join(wb, "pins.json"))
         assert "stop the server first" in capsys.readouterr().err
+
+
+class TestSessionExportMarkdown:
+    """The Markdown twin — the git-review format. Raw markdown notes
+    verbatim; frames and sketches as pipe tables; same honesty banner."""
+
+    def _session(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show("## Approach\n\nDropped **9** null|mark funds.")
+        show(pd.DataFrame({"sector": ["fin|tech"], "fv": [1.5]}),
+             chart="bar", x="sector", y="fv", note="sketch")
+        write_pins(wb, [{"id": "exhibit-2", "note": "keep", "at_seq": 2}])
+        return wb
+
+    def test_md_export_is_reviewable(self, tmp_path, monkeypatch):
+        from tracebi._session_export import export_session
+        wb = self._session(tmp_path, monkeypatch)
+        out = tmp_path / "record.md"
+        export_session(wb, str(out), title="Probe record")
+        md = out.read_text(encoding="utf-8")
+        assert md.startswith("# Probe record")
+        assert "lab notebook, not a report" in md
+        assert "carry no receipts" in md
+        # the note is RAW markdown, verbatim — the format's whole point
+        assert "## Approach" in md and "**9**" in md
+        assert "**chart sketch** — bar · x: sector · y: fv" in md
+        assert "| fin\\|tech | 1.5 |" in md    # pipes escaped in cells
+        assert "📌 **pinned:** keep" in md
+        assert not (tmp_path / "record.md.manifest.json").exists()
+
+    def test_extension_routes_the_format(self, tmp_path, monkeypatch):
+        from tracebi._session_export import export_session
+        wb = self._session(tmp_path, monkeypatch)
+        export_session(wb, str(tmp_path / "r.html"))
+        assert "<!doctype html>" in (tmp_path / "r.html").read_text(
+            encoding="utf-8").lower()
+        export_session(wb, str(tmp_path / "r.md"))
+        assert "<!doctype" not in (tmp_path / "r.md").read_text(
+            encoding="utf-8").lower()

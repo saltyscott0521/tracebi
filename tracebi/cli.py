@@ -966,7 +966,10 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    star schema taking shape as you edit `models/`. Pins read via the MCP
    `workbench_state` tool called with no `report`. All dev-state; no
    receipts exist before the model boundary, and `show()` is a no-op the
-   moment the server is down.
+   moment the server is down. When a session shaped the pipeline, save it:
+   `tracebi session export` (add `--format md` for the git-review twin)
+   writes the full feed to `explorations/` as a committed lab-notebook
+   record — exploration-stamped, no receipts, `verify` refuses it by name.
 1. **Start the dev server — it blocks.** Run `tracebi dev <name>` in a
    background shell (or ask the human to run it and keep the tab open; the
    page is their view, not yours). It serves the report at the root and the
@@ -1001,10 +1004,12 @@ you tell a human a report is done.
 
 ## First moves
 
-1. Run `tracebi context` — the whole vocabulary as JSON: models, facts,
-   dimensions, measures, the `presentation` block (figure attributes, tokens,
-   the CSS/JS stack) and the `transform_contracts` block. Nothing outside it
-   validates. Add `--model <name>` for one model's schema.
+1. Run `tracebi context --brief` — the token-lean vocabulary tier (~2.3k
+   tokens): the semantic model, the figure grammar, contracts, and
+   conventions — everything this loop needs; it names what it omitted.
+   Nothing outside the vocabulary validates. Add `--model <name>` for one
+   model's schema; drop `--brief` only when writing Python against the
+   library directly.
 2. Read the sample files: `transforms/sample_transform.py`,
    `models/sample_model.py`, `reports/sample_dashboard/`. They are a complete
    working example of the loop, receipt included.
@@ -2481,8 +2486,9 @@ def cmd_session(args: argparse.Namespace) -> int:
 
         from tracebi._session_export import export_session
 
+        ext = "md" if getattr(args, "format", "html") == "md" else "html"
         out = Path(args.output) if args.output else (
-            Path("explorations") / f"{datetime.now():%Y-%m-%d}-{name}.html")
+            Path("explorations") / f"{datetime.now():%Y-%m-%d}-{name}.{ext}")
         try:
             export_session(wb, str(out), title=args.title)
         except FileNotFoundError as exc:
@@ -2750,6 +2756,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_session.add_argument(
         "--title",
         help="Page title (default: '<session> — exploration record').",
+    )
+    p_session.add_argument(
+        "--format", choices=["html", "md"], default="html",
+        help="Export format: self-contained HTML (default; charts render, "
+             "verify refuses it by name) or the Markdown twin — the "
+             "git-review format: raw markdown notes verbatim, tables for "
+             "frames and sketches, made for reading in a pull request. An "
+             "explicit -o extension (.md/.html) also selects the format.",
     )
     p_session.set_defaults(func=cmd_session)
 
