@@ -17,6 +17,32 @@ from typing import Any, Callable, Mapping, Optional, Union
 import pandas as pd
 
 
+#: pandas 3.0 (PDEP-14) renamed the default string dtype: a column pandas 2
+#: called ``object`` is now ``str`` (with pyarrow variants under either
+#: major). The CSV bytes are identical — only the dtype's NAME moved — so a
+#: receipt rendered under pandas 2 would stop re-verifying after a pandas
+#: upgrade purely because of this label. Canonicalize toward the LEGACY
+#: name: every existing manifest and the pre-change fingerprint corpus were
+#: hashed with ``object``, and a fingerprint algorithm must never orphan
+#: the receipts it already issued.
+_DTYPE_CANON = {
+    "str": "object",
+    "string": "object",
+    "string[python]": "object",
+    "string[pyarrow]": "object",
+    "str[pyarrow]": "object",
+    "large_string[pyarrow]": "object",
+}
+
+
+def canonical_dtypes_repr(df: pd.DataFrame) -> str:
+    """The dtype list exactly as the fingerprint hashes it — one rule,
+    shared by :func:`frame_fingerprint` and the embedded canonical triple,
+    so the offline rehash can never disagree with the live one."""
+    return repr([_DTYPE_CANON.get(s, s)
+                 for s in (str(t) for t in df.dtypes)])
+
+
 def frame_fingerprint(df: pd.DataFrame) -> str:
     """
     SHA-256 hash of a DataFrame's content — the audit primitive.
@@ -27,10 +53,14 @@ def frame_fingerprint(df: pd.DataFrame) -> str:
     it to fingerprint source tables while the frame is already in memory,
     so query lineage and manifests record exactly which inputs produced a
     result.
+
+    Dtype names are canonicalized (:data:`_DTYPE_CANON`) so the fingerprint
+    is stable across the pandas 2→3 string-dtype rename: same bytes, same
+    receipt, whichever pandas rendered it.
     """
     h = hashlib.sha256()
     h.update(repr(list(df.columns)).encode("utf-8"))
-    h.update(repr([str(t) for t in df.dtypes]).encode("utf-8"))
+    h.update(canonical_dtypes_repr(df).encode("utf-8"))
     h.update(df.to_csv(index=False).encode("utf-8"))
     return h.hexdigest()
 

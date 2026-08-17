@@ -121,9 +121,14 @@ def canonical_triple(df) -> dict:
     Keys ``columns`` / ``dtypes`` / ``csv``. Shipping these — rather than a
     records payload — is what makes the embedded data checkable offline.
     """
+    from tracebi.model.dataset import canonical_dtypes_repr
+
     return {
         "columns": repr(list(df.columns)),
-        "dtypes": repr([str(t) for t in df.dtypes]),
+        # The one dtype rule (pandas 2↔3 string-dtype rename) — shared with
+        # frame_fingerprint so the offline rehash of these shipped strings
+        # can never disagree with the live fingerprint.
+        "dtypes": canonical_dtypes_repr(df),
         "csv": df.to_csv(index=False),
     }
 

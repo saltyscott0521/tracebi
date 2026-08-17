@@ -6,6 +6,19 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Fixed — fingerprints survive the pandas 3 string-dtype rename
+
+pandas 3.0 (PDEP-14) renamed the default string dtype (`object` → `str`),
+which moved the fingerprint of every string-bearing result — a receipt
+rendered under pandas 2 would have stopped re-verifying after a pandas
+upgrade, purely over a dtype label whose CSV bytes are identical. Caught
+by the pre-change fingerprint corpus in CI (doing exactly the job it was
+built for). Dtype names are now canonicalized toward the LEGACY name in
+the one shared rule (`canonical_dtypes_repr`, used by `frame_fingerprint`
+and the embedded canonical triple): existing manifests keep verifying
+byte-for-byte, whichever pandas renders or checks them. The full suite
+passes under pandas 2.2 and 3.0.
+
 ### Added — reshape M5: migration, and one report lane
 
 The reshape lands its last piece: the artifact package is **the** report

@@ -90,6 +90,49 @@ class TestFingerprintCorpus:
         )
 
 
+class TestDtypeCanonicalization:
+    """pandas 3.0 renamed the default string dtype (object → str). The
+    fingerprint canonicalizes toward the LEGACY name so a receipt rendered
+    under pandas 2 still re-verifies under pandas 3 — same bytes, same
+    receipt, whichever pandas produced it. This is the cross-version half
+    of the corpus above: the corpus pins the bytes on THIS pandas; this
+    pins that every string-dtype spelling hashes as the same dtype."""
+
+    def test_string_dtype_spellings_fingerprint_identically(self):
+        from tracebi.model.dataset import frame_fingerprint
+
+        base = pd.DataFrame({"label": ["a", "b", None],
+                             "revenue": [1.5, 2.0, 3.25]})
+        variants = [base]
+        for spelling in ("string", "str"):
+            try:
+                v = base.astype({"label": spelling})
+            except (TypeError, ValueError):
+                continue    # this pandas doesn't know this spelling — fine
+            # Only a RENAMED dtype counts: pandas 2's astype('str') is the
+            # old stringify-everything cast (None → "None"), which changes
+            # the values themselves — a genuinely different frame, not a
+            # spelling of this one.
+            if v.to_csv(index=False) == base.to_csv(index=False):
+                variants.append(v)
+        assert len(variants) >= 2, "no comparable string-dtype spelling found"
+        fps = {frame_fingerprint(v) for v in variants}
+        assert len(fps) == 1, (
+            "a string column must fingerprint identically under every "
+            "dtype spelling — otherwise a pandas upgrade orphans every "
+            "existing receipt"
+        )
+
+    def test_canonical_dtypes_use_the_legacy_name(self):
+        from tracebi.model.dataset import canonical_dtypes_repr
+
+        df = pd.DataFrame({"label": ["a"], "n": [1]})
+        assert canonical_dtypes_repr(df) == "['object', 'int64']", (
+            "the canonical name is the legacy one: existing manifests and "
+            "the corpus above were hashed with 'object'"
+        )
+
+
 class TestOrderByLimit:
     def _top(self, model, **kw):
         return model.query(
