@@ -767,3 +767,19 @@ class TestSessionExportMarkdown:
         export_session(wb, str(tmp_path / "r.md"))
         assert "<!doctype" not in (tmp_path / "r.md").read_text(
             encoding="utf-8").lower()
+
+
+class TestPinJoin:
+    def test_exhibit_id_beats_at_seq(self, tmp_path, monkeypatch):
+        """A pin names its exhibit exactly (exhibit-<n>); at_seq is only the
+        fallback for non-exhibit targets like warehouse tables."""
+        from tracebi._session_export import export_session
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show("first cell")
+        show("second cell")
+        write_pins(wb, [{"id": "exhibit-1", "note": "on the FIRST", "at_seq": 2}])
+        out = tmp_path / "r.md"
+        export_session(wb, str(out))
+        md = out.read_text(encoding="utf-8")
+        assert md.index("on the FIRST") < md.index("second cell")

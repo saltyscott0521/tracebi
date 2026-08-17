@@ -36,6 +36,22 @@ def _esc(value) -> str:
     return _html.escape("" if value is None else str(value))
 
 
+def _pin_seq(pin: dict) -> int:
+    """The exhibit a pin belongs to: an ``exhibit-<n>`` id names it exactly;
+    ``at_seq`` (the feed position when the pin was placed) is the fallback
+    for pins on non-exhibit targets like warehouse tables."""
+    pid = str(pin.get("id") or "")
+    if pid.startswith("exhibit-"):
+        try:
+            return int(pid[len("exhibit-"):])
+        except ValueError:
+            pass
+    try:
+        return int(pin.get("at_seq", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _read_full_feed(wb_dir: str) -> list[dict]:
     """The WHOLE feed, chronological seq order — no cap, torn lines skipped."""
     path = os.path.join(wb_dir, EXHIBITS_FILE)
@@ -188,7 +204,7 @@ def export_session(wb_dir: str, out_path: str,
     pins_by_seq: dict[int, list[dict]] = {}
     for pin in read_pins(wb_dir):
         try:
-            pins_by_seq.setdefault(int(pin.get("at_seq")), []).append(pin)
+            pins_by_seq.setdefault(_pin_seq(pin), []).append(pin)
         except (TypeError, ValueError):
             continue
 
@@ -287,7 +303,7 @@ def _export_markdown(wb_dir: str, out_path: str,
     exhibits = _read_full_feed(wb_dir)
     pins_by_seq: dict[int, list[dict]] = {}
     for pin in read_pins(wb_dir):
-        pins_by_seq.setdefault(int(pin.get("at_seq", 0)), []).append(pin)
+        pins_by_seq.setdefault(_pin_seq(pin), []).append(pin)
 
     lines: list[str] = [
         f"# {title}",
