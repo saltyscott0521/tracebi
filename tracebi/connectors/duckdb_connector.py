@@ -121,6 +121,24 @@ class DuckDBConnector(BaseConnector):
             self.connect()
         return self._conn
 
+    def disconnect(self) -> None:
+        """Release the persistent handle; the next load reconnects lazily.
+
+        DuckDB refuses to open one file with two configurations in the same
+        process, so short-lived readers (contract fingerprints, tests) must
+        release deterministically rather than waiting on garbage collection.
+        A :memory: database lives on its connection — disconnecting one
+        discards its tables, so it is refused loudly instead of obeyed.
+        """
+        if self.database == ":memory:":
+            raise RuntimeError(
+                "disconnect() would discard an in-memory database's tables; "
+                "it is only meaningful for file-backed connectors."
+            )
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+
     def register_df(self, name: str, df: pd.DataFrame) -> "DuckDBConnector":
         """Register a pandas DataFrame as a DuckDB view named *name*."""
         if self._conn is None:

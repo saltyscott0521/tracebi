@@ -105,6 +105,15 @@ it does not read a transform, and it never asserts a number is *correct*. It
 asserts something narrower and more durable: this number is still what this
 query against this model produces.
 
+What phase ① *can* do is declare a **sink contract**: closed, re-runnable
+checks on the tables it lands — row counts, unique keys, referential
+integrity, reconciliation — checked at sink time and recorded beside the
+warehouse. The claim is worded with the same care the whole boundary gets:
+the sink **satisfied its contract**; the transform was not *verified*. A
+report's manifest joins against the certificate (`satisfied` / `stale` /
+`no_contract` — a re-sunk table never reads green off an old certificate),
+and that claim sits beside the figure claims, never blended into them.
+
 The escape hatch honors the same line. When the spec vocabulary can't express
 a layout, a template package's `report.py` can run arbitrary pandas — and its
 output stamps `verifiable: false` and never reads green *as verified* under
@@ -163,6 +172,7 @@ One canon, used everywhere — code, docs, UI, agent context:
 |---|---|
 | **Transform** (①) | Unconstrained pandas in `transforms/`; the contract is what lands, not how. (The medallion `ManipulationLayer` is orchestration vocabulary for tracked pipeline jobs — a different thing, not this phase.) |
 | **Sink** | Where transform output becomes named warehouse tables — where trust attaches |
+| **Sink contract** | Declared checks on the tables a transform lands, recorded beside the warehouse; the sink *satisfied its contract* — the transform was not *verified* |
 | **Freeze point** | A materialized artifact handed from one phase to the next |
 | **Model** (②) | The declarative star-schema contract: grain, keys, measures |
 | **Report** (③) | Any rendered output of live queries; "dashboard" is a style of report |

@@ -230,6 +230,56 @@ def _presentation() -> dict:
     }
 
 
+def _transform_contracts() -> dict:
+    """The phase-① sink-contract vocabulary — declared, closed, re-runnable."""
+    return {
+        "what": "Declared checks on the tables a transform SINKS, run as "
+                "read-only SQL at sink time and recorded beside the "
+                "warehouse (<warehouse>.contracts.json). A failed check "
+                "raises. This certifies the SINK — the exact claim is 'the "
+                "sink satisfied its contract', never 'the transform was "
+                "verified': nothing machine-checks the pandas above it.",
+        "usage": "from tracebi.contracts import contract\n"
+                 "with contract('holdings', warehouse=WAREHOUSE) as c:\n"
+                 "    c.rows('fact_holdings', at_least=10)\n"
+                 "    c.unique('dim_issuer', ['issuer_id'])",
+        "checks": [
+            {"check": "rows",
+             "args": ["table", "at_least?", "at_most?", "exactly?"],
+             "means": "row-count bounds"},
+            {"check": "unique", "args": ["table", "columns"],
+             "means": "the columns form a unique key"},
+            {"check": "not_null", "args": ["table", "columns"],
+             "means": "no NULLs in any named column"},
+            {"check": "foreign_key",
+             "args": ["table", "column", "refers_to=(table, column)"],
+             "means": "no orphaned keys"},
+            {"check": "values", "args": ["table", "column", "within"],
+             "means": "every value drawn from a closed set"},
+            {"check": "reconcile",
+             "args": ["table", "column", "against=(table, column)", "by",
+                      "tolerance"],
+             "means": "per-key sums match across two tables within tolerance"},
+        ],
+        "manifest_join": "At report build, each loaded warehouse table is "
+                         "classified in the manifest's transform_contracts "
+                         "block: satisfied (the recorded certificate still "
+                         "fingerprint-matches the table), stale (re-sunk "
+                         "after its contract was checked — never reads "
+                         "green), or no_contract. A separate claim beside "
+                         "the figure claims; it never colors a figure "
+                         "status. `tracebi verify --contracts` re-runs the "
+                         "recorded checks against the current warehouse.",
+        "constraints": [
+            "The vocabulary is closed and declarative — no callables — so "
+            "every check is serializable, reviewable, and re-runnable.",
+            "Fingerprints are computed by reading the sunk table back "
+            "through the connector load path, so the later satisfied/stale "
+            "comparison is same-path on both sides.",
+        ],
+    }
+
+
 def _conventions() -> dict:
     """
     How a project is discovered. These rules are enforced by
@@ -373,6 +423,7 @@ def describe() -> dict:
         },
         "number_formats": dict(NAMED_NUMBER_FORMATS),
         "presentation": _presentation(),
+        "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
     }
 

@@ -43,7 +43,11 @@ slow analysis and the fast reporting never block each other.
 you need, do the real analysis (window functions, prose parsing, cleaning),
 then *sink* clean star-schema tables into a file-backed DuckDB warehouse. The
 framework does not constrain how you clean; the contract is *what lands* — the
-named tables at the end of the script.
+named tables at the end of the script. A transform may end with a **sink
+contract** (`with contract(...) as c:` — declared checks like row counts,
+unique keys, foreign keys) that runs at sink time, raises on failure, and
+records a certificate report manifests join against; it certifies the sink,
+never the pandas above it.
 
 **Phase 2 (MODEL)** is a thin declarative star schema over the warehouse. It
 reads the sink; it never sees the transform.

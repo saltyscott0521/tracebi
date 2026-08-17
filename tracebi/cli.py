@@ -421,6 +421,17 @@ def run() -> dict:
     # wh.write(dim_x, "dim_x")
     # wh.write(fact, "fact_{slug}")
 
+    # ── 5. Declare the sink CONTRACT (optional, recommended) ────────────────
+    # What must be true of the tables that just landed — read-only SQL checks
+    # recorded beside the warehouse. A failed check raises, so a broken sink
+    # never freezes quietly. This certifies the SINK, never the pandas above.
+    # from tracebi.contracts import contract
+    # with contract("{slug}", warehouse=WAREHOUSE) as c:
+    #     c.rows("fact_{slug}", at_least=1)
+    #     c.unique("dim_x", ["x_id"])
+    #     c.not_null("fact_{slug}", ["id", "value"])
+    #     c.foreign_key("fact_{slug}", "x_id", refers_to=("dim_x", "x_id"))
+
     return {{"warehouse": WAREHOUSE}}
 
 
@@ -569,6 +580,18 @@ def run() -> dict:
     wh = DuckDBConnector("warehouse", database=WAREHOUSE)
     wh.write(dim_region, "dim_region")
     wh.write(fact, "fact_orders")
+
+    # Declare the sink CONTRACT: what must be true of the tables that just
+    # landed, checked as read-only SQL and recorded beside the warehouse.
+    # A failed check raises — a broken sink never freezes quietly. This
+    # certifies the SINK; it never verifies the pandas above.
+    from tracebi.contracts import contract
+    with contract("sample_transform", warehouse=WAREHOUSE) as c:
+        c.rows("fact_orders", at_least=1)
+        c.unique("fact_orders", ["order_id"])
+        c.not_null("fact_orders", ["order_id", "region_id", "revenue"])
+        c.foreign_key("fact_orders", "region_id",
+                      refers_to=("dim_region", "region_id"))
 
     return {"orders": len(fact), "regions": len(dim_region),
             "revenue": round(fact["revenue"].sum(), 2), "warehouse": WAREHOUSE}
@@ -1771,12 +1794,64 @@ def cmd_verify(args: argparse.Namespace) -> int:
             if status != REPRODUCES:
                 line += f" — {f['detail']}"
             print(line, file=sys.stdout if mark != "✗" else sys.stderr)
+
+    exit_code = result["exit_code"]
+
+    # The phase-① claim, reported beside the figure claims — never blended
+    # (v2 §2.6). The recorded block says what the warehouse certified about
+    # itself at BUILD time; it is informational here and moves no exit code.
+    recorded_contracts = manifest.get("transform_contracts")
+    if recorded_contracts:
+        print("\nsink contracts (recorded at build):")
+        for table, rec in sorted(recorded_contracts.items()):
+            status = rec.get("status", "?")
+            mark = "✓" if status == "satisfied" else "·"
+            line = f"{mark} {status:<12} {table}"
+            if status == "satisfied":
+                line += f" — {rec.get('checks', 0)} check(s), transform '{rec.get('transform')}'"
+            elif status == "stale":
+                line += (f" — re-sunk after transform '{rec.get('transform')}' "
+                         f"checked it; the certificate no longer describes "
+                         f"this data")
+            print(line)
+
+    # --contracts: re-run the recorded checks against the CURRENT warehouse.
+    # This is its own claim with its own exit: a check failing NOW means the
+    # sink no longer satisfies its declared contract. It never says the
+    # transform was verified, and it never colors a figure status.
+    if getattr(args, "contracts", False):
+        from tracebi.contracts import rerun_checks
+        warehouses = sorted({
+            c.database for m in models.values() for c in m.connectors()
+            if isinstance(getattr(c, "database", None), str)
+            and c.database != ":memory:"
+            and type(c).__name__ == "DuckDBConnector"
+        })
+        rows = [r for wh in warehouses for r in rerun_checks(wh)]
+        print("\nsink contracts (re-run now):")
+        if not rows:
+            print("· no contract record found beside the warehouse")
+        failed_now = 0
+        for r in rows:
+            ok = r.get("passed_now")
+            mark = "✓" if ok else "✗"
+            desc = f"{r['check']}({r['table']}, {r.get('params')})"
+            line = f"{mark} {'satisfied' if ok else 'VIOLATED':<12} {r['transform']}: {desc}"
+            if not ok:
+                line += f" — observed {r.get('observed_now', r.get('note'))}"
+                failed_now += 1
+            print(line, file=sys.stdout if ok else sys.stderr)
+        if failed_now:
+            print(f"{failed_now} check(s) the sink no longer satisfies.",
+                  file=sys.stderr)
+            exit_code = 1
+
     # Routed by exit code, not by verdict: a run that exits 0 must write
     # nothing to stderr, or CI wrappers that treat stderr as failure will
     # fail a receipt this command just called fine.
     print(result["verdict_detail"],
-          file=sys.stdout if result["exit_code"] == 0 else sys.stderr)
-    return result["exit_code"]
+          file=sys.stdout if exit_code == 0 else sys.stderr)
+    return exit_code
 
 
 # ── Report generator: new-report / report build|preview ────────────────────
@@ -2462,6 +2537,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--file", dest="verify_file", default=None,
         help="Path to a self-contained report *.html*; rehash its embedded "
              "data against a sibling <file>.manifest.json (no model needed).",
+    )
+    p_verify.add_argument(
+        "--contracts", action="store_true",
+        help="Also re-run the warehouse's recorded sink contracts against "
+             "the current warehouse. A separate claim, reported separately: "
+             "it says whether today's sink still satisfies its declared "
+             "contract — never that the transform was verified.",
     )
     p_verify.add_argument(
         "--manifest", dest="file_manifest", default=None,

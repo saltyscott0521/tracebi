@@ -563,6 +563,14 @@ class ReportManifest:
     #: the per-binding receipt at verify time — figures are claims, never the
     #: embed driver. None (omitted) on v1 renders.
     figures: Optional[list[dict]] = None
+    #: The phase-① join (architecture v2 §2.6): per warehouse table the
+    #: report loaded, whether the sink satisfied a declared contract —
+    #: ``{table: {status: satisfied|stale|no_contract, ...}}``. A separate
+    #: claim reported beside the figure claims, never blended into them:
+    #: "the sink satisfied its contract" is not "the transform was
+    #: verified", and contract status never colors a figure status. None
+    #: (omitted) on v1 renders and when no tables were loaded.
+    transform_contracts: Optional[dict] = None
 
     def to_dict(self) -> dict:
         d = {
@@ -584,6 +592,8 @@ class ReportManifest:
             d["stage"] = self.stage
         if self.figures is not None:
             d["figures"] = self.figures
+        if self.transform_contracts is not None:
+            d["transform_contracts"] = self.transform_contracts
         return d
 
     def to_json(self, indent: int = 2) -> str:

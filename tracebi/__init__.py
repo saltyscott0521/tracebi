@@ -33,6 +33,7 @@ from tracebi.pipeline.runner import PipelineRunner
 # NB: import the class only. Binding the `registry` singleton here would
 # shadow the `tracebi.registry` submodule, breaking the documented
 # `from tracebi.registry import registry`.
+from tracebi.contracts import ContractViolation, contract
 from tracebi.registry import Registry
 from tracebi.spec import DataRef, ReportSpec
 from tracebi.web.register import register
@@ -73,6 +74,9 @@ __all__ = [
     # Reports as data
     "ReportSpec",
     "DataRef",
+    # Transform (sink) contracts
+    "contract",
+    "ContractViolation",
     # Project-scope registries (import as modules: tracebi.model_registry.get_model)
     "model_registry",
     "pipeline_registry",

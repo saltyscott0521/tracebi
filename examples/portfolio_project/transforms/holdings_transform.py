@@ -27,6 +27,7 @@ import re
 import pandas as pd
 
 from tracebi.connectors.duckdb_connector import DuckDBConnector
+from tracebi.contracts import contract
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -163,6 +164,20 @@ def run() -> dict:
     wh.write(dim_fund, "dim_fund")
     wh.write(dim_issuer, "dim_issuer")
     wh.write(fact, "fact_holdings")
+
+    # ── the sink CONTRACT ─────────────────────────────────────────────────────
+    # Declare what must be true of the tables that just landed — checked as
+    # read-only SQL against the warehouse, recorded beside it. A failed check
+    # raises here, so a broken sink never freezes quietly. This says "the sink
+    # satisfied its contract" — it does NOT verify the pandas above.
+    with contract("holdings", warehouse=WAREHOUSE) as c:
+        c.rows("fact_holdings", at_least=10)
+        c.unique("dim_issuer", ["issuer_id"])
+        c.not_null("fact_holdings", ["fund_id", "issuer_id", "fair_value"])
+        c.foreign_key("fact_holdings", "issuer_id",
+                      refers_to=("dim_issuer", "issuer_id"))
+        c.foreign_key("fact_holdings", "fund_id",
+                      refers_to=("dim_fund", "fund_id"))
 
     return {
         "rows_in": n_raw,

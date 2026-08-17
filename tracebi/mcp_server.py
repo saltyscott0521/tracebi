@@ -173,7 +173,12 @@ front of a person should carry a receipt. This gateway is how you produce one.
 - If something can't be verified, say so — an honest "unverifiable" beats a
   green badge on unchecked work.
 - The trust machinery covers the model boundary onward (the query and the
-  report), not the phase-① pandas that built the warehouse.
+  report), not the phase-① pandas that built the warehouse. A transform may
+  declare a *sink contract* (checks on the tables it lands, recorded beside
+  the warehouse); a report manifest's `transform_contracts` block then says
+  whether each loaded table's sink satisfied its contract — `satisfied`,
+  `stale` (re-sunk since checked; never green), or `no_contract`. That claim
+  certifies the sink, never the pandas, and never colors a figure status.
 """
 
 

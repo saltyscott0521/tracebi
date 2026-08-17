@@ -59,6 +59,16 @@ processes because the sink is on disk. `inputs/` holds the raw material (the
 demo's `holdings.csv` is tracked; a large or sensitive real pull can be
 gitignored per-file); `data/` holds the build artifacts and is gitignored.
 
+A transform may end with a **sink contract** — a `with contract(...)` block
+declaring what must be true of the tables it just sank (row counts, unique
+keys, no NULLs, foreign keys, value domains, cross-table reconciliation). The
+checks run as read-only SQL at sink time; a failure raises; success records a
+certificate beside the warehouse (`data/warehouse.contracts.json`) that report
+manifests join against (`satisfied` / `stale` / `no_contract`) and
+`tracebi verify --contracts` re-runs. It certifies the **sink**, never the
+pandas above it — see `transforms/holdings_transform.py` for the reference
+declaration.
+
 ## Iterating on the report
 
 Everything visible is a query. To add a panel, add a section to

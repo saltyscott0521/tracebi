@@ -1,0 +1,401 @@
+"""
+Transform contracts — the receipt extends to phase ①, honestly.
+
+Phase ① is deliberately unconstrained and untraced (the manifesto refusal
+stands: no lineage through free-form pandas). What CAN be honest about it
+is the **sink**: a transform may declare what must be true of the tables it
+just sank — row counts, key uniqueness, referential integrity, value
+domains, cross-table reconciliation — checked at sink time as read-only SQL
+against the warehouse, and recorded beside it.
+
+The exact language, locked by design review (architecture v2 §2.6):
+**"the sink satisfied its contract" — never "the transform was verified."**
+A contract says the landed tables met their declared shape; it says nothing
+about whether the pandas above them was right.
+
+Usage, at the bottom of a transform, after the sinks::
+
+    from tracebi.contracts import contract
+
+    with contract("holdings", warehouse=WAREHOUSE) as c:
+        c.rows("fact_holdings", at_least=10)
+        c.unique("dim_issuer", ["issuer_id"])
+        c.not_null("fact_holdings", ["issuer_id", "fair_value"])
+        c.foreign_key("fact_holdings", "issuer_id",
+                      refers_to=("dim_issuer", "issuer_id"))
+
+The vocabulary is CLOSED and declarative — no callables, fully re-runnable
+data — for the same reason report specs are: a check that cannot be
+serialized cannot be replayed or reviewed. Any failed check **raises** at
+the end of the block: a sink that violates its contract must not freeze a
+warehouse that claims otherwise. On success the record — every check with
+its observed value, plus a fingerprint per touched table — is written to
+``<warehouse>.contracts.json`` (``data/warehouse.duckdb`` →
+``data/warehouse.contracts.json``): the freeze point carries its own
+certificate.
+
+**The fingerprint join, pinned** (v2 §6 flaw 4): the recorded table
+fingerprint is NOT computed from any in-memory frame — it is computed by
+reading the sunk table back through ``DuckDBConnector.load()``, the same
+connector path the model uses at load time, hashed with the one
+``frame_fingerprint`` algorithm. Any dtype or ordering normalization the
+write-then-read round trip performs is therefore inside BOTH sides of the
+later comparison against a report's recorded input fingerprints, so the
+join can classify ``satisfied`` / ``stale`` without false drift.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+#: The file suffix replacing the warehouse extension: the certificate sits
+#: beside the freeze point it describes.
+CONTRACTS_SUFFIX = ".contracts.json"
+
+CONTRACTS_SCHEMA_VERSION = 1
+
+
+def contracts_path(warehouse: str) -> str:
+    """``data/warehouse.duckdb`` → ``data/warehouse.contracts.json``."""
+    root, _ext = os.path.splitext(warehouse)
+    return root + CONTRACTS_SUFFIX
+
+
+class ContractViolation(RuntimeError):
+    """The sink did not satisfy its declared contract."""
+
+
+class _Contract:
+    """One transform's declared checks, executed against the sunk tables."""
+
+    def __init__(self, name: str, warehouse: str) -> None:
+        self.name = name
+        self.warehouse = warehouse
+        self._checks: list[dict] = []
+        self._tables: set[str] = set()
+        self._con = None
+
+    # ── The closed check vocabulary ─────────────────────────────────────
+
+    def rows(self, table: str, at_least: Optional[int] = None,
+             at_most: Optional[int] = None,
+             exactly: Optional[int] = None) -> None:
+        """Row-count bounds on a sunk table."""
+        n = self._one(f'SELECT COUNT(*) FROM "{table}"')
+        ok = ((at_least is None or n >= at_least)
+              and (at_most is None or n <= at_most)
+              and (exactly is None or n == exactly))
+        self._record("rows", table, ok, observed=n, params={
+            k: v for k, v in (("at_least", at_least), ("at_most", at_most),
+                              ("exactly", exactly)) if v is not None})
+
+    def unique(self, table: str, columns: list[str]) -> None:
+        """The columns form a unique key — no duplicated combination."""
+        cols = ", ".join(f'"{c}"' for c in columns)
+        dupes = self._one(
+            f'SELECT COUNT(*) FROM (SELECT {cols} FROM "{table}" '
+            f"GROUP BY {cols} HAVING COUNT(*) > 1)"
+        )
+        self._record("unique", table, dupes == 0, observed=dupes,
+                     params={"columns": list(columns)})
+
+    def not_null(self, table: str, columns: list[str]) -> None:
+        """No NULLs in any of the named columns."""
+        clauses = " OR ".join(f'"{c}" IS NULL' for c in columns)
+        nulls = self._one(f'SELECT COUNT(*) FROM "{table}" WHERE {clauses}')
+        self._record("not_null", table, nulls == 0, observed=nulls,
+                     params={"columns": list(columns)})
+
+    def foreign_key(self, table: str, column: str,
+                    refers_to: tuple[str, str]) -> None:
+        """Every non-null value in *column* exists in the referenced key."""
+        ref_table, ref_col = refers_to
+        orphans = self._one(
+            f'SELECT COUNT(*) FROM "{table}" t WHERE t."{column}" IS NOT NULL '
+            f'AND NOT EXISTS (SELECT 1 FROM "{ref_table}" r '
+            f'WHERE r."{ref_col}" = t."{column}")'
+        )
+        self._tables.add(ref_table)
+        self._record("foreign_key", table, orphans == 0, observed=orphans,
+                     params={"column": column,
+                             "refers_to": [ref_table, ref_col]})
+
+    def values(self, table: str, column: str, within: list) -> None:
+        """Every non-null value in *column* is drawn from the closed set."""
+        marks = ", ".join("?" for _ in within)
+        outside = self._one(
+            f'SELECT COUNT(*) FROM "{table}" WHERE "{column}" IS NOT NULL '
+            f'AND "{column}" NOT IN ({marks})', list(within)
+        )
+        self._record("values", table, outside == 0, observed=outside,
+                     params={"column": column, "within": list(within)})
+
+    def reconcile(self, table: str, column: str, against: tuple[str, str],
+                  by: str, tolerance: float = 0.0) -> None:
+        """Per-key sums of *column* match the other table's, within tolerance.
+
+        The cross-table position-for-position check: e.g. every fund's book
+        in the marks fact reconciles against the positions fact.
+        """
+        other_table, other_col = against
+        row = self._con.execute(
+            f'SELECT COUNT(*), COALESCE(MAX(ABS(a.s - b.s)), 0) FROM '
+            f'(SELECT "{by}" k, SUM("{column}") s FROM "{table}" GROUP BY 1) a '
+            f'FULL OUTER JOIN '
+            f'(SELECT "{by}" k, SUM("{other_col}") s FROM "{other_table}" '
+            f'GROUP BY 1) b USING (k) '
+            f'WHERE a.s IS NULL OR b.s IS NULL OR ABS(a.s - b.s) > ?',
+            [tolerance],
+        ).fetchone()
+        mismatched, worst = int(row[0]), float(row[1])
+        self._tables.add(other_table)
+        self._record("reconcile", table, mismatched == 0,
+                     observed={"mismatched_keys": mismatched,
+                               "worst_abs_diff": worst},
+                     params={"column": column,
+                             "against": [other_table, other_col],
+                             "by": by, "tolerance": tolerance})
+
+    # ── Mechanics ───────────────────────────────────────────────────────
+
+    def _one(self, sql: str, params: Optional[list] = None):
+        return self._con.execute(sql, params or []).fetchone()[0]
+
+    def _record(self, check: str, table: str, passed: bool,
+                observed: Any, params: dict) -> None:
+        self._tables.add(table)
+        self._checks.append({"check": check, "table": table,
+                             "params": params, "observed": observed,
+                             "passed": bool(passed)})
+
+    def _table_fingerprints(self) -> dict[str, str]:
+        """Each touched table, read back through the CONNECTOR LOAD PATH and
+        hashed with the one algorithm — the pinned join (v2 §6 flaw 4)."""
+        from tracebi.connectors.duckdb_connector import DuckDBConnector
+        from tracebi.model.dataset import frame_fingerprint
+
+        wh = DuckDBConnector("contracts", database=self.warehouse)
+        try:
+            return {t: frame_fingerprint(wh.load(t))
+                    for t in sorted(self._tables)}
+        finally:
+            wh.disconnect()
+
+    def _finish(self) -> None:
+        failed = [c for c in self._checks if not c["passed"]]
+        if failed:
+            lines = "\n".join(
+                f"  ✗ {c['check']}({c['table']}, {c['params']}) — "
+                f"observed {c['observed']}"
+                for c in failed
+            )
+            raise ContractViolation(
+                f"The sink did not satisfy contract '{self.name}' — "
+                f"{len(failed)} of {len(self._checks)} check(s) failed:\n"
+                f"{lines}\n"
+                f"No contract record was written: a warehouse must not "
+                f"carry a certificate its sink did not earn."
+            )
+        if not self._checks:
+            return   # an empty block declares nothing; write nothing.
+
+        record = {
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "transform": self.name,
+            "checks": self._checks,
+            "tables": self._table_fingerprints(),
+        }
+        path = contracts_path(self.warehouse)
+        existing: dict = {"schema_version": CONTRACTS_SCHEMA_VERSION,
+                          "transforms": {}}
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    existing = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                pass   # a corrupt certificate is replaced, not obeyed
+        existing.setdefault("transforms", {})[self.name] = record
+        existing["schema_version"] = CONTRACTS_SCHEMA_VERSION
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2, default=str)
+
+
+class contract:
+    """Context manager: declare and run one transform's sink contract."""
+
+    def __init__(self, name: str, warehouse: str) -> None:
+        self._c = _Contract(name, warehouse)
+
+    def __enter__(self) -> _Contract:
+        import duckdb
+
+        self._c._con = duckdb.connect(self._c.warehouse, read_only=True)
+        return self._c
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        con, self._c._con = self._c._con, None
+        con.close()
+        if exc_type is not None:
+            return False    # a check that itself crashed propagates as-is
+        self._c._finish()
+        return False
+
+
+def read_contracts(warehouse: str) -> Optional[dict]:
+    """The certificate beside *warehouse*, or None."""
+    path = contracts_path(warehouse)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def rerun_checks(warehouse: str, transform: Optional[str] = None) -> list[dict]:
+    """Re-execute recorded checks against the CURRENT warehouse.
+
+    Returns one result row per check: the recorded declaration plus
+    ``passed_now``. This says whether today's sink still satisfies the
+    declared contract — never anything about the pandas that produced it.
+    """
+    import duckdb
+
+    data = read_contracts(warehouse)
+    if not data:
+        return []
+    results: list[dict] = []
+    con = duckdb.connect(warehouse, read_only=True)
+    try:
+        for tname, rec in (data.get("transforms") or {}).items():
+            if transform and tname != transform:
+                continue
+            c = _Contract(tname, warehouse)
+            c._con = con
+            for chk in rec.get("checks", []):
+                method = getattr(c, chk["check"], None)
+                if method is None:
+                    results.append({**chk, "transform": tname,
+                                    "passed_now": None,
+                                    "note": "unknown check kind"})
+                    continue
+                c._checks = []
+                try:
+                    method(chk["table"], **_params_kwargs(chk))
+                    now = c._checks[-1]
+                    results.append({**chk, "transform": tname,
+                                    "passed_now": now["passed"],
+                                    "observed_now": now["observed"]})
+                except Exception as exc:  # noqa: BLE001 — a missing table is a result
+                    results.append({**chk, "transform": tname,
+                                    "passed_now": False,
+                                    "note": f"{type(exc).__name__}: {exc}"})
+    finally:
+        con.close()
+    return results
+
+
+def transform_contracts_block(models: dict,
+                              lineages: list[list[dict]]) -> dict:
+    """The manifest's ``transform_contracts`` join, computed at build time.
+
+    For every warehouse table the report actually loaded (the ``load`` nodes
+    in *lineages*, keyed by the connector's SOURCE table name), classify:
+
+    - ``satisfied`` — a contract record covers the table AND its recorded
+      fingerprint equals the table's fingerprint **right now**, read back
+      through the same connector load path the contract used. The sink the
+      report drew from is the sink that satisfied its contract.
+    - ``stale`` — a record covers the table but the fingerprints differ:
+      the table was re-sunk after its contract was checked. Stale never
+      reads green; the certificate no longer describes this data.
+    - ``no_contract`` — nothing certifies this input.
+
+    The comparison deliberately does NOT use the report's recorded
+    per-load fingerprints: a pushdown load fingerprints the *filtered*
+    frame, which can never equal a full-table certificate. Both sides here
+    are full-table reads through ``DuckDBConnector.load()`` — the pinned
+    join (v2 §6 flaw 4).
+
+    Two claims, side by side, never blended: this block says what the
+    warehouse certified about itself. It does not — and must not — color
+    any figure or section status.
+    """
+    from tracebi.model.dataset import frame_fingerprint
+
+    loads: dict[str, set[str]] = {}
+    for chain in lineages or []:
+        for node in chain or []:
+            if not isinstance(node, dict) or node.get("operation") != "load":
+                continue
+            cname = (node.get("connector") or {}).get("connector_name")
+            source = node.get("source")
+            if cname and source:
+                loads.setdefault(str(cname), set()).add(str(source))
+    if not loads:
+        return {}
+
+    connectors: dict[str, Any] = {}
+    for m in (models or {}).values():
+        for c in m.connectors():
+            connectors.setdefault(c.name, c)
+
+    block: dict[str, dict] = {}
+    for cname, tables in loads.items():
+        conn = connectors.get(cname)
+        wh = getattr(conn, "database", None)
+        certs = (read_contracts(wh)
+                 if isinstance(wh, str) and wh != ":memory:" else None)
+        for table in sorted(tables):
+            rec = _record_covering(certs, table)
+            if rec is None:
+                block.setdefault(table, {"status": "no_contract"})
+                continue
+            current = frame_fingerprint(conn.load(table))
+            recorded = rec["tables"][table]
+            block[table] = {
+                "status": "satisfied" if current == recorded else "stale",
+                "transform": rec.get("transform"),
+                "checked_at": rec.get("checked_at"),
+                "checks": sum(1 for c in rec.get("checks", [])
+                              if _check_touches(c, table)),
+                "fingerprint": recorded,
+            }
+    return block
+
+
+def _record_covering(certs: Optional[dict], table: str) -> Optional[dict]:
+    """The newest transform record whose fingerprints cover *table*."""
+    if not certs:
+        return None
+    hits = [rec for rec in (certs.get("transforms") or {}).values()
+            if isinstance(rec, dict) and table in (rec.get("tables") or {})]
+    if not hits:
+        return None
+    return max(hits, key=lambda r: str(r.get("checked_at") or ""))
+
+
+def _check_touches(chk: dict, table: str) -> bool:
+    if chk.get("table") == table:
+        return True
+    params = chk.get("params") or {}
+    for key in ("refers_to", "against"):
+        ref = params.get(key)
+        if isinstance(ref, (list, tuple)) and ref and ref[0] == table:
+            return True
+    return False
+
+
+def _params_kwargs(chk: dict) -> dict:
+    """Recorded params → the check method's kwargs (tuples restored)."""
+    params = dict(chk.get("params") or {})
+    if "refers_to" in params:
+        params["refers_to"] = tuple(params["refers_to"])
+    if "against" in params:
+        params["against"] = tuple(params["against"])
+    return params

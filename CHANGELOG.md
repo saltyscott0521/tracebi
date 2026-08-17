@@ -6,6 +6,42 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — reshape M4: transform contracts
+
+The receipt extends to phase ① — honestly. A transform may now end with a
+**sink contract**, and the exact claim is locked: *"the sink satisfied its
+contract"* — never *"the transform was verified."*
+
+- **`tracebi.contracts`** — `with contract(name, warehouse=...) as c:` at
+  the bottom of a transform declares what must be true of the tables just
+  sunk: `rows`, `unique`, `not_null`, `foreign_key`, `values`, `reconcile`.
+  The vocabulary is closed and declarative (no callables) so every check
+  is serializable, reviewable, and re-runnable. Checks run as read-only
+  SQL at sink time; **a failed check raises** and writes nothing — a
+  warehouse never carries a certificate its sink did not earn. Success
+  records `<warehouse>.contracts.json`: every check with its observed
+  value, plus a fingerprint per touched table.
+- **The fingerprint join, pinned** — recorded fingerprints are computed by
+  reading each sunk table back through `DuckDBConnector.load()`, the same
+  path the model uses, hashed with the one `frame_fingerprint` algorithm —
+  so any write/read dtype normalization sits inside both sides of the
+  later comparison. A round-trip equivalence test (ints, floats+NaN,
+  strings+None, dates, booleans, nullable Int64) gates it in CI.
+- **Manifest `transform_contracts` block** — at artifact build, every
+  warehouse table the report loaded is classified: `satisfied` (the
+  certificate still fingerprint-matches the table), `stale` (re-sunk
+  after its contract was checked — never reads green), or `no_contract`.
+  A separate claim beside the figure claims, never blended: contract
+  status never colors a figure status.
+- **`tracebi verify --contracts`** — prints the recorded block and
+  re-runs the declared checks against the current warehouse; a check the
+  sink no longer satisfies exits 1 on its own line.
+- `tracebi init` / `new-transform` scaffolds carry the contract stanza;
+  `tracebi context` (and the MCP `get_context` tool) teach the vocabulary;
+  the reference transform declares the reference contract.
+- `DuckDBConnector.disconnect()` — deterministic release of the
+  persistent read-only handle (one file, one process, one configuration).
+
 ### Added — reshape M3: the loop, and the workbench
 
 "Steer from chat, see results in the portal" is now a real page:

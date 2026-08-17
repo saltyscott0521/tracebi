@@ -261,6 +261,15 @@ class TemplatePackage:
         manifest.stage = "final"
         manifest.figures = [_figure_record(f) for f in figs]
 
+        # The phase-① join (v2 §2.6): per warehouse table this render loaded,
+        # did the sink satisfy a declared contract? A separate claim beside
+        # the figure claims — it never colors them.
+        from tracebi.contracts import transform_contracts_block
+        contracts = transform_contracts_block(
+            models, [sd.dataset.lineage_to_dict() for sd in inputs])
+        if contracts:
+            manifest.transform_contracts = contracts
+
         # Provenance for the runtime's badges, decided from what was actually
         # embedded (v2 §2.4): a stylesheet can restyle a badge, never
         # re-color honesty. --no-badges omits rendering; the manifest is

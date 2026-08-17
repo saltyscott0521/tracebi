@@ -107,6 +107,16 @@ phase to the next):
    warehouse. The framework does not constrain this phase. The contract is not
    *how* you clean, it is *what lands* — the named tables at the end of the
    script. Reference: `examples/portfolio_project/transforms/holdings_transform.py` → `DuckDBConnector(...).write(df, "table")`.
+   A transform may end with a **sink contract** (`tracebi/contracts.py`): a
+   `with contract(...)` block of closed, declarative checks (`rows`, `unique`,
+   `not_null`, `foreign_key`, `values`, `reconcile`) run as read-only SQL
+   against the tables just sunk. A failed check raises at sink time; success
+   records `data/warehouse.contracts.json` with connector-load-path
+   fingerprints. Report manifests join against it (`transform_contracts`:
+   `satisfied` / `stale` / `no_contract` — stale never reads green) and
+   `tracebi verify --contracts` re-runs it. Locked language: **"the sink
+   satisfied its contract"** — never "the transform was verified"; contract
+   status never colors figure statuses.
 
    *— freeze: `data/warehouse.duckdb` (materialized tables) —*
 
@@ -165,6 +175,7 @@ tracebi/               # Core Python package (~5200 LOC)
                        # (gitignored; Docker, Vercel and the release workflow build it. A
                        # wheel built from a tree without it ships no UI — / says so.)
   cli.py               # tracebi init / new-model / new-transform / report / verify / serve / mcp
+  contracts.py         # sink contracts: closed checks + certificate + manifest join
   _notebook.py         # notebook_to_source() — concatenates code cells for exec
   __init__.py          # Public API re-exports — check here before writing new code
 web/
@@ -248,6 +259,7 @@ tracebi spec render report.json                # build and render it
 tracebi mcp                                    # agent gateway over MCP (stdio)
 tracebi mcp --transport http --port 8765       # remote agent — needs TRACEBI_MCP_TOKEN (or --insecure)
 tracebi verify output/report.manifest.json     # re-run recorded queries; classify drift
+tracebi verify output/report.manifest.json --contracts  # + re-run the sink contracts
 tracebi serve                                  # browse the project
 
 # Tests
@@ -449,7 +461,11 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 2. End by sinking clean star-schema tables into the warehouse:
    `DuckDBConnector("warehouse", database=WAREHOUSE).write(df, "table")`. The
    contract is the named tables that land, not how you produced them.
-3. Model this on `examples/portfolio_project/transforms/holdings_transform.py`. Keep it idempotent (a rerun
+3. Declare the sink contract after the writes — `with contract(name,
+   warehouse=WAREHOUSE) as c:` with the checks the tables must satisfy
+   (`tracebi.contracts`; closed vocabulary, no callables). A failure raises;
+   success records the certificate the report manifests join against.
+4. Model this on `examples/portfolio_project/transforms/holdings_transform.py`. Keep it idempotent (a rerun
    replaces the warehouse tables). Nothing downstream imports this file.
 
 ### New connector

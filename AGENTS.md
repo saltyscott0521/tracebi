@@ -44,6 +44,21 @@ covers phases ② and ③, not ①.**
   is *not* traced through the raw analysis, and nothing machine-checks that the
   transform's numbers are right. Phase ① is trusted the way reviewed code is
   trusted — in git — not the way a fingerprint is trusted.
+- **What phase ① CAN declare is a sink contract.** End the transform with a
+  `with contract(name, warehouse=...) as c:` block (`tracebi.contracts`) —
+  closed, declarative checks (`rows`, `unique`, `not_null`, `foreign_key`,
+  `values`, `reconcile`) run as read-only SQL against the tables just sunk and
+  recorded beside the warehouse with connector-path fingerprints. A failed
+  check **raises**, so a broken sink never freezes quietly. At report build,
+  every loaded warehouse table is classified in the manifest's
+  `transform_contracts` block — `satisfied`, `stale` (re-sunk after its
+  contract was checked; never reads green), or `no_contract` — and
+  `tracebi verify --contracts` re-runs the declaration. The exact claim is
+  **"the sink satisfied its contract"** — never "the transform was verified":
+  the checks certify the landed tables' shape, not the pandas above them, and
+  contract status never colors a figure status. Declare one whenever you write
+  a transform; it is the difference between a warehouse that says nothing and
+  one that carries its own certificate.
 - **From the model boundary onward, every answer is stamped.** Agents never
   touch the warehouse over the gateway: they speak the semantic contract
   (facts, dimensions, named measures), and every result comes back with its
