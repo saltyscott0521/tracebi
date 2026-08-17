@@ -365,6 +365,16 @@
     });
   }
 
+  /* Guarded valueFormat, shared by every chart type: a known mode renders
+   * the number; an unknown mode returns the raw value unchanged — an
+   * attribute may format or do nothing, never blank out a number. */
+  function formatChartValue(v, mode) {
+    var n = toNum(v);
+    if (n === null) return v;
+    var formatted = applyNamedFormat(n, mode);
+    return formatted === null ? v : formatted;
+  }
+
   function optionFor(plan, rows) {
     var kind = String(plan.type).toLowerCase();
     var opt = { animation: false, color: plan.palette || [] };
@@ -378,6 +388,14 @@
         }),
         label: { show: true }
       }];
+      if (plan.valueFormat) {
+        opt.series[0].label.formatter = function (p) {
+          return p.name + ": " + formatChartValue(p.value, plan.valueFormat);
+        };
+        opt.tooltip.valueFormatter = function (v) {
+          return formatChartValue(v, plan.valueFormat);
+        };
+      }
       return opt;
     }
     if (kind === "scatter") {
@@ -385,6 +403,12 @@
       opt.tooltip = { trigger: "item" };
       opt.xAxis = { type: "value" };
       opt.yAxis = { type: "value" };
+      if (plan.valueFormat) {
+        var sf = function (v) { return formatChartValue(v, plan.valueFormat); };
+        opt.xAxis.axisLabel = { formatter: sf };
+        opt.yAxis.axisLabel = { formatter: sf };
+        opt.tooltip.valueFormatter = sf;
+      }
       if (ss.length > 1) opt.legend = {};
       opt.series = ss;
       return opt;
@@ -395,18 +419,23 @@
     if (series.length > 1) opt.legend = {};
     var catAxis = { type: "category", data: cats };
     var valAxis = { type: "value" };
-    if (plan.valueFormat === "compact") {
-      valAxis.axisLabel = { formatter: function (v) { return fmt(v, "compact"); } };
+    if (plan.valueFormat) {
+      valAxis.axisLabel = { formatter: function (v) {
+        return formatChartValue(v, plan.valueFormat);
+      } };
     }
     if (kind === "barh") { opt.xAxis = valAxis; opt.yAxis = catAxis; }
     else { opt.xAxis = catAxis; opt.yAxis = valAxis; }
     opt.series = series;
-    if (plan.valueFormat === "compact") {
+    if (plan.valueFormat) {
+      opt.tooltip.valueFormatter = function (v) {
+        return formatChartValue(v, plan.valueFormat);
+      };
       series.forEach(function (s) {
         s.label.formatter = function (p) {
           var v = p.value;
           if (v && typeof v === "object" && v.length !== undefined) v = v[v.length - 1];
-          return fmt(v, "compact");
+          return formatChartValue(v, plan.valueFormat);
         };
       });
     }
@@ -588,6 +617,25 @@
     unverified: { cls: "tb-badge--unverified", text: "unverified" }
   };
 
+  /* A <table> is not a reliable containing block for the absolute badge —
+   * it would escape to the nearest positioned ancestor, often the page.
+   * Wrap it in a positioned div (.tb-badge-anchor, tracebi.css) so the
+   * badge pins to the table's own corner. Idempotent: an existing wrapper
+   * is reused. */
+  function badgeHost(host) {
+    if (host.tagName !== "TABLE") return host;
+    var parent = host.parentNode;
+    if (!parent) return host;
+    if ((" " + parent.className + " ").indexOf(" tb-badge-anchor ") !== -1) {
+      return parent;
+    }
+    var wrap = document.createElement("div");
+    wrap.className = "tb-badge-anchor";
+    parent.insertBefore(wrap, host);
+    wrap.appendChild(host);
+    return wrap;
+  }
+
   function hydrateBadges() {
     var el = document.getElementById("tracebi-figures");
     if (!el) return; /* no config block → no badges, no errors */
@@ -600,12 +648,14 @@
         var spec = _BADGES[fig.provenance];
         if (!spec) return; /* unknown provenance never guesses a colour */
         var host = document.getElementById(fig.id);
-        if (!host || host.querySelector(".tb-badge")) return;
+        if (!host) return;
+        var anchor = badgeHost(host);
+        if (anchor.querySelector(".tb-badge")) return;
         var badge = document.createElement("span");
         badge.className = "tb-badge " + spec.cls;
         badge.textContent = spec.text;
         if (fig.note) badge.title = fig.note;
-        host.insertBefore(badge, host.firstChild);
+        anchor.insertBefore(badge, anchor.firstChild);
       } catch (e) { /* defensive */ }
     });
   }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import decimal
 import os
 from typing import Any, Optional
 
@@ -196,7 +197,19 @@ class DuckDBConnector(BaseConnector):
         table: str,
         if_exists: str = "replace",
     ) -> None:
-        """Persist *df* into a DuckDB table named *table*."""
+        """Persist *df* into a DuckDB table named *table*.
+
+        Object columns whose non-null values are all ``decimal.Decimal``
+        land as ``DECIMAL(38,12)``, preserving the exact digits instead of
+        a too-narrow inferred type or a lossy float64 conversion.
+        ``DECIMAL(38,12)`` holds up to 26 integer digits and 12 decimal
+        places; values with deeper scale are rounded to 12 decimal places
+        at write. A column mixing ``Decimal`` with other types (e.g. a
+        stray float) is not promoted — it falls through to DuckDB's own
+        inference (typically ``DOUBLE``), having already lost exactness.
+        Appending a Decimal column into an existing table whose column is
+        not ``DECIMAL(38,12)`` raises rather than silently coercing.
+        """
         if self.database == ":memory:":
             if self._conn is None:
                 self.connect()
@@ -224,12 +237,79 @@ class DuckDBConnector(BaseConnector):
         finally:
             write_conn.close()
 
+    @staticmethod
+    def _decimal_columns(df: pd.DataFrame) -> set:
+        """Columns this write treats as Decimal: object dtype, at least one
+        non-null value, and every non-null value a ``decimal.Decimal``."""
+        decimal_cols = set()
+        for col in df.columns:
+            if df[col].dtype != object:
+                continue
+            values = df[col].dropna()
+            if len(values) and all(isinstance(v, decimal.Decimal) for v in values):
+                decimal_cols.add(col)
+        return decimal_cols
+
+    @classmethod
+    def _decimal_select(cls, df: pd.DataFrame) -> str:
+        """SELECT list for the staged frame, casting Decimal columns wide.
+
+        Object columns whose non-null values are all ``decimal.Decimal``
+        (at least one non-null) are CAST to ``DECIMAL(38,12)`` — DuckDB's
+        ``register()`` otherwise infers a precision/scale from the values
+        it samples, which can be too narrow for later rows (and older
+        versions degrade to a lossy float64). Every other column passes
+        through unchanged; with no Decimal columns this is plain ``*``.
+        """
+        decimal_cols = cls._decimal_columns(df)
+        if not decimal_cols:
+            return "*"
+        parts = []
+        for c in df.columns:
+            ident = str(c).replace('"', '""')
+            if c in decimal_cols:
+                parts.append(f'CAST("{ident}" AS DECIMAL(38,12)) AS "{ident}"')
+            else:
+                parts.append(f'"{ident}"')
+        return ", ".join(parts)
+
+    def _check_append_decimal_types(self, conn, df: pd.DataFrame, table: str) -> None:
+        """Refuse an append that would coerce a Decimal column into a
+        non-DECIMAL(38,12) column of the existing table.
+
+        DuckDB's INSERT casts to the target column's type, so appending
+        exact Decimals into e.g. an INTEGER or DOUBLE column would silently
+        change the numbers. A sink must never do that — raise instead.
+        Non-Decimal columns are not checked and keep DuckDB's behavior.
+        """
+        decimal_cols = self._decimal_columns(df)
+        if not decimal_cols:
+            return
+        existing = dict(conn.execute(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_name = ?",
+            [table],
+        ).fetchall())
+        for col in df.columns:
+            if col not in decimal_cols or col not in existing:
+                continue
+            if existing[col] != "DECIMAL(38,12)":
+                raise ValueError(
+                    f"Cannot append Decimal column '{col}' into table "
+                    f"'{table}': the existing column is {existing[col]}, and "
+                    "inserting would silently coerce the values. Rewrite the "
+                    "table with if_exists=\"replace\" to retype it as "
+                    "DECIMAL(38,12), or align the frame's column with the "
+                    "table's existing type."
+                )
+
     def _write_into(self, conn, df: pd.DataFrame, table: str, if_exists: str) -> None:
+        select = self._decimal_select(df)
         conn.register("__tracebi_tmp__", df)
         try:
             if if_exists == "replace":
                 conn.execute(f'DROP TABLE IF EXISTS "{table}"')
-                conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
+                conn.execute(f'CREATE TABLE "{table}" AS SELECT {select} FROM __tracebi_tmp__')
             elif if_exists == "append":
                 exists = conn.execute(
                     "SELECT 1 FROM information_schema.tables "
@@ -237,9 +317,10 @@ class DuckDBConnector(BaseConnector):
                     [table],
                 ).fetchone()
                 if exists:
-                    conn.execute(f'INSERT INTO "{table}" SELECT * FROM __tracebi_tmp__')
+                    self._check_append_decimal_types(conn, df, table)
+                    conn.execute(f'INSERT INTO "{table}" SELECT {select} FROM __tracebi_tmp__')
                 else:
-                    conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
+                    conn.execute(f'CREATE TABLE "{table}" AS SELECT {select} FROM __tracebi_tmp__')
             elif if_exists == "fail":
                 exists = conn.execute(
                     "SELECT 1 FROM information_schema.tables "
@@ -250,7 +331,7 @@ class DuckDBConnector(BaseConnector):
                     raise ValueError(
                         f"Table '{table}' already exists in DuckDBConnector '{self.name}'."
                     )
-                conn.execute(f'CREATE TABLE "{table}" AS SELECT * FROM __tracebi_tmp__')
+                conn.execute(f'CREATE TABLE "{table}" AS SELECT {select} FROM __tracebi_tmp__')
             else:
                 raise ValueError(
                     f"Invalid if_exists={if_exists!r}; expected replace, append, or fail."

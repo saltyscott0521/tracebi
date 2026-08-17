@@ -40,7 +40,17 @@ class TestInitScaffold:
         assert (proj / "inputs" / "orders.csv").is_file()
         assert (proj / "transforms" / "sample_transform.py").is_file()
         assert (proj / "models" / "sample_model.py").is_file()
-        assert (proj / "reports" / "sample_dashboard.json").is_file()
+        # Round-2 flip: the sample report is an ARTIFACT PACKAGE — the one
+        # report lane — not a legacy JSON spec.
+        assert (proj / "reports" / "sample_dashboard" / "report.json").is_file()
+        assert (proj / "reports" / "sample_dashboard" / "template.html").is_file()
+        import json as _json
+        pkg = _json.loads((proj / "reports" / "sample_dashboard" /
+                           "report.json").read_text())
+        assert pkg.get("libs") == ["echarts"], \
+            "the sample chart must opt into the vendored ECharts or it is blank"
+        assert not (proj / "reports" / "sample_dashboard.json").exists(), \
+            "the scaffold must not teach the legacy spec lane"
 
     def test_init_scaffolds_an_agent_guide(self, tmp_path):
         """A fresh agent landing in the project must find orientation there —
@@ -69,22 +79,41 @@ class TestInitScaffold:
         assert out.returncode == 0, out.stderr
         assert (proj / "data" / "warehouse.duckdb").exists()
 
-        # the scaffolded spec validates against the scaffolded model
-        out = _run(["spec", "validate", "reports/sample_dashboard.json"], proj)
-        assert out.returncode == 0, out.stdout + out.stderr
-
-        # ③ render + receipt
+        # ③ render + receipt — the sample is an artifact package, so the
+        # first page a project renders demonstrates the real lane: figure
+        # claims, the presentation stack, provenance badges, and a manifest
+        # that joins the sink contract (round-2 finding: the scaffold must
+        # not teach the form `migrate` exists to convert away from).
         out = _run(["report", "build", "sample_dashboard"], proj)
         assert out.returncode == 0, out.stdout + out.stderr
         # M1 flip ledger: report build renders to output/ (finding #14).
         manifest = proj / "output" / "sample_dashboard.html.manifest.json"
         assert manifest.is_file()
 
-        # the loop closes: every checked section reproduces
-        out = _run(["verify", "output/sample_dashboard.html.manifest.json"], proj)
+        html = (proj / "output" / "sample_dashboard.html").read_text(
+            encoding="utf-8")
+        assert "tb-kpi" in html, "the sample page must use the shipped stack"
+        # The scaffold's exploration block ("Working notes") must be DELETED
+        # by the build — the inlined stylesheet still names the attribute in
+        # its selectors, so assert on the content, not the string.
+        assert "Working notes" not in html, \
+            "exploration blocks must be deleted at the final build"
+        import json as _json
+        m = _json.loads(manifest.read_text(encoding="utf-8"))
+        assert m["schema_version"] == 2 and m.get("figures"), \
+            "the sample must produce the figure claims layer"
+        contracts = m.get("transform_contracts", {})
+        assert contracts and all(
+            r.get("status") == "satisfied" for r in contracts.values()
+        ), "the sample receipt must join the scaffolded sink contract green"
+
+        # the loop closes under --strict: every figure in the scaffold is
+        # bound, so the CI-gate bar itself reads green on first contact.
+        out = _run(["verify", "output/sample_dashboard.html.manifest.json",
+                    "--strict", "--contracts"], proj)
         assert out.returncode == 0, out.stdout + out.stderr
         assert "REPRODUCES" in out.stdout
-        assert "reproduces" in out.stdout.lower()
+        assert "satisfied" in out.stdout
 
     def test_scaffolded_python_compiles(self, tmp_path):
         proj = tmp_path / "proj"

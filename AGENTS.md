@@ -74,6 +74,46 @@ query that produced it and re-runnable against the sink. What produced the sink
 is phase ① — believed the way you believe reviewed code, not the way you believe
 a hash.
 
+## Authoring the artifact
+
+The package's `template.html` is ordinary HTML whose figures each claim a
+binding: `data-tb-figure="value|chart|table|custom"` +
+`data-tb-binding="<name>"` (values add `data-tb-cell` and optionally
+`data-tb-format`; charts add `data-tb-type`/`data-tb-x`/`data-tb-y` and
+optionally `data-tb-color`/`data-tb-value-format`; tables optionally
+`data-tb-columns`). A figure with no binding carries `data-tb-unverified` —
+there is no third state. Give every figure an `id`: ids are how humans
+redirect you. `tracebi context` documents the full grammar in its
+`presentation` block.
+
+Three rules that keep pages honest:
+
+- **Bind prose numbers.** Any element works as a value figure — a `<span>`
+  mid-sentence included — so when you are asked to "explain the results",
+  bind the numbers in your sentences instead of typing them. Narrative
+  prose is where unverified numbers usually hide; here the honest path
+  costs one attribute, and each bound span is a verified figure in the
+  manifest.
+- **"Top N" is declarative.** Put `order_by` + `limit` in the binding's
+  query — never sort or slice in `script.js`, which moves ordering out of
+  the receipt.
+- **Explore inside the artifact.** Blocks marked
+  `data-tb-stage="exploration"` render under `tracebi dev` and are deleted
+  at the final build; the workbench at `/__workbench` shows figures,
+  coverage, and the pins a human left for you (also via `tracebi report
+  status` and the MCP `workbench_state` tool).
+
+And the iteration protocol itself: `tracebi dev <name>` **blocks** — run it
+in a background shell (or let the human keep it open; the portal is their
+view). Then edit and save; the watcher re-renders. Before every editing
+pass, read the pins (`tracebi report status <name>` — 📌 lines — or MCP
+`workbench_state`): a pin is the human pointing at a figure with a note, and
+it comes first. `tracebi report snapshot <name>` shares a draft (exploration
+kept, review banner, no manifest — `verify` refuses it by name). Publishing
+is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
+the built `output/<name>.html` + receipt is the deliverable, and the package
+is already served on the Reports page — there is no separate publish step.
+
 ## The two planes rule
 
 **Change the contract in git. Use the contract over MCP.**
@@ -120,7 +160,7 @@ The http transport requires `TRACEBI_MCP_TOKEN` (send
 `Authorization: Bearer <token>`) — it refuses to start without it unless
 `--insecure` is passed explicitly.
 
-Nine tools (`tracebi/mcp_server.py`):
+Ten tools (`tracebi/mcp_server.py`):
 
 | Tool | Purpose |
 |---|---|
@@ -132,6 +172,7 @@ Nine tools (`tracebi/mcp_server.py`):
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
 | `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit |
+| `build_report` | The **publish step for the package lane**: build `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 
 Every tool returns **structured output** (a typed `outputSchema` and

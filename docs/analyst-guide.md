@@ -1,8 +1,17 @@
 # TraceBi Analyst Guide
 
 The analyst path from messy data to a served report, plus the full
-development flow for ad-hoc request scripts — from blank file to a published,
-parameterized, fully-traceable report. Every code block is runnable.
+development flow for ad-hoc reports as **artifact packages** — from blank
+scaffold to a built, verified, fully-traceable artifact. Every code block is
+runnable.
+
+> **Deprecated: the `requests/` script lane.** Earlier versions of this
+> guide centered on request scripts. That lane is **deprecated and removed
+> in 0.8** — `tracebi init` no longer scaffolds `requests/`, and
+> `tracebi new-request` / `tracebi run` print a deprecation warning. The one
+> report lane is the **artifact package** (`reports/<name>/`), covered
+> below. The request-script walkthrough is kept for projects still on the
+> lane through 0.7 and is clearly marked **legacy**.
 
 **Who this is for:** analysts writing against an existing TraceBi project (a
 warehouse and `DataModel` someone has already wired up, or one you build with
@@ -31,7 +40,7 @@ shape:
      grain, keys, measures in a few dozen lines a reviewer reads without the pandas
                                                         │
                                                         ▼  freeze: the model (the semantic contract)
-③  REPORT       reports/          a ReportSpec (JSON) pointed at the model
+③  REPORT       reports/          an artifact package (or JSON ReportSpec) over the model
      KPI cards, charts, tables — every figure a live query; served on the Reports page
 ```
 
@@ -46,11 +55,13 @@ you clean; the contract is *what lands*. Reference impl:
 never sees the transform above it. Reference impl:
 [models/portfolio_model.py](../examples/portfolio_project/models/portfolio_model.py).
 
-**Phase ③** is a JSON `ReportSpec` whose every figure is a live query against
-the model. Because the model is materialized, the page re-renders in
-milliseconds with no pandas in the loop — editing the report never re-runs
-phase ①. Reference impl:
-[reports/portfolio_dashboard.json](../examples/portfolio_project/reports/portfolio_dashboard.json).
+**Phase ③** is an **artifact package** (`reports/<name>/`) — or a JSON
+`ReportSpec`, a serialization of the same thing — whose every figure is a
+live query against the model. Because the model is materialized, the page
+re-renders in milliseconds with no pandas in the loop — editing the report
+never re-runs phase ①. Reference impls:
+[reports/portfolio_book/](../examples/portfolio_project/reports/portfolio_book/) (package) and
+[reports/portfolio_dashboard.json](../examples/portfolio_project/reports/portfolio_dashboard.json) (spec).
 
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
@@ -66,27 +77,81 @@ execute on specs, and `tracebi verify` apply from the **model boundary onward**
 compares fingerprints; it does not read a transform and does not assert a
 number is correct.
 
-The rest of this guide covers the **request-script** path — the ad-hoc,
-parameterized route for reports you author in Python rather than as a JSON spec
-over a materialized model. It shares the same models, lineage, and manifests.
+The rest of this guide covers the **artifact-package** path — the ad-hoc
+route for reports you author as free HTML over the model — followed by the
+**legacy request-script** walkthrough (deprecated, removed in 0.8). Both
+share the same models, lineage, and manifests.
 
 ---
 
-## The request-script loop at a glance
+## The artifact-package loop at a glance
 
 ```
-tracebi new-request "My Report"     # 1. scaffold
+tracebi new-report "My Report"      # 1. scaffold reports/my_report/
+tracebi dev my_report               # 2. live loop — workbench, pins, exploration
+tracebi report build my_report      # 3. render → output/my_report.html + manifest
+tracebi verify output/my_report.html.manifest.json --strict --contracts
+                                    # 4. prove it before anyone reads it
+```
+
+An artifact package is a directory `reports/<name>/`: `report.json` (the
+data bindings — named queries against a model) plus `template.html` /
+`style.css` / `script.js` — free HTML where every **figure claims a
+binding** (`data-tb-figure` + `data-tb-binding`). A figure with no binding
+carries `data-tb-unverified`; there is no third state.
+
+The dev loop, step by step:
+
+- **`tracebi dev <name>` blocks** — keep it open in its own terminal. It
+  serves the report at the root and the **workbench** at `/__workbench`
+  (figures, binding coverage, and the pins a reviewer left), re-rendering
+  on every save to the package, `models/`, or `transforms/`.
+- **Explore inside the artifact.** Blocks marked
+  `data-tb-stage="exploration"` render under `tracebi dev` and die at
+  build — scratch work never ships.
+- **Read the pins before every pass.** `tracebi report status <name>`
+  prints the earned state in the terminal; 📌 lines are a reviewer pointing
+  at a figure with a note. Address those first.
+- **Drafts are snapshots.** `tracebi report snapshot <name>` writes one
+  HTML with exploration kept and a review banner; it carries no manifest
+  and `verify` refuses it by name — a draft cannot impersonate a final.
+- **Publishing is build + verify.** `tracebi report build <name>` strips
+  exploration, validates every figure claim against its binding, and writes
+  `output/<name>.html` plus the `.manifest.json` receipt. The package is
+  already served on the **Reports** page — there is no separate publish
+  step. `--contracts` also re-runs the sink contracts, so the receipt can
+  say **the sink satisfied its contract** (never "the transform was
+  verified" — contract status certifies what landed, not the pandas above
+  it, and never colors a figure status).
+
+`report.py` beside `report.json` is the escape hatch for pandas the model
+can't express; its output stamps `verifiable: false` and never reads green
+under `verify`. A JSON `ReportSpec` under `reports/` still renders — it is
+a serialization, not a lane — and `tracebi migrate spec reports/<name>.json`
+compiles it into a package, which shadows the same-named spec at discovery.
+
+---
+
+## Legacy: the request-script lane (deprecated, removed in 0.8)
+
+Everything below describes the old `requests/` script lane, kept for
+projects still on it through 0.7. Do not start new work here — scaffold an
+artifact package instead (`tracebi new-report`). Sections 2, 3, and 8
+(model discovery and the DataSet verbs) apply to both lanes.
+
+The legacy loop at a glance:
+
+```
+tracebi new-request "My Report"     # 1. scaffold (prints a deprecation warning)
 tracebi dev my_report               # 2. edit ↔ live preview loop
 tracebi run my_report               # 3. render final outputs
 git add requests/my_report.py      # 4. ship — the web UI picks it up
 ```
 
----
-
-## 1. Scaffold a request
+## 1. Scaffold a request (legacy)
 
 ```bash
-tracebi new-request "Open orders by region"
+tracebi new-request "Open orders by region"   # DEPRECATED — use tracebi new-report
 # → requests/open_orders_by_region.py
 
 # Prefer notebooks? Same flow, .ipynb output:
@@ -180,7 +245,7 @@ by_region = enriched.aggregate(
 Mistyped a column? Errors tell you what's available and suggest the closest
 match: `dropna() column(s) not found: 'regin' (did you mean 'region'?)`.
 
-## 4. Parameters
+## 4. Parameters (legacy)
 
 Declare defaults once; override from the CLI or the web UI without editing
 code:
@@ -199,7 +264,7 @@ Overrides are coerced to the type of the default (`"500"` → `500` because the
 default is an int); unknown parameter names fail loudly. The web UI's
 **Requests** page renders a form from these defaults automatically.
 
-## 5. Build the report
+## 5. Build the report (legacy)
 
 ```python
 from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
@@ -221,14 +286,16 @@ Pass DataSets straight into sections — each section's full lineage is embedded
 in the report manifest automatically. That manifest *is* the audit trail: when
 someone asks "where did this number come from?", it's already answered.
 
-## 6. The edit ↔ preview loop
+## 6. The edit ↔ preview loop (legacy)
 
 ```bash
 tracebi dev my_report
 ```
 
 Watches your script, re-runs it on save, and serves a live HTML preview in
-your browser. This is the fastest way to iterate on layout and content.
+your browser. (Pointed at a request *script*, `tracebi dev` keeps this
+legacy single-file loop; pointed at an artifact *package* it opens the
+current loop with the workbench.)
 
 When you're done, render the final artifacts:
 
@@ -249,7 +316,7 @@ whose sections are *all* unverifiable still exits 0, but the verdict reads
 data-bearing section at all exits 1: there was nothing to check, so there is
 nothing to pass.)
 
-## 7. Publish to the web UI
+## 7. Publish to the web UI (legacy)
 
 The template's last section registers your report with the web server:
 
@@ -261,10 +328,12 @@ def _factory():
     return report
 ```
 
-Any script in `requests/` is auto-discovered on server start (and on
-dev-mode reload). Your report appears on the **Requests** page with its
+Any script in `requests/` is still auto-discovered on server start (and on
+dev-mode reload) through 0.7, with a deprecation notice — the lane is
+removed in 0.8. Your report appears on the **Requests** page with its
 parameter form, run button, downloads, and per-section lineage graphs —
-no extra wiring.
+no extra wiring. (Artifact packages need none of this: `reports/<name>/`
+is served on the **Reports** page as soon as it exists.)
 
 ## 8. Verbs cheat sheet
 

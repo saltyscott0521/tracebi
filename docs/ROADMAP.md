@@ -121,6 +121,12 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 - **Why:** Flagged missing in the 2026-05-22 review (NOTES.md:1077), still missing; the fund-ops audit calls it a first ask; the operator audit shows the workaround path is undeployable as documented. A trust layer nobody receives reports from doesn't get evaluated.
 - **Effort:** M
 
+### 11b. The legacy spec render gains the presentation stack (round-2 field test)
+
+- **What:** A JSON-spec render today produces zero `tb-` classes and zero provenance badges — it is still the legacy renderer, so a spec-authored page and a package-authored page differ in look *and* trust affordances. Either route spec renders through the compiled-package path (compile in memory via `compile_spec`, render the artifact) or teach `HTMLRenderer` to emit the stack.
+- **Why:** Round-2 field test, finding 2: "If specs are staying, they need the stack." The scaffold no longer steers anyone to specs (fixed), but every un-migrated spec still renders without badges — the trust affordances silently downgrade on the serialization that claims to be equivalent. Routing through `compile_spec` is likely a day and retires the divergence permanently.
+- **Effort:** S–M
+
 ### 12. A real release path: PyPI, tagged images, versioned artifacts
 
 - **What:** Publish to PyPI (also retires item 5's dependency-confusion risk permanently), tag container images instead of compose-builds-from-checkout, and replace the "remember to update `_RUNS_ADDED_COLUMNS`" invariant with a checked migration step.

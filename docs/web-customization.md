@@ -28,8 +28,9 @@ your app module ──populates──▶ registry ◀──reads── API route
 The server front-ends the analyst workflow described in
 [WORKFLOW.md](../WORKFLOW.md): phase ① `transforms/` writes clean star-schema
 tables into a DuckDB warehouse, phase ② `models/` declares a thin `DataModel`
-over that warehouse, and phase ③ `reports/` is a `ReportSpec` (JSON) pointed
-at the model. Phases ② and ③ are auto-discovered directories (below) and land
+over that warehouse, and phase ③ `reports/` holds artifact packages
+(`reports/<name>/`) and `ReportSpec` JSON files pointed at the model.
+Phases ② and ③ are auto-discovered directories (below) and land
 on the **Models** and **Reports** pages; phase ① runs explicitly (e.g. via
 `python run_workflow.py`) and is not something the server discovers — the sink
 it produces is the input the model reads.
@@ -43,15 +44,15 @@ lowest-friction way to add resources — no app module configuration needed:
 |---|---|---|
 | `models/` | each `.py` exposes a `model` variable (a `DataModel`) | registers it via `registry.add_model()` |
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | registers it via `registry.add_pipeline()` |
-| `reports/` | a `.py` `@register.report(...)` factory, a `.json` `ReportSpec` (phase ③), or a `<name>/` template package | registered as a report on the Reports page |
-| `requests/` | ad-hoc scripts with `request_params()` and `run()` | appears on Requests page with run button |
+| `reports/` | a `<name>/` **artifact package** (the current report lane; a package directory shadows a same-named `.json` spec), a `.json` `ReportSpec` (phase ③), or a `.py` `@register.report(...)` factory | registered as a report on the Reports page |
+| `requests/` | ad-hoc scripts with `request_params()` and `run()` — **deprecated, removed in 0.8** | still appears on the Requests page through 0.7, with a deprecation notice |
 
 Scaffold files with the CLI, then edit and commit them:
 
 ```bash
 tracebi new-model "Sales Model"     # → models/sales_model.py
 tracebi new-pipeline "Sales ETL"    # → pipelines/sales_etl.py
-tracebi new-request "Weekly Report" # → requests/weekly_report.py
+tracebi new-report "Weekly Report"  # → reports/weekly_report/ (artifact package)
 ```
 
 These directories also work without the web server — notebooks and scripts
@@ -130,8 +131,8 @@ your peril):
 |---|---|---|
 | `models/` | `model = DataModel(...)` variable | **Models** + **Explore** |
 | `pipelines/` | `runner = PipelineRunner(...)` variable | **Pipelines** page |
-| `reports/` | `@register.report("name")` factory, a `.json` `ReportSpec`, or a `<name>/` template package | **Reports** page |
-| `requests/` | any `.py` / `.ipynb` with `run()` | **Requests** page |
+| `reports/` | a `<name>/` **artifact package** (current lane; shadows a same-named `.json` spec), a `.json` `ReportSpec`, or a `@register.report("name")` factory | **Reports** page |
+| `requests/` | any `.py` / `.ipynb` with `run()` — **deprecated, removed in 0.8** | **Requests** page (through 0.7) |
 
 **Or register explicitly** (in your app module's `registry.py`, or the notebook facade `tracebi.web.register`):
 
@@ -152,8 +153,9 @@ TRACEBI_DEV_MODE=1 python -m tracebi.web.run    # adds POST /api/_dev/reload
 ```
 
 Hot-reload restarts the server on Python file changes. Dev mode additionally
-mounts `POST /api/_dev/reload`, which re-imports auto-discovered request
-modules *without* a restart — useful when iterating on report factories.
+mounts `POST /api/_dev/reload`, which re-imports every auto-discovered
+module *without* a restart — useful when iterating on report factories (and
+legacy request scripts, through 0.7).
 
 For UI work, run Vite's dev server alongside the API (see below).
 
@@ -271,8 +273,8 @@ docker compose up --build
 | `TRACEBI_APP` | *(none)* | App module imported at startup; `tracebi.web.demo_app` opts into the bundled demo |
 | `TRACEBI_MODELS_DIR` | `models` | Folder scanned for `model` variable files |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for `runner` variable files |
-| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `@register.report()` factories, `.json` `ReportSpec`s (phase ③), and `<name>/` template packages; all served on the Reports page |
-| `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for ad-hoc request scripts |
+| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `<name>/` artifact packages, `.json` `ReportSpec`s (phase ③), and `@register.report()` factories; all served on the Reports page |
+| `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for ad-hoc request scripts — deprecated lane, removed in 0.8 |
 | `TRACEBI_SCHEDULED_DIR` | `scheduled` | Folder scanned for `@register.scheduled()` factories |
 | `TRACEBI_DEV_MODE` | unset | `1` mounts `POST /api/_dev/reload` |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | unset | HTTP Basic auth |

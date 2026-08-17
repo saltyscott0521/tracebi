@@ -144,17 +144,30 @@ TraceBi is a trust layer for AI-generated analytics: every number you put in
 front of a person should carry a receipt. This gateway is how you produce one.
 
 ## The loop
-1. **get_context** — first call. Returns the whole vocabulary (models, facts,
-   dimensions, named measures, section types). Nothing outside it validates.
+1. **get_context** — first call. Returns the whole vocabulary: models, facts,
+   dimensions, named measures, the `presentation` block (the `data-tb-*`
+   figure grammar, tokens, formats) and `transform_contracts`. Nothing
+   outside it validates.
 2. **query_model** — ask star-schema questions. Every result is *stamped*: the
    resolved query, the lineage chain, and a SHA-256 fingerprint of the full
-   result. Cite the fingerprint with any number you quote.
-3. **author a ReportSpec** — read `tracebi://spec-schema` for the grammar.
-   Every figure is a query against the model, never a hard-coded number.
-4. **validate_report_spec** — check without executing. Errors carry a path
-   (`sections[0].data.query.fact`); fix each and retry until `ok: true`.
-5. **render_report_spec** — produces a self-contained HTML artifact and its
-   manifest (the receipt). This is the only tool that writes.
+   result. Cite the fingerprint with any number you quote. "Top N" is
+   `order_by` + `limit` in the query — declarative, in the receipt.
+3. **author the report** — the report form is an ARTIFACT PACKAGE
+   (`reports/<name>/`): `report.json` names query bindings; `template.html`
+   is your page, where every figure claims a binding via
+   `data-tb-figure` + `data-tb-binding` (or is honestly
+   `data-tb-unverified` — no third state). Any element works, including a
+   `<span>` inside a sentence: bind prose numbers instead of typing them.
+   Blocks marked `data-tb-stage="exploration"` die at build.
+   (A JSON ReportSpec is the same thing as a serialization — read
+   `tracebi://spec-schema`, then **validate_report_spec** →
+   **render_report_spec**, which refuses invalid specs.)
+4. **workbench_state** — while iterating under `tracebi dev`, read this
+   before every editing pass: the human steers by PINNING figures in the
+   portal with notes, and pins come first.
+5. **build_report** — the publish step: builds the package to a
+   self-contained HTML + manifest, validating every figure claim. Writes
+   only its own artifact and receipt.
 6. **verify_manifest** — re-runs the recorded queries and classifies each
    section. Only `reproduces` means a number was re-run and matched; a
    manifest with nothing to check is not a pass.
@@ -165,7 +178,9 @@ front of a person should carry a receipt. This gateway is how you produce one.
   to the model file — never a workaround in the report layer.
 - **Contract plane (this gateway):** you *use* the semantic contract; you do
   not change it here. The gateway is read-and-compute only — it never writes
-  the warehouse. The read tools are annotated read-only so a client can see it.
+  the warehouse. The two render tools (`render_report_spec`, `build_report`)
+  write only their own artifact and receipt; the read tools are annotated
+  read-only so a client can see it.
 
 ## The rules
 - Never quote a number without its fingerprint.
@@ -263,6 +278,17 @@ class WorkbenchStateResult(TypedDict, total=False):
     pins: Any
     code: Any
     error: Any
+    errors: list[str]
+
+
+class BuildReportResult(TypedDict, total=False):
+    ok: bool
+    report: str
+    output_path: str
+    manifest_path: str
+    figures: Any
+    embedded_fingerprints: list[str]
+    transform_contracts: Any
     errors: list[str]
 
 
@@ -566,6 +592,59 @@ def gateway_workbench_state(report: str) -> WorkbenchStateResult:
         return collect_state(str(pkg_dir), _load_models())
 
 
+def gateway_build_report(report: str, output_dir: str = "output") -> BuildReportResult:
+    """
+    Build an artifact package to one self-contained ``.html`` + manifest —
+    the gateway's PUBLISH step for the package lane.
+
+    This is the ``tracebi report build`` gate over MCP: exploration blocks
+    are stripped, every figure claim is validated against the embedded
+    bindings, and the receipt (manifest schema 2: figures + the
+    ``transform_contracts`` join) is written beside the page. Like
+    ``render_report_spec``, it writes only its own artifact and receipt —
+    never source data. The dev loop itself (``tracebi dev``, snapshots,
+    pins) stays on the CLI, where the human's portal lives; this tool is
+    how an MCP-driving agent finishes.
+    """
+    from tracebi.reports.template_package import TemplatePackage
+
+    # The name is a directory under reports/ — never a path.
+    if os.sep in report or "/" in report or report.startswith("."):
+        return {"ok": False, "errors": [
+            f"invalid report name {report!r}: pass the package name, not a path"
+        ]}
+    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+    pkg_dir = reports_dir / report
+    if not ((pkg_dir / "report.json").is_file()
+            and (pkg_dir / "template.html").is_file()):
+        return {"ok": False, "errors": [
+            f"no artifact package at {pkg_dir} — build_report applies to "
+            f"reports/<name>/ packages (a .json spec renders via "
+            f"render_report_spec)"
+        ]}
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output = out_dir / f"{report}.html"
+    try:
+        with actor(_mcp_actor()):
+            manifest = TemplatePackage(str(pkg_dir)).render(
+                _load_models(), str(output))
+    except Exception as exc:  # noqa: BLE001 — a refused build is a result
+        return {"ok": False, "errors": [f"{type(exc).__name__}: {exc}"]}
+    m = manifest.to_dict()
+    return {
+        "ok": True,
+        "report": report,
+        "output_path": str(output),
+        "manifest_path": str(output) + ".manifest.json",
+        "figures": m.get("figures") or [],
+        "embedded_fingerprints": [
+            e.get("embedded_sha256") for e in m.get("embedded_data", [])
+        ],
+        "transform_contracts": m.get("transform_contracts") or {},
+    }
+
+
 # ── MCP registration ───────────────────────────────────────────────────────
 
 
@@ -715,6 +794,18 @@ def build_server(token: Optional[str] = None):
             "human flagged in the portal before your next edit."
         ),
     )(gateway_workbench_state)
+    server.tool(
+        name="build_report", title="Build an artifact package (writes the artifact)",
+        annotations=_RENDER, structured_output=True,
+        description=(
+            "Build an artifact package (reports/<name>/) to one "
+            "self-contained HTML + its manifest — the publish step. Strips "
+            "exploration blocks, validates every figure claim against the "
+            "embedded bindings, and returns the figure records, embedded "
+            "fingerprints, and the transform_contracts join. Writes only "
+            "its own artifact and receipt."
+        ),
+    )(gateway_build_report)
     server.tool(
         name="verify_manifest", title="Verify a receipt",
         annotations=_READ_WAREHOUSE, structured_output=True,

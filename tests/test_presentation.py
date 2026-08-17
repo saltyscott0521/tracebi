@@ -118,6 +118,9 @@ class TestStackOrder:
         TemplatePackage(str(_pkg(tmp_path))).render(
             {"stack_model": stack_model}, str(out))
         html = out.read_text(encoding="utf-8")
-        assert "Content-Security-Policy" in html
+        # Exactly one CSP meta: the renderer and the stack both know how to
+        # inject it, and the stack yields when one is already present
+        # (round-2 review, finding 11 — a duplicated policy is noise).
+        assert html.count("Content-Security-Policy") == 1
         assert "http://" not in html.replace("http://www.w3.org", "")
         assert 'src="https://' not in html and "@import" not in html

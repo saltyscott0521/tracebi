@@ -34,6 +34,33 @@ def test_components_present():
         ".tb-badge--verified",
         ".tb-badge--derived",
         ".tb-badge--unverified",
+        ".tb-badge-anchor",
         '[data-tb-stage="exploration"]',
     ):
         assert needle in css, needle
+
+
+def test_value_card_treatment_scoped_to_kpi_class():
+    """The card is the .tb-kpi CLASS's opt-in, never the attribute's.
+
+    A bare ``[data-tb-figure="value"]`` is an inline span bound in prose —
+    the hydrator writes into the element itself when there is no
+    .tb-kpi-value child — so no selector may style the attribute without
+    requiring .tb-kpi in the same compound, or the span becomes a
+    sentence-breaking card.
+    """
+    css = re.sub(r"/\*.*?\*/", "", CSS_PATH.read_text(), flags=re.S)
+    needle = '[data-tb-figure="value"]'
+    for m in re.finditer(re.escape(needle), css):
+        # Walk back to the start of the compound selector the match sits in.
+        j = m.start()
+        while j > 0 and css[j - 1] not in " \t\n,>+~{}":
+            j -= 1
+        compound = css[j:m.end()]
+        assert ".tb-kpi" in compound, (
+            f"selector styles a bare value figure: {compound!r}"
+        )
+    # The card itself still exists, scoped to the class.
+    kpi = re.search(r"\.tb-kpi\s*\{([^}]*)\}", css)
+    assert kpi is not None and "display: flex" in kpi.group(1)
+    assert "position: relative" in kpi.group(1)  # anchors its badge

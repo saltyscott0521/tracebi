@@ -4,7 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tracebi"
-version = "0.5.2"
+# 0.6.0.dev0: the reshape (report architecture v2, M0–M5) — a different
+# product from 0.5.2, and programmatically distinguishable as such. The
+# .dev marker is deliberate: nothing is released until the maintainer tags.
+version = "0.6.0.dev0"
 description = "The trust layer for AI-generated analytics: a code-first BI framework where every number has a receipt."
 readme = "README.md"
 license = { text = "MIT" }

@@ -124,7 +124,10 @@ class _RequestTarget:
         self.label = self.path.name
 
     def render(self) -> str:
-        return render_request(self.path)
+        # Same dev-only CSP relaxation as the package form: the reload poll
+        # needs connect-src 'self'; only served pages are touched.
+        return render_request(self.path).replace(
+            "connect-src 'none'", "connect-src 'self'", 1)
 
     def watch_paths(self) -> list[Path]:
         return [self.path]
@@ -171,7 +174,11 @@ class _PackageTarget:
             else:
                 os.environ["TRACEBI_WORKBENCH_DIR"] = previous
         self._note_fingerprints(inputs + outputs)
-        return page
+        # Dev-only CSP relaxation: the shipped page's connect-src 'none'
+        # would block the /__status reload poll, silently killing the live
+        # loop. Served pages may talk to THIS server and nothing else; the
+        # built artifact keeps the strict policy untouched.
+        return page.replace("connect-src 'none'", "connect-src 'self'", 1)
 
     def _note_fingerprints(self, stamped) -> None:
         from tracebi.workbench import auto_entry

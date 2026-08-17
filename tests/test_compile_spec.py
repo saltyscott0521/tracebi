@@ -168,6 +168,21 @@ class TestFigures:
         assert "totals" in text and "color_scale" in text
         assert "delta" in text
 
+    def test_a_chart_section_opts_the_package_into_echarts(self):
+        """Charts hydrate through the vendored ECharts, which packages opt
+        into per report — a compiled spec with a chart but no libs would
+        render a permanently blank panel (round-2 review, finding 7)."""
+        with_chart = compile_spec(_spec([
+            {"type": "row", "sections": [
+                {"type": "chart", "chart_type": "bar", "x": "dim_r.region",
+                 "y": "revenue", "data": _DATA}]},
+        ]))
+        assert json.loads(with_chart.files["report.json"])["libs"] == ["echarts"]
+        without = compile_spec(_spec([
+            {"type": "table", "title": "T", "data": _DATA},
+        ]))
+        assert "libs" not in json.loads(without.files["report.json"])
+
     def test_duplicate_titles_get_distinct_bindings(self):
         other = {"model": "cs_model",
                  "query": {"fact": "f", "measures": {"revenue": "mean"}}}

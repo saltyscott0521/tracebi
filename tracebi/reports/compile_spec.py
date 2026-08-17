@@ -312,6 +312,17 @@ class _Compiler:
         return f'  <div style="height:{rem}rem"></div>\n'
 
 
+def _walk_specs(sections) -> list:
+    """Every section dict, rows descended — so nested charts are seen."""
+    out: list = []
+    for s in sections or []:
+        if not isinstance(s, dict):
+            continue
+        out.append(s)
+        out.extend(_walk_specs(s.get("sections") or []))
+    return out
+
+
 def compile_spec(
     spec: ReportSpec,
     theme_css: str = "",
@@ -348,6 +359,12 @@ def compile_spec(
         report_json["author"] = spec.author
     if spec.description:
         report_json["description"] = spec.description
+    # Charts hydrate through the vendored ECharts, which a package opts
+    # into per report — a compiled spec with any chart section must carry
+    # the opt-in or every chart panel renders permanently blank.
+    if any(s.get("type") == SectionType.CHART.value
+           for s in _walk_specs(spec.sections)):
+        report_json["libs"] = ["echarts"]
 
     files = {
         "report.json": json.dumps(report_json, indent=2) + "\n",

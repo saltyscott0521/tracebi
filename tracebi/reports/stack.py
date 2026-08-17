@@ -81,9 +81,9 @@ def figures_config(figures, output_names, badges: bool = True) -> list[dict]:
 
 
 def stack_head(stage: Optional[str] = None, project_css: str = "",
-               report_css: str = "") -> str:
+               report_css: str = "", include_csp: bool = True) -> str:
     """The head injection, in override order (later wins)."""
-    head = csp_meta()
+    head = csp_meta() if include_csp else ""
     if stage:
         head += f'<meta name="tracebi-stage" content="{stage}">\n'
     head += f"<style>\n{read_asset('tracebi.css')}\n</style>\n"
@@ -114,8 +114,13 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
                 report_css: str = "", figures_cfg: Optional[dict] = None,
                 report_js: str = "") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
-    page = insert_before(page, "</head>",
-                         stack_head(stage, project_css, report_css))
+    # The carrier render may already carry the CSP meta (html_renderer
+    # inserts one); injecting a second identical tag is noise the review
+    # flagged — the policy is included here only when absent.
+    page = insert_before(
+        page, "</head>",
+        stack_head(stage, project_css, report_css,
+                   include_csp="Content-Security-Policy" not in page))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))

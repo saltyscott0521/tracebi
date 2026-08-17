@@ -234,6 +234,65 @@ def test_render_refuses_an_invalid_spec(gateway_model, tmp_path):
     assert not list(tmp_path.iterdir()), "no artifact may exist for a refused spec"
 
 
+# ── build_report: the publish step for the package lane ────────────────────
+
+class TestBuildReport:
+    def _package(self, tmp_path, monkeypatch, gateway_model):
+        import tracebi.mcp_server as gw
+
+        reports = tmp_path / "reports"
+        pkg = reports / "gwpkg"
+        pkg.mkdir(parents=True)
+        (pkg / "report.json").write_text(json.dumps({
+            "name": "gwpkg",
+            "data": {"kpi": {"model": "gw_demo",
+                             "query": {"fact": "fact_orders",
+                                       "measures": ["total_revenue"]}}},
+        }))
+        (pkg / "template.html").write_text(
+            "<html><head><title>g</title></head><body>"
+            '<div data-tb-figure="value" data-tb-binding="kpi" '
+            'data-tb-cell="total_revenue" id="fig-kpi"></div>'
+            '<section data-tb-stage="exploration"><p>scratch</p></section>'
+            "</body></html>"
+        )
+        monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(reports))
+        monkeypatch.setattr(gw, "_load_models",
+                            lambda: {"gw_demo": gateway_model})
+        return pkg
+
+    def test_builds_artifact_and_receipt(self, gateway_model, tmp_path,
+                                         monkeypatch):
+        from tracebi.mcp_server import gateway_build_report
+
+        self._package(tmp_path, monkeypatch, gateway_model)
+        out = gateway_build_report("gwpkg", output_dir=str(tmp_path / "out"))
+        assert out["ok"], out.get("errors")
+        html = (tmp_path / "out" / "gwpkg.html").read_text(encoding="utf-8")
+        assert "scratch" not in html, "exploration must die at build"
+        assert (tmp_path / "out" / "gwpkg.html.manifest.json").is_file()
+        assert out["figures"] and out["figures"][0]["id"] == "fig-kpi"
+        assert out["embedded_fingerprints"]
+
+    def test_refuses_a_path_shaped_name(self, gateway_model, tmp_path,
+                                        monkeypatch):
+        from tracebi.mcp_server import gateway_build_report
+
+        self._package(tmp_path, monkeypatch, gateway_model)
+        out = gateway_build_report("../gwpkg")
+        assert not out["ok"]
+        assert "name" in out["errors"][0]
+
+    def test_missing_package_is_a_result_not_a_crash(self, gateway_model,
+                                                     tmp_path, monkeypatch):
+        from tracebi.mcp_server import gateway_build_report
+
+        self._package(tmp_path, monkeypatch, gateway_model)
+        out = gateway_build_report("nope")
+        assert not out["ok"]
+        assert "no artifact package" in out["errors"][0]
+
+
 # ── MCP registration (only when the optional dep is present) ───────────────
 
 def test_build_server_registers_the_tools(gateway_model):
@@ -245,11 +304,13 @@ def test_build_server_registers_the_tools(gateway_model):
     server = build_server()
     tools = anyio.run(server.list_tools)
     names = {t.name for t in tools}
-    # M3 flip: workbench_state joined the surface (nine tools).
+    # M3 flip: workbench_state joined the surface. Round-2 flip: build_report
+    # joined it — the publish step for the package lane, so an MCP-driving
+    # agent can finish the loop it iterates in the workbench (ten tools).
     assert names == {
         "get_context", "list_models", "describe_model", "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
-        "verify_manifest", "workbench_state",
+        "verify_manifest", "workbench_state", "build_report",
     }
 
 

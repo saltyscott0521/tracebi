@@ -628,8 +628,9 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 pip install -e ".[web]"
 
 # Build the React UI — tracebi/web/ui/dist is gitignored, so a fresh clone has none,
-# and neither does a `pip install ... @ git+https://...`. Without it the API
-# still runs; / serves a page saying so. This step needs a clone.
+# and neither does a `pip install ... @ git+https://...` (wheels built by the
+# release workflow DO ship it prebuilt). Without it the API still runs; /
+# serves a page saying so. This step needs a clone.
 cd web/ui && npm ci && npm run build && cd ../..
 
 # Start the server (hot-reload on by default)

@@ -652,71 +652,98 @@ model = (
 )
 '''
 
-_INIT_SAMPLE_DASHBOARD = """\
+# The sample report is an ARTIFACT PACKAGE — the one report lane — so the
+# first page a new project renders demonstrates the real product: figure
+# claims, the presentation stack, provenance badges, and a receipt that
+# joins the sink contract. (A JSON spec still renders and `tracebi migrate
+# spec` compiles one, but the scaffold must not teach the legacy form.)
+_INIT_SAMPLE_REPORT_JSON = """\
 {
   "name": "Sample Dashboard",
   "author": "tracebi init",
-  "description": "Every figure a live query against sample_model. Edit this file to reshape the page; nothing re-runs the pandas.",
-  "sections": [
-    {
-      "type": "text",
-      "style": "heading1",
-      "title": "Orders — Sample Dashboard",
-      "content": "Cleaned from inputs/orders.csv by the phase-\\u2460 transform. Every number below is a query against the model; change a panel and re-render in milliseconds."
+  "description": "Every figure claims a stamped binding. Edit template.html to reshape the page; nothing re-runs the pandas.",
+  "libs": ["echarts"],
+  "data": {
+    "kpis": {
+      "model": "sample_model",
+      "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }
     },
-    {
-      "type": "metrics",
-      "title": "At a glance",
-      "data": {
-        "model": "sample_model",
-        "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }
-      },
-      "metrics": [
-        { "label": "Revenue", "value": "revenue", "format": "currency0" },
-        { "label": "Orders", "value": "orders", "format": "comma" },
-        { "label": "Units", "value": "units", "format": "comma" }
-      ]
-    },
-    {
-      "type": "chart",
-      "title": "Revenue by region",
-      "chart_type": "bar",
-      "x": "dim_region.region",
-      "y": "revenue",
-      "xlabel": "Region",
-      "ylabel": "Revenue",
-      "show_values": true,
-      "data": {
-        "model": "sample_model",
-        "query": {
-          "fact": "fact_orders",
-          "measures": ["revenue"],
-          "dimensions": ["dim_region.region"]
-        }
+    "by_region": {
+      "model": "sample_model",
+      "query": {
+        "fact": "fact_orders",
+        "measures": ["revenue"],
+        "dimensions": ["dim_region.region"],
+        "order_by": ["-revenue"]
       }
     },
-    {
-      "type": "table",
-      "title": "Regions",
-      "column_labels": {
-        "dim_region.region": "Region",
-        "revenue": "Revenue",
-        "orders": "Orders",
-        "units": "Units"
-      },
-      "number_formats": { "revenue": "currency0" },
-      "totals": ["revenue", "orders", "units"],
-      "data": {
-        "model": "sample_model",
-        "query": {
-          "fact": "fact_orders",
-          "measures": ["revenue", "orders", "units"],
-          "dimensions": ["dim_region.region"]
-        }
+    "region_detail": {
+      "model": "sample_model",
+      "query": {
+        "fact": "fact_orders",
+        "measures": ["revenue", "orders", "units"],
+        "dimensions": ["dim_region.region"],
+        "order_by": ["-revenue"]
       }
     }
-  ]
+  }
 }
+"""
+
+_INIT_SAMPLE_TEMPLATE_HTML = """\
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sample Dashboard</title></head>
+<body>
+<main class="tb-page">
+  <h1>Orders — Sample Dashboard</h1>
+  <p class="tb-note">Cleaned from <code>inputs/orders.csv</code> by the
+    phase-① transform. Every number on this page is a live, fingerprinted
+    query — including the one in this sentence: total revenue across all
+    regions is
+    <span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
+          data-tb-format="currency0" id="val-revenue-inline">—</span>.
+    Prose numbers can be bound too; never type one in.</p>
+
+  <div class="tb-grid">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="revenue" data-tb-format="currency0" id="kpi-revenue">
+      <span class="tb-kpi-label">Revenue</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="orders" data-tb-format="comma" id="kpi-orders">
+      <span class="tb-kpi-label">Orders</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="units" data-tb-format="comma" id="kpi-units">
+      <span class="tb-kpi-label">Units</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+  </div>
+
+  <div class="tb-card">
+    <h2>Revenue by region</h2>
+    <div data-tb-figure="chart" data-tb-binding="by_region" data-tb-type="bar"
+         data-tb-x="dim_region.region" data-tb-y="revenue"
+         data-tb-value-format="compact" id="chart-by-region"></div>
+  </div>
+
+  <div class="tb-card">
+    <h2>Region detail</h2>
+    <table data-tb-figure="table" data-tb-binding="region_detail"
+           class="tb-table--striped" id="tbl-regions"></table>
+  </div>
+
+  <section data-tb-stage="exploration">
+    <h3>Working notes</h3>
+    <p>Scratch space: this block renders under <code>tracebi dev</code> and is
+       DELETED at the final build. Explore here; promote what matters into a
+       figure above.</p>
+  </section>
+</main>
+</body></html>
 """
 
 def _init_project_readme(project: str) -> str:
@@ -735,7 +762,7 @@ receipt you can re-check.
                                       ── freeze: data/warehouse.duckdb ──
 ②  MODEL       models/       a declarative star schema over the sink
                                       ── freeze: the model (the contract) ──
-③  REPORT      reports/      specs whose every figure is a live query
+③  REPORT      reports/      artifact packages whose every figure claims a binding
 ```
 
 ## Install
@@ -804,11 +831,11 @@ is half the audit story.
    phase; the contract is what lands.
 4. `tracebi new-model "Sales"` — declare the star schema over those tables.
    `tracebi validate` confirms it loads and its dimension keys are unique.
-5. Copy `reports/sample_dashboard.json`, point it at your model, and
-   `tracebi spec validate` it before running.
-6. For freeform pages, `tracebi new-report "My Report"` scaffolds an
-   artifact package; `tracebi dev my_report` opens the live loop (edit,
-   watch, pin). Exploration happens *inside* the artifact — blocks marked
+5. Copy `reports/sample_dashboard/` (or `tracebi new-report "My Report"`),
+   point its `report.json` bindings at your model, and put figures in the
+   template: `data-tb-figure` + `data-tb-binding` on any element — spans in
+   prose included. `tracebi dev my_report` opens the live loop (edit, watch,
+   pin). Exploration happens *inside* the artifact — blocks marked
    `data-tb-stage="exploration"` die at the final build.
 
 ## Agents
@@ -831,67 +858,151 @@ carry a receipt. Read this before you touch anything.
 
 ## The one rule
 
-**Every figure in a report is a live query against a model — never a
-hard-coded number.** A number you typed in has no receipt and cannot be
-verified. If you cannot express something as a query, mark it unverifiable
-(the `report.py` escape hatch); do not fake it.
+**Every figure in a report names a stamped data binding — never a hard-coded
+number.** A number you typed in has no receipt and cannot be verified. If a
+figure genuinely cannot come from a query, mark the element
+`data-tb-unverified` (with a `data-tb-note` saying why); do not fake it.
+There is no third state.
+
+This includes prose. A sentence's numbers can be live: any element — a
+`<span>` mid-sentence included — can carry
+`data-tb-figure="value" data-tb-binding="..." data-tb-cell="..."` and the
+runtime fills it from the fingerprinted bytes. When you are asked to
+"explain the results", bind the numbers in your sentences instead of typing
+them; narrative prose is where unverified numbers usually hide, and here the
+honest path costs one attribute.
 
 ## The workflow — three phases, three folders
 
 ```
 ⓪  inputs/       raw data lands here (a CSV, an API export, a SQL dump)
 ①  transforms/   ordinary pandas: clean it, then SINK clean star-schema
-                 tables into the warehouse (data/warehouse.duckdb)
-                        ── freeze: the warehouse ──
+                 tables into the warehouse (data/warehouse.duckdb) and
+                 declare a SINK CONTRACT on what landed
+                        ── freeze: the warehouse + its contract ──
 ②  models/       a declarative DataModel over the sink: grain, keys, measures.
                  It reads the warehouse; it never sees the transform.
                         ── freeze: the model (the contract) ──
-③  reports/      a ReportSpec (JSON) pointed at the model. Every figure a
-                 query. Renders to a self-contained HTML + a manifest (receipt).
+③  reports/      an ARTIFACT PACKAGE — reports/<name>/ holding report.json
+                 (named query bindings) + template.html (your page, where
+                 every figure claims a binding). Builds to one self-contained
+                 HTML + a manifest (the receipt).
 ```
 
 The phases are decoupled: editing a report never re-runs the pandas. Phase ①
 is unconstrained — write whatever pandas the data needs; the contract is the
-named tables you sink, not how you cleaned them.
+named tables you sink, not how you cleaned them. End the transform with a
+`with contract(...)` block (see `transforms/sample_transform.py`): declared
+checks — `rows`, `unique`, `not_null`, `foreign_key`, `values`, `reconcile` —
+run as read-only SQL at sink time, raise on failure, and record a certificate
+(`data/warehouse.contracts.json`) that report manifests join against. The
+exact claim is "the sink satisfied its contract" — never "the transform was
+verified"; nothing machine-checks the pandas above the sink.
 
-## First moves
+## Authoring a report (the artifact package)
 
-1. Run `tracebi context` — it prints the whole vocabulary (models, facts,
-   dimensions, measures, section types) as JSON. Nothing outside it validates.
-   Add `--model <name>` for one model's schema.
-2. Read the sample files: `transforms/sample_transform.py`,
-   `models/sample_model.py`, `reports/sample_dashboard.json`. They are a
-   complete working example of the loop.
-3. Read `README.md` for the run commands.
+`reports/sample_dashboard/` is the working example — a page of ordinary HTML
+whose figures each name a binding from `report.json`:
+
+- `data-tb-figure="value|chart|table|custom"` + `data-tb-binding="<name>"` —
+  the claim. Values add `data-tb-cell="<column>"` and optionally
+  `data-tb-format` (`compact`, `currency`, `comma`, `percent`, …). Charts add
+  `data-tb-type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`),
+  `data-tb-x`, `data-tb-y` (comma-list for multi-series), optional
+  `data-tb-color` and `data-tb-value-format`. Tables optionally add
+  `data-tb-columns` and the `tb-table--striped` / `tb-table--compact` classes.
+- **Give every figure an `id`** — ids are how humans redirect you
+  ("fix `tbl-seniority`").
+- "Top N" is declarative: put `order_by` + `limit` in the binding's query.
+  Never sort or slice in `script.js` — that moves ordering out of the receipt.
+- Blocks marked `data-tb-stage="exploration"` are working scratch: they render
+  in dev and are DELETED at the final build.
+- Styling: the shipped defaults render well with zero CSS. To restyle, set
+  tokens in `reports/_theme.css` (project-wide) or the package's `style.css`
+  (per report); later wins. `script.js` may restyle charts via
+  `tracebi.configureChart` — config can restyle, never re-source: series data
+  always comes from the stamped bytes. Provenance badges pick their state
+  from the manifest; a stylesheet can restyle a badge, never re-color honesty.
 
 ## The loop you run
 
 ```bash
-python transforms/<name>.py                 # ① clean + sink to the warehouse
+python transforms/<name>.py                 # ① clean + sink + contract
 tracebi new-model "<Name>"                  # ② scaffold a model; edit it
-tracebi spec validate reports/<name>.json   # check a report spec, no execution
-tracebi report build <name>                 # ③ render → output/<name>.html + manifest
-tracebi verify output/<name>.html.manifest.json # re-run the queries: REPRODUCES
+tracebi new-report "<Name>"                 # ③ scaffold reports/<name>/
+tracebi dev <name>                          # the live loop (see below)
+tracebi report status <name>                # earned state in the terminal (📌 pins)
+tracebi report build <name>                 # render → output/<name>.html + manifest
+tracebi verify output/<name>.html.manifest.json --contracts
 tracebi serve                               # browse at http://127.0.0.1:8000
 ```
 
+### The dev iteration, step by step
+
+1. **Start the dev server — it blocks.** Run `tracebi dev <name>` in a
+   background shell (or ask the human to run it and keep the tab open; the
+   page is their view, not yours). It serves the report at the root and the
+   workbench at `/__workbench`, and reloads on every save to the package,
+   `models/`, `transforms/`, or `reports/_theme.css`.
+2. **Edit; the portal follows.** Work in `template.html` / `report.json` /
+   `style.css` / `script.js`. Explore inside `data-tb-stage="exploration"`
+   blocks — they render in dev and die at build. From `report.py`,
+   `tracebi.workbench.show(title, df_or_fig, note=...)` posts exhibits to
+   the workbench feed during dev and is a no-op everywhere else, so probe
+   code needs no cleanup and no promotion step.
+3. **Read the pins before every pass.** The human steers by PINNING figures
+   in the workbench with a note ("make this top 8 sectors only"). Read them
+   with `tracebi report status <name>` (pins print with 📌) or the MCP
+   `workbench_state` tool. Address pins first; they are the human pointing.
+4. **Share a draft with `tracebi report snapshot <name>`.** One HTML with
+   the exploration blocks KEPT and a review banner; it carries no manifest
+   and `verify` refuses it by name — a draft can never impersonate a
+   final. Use it when the human wants to look without a dev server.
+5. **Publish with `tracebi report build <name>`**, then
+   `tracebi verify output/<name>.html.manifest.json --strict --contracts`.
+   The build strips exploration, validates every figure claim against the
+   embedded bindings, and writes the receipt. `output/<name>.html` (+ its
+   `.manifest.json`) is the deliverable to hand over or commit — and the
+   package is already served live on the Reports page of `tracebi serve`;
+   there is no separate publish step.
+
 `tracebi verify` is the point: it re-runs the recorded queries and confirms
-every section still reproduces. Only `REPRODUCES` means a number was re-run
-and matched. Run it before you tell a human a report is done.
+every figure still reproduces. Only `REPRODUCES` means a number was re-run
+and matched. `--contracts` also re-runs the sink contracts. Run it before
+you tell a human a report is done.
+
+## First moves
+
+1. Run `tracebi context` — the whole vocabulary as JSON: models, facts,
+   dimensions, measures, the `presentation` block (figure attributes, tokens,
+   the CSS/JS stack) and the `transform_contracts` block. Nothing outside it
+   validates. Add `--model <name>` for one model's schema.
+2. Read the sample files: `transforms/sample_transform.py`,
+   `models/sample_model.py`, `reports/sample_dashboard/`. They are a complete
+   working example of the loop, receipt included.
+3. Read `README.md` for the run commands.
 
 ## The honest boundary — do not overclaim
 
 The trust machinery covers the model boundary onward (the query and the
 report), **not** the phase-① pandas that built the warehouse. `verify` checks
 that a number still reproduces from its recorded query; it does not assert the
-number is *correct*, and it never reads the transform. Say so honestly. An
-"unverifiable" that says so beats a green badge on unchecked work.
+number is *correct*, and it never reads the transform. The sink contract
+certifies what landed, not how. Say so honestly. An "unverifiable" that says
+so beats a green badge on unchecked work.
+
+## Legacy forms
+
+A JSON `ReportSpec` under `reports/` still renders (it is a serialization,
+not a lane) and `tracebi migrate spec reports/<name>.json` compiles one into
+an artifact package that shadows it. The `requests/` script lane is
+deprecated and removed in 0.8 — do not create it.
 
 ## Scaffolding commands
 
 `tracebi new-transform "<Name>"` · `tracebi new-model "<Name>"` ·
-`tracebi new-report "<Name>"` (a freeform HTML package) · `tracebi spec schema`
-(the ReportSpec JSON Schema). Discover more with `tracebi --help`.
+`tracebi new-report "<Name>"` · `tracebi spec schema` (the ReportSpec JSON
+Schema). Discover more with `tracebi --help`.
 '''
 
 
@@ -926,7 +1037,10 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / "inputs" / "orders.csv":   _INIT_SAMPLE_CSV,
         target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,
         target / "models" / "sample_model.py": _INIT_SAMPLE_MODEL,
-        target / "reports" / "sample_dashboard.json": _INIT_SAMPLE_DASHBOARD,
+        target / "reports" / "sample_dashboard" / "report.json":
+            _INIT_SAMPLE_REPORT_JSON,
+        target / "reports" / "sample_dashboard" / "template.html":
+            _INIT_SAMPLE_TEMPLATE_HTML,
     }
     # Keep the still-empty discovery directories in git so the layout
     # survives a clone.
@@ -937,6 +1051,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         if path.exists() and not args.force:
             print(f"skipping existing {path}", file=sys.stderr)
             continue
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
     print(f"Initialised TraceBi project at {target}")
@@ -1275,12 +1390,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
     ok: list[str] = []
 
     requests_dir = args.requests_dir
+    # requests/ is the deprecated lane (removed in 0.8): its ABSENCE is the
+    # expected state and says nothing. Only report it when it still exists.
     if requests_dir.is_dir():
         scripts = [p for p in requests_dir.glob("*.py") if not p.name.startswith("_")]
         nbs = list(requests_dir.glob("*.ipynb"))
-        ok.append(f"✓ requests/ contains {len(scripts) + len(nbs)} script(s)")
-    else:
-        warnings.append(f"· requests/ not present at {requests_dir}")
+        warnings.append(
+            f"· requests/ contains {len(scripts) + len(nbs)} script(s) — "
+            f"the lane is deprecated (removed in 0.8); migrate to artifact "
+            f"packages under reports/"
+        )
 
     # ── Import every discoverable artifact and report what failed ────────
     # A file that raises on import is skipped at startup with only a

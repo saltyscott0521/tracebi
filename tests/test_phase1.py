@@ -2,6 +2,7 @@
 Tests for TraceBi Phase 1: Connectors, DataSet, DataModel
 """
 
+import decimal
 import importlib.util
 import os
 import tempfile
@@ -877,3 +878,134 @@ class TestDuckDBReadOnlyCoexistence:
         conn.register_df("extra", sample_df)
         conn.write(sample_df, "sales_copy")
         assert len(conn.load("extra")) == len(sample_df)
+
+
+# ─────────────────────────────────────────────
+# DuckDB write() lands Decimal columns as DECIMAL(38,12)
+# ─────────────────────────────────────────────
+
+class TestDuckDBDecimalWrite:
+    """Object columns of decimal.Decimal — the standard way to carry exact
+    money — land as DECIMAL(38,12), so no digit is lost to a too-narrow
+    inferred type or a float64 conversion."""
+
+    pytestmark = pytest.mark.skipif(
+        importlib.util.find_spec("duckdb") is None,
+        reason="duckdb not installed",
+    )
+
+    WIDE = "12345678901234.567890123456"
+
+    @pytest.fixture
+    def money_df(self):
+        return pd.DataFrame({
+            "amount": [decimal.Decimal("19.99"), decimal.Decimal(self.WIDE), None],
+            "weight": [0.5, 0.25, 0.25],
+        })
+
+    @staticmethod
+    def _column_type(conn, table, column):
+        return conn.connection.execute(
+            "SELECT data_type FROM information_schema.columns "
+            "WHERE table_name = ? AND column_name = ?",
+            [table, column],
+        ).fetchone()[0]
+
+    def test_decimal_column_lands_as_decimal_38_12(self, money_df):
+        conn = DuckDBConnector("dd")
+        conn.write(money_df, "money")
+        assert self._column_type(conn, "money", "amount") == "DECIMAL(38,12)"
+
+    def test_plain_float_column_still_lands_as_double(self, money_df):
+        conn = DuckDBConnector("dd")
+        conn.write(money_df, "money")
+        assert self._column_type(conn, "money", "weight") == "DOUBLE"
+
+    def test_wide_value_and_none_survive_exactly(self, money_df):
+        conn = DuckDBConnector("dd")
+        conn.write(money_df, "money")
+        digits = conn.connection.execute(
+            'SELECT CAST("amount" AS VARCHAR) FROM "money" '
+            'WHERE "amount" IS NOT NULL ORDER BY "amount" DESC LIMIT 1'
+        ).fetchone()[0]
+        assert digits == self.WIDE
+        nulls = conn.connection.execute(
+            'SELECT COUNT(*) FROM "money" WHERE "amount" IS NULL'
+        ).fetchone()[0]
+        assert nulls == 1
+
+    def test_append_preserves_decimal_type(self, money_df):
+        conn = DuckDBConnector("dd")
+        conn.write(money_df, "money")
+        conn.write(money_df, "money", if_exists="append")
+        assert self._column_type(conn, "money", "amount") == "DECIMAL(38,12)"
+        assert len(conn.load("money")) == 2 * len(money_df)
+        wide = conn.connection.execute(
+            'SELECT COUNT(*) FROM "money" WHERE CAST("amount" AS VARCHAR) = ?',
+            [self.WIDE],
+        ).fetchone()[0]
+        assert wide == 2
+
+    def test_append_decimals_into_all_none_created_table_raises(self):
+        # An all-None object column carries no Decimal marker, so the first
+        # write lands via DuckDB inference (INTEGER). Appending real
+        # Decimals must raise, not silently round 19.99 -> 20.
+        conn = DuckDBConnector("dd")
+        conn.write(pd.DataFrame({"amount": [None, None]}), "money")
+        assert self._column_type(conn, "money", "amount") == "INTEGER"
+        with pytest.raises(ValueError, match="'amount'"):
+            conn.write(
+                pd.DataFrame({"amount": [decimal.Decimal("19.99")]}),
+                "money",
+                if_exists="append",
+            )
+        assert len(conn.load("money")) == 2  # nothing was inserted
+
+    def test_append_decimals_into_double_table_raises(self, money_df):
+        # A table created before this feature holds the column as DOUBLE;
+        # appending Decimals must raise instead of silently narrowing.
+        conn = DuckDBConnector("dd")
+        conn.connection.execute(
+            "CREATE TABLE money (amount DOUBLE); INSERT INTO money VALUES (1.5)"
+        )
+        with pytest.raises(ValueError) as excinfo:
+            conn.write(money_df, "money", if_exists="append")
+        message = str(excinfo.value)
+        assert "'amount'" in message
+        assert "DOUBLE" in message
+        assert 'if_exists="replace"' in message
+
+    def test_quoted_identifier_column_round_trips(self):
+        col = 'amount "usd"'
+        conn = DuckDBConnector("dd")
+        conn.write(pd.DataFrame({col: [decimal.Decimal("19.99")]}), "money")
+        assert self._column_type(conn, "money", col) == "DECIMAL(38,12)"
+        escaped = col.replace('"', '""')
+        digits = conn.connection.execute(
+            f'SELECT CAST("{escaped}" AS VARCHAR) FROM "money"'
+        ).fetchone()[0]
+        assert digits == "19.990000000000"
+        assert list(conn.load("money").columns) == [col]
+
+    def test_deeper_than_12dp_rounds_at_write(self):
+        # Documented behavior: scale beyond 12 is rounded by the CAST,
+        # not an error.
+        conn = DuckDBConnector("dd")
+        conn.write(
+            pd.DataFrame({"amount": [decimal.Decimal("1.1234567890126456")]}),
+            "money",
+        )
+        digits = conn.connection.execute(
+            'SELECT CAST("amount" AS VARCHAR) FROM "money"'
+        ).fetchone()[0]
+        assert digits == "1.123456789013"
+
+    def test_mixed_decimal_and_float_lands_as_double(self):
+        # Documented behavior: a float-contaminated column has already lost
+        # exactness, so it is not promoted to DECIMAL.
+        conn = DuckDBConnector("dd")
+        conn.write(
+            pd.DataFrame({"amount": [decimal.Decimal("1.5"), 2.5]}),
+            "money",
+        )
+        assert self._column_type(conn, "money", "amount") == "DOUBLE"

@@ -6,6 +6,96 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the round-2 field-test wave: the new product is now discoverable
+
+A second fresh-agent rebuild (same 233k rows, wiped project) confirmed the
+reshape's substance and found its gap: everything new was invisible to the
+files agents read first. Fixed:
+
+- **The scaffolded `AGENTS.md` teaches the real product.** `tracebi init`'s
+  agent guide now leads with the artifact package, the `data-tb-*` figure
+  grammar, sink contracts, the workbench (and its pins), declarative
+  `order_by`/`limit` for top-N, and the one rule extended to prose:
+  **bind the numbers in your sentences** — any element (a `<span>`
+  mid-sentence included) can be a value figure, so "explain the results"
+  never needs a typed-in number. `tracebi context` documents the same
+  under `presentation.prose_values`.
+- **The scaffold demonstrates the one lane.** `tracebi init` now ships
+  `reports/sample_dashboard/` — an artifact package with KPI cards, an
+  inline prose-bound value, an ordered chart and table, and an exploration
+  block that dies at build — instead of a legacy JSON spec. The first
+  page a new project renders carries the stack, the badges, the figure
+  claims layer, and a receipt that joins the scaffolded sink contract;
+  the init loop now ends green under `verify --strict --contracts`.
+- **`data-tb-value-format` works on every chart type and mode.** The pie
+  branch ignored it (a bar showed `550.7B` while a pie painted
+  `550696024575`); now pie, scatter, and the categorical types all format
+  labels, value axes, AND tooltips, honoring every named mode (`decimal`
+  included), not just `compact` — all with the guarded fallback (an
+  unknown mode never blanks a number).
+- **`decimal.Decimal` columns land exactly.** `DuckDBConnector.write()`
+  casts object-Decimal columns to `DECIMAL(38,12)` — no more too-narrow
+  inferred widths failing the sink, and no more silent float64 precision
+  loss; the land-as-text workaround is obsolete.
+- **`tracebi --version` tells the truth**: `0.6.0.dev0`. The reshape is a
+  different product from 0.5.2 and is now programmatically
+  distinguishable (the `.dev` marker is deliberate — nothing is released
+  until tagged).
+- Housekeeping from the same report: `tracebi context` names the contract
+  certificate correctly (`data/warehouse.contracts.json`), no longer
+  advertises the deprecated `requests/` lane in its conventions, and
+  `tracebi validate` stops complaining about the folder's (expected)
+  absence — it now warns only when the deprecated lane is still present.
+- **The dev-iteration protocol is written down, step by step.** Both
+  `AGENTS.md` files now walk the loop an agent actually runs: start
+  `tracebi dev` in a background shell (it blocks — or the human keeps the
+  portal open), edit and let the watcher re-render, **read the pins before
+  every pass** (`tracebi report status` 📌 / MCP `workbench_state`), share
+  drafts with `tracebi report snapshot` (no manifest; `verify` refuses it
+  by name), and publish with `report build` + `verify --strict
+  --contracts` — noting the built package is already live on the Reports
+  page, so there is no separate publish step.
+- **`build_report` joins the MCP gateway (ten tools).** The gateway could
+  read the workbench but not finish: an MCP-driving agent had no way to
+  build a package. `build_report` is the publish step over MCP — same
+  figure-claim validation and receipt as the CLI, writes only its own
+  artifact — and the gateway's authoring guide now teaches the package
+  loop (bind prose numbers; pins first; spec rendering as the
+  serialization path).
+- Verified already-shipped, contrary to the report: `order_by`/`limit` is
+  in the query grammar at every surface (spec, REST, MCP, Python) since
+  M0 — the round-1 workaround is unnecessary.
+
+An adversarial review of this wave (four dimensions, every finding
+independently re-verified) then caught and fixed seventeen more before it
+shipped, the ones that matter:
+
+- **A chart-bearing package must opt into ECharts** (`"libs":
+  ["echarts"]`), and neither the new scaffold nor the `migrate spec`
+  compiler did — every sample and migrated chart would have rendered
+  permanently blank. Both now emit the opt-in, test-pinned.
+- **Inline prose values rendered as full-width KPI cards**, breaking the
+  sentence the feature exists to serve: card treatment was keyed to the
+  `data-tb-figure="value"` attribute instead of the `.tb-kpi` class. Now
+  scoped to the class; a bare `<span>` stays inline.
+- **Table figures' provenance badges detached to the page corner** — a
+  `<table>` is an unreliable absolute-positioning anchor, so badges now
+  anchor to a wrapper (`.tb-badge-anchor`).
+- **`tracebi dev` live-reload was silently dead**: the shipped page's CSP
+  (`connect-src 'none'`) blocked the reload poll. Dev-served pages now
+  relax exactly that directive to `'self'`; built artifacts keep the
+  strict policy (and no longer carry a duplicated CSP meta).
+- **The Decimal write path could still round money silently on append** —
+  Decimals appended into a column an earlier all-`None` write had typed
+  as `INTEGER` coerced `19.99 → 20`. Appending a Decimal column into any
+  non-`DECIMAL(38,12)` column now raises with the column, the existing
+  type, and the remediation; identifiers are quote-escaped; the
+  scale-12 rounding and mixed-column fall-through are documented.
+- The analyst guide and web-customization guide — the last two documents
+  still teaching `requests/` as current — now lead with the
+  artifact-package loop and mark every legacy section deprecated
+  (removed in 0.8).
+
 ### Fixed — fingerprints survive the pandas 3 string-dtype rename
 
 pandas 3.0 (PDEP-14) renamed the default string dtype (`object` → `str`),

@@ -209,17 +209,32 @@ def _presentation() -> dict:
             "honesty)",
         ],
         "figure_attributes": {
-            "data-tb-figure": "value | chart | table | custom",
+            "data-tb-figure": "value | chart | table | custom — on ANY "
+                              "element, not just cards: a <span> inside a "
+                              "sentence works, so prose numbers can be live "
+                              "figures instead of typed-in text",
             "data-tb-binding": "which stamped binding feeds this element",
-            "data-tb-cell": "value figures: the column to read (row 0)",
+            "data-tb-cell": "value figures: the column to read (row 0). The "
+                            "hydrator fills a .tb-kpi-value child when one "
+                            "exists, else the element itself",
             "data-tb-format": "value figures: compact | comma | currency | "
-                              "currency0 | percent",
+                              "currency0 | percent | decimal",
             "data-tb-type / data-tb-x / data-tb-y / data-tb-color": "chart wiring",
-            "data-tb-value-format": "chart labels: compact → '550.7B'",
+            "data-tb-value-format": "chart labels, axes, and tooltips — every "
+                                    "chart type: compact | comma | currency | "
+                                    "currency0 | percent | decimal "
+                                    "(compact → '550.7B')",
             "data-tb-columns": "table figures: column allowlist/order",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
         },
+        "prose_values": "When explaining results in prose, BIND the numbers: "
+                        "<span data-tb-figure=\"value\" data-tb-binding=... "
+                        "data-tb-cell=... data-tb-format=...>—</span> inside "
+                        "the sentence makes each one a verified figure in the "
+                        "manifest. Narrative prose is where hard-coded "
+                        "numbers usually hide; here the honest path costs "
+                        "one attribute.",
         "runtime": [
             "tracebi.data(name) → rows from the embedded fingerprinted bytes "
             "(the only data source)",
@@ -235,9 +250,10 @@ def _transform_contracts() -> dict:
     return {
         "what": "Declared checks on the tables a transform SINKS, run as "
                 "read-only SQL at sink time and recorded beside the "
-                "warehouse (<warehouse>.contracts.json). A failed check "
-                "raises. This certifies the SINK — the exact claim is 'the "
-                "sink satisfied its contract', never 'the transform was "
+                "warehouse, swapping its extension: data/warehouse.duckdb → "
+                "data/warehouse.contracts.json. A failed check raises. This "
+                "certifies the SINK — the exact claim is 'the sink "
+                "satisfied its contract', never 'the transform was "
                 "verified': nothing machine-checks the pandas above it.",
         "usage": "from tracebi.contracts import contract\n"
                  "with contract('holdings', warehouse=WAREHOUSE) as c:\n"
@@ -323,12 +339,6 @@ def _conventions() -> dict:
                 "type": "Report",
                 "note": "Decorate a zero-arg factory with @register.report('name')",
             },
-            {
-                "path": "requests/",
-                "must_define": "report",
-                "type": "Report",
-                "note": "Ad-hoc scripts, .py or .ipynb. Also needs a run() to render.",
-            },
         ],
         "rules": [
             "Files starting with '_' are skipped (that is why _template.py is ignored).",
@@ -340,7 +350,7 @@ def _conventions() -> dict:
         ],
         "env_overrides": [
             "TRACEBI_MODELS_DIR", "TRACEBI_PIPELINES_DIR",
-            "TRACEBI_REPORTS_DIR", "TRACEBI_REQUESTS_DIR",
+            "TRACEBI_REPORTS_DIR", "TRACEBI_TRANSFORMS_DIR",
             "TRACEBI_SCHEDULED_DIR", "TRACEBI_APP", "TRACEBI_DOCS_DIR",
         ],
     }
