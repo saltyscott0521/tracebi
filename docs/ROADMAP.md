@@ -127,6 +127,12 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 - **Why:** Round-2 field test, finding 2: "If specs are staying, they need the stack." The scaffold no longer steers anyone to specs (fixed), but every un-migrated spec still renders without badges — the trust affordances silently downgrade on the serialization that claims to be equivalent. Routing through `compile_spec` is likely a day and retires the divergence permanently.
 - **Effort:** S–M
 
+### 11c. Large-detail artifacts: virtualized tables + columnar embeds (maintainer ask)
+
+- **What:** Let a self-contained artifact carry big detail grain — target: a 500k-row scrollable table with no server. Two pieces: a virtualized table mode for `data-tb-figure="table"` (render only visible rows; recycle on scroll — presentation only, always drawing from the stamped bytes) and a columnar/compressed embed encoding (per-column arrays, optionally Parquet) to replace row-dict JSON for large bindings. Deluxe tier, separately gated: DuckDB-WASM in-page for client-side filter/sort/group (needs a worker CSP carve-out and ~40MB of engine). Envelope to document honestly: ~50k rows is comfortable today-style; 100k–1M works with these pieces at 15–60MB files; beyond that (or multi-dataset drilling) `tracebi serve` is the answer.
+- **Why:** The maintainer's scenario: replacing a server-rendered BI tool outright with the portable artifact. The receipt machinery already scales (fingerprints cover the full embedded bytes at any size); only rendering and encoding don't. Also closes the honest caveat that a careless binding embedding 100k row-dicts currently just makes a slow page.
+- **Effort:** M (virtual table + columnar) / L (with DuckDB-WASM)
+
 ### 12. A real release path: PyPI, tagged images, versioned artifacts
 
 - **What:** Publish to PyPI (also retires item 5's dependency-confusion risk permanently), tag container images instead of compose-builds-from-checkout, and replace the "remember to update `_RUNS_ADDED_COLUMNS`" invariant with a checked migration step.
