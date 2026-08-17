@@ -227,8 +227,12 @@ class TestFrameProfile:
             "qty": [1, 2, 3, 4],
         })
         p = frame_profile(df)
-        assert p["fund"] == {"dtype": "object", "nulls": 1, "distinct": 2,
-                             "top": ["alpha", "beta"]}
+        fund = p["fund"]
+        # The profile DISPLAYS what pandas reports, so the string dtype's
+        # name differs by pandas major ('object' on 2.x, 'str' on 3.x) —
+        # unlike fingerprints, which canonicalize. Accept either label.
+        assert fund.pop("dtype") in ("object", "str")
+        assert fund == {"nulls": 1, "distinct": 2, "top": ["alpha", "beta"]}
         fv = p["fv"]
         assert fv["dtype"] == "float64"
         assert fv["nulls"] == 1 and fv["distinct"] == 3
