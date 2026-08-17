@@ -293,6 +293,32 @@ class TestBuildReport:
         assert "no artifact package" in out["errors"][0]
 
 
+# ── workbench_state: no report means the discovery session ─────────────────
+
+def test_workbench_state_defaults_to_discovery(tmp_path, monkeypatch):
+    """Called with no report (the human is running `tracebi dev` with no
+    name), the tool returns the project-level discovery state."""
+    from tracebi.mcp_server import gateway_workbench_state
+
+    monkeypatch.chdir(tmp_path)
+    out = gateway_workbench_state()
+    assert out["mode"] == "discovery"
+    assert out["name"] == "_discovery"
+    assert out["warehouse"]["exists"] is False
+    assert out["packages"] == []
+    assert out["exhibits"] == [] and out["pins"] == []
+
+
+def test_workbench_state_with_a_name_stays_package_scoped(tmp_path, monkeypatch):
+    """A named report keeps exactly the package behavior — a missing
+    package is the errors envelope, never the discovery state."""
+    from tracebi.mcp_server import gateway_workbench_state
+
+    monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(tmp_path / "reports"))
+    out = gateway_workbench_state("nope")
+    assert "no artifact package" in out["errors"][0]
+
+
 # ── MCP registration (only when the optional dep is present) ───────────────
 
 def test_build_server_registers_the_tools(gateway_model):

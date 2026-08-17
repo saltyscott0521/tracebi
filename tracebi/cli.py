@@ -939,6 +939,19 @@ tracebi serve                               # browse at http://127.0.0.1:8000
 
 ### The dev iteration, step by step
 
+0. **Discovery comes first — and it has a live surface.** Before any report
+   exists, run `tracebi dev` with **no name** (backgrounded — it blocks):
+   the discovery workbench. While it serves, ANY script you run can call
+   `tracebi.workbench.show(df, note=...)` — no env var needed — and the
+   frame excerpt appears in the portal, so interrogating the source data
+   happens in the open instead of buried in chat. The Warehouse panel
+   lists tables, row counts, and sink-contract status as transforms land;
+   the Models panel shows the star schema (facts, dimensions, measures)
+   taking shape as you edit `models/`. The human pins tables and exhibits
+   with notes exactly like figures later — read them via the MCP
+   `workbench_state` tool called with no `report`. All dev-state; no
+   receipts exist before the model boundary, and `show()` is a no-op the
+   moment the server is down.
 1. **Start the dev server — it blocks.** Run `tracebi dev <name>` in a
    background shell (or ask the human to run it and keep the tab open; the
    page is their view, not yours). It serves the report at the root and the
@@ -1335,7 +1348,13 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_dev(args: argparse.Namespace) -> int:
     # Form-aware (v2 §2.5): an artifact package under reports/ gets the
     # artifact-native loop with the workbench; a request script keeps the
-    # legacy single-file loop (deprecated, removed in 0.8).
+    # legacy single-file loop (deprecated, removed in 0.8). No name at all
+    # is DISCOVERY MODE — no report anchored, the project-level workbench
+    # (warehouse, models, packages, exhibit feed) for phases ① and ②.
+    if args.name is None:
+        from tracebi._dev_server import serve_dev
+        return serve_dev(None, port=args.port,
+                         open_browser=not args.no_browser)
     pkg_dir = _default_reports_dir() / args.name
     if (pkg_dir / "report.json").is_file() and \
             (pkg_dir / "template.html").is_file():
@@ -2529,11 +2548,16 @@ def build_parser() -> argparse.ArgumentParser:
         "dev",
         help="Live-preview a report while you edit it. An artifact package "
              "(reports/<name>/) gets the in-memory exploration render plus "
-             "the workbench at /__workbench; a request script keeps the "
-             "legacy single-file loop (deprecated; removed in 0.8).",
+             "the workbench at /__workbench; with no name, DISCOVERY MODE "
+             "serves the project-level workbench (warehouse tables, sink "
+             "contracts, models, packages, exhibit feed) — the live surface "
+             "before any report exists; a request script keeps the legacy "
+             "single-file loop (deprecated; removed in 0.8).",
     )
-    p_dev.add_argument("name", help="Package name under reports/, or a "
-                                    "request file name (suffix optional).")
+    p_dev.add_argument("name", nargs="?",
+                       help="Package name under reports/, or a request file "
+                            "name (suffix optional). Omit for discovery "
+                            "mode: the project-level workbench.")
     p_dev.add_argument("--port", type=int, default=8001,
                        help="Port for the preview server (default 8001).")
     p_dev.add_argument("--no-browser", action="store_true",

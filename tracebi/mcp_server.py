@@ -268,6 +268,9 @@ class ReportsResult(TypedDict, total=False):
 
 
 class WorkbenchStateResult(TypedDict, total=False):
+    # Package shape (report given) and discovery shape (no report) share
+    # this one result type — total=False keeps both valid.
+    mode: str
     name: str
     figures: Any
     coverage: Any
@@ -277,6 +280,9 @@ class WorkbenchStateResult(TypedDict, total=False):
     exhibits: Any
     pins: Any
     code: Any
+    warehouse: Any
+    models: Any
+    packages: Any
     error: Any
     errors: list[str]
 
@@ -568,19 +574,27 @@ def gateway_verify_manifest(manifest: Any) -> VerifyResult:
         ]}
 
 
-def gateway_workbench_state(report: str) -> WorkbenchStateResult:
+def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     """
     The workbench state for an artifact package: figures with provenance,
     the coverage bar, per-binding cards, the human's PINS, and the exhibit
     feed — the same JSON the workbench page renders from (v2 §2.5).
+
+    With no *report* (or ``"_discovery"``): the DISCOVERY session's state
+    instead — warehouse tables and sink-contract summaries, every model's
+    declared star schema, the report packages that exist, and the
+    ``_discovery`` exhibit feed and pins (``tracebi dev`` with no name).
 
     Read-only: this is how a driving agent sees what the human flagged in
     the portal ("steer from chat, see results in the workbench" — pointing
     happens where the evidence is). Exhibits and pins are dev-state only;
     nothing here mints a receipt.
     """
-    from tracebi.workbench import collect_state
+    from tracebi.workbench import DISCOVERY_NAME, collect_discovery_state, collect_state
 
+    if not report or report == DISCOVERY_NAME:
+        with actor(_mcp_actor()):
+            return collect_discovery_state(os.getcwd(), _load_models())
     reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
     pkg_dir = reports_dir / report
     if not (pkg_dir / "report.json").is_file():
@@ -791,7 +805,11 @@ def build_server(token: Optional[str] = None):
             "The workbench state for an artifact package (reports/<name>/): "
             "figures with provenance, coverage, per-binding cards, the "
             "human's pins, and the exhibit feed. Read this to see what the "
-            "human flagged in the portal before your next edit."
+            "human flagged in the portal before your next edit. It also "
+            "serves the discovery session: call with no report while the "
+            "human runs tracebi dev with no name, and it returns the "
+            "project-level state instead — warehouse tables, sink-contract "
+            "summaries, models, packages, and the discovery feed and pins."
         ),
     )(gateway_workbench_state)
     server.tool(

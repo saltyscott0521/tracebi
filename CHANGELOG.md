@@ -6,6 +6,38 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the discovery workbench: a live surface for phases ① and ②
+
+The workbench previously started at the report — interrogating source data
+and designing the model happened in chat, unseen. `tracebi dev` with **no
+name** now opens the **discovery workbench**, the portal for the work
+before any report exists:
+
+- **Zero-config exhibits.** While the server is up, ANY script can call
+  `tracebi.workbench.show(df, note=...)` — a heartbeat file makes the
+  env var unnecessary — and the frame excerpt, dtypes, and note appear in
+  the live feed. The moment the server is down (builds, CI), `show()` is
+  a no-op again; the env var still wins when set explicitly.
+- **The warehouse, watched.** Tables, row counts, and column dtypes as
+  sinks land, with the sink-contract summary per transform (`5/5 checks
+  passed`) beside them.
+- **The model, taking shape.** Each model's facts, dimensions, and
+  measures render live as `models/` files change; a broken file shows its
+  error instead of vanishing.
+- **Same pins, earlier.** The human pins warehouse tables and exhibits
+  with notes ("before modeling: exclude the par=0 revolvers from the
+  grain?"); the agent reads them via `workbench_state` called with no
+  `report` — the steer-from-chat loop now covers the whole workflow, and
+  the same portal flows into the figure loop once the package exists.
+- Everything is dev-state: no receipts are minted before the model
+  boundary, nothing enters builds or manifests.
+
+Drilled live on the reference project: a probe script posted a
+sector-concentration frame with no configuration, the warehouse panel
+showed the three tables and the 5/5 contract, a table pinned in the portal
+with a modeling question read back over MCP, and `show()` went silent the
+moment the server stopped.
+
 ### Changed — the round-2 field-test wave: the new product is now discoverable
 
 A second fresh-agent rebuild (same 233k rows, wiped project) confirmed the

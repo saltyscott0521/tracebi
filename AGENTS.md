@@ -114,6 +114,19 @@ is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
 is already served on the Reports page — there is no separate publish step.
 
+The workbench starts BEFORE the report exists. `tracebi dev` with **no
+name** opens the **discovery workbench** — the live surface for phase ① and
+②: while this server is up, `tracebi.workbench.show(df, note=...)` from ANY
+script you run (a transform probe, a scratch analysis) posts the frame to
+the portal with no configuration, the Warehouse panel lists tables, row
+counts and contract status as sinks land, and the Models panel shows the
+star schema (facts, dimensions, measures) taking shape as you edit
+`models/`. The human pins tables and exhibits there exactly as they pin
+figures later (MCP: `workbench_state` with no `report`). Interrogate in the
+open — excerpts and visuals in the portal, not buried in chat — then
+scaffold the package and the same portal continues into the figure loop.
+Everything is dev-state: no receipts are minted before the model boundary.
+
 ## The two planes rule
 
 **Change the contract in git. Use the contract over MCP.**

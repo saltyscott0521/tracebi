@@ -16,7 +16,11 @@ import pytest
 
 from tracebi import DataModel, MemoryConnector
 from tracebi.workbench import (
+    ACTIVE_FILE,
+    collect_discovery_state,
     collect_state,
+    discovery_dir,
+    heartbeat,
     last_seq,
     read_exhibits,
     read_pins,
@@ -116,6 +120,45 @@ class TestShow:
         monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", str(blocker / "sub"))
         show(pd.DataFrame({"a": [1]}))                  # must not raise
         assert "exhibit dropped" in capsys.readouterr().err
+
+
+class TestShowDiscoveryHeartbeat:
+    """The posting rule, exactly: TRACEBI_WORKBENCH_DIR always wins when
+    set. Without it, show() posts to the CURRENT working directory's
+    _discovery workbench only while its .active heartbeat is fresh — no
+    live server (builds, CI) means stale/absent, and show() stays a no-op."""
+
+    def test_fresh_heartbeat_gates_show_into_discovery(
+            self, tmp_path, monkeypatch):
+        monkeypatch.delenv("TRACEBI_WORKBENCH_DIR", raising=False)
+        monkeypatch.chdir(tmp_path)
+        wb = discovery_dir(str(tmp_path))
+        heartbeat(wb)                       # a discovery server is "live"
+        show(pd.DataFrame({"a": [1]}), note="probe output")
+        exhibits = read_exhibits(wb)
+        assert [e["kind"] for e in exhibits] == ["frame"]
+        assert exhibits[0]["note"] == "probe output"
+
+    def test_stale_heartbeat_is_a_noop(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("TRACEBI_WORKBENCH_DIR", raising=False)
+        monkeypatch.chdir(tmp_path)
+        wb = discovery_dir(str(tmp_path))
+        heartbeat(wb)
+        marker = os.path.join(wb, ACTIVE_FILE)
+        past = os.path.getmtime(marker) - 60        # server long gone
+        os.utime(marker, (past, past))
+        show(pd.DataFrame({"a": [1]}))
+        assert read_exhibits(wb) == []      # the build/CI no-op guarantee
+
+    def test_env_var_wins_over_the_heartbeat(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        wb = discovery_dir(str(tmp_path))
+        heartbeat(wb)
+        explicit = str(tmp_path / "explicit_wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", explicit)
+        show("a session note")
+        assert [e["kind"] for e in read_exhibits(explicit)] == ["note"]
+        assert read_exhibits(wb) == []
 
 
 class TestPins:
@@ -253,3 +296,115 @@ class TestDevServerPackageRender:
         texts = [e["text"] for e in read_exhibits(target.wb_dir)]
         assert texts and all(t.startswith("binding ") for t in texts)
         assert any("kpi updated" in t for t in texts)
+
+
+_DISCOVERY_MODEL = """\
+from tracebi import DataModel
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+# Lazy by design: no connect() at import — discovery must list the model
+# even before phase 1 has ever run.
+model = DataModel("disc_model")
+model.add_connector(DuckDBConnector("wh", database="data/warehouse.duckdb"))
+model.add_table("fact_holdings", connector="wh", source="fact_holdings")
+model.add_table("dim_issuer", connector="wh", source="dim_issuer")
+model.add_relationship("h_to_i", left_table="fact_holdings",
+                       right_table="dim_issuer", left_key="issuer_id")
+model.add_dimension("dim_issuer", table_name="dim_issuer",
+                    key_col="issuer_id", attributes=["issuer"])
+model.add_fact("holdings", table_name="fact_holdings",
+               measures=["fair_value"],
+               foreign_keys={"dim_issuer": "issuer_id"})
+model.add_measure("total_fv", column="fair_value", agg="sum")
+"""
+
+
+class TestCollectDiscoveryState:
+    """The project-level state builder — phases ① and ② made visible: the
+    warehouse (tables + sink-contract summaries), the models' declared star
+    schemas, the packages, and the _discovery feed. Per-panel failures are
+    captured into the state, never raised."""
+
+    @pytest.fixture()
+    def discovery_project(self, tmp_path):
+        pytest.importorskip("duckdb")
+        from tracebi.connectors.duckdb_connector import DuckDBConnector
+        from tracebi.contracts import contract
+
+        (tmp_path / "data").mkdir()
+        wh = str(tmp_path / "data" / "warehouse.duckdb")
+        sink = DuckDBConnector("wh", database=wh)
+        sink.write(pd.DataFrame({"issuer_id": [1, 2, 3],
+                                 "fair_value": [10.0, 20.0, 30.0]}),
+                   "fact_holdings")
+        sink.write(pd.DataFrame({"issuer_id": [1, 2, 3],
+                                 "issuer": ["a", "b", "c"]}), "dim_issuer")
+        with contract("holdings", warehouse=wh) as c:
+            c.rows("fact_holdings", exactly=3)
+            c.unique("dim_issuer", ["issuer_id"])
+
+        (tmp_path / "models").mkdir()
+        (tmp_path / "models" / "disc_model.py").write_text(_DISCOVERY_MODEL)
+        (tmp_path / "models" / "broken_model.py").write_text(
+            "import nope_missing\n")
+        (tmp_path / "reports" / "empty_pkg").mkdir(parents=True)
+        return tmp_path
+
+    def test_collects_warehouse_models_packages(self, discovery_project):
+        state = collect_discovery_state(str(discovery_project), {})
+        assert state["mode"] == "discovery"
+        assert state["name"] == "_discovery"
+
+        wh = state["warehouse"]
+        assert wh["exists"] is True
+        assert wh["path"].endswith(os.path.join("data", "warehouse.duckdb"))
+        tables = {t["name"]: t for t in wh["tables"]}
+        assert tables["fact_holdings"]["rows"] == 3
+        assert set(tables["fact_holdings"]["columns"]) == {"issuer_id",
+                                                           "fair_value"}
+        assert tables["dim_issuer"]["rows"] == 3
+
+        # The sink-contract summary — the sink satisfied its contract.
+        holdings = wh["contracts"]["holdings"]
+        assert holdings["checks"] == "2/2"
+        assert holdings["tables"] == ["dim_issuer", "fact_holdings"]
+        assert holdings["checked_at"]
+
+        # Model listing via the public info(); the broken FILE is an error
+        # entry in the state, not an exception out of it.
+        by_name = {m["name"]: m for m in state["models"]}
+        good = by_name["disc_model"]
+        assert [f["name"] for f in good["facts"]] == ["holdings"]
+        assert [d["name"] for d in good["dimensions"]] == ["dim_issuer"]
+        assert [m["name"] for m in good["measures"]] == ["total_fv"]
+        broken = by_name["broken_model"]
+        assert "nope_missing" in broken["error"]
+
+        assert state["packages"] == ["empty_pkg"]
+        assert state["exhibits"] == [] and state["pins"] == []
+
+    def test_loaded_models_are_not_reloaded_and_dedupe(self, discovery_project):
+        """A model the caller already loaded (keyed by stem AND .name, as
+        the loaders do) appears once, and its declared warehouse path
+        dedupes against data/warehouse.duckdb."""
+        from tracebi.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        reg.auto_discover(str(discovery_project / "models"))
+        m = reg.get("disc_model")
+        state = collect_discovery_state(
+            str(discovery_project), {"disc_model": m, "alias": m})
+        names = [e["name"] for e in state["models"]]
+        assert names.count("disc_model") == 1
+        assert state["warehouse"]["exists"] is True
+
+    def test_missing_warehouse_is_state_not_crash(self, tmp_path):
+        state = collect_discovery_state(str(tmp_path), {})
+        wh = state["warehouse"]
+        assert wh["exists"] is False
+        assert wh["tables"] == [] and wh["contracts"] is None
+        assert state["models"] == [] and state["packages"] == []
+
+    def test_state_is_json_serialisable(self, discovery_project):
+        json.dumps(collect_discovery_state(str(discovery_project), {}),
+                   default=str)

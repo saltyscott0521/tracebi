@@ -6,9 +6,15 @@ Two shared primitives live here, deliberately outside the dev server:
 * :func:`show` — the notebook-cell-output equivalent, callable from
   ``report.py`` or any exploration code. It appends an *exhibit* to the
   session's feed so the workbench becomes the agent's show surface ("steer
-  from chat, see results in the portal"). It is a **no-op unless**
-  ``TRACEBI_WORKBENCH_DIR`` is set, so a build or CI run ignores it
-  entirely, and it never raises — a broken exhibit must not kill a build.
+  from chat, see results in the portal"). The posting rule, exactly:
+  ``TRACEBI_WORKBENCH_DIR`` always wins when set. When it is unset, show()
+  posts to ``./.tracebi/workbench/_discovery`` in the CURRENT working
+  directory **only if** that directory's ``.active`` heartbeat exists and
+  was touched within the last :data:`HEARTBEAT_WINDOW` seconds — i.e. a
+  ``tracebi dev`` discovery server is running right now. Otherwise show()
+  is a **no-op**, so a build or CI run (no live server → stale or absent
+  heartbeat) ignores it entirely, and it never raises — a broken exhibit
+  must not kill a build.
 
 * :func:`collect_state` — THE one state builder. The dev server's
   ``/__workbench`` page, ``tracebi report status``, and the MCP
@@ -29,6 +35,7 @@ import json
 import math
 import os
 import sys
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -38,12 +45,56 @@ PINS_FILE = "pins.json"
 #: The feed cap — the workbench is a lab log of the session, not an archive.
 EXHIBIT_CAP = 100
 
+#: The discovery session's workbench name — ``tracebi dev`` with no name.
+DISCOVERY_NAME = "_discovery"
+
+#: The discovery server's liveness marker inside its workbench dir, and how
+#: fresh it must be (seconds) for show() to post without the env var set.
+ACTIVE_FILE = ".active"
+HEARTBEAT_WINDOW = 15.0
+
 
 def workbench_dir(project_root: str, report_name: str) -> str:
     """``<project_root>/.tracebi/workbench/<report_name>``, created on demand."""
     path = os.path.join(project_root, ".tracebi", "workbench", report_name)
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def discovery_dir(project_root: str) -> str:
+    """The project-level (discovery-mode) workbench directory."""
+    return workbench_dir(project_root, DISCOVERY_NAME)
+
+
+def heartbeat(wb_dir: str) -> None:
+    """Touch ``.active`` in *wb_dir* — the discovery server's liveness marker.
+
+    The dev server calls this each watcher tick; :func:`show` treats a fresh
+    marker as permission to post without ``TRACEBI_WORKBENCH_DIR``. Same
+    never-raise contract as the rest of the feed plumbing.
+    """
+    try:
+        os.makedirs(wb_dir, exist_ok=True)
+        path = os.path.join(wb_dir, ACTIVE_FILE)
+        with open(path, "a", encoding="utf-8"):
+            pass
+        os.utime(path, None)
+    except Exception as exc:  # noqa: BLE001 — liveness must not kill the loop
+        print(f"[tracebi workbench] heartbeat dropped: "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+
+
+def _active_discovery_dir() -> Optional[str]:
+    """cwd's ``.tracebi/workbench/_discovery`` — but only while a discovery
+    server's heartbeat is fresh (``.active`` touched within
+    :data:`HEARTBEAT_WINDOW` seconds). No live server means a stale or
+    absent marker, which keeps the build/CI no-op guarantee."""
+    wb = os.path.join(os.getcwd(), ".tracebi", "workbench", DISCOVERY_NAME)
+    try:
+        age = time.time() - os.path.getmtime(os.path.join(wb, ACTIVE_FILE))
+    except OSError:
+        return None
+    return wb if age <= HEARTBEAT_WINDOW else None
 
 
 # ── The exhibit feed ────────────────────────────────────────────────────────
@@ -59,11 +110,20 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None) -> No
         from tracebi.workbench import show
         show(df, note="after dropping the 9 null-mark funds")
 
-    A **no-op** when ``TRACEBI_WORKBENCH_DIR`` is unset (builds and CI
-    ignore it entirely), and never raises: a broken exhibit is dropped with
-    a stderr note, never a dead build. Exhibits carry no receipts.
+    Where the exhibit lands, exactly: ``TRACEBI_WORKBENCH_DIR`` always wins
+    when set. When it is unset, the exhibit posts to
+    ``./.tracebi/workbench/_discovery`` in the CURRENT working directory
+    **only if** its ``.active`` heartbeat was touched within the last
+    :data:`HEARTBEAT_WINDOW` seconds — a ``tracebi dev`` discovery server is
+    live, so ANY script run in the project posts frames with zero
+    configuration. Otherwise show() is a **no-op** (builds and CI have no
+    live server, so a stale or absent heartbeat keeps them clean), and it
+    never raises: a broken exhibit is dropped with a stderr note, never a
+    dead build. Exhibits carry no receipts.
     """
     wb = os.environ.get("TRACEBI_WORKBENCH_DIR")
+    if not wb:
+        wb = _active_discovery_dir()
     if not wb:
         return
     try:
@@ -380,3 +440,185 @@ def _read_optional(path: str) -> str:
         with open(path, encoding="utf-8") as f:
             return f.read()
     return ""
+
+
+# ── The discovery state builder (no report anchored) ────────────────────────
+
+
+def collect_discovery_state(project_root: str, models: dict) -> dict:
+    """The project-level workbench state — ``tracebi dev`` with no name.
+
+    Discovery mode is the live surface for phases ① and ②: the warehouse's
+    tables and sink-contract summaries, every model's declared star schema,
+    the report packages that exist, and the ``_discovery`` session's exhibit
+    feed and pins. Same contract as :func:`collect_state`: every per-panel
+    failure is captured *into* the state (an ``"error"`` string on that
+    entry), never raised — the workbench renders broken state. Dev-state
+    only; nothing is written except the on-demand workbench directory.
+    """
+    wb = discovery_dir(project_root)
+    model_entries, loaded = _discovery_models(project_root, models)
+    return {
+        "mode": "discovery",
+        "name": DISCOVERY_NAME,
+        "warehouse": _discovery_warehouse(project_root, loaded),
+        "models": model_entries,
+        "packages": _discovery_packages(project_root),
+        "exhibits": read_exhibits(wb),
+        "pins": read_pins(wb),
+    }
+
+
+def _discovery_models(project_root: str, models: dict) -> tuple[list, list]:
+    """One entry per model. The caller's loaded models render via the public
+    ``info()``; every ``models/`` file the caller's loader skipped is
+    re-attempted here so its failure lands in the state as an error entry,
+    not a silent absence. Returns (entries, deduped loaded models)."""
+    entries: list[dict] = []
+    loaded: list = []
+    seen: set[int] = set()
+    for key, m in (models or {}).items():
+        if id(m) in seen:
+            continue                        # stem + .name index one object
+        seen.add(id(m))
+        loaded.append(m)
+        entries.append(_model_entry(key, m))
+
+    from tracebi.model_registry import ModelRegistry
+
+    reg = ModelRegistry()                   # fresh — never pollutes the global
+    models_dir = os.path.join(
+        project_root, os.environ.get("TRACEBI_MODELS_DIR", "models"))
+    for stem in reg.auto_discover(models_dir):
+        if stem in (models or {}):
+            continue
+        try:
+            m = reg.get(stem)
+        except Exception as exc:  # noqa: BLE001 — captured into the state
+            entries.append({"name": stem,
+                            "error": f"{type(exc).__name__}: {exc}"})
+            continue
+        if id(m) in seen:
+            continue
+        seen.add(id(m))
+        loaded.append(m)
+        entries.append(_model_entry(stem, m))
+    return entries, loaded
+
+
+def _model_entry(key, m) -> dict:
+    try:
+        info = m.info()
+        return {"name": info.get("name") or str(key),
+                "tables": info.get("tables") or [],
+                "facts": info.get("facts") or [],
+                "dimensions": info.get("dimensions") or [],
+                "measures": info.get("measures") or []}
+    except Exception as exc:  # noqa: BLE001 — captured into the state
+        return {"name": str(getattr(m, "name", key)),
+                "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _discovery_warehouse(project_root: str, loaded: list) -> dict:
+    """The warehouse panel: ``data/warehouse.duckdb`` under *project_root*
+    plus any file-backed DuckDB connector database the loaded models declare
+    (via the public ``describe()``), deduped by path — the first candidate
+    that exists is the warehouse. Introspection uses a SHORT-LIVED read-only
+    connection, closed deterministically: this process must never hold a
+    handle a transform's ``write()`` would collide with (the same
+    coexistence rule ``DuckDBConnector.disconnect`` exists for)."""
+    default = os.path.join(project_root, "data", "warehouse.duckdb")
+    candidates: list[str] = [default]
+    for m in loaded:
+        try:
+            for c in m.connectors():
+                d = c.describe()
+                if d.get("type") != "DuckDBConnector":
+                    continue
+                db = d.get("database") or getattr(c, "database", None)
+                if isinstance(db, str) and db and db != ":memory:":
+                    candidates.append(db if os.path.isabs(db)
+                                      else os.path.join(project_root, db))
+        except Exception:  # noqa: BLE001 — a broken model already has its entry
+            continue
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for p in candidates:
+        ap = os.path.abspath(p)
+        if ap not in seen:
+            seen.add(ap)
+            deduped.append(p)
+    existing = [p for p in deduped if os.path.isfile(p)]
+    path = existing[0] if existing else default
+
+    wh: dict = {"path": path, "exists": bool(existing),
+                "tables": [], "contracts": None}
+    if not existing:
+        return wh
+    try:
+        wh["tables"] = _warehouse_tables(path)
+    except Exception as exc:  # noqa: BLE001 — captured into the state
+        wh["error"] = f"{type(exc).__name__}: {exc}"
+    wh["contracts"] = _contracts_summary(path)
+    return wh
+
+
+def _warehouse_tables(path: str) -> list[dict]:
+    """Tables, row counts, and column dtypes via information_schema, on one
+    short-lived read-only connection closed deterministically."""
+    import duckdb
+
+    tables: list[dict] = []
+    con = duckdb.connect(path, read_only=True)
+    try:
+        names = [r[0] for r in con.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'main' ORDER BY table_name").fetchall()]
+        for t in names:
+            columns = {r[0]: r[1] for r in con.execute(
+                "SELECT column_name, data_type "
+                "FROM information_schema.columns "
+                "WHERE table_schema = 'main' AND table_name = ? "
+                "ORDER BY ordinal_position", [t]).fetchall()}
+            n = con.execute(
+                f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]
+            tables.append({"name": t, "rows": int(n), "columns": columns})
+    finally:
+        con.close()
+    return tables
+
+
+def _contracts_summary(warehouse: str) -> Optional[dict]:
+    """``read_contracts`` parsed down to one line per transform:
+    ``{checked_at, checks: "passed/total", tables: [names]}``. None when no
+    certificate sits beside the warehouse."""
+    from tracebi.contracts import read_contracts
+
+    data = read_contracts(warehouse)
+    if not data:
+        return None
+    out: dict[str, dict] = {}
+    for tname, rec in (data.get("transforms") or {}).items():
+        if not isinstance(rec, dict):
+            continue
+        checks = [c for c in (rec.get("checks") or []) if isinstance(c, dict)]
+        passed = sum(1 for c in checks if c.get("passed"))
+        out[tname] = {"checked_at": rec.get("checked_at"),
+                      "checks": f"{passed}/{len(checks)}",
+                      "tables": sorted(rec.get("tables") or {})}
+    return out or None
+
+
+def _discovery_packages(project_root: str) -> list[str]:
+    """Package directory names under reports/ — a dir counts even before its
+    files exist, so a package-in-progress is visible."""
+    reports = os.path.join(
+        project_root, os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+    try:
+        return sorted(
+            entry for entry in os.listdir(reports)
+            if os.path.isdir(os.path.join(reports, entry))
+            and not entry.startswith(".")
+        )
+    except OSError:
+        return []

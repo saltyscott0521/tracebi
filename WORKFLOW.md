@@ -59,6 +59,13 @@ processes because the sink is on disk. `inputs/` holds the raw material (the
 demo's `holdings.csv` is tracked; a large or sensitive real pull can be
 gitignored per-file); `data/` holds the build artifacts and is gitignored.
 
+Phase ① and ② have a live surface of their own: `tracebi dev` with no name
+opens the **discovery workbench** — any script run while it serves can
+`tracebi.workbench.show(df, note=...)` an excerpt into the portal, the
+warehouse panel lists tables and contract status as sinks land, and the
+models panel shows the star schema taking shape. Same pins, same
+steer-from-chat loop, before a single report exists.
+
 A transform may end with a **sink contract** — a `with contract(...)` block
 declaring what must be true of the tables it just sank (row counts, unique
 keys, no NULLs, foreign keys, value domains, cross-table reconciliation). The

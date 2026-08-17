@@ -11,6 +11,16 @@ code, and lint. The watcher scans the package directory, ``models/``,
 ``/__status`` and reload when anything changed. Errors render as a styled
 traceback page that also auto-reloads once the code is fixed.
 
+**No target at all** (``tracebi dev`` with no name) is DISCOVERY MODE: no
+report is anchored, and the workbench IS the site — the live surface for
+phase ① (interrogating source data) and phase ② (designing the model). It
+renders the warehouse's tables and sink-contract summaries, every model's
+declared star schema, and the report packages that exist; the server
+heartbeats ``.tracebi/workbench/_discovery/.active`` each watcher tick so
+ANY script run in the project can post to the exhibit feed via
+``tracebi.workbench.show`` with zero configuration (see the heartbeat rule
+in ``tracebi/workbench.py``).
+
 A **legacy request script** keeps today's single-file behavior, with a
 deprecation note (``requests/`` is deprecated; removed in 0.8).
 
@@ -118,6 +128,7 @@ class _RequestTarget:
     """A legacy request script — today's loop, deprecated (removed in 0.8)."""
 
     workbench = False
+    discovery = False
 
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
@@ -137,6 +148,7 @@ class _PackageTarget:
     """An artifact package — the in-memory exploration render + workbench."""
 
     workbench = True
+    discovery = False
 
     def __init__(self, directory: Path) -> None:
         from tracebi.workbench import workbench_dir
@@ -223,6 +235,56 @@ class _PackageTarget:
             }
 
 
+class _DiscoveryTarget:
+    """Discovery mode — no report anchored; the workbench IS the site."""
+
+    workbench = True
+    discovery = True
+
+    def __init__(self) -> None:
+        from tracebi.workbench import DISCOVERY_NAME, discovery_dir
+
+        self.name = DISCOVERY_NAME
+        self.label = "discovery"
+        self.wb_dir = discovery_dir(os.getcwd())
+
+    def render(self) -> str:
+        # In discovery there is no report to preview — the root just points
+        # at the workbench.
+        return ('<!DOCTYPE html>\n<html><head><meta charset="UTF-8">'
+                '<meta http-equiv="refresh" content="0; url=/__workbench">'
+                '<title>tracebi dev — discovery</title></head>'
+                '<body><p><a href="/__workbench">workbench</a></p>'
+                '</body></html>')
+
+    def watch_paths(self) -> list[Path]:
+        # data/ is watched so a sink landing bumps the version and the
+        # workbench page refreshes with the new tables.
+        return [
+            Path(os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms")),
+            Path(os.environ.get("TRACEBI_MODELS_DIR", "models")),
+            Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports")),
+            Path("data"),
+        ]
+
+    def state(self) -> dict:
+        """collect_discovery_state, degraded to an error state rather than
+        a 500 when even collecting fails (mirrors _PackageTarget.state)."""
+        from tracebi.workbench import collect_discovery_state
+
+        try:
+            return collect_discovery_state(os.getcwd(), _project_models())
+        except Exception as exc:  # noqa: BLE001 — the panel must show the break
+            return {
+                "mode": "discovery",
+                "name": self.name,
+                "error": f"{type(exc).__name__}: {exc}",
+                "warehouse": {"path": "", "exists": False, "tables": [],
+                              "contracts": None},
+                "models": [], "packages": [], "exhibits": [], "pins": [],
+            }
+
+
 def _scan_signature(paths) -> tuple:
     """(max mtime, file count) across files and directory trees — a change
     in either means something to rebuild. Files mid-atomic-save are skipped
@@ -295,19 +357,42 @@ select { font: inherit; font-size: 0.85em; }
 <body>
 <h1 id="wb-title">workbench</h1>
 <p class="wb-meta">Dev-state only — nothing on this page exists in builds or
-manifests, and no receipts are minted here. <a href="/">← report preview</a></p>
+manifests, and no receipts are minted here.
+<a id="wb-preview-link" href="/">← report preview</a></p>
 <div id="wb-error"></div>
+<section id="wb-sec-figures">
 <h2>Figures</h2>
 <div id="wb-coverage"></div>
 <div id="wb-figures"></div>
+</section>
+<section id="wb-sec-data">
 <h2>Data</h2>
 <div id="wb-data"></div>
+</section>
+<section id="wb-sec-warehouse" hidden>
+<h2>Warehouse</h2>
+<div id="wb-warehouse"></div>
+</section>
+<section id="wb-sec-models" hidden>
+<h2>Models</h2>
+<div id="wb-models"></div>
+</section>
+<section id="wb-sec-packages" hidden>
+<h2>Packages</h2>
+<div id="wb-packages"></div>
+</section>
+<section id="wb-sec-feed">
 <h2>Feed</h2>
 <div id="wb-feed"></div>
+</section>
+<section id="wb-sec-code">
 <h2>Code</h2>
 <div id="wb-code"></div>
+</section>
+<section id="wb-sec-lint">
 <h2>Lint</h2>
 <div id="wb-lint"></div>
+</section>
 <script>
 __ECHARTS__
 </script>
@@ -589,14 +674,130 @@ __ECHARTS__
         "non-blocking — the final build enforces; the workbench points."));
   }
 
+  /* ── Discovery mode: no report anchored — phases ① and ② live here. ── */
+
+  function renderWarehouse(state) {
+    var host = document.getElementById("wb-warehouse");
+    host.textContent = "";
+    var wh = state.warehouse || {};
+    if (wh.error) host.appendChild(el("pre", "wb-error", wh.error));
+    if (!wh.exists) {
+      host.appendChild(el("p", "wb-meta",
+          "no warehouse yet — run a transform"));
+      return;
+    }
+    host.appendChild(el("p", "wb-meta", wh.path));
+    var tables = wh.tables || [];
+    tables.forEach(function (tb) {
+      var card = el("div", "wb-card");
+      var head = el("div", "wb-row");
+      head.appendChild(el("strong", null, tb.name));
+      head.appendChild(el("span", "wb-meta", tb.rows + " rows"));
+      /* Same pin mechanism as figures — a warehouse table pins by the
+         stable id "table-<name>". */
+      var pid = "table-" + tb.name;
+      head.appendChild(pinBtn(pid, state.pins.some(function (p) {
+        return p.id === pid;
+      })));
+      card.appendChild(head);
+      var cols = tb.columns || {};
+      card.appendChild(el("p", "wb-meta",
+          Object.keys(cols).map(function (c) {
+            return c + ": " + cols[c];
+          }).join("  ·  ")));
+      host.appendChild(card);
+    });
+    if (!tables.length) {
+      host.appendChild(el("p", "wb-meta", "the warehouse has no tables"));
+    }
+    var contracts = wh.contracts || {};
+    Object.keys(contracts).forEach(function (t) {
+      var c = contracts[t];
+      /* Locked language: the SINK satisfied its contract — this line
+         certifies the landed tables, never the transform's pandas. */
+      host.appendChild(el("p", "wb-meta",
+          "sink contract " + t + " · " + c.checks + " checks passed"
+          + (c.checked_at ? " · " + c.checked_at : "")
+          + " · tables: " + (c.tables || []).join(", ")));
+    });
+  }
+
+  function renderModels(state) {
+    var host = document.getElementById("wb-models");
+    host.textContent = "";
+    var models = state.models || [];
+    if (!models.length) {
+      host.appendChild(el("p", "wb-meta",
+          "no models yet — tracebi new-model"));
+      return;
+    }
+    function names(list) {
+      return (list || []).map(function (x) { return x.name; }).join(", ");
+    }
+    models.forEach(function (m) {
+      var card = el("div", "wb-card");
+      var head = el("div", "wb-row");
+      head.appendChild(el("strong", null, m.name));
+      card.appendChild(head);
+      if (m.error !== undefined) {
+        card.appendChild(el("pre", "wb-error", m.error));
+        host.appendChild(card);
+        return;
+      }
+      card.appendChild(el("p", "wb-meta", "facts: " + (names(m.facts) || "—")));
+      card.appendChild(el("p", "wb-meta",
+          "dimensions: " + (names(m.dimensions) || "—")));
+      card.appendChild(el("p", "wb-meta",
+          "measures: " + (names(m.measures) || "—")));
+      host.appendChild(card);
+    });
+  }
+
+  function renderPackages(state) {
+    var host = document.getElementById("wb-packages");
+    host.textContent = "";
+    var packages = state.packages || [];
+    if (!packages.length) {
+      host.appendChild(el("p", "wb-meta",
+          "no packages yet — tracebi new-report \\"My Report\\""));
+      return;
+    }
+    packages.forEach(function (name) {
+      var row = el("div", "wb-row");
+      row.appendChild(el("strong", null, name));
+      row.appendChild(el("span", "wb-meta", "tracebi dev " + name));
+      host.appendChild(row);
+    });
+  }
+
+  function setMode(discovery) {
+    ["figures", "data", "code", "lint"].forEach(function (id) {
+      document.getElementById("wb-sec-" + id).hidden = discovery;
+    });
+    ["warehouse", "models", "packages"].forEach(function (id) {
+      document.getElementById("wb-sec-" + id).hidden = !discovery;
+    });
+    document.getElementById("wb-preview-link").hidden = discovery;
+  }
+
   function render(state) {
-    document.getElementById("wb-title").textContent =
-        state.name + " — workbench";
-    document.title = state.name + " — workbench";
+    var discovery = state.mode === "discovery";
+    setMode(discovery);
+    var title = discovery ? "discovery workbench"
+                          : state.name + " — workbench";
+    document.getElementById("wb-title").textContent = title;
+    document.title = title;
     var err = document.getElementById("wb-error");
     err.textContent = "";
     var problem = state.error || state.render_error;
     if (problem) err.appendChild(el("pre", "wb-error", problem));
+    if (discovery) {
+      renderWarehouse(state);
+      renderModels(state);
+      renderPackages(state);
+      renderFeed(state);
+      return;
+    }
     renderFigures(state);
     renderData(state);
     renderFeed(state);
@@ -645,9 +846,13 @@ def serve_dev(
 ) -> int:
     """Serve *target* with live reload until Ctrl+C. Returns an exit code.
 
-    *target* is an artifact package directory (``reports/<name>/``) or a
-    legacy request script file — the form decides the loop.
+    *target* is an artifact package directory (``reports/<name>/``), a
+    legacy request script file, or ``None`` — discovery mode: no report
+    anchored, the project-level workbench served for phases ① and ②.
     """
+    if target is None:
+        return _serve(_DiscoveryTarget(), port=port,
+                      open_browser=open_browser, poll_interval=poll_interval)
     target_path = Path(target)
     if target_path.is_dir():
         t: _PackageTarget | _RequestTarget = _PackageTarget(target_path)
@@ -676,9 +881,16 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
     wb_page = _workbench_page(t.label) if t.workbench else ""
 
     def watch():
+        # Discovery liveness: the heartbeat is what lets a script's show()
+        # post with no env var — touched every tick, stale within seconds
+        # of Ctrl+C (the rule in tracebi/workbench.py).
+        if t.discovery:
+            _wb.heartbeat(t.wb_dir)
         last_sig = _scan_signature(t.watch_paths())
         stop = threading.Event()
         while not stop.wait(poll_interval):
+            if t.discovery:
+                _wb.heartbeat(t.wb_dir)
             sig = _scan_signature(t.watch_paths())
             if sig != last_sig:
                 last_sig = sig
@@ -759,10 +971,18 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
     watcher.start()
 
     url = f"http://127.0.0.1:{port}"
-    print(f"\n  TraceBi dev — watching {t.label}")
-    print(f"  Preview at {url} (reloads on save)")
-    if t.workbench:
+    if t.discovery:
+        print("\n  TraceBi dev — discovery mode (no report anchored)")
         print(f"  Workbench at {url}/__workbench")
+        print("  Exhibits: any script you run can call "
+              "tracebi.workbench.show(df, note=...) while this server is "
+              "up — no env var needed (or set TRACEBI_WORKBENCH_DIR=<dir> "
+              "explicitly).")
+    else:
+        print(f"\n  TraceBi dev — watching {t.label}")
+        print(f"  Preview at {url} (reloads on save)")
+        if t.workbench:
+            print(f"  Workbench at {url}/__workbench")
     print("  Press Ctrl+C to stop.\n")
     if open_browser:
         threading.Timer(0.3, lambda: webbrowser.open(url)).start()
