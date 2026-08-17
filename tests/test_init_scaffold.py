@@ -30,9 +30,13 @@ class TestInitScaffold:
     def test_init_creates_the_three_phase_layout(self, tmp_path):
         proj = tmp_path / "proj"
         assert cli.main(["init", str(proj)]) == 0
-        for d in ("inputs", "transforms", "models", "reports", "requests",
+        # M5 flip ledger: init no longer scaffolds requests/ — the
+        # deprecated lane is not handed to new projects.
+        for d in ("inputs", "transforms", "models", "reports",
                   "pipelines", "scheduled", "data", "output"):
             assert (proj / d).is_dir(), f"missing {d}/"
+        assert not (proj / "requests").exists(), \
+            "init must not scaffold the deprecated requests/ lane"
         assert (proj / "inputs" / "orders.csv").is_file()
         assert (proj / "transforms" / "sample_transform.py").is_file()
         assert (proj / "models" / "sample_model.py").is_file()
@@ -85,8 +89,7 @@ class TestInitScaffold:
     def test_scaffolded_python_compiles(self, tmp_path):
         proj = tmp_path / "proj"
         assert cli.main(["init", str(proj)]) == 0
-        for f in ("transforms/sample_transform.py", "models/sample_model.py",
-                  "requests/sample_report.py"):
+        for f in ("transforms/sample_transform.py", "models/sample_model.py"):
             assert compileall.compile_file(
                 str(proj / f), quiet=2
             ), f"{f} does not compile"

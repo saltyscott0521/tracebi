@@ -46,9 +46,22 @@ def _execute_or_500(path: Path, params: Optional[dict] = None):
         )
 
 
+# The whole surface is deprecated (architecture v2 §7): requests/ keeps
+# working through 0.7 and is removed in 0.8. The one report lane is the
+# artifact package. Machine-readable on every response from this router —
+# additive, so nothing consuming these payloads breaks before 0.8.
+_DEPRECATION = (
+    "requests/ is deprecated and will be removed in 0.8 — migrate to an "
+    "artifact package (`tracebi new-report`, `tracebi dev <name>`)."
+)
+
+
 @router.get("")
 def list_requests():
-    """List the request scripts (.py / .ipynb) in the requests directory."""
+    """List the request scripts (.py / .ipynb) in the requests directory.
+
+    Deprecated surface: removed in 0.8 (see the ``deprecation`` field).
+    """
     requests_dir = _requests_dir()
     if not requests_dir.is_dir():
         return []
@@ -65,6 +78,7 @@ def list_requests():
                 stat.st_mtime, tz=timezone.utc
             ).isoformat(),
             "size": stat.st_size,
+            "deprecated": True,
         })
     return out
 
@@ -99,7 +113,8 @@ def run_request(name: str, body: Optional[dict] = Body(default=None)):
         raise HTTPException(status_code=500, detail=_error_detail("Render failed", exc))
     manifest = report.build_manifest(format="html", output_path="(in-memory)")
     return {"name": name, "file": path.name, "html": html,
-            "params": params or {}, "manifest": manifest.to_dict()}
+            "params": params or {}, "manifest": manifest.to_dict(),
+            "deprecation": _DEPRECATION}
 
 
 @router.get("/{name}/lineage")

@@ -187,7 +187,19 @@ def auto_discover(
 
 
     discovered: list[str] = []
-    for entry in sorted(os.listdir(path)):
+    entries = sorted(os.listdir(path))
+    # The shadowing rule (architecture v2 §7): an artifact package directory
+    # shadows a same-named .json spec. `tracebi migrate spec` emits the
+    # package alongside the spec on purpose — the moment the directory
+    # exists it is the report; deleting it rolls back to the spec.
+    package_stems = {
+        e for e in entries
+        if not e.startswith("_")
+        and os.path.isdir(os.path.join(path, e))
+        and os.path.isfile(os.path.join(path, e, "report.json"))
+        and os.path.isfile(os.path.join(path, e, "template.html"))
+    }
+    for entry in entries:
         full = os.path.join(path, entry)
         record = {"directory": path, "file": entry, "module": None}
 
@@ -198,6 +210,18 @@ def auto_discover(
         is_py = entry.endswith(".py")
         is_nb = entry.endswith(".ipynb")
         is_spec = entry.endswith(".json")
+
+        if is_spec and entry[: -len(".json")] in package_stems:
+            stem = entry[: -len(".json")]
+            print(
+                f"[tracebi] {path}: artifact package '{stem}/' shadows spec "
+                f"'{entry}' — the artifact is served; delete the directory "
+                f"to roll back to the spec.",
+                file=sys.stderr,
+            )
+            _outcomes.append({**record, "status": "skipped",
+                              "reason": f"shadowed by artifact package '{stem}/'"})
+            continue
 
         if is_spec:
             # A report as data rather than as code. Registered without

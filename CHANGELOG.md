@@ -6,6 +6,30 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — reshape M5: migration, and one report lane
+
+The reshape lands its last piece: the artifact package is **the** report
+lane, and everything else either compiles into it or is on its way out.
+
+- **`tracebi migrate spec reports/<name>.json`** — compiles a JSON spec
+  into an artifact package beside it: every section becomes a
+  default-component figure bound to the same `DataRef` (the queries move
+  verbatim into `report.json`), markdown TextSections convert through a
+  deterministic escaped-first subset, a metric naming a query column
+  compiles LIVE (`data-tb-cell`) while a literal metric compiles honestly
+  `data-tb-unverified` — and every presentation knob with no runtime
+  equivalent is warned about by name, never swallowed. A CI test pins
+  receipt monotonicity: the compiled artifact's verifiable claims are a
+  superset of the spec render's.
+- **The shadowing rule** — at discovery, an artifact directory shadows a
+  same-named `.json` spec with a warning naming both. Migration is a
+  cutover the moment the directory exists; rollback is deleting it.
+- **`requests/` is deprecated, removed in 0.8.** `tracebi init` no longer
+  scaffolds the folder; the router, `tracebi run`, `tracebi dev`'s script
+  branch, and `new-request` keep working through 0.7 and say the same
+  thing: the one report lane is the artifact — exploration lives inside it
+  (`tracebi dev` + exploration blocks that die at build).
+
 ### Added — reshape M4: transform contracts
 
 The receipt extends to phase ① — honestly. A transform may now end with a

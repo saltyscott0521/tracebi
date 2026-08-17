@@ -719,72 +719,6 @@ _INIT_SAMPLE_DASHBOARD = """\
 }
 """
 
-_INIT_SAMPLE_REQUEST = '''"""
-Sample ad-hoc request — runs against an in-memory DataFrame so you can see
-TraceBi rendering immediately.
-
-requests/ is the human scratchpad: freeform scripts, unconstrained and
-UNVERIFIED — nothing here is covered by `tracebi verify`. When a request
-grows up, promote it: export with from_report() into a governed spec in
-reports/, where every figure becomes a re-provable query. The three-phase
-workflow (transforms/ → models/ → reports/) is the governed path; this lane
-is for exploration.
-
-Run:
-    python requests/sample_report.py
-"""
-
-import os
-import pandas as pd
-
-from tracebi import DataModel, MemoryConnector
-from tracebi.reports.report import Report, TextSection, TableSection
-from tracebi.reports.excel_renderer import ExcelRenderer
-from tracebi.reports.html_renderer import HTMLRenderer
-
-
-# ── 1. Connect ──────────────────────────────────────────────────────────────
-orders = pd.DataFrame({
-    "order_id": [1, 2, 3, 4, 5],
-    "region":   ["NE", "SE", "NE", "MW", "SE"],
-    "product":  ["Widget", "Gadget", "Widget", "Widget", "Gadget"],
-    "revenue":  [100.0, 200.0, 150.0, 300.0, 250.0],
-})
-
-model = DataModel("Sample").add_connector(MemoryConnector("mem", {"orders": orders}))
-model.add_table("orders", connector="mem", source="orders")
-
-
-# ── 2. Build report ─────────────────────────────────────────────────────────
-ds = model.load("orders")
-
-report = (
-    Report("Sample Report")
-    .author("Your Name")
-    .description("Replace this with your own data — see models/.")
-    .add(TextSection(title="Summary", content="Five orders across three regions.",
-                     style="heading1"))
-    .add(TableSection(title="Orders", dataset=ds,
-                      columns=["order_id", "region", "product", "revenue"],
-                      totals=["revenue"]))
-)
-
-
-# ── 3. Render ───────────────────────────────────────────────────────────────
-
-def run():
-    out_dir = os.path.join(os.path.dirname(__file__), "..", "output")
-    os.makedirs(out_dir, exist_ok=True)
-    ExcelRenderer().render(report, os.path.join(out_dir, "sample_report.xlsx"))
-    HTMLRenderer().render(report, os.path.join(out_dir, "sample_report.html"))
-    print(f"Saved: {out_dir}/sample_report.{{xlsx,html}}")
-
-
-if __name__ == "__main__":
-    run()
-'''
-
-
 def _init_project_readme(project: str) -> str:
     return f"""\
 # {project}
@@ -847,7 +781,6 @@ one.
 ├── models/           Phase ② — each .py exposes `model` (a DataModel)
 ├── reports/          Phase ③ — ReportSpec .json, packages, and factories
 ├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
-├── requests/         The human scratchpad — freeform, unverified scripts
 ├── scheduled/        Reports on a cron schedule
 ├── data/             The warehouse (gitignored)
 ├── output/           Rendered reports; *.manifest.json receipts stay tracked
@@ -873,8 +806,10 @@ is half the audit story.
    `tracebi validate` confirms it loads and its dimension keys are unique.
 5. Copy `reports/sample_dashboard.json`, point it at your model, and
    `tracebi spec validate` it before running.
-6. For freeform exploration, copy `requests/sample_report.py` — that lane
-   is unverified by design; promote what matters into `reports/`.
+6. For freeform pages, `tracebi new-report "My Report"` scaffolds an
+   artifact package; `tracebi dev my_report` opens the live loop (edit,
+   watch, pin). Exploration happens *inside* the artifact — blocks marked
+   `data-tb-stage="exploration"` die at the final build.
 
 ## Agents
 
@@ -976,8 +911,11 @@ def cmd_init(args: argparse.Namespace) -> int:
     # plus every directory the server auto-discovers at startup. The scaffold
     # is a complete working example — the first thing a new user runs ends
     # with `tracebi verify` reading REPRODUCES.
+    # No requests/ — the scratchpad lane is deprecated (removed in 0.8); the
+    # exploration story is the artifact's own: `tracebi dev` + exploration
+    # blocks that die at build (architecture v2 §7).
     for d in ("inputs", "transforms", "models", "pipelines", "reports",
-              "requests", "scheduled", "data", "output"):
+              "scheduled", "data", "output"):
         (target / d).mkdir(parents=True, exist_ok=True)
 
     files = {
@@ -989,7 +927,6 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,
         target / "models" / "sample_model.py": _INIT_SAMPLE_MODEL,
         target / "reports" / "sample_dashboard.json": _INIT_SAMPLE_DASHBOARD,
-        target / "requests" / "sample_report.py": _INIT_SAMPLE_REQUEST,
     }
     # Keep the still-empty discovery directories in git so the layout
     # survives a clone.
@@ -1207,6 +1144,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 
 def cmd_new_request(args: argparse.Namespace) -> int:
+    print(_REQUESTS_DEPRECATION, file=sys.stderr)
     requests_dir: Path = args.requests_dir
     requests_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1250,6 +1188,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if path is None:
         print(f"Request not found in {requests_dir}: {name}", file=sys.stderr)
         return 1
+    print(_REQUESTS_DEPRECATION, file=sys.stderr)
 
     overrides: dict = {}
     for item in args.param or []:
@@ -1294,8 +1233,19 @@ def cmd_dev(args: argparse.Namespace) -> int:
               f"{pkg_dir} and a request script in {args.requests_dir}.",
               file=sys.stderr)
         return 1
+    print(_REQUESTS_DEPRECATION, file=sys.stderr)
     from tracebi._dev_server import serve_dev
     return serve_dev(path, port=args.port, open_browser=not args.no_browser)
+
+
+#: One sentence, everywhere the deprecated lane is touched — the CLI runner,
+#: the dev server's script branch, and the requests router say the same thing.
+_REQUESTS_DEPRECATION = (
+    "[tracebi] requests/ is deprecated and will be removed in 0.8. The one "
+    "report lane is the artifact package: `tracebi new-report`, then "
+    "`tracebi dev <name>` for the live loop — exploration blocks die at "
+    "build, and every figure earns its receipt."
+)
 
 
 def _resolve_request_path(requests_dir: Path, name: str) -> Optional[Path]:
@@ -1854,6 +1804,71 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return exit_code
 
 
+def cmd_migrate(args: argparse.Namespace) -> int:
+    """
+    ``tracebi migrate spec <file.json>`` — compile a JSON spec into an
+    artifact package directory beside it.
+
+    Emits alongside, never replaces: ``reports/sales.json`` compiles to
+    ``reports/sales/``, sharing the stem — and at discovery the artifact
+    directory *shadows* the same-named spec (with a warning naming both),
+    so the migration is a cutover the moment the directory exists, and a
+    rollback is deleting it. The spec's ``theme``/``script`` files compile
+    into the package's ``style.css``/``script.js``.
+    """
+    from tracebi.reports.compile_spec import compile_spec
+    from tracebi.spec import ReportSpec
+
+    src = Path(args.path)
+    if not src.is_file():
+        print(f"spec not found: {src}", file=sys.stderr)
+        return 1
+    try:
+        spec = ReportSpec.from_json(src.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001 — a bad spec is a user error
+        print(f"cannot read spec: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+    # theme/script are filenames resolved against the reports directory —
+    # the directory the spec itself lives in.
+    theme_css, script_js = "", ""
+    for field_name, value in (("theme", spec.theme), ("script", spec.script)):
+        if not value:
+            continue
+        ref = src.parent / value
+        if ref.is_file():
+            content = ref.read_text(encoding="utf-8")
+            if field_name == "theme":
+                theme_css = content
+            else:
+                script_js = content
+        else:
+            print(f"warning: {field_name} file '{value}' not found beside the "
+                  f"spec — not compiled in", file=sys.stderr)
+
+    compiled = compile_spec(spec, theme_css=theme_css, script_js=script_js)
+
+    target = src.parent / src.stem
+    if target.exists() and not args.force:
+        print(f"target already exists: {target}\n"
+              f"Pass --force to overwrite it.", file=sys.stderr)
+        return 1
+    target.mkdir(parents=True, exist_ok=True)
+    for fname, content in compiled.files.items():
+        (target / fname).write_text(content, encoding="utf-8")
+
+    print(f"Compiled {src.name} → {target}/")
+    for fname in compiled.files:
+        print(f"  {fname}")
+    for w in compiled.warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    print(f"\nThe artifact now shadows the spec at discovery (delete the "
+          f"directory to roll back). Next:\n"
+          f"  tracebi report build {src.stem}\n"
+          f"  tracebi dev {src.stem}")
+    return 0
+
+
 # ── Report generator: new-report / report build|preview ────────────────────
 
 def _scaffold_binding() -> tuple[str, dict, str]:
@@ -2326,7 +2341,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Overwrite existing files.")
     p_init.set_defaults(func=cmd_init)
 
-    p_new = sub.add_parser("new-request", help="Scaffold a new request script.")
+    p_new = sub.add_parser(
+        "new-request",
+        help="Scaffold a new request script. DEPRECATED (removed in 0.8): "
+             "use `tracebi new-report` — the artifact package is the one "
+             "report lane.",
+    )
     p_new.add_argument("title", help='Free-form title, e.g. "Open orders by region".')
     p_new.add_argument("--force", action="store_true", help="Overwrite if exists.")
     p_new.add_argument(
@@ -2338,7 +2358,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_list = sub.add_parser("list-requests", help="List request scripts.")
     p_list.set_defaults(func=cmd_list_requests)
 
-    p_run = sub.add_parser("run", help="Run a request script (.py or .ipynb).")
+    p_run = sub.add_parser(
+        "run",
+        help="Run a request script (.py or .ipynb). DEPRECATED (removed in "
+             "0.8) with the requests/ lane it runs.",
+    )
     p_run.add_argument("name", help="Request file name (suffix optional; tries .py then .ipynb).")
     p_run.add_argument(
         "--param", action="append", metavar="KEY=VALUE",
@@ -2387,7 +2411,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Live-preview a report while you edit it. An artifact package "
              "(reports/<name>/) gets the in-memory exploration render plus "
              "the workbench at /__workbench; a request script keeps the "
-             "legacy single-file loop (deprecated).",
+             "legacy single-file loop (deprecated; removed in 0.8).",
     )
     p_dev.add_argument("name", help="Package name under reports/, or a "
                                     "request file name (suffix optional).")
@@ -2474,6 +2498,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("--no-browser", action="store_true",
                           help="With `preview`, do not open the browser.")
     p_report.set_defaults(func=cmd_report)
+
+    p_migrate = sub.add_parser(
+        "migrate",
+        help="Migrate legacy report forms to the artifact package. "
+             "`migrate spec <file.json>` compiles a JSON spec into "
+             "reports/<stem>/ (report.json bindings + template.html of "
+             "default-component figures) alongside the original.",
+    )
+    p_migrate.add_argument("what", choices=["spec"])
+    p_migrate.add_argument("path", help="Path to a reports/<name>.json spec.")
+    p_migrate.add_argument("--force", action="store_true",
+                           help="Overwrite an existing target directory.")
+    p_migrate.set_defaults(func=cmd_migrate)
 
     p_run_pipeline = sub.add_parser(
         "run-pipeline",

@@ -194,7 +194,7 @@ examples/
     reports/           #   ③ every report form: spec (portfolio_dashboard.json),
                        #     template packages (portfolio_book/), escape hatch
                        #     (portfolio_concentration/)
-    requests/          #   the human scratchpad (unverified lane); _template.py scaffold
+    requests/          #   the old scratchpad lane (deprecated, removed in 0.8)
     run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
   seeds/               # Medallion demo DB seeding + Supabase deploy companions
   phase*.py            # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
@@ -256,6 +256,7 @@ tracebi context --model sales_model            # plus that model's schema
 tracebi spec schema                            # JSON Schema for a report spec
 tracebi spec validate report.json              # check a spec without running it
 tracebi spec render report.json                # build and render it
+tracebi migrate spec reports/<name>.json       # compile a spec → reports/<name>/ (artifact package)
 tracebi mcp                                    # agent gateway over MCP (stdio)
 tracebi mcp --transport http --port 8765       # remote agent — needs TRACEBI_MCP_TOKEN (or --insecure)
 tracebi verify output/report.manifest.json     # re-run recorded queries; classify drift
@@ -486,11 +487,15 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 4. The web server auto-discovers `pipelines/` at startup (`TRACEBI_PIPELINES_DIR` to override).
 
 ### New report (ad hoc)
-Copy `requests/sample_report.py` from an init'd project (the fuller
-`_template.py` ships in `examples/portfolio_project/requests/`). Fill in the four sections: connectors → transforms → report assembly → render + save.
+The ad-hoc lane is the artifact: `tracebi new-report "My Report"` then
+`tracebi dev my_report` — explore inside `data-tb-stage="exploration"` blocks
+that die at build. (The old `requests/` script lane is deprecated, removed in
+0.8; `tracebi init` no longer scaffolds it. A JSON spec migrates with
+`tracebi migrate spec reports/<name>.json` — the compiled package shadows the
+same-named spec at discovery.)
 
 ### New report (web-exposed)
-Put a `.py` file in `reports/` (or use `requests/`). Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
+Put a `.py` file in `reports/`. Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
 
 ### New dashboard (phase ③)
 1. Add a `ReportSpec` `.json` under `reports/`, pointed at a model (grain +
@@ -550,7 +555,7 @@ GET  /api/reports/{name}/runs/{run_id}               → poll status; result/err
 GET  /api/reports/{name}/download?format=xlsx|html   → rendered file attachment
 GET  /api/reports/{name}/lineage                     → React Flow graph per section
 GET  /api/reports/{name}/mermaid
-GET  /api/requests                                   → scripts in requests/ (name, type, modified)
+GET  /api/requests                                   → scripts in requests/ (deprecated lane; removed in 0.8)
 GET  /api/requests/{name}/params                     → declared request_params() defaults (static)
 POST /api/requests/{name}/run                        → execute script fresh; body {"params": {…}}
 GET  /api/requests/{name}/lineage?params_json={…}    → React Flow graph per section
@@ -593,7 +598,8 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Write an ad hoc report | `requests/sample_report.py` (init scaffold) or `examples/portfolio_project/requests/_template.py` |
+| Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop; requests/ is deprecated) |
+| Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
 | Define a reusable pipeline | `tracebi new-pipeline` → `pipelines/` → `tracebi/pipeline_registry.py` |
 | Understand the lineage chain | `tracebi/model/dataset.py` |

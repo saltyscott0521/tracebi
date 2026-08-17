@@ -185,7 +185,8 @@ The differences that matter:
 | Understand the three-phase workflow (transform → model → report) | [WORKFLOW.md](WORKFLOW.md) — the spine, with the reference implementation |
 | Follow the full analyst flow start-to-finish | [docs/analyst-guide.md](docs/analyst-guide.md) — scaffold → transform → report → publish |
 | Work in a notebook with rich previews | [docs/notebook-guide.md](docs/notebook-guide.md) + `examples/analyst_quickstart.py` |
-| Write a one-off report or query | Copy `requests/sample_report.py` (scaffolded by `tracebi init`; the fuller `_template.py` ships in the reference project) and run it with `tracebi run` |
+| Write a one-off report or query | `tracebi new-report "My Report"` then `tracebi dev my_report` — explore inside the artifact (exploration blocks die at build). The old `requests/` lane is deprecated, removed in 0.8 |
+| Migrate a JSON spec to the artifact form | `tracebi migrate spec reports/<name>.json` — compiles every section to a default-component figure; the package shadows the spec until you delete it |
 | Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
 | Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
 | Point the web app at my own data / restyle the UI | [docs/web-customization.md](docs/web-customization.md) — app modules, registry, theming, auth, deploy |
@@ -298,11 +299,10 @@ keep the rest of TraceBi as the data layer.
 
 ```bash
 tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
-tracebi new-request "Open orders by region"          # → requests/open_orders_by_region.py
-tracebi new-request "Customer churn" --notebook      # → requests/customer_churn.ipynb
-tracebi list-requests
-tracebi run open_orders_by_region                    # works for .py and .ipynb
-tracebi dev open_orders_by_region                    # live preview: re-runs + reloads on save
+tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (artifact package)
+tracebi dev portfolio_book                           # live loop: exploration render + the workbench
+tracebi migrate spec reports/sales.json              # compile a JSON spec into reports/sales/ (shadows the spec)
+# deprecated, removed in 0.8: new-request / list-requests / run (the requests/ lane)
 tracebi validate                                     # load every model; check dimension keys are unique
 tracebi serve                                        # browse the project at http://127.0.0.1:8000
 tracebi new-model "Sales Model"                      # → models/sales_model.py
@@ -618,9 +618,8 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
   a toast when done), download as Excel or HTML, and inspect per-section
   lineage. Failures show the full Python traceback.
 - **Requests** — browse the scripts in `requests/` and run them straight
-  from the browser. Scripts execute fresh on every click, so edits on disk
-  show up without registering anything or restarting the server. Scripts
-  that declare `request_params(...)` get an automatic parameter form.
+  from the browser (deprecated with the lane itself; removed in 0.8 —
+  responses carry a `deprecation` note).
 - **Pipelines** — the medallion chain as a live DAG with per-layer run
   buttons and run history.
 
@@ -661,8 +660,8 @@ Your module just needs to import `registry` and call `registry.add_connector()`,
 |---|---|---|
 | `models/` | each `.py` exposes a `model` variable (a `DataModel`) | `TRACEBI_MODELS_DIR` |
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | `TRACEBI_PIPELINES_DIR` |
-| `reports/` | a `.py` factory (`@register.report(...)`), a `.json` `ReportSpec` (workflow phase ③), or a `<name>/` template package — all served as reports | `TRACEBI_REPORTS_DIR` |
-| `requests/` | ad-hoc scripts with `request_params()` and `run()` | `TRACEBI_REQUESTS_DIR` |
+| `reports/` | a `.py` factory (`@register.report(...)`), a `.json` `ReportSpec` (workflow phase ③), or a `<name>/` template package — all served as reports. A package directory shadows a same-named `.json` spec (the migration cutover) | `TRACEBI_REPORTS_DIR` |
+| `requests/` | ad-hoc scripts with `request_params()` and `run()` — deprecated, removed in 0.8 | `TRACEBI_REQUESTS_DIR` |
 
 Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/web-customization.md](docs/web-customization.md) for the full wiring guide.
 
@@ -790,7 +789,7 @@ tracebi/                        ← the framework repo
 │   │   ├── transforms/         ① pandas → sink star tables to DuckDB
 │   │   ├── models/             ② the star-schema contract (portfolio_model.py)
 │   │   ├── reports/            ③ spec + template packages + escape hatch
-│   │   ├── requests/           the human scratchpad (unverified lane)
+│   │   ├── requests/           the old scratchpad lane (deprecated, removed in 0.8)
 │   │   └── run_workflow.py     drives ①→③ (see WORKFLOW.md)
 │   ├── seeds/                  Medallion demo DB seeding + Supabase companions
 │   └── phase*.py               Small runnable feature demos
@@ -803,32 +802,19 @@ tracebi/                        ← the framework repo
 
 ## Ad hoc reports
 
-Copy `requests/sample_report.py` (scaffolded by `tracebi init`; the fuller
-`_template.py` ships in the reference project), rename it, fill in the numbered sections
-(parameters → model → datasets → report → render), and commit it to git.
-The script is the permanent, auditable record of how the numbers were produced.
+The ad-hoc lane IS the artifact now: `tracebi new-report "My Report"`
+scaffolds `reports/my_report/` and `tracebi dev my_report` opens the live
+loop — edit the template, watch the page, explore inside
+`data-tb-stage="exploration"` blocks that die at the final build, and pin
+figures in the workbench for the next editing pass. What matters gets built
+(`tracebi report build`) and ships with a receipt.
 
-Declare parameters with defaults in one line — they're overridable from the
-CLI and surface as a form on the web UI's Requests page:
-
-```python
-from tracebi import request_params
-
-params = request_params(period="Q2 2024", top_n=10)
-```
-
-```bash
-tracebi run my_report --param period="Q3 2024" --param top_n=25
-```
-
-Run standalone, the script just uses the defaults — no harness required.
-
-```
-requests/
-├── sample_report.py
-├── 2024_06_open_orders_by_region.py
-└── 2024_07_customer_churn_analysis.py
-```
+The old `requests/` script lane (`tracebi run`, `request_params()`, the
+Requests web page) still works but is **deprecated and removed in 0.8**; a
+project that has the folder keeps it working through 0.7 with deprecation
+notes. Migration is mechanical: queries → bindings in `report.json`, pandas
+→ `report.py`, sections → component figures. A JSON spec migrates with one
+command: `tracebi migrate spec reports/<name>.json`.
 
 ---
 

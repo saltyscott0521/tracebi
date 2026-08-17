@@ -18,7 +18,7 @@ materialized artifact handed across the boundary:
 |---|---|---|---|
 | ① **Transform** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
-| ③ **Report** | `reports/` | a `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables, every figure a live query — or a template package for freeform HTML | the rendered page + its lineage manifest |
+| ③ **Report** | `reports/` | an **artifact package** (`reports/<name>/`: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
 
 Reference implementation, end to end, at `examples/portfolio_project/`:
 `transforms/holdings_transform.py` → `models/portfolio_model.py` →

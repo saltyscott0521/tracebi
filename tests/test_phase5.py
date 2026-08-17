@@ -2227,7 +2227,10 @@ class TestConsumerProjectPath:
 
         target = tmp_path / "proj"
         assert main(["init", str(target)]) == 0
-        for d in ("models", "pipelines", "reports", "requests", "scheduled",
+        # M5 flip ledger: requests/ is the deprecated lane — init no longer
+        # hands it to new projects (the server still discovers one if a
+        # pre-existing project has it).
+        for d in ("models", "pipelines", "reports", "scheduled",
                   "data", "output"):
             assert (target / d).is_dir(), f"init must create {d}/"
 

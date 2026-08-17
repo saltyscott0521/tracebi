@@ -181,7 +181,8 @@ One canon, used everywhere — code, docs, UI, agent context:
 | **Verify** | Re-run the recorded queries; classify: REPRODUCES / SOURCE DRIFT / MODEL CHANGED / MISMATCH (cause unknown) / UNEXPLAINED / UNVERIFIABLE / ERROR |
 | **`verifiable: false`** | The escape hatch's permanent mark; never green |
 | **Assurance ladder** | L0 nothing → L1 receipts → L2 reproducibility → L3 signed attestation (L3: not yet) |
-| **`requests/`** | The human scratchpad — unverified authoring space; the path forward is promotion into `reports/` |
+| **`requests/`** | The old scratchpad lane — **deprecated, removed in 0.8**. Exploration now lives inside the artifact: `tracebi dev` + `data-tb-stage="exploration"` blocks that die at the final build |
+| **Migrate** | `tracebi migrate spec` compiles a JSON spec into the artifact package — the section enum ends as compile vocabulary; the artifact directory shadows the same-named spec |
 
 ## Commitments
 
