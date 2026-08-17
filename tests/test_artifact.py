@@ -298,6 +298,110 @@ class TestMethodologyAppendix:
             )
 
 
+# ── the embedded semantic contract ──────────────────────────────────────────
+# The built page carries the model contract AS EXERCISED — the slice of the
+# vocabulary the bindings' queries actually used, snapshotted at render and
+# fingerprinted in the manifest. The slice, not the whole model: a report
+# must not leak vocabulary it never used.
+
+def _sc_model():
+    from tracebi import DataModel, MemoryConnector
+
+    t = pd.DataFrame({"region": ["NE", "SE", "MW"],
+                      "flag": ["y", "n", "y"],
+                      "revenue": [100.0, 250.0, 75.0],
+                      "cost": [40.0, 100.0, 30.0]})
+    t2 = pd.DataFrame({"region": ["NE", "SE"]})
+    m = DataModel("sc_model")
+    m.add_connector(MemoryConnector("sc_mem", tables={"t": t, "t2": t2}))
+    m.add_table("t", connector="sc_mem", source="t")
+    m.add_table("t2", connector="sc_mem", source="t2")
+    m.add_dimension("dim_r", table_name="t", key_col="region",
+                    attributes=["region"])
+    m.add_dimension("dim_f", table_name="t", key_col="region",
+                    attributes=["flag"])
+    m.add_dimension("dim_ghost", table_name="t2", key_col="region",
+                    attributes=["region"])         # never referenced
+    m.add_fact("f", table_name="t", measures=["revenue", "cost"],
+               foreign_keys={})
+    m.add_measure("total", column="revenue", agg="sum")
+    m.add_measure("cost_total", column="cost", agg="sum")
+    m.add_measure("mark", ratio=("total", "cost_total"))
+    m.add_measure("ghost", column="cost", agg="mean")   # never referenced
+    m.connect()
+    return m
+
+
+def _sc_render(tmp_path):
+    from tracebi.reports.template_package import TemplatePackage
+
+    pkg = tmp_path / "scpkg"
+    pkg.mkdir(exist_ok=True)
+    (pkg / "report.json").write_text(json.dumps({
+        "name": "scpkg",
+        "data": {
+            "kpi": {"model": "sc_model",
+                    "query": {"fact": "f", "measures": ["total", "mark"]}},
+            "by_region": {"model": "sc_model",
+                          "query": {"fact": "f",
+                                    "measures": {"revenue": "sum"},
+                                    "dimensions": ["dim_r.region"],
+                                    "filters": {"dim_f.flag": "y"}}},
+        },
+    }))
+    (pkg / "template.html").write_text(
+        "<html><head><title>x</title></head><body>"
+        '<div data-tb-figure="value" data-tb-binding="kpi" '
+        'data-tb-cell="total" id="fig-kpi"></div>'
+        "</body></html>")
+    out = tmp_path / "sc_out.html"
+    manifest = TemplatePackage(str(pkg)).render(
+        {"sc_model": _sc_model()}, str(out))
+    return out.read_text(encoding="utf-8"), manifest.to_dict()
+
+
+class TestSemanticContract:
+    def test_the_built_page_embeds_one_block_per_referenced_model(
+            self, tmp_path):
+        page, _ = _sc_render(tmp_path)
+        assert 'id="tb-semantic-contract-sc_model"' in page
+
+    def test_the_slice_holds_only_exercised_vocabulary(self, tmp_path):
+        _, manifest = _sc_render(tmp_path)
+        s = manifest["semantic_contract"]["sc_model"]["slice"]
+        assert [f["name"] for f in s["facts"]] == ["f"]
+        # Grouped AND filter-referenced dimensions are exercised…
+        assert [d["name"] for d in s["dimensions"]] == ["dim_f", "dim_r"]
+        # …and only measures the queries name. The never-referenced
+        # measure, dimension, and its backing table must not leak.
+        assert [m["name"] for m in s["measures"]] == ["mark", "total"]
+        assert [t["name"] for t in s["tables"]] == ["t"]
+
+    def test_ratio_measures_carry_their_formula(self, tmp_path):
+        _, manifest = _sc_render(tmp_path)
+        s = manifest["semantic_contract"]["sc_model"]["slice"]
+        mark = next(m for m in s["measures"] if m["name"] == "mark")
+        assert mark["kind"] == "ratio"
+        assert mark["ratio"] == ["total", "cost_total"]
+
+    def test_byte_stable_across_renders(self, tmp_path):
+        _, m1 = _sc_render(tmp_path)
+        _, m2 = _sc_render(tmp_path)
+        assert (m1["semantic_contract"]["sc_model"]["sha256"]
+                == m2["semantic_contract"]["sc_model"]["sha256"])
+
+    def test_manifest_field_shape_and_presence(self, tmp_path):
+        # Always present for a package with bindings — and a package
+        # without bindings cannot exist (report.json requires them).
+        _, manifest = _sc_render(tmp_path)
+        assert set(manifest["semantic_contract"]) == {"sc_model"}
+        rec = manifest["semantic_contract"]["sc_model"]
+        assert set(rec) == {"slice", "sha256"}
+        assert set(rec["slice"]) == {"model", "facts", "dimensions",
+                                     "measures", "tables"}
+        assert rec["slice"]["model"] == "sc_model"
+
+
 class TestMethodologyContainerParsing:
     def test_insertion_point_is_the_containers_closing_tag(self):
         html = '<div>x</div><section data-tb-methodology><p>mine</p></section>'

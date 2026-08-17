@@ -69,6 +69,13 @@ covers phases ② and ③, not ①.**
   transform and does **not** assert that a number is correct; it proves the
   reported figures still match the warehouse they were drawn from.
 
+The built artifact also embeds the **semantic contract as exercised** — a
+snapshot of just the facts, dimensions, and measure declarations its
+bindings referenced, fingerprinted in the manifest — so a reader with
+nothing but the HTML knows what the vocabulary meant when the numbers were
+produced, and `verify --file` catches a rewrite of the meaning exactly like
+a rewrite of the numbers.
+
 So any number a report puts in front of a person is traceable back to the
 query that produced it and re-runnable against the sink. What produced the sink
 is phase ① — believed the way you believe reviewed code, not the way you believe

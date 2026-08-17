@@ -6,6 +6,30 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the embedded semantic contract: the artifact carries what the vocabulary meant
+
+The model→report exchange was already JSON (bindings, resolved queries,
+fingerprinted data blocks). The missing piece — the maintainer's relayed
+idea — was the MODEL itself: the artifact now embeds the semantic
+contract **as exercised**, snapshotted at render: only the facts,
+dimensions, and measures its bindings actually reference, with full
+declarations (ratio formulas, formats, descriptions) — the slice, not
+the whole model, so a report cannot leak vocabulary it never used.
+
+- The slice ships as a JSON block in the page and its SHA-256 is
+  recorded in the manifest, so `verify --file` now catches a rewrite of
+  what a measure MEANT exactly like a rewrite of its numbers (drilled:
+  editing `mark`'s ratio formula inside the page → FILE ALTERED, with
+  the detail noting the data itself still checks out).
+- `verify` uses the snapshot diagnostically: a MODEL_CHANGED section's
+  detail can now NAME the change ("measure 'mark' was
+  ratio(fair_value, cost_basis), now …"). Statuses are decided exactly
+  as before.
+- With this aboard, one HTML file is the complete portable analytical
+  object: the numbers, the queries that made them, what the vocabulary
+  meant, the contract status of the sink beneath them, the stated
+  methodology — and the means to check none of it was altered.
+
 ### Added — the session record, and a token-lean context tier
 
 - **`tracebi session export`** — save the discovery notebook. The full

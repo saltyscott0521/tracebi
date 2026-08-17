@@ -249,6 +249,18 @@ def _presentation() -> dict:
             "tracebi.configureChart(figureId, patch) → restyle an ECharts "
             "option; series data is always re-sourced from the stamped bytes",
         ],
+        "semantic_contract": (
+            "Every built artifact embeds one tb-semantic-contract-<model> "
+            "JSON block per model its bindings reference, fingerprinted in "
+            "the manifest's semantic_contract field: the contract as "
+            "exercised, snapshotted at render — a record of what the "
+            "vocabulary meant when the numbers were produced, never a live "
+            "claim; the slice, not the whole model, so a report cannot leak "
+            "vocabulary it never used. verify --file rehashes the embedded "
+            "record byte-exactly; verify_manifest uses it only to sharpen a "
+            "model-shaped failure's detail with the named difference — it "
+            "never changes any status."
+        ),
     }
 
 

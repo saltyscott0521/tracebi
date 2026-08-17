@@ -41,6 +41,7 @@ Consumed by ``tracebi verify <manifest.json>`` and by the gateway's
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -382,6 +383,64 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
                       "the data did not move; the model, measures, or engine did"}
 
 
+def _measure_repr(m: Mapping[str, Any]) -> str:
+    """One measure declaration as a short formula, for diff text —
+    e.g. ``sum('revenue')``, ``sum(expr 'revenue - cost')``,
+    ``ratio('fair_value','cost_basis')``."""
+    if m.get("ratio"):
+        num, den = list(m["ratio"])[:2]
+        return f"ratio({num!r},{den!r})"
+    if m.get("expr"):
+        return f"{m.get('agg')}(expr {m['expr']!r})"
+    return f"{m.get('agg')}({m.get('column')!r})"
+
+
+def _semantic_diff(recorded: dict, info: dict) -> list[str]:
+    """Named differences between a recorded exercised slice and the current
+    model's ``info()`` — what the vocabulary meant at render vs now.
+
+    Only what the report exercised is compared (the slice holds nothing
+    else), and only departures FROM the record are named: an addition to
+    the model is not a change to anything this report used.
+    """
+    changes: list[str] = []
+    current_measures = {m["name"]: m for m in info.get("measures") or []}
+    for rec in recorded.get("measures") or []:
+        cur = current_measures.get(rec["name"])
+        if cur is None:
+            changes.append(f"measure '{rec['name']}' is no longer declared")
+            continue
+        was, now = _measure_repr(rec), _measure_repr(cur)
+        if was != now:
+            changes.append(f"measure '{rec['name']}' was {was}, now {now}")
+        elif rec.get("format") != cur.get("format"):
+            changes.append(
+                f"measure '{rec['name']}' format was {rec.get('format')!r}, "
+                f"now {cur.get('format')!r}")
+    current_dims = {d["name"]: d for d in info.get("dimensions") or []}
+    for rec in recorded.get("dimensions") or []:
+        cur = current_dims.get(rec["name"])
+        if cur is None:
+            changes.append(f"dimension '{rec['name']}' is no longer declared")
+            continue
+        for attr in rec.get("attributes") or []:
+            if attr not in (cur.get("attributes") or []):
+                changes.append(f"dimension '{rec['name']}' no longer "
+                               f"declares attribute '{attr}'")
+        if rec.get("key") != cur.get("key"):
+            changes.append(f"dimension '{rec['name']}' key was "
+                           f"'{rec.get('key')}', now '{cur.get('key')}'")
+    current_facts = {f["name"]: f for f in info.get("facts") or []}
+    for rec in recorded.get("facts") or []:
+        cur = current_facts.get(rec["name"])
+        if cur is None:
+            changes.append(f"fact '{rec['name']}' is no longer declared")
+        elif rec.get("table") != cur.get("table"):
+            changes.append(f"fact '{rec['name']}' table was "
+                           f"'{rec.get('table')}', now '{cur.get('table')}'")
+    return changes
+
+
 def verify_manifest(manifest: dict, models: Mapping[str, Any],
                     strict: bool = False) -> dict:
     """
@@ -440,6 +499,29 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
             continue
         label = s.get("id") or s.get("title") or f"section[{i}]"
         results.append(_verify_section(s, models, label))
+
+    # ── Semantic-contract diagnosis — purely diagnostic ──────────────────
+    # When the receipt carries the contract AS EXERCISED and a section's
+    # failure is model-shaped, name the difference between what the
+    # vocabulary meant at render and what it means now. Detail text only:
+    # every status is decided exactly as above, never here.
+    sc = manifest.get("semantic_contract")
+    if isinstance(sc, dict) and sc:
+        for r in results:
+            if r["status"] not in (MODEL_CHANGED, UNEXPLAINED):
+                continue
+            model_name = r.get("model")
+            rec = sc.get(model_name)
+            slice_ = rec.get("slice") if isinstance(rec, dict) else None
+            if not isinstance(slice_, dict) or model_name not in models:
+                continue
+            try:
+                named = _semantic_diff(slice_, models[model_name].info())
+            except Exception:  # noqa: BLE001 — diagnosis must never break verify
+                continue
+            if named:
+                r["detail"] += (" — the exercised contract differs: "
+                                + "; ".join(named))
 
     summary = {status: 0 for status in STATUS_LABELS}
     for r in results:
@@ -659,6 +741,26 @@ def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
     return out
 
 
+#: Element-id prefix of the embedded semantic-contract blocks (one per
+#: referenced model, ``tb-semantic-contract-<model>``).
+_SEMANTIC_ID_PREFIX = "tb-semantic-contract-"
+
+
+def _extract_semantic_blocks(html: str) -> dict[str, str]:
+    """Every embedded semantic-contract block, as ``{model: payload}``.
+
+    The payload is the EXACT string between the block's tags — the bytes
+    the manifest's ``semantic_contract[model].sha256`` was taken over —
+    never parsed and re-serialised, so the hash comparison is byte-exact.
+    """
+    out: dict[str, str] = {}
+    for m in _DATA_BLOCK_RE.finditer(html):
+        elem_id = m.group("id")
+        if elem_id.startswith(_SEMANTIC_ID_PREFIX):
+            out[elem_id[len(_SEMANTIC_ID_PREFIX):]] = m.group("body")
+    return out
+
+
 def verify_file(html: str, manifest: dict) -> dict:
     """Rehash every embedded data block in *html* against *manifest*.
 
@@ -836,10 +938,71 @@ def verify_file(html: str, manifest: dict) -> dict:
                 })
                 fig_failed = True
 
-    if not results and not figure_rows:
+    # ── Semantic-contract cross-check — symmetric, like the figures ──────
+    # The embedded contract is the record of what the vocabulary meant at
+    # render; the manifest fingerprints the exact payload string. A block
+    # without a record and a record without a block BOTH fail — an edited
+    # or deleted contract is a FILE_ALTERED event exactly like an edited
+    # data block. Absent on both sides (older artifacts): no rows, no
+    # change to any behavior.
+    sc_rows: list[dict] = []
+    sc_failed = False
+    sc_records = {
+        str(name): rec
+        for name, rec in (manifest.get("semantic_contract") or {}).items()
+        if isinstance(rec, dict)
+    }
+    file_contracts = _extract_semantic_blocks(html)
+    for model_name in sorted(set(sc_records) | set(file_contracts)):
+        record = sc_records.get(model_name)
+        payload = file_contracts.get(model_name)
+        if payload is None:
+            sc_rows.append({
+                "model": model_name,
+                "status": FILE_MISSING,
+                "computed_sha256": None,
+                "expected_sha256": record.get("sha256"),
+                "detail": "the manifest records a semantic contract for this "
+                          "model but the file embeds no matching block",
+            })
+            sc_failed = True
+            continue
+        computed = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        if record is None:
+            sc_rows.append({
+                "model": model_name,
+                "status": FILE_UNRECORDED,
+                "computed_sha256": computed,
+                "expected_sha256": None,
+                "detail": "the file embeds a semantic contract the manifest "
+                          "does not record — no receipt vouches for it",
+            })
+            sc_failed = True
+        elif computed == record.get("sha256"):
+            sc_rows.append({
+                "model": model_name,
+                "status": FILE_MATCHES,
+                "computed_sha256": computed,
+                "expected_sha256": record.get("sha256"),
+                "detail": "the embedded semantic contract matches the manifest",
+            })
+        else:
+            sc_rows.append({
+                "model": model_name,
+                "status": FILE_TAMPERED,
+                "computed_sha256": computed,
+                "expected_sha256": record.get("sha256"),
+                "detail": "the embedded semantic contract hashes to a "
+                          "different value than the manifest records — the "
+                          "record of what the vocabulary meant was edited "
+                          "after render",
+            })
+            sc_failed = True
+
+    if not results and not figure_rows and not sc_rows:
         verdict = FILE_NOTHING
     elif (summary[FILE_MATCHES] == len(results) and not fig_failed
-          and not stage_mismatch):
+          and not sc_failed and not stage_mismatch):
         verdict = FILE_INTACT
     else:
         verdict = FILE_ALTERED
@@ -860,6 +1023,14 @@ def verify_file(html: str, manifest: dict) -> dict:
             "FILE ALTERED — the figure markup does not match the manifest's "
             "claims (see the figure rows); the embedded data itself checks out"
         )
+    elif (verdict == FILE_ALTERED and sc_failed
+          and summary[FILE_MATCHES] == len(results)):
+        # The data blocks all check out; the SEMANTIC CONTRACT doesn't.
+        detail = (
+            "FILE ALTERED — the embedded semantic contract does not match "
+            "the manifest (see the semantic_contract rows); the embedded "
+            "data itself checks out"
+        )
     elif verdict == FILE_INTACT and fig_records is not None:
         detail += (
             ". Figure markup verified; page scripting is not provable — the "
@@ -878,6 +1049,8 @@ def verify_file(html: str, manifest: dict) -> dict:
     }
     if fig_records is not None:
         out["figures"] = figure_rows
+    if sc_rows:
+        out["semantic_contract"] = sc_rows
     if manifest_stage is not None or file_stage is not None:
         out["stage"] = {"file": file_stage, "manifest": manifest_stage}
     return out

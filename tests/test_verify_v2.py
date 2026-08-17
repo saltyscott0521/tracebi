@@ -19,6 +19,7 @@ from tracebi.reports.template_package import TemplatePackage
 from tracebi.verify import (
     ERROR,
     REPRODUCES,
+    UNEXPLAINED,
     UNVERIFIABLE,
     UNVERIFIED,
     verify_file,
@@ -217,6 +218,85 @@ class TestFileCheckV2:
         assert not result["ok"]
         assert result["verdict"] == "refused_snapshot"
         assert "snapshot" in result["verdict_detail"].lower()
+
+
+def _strip_semantic_blocks(html: str) -> str:
+    import re
+    return re.sub(
+        r'<script id="tb-semantic-contract-[^"]*"[^>]*>.*?</script>\n?',
+        "", html, flags=re.DOTALL)
+
+
+class TestSemanticContractFileCheck:
+    def test_intact_page_contract_matches(self, v2_model, tmp_path):
+        html, manifest = _render(tmp_path, v2_model)
+        result = verify_file(html, manifest)
+        assert result["ok"]
+        assert [r["status"] for r in result["semantic_contract"]] == ["matches"]
+
+    def test_tampering_the_embedded_contract_is_file_altered(
+            self, v2_model, tmp_path):
+        html, manifest = _render(tmp_path, v2_model)
+        tampered = html.replace('"name": "total"', '"name": "grand_total"')
+        assert tampered != html            # the edit landed inside the block
+        result = verify_file(tampered, manifest)
+        assert not result["ok"] and result["verdict"] == "file_altered"
+        assert [r["status"] for r in result["semantic_contract"]] == ["tampered"]
+        # The data blocks themselves still check out — the detail says so.
+        assert all(b["status"] == "matches" for b in result["bindings"])
+        assert "semantic contract" in result["verdict_detail"]
+
+    def test_deleting_the_block_the_manifest_records_fails(
+            self, v2_model, tmp_path):
+        html, manifest = _render(tmp_path, v2_model)
+        result = verify_file(_strip_semantic_blocks(html), manifest)
+        assert not result["ok"]
+        assert [r["status"] for r in result["semantic_contract"]] \
+            == ["missing_in_file"]
+
+    def test_a_block_the_manifest_does_not_record_fails_symmetrically(
+            self, v2_model, tmp_path):
+        html, manifest = _render(tmp_path, v2_model)
+        manifest.pop("semantic_contract")
+        result = verify_file(html, manifest)
+        assert not result["ok"]
+        assert [r["status"] for r in result["semantic_contract"]] \
+            == ["unrecorded_in_manifest"]
+
+    def test_older_artifacts_without_the_field_verify_exactly_as_before(
+            self, v2_model, tmp_path):
+        html, manifest = _render(tmp_path, v2_model)
+        manifest.pop("semantic_contract")      # an older render carries
+        html = _strip_semantic_blocks(html)    # neither side
+        result = verify_file(html, manifest)
+        assert result["ok"] and result["verdict"] == "file_intact"
+        assert "semantic_contract" not in result
+
+
+class TestSemanticContractDiagnosis:
+    def test_model_shaped_failure_names_the_changed_measure(
+            self, v2_model, tmp_path):
+        _html, manifest = _render(tmp_path, v2_model)
+        # Re-declare the measure between render and verify.
+        v2_model.add_measure("total", column="revenue", agg="mean")
+        result = verify_manifest(manifest, {"v2_model": v2_model})
+        kpi = next(s for s in result["sections"] if s["section"] == "kpi")
+        assert kpi["status"] == UNEXPLAINED     # status decided as today
+        assert ("measure 'total' was sum('revenue'), now mean('revenue')"
+                in kpi["detail"])
+
+    def test_diagnosis_sharpens_detail_but_never_changes_a_status(
+            self, v2_model, tmp_path):
+        _html, manifest = _render(tmp_path, v2_model)
+        v2_model.add_measure("total", column="revenue", agg="mean")
+        with_sc = verify_manifest(manifest, {"v2_model": v2_model})
+        bare = dict(manifest)
+        bare.pop("semantic_contract")
+        without_sc = verify_manifest(bare, {"v2_model": v2_model})
+        assert ([s["status"] for s in with_sc["sections"]]
+                == [s["status"] for s in without_sc["sections"]])
+        assert with_sc["verdict"] == without_sc["verdict"]
+        assert with_sc["exit_code"] == without_sc["exit_code"]
 
 
 class TestSnapshot:

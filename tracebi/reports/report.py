@@ -579,6 +579,16 @@ class ReportManifest:
     #: stated methodology shipped. Never a verified claim; it never affects
     #: any figure or section status. None (omitted) otherwise.
     methodology: Optional[dict] = None
+    #: The embedded semantic contract (template packages): per model the
+    #: bindings reference, ``{model: {"slice": …, "sha256": …}}`` — the
+    #: model contract AS EXERCISED, snapshotted at render: only the facts,
+    #: dimensions, and declared measures the bindings' queries used, plus
+    #: the tables backing them. ``sha256`` is over the exact JSON payload
+    #: string embedded in the page, so ``verify --file`` rehashes the
+    #: shipped bytes byte-exactly. A record of what the vocabulary meant
+    #: when the numbers were produced, never a live claim. None (omitted)
+    #: on v1 renders.
+    semantic_contract: Optional[dict] = None
 
     def to_dict(self) -> dict:
         d = {
@@ -604,6 +614,8 @@ class ReportManifest:
             d["transform_contracts"] = self.transform_contracts
         if self.methodology is not None:
             d["methodology"] = self.methodology
+        if self.semantic_contract is not None:
+            d["semantic_contract"] = self.semantic_contract
         return d
 
     def to_json(self, indent: int = 2) -> str:

@@ -49,6 +49,7 @@ works on the output.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -58,7 +59,7 @@ from typing import Optional
 import pandas as pd
 
 from tracebi.reports.embed import (
-    KNOWN_LIBS, StampedData, embed_block, embedded_record,
+    KNOWN_LIBS, StampedData, embed_block, embed_json, embedded_record,
     insert_before, stamp, stamp_frame,
 )
 from tracebi.reports.figures import (
@@ -291,6 +292,25 @@ class TemplatePackage:
                         + page[insert_at:])
                 manifest.methodology = notes
 
+        # The embedded semantic contract: per model the bindings reference,
+        # the contract AS EXERCISED — snapshotted at render, a record of
+        # what the vocabulary meant when the numbers were produced, never a
+        # live claim. Recorded in the manifest (before the page is written,
+        # like every other receipt field) with a SHA-256 over the exact
+        # payload string embedded, so the offline check is byte-exact.
+        contract_blocks: list[str] = []
+        semantic_record: dict = {}
+        for model_name in sorted({ref.model for ref in self.bindings.values()}):
+            slice_ = self._semantic_slice(model_name, models[model_name])
+            block = embed_json(slice_, f"tb-semantic-contract-{model_name}")
+            contract_blocks.append(block + "\n")
+            semantic_record[model_name] = {
+                "slice": slice_,
+                "sha256": hashlib.sha256(
+                    _embedded_payload(block).encode("utf-8")).hexdigest(),
+            }
+        manifest.semantic_contract = semantic_record
+
         # Provenance for the runtime's badges, decided from what was actually
         # embedded (v2 §2.4): a stylesheet can restyle a badge, never
         # re-color honesty. --no-badges omits rendering; the manifest is
@@ -299,7 +319,8 @@ class TemplatePackage:
         cfg = {"badges": bool(badges),
                "figures": figures_config(figs, {sd.name for sd in outputs})}
 
-        page = self._inject(page, embed_items, stage="final", figures_cfg=cfg)
+        page = self._inject(page, embed_items, stage="final", figures_cfg=cfg,
+                            extra_blocks_html="".join(contract_blocks))
 
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
@@ -369,6 +390,71 @@ class TemplatePackage:
                         f"{where}: cell '{cell}' is not a column of binding "
                         f"'{f.binding}'.{hint} Columns: {list(df.columns)}."
                     )
+
+    def _semantic_slice(self, model_name: str, model) -> dict:
+        """The model contract AS EXERCISED by this package's bindings.
+
+        Read from the public ``model.info()``, keeping ONLY the facts the
+        queries name, the dimensions they reference (grouped or filtered
+        via ``dim.attr``), the declared measures they use by name — each
+        with its full declaration — and the tables backing what was kept
+        (name + connector + source). Deliberately not the whole model: a
+        report must not leak vocabulary it never used. Every list is
+        sorted so the embedded JSON is byte-stable across renders.
+        """
+        info = model.info()
+        declared_dims = {d["name"] for d in info["dimensions"]}
+        fact_names: set[str] = set()
+        dim_names: set[str] = set()
+        measure_names: set[str] = set()
+        for ref in self.bindings.values():
+            if ref.model != model_name:
+                continue
+            q = ref.query
+            fact_names.add(q.fact)
+            for dref in q.dimensions or ():
+                dim_names.add(str(dref).split(".", 1)[0])
+            for target in (q.filters or {}):
+                head = str(target).split(".", 1)[0]
+                if "." in str(target) and head in declared_dims:
+                    dim_names.add(head)
+            # Only list-form measures reference declared measures by name
+            # (dict form aggregates raw columns) — same rule as
+            # _measure_notes above.
+            if isinstance(q.measures, (list, tuple)):
+                measure_names.update(str(m) for m in q.measures)
+
+        facts = sorted((f for f in info["facts"] if f["name"] in fact_names),
+                       key=lambda f: f["name"])
+        dims = sorted((d for d in info["dimensions"] if d["name"] in dim_names),
+                      key=lambda d: d["name"])
+        measures = sorted(
+            (m for m in info["measures"] if m["name"] in measure_names),
+            key=lambda m: m["name"])
+        table_names = {f["table"] for f in facts} | {d["table"] for d in dims}
+        tables = sorted((t for t in info["tables"] if t["name"] in table_names),
+                        key=lambda t: t["name"])
+        return {
+            "model": info["name"],
+            "facts": [
+                {"name": f["name"], "table": f["table"],
+                 "measures": sorted(f["measures"]),
+                 "foreign_keys": {k: f["foreign_keys"][k]
+                                  for k in sorted(f["foreign_keys"])}}
+                for f in facts
+            ],
+            "dimensions": [
+                {"name": d["name"], "table": d["table"], "key": d["key"],
+                 "attributes": sorted(d["attributes"])}
+                for d in dims
+            ],
+            "measures": [{k: m[k] for k in sorted(m)} for m in measures],
+            "tables": [
+                {"name": t["name"], "connector": t["connector"],
+                 "source": t["source"]}
+                for t in tables
+            ],
+        }
 
     def _measure_notes(self, models: dict) -> dict[str, str]:
         """Descriptions of the declared measures the bindings reference.
@@ -541,7 +627,8 @@ class TemplatePackage:
     # ── Injection ───────────────────────────────────────────────────────────
 
     def _inject(self, page: str, stamped, stage: Optional[str] = None,
-                figures_cfg: Optional[dict] = None) -> str:
+                figures_cfg: Optional[dict] = None,
+                extra_blocks_html: str = "") -> str:
         """Insert the full presentation stack (architecture v2 §2.4).
 
         Independent of any template placeholder (see the module docstring),
@@ -553,13 +640,17 @@ class TemplatePackage:
         ``script.js`` before ``</body>``. The author's layers run last, so
         they win. A missing ``</head>`` or ``</body>`` is a hard error —
         dropping the injection would ship a page with no data and no warning.
+
+        *extra_blocks_html* (the final build's semantic-contract blocks)
+        rides in the same data-block slot, after the bindings.
         """
         from tracebi.reports.stack import apply_stack, project_theme_css
 
         return apply_stack(
             page,
             libs=self.libs,
-            data_blocks_html="".join(embed_block(sd) + "\n" for sd in stamped),
+            data_blocks_html=("".join(embed_block(sd) + "\n" for sd in stamped)
+                              + extra_blocks_html),
             stage=stage,
             project_css=project_theme_css(),
             report_css=self.style_css,
@@ -615,6 +706,13 @@ def _methodology_html(notes: dict, contracts: dict) -> str:
             f"{_html.escape(description)}</p>"
         )
     return '<div class="tb-methodology">' + "".join(lines) + "</div>"
+
+
+def _embedded_payload(block: str) -> str:
+    """The exact JSON payload string between an :func:`embed_json` block's
+    tags — the bytes the offline checker recovers and rehashes, taken from
+    the block itself so the hash can never disagree with what shipped."""
+    return block[block.index(">") + 1:block.rindex("</script>")]
 
 
 def _figure_record(f: Figure) -> dict:
