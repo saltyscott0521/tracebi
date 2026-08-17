@@ -16,7 +16,7 @@ materialized artifact handed across the boundary:
 
 | Phase | Folder | You write | Freeze it hands on |
 |---|---|---|---|
-| ① **Transform** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables | `data/warehouse.duckdb` (materialized tables) |
+| ① **Transform** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables. Notebook-shaped by scaffold (`# %%` percent cells + markdown cells — editors open them AS notebooks; the file stays reviewable Python); literal `.ipynb` works too, and `tracebi run-transform` executes either top-to-bottom fresh | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
 | ③ **Report** | `reports/` | an **artifact package** (`reports/<name>/`: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
 

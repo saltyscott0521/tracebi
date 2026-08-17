@@ -244,6 +244,7 @@ python examples/seeds/seed_db.py               # Create + seed data/tracebi.db
 
 # Model and pipeline scaffolding
 tracebi new-model "Sales Model"                # → models/sales_model.py
+tracebi run-transform holdings                 # run a .py or .ipynb transform, top-to-bottom fresh
 tracebi list-models
 tracebi new-pipeline "Sales ETL"               # → pipelines/sales_etl.py
 tracebi list-pipelines
@@ -462,7 +463,15 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 
 ### New transform (phase ①)
 1. Add a `.py` under `transforms/`. Write whatever pandas the data needs — the
-   framework does not constrain this phase.
+   framework does not constrain this phase. Scaffolds are **notebook-shaped**:
+   `# %%` percent cells with `# %% [markdown]` prose, so every notebook editor
+   (VS Code, Cursor, PyCharm, Jupyter via jupytext) opens the file AS a
+   notebook — collapse cells, run cell-by-cell, markdown beside code — while
+   it stays plain, reviewable Python that runs top-to-bottom. Literal
+   `.ipynb` transforms also work: `tracebi run-transform <name>` executes
+   either form top-to-bottom in a fresh namespace (the sink never comes from
+   out-of-order kernel state). Models stay `.py` — a model is a ~40-line
+   declaration whose value is being reviewable as data in one screen.
 2. End by sinking clean star-schema tables into the warehouse:
    `DuckDBConnector("warehouse", database=WAREHOUSE).write(df, "table")`. The
    contract is the named tables that land, not how you produced them.

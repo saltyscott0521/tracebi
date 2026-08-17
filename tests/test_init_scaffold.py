@@ -149,7 +149,9 @@ class TestNewTransform:
         assert compileall.compile_file(str(f), quiet=2)
         text = f.read_text()
         assert "DuckDBConnector" in text
-        assert "def run()" in text
+        # Notebook-shaped: percent cells, top-level execution — every
+        # notebook editor opens it as a notebook; python runs it as a script.
+        assert "# %%" in text and "# %% [markdown]" in text
 
 
 class TestNewModelScaffold:
@@ -162,3 +164,42 @@ class TestNewModelScaffold:
         assert out.returncode == 0, out.stderr
         text = (tmp_path / "models" / "my_model.py").read_text()
         assert "\nmodel.connect()" not in text
+
+
+class TestNotebookShapedTransforms:
+    """Transforms are notebook-shaped .py (percent cells) — every notebook
+    editor opens them as notebooks while the file stays reviewable Python —
+    and literal .ipynb runs top-to-bottom fresh via run-transform."""
+
+    def test_scaffolds_are_percent_format(self, tmp_path):
+        proj = tmp_path / "proj"
+        assert cli.main(["init", str(proj)]) == 0
+        sample = (proj / "transforms" / "sample_transform.py").read_text()
+        assert "# %% [markdown]" in sample and "# %%" in sample
+        from tracebi.cli import _transform_template_text
+        assert "# %% [markdown]" in _transform_template_text("X")
+
+    def test_run_transform_executes_py_and_ipynb(self, tmp_path, monkeypatch):
+        import json as _json
+        proj = tmp_path / "proj"
+        assert cli.main(["init", str(proj)]) == 0
+        monkeypatch.chdir(proj)
+        # the scaffolded notebook-shaped .py runs top-to-bottom
+        assert cli.main(["run-transform", "sample_transform"]) == 0
+        assert (proj / "data" / "warehouse.duckdb").exists()
+        # a literal .ipynb transform runs fresh, cells concatenated in order
+        nb = {"cells": [
+            {"cell_type": "markdown", "source": ["# methodology\n"]},
+            {"cell_type": "code", "source": ["x = 2\n"]},
+            {"cell_type": "code",
+             "source": ["open('nb_ran.txt', 'w').write(str(x * 21))\n"]},
+        ], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
+        (proj / "transforms" / "probe.ipynb").write_text(_json.dumps(nb))
+        assert cli.main(["run-transform", "probe"]) == 0
+        assert (proj / "nb_ran.txt").read_text() == "42"
+
+    def test_run_transform_missing_is_a_clean_error(self, tmp_path, monkeypatch):
+        proj = tmp_path / "proj"
+        assert cli.main(["init", str(proj)]) == 0
+        monkeypatch.chdir(proj)
+        assert cli.main(["run-transform", "nope"]) == 1

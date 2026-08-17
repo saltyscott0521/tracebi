@@ -404,40 +404,51 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
 
 
-def run() -> dict:
-    # ── 1. Read the raw input (inputs/, an API pull, a SQL export…) ─────────
-    # df = pd.read_csv(os.path.join(ROOT, "inputs", "orders.csv"))  # ← your raw pull
+# This file is notebook-shaped: the `# %%` markers below are cell
+# boundaries, and `# %% [markdown]` cells are prose. VS Code, Cursor,
+# PyCharm, and Jupyter (via jupytext) open it AS a notebook — collapse
+# cells, run cell-by-cell, write markdown beside code — while the file
+# stays plain, reviewable Python that runs top-to-bottom with
+# `python transforms/{slug}.py`. While `tracebi dev` serves, any cell can
+# `tracebi.workbench.show(df, note=...)` to put its output in the portal.
 
-    # ── 2. Clean — any pandas you like; none of this is traced, by design ───
-    # df = df.dropna(subset=["id"]).drop_duplicates(subset=["id"])
+# %% [markdown]
+# ## Methodology
+#
+# Narrate the cleaning here — what gets dropped and why, how keys are
+# chosen. Distill the load-bearing claims into the sink contract's
+# `note=` at the bottom; they travel with the certificate.
 
-    # ── 3. Shape into star-schema tables (facts keyed to dimensions) ────────
-    # dim_x = df[["x"]].drop_duplicates().rename_axis("x_id").reset_index()
-    # fact = df.merge(dim_x, on="x")[["id", "x_id", "value"]]
+# %%  Read the raw input (inputs/, an API pull, a SQL export…)
+# df = pd.read_csv(os.path.join(ROOT, "inputs", "orders.csv"))  # ← your raw pull
 
-    # ── 4. Sink — the contract: these named tables are what phase ② models ──
-    os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
-    wh = DuckDBConnector("warehouse", database=WAREHOUSE)
-    # wh.write(dim_x, "dim_x")
-    # wh.write(fact, "fact_{slug}")
+# %%  Clean — any pandas you like; none of this is traced, by design
+# df = df.dropna(subset=["id"]).drop_duplicates(subset=["id"])
 
-    # ── 5. Declare the sink CONTRACT (optional, recommended) ────────────────
-    # What must be true of the tables that just landed — read-only SQL checks
-    # recorded beside the warehouse. A failed check raises, so a broken sink
-    # never freezes quietly. This certifies the SINK, never the pandas above.
-    # from tracebi.contracts import contract
-    # with contract("{slug}", warehouse=WAREHOUSE) as c:
-    #     c.rows("fact_{slug}", at_least=1)
-    #     c.unique("dim_x", ["x_id"])
-    #     c.not_null("fact_{slug}", ["id", "value"])
-    #     c.foreign_key("fact_{slug}", "x_id", refers_to=("dim_x", "x_id"))
+# %%  Shape into star-schema tables (facts keyed to dimensions)
+# dim_x = df[["x"]].drop_duplicates().rename_axis("x_id").reset_index()
+# fact = df.merge(dim_x, on="x")[["id", "x_id", "value"]]
 
-    return {{"warehouse": WAREHOUSE}}
+# %%  Sink — the contract: these named tables are what phase ② models
+os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
+wh = DuckDBConnector("warehouse", database=WAREHOUSE)
+# wh.write(dim_x, "dim_x")
+# wh.write(fact, "fact_{slug}")
 
+# %%  Declare the sink CONTRACT (optional, recommended)
+# Read-only SQL checks on what just landed, recorded beside the warehouse.
+# A failed check raises; note= carries your stated methodology into the
+# certificate. This certifies the SINK, never the pandas above.
+# from tracebi.contracts import contract
+# with contract("{slug}", warehouse=WAREHOUSE,
+#               note="stated methodology: what was dropped, and why") as c:
+#     c.rows("fact_{slug}", at_least=1)
+#     c.unique("dim_x", ["x_id"])
+#     c.not_null("fact_{slug}", ["id", "value"])
+#     c.foreign_key("fact_{slug}", "x_id", refers_to=("dim_x", "x_id"))
 
-if __name__ == "__main__":
-    for k, v in run().items():
-        print(f"  {{k:12}} {{v}}")
+# %%
+print(f"sunk → {{WAREHOUSE}}")
 '''
 
 
@@ -547,63 +558,70 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "inputs", "orders.csv")
 WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
 
+# Notebook-shaped: `# %%` markers are cell boundaries and `# %% [markdown]`
+# cells are prose — VS Code, Cursor, PyCharm, and Jupyter (via jupytext)
+# open this file AS a notebook (collapse cells, run cell-by-cell, markdown
+# beside code) while it stays plain, reviewable Python that runs
+# top-to-bottom. While `tracebi dev` serves, any cell can
+# `tracebi.workbench.show(df, note=...)` to put its output in the portal.
+
 _REGIONS = {
     "north east": "Northeast", "northeast": "Northeast",
     "south east": "Southeast", "southeast": "Southeast",
     "midwest": "Midwest", "west": "West",
 }
 
+# %% [markdown]
+# ## Methodology
+#
+# Orders arrive with regions spelled four ways, money as strings, and the
+# occasional keyless row. We drop unkeyed rows (loudly — the contract note
+# below states it), normalise regions, and coerce money to floats.
 
-def run() -> dict:
-    df = pd.read_csv(RAW)
+# %%  Clean — any pandas you like; none of this is traced, by design.
+df = pd.read_csv(RAW)
+df = df.dropna(subset=["order_id"]).drop_duplicates(subset=["order_id"])
+df["order_id"] = df["order_id"].astype(int)
+df["region"] = df["region"].str.strip().str.lower().map(_REGIONS)
+df["revenue"] = (
+    df["revenue"].str.replace(r"[$,]", "", regex=True).astype(float)
+)
+df["qty"] = df["qty"].astype(int)
 
-    # Clean — any pandas you like; none of this is traced, by design.
-    df = df.dropna(subset=["order_id"]).drop_duplicates(subset=["order_id"])
-    df["order_id"] = df["order_id"].astype(int)
-    df["region"] = df["region"].str.strip().str.lower().map(_REGIONS)
-    df["revenue"] = (
-        df["revenue"].str.replace(r"[$,]", "", regex=True).astype(float)
-    )
-    df["qty"] = df["qty"].astype(int)
+# %%  Shape — one dimension, one fact, keyed.
+dim_region = (
+    df[["region"]].drop_duplicates().reset_index(drop=True)
+    .rename_axis("region_id").reset_index()
+)
+fact = df.merge(dim_region, on="region")[
+    ["order_id", "order_date", "region_id", "product", "qty", "revenue"]
+]
 
-    # Shape — one dimension, one fact, keyed.
-    dim_region = (
-        df[["region"]].drop_duplicates().reset_index(drop=True)
-        .rename_axis("region_id").reset_index()
-    )
-    fact = df.merge(dim_region, on="region")[
-        ["order_id", "order_date", "region_id", "product", "qty", "revenue"]
-    ]
+# %%  Sink — the contract. These named tables are what phase ② models.
+os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
+wh = DuckDBConnector("warehouse", database=WAREHOUSE)
+wh.write(dim_region, "dim_region")
+wh.write(fact, "fact_orders")
 
-    # Sink — the contract. These named tables are what phase ② models.
-    os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
-    wh = DuckDBConnector("warehouse", database=WAREHOUSE)
-    wh.write(dim_region, "dim_region")
-    wh.write(fact, "fact_orders")
+# %%  The sink CONTRACT: read-only SQL checks on what just landed, recorded
+# beside the warehouse. A failed check raises — a broken sink never freezes
+# quietly. This certifies the SINK; it never verifies the pandas above. The
+# note= is the STATED methodology, carried into report receipts verbatim.
+from tracebi.contracts import contract
 
-    # Declare the sink CONTRACT: what must be true of the tables that just
-    # landed, checked as read-only SQL and recorded beside the warehouse.
-    # A failed check raises — a broken sink never freezes quietly. This
-    # certifies the SINK; it never verifies the pandas above. The note= is
-    # the STATED methodology — prose about what the cleaning did, recorded
-    # verbatim and carried into report receipts, never a verified claim.
-    from tracebi.contracts import contract
-    with contract("sample_transform", warehouse=WAREHOUSE,
-                  note="dropped rows without an order_id; regions "
-                       "normalized from four spellings") as c:
-        c.rows("fact_orders", at_least=1)
-        c.unique("fact_orders", ["order_id"])
-        c.not_null("fact_orders", ["order_id", "region_id", "revenue"])
-        c.foreign_key("fact_orders", "region_id",
-                      refers_to=("dim_region", "region_id"))
+with contract("sample_transform", warehouse=WAREHOUSE,
+              note="dropped rows without an order_id; regions "
+                   "normalized from four spellings") as c:
+    c.rows("fact_orders", at_least=1)
+    c.unique("fact_orders", ["order_id"])
+    c.not_null("fact_orders", ["order_id", "region_id", "revenue"])
+    c.foreign_key("fact_orders", "region_id",
+                  refers_to=("dim_region", "region_id"))
 
-    return {"orders": len(fact), "regions": len(dim_region),
-            "revenue": round(fact["revenue"].sum(), 2), "warehouse": WAREHOUSE}
-
-
-if __name__ == "__main__":
-    for k, v in run().items():
-        print(f"  {k:12} {v}")
+# %%
+print(f"  orders: {len(fact)} · regions: {len(dim_region)} · "
+      f"revenue: {round(fact['revenue'].sum(), 2)}")
+print(f"  sunk → {WAREHOUSE}")
 '''
 
 _INIT_SAMPLE_MODEL = '''\
@@ -895,7 +913,13 @@ honest path costs one attribute.
 
 The phases are decoupled: editing a report never re-runs the pandas. Phase ①
 is unconstrained — write whatever pandas the data needs; the contract is the
-named tables you sink, not how you cleaned them. End the transform with a
+named tables you sink, not how you cleaned them. **Transforms are
+notebook-shaped**: the scaffolds use `# %%` percent cells with markdown
+cells, so your editor opens them as notebooks (collapse cells, run
+cell-by-cell, prose beside code) while the file stays plain, reviewable
+Python; literal `.ipynb` works too, and `tracebi run-transform` executes
+either top-to-bottom in a fresh namespace so the sink never comes from
+out-of-order kernel state. End the transform with a
 `with contract(...)` block (see `transforms/sample_transform.py`): declared
 checks — `rows`, `unique`, `not_null`, `foreign_key`, `values`, `reconcile` —
 run as read-only SQL at sink time, raise on failure, and record a certificate
@@ -937,7 +961,10 @@ whose figures each name a binding from `report.json`:
 ## The loop you run
 
 ```bash
-python transforms/<name>.py                 # ① clean + sink + contract
+tracebi run-transform <name>                # ① clean + sink + contract —
+                                            #   runs .py or .ipynb top-to-bottom
+                                            #   fresh (python transforms/<name>.py
+                                            #   works too for .py)
 tracebi new-model "<Name>"                  # ② scaffold a model; edit it
 tracebi new-report "<Name>"                 # ③ scaffold reports/<name>/
 tracebi dev <name>                          # the live loop (see below)
@@ -1502,6 +1529,37 @@ def cmd_validate(args: argparse.Namespace) -> int:
         print(f"\n{len(problems)} problem(s) found.", file=sys.stderr)
         return 1
     print("\nProject looks good.")
+    return 0
+
+
+def cmd_run_transform(args: argparse.Namespace) -> int:
+    """
+    Execute a phase-① transform — ``.py`` or ``.ipynb`` — top-to-bottom in
+    a FRESH namespace.
+
+    ``python transforms/<name>.py`` works for scripts already; this verb
+    adds the notebook form and, for both, the honesty guarantee that
+    matters at the sink: the warehouse comes from a clean top-to-bottom
+    execution of the committed file, never from out-of-order kernel state.
+    Transforms may be notebook-shaped ``.py`` (``# %%`` cells — every
+    notebook editor opens them as notebooks) or literal ``.ipynb``, whose
+    code cells are concatenated in order and executed fresh.
+    """
+    tdir = Path(os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms"))
+    candidates = [tdir / args.name, tdir / f"{args.name}.py",
+                  tdir / f"{args.name}.ipynb"]
+    path = next((c for c in candidates if c.is_file()), None)
+    if path is None:
+        print(f"transform not found in {tdir}: {args.name}", file=sys.stderr)
+        return 1
+    print(f"Running {path} (top-to-bottom, fresh namespace)…")
+    if path.suffix == ".ipynb":
+        from tracebi._notebook import notebook_to_source
+        source = notebook_to_source(path)
+        ns: dict = {"__name__": "__main__", "__file__": str(path)}
+        exec(compile(source, str(path), "exec"), ns)
+    else:
+        runpy.run_path(str(path), run_name="__main__")
     return 0
 
 
@@ -2674,6 +2732,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_new_pipeline.add_argument("title", help='Free-form title, e.g. "Sales Pipeline".')
     p_new_pipeline.add_argument("--force", action="store_true", help="Overwrite if exists.")
     p_new_pipeline.set_defaults(func=cmd_new_pipeline)
+
+    p_run_transform = sub.add_parser(
+        "run-transform",
+        help="Execute a phase-① transform (.py or .ipynb) top-to-bottom in "
+             "a fresh namespace — the sink never comes from out-of-order "
+             "kernel state. Notebook-shaped .py (# %% cells) and literal "
+             ".ipynb both work.",
+    )
+    p_run_transform.add_argument(
+        "name", help="Transform name under transforms/ (suffix optional).")
+    p_run_transform.set_defaults(func=cmd_run_transform)
 
     p_new_transform = sub.add_parser(
         "new-transform",
