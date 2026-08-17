@@ -128,8 +128,10 @@ scaffold the package and the same portal continues into the figure loop.
 Everything is dev-state: no receipts are minted before the model boundary.
 
 When a session shaped the pipeline, SAVE it: `tracebi session export`
-writes the full feed chronologically to `explorations/` as a committed
-lab-notebook record (per-exhibit source-script provenance included) —
+writes the full feed chronologically to `explorations/<session>` — ONE
+living record per session, not a dated diary: re-export as the exploration
+evolves and git carries its timeline (per-exhibit source-script provenance
+included) —
 `--format md` for the git-review twin, HTML for fidelity. The record is
 exploration-stamped and carries no receipts; `verify` refuses it by name.
 The distillation ladder: session record → contract notes → the report's

@@ -693,12 +693,23 @@ class TestSessionCli:
     def test_export_defaults_into_explorations(
             self, tmp_path, monkeypatch, capsys):
         from tracebi import cli
-        self._seed_discovery(tmp_path, monkeypatch)
+        wb = self._seed_discovery(tmp_path, monkeypatch)
         assert cli.main(["session", "export"]) == 0
-        [out] = list((tmp_path / "explorations").glob("*.html"))
-        assert out.name.endswith("-_discovery.html")
+        # ONE living record, not a dated diary: the stable name means
+        # re-exports overwrite and git carries the timeline.
+        out = tmp_path / "explorations" / "discovery.html"
+        assert out.is_file()
         assert "a discovery note" in out.read_text(encoding="utf-8")
-        assert "commit it; verify refuses it by name" in capsys.readouterr().out
+        assert "verify refuses it by name" in capsys.readouterr().out
+        # a second export UPDATES the same file, and says so (heartbeat
+        # freshened so the env-less show() posts — a "live server")
+        heartbeat(wb)
+        show("iterated: second pass")
+        assert cli.main(["session", "export"]) == 0
+        assert "Updated" in capsys.readouterr().out
+        text = out.read_text(encoding="utf-8")
+        assert "a discovery note" in text and "second pass" in text
+        assert list((tmp_path / "explorations").glob("*.html")) == [out]
 
     def test_clear_removes_feed_and_pins(self, tmp_path, monkeypatch):
         from tracebi import cli

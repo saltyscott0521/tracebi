@@ -995,8 +995,9 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    receipts exist before the model boundary, and `show()` is a no-op the
    moment the server is down. When a session shaped the pipeline, save it:
    `tracebi session export` (add `--format md` for the git-review twin)
-   writes the full feed to `explorations/` as a committed lab-notebook
-   record — exploration-stamped, no receipts, `verify` refuses it by name.
+   writes the full feed to `explorations/<session>` — ONE living record
+   that you re-export as the exploration evolves; git is its timeline —
+   exploration-stamped, no receipts, `verify` refuses it by name.
 1. **Start the dev server — it blocks.** Run `tracebi dev <name>` in a
    background shell (or ask the human to run it and keep the tab open; the
    page is their view, not yours). It serves the report at the root and the
@@ -2519,7 +2520,7 @@ def cmd_session(args: argparse.Namespace) -> int:
     """
     Save or reset a workbench session feed.
 
-        tracebi session export [name]    # → explorations/<date>-<name>.html
+        tracebi session export [name]    # → explorations/<name>.html — ONE living record
         tracebi session clear [name]     # remove the feed and pins
 
     *name* defaults to the discovery session (``_discovery``); a package
@@ -2540,21 +2541,27 @@ def cmd_session(args: argparse.Namespace) -> int:
     wb = os.path.join(os.getcwd(), ".tracebi", "workbench", name)
 
     if args.action == "export":
-        from datetime import datetime
 
         from tracebi._session_export import export_session
 
         ext = "md" if getattr(args, "format", "html") == "md" else "html"
+        # ONE living record per session, not a dated diary: the exploration
+        # is the base document that evolves into the pipeline, so re-exports
+        # overwrite the same file and git carries the timeline — each
+        # iteration is a readable diff (the .md twin especially).
+        fname = name.lstrip("_") or name
         out = Path(args.output) if args.output else (
-            Path("explorations") / f"{datetime.now():%Y-%m-%d}-{name}.{ext}")
+            Path("explorations") / f"{fname}.{ext}")
+        existed = out.exists()
         try:
             export_session(wb, str(out), title=args.title)
         except FileNotFoundError as exc:
             print(exc, file=sys.stderr)
             return 1
-        print(f"Exported session '{name}' → {out}")
-        print("  An exploration record — commit it; verify refuses it "
-              "by name.")
+        print(f"{'Updated' if existed else 'Exported'} session '{name}' "
+              f"→ {out}")
+        print("  The living exploration record — re-export as it evolves; "
+              "git is its timeline. verify refuses it by name.")
         return 0
 
     # clear
@@ -2820,7 +2827,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_session.add_argument(
         "-o", "--output",
         help="Output .html path for `export` "
-             "(default: explorations/<YYYY-MM-DD>-<name>.html).",
+             "(default: explorations/<name>.<ext> — one living record per "
+             "session; re-exports overwrite it and git carries the "
+             "timeline).",
     )
     p_session.add_argument(
         "--title",
