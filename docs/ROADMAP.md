@@ -38,6 +38,19 @@ The gap-audit items at the bottom of this file are tagged **[free]** (belongs
 in the library release) or **[product]** (the commercial tier) where the split
 is not obvious.
 
+**The Tableau question (2026-08-17).** Legacy BI rests on two premises: code
+is expensive (so: drag-and-drop authoring) and documents cannot carry data
+(so: a rendering server). Agents break the first; the self-contained artifact
+— data + queries + semantic contract + methodology + tamper-evidence in one
+file, with the large-detail tier at 11c — breaks the second. Do NOT pitch
+"Tableau replacement": that concedes the chart-drawing frame, which is
+commoditizing to zero. The frame is that agent-era analytics changes the
+question from "which tool draws the charts" to "which numbers can anyone
+believe" — and a workbook has no receipt, structurally. What survives of
+enterprise BI (identity, row-level security, retention, the auditor's single
+pane) is exactly this file's [product] tier: the paid side of TraceBi is the
+part of enterprise BI that outlives the agent era.
+
 ---
 
 **Thesis check, in one paragraph.** TraceBi's pitch is a trust layer for AI-generated analytics: agents speak a semantic contract, every answer carries a stamp (query + lineage + SHA-256 fingerprint), specs validate before execution, and the assurance ladder (L0–L3, NOTES.md 2026-08-03) grades what a company can prove. Four independent audits (new analyst, MCP-only agent, platform operator, fund-ops design partner) agree on the verdict: **the stamping kernel is real and production-shaped** — fingerprints verified identical across Python, CLI, and a live MCP round trip; render refuses invalid specs; cap-invariance is test-pinned. What's missing is everything that lets someone *check* a receipt, *trust* the checker's identity, or *keep* the receipt. L2 is ~80% built, L1 is ~50% (stamps yes, receipts no), L3 is 0%. The roadmap below is one merged, deduped, ranked list. The ordering principle: a trust layer that cannot verify its own receipts, whose validator misses the most common agent errors, and whose flagship surface has no auth is not yet making a true claim — fix that before selling it. *(Update 2026-08: the verify loop, validate coverage, and gateway bearer auth from the Now tier have since shipped — see CHANGELOG [Unreleased]; the identity now lives in MANIFESTO.md.)*
