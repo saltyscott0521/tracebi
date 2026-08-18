@@ -92,6 +92,17 @@ def test_query_is_stamped(gateway_model):
     assert not out["truncated"]
 
 
+def test_having_is_applied_and_echoed_by_the_gateway(gateway_model):
+    """having must reach the query over MCP — the primary agent surface —
+    not be dropped. An impossibly high threshold yields no groups, and the
+    stamped query echoes having so what the agent cites is what ran."""
+    out = _query(having={"revenue": {"gte": 10 ** 12}})
+    assert out["row_count"] == 0, "having must filter groups over the gateway"
+    assert out["query"].get("having") == {"revenue": {"gte": 10 ** 12}}, (
+        "the stamped query must echo having, not silently drop it"
+    )
+
+
 def test_stamp_reverifies(gateway_model):
     """The recorded query, re-run, reproduces the recorded fingerprint."""
     out = _query()

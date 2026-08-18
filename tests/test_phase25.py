@@ -970,6 +970,46 @@ class TestHaving:
         ).to_pandas()
         assert list(df["dim_customer.region"]) == ["West"]
 
+    def test_having_is_rejected_on_a_non_aggregate_query(self):
+        """having has no meaning without grouping — reject it and point at
+        filters, rather than silently acting as a per-row filter."""
+        with pytest.raises(ValueError, match="aggregate=False"):
+            self._model().query(
+                fact="fact_orders", measures={"revenue": "sum"},
+                dimensions=["dim_customer.region"], aggregate=False,
+                having={"revenue": {"gte": 250}},
+            ).to_pandas()
+
+    def test_having_is_in_the_published_query_schema(self):
+        """The JSON Schema external consumers validate against must permit
+        having — querySpec is additionalProperties:false, so a missing
+        property would REJECT a valid having spec."""
+        import jsonschema
+        from tracebi.spec import json_schema
+
+        def _find_query_spec(node):
+            if isinstance(node, dict):
+                if node.get("required") == ["fact", "measures"]:
+                    return node
+                for v in node.values():
+                    found = _find_query_spec(v)
+                    if found:
+                        return found
+            elif isinstance(node, list):
+                for v in node:
+                    found = _find_query_spec(v)
+                    if found:
+                        return found
+            return None
+
+        qs = _find_query_spec(json_schema())
+        assert qs is not None, "querySpec not found in the published schema"
+        assert "having" in qs["properties"], "schema must permit having"
+        jsonschema.validate(
+            {"fact": "f", "measures": ["revenue"],
+             "having": {"revenue": {"gte": 1}}}, qs,
+        )
+
 
 class TestNamedMeasures:
     """

@@ -71,7 +71,8 @@ class QueryRequest(BaseModel):
     fact: str
     measures: Any                             # {column: agg} or [measure names]
     dimensions: Optional[list[str]] = None    # ["dim_customer.region", ...]
-    filters: Optional[dict[str, Any]] = None  # fact columns or dim attributes
+    filters: Optional[dict[str, Any]] = None  # WHERE — before aggregation
+    having: Optional[dict[str, Any]] = None   # HAVING — on aggregated measures
     aggregate: bool = True
     allow_fanout: bool = False
     order_by: Optional[list] = None           # [{"column":..,"desc":..}] or "-col"
@@ -98,6 +99,7 @@ def run_query(name: str, body: QueryRequest):
                 "measures": body.measures,
                 "dimensions": body.dimensions,
                 "filters": body.filters,
+                "having": body.having,
                 "aggregate": body.aggregate,
                 "allow_fanout": body.allow_fanout,
                 "order_by": body.order_by,

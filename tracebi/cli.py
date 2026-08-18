@@ -696,6 +696,7 @@ _INIT_SAMPLE_REPORT_JSON = """\
         "fact": "fact_orders",
         "measures": ["revenue"],
         "dimensions": ["dim_region.region"],
+        "having": { "revenue": { "gte": 1000 } },
         "order_by": ["-revenue"]
       }
     },
@@ -956,6 +957,9 @@ whose figures each name a binding from `report.json`:
   ("fix `tbl-seniority`").
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.
+- `filters` is WHERE (before aggregation) — a filter on a measure changes the
+  group totals. To keep only groups whose *total* clears a threshold, use
+  `having` (HAVING): `"having": {"revenue": {"gte": 250}}`.
 - Interactivity: `data-tb-filter` dropdowns + `data-tb-search` inputs subset
   WHICH stamped rows a binding's tables/charts display — they never compute
   new numbers (client-side aggregation would mint numbers; value figures

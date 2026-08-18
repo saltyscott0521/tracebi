@@ -1031,6 +1031,12 @@ class DataModel:
         # difference between "groups whose total ≥ 250" and `filters`'
         # "raw rows whose value ≥ 250", which silently changes the totals.
         if spec.having:
+            if not aggregate:
+                raise ValueError(
+                    "having applies after aggregation, but this query has "
+                    "aggregate=False — there are no group totals to filter. "
+                    "Filter the raw rows with `filters` instead."
+                )
             result_df = self._apply_having(result_df, spec.having, lineage)
 
         # ── Ordering (after ratios, so a ratio measure is sortable) ────

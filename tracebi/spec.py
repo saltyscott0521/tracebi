@@ -628,7 +628,14 @@ def json_schema() -> dict:
                         "description": "declared measure names, or {column: agg}",
                     },
                     "dimensions": {"type": "array", "items": {"type": "string"}},
-                    "filters": {"type": "object"},
+                    "filters": {"type": "object",
+                                "description": "WHERE — predicates applied before "
+                                               "aggregation (fact columns or dim "
+                                               "attributes)"},
+                    "having": {"type": "object",
+                               "description": "HAVING — predicates on aggregated "
+                                              "result columns (measures, ratios), "
+                                              "applied after grouping"},
                     "aggregate": {"type": "boolean", "default": True},
                     "allow_fanout": {"type": "boolean", "default": False},
                     "order_by": {

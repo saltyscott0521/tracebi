@@ -1175,6 +1175,26 @@ class TestQueryEndpoint:
         finally:
             self._cleanup()
 
+    def test_having_is_applied_over_rest_not_silently_dropped(self, memory_model):
+        """A having clause posted to the REST query endpoint must be applied,
+        not swallowed by the request model — a dropped having would return the
+        full unfiltered result (a confident wrong number)."""
+        client = self._client(memory_model)
+        try:
+            r = client.post("/api/models/Sales/query", json={
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "dimensions": ["dim_customer.segment"],
+                "having": {"revenue": {"gte": 10**12}},
+            })
+            assert r.status_code == 200
+            assert r.json()["rows"] == 0, (
+                "an impossibly high having threshold must yield no groups; "
+                "a dropped having would return every segment"
+            )
+        finally:
+            self._cleanup()
+
 
 # ── Connector SQL identifier hygiene ──────────────────────────────────────
 

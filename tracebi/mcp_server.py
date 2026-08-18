@@ -388,6 +388,7 @@ def gateway_query(
     measures: Any,
     dimensions: Optional[list[str]] = None,
     filters: Optional[dict] = None,
+    having: Optional[dict] = None,
     aggregate: bool = True,
     allow_fanout: bool = False,
     order_by: Optional[list] = None,
@@ -397,9 +398,12 @@ def gateway_query(
     """
     Run a star-schema query and return a **stamped** result.
 
-    ``order_by``/``limit`` are the query grammar — the same fields Python,
-    report specs, and REST accept; ``limit`` requires ``order_by`` ("first
-    N" must never masquerade as "top N"). ``preview_rows`` is transport
+    ``filters``/``having``/``order_by``/``limit`` are the query grammar — the
+    same fields Python, report specs, and REST accept. ``filters`` is WHERE
+    (before aggregation); ``having`` is HAVING (after) — filter on aggregated
+    measures with ``having`` so a group's total stays intact, never with
+    ``filters`` on a measure, which changes the totals. ``limit`` requires
+    ``order_by`` ("first N" must never masquerade as "top N"). ``preview_rows`` is transport
     only: the stamp — resolved query, lineage chain, fingerprint —
     describes the *full* result; ``rows`` is a capped preview of it. So a
     number quoted from this response is verifiable even when the row that
@@ -416,6 +420,7 @@ def gateway_query(
             "measures": measures,
             "dimensions": list(dimensions or []),
             "filters": filters or None,
+            "having": having or None,
             "aggregate": aggregate,
             "allow_fanout": allow_fanout,
             "order_by": order_by,
