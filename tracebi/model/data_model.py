@@ -850,6 +850,18 @@ class DataModel:
         committed, reviewed, and replayed — rather than only ever existing as
         a function call.
         """
+        # DuckDB is the one query engine. Import it up front so an absent
+        # engine fails with a clear install error before any source I/O,
+        # rather than after loading the fact and its dimensions.
+        try:
+            import duckdb
+        except ImportError as e:
+            raise ImportError(
+                "TraceBi's query engine requires DuckDB. Install it with:  "
+                "pip install 'tracebi[analyst]'  (or the minimal "
+                "'tracebi[duckdb]')."
+            ) from e
+
         fact = spec.fact
         measures = spec.measures
         dimensions = list(spec.dimensions or [])
@@ -962,17 +974,10 @@ class DataModel:
         # ── Single canonical query engine: DuckDB ─────────────
         # One engine means one semantics and one set of bytes, so a receipt
         # reproduces no matter which environment re-runs it. DuckDB is a
-        # required extra; its absence raises a clear install error rather than
-        # a silent pandas fallback that returned different numbers for NULL
-        # groups, integer sums, `contains`, and non-aggregate row order.
-        try:
-            import duckdb
-        except ImportError as e:
-            raise ImportError(
-                "TraceBi's query engine requires DuckDB. Install it with:  "
-                "pip install 'tracebi[analyst]'  (or the minimal "
-                "'tracebi[duckdb]')."
-            ) from e
+        # required extra (guarded at the top of execute); its absence is a
+        # clear install error rather than a silent pandas fallback that
+        # returned different numbers for NULL groups, integer sums,
+        # `contains`, and non-aggregate row order.
         result_df = self._execute_duckdb(
             fact_df=fact_df,
             fact_def=fact_def,
@@ -1024,7 +1029,7 @@ class DataModel:
             # columns as an implicit ascending tie-break, and stamp the FULLY
             # resolved ordering so replay reproduces it exactly. Applied only
             # when order_by/limit is present — a spec without them keeps
-            # today's byte-for-byte output (the engines already ORDER BY the
+            # today's byte-for-byte output (the engine already ORDER BYs the
             # group columns), so no existing fingerprint can move.
             named = {o["column"] for o in resolved}
             for dim_name, attribute in parsed_dims:
@@ -1086,7 +1091,7 @@ class DataModel:
         fact_def: "_FactDef",
     ) -> tuple[dict[str, str], dict[str, str], dict[str, tuple[str, str]]]:
         """
-        Expand the ``measures`` argument into what the engines understand.
+        Expand the ``measures`` argument into what the engine understands.
 
         Accepts either the legacy ``{column: agg}`` mapping or a list of
         declared measure names, and returns:
@@ -1502,7 +1507,7 @@ class DataModel:
         filters: dict[str, Any],
     ) -> None:
         """Raise ValueError for any measure, filter, or dimension-attribute
-        reference that doesn't exist. Both query engines rely on this —
+        reference that doesn't exist. The query engine relies on this —
         a typo must fail loudly, never return a silently wrong result."""
         fact_cols = set(fact_df.columns)
         for col in measures:
@@ -1889,9 +1894,7 @@ class DataModel:
                 # Deterministic row order. Without it DuckDB returns groups in
                 # hash-table order, which varies between identical runs — so
                 # DataSet.fingerprint() differed across runs of the same query
-                # and manifest fingerprints were not re-verifiable. It also
-                # matches pandas' groupby, which sorts by default, keeping the
-                # two engines byte-comparable.
+                # and manifest fingerprints were not re-verifiable.
                 sql += " ORDER BY " + ", ".join(group_cols_sql)
 
             return con.execute(sql, params).df()

@@ -1146,7 +1146,7 @@ class TestQueryEndpoint:
             assert body["rows"] == 2
             assert "dim_customer.segment" in body["columns"]
             assert body["lineage_graph"]["nodes"]
-            assert body["engine"] in ("duckdb", "pandas")
+            assert body["engine"] == "duckdb"
         finally:
             self._cleanup()
 

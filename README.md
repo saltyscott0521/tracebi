@@ -226,11 +226,11 @@ wheel built by `.github/workflows/release.yml`, which runs the UI build first.
 Pick the pieces you need (extras work the same with either install style):
 
 ```bash
-pip install -e "."                    # core only (pandas)
+pip install -e "."                    # core: connectors, DataSet, lineage (no query engine)
 pip install -e ".[reports]"           # Excel + HTML renderers
 pip install -e ".[pipeline]"          # scheduling + DB write-back
 pip install -e ".[lineage]"           # lineage diagrams
-pip install -e ".[duckdb]"            # DuckDB connector + push-down engine
+pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Explore + report figures)
 pip install -e ".[web]"               # FastAPI + uvicorn web UI
 pip install -e ".[all]"               # everything
 ```
