@@ -12,7 +12,7 @@ surfaces over them:
 * **Analytic queries** — tag tables as dimensions and facts with
   ``add_dimension()`` / ``add_fact()`` and call ``query()`` for filtered,
   aggregated OLAP-style results. Joins are auto-resolved from the fact's
-  foreign keys; execution uses DuckDB when available with a pandas fallback.
+  foreign keys; execution uses DuckDB (a required extra) as the one engine.
 
 Both surfaces share the connector/table registry and produce DataSets with
 full lineage chains.
@@ -37,9 +37,8 @@ LARGE_LOAD_WARN_ROWS = 100_000
 _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique"}
 
 # Filter operators. A closed set rather than free SQL: free SQL cannot be
-# validated, cannot be executed by the pandas engine, and is an injection
-# surface. Every operator below is implemented in both engines and is
-# parameterised in the DuckDB path.
+# validated and is an injection surface. Every operator below is parameterised
+# in the DuckDB path.
 #   {"region": "NE"}                        → eq  (scalar shorthand)
 #   {"region": ["NE", "SE"]}                → in  (list shorthand)
 #   {"revenue": {"gte": 1000}}              → explicit operator
@@ -960,31 +959,32 @@ class DataModel:
                 },
             ))
 
-        # ── Try DuckDB engine first; fall back to pandas ──────
+        # ── Single canonical query engine: DuckDB ─────────────
+        # One engine means one semantics and one set of bytes, so a receipt
+        # reproduces no matter which environment re-runs it. DuckDB is a
+        # required extra; its absence raises a clear install error rather than
+        # a silent pandas fallback that returned different numbers for NULL
+        # groups, integer sums, `contains`, and non-aggregate row order.
         try:
-            result_df = self._execute_duckdb(
-                fact_df=fact_df,
-                fact_def=fact_def,
-                dim_dfs=dim_dfs,
-                parsed_dims=parsed_dims,
-                measures=measures,
-                predicates=predicates,
-                aggregate=aggregate,
-                lineage=lineage,
-            )
-            engine = "duckdb"
-        except ImportError:
-            result_df = self._execute_pandas(
-                fact_df=fact_df,
-                fact_def=fact_def,
-                dim_dfs=dim_dfs,
-                parsed_dims=parsed_dims,
-                measures=measures,
-                predicates=predicates,
-                aggregate=aggregate,
-                lineage=lineage,
-            )
-            engine = "pandas"
+            import duckdb
+        except ImportError as e:
+            raise ImportError(
+                "TraceBi's query engine requires DuckDB. Install it with:  "
+                "pip install 'tracebi[analyst]'  (or the minimal "
+                "'tracebi[duckdb]')."
+            ) from e
+        result_df = self._execute_duckdb(
+            fact_df=fact_df,
+            fact_def=fact_def,
+            dim_dfs=dim_dfs,
+            parsed_dims=parsed_dims,
+            measures=measures,
+            predicates=predicates,
+            aggregate=aggregate,
+            lineage=lineage,
+        )
+        engine = "duckdb"
+        engine_version = duckdb.__version__
 
         # Ratios divide the aggregated totals, so they must run after the
         # engine — sum(margin)/sum(revenue), not the mean of row ratios.
@@ -1059,6 +1059,7 @@ class DataModel:
             description=f"Star-schema query executed via {engine}",
             metadata={
                 "engine": engine,
+                "engine_version": engine_version,
                 "rows_out": len(result_df),
                 "measures": dict(measures),
                 # The model and the exact spec that produced this frame —
@@ -1791,24 +1792,6 @@ class DataModel:
             return f"{column_sql} {neg}IN ({marks})", list(v)
         raise ValueError(f"Unhandled filter operator '{op}'")
 
-    @staticmethod
-    def _predicate_mask(pred: _Predicate, series: "pd.Series"):
-        """Render one predicate as a pandas boolean mask."""
-        op, v = pred.op, pred.value
-        if op == "eq":       return series == v
-        if op == "ne":       return series != v
-        if op == "gt":       return series > v
-        if op == "gte":      return series >= v
-        if op == "lt":       return series < v
-        if op == "lte":      return series <= v
-        if op == "between":  return series.between(v[0], v[1])
-        if op == "is_null":  return series.isna()
-        if op == "not_null": return series.notna()
-        if op == "contains": return series.astype(str).str.contains(str(v), na=False)
-        if op == "in":       return series.isin(list(v))
-        if op == "not_in":   return ~series.isin(list(v))
-        raise ValueError(f"Unhandled filter operator '{op}'")
-
     # ── DuckDB engine ──────────────────────────────────────────
 
     def _execute_duckdb(
@@ -1914,105 +1897,6 @@ class DataModel:
             return con.execute(sql, params).df()
         finally:
             con.close()
-
-    # ── Pandas fallback engine ────────────────────────────────
-
-    def _execute_pandas(
-        self,
-        *,
-        fact_df: pd.DataFrame,
-        fact_def: _FactDef,
-        dim_dfs: dict[str, pd.DataFrame],
-        parsed_dims: list[tuple[str, str]],
-        measures: dict[str, str],
-        predicates: list[_Predicate],
-        aggregate: bool,
-        lineage: list[LineageNode],
-    ) -> pd.DataFrame:
-        df = fact_df
-        # Fact predicates apply before the join (smaller frame to join).
-        for p in predicates:
-            if not p.is_dim and p.target in df.columns:
-                df = df[self._predicate_mask(p, df[p.target])]
-
-        for dim_name in dim_dfs:
-            dim_def = self._dimensions[dim_name]
-            fk_col = fact_def.foreign_keys.get(dim_name, dim_def.key_col)
-            dim_df = dim_dfs[dim_name]
-            attr_cols = [dim_def.key_col] + (
-                dim_def.attributes if dim_def.attributes
-                else [c for c in dim_df.columns if c != dim_def.key_col]
-            )
-            dim_df = dim_df[attr_cols].rename(
-                columns={c: f"{dim_name}.{c}" for c in attr_cols if c != dim_def.key_col}
-            )
-            rows_before = len(df)
-            df = df.merge(
-                dim_df,
-                left_on=fk_col,
-                right_on=dim_def.key_col,
-                how="left",
-                suffixes=("", f"_{dim_name}"),
-            )
-            lineage.append(LineageNode(
-                operation="join",
-                description=(
-                    f"Joined fact '{fact_def.table_name}' → dim "
-                    f"'{dim_def.table_name}' on {fk_col} = "
-                    f"{dim_def.key_col} (left)"
-                ),
-                metadata={
-                    "fact":      fact_def.table_name,
-                    "dimension": dim_def.table_name,
-                    "fact_key":  fk_col,
-                    "dim_key":   dim_def.key_col,
-                    "engine":    "pandas",
-                    "rows_before": rows_before,
-                    "rows_after":  len(df),
-                },
-            ))
-
-        # Dimension predicates can only be applied once the dimension is
-        # joined. Columns are prefixed "dim_name.attribute" by the merge above,
-        # except the key column which keeps its own name.
-        for p in predicates:
-            if not p.is_dim:
-                continue
-            dim_def = self._dimensions[p.dim_name]
-            col = (dim_def.key_col if p.attribute == dim_def.key_col
-                   else f"{p.dim_name}.{p.attribute}")
-            if col in df.columns:
-                df = df[self._predicate_mask(p, df[col])]
-
-        groupby_cols = [f"{d}.{a}" for d, a in parsed_dims]
-
-        if aggregate and groupby_cols:
-            return df.groupby(groupby_cols, as_index=False).agg(
-                {col: func for col, func in measures.items()}
-            )
-        if aggregate and not groupby_cols:
-            row: dict[str, Any] = {}
-            for col, func in measures.items():
-                s = df[col] if col in df.columns else pd.Series(dtype=float)
-                if func == "sum":
-                    row[col] = s.sum()
-                elif func == "count":
-                    row[col] = s.count()
-                elif func == "mean":
-                    row[col] = s.mean()
-                elif func == "min":
-                    row[col] = s.min()
-                elif func == "max":
-                    row[col] = s.max()
-                elif func == "nunique":
-                    row[col] = s.nunique()
-                else:
-                    row[col] = s.agg(func)
-            return pd.DataFrame([row])
-
-        select_cols = groupby_cols + list(measures.keys())
-        select_cols = [c for c in select_cols if c in df.columns]
-        return df[select_cols].copy()
 
     # ── Inspection ─────────────────────────────────────────────
 

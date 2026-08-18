@@ -722,11 +722,13 @@ class TestFilterOperators:
         assert meta["on"] == "dimension"
 
 
-class TestEngineParity:
+class TestSingleEngine:
     """
-    DuckDB is preferred, pandas is the fallback. They must never disagree —
-    a query returning different numbers depending on what is installed would
-    make the lineage meaningless.
+    One canonical query engine (DuckDB). Because there is no second engine to
+    disagree with, a receipt reproduces regardless of the environment that
+    re-runs it — and a missing DuckDB raises a clear, actionable install error
+    rather than a silent pandas fallback that returned different numbers for
+    NULL groups, integer sums, `contains`, and non-aggregate row order.
     """
 
     CASES = [
@@ -746,16 +748,36 @@ class TestEngineParity:
             fact="fact_orders", measures={"revenue": "sum"}, **case
         ).to_pandas()
 
-    def test_engines_agree(self, monkeypatch):
-        import sys
+    def test_every_filter_shape_executes(self):
+        """Every supported filter shape runs through the one engine."""
+        for case in self.CASES:
+            df = self._run(case)
+            assert "revenue" in df.columns, f"case did not execute: {case}"
 
-        duck_results = [self._run(c) for c in self.CASES]
+    def test_lineage_records_engine_and_version(self):
+        """The engine and its version are stamped, so verify can tell a
+        version-driven re-run from a genuine drift instead of crying
+        UNEXPLAINED."""
+        ds = TestDimensionAttributeFilters._model().query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_customer.region"],
+        )
+        engines = [n.metadata.get("engine") for n in ds.lineage
+                   if n.metadata.get("engine")]
+        assert "duckdb" in engines
+        versioned = [n for n in ds.lineage if n.metadata.get("engine_version")]
+        assert versioned, "no lineage node records engine_version"
+        assert isinstance(versioned[-1].metadata["engine_version"], str)
+
+    def test_missing_duckdb_raises_a_clear_install_error(self):
+        """No silent fallback: an absent DuckDB is a loud error that names
+        the extras key to install."""
+        import sys
 
         class _Block:
             # find_spec, not find_module: the legacy protocol was removed
             # from meta-path finders in 3.12, where a find_module blocker
-            # would silently not block — making this compare duckdb to
-            # itself and pass for the wrong reason.
+            # would silently not block.
             def find_spec(self, fullname, path=None, target=None):
                 if fullname.split(".")[0] == "duckdb":
                     raise ImportError(fullname)
@@ -767,26 +789,11 @@ class TestEngineParity:
             del sys.modules[k]
         sys.meta_path.insert(0, blocker)
         try:
-            pandas_results = [self._run(c) for c in self.CASES]
+            with pytest.raises(ImportError, match=r"tracebi\["):
+                self._run({"filters": {"dim_customer.region": "West"}})
         finally:
             sys.meta_path.remove(blocker)
             sys.modules.update(saved)
-
-        for case, d, p in zip(self.CASES, duck_results, pandas_results):
-            assert len(d) == len(p), f"row count differs for {case}"
-            assert abs(float(d["revenue"].sum()) - float(p["revenue"].sum())) < 1e-9, (
-                f"engines disagree for {case}"
-            )
-            # Row ORDER too, not just totals. pandas' groupby sorts by
-            # default and DuckDB returned hash order, so the two engines
-            # produced different frames for the same query — and
-            # DataSet.fingerprint() hashes row order, so identical runs
-            # produced different fingerprints.
-            pd.testing.assert_frame_equal(
-                d.reset_index(drop=True), p.reset_index(drop=True),
-                check_dtype=False,
-                obj=f"engine output for {case}",
-            )
 
 
 class TestQueryDeterminism:
