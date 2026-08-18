@@ -854,6 +854,37 @@ class TestQueryDeterminism:
                  if n.metadata.get("fingerprint_algo") is not None]
         assert CURRENT_FINGERPRINT_ALGO in algos
 
+    def test_non_aggregate_unorderable_column_still_stamps(self):
+        """A non-aggregate result carrying an unorderable column (a LIST/array
+        or BLOB/bytes value, as SQL sources produce) must still get a
+        deterministic fingerprint via the string-key fallback — not crash the
+        total-order sort on a query that used to succeed."""
+        orders = pd.DataFrame({
+            "order_id":    [1, 2, 3],
+            "customer_id": [1, 2, 1],
+            "tags":        [["a", "b"], ["c"], ["a", "b"]],   # LIST-valued
+        })
+        customers = pd.DataFrame({"customer_id": [1, 2], "region": ["West", "NE"]})
+        m = DataModel("U").add_connector(
+            MemoryConnector("mem", {"orders": orders, "customers": customers})
+        )
+        m.add_table("orders", connector="mem", source="orders")
+        m.add_table("customers", connector="mem", source="customers")
+        m.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region"])
+        m.add_fact("fact_orders", table_name="orders", measures=["tags"],
+                   foreign_keys={"dim_customer": "customer_id"})
+        m.connect()
+
+        def run():
+            return m.query(
+                fact="fact_orders", measures={"tags": "min"},
+                dimensions=["dim_customer.region"], aggregate=False,
+            ).fingerprint()
+
+        fp = run()
+        assert run() == fp, "unorderable-column result must be deterministic"
+
 
 class TestNamedMeasures:
     """

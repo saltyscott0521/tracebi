@@ -1032,10 +1032,11 @@ class DataModel:
                     )
             # Deterministic on ties: append the remaining grouped dimension
             # columns as an implicit ascending tie-break, and stamp the FULLY
-            # resolved ordering so replay reproduces it exactly. Applied only
-            # when order_by/limit is present — a spec without them keeps
-            # today's byte-for-byte output (the engine already ORDER BYs the
-            # group columns), so no existing fingerprint can move.
+            # resolved ordering so replay reproduces it exactly. An aggregate
+            # spec without order_by keeps its byte-for-byte output — the engine
+            # already ORDER BYs the group columns — so no aggregate fingerprint
+            # moves; a non-aggregate spec without order_by is total-ordered in
+            # the branch just below.
             named = {o["column"] for o in resolved}
             for dim_name, attribute in parsed_dims:
                 ref = f"{dim_name}.{attribute}"
@@ -1071,9 +1072,19 @@ class DataModel:
             # same bytes. order_by states an intentional order; without one
             # there is no natural order to preserve, only a nondeterministic
             # one to replace.
-            result_df = result_df.sort_values(
-                by=list(result_df.columns), kind="mergesort"
-            ).reset_index(drop=True)
+            cols = list(result_df.columns)
+            try:
+                result_df = result_df.sort_values(
+                    by=cols, kind="mergesort"
+                ).reset_index(drop=True)
+            except TypeError:
+                # A column holds values that can't be ordered natively — a SQL
+                # BLOB decoded to bytes, or a LIST/array cell. Order by a stable
+                # string projection so the result is still deterministic rather
+                # than crashing a query that used to succeed.
+                result_df = result_df.sort_values(
+                    by=cols, key=lambda s: s.astype(str), kind="mergesort"
+                ).reset_index(drop=True)
 
         lineage.append(LineageNode(
             operation="transform",
