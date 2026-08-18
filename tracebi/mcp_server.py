@@ -158,7 +158,13 @@ front of a person should carry a receipt. This gateway is how you produce one.
    `data-tb-figure` + `data-tb-binding` (or is honestly
    `data-tb-unverified` — no third state). Any element works, including a
    `<span>` inside a sentence: bind prose numbers instead of typing them.
-   Blocks marked `data-tb-stage="exploration"` die at build.
+   Blocks marked `data-tb-stage="exploration"` die at build. Interactive
+   objects are declarative too: `data-tb-filter` / `data-tb-search` subset
+   which stamped rows display (never compute — value figures are exempt),
+   tables scroll past `data-tb-rows`, `data-tb-download` exports the
+   stamped CSV verbatim, tabs via `data-tb-tab`, layouts via
+   `.tb-cols-2/3`; every built page carries the receipt drawer. Details
+   in get_context's `presentation` block.
    (A JSON ReportSpec is the same thing as a serialization — read
    `tracebi://spec-schema`, then **validate_report_spec** →
    **render_report_spec**, which refuses invalid specs.)

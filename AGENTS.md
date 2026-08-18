@@ -111,8 +111,11 @@ Three rules that keep pages honest:
   receipt-preserving export) — all subset WHICH stamped rows figures
   display. They never compute new numbers: client-side aggregation would
   mint numbers, so value figures never react and a filtered KPI needs its
-  own binding. Every artifact also carries the receipt drawer (the
-  floating Receipt button); the manifest remains the receipt of record.
+  own binding. Download buttons take `data-tb-label` for their text.
+  Every artifact also carries the receipt drawer (the floating Receipt
+  button); the manifest remains the receipt of record. Methodology ships
+  via ONE `<section data-tb-methodology>` — the build appends the
+  pipeline's stated methodology after your own prose.
   `examples/portfolio_project/reports/portfolio_showcase/` is the
   maintained kitchen-sink demo of all of it.
 - **Explore inside the artifact.** Blocks marked

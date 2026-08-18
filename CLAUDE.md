@@ -461,6 +461,21 @@ Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framew
 
 ## How to Add Things
 
+**The discoverability definition of done.** A feature agents should use is
+not done when it works — it is done when an agent WOULD use it. Every
+authoring-surface feature must land with all three, in the same change:
+(1) the generated vocabulary documents it (`tracebi/capabilities.py` — the
+`tracebi context` / MCP `get_context` payload); (2) the scaffold or the
+showcase demonstrates it (`_INIT_SAMPLE_TEMPLATE_HTML` in `cli.py`, or
+`examples/portfolio_project/reports/portfolio_showcase/`); (3) both agent
+guides name it (`AGENTS.md` and `_INIT_AGENTS_MD` in `cli.py`).
+`tests/test_agent_guides.py` enforces (1)↔(3) mechanically — every
+`data-tb-*` attribute in the vocabulary must be named in both guides, the
+locked honesty lines must survive verbatim, and the scaffold must carry the
+interactive grammar — so drift fails CI instead of waiting for the next
+field test to find it (the round-2 lesson: a feature the guides don't teach
+effectively does not exist).
+
 ### New transform (phase ①)
 1. Add a `.py` under `transforms/`. Write whatever pandas the data needs — the
    framework does not constrain this phase. Scaffolds are **notebook-shaped**:

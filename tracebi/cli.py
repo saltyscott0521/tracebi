@@ -754,6 +754,19 @@ _INIT_SAMPLE_TEMPLATE_HTML = """\
 
   <div class="tb-card">
     <h2>Region detail</h2>
+    <p class="tb-note">Filter and search subset which stamped rows display —
+      they never compute new numbers. The CSV button exports the stamped
+      bytes verbatim; tables scroll past 10 rows.</p>
+    <p>
+      Region:
+      <select data-tb-filter data-tb-binding="region_detail"
+              data-tb-column="dim_region.region"></select>
+      Search:
+      <input data-tb-search data-tb-binding="region_detail"
+             placeholder="type to filter…">
+      <button data-tb-download data-tb-binding="region_detail"
+              data-tb-label="Download CSV"></button>
+    </p>
     <table data-tb-figure="table" data-tb-binding="region_detail"
            class="tb-table--striped" id="tbl-regions"></table>
   </div>
@@ -943,6 +956,14 @@ whose figures each name a binding from `report.json`:
   ("fix `tbl-seniority`").
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.
+- Interactivity: `data-tb-filter` dropdowns + `data-tb-search` inputs subset
+  WHICH stamped rows a binding's tables/charts display — they never compute
+  new numbers (client-side aggregation would mint numbers; value figures
+  never react; a filtered KPI needs its own binding). Tables scroll past
+  `data-tb-rows` (default 10). `data-tb-download` buttons export the
+  stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
+  `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Every built
+  page carries the Receipt drawer automatically.
 - Blocks marked `data-tb-stage="exploration"` are working scratch: they render
   in dev and are DELETED at the final build.
 - Styling: the shipped defaults render well with zero CSS. To restyle, set
