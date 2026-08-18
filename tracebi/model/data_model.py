@@ -27,7 +27,12 @@ from typing import Any, Optional
 import pandas as pd
 
 from tracebi.connectors.base import BaseConnector
-from tracebi.model.dataset import DataSet, LineageNode, frame_fingerprint
+from tracebi.model.dataset import (
+    CURRENT_FINGERPRINT_ALGO,
+    DataSet,
+    LineageNode,
+    frame_fingerprint,
+)
 
 
 # Threshold (rows) at which an unfiltered, full-table load triggers a
@@ -1058,6 +1063,17 @@ class DataModel:
                 metadata={"order_by": [dict(o) for o in resolved],
                           "limit": spec.limit},
             ))
+        elif not aggregate and len(result_df.columns) and len(result_df):
+            # Fingerprint algo 2: a non-aggregate query returns raw rows in
+            # engine scan/hash order, which varies between identical runs — so
+            # a fingerprint over them was not reproducible. Impose a canonical
+            # total order over every column so the same query always stamps the
+            # same bytes. order_by states an intentional order; without one
+            # there is no natural order to preserve, only a nondeterministic
+            # one to replace.
+            result_df = result_df.sort_values(
+                by=list(result_df.columns), kind="mergesort"
+            ).reset_index(drop=True)
 
         lineage.append(LineageNode(
             operation="transform",
@@ -1065,6 +1081,7 @@ class DataModel:
             metadata={
                 "engine": engine,
                 "engine_version": engine_version,
+                "fingerprint_algo": CURRENT_FINGERPRINT_ALGO,
                 "rows_out": len(result_df),
                 "measures": dict(measures),
                 # The model and the exact spec that produced this frame —

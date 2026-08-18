@@ -211,6 +211,36 @@ def test_tampered_fingerprint_is_unexplained(
     assert all(i["match"] for i in checked["inputs"])
 
 
+def test_engine_version_change_is_named_in_the_unexplained_detail(
+    vf_model, tmp_path, empty_models_dir,
+):
+    """Data unmoved, result differs, and the recorded engine version differs
+    from the one re-running now: verify names the version change as the likely
+    cause instead of a blank 'something changed'."""
+    manifest = json.loads(_render(tmp_path).read_text(encoding="utf-8"))
+    section = next(
+        s for s in manifest["sections"] if s.get("dataset_fingerprint")
+    )
+    # Force a mismatch with unmoved inputs (as the tamper test does)…
+    section["dataset_fingerprint"] = "0" * 64
+    # …and record an engine version different from the one re-running now.
+    touched = False
+    for node in section["dataset_lineage"]:
+        md = dict(node.get("metadata") or {})
+        if md.get("engine_version"):
+            md["engine_version"] = "0.0.1-recorded"
+            node["metadata"] = md
+            touched = True
+    assert touched, "no recorded engine_version to tamper — stamp regressed"
+
+    result = verify_manifest(manifest, load_models(empty_models_dir))
+    (checked,) = result["sections"]
+    assert checked["status"] == UNEXPLAINED
+    assert all(i["match"] for i in checked["inputs"])
+    assert "0.0.1-recorded" in checked["detail"]
+    assert "engine version" in checked["detail"].lower()
+
+
 def test_python_authored_section_is_unverifiable(
     vf_model, tmp_path, empty_models_dir, capsys,
 ):

@@ -66,6 +66,20 @@ def frame_fingerprint(df: pd.DataFrame) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
+# Fingerprint algorithm versioning
+# ─────────────────────────────────────────────────────────────
+# Every stamped query result records which algorithm produced its fingerprint,
+# so a receipt is always verified under the rules that made it, and a future
+# change to the algorithm never silently orphans — or re-classifies — receipts
+# already issued. The bytes are identical across 1 and 2; the difference is
+# purely that algo 2 gives a non-aggregate result a canonical total row order
+# (algo 1 left it in engine scan order, which varied between identical runs).
+FINGERPRINT_ALGO_LEGACY = 1        # columns+dtypes+to_csv, rows in engine order
+FINGERPRINT_ALGO_TOTAL_ORDER = 2   # same bytes; aggregate=False rows total-ordered
+CURRENT_FINGERPRINT_ALGO = FINGERPRINT_ALGO_TOTAL_ORDER
+
+
+# ─────────────────────────────────────────────────────────────
 # LineageNode
 # ─────────────────────────────────────────────────────────────
 

@@ -326,6 +326,10 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
     model_name = md.get("model")
     base["model"] = model_name
     base["query_spec"] = md.get("query_spec")
+    # Surface what produced the receipt: the fingerprint algorithm it was
+    # stamped under (so a verifier applies the right rules) and the engine.
+    base["fingerprint_algo"] = md.get("fingerprint_algo", 1)
+    base["engine"] = md.get("engine")
     if model_name not in models:
         return {**base, "status": ERROR,
                 "detail": f"model '{model_name}' not found "
@@ -378,6 +382,21 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
                 "detail": "input fingerprint(s) for table(s) "
                           + ", ".join(drifted)
                           + " differ — the inputs this model loads changed"}
+    # The data did not move, so the difference is in how the number was
+    # produced. The engine version is the most common such cause: name it
+    # when the recorded and current versions differ, so an operator sees a
+    # concrete lead instead of a blank "something changed".
+    recorded_ev = md.get("engine_version")
+    current_node = last_query_node(ds.lineage_to_dict())
+    current_ev = ((current_node.get("metadata") or {}).get("engine_version")
+                  if current_node else None)
+    if recorded_ev and current_ev and recorded_ev != current_ev:
+        return {**base, "status": UNEXPLAINED,
+                "detail": "result differs but every input fingerprint matches — "
+                          "the data did not move. The query engine version "
+                          f"changed (recorded {recorded_ev}, now {current_ev}); "
+                          "re-run under the recorded version to confirm that is "
+                          "the cause."}
     return {**base, "status": UNEXPLAINED,
             "detail": "result differs but every input fingerprint matches — "
                       "the data did not move; the model, measures, or engine did"}

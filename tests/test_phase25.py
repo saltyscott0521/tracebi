@@ -824,6 +824,36 @@ class TestQueryDeterminism:
         col = list(df["dim_customer.region"])
         assert col == sorted(col)
 
+    def test_non_aggregate_rows_have_one_fingerprint(self):
+        """Raw (aggregate=False) rows came back in engine scan order, which
+        varied between identical runs — algo 2 imposes a total order so the
+        same query always stamps the same bytes."""
+        model = TestDimensionAttributeFilters._model()
+        prints = {
+            model.query(
+                fact="fact_orders", measures={"revenue": "sum"},
+                dimensions=["dim_customer.region"], aggregate=False,
+            ).fingerprint()
+            for _ in range(12)
+        }
+        assert len(prints) == 1, (
+            "identical non-aggregate queries produced different fingerprints "
+            "— raw rows must come back in a canonical total order"
+        )
+
+    def test_result_stamps_the_current_fingerprint_algo(self):
+        """Every stamped result records the algorithm that produced it, so a
+        future algorithm change never silently re-classifies old receipts."""
+        from tracebi.model.dataset import CURRENT_FINGERPRINT_ALGO
+
+        ds = TestDimensionAttributeFilters._model().query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_customer.region"],
+        )
+        algos = [n.metadata.get("fingerprint_algo") for n in ds.lineage
+                 if n.metadata.get("fingerprint_algo") is not None]
+        assert CURRENT_FINGERPRINT_ALGO in algos
+
 
 class TestNamedMeasures:
     """
