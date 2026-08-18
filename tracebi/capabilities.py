@@ -498,6 +498,17 @@ def describe(brief: bool = False) -> dict:
                 {"form": "{'dim_customer.region': 'West'}",
                  "means": "filter on a dimension attribute"},
             ],
+            "having": {
+                "means": "post-aggregation filters (HAVING) on result columns — "
+                         "measure names and ratios — applied AFTER grouping. "
+                         "`filters` are WHERE (before aggregation), so a filter "
+                         "on a measure column changes the group totals; `having` "
+                         "keeps groups by their aggregated value with totals "
+                         "intact.",
+                "example": "having={'revenue': {'gte': 250}}  # groups whose "
+                           "TOTAL revenue >= 250 (not raw rows >= 250)",
+                "operators": "same spellings and operators as filters",
+            },
             "ordering": {
                 "order_by": [
                     {"form": "{'column': 'fair_value', 'desc': True}",

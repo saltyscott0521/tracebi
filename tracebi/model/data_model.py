@@ -207,7 +207,8 @@ class QuerySpec:
     fact: str
     measures: Any                                   # {col: agg} or [names]
     dimensions: tuple[str, ...] = ()
-    filters: Any = None                             # see DataModel.query()
+    filters: Any = None                             # WHERE — before aggregation
+    having: Any = None                              # HAVING — after aggregation
     aggregate: bool = True
     allow_fanout: bool = False
     order_by: tuple = ()                            # ({"column": str, "desc": bool}, ...)
@@ -226,6 +227,8 @@ class QuerySpec:
         # Only when present: a spec without ordering serializes byte-for-byte
         # as it did before order_by/limit existed, so recorded specs in
         # existing manifests and lineage stay stable.
+        if self.having:
+            d["having"] = dict(self.having)
         if self.order_by:
             d["order_by"] = [dict(o) for o in self.order_by]
         if self.limit is not None:
@@ -239,14 +242,14 @@ class QuerySpec:
         if "measures" not in d:
             raise ValueError("QuerySpec requires 'measures'.")
         unknown = set(d) - {
-            "fact", "measures", "dimensions", "filters", "aggregate",
+            "fact", "measures", "dimensions", "filters", "having", "aggregate",
             "allow_fanout", "order_by", "limit",
         }
         if unknown:
             raise ValueError(
                 f"Unknown QuerySpec field(s): {sorted(unknown)}. "
-                f"Allowed: fact, measures, dimensions, filters, aggregate, "
-                f"allow_fanout, order_by, limit."
+                f"Allowed: fact, measures, dimensions, filters, having, "
+                f"aggregate, allow_fanout, order_by, limit."
             )
         measures = d["measures"]
         limit = d.get("limit")
@@ -259,6 +262,7 @@ class QuerySpec:
             measures=list(measures) if isinstance(measures, list) else dict(measures),
             dimensions=tuple(d.get("dimensions") or ()),
             filters=dict(d.get("filters") or {}) or None,
+            having=dict(d.get("having") or {}) or None,
             aggregate=bool(d.get("aggregate", True)),
             allow_fanout=bool(d.get("allow_fanout", False)),
             order_by=_normalize_order_by(d.get("order_by")),
@@ -779,6 +783,7 @@ class DataModel:
         measures: "dict[str, str] | list[str]",
         dimensions: Optional[list[str]] = None,
         filters: Optional[dict[str, Any]] = None,
+        having: Optional[dict[str, Any]] = None,
         aggregate: bool = True,
         allow_fanout: bool = False,
         order_by: Optional[list] = None,
@@ -809,6 +814,17 @@ class DataModel:
                         referenced only by a filter is still joined.
                         Equality filters on fact columns are pushed down to
                         the connector where it supports it.
+                        ``filters`` are WHERE — they apply **before**
+                        aggregation, so a filter on a measure column changes
+                        the group totals. To filter on an aggregated value,
+                        use ``having`` instead.
+            having:     Post-aggregation predicates (HAVING) on **result**
+                        columns — measure names and ratios — applied *after*
+                        grouping. ``{"revenue": {"gte": 250}}`` keeps groups
+                        whose *total* revenue is ≥ 250, with their totals
+                        intact; the same key in ``filters`` would instead drop
+                        raw rows and change the totals. Same operators and
+                        spellings as ``filters``.
             aggregate:  When ``True`` (default), group by dimension attributes
                         and aggregate measures. When ``False``, return the
                         flat joined rows with measures selected.
@@ -840,6 +856,7 @@ class DataModel:
             measures=measures,
             dimensions=tuple(dimensions or ()),
             filters=filters,
+            having=having,
             aggregate=aggregate,
             allow_fanout=allow_fanout,
             order_by=_normalize_order_by(order_by),
@@ -1008,6 +1025,13 @@ class DataModel:
                 ),
                 metadata={"ratios": {k: list(v) for k, v in ratios.items()}},
             ))
+
+        # Post-aggregation filters (HAVING): applied after the engine AND
+        # ratios, so they filter the aggregated measures/ratios — the
+        # difference between "groups whose total ≥ 250" and `filters`'
+        # "raw rows whose value ≥ 250", which silently changes the totals.
+        if spec.having:
+            result_df = self._apply_having(result_df, spec.having, lineage)
 
         # ── Ordering (after ratios, so a ratio measure is sortable) ────
         # limit without order_by is refused: "first N rows" in engine order
@@ -1344,6 +1368,75 @@ class DataModel:
             ))
 
         return preds
+
+    def _apply_having(
+        self,
+        df: "pd.DataFrame",
+        having: dict[str, Any],
+        lineage: list[LineageNode],
+    ) -> "pd.DataFrame":
+        """Apply post-aggregation (HAVING) filters on the result frame.
+
+        ``filters`` are WHERE (before aggregation); ``having`` is HAVING
+        (after), so it filters the aggregated measures and ratios. Targets
+        must be result columns. It runs in pandas on the already-aggregated
+        frame — not as SQL HAVING — so it can also filter ratio measures,
+        which are computed after the engine.
+        """
+        cols = list(df.columns)
+        for key, raw in having.items():
+            if key not in df.columns:
+                raise ValueError(
+                    f"having column '{key}' is not a result column of this "
+                    f"query.{self._hint(key, cols)} Result columns: {cols}. "
+                    f"`having` filters aggregated measures/ratios; to filter "
+                    f"raw rows before aggregation use `filters`."
+                )
+            # Normalise the value into (op, value) — same spellings as filters.
+            if isinstance(raw, dict):
+                if len(raw) != 1:
+                    raise ValueError(
+                        f"having '{key}' must specify exactly one operator, "
+                        f"got {sorted(raw)}."
+                    )
+                op, value = next(iter(raw.items()))
+                op = str(op).lower()
+            elif isinstance(raw, (list, tuple, set)):
+                op, value = "in", list(raw)
+            else:
+                op, value = "eq", raw
+            if op not in FILTER_OPS:
+                raise ValueError(
+                    f"Unknown having operator '{op}' for '{key}'."
+                    f"{self._hint(op, FILTER_OPS)} "
+                    f"Supported: {', '.join(FILTER_OPS)}"
+                )
+
+            s = df[key]
+            if op == "eq":         mask = s == value
+            elif op == "ne":       mask = s != value
+            elif op == "gt":       mask = s > value
+            elif op == "gte":      mask = s >= value
+            elif op == "lt":       mask = s < value
+            elif op == "lte":      mask = s <= value
+            elif op == "between":  mask = s.between(value[0], value[1])
+            elif op == "in":       mask = s.isin(list(value))
+            elif op == "not_in":   mask = ~s.isin(list(value))
+            elif op == "is_null":  mask = s.isna()
+            elif op == "not_null": mask = s.notna()
+            elif op == "contains": mask = s.astype(str).str.contains(str(value), na=False)
+            else:
+                raise ValueError(f"Unhandled having operator '{op}'")
+
+            df = df[mask]
+            lineage.append(LineageNode(
+                operation="filter",
+                description=f"Having: {key} {op} {value!r}",
+                metadata={"target": key, "operator": op,
+                          "value": value, "on": "aggregate"},
+            ))
+
+        return df.reset_index(drop=True)
 
     def _validate_dim_predicates(
         self,

@@ -886,6 +886,91 @@ class TestQueryDeterminism:
         assert run() == fp, "unorderable-column result must be deterministic"
 
 
+class TestHaving:
+    """
+    `having` is HAVING — a filter on the aggregated result. `filters` is
+    WHERE — applied before aggregation. Confusing the two silently corrupts
+    totals (a `filters` entry on a measure drops raw rows and changes the
+    group sums), which is exactly the 'never a silently wrong number' rule.
+    """
+
+    @staticmethod
+    def _model():
+        return TestDimensionAttributeFilters._model()
+
+    def test_having_keeps_groups_by_aggregated_total_with_totals_intact(self):
+        # True totals: NE = 200+80 = 280, West = 100+300+50+400 = 850.
+        df = self._model().query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_customer.region"],
+            having={"revenue": {"gte": 250}},
+        ).to_pandas()
+        got = dict(zip(df["dim_customer.region"], df["revenue"]))
+        assert got == {"NE": 280.0, "West": 850.0}, (
+            "having must keep both groups (both totals >= 250) with correct sums"
+        )
+
+    def test_having_excludes_a_group_below_the_threshold(self):
+        df = self._model().query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_customer.region"],
+            having={"revenue": {"gte": 300}},
+        ).to_pandas()
+        got = dict(zip(df["dim_customer.region"], df["revenue"]))
+        assert got == {"West": 850.0}, "only West's total (850) clears 300"
+
+    def test_filters_and_having_on_the_same_measure_differ(self):
+        """The footgun made concrete: the same predicate as a WHERE filter
+        corrupts the totals; as HAVING it does not."""
+        model = self._model()
+        where = model.query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_customer.region"], filters={"revenue": {"gte": 250}},
+        ).to_pandas()
+        having = model.query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=["dim_customer.region"], having={"revenue": {"gte": 250}},
+        ).to_pandas()
+        # WHERE drops rows and one whole group, changing the surviving total.
+        assert dict(zip(where["dim_customer.region"], where["revenue"])) == {"West": 700.0}
+        # HAVING keeps both groups with true totals.
+        assert dict(zip(having["dim_customer.region"], having["revenue"])) == {
+            "NE": 280.0, "West": 850.0}
+
+    def test_having_round_trips_through_the_spec(self):
+        spec = QuerySpec(
+            fact="fact_orders", measures={"revenue": "sum"},
+            dimensions=("dim_customer.region",), having={"revenue": {"gte": 250}},
+        )
+        assert spec.to_dict()["having"] == {"revenue": {"gte": 250}}
+        assert QuerySpec.from_dict(spec.to_dict()).having == spec.having
+
+    def test_having_without_it_serializes_byte_for_byte_as_before(self):
+        """A spec that does not use having must not gain a 'having' key —
+        recorded specs in existing manifests stay stable."""
+        spec = QuerySpec(fact="fact_orders", measures={"revenue": "sum"},
+                         dimensions=("dim_customer.region",))
+        assert "having" not in spec.to_dict()
+
+    def test_having_on_a_non_result_column_raises_and_points_to_filters(self):
+        with pytest.raises(ValueError, match="filters"):
+            self._model().query(
+                fact="fact_orders", measures={"revenue": "sum"},
+                dimensions=["dim_customer.region"], having={"nope": {"gte": 1}},
+            ).to_pandas()
+
+    def test_having_filters_a_second_aggregated_measure(self):
+        """having can target any result column, e.g. a count measure."""
+        model = self._model()
+        df = model.query(
+            fact="fact_orders",
+            measures={"revenue": "sum", "order_id": "count"},
+            dimensions=["dim_customer.region"],
+            having={"order_id": {"gte": 3}},   # West has 3 orders, NE has 2
+        ).to_pandas()
+        assert list(df["dim_customer.region"]) == ["West"]
+
+
 class TestNamedMeasures:
     """
     Measures declared once on the model, reviewed in a PR, versioned in
