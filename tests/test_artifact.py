@@ -429,3 +429,39 @@ class TestMethodologyContainerParsing:
     def test_unclosed_container_fails_loudly(self):
         with pytest.raises(FigureError, match="never closed"):
             methodology_insertion('<div data-tb-methodology><p>x</p>')
+
+
+# ── the receipt block: phase-① and methodology entries ──────────────────────
+# The tracebi-receipt block is the drawer's provenance feed. It duplicates
+# manifest facts — the MANIFEST remains the receipt of record — so each
+# entry is checked against the manifest field it mirrors.
+
+class TestReceiptBlockJoins:
+    RECEIPT_OPEN = '<script id="tracebi-receipt" type="application/json">'
+
+    def _receipt(self, page):
+        start = page.index(self.RECEIPT_OPEN)
+        payload = page[start + len(self.RECEIPT_OPEN):
+                       page.index("</script>", start)]
+        return json.loads(payload)
+
+    def test_contract_statuses_are_compact_and_mirror_the_manifest(
+            self, tmp_path):
+        page, manifest = _render_package(tmp_path, CONTAINER)
+        receipt = self._receipt(page)
+        # Status per table ONLY — the drawer names the status; the full
+        # record (transform, checked_at, fingerprint, note) stays in the
+        # manifest, and the block never carries what it did not record.
+        assert receipt["transform_contracts"] == {
+            table: rec["status"]
+            for table, rec in manifest["transform_contracts"].items()
+        }
+        assert receipt["transform_contracts"]["fact_orders"] == "satisfied"
+        assert receipt["methodology"] is True
+        assert receipt["semantic_contract_models"] == ["wh_model"]
+
+    def test_methodology_flag_is_false_without_the_container(self, tmp_path):
+        page, manifest = _render_package(tmp_path, extra_body="")
+        receipt = self._receipt(page)
+        assert receipt["methodology"] is False
+        assert "methodology" not in manifest

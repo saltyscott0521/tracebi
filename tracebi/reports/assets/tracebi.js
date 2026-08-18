@@ -14,6 +14,10 @@
  *                                series data re-sourced from the stamped
  *                                bytes after merging (restyle, never re-source)
  *
+ * Controls (data-tb-filter / data-tb-search / data-tb-download, tabs) obey
+ * the same law: they subset WHICH STAMPED ROWS figures display — they NEVER
+ * compute new numbers. See the view layer below.
+ *
  * Every hydration step is defensive: a missing block, empty rows, or absent
  * echarts skips that figure silently — the author's content still shows.
  */
@@ -56,6 +60,16 @@
 
   function trim(s) { return String(s).replace(/^\s+|\s+$/g, ""); }
 
+  function addClass(el, cls) {
+    if ((" " + el.className + " ").indexOf(" " + cls + " ") === -1) {
+      el.className = trim(el.className + " " + cls);
+    }
+  }
+
+  function removeClass(el, cls) {
+    el.className = trim((" " + el.className + " ").replace(" " + cls + " ", " "));
+  }
+
   /* "a, b ,c" -> ["a", "b", "c"] for the comma-separated attributes. */
   function splitList(s) { return s.split(",").map(trim); }
 
@@ -71,6 +85,7 @@
     try { payload = JSON.parse(el.textContent); } catch (e) { return null; }
     if (!payload || typeof payload.csv !== "string") return null;
     var parsed = parseCsv(payload.csv);
+    parsed.csv = payload.csv; /* the raw string, kept for verbatim download */
     _blocks[name] = parsed;
     return parsed;
   }
@@ -271,6 +286,86 @@
       if (n === null || n % 1 !== 0) { allWhole = false; break; }
     }
     return allWhole ? "comma" : "decimal";
+  }
+
+  /* ── The view layer — the control grammar's one law ─────────────────────
+   * Controls subset WHICH STAMPED ROWS figures display — they NEVER compute
+   * new numbers. Client-side aggregation would mint numbers; it is
+   * forbidden. Value figures never react to controls (a filtered KPI needs
+   * its own binding). */
+
+  /* binding → { filters: {column: value}, search: "lowercased term" } */
+  var _views = {};
+
+  function viewOf(binding) {
+    if (!_views[binding]) _views[binding] = { filters: {}, search: "" };
+    return _views[binding];
+  }
+
+  function rowMatches(row, cols, view) {
+    var col, i, cell, hit;
+    for (col in view.filters) {
+      if (!view.filters.hasOwnProperty(col)) continue;
+      if (String(row[col]) !== view.filters[col]) return false;
+    }
+    if (view.search) {
+      hit = false;
+      for (i = 0; i < cols.length; i++) {
+        cell = row[cols[i]];
+        if (cell !== undefined &&
+            String(cell).toLowerCase().indexOf(view.search) !== -1) {
+          hit = true;
+          break;
+        }
+      }
+      if (!hit) return false;
+    }
+    return true;
+  }
+
+  /* The one gate reactive figures re-render through: the stamped rows,
+   * subset by the binding's active filters (AND across columns) and its
+   * search term (case-insensitive substring across all columns, ANDed in). */
+  function filteredRows(binding) {
+    var block = readBlock(binding);
+    if (!block) return [];
+    var view = _views[binding];
+    if (!view) return block.rows;
+    return block.rows.filter(function (r) {
+      return rowMatches(r, block.cols, view);
+    });
+  }
+
+  /* Hydrated figures, registered so a control change can re-render them. */
+  var _tables = []; /* { el, binding, cols, numeric, formats, rowCount } */
+  var _charts = []; /* { el, binding, plan, chart } */
+
+  /* Re-render the binding's table and chart figures from the filtered
+   * stamped rows. Value figures are exempt BY CODE: controls subset which
+   * stamped rows figures display — they never compute new numbers, and a
+   * filtered KPI would be client-side aggregation, which would mint a
+   * number. A filtered KPI needs its own binding. */
+  function refreshBinding(binding) {
+    var rows = filteredRows(binding), i, entry;
+    for (i = 0; i < _tables.length; i++) {
+      if (_tables[i].binding === binding) {
+        try { renderBody(_tables[i], rows); } catch (e) { /* defensive */ }
+      }
+    }
+    for (i = 0; i < _charts.length; i++) {
+      entry = _charts[i];
+      if (entry.binding === binding) {
+        try {
+          entry.chart.setOption(buildOption(entry.el, entry.plan, rows), true);
+        } catch (e) { /* defensive */ }
+      }
+    }
+  }
+
+  function resizeCharts() {
+    for (var i = 0; i < _charts.length; i++) {
+      try { _charts[i].chart.resize(); } catch (e) { /* defensive */ }
+    }
   }
 
   /* ── configureChart — the raw-ECharts escape valve ─────────────────────
@@ -482,13 +577,45 @@
     });
   }
 
+  /* Rebuild a hydrated table's body from *rows*. Labels and formats were
+   * derived ONCE from the full stamped rows, so a filtered subset can never
+   * flip a column's presentation between control states. */
+  function renderBody(entry, rows) {
+    var el = entry.el;
+    var tbody = el.querySelector("tbody");
+    if (!tbody) {
+      tbody = document.createElement("tbody");
+      el.appendChild(tbody);
+    }
+    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      entry.cols.forEach(function (col) {
+        var td = document.createElement("td");
+        var raw = r[col], text = (raw === undefined) ? "" : raw;
+        if (entry.numeric[col]) {
+          td.className = "tb-num";
+          var n = toNum(raw);
+          if (n !== null && entry.formats[col]) {
+            var formatted = applyNamedFormat(n, entry.formats[col]);
+            if (formatted !== null) text = formatted;
+          }
+        }
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
   function hydrateTables() {
     figureEls("table").forEach(function (el) {
       try {
         if (el.tagName !== "TABLE") return;
-        /* An author-rendered table is left alone. */
+        /* An author-rendered table is left alone (and never reactive). */
         if (el.querySelector("tbody tr")) return;
-        var block = readBlock(attr(el, "data-tb-binding"));
+        var binding = attr(el, "data-tb-binding");
+        var block = readBlock(binding);
         if (!block || !block.rows.length) return;
         var rows = block.rows;
 
@@ -521,26 +648,11 @@
           thead.appendChild(htr);
           el.appendChild(thead);
         }
-        var tbody = el.querySelector("tbody") || document.createElement("tbody");
-        rows.forEach(function (r) {
-          var tr = document.createElement("tr");
-          cols.forEach(function (col) {
-            var td = document.createElement("td");
-            var raw = r[col], text = (raw === undefined) ? "" : raw;
-            if (numeric[col]) {
-              td.className = "tb-num";
-              var n = toNum(raw);
-              if (n !== null && formats[col]) {
-                var formatted = applyNamedFormat(n, formats[col]);
-                if (formatted !== null) text = formatted;
-              }
-            }
-            td.textContent = text;
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
-        });
-        if (!tbody.parentNode) el.appendChild(tbody);
+        var entry = { el: el, binding: binding, cols: cols,
+                      numeric: numeric, formats: formats,
+                      rowCount: rows.length };
+        _tables.push(entry);
+        renderBody(entry, filteredRows(binding));
       } catch (e) { /* defensive */ }
     });
   }
@@ -556,12 +668,42 @@
     return out;
   }
 
+  /* The built option for one chart, patch applied — shared by the first
+   * hydration and every control-driven re-render. */
+  function buildOption(el, plan, rows) {
+    var option = optionFor(plan, rows);
+
+    var patch = el.id ? _patches[el.id] : null;
+    if (patch) {
+      var built = option.series || [];
+      var merged = deepMerge(option, patch);
+      /* Config can restyle, never re-source: dataset-style channels are
+       * dropped and every series keeps the data built from the stamped
+       * bytes. Extra patch series (which could only carry author data)
+       * are not drawn. */
+      delete merged.dataset;
+      var series = [], i, overlay, s;
+      var patchSeries = merged.series;
+      for (i = 0; i < built.length; i++) {
+        overlay = (patchSeries && isPlainObject(patchSeries[i]))
+          ? patchSeries[i] : null;
+        s = (overlay && overlay !== built[i]) ? deepMerge(built[i], overlay) : built[i];
+        s.data = built[i].data;
+        series.push(s);
+      }
+      merged.series = series;
+      option = merged;
+    }
+    return option;
+  }
+
   function hydrateCharts() {
     if (!root.echarts) return; /* no charting lib on this page — skip all */
     var palette = null;
     figureEls("chart").forEach(function (el) {
       try {
-        var block = readBlock(attr(el, "data-tb-binding"));
+        var binding = attr(el, "data-tb-binding");
+        var block = readBlock(binding);
         if (!block || !block.rows.length) return;
         var x = attr(el, "data-tb-x");
         var y = attr(el, "data-tb-y");
@@ -576,32 +718,9 @@
           valueFormat: attr(el, "data-tb-value-format"),
           palette: own ? splitList(own) : palette
         };
-        var option = optionFor(plan, block.rows);
-
-        var patch = el.id ? _patches[el.id] : null;
-        if (patch) {
-          var built = option.series || [];
-          var merged = deepMerge(option, patch);
-          /* Config can restyle, never re-source: dataset-style channels are
-           * dropped and every series keeps the data built from the stamped
-           * bytes. Extra patch series (which could only carry author data)
-           * are not drawn. */
-          delete merged.dataset;
-          var series = [], i, overlay, s;
-          var patchSeries = merged.series;
-          for (i = 0; i < built.length; i++) {
-            overlay = (patchSeries && isPlainObject(patchSeries[i]))
-              ? patchSeries[i] : null;
-            s = (overlay && overlay !== built[i]) ? deepMerge(built[i], overlay) : built[i];
-            s.data = built[i].data;
-            series.push(s);
-          }
-          merged.series = series;
-          option = merged;
-        }
-
         var chart = root.echarts.init(el);
-        chart.setOption(option);
+        chart.setOption(buildOption(el, plan, filteredRows(binding)));
+        _charts.push({ el: el, binding: binding, plan: plan, chart: chart });
         root.addEventListener("resize", function () { chart.resize(); });
       } catch (e) { /* defensive */ }
     });
@@ -660,12 +779,290 @@
     });
   }
 
+  /* ── Controls — filters and search (the control grammar) ───────────────
+   * Controls hydrate AFTER figures so the registries they refresh exist.
+   * Unknown bindings do nothing loudly-silently: no console under the
+   * CSP'd page — a title note on the control, and nothing else touched. */
+
+  function controlEls(kind) {
+    var sel = "[" + kind + "][data-tb-binding]";
+    return Array.prototype.slice.call(document.querySelectorAll(sel));
+  }
+
+  function noteUnknown(el, what) {
+    try { el.title = what; } catch (e) { /* defensive */ }
+  }
+
+  function hydrateControls() {
+    controlEls("data-tb-filter").forEach(function (el) {
+      try {
+        var binding = attr(el, "data-tb-binding");
+        var column = attr(el, "data-tb-column");
+        var block = readBlock(binding);
+        if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
+        if (!column || block.cols.indexOf(column) === -1) {
+          noteUnknown(el, "unknown column: " + column);
+          return;
+        }
+        /* Sorted distinct values from the stamped rows, plus "All". */
+        var values = [];
+        block.rows.forEach(function (r) {
+          var v = r[column];
+          if (v === undefined) return;
+          v = String(v);
+          if (values.indexOf(v) === -1) values.push(v);
+        });
+        values.sort();
+        var all = document.createElement("option");
+        all.value = "All";
+        all.textContent = "All";
+        el.appendChild(all);
+        values.forEach(function (v) {
+          var o = document.createElement("option");
+          o.value = v;
+          o.textContent = v;
+          el.appendChild(o);
+        });
+        el.addEventListener("change", function () {
+          var view = viewOf(binding);
+          if (el.value === "All") delete view.filters[column];
+          else view.filters[column] = el.value;
+          refreshBinding(binding);
+        });
+      } catch (e) { /* defensive */ }
+    });
+    controlEls("data-tb-search").forEach(function (el) {
+      try {
+        var binding = attr(el, "data-tb-binding");
+        if (!readBlock(binding)) {
+          noteUnknown(el, "unknown binding: " + binding);
+          return;
+        }
+        el.addEventListener("input", function () {
+          viewOf(binding).search = trim(el.value || "").toLowerCase();
+          refreshBinding(binding);
+        });
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  /* ── Download — the binding's embedded canonical CSV, byte-verbatim ──── */
+
+  function hydrateDownloads() {
+    controlEls("data-tb-download").forEach(function (el) {
+      try {
+        var binding = attr(el, "data-tb-binding");
+        var label = attr(el, "data-tb-label");
+        if (label !== null) el.textContent = label;
+        else if (!trim(el.textContent)) el.textContent = "CSV";
+        var block = readBlock(binding);
+        if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
+        el.addEventListener("click", function () {
+          try {
+            /* The stamped triple's csv string exactly as embedded — the
+             * bytes the fingerprint covers. A receipt-preserving export:
+             * never the filtered view, never a re-serialisation. */
+            var blob = new Blob([block.csv], { type: "text/csv" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = binding + ".csv";
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch (e) { /* defensive */ }
+        });
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  /* ── Scrollable tables — presentation only ─────────────────────────────
+   * Runs after badges: badgeHost must see the table's own parent, so a
+   * badge pins to the anchor OUTSIDE the scrolling region and stays put. */
+
+  function hydrateScroll() {
+    _tables.forEach(function (entry) {
+      try {
+        var el = entry.el;
+        var want = attr(el, "data-tb-rows");
+        if (want === "all") return; /* the author opted out */
+        var n = want === null ? 10 : parseInt(want, 10);
+        if (!isFinite(n) || n < 1) n = 10;
+        if (entry.rowCount <= n) return;
+        var parent = el.parentNode;
+        if (!parent) return;
+        if ((" " + parent.className + " ").indexOf(" tb-scroll ") !== -1) return;
+        var wrap = document.createElement("div");
+        wrap.className = "tb-scroll";
+        /* ~n rows: a row is about 2.6em (line + cell padding), plus the
+         * sticky header — em-based so it tracks the report's type size. */
+        wrap.style.maxHeight = ((n + 1) * 2.6) + "em";
+        parent.insertBefore(wrap, el);
+        wrap.appendChild(el);
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  /* ── Tabs — the bar is built from the section labels ─────────────────── */
+
+  function hydrateTabs() {
+    var groups = Array.prototype.slice.call(
+      document.querySelectorAll(".tb-tabs"));
+    groups.forEach(function (group) {
+      try {
+        var sections = [], i, kids = group.children;
+        for (i = 0; i < kids.length; i++) {
+          if (kids[i].getAttribute && attr(kids[i], "data-tb-tab")) {
+            sections.push(kids[i]);
+          }
+        }
+        if (!sections.length) return;
+        var bar = document.createElement("div");
+        bar.className = "tb-tab-bar";
+        var select = function (idx) {
+          for (var j = 0; j < sections.length; j++) {
+            if (j === idx) {
+              addClass(sections[j], "tb-tab-active");
+              addClass(bar.children[j], "tb-tab-active");
+            } else {
+              removeClass(sections[j], "tb-tab-active");
+              removeClass(bar.children[j], "tb-tab-active");
+            }
+          }
+          /* A chart hidden at init has no size yet — remeasure them all. */
+          resizeCharts();
+        };
+        sections.forEach(function (sec, idx) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "tb-tab";
+          btn.textContent = attr(sec, "data-tb-tab");
+          btn.addEventListener("click", function () { select(idx); });
+          bar.appendChild(btn);
+        });
+        /* CSS hides non-active sections only once the bar exists (sibling
+         * combinator) — a page whose script never ran shows every section,
+         * and charts were measured before this pass hid anything. */
+        group.insertBefore(bar, group.firstChild);
+        select(0);
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  /* ── The receipt drawer — provenance DISPLAY from #tracebi-receipt ─────
+   * Renders ONLY what the build recorded: never re-colored, never
+   * re-judged. Locked language: "the sink satisfied its contract" — never
+   * "the transform was verified". */
+
+  function receiptLine(parent, text, cls) {
+    var div = document.createElement("div");
+    div.className = cls || "tb-receipt-line";
+    div.textContent = text;
+    parent.appendChild(div);
+    return div;
+  }
+
+  function receiptFigureRow(drawer, fig) {
+    if (!fig || !fig.id) return;
+    var row = document.createElement("div");
+    row.className = "tb-receipt-row";
+    var label = document.createElement("span");
+    var text = String(fig.id);
+    if (fig.kind) text += " · " + fig.kind;
+    if (!fig.unverified && fig.binding) text += " · " + fig.binding;
+    label.textContent = text;
+    row.appendChild(label);
+    if (fig.unverified) {
+      /* The recorded status in its existing tone — display, not judgment. */
+      var badge = document.createElement("span");
+      badge.className = "tb-badge tb-badge--unverified";
+      badge.textContent = "unverified";
+      row.appendChild(badge);
+    }
+    if (fig.fingerprint) {
+      var fp = document.createElement("span");
+      fp.className = "tb-receipt-fp";
+      fp.textContent = String(fig.fingerprint).slice(0, 12);
+      fp.title = String(fig.fingerprint);
+      row.appendChild(fp);
+    }
+    drawer.appendChild(row);
+  }
+
+  function hydrateReceipt() {
+    var el = document.getElementById("tracebi-receipt");
+    if (!el || !document.body) return; /* no receipt block → no drawer */
+    var receipt;
+    try { receipt = JSON.parse(el.textContent); } catch (e) { return; }
+    if (!receipt || typeof receipt !== "object") return;
+
+    var drawer = document.createElement("div");
+    drawer.className = "tb-receipt-drawer";
+    receiptLine(drawer, receipt.report || "Receipt", "tb-receipt-head");
+    if (receipt.rendered_at) {
+      receiptLine(drawer, "rendered " + receipt.rendered_at);
+    }
+    if (receipt.git_sha) receiptLine(drawer, "git " + receipt.git_sha);
+
+    var figures = receipt.figures || [], i;
+    for (i = 0; i < figures.length; i++) {
+      try { receiptFigureRow(drawer, figures[i]); } catch (e) { /* defensive */ }
+    }
+
+    var contracts = receipt.transform_contracts, table, rec, status;
+    if (contracts && typeof contracts === "object") {
+      for (table in contracts) {
+        if (!contracts.hasOwnProperty(table)) continue;
+        rec = contracts[table];
+        status = (rec && typeof rec === "object") ? rec.status : rec;
+        if (status === "satisfied") {
+          receiptLine(drawer, table + ": the sink satisfied its contract");
+        } else if (status === "stale") {
+          receiptLine(drawer, table + ": contract stale — the warehouse "
+                      + "has moved since the certificate");
+        } else {
+          receiptLine(drawer, table + ": no contract");
+        }
+      }
+    }
+
+    var models = receipt.semantic_contract_models;
+    if (models && models.length) {
+      receiptLine(drawer, "semantic contract: " + models.join(", "));
+    }
+    if (receipt.methodology === true) {
+      receiptLine(drawer, "stated methodology aboard");
+    }
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tb-receipt-btn";
+    btn.textContent = "Receipt";
+    btn.addEventListener("click", function () {
+      if ((" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1) {
+        removeClass(drawer, "tb-receipt-open");
+      } else {
+        addClass(drawer, "tb-receipt-open");
+      }
+    });
+    document.body.appendChild(drawer);
+    document.body.appendChild(btn);
+  }
+
   function hydrate() {
     try { hydrateValues(); } catch (e) {}
     try { hydrateTables(); } catch (e) {}
     try { hydrateCharts(); } catch (e) {}
-    /* Badges last: value writes replace textContent and must not eat them. */
+    /* Badges after values (value writes replace textContent and must not
+     * eat them) and BEFORE the scroll wrap, so a table's badge anchors
+     * outside the scrolling region. */
     try { hydrateBadges(); } catch (e) {}
+    try { hydrateScroll(); } catch (e) {}
+    /* Tabs after charts: sections hide only once the bar exists, so every
+     * chart measured its size while still visible. */
+    try { hydrateTabs(); } catch (e) {}
+    try { hydrateControls(); } catch (e) {}
+    try { hydrateDownloads(); } catch (e) {}
+    try { hydrateReceipt(); } catch (e) {}
   }
 
   /* DOM-ready, then requestAnimationFrame (mirroring _CHART_INIT_JS): the

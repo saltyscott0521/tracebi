@@ -104,6 +104,17 @@ Three rules that keep pages honest:
 - **"Top N" is declarative.** Put `order_by` + `limit` in the binding's
   query — never sort or slice in `script.js`, which moves ordering out of
   the receipt.
+- **Interactivity subsets, never computes.** The premium objects —
+  `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
+  (`data-tb-rows`, default 10), tabs (`data-tb-tab`), `.tb-cols-2/3`
+  layouts, `data-tb-download` (the stamped CSV verbatim — a
+  receipt-preserving export) — all subset WHICH stamped rows figures
+  display. They never compute new numbers: client-side aggregation would
+  mint numbers, so value figures never react and a filtered KPI needs its
+  own binding. Every artifact also carries the receipt drawer (the
+  floating Receipt button); the manifest remains the receipt of record.
+  `examples/portfolio_project/reports/portfolio_showcase/` is the
+  maintained kitchen-sink demo of all of it.
 - **Explore inside the artifact.** Blocks marked
   `data-tb-stage="exploration"` render under `tracebi dev` and are deleted
   at the final build; the workbench at `/__workbench` shows figures,

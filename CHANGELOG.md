@@ -6,6 +6,43 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the interactive artifact: filters, layouts, the receipt drawer, delivery
+
+The wave that retires the rendering server. One honesty rule governs all
+of it, locked in code and vocabulary: **controls subset which stamped
+rows figures display; they never compute new numbers** — client-side
+aggregation would mint numbers, so value figures never react and a
+filtered KPI needs its own binding.
+
+- **Filter objects and search** — `data-tb-filter` dropdowns
+  (auto-populated from the stamped values, AND-combining) and
+  `data-tb-search`, re-rendering a binding's tables and charts from the
+  filtered stamped rows.
+- **Scrollable tables** — past `data-tb-rows` (default 10) a table
+  scrolls inside its card with a sticky header, so a 30-row table never
+  stretches the page. `"all"` opts out.
+- **Tabs and column layouts** — `data-tb-tab` panes with a runtime-built
+  tab bar; `.tb-cols-2` / `.tb-cols-3` side-by-side grids, collapsing on
+  small screens.
+- **Receipt-preserving CSV export** — `data-tb-download` saves the
+  binding's stamped bytes VERBATIM.
+- **The receipt drawer** — every artifact carries a floating Receipt
+  button opening the human-readable face of its receipt: per-figure
+  fingerprints, "the sink satisfied its contract" per table, the
+  semantic-contract models, methodology presence. Display only, from a
+  build-emitted block; the manifest remains the receipt of record;
+  draft snapshots carry none.
+- **`tracebi report send`** — distribution never outruns verification:
+  builds, verifies, and REFUSES to send a failing report (`--force`
+  pastes the red verdict prominently into the body — a flag travels
+  with the report, never silently); emails the artifact + manifest via
+  `TRACEBI_SMTP_URL`, optional Slack ping, cron recipe in the help.
+- **The showcase** — `reports/portfolio_showcase/` in the reference
+  project: every figure kind, control, layout, and trust affordance on
+  one page, rot-proofed by a hermetic CI test that rebuilds it from a
+  fresh copy (which immediately caught a real first-run bug: the
+  reference transform's leftover connect() failed on a clean clone).
+
 ### Added — the embedded semantic contract: the artifact carries what the vocabulary meant
 
 The model→report exchange was already JSON (bindings, resolved queries,

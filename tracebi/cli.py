@@ -2469,11 +2469,15 @@ def _serve_file(html_path: Path, name: str, port: int, open_browser: bool) -> No
 
 def cmd_report(args: argparse.Namespace) -> int:
     """
-    Build, preview, or snapshot a report — the build step (architecture §2).
+    Build, preview, snapshot, or send a report — the build step
+    (architecture §2), plus scheduled delivery v1.
 
         tracebi report build <name>      # → output/<name>.html + manifest
         tracebi report preview <name>    # build, then serve it locally
         tracebi report snapshot <name>   # review snapshot — NO manifest
+        tracebi report send <name> --to a@b.com[,c@d]
+                                         # build, verify, then email BOTH the
+                                         # html and its manifest receipt
 
     A report is a package (``reports/<name>/``) or a spec
     (``reports/<name>.json``). Output defaults to ``output/<name>.html`` —
@@ -2481,12 +2485,23 @@ def cmd_report(args: argparse.Namespace) -> int:
     A snapshot keeps the exploration blocks, banners itself, appends a
     read-only code appendix, and writes NO manifest: it is the sendable
     working state, and ``verify`` refuses it by name.
+
+    ``send`` builds exactly like ``build``, then verifies the manifest
+    in-process and REFUSES to send while the receipt does not verify —
+    distribution never outruns verification. ``--force`` sends anyway with
+    the failing verdict pasted prominently into the body: the red flag
+    travels WITH the report, never silently.
     """
     reports_dir: Path = args.reports_dir
     try:
         kind, path = _resolve_report_target(args.name, reports_dir)
     except FileNotFoundError as exc:
         print(exc, file=sys.stderr)
+        return 1
+
+    if args.action == "send" and not getattr(args, "to", None):
+        print("report send: --to is required "
+              "(one or more addresses, comma-separated)", file=sys.stderr)
         return 1
 
     if args.action == "status":
@@ -2509,8 +2524,70 @@ def cmd_report(args: argparse.Namespace) -> int:
     print(f"Rendered {args.name} ({kind}) → {output}")
     print(f"  manifest → {manifest}")
 
+    if args.action == "send":
+        return _report_send(args, output, manifest)
     if args.action == "preview":
         _serve_file(output, args.name, args.port, not args.no_browser)
+    return 0
+
+
+def _report_send(args: argparse.Namespace, output: Path,
+                 manifest_path: Path) -> int:
+    """The send action's second half: verification gates distribution.
+
+    The build already happened, exactly as ``build``. The manifest is now
+    verified in-process; a receipt that does not verify is refused —
+    ``--force`` sends anyway with the failing verdict pasted prominently
+    into the body (see :mod:`tracebi._delivery`), so the red flag travels
+    WITH the report instead of the report outrunning it.
+    """
+    from tracebi._delivery import send_report, slack_notify
+    from tracebi.verify import load_models, verify_manifest
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"report send: cannot read manifest {manifest_path}: {exc}",
+              file=sys.stderr)
+        return 1
+
+    models = load_models(args.models_dir)
+    try:
+        result = verify_manifest(manifest, models)
+    except Exception as exc:  # noqa: BLE001 — a corrupt receipt is a user error
+        print(f"report send: manifest could not be verified: "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+    ok = result["exit_code"] == 0
+    print(result["verdict_detail"], file=sys.stdout if ok else sys.stderr)
+    if not ok and not getattr(args, "force", False):
+        print(f"refusing to send '{args.name}': the receipt did not verify. "
+              f"Distribution never outruns verification; --force sends "
+              f"anyway with the verdict pasted into the body.",
+              file=sys.stderr)
+        return result["exit_code"] or 1
+
+    to = [a.strip() for a in args.to.split(",") if a.strip()]
+    try:
+        send_report(output, manifest_path, to,
+                    subject=getattr(args, "subject", None),
+                    verify_result=result)
+    except (RuntimeError, OSError) as exc:
+        print(f"report send: {exc}", file=sys.stderr)
+        return 1
+    print(f"Sent {args.name} → {', '.join(to)} (html + manifest receipt)")
+
+    webhook = os.environ.get("TRACEBI_SLACK_WEBHOOK")
+    if webhook:
+        n = len(result.get("figures") or result.get("sections") or [])
+        text = (f"{args.name} delivered · "
+                f"{result['verdict'].upper().replace('_', ' ')} · "
+                f"{n} figures")
+        try:
+            slack_notify(webhook, text)
+        except Exception as exc:  # noqa: BLE001 — the report already went out
+            print(f"slack notify failed (the report was sent): {exc}",
+                  file=sys.stderr)
     return 0
 
 
@@ -2781,10 +2858,37 @@ def build_parser() -> argparse.ArgumentParser:
     p_report = sub.add_parser(
         "report",
         help="Build a report package or spec to one self-contained .html + "
-             "manifest, or preview it locally.",
+             "manifest, preview it locally, or send it (build → verify → "
+             "email with the receipt attached).",
     )
-    p_report.add_argument("action", choices=["build", "preview", "snapshot", "status"])
+    p_report.add_argument("action",
+                          choices=["build", "preview", "snapshot", "status",
+                                   "send"])
     p_report.add_argument("name", help="Report name (package dir or spec stem).")
+    p_report.add_argument(
+        "--to",
+        help="With `send`: recipient address(es), comma-separated. Send "
+             "builds like `build`, verifies the manifest in-process, and "
+             "refuses to send unless the receipt verifies (--force "
+             "overrides, pasting the verdict into the body). Email needs "
+             "TRACEBI_SMTP_URL (smtp://user:pass@host:port or smtps://) "
+             "and TRACEBI_SMTP_FROM; TRACEBI_SLACK_WEBHOOK adds a Slack "
+             "ping. Scheduling is plain cron — a crontab line such as "
+             "`0 7 * * MON cd /path/to/project && tracebi report send "
+             "weekly --to team@example.com`, or a script under scheduled/ "
+             "(the project's scheduled-jobs folder) that your scheduler "
+             "runs. No daemon ships; the receipt does.",
+    )
+    p_report.add_argument(
+        "--subject",
+        help="With `send`: email subject (default: '[tracebi] <report name>').",
+    )
+    p_report.add_argument(
+        "--force", action="store_true",
+        help="With `send`: send even when the receipt does not verify. The "
+             "failing verdict is pasted prominently into the email body — "
+             "a red flag travels WITH the report, never silently.",
+    )
     p_report.add_argument("--output", help="Output .html path (default: output/<name>.html).")
     p_report.add_argument(
         "--json", action="store_true",

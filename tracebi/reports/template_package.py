@@ -311,6 +311,23 @@ class TemplatePackage:
             }
         manifest.semantic_contract = semantic_record
 
+        # The receipt block — the drawer's provenance feed (shared drawer
+        # contract). Presentation feed ONLY: every fact here duplicates one
+        # the manifest already records (report, render stamp, per-figure
+        # binding fingerprints, compact contract statuses), embedded so the
+        # in-page drawer can display provenance offline. The MANIFEST
+        # remains the receipt of record — verify reads the manifest, never
+        # this block, and the drawer renders only what is recorded here:
+        # provenance display, never re-colored. Rides the same extra-blocks
+        # slot as the semantic-contract blocks.
+        receipt = _receipt_payload(
+            manifest, figs,
+            fingerprints={sd.name: sd.fingerprint for sd in embed_items},
+            binding_models={n: ref.model for n, ref in self.bindings.items()},
+            contracts=contracts,
+        )
+        contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
+
         # Provenance for the runtime's badges, decided from what was actually
         # embedded (v2 §2.4): a stylesheet can restyle a badge, never
         # re-color honesty. --no-badges omits rendering; the manifest is
@@ -713,6 +730,51 @@ def _embedded_payload(block: str) -> str:
     tags — the bytes the offline checker recovers and rehashes, taken from
     the block itself so the hash can never disagree with what shipped."""
     return block[block.index(">") + 1:block.rindex("</script>")]
+
+
+def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
+                     fingerprints: dict, binding_models: dict,
+                     contracts: dict) -> dict:
+    """The ``tracebi-receipt`` block's payload — the receipt drawer's feed.
+
+    Presentation feed only: it duplicates facts the manifest records so the
+    built page can show its own provenance offline; the MANIFEST remains
+    the receipt of record, and nothing in verify reads this block. Key
+    order is fixed and every aggregate is sorted or in document order, so
+    the payload is byte-stable across renders (the ``rendered_at`` stamp
+    aside). ``transform_contracts`` is compacted to ``{table: status}`` —
+    the drawer names the status; the full record stays in the manifest.
+    """
+    figures = []
+    for f in figs:
+        entry: dict = {"id": f.id, "kind": f.kind}
+        if f.binding:
+            entry["binding"] = f.binding
+        if f.unverified:
+            entry["unverified"] = True
+        fp = fingerprints.get(f.binding) if f.binding else None
+        if fp:
+            entry["fingerprint"] = fp
+        # Model names come from the bindings' DataRefs — a report.py
+        # output has no DataRef, so its figure records no model.
+        model = binding_models.get(f.binding) if f.binding else None
+        if model:
+            entry["model"] = model
+        figures.append(entry)
+    payload: dict = {
+        "report": manifest.report_name,
+        "rendered_at": manifest.rendered_at,
+        "git_sha": manifest.git_sha,
+        "figures": figures,
+    }
+    if contracts:
+        payload["transform_contracts"] = {
+            table: contracts[table]["status"] for table in sorted(contracts)
+        }
+    if manifest.semantic_contract:
+        payload["semantic_contract_models"] = sorted(manifest.semantic_contract)
+    payload["methodology"] = manifest.methodology is not None
+    return payload
 
 
 def _figure_record(f: Figure) -> dict:

@@ -124,3 +124,71 @@ class TestStackOrder:
         assert html.count("Content-Security-Policy") == 1
         assert "http://" not in html.replace("http://www.w3.org", "")
         assert 'src="https://' not in html and "@import" not in html
+
+
+# ── the receipt block ───────────────────────────────────────────────────────
+# The build emits one tracebi-receipt JSON block: the drawer's provenance
+# feed. It duplicates facts the manifest records — the MANIFEST remains the
+# receipt of record — so every entry is checked against the manifest it
+# mirrors.
+
+#: The block's full opening tag. The runtime script also names the bare id
+#: string (it reads the block), so tests anchor on the element itself.
+RECEIPT_OPEN = '<script id="tracebi-receipt" type="application/json">'
+
+
+def _receipt(html):
+    start = html.index(RECEIPT_OPEN)
+    payload = html[start + len(RECEIPT_OPEN):html.index("</script>", start)]
+    return json.loads(payload)
+
+
+class TestReceiptBlock:
+    def test_records_manifest_facts_and_figure_fingerprints(
+            self, stack_model, tmp_path):
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(
+            str(_pkg(tmp_path, with_report_py=True))).render(
+            {"stack_model": stack_model}, str(out)).to_dict()
+        receipt = _receipt(out.read_text(encoding="utf-8"))
+        # The header duplicates the manifest, not a second computation.
+        assert receipt["report"] == manifest["report_name"]
+        assert receipt["rendered_at"] == manifest["rendered_at"]
+        assert receipt["git_sha"] == manifest["git_sha"]
+        assert receipt["semantic_contract_models"] == ["stack_model"]
+        assert receipt["methodology"] is False
+        # Every figure's fingerprint equals its binding's embedded_sha256.
+        sha = {r["name"]: r["embedded_sha256"]
+               for r in manifest["embedded_data"]}
+        assert [f["id"] for f in receipt["figures"]] == [
+            "fig-kpi", "fig-tbl", "fig-rank"]
+        by_id = {f["id"]: f for f in receipt["figures"]}
+        assert by_id["fig-kpi"]["fingerprint"] == sha["kpi"]
+        assert by_id["fig-tbl"]["fingerprint"] == sha["by_region"]
+        assert by_id["fig-rank"]["fingerprint"] == sha["ranked"]
+        # Model names come from the bindings' DataRefs; a report.py output
+        # has no DataRef, so its figure records no model.
+        assert by_id["fig-kpi"]["model"] == "stack_model"
+        assert "model" not in by_id["fig-rank"]
+
+    def test_byte_stable_across_renders_modulo_timestamp(
+            self, stack_model, tmp_path):
+        pkg = TemplatePackage(str(_pkg(tmp_path)))
+        receipts = []
+        for name in ("a.html", "b.html"):
+            out = tmp_path / name
+            pkg.render({"stack_model": stack_model}, str(out))
+            receipts.append(_receipt(out.read_text(encoding="utf-8")))
+        r1, r2 = receipts
+        assert r1.pop("rendered_at") and r2.pop("rendered_at")
+        # dicts preserve insertion order, so equal dumps means the same
+        # bytes in the same order — byte-stable but for the render stamp.
+        assert json.dumps(r1) == json.dumps(r2)
+
+    def test_snapshot_carries_no_receipt_block(self, stack_model, tmp_path):
+        # A draft page carries no receipt affordance — nothing for the
+        # drawer to make look final (it also carries no manifest at all).
+        pkg = TemplatePackage(str(_pkg(tmp_path)))
+        snap = tmp_path / "snap.html"
+        pkg.snapshot({"stack_model": stack_model}, str(snap))
+        assert RECEIPT_OPEN not in snap.read_text(encoding="utf-8")

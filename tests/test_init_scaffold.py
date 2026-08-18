@@ -203,3 +203,150 @@ class TestNotebookShapedTransforms:
         assert cli.main(["init", str(proj)]) == 0
         monkeypatch.chdir(proj)
         assert cli.main(["run-transform", "nope"]) == 1
+
+
+class TestReportSend:
+    """`tracebi report send` — scheduled-delivery v1: distribution with the
+    receipt attached, gated by verification.
+
+    The honesty rule under test: distribution never outruns verification.
+    A receipt that does not verify is refused; --force pastes the failing
+    verdict INTO the body, so the red flag travels WITH the report — never
+    silently. No test opens a socket: SMTP is faked at the smtplib seam or
+    send_report is captured at the CLI seam.
+    """
+
+    _PASSING = {
+        "verdict": "reproduces",
+        "verdict_detail": "REPRODUCES — every checked section matches "
+                          "the manifest",
+        "exit_code": 0, "ok": True, "figures": [{"id": "kpi_total"}],
+    }
+    _FAILING = {
+        "verdict": "not_reproduced",
+        "verdict_detail": "NOT REPRODUCED — section(s) could not be shown "
+                          "to reproduce; explain before anyone reads the "
+                          "number",
+        "exit_code": 1, "ok": False, "figures": [{"id": "kpi_total"}],
+    }
+
+    @pytest.fixture(scope="class")
+    def proj(self, tmp_path_factory):
+        """One scaffolded project with a sunk warehouse, shared by the
+        class — each test rebuilds the report in-process (that is what
+        `send` does) but the transform runs once."""
+        proj = tmp_path_factory.mktemp("send") / "proj"
+        assert cli.main(["init", str(proj)]) == 0
+        out = subprocess.run(
+            [sys.executable, "transforms/sample_transform.py"],
+            capture_output=True, text=True, cwd=str(proj),
+        )
+        assert out.returncode == 0, out.stderr
+        return proj
+
+    def _env(self, monkeypatch, proj):
+        monkeypatch.chdir(proj)
+        monkeypatch.setenv("TRACEBI_SMTP_URL", "smtp://mail.example.com:2525")
+        monkeypatch.setenv("TRACEBI_SMTP_FROM", "reports@example.com")
+        monkeypatch.delenv("TRACEBI_SLACK_WEBHOOK", raising=False)
+
+    def _fake_smtp(self, monkeypatch):
+        """Capture the EmailMessage at the smtplib seam — no sockets."""
+        import tracebi._delivery as delivery
+        sent = {}
+
+        class FakeSMTP:
+            def __init__(self, host, port, timeout=None):
+                sent["host"], sent["port"] = host, port
+
+            def starttls(self):
+                pass
+
+            def login(self, user, password):
+                sent["login"] = (user, password)
+
+            def send_message(self, msg):
+                sent["msg"] = msg
+
+            def quit(self):
+                pass
+
+        monkeypatch.setattr(delivery.smtplib, "SMTP", FakeSMTP)
+        monkeypatch.setattr(delivery.smtplib, "SMTP_SSL", FakeSMTP)
+        return sent
+
+    def test_send_report_names_the_missing_env_vars(self, tmp_path, monkeypatch):
+        """Invariant 4 shape: unconfigured delivery fails loudly, naming
+        exactly the variables to set."""
+        from tracebi._delivery import send_report
+        monkeypatch.delenv("TRACEBI_SMTP_URL", raising=False)
+        monkeypatch.delenv("TRACEBI_SMTP_FROM", raising=False)
+        html = tmp_path / "r.html"
+        html.write_text("<p>x</p>")
+        man = tmp_path / "r.html.manifest.json"
+        man.write_text("{}")
+        with pytest.raises(RuntimeError) as exc:
+            send_report(html, man, "a@example.com")
+        assert "TRACEBI_SMTP_URL" in str(exc.value)
+        assert "TRACEBI_SMTP_FROM" in str(exc.value)
+
+    def test_send_refuses_without_smtp_env(self, proj, monkeypatch, capsys):
+        import tracebi.verify as verify_mod
+        monkeypatch.chdir(proj)
+        monkeypatch.delenv("TRACEBI_SMTP_URL", raising=False)
+        monkeypatch.delenv("TRACEBI_SMTP_FROM", raising=False)
+        monkeypatch.delenv("TRACEBI_SLACK_WEBHOOK", raising=False)
+        monkeypatch.setattr(verify_mod, "verify_manifest",
+                            lambda *a, **k: dict(self._PASSING))
+        rc = cli.main(["report", "send", "sample_dashboard",
+                       "--to", "a@example.com"])
+        assert rc == 1
+        assert "TRACEBI_SMTP_URL" in capsys.readouterr().err
+
+    def test_send_refuses_when_verify_fails(self, proj, monkeypatch, capsys):
+        import tracebi._delivery as delivery
+        import tracebi.verify as verify_mod
+        self._env(monkeypatch, proj)
+        monkeypatch.setattr(verify_mod, "verify_manifest",
+                            lambda *a, **k: dict(self._FAILING))
+        attempted = []
+        monkeypatch.setattr(delivery, "send_report",
+                            lambda *a, **k: attempted.append(a))
+        rc = cli.main(["report", "send", "sample_dashboard",
+                       "--to", "a@example.com"])
+        assert rc == 1
+        assert not attempted, "a failing receipt must never be sent"
+        assert "NOT REPRODUCED" in capsys.readouterr().err
+
+    def test_force_sends_with_the_verdict_in_the_body(self, proj, monkeypatch):
+        import tracebi.verify as verify_mod
+        self._env(monkeypatch, proj)
+        monkeypatch.setattr(verify_mod, "verify_manifest",
+                            lambda *a, **k: dict(self._FAILING))
+        sent = self._fake_smtp(monkeypatch)
+        rc = cli.main(["report", "send", "sample_dashboard",
+                       "--to", "a@example.com", "--force"])
+        assert rc == 0
+        body = sent["msg"].get_body(
+            preferencelist=("plain",)).get_content()
+        assert "DID NOT VERIFY" in body    # the red flag banner, up top
+        assert "NOT REPRODUCED" in body    # the verdict itself
+
+    def test_happy_path_attaches_html_and_manifest(self, proj, monkeypatch):
+        import tracebi.verify as verify_mod
+        self._env(monkeypatch, proj)
+        monkeypatch.setattr(verify_mod, "verify_manifest",
+                            lambda *a, **k: dict(self._PASSING))
+        sent = self._fake_smtp(monkeypatch)
+        rc = cli.main(["report", "send", "sample_dashboard",
+                       "--to", "a@example.com,b@example.com"])
+        assert rc == 0
+        msg = sent["msg"]
+        assert msg["To"] == "a@example.com, b@example.com"
+        names = [p.get_filename() for p in msg.iter_attachments()]
+        assert names == ["sample_dashboard.html",
+                         "sample_dashboard.html.manifest.json"], \
+            "the page and its receipt travel together"
+        body = msg.get_body(preferencelist=("plain",)).get_content()
+        assert "self-contained" in body and "receipt" in body
+        assert "RED FLAG" not in body

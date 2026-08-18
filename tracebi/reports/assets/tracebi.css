@@ -258,7 +258,150 @@ img, svg { max-width: 100%; }
   margin-bottom: var(--tb-space-2);
 }
 
-/* ── 10. Print — honesty survives printing ─────────────────────────────── */
+/* ── 10. Controls — subset which stamped rows figures display ──────────── */
+/* Controls never compute a number; they choose among rows already stamped. */
+
+select[data-tb-filter],
+input[data-tb-search] {
+  font: inherit;
+  color: var(--tb-ink);
+  background: var(--tb-bg);
+  border: 1px solid var(--tb-rule);
+  border-radius: var(--tb-radius);
+  padding: var(--tb-space-1) var(--tb-space-2);
+  margin: 0 var(--tb-space-2) var(--tb-space-2) 0;
+}
+
+button[data-tb-download] {
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--tb-muted);
+  background: var(--tb-bg);
+  border: 1px solid var(--tb-rule);
+  border-radius: var(--tb-radius);
+  padding: var(--tb-space-1) var(--tb-space-2);
+  cursor: pointer;
+}
+button[data-tb-download]:hover { color: var(--tb-accent); }
+
+/* ── 11. Scrollable tables — presentation only ─────────────────────────── */
+/* The runtime wraps an over-long hydrated table; max-height is set inline
+ * from data-tb-rows (em-based, ~one row per 2.6em plus the header). */
+
+.tb-scroll {
+  overflow-y: auto;
+  margin: var(--tb-space-3) 0;
+}
+.tb-scroll .tb-table,
+.tb-scroll [data-tb-figure="table"] { margin: 0; }
+.tb-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--tb-bg);
+}
+
+/* ── 12. Layout — columns and tabs ─────────────────────────────────────── */
+
+.tb-cols-2, .tb-cols-3 {
+  display: grid;
+  gap: var(--tb-space-3);
+  margin: var(--tb-space-3) 0;
+}
+.tb-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tb-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) {
+  .tb-cols-2, .tb-cols-3 { grid-template-columns: 1fr; }
+}
+
+.tb-tabs { margin: var(--tb-space-3) 0; }
+
+.tb-tab-bar {
+  display: flex;
+  gap: var(--tb-space-2);
+  border-bottom: 1px solid var(--tb-rule);
+  margin-bottom: var(--tb-space-3);
+}
+
+.tb-tab {
+  font: inherit;
+  color: var(--tb-muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: var(--tb-space-1) var(--tb-space-2);
+  cursor: pointer;
+}
+.tb-tab.tb-tab-active {
+  color: var(--tb-accent);
+  border-bottom-color: var(--tb-accent);
+  font-weight: 600;
+}
+
+/* Hiding activates only once the runtime has inserted the bar (sibling
+ * combinator) — a page whose script never ran shows every section. */
+.tb-tab-bar ~ [data-tb-tab] { display: none; }
+.tb-tab-bar ~ [data-tb-tab].tb-tab-active { display: block; }
+
+/* ── 13. Receipt drawer — provenance DISPLAY, never re-colored ─────────── */
+/* Muted like .tb-note. No rule below sets a colour on a badge: the drawer
+ * shows the recorded statuses in their own tones, untouched. */
+
+.tb-receipt-btn {
+  position: fixed;
+  right: var(--tb-space-3);
+  bottom: var(--tb-space-3);
+  z-index: 30;
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--tb-muted);
+  background: var(--tb-bg);
+  border: 1px solid var(--tb-rule);
+  border-radius: 999px;
+  padding: var(--tb-space-1) var(--tb-space-3);
+  cursor: pointer;
+}
+.tb-receipt-btn:hover { color: var(--tb-accent); }
+
+.tb-receipt-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  max-width: 85vw;
+  z-index: 29;
+  overflow-y: auto;
+  background: var(--tb-bg);
+  border-left: 1px solid var(--tb-rule);
+  padding: var(--tb-space-3);
+  font-size: 0.85em;
+  color: var(--tb-muted);
+  transform: translateX(100%);
+  transition: transform 0.15s ease-out;
+}
+.tb-receipt-drawer.tb-receipt-open { transform: none; }
+
+.tb-receipt-head {
+  color: var(--tb-ink);
+  font-weight: 700;
+  margin-bottom: var(--tb-space-2);
+}
+.tb-receipt-line { margin: var(--tb-space-1) 0; }
+.tb-receipt-row {
+  padding: var(--tb-space-1) 0;
+  border-bottom: 1px solid var(--tb-rule);
+}
+.tb-receipt-fp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin-left: var(--tb-space-2);
+}
+/* Layout only — the badge keeps its own recorded tone. */
+.tb-receipt-drawer .tb-badge {
+  position: static;
+  margin-left: var(--tb-space-2);
+}
+
+/* ── 14. Print — honesty survives printing ─────────────────────────────── */
 
 @media print {
   body { max-width: none; padding: 0; }
@@ -278,4 +421,13 @@ img, svg { max-width: 100%; }
   .tb-table--striped tbody tr:nth-child(even) { background: none; }
   .tb-callout { background: none; }
   pre { background: none; border: 1px solid var(--tb-rule); }
+
+  /* Interactive chrome has no meaning on paper. */
+  .tb-receipt-btn, .tb-receipt-drawer, .tb-tab-bar,
+  select[data-tb-filter], input[data-tb-search], button[data-tb-download] {
+    display: none;
+  }
+
+  /* A scrolling region would truncate rows on paper — unclip it. */
+  .tb-scroll { overflow-y: visible; max-height: none !important; }
 }

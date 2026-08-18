@@ -159,8 +159,11 @@ def run() -> dict:
 
     # ── SINK to the warehouse ─────────────────────────────────────────────────
     os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
+    # No connect() here: write() manages its own short-lived read-write
+    # connection, and a read-only connect would fail on a fresh clone whose
+    # warehouse file does not exist yet (first-run bug caught by the
+    # showcase rot-proof test).
     wh = DuckDBConnector("warehouse", database=WAREHOUSE)
-    wh.connect()
     wh.write(dim_fund, "dim_fund")
     wh.write(dim_issuer, "dim_issuer")
     wh.write(fact, "fact_holdings")

@@ -1,0 +1,43 @@
+{
+  "name": "Portfolio Showcase",
+  "author": "tracebi reference",
+  "description": "The maintained kitchen-sink demo: every figure kind, controls, layouts, and trust affordance the artifact offers, on the reference data.",
+  "libs": ["echarts"],
+  "data": {
+    "kpis": {
+      "model": "portfolio_model",
+      "query": { "fact": "fact_holdings", "measures": ["fair_value", "positions", "mark"] }
+    },
+    "by_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value"],
+        "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"]
+      }
+    },
+    "by_fund": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value"],
+        "dimensions": ["dim_fund.fund"], "order_by": ["-fair_value"]
+      }
+    },
+    "holdings_detail": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["fair_value", "cost_basis", "mark"],
+        "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"],
+        "order_by": ["-fair_value"]
+      }
+    },
+    "top_issuers": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value", "mark"],
+        "dimensions": ["dim_issuer.issuer"],
+        "order_by": ["-fair_value"], "limit": 8
+      }
+    }
+  }
+}

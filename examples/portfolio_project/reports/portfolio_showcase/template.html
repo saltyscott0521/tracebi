@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Portfolio Showcase</title></head>
+<body>
+<main class="tb-page">
+  <h1>Direct Lending — Portfolio Showcase</h1>
+  <p class="tb-note">The kitchen-sink reference: every figure kind, control,
+    layout, and trust affordance in one page. Every number is live from the
+    stamped bindings — including this one: total fair value is
+    <span data-tb-figure="value" data-tb-binding="kpis"
+          data-tb-cell="fair_value" data-tb-format="compact"
+          id="val-fv-inline">—</span>.
+    Open the <strong>Receipt</strong> drawer (bottom right) to see each
+    figure's fingerprint and the sink-contract status.</p>
+
+  <div class="tb-tabs">
+    <section data-tb-tab="Overview">
+      <div class="tb-grid">
+        <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+             data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">
+          <span class="tb-kpi-label">Fair value</span>
+          <span class="tb-kpi-value"></span>
+        </div>
+        <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+             data-tb-cell="positions" data-tb-format="comma" id="kpi-pos">
+          <span class="tb-kpi-label">Positions</span>
+          <span class="tb-kpi-value"></span>
+        </div>
+        <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+             data-tb-cell="mark" data-tb-format="percent" id="kpi-mark">
+          <span class="tb-kpi-label">Avg mark</span>
+          <span class="tb-kpi-value"></span>
+        </div>
+        <div class="tb-kpi" data-tb-figure="value" data-tb-unverified
+             data-tb-note="analyst estimate" id="kpi-est">
+          <span class="tb-kpi-label">Est. Q3 deployments</span>
+          <span class="tb-kpi-value">4</span>
+        </div>
+      </div>
+      <div class="tb-cols-2">
+        <div class="tb-card">
+          <h2>Fair value by sector</h2>
+          <div data-tb-figure="chart" data-tb-binding="by_sector"
+               data-tb-type="bar" data-tb-x="dim_issuer.sector"
+               data-tb-y="fair_value" data-tb-value-format="compact"
+               id="chart-sector"></div>
+        </div>
+        <div class="tb-card">
+          <h2>Fair value by fund</h2>
+          <div data-tb-figure="chart" data-tb-binding="by_fund"
+               data-tb-type="pie" data-tb-x="dim_fund.fund"
+               data-tb-y="fair_value" data-tb-value-format="compact"
+               id="chart-fund"></div>
+        </div>
+      </div>
+      <div class="tb-cols-2">
+        <div class="tb-card">
+          <h2>Top issuers <button data-tb-download
+              data-tb-binding="top_issuers">CSV</button></h2>
+          <table data-tb-figure="table" data-tb-binding="top_issuers"
+                 class="tb-table--striped" id="tbl-top"></table>
+        </div>
+        <div class="tb-card">
+          <h2>Concentration (python-derived)</h2>
+          <div data-tb-figure="chart" data-tb-binding="concentration"
+               data-tb-type="line" data-tb-x="dim_issuer.sector"
+               data-tb-y="cum_share" data-tb-value-format="percent"
+               id="chart-conc"></div>
+        </div>
+      </div>
+    </section>
+
+    <section data-tb-tab="Detail">
+      <div class="tb-card">
+        <h2>Holdings detail</h2>
+        <p class="tb-note">Filter and search subset which stamped rows
+          display — they never compute new numbers. The table scrolls past
+          10 rows; the CSV button exports the stamped bytes verbatim.</p>
+        <p>
+          Sector:
+          <select data-tb-filter data-tb-binding="holdings_detail"
+                  data-tb-column="dim_issuer.sector"></select>
+          Search issuer:
+          <input data-tb-search data-tb-binding="holdings_detail"
+                 placeholder="type to filter…">
+          <button data-tb-download data-tb-binding="holdings_detail"
+                  data-tb-label="Download CSV"></button>
+        </p>
+        <table data-tb-figure="table" data-tb-binding="holdings_detail"
+               class="tb-table--striped" id="tbl-detail"></table>
+      </div>
+    </section>
+
+    <section data-tb-tab="Methodology">
+      <section data-tb-methodology>
+        <h2>Methodology</h2>
+        <p class="tb-note">Author's note: marks are administrator-reported;
+          no independent valuation was performed.</p>
+      </section>
+    </section>
+  </div>
+
+  <section data-tb-stage="exploration">
+    <h3>Working notes</h3>
+    <p>Scratch space — dies at the final build.</p>
+  </section>
+</main>
+</body></html>

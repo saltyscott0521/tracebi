@@ -235,6 +235,54 @@ def _presentation() -> dict:
                                    "appendix, never a claim: no badge, no "
                                    "status",
         },
+        "controls": {
+            "rule": "Controls subset which stamped rows figures display; "
+                    "they never compute new numbers — client-side "
+                    "aggregation would mint numbers, and a filtered KPI "
+                    "needs its own binding. Value figures never react to "
+                    "controls.",
+            "data-tb-filter": "<select data-tb-filter data-tb-binding=\"B\" "
+                              "data-tb-column=\"C\"> — the runtime "
+                              "populates it with the column's sorted "
+                              "distinct values plus 'All'; multiple "
+                              "filters on one binding AND-combine; "
+                              "re-renders that binding's table and chart "
+                              "figures from the filtered stamped rows",
+            "data-tb-search": "<input data-tb-search data-tb-binding=\"B\">"
+                              " — case-insensitive substring match across "
+                              "all columns; ANDs with the filters",
+            "data-tb-rows": "after hydration, a table figure with more "
+                            "rows than data-tb-rows (default 10) is "
+                            "wrapped in a .tb-scroll container sized to "
+                            "show about that many rows, sticky header; "
+                            "data-tb-rows=\"all\" opts out. Presentation "
+                            "only",
+            "data-tb-download": "<button data-tb-download "
+                                "data-tb-binding=\"B\" "
+                                "[data-tb-label=\"…\"]> — downloads the "
+                                "binding's embedded canonical CSV — the "
+                                "stamped CSV verbatim — a "
+                                "receipt-preserving export, saved as "
+                                "<B>.csv",
+        },
+        "layout": {
+            "tabs": "<div class=\"tb-tabs\"><section "
+                    "data-tb-tab=\"Label\">…</section>…</div> — the "
+                    "runtime builds the tab bar from the labels and shows "
+                    "one section at a time",
+            "columns": ".tb-cols-2 / .tb-cols-3 grid classes; responsive "
+                       "collapse to one column under 720px",
+        },
+        "receipt_drawer": (
+            "Every built artifact embeds a tracebi-receipt JSON block — "
+            "report, render stamp, git SHA, per-figure binding "
+            "fingerprints, compact transform-contract statuses, the "
+            "semantic-contract model names, and whether stated "
+            "methodology shipped. The drawer is a provenance display from "
+            "the recorded receipt block — it renders only what the block "
+            "records, never re-colored; the manifest remains the receipt "
+            "of record. Draft snapshots carry no receipt block."
+        ),
         "prose_values": "When explaining results in prose, BIND the numbers: "
                         "<span data-tb-figure=\"value\" data-tb-binding=... "
                         "data-tb-cell=... data-tb-format=...>—</span> inside "

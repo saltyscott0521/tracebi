@@ -298,9 +298,14 @@ class TestBuildReport:
 def test_workbench_state_defaults_to_discovery(tmp_path, monkeypatch):
     """Called with no report (the human is running `tracebi dev` with no
     name), the tool returns the project-level discovery state."""
+    import tracebi.mcp_server as gw
     from tracebi.mcp_server import gateway_workbench_state
 
     monkeypatch.chdir(tmp_path)
+    # Isolate from the process-global model registry: earlier tests
+    # register models whose DuckDB warehouses discovery would (correctly)
+    # scan, flipping warehouse.exists in full-suite runs.
+    monkeypatch.setattr(gw, "_load_models", lambda: {})
     out = gateway_workbench_state()
     assert out["mode"] == "discovery"
     assert out["name"] == "_discovery"

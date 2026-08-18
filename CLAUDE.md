@@ -607,6 +607,7 @@ Don't add these unless asked.
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.py` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_dashboard.json` |
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_book/` + `docs/report-generator-architecture.md` |
+| See every artifact feature at once | `examples/portfolio_project/reports/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
 | Understand architecture decisions | `NOTES.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
