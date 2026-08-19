@@ -426,8 +426,14 @@ class HTMLRenderer(BaseRenderer):
             html_content = f.read()
 
         from IPython.display import HTML
-        # Embed via srcdoc to avoid needing a running server
-        escaped = html_content.replace('"', "&quot;")
+        # Embed via srcdoc to avoid needing a running server. srcdoc holds the
+        # iframe's HTML *source*, which the browser entity-decodes once before
+        # parsing — so '&' must be escaped too, and first. Escaping only '"'
+        # left the content's own entities (e.g. &lt;script&gt; from a hostile
+        # cell) to decode back into live markup: a double-decode XSS. With '&'
+        # escaped, the browser reconstructs exactly the rendered HTML, its
+        # escaping intact.
+        escaped = html_content.replace("&", "&amp;").replace('"', "&quot;")
         display(HTML(
             f'<iframe srcdoc="{escaped}" '
             f'width="{width}" height="{height}" '

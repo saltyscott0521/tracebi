@@ -1140,3 +1140,36 @@ def test_preview_server_binds_loopback_not_all_interfaces(tmp_path, monkeypatch)
     html.write_text("<p>x</p>")
     _serve_file(html, "r", 8099, open_browser=False)
     assert captured["address"][0] == "127.0.0.1"
+
+
+def test_preview_srcdoc_does_not_double_decode(monkeypatch, tmp_path):
+    """A cell escaped to &lt;script&gt; during render must not be decoded back
+    into live markup when embedded in an iframe srcdoc: srcdoc is decoded once
+    by the browser, so the content's '&' must be escaped too (double-decode
+    XSS otherwise)."""
+    import sys
+    import types
+
+    from tracebi.reports.html_renderer import HTMLRenderer
+
+    captured = {}
+    fake = types.ModuleType("IPython.display")
+    fake.display = lambda x: captured.__setitem__("shown", x)
+    fake.HTML = lambda s: captured.__setitem__("srcdoc", s) or s
+    fake.IFrame = lambda *a, **k: None
+    monkeypatch.setitem(sys.modules, "IPython", types.ModuleType("IPython"))
+    monkeypatch.setitem(sys.modules, "IPython.display", fake)
+
+    r = HTMLRenderer()
+
+    def fake_render(report, path, save_manifest=False):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("<body>&lt;script&gt;alert(1)&lt;/script&gt;</body>")
+
+    monkeypatch.setattr(r, "render", fake_render)
+    r.preview(None)
+    s = captured["srcdoc"]
+    # The already-escaped entity is DOUBLE-escaped, so one srcdoc-decode leaves
+    # it as text (&lt;script&gt;), never a live <script>.
+    assert "&amp;lt;script&amp;gt;" in s
+    assert 'srcdoc="<body>&lt;script' not in s
