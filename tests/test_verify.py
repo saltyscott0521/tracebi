@@ -139,8 +139,10 @@ def test_rendered_manifest_carries_input_fingerprints(vf_model, tmp_path):
 # ── (b) Manifest schema version ────────────────────────────────────────────
 
 def test_manifest_declares_schema_version(vf_model, tmp_path):
+    # A spec now renders through the artifact path (compile_spec ->
+    # TemplatePackage), so its manifest is schema 2 — figures, receipt, etc.
     manifest = json.loads(_render(tmp_path).read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == 1
+    assert manifest["schema_version"] == 2
 
 
 # ── Render → verify round trip ─────────────────────────────────────────────
@@ -153,7 +155,10 @@ def test_render_verify_reproduces(vf_model, tmp_path, empty_models_dir, capsys):
     assert rc == 0
     out = capsys.readouterr().out
     assert "REPRODUCES" in out
-    assert "Revenue by region" in out
+    # The artifact verify reports figures (and names the report), not the
+    # spec's section title.
+    assert "VF Spec" in out
+    assert "figures" in out
 
 
 def test_mutated_source_is_diagnosed_as_source_drift(
@@ -335,7 +340,7 @@ def test_gateway_verify_manifest_dict_and_path(vf_model, tmp_path):
         result = gateway_verify_manifest(arg)
         assert result["ok"], result
         assert result["report_name"] == "VF Spec"
-        assert result["schema_version"] == 1
+        assert result["schema_version"] == 2   # spec renders via the artifact path
         assert result["summary"][REPRODUCES] == 1
         (section,) = result["sections"]
         assert section["status"] == REPRODUCES

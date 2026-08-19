@@ -229,9 +229,16 @@ def test_render_produces_artifact_and_manifest(gateway_model, tmp_path):
     assert out["ok"], out.get("errors")
     html = (tmp_path / "gw-spec.html").read_text(encoding="utf-8")
     assert "Revenue by region" in html
+    # A spec now renders through the artifact path (compile_spec ->
+    # TemplatePackage): the figure grammar + receipt drawer, NOT the legacy
+    # renderer's second ECharts runtime.
+    assert "data-tb-figure" in html
+    assert 'id="tracebi-receipt"' in html
+    assert 'id="tracebi-charts"' not in html
     manifest = json.loads(
         (tmp_path / "gw-spec.manifest.json").read_text(encoding="utf-8")
     )
+    assert manifest["schema_version"] == 2
     stamped = [s for s in manifest["sections"] if s.get("dataset_fingerprint")]
     assert stamped, "the manifest must fingerprint the data-bearing section"
     assert out["dataset_fingerprints"] == [

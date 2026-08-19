@@ -532,7 +532,10 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
     validation would be exactly the ungoverned output this surface exists
     to prevent.
     """
-    from tracebi.reports.html_renderer import HTMLRenderer
+    import tempfile
+
+    from tracebi.reports.compile_spec import compile_spec
+    from tracebi.reports.template_package import TemplatePackage
     from tracebi.spec import ReportSpec
 
     try:
@@ -565,13 +568,21 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
         manifest_path = out_dir / f"{_slug(rs.name)}.manifest.json"
 
         with actor(_mcp_actor()):
-            report = rs.build(models)
-            HTMLRenderer.for_project().render(report, str(html_path))
-            manifest = report.build_manifest("html", str(html_path)).to_dict()
-
-        manifest_path.write_text(
-            json.dumps(manifest, indent=2, default=str), encoding="utf-8"
-        )
+            # One report form: compile the spec to the artifact package and
+            # render it through the same path as a hand-authored package, so a
+            # spec gets figures, badges, the receipt drawer, and a schema-2
+            # manifest instead of the legacy renderer's bare HTML.
+            compiled = compile_spec(rs)
+            with tempfile.TemporaryDirectory() as d:
+                for fname, content in compiled.files.items():
+                    (Path(d) / fname).write_text(content, encoding="utf-8")
+                # Pass manifest_path explicitly — render's default sidecar is
+                # {out}.html.manifest.json, but this tool returns
+                # {slug}.manifest.json.
+                manifest = TemplatePackage(d).render(
+                    models, str(html_path),
+                    manifest_path=str(manifest_path),
+                ).to_dict()
     except Exception as exc:  # noqa: BLE001 — reported on the error channel
         return {"ok": False,
                 "errors": [f"{type(exc).__name__}: {exc}"],
@@ -588,7 +599,7 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
         "report_name": rs.name,
         "sections": len(manifest.get("sections", [])),
         "dataset_fingerprints": fingerprints,
-        "warnings": result["warnings"],
+        "warnings": result["warnings"] + compiled.warnings,
     }
 
 

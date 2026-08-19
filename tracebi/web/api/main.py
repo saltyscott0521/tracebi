@@ -147,13 +147,30 @@ def spec_validate(body: dict):
 
 @app.post("/api/spec/render")
 def spec_render(body: dict):
-    """Build a report spec against the registered models and render it to HTML."""
-    from tracebi.reports.html_renderer import HTMLRenderer
+    """Compile a report spec to the artifact package and render it to HTML.
+
+    One report form: a spec renders through the same path as a hand-authored
+    package, so it gets figures, badges, the receipt drawer, and a schema-2
+    manifest — not the legacy renderer's bare HTML.
+    """
+    import os
+    import tempfile
+    from pathlib import Path
+
+    from tracebi.reports.compile_spec import compile_spec
+    from tracebi.reports.template_package import TemplatePackage
     from tracebi.spec import ReportSpec
 
     try:
         spec = ReportSpec.from_dict(body)
-        report = spec.build(_registered_models())
+        compiled = compile_spec(spec)
+        models = _registered_models()
+        with tempfile.TemporaryDirectory() as d:
+            for fname, content in compiled.files.items():
+                (Path(d) / fname).write_text(content, encoding="utf-8")
+            out = os.path.join(d, "__render.html")
+            manifest = TemplatePackage(d).render(models, out, save_manifest=False)
+            html = Path(out).read_text(encoding="utf-8")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
@@ -161,8 +178,7 @@ def spec_render(body: dict):
             status_code=500, detail=error_detail("Spec render failed", exc)
         ) from exc
 
-    manifest = report.build_manifest(format="html", output_path="(in-memory)")
-    return {"html": HTMLRenderer.for_project().to_html(report), "manifest": manifest.to_dict()}
+    return {"html": html, "manifest": manifest.to_dict()}
 
 
 def _registered_models() -> dict:

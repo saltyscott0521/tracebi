@@ -1240,15 +1240,26 @@ def cmd_spec(args: argparse.Namespace) -> int:
               f"section(s) have a reference")
         return 0
 
-    # render
-    from tracebi.reports.html_renderer import HTMLRenderer
+    # render — one report form: compile the spec to the artifact package and
+    # render it like a hand-authored package, so it gets figures, badges, the
+    # receipt drawer, and a schema-2 manifest instead of the legacy bare HTML.
+    import tempfile
 
-    report = spec.build(models)
+    from tracebi.reports.compile_spec import compile_spec
+    from tracebi.reports.template_package import TemplatePackage
+
+    compiled = compile_spec(
+        spec,
+        theme_css=_report_theme_css(spec, extra_theme=getattr(args, "theme", None)),
+        script_js=_report_script_js(spec),
+    )
     out = Path(args.output or f"{_slugify(spec.name)}.html")
-    HTMLRenderer.for_project(
-        report_css=_report_theme_css(spec, extra_theme=getattr(args, "theme", None)),
-        report_js=_report_script_js(spec),
-    ).render(report, str(out))
+    with tempfile.TemporaryDirectory() as d:
+        for fname, content in compiled.files.items():
+            (Path(d) / fname).write_text(content, encoding="utf-8")
+        TemplatePackage(d).render(models, str(out))
+    for warning in compiled.warnings:
+        print(f"  · {warning}")
     print(f"Rendered {spec.name} → {out}")
     return 0
 
@@ -2411,14 +2422,23 @@ def _build_report_target(kind: str, path: Path, output: Path,
         from tracebi.reports.template_package import TemplatePackage
         TemplatePackage(str(path)).render(models, str(output), badges=badges)
     else:
-        from tracebi.reports.html_renderer import HTMLRenderer
+        # A bare .json spec compiles to the artifact package, then renders like
+        # a hand-authored one — the same one report form as a package.
+        import tempfile
+
+        from tracebi.reports.compile_spec import compile_spec
+        from tracebi.reports.template_package import TemplatePackage
         from tracebi.spec import ReportSpec
         spec = ReportSpec.from_json(path.read_text(encoding="utf-8"))
-        report = spec.build(models)
-        HTMLRenderer.for_project(
-            report_css=_report_theme_css(spec, extra_theme=theme),
-            report_js=_report_script_js(spec),
-        ).render(report, str(output), save_manifest=True)
+        compiled = compile_spec(
+            spec,
+            theme_css=_report_theme_css(spec, extra_theme=theme),
+            script_js=_report_script_js(spec),
+        )
+        with tempfile.TemporaryDirectory() as d:
+            for fname, content in compiled.files.items():
+                (Path(d) / fname).write_text(content, encoding="utf-8")
+            TemplatePackage(d).render(models, str(output), badges=badges)
     return output
 
 
