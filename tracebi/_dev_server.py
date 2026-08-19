@@ -323,6 +323,7 @@ def _file_sig(path: str):
 
 _WORKBENCH_PAGE = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
+__CSP__
 <title>workbench</title>
 <style>
 __TRACEBI_CSS__
@@ -971,10 +972,17 @@ __ECHARTS__
 def _workbench_page(name: str) -> str:
     """The workbench shell, styled by the shipped design system. Static —
     all data arrives via /__workbench/state.json polling."""
-    from tracebi.reports.embed import read_lib
+    from tracebi.reports.embed import CSP, read_lib
     from tracebi.reports.stack import read_asset
 
+    # Defense-in-depth for the ONE innerHTML on this page (md_to_html output):
+    # the escaping in _inline is the real protection, but unlike the built
+    # artifact this page carried no CSP. Add one, relaxing connect-src to 'self'
+    # for the /__workbench/state.json poll (as the served exploration page does).
+    csp = CSP.replace("connect-src 'none'", "connect-src 'self'")
+    csp_meta = f'<meta http-equiv="Content-Security-Policy" content="{csp}">'
     return (_WORKBENCH_PAGE
+            .replace("__CSP__", csp_meta)
             .replace("__NAME__", json.dumps(name))
             .replace("__TRACEBI_CSS__", read_asset("tracebi.css"))
             .replace("__ECHARTS__", read_lib("echarts")))

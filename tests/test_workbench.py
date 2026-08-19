@@ -599,6 +599,19 @@ class TestExhibitSource:
         assert "source" not in entry
 
 
+def test_workbench_page_carries_a_csp():
+    """The dev workbench does md.innerHTML of md_to_html output. Beyond the
+    escaping, the page must carry a CSP as defense-in-depth — relaxed to
+    connect-src 'self' for its /__workbench/state.json poll."""
+    from tracebi._dev_server import _workbench_page
+
+    page = _workbench_page("demo")
+    assert 'http-equiv="Content-Security-Policy"' in page
+    assert "default-src 'none'" in page
+    assert "connect-src 'self'" in page      # the status poll needs it
+    assert "__CSP__" not in page             # placeholder must be filled
+
+
 class TestSessionExport:
     """export_session — the FULL feed as ONE exploration-record HTML: honest
     by construction (stage meta + banner, no manifest, verify refuses it),
@@ -632,6 +645,16 @@ class TestSessionExport:
         assert '<meta name="tracebi-stage" content="exploration">' in html
         assert "Exploration record — a lab notebook, not a report" in html
         assert "carry no receipts" in html
+
+    def test_carries_a_strict_csp(self, tmp_path, monkeypatch):
+        """The offline record interpolates md_to_html output; escaping is the
+        real defense, but the file must also carry the strict CSP so a future
+        escaping regression can't reach external script or exfil."""
+        wb = self._session(tmp_path, monkeypatch)
+        _out, html = self._export(wb, tmp_path)
+        assert 'http-equiv="Content-Security-Policy"' in html
+        assert "default-src 'none'" in html
+        assert "connect-src 'none'" in html      # an offline file never polls
 
     def test_notes_render_markdown_and_frames_escape(
             self, tmp_path, monkeypatch):

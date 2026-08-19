@@ -244,12 +244,19 @@ def export_session(wb_dir: str, out_path: str,
             f"{pin_html}{note_html}{body}</article>"
         )
 
+    from tracebi.reports.embed import csp_meta
+
+    # Defense-in-depth: this static file interpolates md_to_html output. The
+    # escaping in _inline is the real protection; the strict CSP (connect-src
+    # 'none' — an offline file never polls) blocks external script/exfil should
+    # that escaping ever regress.
     head = (
         '<meta charset="utf-8">\n'
-        f"<title>{_esc(title)}</title>\n"
-        '<meta name="tracebi-stage" content="exploration">\n'
-        f"<style>\n{read_asset('tracebi.css')}\n</style>\n"
-        f"<style>\n{_SESSION_CSS}\n</style>\n"
+        + csp_meta()
+        + f"<title>{_esc(title)}</title>\n"
+        + '<meta name="tracebi-stage" content="exploration">\n'
+        + f"<style>\n{read_asset('tracebi.css')}\n</style>\n"
+        + f"<style>\n{_SESSION_CSS}\n</style>\n"
     )
     tail = ""
     if n_charts:
