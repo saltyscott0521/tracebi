@@ -143,3 +143,29 @@ jobs:
 
       - name: Lint
         run: ruff check tracebi/ tests/ api/
+
+  security:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    # Complements Dependabot alerts: scans the resolved dependency tree for
+    # known CVEs. Informational for now (continue-on-error) so a transient
+    # advisory in a transitive dep does not block unrelated PRs; promote to
+    # blocking once the tree is clean.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package + pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[all]" pip-audit
+
+      - name: Audit dependencies for known vulnerabilities
+        continue-on-error: true
+        run: pip-audit --desc
