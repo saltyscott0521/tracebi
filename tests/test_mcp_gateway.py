@@ -145,9 +145,40 @@ def test_filters_travel_through(gateway_model):
     assert out["query"]["filters"] == {"status": "shipped"}
 
 
+def test_query_success_carries_the_ok_envelope(gateway_model):
+    assert _query()["ok"] is True
+
+
 def test_unknown_model_names_the_alternatives(gateway_model):
-    with pytest.raises(KeyError, match="gw_demo"):
-        gateway_query(model="nope", fact="f", measures={"x": "sum"})
+    # A structured, retryable error — the {ok, errors} envelope every other
+    # tool uses — not a raised exception that ends the agent loop.
+    out = gateway_query(model="nope", fact="f", measures={"x": "sum"})
+    assert out["ok"] is False
+    assert any("gw_demo" in e for e in out["errors"])
+    assert "fingerprint" not in out          # no half-formed success payload
+
+
+def test_query_errors_are_the_envelope_not_a_raise(gateway_model):
+    # Every bad-input class an agent hits mid-loop returns {ok: False}, with a
+    # message that names the fix — never a stack trace.
+    bad_fact = _query(fact="nope")
+    assert bad_fact["ok"] is False and "fact_orders" in bad_fact["errors"][0]
+
+    bad_dim = _query(dimensions=["dim_ghost.x"])
+    assert bad_dim["ok"] is False and "dim_ghost" in bad_dim["errors"][0]
+
+    bad_filter = _query(filters={"ghostcol": "NE"})
+    assert bad_filter["ok"] is False and "ghostcol" in bad_filter["errors"][0]
+
+
+def test_bare_string_measures_gets_a_readable_error(gateway_model):
+    # The classic 'dictionary update sequence' leak is replaced by a message
+    # that shows both valid measure forms.
+    out = _query(measures="revenue")
+    assert out["ok"] is False
+    msg = out["errors"][0]
+    assert "dictionary update sequence" not in msg
+    assert "revenue" in msg and ("sum" in msg or "list" in msg)
 
 
 # ── Contract and schema ────────────────────────────────────────────────────
@@ -250,6 +281,50 @@ def test_render_refuses_an_invalid_spec(gateway_model, tmp_path):
     out = gateway_render_spec(_spec(fact="fact_nope"), output_dir=str(tmp_path))
     assert not out["ok"]
     assert not list(tmp_path.iterdir()), "no artifact may exist for a refused spec"
+
+
+# ── fetch_artifact: deliver the rendered bytes over MCP (WALL 2) ────────────
+
+def test_fetch_returns_the_rendered_bytes(gateway_model, tmp_path, monkeypatch):
+    """A render/build tool returns a server-side PATH; fetch_artifact delivers
+    the actual bytes so a remote agent can send the report or verify it."""
+    from tracebi.mcp_server import gateway_fetch_artifact
+
+    monkeypatch.chdir(tmp_path)
+    out = gateway_render_spec(_spec(), output_dir="out")
+    assert out["ok"], out.get("errors")
+
+    html = gateway_fetch_artifact(out["html_path"])
+    assert html["ok"] and html["content_type"] == "text/html"
+    assert "data-tb-figure" in html["content"]          # the real artifact
+    assert html["bytes"] == len(html["content"].encode("utf-8"))
+
+    manifest = gateway_fetch_artifact(out["manifest_path"])
+    assert manifest["ok"] and manifest["content_type"] == "application/json"
+    assert json.loads(manifest["content"])["schema_version"] == 2
+
+
+def test_fetch_is_path_guarded(gateway_model, tmp_path, monkeypatch):
+    """Read-only and confined: no traversal, no absolute escape, no arbitrary
+    file type, and nothing inside the installed package."""
+    from tracebi.mcp_server import gateway_fetch_artifact
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "art.html").write_text("<html></html>", encoding="utf-8")
+    (tmp_path / "secret.py").write_text("TOKEN = 'x'", encoding="utf-8")
+
+    assert gateway_fetch_artifact("art.html")["ok"]              # in-root artifact OK
+    assert not gateway_fetch_artifact("../escape.html")["ok"]    # traversal
+    assert not gateway_fetch_artifact("/etc/hosts")["ok"]        # absolute escape
+    assert not gateway_fetch_artifact("secret.py")["ok"]         # wrong extension
+    assert not gateway_fetch_artifact("missing.html")["ok"]      # no such file
+
+    import os
+
+    import tracebi
+    pkg = os.path.dirname(tracebi.__file__)
+    inside_pkg = os.path.join(pkg, "web", "ui", "dist", "index.html")
+    assert not gateway_fetch_artifact(inside_pkg)["ok"]          # installed package
 
 
 # ── build_report: the publish step for the package lane ────────────────────
@@ -400,11 +475,13 @@ def test_build_server_registers_the_tools(gateway_model):
     names = {t.name for t in tools}
     # M3 flip: workbench_state joined the surface. Round-2 flip: build_report
     # joined it — the publish step for the package lane, so an MCP-driving
-    # agent can finish the loop it iterates in the workbench (ten tools).
+    # agent can finish the loop it iterates in the workbench. fetch_artifact
+    # then delivers the rendered bytes a remote agent cannot otherwise reach
+    # (eleven tools).
     assert names == {
         "get_context", "list_models", "describe_model", "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
-        "verify_manifest", "workbench_state", "build_report",
+        "verify_manifest", "workbench_state", "build_report", "fetch_artifact",
     }
 
 
@@ -432,6 +509,7 @@ class TestMcp2Features:
         read_only = {
             "get_context", "list_models", "describe_model", "query_model",
             "validate_report_spec", "list_reports", "verify_manifest",
+            "fetch_artifact",
         }
         for name in read_only:
             ann = tools[name].annotations

@@ -185,6 +185,44 @@ def _confined_output_dir(output_dir: str) -> "tuple[Optional[Path], Optional[str
     return resolved, None
 
 
+#: Cap on a single fetched artifact. Large enough for the artifact envelope the
+#: scale docs describe (a few MB), small enough that an accidental huge file
+#: does not blow the MCP response — over it, the agent reads the path directly.
+_FETCH_MAX_BYTES = 16 * 1024 * 1024
+
+
+def _confined_read_path(path: str) -> "tuple[Optional[Path], Optional[str]]":
+    """Resolve *path* for a READ, refusing anything outside the artifact area.
+
+    The fetch tool hands back bytes the render/build tools wrote, so it reads
+    only where those tools live: under the working directory (or
+    ``$TRACEBI_OUTPUT_ROOT`` when set), never inside the installed ``tracebi``
+    package, and never a traversal to an arbitrary server file. Returns
+    ``(path, None)`` when allowed, ``(None, error)`` otherwise.
+    """
+    try:
+        resolved = (Path.cwd() / path).resolve()
+    except (OSError, ValueError) as exc:
+        return None, f"invalid path {path!r}: {exc}"
+
+    import tracebi
+    pkg = Path(tracebi.__file__).resolve().parent
+    if resolved == pkg or pkg in resolved.parents:
+        return None, (
+            f"path {path!r} resolves inside the installed tracebi package"
+        )
+
+    root = Path(os.environ.get("TRACEBI_OUTPUT_ROOT") or Path.cwd()).resolve()
+    if resolved != root and root not in resolved.parents:
+        return None, (
+            f"path {path!r} escapes the artifact root ({root}); fetch reads "
+            f"only files the render/build tools wrote under it"
+        )
+    if not resolved.is_file():
+        return None, f"no file at {path!r}"
+    return resolved, None
+
+
 #: The authoring SOP, served as the ``tracebi://guide`` resource. An agent
 #: reaching TraceBi only over MCP never sees AGENTS.md or the repo docs, so the
 #: essential rules have to live on the surface itself.
@@ -225,7 +263,10 @@ front of a person should carry a receipt. This gateway is how you produce one.
 5. **build_report** — the publish step: builds the package to a
    self-contained HTML + manifest, validating every figure claim. Writes
    only its own artifact and receipt.
-6. **verify_manifest** — re-runs the recorded queries and classifies each
+6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
+   Pass the returned `html_path` (to deliver the report) or `manifest_path`
+   (to hand to verify) here to read the actual content back.
+7. **verify_manifest** — re-runs the recorded queries and classifies each
    section. Only `reproduces` means a number was re-run and matched; a
    manifest with nothing to check is not a pass.
 
@@ -291,6 +332,8 @@ class ModelInfoResult(TypedDict, total=False):
 
 
 class QueryResult(TypedDict, total=False):
+    ok: bool
+    errors: list[str]
     model: str
     query: dict[str, Any]
     columns: list[str]
@@ -318,6 +361,15 @@ class RenderResult(TypedDict, total=False):
     dataset_fingerprints: list[str]
     warnings: list[str]
     errors: list[str]
+
+
+class FetchArtifactResult(TypedDict, total=False):
+    ok: bool
+    errors: list[str]
+    path: str
+    content_type: str
+    bytes: int
+    content: str
 
 
 class ReportsResult(TypedDict, total=False):
@@ -464,22 +516,42 @@ def gateway_query(
     from tracebi.model.data_model import QuerySpec
 
     preview_rows = max(1, min(int(preview_rows), _ROW_HARD_CAP))
-    m = _get_model(model)
-    spec = QuerySpec.from_dict({
-        k: v for k, v in {
-            "fact": fact,
-            "measures": measures,
-            "dimensions": list(dimensions or []),
-            "filters": filters or None,
-            "having": having or None,
-            "aggregate": aggregate,
-            "allow_fanout": allow_fanout,
-            "order_by": order_by,
-            "limit": limit,
-        }.items() if v is not None
-    })
-    with actor(_mcp_actor()):
-        ds = m.execute(spec)
+
+    # Resolve → build the spec → execute, returning the ``{ok, errors}``
+    # envelope every other tool uses on any failure — never a raised exception.
+    # An agent repairs a structured, named error and retries; a stack trace
+    # ends the loop. The model already names the alternatives for a bad
+    # fact/dimension/filter column, so those messages pass straight through.
+    try:
+        m = _get_model(model)
+    except KeyError as exc:
+        return {"ok": False, "errors": [exc.args[0]]}
+    if isinstance(measures, str):
+        return {"ok": False, "errors": [
+            f"measures must be a list of measure names (e.g. [{measures!r}]) or "
+            f"a mapping of column to aggregation (e.g. {{{measures!r}: 'sum'}}), "
+            f"not a bare string"]}
+    try:
+        spec = QuerySpec.from_dict({
+            k: v for k, v in {
+                "fact": fact,
+                "measures": measures,
+                "dimensions": list(dimensions or []),
+                "filters": filters or None,
+                "having": having or None,
+                "aggregate": aggregate,
+                "allow_fanout": allow_fanout,
+                "order_by": order_by,
+                "limit": limit,
+            }.items() if v is not None
+        })
+    except Exception as exc:  # noqa: BLE001 — a malformed query is data, not a crash
+        return {"ok": False, "errors": [f"invalid query: {exc}"]}
+    try:
+        with actor(_mcp_actor()):
+            ds = m.execute(spec)
+    except Exception as exc:  # noqa: BLE001 — a bad fact/dim/filter is data
+        return {"ok": False, "errors": [str(exc)]}
     df = ds.to_pandas()
     # Echo the STAMPED resolved spec (fully resolved ordering included), so
     # what the agent cites is what replay compares against.
@@ -489,6 +561,7 @@ def gateway_query(
         if qs:
             stamped = qs
     return {
+        "ok": True,
         "model": model,
         "query": stamped,
         "columns": list(df.columns),
@@ -747,6 +820,39 @@ def gateway_build_report(report: str, output_dir: str = "output") -> BuildReport
     }
 
 
+def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
+    """Read back a rendered artifact (or its manifest) as text.
+
+    ``render_report_spec`` and ``build_report`` return a server-side PATH; a
+    remote agent driving the gateway over MCP needs the BYTES to deliver the
+    report or hand the manifest to ``verify_manifest``. Pass the ``html_path``
+    or ``manifest_path`` a render/build tool returned. Read-only and hard
+    path-guarded: the file must sit under the working directory (or
+    ``$TRACEBI_OUTPUT_ROOT``), never inside the installed package, and be one of
+    the ``.html`` / ``.json`` artifacts those tools write — never arbitrary
+    server files. Over ``_FETCH_MAX_BYTES`` it refuses and names the path.
+    """
+    resolved, err = _confined_read_path(path)
+    if err:
+        return {"ok": False, "errors": [err]}
+    if resolved.suffix.lower() not in (".html", ".json"):
+        return {"ok": False, "errors": [
+            f"fetch_artifact reads only rendered .html and .json artifacts, "
+            f"not {resolved.suffix!r}"]}
+    size = resolved.stat().st_size
+    if size > _FETCH_MAX_BYTES:
+        return {"ok": False, "errors": [
+            f"artifact is {size} bytes, over the {_FETCH_MAX_BYTES}-byte fetch "
+            f"cap; read it from {path!r} on the server directly"]}
+    try:
+        content = resolved.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return {"ok": False, "errors": [f"could not read {path!r}: {exc}"]}
+    ctype = "text/html" if resolved.suffix.lower() == ".html" else "application/json"
+    return {"ok": True, "path": path, "content_type": ctype,
+            "bytes": size, "content": content}
+
+
 # ── MCP registration ───────────────────────────────────────────────────────
 
 
@@ -912,6 +1018,18 @@ def build_server(token: Optional[str] = None):
             "its own artifact and receipt."
         ),
     )(gateway_build_report)
+    server.tool(
+        name="fetch_artifact", title="Fetch a rendered artifact",
+        annotations=_READ, structured_output=True,
+        description=(
+            "Read back the bytes of an artifact a render/build tool wrote — "
+            "pass the html_path or manifest_path it returned. The render tools "
+            "return a server-side path; this delivers the actual content so a "
+            "remote agent can send the report or hand the manifest to "
+            "verify_manifest. Read-only, guarded to the artifact directory, "
+            ".html/.json only."
+        ),
+    )(gateway_fetch_artifact)
     server.tool(
         name="verify_manifest", title="Verify a receipt",
         annotations=_READ_WAREHOUSE, structured_output=True,
