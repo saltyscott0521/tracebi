@@ -1803,7 +1803,7 @@ def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
 
 def _build_report_target(kind: str, path: Path, output: Path,
                          theme: Optional[str] = None,
-                         badges: bool = True) -> Path:
+                         badges: bool = False) -> Path:
     """Render one report target to *output* (+ a sibling manifest). Returns output."""
     output.parent.mkdir(parents=True, exist_ok=True)
     models = _load_project_models()
@@ -1950,7 +1950,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     try:
         _build_report_target(kind, path, output,
                              theme=getattr(args, 'theme', None),
-                             badges=not getattr(args, 'no_badges', False))
+                             badges=getattr(args, 'badges', False))
     except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
         print(f"failed to build report '{args.name}': "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
@@ -2332,9 +2332,10 @@ def build_parser() -> argparse.ArgumentParser:
              "the workbench page and the MCP workbench_state tool consume).",
     )
     p_report.add_argument(
-        "--no-badges", action="store_true",
-        help="Omit the provenance badges from the rendered page (client "
-             "deliverables). The manifest is unaffected.",
+        "--badges", action="store_true",
+        help="Render the per-figure provenance badges on the page. Off by "
+             "default — the receipt drawer carries provenance in one place. "
+             "The manifest is unaffected either way.",
     )
     p_report.add_argument(
         "--theme",

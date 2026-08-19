@@ -234,7 +234,7 @@ class TemplatePackage:
         output_path: str,
         save_manifest: bool = True,
         manifest_path: Optional[str] = None,
-        badges: bool = True,
+        badges: bool = False,
     ) -> ReportManifest:
         """Render the package to one self-contained ``.html`` (+ manifest).
 
@@ -343,8 +343,10 @@ class TemplatePackage:
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
 
         # Provenance for the runtime's badges, decided from what was actually
-        # embedded (v2 §2.4): a stylesheet can restyle a badge, never
-        # re-color honesty. --no-badges omits rendering; the manifest is
+        # embedded (v2 §2.4): a stylesheet can restyle a badge, never re-color
+        # honesty. On-page badges are OFF by default — a mark on every figure is
+        # noise; the receipt drawer carries full provenance in one opt-in place.
+        # Pass badges=True (CLI --badges) to render them; the manifest is
         # unaffected either way.
         from tracebi.reports.stack import figures_config
         cfg = {"badges": bool(badges),

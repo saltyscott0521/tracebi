@@ -95,11 +95,23 @@ class TestStackOrder:
         start = html.index('id="tracebi-figures"')
         payload = html[html.index(">", start) + 1:html.index("</script>", start)]
         cfg = json.loads(payload)
-        assert cfg["badges"] is True
+        # On-page badges are OFF by default (a mark on every figure is noise),
+        # but the provenance is still recorded in the config — the receipt
+        # drawer and any opt-in badge read it.
+        assert cfg["badges"] is False
         prov = {f["id"]: f["provenance"] for f in cfg["figures"]}
         assert prov["fig-kpi"] == "verified"
         assert prov["fig-tbl"] == "verified"
         assert prov["fig-rank"] == "derived"     # report.py output — never green
+
+    def test_badges_opt_in_renders_them(self, stack_model, tmp_path):
+        out = tmp_path / "out.html"
+        TemplatePackage(str(_pkg(tmp_path))).render(
+            {"stack_model": stack_model}, str(out), badges=True)
+        html = out.read_text(encoding="utf-8")
+        start = html.index('id="tracebi-figures"')
+        payload = html[html.index(">", start) + 1:html.index("</script>", start)]
+        assert json.loads(payload)["badges"] is True
 
     def test_no_badges_omits_rendering_but_not_the_manifest(
             self, stack_model, tmp_path):
