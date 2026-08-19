@@ -2478,7 +2478,9 @@ def _serve_file(html_path: Path, name: str, port: int, open_browser: bool) -> No
         def log_message(self, fmt, *a):  # silence request logs
             pass
 
-    server = http.server.HTTPServer(("", port), _Handler)
+    # Bind loopback, not "" (all interfaces): preview serves a directory of
+    # rendered reports unauthenticated, and the URL already says localhost.
+    server = http.server.HTTPServer(("127.0.0.1", port), _Handler)
     if open_browser:
         threading.Timer(0.3, lambda: webbrowser.open(url)).start()
     print(f"\n  TraceBi Report — '{name}'")

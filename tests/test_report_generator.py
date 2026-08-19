@@ -1113,3 +1113,30 @@ class TestEscapeHatchContract:
         assert sd.query_spec is None and sd.model is None
         assert sd.fingerprint == fingerprint_triple(sd.triple)
         assert sd.dataset.lineage_to_dict()[-1]["metadata"]["python_derived"] is True
+
+
+def test_preview_server_binds_loopback_not_all_interfaces(tmp_path, monkeypatch):
+    """The unauthenticated preview server must bind 127.0.0.1, not '' (all
+    interfaces) — otherwise a directory of rendered reports is published to
+    anyone on the network, while the printed URL says localhost."""
+    import http.server
+
+    from tracebi.cli import _serve_file
+
+    captured = {}
+
+    class FakeServer:
+        def __init__(self, address, handler):
+            captured["address"] = address
+
+        def serve_forever(self):
+            raise KeyboardInterrupt   # exit the blocking loop at once
+
+        def server_close(self):
+            pass
+
+    monkeypatch.setattr(http.server, "HTTPServer", FakeServer)
+    html = tmp_path / "r.html"
+    html.write_text("<p>x</p>")
+    _serve_file(html, "r", 8099, open_browser=False)
+    assert captured["address"][0] == "127.0.0.1"

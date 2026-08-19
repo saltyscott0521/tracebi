@@ -369,7 +369,11 @@ class HTMLRenderer(BaseRenderer):
             def log_message(self, fmt, *args):  # silence request logs
                 pass
 
-        server = http.server.HTTPServer(("", port), _Handler)
+        # Bind loopback, not "" (all interfaces): this serves a directory of
+        # rendered reports with no authentication, and the URL already says
+        # localhost. Exposing it on 0.0.0.0 would publish those reports to
+        # anyone on the network.
+        server = http.server.HTTPServer(("127.0.0.1", port), _Handler)
 
         if open_browser:
             threading.Timer(0.3, lambda: webbrowser.open(url)).start()
