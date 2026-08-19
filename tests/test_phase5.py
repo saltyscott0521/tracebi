@@ -1094,7 +1094,8 @@ class TestAnalystEndpoints:
         finally:
             self._cleanup_report()
 
-    def test_failing_factory_returns_structured_traceback(self):
+    def test_failing_factory_returns_structured_traceback(self, monkeypatch):
+        monkeypatch.setenv("TRACEBI_DEV_MODE", "1")   # traceback is dev-only
         def boom():
             raise RuntimeError("kapow")
 
@@ -1106,6 +1107,21 @@ class TestAnalystEndpoints:
             assert "kapow" in detail["message"]
             assert detail["exception_type"] == "RuntimeError"
             assert "RuntimeError: kapow" in detail["traceback"]
+        finally:
+            self._cleanup_report()
+
+    def test_error_detail_omits_traceback_by_default(self):
+        """Security: without TRACEBI_DEV_MODE the traceback (which leaks paths,
+        the server username, and versions) is empty — message and type only."""
+        def boom():
+            raise RuntimeError("kapow")
+
+        client = self._client_with_report(boom)
+        try:
+            detail = client.post("/api/reports/t_report/run").json()["detail"]
+            assert "kapow" in detail["message"]
+            assert detail["exception_type"] == "RuntimeError"
+            assert detail["traceback"] == "", "traceback must not leak by default"
         finally:
             self._cleanup_report()
 
@@ -1765,6 +1781,7 @@ class TestRequestsAPI:
         assert client.post("/api/requests/nope/run").status_code == 404
 
     def test_run_broken_returns_structured_500(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TRACEBI_DEV_MODE", "1")   # traceback is dev-only
         (tmp_path / "broken.py").write_text("raise ValueError('boom')\n")
         client = self._client(tmp_path, monkeypatch)
         r = client.post("/api/requests/broken/run")
@@ -1896,7 +1913,8 @@ class TestBackgroundReportRuns:
         finally:
             self._cleanup_report()
 
-    def test_failed_run_carries_structured_error(self):
+    def test_failed_run_carries_structured_error(self, monkeypatch):
+        monkeypatch.setenv("TRACEBI_DEV_MODE", "1")   # traceback is dev-only
         def boom():
             raise RuntimeError("bg kapow")
 
