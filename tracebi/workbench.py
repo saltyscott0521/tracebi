@@ -422,9 +422,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
     """
     from tracebi.reports.embed import stamp
     from tracebi.reports.figures import (
-        FigureError, assign_figure_ids, extract_figures, lint_numeric_literals,
+        FigureError, extract_figures, lint_numeric_literals,
     )
-    from tracebi.reports.html_renderer import HTMLRenderer
     from tracebi.reports.report import Report, TableSection
     from tracebi.reports.stack import figures_config
     from tracebi.reports.template_package import REPORT_PY, TemplatePackage
@@ -462,12 +461,9 @@ def collect_state(package_dir: str, models: dict) -> dict:
     page = None
     render_error = None
     try:
-        renderer = HTMLRenderer(
-            template=pkg.template_html,
-            template_context={"bindings": list(pkg.bindings)},
-        )
-        page = renderer.to_html(report)
-        page, _warnings = assign_figure_ids(page)
+        # The one shared render wiring (TemplatePackage.render_page); the dev
+        # view keeps exploration blocks — the final build strips them.
+        page, _warnings = pkg.render_page(report, strip_exploration=False)
     except Exception as exc:  # noqa: BLE001 — captured into the state
         render_error = f"{type(exc).__name__}: {exc}"
         page = None

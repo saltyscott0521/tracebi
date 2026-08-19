@@ -208,6 +208,26 @@ class TemplatePackage:
                                     id=binding_name))
         return report, stamped
 
+    def render_page(self, report: Report, *, strip_exploration: bool):
+        """Render a carrier *report* through this package's template.
+
+        The one place the package's template, ``HTMLRenderer`` and figure-id
+        assignment are wired — shared by :meth:`render` (final build,
+        ``strip_exploration=True``), :meth:`render_exploration` and the
+        workbench's ``collect_state`` (dev view, exploration kept). Returns
+        ``(page, id_warnings)``; each caller extracts and validates figures
+        itself, because a final build raises where the dev view captures.
+        """
+        renderer = HTMLRenderer(
+            template=self.template_html,
+            template_context={"bindings": list(self.bindings)},
+        )
+        page = renderer.to_html(report)
+        if strip_exploration:
+            page = strip_stage(page, "exploration")
+        page, id_warnings = assign_figure_ids(page)
+        return page, id_warnings
+
     def render(
         self,
         models: dict,
@@ -235,17 +255,11 @@ class TemplatePackage:
             outputs = self.apply_report_py(report, inputs)
         embed_items = inputs + outputs
 
-        renderer = HTMLRenderer(
-            template=self.template_html,
-            template_context={"bindings": list(self.bindings)},
-        )
-        page = renderer.to_html(report)
         # Final build: exploration blocks are DELETED by the build, not by a
         # rewrite (v2 §2.1) — then ids are assigned and the figure claims
         # validated against what is actually embedded. Extraction, the strip,
         # and verify --file all share the one tokenizer in figures.py.
-        page = strip_stage(page, "exploration")
-        page, id_warnings = assign_figure_ids(page)
+        page, id_warnings = self.render_page(report, strip_exploration=True)
         for w in id_warnings:
             print(f"[tracebi] {self.name}: {w}", file=sys.stderr)
         figs = extract_figures(page)
@@ -508,12 +522,7 @@ class TemplatePackage:
         if self.report_py_path is not None:
             outputs = self.apply_report_py(report, inputs)
 
-        renderer = HTMLRenderer(
-            template=self.template_html,
-            template_context={"bindings": list(self.bindings)},
-        )
-        page = renderer.to_html(report)
-        page, _warnings = assign_figure_ids(page)
+        page, _warnings = self.render_page(report, strip_exploration=False)
         try:
             work_figs = extract_figures(page)
         except FigureError:
