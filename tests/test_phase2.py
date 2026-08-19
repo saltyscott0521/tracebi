@@ -449,55 +449,41 @@ class TestTableStyling:
         assert fmt("{:,.2f}") == "#,##0.00"
 
 
-def _chart_plans(html):
-    """The embedded ECharts config block a chart-bearing HTML page carries."""
-    import json
-    import re
-    m = re.search(
-        r'<script id="tracebi-charts" type="application/json">(.*?)</script>',
-        html, re.S)
-    assert m, "no ECharts config block in the HTML output"
-    return json.loads(m.group(1))
-
-
 class TestChartEnhancements:
-    # Charts render client-side with ECharts now (architecture §6): a
-    # ChartSection compiles to a sized container + embedded, fingerprinted data
-    # + an init script, not inline SVG. The SVG renderer is retained for PDF and
-    # tested directly in TestChartSpecSvg / test_chart_grouping.
+    # HTMLRenderer is the legacy carrier lane (Excel-adjacent + PDF); its charts
+    # render as inline SVG (ChartSpec.to_svg) with NO client-side JS runtime. The
+    # interactive ECharts runtime lives only in the artifact lane (tracebi.js).
+    # The data is still embedded as the canonical triple so verify --file vouches
+    # for it — the section options just flow into the SVG, not an ECharts config.
 
     def test_area_chart_html(self):
         report = Report("R").add(ChartSection(
             dataset=make_ds(), chart_type="area", x="region", y="revenue"))
         html = HTMLRenderer().to_html(report)
-        assert '<svg class="tb-chart' not in html      # not server-side SVG
-        assert 'id="tracebi-chart-chart1"' in html     # an ECharts container
-        assert '<script id="tracebi-data-chart1"' in html   # embedded data
-        assert _chart_plans(html)[0]["type"] == "area"      # the type flows through
+        assert '<svg class="tb-chart tb-chart-area"' in html   # the type flows through
+        assert 'id="tracebi-chart-chart1"' not in html         # no ECharts container
+        assert 'id="tracebi-charts"' not in html               # no ECharts config block
+        assert '<script id="tracebi-data-chart1"' in html      # data still embedded
 
     def test_show_values_bar(self):
         report = Report("R").add(ChartSection(
             dataset=make_ds(), chart_type="bar", x="region", y="revenue",
             show_values=True))
         html = HTMLRenderer().to_html(report)
-        assert '<svg class="tb-chart' not in html
-        assert 'id="tracebi-chart-chart1"' in html
-        assert _chart_plans(html)[0]["show_values"] is True  # flag reaches ECharts
+        assert '<svg class="tb-chart tb-chart-bar"' in html
+        assert 'class="tb-value"' in html          # show_values reaches the SVG renderer
 
-    def test_echarts_bundle_inlined_once_and_csp_present(self):
-        # Two charts, one document: the bundle is inlined a single time, and the
-        # §5 CSP is present with connect-src 'none' and no unsafe-eval.
+    def test_two_charts_render_as_svg_with_csp_and_no_echarts(self):
+        # Two charts, one document: each is inline SVG, no ECharts bundle is
+        # inlined at all, and the §5 CSP holds (connect-src 'none', no unsafe-eval).
         report = (Report("R")
                   .add(ChartSection(dataset=make_ds(), chart_type="bar",
                                     x="region", y="revenue"))
                   .add(ChartSection(dataset=make_ds(), chart_type="line",
                                     x="region", y="orders")))
-        from tracebi.reports.embed import read_lib
-
         html = HTMLRenderer().to_html(report)
-        # The whole ECharts bundle is inlined exactly once, for two charts.
-        assert html.count(read_lib("echarts")) == 1
-        assert 'id="tracebi-chart-chart1"' in html and 'id="tracebi-chart-chart2"' in html
+        assert html.count('<svg class="tb-chart') == 2   # two SVG charts, no runtime
+        assert "!function(" not in html                  # no ECharts bundle inlined
         assert "connect-src 'none'" in html
         assert "unsafe-eval" not in html
 
@@ -1156,7 +1142,7 @@ class TestChartSpecSvg:
             "h = HTMLRenderer().to_html(Report('C').add(\n"
             "    ChartSection(dataset=ds, chart_type='bar', x='r', y='v')))\n"
             "assert 'matplotlib required' not in h\n"
-            "assert 'tracebi-chart-' in h\n"   # a rendered ECharts container
+            "assert '<svg class=\"tb-chart' in h\n"   # a rendered inline SVG chart
             "print('ok')\n"
         )
         out = subprocess.run([sys.executable, "-c", code],
@@ -1169,10 +1155,10 @@ class TestChartSpecSvg:
             title="T", dataset=self._ds(), chart_type="bar",
             x="region", y=["revenue"])))
         assert "data:image/png;base64," not in html
-        # HTML charts are client-side ECharts, not a server-side SVG (that path
-        # is retained for PDF only): a sized container + embedded data block.
-        assert '<svg class="tb-chart' not in html
-        assert 'id="tracebi-chart-chart1"' in html
+        # The carrier lane renders charts as inline SVG (no matplotlib PNG, no
+        # client-side ECharts runtime), with the data embedded as the triple.
+        assert '<svg class="tb-chart tb-chart-bar"' in html
+        assert 'id="tracebi-chart-chart1"' not in html
         assert '<script id="tracebi-data-chart1" type="application/json">' in html
 
 

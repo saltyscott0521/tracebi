@@ -24,8 +24,8 @@
 (function (root) {
   "use strict";
 
-  /* ── CSV parsing (the RFC-4180 parser, promoted out of _CHART_INIT_JS —
-   *    one parser, both lanes) ─────────────────────────────────────────── */
+  /* ── CSV parsing (the RFC-4180 parser: the artifact runtime parses the
+   *    embedded triple, never a hardcoded copy) ───────────────────────── */
 
   function parseCsv(text) {
     var rows = [], row = [], field = "", inQ = false, i = 0, c;
@@ -400,7 +400,7 @@
     return out;
   }
 
-  /* ── ECharts option building — mirrors _CHART_INIT_JS semantics ──────── */
+  /* ── ECharts option building (the interactive artifact runtime) ──────── */
 
   function groupOf(v) {
     return (v === null || v === undefined || v === "") ? "(none)" : String(v);
@@ -1065,9 +1065,9 @@
     try { hydrateReceipt(); } catch (e) {}
   }
 
-  /* DOM-ready, then requestAnimationFrame (mirroring _CHART_INIT_JS): the
-   * author's inline script.js has already run by DOMContentLoaded, so its
-   * configureChart patches are registered before any chart is drawn. */
+  /* DOM-ready, then requestAnimationFrame: the author's inline script.js has
+   * already run by DOMContentLoaded, so its configureChart patches are
+   * registered before any chart is drawn. */
   if (typeof document !== "undefined") {
     var schedule = function () {
       if (typeof requestAnimationFrame === "function") requestAnimationFrame(hydrate);

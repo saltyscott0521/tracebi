@@ -375,8 +375,8 @@ class TestMetricReceipts:
         assert offenders == ["kpis"]
 
     def test_metrics_and_chart_coexist_in_one_receipt(self, tmp_path, model):
-        """A page with both gets the chart machinery once and both triples
-        embedded and recorded."""
+        """A page with both renders the chart as inline SVG and embeds both
+        triples, recorded in the manifest."""
         from tracebi.reports.html_renderer import HTMLRenderer
         from tracebi.spec import ReportSpec
 
@@ -401,7 +401,7 @@ class TestMetricReceipts:
 
         assert 'id="tracebi-data-kpis"' in html
         assert 'id="tracebi-data-by_region"' in html
-        assert 'id="tracebi-charts"' in html   # the chart config, once
+        assert '<svg class="tb-chart' in html   # the chart renders as inline SVG
         names = [r["name"] for r in manifest.to_dict()["embedded_data"]]
         assert names == ["kpis", "by_region"]
         assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
