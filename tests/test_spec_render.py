@@ -80,3 +80,34 @@ def test_web_spec_render_still_400s_an_invalid_spec():
         assert r.status_code == 400
     finally:
         registry._models.pop("web_spec_bad", None)
+
+
+def test_reports_page_serves_a_json_spec_as_the_artifact(tmp_path):
+    """A reports/<name>.json spec, discovered at startup, serves the REAL
+    artifact render on the Reports page (/api/reports/{name}/run) — schema-2
+    manifest, figures, no legacy runtime — not the carrier render. Compilation
+    happens at discovery (structural); models resolve at call time in render."""
+    import json
+
+    from fastapi.testclient import TestClient
+
+    import tracebi.model_registry as model_registry
+    from tracebi.registry import registry
+    from tracebi.web.api.main import app
+    from tracebi.web.discovery import auto_discover
+
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "byreg.json").write_text(json.dumps(_spec("rp_demo")))
+    model_registry.register(_model("rp_demo"))
+    try:
+        auto_discover(str(reports))
+        r = TestClient(app).post("/api/reports/byreg/run")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["manifest"]["schema_version"] == 2     # artifact, not carrier
+        assert "data-tb-figure" in body["html"]
+        assert 'id="tracebi-charts"' not in body["html"]
+    finally:
+        registry._report_factories.pop("byreg", None)
+        model_registry._registry._models.pop("rp_demo", None)

@@ -79,6 +79,38 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
         return {"status": "failed", "module": stem,
                 "reason": "; ".join(str(p) for p in problems[:3])}
 
+    # Compile the spec to the artifact package ONCE, here at discovery — this is
+    # structural (no models, no queries), the same as the validation above — and
+    # serve it through the artifact path (via the _tracebi_package_dir tag). So a
+    # reports/<name>.json spec on the Reports page gets figures, the receipt
+    # drawer, badges, and a schema-2 manifest, exactly like /api/spec/render and
+    # a hand-authored package — not the legacy carrier render. Model resolution
+    # still happens at CALL time, inside TemplatePackage.render.
+    import os
+    import tempfile
+
+    from tracebi.reports.compile_spec import compile_spec
+
+    def _sibling(name: str) -> str:
+        if not name:
+            return ""
+        p = os.path.join(os.path.dirname(full_path), name)
+        return open(p, encoding="utf-8").read() if os.path.isfile(p) else ""
+
+    try:
+        compiled = compile_spec(
+            spec,
+            theme_css=_sibling(getattr(spec, "theme", "") or ""),
+            script_js=_sibling(getattr(spec, "script", "") or ""),
+        )
+        pkg_dir = tempfile.mkdtemp(prefix=f"tracebi-spec-{stem}-")
+        for fname, content in compiled.files.items():
+            with open(os.path.join(pkg_dir, fname), "w", encoding="utf-8") as fh:
+                fh.write(content)
+    except Exception as exc:  # noqa: BLE001 — one bad file must not stop startup
+        return {"status": "failed", "module": stem,
+                "reason": f"spec compile failed: {type(exc).__name__}: {exc}"}
+
     def factory(_spec=spec):
         from tracebi.model_registry import get_model, list_models
         models = {}
@@ -93,6 +125,11 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
             models[name] = m
             models[getattr(m, "name", name)] = m
         return _spec.build(models=models)
+
+    # Tag the factory with the compiled package dir so the web layer serves the
+    # real artifact render (embedded data, figure claims, schema-2 manifest)
+    # instead of the carrier — the same mechanism a hand-authored package uses.
+    factory._tracebi_package_dir = pkg_dir
 
     registry.add_report(stem, factory, spec.description or "")
     return {"status": "registered", "module": stem}
