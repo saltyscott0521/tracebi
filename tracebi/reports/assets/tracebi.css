@@ -422,10 +422,34 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
   .tb-callout { background: none; }
   pre { background: none; border: 1px solid var(--tb-rule); }
 
-  /* Interactive chrome has no meaning on paper. */
-  .tb-receipt-btn, .tb-receipt-drawer, .tb-tab-bar,
+  /* Truly interactive chrome has no meaning on paper. */
+  .tb-receipt-btn,
   select[data-tb-filter], input[data-tb-search], button[data-tb-download] {
     display: none;
+  }
+
+  /* The tab bar is a control; its panels are content. Drop the bar and
+     linearize every panel — a printed report must never hide half its
+     content, and the stated methodology often lives behind an inactive tab. */
+  .tb-tab-bar { display: none; }
+  .tb-tab-bar ~ [data-tb-tab] { display: block !important; }
+
+  /* The receipt IS the point of the document. Un-pin the drawer from its
+     fixed overlay into a static appendix so the fingerprints, contract status
+     and git SHA that back the numbers print with them, not screen-only. */
+  .tb-receipt-drawer {
+    display: block;
+    position: static;
+    inset: auto;
+    transform: none;
+    width: auto;
+    max-width: none;
+    box-shadow: none;
+    border: 1px solid var(--tb-rule);
+    margin-top: var(--tb-space-4);
+    padding: var(--tb-space-3);
+    page-break-before: always;
+    color: inherit;
   }
 
   /* A scrolling region would truncate rows on paper — unclip it. */
