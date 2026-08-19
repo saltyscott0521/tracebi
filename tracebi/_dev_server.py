@@ -39,6 +39,20 @@ import traceback
 import webbrowser
 from pathlib import Path
 
+
+def _host_is_local(host_header: str) -> bool:
+    """Whether a ``Host`` header names a loopback address — the DNS-rebinding
+    guard. A browser pointed at a malicious domain that resolves to 127.0.0.1
+    sends that domain as ``Host``; only localhost / 127.0.0.1 / [::1] (and an
+    absent header) are legitimate for this local dev server.
+    """
+    if host_header.startswith("["):              # IPv6 literal, e.g. [::1]:port
+        bare = host_header.split("]", 1)[0].lstrip("[")
+    else:
+        bare = host_header.rsplit(":", 1)[0]
+    return bare in ("localhost", "127.0.0.1", "::1", "")
+
+
 _REFRESH_SNIPPET = """
 <script>
 (function () {
@@ -1074,7 +1088,16 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
             self.end_headers()
             self.wfile.write(body)
 
+        def _host_ok(self) -> bool:
+            # Block DNS rebinding: a malicious domain resolving to 127.0.0.1
+            # could otherwise read the rich /__workbench/state.json.
+            return _host_is_local(self.headers.get("Host", ""))
+
         def do_GET(self):
+            if not self._host_ok():
+                self._send(b'{"error": "host not allowed"}',
+                           "application/json", 403)
+                return
             if self.path == "/__status":
                 with lock:
                     body = json.dumps({"version": state["version"]}).encode()
@@ -1092,6 +1115,10 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
             self._send(body, "text/html; charset=utf-8")
 
         def do_POST(self):
+            if not self._host_ok():
+                self._send(b'{"error": "host not allowed"}',
+                           "application/json", 403)
+                return
             if not (t.workbench
                     and self.path in ("/__workbench/pin", "/__workbench/unpin")):
                 self._send(b'{"error": "not found"}', "application/json", 404)

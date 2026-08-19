@@ -806,3 +806,16 @@ class TestPinJoin:
         export_session(wb, str(out))
         md = out.read_text(encoding="utf-8")
         assert md.index("on the FIRST") < md.index("second cell")
+
+
+def test_dev_server_rejects_dns_rebinding_hosts():
+    """The dev server serves the rich /__workbench/state.json; a DNS-rebinding
+    page sends its own domain as Host, so only loopback hosts are accepted."""
+    from tracebi._dev_server import _host_is_local
+
+    for ok in ["localhost", "localhost:8000", "127.0.0.1", "127.0.0.1:8000",
+               "[::1]", "[::1]:8000", ""]:
+        assert _host_is_local(ok), f"{ok!r} should be allowed"
+    for bad in ["evil.example.com", "evil.example.com:8000", "attacker.test",
+                "192.168.1.5:8000", "0.0.0.0:8000"]:
+        assert not _host_is_local(bad), f"{bad!r} should be refused"
