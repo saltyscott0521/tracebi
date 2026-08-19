@@ -51,7 +51,13 @@ _MD_INLINE = [
 
 
 def _inline(text: str) -> str:
-    out = html.escape(text, quote=False)
+    # Escape quotes too (html.escape default): the link rule writes the URL
+    # into an href="…" attribute, and a URL is captured up to ')' or space —
+    # which permits a bare quote. Leaving quotes unescaped let
+    # [c](http://x"onmouseover="alert(1)) close the href and inject a live
+    # event handler. Escaped, that same quote becomes an inert &quot; inside
+    # the attribute value, so content can never break out of the markup.
+    out = html.escape(text)
     for pattern, repl in _MD_INLINE:
         out = pattern.sub(repl, out)
     return out

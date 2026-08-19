@@ -99,6 +99,27 @@ class TestMarkdown:
         assert "&lt;script&gt;" in html
         assert "<strong>fine</strong>" in html
 
+    @pytest.mark.parametrize("quote", ['"', "'"])
+    def test_link_url_cannot_break_out_of_the_href_attribute(self, quote):
+        # A URL is captured up to ')' or whitespace, which permits a bare
+        # quote; leaving quotes unescaped let the link close href and inject a
+        # live event handler. The escaped quote must stay inside the attribute.
+        payload = f"[c](http://x{quote}onmouseover={quote}alert(1))"
+        html = md_to_html(payload)
+        assert 'onmouseover="' not in html and "onmouseover='" not in html, html
+        assert f'{quote}onmouseover' not in html, (
+            "a bare quote survived into the href — attribute breakout"
+        )
+
+    def test_quotes_in_prose_are_escaped_but_preserved(self):
+        html = md_to_html('She said "hi" and it\'s fine')
+        assert "&quot;hi&quot;" in html
+        assert "&#x27;" in html  # apostrophe escaped, renders as ' for the reader
+
+    def test_legitimate_links_still_render(self):
+        html = md_to_html("see [the docs](https://example.com/a)")
+        assert '<a href="https://example.com/a">the docs</a>' in html
+
     def test_text_section_carries_the_converted_markdown(self):
         compiled = compile_spec(_spec([
             {"type": "text", "content": "# Head\n\nA **strong** point."},
