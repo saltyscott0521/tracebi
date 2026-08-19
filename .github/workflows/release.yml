@@ -66,8 +66,18 @@ jobs:
           print(f"{whl} ships the web app and the built UI, and nothing top-level named web/")
           PY
 
+      # A CycloneDX SBOM of the resolved dependency tree, shipped beside the
+      # wheel so a security review has the software bill of materials the
+      # audit called out as missing.
+      - name: Generate a CycloneDX SBOM
+        run: |
+          pip install ".[all]" cyclonedx-bom
+          cyclonedx-py environment --of JSON -o dist/tracebi.cdx.json
+
       - name: Upload the distributions
         uses: actions/upload-artifact@v4
         with:
           name: tracebi-wheel
-          path: dist/*.whl
+          path: |
+            dist/*.whl
+            dist/tracebi.cdx.json
