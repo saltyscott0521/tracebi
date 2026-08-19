@@ -134,6 +134,20 @@ def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "report"
 
 
+def _report_name_error(report: str) -> Optional[str]:
+    """``None`` if ``report`` is a safe package name, else an error message.
+
+    The name indexes ``reports/<name>/`` and must never be a path: reject path
+    separators, an absolute path, and a leading dot so ``reports_dir / report``
+    can never escape the reports directory (``/etc/x`` resolves to an absolute
+    path; ``../../etc`` traverses out). Applied by every tool that turns a
+    caller-supplied name into a filesystem path.
+    """
+    if os.sep in report or "/" in report or report.startswith("."):
+        return f"invalid report name {report!r}: pass the package name, not a path"
+    return None
+
+
 #: The authoring SOP, served as the ``tracebi://guide`` resource. An agent
 #: reaching TraceBi only over MCP never sees AGENTS.md or the repo docs, so the
 #: essential rules have to live on the surface itself.
@@ -612,6 +626,12 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     if not report or report == DISCOVERY_NAME:
         with actor(_mcp_actor()):
             return collect_discovery_state(os.getcwd(), _load_models())
+    # A caller-supplied name must never become a path: without this,
+    # report='/etc/x' or '../../x' would escape reports/ and collect_state
+    # would read — and execute report.py from — an attacker-chosen directory.
+    name_err = _report_name_error(report)
+    if name_err:
+        return {"errors": [name_err]}
     reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
     pkg_dir = reports_dir / report
     if not (pkg_dir / "report.json").is_file():
@@ -640,10 +660,9 @@ def gateway_build_report(report: str, output_dir: str = "output") -> BuildReport
     from tracebi.reports.template_package import TemplatePackage
 
     # The name is a directory under reports/ — never a path.
-    if os.sep in report or "/" in report or report.startswith("."):
-        return {"ok": False, "errors": [
-            f"invalid report name {report!r}: pass the package name, not a path"
-        ]}
+    name_err = _report_name_error(report)
+    if name_err:
+        return {"ok": False, "errors": [name_err]}
     reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
     pkg_dir = reports_dir / report
     if not ((pkg_dir / "report.json").is_file()

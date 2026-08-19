@@ -325,6 +325,22 @@ def test_workbench_state_defaults_to_discovery(tmp_path, monkeypatch):
     assert out["exhibits"] == [] and out["pins"] == []
 
 
+def test_workbench_state_refuses_a_path_shaped_name(tmp_path, monkeypatch):
+    """A caller-supplied report name must never become a path. Without the
+    guard, report='/etc/x' or '../../x' escapes reports/ and collect_state
+    reads — and executes report.py from — an attacker-chosen directory. The
+    refusal must fire before any filesystem access."""
+    import tracebi.mcp_server as gw
+    from tracebi.mcp_server import gateway_workbench_state
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(gw, "_load_models", lambda: {})
+    for payload in ["/etc/passwd", "../../etc/x", "../secrets", ".ssh/config"]:
+        out = gateway_workbench_state(report=payload)
+        assert "errors" in out, f"{payload!r} was not refused: {out!r}"
+        assert "not a path" in out["errors"][0]
+
+
 def test_workbench_state_with_a_name_stays_package_scoped(tmp_path, monkeypatch):
     """A named report keeps exactly the package behavior — a missing
     package is the errors envelope, never the discovery state."""
