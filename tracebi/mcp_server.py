@@ -502,6 +502,7 @@ def gateway_query(
     order_by: Optional[list] = None,
     limit: Optional[int] = None,
     preview_rows: int = _ROW_DEFAULT,
+    include_lineage: bool = True,
 ) -> QueryResult:
     """
     Run a star-schema query and return a **stamped** result.
@@ -565,7 +566,7 @@ def gateway_query(
         qs = (node.get("metadata") or {}).get("query_spec")
         if qs:
             stamped = qs
-    return {
+    result: QueryResult = {
         "ok": True,
         "model": model,
         "query": stamped,
@@ -575,9 +576,15 @@ def gateway_query(
         "rows_returned": min(preview_rows, len(df)),
         "truncated": len(df) > preview_rows,
         "fingerprint": ds.fingerprint(),
-        "lineage": ds.lineage_to_dict(),
         "actor": _mcp_actor(),
     }
+    # The fingerprint + resolved query are the stamp an agent cites and
+    # re-verifies against; the full lineage chain (with timestamps) is ~600
+    # extra tokens per call. Keep it by default, but let an agent exploring
+    # drop it with include_lineage=false and re-query when it needs the chain.
+    if include_lineage:
+        result["lineage"] = ds.lineage_to_dict()
+    return result
 
 
 def gateway_validate_spec(spec: Any) -> ValidateResult:
@@ -978,7 +985,10 @@ def build_server(token: Optional[str] = None):
             "limit (requires order_by) keeps the top N. preview_rows caps "
             "only the transport. Returns rows plus a stamp: the resolved "
             "query, lineage chain, and a fingerprint of the full result. "
-            "Quote the fingerprint with any number you cite."
+            "Quote the fingerprint with any number you cite. Pass "
+            "include_lineage=false while exploring to drop the lineage chain "
+            "(the fingerprint and resolved query still let you cite and "
+            "re-verify) for lighter responses."
         ),
     )(gateway_query)
     server.tool(

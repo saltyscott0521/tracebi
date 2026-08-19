@@ -149,6 +149,14 @@ def test_query_success_carries_the_ok_envelope(gateway_model):
     assert _query()["ok"] is True
 
 
+def test_include_lineage_false_drops_the_chain_but_keeps_the_stamp(gateway_model):
+    lean = _query(include_lineage=False)
+    assert lean["ok"] is True
+    assert "lineage" not in lean               # the ~600-token chain is dropped
+    assert lean["fingerprint"] and lean["query"]   # the citable stamp survives
+    assert "lineage" in _query()               # default still carries it
+
+
 def test_unknown_model_names_the_alternatives(gateway_model):
     # A structured, retryable error — the {ok, errors} envelope every other
     # tool uses — not a raised exception that ends the agent loop.
