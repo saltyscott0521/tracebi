@@ -477,6 +477,24 @@ class TestTemplatePackageRender:
         assert "connect-src 'none'" in html
         assert "unsafe-eval" not in html
 
+    def test_author_text_cannot_suppress_the_csp(self):
+        """The strict CSP must not be dropped just because a template mentions
+        the phrase 'Content-Security-Policy' (a comment, prose, or a weaker
+        policy an injection tried to smuggle) — dedup is on the exact meta."""
+        from tracebi.reports.embed import csp_meta
+        from tracebi.reports.stack import apply_stack
+
+        page = ("<html><head></head><body>"
+                "<!-- notes on Content-Security-Policy -->"
+                "<p>our Content-Security-Policy is strict</p></body></html>")
+        out = apply_stack(page, libs=(), data_blocks_html="")
+        assert csp_meta().strip() in out, "author text must not disable the CSP"
+
+        # But the EXACT framework meta (as html_renderer inserts) is not doubled.
+        page2 = f"<html><head>{csp_meta()}</head><body></body></html>"
+        out2 = apply_stack(page2, libs=(), data_blocks_html="")
+        assert out2.count('http-equiv="Content-Security-Policy"') == 1
+
 
 class TestChartLibraries:
     def test_echarts_bundle_inlined_offline(self, tmp_path, model):

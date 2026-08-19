@@ -114,13 +114,16 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
                 report_css: str = "", figures_cfg: Optional[dict] = None,
                 report_js: str = "") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
-    # The carrier render may already carry the CSP meta (html_renderer
-    # inserts one); injecting a second identical tag is noise the review
-    # flagged — the policy is included here only when absent.
+    # The carrier render may already carry the framework CSP meta
+    # (html_renderer inserts the same one); a second identical tag is just
+    # noise, so skip it — but ONLY when the EXACT framework meta is present.
+    # The old loose substring check let any "Content-Security-Policy" text in a
+    # template (a comment, an author's weaker policy) suppress the strict CSP
+    # entirely, which is exactly the markup an injection would smuggle.
     page = insert_before(
         page, "</head>",
         stack_head(stage, project_css, report_css,
-                   include_csp="Content-Security-Policy" not in page))
+                   include_csp=csp_meta().strip() not in page))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))
