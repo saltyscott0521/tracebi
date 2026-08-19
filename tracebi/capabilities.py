@@ -206,7 +206,10 @@ def _presentation() -> dict:
             ".tb-callout", ".tb-note",
             ".tb-badge (--verified / --derived / --unverified — provenance "
             "chooses the class; a stylesheet can restyle, never re-color "
-            "honesty)",
+            "honesty). The green badge reads 'reproducible' (a re-runnable "
+            "query backs the number, matching verify's `reproduces` verdict), "
+            "never 'verified' — the receipt attests reproduction, not "
+            "correctness",
         ],
         "figure_attributes": {
             "data-tb-figure": "value | chart | table | custom — on ANY "

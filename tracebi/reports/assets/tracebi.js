@@ -730,8 +730,14 @@
    *    Author CSS can restyle a badge; the runtime never lets a grey one
    *    become green, because the class is chosen from provenance here. ──── */
 
+  /* The badge word is what a non-technical reviewer reads, so it must state
+   * the actual guarantee, not imply "correct/audited". A green figure's number
+   * is query-REPRODUCIBLE (a re-runnable query backs it, matching the verify
+   * verdict `reproduces`) — never "verified". Grey is computed in python (not
+   * query-reproducible); amber is an honest unbacked figure. The provenance
+   * KEY and the CSS class stay as-is; only the reader-facing text changes. */
   var _BADGES = {
-    verified:   { cls: "tb-badge--verified",   text: "verified" },
+    verified:   { cls: "tb-badge--verified",   text: "reproducible" },
     derived:    { cls: "tb-badge--derived",    text: "python-derived" },
     unverified: { cls: "tb-badge--unverified", text: "unverified" }
   };
