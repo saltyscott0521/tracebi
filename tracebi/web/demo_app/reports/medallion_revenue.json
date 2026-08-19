@@ -1,0 +1,111 @@
+{
+  "name": "Medallion Revenue Report",
+  "author": "TraceBi Demo",
+  "description": "Revenue derived from the Landing → Manipulation → Final pipeline, authored as data — every figure a live query against the pipeline's silver-backed model.",
+  "sections": [
+    {
+      "type": "text",
+      "style": "heading1",
+      "title": "Pipeline Overview",
+      "content": "Data flows through Landing (raw ingest) → Manipulation (deduplication) → Final (star-schema dimensional aggregation). This report queries the model that reads the silver tables — no pandas in the loop."
+    },
+    {
+      "type": "metrics",
+      "title": "At a glance",
+      "data": {
+        "model": "SalesPipelineModel",
+        "query": { "fact": "fact_orders", "measures": { "revenue": "sum" } }
+      },
+      "metrics": [
+        { "label": "Total Revenue", "value": "revenue", "format": "currency0" }
+      ]
+    },
+    {
+      "type": "text",
+      "style": "heading2",
+      "title": "Revenue by Region"
+    },
+    {
+      "type": "chart",
+      "title": "Revenue by Region",
+      "chart_type": "bar",
+      "x": "dim_customer.region",
+      "y": "revenue",
+      "xlabel": "Region",
+      "ylabel": "Revenue (USD)",
+      "show_values": true,
+      "data": {
+        "model": "SalesPipelineModel",
+        "query": {
+          "fact": "fact_orders",
+          "measures": { "revenue": "sum" },
+          "dimensions": ["dim_customer.region"]
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Region Summary",
+      "column_labels": {
+        "dim_customer.region": "Region",
+        "revenue": "Revenue",
+        "qty": "Units",
+        "cost": "Cost"
+      },
+      "number_formats": { "revenue": "currency0", "cost": "currency0", "qty": "comma" },
+      "totals": ["revenue", "qty", "cost"],
+      "data": {
+        "model": "SalesPipelineModel",
+        "query": {
+          "fact": "fact_orders",
+          "measures": { "revenue": "sum", "qty": "sum", "cost": "sum" },
+          "dimensions": ["dim_customer.region"]
+        }
+      }
+    },
+    {
+      "type": "text",
+      "style": "heading2",
+      "title": "Revenue by Segment (Shipped)"
+    },
+    {
+      "type": "chart",
+      "title": "Revenue by Segment — Shipped Orders",
+      "chart_type": "bar",
+      "x": "dim_customer.segment",
+      "y": "revenue",
+      "xlabel": "Segment",
+      "ylabel": "Revenue (USD)",
+      "show_values": true,
+      "data": {
+        "model": "SalesPipelineModel",
+        "query": {
+          "fact": "fact_orders",
+          "measures": { "revenue": "sum", "order_id": "count" },
+          "dimensions": ["dim_customer.segment"],
+          "filters": { "status": "shipped" }
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Segment Breakdown",
+      "column_labels": {
+        "dim_customer.segment": "Segment",
+        "revenue": "Revenue",
+        "order_id": "Order Count"
+      },
+      "number_formats": { "revenue": "currency0", "order_id": "comma" },
+      "totals": ["revenue", "order_id"],
+      "data": {
+        "model": "SalesPipelineModel",
+        "query": {
+          "fact": "fact_orders",
+          "measures": { "revenue": "sum", "order_id": "count" },
+          "dimensions": ["dim_customer.segment"],
+          "filters": { "status": "shipped" }
+        }
+      }
+    }
+  ]
+}

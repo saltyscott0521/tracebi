@@ -16,8 +16,9 @@ automatically on the next server start (or dev-mode reload).
 import os
 
 from tracebi.web.api.registry import registry
+from tracebi import model_registry
 from tracebi.model_registry import get_model
-from tracebi.web.demo_app.pipeline import runner
+from tracebi.web.demo_app.pipeline import runner, pipeline_model
 from tracebi.web.discovery import auto_discover
 
 # ── Models (this package's models/, discovered by the package __init__) ───────
@@ -29,6 +30,12 @@ wealth_model = get_model("wealth_model")
 
 registry.add_model(sales_model, default=True)
 registry.add_model(wealth_model)
+
+# The pipeline's serving model (reads the silver tables) is defined in
+# pipeline.py, not models/, so register it by name here — the medallion_revenue
+# spec resolves it as "SalesPipelineModel" at render time.
+model_registry.register(pipeline_model)
+registry.add_model(pipeline_model)
 
 # Surface each model's connectors on the Connectors page.
 for _conn in (*sales_model.connectors(), *wealth_model.connectors()):

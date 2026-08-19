@@ -1,0 +1,106 @@
+{
+  "name": "AUM by Branch & Asset Class",
+  "author": "TraceBi Demo",
+  "description": "Total assets under management and unrealized gain by branch and asset class — every figure a live query against wealth_model, using its declared unrealized_gain and gain_pct measures.",
+  "sections": [
+    {
+      "type": "text",
+      "style": "heading1",
+      "title": "Portfolio Overview",
+      "content": "AUM and unrealized gain across all holdings, broken out by the branch that manages the account and by asset class. The gain measures are defined once on the model and shared by every figure below."
+    },
+    {
+      "type": "metrics",
+      "title": "At a glance",
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": ["market_value", "unrealized_gain", "gain_pct"]
+        }
+      },
+      "metrics": [
+        { "label": "Total AUM", "value": "market_value", "format": "currency0" },
+        { "label": "Unrealized Gain", "value": "unrealized_gain", "format": "currency0", "good_when_up": true },
+        { "label": "Gain %", "value": "gain_pct", "format": "percent", "good_when_up": true }
+      ]
+    },
+    {
+      "type": "text",
+      "style": "heading2",
+      "title": "AUM by Branch"
+    },
+    {
+      "type": "chart",
+      "title": "AUM by Branch",
+      "chart_type": "bar",
+      "x": "dim_branch.branch",
+      "y": "market_value",
+      "xlabel": "Branch",
+      "ylabel": "AUM (USD)",
+      "show_values": true,
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": ["market_value"],
+          "dimensions": ["dim_branch.branch"]
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Branch Summary",
+      "column_labels": {
+        "dim_branch.branch": "Branch",
+        "dim_branch.region": "Region",
+        "market_value": "AUM",
+        "unrealized_gain": "Unrealized Gain",
+        "gain_pct": "Gain %"
+      },
+      "number_formats": {
+        "market_value": "currency0",
+        "unrealized_gain": "currency0",
+        "gain_pct": "percent"
+      },
+      "totals": ["market_value", "unrealized_gain"],
+      "highlight_negatives": ["unrealized_gain"],
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": ["market_value", "unrealized_gain", "gain_pct"],
+          "dimensions": ["dim_branch.branch", "dim_branch.region"]
+        }
+      }
+    },
+    {
+      "type": "text",
+      "style": "heading2",
+      "title": "AUM by Asset Class"
+    },
+    {
+      "type": "table",
+      "title": "Asset Class Breakdown",
+      "column_labels": {
+        "dim_product.asset_class": "Asset Class",
+        "market_value": "AUM",
+        "unrealized_gain": "Unrealized Gain"
+      },
+      "number_formats": {
+        "market_value": "currency0",
+        "unrealized_gain": "currency0"
+      },
+      "totals": ["market_value", "unrealized_gain"],
+      "highlight_negatives": ["unrealized_gain"],
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": ["market_value", "unrealized_gain"],
+          "dimensions": ["dim_product.asset_class"]
+        }
+      }
+    }
+  ]
+}
