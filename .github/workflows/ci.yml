@@ -169,3 +169,23 @@ jobs:
       - name: Audit dependencies for known vulnerabilities
         continue-on-error: true
         run: pip-audit --desc
+
+  lock:
+    name: uv.lock in sync
+    runs-on: ubuntu-latest
+    # Reproducible builds: uv.lock pins the full resolved tree. This fails if
+    # pyproject.toml changed without `uv lock` being re-run, so the lock never
+    # drifts from the declared dependencies.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install "uv>=0.12"
+
+      - name: Verify the lockfile matches pyproject.toml
+        run: uv lock --check
