@@ -417,13 +417,14 @@ class HTMLRenderer(BaseRenderer):
         ]
 
     def _render_cover(self, report: Report) -> str:
-        desc = f"<p>{self._esc(report._description)}</p>" if report._description else ""
+        rmeta = report.meta
+        desc = f"<p>{self._esc(rmeta.description)}</p>" if rmeta.description else ""
         meta_rows = ""
         items = []
-        if report._author:
-            items.append(("Author", report._author))
+        if rmeta.author:
+            items.append(("Author", rmeta.author))
         items.append(("Generated", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")))
-        for k, v in report._parameters.items():
+        for k, v in rmeta.parameters.items():
             items.append((k.replace("_", " ").title(), str(v)))
         for label, value in items:
             meta_rows += f"""

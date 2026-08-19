@@ -189,20 +189,21 @@ class ExcelRenderer(BaseRenderer):
         ws.merge_cells("B3:H3")
 
         # Subtitle / description
-        if report._description:
+        rmeta = report.meta
+        if rmeta.description:
             ws.row_dimensions[4].height = 25
-            cell(4, 2, report._description, size=12,
+            cell(4, 2, rmeta.description, size=12,
                  color="595959", align="center", wrap=True)
             ws.merge_cells("B4:H4")
 
         # Metadata table
         meta_start = 6
         items = [
-            ("Author",     report._author or "—"),
+            ("Author",     rmeta.author or "—"),
             ("Generated",  datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")),
             ("Sections",   str(len(report.sections))),
         ]
-        for k, v in report._parameters.items():
+        for k, v in rmeta.parameters.items():
             items.append((k.replace("_", " ").title(), str(v)))
 
         for i, (label, value) in enumerate(items):

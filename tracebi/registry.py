@@ -186,6 +186,16 @@ class Registry:
             entry = self._report_factories.get(name)
         return entry["factory"] if entry else None
 
+    def report_package_dir(self, name: str) -> Optional[str]:
+        """The template-package directory backing *name*, or ``None``.
+
+        Discovery tags an artifact-backed report's factory with its package
+        directory; this exposes it so the web layer can serve the real
+        artifact render without reaching into the tagged attribute itself.
+        """
+        factory = self.report_factory(name)
+        return getattr(factory, "_tracebi_package_dir", None) if factory else None
+
     # ── Scheduled reports ──────────────────────────────────────
 
     def scheduled(

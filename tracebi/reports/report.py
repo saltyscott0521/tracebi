@@ -630,6 +630,18 @@ class ReportManifest:
 # Report
 # ─────────────────────────────────────────────────────────────
 
+@dataclass(frozen=True)
+class ReportMeta:
+    """Read-only view of a Report's author, description and parameters.
+
+    The public surface renderers and the spec exporter read, so they don't
+    reach into the report's private builder fields.
+    """
+    author: str
+    description: str
+    parameters: dict[str, Any]
+
+
 class Report:
     """
     A code-defined, renderer-agnostic report.
@@ -738,6 +750,15 @@ class Report:
         return self.add(RowSection(title=title, sections=list(sections), widths=widths))
 
     # ── Inspection ─────────────────────────────────────────────
+
+    @property
+    def meta(self) -> ReportMeta:
+        """Author, description and parameters as a read-only view.
+
+        A defensive copy of the parameters, so a consumer cannot mutate the
+        report through it.
+        """
+        return ReportMeta(self._author, self._description, dict(self._parameters))
 
     @property
     def sections(self) -> list[ReportSection]:

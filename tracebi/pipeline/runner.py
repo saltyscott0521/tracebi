@@ -296,24 +296,27 @@ class PipelineRunner:
         is stored alongside run history.
         """
         from sqlalchemy import text
+        # Read the model's structure through its public surface (info()), the
+        # stable contract the web layer uses too — not its private def dicts.
+        info = model.info()
         with self._engine_().begin() as conn:
-            for rel in model._relationships.values():
+            for rel in info["relationships"]:
                 conn.execute(text("""
                     INSERT INTO tracebi_relationships
                       (model_name, rel_name, left_table, right_table,
                        left_key, right_key, how)
                     VALUES (:mn, :rn, :lt, :rt, :lk, :rk, :how)
                 """), {
-                    "mn":  model.name,
-                    "rn":  rel.name,
-                    "lt":  rel.left_table,
-                    "rt":  rel.right_table,
-                    "lk":  rel.left_key,
-                    "rk":  rel.right_key,
-                    "how": rel.how,
+                    "mn":  info["name"],
+                    "rn":  rel["name"],
+                    "lt":  rel["left_table"],
+                    "rt":  rel["right_table"],
+                    "lk":  rel["left_key"],
+                    "rk":  rel["right_key"],
+                    "how": rel["how"],
                 })
 
-            if not model._facts and not model._dimensions:
+            if not info["facts"] and not info["dimensions"]:
                 return self
 
             schema_id = self._insert_returning_id(
@@ -321,36 +324,36 @@ class PipelineRunner:
                 "INSERT INTO tracebi_schemas (schema_name, model_name, created_at)"
                 " VALUES (:sn, :mn, :ts)",
                 {
-                    "sn": model.name,
-                    "mn": model.name,
+                    "sn": info["name"],
+                    "mn": info["name"],
                     "ts": datetime.now(timezone.utc).isoformat(),
                 },
             )
 
-            for dim in model._dimensions.values():
+            for dim in info["dimensions"]:
                 conn.execute(text("""
                     INSERT INTO tracebi_dimensions
                       (schema_id, dim_name, table_name, key_col, attributes)
                     VALUES (:sid, :dn, :tn, :kc, :attrs)
                 """), {
                     "sid":   schema_id,
-                    "dn":    dim.name,
-                    "tn":    dim.table_name,
-                    "kc":    dim.key_col,
-                    "attrs": ",".join(dim.attributes),
+                    "dn":    dim["name"],
+                    "tn":    dim["table"],
+                    "kc":    dim["key"],
+                    "attrs": ",".join(dim["attributes"]),
                 })
 
-            for fact in model._facts.values():
-                fk_str = ",".join(f"{k}:{v}" for k, v in fact.foreign_keys.items())
+            for fact in info["facts"]:
+                fk_str = ",".join(f"{k}:{v}" for k, v in fact["foreign_keys"].items())
                 conn.execute(text("""
                     INSERT INTO tracebi_facts
                       (schema_id, fact_name, table_name, measures, foreign_keys)
                     VALUES (:sid, :fn, :tn, :m, :fk)
                 """), {
                     "sid": schema_id,
-                    "fn":  fact.name,
-                    "tn":  fact.table_name,
-                    "m":   ",".join(fact.measures),
+                    "fn":  fact["name"],
+                    "tn":  fact["table"],
+                    "m":   ",".join(fact["measures"]),
                     "fk":  fk_str,
                 })
         return self

@@ -332,12 +332,13 @@ class ReportSpec:
         loses it, because arbitrary Python has no declarative form. Check
         with :meth:`data_coverage` rather than assuming.
         """
+        meta = report.meta
         return cls(
             name=report.name,
             sections=tuple(section_to_dict(s) for s in report.sections),
-            author=report._author,
-            description=report._description,
-            parameters=dict(report._parameters) or None,
+            author=meta.author,
+            description=meta.description,
+            parameters=dict(meta.parameters) or None,
         )
 
     def data_coverage(self) -> dict:

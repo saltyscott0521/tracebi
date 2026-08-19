@@ -453,7 +453,7 @@ def collect_state(package_dir: str, models: dict) -> dict:
     outputs = []
     if pkg.report_py_path is not None:
         try:
-            outputs = pkg._apply_report_py(report, inputs)
+            outputs = pkg.apply_report_py(report, inputs)
         except Exception as exc:  # noqa: BLE001 — captured into the state
             errors[REPORT_PY] = f"{type(exc).__name__}: {exc}"
 

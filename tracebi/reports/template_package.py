@@ -232,7 +232,7 @@ class TemplatePackage:
         # never reads as query-reproducible, whatever sits next to it.
         outputs: list[StampedData] = []
         if self.report_py_path is not None:
-            outputs = self._apply_report_py(report, inputs)
+            outputs = self.apply_report_py(report, inputs)
         embed_items = inputs + outputs
 
         renderer = HTMLRenderer(
@@ -506,7 +506,7 @@ class TemplatePackage:
         report, inputs = self.build(models)
         outputs: list[StampedData] = []
         if self.report_py_path is not None:
-            outputs = self._apply_report_py(report, inputs)
+            outputs = self.apply_report_py(report, inputs)
 
         renderer = HTMLRenderer(
             template=self.template_html,
@@ -572,7 +572,7 @@ class TemplatePackage:
 
     # ── Escape hatch: report.py (architecture §8-M3) ────────────────────────
 
-    def _apply_report_py(self, report: Report, inputs: list[StampedData]) -> list[StampedData]:
+    def apply_report_py(self, report: Report, inputs: list[StampedData]) -> list[StampedData]:
         """Run report.py over the stamped inputs; stamp+carry its outputs.
 
         Adds one :class:`_PythonDerivedSection` per output to *report* (so the

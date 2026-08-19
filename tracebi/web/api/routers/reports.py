@@ -54,8 +54,7 @@ def _artifact_payload(name: str):
     import tempfile
     import time
 
-    factory = registry.report_factory(name)
-    pkg_dir = getattr(factory, "_tracebi_package_dir", None)
+    pkg_dir = registry.report_package_dir(name)
     if not pkg_dir:
         return None
 
