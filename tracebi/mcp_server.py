@@ -148,6 +148,43 @@ def _report_name_error(report: str) -> Optional[str]:
     return None
 
 
+def _confined_output_dir(output_dir: str) -> "tuple[Optional[Path], Optional[str]]":
+    """Resolve ``output_dir`` for an artifact write, refusing dangerous targets.
+
+    An MCP-driving agent chooses ``output_dir``, so two protections apply.
+    ALWAYS: the artifact may never be written inside the installed ``tracebi``
+    package — an agent must not clobber shipped assets like
+    ``web/ui/dist/index.html``, which a running server would then serve.
+    OPT-IN: if ``$TRACEBI_OUTPUT_ROOT`` is set, the resolved directory must stay
+    within it — strict confinement for a hardened deployment, mirroring the
+    opt-in auth model (secure when configured, no default-deny that would break
+    an existing workflow that writes elsewhere). Returns ``(dir, None)`` when
+    allowed, ``(None, error)`` otherwise.
+    """
+    try:
+        resolved = (Path.cwd() / output_dir).resolve()
+    except (OSError, ValueError) as exc:
+        return None, f"invalid output_dir {output_dir!r}: {exc}"
+
+    import tracebi
+    pkg = Path(tracebi.__file__).resolve().parent
+    if resolved == pkg or pkg in resolved.parents:
+        return None, (
+            f"output_dir {output_dir!r} resolves inside the installed tracebi "
+            f"package; refusing to overwrite shipped files"
+        )
+
+    root_env = os.environ.get("TRACEBI_OUTPUT_ROOT")
+    if root_env:
+        root = Path(root_env).resolve()
+        if resolved != root and root not in resolved.parents:
+            return None, (
+                f"output_dir {output_dir!r} escapes TRACEBI_OUTPUT_ROOT "
+                f"({root}); artifacts must be written under it"
+            )
+    return resolved, None
+
+
 #: The authoring SOP, served as the ``tracebi://guide`` resource. An agent
 #: reaching TraceBi only over MCP never sees AGENTS.md or the repo docs, so the
 #: essential rules have to live on the surface itself.
@@ -519,8 +556,10 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
     # traceback. Build and render run real queries, so they can fail in
     # ways validation cannot see (a column only the table knows, a
     # non-unique dimension key, a connector error).
+    out_dir, out_err = _confined_output_dir(output_dir)
+    if out_err:
+        return {"ok": False, "errors": [out_err], "warnings": []}
     try:
-        out_dir = Path(output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         html_path = out_dir / f"{_slug(rs.name)}.html"
         manifest_path = out_dir / f"{_slug(rs.name)}.manifest.json"
@@ -672,7 +711,9 @@ def gateway_build_report(report: str, output_dir: str = "output") -> BuildReport
             f"reports/<name>/ packages (a .json spec renders via "
             f"render_report_spec)"
         ]}
-    out_dir = Path(output_dir)
+    out_dir, out_err = _confined_output_dir(output_dir)
+    if out_err:
+        return {"ok": False, "errors": [out_err]}
     out_dir.mkdir(parents=True, exist_ok=True)
     output = out_dir / f"{report}.html"
     try:

@@ -294,6 +294,35 @@ class TestBuildReport:
         assert not out["ok"]
         assert "name" in out["errors"][0]
 
+    def test_refuses_writing_into_the_installed_package(self, gateway_model,
+                                                        tmp_path, monkeypatch):
+        """Always on: an agent must not write into the tracebi package (e.g.
+        clobber web/ui/dist/index.html, which a server then serves)."""
+        import pathlib
+
+        import tracebi
+        from tracebi.mcp_server import gateway_build_report
+
+        self._package(tmp_path, monkeypatch, gateway_model)
+        pkg_dist = str(
+            pathlib.Path(tracebi.__file__).resolve().parent / "web" / "ui" / "dist")
+        out = gateway_build_report("index", output_dir=pkg_dist)
+        assert not out["ok"]
+        assert "package" in out["errors"][0]
+
+    def test_strict_confinement_refuses_output_outside_the_root(
+            self, gateway_model, tmp_path, monkeypatch):
+        """Opt-in: with TRACEBI_OUTPUT_ROOT set, an absolute path outside it or
+        a traversal that escapes it is refused before any write."""
+        from tracebi.mcp_server import gateway_build_report
+
+        self._package(tmp_path, monkeypatch, gateway_model)
+        monkeypatch.setenv("TRACEBI_OUTPUT_ROOT", str(tmp_path / "out"))
+        for bad in ["/tmp/tracebi-escape-xyz", str(tmp_path / "elsewhere")]:
+            out = gateway_build_report("gwpkg", output_dir=bad)
+            assert not out["ok"], f"{bad!r} was not refused"
+            assert "TRACEBI_OUTPUT_ROOT" in out["errors"][0]
+
     def test_missing_package_is_a_result_not_a_crash(self, gateway_model,
                                                      tmp_path, monkeypatch):
         from tracebi.mcp_server import gateway_build_report
