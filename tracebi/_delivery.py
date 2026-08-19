@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import os
 import smtplib
+import ssl
 import urllib.request
 from email.message import EmailMessage
 from pathlib import Path
@@ -140,14 +141,28 @@ def send_report(html_path: Union[str, Path], manifest_path: Union[str, Path],
 
     host = parsed.hostname or "localhost"
     port = parsed.port or (465 if parsed.scheme == "smtps" else 25)
-    cls = smtplib.SMTP_SSL if parsed.scheme == "smtps" else smtplib.SMTP
-    server = cls(host, port, timeout=30)
+    # Verify the server certificate and hostname. Without an explicit context
+    # smtplib uses an UNVERIFIED one, so a MITM could present any certificate,
+    # terminate TLS, and capture the credentials sent in login().
+    ctx = ssl.create_default_context()
+    if parsed.scheme == "smtps":
+        server = smtplib.SMTP_SSL(host, port, timeout=30, context=ctx)
+    else:
+        server = smtplib.SMTP(host, port, timeout=30)
     try:
         if parsed.scheme == "smtp":
             try:
-                server.starttls()
+                server.starttls(context=ctx)
             except smtplib.SMTPNotSupportedError:
-                pass  # a plain local relay; credentials below are its call
+                # No STARTTLS. Sending credentials over the cleartext link
+                # would expose them, so refuse when any are set — a truly
+                # local no-auth relay still works.
+                if parsed.username:
+                    raise RuntimeError(
+                        "SMTP server does not support STARTTLS; refusing to "
+                        "send credentials over an unencrypted connection — use "
+                        "an smtps:// URL or a server that offers STARTTLS."
+                    )
         if parsed.username:
             server.login(unquote(parsed.username),
                          unquote(parsed.password or ""))

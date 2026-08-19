@@ -256,11 +256,12 @@ class TestReportSend:
         sent = {}
 
         class FakeSMTP:
-            def __init__(self, host, port, timeout=None):
+            def __init__(self, host, port, timeout=None, context=None):
                 sent["host"], sent["port"] = host, port
+                sent["ssl_context"] = context   # smtps must pass a verified ctx
 
-            def starttls(self):
-                pass
+            def starttls(self, context=None):
+                sent["starttls_context"] = context
 
             def login(self, user, password):
                 sent["login"] = (user, password)
@@ -350,3 +351,52 @@ class TestReportSend:
         body = msg.get_body(preferencelist=("plain",)).get_content()
         assert "self-contained" in body and "receipt" in body
         assert "RED FLAG" not in body
+
+    def test_starttls_uses_a_verified_context(self, proj, monkeypatch):
+        """STARTTLS must pass an SSL context so the server certificate is
+        verified — an unverified upgrade lets a MITM capture credentials."""
+        import ssl
+
+        import tracebi.verify as verify_mod
+        self._env(monkeypatch, proj)
+        monkeypatch.setattr(verify_mod, "verify_manifest",
+                            lambda *a, **k: dict(self._PASSING))
+        sent = self._fake_smtp(monkeypatch)
+        cli.main(["report", "send", "sample_dashboard", "--to", "a@example.com"])
+        assert isinstance(sent.get("starttls_context"), ssl.SSLContext)
+
+    def test_refuses_cleartext_credentials_when_no_starttls(self, tmp_path,
+                                                            monkeypatch):
+        """Server offers no STARTTLS and credentials are set: refuse to send
+        them over an unencrypted link rather than leaking them."""
+        import smtplib
+
+        import tracebi._delivery as delivery
+        from tracebi._delivery import send_report
+
+        class NoTLS:
+            def __init__(self, host, port, timeout=None, context=None):
+                pass
+
+            def starttls(self, context=None):
+                raise smtplib.SMTPNotSupportedError("no starttls")
+
+            def login(self, *a):
+                raise AssertionError("credentials must not be sent in cleartext")
+
+            def send_message(self, m):
+                raise AssertionError("must not send after refusing")
+
+            def quit(self):
+                pass
+
+        monkeypatch.setattr(delivery.smtplib, "SMTP", NoTLS)
+        monkeypatch.setenv("TRACEBI_SMTP_URL",
+                           "smtp://user:pass@mail.example.com:2525")
+        monkeypatch.setenv("TRACEBI_SMTP_FROM", "reports@example.com")
+        html = tmp_path / "r.html"
+        html.write_text("<p>x</p>")
+        man = tmp_path / "r.html.manifest.json"
+        man.write_text("{}")
+        with pytest.raises(RuntimeError, match="STARTTLS"):
+            send_report(html, man, ["a@example.com"])
