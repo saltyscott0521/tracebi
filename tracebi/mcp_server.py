@@ -288,6 +288,9 @@ front of a person should carry a receipt. This gateway is how you produce one.
 ## The rules
 - Never quote a number without its fingerprint.
 - Never hard-code a figure a query could produce.
+- Always verify before you claim done: build_report, then verify_manifest on
+  the manifest it wrote, and read the verdict. "Built" is not "verified" — only
+  a `reproduces` verdict earns the word.
 - If something can't be verified, say so — an honest "unverifiable" beats a
   green badge on unchecked work.
 - The trust machinery covers the model boundary onward (the query and the
@@ -297,6 +300,35 @@ front of a person should carry a receipt. This gateway is how you produce one.
   whether each loaded table's sink satisfied its contract — `satisfied`,
   `stale` (re-sunk since checked; never green), or `no_contract`. That claim
   certifies the sink, never the pandas, and never colors a figure status.
+
+## A worked example
+Say get_context showed a fact `fact_orders` with a `revenue` measure and a
+`dim_customer.region` dimension. The loop, concretely:
+
+1. Explore — one query, stamped:
+   `query_model(model="sales", fact="fact_orders", measures={"revenue":"sum"},
+   dimensions=["dim_customer.region"])` → rows + a fingerprint. Need a derived
+   number the model hasn't declared? Compute it inline, no model edit:
+   `measures={"margin": {"expr": "revenue - cost", "agg": "sum"}}`.
+
+2. Bind — report.json names one query per binding:
+   `{"name": "Sales", "data": {
+      "kpis":   {"model": "sales", "query": {"fact": "fact_orders",
+                 "measures": {"revenue": "sum"}}},
+      "region": {"model": "sales", "query": {"fact": "fact_orders",
+                 "measures": {"revenue": "sum"},
+                 "dimensions": ["dim_customer.region"]}}}}`
+
+3. Draw — template.html. Every number claims a binding; the runtime fills the
+   `—` placeholder from the stamped bytes, so a hard-coded number is impossible:
+   `<span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
+   data-tb-format="currency0">—</span>` and
+   `<table data-tb-figure="table" data-tb-binding="region"></table>`.
+   A number with no query behind it is honest only as `data-tb-unverified` —
+   never a value figure with the number typed in.
+
+4. Publish and check — build_report, then verify_manifest on the manifest it
+   wrote. Report the verdict; only `reproduces` means re-run and matched.
 """
 
 
