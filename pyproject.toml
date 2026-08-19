@@ -79,7 +79,7 @@ analyst = [
     "sqlalchemy>=2.0",
     "networkx>=3.0",
     "duckdb>=0.9",
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.2.3",
 ]
 all = [
     # Everything: every connector, every renderer, every server.
@@ -99,7 +99,7 @@ all = [
     "starlette>=0.27",
     "jinja2>=3.0",
     "python-multipart>=0.0.6",
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.2.3",
     "mcp>=2.0",
 ]
 dev = [
@@ -115,7 +115,7 @@ dev = [
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
     "duckdb>=0.9",
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.2.3",
     # Web deps included so `pip install -e ".[dev]"` runs the full test suite
     # (tests/test_phase5.py exercises the FastAPI layer).
     "fastapi>=0.100",
