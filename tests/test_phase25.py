@@ -1011,6 +1011,76 @@ class TestHaving:
         )
 
 
+class TestPushdownLineage:
+    """
+    The `pushed_down` lineage flag must reflect whether the connector ACTUALLY
+    filtered at source, not merely that a simple equality filter was supplied.
+    A receipt that claims a source-side filter which never happened is an
+    untruth the audit chain must not carry.
+    """
+
+    @staticmethod
+    def _model(connector_cls):
+        orders = pd.DataFrame({
+            "order_id": [1, 2, 3], "customer_id": [1, 2, 1],
+            "revenue": [100.0, 200.0, 300.0],
+            "status": ["shipped", "open", "shipped"],
+        })
+        customers = pd.DataFrame({"customer_id": [1, 2], "region": ["West", "NE"]})
+        m = DataModel("P").add_connector(
+            connector_cls("mem", {"orders": orders, "customers": customers})
+        )
+        m.add_table("orders", connector="mem", source="orders")
+        m.add_table("customers", connector="mem", source="customers")
+        m.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region"])
+        m.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                   foreign_keys={"dim_customer": "customer_id"})
+        m.connect()
+        return m
+
+    @staticmethod
+    def _fact_flags(ds):
+        return {n.metadata["target"]: n.metadata["pushed_down"]
+                for n in ds.lineage
+                if n.operation == "filter" and n.metadata.get("on") == "fact"}
+
+    def test_non_pushdown_connector_is_not_marked_pushed_down(self):
+        # MemoryConnector.supports_pushdown() is False — its load node records
+        # pushdown=False, so the filter must not claim it was pushed down.
+        ds = self._model(MemoryConnector).query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            filters={"status": "shipped"},
+        )
+        assert self._fact_flags(ds) == {"status": False}
+        # and the engine still applies it, so the number is correct
+        assert float(ds.to_pandas()["revenue"].iloc[0]) == 400.0
+
+    def test_pushdown_connector_is_marked_pushed_down(self):
+        class _Pushdown(MemoryConnector):
+            def supports_pushdown(self):
+                return True
+
+        ds = self._model(_Pushdown).query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            filters={"status": "shipped"},
+        )
+        assert self._fact_flags(ds) == {"status": True}
+        assert float(ds.to_pandas()["revenue"].iloc[0]) == 400.0
+
+    def test_load_and_filter_nodes_never_contradict(self):
+        """The load node's pushdown truth and the filter node's pushed_down
+        flag must agree — the bug made them disagree (load False, filter True)."""
+        ds = self._model(MemoryConnector).query(
+            fact="fact_orders", measures={"revenue": "sum"},
+            filters={"status": "shipped"},
+        )
+        load_pushdown = [n.metadata.get("pushdown") for n in ds.lineage
+                         if n.operation == "load"]
+        assert all(v is False for v in load_pushdown)   # memory: no source push
+        assert self._fact_flags(ds)["status"] is False
+
+
 class TestNamedMeasures:
     """
     Measures declared once on the model, reviewed in a PR, versioned in

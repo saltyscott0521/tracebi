@@ -952,11 +952,19 @@ class DataModel:
         fact_cols = set(fact_df.columns) | probe_cols
 
         predicates = self._parse_filters(filters, fact_def, fact_cols)
-        # Predicates already satisfied by pushdown must not be re-applied
-        # against a frame the connector has already filtered — but re-applying
-        # an equality filter is idempotent, so keep them for the engine too
-        # when the connector could not push down.
-        pushed = set(pushdown) if fact_ds.lineage and pushdown else set()
+        # A predicate is `pushed_down` only when the connector ACTUALLY filtered
+        # at source — which its load node records as pushdown=True (it requires
+        # supports_pushdown() and a filter). The old guard `fact_ds.lineage` is
+        # always truthy (a DataSet always has a load node), so it marked every
+        # simple equality filter pushed_down even against a connector that
+        # ignored the hint and returned every row. The engine re-applies all
+        # predicates regardless (idempotent), so this only corrects the lineage
+        # flag — but a receipt that claims a source-side filter that never
+        # happened is exactly the kind of untruth this project refuses.
+        load_pushed_down = any(
+            (node.metadata or {}).get("pushdown") for node in fact_ds.lineage
+        )
+        pushed = set(pushdown) if load_pushed_down else set()
 
         # ── Load dimensions: those grouped by AND those filtered on ───
         needed_dims = {dim_name for dim_name, _ in parsed_dims}
