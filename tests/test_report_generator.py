@@ -508,6 +508,10 @@ class TestChartLibraries:
         assert "window.echarts" in html or "echarts" in html
         assert len(html) > 400_000  # the bundle is actually present
         assert not re.search(r'(?:src|href)\s*=\s*["\'](?:https?:)?//', html)
+        # The inlined bundle is a redistribution of Apache ECharts (+ zrender,
+        # tslib); its required attribution must travel with every report.
+        assert "Apache ECharts" in html
+        assert "NOTICE in the TraceBi distribution" in html
 
     def test_unknown_lib_is_rejected(self, tmp_path):
         pkg = _write_package(tmp_path, libs=["nope"])
