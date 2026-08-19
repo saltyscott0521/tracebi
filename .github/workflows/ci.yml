@@ -115,7 +115,12 @@ jobs:
           import glob, zipfile
           whl, = glob.glob("dist/*.whl")
           names = set(zipfile.ZipFile(whl).namelist())
-          for required in ("tracebi/web/api/main.py", "tracebi/web/ui/dist/index.html"):
+          # The scaffold templates the CLI writes are data files under
+          # tracebi/_scaffold/ — if they don't ship, `tracebi init` breaks in an
+          # installed wheel. Assert the two that tests import as representatives.
+          for required in ("tracebi/web/api/main.py", "tracebi/web/ui/dist/index.html",
+                           "tracebi/_scaffold/init_agents.md",
+                           "tracebi/_scaffold/init_sample_template.html"):
               assert required in names, f"{required} missing from {whl}"
           # `web.py` on PyPI owns a top-level `web/` in site-packages. Shipping
           # one here means pip silently overwrites whichever is installed

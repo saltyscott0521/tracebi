@@ -1,0 +1,32 @@
+# Copy to .env and fill in. The .env file is gitignored.
+#
+# The framework does not auto-load this file: call
+# `from dotenv import load_dotenv; load_dotenv()` at the top of your scripts
+# (python-dotenv ships with the analyst/all extras).
+
+# ── Connectors ──────────────────────────────────────────────────────────────
+# Construct connectors in your own code and pass credential-bearing URLs
+# explicitly via os.environ[...] — the framework never reads these implicitly.
+# TRACEBI_SALES_DB_URL=postgresql+psycopg://user:password@host:5432/sales
+# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+
+# ── Web UI auth ─────────────────────────────────────────────────────────────
+# HTTP Basic (single shared credential — development / small teams):
+# TRACEBI_AUTH_USER=admin
+# TRACEBI_AUTH_PASS=changeme
+# Reverse-proxy header trust (SSO in front — the header names the principal):
+# TRACEBI_AUTH_PROXY_HEADER=X-Forwarded-User
+# TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.1
+
+# ── Authorization (roles) ───────────────────────────────────────────────────
+# Without a usable role source every authenticated caller is admin
+# (documented, deliberate). The role sources are TRACEBI_AUTH_ROLE_MAP
+# (user:role pairs) and, under proxy auth, TRACEBI_AUTH_ROLE_HEADER (a header
+# the proxy sets). TRACEBI_AUTH_DEFAULT_ROLE is only the fallback for
+# principals a source does not name — set by itself it enforces nothing.
+# TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst
+# TRACEBI_AUTH_DEFAULT_ROLE=viewer
+
+# ── Agent gateway (MCP over HTTP) ───────────────────────────────────────────
+# TRACEBI_MCP_TOKEN=a-long-random-string
+# TRACEBI_MCP_ACTOR=agent

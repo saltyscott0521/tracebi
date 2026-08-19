@@ -1,0 +1,47 @@
+"""
+Phase ② — MODEL.
+
+A star schema over the warehouse phase ① sank into. This file is the
+*contract*: grain, keys, and measures in a few declarative lines a reviewer
+reads without ever opening the pandas that produced the tables.
+
+    from tracebi.model_registry import get_model
+    model = get_model("sample_model")
+
+Construction is declarative and lazy — importing this file does not touch the
+warehouse, so it loads fine before phase ① has ever run; a query is what
+reads the file. Keep it that way: never call model.connect() at import time.
+"""
+
+from __future__ import annotations
+
+import os
+
+from tracebi import DataModel
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+
+connector = DuckDBConnector("warehouse", database=WAREHOUSE)
+
+model = (
+    DataModel("sample_model")
+    .add_connector(connector)
+    # tables ← the exact names phase ① sank
+    .add_table("fact_orders", connector="warehouse", source="fact_orders")
+    .add_table("dim_region", connector="warehouse", source="dim_region")
+    # dimensions
+    .add_dimension("dim_region", table_name="dim_region", key_col="region_id",
+                   attributes=["region"])
+    # fact
+    .add_fact("fact_orders", table_name="fact_orders",
+              measures=["revenue", "qty"],
+              foreign_keys={"dim_region": "region_id"})
+    # measures ← the vocabulary a report queries by name
+    .add_measure("revenue", column="revenue", agg="sum",
+                 description="Total revenue", format="currency0")
+    .add_measure("units", column="qty", agg="sum", description="Units sold")
+    .add_measure("orders", column="order_id", agg="count",
+                 description="Order count")
+)

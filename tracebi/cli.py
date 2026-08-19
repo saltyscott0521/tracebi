@@ -1,17 +1,22 @@
 """
 TraceBi CLI.
 
-Usage:
-    tracebi init my_project                      # scaffold a new project
-    tracebi new-request "Open orders by region"  # scaffolds requests/<slug>.py
-    tracebi list-requests                        # show all request scripts
-    tracebi run <name>                           # run a request and render outputs
-    tracebi dev <name>                           # live preview: re-run + reload on save
-    tracebi validate                             # sanity-check the current project
+Scaffolds and drives a project through the three-phase workflow — TRANSFORM
+(``transforms/``) → MODEL (``models/``) → REPORT (``reports/``):
+
+    tracebi init my_project                 # scaffold a new project
+    tracebi run-transform <name>            # ① run a transform → sink the warehouse
+    tracebi new-model "Sales Model"         # ② scaffold a model over the warehouse
+    tracebi report build <name>             # ③ render an artifact package + receipt
+    tracebi verify <manifest>               # re-run recorded queries; classify drift
+    tracebi serve                           # browse the project
+    tracebi mcp                             # agent gateway over MCP
     tracebi --version
 
-The CLI is intentionally small — its job is to scaffold and run files
-in ``requests/``. Everything else lives in the library.
+Run ``tracebi --help`` for the full command list. The CLI stays thin — it
+scaffolds files and drives the library; the behaviour lives in the library.
+Its scaffold templates are data files under ``tracebi/_scaffold/`` (loaded by
+:func:`_scaffold_text`), not inline string constants.
 """
 
 from __future__ import annotations
@@ -23,6 +28,7 @@ import re
 import runpy
 import sys
 from datetime import date
+from importlib.resources import files
 from pathlib import Path
 from typing import Optional
 
@@ -33,6 +39,16 @@ from tracebi._version import get_version as _tracebi_version
 # directory by default, honouring the same TRACEBI_*_DIR env vars the server
 # and gateway read (so the CLI and the server agree on where a project
 # lives). Override per-invocation with the --*-dir flags.
+def _scaffold_text(name: str) -> str:
+    """Read a bundled scaffold template from ``tracebi/_scaffold/``.
+
+    The init/new-report templates live as data files there rather than as
+    inline string constants, so they read and diff as the file type they
+    are. Anchored on the ``tracebi`` package so it resolves in a wheel.
+    """
+    return files("tracebi").joinpath("_scaffold", name).read_text(encoding="utf-8")
+
+
 def _default_requests_dir() -> Path:
     return Path(os.environ.get("TRACEBI_REQUESTS_DIR", "requests"))
 
@@ -454,333 +470,24 @@ print(f"sunk → {{WAREHOUSE}}")
 
 # ── init project scaffolding ────────────────────────────────────────────────
 
-_INIT_GITIGNORE = """\
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.env
-# Rendered outputs are disposable, but the *.manifest.json files inside are
-# receipts — the audit trail. `<dir>/*` with a negation (git cannot re-include
-# under an excluded directory) keeps outputs ignored while the manifests you
-# need to stand behind a report stay retained. data/ holds the warehouse and
-# `tracebi report build` renders; output/ holds ad-hoc renders.
-data/*
-!data/*.manifest.json
-output/*
-!output/*.manifest.json
-!output/.gitkeep
-*.db
-.ipynb_checkpoints/
-# Workbench dev-state (exhibit feed, pins) — session scratch, never receipts.
-.tracebi/
-"""
+_INIT_GITIGNORE = _scaffold_text("init_gitignore.txt")
 
-_INIT_ENV_EXAMPLE = """\
-# Copy to .env and fill in. The .env file is gitignored.
-#
-# The framework does not auto-load this file: call
-# `from dotenv import load_dotenv; load_dotenv()` at the top of your scripts
-# (python-dotenv ships with the analyst/all extras).
+_INIT_ENV_EXAMPLE = _scaffold_text("init_env_example.txt")
 
-# ── Connectors ──────────────────────────────────────────────────────────────
-# Construct connectors in your own code and pass credential-bearing URLs
-# explicitly via os.environ[...] — the framework never reads these implicitly.
-# TRACEBI_SALES_DB_URL=postgresql+psycopg://user:password@host:5432/sales
-# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+_INIT_SAMPLE_CSV = _scaffold_text("init_sample_orders.csv")
 
-# ── Web UI auth ─────────────────────────────────────────────────────────────
-# HTTP Basic (single shared credential — development / small teams):
-# TRACEBI_AUTH_USER=admin
-# TRACEBI_AUTH_PASS=changeme
-# Reverse-proxy header trust (SSO in front — the header names the principal):
-# TRACEBI_AUTH_PROXY_HEADER=X-Forwarded-User
-# TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.1
+_INIT_SAMPLE_TRANSFORM = _scaffold_text("init_sample_transform.py.txt")
 
-# ── Authorization (roles) ───────────────────────────────────────────────────
-# Without a usable role source every authenticated caller is admin
-# (documented, deliberate). The role sources are TRACEBI_AUTH_ROLE_MAP
-# (user:role pairs) and, under proxy auth, TRACEBI_AUTH_ROLE_HEADER (a header
-# the proxy sets). TRACEBI_AUTH_DEFAULT_ROLE is only the fallback for
-# principals a source does not name — set by itself it enforces nothing.
-# TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst
-# TRACEBI_AUTH_DEFAULT_ROLE=viewer
-
-# ── Agent gateway (MCP over HTTP) ───────────────────────────────────────────
-# TRACEBI_MCP_TOKEN=a-long-random-string
-# TRACEBI_MCP_ACTOR=agent
-"""
-
-_INIT_SAMPLE_CSV = """\
-order_id,order_date,region,product,qty,revenue
-1001,2025-01-15,north east,Widget,12,"$1,198.80"
-1002,2025-01-20,Northeast,Gadget,8,"$1,599.20"
-1003,2025-02-03,midwest,Widget,20,"$1,998.00"
-1004,2025-02-11,MIDWEST,Sprocket,5,"$749.50"
-1005,2025-03-02,south east,Gadget,15,"$2,998.50"
-1006,2025-03-18,Southeast,Widget,9,"$899.10"
-1007,2025-04-05,west,Sprocket,11,"$1,649.45"
-1008,2025-04-22,West,Widget,25,"$2,497.50"
-1009,2025-05-09,north east,Gadget,6,"$1,199.40"
-1009,2025-05-09,north east,Gadget,6,"$1,199.40"
-1010,2025-05-30,midwest,Sprocket,14,"$2,098.60"
-,2025-06-01,west,Widget,3,"$299.70"
-"""
-
-_INIT_SAMPLE_TRANSFORM = '''\
-"""
-Phase ① — TRANSFORM.
-
-Ordinary pandas. Read the raw pull from inputs/, do whatever the data needs —
-here: drop the row with no key, dedupe, normalise regions spelled four ways,
-parse money stored as strings — and SINK the clean, star-shaped result into
-the warehouse.
-
-This is the phase the framework does NOT constrain: write as much pandas as
-the data needs. The contract is not *how* you clean, it is *what lands* — the
-named tables at the bottom of this file. Phase ② (models/) reads those tables
-and never sees this code.
-
-    python transforms/sample_transform.py
-
-Idempotent: rerun any time; it replaces the warehouse tables.
-"""
-
-from __future__ import annotations
-
-import os
-
-import pandas as pd
-
-from tracebi.connectors.duckdb_connector import DuckDBConnector
-
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RAW = os.path.join(ROOT, "inputs", "orders.csv")
-WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
-
-# Notebook-shaped: `# %%` markers are cell boundaries and `# %% [markdown]`
-# cells are prose — VS Code, Cursor, PyCharm, and Jupyter (via jupytext)
-# open this file AS a notebook (collapse cells, run cell-by-cell, markdown
-# beside code) while it stays plain, reviewable Python that runs
-# top-to-bottom. While `tracebi dev` serves, any cell can
-# `tracebi.workbench.show(df, note=...)` to put its output in the portal.
-
-_REGIONS = {
-    "north east": "Northeast", "northeast": "Northeast",
-    "south east": "Southeast", "southeast": "Southeast",
-    "midwest": "Midwest", "west": "West",
-}
-
-# %% [markdown]
-# ## Methodology
-#
-# Orders arrive with regions spelled four ways, money as strings, and the
-# occasional keyless row. We drop unkeyed rows (loudly — the contract note
-# below states it), normalise regions, and coerce money to floats.
-
-# %%  Clean — any pandas you like; none of this is traced, by design.
-df = pd.read_csv(RAW)
-df = df.dropna(subset=["order_id"]).drop_duplicates(subset=["order_id"])
-df["order_id"] = df["order_id"].astype(int)
-df["region"] = df["region"].str.strip().str.lower().map(_REGIONS)
-df["revenue"] = (
-    df["revenue"].str.replace(r"[$,]", "", regex=True).astype(float)
-)
-df["qty"] = df["qty"].astype(int)
-
-# %%  Shape — one dimension, one fact, keyed.
-dim_region = (
-    df[["region"]].drop_duplicates().reset_index(drop=True)
-    .rename_axis("region_id").reset_index()
-)
-fact = df.merge(dim_region, on="region")[
-    ["order_id", "order_date", "region_id", "product", "qty", "revenue"]
-]
-
-# %%  Sink — the contract. These named tables are what phase ② models.
-os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
-wh = DuckDBConnector("warehouse", database=WAREHOUSE)
-wh.write(dim_region, "dim_region")
-wh.write(fact, "fact_orders")
-
-# %%  The sink CONTRACT: read-only SQL checks on what just landed, recorded
-# beside the warehouse. A failed check raises — a broken sink never freezes
-# quietly. This certifies the SINK; it never verifies the pandas above. The
-# note= is the STATED methodology, carried into report receipts verbatim.
-from tracebi.contracts import contract
-
-with contract("sample_transform", warehouse=WAREHOUSE,
-              note="dropped rows without an order_id; regions "
-                   "normalized from four spellings") as c:
-    c.rows("fact_orders", at_least=1)
-    c.unique("fact_orders", ["order_id"])
-    c.not_null("fact_orders", ["order_id", "region_id", "revenue"])
-    c.foreign_key("fact_orders", "region_id",
-                  refers_to=("dim_region", "region_id"))
-
-# %%
-print(f"  orders: {len(fact)} · regions: {len(dim_region)} · "
-      f"revenue: {round(fact['revenue'].sum(), 2)}")
-print(f"  sunk → {WAREHOUSE}")
-'''
-
-_INIT_SAMPLE_MODEL = '''\
-"""
-Phase ② — MODEL.
-
-A star schema over the warehouse phase ① sank into. This file is the
-*contract*: grain, keys, and measures in a few declarative lines a reviewer
-reads without ever opening the pandas that produced the tables.
-
-    from tracebi.model_registry import get_model
-    model = get_model("sample_model")
-
-Construction is declarative and lazy — importing this file does not touch the
-warehouse, so it loads fine before phase ① has ever run; a query is what
-reads the file. Keep it that way: never call model.connect() at import time.
-"""
-
-from __future__ import annotations
-
-import os
-
-from tracebi import DataModel
-from tracebi.connectors.duckdb_connector import DuckDBConnector
-
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
-
-connector = DuckDBConnector("warehouse", database=WAREHOUSE)
-
-model = (
-    DataModel("sample_model")
-    .add_connector(connector)
-    # tables ← the exact names phase ① sank
-    .add_table("fact_orders", connector="warehouse", source="fact_orders")
-    .add_table("dim_region", connector="warehouse", source="dim_region")
-    # dimensions
-    .add_dimension("dim_region", table_name="dim_region", key_col="region_id",
-                   attributes=["region"])
-    # fact
-    .add_fact("fact_orders", table_name="fact_orders",
-              measures=["revenue", "qty"],
-              foreign_keys={"dim_region": "region_id"})
-    # measures ← the vocabulary a report queries by name
-    .add_measure("revenue", column="revenue", agg="sum",
-                 description="Total revenue", format="currency0")
-    .add_measure("units", column="qty", agg="sum", description="Units sold")
-    .add_measure("orders", column="order_id", agg="count",
-                 description="Order count")
-)
-'''
+_INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.py.txt")
 
 # The sample report is an ARTIFACT PACKAGE — the one report lane — so the
 # first page a new project renders demonstrates the real product: figure
 # claims, the presentation stack, provenance badges, and a receipt that
 # joins the sink contract. (A JSON spec still renders and `tracebi migrate
 # spec` compiles one, but the scaffold must not teach the legacy form.)
-_INIT_SAMPLE_REPORT_JSON = """\
-{
-  "name": "Sample Dashboard",
-  "author": "tracebi init",
-  "description": "Every figure claims a stamped binding. Edit template.html to reshape the page; nothing re-runs the pandas.",
-  "libs": ["echarts"],
-  "data": {
-    "kpis": {
-      "model": "sample_model",
-      "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }
-    },
-    "by_region": {
-      "model": "sample_model",
-      "query": {
-        "fact": "fact_orders",
-        "measures": ["revenue"],
-        "dimensions": ["dim_region.region"],
-        "having": { "revenue": { "gte": 1000 } },
-        "order_by": ["-revenue"]
-      }
-    },
-    "region_detail": {
-      "model": "sample_model",
-      "query": {
-        "fact": "fact_orders",
-        "measures": ["revenue", "orders", "units"],
-        "dimensions": ["dim_region.region"],
-        "order_by": ["-revenue"]
-      }
-    }
-  }
-}
-"""
+_INIT_SAMPLE_REPORT_JSON = _scaffold_text("init_sample_report.json")
 
-_INIT_SAMPLE_TEMPLATE_HTML = """\
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Sample Dashboard</title></head>
-<body>
-<main class="tb-page">
-  <h1>Orders — Sample Dashboard</h1>
-  <p class="tb-note">Cleaned from <code>inputs/orders.csv</code> by the
-    phase-① transform. Every number on this page is a live, fingerprinted
-    query — including the one in this sentence: total revenue across all
-    regions is
-    <span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
-          data-tb-format="currency0" id="val-revenue-inline">—</span>.
-    Prose numbers can be bound too; never type one in.</p>
-
-  <div class="tb-grid">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-         data-tb-cell="revenue" data-tb-format="currency0" id="kpi-revenue">
-      <span class="tb-kpi-label">Revenue</span>
-      <span class="tb-kpi-value"></span>
-    </div>
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-         data-tb-cell="orders" data-tb-format="comma" id="kpi-orders">
-      <span class="tb-kpi-label">Orders</span>
-      <span class="tb-kpi-value"></span>
-    </div>
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-         data-tb-cell="units" data-tb-format="comma" id="kpi-units">
-      <span class="tb-kpi-label">Units</span>
-      <span class="tb-kpi-value"></span>
-    </div>
-  </div>
-
-  <div class="tb-card">
-    <h2>Revenue by region</h2>
-    <div data-tb-figure="chart" data-tb-binding="by_region" data-tb-type="bar"
-         data-tb-x="dim_region.region" data-tb-y="revenue"
-         data-tb-value-format="compact" id="chart-by-region"></div>
-  </div>
-
-  <div class="tb-card">
-    <h2>Region detail</h2>
-    <p class="tb-note">Filter and search subset which stamped rows display —
-      they never compute new numbers. The CSV button exports the stamped
-      bytes verbatim; tables scroll past 10 rows.</p>
-    <p>
-      Region:
-      <select data-tb-filter data-tb-binding="region_detail"
-              data-tb-column="dim_region.region"></select>
-      Search:
-      <input data-tb-search data-tb-binding="region_detail"
-             placeholder="type to filter…">
-      <button data-tb-download data-tb-binding="region_detail"
-              data-tb-label="Download CSV"></button>
-    </p>
-    <table data-tb-figure="table" data-tb-binding="region_detail"
-           class="tb-table--striped" id="tbl-regions"></table>
-  </div>
-
-  <section data-tb-stage="exploration">
-    <h3>Working notes</h3>
-    <p>Scratch space: this block renders under <code>tracebi dev</code> and is
-       DELETED at the final build. Explore here; promote what matters into a
-       figure above.</p>
-  </section>
-</main>
-</body></html>
-"""
+_INIT_SAMPLE_TEMPLATE_HTML = _scaffold_text("init_sample_template.html")
 
 def _init_project_readme(project: str) -> str:
     return f"""\
@@ -885,211 +592,7 @@ it (most coding agents read it automatically).
 """
 
 
-_INIT_AGENTS_MD = '''\
-# Working in this TraceBi project
-
-You are an agent working in a **TraceBi** project. TraceBi is the trust layer
-for AI-generated analytics: every number you put in front of a person should
-carry a receipt. Read this before you touch anything.
-
-## The one rule
-
-**Every figure in a report names a stamped data binding — never a hard-coded
-number.** A number you typed in has no receipt and cannot be verified. If a
-figure genuinely cannot come from a query, mark the element
-`data-tb-unverified` (with a `data-tb-note` saying why); do not fake it.
-There is no third state.
-
-This includes prose. A sentence's numbers can be live: any element — a
-`<span>` mid-sentence included — can carry
-`data-tb-figure="value" data-tb-binding="..." data-tb-cell="..."` and the
-runtime fills it from the fingerprinted bytes. When you are asked to
-"explain the results", bind the numbers in your sentences instead of typing
-them; narrative prose is where unverified numbers usually hide, and here the
-honest path costs one attribute.
-
-## The workflow — three phases, three folders
-
-```
-⓪  inputs/       raw data lands here (a CSV, an API export, a SQL dump)
-①  transforms/   ordinary pandas: clean it, then SINK clean star-schema
-                 tables into the warehouse (data/warehouse.duckdb) and
-                 declare a SINK CONTRACT on what landed
-                        ── freeze: the warehouse + its contract ──
-②  models/       a declarative DataModel over the sink: grain, keys, measures.
-                 It reads the warehouse; it never sees the transform.
-                        ── freeze: the model (the contract) ──
-③  reports/      an ARTIFACT PACKAGE — reports/<name>/ holding report.json
-                 (named query bindings) + template.html (your page, where
-                 every figure claims a binding). Builds to one self-contained
-                 HTML + a manifest (the receipt).
-```
-
-The phases are decoupled: editing a report never re-runs the pandas. Phase ①
-is unconstrained — write whatever pandas the data needs; the contract is the
-named tables you sink, not how you cleaned them. **Transforms are
-notebook-shaped**: the scaffolds use `# %%` percent cells with markdown
-cells, so your editor opens them as notebooks (collapse cells, run
-cell-by-cell, prose beside code) while the file stays plain, reviewable
-Python; literal `.ipynb` works too, and `tracebi run-transform` executes
-either top-to-bottom in a fresh namespace so the sink never comes from
-out-of-order kernel state. End the transform with a
-`with contract(...)` block (see `transforms/sample_transform.py`): declared
-checks — `rows`, `unique`, `not_null`, `foreign_key`, `values`, `reconcile` —
-run as read-only SQL at sink time, raise on failure, and record a certificate
-(`data/warehouse.contracts.json`) that report manifests join against. The
-exact claim is "the sink satisfied its contract" — never "the transform was
-verified"; nothing machine-checks the pandas above the sink.
-
-## Authoring a report (the artifact package)
-
-`reports/sample_dashboard/` is the working example — a page of ordinary HTML
-whose figures each name a binding from `report.json`:
-
-- `data-tb-figure="value|chart|table|custom"` + `data-tb-binding="<name>"` —
-  the claim. Values add `data-tb-cell="<column>"` and optionally
-  `data-tb-format` (`compact`, `currency`, `comma`, `percent`, …). Charts add
-  `data-tb-type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`),
-  `data-tb-x`, `data-tb-y` (comma-list for multi-series), optional
-  `data-tb-color` and `data-tb-value-format`. Tables optionally add
-  `data-tb-columns` and the `tb-table--striped` / `tb-table--compact` classes.
-- **Give every figure an `id`** — ids are how humans redirect you
-  ("fix `tbl-seniority`").
-- "Top N" is declarative: put `order_by` + `limit` in the binding's query.
-  Never sort or slice in `script.js` — that moves ordering out of the receipt.
-- `filters` is WHERE (before aggregation) — a filter on a measure changes the
-  group totals. To keep only groups whose *total* clears a threshold, use
-  `having` (HAVING): `"having": {"revenue": {"gte": 250}}`.
-- Interactivity: `data-tb-filter` dropdowns + `data-tb-search` inputs subset
-  WHICH stamped rows a binding's tables/charts display — they never compute
-  new numbers (client-side aggregation would mint numbers; value figures
-  never react; a filtered KPI needs its own binding). Tables scroll past
-  `data-tb-rows` (default 10). `data-tb-download` buttons export the
-  stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
-  `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Every built
-  page carries the Receipt drawer automatically.
-- Blocks marked `data-tb-stage="exploration"` are working scratch: they render
-  in dev and are DELETED at the final build.
-- Styling: the shipped defaults render well with zero CSS. To restyle, set
-  tokens in `reports/_theme.css` (project-wide) or the package's `style.css`
-  (per report); later wins. `script.js` may restyle charts via
-  `tracebi.configureChart` — config can restyle, never re-source: series data
-  always comes from the stamped bytes. Provenance badges pick their state
-  from the manifest; a stylesheet can restyle a badge, never re-color honesty.
-- Methodology travels the pipeline: `contract(..., note=...)` (and per-check
-  `note=`) records the transform's STATED methodology in the certificate;
-  measure `description=` carries modeling intent. Add ONE
-  `<section data-tb-methodology></section>` to the template and the build
-  appends them after your own prose — an appendix of what the pipeline
-  states about itself, clearly not a verified claim, never badged.
-
-## The loop you run
-
-```bash
-tracebi run-transform <name>                # ① clean + sink + contract —
-                                            #   runs .py or .ipynb top-to-bottom
-                                            #   fresh (python transforms/<name>.py
-                                            #   works too for .py)
-tracebi new-model "<Name>"                  # ② scaffold a model; edit it
-tracebi new-report "<Name>"                 # ③ scaffold reports/<name>/
-tracebi dev <name>                          # the live loop (see below)
-tracebi report status <name>                # earned state in the terminal (📌 pins)
-tracebi report build <name>                 # render → output/<name>.html + manifest
-tracebi verify output/<name>.html.manifest.json --contracts
-tracebi serve                               # browse at http://127.0.0.1:8000
-```
-
-### The dev iteration, step by step
-
-0. **Discovery comes first — and it has a live surface.** Before any report
-   exists, run `tracebi dev` with **no name** (backgrounded — it blocks):
-   the discovery workbench. While it serves, ANY script you run can call
-   `tracebi.workbench.show(...)` — no env var needed — and the portal
-   updates live. **Work like a notebook**: `show("## Approach\\n...")`
-   renders as a markdown cell (narrate the methodology as you go — the
-   human can flip the feed to read top-down as a document);
-   `show(df, note=...)` posts a frame excerpt with column profiles;
-   `show(df, chart="bar", x=..., y=...)` sketches a real chart (bar,
-   barh, line, area, pie, scatter) — iterate by re-showing, and when the
-   human pins one for the report, re-express it as a model-query binding
-   + figure: the sketch is exploration, the figure is the claim. The
-   Warehouse panel lists tables, row counts, column profiles, and
-   sink-contract status as transforms land; the Models panel shows the
-   star schema taking shape as you edit `models/`. Pins read via the MCP
-   `workbench_state` tool called with no `report`. All dev-state; no
-   receipts exist before the model boundary, and `show()` is a no-op the
-   moment the server is down. When a session shaped the pipeline, save it:
-   `tracebi session export` (add `--format md` for the git-review twin)
-   writes the full feed to `explorations/<session>` — ONE living record
-   that you re-export as the exploration evolves; git is its timeline —
-   exploration-stamped, no receipts, `verify` refuses it by name.
-1. **Start the dev server — it blocks.** Run `tracebi dev <name>` in a
-   background shell (or ask the human to run it and keep the tab open; the
-   page is their view, not yours). It serves the report at the root and the
-   workbench at `/__workbench`, and reloads on every save to the package,
-   `models/`, `transforms/`, or `reports/_theme.css`.
-2. **Edit; the portal follows.** Work in `template.html` / `report.json` /
-   `style.css` / `script.js`. Explore inside `data-tb-stage="exploration"`
-   blocks — they render in dev and die at build. From `report.py`,
-   `tracebi.workbench.show(title, df_or_fig, note=...)` posts exhibits to
-   the workbench feed during dev and is a no-op everywhere else, so probe
-   code needs no cleanup and no promotion step.
-3. **Read the pins before every pass.** The human steers by PINNING figures
-   in the workbench with a note ("make this top 8 sectors only"). Read them
-   with `tracebi report status <name>` (pins print with 📌) or the MCP
-   `workbench_state` tool. Address pins first; they are the human pointing.
-4. **Share a draft with `tracebi report snapshot <name>`.** One HTML with
-   the exploration blocks KEPT and a review banner; it carries no manifest
-   and `verify` refuses it by name — a draft can never impersonate a
-   final. Use it when the human wants to look without a dev server.
-5. **Publish with `tracebi report build <name>`**, then
-   `tracebi verify output/<name>.html.manifest.json --strict --contracts`.
-   The build strips exploration, validates every figure claim against the
-   embedded bindings, and writes the receipt. `output/<name>.html` (+ its
-   `.manifest.json`) is the deliverable to hand over or commit — and the
-   package is already served live on the Reports page of `tracebi serve`;
-   there is no separate publish step.
-
-`tracebi verify` is the point: it re-runs the recorded queries and confirms
-every figure still reproduces. Only `REPRODUCES` means a number was re-run
-and matched. `--contracts` also re-runs the sink contracts. Run it before
-you tell a human a report is done.
-
-## First moves
-
-1. Run `tracebi context --brief` — the token-lean vocabulary tier (~2.3k
-   tokens): the semantic model, the figure grammar, contracts, and
-   conventions — everything this loop needs; it names what it omitted.
-   Nothing outside the vocabulary validates. Add `--model <name>` for one
-   model's schema; drop `--brief` only when writing Python against the
-   library directly.
-2. Read the sample files: `transforms/sample_transform.py`,
-   `models/sample_model.py`, `reports/sample_dashboard/`. They are a complete
-   working example of the loop, receipt included.
-3. Read `README.md` for the run commands.
-
-## The honest boundary — do not overclaim
-
-The trust machinery covers the model boundary onward (the query and the
-report), **not** the phase-① pandas that built the warehouse. `verify` checks
-that a number still reproduces from its recorded query; it does not assert the
-number is *correct*, and it never reads the transform. The sink contract
-certifies what landed, not how. Say so honestly. An "unverifiable" that says
-so beats a green badge on unchecked work.
-
-## Legacy forms
-
-A JSON `ReportSpec` under `reports/` still renders (it is a serialization,
-not a lane) and `tracebi migrate spec reports/<name>.json` compiles one into
-an artifact package that shadows it. The `requests/` script lane is
-deprecated and removed in 0.8 — do not create it.
-
-## Scaffolding commands
-
-`tracebi new-transform "<Name>"` · `tracebi new-model "<Name>"` ·
-`tracebi new-report "<Name>"` · `tracebi spec schema` (the ReportSpec JSON
-Schema). Discover more with `tracebi --help`.
-'''
+_INIT_AGENTS_MD = _scaffold_text("init_agents.md")
 
 
 # ── Commands ────────────────────────────────────────────────────────────────
@@ -2170,128 +1673,14 @@ def _report_json_text(title: str, model: str, query: dict) -> str:
     return json.dumps(declaration, indent=2) + "\n"
 
 
-_REPORT_TEMPLATE_HTML = """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>{{ title }}</title>
-</head>
-<body>
-  <main class="report">
-    <h1>{{ title }}</h1>
-    <p class="note">Every number below is embedded, fingerprinted, and recorded.
-      Check it offline with <code>tracebi verify --file</code>.</p>
-    <div id="chart" class="chart"></div>
-    <table id="rows"><thead></thead><tbody></tbody></table>
-  </main>
-</body>
-</html>
-"""
+_REPORT_TEMPLATE_HTML = _scaffold_text("report_template.html")
 
-_REPORT_STYLE_CSS = """:root { color-scheme: light; }
-/* A report is a document: commit to a light ground so it reads the same in any
-   browser mode (a file that only set text colour goes dark-on-dark in dark mode). */
-body { font: 15px/1.5 system-ui, sans-serif; background: #fff; color: #1a1a1a;
-       margin: 2rem auto; max-width: 60rem; }
-h1 { margin-bottom: .25rem; }
-.note { color: #666; margin-top: 0; }
-.chart { width: 100%; height: 340px; margin-top: 1.5rem; }
-table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
-th, td { padding: .5rem .75rem; border-bottom: 1px solid #ddd; text-align: left; }
-th { border-bottom: 2px solid #999; }
-td.num { text-align: right; font-variant-numeric: tabular-nums; }
-"""
+_REPORT_STYLE_CSS = _scaffold_text("report_style.css")
 
 # Reads the embedded data and draws the table with DOM APIs only — the data
 # never reaches innerHTML, so a hostile cell value cannot execute (architecture
 # §5). The block is <script type="application/json">, parsed with JSON.parse.
-_REPORT_SCRIPT_JS = """(function () {
-  // Minimal RFC-4180 CSV parser — handles quoted fields and commas inside them.
-  function parseCsv(text) {
-    var rows = [], row = [], field = "", inQ = false, i = 0, c;
-    while (i < text.length) {
-      c = text[i];
-      if (inQ) {
-        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else { inQ = false; } }
-        else { field += c; }
-      } else if (c === '"') { inQ = true; }
-      else if (c === ',') { row.push(field); field = ""; }
-      else if (c === '\\n') { row.push(field); rows.push(row); row = []; field = ""; }
-      else if (c !== '\\r') { field += c; }
-      i++;
-    }
-    if (field !== "" || row.length) { row.push(field); rows.push(row); }
-    var head = rows.shift() || [];
-    return rows.filter(function (r) { return r.length === head.length; })
-      .map(function (r) { var o = {}; head.forEach(function (h, j) { o[h] = r[j]; }); return o; });
-  }
-
-  var el = document.getElementById("tracebi-data-rows");
-  if (!el) return;
-  // Draw from the fingerprinted `csv` — the exact bytes the receipt covers — so
-  // a displayed number cannot diverge from a verified one.
-  var rows = parseCsv(JSON.parse(el.textContent).csv || "");
-  var table = document.getElementById("rows");
-  if (!rows.length || !table) return;
-  var cols = Object.keys(rows[0]);
-
-  // A starter bar chart: first column as category, first numeric column as
-  // value. ECharts is the inlined global (report.json "libs": ["echarts"]).
-  (function () {
-    var host = document.getElementById("chart");
-    var val = null;
-    for (var k = 1; k < cols.length; k++) {
-      if (rows[0][cols[k]] !== "" && !isNaN(Number(rows[0][cols[k]]))) { val = cols[k]; break; }
-    }
-    if (!host || !window.echarts || !val) { if (host) host.style.display = "none"; return; }
-    var cat = cols[0];
-    function draw() {
-      // A report is a static document — render immediately, don't animate (and
-      // the tree-shaken bundle's grow-animation does not complete).
-      var chart = echarts.init(host);
-      window.addEventListener("resize", function () { chart.resize(); });
-      chart.setOption({
-        animation: false,
-        tooltip: { trigger: "axis" },
-        grid: { left: 64, right: 24, top: 16, bottom: 72 },
-        xAxis: { type: "category", axisLabel: { rotate: 30 },
-                 data: rows.map(function (r) { return r[cat]; }) },
-        yAxis: { type: "value" },
-        series: [{ type: "bar", name: val, itemStyle: { color: "#1f4e79" },
-                   data: rows.map(function (r) { return Number(r[val]); }) }],
-      });
-    }
-    // Draw after layout so ECharts reads the container's real size.
-    if (document.readyState === "complete") requestAnimationFrame(draw);
-    else window.addEventListener("load", function () { requestAnimationFrame(draw); });
-  })();
-
-  var thead = table.querySelector("thead");
-  var htr = document.createElement("tr");
-  cols.forEach(function (c) {
-    var th = document.createElement("th");
-    th.textContent = c;
-    htr.appendChild(th);
-  });
-  thead.appendChild(htr);
-  var tbody = table.querySelector("tbody");
-  rows.forEach(function (row) {
-    var tr = document.createElement("tr");
-    cols.forEach(function (c) {
-      var td = document.createElement("td");
-      var v = row[c];
-      if (v !== "" && v != null && !isNaN(Number(v))) {
-        td.className = "num";
-        td.textContent = Number(v).toLocaleString();
-      } else {
-        td.textContent = v == null ? "" : String(v);
-      }
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-})();
-"""
+_REPORT_SCRIPT_JS = _scaffold_text("report_script.js")
 
 
 def cmd_new_report(args: argparse.Namespace) -> int:

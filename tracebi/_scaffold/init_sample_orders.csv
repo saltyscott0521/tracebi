@@ -1,0 +1,13 @@
+order_id,order_date,region,product,qty,revenue
+1001,2025-01-15,north east,Widget,12,"$1,198.80"
+1002,2025-01-20,Northeast,Gadget,8,"$1,599.20"
+1003,2025-02-03,midwest,Widget,20,"$1,998.00"
+1004,2025-02-11,MIDWEST,Sprocket,5,"$749.50"
+1005,2025-03-02,south east,Gadget,15,"$2,998.50"
+1006,2025-03-18,Southeast,Widget,9,"$899.10"
+1007,2025-04-05,west,Sprocket,11,"$1,649.45"
+1008,2025-04-22,West,Widget,25,"$2,497.50"
+1009,2025-05-09,north east,Gadget,6,"$1,199.40"
+1009,2025-05-09,north east,Gadget,6,"$1,199.40"
+1010,2025-05-30,midwest,Sprocket,14,"$2,098.60"
+,2025-06-01,west,Widget,3,"$299.70"

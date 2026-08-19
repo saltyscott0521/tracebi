@@ -1,0 +1,31 @@
+{
+  "name": "Sample Dashboard",
+  "author": "tracebi init",
+  "description": "Every figure claims a stamped binding. Edit template.html to reshape the page; nothing re-runs the pandas.",
+  "libs": ["echarts"],
+  "data": {
+    "kpis": {
+      "model": "sample_model",
+      "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }
+    },
+    "by_region": {
+      "model": "sample_model",
+      "query": {
+        "fact": "fact_orders",
+        "measures": ["revenue"],
+        "dimensions": ["dim_region.region"],
+        "having": { "revenue": { "gte": 1000 } },
+        "order_by": ["-revenue"]
+      }
+    },
+    "region_detail": {
+      "model": "sample_model",
+      "query": {
+        "fact": "fact_orders",
+        "measures": ["revenue", "orders", "units"],
+        "dimensions": ["dim_region.region"],
+        "order_by": ["-revenue"]
+      }
+    }
+  }
+}

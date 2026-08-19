@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sample Dashboard</title></head>
+<body>
+<main class="tb-page">
+  <h1>Orders — Sample Dashboard</h1>
+  <p class="tb-note">Cleaned from <code>inputs/orders.csv</code> by the
+    phase-① transform. Every number on this page is a live, fingerprinted
+    query — including the one in this sentence: total revenue across all
+    regions is
+    <span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
+          data-tb-format="currency0" id="val-revenue-inline">—</span>.
+    Prose numbers can be bound too; never type one in.</p>
+
+  <div class="tb-grid">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="revenue" data-tb-format="currency0" id="kpi-revenue">
+      <span class="tb-kpi-label">Revenue</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="orders" data-tb-format="comma" id="kpi-orders">
+      <span class="tb-kpi-label">Orders</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="units" data-tb-format="comma" id="kpi-units">
+      <span class="tb-kpi-label">Units</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+  </div>
+
+  <div class="tb-card">
+    <h2>Revenue by region</h2>
+    <div data-tb-figure="chart" data-tb-binding="by_region" data-tb-type="bar"
+         data-tb-x="dim_region.region" data-tb-y="revenue"
+         data-tb-value-format="compact" id="chart-by-region"></div>
+  </div>
+
+  <div class="tb-card">
+    <h2>Region detail</h2>
+    <p class="tb-note">Filter and search subset which stamped rows display —
+      they never compute new numbers. The CSV button exports the stamped
+      bytes verbatim; tables scroll past 10 rows.</p>
+    <p>
+      Region:
+      <select data-tb-filter data-tb-binding="region_detail"
+              data-tb-column="dim_region.region"></select>
+      Search:
+      <input data-tb-search data-tb-binding="region_detail"
+             placeholder="type to filter…">
+      <button data-tb-download data-tb-binding="region_detail"
+              data-tb-label="Download CSV"></button>
+    </p>
+    <table data-tb-figure="table" data-tb-binding="region_detail"
+           class="tb-table--striped" id="tbl-regions"></table>
+  </div>
+
+  <section data-tb-stage="exploration">
+    <h3>Working notes</h3>
+    <p>Scratch space: this block renders under <code>tracebi dev</code> and is
+       DELETED at the final build. Explore here; promote what matters into a
+       figure above.</p>
+  </section>
+</main>
+</body></html>

@@ -1,0 +1,94 @@
+"""
+Phase ① — TRANSFORM.
+
+Ordinary pandas. Read the raw pull from inputs/, do whatever the data needs —
+here: drop the row with no key, dedupe, normalise regions spelled four ways,
+parse money stored as strings — and SINK the clean, star-shaped result into
+the warehouse.
+
+This is the phase the framework does NOT constrain: write as much pandas as
+the data needs. The contract is not *how* you clean, it is *what lands* — the
+named tables at the bottom of this file. Phase ② (models/) reads those tables
+and never sees this code.
+
+    python transforms/sample_transform.py
+
+Idempotent: rerun any time; it replaces the warehouse tables.
+"""
+
+from __future__ import annotations
+
+import os
+
+import pandas as pd
+
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW = os.path.join(ROOT, "inputs", "orders.csv")
+WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+
+# Notebook-shaped: `# %%` markers are cell boundaries and `# %% [markdown]`
+# cells are prose — VS Code, Cursor, PyCharm, and Jupyter (via jupytext)
+# open this file AS a notebook (collapse cells, run cell-by-cell, markdown
+# beside code) while it stays plain, reviewable Python that runs
+# top-to-bottom. While `tracebi dev` serves, any cell can
+# `tracebi.workbench.show(df, note=...)` to put its output in the portal.
+
+_REGIONS = {
+    "north east": "Northeast", "northeast": "Northeast",
+    "south east": "Southeast", "southeast": "Southeast",
+    "midwest": "Midwest", "west": "West",
+}
+
+# %% [markdown]
+# ## Methodology
+#
+# Orders arrive with regions spelled four ways, money as strings, and the
+# occasional keyless row. We drop unkeyed rows (loudly — the contract note
+# below states it), normalise regions, and coerce money to floats.
+
+# %%  Clean — any pandas you like; none of this is traced, by design.
+df = pd.read_csv(RAW)
+df = df.dropna(subset=["order_id"]).drop_duplicates(subset=["order_id"])
+df["order_id"] = df["order_id"].astype(int)
+df["region"] = df["region"].str.strip().str.lower().map(_REGIONS)
+df["revenue"] = (
+    df["revenue"].str.replace(r"[$,]", "", regex=True).astype(float)
+)
+df["qty"] = df["qty"].astype(int)
+
+# %%  Shape — one dimension, one fact, keyed.
+dim_region = (
+    df[["region"]].drop_duplicates().reset_index(drop=True)
+    .rename_axis("region_id").reset_index()
+)
+fact = df.merge(dim_region, on="region")[
+    ["order_id", "order_date", "region_id", "product", "qty", "revenue"]
+]
+
+# %%  Sink — the contract. These named tables are what phase ② models.
+os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
+wh = DuckDBConnector("warehouse", database=WAREHOUSE)
+wh.write(dim_region, "dim_region")
+wh.write(fact, "fact_orders")
+
+# %%  The sink CONTRACT: read-only SQL checks on what just landed, recorded
+# beside the warehouse. A failed check raises — a broken sink never freezes
+# quietly. This certifies the SINK; it never verifies the pandas above. The
+# note= is the STATED methodology, carried into report receipts verbatim.
+from tracebi.contracts import contract
+
+with contract("sample_transform", warehouse=WAREHOUSE,
+              note="dropped rows without an order_id; regions "
+                   "normalized from four spellings") as c:
+    c.rows("fact_orders", at_least=1)
+    c.unique("fact_orders", ["order_id"])
+    c.not_null("fact_orders", ["order_id", "region_id", "revenue"])
+    c.foreign_key("fact_orders", "region_id",
+                  refers_to=("dim_region", "region_id"))
+
+# %%
+print(f"  orders: {len(fact)} · regions: {len(dim_region)} · "
+      f"revenue: {round(fact['revenue'].sum(), 2)}")
+print(f"  sunk → {WAREHOUSE}")

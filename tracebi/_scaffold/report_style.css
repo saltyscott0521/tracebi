@@ -1,0 +1,12 @@
+:root { color-scheme: light; }
+/* A report is a document: commit to a light ground so it reads the same in any
+   browser mode (a file that only set text colour goes dark-on-dark in dark mode). */
+body { font: 15px/1.5 system-ui, sans-serif; background: #fff; color: #1a1a1a;
+       margin: 2rem auto; max-width: 60rem; }
+h1 { margin-bottom: .25rem; }
+.note { color: #666; margin-top: 0; }
+.chart { width: 100%; height: 340px; margin-top: 1.5rem; }
+table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
+th, td { padding: .5rem .75rem; border-bottom: 1px solid #ddd; text-align: left; }
+th { border-bottom: 2px solid #999; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
