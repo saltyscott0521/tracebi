@@ -283,6 +283,29 @@ class TestHTMLRenderer:
             )
             assert os.path.exists(custom_mp)
 
+    def test_render_pdf_smoke(self, sample_report):
+        """render_pdf produces a real PDF plus a manifest (manifest-first).
+
+        Gated on WeasyPrint AND its native libraries. WeasyPrint loads
+        libgobject/pango at *import*, raising ``OSError`` (not ``ImportError``)
+        when they are absent — so ``importorskip`` alone is not enough. This
+        pins the capability where the deps are installed and skips cleanly
+        otherwise (e.g. a Mac without the native libraries).
+        """
+        try:
+            import weasyprint  # noqa: F401
+        except (ImportError, OSError) as exc:
+            pytest.skip(f"WeasyPrint unavailable: {exc}")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "report.pdf")
+            manifest = HTMLRenderer().render_pdf(sample_report, path)
+            assert os.path.exists(path)
+            with open(path, "rb") as f:
+                assert f.read(5) == b"%PDF-"                  # a real PDF
+            assert isinstance(manifest, ReportManifest)
+            assert manifest.format == "pdf"
+            assert os.path.exists(path + ".manifest.json")    # manifest-first receipt
+
 
 # ─────────────────────────────────────────────
 # Formatting & layout tests

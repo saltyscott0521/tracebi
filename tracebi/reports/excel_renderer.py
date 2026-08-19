@@ -1,6 +1,15 @@
 """
 Excel renderer — produces well-formatted, multi-section .xlsx reports.
 
+LEGACY SURFACE. This is the spreadsheet lane, outside the artifact/receipt
+model: it takes a carrier :class:`Report` and writes an ``.xlsx``, with no
+embedded fingerprints, no manifest, no figure claims — a ``.xlsx`` cannot carry
+a receipt or be checked by ``verify --file``. It is kept because fund-ops
+readers still want the numbers in a spreadsheet, and it backs the web layer's
+Excel download endpoint. It also derives no presentation defaults (unlike the
+HTML renderer): it applies only ``section.number_formats``. Reach for the
+artifact package (``TemplatePackage``) for anything that must be verifiable.
+
 Features:
 - Cover sheet with report metadata and parameter summary
 - One worksheet per report (all sections on a single sheet) or per table
