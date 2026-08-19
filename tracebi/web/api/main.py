@@ -41,6 +41,8 @@ from tracebi.web.api.errors import error_detail
 
 from tracebi.web.api.routers import connectors, models, reports, pipelines, requests, docs
 from tracebi.web.api.auth import install_if_configured as _install_auth
+from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
+from tracebi.web.api.csrf import allowed_origins as _allowed_origins
 
 from tracebi._version import get_version as _tracebi_version
 
@@ -53,15 +55,16 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",   # Vite dev server
-        "http://localhost:3000",   # CRA / alternate dev port
-        "http://localhost:8000",   # same-origin (prod static serving)
-    ],
+    allow_origins=_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Same-origin CSRF guard: a browser cross-site POST carries an Origin and is
+# refused unless allowed; a request with no Origin (curl, CLI) is not a browser
+# CSRF and passes. CORS alone does not stop a cross-site POST reaching us.
+app.add_middleware(_CSRFMiddleware)
 
 # Optional auth — Basic or reverse-proxy header trust, depending on env.
 _auth_mode = _install_auth(app)
