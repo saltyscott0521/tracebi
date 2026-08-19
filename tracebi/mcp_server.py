@@ -256,7 +256,9 @@ front of a person should carry a receipt. This gateway is how you produce one.
    in get_context's `presentation` block.
    (A JSON ReportSpec is the same thing as a serialization — read
    `tracebi://spec-schema`, then **validate_report_spec** →
-   **render_report_spec**, which refuses invalid specs.)
+   **render_report_spec**, which refuses invalid specs. Heed validate's
+   warnings, not just its errors: a filter/column it cannot pre-verify fails
+   at render if it is wrong — render returns a clean `{ok:false}` to act on.)
 4. **workbench_state** — while iterating under `tracebi dev`, read this
    before every editing pass: the human steers by PINNING figures in the
    portal with notes, and pins come first.
@@ -272,8 +274,11 @@ front of a person should carry a receipt. This gateway is how you produce one.
 
 ## The two planes
 - **Definition plane (git):** transforms, models, report specs are authored
-  and code-reviewed in the repo. Missing a measure? The fix is a reviewed edit
-  to the model file — never a workaround in the report layer.
+  and code-reviewed in the repo. A REUSABLE measure belongs here — a reviewed
+  edit to the model file, not a workaround in the report layer. But a one-off
+  derived number never dead-ends the loop: `query_model` measures accept
+  `{expr, agg}` and `{ratio: [num, den]}` alongside declared names, so you can
+  compute it in the query itself (and promote it to a declared measure later).
 - **Contract plane (this gateway):** you *use* the semantic contract; you do
   not change it here. The gateway is read-and-compute only — it never writes
   the warehouse. The two render tools (`render_report_spec`, `build_report`)
@@ -910,8 +915,9 @@ def build_server(token: Optional[str] = None):
         name="tracebi",
         **auth_kwargs,
         instructions=(
-            "TraceBi semantic gateway. Call get_context first — it returns "
-            "the full vocabulary (models, facts, dimensions, measures, "
+            "TraceBi semantic gateway. Call get_context first (start with "
+            "brief=true — the token-lean tier, about half the payload) — it "
+            "returns the vocabulary (models, facts, dimensions, measures, "
             "report sections) and nothing outside it will validate. Query "
             "with query_model; every response is stamped with the resolved "
             "query, lineage and a fingerprint of the full result — cite the "
@@ -940,7 +946,9 @@ def build_server(token: Optional[str] = None):
             "TraceBi's semantic contract: every model, section type, chart "
             "type, DataSet verb, measure kind and filter operator. Pass "
             "model=<name> to include that model's tables, dimensions and "
-            "named measures. Call this first."
+            "named measures. Call this first — start with brief=true for the "
+            "token-lean payload (about half the size), and re-call without it "
+            "only when you need a section it omits."
         ),
     )(gateway_context)
     server.tool(
@@ -958,8 +966,12 @@ def build_server(token: Optional[str] = None):
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
             "Run a star-schema query. measures is a list of declared "
-            "measure names (ratio measures included) or {column: agg} "
-            "(sum, count, mean, min, max, nunique); dimensions are "
+            "measure names (ratio measures included) or a {output: spec} "
+            "mapping — spec is an agg name (sum, count, mean, min, max, "
+            "nunique), or {expr, agg} for a derived column (e.g. "
+            "{'expr': 'market_value - cost', 'agg': 'sum'}), or "
+            "{ratio: [num, den]} for a ratio of two other measures; "
+            "dimensions are "
             "'dim_name.attribute' references; filters accept equality, "
             "lists (IN) and operator dicts (gte, between, contains, ...); "
             "order_by ({column, desc} or '-col') sorts the result and "
@@ -1081,15 +1093,17 @@ def build_server(token: Optional[str] = None):
         return (
             f"Author a governed TraceBi report that answers: {question}\n\n"
             "Follow the loop, and do not skip a step:\n"
-            "1. Call get_context (and get_context with the model= you'll use) "
-            "to learn the exact facts, dimensions and named measures. Nothing "
-            "outside that vocabulary will validate.\n"
+            "1. Call get_context (start with brief=true; add the model= you'll "
+            "use) to learn the exact facts, dimensions and named measures. "
+            "Nothing outside that vocabulary will validate.\n"
             "2. Use query_model to explore the numbers. Every result is "
             "stamped — keep the fingerprints for anything you cite.\n"
             "3. Read tracebi://spec-schema, then write a ReportSpec whose "
             "sections query the model (not hard-coded numbers).\n"
             "4. validate_report_spec until it returns ok:true — fix each "
-            "path-scoped error it reports.\n"
+            "path-scoped error, and heed the warnings: a filter or column it "
+            "cannot pre-verify will fail at render if it is wrong (render then "
+            "returns a clean {ok:false} naming the actual columns — act on it).\n"
             "5. render_report_spec to produce the HTML artifact and its "
             "manifest.\n"
             "6. verify_manifest on that manifest and report the verdict. "

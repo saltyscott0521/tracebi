@@ -1144,6 +1144,58 @@ class TestNamedMeasures:
         ).to_pandas()
         assert float(df["revenue"].iloc[0]) == 1000.0
 
+    # ── Ad-hoc measure kinds: the same three kinds a declared measure has,
+    #    so a chat-only agent is not walled when a derived measure is missing.
+
+    def test_adhoc_expression_matches_the_declared_one(self):
+        df = self._model().query(fact="fact_orders", measures={
+            "gm": {"expr": "revenue - cost", "agg": "sum"},
+        }).to_pandas()
+        assert float(df["gm"].iloc[0]) == 290.0          # == declared gross_margin
+
+    def test_adhoc_expression_defaults_to_sum(self):
+        df = self._model().query(fact="fact_orders", measures={
+            "gm": {"expr": "revenue - cost"},            # no agg → sum
+        }).to_pandas()
+        assert float(df["gm"].iloc[0]) == 290.0
+
+    def test_adhoc_ratio_divides_totals(self):
+        # A ratio of two other ad-hoc measures, divided AFTER aggregation —
+        # sum(margin)/sum(revenue), the same number the declared margin_pct gives.
+        # (The {col: agg} key is the source column, so the numerator uses the
+        # real 'revenue' column; a renamed measure would use {expr} or a tuple.)
+        df = self._model().query(fact="fact_orders", measures={
+            "revenue": "sum",
+            "gm": {"expr": "revenue - cost", "agg": "sum"},
+            "mp": {"ratio": ["gm", "revenue"]},
+        }).to_pandas()
+        assert abs(float(df["mp"].iloc[0]) - 0.29) < 1e-9
+
+    def test_adhoc_measure_kinds_group_by_dimension(self):
+        df = self._model().query(
+            fact="fact_orders",
+            measures={"revenue": "sum",
+                      "gm": {"expr": "revenue - cost", "agg": "sum"},
+                      "mp": {"ratio": ["gm", "revenue"]}},
+            dimensions=["dim_customer.region"],
+        ).to_pandas().set_index("dim_customer.region")
+        assert abs(float(df.loc["West", "mp"]) - 0.40) < 1e-9
+
+    def test_adhoc_dict_measure_needs_expr_or_ratio(self):
+        with pytest.raises(ValueError, match="needs 'expr'.*or 'ratio'"):
+            self._model().query(fact="fact_orders", measures={"x": {"foo": "bar"}})
+
+    def test_adhoc_ratio_needs_two_measures(self):
+        with pytest.raises(ValueError, match="numerator, denominator"):
+            self._model().query(fact="fact_orders", measures={"x": {"ratio": ["only_one"]}})
+
+    def test_adhoc_ratio_reference_must_exist(self):
+        # A typo in a ratio reference fails loudly here — it must never vanish
+        # silently in _apply_ratios and return a result missing the measure.
+        with pytest.raises(ValueError, match="not another measure in this query"):
+            self._model().query(fact="fact_orders", measures={
+                "revenue": "sum", "mp": {"ratio": ["ghost", "revenue"]}})
+
     # ── The constraint that protects reproducibility ───────────────────
 
     def test_callables_are_rejected(self):

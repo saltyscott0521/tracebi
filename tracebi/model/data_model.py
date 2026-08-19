@@ -1178,15 +1178,56 @@ class DataModel:
         if isinstance(measures, dict):
             if not measures:
                 raise ValueError("query() requires at least one measure.")
-            # Legacy/ad-hoc form. Values may be an agg name, or a
-            # (source_column, agg) tuple mirroring DataSet.aggregate().
+            # Ad-hoc form — the same three measure kinds a declared measure has,
+            # so a chat-only agent is not walled the moment it needs a derived
+            # number the model has not (yet) declared. A value may be:
+            #   "sum"                              — aggregate the column
+            #   ("revenue", "sum")                 — aggregate a renamed column
+            #   {"expr": "market_value - cost", "agg": "sum"}
+            #                                      — aggregate a row expression
+            #   {"ratio": ["margin", "revenue"]}   — ratio of two other measures,
+            #                                        divided AFTER aggregation
             for out_col, spec in measures.items():
-                if isinstance(spec, (tuple, list)) and len(spec) == 2:
+                if isinstance(spec, dict):
+                    if "ratio" in spec:
+                        r = spec["ratio"]
+                        if not (isinstance(r, (list, tuple)) and len(r) == 2):
+                            raise ValueError(
+                                f"measure {out_col!r}: 'ratio' must be "
+                                f"[numerator, denominator], naming two other "
+                                f"measures in this query."
+                            )
+                        ratios[out_col] = (str(r[0]), str(r[1]))
+                    elif "expr" in spec:
+                        derived[out_col] = str(spec["expr"])
+                        agg_map[out_col] = str(spec.get("agg", "sum")).lower()
+                    else:
+                        raise ValueError(
+                            f"measure {out_col!r}: a dict measure needs 'expr' "
+                            f"(with optional 'agg', default sum) or 'ratio'; "
+                            f"got keys {sorted(spec)}."
+                        )
+                elif isinstance(spec, (tuple, list)) and len(spec) == 2:
                     src, func = spec
                     derived[out_col] = str(src)   # rename, not arithmetic
                     agg_map[out_col] = str(func).lower()
                 else:
                     agg_map[out_col] = str(spec).lower()
+            # A declared ratio's numerator/denominator are validated by the name
+            # expansion below; an ad-hoc ratio references other measures in THIS
+            # query by output name, so validate it here — else a typo silently
+            # vanishes in _apply_ratios (which skips a ratio whose columns are
+            # absent) and returns a result missing the measure, no error.
+            produced = set(agg_map) | set(ratios)
+            for out_col, (num, den) in ratios.items():
+                for ref in (num, den):
+                    if ref == out_col or ref not in produced:
+                        raise ValueError(
+                            f"measure {out_col!r}: ratio references {ref!r}, "
+                            f"which is not another measure in this query — add "
+                            f"it (e.g. {{{ref!r}: 'sum'}}). Measures here: "
+                            f"{sorted(produced - {out_col})}."
+                        )
             return agg_map, derived, ratios
 
         names = list(measures or [])
