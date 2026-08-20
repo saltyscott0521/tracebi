@@ -516,7 +516,10 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* ── Home-page layout helpers ────────────────────────── */
 .home-thesis    { font-size: 30px; }
-.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+/* auto-fit, not repeat(4, …): four fixed 1fr tracks don't fit beside the
+   sidebar at iPad-portrait / narrow-desktop widths (769–900px) and overflow.
+   auto-fit reflows the stat cards to 3 (then the ≤768 rule pins 2). */
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
 /* minmax(0,1fr) — not plain 1fr — so the wide left column shrinks to the
    track instead of forcing the grid (and the page) wider than the viewport. */
 .home-main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; align-items: start; }
@@ -557,9 +560,13 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
   /* Home page responsive grids */
   .grid-4        { grid-template-columns: 1fr 1fr; gap: 12px; }
-  .home-main-grid { grid-template-columns: 1fr; gap: 20px; }
+  /* minmax(0,1fr), not 1fr: a single 1fr track is minmax(auto,1fr) and will
+     NOT shrink below its content's min-content, so the ledger's nowrap report
+     descriptions force the column (and the page) wider than a phone/iPad — the
+     desktop grid already uses minmax(0,1fr) for the same reason. */
+  .home-main-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   /* Hero stacks: text over CTAs; the CTAs go side-by-side full-width. */
-  .home-hero-grid { grid-template-columns: 1fr; gap: 18px; }
+  .home-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .home-hero-cta  { flex-direction: row; flex-wrap: wrap; min-width: 0; }
   .home-hero-cta > a { flex: 1 1 auto; }
 }
@@ -673,8 +680,13 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .wf-endcap span { font-size: 11px; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.03em; }
 .wf-endcap small { font-size: 9.5px; color: var(--muted); line-height: 1.3; }
 
-/* Stack vertically when the band is too narrow for a left-to-right flow. */
-@media (max-width: 900px) {
+/* Stack vertically when the band is too narrow for a left-to-right flow.
+   Breakpoint is 1140, not 900, because the 232px sidebar eats into the band:
+   a 3-phase horizontal flow needs ~820px of content, which a viewport only
+   clears above ~1140 once the sidebar is subtracted. Below that the phases
+   crush to one word per line, so stack instead. (On phones ≤768 the sidebar
+   is gone, but vertical is still the right call there.) */
+@media (max-width: 1140px) {
   .wf-wrap { flex-direction: column; align-items: stretch; }
   .wf-handoff { flex-direction: row; gap: 8px; padding: 2px 0; }
   .wf-freeze { max-width: none; flex: 1; }
