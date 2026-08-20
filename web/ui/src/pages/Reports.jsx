@@ -43,6 +43,60 @@ function RunHistory({ name, refreshKey }) {
   )
 }
 
+// The receipt, at a glance — derived from the schema-2 manifest the run
+// returns. Provenance is not a stored field: a figure is query-reproducible
+// when it names a binding and is not marked unverified and that binding was
+// embedded verifiable; python-derived when its binding embedded verifiable:false.
+function figureProvenance(manifest) {
+  const figures = manifest?.figures || []
+  const verifiable = {}
+  ;(manifest?.embedded_data || []).forEach(e => { verifiable[e.name] = e.verifiable !== false })
+  let reproducible = 0, unverified = 0, derived = 0
+  figures.forEach(f => {
+    if (f.unverified) unverified++
+    else if (f.binding && verifiable[f.binding] === false) derived++
+    else if (f.binding) reproducible++
+  })
+  return { total: figures.length, reproducible, unverified, derived }
+}
+
+function ReportReceipt({ manifest }) {
+  if (!manifest) return null
+  const p = figureProvenance(manifest)
+  const v2 = manifest.schema_version === 2
+  const contracts = Object.entries(manifest.transform_contracts || {})
+  const contractVariant = s => (s === 'satisfied' ? 'green' : s === 'stale' ? 'amber' : 'gray')
+  return (
+    <div style={{
+      border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px',
+      marginBottom: 16, background: 'var(--surface-2, var(--surface))',
+    }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Badge variant={v2 ? 'green' : 'gray'} style={{ textTransform: 'none' }}>
+          {v2 ? '🧾 Verifiable artifact' : `manifest v${manifest.schema_version ?? '?'}`}
+        </Badge>
+        {p.total > 0 && (
+          <>
+            <Badge variant="green" style={{ textTransform: 'none' }}>{p.reproducible} reproducible</Badge>
+            {p.derived > 0 && <Badge variant="gray" style={{ textTransform: 'none' }}>{p.derived} python-derived</Badge>}
+            {p.unverified > 0 && <Badge variant="amber" style={{ textTransform: 'none' }}>{p.unverified} unverified</Badge>}
+          </>
+        )}
+        {contracts.map(([table, c]) => (
+          <Badge key={table} variant={contractVariant(c?.status)} title={table} style={{ textTransform: 'none' }}>
+            {table}: {(c?.status || 'no_contract').replace(/_/g, ' ')}
+          </Badge>
+        ))}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
+        The <strong>HTML</strong> download carries this receipt — every figure’s data is embedded and
+        fingerprinted, so it re-checks offline with <code>tracebi verify --file</code>. Excel is a plain
+        spreadsheet with no receipt.
+      </div>
+    </div>
+  )
+}
+
 function ReportDetail({ report }) {
   const [tab, setTab] = useState('Output')
   const [runId, setRunId] = useState(null)
@@ -111,6 +165,7 @@ function ReportDetail({ report }) {
 
       {result && (
         <>
+          <ReportReceipt manifest={result.manifest} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <Btn onClick={handleRun} disabled={running} variant="outline" size="sm">
               {running ? <><Spinner size={12} /> Running…</> : '↺ Re-run'}
@@ -121,11 +176,25 @@ function ReportDetail({ report }) {
               </Btn>
             )}
             <span style={{ flex: 1 }} />
-            <a href={reportDownloadUrl(report.name, 'xlsx')} download className="dl-link">
-              ↓ Excel
+            <a
+              href={reportDownloadUrl(report.name, 'html')}
+              download
+              className="dl-link"
+              title="The self-contained artifact with the embedded receipt"
+              style={{
+                background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)',
+                fontWeight: 600,
+              }}
+            >
+              ↓ HTML (with receipt)
             </a>
-            <a href={reportDownloadUrl(report.name, 'html')} download className="dl-link">
-              ↓ HTML
+            <a
+              href={reportDownloadUrl(report.name, 'xlsx')}
+              download
+              className="dl-link"
+              title="A plain spreadsheet — no receipt, not verifiable"
+            >
+              ↓ Excel
             </a>
           </div>
 

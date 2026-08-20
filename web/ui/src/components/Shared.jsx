@@ -291,6 +291,8 @@ export function ReportFrame({ html, title }) {
 export function Alert({ variant = 'info', children }) {
   const s = variant === 'err'
     ? { background: 'var(--red-lt)', color: 'var(--red-text)', borderLeft: '3px solid var(--red)' }
+    : variant === 'warn'
+    ? { background: 'var(--amber-lt)', color: 'var(--amber-text)', borderLeft: '3px solid var(--amber)' }
     : { background: 'var(--blue-lt)', color: 'var(--accent-text)', borderLeft: '3px solid var(--blue)' }
   return (
     <div style={{ borderRadius: 8, padding: '11px 16px', fontSize: 13, marginBottom: 16, lineHeight: 1.5, ...s }}>

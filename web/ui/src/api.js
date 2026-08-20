@@ -88,9 +88,6 @@ export const useTablePreview = (model, table) =>
 export const useReports = () =>
   useQuery({ queryKey: ['reports'], queryFn: () => get('/reports') })
 
-export const useRunReport = () =>
-  useMutation({ mutationFn: (name) => post(`/reports/${name}/run`) })
-
 // Background report runs: start returns a run_id; the status query polls
 // every 1.2s while the run is in flight, then stops on its own.
 export const useStartReportRun = () =>

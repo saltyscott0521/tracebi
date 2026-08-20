@@ -50,21 +50,15 @@ result.print_lineage()
   },
   {
     n: 4,
-    title: 'Build and render a report',
-    desc: 'Assemble sections and render to HTML or Excel. A lineage manifest is written alongside every output.',
-    code: `from tracebi.reports.report import Report, TableSection, ChartSection
-from tracebi.reports.html_renderer import HTMLRenderer
+    title: 'Build and verify a report',
+    desc: 'Point a report spec at your model and build a self-contained HTML artifact — every figure a live query, backed by an embedded, fingerprinted receipt you can re-check offline.',
+    code: `# reports/revenue.json — a spec that queries your model
+$ tracebi report build revenue
+  → output/revenue.html                # self-contained: data + receipt inlined
+  → output/revenue.html.manifest.json  # the lineage manifest
 
-report = (
-    Report("Revenue by Region")
-    .author("Data Team")
-    .add(ChartSection("Chart", dataset=result,
-                      chart_type="bar", x="region", y="revenue"))
-    .add(TableSection("Detail", dataset=result, totals=["revenue"]))
-)
-
-HTMLRenderer().render(report, "output/revenue.html")
-# Writes output/revenue.html + output/revenue_manifest.json`,
+$ tracebi verify output/revenue.html.manifest.json
+  ✓ every figure re-runs and reproduces`,
   },
   {
     n: 5,

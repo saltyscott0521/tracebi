@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRequests, useRequestParams, useRunRequest, useRequestLineage } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
-  PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
+  PageTitle, PageSub, Card, CardTitle, Badge, Spinner, Alert,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
   SearchInput, SkeletonList, SkeletonCard, useToast, ReportFrame,
 } from '../components/Shared'
@@ -198,6 +198,12 @@ export default function Requests() {
           ? 'Loading…'
           : `${requests.length} script${requests.length !== 1 ? 's' : ''} in requests/. Scripts run fresh on every click — edits on disk are picked up immediately.`}
       </PageSub>
+
+      <Alert variant="warn">
+        The <code>requests/</code> lane is <strong>deprecated</strong> and is removed in 0.8. Author
+        reports as artifact packages instead — <code>tracebi new-report</code> then{' '}
+        <code>tracebi dev</code> — so every figure carries a receipt. See the Reports page.
+      </Alert>
 
       {!isLoading && requests.length === 0 ? (
         <Empty message="No request scripts found. Scaffold one with: tracebi new-request &quot;My report&quot;" />

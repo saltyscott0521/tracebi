@@ -226,7 +226,7 @@ export default function Home() {
             <NavCard href="/models"   title="Models"    icon={I.cube}    color="#7c3aed" badge={nMod || undefined}
               desc="Browse DataModel tables, preview rows, inspect relationships, and view the ER diagram." />
             <NavCard href="/reports"  title="Reports"   icon={I.doc}     color="#db2777" badge={nRep || undefined}
-              desc="Run registered reports and download HTML or Excel outputs with lineage manifests." />
+              desc="Run registered reports and download the self-contained HTML artifact — every figure a live query, with an embedded, verifiable receipt." />
             <NavCard href="/requests" title="Requests"  icon={I.code}    color="#6d28d9"
               desc="Execute ad-hoc Python scripts with custom parameters and live lineage graphs." />
           </div>
