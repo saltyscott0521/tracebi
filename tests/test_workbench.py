@@ -749,7 +749,11 @@ class TestSessionCli:
         assert cli.main(["session", "clear"]) == 1
         assert os.path.exists(os.path.join(wb, "exhibits.jsonl"))
         assert os.path.exists(os.path.join(wb, "pins.json"))
-        assert "stop the server first" in capsys.readouterr().err
+        err = capsys.readouterr().err
+        # The refusal names the heartbeat and gives an actionable retry window,
+        # not just "stop the server first" (which was un-actionable right after
+        # the server was actually stopped).
+        assert "heartbeat" in err and "stale" in err
 
 
 class TestSessionExportMarkdown:

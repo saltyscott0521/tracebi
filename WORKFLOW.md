@@ -74,12 +74,24 @@ record (`--format md` for the git-review twin) — exploration-stamped,
 receipt-free, refused by `verify` by name.
 
 A transform may end with a **sink contract** — a `with contract(...)` block
-declaring what must be true of the tables it just sank (row counts, unique
-keys, no NULLs, foreign keys, value domains, cross-table reconciliation). The
-checks run as read-only SQL at sink time; a failure raises; success records a
-certificate beside the warehouse (`data/warehouse.contracts.json`) that report
-manifests join against (`satisfied` / `stale` / `no_contract`) and
-`tracebi verify --contracts` re-runs. It certifies the **sink**, never the
+declaring what must be true of the tables it just sank. The closed, declarative
+check vocabulary (every check takes an optional `note=`):
+
+| Check | Signature |
+|---|---|
+| row count | `c.rows(table, at_least=…, at_most=…, exactly=…)` |
+| unique key | `c.unique(table, columns=[…])` |
+| no NULLs | `c.not_null(table, columns=[…])` |
+| foreign key | `c.foreign_key(table, column, refers_to=(dim_table, dim_col))` |
+| value domain | `c.values(table, column, within=[…])` |
+| reconciliation | `c.reconcile(table, column, against=(other_table, other_col), by=key_col, tolerance=0.0)` |
+
+The checks run as read-only SQL at sink time; a failure raises; success records
+a certificate beside the warehouse (`data/warehouse.contracts.json`) that report
+manifests join against (`satisfied` / `stale` / `no_contract`).
+`tracebi verify --contracts` re-runs the checks **and** compares the certified
+per-table fingerprints to the data now, so an out-of-band change that still
+passes the checks is caught as drift. It certifies the **sink**, never the
 pandas above it — see `transforms/holdings_transform.py` for the reference
 declaration.
 

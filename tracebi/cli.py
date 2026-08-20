@@ -344,10 +344,17 @@ tracebi verify output/sample_dashboard.html.manifest.json   # every checked sect
 tracebi serve                               # browse it at http://127.0.0.1:8000
 ```
 
-That last `verify` is the point: it re-runs the recorded queries against the
-model and confirms the rendered numbers still reproduce. Every number drawn
-through the model has a receipt; anything else must be marked as not having
-one.
+That `verify` is the point: it re-runs the recorded queries against the model
+and confirms the rendered numbers still reproduce. Every number drawn through
+the model has a receipt; anything else must be marked as not having one.
+
+**Handing the report to a reviewer?** They need only the `.html` — no model, no
+warehouse. The offline check re-hashes the data embedded in the file against
+the receipt it carries:
+
+```bash
+tracebi verify --file output/sample_dashboard.html   # FILE INTACT, or names what was altered
+```
 
 ## Layout
 
@@ -454,7 +461,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(f"  git init && git add . && git commit -m init   # manifests stamp the commit (git_sha)")
     print(f"  python transforms/sample_transform.py  # ① clean + sink the sample input")
     print(f"  tracebi report build sample_dashboard  # ③ render + receipt")
-    print(f"  tracebi verify output/sample_dashboard.html.manifest.json")
+    print(f"  tracebi verify output/sample_dashboard.html.manifest.json   # re-run the queries")
+    print(f"  tracebi verify --file output/sample_dashboard.html          # a reviewer's offline check (needs only the .html)")
     print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
     print(f"AGENTS.md orients an AI agent working in this project.")
     return 0
@@ -784,13 +792,23 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
         print(f"transform not found in {tdir}: {args.name}", file=sys.stderr)
         return 1
     print(f"Running {path} (top-to-bottom, fresh namespace)…")
-    if path.suffix == ".ipynb":
-        from tracebi._notebook import notebook_to_source
-        source = notebook_to_source(path)
-        ns: dict = {"__name__": "__main__", "__file__": str(path)}
-        exec(compile(source, str(path), "exec"), ns)
-    else:
-        runpy.run_path(str(path), run_name="__main__")
+    from tracebi.contracts import ContractViolation
+    try:
+        if path.suffix == ".ipynb":
+            from tracebi._notebook import notebook_to_source
+            source = notebook_to_source(path)
+            ns: dict = {"__name__": "__main__", "__file__": str(path)}
+            exec(compile(source, str(path), "exec"), ns)
+        else:
+            runpy.run_path(str(path), run_name="__main__")
+    except ContractViolation as exc:
+        # The sink refused to certify. This is an expected, well-worded
+        # failure — print it clean, not as a runpy stack trace (the full
+        # trace is behind TRACEBI_DEBUG for anyone debugging the check itself).
+        if os.environ.get("TRACEBI_DEBUG"):
+            raise
+        print(f"\n{exc}", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -1217,7 +1235,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     # sink no longer satisfies its declared contract. It never says the
     # transform was verified, and it never colors a figure status.
     if getattr(args, "contracts", False):
-        from tracebi.contracts import rerun_checks
+        from tracebi.contracts import check_fingerprints, rerun_checks
         warehouses = sorted({
             c.database for m in models.values() for c in m.connectors()
             if isinstance(getattr(c, "database", None), str)
@@ -1242,6 +1260,30 @@ def cmd_verify(args: argparse.Namespace) -> int:
             print(f"{failed_now} check(s) the sink no longer satisfies.",
                   file=sys.stderr)
             exit_code = 1
+
+        # Re-running the checks can miss out-of-band mutation: a row inserted
+        # straight into the warehouse that still satisfies every declared
+        # check. Compare the certified per-table fingerprints to the data
+        # right now — drift means the certificate no longer describes the
+        # warehouse (a re-sink would have rewritten it).
+        fp_rows = [r for wh in warehouses for r in check_fingerprints(wh)]
+        if fp_rows:
+            print("\nsink data fingerprints (vs the certificate):")
+            drifted = 0
+            for r in fp_rows:
+                ok = r["matches"]
+                state = "unchanged" if ok else (
+                    "MISSING" if r["current"] is None else "CHANGED")
+                print(f"{'✓' if ok else '✗'} {state:<12} "
+                      f"{r['transform']}: {r['table']}",
+                      file=sys.stdout if ok else sys.stderr)
+                if not ok:
+                    drifted += 1
+            if drifted:
+                print(f"{drifted} table(s) changed since the sink certified "
+                      f"them — the certificate no longer describes this "
+                      f"warehouse.", file=sys.stderr)
+                exit_code = 1
 
     # Routed by exit code, not by verdict: a run that exits 0 must write
     # nothing to stderr, or CI wrappers that treat stderr as failure will
@@ -1774,8 +1816,11 @@ def cmd_session(args: argparse.Namespace) -> int:
     except OSError:
         age = None
     if age is not None and age <= HEARTBEAT_WINDOW:
-        print(f"session '{name}' has a live dev server (fresh heartbeat) — "
-              f"stop the server first, then clear.", file=sys.stderr)
+        wait = max(1, int(HEARTBEAT_WINDOW - age) + 1)
+        print(f"session '{name}' has a fresh dev-server heartbeat "
+              f"({int(age)}s old). If the server is still running, stop it; "
+              f"the heartbeat then goes stale after {HEARTBEAT_WINDOW}s, so if "
+              f"you just stopped it, retry in ~{wait}s.", file=sys.stderr)
         return 1
     removed = [fname for fname in (EXHIBITS_FILE, PINS_FILE)
                if os.path.isfile(os.path.join(wb, fname))]
@@ -2118,9 +2163,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify.add_argument(
         "--contracts", action="store_true",
         help="Also re-run the warehouse's recorded sink contracts against "
-             "the current warehouse. A separate claim, reported separately: "
-             "it says whether today's sink still satisfies its declared "
-             "contract — never that the transform was verified.",
+             "the current warehouse AND compare the certified per-table "
+             "fingerprints to the data now (catching an out-of-band change "
+             "that still passes the checks). A separate claim, reported "
+             "separately: it says whether today's sink still satisfies its "
+             "declared contract — never that the transform was verified.",
     )
     p_verify.add_argument(
         "--manifest", dest="file_manifest", default=None,

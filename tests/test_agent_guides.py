@@ -117,7 +117,7 @@ class TestScaffoldDemonstratesTheProduct:
 
         for marker in ("data-tb-filter", "data-tb-search",
                        "data-tb-download", "data-tb-figure",
-                       "data-tb-stage"):
+                       "data-tb-stage", "data-tb-methodology"):
             assert marker in _INIT_SAMPLE_TEMPLATE_HTML, (
                 f"the scaffold sample no longer demonstrates {marker}"
             )

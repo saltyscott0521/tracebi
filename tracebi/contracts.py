@@ -344,6 +344,50 @@ def rerun_checks(warehouse: str, transform: Optional[str] = None) -> list[dict]:
     return results
 
 
+def check_fingerprints(warehouse: str,
+                       transform: Optional[str] = None) -> list[dict]:
+    """Compare each recorded table fingerprint against the CURRENT warehouse.
+
+    ``rerun_checks`` re-runs the declared SQL checks; this catches the other
+    failure mode — a table changed since the certificate was written (a row
+    inserted straight into the warehouse, bypassing the transform), which can
+    leave every declared check passing while the certified data no longer
+    matches. The recorded fingerprint and the current one are both computed
+    through the CONNECTOR LOAD PATH with the one pinned algorithm (v2 §6 flaw
+    4), so a match is exact and a mismatch is real drift, not a serialization
+    artifact.
+
+    Returns one row per recorded table:
+    ``{transform, table, recorded, current, matches}`` — ``current`` is None
+    (``matches`` False) when the table is now missing. A legitimate re-sink
+    rewrites the certificate, so a mismatch means the warehouse moved *without*
+    re-certifying: out-of-band mutation.
+    """
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.model.dataset import frame_fingerprint
+
+    data = read_contracts(warehouse)
+    if not data:
+        return []
+    results: list[dict] = []
+    wh = DuckDBConnector("contracts", database=warehouse)
+    try:
+        for tname, rec in (data.get("transforms") or {}).items():
+            if transform and tname != transform:
+                continue
+            for table, recorded in (rec.get("tables") or {}).items():
+                try:
+                    current = frame_fingerprint(wh.load(table))
+                except Exception:  # noqa: BLE001 — a dropped table is a result
+                    current = None
+                results.append({"transform": tname, "table": table,
+                                "recorded": recorded, "current": current,
+                                "matches": current == recorded})
+    finally:
+        wh.disconnect()
+    return results
+
+
 def transform_contracts_block(models: dict,
                               lineages: list[list[dict]]) -> dict:
     """The manifest's ``transform_contracts`` join, computed at build time.

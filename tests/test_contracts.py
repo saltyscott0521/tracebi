@@ -28,6 +28,7 @@ from tracebi import DataModel
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 from tracebi.contracts import (
     ContractViolation,
+    check_fingerprints,
     contract,
     contracts_path,
     read_contracts,
@@ -74,6 +75,46 @@ def _good_contract(wh_path, name="orders"):
 
 
 # ── the closed vocabulary ──────────────────────────────────────────────────
+
+class TestFingerprintDrift:
+    """`check_fingerprints` catches the failure mode `rerun_checks` misses: a
+    table changed out-of-band since the certificate was written, which can
+    still pass every declared check."""
+
+    def test_unchanged_warehouse_matches_the_certificate(self, warehouse):
+        _good_contract(warehouse)
+        rows = check_fingerprints(warehouse)
+        assert rows and all(r["matches"] for r in rows)
+        assert {r["table"] for r in rows} == {"fact_orders", "dim_region"}
+
+    def test_out_of_band_row_is_caught_though_checks_still_pass(self, warehouse):
+        _good_contract(warehouse)
+        # Insert a row straight into the warehouse, bypassing the transform —
+        # it still satisfies every declared check (unique id, valid status,
+        # valid FK, row count in bounds), so rerun_checks stays green...
+        import duckdb
+        con = duckdb.connect(warehouse)
+        con.execute("INSERT INTO fact_orders VALUES (5, 2, 999.0, 'shipped')")
+        con.close()
+        assert all(r["passed_now"] for r in rerun_checks(warehouse))
+        # ...but the fingerprint no longer matches: drift is detected.
+        drifted = [r for r in check_fingerprints(warehouse) if not r["matches"]]
+        assert [r["table"] for r in drifted] == ["fact_orders"]
+        assert drifted[0]["current"] != drifted[0]["recorded"]
+
+    def test_a_dropped_table_reads_as_missing(self, warehouse):
+        _good_contract(warehouse)
+        import duckdb
+        con = duckdb.connect(warehouse)
+        con.execute("DROP TABLE fact_orders")
+        con.close()
+        rows = {r["table"]: r for r in check_fingerprints(warehouse)}
+        assert rows["fact_orders"]["current"] is None
+        assert rows["fact_orders"]["matches"] is False
+
+    def test_no_certificate_yields_no_rows(self, warehouse):
+        assert check_fingerprints(warehouse) == []
+
 
 class TestChecks:
     def test_a_satisfied_contract_passes_and_writes_the_record(self, warehouse):
