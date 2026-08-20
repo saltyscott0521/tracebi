@@ -20,6 +20,23 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-08-20 — Front-end surfaces: tracebi.com vs. the distributed app
+
+Decided the boundary between the public product site and the UI that ships to
+customer deployments, before there is anything to untangle (today there is only
+the app UI in `web/ui/`; no marketing site exists yet). Three surfaces:
+**tracebi.com** (marketing/explanation/docs/pricing — its own project, never in
+the wheel), **the app UI** (`web/ui/` → `tracebi/web/ui/dist`, ships in the
+wheel, runs against a customer's own registry), and a later **hosted control
+plane** (the paid tier). The adopted flow: tracebi.com carries the pitch and
+branches into a **live demo** — a hosted instance of the app UI (the
+Vercel+Supabase demo topology), seeded with the reference project. The boundary
+rule: *a logged-out stranger's content is .com; anything needing a customer's
+warehouse loaded is the app.* Growing the app is endorsed — as an operational +
+**trust console** (browse/verify/run/schedule, trust made visible), never a
+drag-and-drop viz builder, which is the Tableau turf the artifact displaces.
+Full write-up: [docs/frontend-surfaces.md](docs/frontend-surfaces.md).
+
 ## 2026-08-19 — Design decisions of the artifact arc (recorded after the fact)
 
 These landed across the reshape and its fix-waves and were, until now,
