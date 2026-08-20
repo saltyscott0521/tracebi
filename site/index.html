@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TraceBi — every number has a receipt</title>
+<meta name="description" content="The trust layer for AI-generated analytics: a report that proves its own numbers offline, with no account and no server.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    /* Light — receipt paper. Neutrals biased cool-green toward the accent. */
+    --paper:      #f6f7f4;
+    --paper-2:    #eef1ec;
+    --card:       #fbfcfa;
+    --ink:        #16191c;
+    --muted:      #59626a;
+    --rule:       #d6dbd3;
+    --rule-strong:#c2c9bf;
+    --verified:   #0b7a53;
+    --verified-wash: rgba(11,122,83,.08);
+    --tamper:     #b23b2e;
+    --tamper-wash:rgba(178,59,46,.07);
+    --shadow:     0 1px 0 var(--rule), 0 10px 30px -18px rgba(20,30,24,.28);
+    --maxw: 1080px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #101316;
+      --paper-2:    #161a1e;
+      --card:       #171b1f;
+      --ink:        #e8ebe6;
+      --muted:      #98a1a0;
+      --rule:       #272c31;
+      --rule-strong:#343a40;
+      --verified:   #34c98a;
+      --verified-wash: rgba(52,201,138,.10);
+      --tamper:     #e0685c;
+      --tamper-wash:rgba(224,104,92,.10);
+      --shadow:     0 1px 0 var(--rule), 0 18px 40px -20px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #101316;
+    --paper-2:    #161a1e;
+    --card:       #171b1f;
+    --ink:        #e8ebe6;
+    --muted:      #98a1a0;
+    --rule:       #272c31;
+    --rule-strong:#343a40;
+    --verified:   #34c98a;
+    --verified-wash: rgba(52,201,138,.10);
+    --tamper:     #e0685c;
+    --tamper-wash:rgba(224,104,92,.10);
+    --shadow:     0 1px 0 var(--rule), 0 18px 40px -20px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  a { color: inherit; }
+  h1, h2, h3 { text-wrap: balance; line-height: 1.1; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  p { margin: 0; }
+  .wrap { max-width: var(--maxw); margin-inline: auto; padding-inline: 28px; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--verified);
+  }
+
+  /* ── Nav ─────────────────────────────────────────────── */
+  header.nav {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .nav-in { display: flex; align-items: center; gap: 28px; height: 62px; }
+  .brand {
+    font-family: "IBM Plex Mono", monospace; font-weight: 600;
+    font-size: 17px; letter-spacing: -0.02em; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 9px;
+  }
+  .brand .mark {
+    width: 15px; height: 15px; border: 2px solid var(--verified);
+    border-radius: 3px; position: relative; flex: none;
+  }
+  .brand .mark::after {
+    content: ""; position: absolute; inset: 2px 3px auto 2px; top: 4px;
+    height: 2px; background: var(--verified);
+    box-shadow: 0 3px 0 var(--verified);
+  }
+  .nav-links { display: flex; gap: 26px; margin-left: auto; align-items: center; }
+  .nav-links a { text-decoration: none; color: var(--muted); font-size: 14.5px; font-weight: 500; transition: color .15s; }
+  .nav-links a:hover { color: var(--ink); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 14.5px;
+    text-decoration: none; padding: 9px 16px; border-radius: 7px;
+    border: 1px solid transparent; cursor: pointer; transition: transform .12s, background .15s, border-color .15s;
+  }
+  .btn-primary { background: var(--verified); color: #f6f7f4; }
+  :root[data-theme="dark"] .btn-primary { color: #0b1512; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-primary { color: #0b1512; } }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-ghost { border-color: var(--rule-strong); color: var(--ink); background: transparent; }
+  .btn-ghost:hover { border-color: var(--verified); color: var(--verified); }
+  .nav-links .btn { padding: 8px 14px; }
+
+  /* ── Hero ────────────────────────────────────────────── */
+  .hero { padding-top: 76px; padding-bottom: 84px; border-bottom: 1px solid var(--rule); }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+  .hero h1 {
+    font-size: clamp(38px, 5.4vw, 62px); letter-spacing: -0.03em; margin-top: 18px;
+  }
+  .hero h1 em { font-style: normal; color: var(--verified); }
+  .hero-sub { color: var(--muted); font-size: 19px; margin-top: 20px; max-width: 30ch; }
+  .hero-cta { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+  .cmd {
+    margin-top: 30px; border: 1px solid var(--rule-strong); border-radius: 9px;
+    background: var(--paper-2); overflow: hidden; max-width: 480px;
+  }
+  .cmd-bar { display: flex; align-items: center; gap: 7px; padding: 9px 13px; border-bottom: 1px solid var(--rule); }
+  .cmd-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule-strong); }
+  .cmd-label { margin-left: auto; font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .cmd-body { padding: 14px 16px; font-family: "IBM Plex Mono", monospace; font-size: 14px; line-height: 1.7; }
+  .cmd-body .prompt { color: var(--muted); }
+  .cmd-body .ok { color: var(--verified); font-weight: 600; }
+
+  /* ── The receipt (hero right) ────────────────────────── */
+  .receipt {
+    position: relative; background: var(--card); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 4px;
+    padding: 26px 26px 30px; box-shadow: var(--shadow);
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+  }
+  .receipt::before, .receipt::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 8px;
+    background-image: radial-gradient(circle at 6px -2px, transparent 5px, var(--paper) 5px);
+    background-size: 14px 8px;
+  }
+  .receipt::before { top: -1px; transform: rotate(180deg); }
+  .receipt::after { bottom: -1px; }
+  .r-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px dashed var(--rule-strong); padding-bottom: 12px; margin-bottom: 14px; }
+  .r-title { font-weight: 600; letter-spacing: .02em; }
+  .r-meta { color: var(--muted); font-size: 11px; }
+  .r-row { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; }
+  .r-row .k { color: var(--muted); }
+  .r-row .v { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .r-figure { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .r-fp { font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px dashed var(--rule-strong); margin-top: 14px; padding-top: 12px; }
+  .r-fp b { color: var(--ink); font-weight: 600; }
+  .stamp {
+    display: inline-flex; align-items: center; gap: 7px; margin-top: 16px;
+    border: 2px solid var(--verified); color: var(--verified);
+    border-radius: 6px; padding: 6px 12px; font-weight: 600; letter-spacing: .06em;
+    transform: rotate(-2.5deg); transition: color .25s, border-color .25s;
+  }
+  .stamp .tick { width: 15px; height: 15px; }
+  .receipt.is-tampered .stamp { border-color: var(--tamper); color: var(--tamper); }
+  .receipt.is-tampered .r-figure { color: var(--tamper); }
+  .receipt.is-tampered { background: var(--tamper-wash); }
+  .receipt-controls { margin-top: 16px; display: flex; align-items: center; gap: 14px; }
+  .link-btn {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--muted);
+    text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--rule-strong);
+  }
+  .link-btn:hover { color: var(--ink); }
+  .receipt-note { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; color: var(--muted); }
+
+  /* ── Sections ────────────────────────────────────────── */
+  section { border-bottom: 1px solid var(--rule); }
+  .band { padding-block: 78px; }
+  .band h2 { font-size: clamp(27px, 3.4vw, 38px); letter-spacing: -0.02em; margin-top: 12px; max-width: 20ch; }
+  .lead { color: var(--muted); font-size: 18px; margin-top: 16px; max-width: 60ch; }
+
+  .problem .big {
+    font-size: clamp(26px, 3.6vw, 40px); font-weight: 600; letter-spacing: -0.02em;
+    max-width: 24ch; line-height: 1.18;
+  }
+  .problem .big span { color: var(--muted); }
+
+  /* Phases */
+  .phases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 40px; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .phase { padding: 26px 24px; border-right: 1px solid var(--rule); }
+  .phase:last-child { border-right: none; }
+  .phase .n { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--verified); font-weight: 600; }
+  .phase h3 { font-size: 19px; margin-top: 10px; }
+  .phase p { color: var(--muted); font-size: 15px; margin-top: 8px; }
+  .phase .file { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--muted); margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--rule-strong); }
+  .freeze { text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 18px; }
+
+  /* Feature split */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 52px; align-items: center; }
+  .feature-list { display: flex; flex-direction: column; gap: 18px; margin-top: 26px; }
+  .feature-list li { list-style: none; display: flex; gap: 13px; align-items: flex-start; }
+  .feature-list .dot { color: var(--verified); font-family: "IBM Plex Mono", monospace; font-weight: 600; margin-top: 1px; flex: none; }
+  .feature-list p { font-size: 15.5px; }
+  .feature-list b { font-weight: 600; }
+  ul.feature-list { margin: 0; padding: 0; }
+
+  .verdict-demo { border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--paper-2); padding: 22px; }
+  .verdict-demo .cmd-body { padding: 0; font-size: 13.5px; }
+  .verdict-row { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; }
+  .verdict-row .ok { color: var(--verified); font-weight: 600; }
+  .verdict-row .bad { color: var(--tamper); font-weight: 600; }
+
+  /* Honesty */
+  .honesty { background: var(--paper-2); }
+  .honesty .lead { max-width: 62ch; }
+  .quote { font-size: clamp(21px, 2.6vw, 27px); font-weight: 500; letter-spacing: -0.01em; max-width: 24ch; line-height: 1.28; }
+  .quote em { font-style: normal; color: var(--verified); }
+
+  /* CTA */
+  .cta { text-align: center; padding-block: 90px; }
+  .cta h2 { font-size: clamp(30px, 4vw, 46px); margin-inline: auto; }
+  .cta .lead { margin-inline: auto; }
+  .cta-row { display: flex; gap: 14px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
+  .cta .btn { padding: 12px 22px; font-size: 15.5px; }
+  .install { margin-top: 26px; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--muted); }
+  .install code { color: var(--ink); background: var(--paper-2); padding: 3px 9px; border-radius: 6px; border: 1px solid var(--rule); }
+
+  /* Footer */
+  footer { padding-block: 40px; color: var(--muted); font-size: 13.5px; }
+  .foot-in { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .foot-in .sep { margin-left: auto; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+
+  /* Reveal — content is visible by default; only hidden once JS is present to
+     bring it back, so a stuck observer or no-JS never blanks the page. */
+  .reveal { transition: opacity .55s ease, transform .55s ease; }
+  .reveal-js .reveal:not(.in) { opacity: 0; transform: translateY(14px); }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-js .reveal:not(.in) { opacity: 1; transform: none; }
+    .reveal, .btn:hover, .stamp { transition: none; }
+  }
+
+  :where(a, button):focus-visible { outline: 2px solid var(--verified); outline-offset: 3px; border-radius: 4px; }
+
+  @media (max-width: 860px) {
+    .hero-grid, .split { grid-template-columns: 1fr; gap: 40px; }
+    .phases { grid-template-columns: 1fr; }
+    .phase { border-right: none; border-bottom: 1px solid var(--rule); }
+    .phase:last-child { border-bottom: none; }
+    .nav-links a:not(.btn) { display: none; }
+    .hero { padding-top: 52px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top"><span class="mark" aria-hidden="true"></span>tracebi</a>
+    <nav class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#receipt">The receipt</a>
+      <a href="#docs">Docs</a>
+      <a class="btn btn-primary" href="https://demo.tracebi.com">Try the demo</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="reveal in">
+        <span class="eyebrow">The trust layer for AI-generated analytics</span>
+        <h1>Every number has&nbsp;a <em>receipt</em>.</h1>
+        <p class="hero-sub">Agents write the numbers now. TraceBi makes each one a report that proves itself — offline, with no account and no server.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="https://demo.tracebi.com">Try the demo →</a>
+          <a class="btn btn-ghost" href="#how">See how it works</a>
+        </div>
+        <div class="cmd" aria-label="Example: verifying a report offline">
+          <div class="cmd-bar">
+            <span class="cmd-dot"></span><span class="cmd-dot"></span><span class="cmd-dot"></span>
+            <span class="cmd-label">offline · no database</span>
+          </div>
+          <div class="cmd-body">
+<span class="prompt">$</span> tracebi verify --file report.html<br>
+<span class="ok">✓ FILE INTACT</span> — the numbers in this file are<br>
+&nbsp;&nbsp;exactly what was fingerprinted.
+          </div>
+        </div>
+      </div>
+
+      <!-- Live receipt -->
+      <div class="reveal in" style="transition-delay:.08s">
+        <div class="receipt" id="receipt">
+          <div class="r-head">
+            <span class="r-title">Q3 · Revenue by region</span>
+            <span class="r-meta">manifest&nbsp;v2</span>
+          </div>
+          <div class="r-row"><span class="k">Total revenue</span><span class="v r-figure" id="rFig">$1,705,495.22</span></div>
+          <div class="r-row"><span class="k">Rows</span><span class="v">4,182</span></div>
+          <div class="r-row"><span class="k">Model</span><span class="v">sales · region</span></div>
+          <div class="r-fp"><b>fingerprint</b> <span id="rFp" class="mono">sha256:9f2c…a4e1</span></div>
+          <div class="stamp" id="rStamp">
+            <svg class="tick" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path id="rStampPath" d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="rStampText">REPRODUCES</span>
+          </div>
+          <div class="receipt-controls">
+            <button class="link-btn" id="tamperBtn">try editing the number →</button>
+            <span class="receipt-note" id="rNote">Every figure re-checks against its fingerprint.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section class="problem">
+    <div class="wrap band">
+      <span class="eyebrow reveal">The problem</span>
+      <p class="big reveal">A model writes a number into a deck. <span>By the time someone questions it, the query, the data, and the author are three tools away.</span></p>
+      <p class="lead reveal">Legacy BI answered “who draws the chart.” The question now is “which numbers can anyone believe” — and a dashboard has no receipt, structurally. TraceBi draws the trust boundary where the numbers become a contract, and stamps everything downstream of it.</p>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="wrap band">
+      <span class="eyebrow reveal">How it works</span>
+      <h2 class="reveal">Three steps, from messy data to a report that proves itself.</h2>
+      <p class="lead reveal">Each phase hands the next a frozen artifact, so slow analysis and fast reporting never block each other — and the trust machinery attaches at the freeze points.</p>
+
+      <div class="phases reveal">
+        <div class="phase">
+          <div class="n">① Transform</div>
+          <h3>Clean the data</h3>
+          <p>Ordinary pandas — parse, dedupe, key — then sink clean star-schema tables into a warehouse you own.</p>
+          <div class="file mono">transforms/ → warehouse.duckdb</div>
+        </div>
+        <div class="phase">
+          <div class="n">② Model</div>
+          <h3>Define the contract</h3>
+          <p>A declarative star schema over the warehouse: grain, keys, measures — a few dozen lines a reviewer reads.</p>
+          <div class="file mono">models/ → the semantic contract</div>
+        </div>
+        <div class="phase">
+          <div class="n">③ Report</div>
+          <h3>Publish the receipt</h3>
+          <p>Every figure is a live query. Build one self-contained HTML file with the receipt embedded inside it.</p>
+          <div class="file mono">reports/ → report.html + manifest</div>
+        </div>
+      </div>
+      <p class="freeze reveal">— freeze point · freeze point · every number stamped downstream —</p>
+    </div>
+  </section>
+
+  <!-- THE RECEIPT / WEDGE -->
+  <section id="receipt">
+    <div class="wrap band split">
+      <div>
+        <span class="eyebrow reveal">The verifier</span>
+        <h2 class="reveal">Hand someone the file. It re-checks itself.</h2>
+        <p class="lead reveal">The data, the query, and a SHA-256 fingerprint travel inside the HTML. A reviewer runs one command — no model, no warehouse, no account — and the file tells them whether a single byte moved.</p>
+        <ul class="feature-list reveal">
+          <li><span class="dot">→</span><p><b>Offline &amp; database-free.</b> The check needs nothing but the file itself.</p></li>
+          <li><span class="dot">→</span><p><b>Tamper-evident.</b> Edit a figure and verification names exactly what changed.</p></li>
+          <li><span class="dot">→</span><p><b>Fires where BI fails</b> — the moment a number in an emailed deck is questioned.</p></li>
+        </ul>
+      </div>
+      <div class="verdict-demo reveal">
+        <div class="cmd-body mono">
+          <div class="verdict-row"><span class="prompt" style="color:var(--muted)">$</span><span>tracebi verify --file q3.html</span></div>
+          <div class="verdict-row"><span class="ok">✓ FILE INTACT</span><span style="color:var(--muted)">3/3 bindings match · 6/6 figures</span></div>
+          <div style="height:14px"></div>
+          <div class="verdict-row"><span class="prompt" style="color:var(--muted)">$</span><span style="color:var(--muted)"># after someone edits a value…</span></div>
+          <div class="verdict-row"><span class="prompt" style="color:var(--muted)">$</span><span>tracebi verify --file q3.html</span></div>
+          <div class="verdict-row"><span class="bad">✗ TAMPERED</span><span style="color:var(--muted)">kpis — embedded bytes hash differently</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HONESTY -->
+  <section class="honesty">
+    <div class="wrap band split">
+      <div>
+        <span class="eyebrow reveal">What it claims</span>
+        <p class="quote reveal">We won’t tell you a number is <em>correct</em>. We tell you it <em>reproduces</em> — and we let you check.</p>
+      </div>
+      <div class="reveal">
+        <p class="lead" style="margin-top:0">The receipt is a reproduction-and-integrity check, not a blessing. It proves the number on the page is the number the recorded query produced — not a transcription, not a hallucination. That honesty is the point: a claim you can check beats a claim you’re asked to trust. The whole framework is open-source and runs on your own machine; nothing phones home.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="docs">
+    <div class="wrap cta">
+      <span class="eyebrow reveal">See it work</span>
+      <h2 class="reveal">Watch a report prove its own&nbsp;numbers.</h2>
+      <p class="lead reveal">The demo is the reference project, live — click through real models, run a report, and verify the file yourself.</p>
+      <div class="cta-row reveal">
+        <a class="btn btn-primary" href="https://demo.tracebi.com">Try the demo →</a>
+        <a class="btn btn-ghost" href="https://github.com/saltyscott0521/tracebi">Read the docs</a>
+      </div>
+      <p class="install reveal">or run it yourself &nbsp;<code>pip install tracebi</code></p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-in">
+    <a class="brand" href="#top" style="font-size:15px"><span class="mark" aria-hidden="true"></span>tracebi</a>
+    <span>Every number has a receipt.</span>
+    <span class="sep"></span>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <a href="https://demo.tracebi.com">Demo</a>
+    <button class="link-btn" id="themeToggle" style="text-decoration:none">◐ theme</button>
+  </div>
+</footer>
+
+<script>
+  // Live receipt: tamper toggles the verdict from REPRODUCES to TAMPERED.
+  (function () {
+    var r = document.getElementById('receipt');
+    var fig = document.getElementById('rFig');
+    var fp = document.getElementById('rFp');
+    var stampText = document.getElementById('rStampText');
+    var stampPath = document.getElementById('rStampPath');
+    var note = document.getElementById('rNote');
+    var btn = document.getElementById('tamperBtn');
+    var clean = { fig: '$1,705,495.22', fp: 'sha256:9f2c…a4e1', text: 'REPRODUCES', note: 'Every figure re-checks against its fingerprint.', path: 'M4 10.5l4 4 8-9' };
+    var dirty = { fig: '$1,805,495.22', fp: 'sha256:c17b…0d9f', text: 'TAMPERED', note: 'One byte changed — and the file says so.', path: 'M5 5l10 10M15 5L5 15' };
+    var tampered = false;
+    btn.addEventListener('click', function () {
+      tampered = !tampered;
+      var s = tampered ? dirty : clean;
+      r.classList.toggle('is-tampered', tampered);
+      fig.textContent = s.fig;
+      fp.textContent = s.fp;
+      stampText.textContent = s.text;
+      stampPath.setAttribute('d', s.path);
+      note.textContent = s.note;
+      btn.textContent = tampered ? '↩ restore the original →' : 'try editing the number →';
+    });
+  })();
+
+  // Theme toggle (cycles the explicit override; default follows the OS).
+  (function () {
+    var t = document.getElementById('themeToggle');
+    t.addEventListener('click', function () {
+      var root = document.documentElement;
+      var cur = root.getAttribute('data-theme');
+      var dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    });
+  })();
+
+  // Scroll reveal — enhancement only. The page opts into the hidden initial
+  // state here, so without JS everything stays visible; a safety timer reveals
+  // anything the observer never reports, so content can never stay hidden.
+  (function () {
+    document.documentElement.classList.add('reveal-js');
+    var els = [].slice.call(document.querySelectorAll('.reveal:not(.in)'));
+    function revealAll() { els.forEach(function (e) { e.classList.add('in'); }); }
+    if (!('IntersectionObserver' in window)) { revealAll(); return; }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { rootMargin: '0px 0px -6% 0px' });
+    els.forEach(function (e) { io.observe(e); });
+    setTimeout(revealAll, 1600);   // never leave content hidden
+  })();
+</script>
+</body>
+</html>
