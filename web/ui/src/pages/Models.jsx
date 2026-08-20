@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import ReactFlow, { Background, Controls, MiniMap, Handle, Position, MarkerType } from 'reactflow'
-import 'reactflow/dist/style.css'
+import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
 
 import { useModels, useModel, useTablePreview, tableCsvUrl } from '../api'
 import {

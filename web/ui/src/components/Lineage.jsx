@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import ReactFlow, { Background, Controls, MiniMap, Handle, Position } from 'reactflow'
-import 'reactflow/dist/style.css'
+import { ReactFlow, Background, Controls, MiniMap, Handle, Position } from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
 
 // Operations with a dedicated tint in global.css (--op-{name}-bg/br/tx).
 const KNOWN_OPS = new Set([

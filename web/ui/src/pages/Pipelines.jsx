@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import ReactFlow, { Background, Handle, Position, MarkerType } from 'reactflow'
-import 'reactflow/dist/style.css'
+import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
 
 import { usePipelines, useRunLayer, useRunPipeline, useLayerHistory } from '../api'
 import {
