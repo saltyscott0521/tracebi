@@ -13,7 +13,7 @@
 # Keep this file in step with pyproject.toml when versions move.
 
 pandas>=1.5
-duckdb>=0.9
+duckdb>=1.5.5
 
 # Web layer
 fastapi>=0.100

@@ -60,7 +60,7 @@ sql       = ["sqlalchemy>=2.0"]
 # deployment doc here assumes — needed one naming. api/requirements.txt had
 # been hand-rolling psycopg for exactly this reason.
 postgres  = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1"]
-duckdb    = ["duckdb>=0.9"]
+duckdb    = ["duckdb>=1.5.5"]
 bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
 reports   = ["openpyxl>=3.0", "matplotlib>=3.5"]
@@ -78,7 +78,7 @@ analyst = [
     "matplotlib>=3.5",
     "sqlalchemy>=2.0",
     "networkx>=3.0",
-    "duckdb>=0.9",
+    "duckdb>=1.5.5",
     "python-dotenv>=1.0",
 ]
 all = [
@@ -87,7 +87,7 @@ all = [
     "matplotlib>=3.5",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.1",
-    "duckdb>=0.9",
+    "duckdb>=1.5.5",
     "google-cloud-bigquery>=3.0",
     "db-dtypes",
     "snowflake-connector-python>=3.0",
@@ -114,7 +114,7 @@ dev = [
     "networkx>=3.0",
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
-    "duckdb>=0.9",
+    "duckdb>=1.5.5",
     "python-dotenv>=1.0",
     # Web deps included so `pip install -e ".[dev]"` runs the full test suite
     # (tests/test_phase5.py exercises the FastAPI layer).
