@@ -484,9 +484,14 @@ class TemplatePackage:
             palette=[c.strip() for c in palette.split(",")] if palette else None,
             dataset=ds, title="", xlabel=None, ylabel=None, show_values=False,
         )
+        # from_section validates the chart config (unknown columns, and a pie
+        # with negative values) — those are build errors the author must fix,
+        # so they propagate. Only the SVG rendering is guarded: a rendering
+        # quirk drops the no-JS fallback but never fails an otherwise-valid page.
+        spec = ChartSpec.from_section(shim)
         try:
-            svg = ChartSpec.from_section(shim).to_svg()
-        except Exception:  # noqa: BLE001 — a bad config: hydrate as before
+            svg = spec.to_svg()
+        except Exception:  # noqa: BLE001 — a rendering quirk: hydrate as before
             return None
         return svg.replace(
             '<svg class="tb-chart',

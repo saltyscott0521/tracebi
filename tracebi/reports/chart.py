@@ -115,6 +115,21 @@ class ChartSpec:
                 f"dataset: {', '.join(hints)}. Available columns: {available}"
             )
 
+        # A pie slice is a share of a whole, so a negative value has no honest
+        # rendering — both the SVG and ECharts would draw its ABSOLUTE value,
+        # turning a -$100 into a $100 slice with no flag. In a trust tool that
+        # is a silently wrong number; refuse it at build and name the fix.
+        if section.chart_type.lower() == "pie" and series:
+            neg = df[df[series[0]] < 0]
+            if not neg.empty:
+                raise ValueError(
+                    f"Chart '{label}': a pie cannot show negative values — "
+                    f"column '{series[0]}' has {len(neg)} of them (e.g. "
+                    f"{neg[series[0]].iloc[0]}). A slice is a share of a whole, "
+                    f"so a negative would silently render as its absolute value. "
+                    f"Use a bar chart, which shows signed values honestly."
+                )
+
         if color:
             return cls._from_section_grouped(section, df, series[0], color)
 

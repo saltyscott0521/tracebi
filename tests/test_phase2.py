@@ -1076,8 +1076,17 @@ class TestChartSpecSvg:
     def test_single_series_types_produce_valid_xml(self, kind):
         import xml.etree.ElementTree as ET
 
+        # A pie cannot show negatives (see the refusal test); _ds's revenue
+        # holds one, so the pie charts the all-positive cost column instead.
         x = "cost" if kind == "scatter" else "region"
-        ET.fromstring(self._svg(kind, x=x, y=["revenue"]))
+        y = ["cost"] if kind == "pie" else ["revenue"]
+        ET.fromstring(self._svg(kind, x=x, y=y))
+
+    def test_pie_refuses_negative_values(self):
+        """A slice is a share of a whole — a negative would silently render as
+        its absolute value, so a pie over signed data is refused at build."""
+        with pytest.raises(ValueError, match="pie cannot show negative"):
+            self._svg("pie", x="region", y=["revenue"])   # _ds revenue has -1200
 
     def test_negative_values_stay_inside_the_plot(self):
         """A negative bar must hang below the zero line, not off-canvas."""
