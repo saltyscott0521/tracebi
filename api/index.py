@@ -54,26 +54,37 @@ _project = _ROOT / "examples" / "portfolio_project"
 _warehouse = _project / "data" / "warehouse.duckdb"
 os.chdir(_project if _warehouse.is_file() else _ROOT)
 
-# App module selection. A real project deploying this gets its own models/ and
-# reports/ (both discovered without an app module) rather than someone else's
-# demo data — so when the deployment carries a project of its own, default to
-# no app module.
-#
-# But when it carries NO project (the framework repo's own public demo — no
-# models/ or reports/ at the working dir), an empty registry is an empty,
-# confusing shell. There, default to the self-contained in-memory demo app so
-# the deployment actually shows something. This is what makes the tracebi.com
-# demo non-empty; it used to require a Vercel env var that was never set.
-#
-# An explicit TRACEBI_APP (set in the Vercel dashboard) always wins over both.
-# The bundled demo app writes its pipeline SQLite to a writable location, so it
-# is serverless-safe; import cost is ~1.4s including the six-layer pipeline run,
-# most of which is importing pandas either way.
-if not os.environ.get("TRACEBI_APP"):
-    _cwd = Path.cwd()
-    _has_own_project = (_cwd / "models").is_dir() or (_cwd / "reports").is_dir()
-    os.environ["TRACEBI_APP"] = "" if _has_own_project else "tracebi.web.demo_app"
+# Default to no app module: a real project deploying this gets its own models/
+# and reports/ (both discovered without an app module) rather than someone
+# else's demo data. The bundled demo app runs a six-layer pipeline at import,
+# which is too heavy for a cold serverless function — enabling it here crashed
+# the function (FUNCTION_INVOCATION_FAILED), so the demo data on the hosted demo
+# is wired separately, not by importing the whole demo app into this function.
+os.environ.setdefault("TRACEBI_APP", "")
 
-from tracebi.web.api.main import app  # noqa: E402  (after sys.path/env setup)
+# Surface a boot failure as a readable error instead of a bare
+# FUNCTION_INVOCATION_FAILED, so a broken deploy says why. A clean import is the
+# normal path; this only engages if importing the app raises.
+try:
+    from tracebi.web.api.main import app  # noqa: E402  (after sys.path/env setup)
+except Exception as _boot_exc:  # noqa: BLE001 — report, don't vanish
+    import traceback as _traceback
+
+    # Capture into names that outlive the except block (Python unbinds the
+    # `as` variable at its end), so the closure below can still read them.
+    _boot_msg = str(_boot_exc)
+    _boot_tb = _traceback.format_exc()
+    from fastapi import FastAPI as _FastAPI
+    from fastapi.responses import JSONResponse as _JSONResponse
+
+    app = _FastAPI()
+
+    @app.get("/api/{path:path}")
+    @app.get("/api")
+    def _boot_error(path: str = ""):  # noqa: ARG001
+        return _JSONResponse(
+            status_code=500,
+            content={"boot_error": _boot_msg, "traceback": _boot_tb},
+        )
 
 __all__ = ["app"]
