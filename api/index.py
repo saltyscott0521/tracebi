@@ -58,33 +58,10 @@ os.chdir(_project if _warehouse.is_file() else _ROOT)
 # and reports/ (both discovered without an app module) rather than someone
 # else's demo data. The bundled demo app runs a six-layer pipeline at import,
 # which is too heavy for a cold serverless function — enabling it here crashed
-# the function (FUNCTION_INVOCATION_FAILED), so the demo data on the hosted demo
-# is wired separately, not by importing the whole demo app into this function.
+# the function, so the hosted demo's sample data is wired separately, not by
+# importing the whole demo app into this request function.
 os.environ.setdefault("TRACEBI_APP", "")
 
-# Surface a boot failure as a readable error instead of a bare
-# FUNCTION_INVOCATION_FAILED, so a broken deploy says why. A clean import is the
-# normal path; this only engages if importing the app raises.
-try:
-    from tracebi.web.api.main import app  # noqa: E402  (after sys.path/env setup)
-except Exception as _boot_exc:  # noqa: BLE001 — report, don't vanish
-    import traceback as _traceback
-
-    # Capture into names that outlive the except block (Python unbinds the
-    # `as` variable at its end), so the closure below can still read them.
-    _boot_msg = str(_boot_exc)
-    _boot_tb = _traceback.format_exc()
-    from fastapi import FastAPI as _FastAPI
-    from fastapi.responses import JSONResponse as _JSONResponse
-
-    app = _FastAPI()
-
-    @app.get("/api/{path:path}")
-    @app.get("/api")
-    def _boot_error(path: str = ""):  # noqa: ARG001
-        return _JSONResponse(
-            status_code=500,
-            content={"boot_error": _boot_msg, "traceback": _boot_tb},
-        )
+from tracebi.web.api.main import app  # noqa: E402  (after sys.path/env setup)
 
 __all__ = ["app"]
