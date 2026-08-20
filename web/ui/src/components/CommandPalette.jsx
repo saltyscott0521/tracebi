@@ -10,6 +10,7 @@ const PAGES = [
   { label: 'Models',          path: '/models',          kind: 'page' },
   { label: 'Explore',         path: '/explore',         kind: 'page' },
   { label: 'Reports',         path: '/reports',         kind: 'page' },
+  { label: 'Verify a file',   path: '/verify',          kind: 'page' },
   { label: 'Pipelines',       path: '/pipelines',       kind: 'page' },
 ]
 

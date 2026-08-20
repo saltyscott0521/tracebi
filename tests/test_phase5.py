@@ -1674,6 +1674,98 @@ class TestBackgroundReportRuns:
 
 
 # ─────────────────────────────────────────────
+# Offline file verification endpoint
+# ─────────────────────────────────────────────
+
+class TestVerifyFileAPI:
+    """POST /api/verify/file — the `tracebi verify --file` check over HTTP:
+    rehash a report's embedded data against its manifest, no model needed."""
+
+    def _client(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from tracebi.web.api.routers import verify as verify_router
+        app = FastAPI()
+        app.include_router(verify_router.router, prefix="/api")
+        return TestClient(app)
+
+    def _artifact(self, tmp_path):
+        """Build a real, verifiable (html, manifest) pair."""
+        import json as _json
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        from tracebi.reports.template_package import TemplatePackage
+        df = pd.DataFrame({"region": ["NE", "SE"], "revenue": [100.0, 250.0]})
+        m = DataModel("vf_model")
+        m.add_connector(MemoryConnector("vf_mem", tables={"t": df}))
+        m.add_table("t", connector="vf_mem", source="t")
+        m.add_dimension("dim_r", table_name="t", key_col="region",
+                        attributes=["region"])
+        m.add_fact("f", table_name="t", measures=["revenue"], foreign_keys={})
+        m.add_measure("total", column="revenue", agg="sum")
+        m.connect()
+        pkg_dir = tmp_path / "pkg"
+        pkg_dir.mkdir()
+        (pkg_dir / "report.json").write_text(_json.dumps({
+            "name": "pkg",
+            "data": {
+                "kpi": {"model": "vf_model",
+                        "query": {"fact": "f", "measures": ["total"]}},
+                "by_region": {"model": "vf_model",
+                              "query": {"fact": "f",
+                                        "measures": {"revenue": "sum"},
+                                        "dimensions": ["dim_r.region"]}},
+            },
+        }))
+        (pkg_dir / "template.html").write_text(
+            '<html><head><title>x</title></head><body>'
+            '<div data-tb-figure="value" data-tb-binding="kpi" '
+            'data-tb-cell="total" id="fig"></div>'
+            '<table data-tb-figure="table" data-tb-binding="by_region" '
+            'id="tbl"></table></body></html>'
+        )
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(pkg_dir)).render(
+            {"vf_model": m}, str(out)).to_dict()
+        return out.read_text(encoding="utf-8"), manifest
+
+    def test_missing_html_is_400(self):
+        assert self._client().post(
+            "/api/verify/file", json={"manifest": {}}).status_code == 400
+
+    def test_bad_manifest_is_400(self):
+        assert self._client().post(
+            "/api/verify/file",
+            json={"html": "<html></html>", "manifest": 5}).status_code == 400
+
+    def test_intact_file_verifies(self, tmp_path):
+        html, manifest = self._artifact(tmp_path)
+        r = self._client().post("/api/verify/file",
+                                json={"html": html, "manifest": manifest})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is True and body["verdict"] == "file_intact"
+
+    def test_tampered_file_is_caught(self, tmp_path):
+        html, manifest = self._artifact(tmp_path)
+        tampered = html.replace("100.0", "999.0")   # edit an embedded value
+        assert tampered != html   # the edit actually landed in an embedded block
+        r = self._client().post("/api/verify/file",
+                                json={"html": tampered, "manifest": manifest})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is False and body["verdict"] == "file_altered"
+
+    def test_manifest_as_json_string_is_accepted(self, tmp_path):
+        import json as _json
+        html, manifest = self._artifact(tmp_path)
+        r = self._client().post(
+            "/api/verify/file",
+            json={"html": html, "manifest": _json.dumps(manifest)})
+        assert r.status_code == 200 and r.json()["ok"] is True
+
+
+# ─────────────────────────────────────────────
 # Docs guide endpoints
 # ─────────────────────────────────────────────
 

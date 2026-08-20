@@ -47,6 +47,11 @@ const ICONS = {
       <path fillRule="evenodd" d="M6 8.5a.5.5 0 01.5.5v2a2 2 0 002 2h3a.5.5 0 010 1h-3a3 3 0 01-3-3V9a.5.5 0 01.5-.5z" clipRule="evenodd" />
     </svg>
   ),
+  verify: (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+      <path d="M4 10.5l4 4 8-9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 }
 
 const NAV = [
@@ -57,6 +62,7 @@ const NAV = [
   { path: '/models',     label: 'Models',     icon: 'models',     color: '#93c5fd' },
   { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#7dd3fc' },
   { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#f9a8d4' },
+  { path: '/verify',     label: 'Verify',     icon: 'verify',     color: '#7ab4f0' },
   { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#fde68a' },
 ]
 

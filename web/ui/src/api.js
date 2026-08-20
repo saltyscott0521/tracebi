@@ -54,6 +54,13 @@ async function postJson(path, body) {
 export const reportDownloadUrl = (name, format) =>
   `${BASE}/reports/${encodeURIComponent(name)}/download?format=${format}`
 
+// Offline file check: rehash a report .html's embedded data against its
+// manifest receipt (no model needed). The verdict lives in the response body.
+export const useVerifyFile = () =>
+  useMutation({
+    mutationFn: ({ html, manifest }) => postJson('/verify/file', { html, manifest }),
+  })
+
 export const tableCsvUrl = (model, table) =>
   `${BASE}/models/${encodeURIComponent(model)}/tables/${encodeURIComponent(table)}/export.csv`
 

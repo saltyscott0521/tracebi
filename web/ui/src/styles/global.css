@@ -230,7 +230,7 @@ body {
      was the face these sizes and tracking were chosen against. The system
      stack behind it is the fallback for first paint and for the rare client
      that rejects the woff2. */
-  font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto,
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
                'Helvetica Neue', Arial, sans-serif;
   font-size: var(--text-base);
   color: var(--text);
@@ -282,7 +282,7 @@ body {
 .gradient-text-on-dark { background-image: var(--brand-on-dark); }
 
 code {
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
   font-size: 12px;
   background: var(--blue-lt);
   color: var(--accent-text);
@@ -297,7 +297,7 @@ code {
   border-radius: 10px;
   padding: 18px;
   overflow-x: auto;
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
   font-size: 12px;
   line-height: 1.7;
   white-space: pre;
@@ -616,7 +616,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   display: flex; align-items: center; justify-content: center;
 }
 .wf-tag {
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
   font-size: 11.5px; color: var(--wf);
   background: color-mix(in srgb, var(--wf) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--wf) 22%, transparent);
@@ -649,7 +649,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 }
 .wf-freeze-label {
   display: flex; align-items: center; gap: 4px; justify-content: center;
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
   font-size: 10.5px; font-weight: 600; color: var(--text);
   line-height: 1.2;
 }
