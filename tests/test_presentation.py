@@ -302,3 +302,49 @@ class TestServerSideRender:
         from tracebi.verify import verify_file, FILE_INTACT
         html, manifest = self._render_table(tmp_path)
         assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
+
+    def _render_chart(self, tmp_path):
+        from tracebi.reports.compile_spec import compile_spec
+        from tracebi.spec import ReportSpec
+        model = DataModel("ssr_c").add_connector(MemoryConnector("m", tables={
+            "orders": pd.DataFrame({"order_id": [1, 2, 3, 4],
+                                    "customer_id": [1, 1, 2, 2],
+                                    "revenue": [100.0, 200.0, 50.0, 150.0]}),
+            "customers": pd.DataFrame({"customer_id": [1, 2],
+                                       "region": ["NE", "SE"]})}))
+        model.add_table("orders", connector="m", source="orders")
+        model.add_table("customers", connector="m", source="customers")
+        model.add_dimension("dim_customer", table_name="customers",
+                            key_col="customer_id", attributes=["region"])
+        model.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                       foreign_keys={"dim_customer": "customer_id"})
+        model.add_measure("revenue", column="revenue", agg="sum")
+        model.connect()
+        spec = ReportSpec.from_dict({"name": "C", "sections": [
+            {"type": "chart", "title": "By region", "chart_type": "bar",
+             "x": "dim_customer.region", "y": "revenue",
+             "data": {"model": "ssr_c", "query": {"fact": "fact_orders",
+                      "measures": ["revenue"], "dimensions": ["dim_customer.region"]}}}]})
+        compiled = compile_spec(spec)
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        for fn, content in compiled.files.items():
+            (pkg / fn).write_text(content, encoding="utf-8")
+        out = tmp_path / "o.html"
+        manifest = TemplatePackage(str(pkg)).render({"ssr_c": model}, str(out))
+        return out.read_text(encoding="utf-8"), manifest
+
+    def test_chart_has_a_static_svg_fallback_without_js(self, tmp_path):
+        import re
+        html, _ = self._render_chart(tmp_path)
+        m = re.search(r'<div[^>]*data-tb-figure="chart"[^>]*>(.*?)</div>', html, re.S)
+        assert m, "the chart figure must carry a server-rendered fallback"
+        inner = m.group(1)
+        # a real picture of the chart (tagged so the runtime removes it), no JS
+        assert "tb-chart-fallback" in inner and "<svg" in inner
+        assert "<rect" in inner                        # bars are drawn
+
+    def test_chart_ssr_leaves_the_embedded_data_intact(self, tmp_path):
+        from tracebi.verify import verify_file, FILE_INTACT
+        html, manifest = self._render_chart(tmp_path)
+        assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT

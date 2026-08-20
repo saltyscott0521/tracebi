@@ -723,6 +723,11 @@
           valueFormat: attr(el, "data-tb-value-format"),
           palette: own ? splitList(own) : palette
         };
+        /* Remove the server-rendered static SVG fallback (no-JS picture of the
+         * chart) before drawing — echarts.init appends its root without
+         * clearing, so a surviving <svg> would stack beside the live chart. */
+        var fb = el.querySelector(".tb-chart-fallback");
+        if (fb) el.removeChild(fb);
         var chart = root.echarts.init(el);
         chart.setOption(buildOption(el, plan, filteredRows(binding)));
         _charts.push({ el: el, binding: binding, plan: plan, chart: chart });

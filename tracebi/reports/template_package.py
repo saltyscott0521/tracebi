@@ -454,7 +454,44 @@ class TemplatePackage:
                 markup = self._ssr_table(ds, fig)
                 if markup is not None:
                     content[fig.id] = markup
+            elif fig.kind == "chart":
+                svg = self._ssr_chart(ds, fig)
+                if svg is not None:
+                    content[fig.id] = svg
         return content
+
+    @staticmethod
+    def _ssr_chart(ds, fig):
+        """A static SVG of the chart, tagged ``.tb-chart-fallback``, so a no-JS
+        reader sees a picture of it. The runtime removes the fallback and draws
+        the interactive ECharts version over the same (min-height:320px)
+        container. Axis ticks in the fallback are unformatted (data-tb-value-
+        format is not threaded into to_svg) — the JS replaces it, so this is a
+        no-JS cosmetic only.
+        """
+        import types
+        from tracebi.reports.chart import ChartSpec
+        a = fig.attrs
+        x, y = a.get("data-tb-x"), a.get("data-tb-y")
+        if not x or not y:
+            return None
+        palette = a.get("data-tb-palette")
+        shim = types.SimpleNamespace(
+            chart_type=a.get("data-tb-type") or "bar",
+            x=x,
+            y=[c.strip() for c in y.split(",") if c.strip()],
+            color=a.get("data-tb-color"),
+            palette=[c.strip() for c in palette.split(",")] if palette else None,
+            dataset=ds, title="", xlabel=None, ylabel=None, show_values=False,
+        )
+        try:
+            svg = ChartSpec.from_section(shim).to_svg()
+        except Exception:  # noqa: BLE001 — a bad config: hydrate as before
+            return None
+        return svg.replace(
+            '<svg class="tb-chart',
+            '<svg style="display:block;width:100%;height:auto" '
+            'class="tb-chart-fallback tb-chart', 1)
 
     @staticmethod
     def _ssr_value(ds, fig):
