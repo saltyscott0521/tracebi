@@ -1246,6 +1246,29 @@ class TestRegistryExtras:
             {"name": "weekly", "cron": "0 9 * * MON", "description": "weekly KPIs"}
         ]
 
+    def test_list_reports_tags_kind_from_package_backing(self):
+        """list_reports() marks a package-backed report 'artifact' and a
+        plain code factory 'carrier' — the at-rest signal the UI uses to show
+        whether a report renders a verifiable schema-2 artifact, without a run."""
+        from tracebi.web.api.registry import Registry
+        r = Registry()
+
+        def plain():
+            return "report"
+
+        def packaged():
+            return "report"
+
+        # Discovery tags an artifact-package-backed factory with its directory
+        # (authored package, or a spec the compiler turned into one).
+        packaged._tracebi_package_dir = "/tmp/pkg"
+
+        r.add_report("plain", plain, description="a code factory")
+        r.add_report("packaged", packaged, description="an artifact package")
+
+        kinds = {x["name"]: x["kind"] for x in r.list_reports()}
+        assert kinds == {"plain": "carrier", "packaged": "artifact"}
+
     def test_concurrent_registration_is_safe(self):
         import threading
         from types import SimpleNamespace

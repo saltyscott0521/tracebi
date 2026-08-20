@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useConnectors, useModels, useReports, usePipelines } from '../api'
-import { Skeleton } from '../components/Shared'
+import { Skeleton, Badge } from '../components/Shared'
 import WorkflowDiagram from '../components/WorkflowDiagram'
 
 // ── Greeting ─────────────────────────────────────────────────────────────────
@@ -47,36 +47,81 @@ function StatCard({ label, value, icon, color, href, loading }) {
     : inner
 }
 
-// ── Nav card ──────────────────────────────────────────────────────────────────
+// ── Trust ledger ────────────────────────────────────────────────────────────
+// Each registered report and whether it renders a verifiable artifact — the
+// receipt state of the whole deployment, at rest, with no run. The `kind`
+// field comes straight from the reports API (see registry.list_reports).
 
-function NavCard({ href, title, desc, icon, color, badge }) {
+function LedgerRow({ report, last }) {
+  const verifiable = report.kind === 'artifact'
   return (
-    <Link to={href} style={{ textDecoration: 'none' }}>
-      <div style={{
-        background: 'var(--card)', border: '1px solid var(--border)',
-        borderRadius: 14, padding: '18px 20px', height: '100%',
-      }} className="card-hover">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            background: `${color}18`, border: `1px solid ${color}28`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color,
-          }}>
-            {icon}
-          </div>
-          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{title}</span>
-          {badge != null && (
-            <span style={{
-              marginLeft: 'auto', fontSize: 11, fontWeight: 700,
-              background: `${color}18`, color, border: `1px solid ${color}28`,
-              padding: '1px 8px', borderRadius: 20,
-            }}>{badge}</span>
-          )}
-        </div>
-        <p style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55, margin: 0 }}>{desc}</p>
-      </div>
+    <Link
+      to={`/reports?r=${encodeURIComponent(report.name)}`}
+      className="list-item-hover"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '11px 16px', textDecoration: 'none',
+        borderBottom: last ? 'none' : '1px solid var(--border)',
+      }}
+    >
+      <span style={{
+        width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: verifiable ? 'var(--green-lt)' : 'var(--surface-2)',
+        border: `1px solid ${verifiable ? 'var(--green-br)' : 'var(--border)'}`,
+        color: verifiable ? 'var(--green-text)' : 'var(--muted)',
+      }}>
+        {I.receipt}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{
+          display: 'block', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5,
+          color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{report.name}</span>
+        {report.description && (
+          <span style={{
+            display: 'block', fontSize: 11.5, color: 'var(--muted)', marginTop: 1,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{report.description}</span>
+        )}
+      </span>
+      <Badge
+        variant={verifiable ? 'green' : 'gray'}
+        style={{ textTransform: 'none', flexShrink: 0 }}
+        title={verifiable
+          ? 'Renders a self-contained artifact whose figures are fingerprinted — re-checkable with verify --file'
+          : 'A code-factory report — rendered, but not a byte-verifiable artifact'}
+      >
+        {verifiable ? 'verifiable' : 'python-derived'}
+      </Badge>
     </Link>
+  )
+}
+
+function TrustLedger({ reports, loading }) {
+  if (loading) {
+    return (
+      <div style={{ padding: '12px 16px' }}>
+        <Skeleton height={13} style={{ marginBottom: 10 }} />
+        <Skeleton width="72%" height={13} />
+      </div>
+    )
+  }
+  if (!reports?.length) {
+    return (
+      <div style={{ color: 'var(--muted)', fontSize: 13, padding: '16px 16px', lineHeight: 1.6 }}>
+        No reports registered yet. Point a spec in <code>reports/</code> at a model,
+        or scaffold one with <code>tracebi new-report</code> — each renders a
+        verifiable artifact you can re-check offline.
+      </div>
+    )
+  }
+  return (
+    <div>
+      {reports.map((r, i) => (
+        <LedgerRow key={r.name} report={r} last={i === reports.length - 1} />
+      ))}
+    </div>
   )
 }
 
@@ -124,7 +169,7 @@ function PipelineActivity({ pipelines }) {
               color, background: `${color}18`, border: `1px solid ${color}30`,
               borderRadius: 5, padding: '2px 0', flexShrink: 0,
             }}>{STATUS_LABEL[status]}</span>
-            <span style={{ flex: 1, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 12 }}>
+            <span style={{ flex: 1, fontFamily: 'IBM Plex Mono, Cascadia Code, monospace', fontSize: 12 }}>
               <span style={{ color: 'var(--text)' }}>{l.pipeline}</span>
               <span style={{ color: 'var(--muted)' }}> / {l.name}</span>
             </span>
@@ -163,9 +208,26 @@ const I = {
   cube: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" /><path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" /><path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" /></svg>,
   doc: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>,
   bolt: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>,
-  compass: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.707a1 1 0 00-1.111-.206l-4 1.714a1 1 0 00-.525.525l-1.714 4a1 1 0 001.317 1.317l4-1.714a1 1 0 00.525-.525l1.714-4a1 1 0 00-.206-1.111zM10 11a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" /></svg>,
-  code: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>,
+  receipt: <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 2a1 1 0 00-1 1v14l2-1 2 1 2-1 2 1 2-1 2 1V3a1 1 0 00-1-1H5zm2.5 4a.75.75 0 000 1.5h5a.75.75 0 000-1.5h-5zm0 3a.75.75 0 000 1.5h5a.75.75 0 000-1.5h-5zm0 3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z" clipRule="evenodd" /></svg>,
+  shield: <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.661 2.237a.531.531 0 01.678 0 11.947 11.947 0 007.078 2.749.5.5 0 01.479.425A12.11 12.11 0 0118 7c0 5.163-3.26 9.564-7.834 11.256a.48.48 0 01-.332 0C5.26 16.564 2 12.163 2 7c0-.538.036-1.066.105-1.588a.5.5 0 01.48-.425 11.947 11.947 0 007.076-2.75zm4.196 5.954a.75.75 0 00-1.214-.882l-3.236 4.53-1.53-1.53a.75.75 0 00-1.061 1.06l2.152 2.152a.75.75 0 001.137-.089l3.752-5.25z" clipRule="evenodd" /></svg>,
 }
+
+// ── Trust "how it works" bullets ──────────────────────────────────────────────
+
+const RECEIPT_BULLETS = [
+  ['Stamped queries', 'Every figure is a live query against the model — the result carries the resolved query, its full lineage chain, and a SHA-256 fingerprint of the bytes.'],
+  ['Validation before execution', 'Report specs are checked against the model contract first — an invalid spec is refused, never rendered.'],
+  ['The verify loop', 'tracebi verify re-runs every query a manifest recorded and classifies the outcome — reproduces, source drift, model changed, or unexplained; verify --file re-checks a shared report offline, no model needed.'],
+  ['Agent gateway', 'Eleven MCP tools let agents discover, query, author, render, fetch, and verify against the semantic contract — read-and-compute only, never the warehouse.'],
+]
+
+const QUICK_START = [
+  'Transform: pull queries and run Python in transforms/ — sink the result to the warehouse',
+  'Model: declare a star schema over the warehouse in models/ — grain, keys, measures',
+  'Dashboard: point a spec in reports/ at the model — KPI cards, charts, tables',
+  'Serve: every figure is a live query; edit the spec and re-render in milliseconds',
+  'Re-run any output later: tracebi verify re-runs the recorded queries and classifies the result',
+]
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -180,14 +242,73 @@ export default function Home() {
   const nRep   = (reports    || []).length
   const nPipe  = (pipelines  || []).length
 
+  const verifiable = (reports || []).filter(r => r.kind === 'artifact').length
+  const trustLine =
+    nRep === 0
+      ? 'Register a report and every figure drawn through the model arrives with a receipt.'
+      : verifiable === 0
+        ? 'None of the registered reports render a verifiable artifact yet.'
+        : verifiable === nRep
+          ? 'Every registered report renders a verifiable artifact.'
+          : `${verifiable} of ${nRep} reports render${verifiable === 1 ? 's' : ''} a verifiable artifact.`
+
   return (
     <div className="fade-in">
-      {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 className="home-greeting" style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
-          {greeting()}
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--muted)' }}>{formatDate()}</p>
+      {/* Trust hero — the thesis, stated */}
+      <div className="card-accent home-hero" style={{
+        background: 'var(--card)', border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)', padding: '28px 30px', marginBottom: 34,
+        boxShadow: 'var(--shadow-sm)', '--card-accent-color': 'var(--brand)',
+      }}>
+        <div className="home-hero-grid">
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 10, fontWeight: 500 }}>
+              {greeting()} · {formatDate()}
+            </div>
+            <h1 className="gradient-text home-thesis" style={{
+              fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.08, marginBottom: 12,
+            }}>
+              Every number has a receipt.
+            </h1>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: '58ch', margin: 0 }}>
+              Every figure drawn through the model is a live query, stamped with a
+              SHA-256 fingerprint of its result; anything computed outside it is marked
+              as not having a receipt. The rendered file carries those stamps — so anyone
+              can re-check the numbers offline, with no model, no warehouse, and no account.
+            </p>
+            <div style={{ marginTop: 16, minHeight: 20 }}>
+              {lr
+                ? <Skeleton width={240} height={13} />
+                : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)' }}>
+                    <span style={{ color: 'var(--green-text)', display: 'inline-flex' }}>{I.shield}</span>
+                    {trustLine}
+                  </span>
+                )}
+            </div>
+          </div>
+
+          <div className="home-hero-cta">
+            <Link to="/verify" style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              padding: '10px 18px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--brand)', color: '#fff', fontWeight: 600, fontSize: 13.5,
+              textDecoration: 'none', boxShadow: '0 2px 12px rgba(9,26,85,.28)',
+              whiteSpace: 'nowrap',
+            }}>
+              {I.shield} Verify a report file
+            </Link>
+            <Link to="/reports" style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '9px 18px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--blue-br)', background: 'var(--blue-lt)',
+              color: 'var(--accent-text)', fontWeight: 600, fontSize: 13.5,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+            }}>
+              Browse reports →
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Workflow — the framework, as a flowchart */}
@@ -208,10 +329,10 @@ export default function Home() {
 
       {/* Stats row */}
       <div className="grid-4" style={{ marginBottom: 40 }}>
-        <StatCard label="Connectors" value={nConn} icon={I.db}      color="#2563eb" href="/connectors" loading={lc} />
-        <StatCard label="Models"     value={nMod}  icon={I.cube}    color="#7c3aed" href="/models"     loading={lm} />
-        <StatCard label="Reports"    value={nRep}  icon={I.doc}     color="#db2777" href="/reports"    loading={lr} />
-        <StatCard label="Pipelines"  value={nPipe} icon={I.bolt}    color="#d97706" href="/pipelines"  loading={lp} />
+        <StatCard label="Connectors" value={nConn} icon={I.db}   color="#2563eb" href="/connectors" loading={lc} />
+        <StatCard label="Models"     value={nMod}  icon={I.cube} color="#7c3aed" href="/models"     loading={lm} />
+        <StatCard label="Reports"    value={nRep}  icon={I.doc}  color="#db2777" href="/reports"    loading={lr} />
+        <StatCard label="Pipelines"  value={nPipe} icon={I.bolt} color="#d97706" href="/pipelines"  loading={lp} />
       </div>
 
       {/* Two-column layout */}
@@ -219,14 +340,12 @@ export default function Home() {
 
         {/* Left */}
         <div>
-          <SH title="Navigate" />
-          <div className="home-nav-grid" style={{ marginBottom: 32 }}>
-            <NavCard href="/explore"  title="Explore"   icon={I.compass} color="#0891b2" badge={nMod || undefined}
-              desc="Run star-schema queries across your models. Pick measures, dimensions, and filters." />
-            <NavCard href="/models"   title="Models"    icon={I.cube}    color="#7c3aed" badge={nMod || undefined}
-              desc="Browse DataModel tables, preview rows, inspect relationships, and view the ER diagram." />
-            <NavCard href="/reports"  title="Reports"   icon={I.doc}     color="#db2777" badge={nRep || undefined}
-              desc="Run registered reports and download the self-contained HTML artifact — every figure a live query, with an embedded, verifiable receipt." />
+          <SH title="Reports & their receipts" action={{ href: '/reports', label: 'Open reports' }} />
+          <div style={{
+            background: 'var(--card)', border: '1px solid var(--border)',
+            borderRadius: 14, overflow: 'hidden', marginBottom: 32,
+          }}>
+            <TrustLedger reports={reports} loading={lr} />
           </div>
 
           <SH title="Recent pipeline activity" action={{ href: '/pipelines', label: 'View all' }} />
@@ -246,18 +365,13 @@ export default function Home() {
 
         {/* Right */}
         <div>
-          <SH title="Every number has a receipt" />
+          <SH title="How the receipt works" />
           <div style={{
             background: 'var(--card)', border: '1px solid var(--border)',
             borderRadius: 14, padding: '20px 22px', marginBottom: 20,
           }}>
-            {[
-              ['Stamped queries', 'Gateway query results carry the resolved query, the full lineage chain, and a SHA-256 fingerprint of the complete result.'],
-              ['Validation before execution', 'Report specs are checked against the model contract first — invalid specs are refused, never rendered.'],
-              ['The verify loop', 'tracebi verify re-runs every query recorded in a manifest and classifies the outcome: reproduces, source drift, model changed, or unexplained — ad-hoc data honestly reports unverifiable.'],
-              ['Agent gateway', 'Eight MCP tools let agents discover, query, author, render, and verify against the semantic contract — read-and-compute only, never the warehouse.'],
-            ].map(([title, desc], i) => (
-              <div key={title} style={{ marginBottom: i < 3 ? 14 : 0 }}>
+            {RECEIPT_BULLETS.map(([title, desc], i) => (
+              <div key={title} style={{ marginBottom: i < RECEIPT_BULLETS.length - 1 ? 14 : 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55 }}>{desc}</div>
               </div>
@@ -272,13 +386,7 @@ export default function Home() {
             <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.65, marginBottom: 16 }}>
               Take data from messy to reportable in three phases — write the analysis, freeze it into a model, dashboard the model. Every figure on the page stays a live query.
             </p>
-            {[
-              'Transform: pull queries and run Python in transforms/ — sink the result to the warehouse',
-              'Model: declare a star schema over the warehouse in models/ — grain, keys, measures',
-              'Dashboard: point a spec in reports/ at the model — KPI cards, charts, tables',
-              'Serve: every figure is a live query; edit the spec and re-render in milliseconds',
-              'Re-prove any output later: tracebi verify re-runs the recorded queries',
-            ].map((text, n) => (
+            {QUICK_START.map((text, n) => (
               <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
                 <span style={{
                   width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
@@ -314,7 +422,7 @@ export default function Home() {
                       width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
                       background: c.connected === false ? '#dc2626' : '#22c55e',
                     }} />
-                    <span style={{ flex: 1, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 12, color: 'var(--text)' }}>
+                    <span style={{ flex: 1, fontFamily: 'IBM Plex Mono, Cascadia Code, monospace', fontSize: 12, color: 'var(--text)' }}>
                       {c.name}
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--muted)' }}>{c.type}</span>

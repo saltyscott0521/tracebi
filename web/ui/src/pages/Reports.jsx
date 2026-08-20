@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
@@ -236,10 +237,38 @@ function ReportDetail({ report }) {
   )
 }
 
+// The at-rest trust signal, from the reports API's `kind` field: an artifact
+// report renders a self-contained, fingerprinted, verifiable page; a carrier
+// (code-factory) report is rendered but not a byte-verifiable artifact.
+function TrustChip({ kind }) {
+  const verifiable = kind === 'artifact'
+  return (
+    <span
+      title={verifiable
+        ? 'Renders a verifiable artifact — re-checkable offline with verify --file'
+        : 'A code-factory report — rendered, but not a byte-verifiable artifact'}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        fontSize: 10, fontWeight: 700, letterSpacing: 0.2,
+        padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap',
+        background: verifiable ? 'var(--green-lt)' : 'var(--surface-2)',
+        color: verifiable ? 'var(--green-text)' : 'var(--muted)',
+        border: `1px solid ${verifiable ? 'var(--green-br)' : 'var(--border)'}`,
+      }}
+    >
+      {verifiable ? '✓ verifiable' : 'python-derived'}
+    </span>
+  )
+}
+
 export default function Reports() {
   const { data, isLoading } = useReports()
-  const [selected, setSelected] = useState(null)
   const [query, setQuery] = useState('')
+  // Selection lives in the URL (?r=name), so the Home trust ledger can
+  // deep-link straight to a report and the link is shareable.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selected = searchParams.get('r')
+  const select = (name) => setSearchParams(name ? { r: name } : {}, { replace: true })
 
   const reports = data || []
   const filtered = reports.filter(r =>
@@ -269,9 +298,10 @@ export default function Reports() {
                     <ListItem
                       key={r.name}
                       selected={selected === r.name}
-                      onClick={() => setSelected(r.name)}
+                      onClick={() => select(r.name)}
                       name={r.name}
                       sub={r.description}
+                      right={<TrustChip kind={r.kind} />}
                     />
                   ))
                 }

@@ -278,7 +278,10 @@ export default function Layout({ children }) {
 
       {/* Main content */}
       <main style={{
-        marginLeft: 'var(--nav-w)', flex: 1,
+        // minWidth:0 lets this flex child shrink to the space beside the
+        // sidebar; without it, a wide child (grid min-content) expands main
+        // to its maxWidth and the page scrolls sideways at ~1280 widths.
+        marginLeft: 'var(--nav-w)', flex: 1, minWidth: 0,
         padding: '40px 44px', maxWidth: 1340,
       }} className="layout-main">
         {children}

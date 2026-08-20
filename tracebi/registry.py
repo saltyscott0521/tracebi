@@ -161,7 +161,19 @@ class Registry:
     def list_reports(self) -> list[dict]:
         with self._lock:
             return [
-                {"name": k, "description": v["description"]}
+                {
+                    "name": k,
+                    "description": v["description"],
+                    # "artifact": discovery backed this report with a template
+                    # package (an authored package, or a spec the compiler
+                    # turned into one), so it renders a self-contained schema-2
+                    # artifact whose figures are fingerprinted and re-checkable
+                    # with ``verify --file``. "carrier": a plain code factory
+                    # with no package — rendered, but not a verifiable artifact.
+                    "kind": "artifact"
+                    if getattr(v["factory"], "_tracebi_package_dir", None)
+                    else "carrier",
+                }
                 for k, v in self._report_factories.items()
             ]
 
