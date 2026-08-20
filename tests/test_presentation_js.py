@@ -101,6 +101,46 @@ class TestFmtParity:
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestSsrValueFormatParity:
+    """The SSR fill formats value figures in Python; the runtime hydrates the
+    same figure with applyNamedFormat. They MUST be byte-identical or a no-JS
+    number and the hydrated one disagree — a visible flicker / a changed number.
+    This pins _ssr_format against applyNamedFormat over a corpus that stresses
+    half-to-even ties, negative zero, and large/small magnitudes.
+    """
+
+    NAMES = ["currency", "currency0", "comma", "decimal", "percent"]
+    EDGES = [0, 1, -1, 0.5, -0.5, 1.5, 2.5, 3.5, -2.5, 1234.5, -1234.5,
+             0.005, -0.005, 0.125, -0.125, 0.069, -0.3, -0.001, -0.00005,
+             999.995, 1000000, 12345.678, -0.0]
+
+    def _js(self, cases):
+        script = (
+            "var fs=require('fs');var src=fs.readFileSync(process.argv[1],'utf8');"
+            "var p=src.replace('root.tracebi = {',"
+            " 'root.tracebi = { applyNamedFormat: applyNamedFormat, toNum: toNum,');"
+            "if(p===src) throw new Error('export line not found');"
+            "new Function(p)();"
+            "var cs=JSON.parse(process.argv[2]);"
+            "process.stdout.write(JSON.stringify(cs.map(function(c){"
+            "  return globalThis.tracebi.applyNamedFormat("
+            "    globalThis.tracebi.toNum(c[0]), c[1]); })));"
+        )
+        r = subprocess.run(["node", "-e", script, ASSET, json.dumps(cases)],
+                           capture_output=True, text=True, timeout=30)
+        assert r.returncode == 0, r.stderr
+        return json.loads(r.stdout)
+
+    def test_ssr_format_matches_the_runtime(self):
+        from tracebi.reports.template_package import _ssr_format
+        cases = [[v, n] for v in self.EDGES for n in self.NAMES]
+        js = self._js(cases)
+        for (v, n), expected in zip(cases, js):
+            got = _ssr_format(v, n)
+            assert got == expected, f"{v} {n}: python {got!r} != js {expected!r}"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestChartValueFormat:
     """optionFor honors data-tb-value-format on every chart type and mode."""
 

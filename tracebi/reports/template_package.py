@@ -52,6 +52,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import math
 import os
 import sys
 from typing import Optional
@@ -63,7 +64,7 @@ from tracebi.reports.embed import (
     insert_before, stamp, stamp_frame,
 )
 from tracebi.reports.figures import (
-    Figure, FigureError, assign_figure_ids, extract_figures,
+    Figure, FigureError, assign_figure_ids, extract_figures, fill_figures,
     methodology_insertion, strip_stage,
 )
 from tracebi.reports.html_renderer import HTMLRenderer
@@ -81,6 +82,53 @@ TEMPLATE_HTML = "template.html"
 STYLE_CSS = "style.css"
 SCRIPT_JS = "script.js"
 REPORT_PY = "report.py"
+
+
+def _is_tie(a: float, digits: int) -> bool:
+    """Mirror tracebi.js ``isTie``: is *a* (>= 0) exactly halfway at *digits*?"""
+    if a >= 1e15:
+        return False
+    frac = format(a, f".{digits + 15}f").split(".")[1]
+    return frac[digits] == "5" and frac[digits + 1:].strip("0") == ""
+
+
+def _py_fixed(v: float, digits: int, *, grouped: bool = False) -> str:
+    """Fixed-point matching tracebi.js ``pyFixed`` / ``fixedGrouped`` byte for
+    byte. On an exact ``.5`` tie the runtime rounds half-to-even and formats the
+    ROUNDED value — so a tie landing on zero prints "0" (no negative sign),
+    unlike Python's ``format`` of the original. Mirror that structure exactly.
+    """
+    if _is_tie(abs(v), digits):
+        pow_ = 10 ** digits
+        t = v * pow_
+        if abs(t) < 4503599627370496:            # 2**52 — the tie is exact
+            fl = math.floor(t)
+            v = (fl if fl % 2 == 0 else fl + 1) / pow_   # half to even
+    spec = f",.{digits}f" if grouped else f".{digits}f"
+    return format(v, spec)
+
+
+def _ssr_format(raw, name: str) -> str:
+    """Format *raw* byte-identically to the runtime's ``applyNamedFormat``
+    (tracebi.js), so a server-rendered number and the hydrated one never differ
+    — no flicker on hydrate, and the no-JS reader sees exactly what a browser
+    would. Parity is pinned by a node test over a value corpus.
+    """
+    try:
+        num = float(raw)               # the runtime formats toNum(raw): a float64
+    except (TypeError, ValueError):
+        return str(raw)                # non-numeric: the runtime leaves it raw
+    if num == 0:
+        num = 0.0                      # JS renders no negative zero; -0.0 -> 0.0
+    if name == "compact":
+        from tracebi.reports.chart import ChartSpec
+        return ChartSpec._fmt(num, compact=True)
+    if name == "comma":     return _py_fixed(num, 0, grouped=True)
+    if name == "decimal":   return _py_fixed(num, 2, grouped=True)
+    if name == "currency":  return "$" + _py_fixed(num, 2, grouped=True)
+    if name == "currency0": return "$" + _py_fixed(num, 0, grouped=True)
+    if name == "percent":   return _py_fixed(num * 100, 1) + "%"
+    return str(raw)                    # unknown name: applyNamedFormat -> raw
 
 
 class _PythonDerivedSection(TableSection):
@@ -265,6 +313,15 @@ class TemplatePackage:
         figs = extract_figures(page)
         self._validate_figures(figs, inputs, outputs)
 
+        # Server-side render (SSR): fill each figure's value/table/chart with the
+        # resolved data at build, so a reader with JavaScript off still sees the
+        # numbers — the runtime then hydrates identically (progressive
+        # enhancement). Every filled number is the same stamped bytes the
+        # runtime reads and nothing touches the embed blocks, so no fingerprint
+        # moves. See _ssr_content.
+        frames = {sd.name: sd.dataset for sd in (inputs + outputs)}
+        page = fill_figures(page, self._ssr_content(figs, frames))
+
         # Manifest first, artifact second — and the figure claims layer rides
         # in it (schema v2: the refuse-newer-schema path in verify is the
         # compatibility mechanism it was reserved for).
@@ -361,6 +418,50 @@ class TemplatePackage:
         if save_manifest:
             manifest.save(manifest_path or output_path + ".manifest.json")
         return manifest
+
+    # ── Server-side render (progressive enhancement) ────────────────────────
+
+    def _ssr_content(self, figs, frames) -> dict:
+        """Server-rendered inner content per figure id, for the SSR fill.
+
+        VALUE figures get the formatted number the runtime would hydrate, so a
+        no-JS reader sees it (and the runtime overwrites it with the identical
+        bytes on hydrate). Table and chart figures are filled by later build
+        steps; until then they keep the author placeholder and hydrate as
+        before.
+        """
+        import html as _html
+        content: dict = {}
+        for fig in figs:
+            if fig.id is None or fig.binding is None:
+                continue
+            ds = frames.get(fig.binding)
+            if ds is None:
+                continue
+            if fig.kind == "value":
+                text = self._ssr_value(ds, fig)
+                if text is not None:
+                    content[fig.id] = _html.escape(text)
+        return content
+
+    @staticmethod
+    def _ssr_value(ds, fig):
+        """The formatted first-row cell for a value figure, or None to leave
+        the author placeholder (an empty cell — matching the runtime)."""
+        df = ds.to_pandas()
+        if df.empty:
+            return None
+        cell = fig.cell
+        if cell is None:
+            if len(df.columns) != 1:
+                return None
+            cell = str(df.columns[0])
+        if cell not in df.columns:
+            return None
+        raw = df[cell].iloc[0]
+        if raw is None or raw == "" or (isinstance(raw, float) and pd.isna(raw)):
+            return None
+        return _ssr_format(raw, fig.attrs.get("data-tb-format") or "")
 
     def _validate_figures(
         self,

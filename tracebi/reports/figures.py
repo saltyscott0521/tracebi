@@ -83,8 +83,18 @@ class _FigureParser(HTMLParser):
         self._stack: list[tuple[str, int]] = []
         #: open stage blocks: (tagname, stage, abs_start, stack_depth_at_open)
         self._stage_stack: list[tuple[str, str, int, int]] = []
-        #: stack depths at which currently-open figure elements sit
-        self._figure_depths: list[int] = []
+        #: open figure elements: (figure_index, content_start_abs, stack_depth)
+        #: — content_start is the index just past the open tag's ``>``.
+        self._figure_open_stack: list[tuple[int, int, int]] = []
+        #: absolute (content_start, content_end) inner span per figure index;
+        #: content_end is the ``<`` of the matching close tag. The SSR fill
+        #: splices resolved content into these ranges.
+        self.figure_content_ranges: dict[int, tuple[int, int]] = {}
+        #: the FIRST ``.tb-kpi-value`` child's inner span per figure index —
+        #: the value-figure fill target, mirroring the runtime's
+        #: ``el.querySelector('.tb-kpi-value')``.
+        self._kpi_open_stack: list[tuple[int, int, int]] = []
+        self.figure_kpi_targets: dict[int, tuple[int, int]] = {}
         self.figures: list[Figure] = []
         #: (figure_index, insertion_abs_pos) for figures missing an id
         self.missing_id_insertions: list[tuple[int, int]] = []
@@ -194,8 +204,19 @@ class _FigureParser(HTMLParser):
         self._handle_stage_open(tag, attrs, abs_start)
         self._handle_methodology_open(tag, attrs, abs_start)
         if tag not in _VOID:
-            if "data-tb-figure" in dict(attrs):
-                self._figure_depths.append(len(self._stack))
+            attrs_d = dict(attrs)
+            if "data-tb-figure" in attrs_d:
+                content_start = abs_start + len(self.get_starttag_text() or "")
+                self._figure_open_stack.append(
+                    (len(self.figures) - 1, content_start, len(self._stack)))
+            elif self._figure_open_stack and "tb-kpi-value" in (
+                    attrs_d.get("class") or "").split():
+                # The first .tb-kpi-value inside a value figure is the fill
+                # target, matching the runtime's querySelector.
+                content_start = abs_start + len(self.get_starttag_text() or "")
+                self._kpi_open_stack.append(
+                    (self._figure_open_stack[-1][0], content_start,
+                     len(self._stack)))
             self._stack.append((tag, abs_start))
 
     def handle_startendtag(self, tag, attrs):
@@ -232,8 +253,14 @@ class _FigureParser(HTMLParser):
                 f"</{tag}> closes <{open_tag}> — mis-nested markup; figures "
                 f"cannot be extracted with certainty."
             )
-        if self._figure_depths and self._figure_depths[-1] == len(self._stack):
-            self._figure_depths.pop()
+        if self._figure_open_stack \
+                and self._figure_open_stack[-1][2] == len(self._stack):
+            fig_index, content_start, _d = self._figure_open_stack.pop()
+            self.figure_content_ranges[fig_index] = (content_start, self._abs())
+        if self._kpi_open_stack \
+                and self._kpi_open_stack[-1][2] == len(self._stack):
+            owner, content_start, _d = self._kpi_open_stack.pop()
+            self.figure_kpi_targets.setdefault(owner, (content_start, self._abs()))
         # Close any methodology container opened at this depth by this
         # element: record where its closing tag begins — the appendix
         # insertion point, after the author's own children.
@@ -253,7 +280,7 @@ class _FigureParser(HTMLParser):
                 self.stage_ranges.setdefault(stage, []).append((abs_start, end))
 
     def handle_data(self, data):
-        if self._figure_depths:
+        if self._figure_open_stack:
             return                       # inside a figure — its numbers are claimed
         if self._stack and self._stack[-1][0] in ("script", "style"):
             return                       # code, not prose
@@ -352,6 +379,35 @@ def strip_stage(html_text: str, stage: str = "exploration") -> str:
     out = html_text
     for start, end in sorted(parsed.stage_ranges.get(stage, ()), reverse=True):
         out = out[:start] + out[end:]
+    return out
+
+
+def fill_figures(html_text: str, content_by_id: dict[str, str]) -> str:
+    """Splice server-rendered content into figure elements by id (the SSR pass).
+
+    For each figure whose id is a key in *content_by_id*, replace its inner
+    content — the ``.tb-kpi-value`` child's span if it has one (mirroring the
+    runtime's ``el.querySelector('.tb-kpi-value') || el``), else the figure's
+    own inner span — with the given HTML fragment. One parse; edits applied
+    right-to-left so earlier indices stay valid, exactly like
+    :func:`assign_figure_ids` and :func:`strip_stage`.
+
+    Nothing here touches the embedded ``<script>`` data blocks, so no
+    fingerprint moves: the fragments come from the same stamped data the
+    runtime would read, so a no-JS reader and the hydrated page agree.
+    """
+    parsed = _parse(html_text)
+    edits: list[tuple[int, int, str]] = []
+    for i, fig in enumerate(parsed.figures):
+        if fig.id is None or fig.id not in content_by_id:
+            continue
+        span = parsed.figure_kpi_targets.get(i) or parsed.figure_content_ranges.get(i)
+        if span is None:
+            continue                     # a void/self-closing figure has no span
+        edits.append((span[0], span[1], content_by_id[fig.id]))
+    out = html_text
+    for start, end, frag in sorted(edits, reverse=True):
+        out = out[:start] + frag + out[end:]
     return out
 
 

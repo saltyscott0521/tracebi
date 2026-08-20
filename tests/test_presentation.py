@@ -204,3 +204,54 @@ class TestReceiptBlock:
         snap = tmp_path / "snap.html"
         pkg.snapshot({"stack_model": stack_model}, str(snap))
         assert RECEIPT_OPEN not in snap.read_text(encoding="utf-8")
+
+
+class TestServerSideRender:
+    """Value figures are filled at build (SSR): a reader with JavaScript off
+    still sees the numbers, and the runtime hydrates the identical bytes."""
+
+    @staticmethod
+    def _model():
+        m = DataModel("ssr_model").add_connector(MemoryConnector("m", tables={
+            "orders": pd.DataFrame({"order_id": [1, 2, 3],
+                                    "region": ["NE", "SE", "MW"],
+                                    "revenue": [100.0, 200.0, 300.0]})}))
+        m.add_table("orders", connector="m", source="orders")
+        m.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                   foreign_keys={})
+        m.add_measure("revenue", column="revenue", agg="sum")
+        m.connect()
+        return m
+
+    def _render(self, tmp_path):
+        from tracebi.reports.compile_spec import compile_spec
+        from tracebi.spec import ReportSpec
+        spec = ReportSpec.from_dict({"name": "SSR", "sections": [
+            {"type": "metrics", "title": "K",
+             "data": {"model": "ssr_model",
+                      "query": {"fact": "fact_orders", "measures": ["revenue"]}},
+             "metrics": [{"label": "Revenue", "value": "revenue",
+                          "format": "currency0"}]}]})
+        compiled = compile_spec(spec)
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        for fn, content in compiled.files.items():
+            (pkg / fn).write_text(content, encoding="utf-8")
+        out = tmp_path / "o.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {"ssr_model": self._model()}, str(out))
+        return out.read_text(encoding="utf-8"), manifest
+
+    def test_value_is_in_the_raw_html_without_js(self, tmp_path):
+        import re
+        html, _ = self._render(tmp_path)
+        assert "$600" in html                          # the number, no JS needed
+        m = re.search(r'<span class="tb-kpi-value">([^<]*)</span>', html)
+        assert m and m.group(1) == "$600"              # the KPI span is filled
+
+    def test_ssr_leaves_the_embedded_data_intact(self, tmp_path):
+        from tracebi.verify import verify_file, FILE_INTACT
+        html, manifest = self._render(tmp_path)
+        # SSR fills presentation, never the <script> data blocks; verify --file
+        # rehashes those, so an INTACT verdict proves no fingerprint moved.
+        assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
