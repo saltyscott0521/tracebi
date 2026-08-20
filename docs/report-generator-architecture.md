@@ -118,7 +118,7 @@ Ships in the docs **and** in `verify` output.
 - **Embedded → displayed.** The JS can show a number that isn't in the stamped data.
   The receipt covers the blob, not the render.
 - **`report.py` outputs.** Arbitrary Python is unverifiable-by-replay; its *inputs*
-  are stamped, its *output* is not re-proved — and must never read as green
+  are stamped, its *output* is not re-run — and must never read as green
   (verdict `unverifiable`, but surfaced as a coverage line, not a silent exit 0).
 
 > Verified: the data in this file came from these queries and reproduces from the

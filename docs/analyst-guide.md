@@ -306,8 +306,8 @@ tracebi run my_report          # writes output/*.xlsx and *.html + *.manifest.js
 The `.manifest.json` beside each output is the **receipt**: the recorded
 queries, lineage, input fingerprints, and git SHA behind every section.
 Rendered HTML is disposable; the manifest is not — retain it. Later,
-`tracebi verify output/my_report.html.manifest.json` re-proves it by re-running
-each section's recorded model query and reporting whether the numbers still
+`tracebi verify output/my_report.html.manifest.json` re-runs each section's
+recorded model query and reports whether the numbers still
 reproduce, whether the source data drifted, or whether the model itself
 changed. (Sections built from hand-transformed DataSets carry no recorded
 query and are reported as `unverifiable` rather than guessed at. A report

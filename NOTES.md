@@ -15,8 +15,48 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
 | Phase 5 | ✅ Done | Web UI (FastAPI + React, medallion-aware demo) |
 | Phase 6 | ✅ Done | DuckDB engine, push-down filters, layer rename, CLI, auto-discovery, auth, docker-compose |
-| Docs | ✅ Current | README/CLAUDE.md current; docs/overview.html rewritten for the trust-layer story (2026-08-04); AGENTS.md + docs/agents/ SOPs added |
+| Docs | ✅ Current | Reconciled 2026-08-19 to the current product: artifact-package phase ③, the removed `requests/` lane (0.8), the 11-tool + `author_report`-prompt gateway, and the trust-layer identity. Volatile counts now say "run `pytest tests/`" rather than a frozen number. |
 | Phase 7 | ✅ Done | Correctness sweep, open-core seam, capability surface, ReportSpec, SVG charts, theme layer |
+
+---
+
+## 2026-08-19 — Design decisions of the artifact arc (recorded after the fact)
+
+These landed across the reshape and its fix-waves and were, until now,
+recorded only in the CHANGELOG. Kept terse; each names where the decision
+lives in code.
+
+- **Sink contracts** (`tracebi/contracts.py`). A transform may close with a
+  `with contract(...)` block of declarative checks run as read-only SQL
+  against the tables it just sank. Failure raises at sink time; success
+  records `data/warehouse.contracts.json` with connector-load-path
+  fingerprints. Locked language: *the sink satisfied its contract* — never
+  "the transform was verified." Report manifests join against it; status
+  `stale` never reads green.
+- **The figure-claims layer + verify v2** (`figures.py`, `template_package.py`
+  `_validate_figures`, `verify.py`). A manifest records per-figure claims
+  (id / kind / binding / cell / unverified). The build refuses a data-bearing
+  figure that neither names a binding nor is marked `data-tb-unverified` —
+  the *no third state* guarantee is enforced, not aspirational.
+- **The presentation stack order** (`tracebi/reports/stack.py`). One place
+  composes the page: reset → theme → runtime → author CSS/JS, later layers
+  winning. Derivation (`derive.py`) fills labels/formats the author left
+  unset but **must never change the number it presents**.
+- **The workbench + human pins + `tracebi dev`** (`workbench.py`,
+  `_dev_server.py`). A live authoring surface over a package (figures,
+  coverage, per-binding cards, pins); with no report named, discovery mode is
+  the same surface over phases ① and ②.
+- **The embedded semantic-contract slice + the subsetting rule**
+  (`capabilities.py`, `tracebi.js`). The artifact carries what the model's
+  vocabulary meant; interactive controls subset which stamped rows a figure
+  displays and **never compute a new number**, so value figures never react
+  and a filtered KPI needs its own binding.
+- **pandas-3 dtype canonicalization.** The pandas-3 string-dtype rename moved
+  fingerprints; the fix pins a canonical serialization so a correct report
+  reproduces across pandas majors (fingerprint corpus green on 2.2 and 3.0).
+- **The `requests/` lane removed (0.8).** The ad-hoc script lane had no
+  receipt and no way to earn one; a report is authored only as an artifact
+  package. Every surface (CLI, public API, web API, UI, discovery) was pruned.
 
 ---
 
@@ -30,6 +70,12 @@ is: *how do I get from a messy export to a page I trust?* So the product is now
 organised around that arc — a **three-phase workflow**, messy to reportable,
 with the trust story hanging off phase boundaries rather than being the whole
 pitch.
+
+> **Superseded (2026-08-19):** the emphasis in this entry reads the wrong way
+> round. The canonical identity is **the trust layer for AI-generated
+> analytics** (MANIFESTO §"Why it is shaped this way"; README opening); the
+> three-phase workflow is *how* that trust is delivered, not a replacement for
+> it. Keep the workflow framing below, but the trust layer is the identity.
 
 ### The three phases, each a project-root folder
 
@@ -185,6 +231,11 @@ schema" *is* the `DataModel` the framework always had.
 `get_context`, `list_models`, `describe_model`, `query_model`,
 `validate_report_spec`, `render_report_spec`, `list_reports`,
 `verify_manifest`.
+
+> **Updated (2026-08-19):** the surface grew to **11 tools + 1 `author_report`
+> prompt** — added `workbench_state`, `build_report` (renders an artifact
+> package over MCP), and `fetch_artifact` (returns the built bytes, closing the
+> agent-can't-deliver gap).
 
 Decisions worth recording:
 
@@ -651,19 +702,11 @@ That combination remains a genuine differentiator.
 ## Architecture Reference
 
 ### Package Structure
-```
-tracebi/
-  connectors/     Source adapters (CSV, SQL, BigQuery, Snowflake, Memory)
-  model/          Core abstractions (DataSet, DataModel with star-schema query)
-  etl/            Medallion layers (Bronze → Silver → Gold)
-  reports/        Report engine + renderers (Excel, HTML)
-  dashboard/      Dash-based live dashboard server
-  lineage/        Lineage visualisation (LineageDiagram)
-examples/         Runnable demos for each phase
-tests/            Pytest suite (one file per phase)
-requests/         Project-specific report scripts (copy _template.py)
-output/           Generated files — gitignored
-```
+
+> **Superseded (2026-08-19):** the package layout that once sat here listed
+> `dashboard/` (Dash — removed 2026-07-27) and `requests/` (the ad-hoc lane —
+> removed in 0.8). The current, maintained layout lives in **CLAUDE.md →
+> Repository Layout**; do not duplicate it here.
 
 ### Core Design Patterns
 

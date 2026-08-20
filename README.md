@@ -35,8 +35,9 @@ slow analysis and the fast reporting never block each other.
                                                         │
                                        freeze ▼  the model (the semantic contract)
 ③  REPORT       reports/             fast, iterate constantly
-      a ReportSpec (JSON) pointed at the model — KPI cards, charts, tables,
-      every figure a live query. Re-renders in milliseconds; nothing re-runs ①.
+      an artifact package (or a ReportSpec) pointed at the model — KPI cards,
+      charts, tables, every figure a live query with an embedded receipt.
+      Re-renders in milliseconds; nothing re-runs ①.
 ```
 
 **Phase 1 (TRANSFORM)** is ordinary, unconstrained pandas — pull the queries
@@ -52,10 +53,15 @@ never the pandas above it.
 **Phase 2 (MODEL)** is a thin declarative star schema over the warehouse. It
 reads the sink; it never sees the transform.
 
-**Phase 3 (REPORT)** is a JSON `ReportSpec` pointed at the model. Because the
-model is materialized, the page re-renders in milliseconds with no pandas in the
-loop — editing the report never re-runs the analysis. (A dashboard is a style
-of report, not a different thing.)
+**Phase 3 (REPORT)** is an **artifact package** pointed at the model:
+`tracebi new-report` scaffolds `reports/<name>/` (a `report.json` of data
+bindings + `template.html` / `style.css` / `script.js`); `tracebi dev` explores
+it live; `tracebi report build` renders one self-contained HTML with the receipt
+inlined; `tracebi verify` re-runs it. A JSON `ReportSpec` is the lightweight
+alternative — auto-discovered and served the same way. Because the model is
+materialized, the page re-renders in milliseconds with no pandas in the loop —
+editing the report never re-runs the analysis. (A dashboard is a style of
+report, not a different thing.)
 
 | Phase | Folder | Artifact | Discovered by the server as |
 |---|---|---|---|
@@ -79,7 +85,7 @@ walkthrough: **[WORKFLOW.md](WORKFLOW.md)**.
 Everything below hangs off this spine: the framework gives you the connectors
 and lineage-tracked `DataSet` for phase 1, the `DataModel` for phase 2, the
 report engine for phase 3, and — **from the model boundary onward (phases 2 and
-3)** — the trust machinery that makes a published figure re-provable.
+3)** — the trust machinery that makes a published figure reproducible.
 
 ---
 
@@ -90,7 +96,7 @@ report engine for phase 3, and — **from the model boundary onward (phases 2 an
 | Semantic contract agents query (facts, dims, named measures) | ✗ | ✓ (Semantic Layer, cloud) | partial (governed models, not agent-first) | ✓ |
 | Every query stamped: resolved query + lineage + result fingerprint | ✗ | ✗ | ✗ | ✓ |
 | Report specs validated *before* execution | ✗ | ✗ (compiles SQL, no report layer) | ✗ | ✓ |
-| Re-provable artifacts (`tracebi verify` re-runs the receipts) | ✗ | ✗ | ✗ | ✓ |
+| Reproducible artifacts (`tracebi verify` re-runs the receipts) | ✗ | ✗ | ✗ | ✓ |
 | Self-contained HTML artifact + lineage manifest | ✗ (live app, no artifact) | ✗ (docs site, not reports) | partial (exports, no lineage) | ✓ |
 | Code-first Python framework underneath | ✓ | ✗ (SQL + YAML) | ✗ | ✓ |
 
@@ -106,7 +112,7 @@ workflow phases above — a "Phase" here is a development stage, not a folder):
 - [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 - [x] **Phase 5** — Web UI (FastAPI + React), folder-based auto-discovery, optional HTTP Basic / proxy-header auth with roles, `tracebi` CLI, docker-compose deployment
-- [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model and authors validated report specs; every response is stamped with the resolved query, lineage, and a fingerprint of the full result
+- [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model, validates and renders report specs, builds artifact packages (`build_report`), and fetches the built bytes (`fetch_artifact`); every response is stamped with the resolved query, lineage, and a fingerprint of the full result
 - [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable, then gives the receipt one verdict — a manifest where nothing could be checked is never reported as a pass. This operates on phase-2/3 queries against the model; it re-runs recorded queries and compares fingerprints — it does **not** read a phase-1 transform or assert a number is correct.
 
 ---
@@ -185,7 +191,7 @@ The differences that matter:
 | Understand the three-phase workflow (transform → model → report) | [WORKFLOW.md](WORKFLOW.md) — the spine, with the reference implementation |
 | Follow the full analyst flow start-to-finish | [docs/analyst-guide.md](docs/analyst-guide.md) — scaffold → transform → report → publish |
 | Work in a notebook with rich previews | [docs/notebook-guide.md](docs/notebook-guide.md) + `examples/analyst_quickstart.py` |
-| Write a one-off report or query | `tracebi new-report "My Report"` then `tracebi dev my_report` — explore inside the artifact (exploration blocks die at build). The old `requests/` lane is deprecated, removed in 0.8 |
+| Write a one-off report or query | `tracebi new-report "My Report"` then `tracebi dev my_report` — explore inside the artifact (exploration blocks die at build) |
 | Migrate a JSON spec to the artifact form | `tracebi migrate spec reports/<name>.json` — compiles every section to a default-component figure; the package shadows the spec until you delete it |
 | Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
 | Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
@@ -195,7 +201,7 @@ The differences that matter:
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
 | Let an AI agent query models and author reports | `pip install 'tracebi[mcp]'`, then register `tracebi mcp` with your agent — see [Agent gateway](#agent-gateway-mcp) |
-| Re-prove a rendered report's numbers | `tracebi verify output/report.manifest.json` — re-runs every recorded query and classifies drift |
+| Reproduce a rendered report's numbers | `tracebi verify output/report.manifest.json` — re-runs every recorded query and classifies drift |
 | Point an agent at the rules of the road | [AGENTS.md](AGENTS.md) — the agent knowledge base; SOPs in [docs/agents/](docs/agents) |
 
 ---
@@ -238,9 +244,9 @@ pip install -e ".[all]"               # everything
 ### Docker / deployment
 
 The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
-Python app) and a `docker-compose.yml` that mounts `./data`, `./output`,
-and `./requests` from the host so your pipeline DB and rendered reports
-survive container restarts.
+Python app) and a `docker-compose.yml` that mounts `./output` and
+`./scheduled` from the host so your rendered receipts survive container
+restarts; the pipeline DB lives in the Postgres `pgdata` volume.
 
 ```bash
 # Local: web UI on http://localhost:8000
@@ -278,8 +284,7 @@ Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
 | `POSTGRES_PORT` | Host port for the compose Postgres (default `5432`). Set it if you already run Postgres locally: `POSTGRES_PORT=55432 docker compose up`. |
 | `TRACEBI_MODELS_DIR` | Folder scanned for model definitions (default `models`) |
 | `TRACEBI_PIPELINES_DIR` | Folder scanned for pipeline definitions (default `pipelines`) |
-| `TRACEBI_REPORTS_DIR` | Folder scanned for named report factories (default `reports`) |
-| `TRACEBI_REQUESTS_DIR` | Folder scanned for ad-hoc request scripts (default `requests`) |
+| `TRACEBI_REPORTS_DIR` | Folder scanned for report packages, specs, and named factories (default `reports`) |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | Turn on HTTP Basic auth |
 | `TRACEBI_AUTH_PROXY_HEADER` | Trust an upstream identity header (Authelia / oauth2-proxy / Cloudflare Access) |
 | `TRACEBI_DEV_MODE=1` | Mount `/api/_dev/reload` for hot iteration |
@@ -305,7 +310,7 @@ tracebi dev                                          # no name: the DISCOVERY wo
 tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
 tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
 tracebi migrate spec reports/sales.json              # compile a JSON spec into reports/sales/ (shadows the spec)
-# deprecated, removed in 0.8: new-request / list-requests / run (the requests/ lane)
+tracebi run-transform holdings                       # run a phase-① transform (.py or .ipynb) top-to-bottom
 tracebi validate                                     # load every model; check dimension keys are unique
 tracebi serve                                        # browse the project at http://127.0.0.1:8000
 tracebi new-model "Sales Model"                      # → models/sales_model.py
@@ -544,15 +549,18 @@ chain, and a SHA-256 fingerprint of the complete result travel with the
 rows. Rows are a capped preview; the fingerprint always covers the full
 result, so any number the agent quotes is verifiable afterwards by
 re-running the recorded query and comparing hashes. `render_report_spec`
-produces the governed HTML artifact plus its lineage manifest, and refuses
-a spec that fails validation. `verify_manifest` closes the loop: it re-runs
-every query recorded in a manifest and classifies the outcome (reproduces,
-source drift, model changed, unexplained), so an agent can check its own
-receipt before a human sees the number.
+produces the governed HTML artifact from a spec, and `build_report` renders
+a full **artifact package** (`reports/<name>/`) — both refuse anything that
+fails validation; `fetch_artifact` returns the built bytes so a remote agent
+can actually deliver what it made. `verify_manifest` closes the loop: it
+re-runs every query recorded in a manifest and classifies the outcome
+(reproduces, source drift, model changed, unexplained), so an agent can check
+its own receipt before a human sees the number.
 
-The full playbook — the two planes, the L0–L3 assurance ladder, all eight
-tools, and the canonical discover → explore → author → validate → render → verify → cite
-loop — is in [AGENTS.md](AGENTS.md).
+The full playbook — the two planes, the L0–L3 assurance ladder, all **11
+tools** plus the `author_report` prompt, and the canonical
+discover → explore → author → validate → render → verify → cite loop — is in
+[AGENTS.md](AGENTS.md).
 
 ```bash
 pip install 'tracebi[mcp]'
@@ -594,8 +602,8 @@ verifies nothing and so cannot pass. A receipt whose every section is
 hand-transformed still exits 0, but says `NOTHING VERIFIED` rather than
 `REPRODUCES`.
 
-`tracebi verify <manifest>` re-proves the numbers against the model; it does
-not read the file you actually shipped. `tracebi verify --file <report.html>`
+`tracebi verify <manifest>` re-runs the recorded queries against the model and
+compares fingerprints; it does not read the file you actually shipped. `tracebi verify --file <report.html>`
 is the offline complement: it re-hashes the data blocks embedded in a
 self-contained report and checks each against the manifest, so an edited total
 in a file mailed around a company is caught (`FILE ALTERED`) even with no
@@ -618,11 +626,9 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 - **Models** — table previews with column dtypes and full-table CSV export,
   plus an interactive ERD of your relationships.
 - **Reports** — run in the browser (in the background, with run history and
-  a toast when done), download as Excel or HTML, and inspect per-section
-  lineage. Failures show the full Python traceback.
-- **Requests** — browse the scripts in `requests/` and run them straight
-  from the browser (deprecated with the lane itself; removed in 0.8 —
-  responses carry a `deprecation` note).
+  a toast when done), download the self-contained HTML artifact with its
+  embedded receipt (or a plain Excel export), read the at-a-glance receipt,
+  and inspect per-section lineage. Failures show the full Python traceback.
 - **Pipelines** — the medallion chain as a live DAG with per-layer run
   buttons and run history.
 
@@ -664,8 +670,7 @@ Your module just needs to import `registry` and call `registry.add_connector()`,
 |---|---|---|
 | `models/` | each `.py` exposes a `model` variable (a `DataModel`) | `TRACEBI_MODELS_DIR` |
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | `TRACEBI_PIPELINES_DIR` |
-| `reports/` | a `.py` factory (`@register.report(...)`), a `.json` `ReportSpec` (workflow phase ③), or a `<name>/` template package — all served as reports. A package directory shadows a same-named `.json` spec (the migration cutover) | `TRACEBI_REPORTS_DIR` |
-| `requests/` | ad-hoc scripts with `request_params()` and `run()` — deprecated, removed in 0.8 | `TRACEBI_REQUESTS_DIR` |
+| `reports/` | a `.py` factory (`@register.report(...)`), a `.json` `ReportSpec` (workflow phase ③), or a `<name>/` artifact package — all served as reports. A package directory shadows a same-named `.json` spec (the migration cutover) | `TRACEBI_REPORTS_DIR` |
 
 Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/web-customization.md](docs/web-customization.md) for the full wiring guide.
 
@@ -757,7 +762,7 @@ python examples/phase4_example.py      # full pipeline (run examples/seeds/seed_
 
 ```bash
 pytest tests/
-# 843 passed
+# the full suite runs green on pandas 2.2 and 3.x
 ```
 
 ---
@@ -777,8 +782,8 @@ tracebi/                        ← the framework repo
 │   ├── reports/                Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
 │   ├── pipeline/               PipelineRunner (APScheduler + DB)
 │   ├── lineage/                LineageDiagram
-│   ├── mcp_server.py           Agent gateway — 8 MCP tools (typed output, read-only
-│                               annotations) + resources + an authoring prompt
+│   ├── mcp_server.py           Agent gateway — 11 MCP tools (typed output, read-only
+│                               annotations) + resources + the author_report prompt
 │   └── web/
 │       ├── api/                FastAPI app, routers, registry
 │       ├── demo_app/           Bundled demo app — self-contained (its own models/ + reports/)
@@ -786,14 +791,13 @@ tracebi/                        ← the framework repo
 │       └── ui/dist/            Built React bundle (gitignored; npm run build writes here)
 ├── web/ui/                     React UI source (Vite) — a Node workspace, not a Python
 │                               package; `npm run build` writes into tracebi/web/ui/dist
-├── tests/                      843 tests across all phases
+├── tests/                      the pytest suite (run `pytest tests/` for the count)
 ├── examples/
 │   ├── portfolio_project/      THE reference project — the three-phase workflow
 │   │   ├── inputs/             ⓪ raw pulls (holdings.csv + its generator)
 │   │   ├── transforms/         ① pandas → sink star tables to DuckDB
 │   │   ├── models/             ② the star-schema contract (portfolio_model.py)
-│   │   ├── reports/            ③ spec + template packages + escape hatch
-│   │   ├── requests/           the old scratchpad lane (deprecated, removed in 0.8)
+│   │   ├── reports/            ③ spec + artifact packages + escape hatch
 │   │   └── run_workflow.py     drives ①→③ (see WORKFLOW.md)
 │   ├── seeds/                  Medallion demo DB seeding + Supabase companions
 │   └── phase*.py               Small runnable feature demos
@@ -814,11 +818,10 @@ figures in the workbench for the next editing pass. What matters gets built
 (`tracebi report build`) and ships with a receipt.
 
 The old `requests/` script lane (`tracebi run`, `request_params()`, the
-Requests web page) still works but is **deprecated and removed in 0.8**; a
-project that has the folder keeps it working through 0.7 with deprecation
-notes. Migration is mechanical: queries → bindings in `report.json`, pandas
-→ `report.py`, sections → component figures. A JSON spec migrates with one
-command: `tracebi migrate spec reports/<name>.json`.
+Requests web page) **was removed in 0.8** — it rendered a `Report` with no
+receipt and no way to earn one. Migration is mechanical: queries → bindings in
+`report.json`, pandas → `report.py`, sections → component figures. A JSON spec
+migrates with one command: `tracebi migrate spec reports/<name>.json`.
 
 ---
 

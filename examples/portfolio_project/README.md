@@ -33,7 +33,7 @@ six ways, money stored as strings.
 The three report forms in `reports/` are the three authoring lanes:
 
 - `portfolio_dashboard.json` — a governed `ReportSpec`; validate it without
-  running (`tracebi spec validate`), every figure re-provable.
+  running (`tracebi spec validate`), every figure reproducible.
 - `portfolio_book/` — a freeform template package (`tracebi report build
   portfolio_book`): your own HTML/CSS/JS around fingerprinted data, built
   into one self-contained file checkable offline with `tracebi verify --file`.

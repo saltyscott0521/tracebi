@@ -152,14 +152,16 @@ does not assert a number is correct. Never claim it verifies the phase-① analy
 ## Repository Layout
 
 ```
-tracebi/               # Core Python package (~5200 LOC)
+tracebi/               # Core Python package (~24,000 LOC)
   connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
   model/               # DataSet, DataModel (with star-schema query)
   etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer
-  reports/             # Report, Section types, ExcelRenderer, HTMLRenderer
+  reports/             # Report, Section types, ExcelRenderer, HTMLRenderer; the artifact
+                       #   lane: template_package, figures, stack, compile_spec, derive,
+                       #   assets/ (tracebi.js + tracebi.css + vendored ECharts)
   pipeline/            # PipelineRunner + APScheduler integration
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
-  web/                 # register facade + auto-discovery for request scripts (.py and .ipynb)
+  web/                 # register facade + auto-discovery for discovered modules (.py and .ipynb)
     api/
       main.py          # FastAPI app entry point — CORS, routers, auth
       auth.py          # Optional HTTP Basic / proxy-header middleware
@@ -174,8 +176,14 @@ tracebi/               # Core Python package (~5200 LOC)
     ui/dist/           # Built React bundle, written here by `cd web/ui && npm run build`
                        # (gitignored; Docker, Vercel and the release workflow build it. A
                        # wheel built from a tree without it ships no UI — / says so.)
-  cli.py               # tracebi init / new-model / new-transform / report / verify / serve / mcp
+  cli.py               # tracebi init / new-model / new-transform / new-report / dev / report
+                       #   / verify / migrate / serve / mcp / session (see `tracebi --help`)
   contracts.py         # sink contracts: closed checks + certificate + manifest join
+  verify.py            # re-run recorded queries, compare fingerprints, classify drift
+  mcp_server.py        # agent gateway over MCP — 11 tools + the author_report prompt
+  workbench.py         # the live authoring surface (tracebi dev / report status)
+  _dev_server.py       # dev preview server (loopback) for `tracebi dev`
+  _delivery.py         # `tracebi report send` — SMTP / Slack delivery of a built artifact
   _session_export.py   # session export — the committed lab-notebook record (HTML or md twin)
   _notebook.py         # notebook_to_source() — concatenates code cells for exec
   __init__.py          # Public API re-exports — check here before writing new code
@@ -185,7 +193,7 @@ web/
                        # directory named `web` in the wheel collided with the unrelated
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
-tests/                 # pytest suite (843 tests; run it for the current count), one file per area
+tests/                 # pytest suite (run `pytest tests/` for the current count), one file per area
 examples/
   portfolio_project/   # THE reference working project — a complete three-phase project
                        #   with the same shape `tracebi init` scaffolds:
@@ -193,9 +201,8 @@ examples/
     transforms/        #   ① unconstrained pandas → sink star tables (holdings_transform.py)
     models/            #   ② the star-schema contract (portfolio_model.py)
     reports/           #   ③ every report form: spec (portfolio_dashboard.json),
-                       #     template packages (portfolio_book/), escape hatch
-                       #     (portfolio_concentration/)
-    requests/          #   the old scratchpad lane (deprecated, removed in 0.8)
+                       #     template packages (portfolio_book/, portfolio_showcase/),
+                       #     escape hatch (portfolio_concentration/)
     run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
   seeds/               # Medallion demo DB seeding + Supabase deploy companions
   phase*.py            # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
@@ -440,7 +447,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but request scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_REQUESTS_DIR`, `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_SCHEDULED_DIR`, `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`).
 
 ---
 
@@ -517,10 +524,9 @@ effectively does not exist).
 ### New report (ad hoc)
 The ad-hoc lane is the artifact: `tracebi new-report "My Report"` then
 `tracebi dev my_report` — explore inside `data-tb-stage="exploration"` blocks
-that die at build. (The old `requests/` script lane is deprecated, removed in
-0.8; `tracebi init` no longer scaffolds it. A JSON spec migrates with
-`tracebi migrate spec reports/<name>.json` — the compiled package shadows the
-same-named spec at discovery.)
+that die at build. (The old `requests/` script lane was removed in 0.8. A JSON
+spec migrates with `tracebi migrate spec reports/<name>.json` — the compiled
+package shadows the same-named spec at discovery.)
 
 ### New report (web-exposed)
 Put a `.py` file in `reports/`. Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
@@ -583,10 +589,6 @@ GET  /api/reports/{name}/runs/{run_id}               → poll status; result/err
 GET  /api/reports/{name}/download?format=xlsx|html   → rendered file attachment
 GET  /api/reports/{name}/lineage                     → React Flow graph per section
 GET  /api/reports/{name}/mermaid
-GET  /api/requests                                   → scripts in requests/ (deprecated lane; removed in 0.8)
-GET  /api/requests/{name}/params                     → declared request_params() defaults (static)
-POST /api/requests/{name}/run                        → execute script fresh; body {"params": {…}}
-GET  /api/requests/{name}/lineage?params_json={…}    → React Flow graph per section
 GET  /api/pipelines
 POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run
@@ -606,7 +608,7 @@ Failed report/query runs return a structured ``detail``:
 - No database migrations (layers are idempotent)
 - No pre-commit hooks
 - No PyPI release (install is `pip install -e .` or from git)
-- No PDF renderer implementation (the `[pdf]` extras key exists but `PDFRenderer` does not)
+- No `PDFRenderer` class (the `[pdf]` extras key exists; `HTMLRenderer.render_pdf()` ships but is untested — it needs weasyprint/libgobject, unavailable on this Mac)
 
 Don't add these unless asked.
 
@@ -627,7 +629,7 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop; requests/ is deprecated) |
+| Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
 | Define a reusable pipeline | `tracebi new-pipeline` → `pipelines/` → `tracebi/pipeline_registry.py` |

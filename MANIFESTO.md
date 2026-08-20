@@ -33,10 +33,14 @@ transform.
 
 *— freeze point: the model, the semantic contract —*
 
-**③ REPORT** — `reports/`. A `ReportSpec` pointed at the model, where every
-figure is a live query: KPI cards, charts, tables. Because the model is
-materialized, the page re-renders in milliseconds with no pandas in the loop.
-A dashboard is a style of report, not a different thing.
+**③ REPORT** — `reports/`. An artifact package (`report.json` data bindings +
+`template.html` / `style.css` / `script.js`) or a `ReportSpec`, pointed at the
+model, where every figure is a live query: KPI cards, charts, tables.
+`tracebi dev` explores it live; `tracebi report build` renders one
+self-contained HTML with the receipt inlined; `tracebi verify` re-runs it.
+Because the model is materialized, the page re-renders in milliseconds with no
+pandas in the loop. A dashboard is a style of report, not a different thing;
+the JSON spec is one serialization of the package, not a lesser lane.
 
 A freeze point is a materialized artifact handed from one phase to the next.
 The phases never block each other: editing a report never re-runs the
@@ -63,9 +67,11 @@ toward loud failure, never toward the reassuring guess.
 
 **Every number drawn through the model has a receipt; everything else must
 be marked as not having one.** That is the promise, and it is checkable: run
-`verify` yourself. (A hand-typed literal in a report has no receipt and is
-never counted as checked — closing the gap where such a number silently
-looks covered is tracked work, not a claimed feature.)
+`verify` yourself. In an artifact package the build enforces it: every figure
+either names a stamped binding or is marked `data-tb-unverified` — a
+data-bearing element that does neither is a hard build error. A hand-typed
+literal cannot be bound to a figure, so it can never masquerade as checked.
+There is no third state where a number silently looks covered.
 
 ## Why it is shaped this way
 
@@ -82,8 +88,8 @@ machine to generate and checkable without executing. Python and JSON are two
 serializations of one object graph — an analyst prototypes in a notebook,
 exports with `from_report()`, and the governed artifact needs no rewrite.
 
-TraceBi is the AI framework for BI and analytics: humans and machines author
-against the same contracts. Nothing on the agent surface is a second-class
+TraceBi is the trust layer for AI-generated analytics: humans and machines
+author against the same contracts. Nothing on the agent surface is a second-class
 copy of the human surface — a report has only ever been a name and a zero-arg
 callable, and neither author gets a shortcut around the receipt. The analyst
 gets a model they can read in one screen and a `verify` they can run before a
@@ -174,14 +180,22 @@ One canon, used everywhere — code, docs, UI, agent context:
 | **Sink** | Where transform output becomes named warehouse tables — where trust attaches |
 | **Sink contract** | Declared checks on the tables a transform lands, recorded beside the warehouse; the sink *satisfied its contract* — the transform was not *verified* |
 | **Freeze point** | A materialized artifact handed from one phase to the next |
-| **Model** (②) | The declarative star-schema contract: grain, keys, measures |
+| **Model** (②) / **Semantic contract** | The declarative star-schema contract: grain, keys, measures. The artifact carries a slice of it so the reader sees what the vocabulary meant |
 | **Report** (③) | Any rendered output of live queries; "dashboard" is a style of report |
+| **Artifact package** (③) | `reports/<name>/` — `report.json` bindings + `template.html` / `style.css` / `script.js`, built to one self-contained HTML + manifest; the primary phase-③ form |
+| **Figure** | A stamped display element (`data-tb-figure`): a value card, chart, or table |
+| **Binding** | The named stamped dataset a figure reads (`data-tb-binding`) |
+| **Stage** | `data-tb-stage="exploration"` blocks — live under `tracebi dev`, stripped at the final build |
+| **`data-tb-unverified`** | The figure-level honesty mark: displays data, claims no receipt; distinct from a section's `UNVERIFIABLE` verdict |
 | **Stamp** | Resolved query + lineage + SHA-256 fingerprint on a section's data |
-| **Manifest** | The receipt a render emits: every stamp for the report |
+| **Manifest** / **Receipt drawer** | The receipt a render emits (every stamp for the report); every built page carries a drawer that shows its human-readable face |
+| **Stated methodology** | `data-tb-methodology` — an author's prose appendix in the artifact; never a claim, never colors a status |
 | **Verify** | Re-run the recorded queries; classify: REPRODUCES / SOURCE DRIFT / MODEL CHANGED / MISMATCH (cause unknown) / UNEXPLAINED / UNVERIFIABLE / ERROR |
 | **`verifiable: false`** | The escape hatch's permanent mark; never green |
+| **Workbench** / **Discovery** | The live authoring surface (`tracebi dev` / `report status`): figures, coverage, per-binding cards, human pins. With no report named, discovery mode is the same surface over phases ① and ② |
+| **Session record** | `tracebi session export` — the committed lab-notebook of a discovery session; no manifest is written, ever |
+| **Interactivity subsets, never computes** | Controls (`data-tb-filter` / `data-tb-search`) subset which stamped rows a figure displays; they never compute a new number, so a value figure never reacts and a filtered KPI needs its own binding |
 | **Assurance ladder** | L0 nothing → L1 receipts → L2 reproducibility → L3 signed attestation (L3: not yet) |
-| **`requests/`** | The old scratchpad lane — **deprecated, removed in 0.8**. Exploration now lives inside the artifact: `tracebi dev` + `data-tb-stage="exploration"` blocks that die at the final build |
 | **Migrate** | `tracebi migrate spec` compiles a JSON spec into the artifact package — the section enum ends as compile vocabulary; the artifact directory shadows the same-named spec |
 
 ## Commitments
@@ -196,10 +210,11 @@ One canon, used everywhere — code, docs, UI, agent context:
    `describe()` is contractually forbidden from exposing credentials. Data
    residency is the default, not a tier. Hosted topologies are demos of
    TraceBi, not the shape of it.
-4. **Both authors, one contract.** Any *spec* the analyst can validate,
-   render, or verify, the agent can too — and neither gets a shortcut around
-   the receipt. (Excel and template-package rendering are not on the agent
-   surface yet; parity is the direction, not a claim.)
+4. **Both authors, one contract.** Any spec or package the analyst can
+   validate, render, build, or verify, the agent can too — the gateway's
+   `build_report` renders artifact packages over MCP — and neither gets a
+   shortcut around the receipt. (Excel rendering is not on the agent surface
+   yet; parity is the direction, not a claim.)
 5. **Errors are for repair.** Validation failures carry the path to the
    fault. A machine-facing error that a machine cannot act on is a bug.
 6. **Loud failure over quiet convenience.** Missing dependencies raise named
