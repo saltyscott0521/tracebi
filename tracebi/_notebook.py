@@ -2,9 +2,9 @@
 Internal helper: read a Jupyter notebook and return its code cells as
 a single executable Python source string.
 
-Used by ``tracebi.cli`` (``tracebi run``) and ``tracebi.web.discovery``
-(auto-discovery) so that ``.ipynb`` files in ``requests/`` behave the
-same as ``.py`` files.
+Used by ``tracebi.cli`` (``tracebi run-transform``) and
+``tracebi.web.discovery`` (auto-discovery) so that ``.ipynb`` files behave
+the same as ``.py`` files.
 
 Line magics (``%matplotlib inline``) and shell escapes (``!pip install``)
 are silently dropped — they have no meaning outside a Jupyter kernel.

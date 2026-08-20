@@ -6,6 +6,25 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Removed — **BREAKING**: the `requests/` lane
+
+The ad-hoc request-script lane, deprecated since the reshape, is gone. A
+report is authored as an artifact package — `tracebi new-report` then
+`tracebi dev` — where every figure carries a receipt; the old single-file
+script that rendered a `Report` object had no receipt and no way to earn
+one.
+
+- Removed the CLI commands `new-request`, `list-requests`, and `run`, the
+  `--requests-dir` flag, and the `tracebi dev <script>` fallback (`dev`
+  now serves only artifact packages and discovery mode).
+- Removed `tracebi.request_params` from the public API, the internal
+  `_request_runner` and `_params` modules, the `/api/requests/*` routes,
+  and the web UI Requests page.
+- The framework no longer reads `TRACEBI_REQUESTS_DIR` or auto-discovers a
+  `requests/` directory; `tracebi init` never scaffolded one.
+- Migrate a request script to an artifact package, or — for a spec — with
+  `tracebi migrate spec reports/<name>.json`.
+
 ### Added — the interactive artifact: filters, layouts, the receipt drawer, delivery
 
 The wave that retires the rendering server. One honesty rule governs all

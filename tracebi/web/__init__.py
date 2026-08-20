@@ -22,7 +22,7 @@ Notebook usage::
     def daily_kpis():
         return Report(...)
 
-    register.auto_discover("requests/")
+    register.auto_discover("reports/")
 
 These calls populate the process-global singleton in
 :mod:`tracebi.registry`. No web install is required — the same code works

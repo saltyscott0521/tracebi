@@ -21,9 +21,6 @@ ANY script run in the project can post to the exhibit feed via
 ``tracebi.workbench.show`` with zero configuration (see the heartbeat rule
 in ``tracebi/workbench.py``).
 
-A **legacy request script** keeps today's single-file behavior, with a
-deprecation note (``requests/`` is deprecated; removed in 0.8).
-
 Everything here is dev-state by construction: nothing this server renders or
 records exists in builds or manifests, and no receipts are minted.
 """
@@ -92,21 +89,6 @@ def _esc(text: str) -> str:
             .replace(">", "&gt;"))
 
 
-def render_request(path: Path) -> str:
-    """Run the request and return report HTML, or a styled error page."""
-    try:
-        from tracebi._request_runner import execute_request
-        from tracebi.reports.html_renderer import HTMLRenderer
-        report = execute_request(path)
-        return HTMLRenderer.for_project().to_html(report)
-    except (Exception, SystemExit):
-        return _ERROR_PAGE.format(
-            title="Request script failed",
-            file=_esc(path.name),
-            trace=_esc(traceback.format_exc()),
-        )
-
-
 def _inject_refresh(html: str, version: int) -> str:
     snippet = _REFRESH_SNIPPET.replace("__VERSION__", str(version))
     if "</body>" in html:
@@ -136,26 +118,6 @@ def _project_models() -> dict:
         models[m.name] = m
         models.setdefault(stem, m)
     return models
-
-
-class _RequestTarget:
-    """A legacy request script — today's loop, deprecated (removed in 0.8)."""
-
-    workbench = False
-    discovery = False
-
-    def __init__(self, path: Path) -> None:
-        self.path = Path(path)
-        self.label = self.path.name
-
-    def render(self) -> str:
-        # Same dev-only CSP relaxation as the package form: the reload poll
-        # needs connect-src 'self'; only served pages are touched.
-        return render_request(self.path).replace(
-            "connect-src 'none'", "connect-src 'self'", 1)
-
-    def watch_paths(self) -> list[Path]:
-        return [self.path]
 
 
 class _PackageTarget:
@@ -1013,23 +975,21 @@ def serve_dev(
 ) -> int:
     """Serve *target* with live reload until Ctrl+C. Returns an exit code.
 
-    *target* is an artifact package directory (``reports/<name>/``), a
-    legacy request script file, or ``None`` — discovery mode: no report
-    anchored, the project-level workbench served for phases ① and ②.
+    *target* is an artifact package directory (``reports/<name>/``) or
+    ``None`` — discovery mode: no report anchored, the project-level workbench
+    served for phases ① and ②.
     """
     if target is None:
         return _serve(_DiscoveryTarget(), port=port,
                       open_browser=open_browser, poll_interval=poll_interval)
     target_path = Path(target)
-    if target_path.is_dir():
-        t: _PackageTarget | _RequestTarget = _PackageTarget(target_path)
-    else:
-        print("  note: request-script dev is deprecated (requests/ is the "
-              "unverified lane, removed in 0.8) — build an artifact under "
-              "reports/<name>/ and `tracebi dev <name>` instead.")
-        t = _RequestTarget(target_path)
-    return _serve(t, port=port, open_browser=open_browser,
-                  poll_interval=poll_interval)
+    if not target_path.is_dir():
+        print(f"  error: {target_path} is not an artifact package. "
+              f"`tracebi dev <name>` serves a package under reports/<name>/.",
+              file=sys.stderr)
+        return 1
+    return _serve(_PackageTarget(target_path), port=port,
+                  open_browser=open_browser, poll_interval=poll_interval)
 
 
 def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:

@@ -62,16 +62,16 @@ $ tracebi verify output/revenue.html.manifest.json
   },
   {
     n: 5,
-    title: 'Run from the CLI',
-    desc: 'Scaffold a new script, run it, or start the web UI — the CLI handles all three.',
-    code: `# Scaffold a new script
-tracebi new-request "revenue by region"
+    title: 'Author from the CLI',
+    desc: 'Scaffold a report package, live-preview it while you edit, then serve the published portal — the CLI handles the whole loop.',
+    code: `# Scaffold a report package (report.json + template.html + style.css)
+tracebi new-report "revenue by region"
 
-# Run the script
-tracebi run requests/revenue_by_region.py
+# Live-preview while you edit — exploration blocks that die at build
+tracebi dev revenue_by_region   # → http://localhost:8001
 
-# Start the web UI (Requests page surfaces all scripts)
-python -m tracebi.web.run   # → http://localhost:8000`,
+# Serve the published portal (Reports page surfaces every artifact)
+python -m tracebi.web.run       # → http://localhost:8000`,
   },
 ]
 

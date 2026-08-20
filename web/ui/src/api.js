@@ -114,33 +114,6 @@ export const useReportRunHistory = (name) =>
 export const useReportLineage = () =>
   useMutation({ mutationFn: (name) => get(`/reports/${name}/lineage`) })
 
-export const useRequests = () =>
-  useQuery({ queryKey: ['requests'], queryFn: () => get('/requests') })
-
-// Declared request_params() defaults — statically discovered, no execution.
-export const useRequestParams = (name) =>
-  useQuery({
-    queryKey: ['request-params', name],
-    queryFn: () => get(`/requests/${encodeURIComponent(name)}/params`),
-    enabled: !!name,
-  })
-
-export const useRunRequest = () =>
-  useMutation({
-    mutationFn: ({ name, params }) =>
-      postJson(`/requests/${encodeURIComponent(name)}/run`, { params: params || {} }),
-  })
-
-export const useRequestLineage = () =>
-  useMutation({
-    mutationFn: ({ name, params }) => {
-      const qs = params && Object.keys(params).length
-        ? `?params_json=${encodeURIComponent(JSON.stringify(params))}`
-        : ''
-      return get(`/requests/${encodeURIComponent(name)}/lineage${qs}`)
-    },
-  })
-
 export const usePipelines = () =>
   useQuery({ queryKey: ['pipelines'], queryFn: () => get('/pipelines'), refetchInterval: 10000 })
 

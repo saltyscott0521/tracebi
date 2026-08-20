@@ -8,7 +8,6 @@ import Connectors from './pages/Connectors'
 import Models from './pages/Models'
 import Explore from './pages/Explore'
 import Reports from './pages/Reports'
-import Requests from './pages/Requests'
 import Pipelines from './pages/Pipelines'
 
 export default function App() {
@@ -23,7 +22,6 @@ export default function App() {
           <Route path="/models" element={<Models />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/requests" element={<Requests />} />
           <Route path="/pipelines" element={<Pipelines />} />
         </Routes>
       </Layout>

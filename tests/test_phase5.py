@@ -330,57 +330,7 @@ class TestCLI:
         from tracebi.cli import _slugify
         assert _slugify("Open orders by region") == "open_orders_by_region"
         assert _slugify("  Q3 -- 2024 ") == "q3_2024"
-        assert _slugify("!!!") == "request"
-
-    def test_new_request_creates_file(self, tmp_path):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        rc = main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales",
-        ])
-        assert rc == 0
-        created = requests_dir / "weekly_sales.py"
-        assert created.is_file()
-        content = created.read_text()
-        assert "Weekly Sales" in content
-        assert "def run" in content
-
-    def test_new_request_refuses_overwrite(self, tmp_path):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        rc = main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales",
-        ])
-        assert rc == 0
-        rc2 = main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales",
-        ])
-        assert rc2 != 0
-
-    def test_new_request_force_overwrites(self, tmp_path):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales",
-        ])
-        rc = main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales",
-            "--force",
-        ])
-        assert rc == 0
-
-    def test_list_requests_empty(self, tmp_path, capsys):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        requests_dir.mkdir()
-        main(["--requests-dir", str(requests_dir), "list-requests"])
-        captured = capsys.readouterr()
-        assert "No request scripts" in captured.out
+        assert _slugify("!!!") == "report"
 
     # ── run-pipeline ──────────────────────────────────────────────────────
     # The execution plane's entry point: running layers without a web server.
@@ -1337,42 +1287,6 @@ class TestRegistryExtras:
 
 # ── ipynb scaffolding ─────────────────────────────────────────────────────
 
-class TestNotebookScaffold:
-    def test_creates_ipynb_file(self, tmp_path):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        rc = main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales", "--notebook",
-        ])
-        assert rc == 0
-        out = requests_dir / "weekly_sales.ipynb"
-        assert out.is_file()
-
-    def test_ipynb_is_valid_json(self, tmp_path):
-        import json
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales", "--notebook",
-        ])
-        nb = json.loads((requests_dir / "weekly_sales.ipynb").read_text())
-        assert nb["nbformat"] == 4
-        assert any(c["cell_type"] == "code" for c in nb["cells"])
-
-    def test_list_requests_includes_ipynb(self, tmp_path, capsys):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        main([
-            "--requests-dir", str(requests_dir),
-            "new-request", "Weekly Sales", "--notebook",
-        ])
-        main(["--requests-dir", str(requests_dir), "list-requests"])
-        captured = capsys.readouterr()
-        assert "weekly_sales.ipynb" in captured.out
-
-
 # ── Pipeline-level run endpoint ───────────────────────────────────────────
 
 class TestPipelineRunEndpoint:
@@ -1538,72 +1452,6 @@ class TestNotebookToSource:
         assert "z = 42" in src
 
 
-# ── tracebi run with .ipynb ───────────────────────────────────────────────
-
-class TestCliRunNotebook:
-    def _make_nb(self, path, source_lines: list[str]):
-        import json
-        nb = {
-            "nbformat": 4, "nbformat_minor": 5,
-            "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}},
-            "cells": [
-                {"cell_type": "code", "metadata": {}, "execution_count": None,
-                 "outputs": [], "source": source_lines},
-            ],
-        }
-        path.write_text(json.dumps(nb))
-
-    def test_run_ipynb_executes_code(self, tmp_path, capsys):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        requests_dir.mkdir()
-        nb_path = requests_dir / "my_report.ipynb"
-        self._make_nb(nb_path, ["print('notebook ran')\n"])
-        rc = main(["--requests-dir", str(requests_dir), "run", "my_report"])
-        assert rc == 0
-        assert "notebook ran" in capsys.readouterr().out
-
-    def test_run_ipynb_explicit_suffix(self, tmp_path, capsys):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        requests_dir.mkdir()
-        nb_path = requests_dir / "report2.ipynb"
-        self._make_nb(nb_path, ["print('explicit suffix')\n"])
-        rc = main(["--requests-dir", str(requests_dir), "run", "report2.ipynb"])
-        assert rc == 0
-        assert "explicit suffix" in capsys.readouterr().out
-
-    def test_run_prefers_py_over_ipynb(self, tmp_path, capsys):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        requests_dir.mkdir()
-        (requests_dir / "dupe.py").write_text("print('python')\n")
-        self._make_nb(requests_dir / "dupe.ipynb", ["print('notebook')\n"])
-        main(["--requests-dir", str(requests_dir), "run", "dupe"])
-        out = capsys.readouterr().out
-        assert "python" in out
-
-    def test_run_missing_returns_nonzero(self, tmp_path):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        requests_dir.mkdir()
-        rc = main(["--requests-dir", str(requests_dir), "run", "nope"])
-        assert rc != 0
-
-    def test_run_calls_run_function_if_present(self, tmp_path, capsys):
-        from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        requests_dir.mkdir()
-        nb_path = requests_dir / "has_run.ipynb"
-        self._make_nb(nb_path, [
-            "def run():\n",
-            "    print('run called')\n",
-        ])
-        rc = main(["--requests-dir", str(requests_dir), "run", "has_run"])
-        assert rc == 0
-        assert "run called" in capsys.readouterr().out
-
-
 # ── auto_discover with .ipynb ─────────────────────────────────────────────
 
 class TestAutoDiscoverNotebook:
@@ -1652,160 +1500,20 @@ class TestAutoDiscoverNotebook:
         auto_discover(str(tmp_path))  # would raise SyntaxError if magic not stripped
 
 
-# ── Request runner & dev preview ──────────────────────────────────────────
-
-_GOOD_REQUEST = textwrap.dedent("""
-    import pandas as pd
-    from tracebi.model.dataset import DataSet, LineageNode
-    from tracebi.reports.report import Report, TableSection
-
-    ds = DataSet(
-        df=pd.DataFrame({"region": ["N", "S"], "revenue": [10.0, 20.0]}),
-        name="orders",
-        lineage=[LineageNode(operation="load", description="Load orders")],
-    )
-    report = Report("Good Report").add(TableSection(title="Orders", dataset=ds))
-
-    if __name__ == "__main__":
-        raise RuntimeError("main block must not fire during preview")
-""")
-
-
-class TestRequestRunner:
-    def test_finds_report_variable(self, tmp_path):
-        from tracebi._request_runner import execute_request
-        script = tmp_path / "good.py"
-        script.write_text(_GOOD_REQUEST)
-        report = execute_request(script)
-        assert report.name == "Good Report"
-
-    def test_main_block_does_not_fire(self, tmp_path):
-        # _GOOD_REQUEST raises inside __main__ — execute_request must not trip it
-        from tracebi._request_runner import execute_request
-        script = tmp_path / "good.py"
-        script.write_text(_GOOD_REQUEST)
-        execute_request(script)   # no RuntimeError
-
-    def test_finds_report_under_other_name(self, tmp_path):
-        from tracebi._request_runner import execute_request
-        script = tmp_path / "other.py"
-        script.write_text(textwrap.dedent("""
-            from tracebi.reports.report import Report
-            my_summary = Report("Other Name")
-        """))
-        assert execute_request(script).name == "Other Name"
-
-    def test_no_report_raises_lookup_error(self, tmp_path):
-        from tracebi._request_runner import execute_request
-        script = tmp_path / "empty.py"
-        script.write_text("x = 1\n")
-        with pytest.raises(LookupError, match="No Report object"):
-            execute_request(script)
-
-    def test_script_errors_propagate(self, tmp_path):
-        from tracebi._request_runner import execute_request
-        script = tmp_path / "broken.py"
-        script.write_text("raise ValueError('boom')\n")
-        with pytest.raises(ValueError, match="boom"):
-            execute_request(script)
-
-
 class TestDevServer:
-    def test_render_request_returns_report_html(self, tmp_path):
-        from tracebi._dev_server import render_request
-        script = tmp_path / "good.py"
-        script.write_text(_GOOD_REQUEST)
-        html = render_request(script)
-        assert "Good Report" in html
-        assert "<!DOCTYPE html>" in html
-
-    def test_render_request_error_page(self, tmp_path):
-        from tracebi._dev_server import render_request
-        script = tmp_path / "broken.py"
-        script.write_text("raise ValueError('boom')\n")
-        html = render_request(script)
-        assert "Request script failed" in html
-        assert "boom" in html
-        assert "broken.py" in html
-
     def test_inject_refresh(self):
         from tracebi._dev_server import _inject_refresh
         html = _inject_refresh("<html><body>hi</body></html>", 7)
         assert "var current = 7" in html
         assert html.index("hi") < html.index("/__status")
 
-    def test_cli_dev_missing_request(self, tmp_path, capsys):
+    def test_cli_dev_missing_package(self, tmp_path, capsys, monkeypatch):
         from tracebi.cli import main
-        requests_dir = tmp_path / "requests"
-        requests_dir.mkdir()
-        rc = main(["--requests-dir", str(requests_dir), "dev", "nope",
-                   "--no-browser"])
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "reports").mkdir()
+        rc = main(["dev", "nope", "--no-browser"])
         assert rc == 1
         assert "not found" in capsys.readouterr().err
-
-
-class TestRequestsAPI:
-    def _client(self, requests_dir, monkeypatch):
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
-        from tracebi.web.api.routers import requests as requests_router
-        monkeypatch.setenv("TRACEBI_REQUESTS_DIR", str(requests_dir))
-        app = FastAPI()
-        app.include_router(requests_router.router, prefix="/api")
-        return TestClient(app)
-
-    def test_list_requests(self, tmp_path, monkeypatch):
-        (tmp_path / "good.py").write_text(_GOOD_REQUEST)
-        (tmp_path / "_template.py").write_text("x = 1\n")
-        client = self._client(tmp_path, monkeypatch)
-        items = client.get("/api/requests").json()
-        assert [i["name"] for i in items] == ["good"]
-        assert items[0]["type"] == "script"
-        assert items[0]["file"] == "good.py"
-
-    def test_list_missing_dir_returns_empty(self, tmp_path, monkeypatch):
-        client = self._client(tmp_path / "nope", monkeypatch)
-        assert client.get("/api/requests").json() == []
-
-    def test_run_request(self, tmp_path, monkeypatch):
-        (tmp_path / "good.py").write_text(_GOOD_REQUEST)
-        client = self._client(tmp_path, monkeypatch)
-        r = client.post("/api/requests/good/run")
-        assert r.status_code == 200
-        body = r.json()
-        assert "Good Report" in body["html"]
-        assert body["manifest"]["report_name"] == "Good Report"
-
-    def test_run_missing_returns_404(self, tmp_path, monkeypatch):
-        client = self._client(tmp_path, monkeypatch)
-        assert client.post("/api/requests/nope/run").status_code == 404
-
-    def test_run_broken_returns_structured_500(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("TRACEBI_DEV_MODE", "1")   # traceback is dev-only
-        (tmp_path / "broken.py").write_text("raise ValueError('boom')\n")
-        client = self._client(tmp_path, monkeypatch)
-        r = client.post("/api/requests/broken/run")
-        assert r.status_code == 500
-        detail = r.json()["detail"]
-        assert detail["message"].startswith("Request script failed")
-        assert detail["exception_type"] == "ValueError"
-        assert "boom" in detail["traceback"]
-
-    def test_path_traversal_rejected(self, tmp_path, monkeypatch):
-        client = self._client(tmp_path, monkeypatch)
-        # Slash-bearing names never reach the route (Starlette 404s them);
-        # backslash and dot-prefixed names must be rejected by the router.
-        assert client.post("/api/requests/..%5Csecret/run").status_code == 400
-        assert client.post("/api/requests/.hidden/run").status_code == 400
-
-    def test_lineage(self, tmp_path, monkeypatch):
-        (tmp_path / "good.py").write_text(_GOOD_REQUEST)
-        client = self._client(tmp_path, monkeypatch)
-        r = client.get("/api/requests/good/lineage")
-        assert r.status_code == 200
-        body = r.json()
-        assert body["combined_graph"]["nodes"]
-        assert body["sections"][0]["dataset_name"] == "orders"
 
 
 # ─────────────────────────────────────────────
@@ -1964,132 +1672,6 @@ class TestBackgroundReportRuns:
             self._cleanup_report()
 
 
-# ─────────────────────────────────────────────
-# Request parameters (request_params / discovery / API)
-# ─────────────────────────────────────────────
-
-PARAM_SCRIPT = '''
-import pandas as pd
-from tracebi import request_params
-from tracebi.model.dataset import DataSet, LineageNode
-from tracebi.reports import Report, TableSection
-
-params = request_params(period="Q2", top_n=3, strict=False)
-
-df = pd.DataFrame({"v": range(10)}).head(params["top_n"])
-ds = DataSet(df=df, name="t", lineage=[LineageNode(operation="load")])
-report = (
-    Report(f"Params {params['period']}")
-    .parameter("period", params["period"])
-    .add(TableSection(title="T", dataset=ds))
-)
-'''
-
-
-class TestRequestParams:
-
-    def test_defaults_without_overrides(self):
-        from tracebi import request_params
-        assert request_params(a=1, b="x") == {"a": 1, "b": "x"}
-
-    def test_overrides_coerced_to_default_types(self):
-        from tracebi._params import (request_params, reset_param_overrides,
-                                     set_param_overrides)
-        token = set_param_overrides({"n": "5", "ratio": "0.5", "flag": "true"})
-        try:
-            out = request_params(n=1, ratio=1.0, flag=False, label="x")
-            assert out == {"n": 5, "ratio": 0.5, "flag": True, "label": "x"}
-        finally:
-            reset_param_overrides(token)
-
-    def test_unknown_override_raises(self):
-        from tracebi._params import (request_params, reset_param_overrides,
-                                     set_param_overrides)
-        token = set_param_overrides({"nope": "1"})
-        try:
-            with pytest.raises(ValueError, match="Unknown request parameter"):
-                request_params(a=1)
-        finally:
-            reset_param_overrides(token)
-
-    def test_bad_coercion_raises(self):
-        from tracebi._params import (request_params, reset_param_overrides,
-                                     set_param_overrides)
-        token = set_param_overrides({"n": "not-a-number"})
-        try:
-            with pytest.raises(ValueError, match="Parameter 'n'"):
-                request_params(n=1)
-        finally:
-            reset_param_overrides(token)
-
-    def test_discover_params_static(self, tmp_path):
-        from tracebi._params import discover_params
-        script = tmp_path / "r.py"
-        script.write_text(PARAM_SCRIPT, encoding="utf-8")
-        found = {p["name"]: p for p in discover_params(script)}
-        assert found["period"] == {"name": "period", "default": "Q2", "type": "str"}
-        assert found["top_n"]["type"] == "int"
-        assert found["strict"]["default"] is False
-
-    def test_discover_params_none_declared(self, tmp_path):
-        from tracebi._params import discover_params
-        script = tmp_path / "r.py"
-        script.write_text("x = 1\n", encoding="utf-8")
-        assert discover_params(script) == []
-
-    def test_execute_request_with_overrides(self, tmp_path):
-        from tracebi._request_runner import execute_request
-        script = tmp_path / "r.py"
-        script.write_text(PARAM_SCRIPT, encoding="utf-8")
-        report = execute_request(script, params={"period": "Q4", "top_n": "7"})
-        assert report.name == "Params Q4"
-        section = report.data_sections()[0]
-        assert len(section.dataset) == 7
-
-
-class TestRequestParamsAPI:
-
-    @pytest.fixture
-    def client(self, tmp_path, monkeypatch):
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
-        from tracebi.web.api.routers import requests as requests_router
-
-        (tmp_path / "param_req.py").write_text(PARAM_SCRIPT, encoding="utf-8")
-        monkeypatch.setenv("TRACEBI_REQUESTS_DIR", str(tmp_path))
-        app = FastAPI()
-        app.include_router(requests_router.router, prefix="/api")
-        return TestClient(app)
-
-    def test_params_endpoint_lists_declared(self, client):
-        r = client.get("/api/requests/param_req/params")
-        assert r.status_code == 200
-        names = [p["name"] for p in r.json()["params"]]
-        assert names == ["period", "top_n", "strict"]
-
-    def test_run_with_param_overrides(self, client):
-        r = client.post("/api/requests/param_req/run",
-                        json={"params": {"period": "Q4", "top_n": 2}})
-        assert r.status_code == 200
-        body = r.json()
-        assert "Params Q4" in body["html"]
-        assert body["params"] == {"period": "Q4", "top_n": 2}
-
-    def test_run_unknown_param_is_structured_500(self, client):
-        r = client.post("/api/requests/param_req/run",
-                        json={"params": {"bogus": 1}})
-        assert r.status_code == 500
-        assert "Unknown request parameter" in r.json()["detail"]["message"]
-
-    def test_lineage_accepts_params_json(self, client):
-        r = client.get('/api/requests/param_req/lineage?params_json={"top_n":2}')
-        assert r.status_code == 200
-        assert r.json()["combined_graph"]["nodes"]
-
-    def test_lineage_bad_params_json_400(self, client):
-        r = client.get("/api/requests/param_req/lineage?params_json=notjson")
-        assert r.status_code == 400
-
 
 # ─────────────────────────────────────────────
 # Docs guide endpoints
@@ -2122,7 +1704,7 @@ class TestDocsEndpoints:
         body = r.json()
         assert body["name"] == "analyst-guide"
         assert body["title"] == "TraceBi Analyst Guide"
-        assert "tracebi new-request" in body["content"]
+        assert "TraceBi" in body["content"]
 
     def test_unknown_guide_404(self, client):
         assert client.get("/api/docs/nope").status_code == 404
@@ -2773,7 +2355,7 @@ class TestHomepageNeverSilently404s:
             "sys.path.insert(0, tmp)\n"
             "os.environ['TRACEBI_APP'] = ''\n"
             "for v in ('TRACEBI_MODELS_DIR', 'TRACEBI_PIPELINES_DIR', 'TRACEBI_REPORTS_DIR',\n"
-            "          'TRACEBI_REQUESTS_DIR', 'TRACEBI_SCHEDULED_DIR'):\n"
+            "          'TRACEBI_SCHEDULED_DIR'):\n"
             "    os.environ[v] = os.path.join(tmp, 'absent')\n"
             "from tracebi.web.api.main import app\n"
             "from fastapi.testclient import TestClient\n"
@@ -3037,7 +2619,8 @@ class TestAuthorization:
     def test_executing_report_code_requires_analyst(self):
         from tracebi.web.api.auth import _required_role
         assert _required_role("POST", "/api/reports/x/run") == "analyst"
-        assert _required_role("POST", "/api/requests/x/run") == "analyst"
+        # Any unlisted non-GET route falls through to analyst by default.
+        assert _required_role("POST", "/api/unlisted/x/run") == "analyst"
 
     def test_writing_to_the_warehouse_requires_admin(self):
         from tracebi.web.api.auth import _required_role

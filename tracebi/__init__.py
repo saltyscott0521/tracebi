@@ -37,7 +37,6 @@ from tracebi.contracts import ContractViolation, contract
 from tracebi.registry import Registry
 from tracebi.spec import DataRef, ReportSpec
 from tracebi.web.register import register
-from tracebi._params import request_params
 
 __all__ = [
     # Connectors
@@ -65,8 +64,6 @@ __all__ = [
     # Visualisation & orchestration
     "LineageDiagram",
     "PipelineRunner",
-    # Request scripts
-    "request_params",
     # Project registry + registration facade
     # (the singleton is `from tracebi.registry import registry`)
     "Registry",

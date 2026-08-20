@@ -49,10 +49,6 @@ def _scaffold_text(name: str) -> str:
     return files("tracebi").joinpath("_scaffold", name).read_text(encoding="utf-8")
 
 
-def _default_requests_dir() -> Path:
-    return Path(os.environ.get("TRACEBI_REQUESTS_DIR", "requests"))
-
-
 def _default_models_dir() -> Path:
     return Path(os.environ.get("TRACEBI_MODELS_DIR", "models"))
 
@@ -74,196 +70,7 @@ def _slugify(title: str) -> str:
     s = title.strip().lower()
     s = re.sub(r"[^a-z0-9]+", "_", s)
     s = re.sub(r"_+", "_", s).strip("_")
-    return s or "request"
-
-
-def _template_text(title: str) -> str:
-    today = date.today().isoformat()
-    slug = _slugify(title)
-    return f'''"""
-{title}
-{'=' * len(title)}
-
-Scaffolded by ``tracebi new-request`` on {today}.
-Fill in the four sections below, then run with:
-
-    python requests/{slug}.py
-"""
-
-import os
-from tracebi import request_params
-from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
-from tracebi.reports.excel_renderer import ExcelRenderer
-from tracebi.reports.html_renderer import HTMLRenderer
-
-# ── 0. Parameters ───────────────────────────────────────────────────────────
-# Override at run time:  tracebi run {slug} --param period="Q3 2024"
-# The web UI's Requests page renders a form from these defaults.
-params = request_params(period="Q2 2024")
-
-# Use a model from models/ if one is defined, or build your own below.
-# List available models: tracebi list-models
-# Create a new model:    tracebi new-model "My Model"
-try:
-    from tracebi.model_registry import get_default_model
-    model = get_default_model()
-except KeyError:
-    model = None
-
-if model is None:
-    from tracebi import DataModel  # noqa: F401
-    # model = DataModel("MyModel")
-    # model.add_connector(...)
-    # model.add_table("orders", connector="...", source="...")
-    pass
-
-
-# ── 1. Build DataSets ───────────────────────────────────────────────────────
-# Every verb returns a new DataSet and records a lineage step. Run
-# ds.help() for the full cheat sheet, or see docs/analyst-guide.md.
-#
-# orders = (
-#     model.load("orders", filter={{"status": "shipped"}})
-#     .deduplicate(subset="order_id")
-#     .dropna(subset="region")
-#     .assign(margin=lambda df: df.revenue - df.cost)
-#     .sort("margin", ascending=False)
-# )
-
-
-# ── 2. Build Report ─────────────────────────────────────────────────────────
-report = (
-    Report("{title}")
-    .author("Your Name")
-    .description("Short description of this report.")
-    .add(TextSection(title="Summary", style="heading1"))
-    .add(TextSection(content="Write your narrative here."))
-)
-
-
-# ── 3. Render ───────────────────────────────────────────────────────────────
-
-def run():
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "output")
-    os.makedirs(output_dir, exist_ok=True)
-    base = os.path.join(output_dir, "{slug}")
-    ExcelRenderer().render(report, base + ".xlsx")
-    HTMLRenderer.for_project().render(report, base + ".html")
-    print(f"Saved: {{base}}.xlsx / .html")
-
-
-# ── 4. Publish to the project registry ─────────────────────────────────────
-# Makes this report available to `tracebi run`, the web UI, and any other
-# consumer. Harmless when nothing is listening.
-from tracebi import register
-
-
-@register.report("{slug}", description="Short description of this report.")
-def _factory():
-    return report
-
-
-if __name__ == "__main__":
-    run()
-'''
-
-
-def _notebook_text(title: str) -> str:
-    slug = _slugify(title)
-    today = date.today().isoformat()
-    nb = {
-        "nbformat": 4,
-        "nbformat_minor": 5,
-        "metadata": {
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language":     "python",
-                "name":         "python3",
-            },
-        },
-        "cells": [
-            {
-                "cell_type": "markdown",
-                "metadata":  {},
-                "source": [
-                    f"# {title}\n",
-                    f"\n",
-                    f"_Scaffolded by `tracebi new-request --notebook` on {today}._\n",
-                ],
-            },
-            {
-                "cell_type": "code",
-                "metadata":  {},
-                "execution_count": None,
-                "outputs":   [],
-                "source": [
-                    "from tracebi import request_params\n",
-                    "from tracebi.reports.report import Report, TextSection, TableSection, ChartSection\n",
-                    "from tracebi.reports.html_renderer import HTMLRenderer\n",
-                    "\n",
-                    "# Declare defaults; override via tracebi run --param or the web UI form\n",
-                    "params = request_params(period=\"Q2 2024\")\n",
-                    "\n",
-                    "# Pull the shared project model (registry, then models/ on disk)\n",
-                    "from tracebi import register\n",
-                    "\n",
-                    "model = register.get_default_model()\n",
-                ],
-            },
-            {
-                "cell_type": "code",
-                "metadata":  {},
-                "execution_count": None,
-                "outputs":   [],
-                "source": [
-                    "# Build DataSets with model.load(...) — every step adds a lineage node.\n",
-                    "# Run ds.help() for the full verb cheat sheet.\n",
-                    "# orders = (\n",
-                    "#     model.load(\"orders\", filter={\"status\": \"shipped\"})\n",
-                    "#     .deduplicate(subset=\"order_id\")\n",
-                    "#     .assign(margin=lambda df: df.revenue - df.cost)\n",
-                    "# )\n",
-                ],
-            },
-            {
-                "cell_type": "code",
-                "metadata":  {},
-                "execution_count": None,
-                "outputs":   [],
-                "source": [
-                    f'report = (\n',
-                    f'    Report("{title}")\n',
-                    '    .author("Your Name")\n',
-                    '    .add(TextSection(title="Summary", style="heading1"))\n',
-                    '    .add(TextSection(content="Write your narrative here."))\n',
-                    ')\n',
-                    'HTMLRenderer().preview(report)\n',
-                ],
-            },
-            {
-                "cell_type": "markdown",
-                "metadata":  {},
-                "source": [
-                    "## Expose to the web UI\n",
-                    "\n",
-                    "Uncomment to register this report so the running server picks it up via `tracebi.web.register`.\n",
-                ],
-            },
-            {
-                "cell_type": "code",
-                "metadata":  {},
-                "execution_count": None,
-                "outputs":   [],
-                "source": [
-                    "# from tracebi import register\n",
-                    f"# @register.report(\"{slug}\", description=\"...\")\n",
-                    "# def _factory():\n",
-                    "#     return report\n",
-                ],
-            },
-        ],
-    }
-    return json.dumps(nb, indent=1) + "\n"
+    return s or "report"
 
 
 def _model_template_text(title: str) -> str:
@@ -611,9 +418,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     # plus every directory the server auto-discovers at startup. The scaffold
     # is a complete working example — the first thing a new user runs ends
     # with `tracebi verify` reading REPRODUCES.
-    # No requests/ — the scratchpad lane is deprecated (removed in 0.8); the
-    # exploration story is the artifact's own: `tracebi dev` + exploration
-    # blocks that die at build (architecture v2 §7).
+    # No requests/ — the exploration story is the artifact's own:
+    # `tracebi dev` + exploration blocks that die at build (architecture v2 §7).
     for d in ("inputs", "transforms", "models", "pipelines", "reports",
               "scheduled", "data", "output"):
         (target / d).mkdir(parents=True, exist_ok=True)
@@ -796,13 +602,13 @@ def cmd_serve(args: argparse.Namespace) -> int:
     cwd = Path.cwd()
     discovered = {
         d: len([p for p in (cwd / d).glob("*.py") if not p.name.startswith("_")])
-        for d in ("models", "pipelines", "reports", "requests")
+        for d in ("models", "pipelines", "reports")
         if (cwd / d).is_dir()
     }
     if not discovered:
         print(
             f"No TraceBi project found in {cwd}.\n"
-            f"Expected at least one of: models/ pipelines/ reports/ requests/\n"
+            f"Expected at least one of: models/ pipelines/ reports/\n"
             f"Run `tracebi init .` to scaffold one, or cd to a project root.",
             file=sys.stderr,
         )
@@ -858,127 +664,24 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_new_request(args: argparse.Namespace) -> int:
-    print(_REQUESTS_DEPRECATION, file=sys.stderr)
-    requests_dir: Path = args.requests_dir
-    requests_dir.mkdir(parents=True, exist_ok=True)
-
-    slug = _slugify(args.title)
-    suffix = ".ipynb" if args.notebook else ".py"
-    out_path = requests_dir / f"{slug}{suffix}"
-    if out_path.exists() and not args.force:
-        print(f"refusing to overwrite existing {out_path}; pass --force to replace",
-              file=sys.stderr)
-        return 1
-
-    if args.notebook:
-        out_path.write_text(_notebook_text(args.title), encoding="utf-8")
-    else:
-        out_path.write_text(_template_text(args.title), encoding="utf-8")
-    print(f"Created {out_path}")
-    return 0
-
-
-def cmd_list_requests(args: argparse.Namespace) -> int:
-    requests_dir: Path = args.requests_dir
-    if not requests_dir.is_dir():
-        print(f"No requests directory at {requests_dir}")
-        return 0
-    files = sorted(
-        p for p in list(requests_dir.glob("*.py")) + list(requests_dir.glob("*.ipynb"))
-        if not p.name.startswith("_")
-    )
-    if not files:
-        print(f"No request scripts found in {requests_dir}")
-        return 0
-    for p in files:
-        print(p.relative_to(requests_dir.parent))
-    return 0
-
-
-def cmd_run(args: argparse.Namespace) -> int:
-    requests_dir: Path = args.requests_dir
-    name = args.name
-    path = _resolve_request_path(requests_dir, name)
-    if path is None:
-        print(f"Request not found in {requests_dir}: {name}", file=sys.stderr)
-        return 1
-    print(_REQUESTS_DEPRECATION, file=sys.stderr)
-
-    overrides: dict = {}
-    for item in args.param or []:
-        if "=" not in item:
-            print(f"--param expects key=value, got: {item}", file=sys.stderr)
-            return 1
-        key, _, value = item.partition("=")
-        overrides[key.strip()] = value
-
-    from tracebi._params import reset_param_overrides, set_param_overrides
-
-    print(f"Running {path}…")
-    token = set_param_overrides(overrides or None)
-    try:
-        if path.suffix == ".ipynb":
-            from tracebi._notebook import notebook_to_source
-            source = notebook_to_source(path)
-            ns: dict = {"__name__": "__main__", "__file__": str(path)}
-            exec(compile(source, str(path), "exec"), ns)
-            if callable(ns.get("run")):
-                ns["run"]()
-        else:
-            runpy.run_path(str(path), run_name="__main__")
-    finally:
-        reset_param_overrides(token)
-    return 0
-
-
 def cmd_dev(args: argparse.Namespace) -> int:
-    # Form-aware (v2 §2.5): an artifact package under reports/ gets the
-    # artifact-native loop with the workbench; a request script keeps the
-    # legacy single-file loop (deprecated, removed in 0.8). No name at all
-    # is DISCOVERY MODE — no report anchored, the project-level workbench
-    # (warehouse, models, packages, exhibit feed) for phases ① and ②.
+    # An artifact package under reports/ gets the artifact-native live loop with
+    # the workbench. No name at all is DISCOVERY MODE — no report anchored, the
+    # project-level workbench (warehouse, models, packages, exhibit feed) for
+    # phases ① and ②.
+    from tracebi._dev_server import serve_dev
     if args.name is None:
-        from tracebi._dev_server import serve_dev
         return serve_dev(None, port=args.port,
                          open_browser=not args.no_browser)
     pkg_dir = _default_reports_dir() / args.name
     if (pkg_dir / "report.json").is_file() and \
             (pkg_dir / "template.html").is_file():
-        from tracebi._dev_server import serve_dev
         return serve_dev(pkg_dir, port=args.port,
                          open_browser=not args.no_browser)
-    path = _resolve_request_path(args.requests_dir, args.name)
-    if path is None:
-        print(f"Report not found: {args.name}. Looked for a package at "
-              f"{pkg_dir} and a request script in {args.requests_dir}.",
-              file=sys.stderr)
-        return 1
-    print(_REQUESTS_DEPRECATION, file=sys.stderr)
-    from tracebi._dev_server import serve_dev
-    return serve_dev(path, port=args.port, open_browser=not args.no_browser)
-
-
-#: One sentence, everywhere the deprecated lane is touched — the CLI runner,
-#: the dev server's script branch, and the requests router say the same thing.
-_REQUESTS_DEPRECATION = (
-    "[tracebi] requests/ is deprecated and will be removed in 0.8. The one "
-    "report lane is the artifact package: `tracebi new-report`, then "
-    "`tracebi dev <name>` for the live loop — exploration blocks die at "
-    "build, and every figure earns its receipt."
-)
-
-
-def _resolve_request_path(requests_dir: Path, name: str) -> Optional[Path]:
-    """Find a request file by name, trying .py then .ipynb if no suffix given."""
-    candidate = requests_dir / name
-    if candidate.is_file():
-        return candidate
-    for suffix in (".py", ".ipynb"):
-        cand = requests_dir / f"{name}{suffix}"
-        if cand.is_file():
-            return cand
-    return None
+    print(f"Report package not found: {args.name}. Expected a package at "
+          f"{pkg_dir} (report.json + template.html). Scaffold one with "
+          f"`tracebi new-report`.", file=sys.stderr)
+    return 1
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -995,24 +698,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
     warnings: list[str] = []
     ok: list[str] = []
 
-    requests_dir = args.requests_dir
-    # requests/ is the deprecated lane (removed in 0.8): its ABSENCE is the
-    # expected state and says nothing. Only report it when it still exists.
-    if requests_dir.is_dir():
-        scripts = [p for p in requests_dir.glob("*.py") if not p.name.startswith("_")]
-        nbs = list(requests_dir.glob("*.ipynb"))
-        warnings.append(
-            f"· requests/ contains {len(scripts) + len(nbs)} script(s) — "
-            f"the lane is deprecated (removed in 0.8); migrate to artifact "
-            f"packages under reports/"
-        )
-
     # ── Import every discoverable artifact and report what failed ────────
     # A file that raises on import is skipped at startup with only a
     # warning, so this is where it becomes visible.
     from tracebi.web.discovery import auto_discover, discovery_report
 
-    for label in ("reports", "requests", "scheduled"):
+    for label in ("reports", "scheduled"):
         d = cwd / label
         if d.is_dir():
             auto_discover(str(d))
@@ -2111,12 +1802,6 @@ def build_parser() -> argparse.ArgumentParser:
         version=f"tracebi {_tracebi_version()}",
     )
     parser.add_argument(
-        "--requests-dir",
-        type=Path,
-        default=_default_requests_dir(),
-        help="Directory holding request scripts (default: ./requests).",
-    )
-    parser.add_argument(
         "--models-dir",
         type=Path,
         default=_default_models_dir(),
@@ -2140,36 +1825,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_init.add_argument("--force", action="store_true",
                         help="Overwrite existing files.")
     p_init.set_defaults(func=cmd_init)
-
-    p_new = sub.add_parser(
-        "new-request",
-        help="Scaffold a new request script. DEPRECATED (removed in 0.8): "
-             "use `tracebi new-report` — the artifact package is the one "
-             "report lane.",
-    )
-    p_new.add_argument("title", help='Free-form title, e.g. "Open orders by region".')
-    p_new.add_argument("--force", action="store_true", help="Overwrite if exists.")
-    p_new.add_argument(
-        "--notebook", action="store_true",
-        help="Scaffold a Jupyter notebook (.ipynb) instead of a .py script.",
-    )
-    p_new.set_defaults(func=cmd_new_request)
-
-    p_list = sub.add_parser("list-requests", help="List request scripts.")
-    p_list.set_defaults(func=cmd_list_requests)
-
-    p_run = sub.add_parser(
-        "run",
-        help="Run a request script (.py or .ipynb). DEPRECATED (removed in "
-             "0.8) with the requests/ lane it runs.",
-    )
-    p_run.add_argument("name", help="Request file name (suffix optional; tries .py then .ipynb).")
-    p_run.add_argument(
-        "--param", action="append", metavar="KEY=VALUE",
-        help="Override a request_params() default (repeatable), "
-             "e.g. --param period=2026-Q1",
-    )
-    p_run.set_defaults(func=cmd_run)
 
     p_spec = sub.add_parser(
         "spec",
@@ -2204,8 +1859,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_serve = sub.add_parser(
         "serve",
-        help="Serve this project's web UI (models, reports, pipelines, "
-             "requests) at http://127.0.0.1:8000.",
+        help="Serve this project's web UI (models, reports, pipelines) "
+             "at http://127.0.0.1:8000.",
     )
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8000)
@@ -2220,12 +1875,10 @@ def build_parser() -> argparse.ArgumentParser:
              "the workbench at /__workbench; with no name, DISCOVERY MODE "
              "serves the project-level workbench (warehouse tables, sink "
              "contracts, models, packages, exhibit feed) — the live surface "
-             "before any report exists; a request script keeps the legacy "
-             "single-file loop (deprecated; removed in 0.8).",
+             "before any report exists.",
     )
     p_dev.add_argument("name", nargs="?",
-                       help="Package name under reports/, or a request file "
-                            "name (suffix optional). Omit for discovery "
+                       help="Package name under reports/. Omit for discovery "
                             "mode: the project-level workbench.")
     p_dev.add_argument("--port", type=int, default=8001,
                        help="Port for the preview server (default 8001).")

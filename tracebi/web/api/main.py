@@ -13,7 +13,6 @@ artifacts outside of the app module package:
     models/       DataModel definitions (each file exposes a ``model`` variable)
     pipelines/    PipelineRunner definitions (each file exposes a ``runner`` variable)
     reports/      Named report factories (use @register.report() decorator)
-    requests/     Ad-hoc report scripts with request_params() and run()
     scheduled/    Scheduled report scripts
 
 Environment switches:
@@ -22,7 +21,6 @@ Environment switches:
     TRACEBI_MODELS_DIR          — model definitions folder (default: models)
     TRACEBI_PIPELINES_DIR       — pipeline definitions folder (default: pipelines)
     TRACEBI_REPORTS_DIR         — reports folder: specs, packages, factories (default: reports)
-    TRACEBI_REQUESTS_DIR        — request scripts folder (default: requests)
     TRACEBI_SCHEDULED_DIR       — scheduled scripts folder (default: scheduled)
     TRACEBI_DEV_MODE=1          — mount /_dev/reload
     TRACEBI_AUTH_USER / _PASS   — enable HTTP Basic auth
@@ -39,7 +37,7 @@ from fastapi.staticfiles import StaticFiles
 
 from tracebi.web.api.errors import error_detail
 
-from tracebi.web.api.routers import connectors, models, reports, pipelines, requests, docs
+from tracebi.web.api.routers import connectors, models, reports, pipelines, docs
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
 from tracebi.web.api.csrf import allowed_origins as _allowed_origins
@@ -81,7 +79,6 @@ else:
 app.include_router(connectors.router, prefix="/api")
 app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")
-app.include_router(requests.router,   prefix="/api")
 app.include_router(pipelines.router,  prefix="/api")
 app.include_router(docs.router,       prefix="/api")
 
@@ -206,7 +203,7 @@ def schema():
 
 # An app module wires up connectors, which cannot be
 # expressed as a file convention. The default is no app module: a project
-# that only uses the models/ pipelines/ reports/ requests/ directories needs
+# that only uses the models/ pipelines/ reports/ directories needs
 # none, and a serve should show *your* project, not the bundled demo. Opt
 # into the demo explicitly with TRACEBI_APP=tracebi.web.demo_app (it is
 # self-contained and runs from any working directory).
@@ -242,9 +239,8 @@ if _app_module:
         )
 
 # Folder-based auto-discovery — decorator-based artifacts fire registry side
-# effects on import (reports use @register.report, requests expose run()).
+# effects on import (reports use @register.report).
 for _env, _default in (
-    ("TRACEBI_REQUESTS_DIR",   "requests"),
     ("TRACEBI_SCHEDULED_DIR",  "scheduled"),
     ("TRACEBI_REPORTS_DIR",    "reports"),
 ):

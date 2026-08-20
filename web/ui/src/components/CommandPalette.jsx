@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useModels, useReports, useRequests, usePipelines } from '../api'
+import { useModels, useReports, usePipelines } from '../api'
 
 // Static page destinations — always available, even before data loads.
 const PAGES = [
@@ -10,7 +10,6 @@ const PAGES = [
   { label: 'Models',          path: '/models',          kind: 'page' },
   { label: 'Explore',         path: '/explore',         kind: 'page' },
   { label: 'Reports',         path: '/reports',         kind: 'page' },
-  { label: 'Requests',        path: '/requests',        kind: 'page' },
   { label: 'Pipelines',       path: '/pipelines',       kind: 'page' },
 ]
 
@@ -18,7 +17,6 @@ const KIND_META = {
   page:      { tag: 'Page',      color: '#64748b' },
   model:     { tag: 'Model',     color: '#7c3aed' },
   report:    { tag: 'Report',    color: '#db2777' },
-  request:   { tag: 'Request',   color: '#6d28d9' },
   pipeline:  { tag: 'Pipeline',  color: '#d97706' },
 }
 
@@ -31,16 +29,14 @@ export default function CommandPalette() {
 
   const { data: models }     = useModels()
   const { data: reports }    = useReports()
-  const { data: requests }   = useRequests()
   const { data: pipelines }  = usePipelines()
 
   const items = useMemo(() => [
     ...PAGES,
     ...(models     || []).map(m => ({ label: m.name,     path: '/models',     kind: 'model',     sub: `${m.tables.length} tables` })),
     ...(reports    || []).map(r => ({ label: r.name,     path: '/reports',    kind: 'report',    sub: r.description })),
-    ...(requests   || []).map(r => ({ label: r.name,     path: '/requests',   kind: 'request',   sub: r.type })),
     ...(pipelines  || []).map(p => ({ label: p.pipeline, path: '/pipelines',  kind: 'pipeline',  sub: `${(p.layers || []).length} layers` })),
-  ], [models, reports, requests, pipelines])
+  ], [models, reports, pipelines])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()

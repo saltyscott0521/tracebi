@@ -227,8 +227,6 @@ export default function Home() {
               desc="Browse DataModel tables, preview rows, inspect relationships, and view the ER diagram." />
             <NavCard href="/reports"  title="Reports"   icon={I.doc}     color="#db2777" badge={nRep || undefined}
               desc="Run registered reports and download the self-contained HTML artifact — every figure a live query, with an embedded, verifiable receipt." />
-            <NavCard href="/requests" title="Requests"  icon={I.code}    color="#6d28d9"
-              desc="Execute ad-hoc Python scripts with custom parameters and live lineage graphs." />
           </div>
 
           <SH title="Recent pipeline activity" action={{ href: '/pipelines', label: 'View all' }} />
