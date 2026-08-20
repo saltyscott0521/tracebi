@@ -131,6 +131,14 @@ def _ssr_format(raw, name: str) -> str:
     return str(raw)                    # unknown name: applyNamedFormat -> raw
 
 
+def _ssr_cell(raw) -> str:
+    """A table cell's unformatted text — the runtime shows the raw value for a
+    non-numeric or unformatted (identity) column."""
+    if raw is None or (isinstance(raw, float) and math.isnan(raw)):
+        return ""
+    return str(raw)
+
+
 class _PythonDerivedSection(TableSection):
     """A carrier section for a ``report.py`` output (architecture §4).
 
@@ -442,6 +450,10 @@ class TemplatePackage:
                 text = self._ssr_value(ds, fig)
                 if text is not None:
                     content[fig.id] = _html.escape(text)
+            elif fig.kind == "table":
+                markup = self._ssr_table(ds, fig)
+                if markup is not None:
+                    content[fig.id] = markup
         return content
 
     @staticmethod
@@ -462,6 +474,47 @@ class TemplatePackage:
         if raw is None or raw == "" or (isinstance(raw, float) and pd.isna(raw)):
             return None
         return _ssr_format(raw, fig.attrs.get("data-tb-format") or "")
+
+    @staticmethod
+    def _ssr_table(ds, fig):
+        """Server-rendered ``<thead>`` + ``<tbody data-tb-hydrate>`` for a table
+        figure, matching the runtime's hydrateTables/renderBody: numeric columns
+        (pandas number dtype) get ``tb-num`` and the shape-derived format
+        (derive_number_formats, the very logic tracebi.js deriveFormat ports);
+        cells format through _ssr_format (== applyNamedFormat). The
+        ``data-tb-hydrate`` marker tells the runtime to re-render over these rows
+        (its renderBody clears the tbody first, so no duplication) and thereby
+        re-register the table for filter/search.
+        """
+        import html as _html
+        from tracebi.reports.derive import derive_number_formats, humanise
+        df = ds.to_pandas()
+        cols = [str(c) for c in df.columns]
+        allow = fig.attrs.get("data-tb-columns")
+        if allow:
+            cols = [c.strip() for c in allow.split(",") if c.strip() in cols]
+        if not cols:
+            return None
+        numeric = {str(c) for c in df.select_dtypes(include="number").columns}
+        formats = derive_number_formats(df)      # dataset=None: shape-only == JS
+        head = []
+        for c in cols:
+            cls = ' class="tb-num"' if c in numeric else ""
+            head.append(f"<th{cls}>{_html.escape(humanise(c))}</th>")
+        body = []
+        for _, row in df.iterrows():
+            cells = []
+            for c in cols:
+                raw = row[c]
+                if c in numeric:
+                    fmt = formats.get(c)
+                    text = _ssr_format(raw, fmt) if fmt else _ssr_cell(raw)
+                    cells.append(f'<td class="tb-num">{_html.escape(text)}</td>')
+                else:
+                    cells.append(f"<td>{_html.escape(_ssr_cell(raw))}</td>")
+            body.append("<tr>" + "".join(cells) + "</tr>")
+        return ("<thead><tr>" + "".join(head) + "</tr></thead>"
+                "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>")
 
     def _validate_figures(
         self,

@@ -612,8 +612,13 @@
     figureEls("table").forEach(function (el) {
       try {
         if (el.tagName !== "TABLE") return;
-        /* An author-rendered table is left alone (and never reactive). */
-        if (el.querySelector("tbody tr")) return;
+        /* An author-rendered table is left alone (and never reactive). A
+         * build-filled one (SSR) carries <tbody data-tb-hydrate>: fall through
+         * so it re-registers and stays reactive — renderBody clears the tbody
+         * before rebuilding, so hydrating over the server rows never doubles
+         * them. */
+        if (el.querySelector("tbody tr") &&
+            !el.querySelector("tbody[data-tb-hydrate]")) return;
         var binding = attr(el, "data-tb-binding");
         var block = readBlock(binding);
         if (!block || !block.rows.length) return;

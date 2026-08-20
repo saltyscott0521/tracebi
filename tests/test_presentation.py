@@ -255,3 +255,50 @@ class TestServerSideRender:
         # SSR fills presentation, never the <script> data blocks; verify --file
         # rehashes those, so an INTACT verdict proves no fingerprint moved.
         assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
+
+    def _render_table(self, tmp_path):
+        from tracebi.reports.compile_spec import compile_spec
+        from tracebi.spec import ReportSpec
+        model = DataModel("ssr_t").add_connector(MemoryConnector("m", tables={
+            "orders": pd.DataFrame({"order_id": [1, 2, 3, 4],
+                                    "customer_id": [1, 1, 2, 2],
+                                    "revenue": [100.0, 200.5, 50.0, 150.0]}),
+            "customers": pd.DataFrame({"customer_id": [1, 2],
+                                       "region": ["NE", "SE"]})}))
+        model.add_table("orders", connector="m", source="orders")
+        model.add_table("customers", connector="m", source="customers")
+        model.add_dimension("dim_customer", table_name="customers",
+                            key_col="customer_id", attributes=["region"])
+        model.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                       foreign_keys={"dim_customer": "customer_id"})
+        model.add_measure("revenue", column="revenue", agg="sum")
+        model.connect()
+        spec = ReportSpec.from_dict({"name": "T", "sections": [
+            {"type": "table", "title": "By region",
+             "data": {"model": "ssr_t", "query": {"fact": "fact_orders",
+                      "measures": ["revenue"], "dimensions": ["dim_customer.region"]}}}]})
+        compiled = compile_spec(spec)
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        for fn, content in compiled.files.items():
+            (pkg / fn).write_text(content, encoding="utf-8")
+        out = tmp_path / "o.html"
+        manifest = TemplatePackage(str(pkg)).render({"ssr_t": model}, str(out))
+        return out.read_text(encoding="utf-8"), manifest
+
+    def test_table_rows_are_in_the_raw_html_without_js(self, tmp_path):
+        import re
+        html, _ = self._render_table(tmp_path)
+        m = re.search(r"<tbody data-tb-hydrate>(.*?)</tbody>", html, re.S)
+        assert m, "the table figure must carry a server-rendered tbody"
+        body = m.group(1)
+        # both dimension groups + their column-derived decimal totals, no JS
+        assert "<td>NE</td>" in body and '<td class="tb-num">300.50</td>' in body
+        assert "<td>SE</td>" in body and '<td class="tb-num">200.00</td>' in body
+        assert body.count("<tr>") == 2                 # one row per group, no dup
+        assert '<th class="tb-num">Revenue</th>' in html   # humanised numeric header
+
+    def test_table_ssr_leaves_the_embedded_data_intact(self, tmp_path):
+        from tracebi.verify import verify_file, FILE_INTACT
+        html, manifest = self._render_table(tmp_path)
+        assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
