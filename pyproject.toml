@@ -68,7 +68,7 @@ pdf       = ["weasyprint>=57"]  # enables HTMLRenderer.render_pdf(); no standalo
 lineage   = ["networkx>=3.0", "matplotlib>=3.5"]
 medallion = ["networkx>=3.0"]
 pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
-web       = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.0", "python-multipart>=0.0.6"]
+web       = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.1.6", "python-multipart>=0.0.6"]
 mcp       = ["mcp>=2.0"]  # the agent gateway — `tracebi mcp`
 
 # Convenience bundles
@@ -97,7 +97,7 @@ all = [
     "fastapi>=0.100",
     "uvicorn>=0.23",
     "starlette>=0.27",
-    "jinja2>=3.0",
+    "jinja2>=3.1.6",
     "python-multipart>=0.0.6",
     "python-dotenv>=1.0",
     "mcp>=2.0",
@@ -121,7 +121,7 @@ dev = [
     "fastapi>=0.100",
     "uvicorn>=0.23",
     "starlette>=0.27",
-    "jinja2>=3.0",
+    "jinja2>=3.1.6",
     "python-multipart>=0.0.6",
     # NOT a typo for httpx: starlette >=1.x TestClient prefers `import httpx2`
     # (the Pydantic-maintained httpx successor) and falls back to httpx.
