@@ -5,13 +5,11 @@ development flow for ad-hoc reports as **artifact packages** — from blank
 scaffold to a built, verified, fully-traceable artifact. Every code block is
 runnable.
 
-> **Deprecated: the `requests/` script lane.** Earlier versions of this
-> guide centered on request scripts. That lane is **deprecated and removed
-> in 0.8** — `tracebi init` no longer scaffolds `requests/`, and
-> `tracebi new-request` / `tracebi run` print a deprecation warning. The one
-> report lane is the **artifact package** (`reports/<name>/`), covered
-> below. The request-script walkthrough is kept for projects still on the
-> lane through 0.7 and is clearly marked **legacy**.
+> **The `requests/` script lane was removed (0.8, breaking).** Earlier
+> versions of this guide centered on request scripts; that lane — with no
+> receipt and no way to earn one — is gone. The one report lane is the
+> **artifact package** (`reports/<name>/`), covered below. A JSON spec
+> migrates with `tracebi migrate spec reports/<name>.json`.
 
 **Who this is for:** analysts writing against an existing TraceBi project (a
 warehouse and `DataModel` someone has already wired up, or one you build with
@@ -78,9 +76,8 @@ compares fingerprints; it does not read a transform and does not assert a
 number is correct.
 
 The rest of this guide covers the **artifact-package** path — the ad-hoc
-route for reports you author as free HTML over the model — followed by the
-**legacy request-script** walkthrough (deprecated, removed in 0.8). Both
-share the same models, lineage, and manifests.
+route for reports you author as free HTML over the model — then the model and
+`DataSet` verbs both the package and any factory report are built on.
 
 ---
 
@@ -91,7 +88,7 @@ tracebi new-report "My Report"      # 1. scaffold reports/my_report/
 tracebi dev my_report               # 2. live loop — workbench, pins, exploration
 tracebi report build my_report      # 3. render → output/my_report.html + manifest
 tracebi verify output/my_report.html.manifest.json --strict --contracts
-                                    # 4. prove it before anyone reads it
+                                    # 4. re-run its receipt before anyone reads it
 ```
 
 An artifact package is a directory `reports/<name>/`: `report.json` (the
@@ -130,45 +127,62 @@ under `verify`. A JSON `ReportSpec` under `reports/` still renders — it is
 a serialization, not a lane — and `tracebi migrate spec reports/<name>.json`
 compiles it into a package, which shadows the same-named spec at discovery.
 
----
+### Discovery mode — the workbench before a report exists
 
-## Legacy: the request-script lane (deprecated, removed in 0.8)
+Run `tracebi dev` with **no argument** to open discovery mode: the same
+workbench, anchored to nothing, over the project as a whole — warehouse tables,
+sink contracts, models, and packages. It is the live surface for phases ① and
+② before any report package exists. `tracebi dev <name>` anchors the workbench
+to one package; `tracebi dev` alone is where you look while you are still
+building the model underneath.
 
-Everything below describes the old `requests/` script lane, kept for
-projects still on it through 0.7. Do not start new work here — scaffold an
-artifact package instead (`tracebi new-report`). Sections 2, 3, and 8
-(model discovery and the DataSet verbs) apply to both lanes.
+### Interactive controls subset — they never compute
 
-The legacy loop at a glance:
+A built artifact can carry `data-tb-filter` dropdowns, `data-tb-search`, and
+`data-tb-rows` (scrollable tables). The honesty rule is locked in the runtime:
+**controls subset which stamped rows a figure displays; they never compute a
+new number.** So a value figure never reacts to a control, and a filtered KPI
+needs its **own binding** rather than a client-side recomputation. This is what
+keeps an interactive page as trustworthy as a static one — every number on
+screen is still a stamped number, never one the browser invented.
 
-```
-tracebi new-request "My Report"     # 1. scaffold (prints a deprecation warning)
-tracebi dev my_report               # 2. edit ↔ live preview loop
-tracebi run my_report               # 3. render final outputs
-git add requests/my_report.py      # 4. ship — the web UI picks it up
-```
+### Capturing the exploration record
 
-## 1. Scaffold a request (legacy)
+A discovery session is a lab notebook, not a report. `tracebi session export`
+writes `explorations/<name>.html` (or `--format md` for the markdown twin) —
+the committed record of the frames, charts, and notes you pushed to the
+workbench. It carries **no manifest**, and `tracebi verify` refuses the file by
+name: a lab notebook must not read as a receipt. It is the honest home for the
+narrative a governed report deliberately does not carry.
+
+### Delivering the report
+
+`tracebi report send` builds the report, verifies it, and emails it with the
+receipt — and **refuses to send an unverified receipt**:
 
 ```bash
-tracebi new-request "Open orders by region"   # DEPRECATED — use tracebi new-report
-# → requests/open_orders_by_region.py
-
-# Prefer notebooks? Same flow, .ipynb output:
-tracebi new-request "Open orders by region" --notebook
+tracebi report send my_report --to team@example.com --subject "Q3 book"
 ```
 
-Working in Jupyter? The [Notebook Guide](notebook-guide.md) covers rich
-previews, inline report rendering, and shipping notebooks as request scripts.
+`--force` sends anyway, but the failing verdict travels with the report rather
+than being hidden. Delivery reads `TRACEBI_SMTP_URL` / `TRACEBI_SMTP_FROM` for
+email and `TRACEBI_SLACK_WEBHOOK` for Slack; point cron or CI at the same
+command to schedule it. The refusal is the point: a receipt that does not
+reproduce should never leave the building looking clean.
 
-The generated file has five numbered sections: parameters → model → datasets →
-report → render. Fill them in top to bottom.
+---
+
+## Working with a model in code
+
+The package's figures — and any `@register.report` factory — are built on the
+same model surface and immutable `DataSet` verbs. This section is the shared
+reference for both.
 
 `tracebi validate` checks your project layout and then loads every model in
 `models/`, verifying each dimension key is unique — a duplicate key silently
 inflates every total it touches. Run it before you trust a number.
 
-## 2. Discover what data you have
+### Discover what data you have
 
 First, see what shared models the project has defined:
 
@@ -204,7 +218,7 @@ Or browse the web UI: **Models** shows every table with previews and the ER
 diagram; **Explore** lets you prototype aggregations visually before
 committing them to code.
 
-## 3. Load and transform
+### Load and transform
 
 Every verb returns a **new immutable DataSet** and appends a step to its
 lineage chain. Nothing mutates in place.
@@ -245,97 +259,7 @@ by_region = enriched.aggregate(
 Mistyped a column? Errors tell you what's available and suggest the closest
 match: `dropna() column(s) not found: 'regin' (did you mean 'region'?)`.
 
-## 4. Parameters (legacy)
-
-Declare defaults once; override from the CLI or the web UI without editing
-code:
-
-```python
-from tracebi import request_params
-
-params = request_params(period="Q2 2024", min_revenue=0)
-```
-
-```bash
-tracebi run my_report --param period="Q3 2024" --param min_revenue=500
-```
-
-Overrides are coerced to the type of the default (`"500"` → `500` because the
-default is an int); unknown parameter names fail loudly. The web UI's
-**Requests** page renders a form from these defaults automatically.
-
-## 5. Build the report (legacy)
-
-```python
-from tracebi.reports.report import Report, TextSection, TableSection, ChartSection
-
-report = (
-    Report("Open Orders by Region")
-    .author("Your Name")
-    .description("Weekly open-order snapshot.")
-    .parameter("period", params["period"])
-
-    .add(TextSection(title="Summary", content="Summary", style="heading1"))
-    .add(ChartSection(title="Revenue by Region", dataset=by_region,
-                      chart_type="bar", x="region", y="revenue"))
-    .add(TableSection(title="Detail", dataset=by_region, totals=["revenue"]))
-)
-```
-
-Pass DataSets straight into sections — each section's full lineage is embedded
-in the report manifest automatically. That manifest *is* the audit trail: when
-someone asks "where did this number come from?", it's already answered.
-
-## 6. The edit ↔ preview loop (legacy)
-
-```bash
-tracebi dev my_report
-```
-
-Watches your script, re-runs it on save, and serves a live HTML preview in
-your browser. (Pointed at a request *script*, `tracebi dev` keeps this
-legacy single-file loop; pointed at an artifact *package* it opens the
-current loop with the workbench.)
-
-When you're done, render the final artifacts:
-
-```bash
-tracebi run my_report          # writes output/*.xlsx and *.html + *.manifest.json
-```
-
-The `.manifest.json` beside each output is the **receipt**: the recorded
-queries, lineage, input fingerprints, and git SHA behind every section.
-Rendered HTML is disposable; the manifest is not — retain it. Later,
-`tracebi verify output/my_report.html.manifest.json` re-runs each section's
-recorded model query and reports whether the numbers still
-reproduce, whether the source data drifted, or whether the model itself
-changed. (Sections built from hand-transformed DataSets carry no recorded
-query and are reported as `unverifiable` rather than guessed at. A report
-whose sections are *all* unverifiable still exits 0, but the verdict reads
-`NOTHING VERIFIED` — nothing in it was checked. A manifest with no
-data-bearing section at all exits 1: there was nothing to check, so there is
-nothing to pass.)
-
-## 7. Publish to the web UI (legacy)
-
-The template's last section registers your report with the web server:
-
-```python
-from tracebi.web import register
-
-@register.report("open_orders", description="Weekly open-order snapshot.")
-def _factory():
-    return report
-```
-
-Any script in `requests/` is still auto-discovered on server start (and on
-dev-mode reload) through 0.7, with a deprecation notice — the lane is
-removed in 0.8. Your report appears on the **Requests** page with its
-parameter form, run button, downloads, and per-section lineage graphs —
-no extra wiring. (Artifact packages need none of this: `reports/<name>/`
-is served on the **Reports** page as soon as it exists.)
-
-## 8. Verbs cheat sheet
+## Verbs cheat sheet
 
 | Verb | What it does | Lineage records |
 |---|---|---|
@@ -355,8 +279,6 @@ is served on the **Reports** page as soon as it exists.)
 
 Inspection (no lineage step): `.shape`, `.columns`, `len(ds)`, `.to_pandas()`,
 `.print_lineage()`, `.fingerprint()`, `.help()`.
-
----
 
 ---
 
