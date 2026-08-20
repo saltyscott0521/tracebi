@@ -543,6 +543,13 @@ class TemplatePackage:
         for c in cols:
             cls = ' class="tb-num"' if c in numeric else ""
             head.append(f"<th{cls}>{_html.escape(humanise(c))}</th>")
+        thead = "<thead><tr>" + "".join(head) + "</tr></thead>"
+        if df.empty:
+            # An empty binding says so, rather than showing a header over a void
+            # (the runtime bails on an empty block, leaving this row in place).
+            empty = (f'<tr><td class="tb-empty" colspan="{len(cols)}">no data'
+                     f"</td></tr>")
+            return thead + '<tbody data-tb-hydrate>' + empty + "</tbody>"
         body = []
         for _, row in df.iterrows():
             cells = []
@@ -555,8 +562,7 @@ class TemplatePackage:
                 else:
                     cells.append(f"<td>{_html.escape(_ssr_cell(raw))}</td>")
             body.append("<tr>" + "".join(cells) + "</tr>")
-        return ("<thead><tr>" + "".join(head) + "</tr></thead>"
-                "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>")
+        return thead + "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>"
 
     def _validate_figures(
         self,

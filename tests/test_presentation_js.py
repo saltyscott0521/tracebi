@@ -507,6 +507,7 @@ search.value = 'BOND';
 search._fire('input');
 out.and_search_count = tb._filteredRows('b').length;
 out.tbody_after_search = tbody.children.length;
+out.tbody_after_search_text = tbody.children.length ? tbody.children[0].children[0].textContent : null;
 
 fCat.value = 'All';
 fCat._fire('change');
@@ -531,7 +532,9 @@ process.stdout.write(JSON.stringify(out));
         assert out["and_mv"] == ["200"]
         # Search ANDs in (case-insensitive): US ∧ Equity ∧ "bond" → nothing.
         assert out["and_search_count"] == 0
-        assert out["tbody_after_search"] == 0
+        # A filter/search matching nothing shows a "no data" row, not a void.
+        assert out["tbody_after_search"] == 1
+        assert out["tbody_after_search_text"] == "no data"
         # Releasing one filter re-widens: US ∧ "bond" → the 100 row.
         assert out["search_and_region_mv"] == ["100"]
         # Value figures never react to controls — a filtered KPI needs its

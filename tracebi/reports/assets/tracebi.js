@@ -588,6 +588,19 @@
       el.appendChild(tbody);
     }
     while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    if (!rows.length) {
+      /* An empty result (or a filter that matches nothing) says so, rather
+       * than leaving a header over a void — mirrors the server-rendered
+       * empty row and the chart's "no data". */
+      var etr = document.createElement("tr");
+      var etd = document.createElement("td");
+      etd.className = "tb-empty";
+      etd.colSpan = entry.cols.length;
+      etd.textContent = "no data";
+      etr.appendChild(etd);
+      tbody.appendChild(etr);
+      return;
+    }
     rows.forEach(function (r) {
       var tr = document.createElement("tr");
       entry.cols.forEach(function (col) {

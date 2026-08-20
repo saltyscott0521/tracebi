@@ -348,3 +348,31 @@ class TestServerSideRender:
         from tracebi.verify import verify_file, FILE_INTACT
         html, manifest = self._render_chart(tmp_path)
         assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
+
+    def test_empty_binding_table_says_no_data(self, tmp_path):
+        import re
+        from tracebi.reports.compile_spec import compile_spec
+        from tracebi.spec import ReportSpec
+        model = DataModel("ssr_e").add_connector(MemoryConnector("m", tables={
+            "t": pd.DataFrame({"region": ["NE", "SE"], "status": ["open", "open"],
+                               "rev": [100.0, 200.0]})}))
+        model.add_table("t", connector="m", source="t")
+        model.add_dimension("dim_r", table_name="t", key_col="region",
+                            attributes=["region"])
+        model.add_fact("f", table_name="t", measures=["rev"], foreign_keys={})
+        model.add_measure("rev", column="rev", agg="sum")
+        model.connect()
+        spec = ReportSpec.from_dict({"name": "E", "sections": [
+            {"type": "table", "title": "none", "data": {"model": "ssr_e", "query": {
+                "fact": "f", "measures": ["rev"], "dimensions": ["dim_r.region"],
+                "filters": {"status": "shipped"}}}}]})   # no 'shipped' rows
+        compiled = compile_spec(spec)
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        for fn, content in compiled.files.items():
+            (pkg / fn).write_text(content, encoding="utf-8")
+        out = tmp_path / "o.html"
+        TemplatePackage(str(pkg)).render({"ssr_e": model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        m = re.search(r"<tbody data-tb-hydrate>(.*?)</tbody>", html, re.S)
+        assert m and 'class="tb-empty"' in m.group(1) and "no data" in m.group(1)

@@ -144,6 +144,14 @@ img, svg { max-width: 100%; }
   color: var(--tb-muted);
 }
 
+/* The empty-binding row: a table with no rows says "no data", not a bare head. */
+.tb-empty {
+  text-align: center;
+  color: var(--tb-muted);
+  font-style: italic;
+  padding: var(--tb-space-3);
+}
+
 /* Numeric cells right-align; runtime tags them, authors may too. */
 .tb-num { text-align: right; }
 
