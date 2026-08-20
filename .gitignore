@@ -40,3 +40,4 @@ tracebi/web/ui/dist/
 # Three-phase workflow — the warehouse and rendered output are build artifacts
 # under data/ (already ignored above). Raw pulls live in inputs/ (tracked; a
 # large or sensitive real pull can be ignored per-file).
+.vercel_out/

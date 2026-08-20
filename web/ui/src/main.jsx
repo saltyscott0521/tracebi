@@ -20,9 +20,15 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
 })
 
+// Mount point. The default build serves at "/" (local dev, the wheel, Docker);
+// the Vercel build passes --base=/app/ so the demo app sits under /app behind
+// the marketing page. Deriving the router basename from BASE_URL keeps a single
+// codebase working at either mount with no per-environment branching.
+const basename = import.meta.env.BASE_URL.replace(/\/+$/, '') || undefined
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <App />
     </BrowserRouter>
   </QueryClientProvider>

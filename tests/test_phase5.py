@@ -2376,23 +2376,27 @@ class TestServerlessDeployContract:
         import json
         import pathlib
 
-        cfg = json.loads((pathlib.Path(__file__).resolve().parents[1]
-                          / "vercel.json").read_text())
-        # vite writes the bundle into the Python package (see
-        # web/ui/vite.config.js build.outDir) so the wheel can carry it.
-        # Vercel publishes whatever that directory is; the two must agree or
-        # the deploy serves an empty site.
-        assert cfg["outputDirectory"] == "tracebi/web/ui/dist"
-        vite = (pathlib.Path(__file__).resolve().parents[1]
-                / "web" / "ui" / "vite.config.js").read_text()
-        assert "'../../tracebi/web/ui/dist'" in vite, (
-            "vite's build.outDir and vercel.json's outputDirectory have drifted"
-        )
+        root = pathlib.Path(__file__).resolve().parents[1]
+        cfg = json.loads((root / "vercel.json").read_text())
+        # One deploy, two surfaces: the marketing site at / and the demo app
+        # under /app. vercel-build.sh assembles .vercel_out; the two must agree
+        # or the deploy serves the wrong thing (or nothing).
+        assert cfg["outputDirectory"] == ".vercel_out"
+        build = (root / "vercel-build.sh").read_text()
+        assert ".vercel_out" in build          # what vercel.json publishes
+        assert "site/index.html" in build       # marketing at /
+        assert "--base=/app/" in build          # the app is mounted under /app
+        assert "tracebi/web/ui/dist" in build   # copied from vite's build.outDir
+
         sources = [r["source"] for r in cfg["rewrites"]]
         assert any("api" in s for s in sources)
-        # An SPA fallback that also swallowed /api would break every request.
-        spa = next(r for r in cfg["rewrites"] if r["destination"] == "/index.html")
-        assert "?!api" in spa["source"]
+        # The SPA fallback lives under /app (→ /app/index.html), so the
+        # marketing page at / is untouched and /api is never swallowed.
+        spa = next(r for r in cfg["rewrites"]
+                   if r["destination"] == "/app/index.html")
+        assert spa["source"].startswith("/app")
+        assert all("api" not in r["source"] or r["destination"] == "/api/index.py"
+                   for r in cfg["rewrites"])
 
     def test_ui_api_base_is_configurable(self):
         """
