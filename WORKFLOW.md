@@ -21,8 +21,9 @@ at the model. Each phase has its own folder and its own cadence.
                                                           ▼
 ③  REPORT                fast, iterate constantly
     reports/portfolio_dashboard.json
-      a ReportSpec — KPI cards, charts, a table — every figure a live query
-      against ②. Edit the JSON and re-render in milliseconds; nothing re-runs ①.
+      a ReportSpec (one of the report forms) — KPI cards, charts, a table —
+      every figure a live query against ②. Edit it and re-render in
+      milliseconds; nothing re-runs ①.
 ```
 
 The point of the split is the **freeze points**. Phase ① can be thousands of
@@ -57,7 +58,10 @@ The warehouse is `data/warehouse.duckdb` — one file phase ① writes and phase
 reads. The model opens it read-through; the two phases can run in separate
 processes because the sink is on disk. `inputs/` holds the raw material (the
 demo's `holdings.csv` is tracked; a large or sensitive real pull can be
-gitignored per-file); `data/` holds the build artifacts and is gitignored.
+gitignored per-file). `data/` holds the warehouse and `run_workflow.py`'s
+one-off render; `output/` holds `tracebi report build` renders (its default
+target). Both dirs are gitignored except the `*.manifest.json` receipts inside
+them — those stay tracked, as the audit trail behind every rendered number.
 
 Phase ① and ② have a live surface of their own: `tracebi dev` with no name
 opens the **discovery workbench** — any script run while it serves can
@@ -81,8 +85,14 @@ declaration.
 
 ## Iterating on the report
 
-Everything visible is a query. To add a panel, add a section to
-`reports/portfolio_dashboard.json` with a `data.query` naming a `fact`, its
-`measures`, and `dimensions` — no code, no re-run of phase ①. A `metrics`
-section can carry a `data` query too: a card whose `value` names a measure reads
-it live, so the KPI strip never goes stale.
+Everything visible is a query. The report is an artifact package under
+`reports/<name>/`: `tracebi new-report "My Report"` scaffolds one, `tracebi dev
+<name>` live-previews it while you edit, and `tracebi report build <name>`
+renders one self-contained HTML plus its manifest receipt. Nothing re-runs
+phase ①.
+
+The lighter alternative is to edit the JSON spec directly. To add a panel, add
+a section to `reports/portfolio_dashboard.json` with a `data.query` naming a
+`fact`, its `measures`, and `dimensions` — no code, no re-run of phase ①. A
+`metrics` section can carry a `data` query too: a card whose `value` names a
+measure reads it live, so the KPI strip never goes stale.

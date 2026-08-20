@@ -15,6 +15,8 @@ it is the worked version of that scaffold with real cleaning to do.
 ③  REPORT      reports/portfolio_dashboard.json  every figure a live query
                reports/portfolio_book/           freeform template package
                reports/portfolio_concentration/  the report.py escape hatch
+               reports/portfolio_overview/        default-component runtime package
+               reports/portfolio_showcase/        kitchen-sink demo, every figure kind
 ```
 
 ## Run it
@@ -30,7 +32,13 @@ tracebi serve                 # browse at http://127.0.0.1:8000 → Reports
 to parse into issuers, trailing position counters to strip, sectors spelled
 six ways, money stored as strings.
 
-The three report forms in `reports/` are the three authoring lanes:
+Phase ① ends with a declared sink contract — `rows`, `unique`, `not_null`,
+`foreign_key` checked as read-only SQL against the tables that just landed and
+recorded in `data/warehouse.contracts.json`. A failed check raises at sink
+time; a green one lets a report say *the sink satisfied its contract* — never
+that the transform was verified.
+
+The report forms in `reports/` span the authoring lanes:
 
 - `portfolio_dashboard.json` — a governed `ReportSpec`; validate it without
   running (`tracebi spec validate`), every figure reproducible.
@@ -40,5 +48,11 @@ The three report forms in `reports/` are the three authoring lanes:
 - `portfolio_concentration/` — a package with a `report.py` escape hatch:
   pandas the model can't express. Its output stamps `verifiable: false` and
   never reads green — the honest lane for hand-derived numbers.
+- `portfolio_overview/` — a default-component package: KPI, chart, and table
+  figures hydrated by the shipped runtime from the stamped bytes, no author
+  CSS or JS at all.
+- `portfolio_showcase/` — the maintained kitchen-sink demo: every figure kind,
+  controls, layouts, and trust affordance the artifact offers, on the reference
+  data.
 
 The full tour of the workflow lives at the repo root: `WORKFLOW.md`.

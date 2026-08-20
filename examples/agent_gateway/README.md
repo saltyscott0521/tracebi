@@ -19,6 +19,15 @@ is seeded (`rng(42)`), so even the fingerprints come out identical.
 | `artifacts/book-of-business-review.html` | The governed render (assurance L2) + its manifest |
 | `artifacts/book-review-editorial.html` | The free-form page the agent hand-wrote (assurance L1) |
 
+> **Historical note.** This is the old two-lane flow: `render_report_spec` for
+> the governed render and, in step 5 below, a hand-written HTML page for the
+> free-form one. The current authoring lane is the **artifact package** —
+> `build_report` / `fetch_artifact` over MCP (the `author_report` prompt walks
+> it), `tracebi new-report` locally — which folds bespoke layout into one
+> governed, verifiable render and makes the free-form hand-HTML lane
+> unnecessary. The session is kept verbatim because the mistake the receipts
+> caught (step 6) is the whole point.
+
 ## What went down
 
 ### 1. Discovery — the agent learns what exists

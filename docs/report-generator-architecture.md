@@ -1,12 +1,22 @@
 # Report Generator — Architecture (locked)
 
-Status: **shipped.** Product and architecture were nailed down with the maintainer,
-then pressure-tested against the code by a five-lens design review (17 findings, 4
-blocking — all resolved below, none papered over). The build plan in §8 (M0–M4) is
-complete: the trust kernel, template packages, the `report.py` escape hatch, and the
-ECharts chart layer are all in `tracebi/reports/` with tests, and `dashboards/` has
-folded into `reports/`. Nothing here is unbacked by code. This is the reference for
-what was built.
+> **⚠️ Superseded by [report-architecture-v2.md](report-architecture-v2.md)** —
+> the one-lane reshape (shipped 2026-08-16). This document describes the earlier
+> **two-lane** build (a governed spec lane *and* a freeform package lane). The
+> reshape collapsed them: a report is now a single artifact package under
+> `reports/`, and a JSON spec is one serialization that compiles into the same
+> artifact, not a separate lane. Kept as the historical record of the two-lane
+> build; its still-true kernel (the safe embedder, the CSP, the receipt
+> semantics of §4, and the ECharts layer of §6) survived verbatim into the code
+> and is restated in v2 §1. Read v2 for the current architecture; read this for
+> why the kernel is shaped the way it is.
+
+Status (at the time): **shipped.** Product and architecture were nailed down with
+the maintainer, then pressure-tested against the code by a five-lens design review
+(17 findings, 4 blocking — all resolved below, none papered over). The build plan
+in §8 (M0–M4) was complete: the trust kernel, template packages, the `report.py`
+escape hatch, and the ECharts chart layer, all in `tracebi/reports/` with tests,
+and `dashboards/` folded into `reports/`.
 
 ---
 
@@ -30,7 +40,7 @@ unvalidated by design; **the receipt covers the numbers, not the pixels** (§4).
 ```
    (A) GOVERNED SPEC   reports/*.json            (B) FREEFORM PACKAGE   reports/<name>/
        built-in renderers draw the page              report.json (queries) + report.py?
-                 │                                    template.html · style.css · app.js
+                 │                                    template.html · style.css · script.js
                  └───────────────┬─────────────────────────┘
                                  ▼
         ┌─────────────────── SHARED KERNEL ───────────────────┐
@@ -64,7 +74,7 @@ Almost every kernel *primitive* already exists:
 | receipt | `to_manifest_dict` fingerprints any DataSet section incl. custom types; `build_manifest`; manifest-first ordering | an `embedded_data` block on the manifest |
 | inline one file | `render_shell` string-inlining; `template`/`head_extra`/`body_extra`/`template_context` seams; `HTMLRenderer.serve` | the **safe JSON embedder**; the **template-package loader** |
 | discovery | `_register_spec_file` factory pattern; registry name+factory contract | `_register_template_package(dir)` branch |
-| CLI | `cmd_new_request` mirror | `tracebi new-report`, `tracebi report build/preview`, `tracebi verify --file` |
+| CLI | the scaffold + subcommand plumbing (`cmd_new_model` et al.) | `tracebi new-report`, `tracebi report build/preview`, `tracebi verify --file` |
 | verify (model reproduction) | `verify_manifest` — **zero changes** | a **separate** offline file checker |
 
 Net: the new code is small — a safe embedder, a thin template-package renderer, a
@@ -175,7 +185,7 @@ earlier no-matplotlib decision.
   the chart types a report uses. A freeform package may inline a different library.
 - **Governed lane:** `ChartSection`'s config (`chart_type`, `x`, `y`, `color`…)
   compiles to an ECharts `option` object + a small init script.
-- **Freeform lane:** the analyst's `app.js` calls ECharts directly on the embedded
+- **Freeform lane:** the analyst's `script.js` calls ECharts directly on the embedded
   data.
 - **The bundle is inlined** (offline, no CDN — enforced by `connect-src 'none'`).
 - **PDF stays lib-agnostic.** WeasyPrint runs no JS, so client-side charts can't

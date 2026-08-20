@@ -53,7 +53,7 @@ part of enterprise BI that outlives the agent era.
 
 ---
 
-**Thesis check, in one paragraph.** TraceBi's pitch is a trust layer for AI-generated analytics: agents speak a semantic contract, every answer carries a stamp (query + lineage + SHA-256 fingerprint), specs validate before execution, and the assurance ladder (L0–L3, NOTES.md 2026-08-03) grades what a company can prove. Four independent audits (new analyst, MCP-only agent, platform operator, fund-ops design partner) agree on the verdict: **the stamping kernel is real and production-shaped** — fingerprints verified identical across Python, CLI, and a live MCP round trip; render refuses invalid specs; cap-invariance is test-pinned. What's missing is everything that lets someone *check* a receipt, *trust* the checker's identity, or *keep* the receipt. L2 is ~80% built, L1 is ~50% (stamps yes, receipts no), L3 is 0%. The roadmap below is one merged, deduped, ranked list. The ordering principle: a trust layer that cannot verify its own receipts, whose validator misses the most common agent errors, and whose flagship surface has no auth is not yet making a true claim — fix that before selling it. *(Update 2026-08: the verify loop, validate coverage, and gateway bearer auth from the Now tier have since shipped — see CHANGELOG [Unreleased]; the identity now lives in MANIFESTO.md.)*
+**Thesis check, in one paragraph.** TraceBi's pitch is a trust layer for AI-generated analytics: agents speak a semantic contract, every answer carries a stamp (query + lineage + SHA-256 fingerprint), specs validate before execution, and the assurance ladder (L0–L3, NOTES.md 2026-08-03) grades what a company can prove. Four independent audits (new analyst, MCP-only agent, platform operator, fund-ops design partner) agree on the verdict: **the stamping kernel is real and production-shaped** — fingerprints verified identical across Python, CLI, and a live MCP round trip; render refuses invalid specs; cap-invariance is test-pinned. What's missing is everything that lets someone *trust* the checker's identity, or *keep* the receipt at institutional scale. L2 is ~80% built; L1 is now largely built — the M-wave shipped per-figure receipts (each figure's data embedded and SHA-256 fingerprinted in the schema-2 manifest) and `tracebi verify`, so the old "(stamps yes, receipts no)" no longer holds; L3 is 0%. The roadmap below is one merged, deduped, ranked list. The ordering principle: a trust layer that cannot verify its own receipts, whose validator misses the most common agent errors, and whose flagship surface has no auth is not yet making a true claim — fix that before selling it. *(Update 2026-08-20: the entire **Now** tier — verify loop, validate coverage, gateway bearer auth + output_dir confinement — plus per-figure receipts, spec-render-through-the-artifact (11b), and the delivery core (`tracebi report send`, 11) have all shipped; see CHANGELOG [Unreleased] and the ✅ markers below. The ladder scoring above predates that work. The identity now lives in MANIFESTO.md.)*
 
 ---
 
@@ -63,11 +63,25 @@ These five items are the difference between "we stamp things" and "we are a trus
 
 ### 1. Close the verify loop: `tracebi verify` + a `verify` gateway tool + input fingerprints at render
 
+> ✅ **Shipped.** `tracebi verify` is a real CLI subcommand (the CLI now has 19,
+> not 15); the gateway tool shipped as `verify_manifest`; manifests carry input
+> fingerprints and a `schema_version`/`engine_version`; drift is classified
+> (REPRODUCES / SOURCE DRIFT / MODEL CHANGED / MISMATCH / UNEXPLAINED /
+> UNVERIFIABLE / ERROR). The hand-written example checker is no longer the only
+> checker.
+
 - **What:** (a) Record source/input fingerprints in the manifest at render time; (b) ship `tracebi verify <manifest>` that re-runs each section's recorded `query_spec` and classifies the outcome as *reproduces / source-drift / unexplained*; (c) expose the same as an 8th MCP tool (`verify_fingerprint(model, query, expected)`) so an unattended agent can close its own loop. Add a `schema_version` field to the manifest in the same change so archived manifests stay verifiable across upgrades.
 - **Why:** This is the #1 finding in two audits and implicated in a third. The agent audit: "the entire trust thesis rests on receipts someone can check, and today the only checker is a hand-written example script" (examples/agent_gateway/verify_report.py, with hardcoded figures). The fund-ops audit: no `verify` among cli.py's 15 subcommands; manifests carry no input fingerprints, so a mismatch "is just DRIFT with no diagnosis." NOTES.md itself lists this as open ("Needs input fingerprints recorded at render"). Crucially, the agent audit confirmed manifests *already* record each section's resolved query_spec — the tool is mechanically buildable today. The $1 audit catch is the product's best story; right now it demos a missing feature.
 - **Effort:** M
 
 ### 2. Make "validation before execution" true: close the validate gaps and unify the render error channel
+
+> ✅ **Shipped.** `_check_data_ref` now delegates to `model.check_query_spec`,
+> which shares the execution-time column validation — filter columns,
+> aggregation names, ad-hoc dict-measure columns, dimension attributes, and
+> chart x/y all validate before execution. The gateway render/validate paths
+> return the documented `{ok, errors:[…]}` envelope. (The cited line numbers
+> below have all drifted — treat the item as history.)
 
 - **What:** Extend `_check_data_ref` (tracebi/spec.py:366–419) to check filter columns, aggregation names, ad-hoc dict-measure columns, dimension *attributes* (after the dot), and chart x/y references against the model — the same checks `DataModel._validate_query_columns` (data_model.py:1393) already performs at execution. Wrap `gateway_render_spec` (mcp_server.py:262–264 has no try/except) so *every* failure returns the documented `{ok, errors:[...]}` shape. Special-case the `dataset`-vs-`data` key confusion: today `{"dataset": {...}}` validates `ok:true` then dies with a pathless `AttributeError: 'dict' object has no attribute 'to_pandas'` — the exact trap the vocabulary invites, since get_context calls the field "dataset."
 - **Why:** The agent audit verified by direct execution that four whole error classes — the typo classes an LLM agent produces most — pass `gateway_validate_spec` with `{ok:true}` and detonate at render as raw exceptions. "Validation before execution" is the keystone claim; it currently holds only for section structure, fact names, named measures, and dim names. The analyst audit found the same shape at project level: `tracebi validate` blesses a scaffold whose only table doesn't exist. Depends partly on item 7 (column schema in describe_model) for the dict-measure check, but the spec-side checks need no new surface.
@@ -75,19 +89,32 @@ These five items are the difference between "we stamp things" and "we are a trus
 
 ### 3. Put auth on the gateway (and defuse `output_dir`)
 
+> ✅ **Mostly shipped.** Bearer-token auth via `TRACEBI_MCP_TOKEN` is live and
+> the HTTP transport now *refuses to start* without a token unless `--insecure`
+> is passed; `output_dir` is confined on both writer tools; the README caveats
+> the HTTP transport. **Still open:** a `--host` bind flag and per-connection
+> *authenticated* identity (retiring the self-declared `TRACEBI_MCP_ACTOR`).
+
 - **What:** Bearer-token auth and a `--host` bind flag for `tracebi mcp --transport http`; constrain `gateway_render_spec`'s agent-controlled `output_dir` (mcp_server.py:230, 257 — currently an arbitrary-path mkdir+write as the server user) to a configured root; replace the self-declared `TRACEBI_MCP_ACTOR` env var (mcp_server.py:49) with per-connection authenticated identity. Until shipped, README.md:459–460 must stop recommending the HTTP transport without a caveat.
 - **Why:** The operator audit's first-flag finding: the flagship surface has *zero* auth on HTTP — no token, no TLS, no host bind — yet the README tells remote agents to use it, and anyone reaching the port gets full query access with the process's warehouse credentials plus a file-write primitive. The fund-ops audit lands the thesis blow: "a trust layer whose audit trail records whatever the caller claims to be" — identity is asserted, not authenticated, so concurrent agents are indistinguishable in the audit log. NOTES.md admits this is open; the operator journey is exactly the "revisit trigger" NOTES.md 2026-06-09 named.
 - **Effort:** M
 
 ### 4. Give manifests a durable home
 
-- **What:** A retention story for the evidentiary artifact: stop gitignoring receipts by default (.gitignore:13–14 excludes `output/` and `*.manifest.json` *by name*), persist manifests from the web render path (tracebi/web/api/main.py:158–159 currently returns them in-memory only, `output_path='(in-memory)'`), and document/back the compose bind mount. Ship the manifest `schema_version` with item 1.
+> ✅ **Partly shipped.** The `.gitignore` now *retains* receipts by name
+> (`output/*` with `!output/*.manifest.json`, and the same for `data/`), and the
+> manifest `schema_version` shipped with item 1. **Still open:** persisting
+> manifests from the web render path (it still returns them in-memory), and the
+> `git init`/loud-warn on `tracebi init` so `git_sha` is never a silent
+> `"unknown"`.
+
+- **What:** A retention story for the evidentiary artifact: persist manifests from the web render path (the web render currently returns them in-memory only, `output_path='(in-memory)'`), and document/back the compose bind mount. (The manifest `schema_version` shipped with item 1; the `.gitignore` now keeps `*.manifest.json` rather than excluding it.)
 - **Why:** The operator audit calls this the buyer's deal-breaker: "a trust layer that cannot retain its receipts cannot testify." Nearly every deployment plane loses them — git excludes them and Vercel can't write them; compose does bind-mount ./output, but nothing versions or retains what lands there. L3 and `tracebi verify` are both unreachable without retained manifests; the $1 audit only worked because artifacts were hand-committed. The analyst audit adds the git half: every init'd project records `git_sha: "unknown"` silently — `tracebi init` should `git init` (or loudly warn), because "git as courtroom record" is half the pitch.
 - **Effort:** M
 
 ### 5. Fix the installed-package last mile: make `tracebi serve` work from a pip install
 
-- **What:** ~~Ship the web app in the wheel~~ (done — and then moved: the app is `tracebi.web.api`, packaged as part of `tracebi` with `artifacts = ["tracebi/web/ui/dist/**"]`, guarded by a CI job that asserts the bundle is in the wheel *and* that nothing top-level named `web` ships. Shipping a second top-level `web` package collided with the `web.py` distribution on PyPI, which owns that path in site-packages. This item originally offered "or move the app under `tracebi.web`" as the alternative; that is the one that survived). ~~so a fresh clone doesn't serve a silent 404 homepage~~ (done: without a bundle `/` explains itself instead of 404ing, with the remedy that fits a checkout or an installed package). Still open on the UI half: only a wheel from `.github/workflows/release.yml` carries the bundle — the documented `pip install "tracebi[web] @ git+https://…"` builds from a tree where `tracebi/web/ui/dist` is gitignored, so it ships the API and no UI. Auto-building it (a hatch build hook running npm) or publishing the release wheel would close that. Still open: fix the init-generated README's bare-PyPI `pip install "tracebi[...]"` instructions (cli.py:471, 479 — a dependency-confusion shape while the package isn't on PyPI); make init's closing message match the `[analyst]` extras it just recommended; and make `spec render` / `spec validate` / `context` honour `TRACEBI_MODELS_DIR` and `--models-dir` — `_default_models_dir()` (cli.py:38–39) is hardcoded `Path.cwd() / "models"` while tracebi/web/api/main.py:219, mcp_server.py:94 and verify.py:78 all read the env var, and CLAUDE.md and .env.example:65 document it as supported.
+- **What:** ~~Ship the web app in the wheel~~ (done — and then moved: the app is `tracebi.web.api`, packaged as part of `tracebi` with `artifacts = ["tracebi/web/ui/dist/**"]`, guarded by a CI job that asserts the bundle is in the wheel *and* that nothing top-level named `web` ships. Shipping a second top-level `web` package collided with the `web.py` distribution on PyPI, which owns that path in site-packages. This item originally offered "or move the app under `tracebi.web`" as the alternative; that is the one that survived). ~~so a fresh clone doesn't serve a silent 404 homepage~~ (done: without a bundle `/` explains itself instead of 404ing, with the remedy that fits a checkout or an installed package). Still open on the UI half: only a wheel from `.github/workflows/release.yml` carries the bundle — the documented `pip install "tracebi[web] @ git+https://…"` builds from a tree where `tracebi/web/ui/dist` is gitignored, so it ships the API and no UI. Auto-building it (a hatch build hook running npm) or publishing the release wheel would close that. ~~fix the init-generated README's bare-PyPI instructions; make init's closing message match the extras it recommends; make `spec render` / `spec validate` / `context` honour `TRACEBI_MODELS_DIR` and `--models-dir`~~ (done — `_default_models_dir()` now reads `os.environ.get("TRACEBI_MODELS_DIR", "models")`, matching the web/MCP/verify readers). The **UI-bundle-in-wheel** gap is the only part of item 5 still open.
 - **Why:** The analyst audit's fatal break: the scaffolded golden path — init's own success message — walked every pip-installed user into `ModuleNotFoundError: No module named 'web'`. The kernel delivers its receipts; "what loses analysts is the last mile between the installed package and the browser." This is the cheapest high-severity fix on the board and it gates every evaluation that starts with an install.
 - **Effort:** S
 
@@ -105,13 +132,20 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 
 ### 7. Agent-facing ergonomics bundle: get_context, describe_model columns, list_reports, artifact fetch
 
+> ✅ **7c and 7d shipped.** `list_reports` now runs discovery (`gateway_reports`
+> calls `discovery_report()`), and artifact retrieval shipped as the
+> `fetch_artifact` tool, so an HTTP-transport agent can read the HTML/manifest it
+> produced. 7a is largely done (brief tier, model roster). **Still open: 7b** —
+> column names/dtypes on `describe_model` (tables are still `{name, connector,
+> source}` only), which is also the prerequisite item 2 named.
+
 - **What:** (a) Rewrite `get_context`: drop the ~7KB of Python-library surface an MCP agent can't invoke; add the model roster, row-cap semantics (50 default / 500 hard cap appear in no payload), the spec data-envelope schema (serve `tracebi.spec.json_schema()` over MCP — it already exists on CLI and HTTP), the fingerprint-citation convention, and the ladder. (b) Add column names/dtypes to `describe_model` (currently tables are `{name, connector, source}` only — agents must learn columns from error messages). (c) Fix `list_reports`, which returns `[]` unconditionally because `cmd_mcp` (cli.py:1050–1067) never runs discovery. (d) Add an artifact-retrieval tool so the HTTP-transport agent can read the HTML/manifest it just produced instead of receiving unreachable file paths.
 - **Why:** The agent audit's discover phase findings: half of get_context's tokens are unusable, a "call this first" tool names zero models, and list_reports is "dead on arrival." (b) is also a prerequisite for finishing item 2's dict-measure/filter-column validation. These are individually small; together they're the difference between an agent that self-repairs and one that guesses.
 - **Effort:** M (bundle of S items)
 
 ### 8. Excel output over the gateway
 
-- **What:** Let `render_report_spec` (and the CLI spec path) target `ExcelRenderer`, which already exists in the library; mcp_server.py:239, 264 currently import and call only `HTMLRenderer`.
+- **What:** Let `render_report_spec` (and the CLI spec path) target `ExcelRenderer`, which already exists in the library; the gateway renders HTML-only via `TemplatePackage` today — there is no `ExcelRenderer` path over the gateway.
 - **Why:** The fund-ops audit is blunt: "fund ops lives in Excel." This is the highest-leverage/lowest-cost design-partner ask on the list because the renderer is already built. (Deprioritize PDF: there is no standalone `PDFRenderer`, though the `[pdf]` extras key is live — it powers `HTMLRenderer.render_pdf()`.)
 - **Effort:** S
 
@@ -130,15 +164,27 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 
 ### 11. Scheduled delivery (email/Slack) with the manifest link
 
-- **What:** First-class scheduled distribution — "the Tuesday-morning book review in the ops inbox" — carrying the manifest/receipt link; plus one worked, safe recipe for cron on serverless (the current doc hand-waves pg_cron/Vercel Cron past the pg_net and admin-credential problems, so demo schedules are silently decorative).
+> ✅ **Delivery core shipped.** `tracebi report send <name> --to …` builds,
+> verifies, and emails the report with the receipt, refusing to send an
+> unverified receipt unless `--force` (which sends the failing verdict with it);
+> `tracebi/_delivery.py` implements SMTP + Slack, configured by
+> `TRACEBI_SMTP_URL` / `TRACEBI_SMTP_FROM` / `TRACEBI_SLACK_WEBHOOK`. **Still
+> open:** one worked, safe *scheduled*-cron-on-serverless recipe (below).
+
+- **What:** The remaining gap is scheduling: one worked, safe recipe for cron on serverless (the current doc hand-waves pg_cron/Vercel Cron past the pg_net and admin-credential problems, so demo schedules are silently decorative). The delivery command itself (`tracebi report send`, receipt-carrying, refuses unverified) has shipped; point cron/CI at it.
 - **Why:** Flagged missing in the 2026-05-22 review (NOTES.md:1077), still missing; the fund-ops audit calls it a first ask; the operator audit shows the workaround path is undeployable as documented. A trust layer nobody receives reports from doesn't get evaluated.
 - **Effort:** M
 
 ### 11b. The legacy spec render gains the presentation stack (round-2 field test)
 
-- **What:** A JSON-spec render today produces zero `tb-` classes and zero provenance badges — it is still the legacy renderer, so a spec-authored page and a package-authored page differ in look *and* trust affordances. Either route spec renders through the compiled-package path (compile in memory via `compile_spec`, render the artifact) or teach `HTMLRenderer` to emit the stack.
-- **Why:** Round-2 field test, finding 2: "If specs are staying, they need the stack." The scaffold no longer steers anyone to specs (fixed), but every un-migrated spec still renders without badges — the trust affordances silently downgrade on the serialization that claims to be equivalent. Routing through `compile_spec` is likely a day and retires the divergence permanently.
-- **Effort:** S–M
+> ✅ **Shipped.** All three spec-render entry points (CLI `spec render`, web
+> `POST /api/spec/render`, and the MCP `render_report_spec`) now route through
+> `compile_spec` → the artifact package, so a spec render gets the stack, the
+> figures, the receipt drawer, and the schema-2 manifest — the divergence is
+> retired. The second parallel ECharts runtime was deleted in the same work.
+
+- **What:** ~~route spec renders through the compiled-package path~~ (done via `compile_spec` on all three entry points).
+- **Effort:** ~~S–M~~ shipped
 
 ### 11c. Large-detail artifacts: virtualized tables + columnar embeds (maintainer ask)
 
@@ -149,7 +195,7 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 ### 12. A real release path: PyPI, tagged images, versioned artifacts
 
 - **What:** Publish to PyPI (also retires item 5's dependency-confusion risk permanently), tag container images instead of compose-builds-from-checkout, and replace the "remember to update `_RUNS_ADDED_COLUMNS`" invariant with a checked migration step.
-- **Why:** The operator audit: v0.5.2, no PyPI, no tagged images, no migration framework — "thin upgrade path for a compliance-positioned product." The re-verify-in-6-months promise (item 1) needs the 6-months-later software to install reproducibly.
+- **Why:** The operator audit: no PyPI, no tagged images, no migration framework — "thin upgrade path for a compliance-positioned product." (The version is now `0.6.0.dev0`, framed in `pyproject.toml` as a different product from 0.5.2; the PyPI/images/migration substance stands.) The re-verify-in-6-months promise (item 1) needs the 6-months-later software to install reproducibly.
 - **Effort:** M
 
 ---

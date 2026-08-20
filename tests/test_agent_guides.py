@@ -70,6 +70,44 @@ class TestGuidesCoverTheVocabulary:
                 assert cmd in text, f"{name} does not teach {cmd}"
 
 
+class TestCLISurfaceIsDocumented:
+    """Every user-facing ``tracebi <cmd>`` must be named in at least one
+    doc surface an operator or agent actually reads. This closes the gap
+    that let ``report send`` ship with zero documentation: a command the
+    docs never mention is a command nobody discovers."""
+
+    def _subcommands(self) -> set[str]:
+        from tracebi.cli import build_parser
+
+        parser = build_parser()
+        subs: set[str] = set()
+        for action in parser._subparsers._group_actions:
+            subs |= set(getattr(action, "choices", {}).keys())
+        return subs
+
+    def _doc_corpus(self) -> str:
+        parts = [
+            (_REPO / "README.md").read_text(encoding="utf-8"),
+            (_REPO / "AGENTS.md").read_text(encoding="utf-8"),
+        ]
+        parts += [
+            p.read_text(encoding="utf-8") for p in (_REPO / "docs").glob("*.md")
+        ]
+        return "\n".join(parts)
+
+    def test_every_subcommand_is_named_in_the_docs(self):
+        subs = self._subcommands()
+        assert subs, "the CLI must expose subcommands"
+        corpus = self._doc_corpus()
+        missing = sorted(c for c in subs if f"tracebi {c}" not in corpus)
+        assert not missing, (
+            f"these CLI subcommands are undocumented: {missing}. Name each "
+            f"as `tracebi <cmd>` in README.md, AGENTS.md, or a docs/ guide — "
+            f"a command the docs never mention is one nobody discovers "
+            f"(the `report send` lesson)."
+        )
+
+
 class TestScaffoldDemonstratesTheProduct:
     def test_scaffold_template_carries_the_interactive_grammar(self):
         """The first page a new project renders must demonstrate the

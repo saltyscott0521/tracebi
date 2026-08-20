@@ -1,12 +1,18 @@
 # Report Architecture v2 — the one-lane reshape
 
+> Supersedes [report-generator-architecture.md](report-generator-architecture.md)
+> (the two-lane build). That document is kept as the historical record and the
+> reference for *why the kernel is shaped this way* — the safe embedder, the CSP,
+> the receipt semantics, and the ECharts layer it describes survived verbatim
+> into the code. This document is the current architecture.
+
 Status: **decided**. This document is the build plan. Inputs: `reshape-decisions.md` (locked owner direction), the AltsVault field notes, three candidate designs, and three judge verdicts. The skeleton is the *artifact-first* design (selected by two of three judges); mechanisms from *loop-first* and *presentation-first* flagged as graft-worthy are incorporated as decisions, not options, and every fatal flaw raised by any judge is resolved by name in §6.
 
 ---
 
 ## 1. Decision summary
 
-**What changes:** TraceBi collapses to one report lane. A report is a directory under `reports/` — the existing template package, promoted — containing free agent-authored HTML/CSS/JS plus a `report.json` of stamped data bindings. Verification becomes a property of each **figure** (a DOM element declaring which binding feeds it), not of which folder the file lives in. The `requests/` lane is deprecated; JSON specs survive as a serialization that compiles into the same artifact; the section enum becomes a component vocabulary, not renderer control flow.
+**What changes:** TraceBi collapses to one report lane. A report is a directory under `reports/` — the existing template package, promoted — containing free agent-authored HTML/CSS/JS plus a `report.json` of stamped data bindings. Verification becomes a property of each **figure** (a DOM element declaring which binding feeds it), not of which folder the file lives in. The `requests/` lane was removed (0.8); JSON specs survive as a serialization that compiles into the same artifact; the section enum becomes a component vocabulary, not renderer control flow.
 
 **The trust contract, restated per-figure:** every element that displays data either names a stamped binding (resolved query + lineage + SHA-256, embedded as fingerprinted bytes — the existing `embed.py` kernel, untouched) or carries an explicit `data-tb-unverified` mark that is recorded in the manifest and badged on the page. A figure with neither **fails the build**. There is no fourth state, and no silent third one. `report.py` remains the escape hatch; its outputs are stamped `verifiable: false` per binding — never per package — and never read green.
 
@@ -14,7 +20,7 @@ Status: **decided**. This document is the build plan. Inputs: `reshape-decisions
 
 **What does not change:** the stamping kernel (`embed.py` entire), `frame_fingerprint` as the one algorithm, manifest-first ordering, the CSP and self-contained single-file guarantee, `verifiable: false` never-green, presentation defaults never changing a number, the MCP gateway's no-write-to-warehouse rule, the registry contract (a report is a name plus a zero-arg factory resolving models at call time), the router import paths (the `test_phase5` rebind isolation is untouched), and the three-phase workflow with its freeze points.
 
-**Naming decision (churn resolved):** no file renames. `template.html`, `report.json`, `style.css`, `script.js`, `report.py` keep their names; `TemplatePackage` grows in place and is re-exported as `ReportArtifact` (alias precedent: `BronzeLayer`/`LandingLayer`). Two of three judges scored zero-rename migration as materially lower-risk than artifact-first's `page.html` proposal; the skeleton's rename is dropped.
+**Naming decision (churn resolved):** no file renames. `template.html`, `report.json`, `style.css`, `script.js`, `report.py` keep their names; `TemplatePackage` grows in place (the once-proposed `ReportArtifact` alias was never added — the class keeps its name). Two of three judges scored zero-rename migration as materially lower-risk than artifact-first's `page.html` proposal; the skeleton's rename is dropped.
 
 ---
 
@@ -200,7 +206,7 @@ The agent adopts, overrides, or ignores; it never forks. `reports/_theme.css` is
 
 **Receipt badges are OFF by default in final output** (a mark on every figure is noise; the receipt drawer carries provenance in one opt-in place), rendered from the manifest-derived `tracebi-figures` config — author CSS cannot flip a grey badge green because the badge class is chosen from provenance, not by stylesheet. `report build --badges` opts them back in; the manifest is unaffected either way. (Originally shipped on-by-default with `--no-badges`; reversed on maintainer feedback.)
 
-**Threading:** `HTMLRenderer.for_project(root)` (resolving stack layers 1–2) replaces all **twelve** bare `HTMLRenderer()` construction sites — the eleven from finding #10 (`cli.py:135,754,1085,1966`; `_dev_server.py:66`; `mcp_server.py:436`; `web/api/main.py:162`; `routers/reports.py:47,64,122`; `routers/requests.py:97`) **plus `reports/report.py:778`** (the notebook `_repr_html_` preview, which no design listed; verified this session). `ReportSpec` gains top-level `theme` and `script` keys (schema regenerated, `additionalProperties` stays false); `report build` and `spec render` gain `--theme`. One choke point; no future site can regress to unthemeable. Finding #10 dies as a category.
+**Threading:** `HTMLRenderer.for_project(root)` (resolving stack layers 1–2) is the themed chokepoint. It is now called at the reports router (`routers/reports.py`, the three render/download/lineage handlers) and the notebook `_repr_html_` preview (`reports/report.py`); the once-longer construction-site list shrank as the requests router was removed and other sites moved onto the package renderer. `ReportSpec` gains top-level `theme` and `script` keys (schema regenerated, `additionalProperties` stays false); `report build` and `spec render` gain `--theme`. One choke point; no future site can regress to unthemeable. Finding #10 dies as a category.
 
 **Vocabulary as data:** `tracebi context` gains a `presentation` key — tokens, component classes, `data-tb-*` attributes, runtime signatures as JSON. The field notes proved agents author successfully from context JSON alone; the new surface ships the same way.
 
@@ -210,12 +216,16 @@ The agent adopts, overrides, or ignores; it never forks. `reports/_theme.css` is
 tried X, saw Y, so did Z" — lives in the agent↔human conversation, which does
 it better than any artifact could. TraceBi's job is the **evidence layer the
 narrative points at**: addressable figures, inspectable data, visible code,
-honest badges. Everything below builds that layer and deliberately stops
-short of replicating a notebook's narrative spine. (Scaffold guidance:
+honest badges. The built *artifact* deliberately stops short of carrying
+narrative prose — but the narrative surface still exists on the dev side: the
+workbench's **exhibit feed** (below) is the agent's show surface during
+authoring, and `tracebi session export` writes the committed lab-notebook
+record of a discovery session (with no manifest, refused by `verify` by name).
+The line is drawn at the artifact, not at the tool. (Scaffold guidance:
 exploration blocks are allowed to be ugly — default components only; layout
 polish is finalization work.)
 
-**`tracebi dev <name>` becomes artifact-native.** The dev server's build function is replaced by a form-aware `render_target` (artifact directory → in-memory artifact render; legacy `.json` spec → spec render; legacy request script → deprecated path, one minor version). The watcher is **rewritten from single-file mtime to a directory + `models/` scan** — the current loop watches one file (`_dev_server.py:93–107`), and no milestone estimate assumes otherwise (§6, flaw 5). All DuckDB connections in dev/serve open **read-only**, so `dev`, `report build`, and `serve` coexist (bug #12's fix is a sequenced dependency, see M3). Errors render as the existing auto-reloading traceback page.
+**`tracebi dev <name>` becomes artifact-native.** The dev server's build function is replaced by a form-aware `render_target` (artifact directory → in-memory artifact render; legacy `.json` spec → spec render). (The request-script branch this once carried was removed with the lane in 0.8.) The watcher is **rewritten from single-file mtime to a directory + `models/` scan** — the current loop watches one file (`_dev_server.py:93–107`), and no milestone estimate assumes otherwise (§6, flaw 5). All DuckDB connections in dev/serve open **read-only**, so `dev`, `report build`, and `serve` coexist (bug #12's fix is a sequenced dependency, see M3). Errors render as the existing auto-reloading traceback page.
 
 **The workbench** — `GET /__workbench` on the dev server (dev-only; never injected into build output): a generated review page, same design system, four panels:
 
@@ -283,9 +293,9 @@ At `report build`, contract results attach to the manifest's `transform_contract
 
 | Form | Fate | Mechanism |
 |---|---|---|
-| **Template packages** (`reports/<name>/`) | **They ARE the artifact.** | No file renames. Per-binding `verifiable` replaces the flatten; figure grammar and stack are additive. Zero-figure packages embed exactly as today (§2.1) and verify per-binding. `TemplatePackage` re-exported as `ReportArtifact`. |
+| **Template packages** (`reports/<name>/`) | **They ARE the artifact.** | No file renames. Per-binding `verifiable` replaces the flatten; figure grammar and stack are additive. Zero-figure packages embed exactly as today (§2.1) and verify per-binding. `TemplatePackage` keeps its name (the proposed `ReportArtifact` alias was not added). |
 | **JSON specs** (`reports/<name>.json`) | **Kept as a serialization; not a lane.** | Continue rendering through the current path (now themed via `for_project`, with metric fingerprints + embedded KPI triples — findings #1/#10 closed in place). `tracebi migrate spec <file>` compiles a spec into an artifact: each section becomes a default-component figure bound to its `DataRef`; the section enum becomes compile vocabulary, not renderer control flow. Until migrated, nothing breaks. |
-| **`requests/`** | **Deprecated; working; removed in 0.8.** | Router, `tracebi run`, and `dev --request` keep working through 0.7 with deprecation notes; `tracebi init` stops scaffolding the folder; docs/`tracebi context` present the one lane. Migration is mechanical: queries → bindings, pandas → `report.py`, sections → component figures. No auto-converter — a request that matters gets rebuilt in the loop once. |
+| **`requests/`** | **Removed in 0.8 (done).** | The router, `tracebi run`, `dev --request`, `new-request`/`list-requests`, `request_params`, and the Requests UI page are gone; `tracebi init` never scaffolds the folder; docs and `tracebi context` present the one lane. Migration is mechanical: queries → bindings, pandas → `report.py`, sections → component figures. A JSON spec migrates with `tracebi migrate spec`. |
 | **Section enum** (`SECTION_CLASSES`) | **Kept** as the compiler's vocabulary and the carrier-section mechanism; dies as renderer control flow for the primary lane. |
 | **Excel renderer** | **Kept, unchanged semantics** — applies only explicit `number_formats`, derives nothing; a spec rendering to both stays checked in both. |
 | **PDF/SVG chart path** | **Kept, unshipped**, for the future PDF renderer only; docstring corrected. `chart_dpi`/`chart_style` no-ops stay deprecated. |
@@ -308,7 +318,7 @@ Per-binding `verifiable` in `TemplatePackage.render`; `QuerySpec.order_by/limit`
 *Proof gate (the milestone that validates or falsifies the design):* **rebuild the AltsVault 28-section report end-to-end as one artifact, agent-driving, human reviewing** — mixed verifiable/derived/unverified figures classified correctly offline and by replay; a tampered figure caught offline; a snapshot refused; a stage mismatch caught. *Kill criterion, stated honestly:* if authoring free HTML with components is worse than the spec enum was, we learn it here for the price of one milestone, before M2+ builds on it.
 
 **M2 — The presentation system.** ✅ **Shipped 2026-08-16** — all proof gates green (zero-effort page browser-verified; later-wins chain pinned; byte-exact fmt parity fuzz-verified; CSP + self-containment hold; findings #10/#11/#13 dead at every surface including the notebook preview).
-`tracebi.css` (tokens, components incl. `--striped/--compact`, badges, print), `tracebi.js` (parser promotion, hydration, `_fmt` port, config merge), `stack.py` + `HTMLRenderer.for_project` threaded through all **twelve** sites, `reports/_theme.css` layer, spec `theme`/`script` keys, `--theme`, badges default-on + `--no-badges`, `presentation` key in `tracebi context`.
+`tracebi.css` (tokens, components incl. `--striped/--compact`, badges, print), `tracebi.js` (parser promotion, hydration, `_fmt` port, config merge), `stack.py` + `HTMLRenderer.for_project` threaded through every renderer site, `reports/_theme.css` layer, spec `theme`/`script` keys, `--theme`, badges (default-on at M2, later reversed to default-off + `--badges` — §2.4), `presentation` key in `tracebi context`.
 *Proof gate:* zero-effort page looks shipped; later-wins override chain tested; screen and print agree on `550.7B`; CSP and self-containment byte-verified; findings #10/#11/#13 dead at every surface including the notebook preview.
 
 **M3 — The loop.** ✅ **Shipped 2026-08-16** — proof gates green live: the workbench served with coverage bar, provenance badges, copy-addresses, quick-charts; a pin placed in the portal read back through `report status` (📌) and MCP `workbench_state`; `report build` succeeded WHILE `tracebi dev` served the same warehouse (bug #12 dead); web-rendered artifact HTML passes `verify --file`.
@@ -329,7 +339,7 @@ Intersecting pure bugs, sequenced not designed: **#12** (DuckDB lock) before M3;
 
 ## 5. The test and migration story
 
-The suite (849 passing; run it for the current count) grows and is never reorganized. Phase-scoped files stay phase-scoped (CLAUDE.md rule); the deliberately-fragile registry-rebind isolation in `tests/test_phase5.py::TestPipelineRunEndpoint::test_run_all_layers` is untouched by every milestone — no router import paths change.
+The suite (run `pytest tests/` for the current count) grows and is never reorganized. Phase-scoped files stay phase-scoped (CLAUDE.md rule); the deliberately-fragile registry-rebind isolation in `tests/test_phase5.py::TestPipelineRunEndpoint::test_run_all_layers` is untouched by every milestone — no router import paths change.
 
 **New files, one per area:** `tests/test_artifact.py` (folder load, figure extraction incl. hostile markup through `html.parser`, exploration strip, per-binding verifiable, zero-figure embed equivalence, stack injection order), `tests/test_binding_grammar.py` (order_by/limit canonicalization; tie-break determinism; limit-without-order_by rejected; REST/Python/spec fingerprint parity; pre-change fingerprint corpus), `tests/test_verify_v2.py` (figure rollup, `UNVERIFIED` vs `UNVERIFIABLE`, `figure_unrecorded`, stage mismatch, snapshot refusal, `--strict`, v1-manifest bit-for-bit regression), `tests/test_presentation.py` (later-wins, badge provenance, formatter parity, CSP), `tests/test_contracts.py` (vocabulary, sink failure raises, round-trip fingerprint equivalence, `stale`/`no_contract`), `tests/test_compile_spec.py` (every SectionType compiles).
 
@@ -360,13 +370,13 @@ Everything else in the current suite passes unmodified: the v1 manifest path and
 5. **"Dev watch loop kept verbatim" is false (loop-first; judge 1).** *Resolved by not inheriting the claim:* M3 explicitly budgets a rewrite from single-file mtime polling to a directory + `models/` scan (§2.5).
 6. **No explicit unverified mark (loop-first & presentation-first; all judges).** *Not applicable to the skeleton, and locked in:* `data-tb-unverified` + `data-tb-note`, recorded in the manifest, distinct `UNVERIFIED` verify status, build fails on a figure with neither binding nor mark (§2.1, §2.3).
 7. **Always-on total ordering could move existing v1 fingerprints (loop-first; judge 2).** *Resolved:* the tie-break applies only when `order_by`/`limit` is present; queries without them keep today's byte-for-byte output, guarded by a pre/post fingerprint corpus test citing `data_model.py:1758–1760` (§2.2, M0).
-8. **Receipt badges opt-in on shipped pages (presentation-first; judges 2 & 3).** *Resolved:* badges default-on in final output, provenance-derived so author CSS can't flip them, `--no-badges` for client deliverables, manifest unaffected either way (§2.4).
+8. **Receipt badges opt-in on shipped pages (presentation-first; judges 2 & 3).** *Resolved:* badges are default-OFF in final output, provenance-derived so author CSS can't flip them, `--badges` to opt them back in for a review copy, manifest unaffected either way (§2.4).
 9. **Missing figure cross-check on shipped pages (loop-first; judge 2).** *Kept from the skeleton and made symmetric:* `figure_unrecorded` and `figure_missing_in_file` both fail `verify --file` (§2.3).
 10. **No non-colocated review handoff / draft-receipt risk (artifact-first ding; judges 1 & 2 with conflicting grafts).** *Resolved by combining them:* the sendable form is the receipt-**free** snapshot (EXPLORATION banner, stage meta, no manifest, refused by verify by name) — no draft receipt ever exists to launder — while the stage meta + manifest `stage` cross-check supplies loop-first's draft-never-reads-final guarantee for anything that *does* carry a manifest (§2.5, §2.3).
 
 ### Open questions — resolved by the maintainer (2026-08-16)
 
-1. **`requests/` removal horizon** — confirmed: deprecated through 0.7, removed in 0.8.
+1. **`requests/` removal horizon** — confirmed and **executed**: the lane was removed in 0.8 (CLI, public API, web API, UI, discovery, examples).
 2. **`output/` naming** — confirmed: `report build` renders to `output/` (finding #14 absorbed the cheap way; no folder renames).
 3. **`migrate spec` disposition** — confirmed: emit alongside, warn on name collision; the discovery-shadowing rule is: an artifact directory shadows a same-named `.json` spec, with a startup warning naming both.
 4. **0.6.0 sequencing** — moot: no release for months by the maintainer's direction; milestones are release-agnostic and the cut point stays the maintainer's.

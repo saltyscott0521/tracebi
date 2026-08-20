@@ -14,6 +14,11 @@ a local disk that Vercel functions cannot write to.
 
 ## What works, and what does not
 
+This pairing is ideal for a live read-and-compute demo: models, Explore, and
+synchronous report render, backed by a real Postgres. Nothing rendered is
+persisted server-side — only the Postgres/Supabase run history survives an
+invocation.
+
 Be clear-eyed about this before you deploy.
 
 **Works on Vercel**
@@ -23,7 +28,6 @@ Be clear-eyed about this before you deploy.
 - Reports: synchronous run, HTML/Excel download, lineage graphs
 - Report specs: `POST /api/spec/validate` and `/api/spec/render`
 - The capability schema (`/api/schema`) and discovery diagnostics
-- Requests (ad-hoc scripts) executed on demand
 
 **Does not work on Vercel, architecturally**
 
@@ -32,6 +36,7 @@ Be clear-eyed about this before you deploy.
 | Scheduled reports and pipelines | APScheduler needs a process that outlives a request | Supabase `pg_cron`, or Vercel Cron hitting a run endpoint |
 | Background report runs (`POST /reports/{n}/runs` then poll) | The `run_id` lives in an in-process thread pool; the next poll lands in a different, fresh process | Use the synchronous `POST /reports/{n}/run` |
 | Local SQLite | The filesystem is read-only outside `/tmp`, and `/tmp` is not shared between invocations | Point everything at Supabase Postgres |
+| Persisting rendered `.html` / `.manifest.json` receipts | The serverless filesystem is read-only outside `/tmp`, and `/tmp` is per-invocation | Render synchronously and return to the client, or deliver with `tracebi report send` |
 
 Cold starts cost roughly a second importing pandas. That is inherent, not a
 misconfiguration.
@@ -169,8 +174,9 @@ Vercel will:
 Vercel functions have a 250 MB unzipped limit. That set measures ~150 MB
 because it omits three things it no longer needs:
 
-- **matplotlib** (~35 MB) — HTML charts are inline SVG and Excel charts are
-  openpyxl-native
+- **matplotlib** (~35 MB) — HTML charts render as inline SVG (spec and code
+  reports) or a bundled, self-contained ECharts runtime in the browser
+  (artifact packages), never via matplotlib; Excel charts are openpyxl-native
 - **networkx** (~17 MB) — only used for drawing lineage graphs;
   `LineageDiagram.to_mermaid()` works without it
 - **apscheduler** — a scheduler cannot outlive a request here
@@ -178,8 +184,9 @@ because it omits three things it no longer needs:
 ## 4. Auth — do not skip this
 
 With no auth configured the API is open to anyone who finds the URL, and that
-includes the endpoints that execute request scripts. The server prints a
-warning at startup; take it seriously on a public deployment.
+includes the endpoints that execute report and pipeline code (report
+factories, `report.py`, spec render, and pipeline layer runs). The server
+prints a warning at startup; take it seriously on a public deployment.
 
 The quickest safe thing is HTTP Basic:
 
@@ -208,6 +215,30 @@ runner = PipelineRunner(db_url=os.environ["TRACEBI_SUPABASE_URL"])
 Layers still run on demand via `POST /api/pipelines/{name}/layers/{layer}/run`.
 For a *schedule*, trigger that endpoint from Supabase `pg_cron` or Vercel Cron
 — `runner.start()` will not survive on serverless.
+
+---
+
+## Getting a receipt off the deployment
+
+Because the serverless filesystem is per-invocation, a rendered report and its
+manifest cannot be left on disk for later — the hosted function renders
+synchronously and returns to the client. To keep a receipt, deliver it:
+
+```bash
+TRACEBI_SMTP_URL='smtp://user:pass@host:port' \
+TRACEBI_SMTP_FROM='reports@example.com' \
+  tracebi report send <name> --to team@example.com
+```
+
+`report send` builds the report, re-runs the manifest's recorded queries to
+verify it, and refuses to send while the receipt does not verify — `--force`
+sends anyway with the failing verdict pasted into the body. It emails the
+`.html` and its `.manifest.json` side by side; `--subject` overrides the
+default. If `TRACEBI_SLACK_WEBHOOK` is set, it pings that after a send.
+
+Like seeding and pipeline runs, this belongs to the execution plane — a CI
+job, cron, or a laptop that has the env vars above — not the serverless
+function. No daemon ships; the receipt does.
 
 ---
 

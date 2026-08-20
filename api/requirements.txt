@@ -3,8 +3,9 @@
 # limit, and this set measures ~150 MB.
 #
 # Notably absent, and why it is safe:
-#   matplotlib  (~35 MB) — HTML charts are inline SVG and Excel charts are
-#                          openpyxl-native, so nothing needs it any more.
+#   matplotlib  (~35 MB) — HTML charts render as inline SVG or a bundled
+#                          ECharts runtime in the browser, and Excel charts
+#                          are openpyxl-native, so nothing needs it any more.
 #   networkx    (~17 MB) — only used for graph *drawing*;
 #                          LineageDiagram.to_mermaid() works without it.
 #   apscheduler          — a scheduler cannot outlive a request here.
@@ -16,6 +17,7 @@ duckdb>=0.9
 
 # Web layer
 fastapi>=0.100
+jinja2>=3.0
 python-multipart>=0.0.6
 
 # SQL connectors + PipelineRunner history, pointed at Supabase Postgres
