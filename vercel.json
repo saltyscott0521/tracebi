@@ -4,7 +4,8 @@
   "outputDirectory": ".vercel_out",
   "functions": {
     "api/index.py": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "memory": 3009
     }
   },
   "rewrites": [

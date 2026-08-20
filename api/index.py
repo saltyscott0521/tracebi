@@ -62,23 +62,6 @@ os.chdir(_project if _warehouse.is_file() else _ROOT)
 # importing the whole demo app into this request function.
 os.environ.setdefault("TRACEBI_APP", "")
 
-# TEMPORARY DIAGNOSTIC: the tracebi app imports fine locally but crashes on
-# Vercel's runtime (FUNCTION_INVOCATION_FAILED). Surface the real traceback at
-# /api/health instead of a bare crash. Reverted once the cause is known.
-try:
-    from tracebi.web.api.main import app  # noqa: E402  (after sys.path/env setup)
-except BaseException as _boot_exc:  # noqa: BLE001 — even SystemExit/segfault-ish
-    import traceback as _traceback
-
-    _boot_msg = repr(_boot_exc)
-    _boot_tb = _traceback.format_exc()
-    from fastapi import FastAPI as _FastAPI
-
-    app = _FastAPI()
-
-    @app.get("/api/health")
-    @app.get("/api/{path:path}")
-    def _boot_error(path: str = ""):  # noqa: ARG001
-        return {"boot_error": _boot_msg, "traceback": _boot_tb.splitlines()[-25:]}
+from tracebi.web.api.main import app  # noqa: E402  (after sys.path/env setup)
 
 __all__ = ["app"]
