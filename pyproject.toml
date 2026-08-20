@@ -63,9 +63,9 @@ postgres  = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1"]
 duckdb    = ["duckdb>=0.9"]
 bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
-reports   = ["openpyxl>=3.0", "matplotlib>=3.5"]
+reports   = ["openpyxl>=3.0", "matplotlib>=3.10.9"]
 pdf       = ["weasyprint>=57"]  # enables HTMLRenderer.render_pdf(); no standalone PDFRenderer yet
-lineage   = ["networkx>=3.0", "matplotlib>=3.5"]
+lineage   = ["networkx>=3.0", "matplotlib>=3.10.9"]
 medallion = ["networkx>=3.0"]
 pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
 web       = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.0", "python-multipart>=0.0.6"]
@@ -75,7 +75,7 @@ mcp       = ["mcp>=2.0"]  # the agent gateway — `tracebi mcp`
 analyst = [
     # Common case for a data analyst: reports + SQL + CSV + lineage + DuckDB + dotenv
     "openpyxl>=3.0",
-    "matplotlib>=3.5",
+    "matplotlib>=3.10.9",
     "sqlalchemy>=2.0",
     "networkx>=3.0",
     "duckdb>=0.9",
@@ -84,7 +84,7 @@ analyst = [
 all = [
     # Everything: every connector, every renderer, every server.
     "openpyxl>=3.0",
-    "matplotlib>=3.5",
+    "matplotlib>=3.10.9",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.1",
     "duckdb>=0.9",
@@ -110,7 +110,7 @@ dev = [
     # instead of importorskip-ing them.
     "mcp>=2.0",
     "openpyxl>=3.0",
-    "matplotlib>=3.5",
+    "matplotlib>=3.10.9",
     "networkx>=3.0",
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
