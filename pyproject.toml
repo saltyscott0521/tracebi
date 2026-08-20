@@ -54,7 +54,7 @@ Issues        = "https://github.com/saltyscott0521/tracebi/issues"
 Changelog     = "https://github.com/saltyscott0521/tracebi/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-csv       = ["openpyxl>=3.0"]
+csv       = ["openpyxl>=3.1.5"]
 sql       = ["sqlalchemy>=2.0"]
 # `sql` brings SQLAlchemy but no driver, so Postgres — the database every
 # deployment doc here assumes — needed one naming. api/requirements.txt had
@@ -63,7 +63,7 @@ postgres  = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1"]
 duckdb    = ["duckdb>=0.9"]
 bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
-reports   = ["openpyxl>=3.0", "matplotlib>=3.5"]
+reports   = ["openpyxl>=3.1.5", "matplotlib>=3.5"]
 pdf       = ["weasyprint>=57"]  # enables HTMLRenderer.render_pdf(); no standalone PDFRenderer yet
 lineage   = ["networkx>=3.0", "matplotlib>=3.5"]
 medallion = ["networkx>=3.0"]
@@ -74,7 +74,7 @@ mcp       = ["mcp>=2.0"]  # the agent gateway — `tracebi mcp`
 # Convenience bundles
 analyst = [
     # Common case for a data analyst: reports + SQL + CSV + lineage + DuckDB + dotenv
-    "openpyxl>=3.0",
+    "openpyxl>=3.1.5",
     "matplotlib>=3.5",
     "sqlalchemy>=2.0",
     "networkx>=3.0",
@@ -83,7 +83,7 @@ analyst = [
 ]
 all = [
     # Everything: every connector, every renderer, every server.
-    "openpyxl>=3.0",
+    "openpyxl>=3.1.5",
     "matplotlib>=3.5",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.1",
@@ -109,7 +109,7 @@ dev = [
     # mcp so CI actually exercises the gateway registration + auth tests
     # instead of importorskip-ing them.
     "mcp>=2.0",
-    "openpyxl>=3.0",
+    "openpyxl>=3.1.5",
     "matplotlib>=3.5",
     "networkx>=3.0",
     "apscheduler>=3.10",

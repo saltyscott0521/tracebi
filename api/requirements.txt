@@ -25,4 +25,4 @@ sqlalchemy>=2.0
 psycopg[binary]>=3.1
 
 # Excel export (native charts, no matplotlib)
-openpyxl>=3.0
+openpyxl>=3.1.5
