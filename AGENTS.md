@@ -104,11 +104,23 @@ Three rules that keep pages honest:
 - **"Top N" is declarative.** Put `order_by` + `limit` in the binding's
   query — never sort or slice in `script.js`, which moves ordering out of
   the receipt.
+- **Reading data in `script.js` goes through `tracebi.ready(fn)`.** Never
+  call `tracebi.data()` at the top level: a large-detail artifact decodes
+  its data in a worker AFTER `script.js` runs, so a bare call returns `[]`
+  there and rows on a small report. `ready(fn)` behaves the same on both.
+- **The embed format is chosen for you, per artifact, by size.** CSV for a
+  normal dashboard (tiny, no engine); Parquet plus an inlined worker engine
+  (parquet-wasm + Arquero) once the data is large enough that the engine
+  pays for itself. You never declare it, and one artifact never mixes both.
+  It is transport, not trust: the receipt is the same content fingerprint
+  either way and `verify --file` checks both identically. Writing or
+  verifying the Parquet form needs PyArrow (`pip install 'tracebi[reports]'`).
 - **Interactivity subsets, never computes.** The premium objects —
   `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
   (`data-tb-rows`, default 10), tabs (`data-tb-tab`), `.tb-cols-2/3`
-  layouts, `data-tb-download` (the stamped CSV verbatim — a
-  receipt-preserving export) — all subset WHICH stamped rows figures
+  layouts, `data-tb-download` (always the FULL binding, never the filtered
+  view — the stamped CSV verbatim on a CSV artifact, that same data
+  re-serialised on a Parquet one) — all subset WHICH stamped rows figures
   display. They never compute new numbers: client-side aggregation would
   mint numbers, so value figures never react and a filtered KPI needs its
   own binding. Download buttons take `data-tb-label` for their text.

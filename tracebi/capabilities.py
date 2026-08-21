@@ -296,10 +296,29 @@ def _presentation() -> dict:
         "runtime": [
             "tracebi.data(name) → rows from the embedded fingerprinted bytes "
             "(the only data source)",
+            "tracebi.ready(fn) → run fn once the data is loaded. ALWAYS wrap "
+            "script.js data access in this: a large-detail artifact decodes "
+            "its data in a worker AFTER script.js runs, so a bare "
+            "tracebi.data() call there returns [] on those reports and rows "
+            "on small ones. ready(fn) behaves the same on both.",
             "tracebi.fmt(value, 'compact') → the one '550.7B' formatter",
             "tracebi.configureChart(figureId, patch) → restyle an ECharts "
             "option; series data is always re-sourced from the stamped bytes",
         ],
+        "embed_format": (
+            "A built artifact embeds each binding's data as CSV, or as "
+            "Parquet decoded in the browser by an inlined worker engine "
+            "(parquet-wasm + Arquero) when the data is large enough that the "
+            "engine pays for itself. tracebi CHOOSES this automatically per "
+            "artifact by size — you never declare it, and one artifact never "
+            "mixes both. It is a transport choice, not a trust one: the "
+            "receipt is the same content fingerprint either way, and "
+            "verify --file checks both identically. What it changes is the "
+            "artifact's shape — a Parquet artifact carries ~3.5MB of engine "
+            "and needs Worker + WebAssembly, so a small report stays CSV and "
+            "stays tiny. Writing or verifying Parquet needs PyArrow "
+            "(pip install 'tracebi[reports]')."
+        ),
         "semantic_contract": (
             "Every built artifact embeds one tb-semantic-contract-<model> "
             "JSON block per model its bindings reference, fingerprinted in "

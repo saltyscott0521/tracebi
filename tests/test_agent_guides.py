@@ -12,6 +12,8 @@ teaching it and CI fails: "would the agent know?" is a test now, not a
 hope.
 """
 
+import json
+
 import re
 from pathlib import Path
 
@@ -120,4 +122,32 @@ class TestScaffoldDemonstratesTheProduct:
                        "data-tb-stage", "data-tb-methodology"):
             assert marker in _INIT_SAMPLE_TEMPLATE_HTML, (
                 f"the scaffold sample no longer demonstrates {marker}"
+            )
+
+
+class TestLargeDetailArtifactIsTaught:
+    """The discoverability definition of done for the Parquet embed.
+
+    A feature agents should use is not done when it works — it is done when an
+    agent WOULD use it. The size-chosen embed format changes how an author must
+    write script.js (a bare tracebi.data() call returns [] on a Parquet
+    artifact), so both guides and the generated vocabulary must say so.
+    """
+
+    def test_ready_api_is_in_the_vocabulary_and_both_guides(self):
+        from tracebi.capabilities import describe
+
+        payload = json.dumps(describe())
+        assert "tracebi.ready(" in payload, (
+            "the vocabulary must document tracebi.ready — without it an agent "
+            "writes a top-level tracebi.data() call that silently returns []"
+        )
+        for name, text in _guides().items():
+            assert "tracebi.ready(" in text, f"{name} does not teach tracebi.ready"
+
+    def test_the_size_chosen_embed_format_is_explained_in_both_guides(self):
+        for name, text in _guides().items():
+            assert "Parquet" in text, f"{name} never mentions the Parquet embed"
+            assert "PyArrow" in text or "pyarrow" in text, (
+                f"{name} does not name the dependency the Parquet form needs"
             )

@@ -49,8 +49,9 @@ class TestAssetHygiene:
         # download, tabs, and the receipt drawer landed; → 48 KiB when the
         # Parquet worker-decode path (large-detail artifacts) landed — the async
         # pre-decode that fills _blocks from embedded Parquet via the inlined
-        # worker engine before hydration. Behavior, not bloat.
-        assert os.path.getsize(ASSET) < 48 * 1024
+        # worker engine before hydration, plus tracebi.ready() so author code
+        # sees the same data on either transport. Behavior, not bloat.
+        assert os.path.getsize(ASSET) < 52 * 1024
 
     def test_no_eval(self):
         with open(ASSET, encoding="utf-8") as f:

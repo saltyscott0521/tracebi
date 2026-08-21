@@ -63,14 +63,49 @@ def to_parquet_bytes(df: "pd.DataFrame") -> bytes:
     return buf.getvalue()
 
 
+#: Decode bounds for untrusted Parquet. ``verify --file`` runs against a file
+#: someone was *sent*, so its embedded data is attacker-controllable: Parquet is
+#: compressed and columnar, so a small block can describe an enormous frame, and
+#: an unbounded decode would let a tiny .html exhaust the checker's memory. These
+#: caps sit far above any artifact a browser could render (the artifact is itself
+#: bounded by what the page can hold) and are checked against the file's own
+#: metadata, before any data is read.
+MAX_DECODE_ROWS = 50_000_000
+MAX_DECODE_UNCOMPRESSED_BYTES = 2 * 1024**3  # 2 GiB
+
+
+class ParquetTooLarge(ValueError):
+    """An embedded Parquet block declares more data than we will decode."""
+
+
 def from_parquet_bytes(data: bytes) -> "pd.DataFrame":
     """Decode embedded Parquet *data* back to a DataFrame — verify's decode step.
 
     The recovered frame has the same content fingerprint as the original, so
     verify recomputes ``{columns, dtypes, csv}`` from it and matches the stored
     ``embedded_sha256`` without any special-casing.
+
+    Refuses a block whose own metadata declares more than :data:`MAX_DECODE_ROWS`
+    rows or :data:`MAX_DECODE_UNCOMPRESSED_BYTES` of data, so a hostile file
+    cannot turn the checker into a decompression bomb.
     """
     _require_pyarrow()
     import pandas as pd
+    import pyarrow.parquet as pq
 
-    return pd.read_parquet(io.BytesIO(data), engine="pyarrow")
+    buf = io.BytesIO(data)
+    # Read the footer only: this is metadata, not the column data itself.
+    md = pq.ParquetFile(buf).metadata
+    if md.num_rows > MAX_DECODE_ROWS:
+        raise ParquetTooLarge(
+            f"embedded data declares {md.num_rows:,} rows, above the "
+            f"{MAX_DECODE_ROWS:,} decode limit"
+        )
+    total = sum(md.row_group(i).total_byte_size for i in range(md.num_row_groups))
+    if total > MAX_DECODE_UNCOMPRESSED_BYTES:
+        raise ParquetTooLarge(
+            f"embedded data declares {total:,} uncompressed bytes, above the "
+            f"{MAX_DECODE_UNCOMPRESSED_BYTES:,} decode limit"
+        )
+    buf.seek(0)
+    return pd.read_parquet(buf, engine="pyarrow")

@@ -90,6 +90,31 @@
     return parsed;
   }
 
+  /* ── Data readiness ───────────────────────────────────────────────────────
+   * On a CSV artifact every block is parseable the moment the page exists, so
+   * an author's script.js can call tracebi.data() inline. A Parquet artifact
+   * decodes in a worker first, and script.js runs BEFORE that finishes — so a
+   * bare data() call would see an empty table on one transport and full data on
+   * the other. tracebi.ready(fn) runs fn once the data is loaded either way
+   * (immediately, if it already is), so author code is written once and behaves
+   * the same on both. */
+  var _dataReady = false;
+  var _readyQueue = [];
+
+  function runReady() {
+    var q = _readyQueue;
+    _readyQueue = [];
+    for (var i = 0; i < q.length; i++) {
+      try { q[i](); } catch (e) { /* an author callback must not stop the rest */ }
+    }
+  }
+
+  function ready(fn) {
+    if (typeof fn !== "function") return;
+    if (_dataReady) { try { fn(); } catch (e) {} return; }
+    _readyQueue.push(fn);
+  }
+
   /* Public accessor: returns COPIES of the cached rows, so author code
    * cannot mutate what hydration draws from. */
   function data(name) {
@@ -1207,7 +1232,9 @@
       if (typeof requestAnimationFrame === "function") requestAnimationFrame(hydrate);
       else hydrate();
     };
-    var boot = function () { ensureData(schedule); };
+    var boot = function () {
+      ensureData(function () { _dataReady = true; runReady(); schedule(); });
+    };
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", boot);
     } else {
@@ -1217,6 +1244,7 @@
 
   root.tracebi = {
     data: data,
+    ready: ready,
     fmt: fmt,
     configureChart: configureChart
   };

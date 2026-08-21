@@ -88,6 +88,18 @@ whose figures each name a binding from `report.json`:
   `tracebi.configureChart` — config can restyle, never re-source: series data
   always comes from the stamped bytes. Provenance badges pick their state
   from the manifest; a stylesheet can restyle a badge, never re-color honesty.
+- Reading data in `script.js`: ALWAYS wrap it in `tracebi.ready(fn)`, never
+  call `tracebi.data()` at the top level. A large-detail report embeds its
+  data as Parquet and decodes it in a worker AFTER `script.js` runs, so a bare
+  call returns `[]` there and rows on a small report. `ready(fn)` behaves the
+  same on both.
+- The embed format is chosen FOR you, per report, by size: CSV for a normal
+  dashboard (tiny), Parquet plus an inlined worker engine once the data is
+  large enough that the engine pays for itself. You never declare it and one
+  report never mixes both. It is transport, not trust — the receipt is the
+  same fingerprint either way and `verify --file` checks both identically.
+  Writing or verifying the Parquet form needs PyArrow
+  (`pip install 'tracebi[reports]'`).
 - Methodology travels the pipeline: `contract(..., note=...)` (and per-check
   `note=`) records the transform's STATED methodology in the certificate;
   measure `description=` carries modeling intent. Add ONE

@@ -241,3 +241,21 @@ def test_unsafe_column_labels_fall_back_to_csv():
         # large enough that size alone would have chosen Parquet
         assert len(stamped[0].triple["csv"]) > 1_000_000
         assert choose_embed_format(stamped) == EMBED_FORMAT_CSV
+
+
+def test_untrusted_parquet_decode_is_bounded():
+    """verify --file runs on a file someone was SENT, so its embedded data is
+    attacker-controllable: a small compressed block can declare an enormous
+    frame. The decode must refuse from metadata, before reading any data."""
+    import tracebi.reports.parquet_embed as pe
+
+    data = pe.to_parquet_bytes(pd.DataFrame({"x": range(1000)}))
+    original = pe.MAX_DECODE_ROWS
+    try:
+        pe.MAX_DECODE_ROWS = 10
+        with pytest.raises(pe.ParquetTooLarge):
+            pe.from_parquet_bytes(data)
+    finally:
+        pe.MAX_DECODE_ROWS = original
+    # and a normal block still decodes
+    assert len(pe.from_parquet_bytes(data)) == 1000
