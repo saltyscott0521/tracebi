@@ -3445,6 +3445,7 @@ all = [
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openpyxl" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "pyarrow" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "snowflake-connector-python" },
@@ -3460,6 +3461,7 @@ analyst = [
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openpyxl" },
+    { name = "pyarrow" },
     { name = "python-dotenv" },
     { name = "sqlalchemy" },
 ]
@@ -3482,6 +3484,7 @@ dev = [
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openpyxl" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "python-dotenv" },
@@ -3522,6 +3525,7 @@ reports = [
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openpyxl" },
+    { name = "pyarrow" },
 ]
 snowflake = [
     { name = "snowflake-connector-python" },
@@ -3578,6 +3582,10 @@ requires-dist = [
     { name = "pandas", specifier = ">=1.5" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'all'", specifier = ">=3.1" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.1" },
+    { name = "pyarrow", marker = "extra == 'all'", specifier = ">=14.0" },
+    { name = "pyarrow", marker = "extra == 'analyst'", specifier = ">=14.0" },
+    { name = "pyarrow", marker = "extra == 'dev'", specifier = ">=14.0" },
+    { name = "pyarrow", marker = "extra == 'reports'", specifier = ">=14.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "python-dotenv", marker = "extra == 'all'", specifier = ">=1.2.3" },

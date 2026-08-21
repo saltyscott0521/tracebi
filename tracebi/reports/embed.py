@@ -316,10 +316,29 @@ def choose_embed_format(stamped: "list[StampedData]") -> str:
     triple, which Parquet round-trips exactly), so this is purely a transport
     decision — no report is more or less verifiable for having crossed it.
     """
-    total_csv = sum(
-        len(sd.triple["csv"].encode("utf-8")) for sd in stamped
-    )
-    return (EMBED_FORMAT_PARQUET if total_csv > engine_cost_bytes()
+    total_csv = sum(len(sd.triple["csv"].encode("utf-8")) for sd in stamped)
+    engine = engine_cost_bytes()
+    # Fast path: below the engine's own price Parquet cannot possibly win, and
+    # this is the common case (every KPI dashboard), so do not encode anything.
+    if total_csv <= engine:
+        return EMBED_FORMAT_CSV
+    # Otherwise MEASURE rather than assume a compression ratio: how well Parquet
+    # does is data-dependent (high-cardinality columns compress poorly), and
+    # assuming ~10× could make the artifact BIGGER than the CSV it replaced.
+    # Encoding is only paid here, where the data is already large enough to be
+    # worth the check.
+    try:
+        from tracebi.reports.parquet_embed import to_parquet_bytes
+
+        total_parquet_b64 = sum(
+            (len(to_parquet_bytes(sd.dataset.to_pandas())) * 4) // 3
+            for sd in stamped
+        )
+    except Exception:  # noqa: BLE001 — no Parquet writer, or a frame it cannot
+        # encode: stay on the format that always works.
+        return EMBED_FORMAT_CSV
+    return (EMBED_FORMAT_PARQUET
+            if engine + total_parquet_b64 < total_csv
             else EMBED_FORMAT_CSV)
 
 

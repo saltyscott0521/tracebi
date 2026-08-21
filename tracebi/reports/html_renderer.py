@@ -34,7 +34,8 @@ import pandas as pd
 from tracebi.model.dataset import DataSet
 from tracebi.reports.base_renderer import BaseRenderer, _warn_if_unknown_git_sha
 from tracebi.reports.embed import (
-    csp_meta, data_blocks_html, embedded_record, insert_before, stamp_dataset,
+    EMBED_FORMAT_CSV, csp_meta, data_blocks_html, embedded_record,
+    insert_before, stamp_dataset,
 )
 from tracebi.reports.report import (
     Report, ReportManifest, SectionType,
@@ -337,9 +338,14 @@ class HTMLRenderer(BaseRenderer):
         )
         page = insert_before(page, "</head>", csp_meta())
         if bindings:
-            # One format for the whole artifact, chosen by size (embed.py):
-            # Parquet only once the data outweighs the engine it would inline.
-            tail = data_blocks_html([sd for _section, sd, _plan in bindings])
+            # ALWAYS CSV in this lane, never the size-chosen format: the
+            # governed renderer ships no client runtime (interactive rendering
+            # is the artifact lane's job, see above), so it has nothing that
+            # could decode a Parquet block — the data would be an opaque base64
+            # blob no reader and no page could open. CSV keeps this lane's
+            # embedded data readable and file-checkable with no engine.
+            tail = data_blocks_html([sd for _section, sd, _plan in bindings],
+                                    fmt=EMBED_FORMAT_CSV)
             page = insert_before(page, "</body>", tail)
         return page
 

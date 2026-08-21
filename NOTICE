@@ -10,6 +10,13 @@ INLINES it into every generated report .html. Each generated report is
 therefore a redistribution of that bundle, and this NOTICE — with the
 attributions below — must travel with it.
 
+A report that embeds its data as Parquet (a large-detail artifact) additionally
+inlines the client-side worker engine — tracebi/reports/assets/
+tracebi-engine.worker.js and parquet_wasm_bg.wasm.gz — which bundles
+parquet-wasm, Arquero, and Apache Arrow (JS). Such a report is a redistribution
+of those as well; see the per-file detail and rebuild instructions in
+tracebi/reports/assets/ENGINE_NOTICE.md, and the attributions below.
+
 ================================================================================
 Apache ECharts 6.1.0  —  https://echarts.apache.org/
 Licensed under the Apache License, Version 2.0.
@@ -74,3 +81,29 @@ tslib 2.3.0  —  https://github.com/microsoft/tslib
     OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
     CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ================================================================================
+
+================================================================================
+parquet-wasm 0.7.2  —  https://github.com/kylebarron/parquet-wasm
+Licensed under MIT OR Apache-2.0.
+Inlined (as parquet_wasm_bg.wasm.gz) into a generated report that embeds its
+data as Parquet, to decode that data in the browser.
+
+================================================================================
+Arquero 8.0.3  —  https://github.com/uwdata/arquero
+Copyright (c) 2020, UW Interactive Data Lab
+Licensed under the BSD 3-Clause License.
+Bundled into tracebi-engine.worker.js and inlined into a generated report that
+embeds its data as Parquet, to query that data in the browser.
+
+================================================================================
+Apache Arrow (JavaScript) 21.2.0  —  https://arrow.apache.org/
+Licensed under the Apache License, Version 2.0.
+
+    Apache Arrow
+    Copyright 2016-2026 The Apache Software Foundation
+
+    This product includes software developed at
+    The Apache Software Foundation (http://www.apache.org/).
+
+Bundled into tracebi-engine.worker.js and inlined into a generated report that
+embeds its data as Parquet.

@@ -750,14 +750,20 @@ def _triple_from_parquet(parquet_b64: str) -> Optional[dict]:
     """
     import base64
 
-    try:
-        from tracebi.reports.embed import canonical_triple
-        from tracebi.reports.parquet_embed import from_parquet_bytes
+    from tracebi.reports.embed import canonical_triple
+    from tracebi.reports.parquet_embed import from_parquet_bytes
 
+    try:
         df = from_parquet_bytes(base64.b64decode(parquet_b64))
-        return canonical_triple(df)
-    except Exception:  # noqa: BLE001 — any decode failure ⇒ not a valid block
+    except ImportError:
+        # A MISSING DEPENDENCY IS NOT TAMPERING. Swallowing this would report
+        # "FILE ALTERED — the data in this file was edited" to a reviewer whose
+        # checker simply cannot read Parquet, which is both an overclaim and a
+        # false accusation. Fail loudly with the extras key instead (invariant 4).
+        raise
+    except Exception:  # noqa: BLE001 — a genuinely corrupt block is not readable
         return None
+    return canonical_triple(df)
 
 
 def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:

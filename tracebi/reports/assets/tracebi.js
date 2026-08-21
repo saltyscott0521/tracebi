@@ -238,10 +238,15 @@
     return isFinite(n) ? n : null;
   }
 
+  /* Non-empty values of a column. null counts as empty alongside undefined and
+   * "": the CSV path writes a NULL as "", so treating null differently would
+   * make the SAME data read as non-numeric — losing alignment and number
+   * formatting — on one transport but not the other. */
   function columnValues(rows, col) {
-    var out = [];
+    var out = [], v;
     for (var i = 0; i < rows.length; i++) {
-      if (rows[i][col] !== undefined && rows[i][col] !== "") out.push(rows[i][col]);
+      v = rows[i][col];
+      if (v !== undefined && v !== null && v !== "") out.push(v);
     }
     return out;
   }
@@ -888,9 +893,15 @@
         if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
         el.addEventListener("click", function () {
           try {
-            /* The stamped triple's csv string exactly as embedded — the
-             * bytes the fingerprint covers. A receipt-preserving export:
-             * never the filtered view, never a re-serialisation. */
+            /* Always the FULL binding, never the filtered view — the export
+             * cannot be used to pass off a subset as the whole.
+             * On a CSV artifact this is the stamped triple's csv string
+             * exactly as embedded, i.e. the bytes the fingerprint covers.
+             * On a Parquet artifact it is that same data re-serialised from
+             * the decoded block (the fingerprinted bytes are not carried in
+             * the page), so it is faithful to the embedded values but not
+             * byte-identical to the hashed string — the file itself, checked
+             * with `verify --file`, remains the receipt. */
             var blob = new Blob([block.csv], { type: "text/csv" });
             var url = URL.createObjectURL(blob);
             var a = document.createElement("a");
@@ -1143,24 +1154,45 @@
         typeof DecompressionStream === "undefined") { done(); return; }
     gunzip(b64ToBytes(wasmB64)).then(function (wasm) {
       var worker = new Worker(URL.createObjectURL(new Blob([wsrc], { type: "text/javascript" })));
-      var remaining = blocks.length, idx = 0;
-      var finish = function () { try { worker.terminate(); } catch (e) {} done(); };
+      var remaining = blocks.length, idx = 0, settled = false, timer = null;
+      /* done() must run EXACTLY once, and must run even if the worker dies,
+       * throws, or never answers — otherwise hydration never happens and the
+       * whole page stays blank. Guarded three ways: onerror, a watchdog, and
+       * the settled latch. */
+      var finish = function () {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        try { worker.terminate(); } catch (e) {}
+        done();
+      };
+      timer = setTimeout(finish, 30000);
+      worker.onerror = finish;
+      worker.onmessageerror = finish;
       function loadNext() {
         if (idx >= blocks.length) return;
-        var b = blocks[idx++], bytes = b64ToBytes(b.b64);
+        var b = blocks[idx++], bytes;
+        try { bytes = b64ToBytes(b.b64); } catch (e) { step(); return; }
         worker.postMessage({ type: "load", name: b.name, parquet: bytes.buffer }, [bytes.buffer]);
       }
+      function step() { if (--remaining <= 0) finish(); else loadNext(); }
       worker.onmessage = function (e) {
         var m = e.data || {};
-        if (m.type === "inited") { loadNext(); }
-        else if (m.type === "loaded") { worker.postMessage({ type: "rows", name: m.name, id: 1 }); }
-        else if (m.type === "rows") {
-          var rows = m.rows || [];
-          _blocks[m.name] = { cols: m.cols || (rows[0] ? Object.keys(rows[0]) : []), rows: rows };
-          if (--remaining <= 0) finish(); else loadNext();
-        } else if (m.type === "error") {
-          if (--remaining <= 0) finish(); else loadNext();
-        }
+        try {
+          if (m.type === "inited") { loadNext(); }
+          else if (m.type === "loaded") { worker.postMessage({ type: "rows", name: m.name, id: 1 }); }
+          else if (m.type === "rows") {
+            var rows = m.rows || [];
+            _blocks[m.name] = {
+              cols: m.cols || (rows[0] ? Object.keys(rows[0]) : []),
+              rows: rows,
+              /* readBlock() always sets .csv (the verbatim download reads it);
+               * without it the download control writes the text "undefined". */
+              csv: m.csv || ""
+            };
+            step();
+          } else if (m.type === "error") { step(); }
+        } catch (err) { finish(); }
       };
       var wbuf = wasm.buffer;
       worker.postMessage({ type: "init", wasm: wbuf }, [wbuf]);

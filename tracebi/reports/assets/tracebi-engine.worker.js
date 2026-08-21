@@ -31709,18 +31709,59 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
   }
 
   // engine.worker.mjs
-  function toPlain(rows) {
+  function cellToText(v) {
+    if (v === null || v === void 0) return "";
+    const t2 = typeof v;
+    if (t2 === "string") return v;
+    if (t2 === "bigint") {
+      return v.toString();
+    }
+    if (t2 === "boolean") return v ? "True" : "False";
+    if (v instanceof Date) return isoLike(v);
+    if (t2 === "number") {
+      return String(v);
+    }
+    return String(v);
+  }
+  function isoLike(d) {
+    const s = d.toISOString();
+    return s.endsWith("T00:00:00.000Z") ? s.slice(0, 10) : s.slice(0, 19).replace("T", " ");
+  }
+  function temporalColumns(schema) {
+    const out = {};
+    for (const f of schema && schema.fields || []) {
+      const t2 = String(f.type || "");
+      if (/Date|Timestamp/i.test(t2)) out[f.name] = true;
+    }
+    return out;
+  }
+  function toPlain(rows, temporal) {
     return rows.map((r) => {
       const o = {};
       for (const k in r) {
-        const v = r[k];
-        o[k] = typeof v === "bigint" ? Number(v) : v;
+        let v = r[k];
+        if (temporal && temporal[k] && v !== null && v !== void 0 && !(v instanceof Date)) {
+          v = new Date(typeof v === "bigint" ? Number(v) : v);
+        }
+        o[k] = cellToText(v);
       }
       return o;
     });
   }
+  function toCsv(cols, rows) {
+    const esc = (s) => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    const lines = [cols.map(esc).join(",")];
+    for (const r of rows) lines.push(cols.map((c) => esc(r[c] === void 0 ? "" : r[c])).join(","));
+    return lines.join("\n") + "\n";
+  }
   var tables = {};
+  var temporals = {};
   var ready = null;
+  function reply(type, m, dt) {
+    const cols = dt ? dt.columnNames() : [];
+    const rows = dt ? toPlain(dt.objects(), temporals[m.name]) : [];
+    self.postMessage({ type, name: m.name, id: m.id, rows, cols, csv: toCsv(cols, rows) });
+  }
   self.onmessage = async (e) => {
     const m = e.data || {};
     try {
@@ -31731,15 +31772,16 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
       } else if (m.type === "load") {
         await ready;
         const wt = readParquet(new Uint8Array(m.parquet));
-        tables[m.name] = fromArrow(tableFromIPC(wt.intoIPCStream()));
+        const at2 = tableFromIPC(wt.intoIPCStream());
+        temporals[m.name] = temporalColumns(at2.schema);
+        tables[m.name] = fromArrow(at2);
         self.postMessage({ type: "loaded", name: m.name, rows: tables[m.name].numRows() });
       } else if (m.type === "rows") {
-        const dt = tables[m.name];
-        self.postMessage({ type: "rows", name: m.name, id: m.id, rows: dt ? toPlain(dt.objects()) : [], cols: dt ? dt.columnNames() : [] });
+        reply("rows", m, tables[m.name]);
       } else if (m.type === "query") {
         const dt = tables[m.name];
         if (!dt) {
-          self.postMessage({ type: "result", name: m.name, id: m.id, rows: [] });
+          self.postMessage({ type: "result", name: m.name, id: m.id, rows: [], cols: [], csv: "" });
           return;
         }
         let f = dt;
@@ -31754,7 +31796,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
           }
           out = f.groupby(...m.groupby).rollup(rollup2);
         }
-        self.postMessage({ type: "result", name: m.name, id: m.id, rows: toPlain(out.objects()), cols: out.columnNames() });
+        reply("result", m, out);
       }
     } catch (err) {
       self.postMessage({ type: "error", name: m.name, id: m.id, message: String(err && err.message || err) });

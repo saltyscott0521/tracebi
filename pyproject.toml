@@ -63,7 +63,10 @@ postgres  = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1"]
 duckdb    = ["duckdb>=1.5.5"]
 bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
-reports   = ["openpyxl>=3.1.5", "matplotlib>=3.10.9"]
+# pyarrow: Parquet round-trip for large-detail artifacts. It is the reference
+# implementation and preserves pandas dtypes exactly, which the receipt depends
+# on (see tracebi/reports/parquet_embed.py).
+reports   = ["openpyxl>=3.1.5", "matplotlib>=3.10.9", "pyarrow>=14.0"]
 pdf       = ["weasyprint>=57"]  # enables HTMLRenderer.render_pdf(); no standalone PDFRenderer yet
 lineage   = ["networkx>=3.0", "matplotlib>=3.10.9"]
 medallion = ["networkx>=3.0"]
@@ -76,6 +79,7 @@ analyst = [
     # Common case for a data analyst: reports + SQL + CSV + lineage + DuckDB + dotenv
     "openpyxl>=3.1.5",
     "matplotlib>=3.10.9",
+    "pyarrow>=14.0",
     "sqlalchemy>=2.0",
     "networkx>=3.0",
     "duckdb>=1.5.5",
@@ -85,6 +89,7 @@ all = [
     # Everything: every connector, every renderer, every server.
     "openpyxl>=3.1.5",
     "matplotlib>=3.10.9",
+    "pyarrow>=14.0",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.1",
     "duckdb>=1.5.5",
@@ -110,6 +115,7 @@ dev = [
     # instead of importorskip-ing them.
     "mcp>=2.0",
     "openpyxl>=3.1.5",
+    "pyarrow>=14.0",
     "matplotlib>=3.10.9",
     "networkx>=3.0",
     "apscheduler>=3.10",

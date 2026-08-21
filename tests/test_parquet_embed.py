@@ -9,6 +9,8 @@ stay valid. If a future dtype ever fails to round-trip, this suite fails loudly
 before the change reaches an artifact.
 """
 
+from decimal import Decimal
+
 import pandas as pd
 import pytest
 
@@ -35,6 +37,30 @@ _CASES = {
         "flag": pd.Series([], dtype="bool"),
         "d": pd.Series([], dtype="datetime64[ns]"),
     }),
+    # ── The dtypes that a DuckDB-based round-trip silently rewrote ──────────
+    # Each of these turned an untouched artifact into a FILE ALTERED verdict
+    # (tz-aware also made the verdict depend on the VERIFIER'S timezone). They
+    # are pinned here so a future writer swap cannot quietly reintroduce it.
+    "tz_aware_utc": pd.DataFrame(
+        {"t": pd.to_datetime(["2024-01-15 10:00", "2024-06-30 12:00"], utc=True)}
+    ),
+    "tz_aware_zone": pd.DataFrame(
+        {"t": pd.to_datetime(["2024-01-15 10:00", "2024-06-30 12:00"]).tz_localize(
+            "US/Eastern"
+        )}
+    ),
+    "timedelta": pd.DataFrame({"d": pd.to_timedelta(["1 days", "2 days", "3 days"])}),
+    "category": pd.DataFrame({"c": pd.Categorical(["a", "b", "a", None])}),
+    "nullable_int": pd.DataFrame({"x": pd.array([1, None, 3], dtype="Int64")}),
+    "big_int64": pd.DataFrame(
+        {"x": pd.array([2**53 + 1, 2**53 + 3, -(2**53) - 1], dtype="int64")}
+    ),
+    "decimal": pd.DataFrame(
+        {"m": [Decimal("1234567.89"), Decimal("0.07"), Decimal("-42.42")]}
+    ),
+    "unicode_and_quotes": pd.DataFrame(
+        {"s": ['a,b', 'he said "hi"', "line\nbreak", "café ☕", None]}
+    ),
     "realistic": pd.DataFrame(
         {
             "region": ["North", "South", "East", None],
