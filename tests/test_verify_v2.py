@@ -475,3 +475,100 @@ class TestParquetDisplayTieEvasion:
         result = verify_manifest(manifest, {"v2_model": v2_model}, html=html)
         assert result["verdict"] == "not_reproduced"
         assert result["exit_code"] == 1
+
+
+class TestParquetDisplayTieFailsClosed:
+    """Review-6 class: the tie must not out-guess the browser's block selection.
+    It fails CLOSED — any binding it cannot pin to one decodable block is flagged
+    — so an escaped-format decoy, a missing section id, hostile pandas metadata,
+    and an undecodable duplicate all read DISPLAY_FORGED instead of slipping past.
+    """
+
+    _Q = {"fact": "f", "measures": {"revenue": "sum"}, "dimensions": ["dim_r.region"]}
+
+    def _manifest(self, tmp_path, model):
+        import json as _json
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(_json.dumps({
+            "name": "pkg", "data": {"a_region": {"model": "v2_model", "query": self._Q}}}))
+        (pkg / "template.html").write_text(
+            '<html><head><title>x</title></head><body>'
+            '<table data-tb-figure="table" data-tb-binding="a_region" id="fig-a">'
+            "</table></body></html>")
+        m = TemplatePackage(str(pkg)).render(
+            {"v2_model": model}, str(tmp_path / "out.html")).to_dict()
+        for rec in m["embedded_data"]:
+            rec["embed_format"] = "parquet"
+        return m
+
+    def _honest(self, model):
+        from tracebi.model.data_model import QuerySpec
+        return model.execute(QuerySpec.from_dict(self._Q)).to_pandas()
+
+    @staticmethod
+    def _block(name, frame, elem_id=None, escaped=False):
+        import base64
+        from tracebi.reports.parquet_embed import to_parquet_bytes
+        fmt = '"format":"\\u0070arquet"' if escaped else '"format":"parquet"'
+        b64 = base64.b64encode(to_parquet_bytes(frame)).decode()
+        body = '{"name":"%s",%s,"parquet_b64":"%s"}' % (name, fmt, b64)
+        eid = elem_id or f"tracebi-data-{name}"
+        return f'<script id="{eid}" type="application/json">{body}</script>'
+
+    def _forged(self, model):
+        f = self._honest(model)
+        f["revenue"] = f["revenue"] * 999
+        return f
+
+    def _verdict(self, model, manifest, html):
+        return verify_manifest(manifest, {"v2_model": model}, html=html)["verdict"]
+
+    def test_escaped_format_decoy_is_caught(self, v2_model, tmp_path):
+        # Forged block (normal format, the browser renders it) + honest decoy
+        # whose format is unicode-escaped (the runtime's raw-substring skip drops
+        # it, the verifier's json.loads sees it) — two blocks one name → closed.
+        manifest = self._manifest(tmp_path, v2_model)
+        html = (self._block("a_region", self._forged(v2_model)) + "\n"
+                + self._block("a_region", self._honest(v2_model),
+                              elem_id="tracebi-data-a_region_x", escaped=True))
+        assert self._verdict(v2_model, manifest, html) == "not_reproduced"
+
+    def test_deleting_the_section_id_still_catches_it(self, v2_model, tmp_path):
+        manifest = self._manifest(tmp_path, v2_model)
+        for s in manifest["sections"]:
+            if s.get("id") == "a_region":
+                del s["id"]                          # title 'a_region' remains
+        html = self._block("a_region", self._forged(v2_model))
+        assert self._verdict(v2_model, manifest, html) == "not_reproduced"
+
+    def test_hostile_pandas_metadata_payload_is_caught(self, v2_model, tmp_path):
+        import base64
+        import io
+        import json as _json
+
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        manifest = self._manifest(tmp_path, v2_model)
+        tbl = pa.table({"region": ["NE", "SE", "MW"], "revenue": [750.0, 1000.0, 2500.0]})
+        cols = [{"name": "region", "field_name": "region", "pandas_type": "unicode",
+                 "numpy_type": "object", "metadata": None},
+                {"name": "RENAMED", "field_name": "revenue", "pandas_type": "float64",
+                 "numpy_type": "float64", "metadata": None}]
+        tbl = tbl.replace_schema_metadata({b"pandas": _json.dumps(
+            {"index_columns": [], "column_indexes": [], "columns": cols,
+             "pandas_version": "2.2.3"}).encode()})
+        buf = io.BytesIO()
+        pq.write_table(tbl, buf)
+        html = ('<script id="tracebi-data-a_region" type="application/json">'
+                '{"name":"a_region","format":"parquet","parquet_b64":"'
+                + base64.b64encode(buf.getvalue()).decode() + '"}</script>')
+        assert self._verdict(v2_model, manifest, html) == "not_reproduced"
+
+    def test_undecodable_duplicate_block_is_caught(self, v2_model, tmp_path):
+        manifest = self._manifest(tmp_path, v2_model)
+        html = (self._block("a_region", self._forged(v2_model)) + "\n"
+                + '<script id="tracebi-data-a_region_2" type="application/json">'
+                  '{"name":"a_region","format":"parquet","parquet_b64":'
+                  '"bm90cGFycXVldA=="}</script>')
+        assert self._verdict(v2_model, manifest, html) == "not_reproduced"

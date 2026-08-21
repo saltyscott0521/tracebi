@@ -318,18 +318,46 @@ def _roundtrip_fp(df) -> "Optional[str]":
         return None
 
 
-def _decoded_parquet_fingerprints(html: str) -> "dict[str, Optional[str]]":
+#: A binding whose embedded Parquet the verifier cannot pin to a single clean
+#: block. It can never equal a real fingerprint, so the tie flags it — the tie
+#: fails CLOSED. Distinct from "not present" (a CSV binding, no tie needed) and
+#: from an empty map (no decoder at all, the documented weaker path).
+_UNDECODABLE_PAYLOAD = "<undecodable-payload>"
+
+
+def _decoded_parquet_fingerprints(html: str) -> "dict[str, str]":
     """``{binding name: content fingerprint of its decoded Parquet payload}``.
 
-    Same-machine: the fingerprint is recomputed here, on the verifier, so it can
-    be compared drift-free to a freshly re-run query result (never to a stored
-    value). ``None`` for a block that cannot be decoded — bad bytes, or pyarrow
-    absent — so a missing decoder means "tie not checked", never "tampering".
-    CSV blocks are skipped: their bytes already ARE the fingerprint.
+    The fingerprint is recomputed HERE, on the verifier, so it can be compared
+    drift-free to a freshly re-run result (never to a stored value).
+
+    The one hard lesson of this check is that it must not try to out-guess the
+    browser's block selection — every attempt to (json.loads vs the runtime's
+    raw-substring skip, last-wins, id-vs-name) opened an evasion. So instead it
+    FAILS CLOSED on anything but the single honest shape. A binding is mapped to
+    :data:`_UNDECODABLE_PAYLOAD` (which the tie then flags) when either
+
+    * more than one block carries that name — the browser and the verifier could
+      disambiguate differently, so the verifier refuses to pick; or
+    * pyarrow is present but the block does not decode — hostile ``pandas``
+      metadata (rejected by :func:`from_parquet_bytes`), corrupt bytes, or a
+      feature the browser's decoder might still render.
+
+    Only a WHOLLY absent pyarrow skips the tie (returns ``{}``) — the documented
+    offline-weaker path. A name simply not present is a CSV binding, also
+    skipped: its bytes already ARE the fingerprint.
     """
+    try:
+        import pyarrow  # noqa: F401
+    except ImportError:
+        return {}                                     # no decoder — tie cannot run
+
     import base64
 
-    out: dict[str, Optional[str]] = {}
+    from tracebi.model.dataset import frame_fingerprint
+    from tracebi.reports.parquet_embed import from_parquet_bytes
+
+    out: dict[str, str] = {}
     for elem_id, body in _json_blocks(html):
         if not elem_id.startswith(_DATA_ID_PREFIX):
             continue
@@ -340,14 +368,15 @@ def _decoded_parquet_fingerprints(html: str) -> "dict[str, Optional[str]]":
         if not isinstance(parsed, dict) or parsed.get("format") != "parquet":
             continue
         name = str(parsed.get("name") or elem_id[len(_DATA_ID_PREFIX):])
+        if name in out:
+            out[name] = _UNDECODABLE_PAYLOAD          # duplicate — refuse to pick
+            continue
         try:
-            from tracebi.model.dataset import frame_fingerprint
-            from tracebi.reports.parquet_embed import from_parquet_bytes
             frame = from_parquet_bytes(
                 base64.b64decode(parsed["parquet_b64"], validate=True))
             out[name] = frame_fingerprint(frame)
-        except Exception:  # noqa: BLE001 — undecodable / no pyarrow: not checked
-            out[name] = None
+        except Exception:  # noqa: BLE001 — pyarrow present but this block is bad
+            out[name] = _UNDECODABLE_PAYLOAD
     return out
 
 
@@ -442,11 +471,17 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str,
         # green-receipt swap it uniquely identifies.)
         rt = _roundtrip_fp(ds.to_pandas()) if payload_fp is not None else None
         if rt is not None and payload_fp != rt:
-            return {**base, "status": DISPLAY_FORGED, "actual_fingerprint": actual,
-                    "detail": "the query reproduces its recorded fingerprint, but "
-                              "the data embedded in this file decodes to a "
-                              "different result — the displayed numbers are not "
-                              "what the query produces"}
+            detail = (
+                "the data embedded for this binding could not be pinned to a "
+                "single decodable block (more than one block carries its name, "
+                "or the block did not decode) — the displayed numbers cannot be "
+                "tied to the query"
+                if payload_fp == _UNDECODABLE_PAYLOAD else
+                "the query reproduces its recorded fingerprint, but the data "
+                "embedded in this file decodes to a different result — the "
+                "displayed numbers are not what the query produces")
+            return {**base, "status": DISPLAY_FORGED,
+                    "actual_fingerprint": actual, "detail": detail}
         return {**base, "status": REPRODUCES,
                 "detail": "result fingerprint matches the manifest"}
     if not recorded_inputs:
@@ -628,7 +663,11 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
         if not s.get("dataset_fingerprint"):
             continue
         label = s.get("id") or s.get("title") or f"section[{i}]"
-        payload_fp = decoded.get(s.get("id"))
+        # Resolve the payload by the SAME key a figure binds by (``label``, its
+        # section id/title) — the block name the runtime renders. Using a
+        # narrower key (id only) let a section drop its id, keep its title, stay
+        # figure-bound, and skip the tie.
+        payload_fp = decoded.get(label)
         results.append(_verify_section(s, models, label, payload_fp=payload_fp))
 
     # ── Semantic-contract diagnosis — purely diagnostic ──────────────────
