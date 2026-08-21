@@ -562,30 +562,3 @@ def test_display_gate_routes_on_the_production_path(name, extra, want):
     frame = pd.DataFrame({"label": ["north-region", "south-region"] * (n // 2),
                           col: build()})
     assert plan_embed([stamp_frame(frame, name="d")]).fmt == want, (name, col)
-
-
-@pytest.mark.parametrize("frame", [
-    pd.DataFrame({"x": pd.Series(pd.to_datetime(["2024-01-15", "2024-06-30"]))
-                  .dt.as_unit("s")}),                       # datetime64[s] → [ms]
-    pd.DataFrame({"x": pd.Categorical([1, 2, 3])}),          # int cat → int64
-    pd.DataFrame({"x": pd.Series([1, 2, 3], dtype=object)}), # object → int64
-])
-def test_display_tie_does_not_false_alarm_on_roundtrip_lossy_dtypes(frame):
-    """The un-limited dtypes display identically but do NOT keep their
-    fingerprint through a Parquet round-trip. The DISPLAY_FORGED tie round-trips
-    BOTH the payload and the re-run, so an honest artifact with these dtypes is
-    not misflagged — while a genuine data change still is."""
-    from tracebi.model.dataset import frame_fingerprint
-    from tracebi.reports.parquet_embed import from_parquet_bytes, to_parquet_bytes
-    from tracebi.verify import _roundtrip_fp
-
-    # honest: the shipped payload decodes to the same data the re-run produces
-    payload_fp = frame_fingerprint(from_parquet_bytes(to_parquet_bytes(frame)))
-    assert payload_fp == _roundtrip_fp(frame)               # no false alarm
-
-    # a forged payload (different data) still differs from the honest re-run
-    forged = frame.copy()
-    forged["x"] = frame["x"][::-1].to_numpy()               # reorder = different bytes
-    forged_fp = frame_fingerprint(from_parquet_bytes(to_parquet_bytes(forged)))
-    if not frame["x"].equals(forged["x"]):                  # skip palindromic cases
-        assert forged_fp != _roundtrip_fp(frame)

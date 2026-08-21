@@ -325,19 +325,25 @@ provably, never hopefully.
    cannot yet render exactly as pandas spells them (tz-aware, sub-second, timedelta,
    Decimal, mixed-object) stay on CSV — a display concern, not a trust one.
 
-5. **The Parquet display↔query tie is model-bearing.** For a CSV artifact the embedded
-   bytes hash to `embedded_sha256`, which is also the section `dataset_fingerprint` that
-   `verify_manifest` reproduces — so offline file-integrity and model-side reproduction pin
-   the *same* value and compose into a display↔query tie automatically. A Parquet block is
-   hashed by a separate `payload_sha256`, which reproduction does not reproduce, so offline
-   `verify --file` alone is only tamper-evidence: a payload swapped at build for different
-   numbers, `payload_sha256` updated to match and `embedded_sha256` left honest, passes it
-   (as a CSV author-forgery also would). The tie is restored WITH the model — `verify_manifest`,
-   handed the rendered file, decodes each Parquet payload and compares its fingerprint to the
-   re-run result **on one machine** (drift-free, so it does not reintroduce divergence #4's
-   re-derivation problem), and flags a mismatch as `DISPLAY_FORGED`. The CLI passes the sibling
-   `.html` automatically when it sits beside the manifest. So a reviewer who holds the model
-   gets the full guarantee on Parquet too; offline-only, a Parquet artifact is tamper-evidence,
-   the same single-party guarantee any author-forgeable file has. The gate is only reached when
-   the query reproduces — an honest render over drifted data (payload ≠ re-run because the data
-   moved) is classified as drift, not forgery.
+5. **A Parquet artifact has WEAKER display verification than CSV, by deliberate scope.** For a
+   CSV artifact the embedded bytes hash to `embedded_sha256`, which is also the section
+   `dataset_fingerprint` that `verify_manifest` reproduces — so offline file-integrity and
+   model-side reproduction pin the *same* value and compose into a display↔query tie for free.
+   A Parquet block is hashed by a separate `payload_sha256`, which reproduction does not
+   reproduce, so `verify --file` on a Parquet artifact is tamper-evidence only: it proves the
+   file was not edited after render relative to its manifest, but a payload swapped **at build**
+   for different numbers (with `payload_sha256` updated to match and `embedded_sha256` left
+   honest) passes it — exactly as a CSV author-forgery would.
+
+   **What is NOT shipped, and why.** A model-bearing tie was prototyped — decode each Parquet
+   payload at verify time and compare to the re-run result — but closing it soundly requires the
+   verifier to determine *which block a browser renders for each figure*, i.e. to parse the page
+   byte-for-byte as a browser's HTML5 parser + runtime does. Python's `html.parser` is not that,
+   and successive adversarial reviews each found a new parser/selection divergence an attacker
+   could exploit (attribute order, an escaped `"parquet"` token, a duplicated `id` attribute, …).
+   That is a browser-grade problem, not a patch, so the tie is intentionally **deferred**: doing
+   it right needs a spec-compliant HTML5 parser (e.g. html5lib) or a headless-browser oracle, as
+   its own design pass. **Guidance:** use a CSV artifact where the display↔query tie matters
+   (small/medium reports, the common case); use a Parquet artifact for large detail, where
+   `verify --file` gives tamper-evidence and the model-side `verify` still proves every query
+   reproduces.

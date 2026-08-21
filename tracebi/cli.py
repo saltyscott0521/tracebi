@@ -1165,20 +1165,9 @@ def cmd_verify(args: argparse.Namespace) -> int:
         return 1
 
     models = load_models(args.verify_models_dir or args.models_dir)
-    # Hand the rendered file alongside the manifest when it sits next to it
-    # (``<name>.html.manifest.json`` → ``<name>.html``), so a Parquet artifact's
-    # DISPLAYED bytes are tied to the re-run result (DISPLAY FORGED), not just
-    # its queries reproduced. Absent file → the manifest-only check, as before.
-    html = None
-    name_str = str(path)
-    if name_str.endswith(".manifest.json"):
-        sibling = Path(name_str[: -len(".manifest.json")])
-        if sibling.is_file():
-            html = sibling.read_text(encoding="utf-8")
     try:
         result = verify_manifest(manifest, models,
-                                 strict=getattr(args, "strict", False),
-                                 html=html)
+                                 strict=getattr(args, "strict", False))
     except Exception as exc:  # noqa: BLE001 — a corrupt receipt is a user error
         print(f"manifest could not be verified: {type(exc).__name__}: {exc}",
               file=sys.stderr)
