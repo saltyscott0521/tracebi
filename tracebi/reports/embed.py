@@ -301,35 +301,57 @@ def engine_cost_bytes() -> int:
 def _renders_identically(series) -> bool:
     """Whether the browser engine renders *series* exactly as the CSV path does.
 
-    Deliberately conservative: numbers, booleans, strings, and naive datetimes
-    only. Anything else keeps the CSV transport — correctness of the displayed
-    number outranks the size win, and a type added to pandas or Arrow later
-    starts out excluded rather than silently mis-rendered.
+    This is the DISPLAY gate, and under payload hashing it is the only gate:
+    the receipt no longer cares what Parquet does to a dtype (the shipped bytes
+    are hashed as shipped), but the READER still must see the same string on
+    either transport. So the question asked of each column is precise: does the
+    worker's rendering of the Arrow-decoded values equal the strings pandas'
+    ``to_csv`` writes?
+
+    Allowed: ints (incl. nullable, incl. beyond 2^53 — the worker keeps BigInt
+    exact), floats (the worker writes pandas' spellings), booleans, strings,
+    NAIVE whole-second datetimes of any unit, and categoricals/object columns
+    whose VALUES are one of those (Arrow may store an int-categorical as plain
+    int64 — the dtype changes, the displayed value does not, and the receipt no
+    longer depends on the dtype surviving).
+
+    Excluded, each for a concrete display reason: tz-aware timestamps (the
+    engine renders UTC, dropping the zone — an hours-long visible shift),
+    sub-second timestamps (sliced to seconds — distinct rows collapse),
+    timedelta (raw nanoseconds), Decimal (Arrow hands the worker the unscaled
+    integer), mixed-type object columns (Arrow unifies, changing spellings),
+    datetime-valued categoricals (pandas ``to_csv`` writes ``str(Timestamp)``
+    per value while the engine applies the datetime-column rule). A type added
+    to pandas or Arrow later starts out excluded, never silently mis-rendered.
     """
     import pandas as pd
 
     dtype = series.dtype
     if isinstance(dtype, pd.CategoricalDtype):
-        return False                      # codes' type survives, the dtype does not
+        cats = series.cat.categories
+        # Safe when the VALUES render identically: numeric/bool/string
+        # categories do (the engine sees the plain values). Datetime categories
+        # do not: to_csv writes str(Timestamp) ("2024-01-15 00:00:00") per
+        # value, while the engine would apply the datetime-column midnight rule.
+        return getattr(cats.dtype, "kind", "") in "ifbu" or _all_strings(cats)
     kind = getattr(dtype, "kind", "")
     if kind in "ifbu":                    # int, float, bool, unsigned
         return True
+    if kind in "UT":                      # numpy unicode / pandas-3 string
+        return True
     if kind == "M":
-        # Datetimes only when NAIVE and whole-second. Both checks go through the
-        # pandas API, never attribute sniffing: an Arrow-backed timestamp column
-        # (pd.ArrowDtype) also reports kind "M" but carries no ``.tz`` attribute
-        # at all, so `getattr(dtype, "tz", None) is None` read a zoned column as
-        # naive and let it onto a transport that drops the zone — a silent
-        # hours-long shift under a green receipt.
+        # NAIVE and whole-second only, resolved through the pandas API — never
+        # attribute sniffing: an Arrow-backed timestamp column (pd.ArrowDtype)
+        # also reports kind "M" but carries no ``.tz`` attribute, so a getattr
+        # check once read a zoned column as naive and shipped a silent
+        # hours-long shift. Any unit (s/ms/us/ns) is fine: the receipt hashes
+        # shipped bytes, and whole-second values display the same regardless.
         try:
             values = pd.to_datetime(series.dropna())
         except Exception:  # noqa: BLE001 — anything unconvertible is not safe
             return False
         if getattr(values.dt, "tz", None) is not None:
             return False
-        # The engine renders through toISOString().slice(0,19), so anything
-        # finer than a second would be truncated — two distinct rows would
-        # display as one.
         try:
             if len(values) and (values.dt.microsecond != 0).any():
                 return False
@@ -339,11 +361,25 @@ def _renders_identically(series) -> bool:
             return False
         return True
     if kind == "O":
-        # An object column is only safe when it really is strings: an object
-        # column of ints comes back int64, of Decimals comes back unscaled.
+        # An object column is safe when its values are HOMOGENEOUSLY one
+        # renderable scalar type. Strings ship verbatim; all-int decodes to
+        # Arrow int64 and renders the same digits; all-bool renders
+        # 'True'/'False' both ways; all-float renders pandas' spellings. A
+        # MIXED column is not safe: Arrow unifies (int+float → all-float), so
+        # "1" would display as "1.0" on one transport only. bool is checked
+        # before int because bool subclasses int in Python.
         non_null = series.dropna()
-        return bool(non_null.map(lambda v: isinstance(v, str)).all())
+        if not len(non_null):
+            return True                   # nothing to display either way
+        if _all_strings(non_null):
+            return True
+        types = {type(v) for v in non_null}
+        return types in ({bool}, {int}, {float})
     return False                          # timedelta, period, interval, bytes, …
+
+
+def _all_strings(values) -> bool:
+    return all(isinstance(v, str) for v in values)
 
 
 def choose_embed_format(stamped: "list[StampedData]") -> str:
@@ -386,57 +422,128 @@ def choose_embed_format(stamped: "list[StampedData]") -> str:
         if not all(_renders_identically(frame[c]) for c in cols):
             return EMBED_FORMAT_CSV
 
+    return _choose_with_bytes(stamped)[0]
+
+
+def _choose_with_bytes(stamped) -> "tuple[str, dict]":
+    """The choice, plus the Parquet bytes it encoded to make it.
+
+    Returns ``(format, {name: parquet_bytes})`` — the dict is empty when the
+    choice is CSV. Callers that go on to embed (``plan_embed``) reuse these
+    exact bytes for both the page block and the manifest's payload hash, so
+    the bytes measured, the bytes shipped, and the bytes hashed are one and
+    the same encoding. Nothing is ever encoded twice, which is not a
+    performance nicety but a correctness property: a second encode is not
+    guaranteed byte-identical, and the receipt hashes bytes.
+    """
     total_csv = sum(len(sd.triple["csv"].encode("utf-8")) for sd in stamped)
     engine = engine_cost_bytes()
     # Fast path: below the engine's own price Parquet cannot possibly win, and
     # this is the common case (every KPI dashboard), so do not encode anything.
     if total_csv <= engine:
-        return EMBED_FORMAT_CSV
-    # Otherwise MEASURE rather than assume a compression ratio: how well Parquet
-    # does is data-dependent (high-cardinality columns compress poorly), and
-    # assuming ~10× could make the artifact BIGGER than the CSV it replaced.
+        return EMBED_FORMAT_CSV, {}
+    # MEASURE rather than assume a compression ratio: how well Parquet does is
+    # data-dependent (high-cardinality columns compress poorly), and assuming
+    # ~10× could make the artifact BIGGER than the CSV it replaced.
     #
-    # And, in the same pass, PROVE the round-trip for this exact data instead of
-    # trusting a list of dtypes believed to be safe. Parquet's type system does
-    # not map one-to-one onto pandas': a non-string categorical comes back as
-    # its codes' type, an object column of ints comes back int64, datetime64[s]
-    # comes back [ms] — each changing the fingerprinted dtypes string, so an
-    # untouched artifact would verify as ALTERED. Enumerating those cases is a
-    # losing game (three separate attempts missed some), but checking is cheap
-    # and exact: encode, decode, re-fingerprint, and only choose Parquet when
-    # the receipt demonstrably survives. Correct by construction, for dtypes
-    # nobody has thought of yet.
+    # No round-trip re-fingerprint check lives here any more, deliberately.
+    # The receipt for a Parquet block is a hash OF THE SHIPPED BYTES
+    # (``payload_sha256``), not a re-derivation of the frame on the verifier's
+    # machine — re-derivation was the root of every false-ALTERED class three
+    # reviews found (writer dtype drift, ``os.linesep``, pandas versions), and
+    # no build-time check can see cross-machine drift. Hashing what ships
+    # removes the failure mode instead of narrowing it.
     try:
-        from tracebi.model.dataset import frame_fingerprint
-        from tracebi.reports.parquet_embed import (
-            from_parquet_bytes, to_parquet_bytes,
-        )
+        from tracebi.reports.parquet_embed import to_parquet_bytes
 
+        encoded: dict = {}
         total_parquet_b64 = 0
         for sd in stamped:
-            frame = sd.dataset.to_pandas()
-            encoded = to_parquet_bytes(frame)
-            if frame_fingerprint(from_parquet_bytes(encoded)) != sd.fingerprint:
-                return EMBED_FORMAT_CSV
-            total_parquet_b64 += (len(encoded) * 4) // 3
+            raw = to_parquet_bytes(sd.dataset.to_pandas())
+            encoded[sd.name] = raw
+            total_parquet_b64 += (len(raw) * 4) // 3
     except Exception:  # noqa: BLE001 — no Parquet writer, or a frame it cannot
-        # encode: stay on the format that always works.
-        return EMBED_FORMAT_CSV
-    return (EMBED_FORMAT_PARQUET
-            if engine + total_parquet_b64 < total_csv
-            else EMBED_FORMAT_CSV)
+        # encode (labels Parquet cannot represent, an exotic cell type): stay
+        # on the format that always works.
+        return EMBED_FORMAT_CSV, {}
+    if engine + total_parquet_b64 < total_csv:
+        return EMBED_FORMAT_PARQUET, encoded
+    return EMBED_FORMAT_CSV, {}
+
+
+@dataclass(frozen=True)
+class EmbedPlan:
+    """One artifact's embed decision, executed: blocks and receipt fields from
+    ONE encoding.
+
+    ``blocks_html`` is every binding's data block in the chosen format.
+    ``payload_sha256`` maps binding name → SHA-256 of the exact Parquet bytes
+    embedded in that block (empty for a CSV artifact). :meth:`record` builds
+    the manifest's ``embedded_data`` entry with those fields attached, so the
+    bytes the page carries and the hash the receipt records can never diverge —
+    they are the same object. ``verify --file`` then checks a Parquet block by
+    hashing its shipped bytes: exact, host-independent, and dependency-free,
+    with nothing re-derived on the verifier's machine.
+    """
+
+    fmt: str
+    blocks_html: str
+    payload_sha256: dict
+
+    def record(self, stamped: StampedData, verifiable: bool = True) -> dict:
+        rec = embedded_record(stamped, verifiable=verifiable)
+        digest = self.payload_sha256.get(stamped.name)
+        if digest is not None:
+            rec["embed_format"] = EMBED_FORMAT_PARQUET
+            rec["payload_sha256"] = digest
+        return rec
+
+
+def plan_embed(stamped: "list[StampedData]",
+               fmt: Optional[str] = None) -> EmbedPlan:
+    """Decide the artifact's transport and execute it — the one entry point.
+
+    Chooses the format (unless *fmt* forces one), encodes each frame at most
+    once, and returns the page blocks together with the payload hashes the
+    manifest must record. Both render lanes go through here, so they cannot
+    disagree — and a Parquet block's bytes are hashed exactly as shipped.
+    """
+    stamped = list(stamped)
+    if fmt is None:
+        chosen, encoded = _choose_with_bytes(stamped)
+    elif fmt == EMBED_FORMAT_PARQUET:
+        from tracebi.reports.parquet_embed import to_parquet_bytes
+
+        chosen = fmt
+        encoded = {sd.name: to_parquet_bytes(sd.dataset.to_pandas())
+                   for sd in stamped}
+    else:
+        chosen, encoded = fmt, {}
+
+    if chosen != EMBED_FORMAT_PARQUET:
+        html = "".join(embed_block(sd, fmt=EMBED_FORMAT_CSV) + "\n"
+                       for sd in stamped)
+        return EmbedPlan(EMBED_FORMAT_CSV, html, {})
+
+    blocks: list[str] = []
+    hashes: dict = {}
+    for sd in stamped:
+        raw = encoded[sd.name]
+        blocks.append(embed_block_parquet(sd, parquet=raw) + "\n")
+        hashes[sd.name] = hashlib.sha256(raw).hexdigest()
+    return EmbedPlan(EMBED_FORMAT_PARQUET, "".join(blocks), hashes)
 
 
 def data_blocks_html(stamped: "list[StampedData]",
                      fmt: Optional[str] = None) -> str:
     """Every binding's data block for one artifact, in one chosen format.
 
-    The single place the artifact-level format decision is made and applied, so
-    both render lanes (the governed HTMLRenderer and the freeform
-    TemplatePackage) agree. Pass *fmt* to force a format.
+    A convenience over :func:`plan_embed` for callers that need only the page
+    blocks. A lane that also writes a manifest must use :func:`plan_embed` and
+    :meth:`EmbedPlan.record`, so the recorded payload hash comes from the same
+    bytes as the blocks.
     """
-    chosen = fmt or choose_embed_format(list(stamped))
-    return "".join(embed_block(sd, fmt=chosen) + "\n" for sd in stamped)
+    return plan_embed(stamped, fmt=fmt).blocks_html
 
 
 def embed_block(stamped: StampedData, elem_id: Optional[str] = None,
@@ -460,27 +567,31 @@ def embed_block(stamped: StampedData, elem_id: Optional[str] = None,
     return embed_json(payload, elem_id or f"tracebi-data-{stamped.name}")
 
 
-def embed_block_parquet(stamped: StampedData, elem_id: Optional[str] = None) -> str:
+def embed_block_parquet(stamped: StampedData, elem_id: Optional[str] = None,
+                        parquet: Optional[bytes] = None) -> str:
     """A binding's data embedded as **Parquet** (base64) — the transport the
     client-side worker engine (parquet-wasm + Arquero) decodes to draw and
     filter, and ≈50× smaller than the CSV triple on real data.
 
-    The receipt is **unchanged**: the binding's ``embedded_sha256`` is still the
-    ``{columns, dtypes, csv}`` content fingerprint, which survives the Parquet
-    round-trip exactly (``tests/test_parquet_embed.py``). ``verify`` decodes this
-    block and recomputes the same triple — Parquet is transport, not the hashed
-    thing. Emitted through :func:`embed_json` so the base64 payload cannot break
-    out of the ``<script>`` block.
+    The receipt for a Parquet block is a hash of these exact bytes
+    (``payload_sha256`` in the manifest record), which is why *parquet* should
+    be the pre-encoded bytes from :func:`plan_embed` — the block and the hash
+    must come from ONE encoding, never two (a second encode is not guaranteed
+    byte-identical). The binding's ``embedded_sha256`` (the content fingerprint
+    of the source frame) is recorded alongside, tying the record to its
+    section. Emitted through :func:`embed_json` so the base64 payload cannot
+    break out of the ``<script>`` block.
     """
     import base64
 
-    from tracebi.reports.parquet_embed import to_parquet_bytes
+    if parquet is None:
+        from tracebi.reports.parquet_embed import to_parquet_bytes
 
-    frame = stamped.dataset.to_pandas()
+        parquet = to_parquet_bytes(stamped.dataset.to_pandas())
     payload = {
         "name": stamped.name,
         "format": "parquet",
-        "parquet_b64": base64.b64encode(to_parquet_bytes(frame)).decode("ascii"),
+        "parquet_b64": base64.b64encode(parquet).decode("ascii"),
     }
     return embed_json(payload, elem_id or f"tracebi-data-{stamped.name}")
 
@@ -524,8 +635,11 @@ def embedded_record(stamped: StampedData, verifiable: bool = True) -> dict:
     """The per-binding entry for the manifest's ``embedded_data`` block.
 
     ``embedded_sha256`` is the canonical-triple hash, which equals both
-    ``stamped.fingerprint`` and the section's ``dataset_fingerprint`` — the
-    single value the offline checker rehashes the shipped bytes against.
+    ``stamped.fingerprint`` and the section's ``dataset_fingerprint``. For a
+    CSV block it is also what the offline checker rehashes the shipped triple
+    against; a Parquet record additionally carries ``payload_sha256`` (added
+    by :meth:`EmbedPlan.record`), and the checker hashes that block's shipped
+    bytes instead — nothing is re-derived either way.
 
     *verifiable* is ``False`` for a ``report.py`` output (architecture §4):
     its bytes are still fingerprinted and file-checkable, but the output is

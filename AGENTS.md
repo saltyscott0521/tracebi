@@ -112,9 +112,11 @@ Three rules that keep pages honest:
   normal dashboard (tiny, no engine); Parquet plus an inlined worker engine
   (parquet-wasm + Arquero) once the data is large enough that the engine
   pays for itself. You never declare it, and one artifact never mixes both.
-  It is transport, not trust: the receipt is the same content fingerprint
-  either way and `verify --file` checks both identically. Writing or
-  verifying the Parquet form needs PyArrow (`pip install 'tracebi[reports]'`).
+  It is transport, not trust: a CSV block ships the fingerprinted triple
+  verbatim, a Parquet block's shipped bytes are hashed exactly
+  (`payload_sha256`), and `verify --file` checks both offline — the Parquet
+  check needs no extra dependency at all. Only BUILDING the Parquet form
+  needs PyArrow (`pip install 'tracebi[reports]'`).
 - **Interactivity subsets, never computes.** The premium objects —
   `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
   (`data-tb-rows`, default 10), tabs (`data-tb-tab`), `.tb-cols-2/3`

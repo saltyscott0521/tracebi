@@ -309,3 +309,18 @@ Two adversarial reviews (38 then 27 confirmed findings) changed three things:
 
 The net effect is that Parquet is used **less often than this plan assumed** — and always
 provably, never hopefully.
+
+4. **(Final architecture.) The Parquet receipt hashes the SHIPPED bytes — nothing is ever
+   re-derived.** A third review proved re-derivation is unfixable in principle: pandas'
+   `to_csv` line terminator follows the *host's* `os.linesep`, so a Windows-built artifact
+   read FILE ALTERED on Linux — and no build-time check can see cross-machine drift, because
+   build-time checks run on one machine. The manifest now records `payload_sha256` (SHA-256
+   of the exact embedded Parquet bytes, from the ONE encoding that also produced the page
+   block — `EmbedPlan`), and `verify --file` re-hashes the shipped bytes: byte-exact,
+   host-independent, and dependency-free (no Parquet reader needed to verify). This REVERSED
+   divergence #2's narrowing: with the receipt no longer hostage to Parquet's type mapping,
+   the round-trip gate was deleted and formerly excluded dtypes (non-string categoricals,
+   object-of-scalars, any datetime unit) take the Parquet transport freely. The only
+   remaining gate is display parity (`_renders_identically`): types the browser engine
+   cannot yet render exactly as pandas spells them (tz-aware, sub-second, timedelta,
+   Decimal, mixed-object) stay on CSV — a display concern, not a trust one.

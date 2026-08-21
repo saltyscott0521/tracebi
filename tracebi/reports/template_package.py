@@ -60,8 +60,8 @@ from typing import Optional
 import pandas as pd
 
 from tracebi.reports.embed import (
-    KNOWN_LIBS, StampedData, data_blocks_html, embed_json, embedded_record,
-    insert_before, stamp, stamp_frame,
+    KNOWN_LIBS, StampedData, data_blocks_html, embed_json, insert_before,
+    plan_embed, stamp, stamp_frame,
 )
 from tracebi.reports.figures import (
     Figure, FigureError, assign_figure_ids, extract_figures, fill_figures,
@@ -334,9 +334,16 @@ class TemplatePackage:
         # in it (schema v2: the refuse-newer-schema path in verify is the
         # compatibility mechanism it was reserved for).
         manifest = report.build_manifest("html", output_path)
+        # ONE embed plan for the whole artifact: the format decision, the page
+        # blocks, and the manifest's payload hashes all come from the same
+        # single encoding (embed.py plan_embed) — so for a Parquet artifact the
+        # bytes the page carries are byte-for-byte the bytes the receipt
+        # records, and verify --file checks them by hashing, never by
+        # re-deriving anything on the verifier's machine.
+        embed_plan = plan_embed(embed_items)
         manifest.embedded_data = (
-            [embedded_record(sd, verifiable=True) for sd in inputs]
-            + [embedded_record(sd, verifiable=False) for sd in outputs]
+            [embed_plan.record(sd, verifiable=True) for sd in inputs]
+            + [embed_plan.record(sd, verifiable=False) for sd in outputs]
         )
         manifest.schema_version = ARTIFACT_MANIFEST_SCHEMA_VERSION
         manifest.stage = "final"
@@ -417,7 +424,8 @@ class TemplatePackage:
         cfg = {"badges": bool(badges),
                "figures": figures_config(figs, {sd.name for sd in outputs})}
 
-        page = self._inject(page, embed_items, stage="final", figures_cfg=cfg,
+        page = self._inject(page, embed_plan.blocks_html, stage="final",
+                            figures_cfg=cfg,
                             extra_blocks_html="".join(contract_blocks))
 
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
@@ -735,8 +743,8 @@ class TemplatePackage:
         cfg = {"badges": True,
                "figures": figures_config(work_figs,
                                          {sd.name for sd in outputs})}
-        page = self._inject(page, inputs + outputs, stage="exploration",
-                            figures_cfg=cfg)
+        page = self._inject(page, data_blocks_html(inputs + outputs),
+                            stage="exploration", figures_cfg=cfg)
         return page, inputs, outputs
 
     def snapshot(self, models: dict, output_path: str) -> None:
@@ -856,7 +864,7 @@ class TemplatePackage:
 
     # ── Injection ───────────────────────────────────────────────────────────
 
-    def _inject(self, page: str, stamped, stage: Optional[str] = None,
+    def _inject(self, page: str, data_blocks: str, stage: Optional[str] = None,
                 figures_cfg: Optional[dict] = None,
                 extra_blocks_html: str = "") -> str:
         """Insert the full presentation stack (architecture v2 §2.4).
@@ -879,9 +887,10 @@ class TemplatePackage:
         return apply_stack(
             page,
             libs=self.libs,
-            # One format for the whole artifact, chosen by size (embed.py):
-            # Parquet only once the data outweighs the engine it would inline.
-            data_blocks_html=(data_blocks_html(stamped) + extra_blocks_html),
+            # *data_blocks* arrives pre-built (the final build passes its
+            # EmbedPlan's blocks so the manifest hashes the SAME bytes; the
+            # dev snapshot builds blocks directly — it writes no manifest).
+            data_blocks_html=(data_blocks + extra_blocks_html),
             stage=stage,
             project_css=project_theme_css(),
             report_css=self.style_css,

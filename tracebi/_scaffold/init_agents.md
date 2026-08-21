@@ -96,9 +96,10 @@ whose figures each name a binding from `report.json`:
 - The embed format is chosen FOR you, per report, by size: CSV for a normal
   dashboard (tiny), Parquet plus an inlined worker engine once the data is
   large enough that the engine pays for itself. You never declare it and one
-  report never mixes both. It is transport, not trust — the receipt is the
-  same fingerprint either way and `verify --file` checks both identically.
-  Writing or verifying the Parquet form needs PyArrow
+  report never mixes both. It is transport, not trust — a CSV block ships the
+  fingerprinted triple verbatim, a Parquet block's shipped bytes are hashed
+  exactly (`payload_sha256`), and `verify --file` checks both offline with no
+  extra dependency. Only BUILDING the Parquet form needs PyArrow
   (`pip install 'tracebi[reports]'`).
 - Methodology travels the pipeline: `contract(..., note=...)` (and per-check
   `note=`) records the transform's STATED methodology in the certificate;

@@ -4,28 +4,25 @@ The artifact embeds a figure's data as **Parquet** — compact (≈8–17× smal
 than the same CSV), and the format the client-side worker engine decodes in the
 browser. See ``docs/large-detail-artifacts.md``.
 
-The receipt is **unchanged** by this. The fingerprint is still the frame's
-content triple — ``{columns, dtypes, csv}`` via
-:func:`tracebi.model.dataset.frame_fingerprint` — and a frame written here and
-read back has the *identical* content fingerprint, so no ``fingerprint_algo``
-change is needed and every receipt issued under the CSV embed stays valid.
-``verify`` simply gains a decode step: read the embedded Parquet, then recompute
-and compare the same triple it always did.
+The receipt for a Parquet block hashes the SHIPPED BYTES. The manifest records
+``payload_sha256`` — SHA-256 over the exact base64-decoded Parquet payload the
+page carries — and ``verify --file`` recomputes that same hash from the file, so
+the check is byte-exact, host-independent, and needs no Parquet reader at all.
+Nothing is ever re-derived on the verifier's machine: three adversarial reviews
+showed that ANY re-derivation drifts (writer dtype mapping, ``os.linesep``,
+library versions) and turns an untouched artifact into a false FILE ALTERED —
+so the design hashes what ships, which removes the failure mode instead of
+narrowing it. The binding's ``embedded_sha256`` (the source frame's content
+fingerprint) is still recorded beside it, tying the record to its section, and
+existing CSV-embed receipts are untouched.
 
-**Why pyarrow and not DuckDB.** That round-trip guarantee is the whole point, and
-it is a property of the *writer*. pyarrow is Parquet's reference implementation
-and records pandas' own dtype metadata in the file, so it restores a frame
-exactly — timezone-aware timestamps keep their zone and unit, timedeltas keep
-their unit, categoricals stay categorical. DuckDB is a database: it maps Parquet
-through *its* SQL type system and hands pandas back a generically-converted
-frame, which silently rewrote ``datetime64[ns, UTC]`` to
-``datetime64[us, <the reader's local zone>]``. That made the recomputed
-fingerprint differ from the recorded one — so an untouched artifact verified as
-ALTERED, and *differently in different timezones*. Exactly the false accusation
-``verify --file`` exists to prevent. DuckDB remains the warehouse and the query
-engine; it is simply the wrong tool for preserving a pandas frame verbatim.
-``tests/test_parquet_embed.py`` locks the round-trip across the dtypes that
-broke, so a future swap cannot quietly reintroduce this.
+**Why pyarrow and not DuckDB (for the writer).** pyarrow is Parquet's reference
+implementation and preserves pandas frames far more faithfully — DuckDB maps
+frames through *its* SQL type system, and notably rendered timezone-aware
+timestamps in the READER'S local zone. The receipt no longer depends on any of
+this (bytes are hashed as shipped), but faithful encoding still matters for
+what the browser engine DISPLAYS, and ``_renders_identically`` in ``embed.py``
+is the gate that keeps display-divergent types on the CSV transport.
 """
 
 from __future__ import annotations
@@ -51,10 +48,11 @@ def _require_pyarrow():
 def to_parquet_bytes(df: "pd.DataFrame") -> bytes:
     """Serialize *df* to Parquet (ZSTD) bytes for embedding.
 
-    Parquet is transport only: the receipt is the frame's content fingerprint,
-    which :func:`from_parquet_bytes` recovers exactly. The Parquet bytes
-    themselves are never hashed (Parquet is not byte-reproducible across writers,
-    and does not need to be).
+    The caller (``plan_embed``) hashes the returned bytes into the manifest's
+    ``payload_sha256`` and embeds the SAME bytes in the page — encode once,
+    ship it, hash it. Parquet is not byte-reproducible across writers, which
+    is exactly why the receipt is over these shipped bytes and never over a
+    re-encoding.
     """
     _require_pyarrow()
     buf = io.BytesIO()
@@ -80,11 +78,12 @@ class ParquetTooLarge(ValueError):
 
 
 def from_parquet_bytes(data: bytes) -> "pd.DataFrame":
-    """Decode embedded Parquet *data* back to a DataFrame — verify's decode step.
+    """Decode embedded Parquet *data* back to a DataFrame.
 
-    The recovered frame has the same content fingerprint as the original, so
-    verify recomputes ``{columns, dtypes, csv}`` from it and matches the stored
-    ``embedded_sha256`` without any special-casing.
+    Not on the verify path — ``verify --file`` hashes a Parquet payload's bytes
+    and never decodes them. This is for build-time tooling and tests, and it
+    keeps the defensive posture required of anything that MIGHT be pointed at
+    untrusted bytes.
 
     Refuses a block whose own metadata declares more than :data:`MAX_DECODE_ROWS`
     rows or :data:`MAX_DECODE_UNCOMPRESSED_BYTES` of data, so a hostile file

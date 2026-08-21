@@ -100,7 +100,13 @@ def test_parquet_is_more_compact_than_csv_for_wide_data():
     assert len(to_parquet_bytes(df)) < len(df.to_csv(index=False).encode())
 
 
-# ── verify path: a Parquet-embedded block checks out exactly like a CSV block ──
+# ── verify path: bytes-as-shipped, on both transports ────────────────────────
+#
+# The receipt for a block is a hash of what the file SHIPS: a CSV block's
+# inline triple, a Parquet block's payload bytes. Verify re-derives nothing on
+# its own machine — re-derivation was the root of every false-ALTERED class
+# (writer dtype drift, os.linesep, library versions) — so these tests exercise
+# the REAL verify_file end to end, never a recomputed triple.
 
 def _fp(triple):
     from tracebi.reports.embed import fingerprint_triple
@@ -108,33 +114,108 @@ def _fp(triple):
     return fingerprint_triple(triple)
 
 
-def test_parquet_block_verifies_like_the_csv_block():
-    """embed_block_parquet + verify's decode branch recompute the SAME
-    fingerprint as the CSV embed — so verify_file reads FILE INTACT."""
-    from tracebi.reports.embed import embed_block, embed_block_parquet, stamp_frame
-    from tracebi.verify import _extract_data_blocks
-
-    stamped = stamp_frame(_CASES["realistic"], name="revenue")
-    csv_blocks = _extract_data_blocks(embed_block(stamped))
-    pq_blocks = _extract_data_blocks(embed_block_parquet(stamped))
-    assert len(csv_blocks) == len(pq_blocks) == 1
-    assert csv_blocks[0][0] == pq_blocks[0][0] == "revenue"
-    assert _fp(pq_blocks[0][1]) == _fp(csv_blocks[0][1]) == stamped.fingerprint
+def _manifest_for(plan, stamped_list, verifiable=True):
+    """A minimal but REAL manifest for verify_file: the plan's records plus
+    sections carrying the content fingerprints they must anchor to."""
+    return {
+        "report_name": "t",
+        "embedded_data": [plan.record(sd, verifiable=verifiable)
+                          for sd in stamped_list],
+        "sections": [{"dataset_fingerprint": sd.fingerprint}
+                     for sd in stamped_list],
+    }
 
 
-def test_tampered_parquet_data_is_caught():
-    """A changed value in a Parquet block recomputes to a different fingerprint
-    than the binding recorded — verify_file would read FILE ALTERED."""
-    from tracebi.reports.embed import embed_block_parquet, stamp_frame
-    from tracebi.verify import _extract_data_blocks
+def _verdict(plan, stamped_list, html=None):
+    from tracebi.verify import verify_file
 
-    original = stamp_frame(_CASES["realistic"], name="revenue")
-    tampered = _CASES["realistic"].copy()
-    tampered.loc[0, "revenue"] = 999999.99
-    blocks = _extract_data_blocks(
-        embed_block_parquet(stamp_frame(tampered, name="revenue"))
-    )
-    assert _fp(blocks[0][1]) != original.fingerprint
+    return verify_file(html if html is not None else plan.blocks_html,
+                       _manifest_for(plan, stamped_list))
+
+
+def test_both_transports_verify_intact_end_to_end():
+    from tracebi.reports.embed import plan_embed, stamp_frame
+
+    sd = stamp_frame(_CASES["realistic"], name="revenue")
+    for fmt in ("csv", "parquet"):
+        plan = plan_embed([sd], fmt=fmt)
+        out = _verdict(plan, [sd])
+        assert out["verdict"] == "file_intact", (fmt, out)
+
+
+def test_tampered_parquet_payload_reads_altered():
+    """Flipping bytes INSIDE the shipped payload must read FILE ALTERED —
+    the hash covers exactly what the page carries."""
+    from tracebi.reports.embed import plan_embed, stamp_frame
+
+    sd = stamp_frame(_CASES["realistic"], name="revenue")
+    plan = plan_embed([sd], fmt="parquet")
+    marker = '"parquet_b64": "'
+    i = plan.blocks_html.index(marker) + len(marker) + 40
+    ch = plan.blocks_html[i]
+    tampered = plan.blocks_html[:i] + ("B" if ch != "B" else "C") + \
+        plan.blocks_html[i + 1:]
+    out = _verdict(plan, [sd], html=tampered)
+    assert out["verdict"] == "file_altered"
+
+
+def test_verify_file_needs_no_parquet_reader():
+    """The offline check hashes shipped bytes, so it must work on a machine
+    with NO pyarrow at all — a missing dependency must never surface, let
+    alone read as tampering."""
+    import builtins
+    import sys
+
+    from tracebi.reports.embed import plan_embed, stamp_frame
+
+    sd = stamp_frame(_CASES["realistic"], name="revenue")
+    plan = plan_embed([sd], fmt="parquet")     # build WITH pyarrow
+
+    real_import = builtins.__import__
+
+    def no_pyarrow(name, *a, **k):
+        if name == "pyarrow" or name.startswith("pyarrow."):
+            raise ImportError("pyarrow unavailable on the verifier")
+        return real_import(name, *a, **k)
+
+    saved = {m: sys.modules.pop(m) for m in list(sys.modules)
+             if m == "pyarrow" or m.startswith("pyarrow.")}
+    builtins.__import__ = no_pyarrow
+    try:
+        out = _verdict(plan, [sd])             # verify WITHOUT pyarrow
+    finally:
+        builtins.__import__ = real_import
+        sys.modules.update(saved)
+    assert out["verdict"] == "file_intact"
+
+
+def test_verify_is_independent_of_the_hosts_line_separator():
+    """THE root-cause regression test. pandas' to_csv line terminator follows
+    os.linesep, so any check that re-derives CSV on the verifier's machine
+    reads a Windows-built artifact as ALTERED on Linux. Hashing shipped bytes
+    must make the verdict identical whatever either host's linesep is."""
+    import os as _os
+
+    from tracebi.reports.embed import plan_embed, stamp_frame
+
+    real = _os.linesep
+    try:
+        _os.linesep = "\r\n"                   # a Windows build host
+        sd = stamp_frame(_CASES["realistic"], name="revenue")
+        plans = {fmt: plan_embed([sd], fmt=fmt) for fmt in ("csv", "parquet")}
+        manifests = {fmt: _manifest_for(p, [sd]) for fmt, p in plans.items()}
+    finally:
+        _os.linesep = real
+
+    from tracebi.verify import verify_file
+
+    _os.linesep = "\n"                          # a POSIX verifier
+    try:
+        for fmt, plan in plans.items():
+            out = verify_file(plan.blocks_html, manifests[fmt])
+            assert out["verdict"] == "file_intact", (fmt, out)
+    finally:
+        _os.linesep = real
 
 
 # ── automatic format selection (one format per artifact, chosen by size) ──────
@@ -192,64 +273,62 @@ def test_one_format_per_artifact_never_a_mix():
     assert '"csv"' not in blocks
 
 
-def test_format_choice_never_changes_the_receipt():
-    """The whole point: transport is not trust. Both formats fingerprint the
-    same, so crossing the threshold cannot make a report more or less
-    verifiable."""
-    from tracebi.reports.embed import embed_block, embedded_record, stamp_frame
-    from tracebi.verify import _extract_data_blocks
+def test_format_choice_never_changes_the_verdict():
+    """The whole point: transport is not trust. The same frame, forced onto
+    either transport, verifies FILE INTACT through the real verify path —
+    crossing the size threshold cannot make a report more or less verifiable."""
+    from tracebi.reports.embed import plan_embed, stamp_frame
 
-    stamped = stamp_frame(_frame(400), name="d")
-    expected = embedded_record(stamped)["embedded_sha256"]
+    sd = stamp_frame(_frame(400), name="d")
     for fmt in ("csv", "parquet"):
-        (_name, triple), = _extract_data_blocks(embed_block(stamped, fmt=fmt))
-        assert _fp(triple) == expected
+        out = _verdict(plan_embed([sd], fmt=fmt), [sd])
+        assert out["verdict"] == "file_intact", (fmt, out)
 
 
 def test_undecodable_parquet_block_is_reported_not_dropped():
-    """A present-but-corrupt Parquet block must be REPORTED as unreadable, never
-    dropped: dropping lets a block the checker cannot read slip past every check
-    as though it were not there. It is reported with a triple that can never
-    match a recorded fingerprint, so the binding always fails."""
-    import base64
-
+    """A present-but-corrupt Parquet block must be REPORTED as unreadable,
+    never dropped: dropping lets a block the checker cannot read slip past
+    every check as though it were not there. Reported, it can never match a
+    recorded hash, so the binding always fails."""
     from tracebi.reports.embed import embed_json
-    from tracebi.verify import _extract_data_blocks
+    from tracebi.verify import _UNREADABLE, _extract_data_blocks
 
-    bad = base64.b64encode(b"not a parquet file").decode("ascii")
     html = embed_json(
-        {"name": "x", "format": "parquet", "parquet_b64": bad}, "tracebi-data-x"
+        {"name": "x", "format": "parquet", "parquet_b64": "!!!not-base64!!!"},
+        "tracebi-data-x",
     )
     blocks = _extract_data_blocks(html)
     assert len(blocks) == 1 and blocks[0][0] == "x"
-    assert _fp(blocks[0][1]) != "anything a real frame could hash to"
+    assert blocks[0][1]["payload_sha256"] == _UNREADABLE
 
 
 def test_a_block_carrying_both_formats_is_refused():
-    """The forgery shape: the runtime draws from the Parquet payload while the
-    hash would come from the inline CSV triple, so such a block displays one set
-    of numbers and vouches for another. It must never verify."""
+    """The forgery shape: the runtime draws from the Parquet payload while a
+    triple-hash would vouch for the inline CSV half — one set of numbers
+    displayed, another vouched for. Even with a fully legitimate record, such
+    a block must read ALTERED."""
     import json as _json
 
-    from tracebi.reports.embed import (
-        embed_block, embed_block_parquet, embed_json, stamp_frame,
-    )
-    from tracebi.verify import _extract_data_blocks
+    from tracebi.reports.embed import embed_json, plan_embed, stamp_frame
+    from tracebi.verify import verify_file
 
     honest = stamp_frame(_CASES["realistic"], name="d")
+    plan = plan_embed([honest], fmt="csv")           # legit record + triple
+
     evil = _CASES["realistic"].copy()
     evil.loc[0, "revenue"] = 999_999.99
+    evil_plan = plan_embed([stamp_frame(evil, name="d")], fmt="parquet")
 
-    def _payload(block):
-        return _json.loads(block.split('">', 1)[1].rsplit("</script>", 1)[0])
+    def _payload(block_html):
+        return _json.loads(block_html.split('">', 1)[1].rsplit("</script>", 1)[0])
 
-    forged = _payload(embed_block(honest, fmt="csv"))          # legit triple
-    forged["format"] = "parquet"                                # …but drawn from
-    forged["parquet_b64"] = _payload(                           # attacker data
-        embed_block_parquet(stamp_frame(evil, name="d")))["parquet_b64"]
+    forged = _payload(plan.blocks_html)              # the honest triple…
+    forged["format"] = "parquet"                     # …now drawn from
+    forged["parquet_b64"] = _payload(evil_plan.blocks_html)["parquet_b64"]
 
-    (_name, triple), = _extract_data_blocks(embed_json(forged, "tracebi-data-d"))
-    assert _fp(triple) != honest.fingerprint
+    out = verify_file(embed_json(forged, "tracebi-data-d"),
+                      _manifest_for(plan, [honest]))
+    assert out["verdict"] == "file_altered"
 
 
 def test_unsafe_column_labels_fall_back_to_csv():
@@ -293,11 +372,12 @@ def test_untrusted_parquet_decode_is_bounded():
 
 
 # ── The invariant that actually matters ───────────────────────────────────────
-# Not "these dtypes round-trip" (three attempts to enumerate that missed cases),
-# but: WHATEVER format is chosen, the receipt verifies. choose_embed_format
-# proves the round-trip for the exact data in hand and falls back to CSV when it
-# does not hold, so a false FILE ALTERED is impossible by construction — for
-# dtypes nobody has thought of yet.
+# Not "these dtypes round-trip" (three attempts to enumerate that each missed
+# cases), but: WHATEVER transport is chosen for whatever data, the shipped
+# artifact verifies FILE INTACT — because the receipt hashes what ships. And
+# with the receipt no longer hostage to Parquet's type mapping, formerly
+# excluded dtypes (int categoricals, object-of-ints, datetime64[s]) now take
+# the Parquet transport freely; only DISPLAY-divergent types stay on CSV.
 
 def _big(extra, n=400_000):
     base = {"region": ["North", "South", "East", "West"] * (n // 4),
@@ -321,65 +401,27 @@ _HOSTILE = {
 
 
 @pytest.mark.parametrize("name", list(_HOSTILE))
-def test_whatever_format_is_chosen_the_receipt_verifies(name):
+def test_whatever_format_is_chosen_the_artifact_verifies(name):
+    from tracebi.reports.embed import plan_embed, stamp_frame
+
+    sd = stamp_frame(_big(_HOSTILE[name]), name="d")
+    plan = plan_embed([sd])                       # the format IT chooses
+    out = _verdict(plan, [sd])
+    assert out["verdict"] == "file_intact", (name, plan.fmt, out)
+
+
+def test_formerly_excluded_dtypes_now_take_the_parquet_transport():
+    """The un-limiting the payload receipt buys: dtypes that Parquet's type
+    mapping rewrites (breaking a re-derived fingerprint, but not the displayed
+    values) no longer force CSV."""
     from tracebi.reports.embed import (
-        data_blocks_html, embedded_record, stamp_frame,
-    )
-    from tracebi.verify import _extract_data_blocks
-
-    stamped = stamp_frame(_big(_HOSTILE[name]), name="d")
-    (_n, triple), = _extract_data_blocks(data_blocks_html([stamped]))
-    assert _fp(triple) == embedded_record(stamped)["embedded_sha256"], (
-        f"{name}: a freshly built artifact would verify as FILE ALTERED — the "
-        f"format choice must fall back to CSV when the round-trip does not "
-        f"preserve the fingerprint."
+        EMBED_FORMAT_PARQUET, choose_embed_format, stamp_frame,
     )
 
-
-def test_decode_memory_bound_is_measured_not_declared():
-    """total_byte_size counts ENCODED bytes, so a footer figure cannot bound
-    memory: dictionary/RLE data materialises far larger. The limit must be
-    enforced against what is actually read."""
-    import tracebi.reports.parquet_embed as pe
-
-    data = pe.to_parquet_bytes(pd.DataFrame({"x": range(100_000)}))
-    original = pe.MAX_DECODE_UNCOMPRESSED_BYTES
-    try:
-        pe.MAX_DECODE_UNCOMPRESSED_BYTES = 1_000
-        with pytest.raises(pe.ParquetTooLarge, match="while reading"):
-            pe.from_parquet_bytes(data)
-    finally:
-        pe.MAX_DECODE_UNCOMPRESSED_BYTES = original
-
-
-def test_hostile_pandas_metadata_is_refused():
-    """A Parquet file's `pandas` metadata can rename columns; pyarrow honours it
-    and the browser engine ignores it, so a crafted file could decode one way
-    for the checker and render another for the reader."""
-    import io
-    import json as _json
-
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    import tracebi.reports.parquet_embed as pe
-
-    table = pa.table({"region": ["N", "S"], "rev": [1.0, 2.0]})
-    cols = [
-        {"name": "region", "field_name": "region", "pandas_type": "unicode",
-         "numpy_type": "object", "metadata": None},
-        # claims a different name than the schema field carries
-        {"name": "NOT_REV", "field_name": "rev", "pandas_type": "float64",
-         "numpy_type": "float64", "metadata": None},
-    ]
-    table = table.replace_schema_metadata({
-        b"pandas": _json.dumps({"index_columns": [], "column_indexes": [],
-                                "columns": cols, "pandas_version": "2.2.3"}).encode()
-    })
-    buf = io.BytesIO()
-    pq.write_table(table, buf)
-    with pytest.raises(ValueError, match="rewrote the decoded columns"):
-        pe.from_parquet_bytes(buf.getvalue())
+    for name in ("int_categorical", "object_of_ints", "datetime_seconds",
+                 "string_categorical", "object_with_none"):
+        stamped = [stamp_frame(_big(_HOSTILE[name]), name="d")]
+        assert choose_embed_format(stamped) == EMBED_FORMAT_PARQUET, name
 
 
 def test_zoned_and_subsecond_datetimes_never_take_the_parquet_transport():

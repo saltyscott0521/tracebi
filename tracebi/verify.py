@@ -737,54 +737,39 @@ def _fingerprint_triple(triple: Mapping[str, str]) -> str:
     return fingerprint_triple(dict(triple))
 
 
-def _triple_from_parquet(parquet_b64: str) -> Optional[dict]:
-    """Decode a Parquet-embedded block and recompute its canonical triple.
-
-    The Parquet embed does not change the receipt: the fingerprint is still the
-    ``{columns, dtypes, csv}`` content triple, which survives the Parquet
-    round-trip exactly (``tests/test_parquet_embed.py``). So verify decodes the
-    Parquet, recomputes the triple, and hashes it exactly as it hashes an
-    embedded CSV triple. Returns ``None`` for an undecodable block — a
-    present-but-corrupt block then reports as a failure (the manifest binding it
-    should satisfy reads as MISSING), never as a pass.
-    """
-    import base64
-
-    from tracebi.reports.embed import canonical_triple
-    from tracebi.reports.parquet_embed import from_parquet_bytes
-
-    try:
-        df = from_parquet_bytes(base64.b64decode(parquet_b64))
-    except ImportError:
-        # A MISSING DEPENDENCY IS NOT TAMPERING. Swallowing this would report
-        # "FILE ALTERED — the data in this file was edited" to a reviewer whose
-        # checker simply cannot read Parquet, which is both an overclaim and a
-        # false accusation. Fail loudly with the extras key instead (invariant 4).
-        raise
-    except Exception:  # noqa: BLE001 — a genuinely corrupt block is not readable
-        return None
-    return canonical_triple(df)
-
-
-#: The triple reported for a block the checker cannot read (undecodable, or a
-#: forgery shape carrying two formats at once). It is a real triple, so it flows
-#: through the normal rehash path — and it can never match a recorded
-#: fingerprint, so such a block always FAILS rather than silently disappearing.
-_UNREADABLE_TRIPLE = {
-    "columns": "<unreadable>", "dtypes": "<unreadable>", "csv": "<unreadable>",
-}
+#: Sentinel hash for a block the checker cannot read (undecodable base64, or a
+#: forgery shape carrying two formats at once). It flows through the normal
+#: comparison path and can never match a recorded value, so such a block always
+#: FAILS rather than silently disappearing.
+_UNREADABLE = "<unreadable>"
 
 
 def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
-    """Every embedded data block, as ``(name, triple)`` pairs.
+    """Every embedded data block, as ``(name, block)`` pairs.
 
-    Two embed formats are recognised, both hashed via the *same* ``{columns,
-    dtypes, csv}`` triple: a CSV block carries the triple inline; a Parquet block
-    (``{format: "parquet", parquet_b64}``) is decoded and its triple recomputed
-    (:func:`_triple_from_parquet`). Any other ``application/json`` block (a
-    config blob, say) is skipped. ``name`` is the payload's own ``name`` when
-    present, else the element id.
+    *block* carries exactly one of two keys, matching the two embed formats:
+
+    ``"triple"``
+        A CSV block's inline ``{columns, dtypes, csv}`` — the exact strings the
+        build hashed, shipped verbatim.
+    ``"payload_sha256"``
+        A Parquet block's payload, hashed **as shipped**: the base64 is decoded
+        and SHA-256'd, nothing more. Nothing is parsed, decoded to a frame, or
+        re-serialized — re-deriving bytes on the verifier's machine was the
+        root of every false-ALTERED class (writer dtype drift, ``os.linesep``,
+        library versions), and hashing shipped bytes removes it. It also needs
+        no Parquet reader: the offline file check stays dependency-free. The
+        sentinel :data:`_UNREADABLE` marks undecodable base64 and the
+        two-formats-at-once forgery shape (the runtime would draw from the
+        Parquet half while a triple-hash would vouch for the other), so those
+        blocks always fail instead of slipping past.
+
+    Any other ``application/json`` block (a config blob, say) is skipped.
+    ``name`` is the payload's own ``name`` when present, else the element id.
     """
+    import base64
+    import hashlib
+
     out: list[tuple[str, dict]] = []
     for m in _DATA_BLOCK_RE.finditer(html):
         try:
@@ -799,21 +784,16 @@ def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
             parsed.get("parquet_b64"), str
         )
         if has_triple and has_parquet:
-            # A FORGERY SHAPE, refused by name. The runtime draws from the
-            # Parquet payload whenever `format` says parquet, while the hash
-            # here would come from the inline triple — so a block carrying both
-            # displays one set of numbers and vouches for another. An emitter
-            # never produces this. Report it as unreadable so the binding it
-            # claims fails, rather than passing on the half nobody renders.
-            out.append((name, _UNREADABLE_TRIPLE))
+            out.append((name, {"payload_sha256": _UNREADABLE}))
         elif has_triple:
-            out.append((name, parsed))
+            out.append((name, {"triple": parsed}))
         elif has_parquet:
-            triple = _triple_from_parquet(parsed["parquet_b64"])
-            # A present-but-undecodable block must still be REPORTED, not
-            # dropped: dropping it lets a block the checker cannot read slip
-            # past every check as though it were not there.
-            out.append((name, triple if triple is not None else _UNREADABLE_TRIPLE))
+            try:
+                raw = base64.b64decode(parsed["parquet_b64"], validate=True)
+                digest = hashlib.sha256(raw).hexdigest()
+            except Exception:  # noqa: BLE001 — bad base64 ⇒ unreadable, reported
+                digest = _UNREADABLE
+            out.append((name, {"payload_sha256": digest}))
     return out
 
 
@@ -890,9 +870,22 @@ def verify_file(html: str, manifest: dict) -> dict:
 
     results: list[dict] = []
     seen: set[str] = set()
-    for name, parsed in _extract_data_blocks(html):
-        computed = _fingerprint_triple(parsed)
+    for name, block in _extract_data_blocks(html):
+        # A CSV block re-hashes its shipped triple; a Parquet block hashes its
+        # shipped payload bytes. In BOTH cases the comparison is bytes-as-
+        # shipped against a value recorded at build — nothing re-derived, so no
+        # library, OS, or dtype drift can move it. The Parquet check compares
+        # against the record's payload_sha256; the record's embedded_sha256 (the
+        # source frame's content fingerprint) still ties it to its section.
         record = records.get(name)
+        if "triple" in block:
+            computed = _fingerprint_triple(block["triple"])
+            expected = record.get("embedded_sha256") if record else None
+            anchor = expected
+        else:
+            computed = block["payload_sha256"]
+            expected = record.get("payload_sha256") if record else None
+            anchor = record.get("embedded_sha256") if record else None
         if record is None:
             results.append({
                 "binding": name,
@@ -904,8 +897,7 @@ def verify_file(html: str, manifest: dict) -> dict:
             })
             continue
         seen.add(name)
-        expected = record.get("embedded_sha256")
-        if computed == expected and expected in section_fps:
+        if computed == expected and anchor in section_fps:
             results.append({
                 "binding": name,
                 "status": FILE_MATCHES,
