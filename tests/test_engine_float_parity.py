@@ -10,6 +10,11 @@ test re-certifies that claim on every run against a randomized matrix, so a
 future edit to the worker cannot quietly reintroduce a spelling divergence.
 
 Runs the actual worker source in node; skipped where node is unavailable.
+
+It certifies the VENDORED bundle — the file that is inlined into every Parquet
+artifact — not the ``_engine_src`` original, so a source edit that was never
+rebuilt (a stale bundle shipping uncertified rendering code) is caught, which
+is exactly the regression this lock exists to prevent.
 """
 
 import json
@@ -22,7 +27,7 @@ import pandas as pd
 import pytest
 
 WORKER_SRC = (Path(__file__).resolve().parents[1] / "tracebi" / "reports"
-              / "assets" / "_engine_src" / "engine.worker.mjs")
+              / "assets" / "tracebi-engine.worker.js")
 
 _NODE = shutil.which("node")
 

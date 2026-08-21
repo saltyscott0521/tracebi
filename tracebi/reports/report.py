@@ -493,6 +493,13 @@ MANIFEST_SCHEMA_VERSION = 1
 #: mechanism between readers and writers.
 ARTIFACT_MANIFEST_SCHEMA_VERSION = 2
 
+#: A Parquet-embedded artifact carries ``payload_sha256`` records an older
+#: checker cannot read — it would look for a CSV triple that is not there and
+#: report a false FILE ALTERED. Stamping this higher version makes that checker
+#: refuse cleanly (``refused_newer_schema``) instead. A CSV artifact stays
+#: version 2, fully verifiable by an older checker.
+PARQUET_MANIFEST_SCHEMA_VERSION = 3
+
 _GIT_SHA: Optional[str] = None
 
 

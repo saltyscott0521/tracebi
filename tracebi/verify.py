@@ -44,7 +44,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Mapping, Optional, Union
 
@@ -492,10 +492,10 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
     the only verdict meaning a number in this receipt was re-run and
     matched, and it names any sections it could not check.
     """
-    from tracebi.reports.report import ARTIFACT_MANIFEST_SCHEMA_VERSION
+    from tracebi.reports.report import PARQUET_MANIFEST_SCHEMA_VERSION
 
     sv = manifest.get("schema_version")
-    if isinstance(sv, int) and sv > ARTIFACT_MANIFEST_SCHEMA_VERSION:
+    if isinstance(sv, int) and sv > PARQUET_MANIFEST_SCHEMA_VERSION:
         # A newer writer may have changed semantics this checker does not
         # know; pretending to verify it would be a reassuring guess.
         return {
@@ -507,7 +507,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
             **_verdict_fields(REFUSED_NEWER_SCHEMA),
             "error": (
                 f"manifest schema_version {sv} is newer than this tracebi "
-                f"supports ({ARTIFACT_MANIFEST_SCHEMA_VERSION}); upgrade "
+                f"supports ({PARQUET_MANIFEST_SCHEMA_VERSION}); upgrade "
                 f"tracebi to verify it"
             ),
         }
@@ -721,13 +721,58 @@ FILE_VERDICT_LABELS = {
         "snapshots carry no receipt and cannot be verified",
 }
 
-#: The ``<script type="application/json">`` blocks the embedder emits. Captures
-#: the ``id`` (the binding fallback name) and the raw JSON text between the tags.
-_DATA_BLOCK_RE = re.compile(
-    r'<script\s+id="(?P<id>[^"]*)"\s+type="application/json"\s*>'
-    r'(?P<body>.*?)</script>',
-    re.DOTALL,
-)
+#: Element-id prefix of the embedded data blocks (``tracebi-data-<name>``) —
+#: exactly the prefix the runtime's own selectors read from.
+_DATA_ID_PREFIX = "tracebi-data-"
+
+
+class _JsonBlockParser(HTMLParser):
+    """Collect every ``<script type="application/json">`` block in document
+    order — the way the BROWSER parses, not a regex.
+
+    A regex that required ``id`` before ``type`` in a fixed order was the
+    forgery seam: a block written ``type``-first (or with any extra attribute)
+    was invisible to verify yet live to the reader, whose runtime locates the
+    same blocks with an attribute-order-independent CSS selector and a
+    last-wins cache. So a second, forged block for the same binding rode along
+    unhashed while the browser displayed it. An HTML parser sees attributes
+    order-independently and collects duplicates, closing that asymmetry: verify
+    now sees every block the browser can, so a forged twin fails the hash
+    instead of hiding behind its honest sibling.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.blocks: list[tuple[str, str]] = []   # (elem_id, raw body)
+        self._id: Optional[str] = None
+        self._buf: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "script":
+            return
+        a = {k.lower(): (v or "") for k, v in attrs}
+        if a.get("type", "").strip().lower() == "application/json":
+            self._id = a.get("id", "")
+            self._buf = []
+
+    def handle_data(self, data):
+        if self._id is not None:
+            self._buf.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "script" and self._id is not None:
+            self.blocks.append((self._id, "".join(self._buf)))
+            self._id = None
+            self._buf = []
+
+
+def _json_blocks(html: str) -> "list[tuple[str, str]]":
+    """Every ``application/json`` script block, ``(elem_id, raw_body)``, in
+    document order. In script (CDATA) mode the parser hands back the body text
+    verbatim, so a semantic block's hash stays byte-exact."""
+    parser = _JsonBlockParser()
+    parser.feed(html)
+    return parser.blocks
 
 
 def _fingerprint_triple(triple: Mapping[str, str]) -> str:
@@ -771,22 +816,35 @@ def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
     import hashlib
 
     out: list[tuple[str, dict]] = []
-    for m in _DATA_BLOCK_RE.finditer(html):
+    for elem_id, body in _json_blocks(html):
+        # Scope to exactly the blocks the runtime reads data from — its CSV
+        # path (getElementById) and its Parquet path (the id-prefix selector)
+        # both key off `tracebi-data-`. Other application/json blocks (the
+        # semantic contract, the figures config, the receipt) are not data.
+        if not elem_id.startswith(_DATA_ID_PREFIX):
+            continue
         try:
-            parsed = json.loads(m.group("body"))
+            parsed = json.loads(body)
         except (json.JSONDecodeError, ValueError):
             continue
         if not isinstance(parsed, dict):
             continue
-        name = str(parsed.get("name") or m.group("id"))
+        name = str(parsed.get("name") or elem_id[len(_DATA_ID_PREFIX):])
         has_triple = all(k in parsed for k in ("columns", "dtypes", "csv"))
         has_parquet = parsed.get("format") == "parquet" and isinstance(
             parsed.get("parquet_b64"), str
         )
+        strings = all(isinstance(parsed.get(k), str)
+                      for k in ("columns", "dtypes", "csv"))
         if has_triple and has_parquet:
             out.append((name, {"payload_sha256": _UNREADABLE}))
-        elif has_triple:
+        elif has_triple and strings:
             out.append((name, {"triple": parsed}))
+        elif has_triple:
+            # Triple keys present but a value is not a string — it cannot be
+            # hashed (``.encode`` would raise). Report it unreadable so the
+            # binding fails, rather than crashing verify on a hostile file.
+            out.append((name, {"payload_sha256": _UNREADABLE}))
         elif has_parquet:
             try:
                 raw = base64.b64decode(parsed["parquet_b64"], validate=True)
@@ -810,22 +868,38 @@ def _extract_semantic_blocks(html: str) -> dict[str, str]:
     never parsed and re-serialised, so the hash comparison is byte-exact.
     """
     out: dict[str, str] = {}
-    for m in _DATA_BLOCK_RE.finditer(html):
-        elem_id = m.group("id")
+    for elem_id, body in _json_blocks(html):
         if elem_id.startswith(_SEMANTIC_ID_PREFIX):
-            out[elem_id[len(_SEMANTIC_ID_PREFIX):]] = m.group("body")
+            out[elem_id[len(_SEMANTIC_ID_PREFIX):]] = body
     return out
 
 
 def verify_file(html: str, manifest: dict) -> dict:
     """Rehash every embedded data block in *html* against *manifest*.
 
-    No model is loaded and no DataFrame is rebuilt: each block's three
-    canonical strings are hashed exactly as ``frame_fingerprint`` hashed them,
-    and compared to the manifest's ``embedded_data[].embedded_sha256`` (which
-    equals the matching section's ``dataset_fingerprint``). Returns the same
-    ``verdict``/``exit_code``/``ok`` shape as :func:`verify_manifest`, so the
-    CLI presents both checks uniformly.
+    No model is loaded and no DataFrame is rebuilt. A **CSV** block's three
+    canonical strings are hashed exactly as ``frame_fingerprint`` hashed them
+    and compared to the manifest's ``embedded_sha256`` — which equals the
+    matching section's ``dataset_fingerprint``, the value
+    :func:`verify_manifest` independently reproduces from the model. So for a
+    CSV artifact the two checks COMPOSE: file-integrity here and reproduction
+    there both pin the *same* fingerprint, and a display that disagrees with the
+    query fails one of them.
+
+    A **Parquet** block is hashed by its shipped payload bytes against a
+    separate ``payload_sha256``. That is honest tamper-evidence — the file was
+    not edited after render, relative to its manifest — but it is a WEAKER
+    guarantee than CSV's: ``payload_sha256`` is not the fingerprint
+    :func:`verify_manifest` reproduces, so the two checks do NOT compose into a
+    display↔query tie. A payload swapped at build for one encoding different
+    numbers, with ``payload_sha256`` updated to match and ``embedded_sha256``
+    left honest, passes both checks. Closing that needs the model-bearing check
+    to decode the payload and compare it to the re-run result on one machine
+    (drift-free) — tracked as the Wave-0 continuous-verification work, not done
+    here. See ``docs/large-detail-artifacts.md`` §11.
+
+    Returns the same ``verdict``/``exit_code``/``ok`` shape as
+    :func:`verify_manifest`, so the CLI presents both checks uniformly.
     """
     from tracebi.reports.figures import (
         FigureError, extract_figures, read_stage_meta,

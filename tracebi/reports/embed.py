@@ -329,11 +329,23 @@ def _renders_identically(series) -> bool:
     dtype = series.dtype
     if isinstance(dtype, pd.CategoricalDtype):
         cats = series.cat.categories
-        # Safe when the VALUES render identically: numeric/bool/string
-        # categories do (the engine sees the plain values). Datetime categories
-        # do not: to_csv writes str(Timestamp) ("2024-01-15 00:00:00") per
-        # value, while the engine would apply the datetime-column midnight rule.
-        return getattr(cats.dtype, "kind", "") in "ifbu" or _all_strings(cats)
+        # A categorical reaches the worker as Arrow Dictionary<Int32, VALUE>,
+        # and only two value kinds render identically AND decode at all:
+        #   • integer/unsigned categories — the engine sees the plain integer;
+        #   • string categories — verbatim.
+        # Everything else is excluded for a concrete reason, not caution:
+        #   • FLOAT categories bypass the certified float formatter entirely —
+        #     the worker tags float COLUMNS by Arrow type "Float*", but a
+        #     dictionary's type is "Dictionary<Int32, Float64>", so cellToText
+        #     renders the value with String() and "1.0" shows as "1";
+        #   • BOOL categories cannot even be decoded — parquet-wasm 0.7.2 raises
+        #     "Unsupported output type for dictionary packing: Boolean", killing
+        #     the binding's whole interactive lane;
+        #   • DATETIME categories: to_csv writes str(Timestamp) per value while
+        #     the engine applies the datetime-column midnight rule.
+        # (A plain, non-categorical bool or float column is fine — it is only
+        # the DICTIONARY encoding of those that breaks.)
+        return getattr(cats.dtype, "kind", "") in "iu" or _all_strings(cats)
     kind = getattr(dtype, "kind", "")
     if kind == "f":
         # float64 only. The engine's pyRepr reproduces pandas' float64
@@ -365,6 +377,17 @@ def _renders_identically(series) -> bool:
                 return False
             if len(values) and (values.dt.nanosecond != 0).any():
                 return False
+            # YEAR must be four digits. The engine renders via
+            # Date.toISOString(), which zero-pads years to four digits and
+            # EXPANDS years outside 0–9999 to a signed six-digit form
+            # (`+010000-…`). pandas matches only for a plain four-digit year:
+            # a wide-unit datetime64[s] writes `500` unpadded and `10000`
+            # un-expanded. Bound to [1000, 9999] — every real BI date — so the
+            # two never disagree.
+            if len(values):
+                years = values.dt.year
+                if (years < 1000).any() or (years > 9999).any():
+                    return False
         except (AttributeError, ValueError):
             return False
         return True
@@ -408,29 +431,46 @@ def choose_embed_format(stamped: "list[StampedData]") -> str:
     triple, which Parquet round-trips exactly), so this is purely a transport
     decision — no report is more or less verifiable for having crossed it.
     """
+    return _choose_with_bytes(stamped)[0]
+
+
+def _display_safe(stamped) -> bool:
+    """Whether every binding's every column may take the Parquet transport.
+
+    Two conditions, applied per column:
+
+    * Parquet column names must be strings and unique. A frame whose labels are
+      not (a report.py ``pivot()`` yields integer labels; a careless join yields
+      duplicates) would come back with rewritten names or fail the write; CSV
+      handles both.
+    * Every column must render in the browser engine exactly as the CSV
+      transport does (:func:`_renders_identically`) — tz-aware, sub-second,
+      timedelta, Decimal, and mixed-object columns show a DIFFERENT string on a
+      large report than a small one, so they keep CSV.
+
+    This is the ONLY display gate, and it lives here — inside the single choose
+    path — precisely so no caller can route around it. (An earlier split, with
+    the gate in :func:`choose_embed_format` and the encode in
+    :func:`_choose_with_bytes`, let ``plan_embed`` reach the encode directly and
+    ship a mis-rendering Parquet artifact past an ungated build. One path now.)
+    """
     for sd in stamped:
         frame = sd.dataset.to_pandas()
-        # Parquet column names are strings and must be unique. A frame whose
-        # labels are not (a report.py `pivot()` yields integer labels; a careless
-        # join yields duplicates) would either come back with rewritten column
-        # names — a changed fingerprint, i.e. a false ALTERED — or fail the write
-        # outright. Neither is acceptable, and CSV handles both.
         cols = list(frame.columns)
         if len(set(cols)) != len(cols) or any(not isinstance(c, str) for c in cols):
-            return EMBED_FORMAT_CSV
-        # And every column must be a type the BROWSER engine renders the same
-        # way the CSV transport does. The receipt survives more types than the
-        # display does: Arrow hands the worker a Decimal as an unscaled integer,
-        # a tz-aware timestamp with the zone dropped, and a timedelta as raw
-        # nanoseconds — each of which would show a DIFFERENT number on a large
-        # report than on a small one, from identical stamped bytes. Reproducing
-        # pandas' formatting in JS for every such type is the same losing game
-        # as enumerating dtypes, so those types simply keep the CSV transport,
-        # which the runtime already renders correctly.
+            return False
+        # A column name that is a JS prototype key (`__proto__`) breaks Arquero's
+        # table construction in the worker (numRows() → undefined, zero rows),
+        # inside the library, so it cannot be fixed downstream — keep it on CSV.
+        if any(c in _UNSAFE_COL_NAMES for c in cols):
+            return False
         if not all(_renders_identically(frame[c]) for c in cols):
-            return EMBED_FORMAT_CSV
+            return False
+    return True
 
-    return _choose_with_bytes(stamped)[0]
+
+#: Column names that are JS object-prototype keys — an Arquero footgun.
+_UNSAFE_COL_NAMES = {"__proto__", "constructor", "prototype"}
 
 
 def _choose_with_bytes(stamped) -> "tuple[str, dict]":
@@ -444,6 +484,11 @@ def _choose_with_bytes(stamped) -> "tuple[str, dict]":
     performance nicety but a correctness property: a second encode is not
     guaranteed byte-identical, and the receipt hashes bytes.
     """
+    stamped = list(stamped)
+    # The display gate FIRST, and unconditionally: a column the engine cannot
+    # render identically keeps CSV no matter how large the data is.
+    if not _display_safe(stamped):
+        return EMBED_FORMAT_CSV, {}
     total_csv = sum(len(sd.triple["csv"].encode("utf-8")) for sd in stamped)
     engine = engine_cost_bytes()
     # Fast path: below the engine's own price Parquet cannot possibly win, and

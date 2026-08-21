@@ -449,3 +449,123 @@ def test_zoned_and_subsecond_datetimes_never_take_the_parquet_transport():
         pd.to_datetime(["2024-01-15 12:00:00"] * 4).tz_localize("America/New_York"),
         dtype=pd.ArrowDtype(pa.timestamp("us", tz="America/New_York")),
     ))
+
+
+@pytest.mark.xfail(reason="F5 (tracked): Parquet payload_sha256 is decoupled "
+                          "from the reproduced fingerprint, so verify does not "
+                          "yet compose into a display↔query tie for Parquet. "
+                          "Closing it is the Wave-0 model-bearing payload check.",
+                   strict=True)
+def test_parquet_payload_forgery_is_caught_by_verification():
+    """The gap CSV does not have: a payload swapped for different numbers, with
+    payload_sha256 updated to match and embedded_sha256 left honest, must NOT
+    verify. This xfails today (documents the boundary) and will XPASS when the
+    model-bearing payload-tie lands — flipping it to strict-fail so the fix is
+    not silently forgotten."""
+    import hashlib
+
+    from tracebi.reports.embed import plan_embed, stamp_frame
+    from tracebi.reports.parquet_embed import to_parquet_bytes
+    from tracebi.verify import verify_file
+
+    honest = stamp_frame(_CASES["realistic"], name="revenue")
+    plan = plan_embed([honest], fmt="parquet")
+
+    forged = _CASES["realistic"].copy()
+    forged["revenue"] = forged["revenue"] * 10          # different numbers
+    forged_bytes = to_parquet_bytes(forged)
+
+    import base64
+    import json as _json
+    payload = _json.loads(
+        plan.blocks_html.split('">', 1)[1].rsplit("</script>", 1)[0])
+    payload["parquet_b64"] = base64.b64encode(forged_bytes).decode()
+    from tracebi.reports.embed import embed_json
+    forged_html = embed_json(payload, "tracebi-data-revenue")
+
+    manifest = _manifest_for(plan, [honest])
+    # The author updates payload_sha256 to match the forged bytes; embedded_sha256
+    # (the honest section fingerprint) is left untouched.
+    manifest["embedded_data"][0]["payload_sha256"] = \
+        hashlib.sha256(forged_bytes).hexdigest()
+
+    out = verify_file(forged_html, manifest)
+    assert out["verdict"] == "file_altered"
+
+
+def test_attribute_order_forged_twin_is_caught():
+    """F1: verify parsed blocks with a regex requiring id-before-type, so a
+    forged `type`-first twin of a binding was invisible to verify yet live to
+    the browser (last-wins). Verify now parses like the browser and sees both,
+    so the forged twin fails the hash."""
+    import base64
+    import hashlib
+    import json as _json
+
+    from tracebi.reports.embed import (
+        embed_block_parquet, plan_embed, stamp_frame,
+    )
+    from tracebi.verify import verify_file
+
+    honest = stamp_frame(_CASES["realistic"], name="revenue")
+    plan = plan_embed([honest], fmt="parquet")
+    honest_block = plan.blocks_html
+    honest_b64 = _json.loads(
+        honest_block.split('">', 1)[1].rsplit("</script>", 1)[0])["parquet_b64"]
+
+    evil = _CASES["realistic"].copy()
+    evil["revenue"] = evil["revenue"] * 10
+    evil_b64 = _json.loads(embed_block_parquet(stamp_frame(evil, name="revenue"))
+                           .split('">', 1)[1].rsplit("</script>", 1)[0])["parquet_b64"]
+    # type BEFORE id — the old regex missed this; the browser (last-wins) shows it
+    forged_twin = ('<script type="application/json" id="tracebi-data-revenue">'
+                   + _json.dumps({"name": "revenue", "format": "parquet",
+                                  "parquet_b64": evil_b64}).replace("<", "\\u003c")
+                   + "</script>")
+    html = ("<!doctype html><meta name='tracebi-stage' content='final'>"
+            + honest_block + "\n" + forged_twin)
+    manifest = {
+        "report_name": "t", "stage": "final",
+        "embedded_data": [{"name": "revenue", "embed_format": "parquet",
+                           "embedded_sha256": honest.fingerprint,
+                           "payload_sha256":
+                           hashlib.sha256(base64.b64decode(honest_b64)).hexdigest()}],
+        "sections": [{"dataset_fingerprint": honest.fingerprint}],
+    }
+    assert verify_file(html, manifest)["verdict"] == "file_altered"
+
+
+@pytest.mark.parametrize("name,extra,want", [
+    ("tz_aware", {"t": "TZ"}, "csv"),
+    ("subsecond", {"t": "SUBSEC"}, "csv"),
+    ("bool_categorical", {"c": "BOOLCAT"}, "csv"),
+    ("float_categorical", {"c": "FLOATCAT"}, "csv"),
+    ("year_10000", {"d": "Y10000"}, "csv"),
+    ("proto_column", {"__proto__": "STR"}, "csv"),
+    ("int_categorical", {"c": "INTCAT"}, "parquet"),
+    ("naive_second_date", {"d": "DATE"}, "parquet"),
+])
+def test_display_gate_routes_on_the_production_path(name, extra, want):
+    """F2/F3/F4/F8/F11: the display gate must run on the REAL build path
+    (plan_embed with no forced fmt), not only in choose_embed_format. Each
+    unsafe dtype keeps CSV; safe ones take Parquet once large enough."""
+    import numpy as np
+
+    from tracebi.reports.embed import plan_embed, stamp_frame
+
+    n = 400_000
+    col = next(iter(extra))
+    kind = extra[col]
+    build = {
+        "TZ": lambda: pd.to_datetime(["2024-01-15 10:00"] * n, utc=True),
+        "SUBSEC": lambda: pd.to_datetime(["2024-01-15 10:00:00.5"] * n),
+        "BOOLCAT": lambda: pd.Categorical([True, False] * (n // 2)),
+        "FLOATCAT": lambda: pd.Categorical([1.0, 2.5] * (n // 2)),
+        "Y10000": lambda: pd.Series(np.array(["10000-01-01"] * n, dtype="datetime64[s]")),
+        "STR": lambda: ["alpha", "beta"] * (n // 2),
+        "INTCAT": lambda: pd.Categorical([1, 2, 3, 4] * (n // 4)),
+        "DATE": lambda: pd.to_datetime(["2024-01-15"] * n),
+    }[kind]
+    frame = pd.DataFrame({"label": ["north-region", "south-region"] * (n // 2),
+                          col: build()})
+    assert plan_embed([stamp_frame(frame, name="d")]).fmt == want, (name, col)

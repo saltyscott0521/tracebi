@@ -151,7 +151,7 @@ function toPlain(rows, temporal, floats) {
 /* A CSV rendering of the decoded rows, so the artifact's download control hands
  * the reader the same values the page is showing. */
 function toCsv(cols, rows) {
-  const esc = (s) => (/[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
+  const esc = (s) => (/[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
   const lines = [cols.map(esc).join(',')];
   for (const r of rows) lines.push(cols.map((c) => esc(r[c] === undefined ? '' : r[c])).join(','));
   return lines.join('\n') + '\n';

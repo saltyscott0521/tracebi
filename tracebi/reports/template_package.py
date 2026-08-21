@@ -69,7 +69,8 @@ from tracebi.reports.figures import (
 )
 from tracebi.reports.html_renderer import HTMLRenderer
 from tracebi.reports.report import (
-    ARTIFACT_MANIFEST_SCHEMA_VERSION, Report, ReportManifest, TableSection,
+    ARTIFACT_MANIFEST_SCHEMA_VERSION, PARQUET_MANIFEST_SCHEMA_VERSION,
+    Report, ReportManifest, TableSection,
 )
 from tracebi.spec import DataRef
 
@@ -129,6 +130,12 @@ def _ssr_format(raw, name: str) -> str:
     if name == "currency0": return "$" + _py_fixed(num, 0, grouped=True)
     if name == "percent":   return _py_fixed(num * 100, 1) + "%"
     return str(raw)                    # unknown name: applyNamedFormat -> raw
+
+
+#: Server-rendered rows per table before the runtime hydrates the full set from
+#: embedded data. Generous enough to render normal tables whole; a ceiling so a
+#: huge binding cannot re-inflate the page it was embedded as Parquet to shrink.
+_SSR_MAX_ROWS = 1000
 
 
 def _ssr_cell(raw) -> str:
@@ -345,7 +352,13 @@ class TemplatePackage:
             [embed_plan.record(sd, verifiable=True) for sd in inputs]
             + [embed_plan.record(sd, verifiable=False) for sd in outputs]
         )
-        manifest.schema_version = ARTIFACT_MANIFEST_SCHEMA_VERSION
+        # A Parquet artifact stamps the higher schema so an older checker
+        # refuses it cleanly rather than misreading its payload records; a CSV
+        # artifact stays version 2 and verifies on any checker. payload_sha256
+        # is populated only for the Parquet transport.
+        manifest.schema_version = (PARQUET_MANIFEST_SCHEMA_VERSION
+                                   if embed_plan.payload_sha256
+                                   else ARTIFACT_MANIFEST_SCHEMA_VERSION)
         manifest.stage = "final"
         manifest.figures = [_figure_record(f) for f in figs]
 
@@ -558,8 +571,14 @@ class TemplatePackage:
             empty = (f'<tr><td class="tb-empty" colspan="{len(cols)}">no data'
                      f"</td></tr>")
             return thead + '<tbody data-tb-hydrate>' + empty + "</tbody>"
+        # Cap the SERVER-rendered rows. The runtime clears this tbody and
+        # re-renders the full set from the embedded data, so SSR is only the
+        # pre-hydrate / no-JS fallback — and baking every row of a large binding
+        # into the page as literal <tr>s would re-inflate the very bytes the
+        # Parquet transport saved (300k rows → ~24MB of HTML). A generous cap
+        # renders every normal table whole and previews only the huge ones.
         body = []
-        for _, row in df.iterrows():
+        for _, row in df.head(_SSR_MAX_ROWS).iterrows():
             cells = []
             for c in cols:
                 raw = row[c]
@@ -570,6 +589,12 @@ class TemplatePackage:
                 else:
                     cells.append(f"<td>{_html.escape(_ssr_cell(raw))}</td>")
             body.append("<tr>" + "".join(cells) + "</tr>")
+        if len(df) > _SSR_MAX_ROWS:
+            # Honest to a no-JS reader (JS clears this row and loads them all).
+            more = len(df) - _SSR_MAX_ROWS
+            body.append(f'<tr><td class="tb-empty" colspan="{len(cols)}">'
+                        f"+{more:,} more rows — enable JavaScript to load them"
+                        f"</td></tr>")
         return thead + "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>"
 
     def _validate_figures(
