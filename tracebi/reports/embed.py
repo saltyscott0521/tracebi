@@ -316,6 +316,16 @@ def choose_embed_format(stamped: "list[StampedData]") -> str:
     triple, which Parquet round-trips exactly), so this is purely a transport
     decision — no report is more or less verifiable for having crossed it.
     """
+    # Parquet column names are strings and must be unique. A frame whose labels
+    # are not (a report.py `pivot()` yields integer labels; a careless join
+    # yields duplicates) would either come back with rewritten column names — a
+    # changed fingerprint, i.e. a false ALTERED — or fail the write outright.
+    # Neither is acceptable, and CSV handles both, so stay on CSV.
+    for sd in stamped:
+        cols = list(sd.dataset.to_pandas().columns)
+        if len(set(cols)) != len(cols) or any(not isinstance(c, str) for c in cols):
+            return EMBED_FORMAT_CSV
+
     total_csv = sum(len(sd.triple["csv"].encode("utf-8")) for sd in stamped)
     engine = engine_cost_bytes()
     # Fast path: below the engine's own price Parquet cannot possibly win, and

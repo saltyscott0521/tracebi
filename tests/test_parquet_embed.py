@@ -219,3 +219,25 @@ def test_undecodable_parquet_block_is_not_a_pass():
         {"name": "x", "format": "parquet", "parquet_b64": bad}, "tracebi-data-x"
     )
     assert _extract_data_blocks(html) == []
+
+
+def test_unsafe_column_labels_fall_back_to_csv():
+    """Parquet column names must be unique strings. A frame whose labels are not
+    (a report.py pivot() yields integer labels; a careless join yields
+    duplicates) must stay on CSV rather than come back with rewritten names — a
+    changed fingerprint would read as a false FILE ALTERED."""
+    from tracebi.reports.embed import (
+        EMBED_FORMAT_CSV, choose_embed_format, stamp_frame,
+    )
+
+    big = 200_000
+    int_labels = pd.DataFrame({1: range(big), 2: range(big)})
+    dupes = pd.DataFrame(
+        {"a": range(big), "b": range(big)}
+    ).rename(columns={"b": "a"})
+
+    for df in (int_labels, dupes):
+        stamped = [stamp_frame(df, name="d")]
+        # large enough that size alone would have chosen Parquet
+        assert len(stamped[0].triple["csv"]) > 1_000_000
+        assert choose_embed_format(stamped) == EMBED_FORMAT_CSV
