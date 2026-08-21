@@ -451,46 +451,39 @@ def test_zoned_and_subsecond_datetimes_never_take_the_parquet_transport():
     ))
 
 
-@pytest.mark.xfail(reason="F5 (tracked): Parquet payload_sha256 is decoupled "
-                          "from the reproduced fingerprint, so verify does not "
-                          "yet compose into a display↔query tie for Parquet. "
-                          "Closing it is the Wave-0 model-bearing payload check.",
-                   strict=True)
-def test_parquet_payload_forgery_is_caught_by_verification():
-    """The gap CSV does not have: a payload swapped for different numbers, with
-    payload_sha256 updated to match and embedded_sha256 left honest, must NOT
-    verify. This xfails today (documents the boundary) and will XPASS when the
-    model-bearing payload-tie lands — flipping it to strict-fail so the fix is
-    not silently forgotten."""
+def test_offline_verify_file_cannot_catch_a_parquet_payload_forgery():
+    """The documented offline BOUNDARY (F5). A payload swapped at build for
+    different numbers, with payload_sha256 updated to match and embedded_sha256
+    left honest, passes offline `verify --file` — which has no model to re-run,
+    so it can only check the file against its own manifest. This pins that limit;
+    the model-bearing check (verify_manifest with html) is what catches it, and
+    that closure is exercised in tests/test_verify_v2.py."""
+    import base64
     import hashlib
+    import json as _json
 
-    from tracebi.reports.embed import plan_embed, stamp_frame
+    from tracebi.reports.embed import embed_json, plan_embed, stamp_frame
     from tracebi.reports.parquet_embed import to_parquet_bytes
     from tracebi.verify import verify_file
 
     honest = stamp_frame(_CASES["realistic"], name="revenue")
     plan = plan_embed([honest], fmt="parquet")
-
     forged = _CASES["realistic"].copy()
-    forged["revenue"] = forged["revenue"] * 10          # different numbers
+    forged["revenue"] = forged["revenue"] * 10
     forged_bytes = to_parquet_bytes(forged)
 
-    import base64
-    import json as _json
     payload = _json.loads(
         plan.blocks_html.split('">', 1)[1].rsplit("</script>", 1)[0])
     payload["parquet_b64"] = base64.b64encode(forged_bytes).decode()
-    from tracebi.reports.embed import embed_json
     forged_html = embed_json(payload, "tracebi-data-revenue")
 
     manifest = _manifest_for(plan, [honest])
-    # The author updates payload_sha256 to match the forged bytes; embedded_sha256
-    # (the honest section fingerprint) is left untouched.
     manifest["embedded_data"][0]["payload_sha256"] = \
         hashlib.sha256(forged_bytes).hexdigest()
 
-    out = verify_file(forged_html, manifest)
-    assert out["verdict"] == "file_altered"
+    # Offline, with a self-consistent forged (html, manifest) pair, verify --file
+    # cannot tell — exactly as it cannot for a CSV author-forgery.
+    assert verify_file(forged_html, manifest)["verdict"] == "file_intact"
 
 
 def test_attribute_order_forged_twin_is_caught():

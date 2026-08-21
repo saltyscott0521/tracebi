@@ -57,6 +57,14 @@ UNEXPLAINED = "unexplained"
 MISMATCH_UNKNOWN = "mismatch_unknown_cause"
 UNVERIFIABLE = "unverifiable"
 ERROR = "error"
+#: The section's query reproduces its recorded fingerprint, but the data
+#: EMBEDDED in the file (the bytes the reader sees) decodes to a DIFFERENT
+#: fingerprint — the display was swapped for something the query never produced.
+#: Only reachable with a Parquet embed and the model in hand (the decoded
+#: payload is compared to the fresh re-run on one machine, so no drift); a CSV
+#: embed cannot reach it because its bytes ARE the fingerprint. The forgery the
+#: payload-hash file check alone cannot see.
+DISPLAY_FORGED = "display_forged"
 
 #: A FIGURE status only, never a section's: the author marked the element
 #: ``data-tb-unverified`` — nobody claimed anything, which is a different
@@ -72,6 +80,7 @@ STATUS_LABELS = {
     MISMATCH_UNKNOWN: "MISMATCH (cause unknown)",
     UNVERIFIABLE:     "UNVERIFIABLE",
     ERROR:            "ERROR",
+    DISPLAY_FORGED:   "DISPLAY FORGED",
 }
 
 #: Labels for figure rollup rows (section statuses plus UNVERIFIED).
@@ -81,7 +90,7 @@ FIGURE_STATUS_LABELS = {**STATUS_LABELS, UNVERIFIED: "UNVERIFIED (marked)"}
 #: reason nobody has diagnosed" — the exit-1 class. An unknown-cause
 #: mismatch belongs here: it *might* be drift, but the bias is toward loud
 #: failure, never toward the reassuring guess.
-_ALARMING = (UNEXPLAINED, MODEL_CHANGED, MISMATCH_UNKNOWN, ERROR)
+_ALARMING = (UNEXPLAINED, MODEL_CHANGED, MISMATCH_UNKNOWN, ERROR, DISPLAY_FORGED)
 
 # ── Receipt-level verdicts ─────────────────────────────────────────────────
 # The one-line answer for a whole manifest. Section statuses say what
@@ -285,8 +294,49 @@ def _mapping_index(lineage: list) -> dict[str, list[str]]:
     return out
 
 
-def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dict:
-    """Classify one data-bearing manifest section."""
+def _decoded_parquet_fingerprints(html: str) -> "dict[str, Optional[str]]":
+    """``{binding name: content fingerprint of its decoded Parquet payload}``.
+
+    Same-machine: the fingerprint is recomputed here, on the verifier, so it can
+    be compared drift-free to a freshly re-run query result (never to a stored
+    value). ``None`` for a block that cannot be decoded — bad bytes, or pyarrow
+    absent — so a missing decoder means "tie not checked", never "tampering".
+    CSV blocks are skipped: their bytes already ARE the fingerprint.
+    """
+    import base64
+
+    out: dict[str, Optional[str]] = {}
+    for elem_id, body in _json_blocks(html):
+        if not elem_id.startswith(_DATA_ID_PREFIX):
+            continue
+        try:
+            parsed = json.loads(body)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(parsed, dict) or parsed.get("format") != "parquet":
+            continue
+        name = str(parsed.get("name") or elem_id[len(_DATA_ID_PREFIX):])
+        try:
+            from tracebi.model.dataset import frame_fingerprint
+            from tracebi.reports.parquet_embed import from_parquet_bytes
+            frame = from_parquet_bytes(
+                base64.b64decode(parsed["parquet_b64"], validate=True))
+            out[name] = frame_fingerprint(frame)
+        except Exception:  # noqa: BLE001 — undecodable / no pyarrow: not checked
+            out[name] = None
+    return out
+
+
+def _verify_section(section: dict, models: Mapping[str, Any], label: str,
+                    payload_fp: "Optional[str]" = None) -> dict:
+    """Classify one data-bearing manifest section.
+
+    *payload_fp* is the content fingerprint of the section's embedded Parquet
+    payload (from :func:`_decoded_parquet_fingerprints`), or ``None`` for a CSV
+    binding or an unavailable decoder. When the query reproduces, it must equal
+    the re-run's fingerprint — otherwise the displayed bytes are not what the
+    query produced (:data:`DISPLAY_FORGED`).
+    """
     from tracebi.model.data_model import QuerySpec
     from tracebi.model.dataset import last_query_node
 
@@ -357,6 +407,21 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
     base.update(actual_fingerprint=actual, inputs=inputs)
 
     if actual == expected:
+        # The query reproduces. If a decoded Parquet payload is in hand, the
+        # bytes the READER sees must decode to that same fresh fingerprint — both
+        # computed here, so the comparison is drift-free. When they disagree, the
+        # display was swapped for numbers the query never produced: the F5
+        # forgery the payload-hash file check alone cannot see. (Only gated on
+        # reproduction: when the query does NOT reproduce, an honest old render
+        # over drifted data also has payload_fp != actual, and that case is
+        # already classified below — so the forgery verdict is reserved for the
+        # green-receipt swap it uniquely identifies.)
+        if payload_fp is not None and payload_fp != actual:
+            return {**base, "status": DISPLAY_FORGED, "actual_fingerprint": actual,
+                    "detail": "the query reproduces its recorded fingerprint, but "
+                              "the data embedded in this file decodes to a "
+                              "different result — the displayed numbers are not "
+                              "what the query produces"}
         return {**base, "status": REPRODUCES,
                 "detail": "result fingerprint matches the manifest"}
     if not recorded_inputs:
@@ -461,7 +526,7 @@ def _semantic_diff(recorded: dict, info: dict) -> list[str]:
 
 
 def verify_manifest(manifest: dict, models: Mapping[str, Any],
-                    strict: bool = False) -> dict:
+                    strict: bool = False, html: "Optional[str]" = None) -> dict:
     """
     Re-run every recorded query in *manifest* and classify each section.
 
@@ -480,6 +545,15 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
           "exit_code": 0 | 1 | 2,
           "ok": bool,     # exit_code == 0
         }
+
+    When *html* (the rendered file) is provided, a Parquet-embedded section is
+    additionally checked for :data:`DISPLAY_FORGED`: the payload the reader sees
+    is decoded and its fingerprint compared to the re-run result on THIS machine
+    (drift-free), so a display swapped for numbers the query never produced is
+    caught even though its ``payload_sha256`` file-check passes. Without *html*,
+    or without a Parquet decoder, that tie is simply not run — the queries are
+    still verified. A CSV section needs no such tie: its bytes are the
+    fingerprint the re-run reproduces.
 
     Only data-bearing sections (those carrying a ``dataset_fingerprint``)
     are classified; presentation-only sections have nothing to verify.
@@ -512,12 +586,24 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
             ),
         }
 
+    # When the rendered file is in hand, decode its Parquet payloads so each
+    # section's DISPLAYED data can be tied to its re-run result (the F5 check).
+    # A Parquet binding's embed record carries embedded_sha256 == the section's
+    # dataset_fingerprint, so a section finds its payload by that fingerprint.
+    decoded = _decoded_parquet_fingerprints(html) if html else {}
+    name_by_fp = {
+        r.get("embedded_sha256"): r.get("name")
+        for r in (manifest.get("embedded_data") or [])
+        if isinstance(r, dict) and r.get("embed_format") == "parquet"
+    }
+
     results: list[dict] = []
     for i, s in enumerate(_walk_sections(manifest.get("sections") or []), start=1):
         if not s.get("dataset_fingerprint"):
             continue
         label = s.get("id") or s.get("title") or f"section[{i}]"
-        results.append(_verify_section(s, models, label))
+        payload_fp = decoded.get(name_by_fp.get(s.get("dataset_fingerprint")))
+        results.append(_verify_section(s, models, label, payload_fp=payload_fp))
 
     # ── Semantic-contract diagnosis — purely diagnostic ──────────────────
     # When the receipt carries the contract AS EXERCISED and a section's
@@ -887,16 +973,18 @@ def verify_file(html: str, manifest: dict) -> dict:
     query fails one of them.
 
     A **Parquet** block is hashed by its shipped payload bytes against a
-    separate ``payload_sha256``. That is honest tamper-evidence — the file was
-    not edited after render, relative to its manifest — but it is a WEAKER
-    guarantee than CSV's: ``payload_sha256`` is not the fingerprint
-    :func:`verify_manifest` reproduces, so the two checks do NOT compose into a
-    display↔query tie. A payload swapped at build for one encoding different
+    separate ``payload_sha256``. OFFLINE, that is honest tamper-evidence — the
+    file was not edited after render, relative to its manifest — but weaker than
+    CSV's, because ``payload_sha256`` is not the fingerprint
+    :func:`verify_manifest` reproduces: a payload swapped at build for different
     numbers, with ``payload_sha256`` updated to match and ``embedded_sha256``
-    left honest, passes both checks. Closing that needs the model-bearing check
-    to decode the payload and compare it to the re-run result on one machine
-    (drift-free) — tracked as the Wave-0 continuous-verification work, not done
-    here. See ``docs/large-detail-artifacts.md`` §11.
+    left honest, passes this offline check (as a CSV author-forgery also would).
+    The tie is restored WITH the model: :func:`verify_manifest`, handed the
+    file, decodes the payload and compares it to the re-run result on one
+    machine (drift-free), catching that swap as :data:`DISPLAY_FORGED`. So a
+    reviewer who holds the model gets the full display↔query guarantee on
+    Parquet too; offline alone, use it as tamper-evidence. See
+    ``docs/large-detail-artifacts.md`` §11.
 
     Returns the same ``verdict``/``exit_code``/``ok`` shape as
     :func:`verify_manifest`, so the CLI presents both checks uniformly.

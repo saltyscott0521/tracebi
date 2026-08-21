@@ -325,18 +325,19 @@ provably, never hopefully.
    cannot yet render exactly as pandas spells them (tz-aware, sub-second, timedelta,
    Decimal, mixed-object) stay on CSV — a display concern, not a trust one.
 
-5. **(Known boundary, tracked.) The Parquet `verify --file` guarantee is weaker than CSV's,
-   and does not yet compose with reproduction.** For a CSV artifact, the embedded bytes hash
-   to `embedded_sha256`, which is also the section `dataset_fingerprint` that `verify_manifest`
-   reproduces from the model — so offline file-integrity and model-side reproduction pin the
-   *same* value and compose into a display↔query tie. A Parquet block is hashed by a separate
-   `payload_sha256`; it is honest tamper-evidence (unedited relative to the manifest) but is
-   NOT the value reproduction reproduces. A payload swapped at build for different numbers,
-   with `payload_sha256` updated to match and `embedded_sha256` left honest, passes both
-   checks while the page shows the swapped numbers. Closing it requires the model-bearing
-   check to decode the payload and compare it to the re-run result on one machine (drift-free,
-   so it does not reintroduce divergence #4's re-derivation problem). That is a new verify
-   composition — the Wave-0 continuous-verification work — deliberately not bolted onto the
-   trust core here. Until it lands, a Parquet artifact's strongest guarantee is single-party
-   tamper-evidence, same as before this branch for any author-forged file; the CSV lane keeps
-   its stronger composing guarantee.
+5. **The Parquet display↔query tie is model-bearing.** For a CSV artifact the embedded
+   bytes hash to `embedded_sha256`, which is also the section `dataset_fingerprint` that
+   `verify_manifest` reproduces — so offline file-integrity and model-side reproduction pin
+   the *same* value and compose into a display↔query tie automatically. A Parquet block is
+   hashed by a separate `payload_sha256`, which reproduction does not reproduce, so offline
+   `verify --file` alone is only tamper-evidence: a payload swapped at build for different
+   numbers, `payload_sha256` updated to match and `embedded_sha256` left honest, passes it
+   (as a CSV author-forgery also would). The tie is restored WITH the model — `verify_manifest`,
+   handed the rendered file, decodes each Parquet payload and compares its fingerprint to the
+   re-run result **on one machine** (drift-free, so it does not reintroduce divergence #4's
+   re-derivation problem), and flags a mismatch as `DISPLAY_FORGED`. The CLI passes the sibling
+   `.html` automatically when it sits beside the manifest. So a reviewer who holds the model
+   gets the full guarantee on Parquet too; offline-only, a Parquet artifact is tamper-evidence,
+   the same single-party guarantee any author-forgeable file has. The gate is only reached when
+   the query reproduces — an honest render over drifted data (payload ≠ re-run because the data
+   moved) is classified as drift, not forgery.

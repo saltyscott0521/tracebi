@@ -321,3 +321,68 @@ class TestSnapshot:
         _final_html, manifest = _render(tmp_path, v2_model)
         result = verify_file(html, manifest)
         assert result["verdict"] == "refused_snapshot"
+
+
+class TestParquetDisplayTie:
+    """F5 closure: with the rendered file in hand, verify_manifest ties a
+    Parquet section's DISPLAYED bytes to the re-run result, so a payload swapped
+    for numbers the query never produced is caught (DISPLAY_FORGED) — the
+    forgery the offline payload-hash file-check alone cannot see.
+
+    A small render takes the CSV transport, so these mark the by_region record
+    as Parquet and hand verify_manifest a minimal html carrying just that
+    binding's Parquet block — which is all the tie decodes.
+    """
+
+    _QUERY = {"fact": "f", "measures": {"revenue": "sum"},
+              "dimensions": ["dim_r.region"]}
+
+    def _honest_frame(self, model):
+        from tracebi.model.data_model import QuerySpec
+        return model.execute(QuerySpec.from_dict(self._QUERY)).to_pandas()
+
+    @staticmethod
+    def _parquet_html(frame):
+        import base64
+        import json as _json
+
+        from tracebi.reports.embed import embed_json
+        from tracebi.reports.parquet_embed import to_parquet_bytes
+        b64 = base64.b64encode(to_parquet_bytes(frame)).decode()
+        return embed_json({"name": "by_region", "format": "parquet",
+                           "parquet_b64": b64}, "tracebi-data-by_region")
+
+    def _manifest(self, tmp_path, model):
+        _html, manifest = _render(tmp_path, model)
+        for rec in manifest["embedded_data"]:
+            if rec.get("name") == "by_region":
+                rec["embed_format"] = "parquet"       # this binding is Parquet
+        return manifest
+
+    def _status(self, result, section="by_region"):
+        return next(s["status"] for s in result["sections"]
+                    if s["section"] == section)
+
+    def test_honest_payload_reproduces(self, v2_model, tmp_path):
+        manifest = self._manifest(tmp_path, v2_model)
+        html = self._parquet_html(self._honest_frame(v2_model))
+        result = verify_manifest(manifest, {"v2_model": v2_model}, html=html)
+        assert self._status(result) == "reproduces"
+        assert result["verdict"] == "reproduces"
+
+    def test_forged_payload_is_display_forged(self, v2_model, tmp_path):
+        manifest = self._manifest(tmp_path, v2_model)
+        forged = self._honest_frame(v2_model)
+        forged["revenue"] = forged["revenue"] * 10       # numbers the query never gave
+        result = verify_manifest(manifest, {"v2_model": v2_model},
+                                 html=self._parquet_html(forged))
+        assert self._status(result) == "display_forged"
+        assert result["verdict"] == "not_reproduced"
+        assert result["exit_code"] == 1
+
+    def test_without_the_file_the_tie_is_skipped(self, v2_model, tmp_path):
+        # The manifest-only invocation still verifies the queries; the display
+        # tie simply is not run (no file), so a reproducing section stays green.
+        manifest = self._manifest(tmp_path, v2_model)
+        result = verify_manifest(manifest, {"v2_model": v2_model})
+        assert self._status(result) == "reproduces"
