@@ -30,7 +30,7 @@ self.onmessage = async (e) => {
       self.postMessage({ type: 'loaded', name: m.name, rows: tables[m.name].numRows() });
     } else if (m.type === 'rows') {
       const dt = tables[m.name];
-      self.postMessage({ type: 'rows', name: m.name, id: m.id, rows: dt ? toPlain(dt.objects()) : [] });
+      self.postMessage({ type: 'rows', name: m.name, id: m.id, rows: dt ? toPlain(dt.objects()) : [], cols: dt ? dt.columnNames() : [] });
     } else if (m.type === 'query') {
       // filter + optional groupby/rollup — the interactive path (§ figure controls)
       const dt = tables[m.name];
@@ -49,7 +49,7 @@ self.onmessage = async (e) => {
         }
         out = f.groupby(...m.groupby).rollup(rollup);
       }
-      self.postMessage({ type: 'result', name: m.name, id: m.id, rows: toPlain(out.objects()) });
+      self.postMessage({ type: 'result', name: m.name, id: m.id, rows: toPlain(out.objects()), cols: out.columnNames() });
     }
   } catch (err) {
     self.postMessage({ type: 'error', name: m.name, id: m.id, message: String((err && err.message) || err) });

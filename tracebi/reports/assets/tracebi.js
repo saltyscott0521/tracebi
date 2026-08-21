@@ -1094,6 +1094,79 @@
     try { hydrateReceipt(); } catch (e) {}
   }
 
+  /* ── Parquet data blocks ───────────────────────────────────────────────
+   * Large-detail artifacts embed each binding as Parquet, decoded by the
+   * inlined worker engine (parquet-wasm + Arquero) before hydration and cached
+   * in _blocks in the SAME {cols, rows} shape readBlock() produces — so the
+   * whole sync runtime below is untouched. A CSV-only artifact carries no
+   * Parquet block, takes the early return, and behaves exactly as before. */
+  function inlinedText(id) {
+    var el = document.getElementById(id);
+    return el ? el.textContent : null;
+  }
+  function b64ToBytes(b64) {
+    var bin = atob(String(b64).replace(/\s+/g, "")), n = bin.length, u = new Uint8Array(n);
+    for (var i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
+    return u;
+  }
+  function parquetDataBlocks() {
+    var out = [];
+    if (typeof document === "undefined") return out;
+    var els = document.querySelectorAll('script[type="application/json"][id^="tracebi-data-"]');
+    for (var i = 0; i < els.length; i++) {
+      var t = els[i].textContent;
+      if (!t || t.indexOf('"parquet"') === -1) continue; /* cheap skip of CSV blocks */
+      try {
+        var p = JSON.parse(t);
+        if (p && p.format === "parquet" && typeof p.parquet_b64 === "string") {
+          out.push({ name: p.name || els[i].id.slice(13), b64: p.parquet_b64 });
+        }
+      } catch (e) {}
+    }
+    return out;
+  }
+  function gunzip(bytes) {
+    var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return new Response(stream).arrayBuffer().then(function (buf) { return new Uint8Array(buf); });
+  }
+  /* Decode every Parquet block into _blocks, then call done(). Any failure
+   * (no engine inlined, unsupported browser, a bad block) degrades to done()
+   * so hydration still runs — the figure falls back to its server-rendered
+   * value / "no data" rather than hanging. */
+  function ensureData(done) {
+    var blocks;
+    try { blocks = parquetDataBlocks(); } catch (e) { blocks = []; }
+    if (!blocks.length) { done(); return; }
+    var wsrc = inlinedText("tracebi-engine-worker");
+    var wasmB64 = inlinedText("tracebi-engine-wasm");
+    if (!wsrc || !wasmB64 || typeof Worker === "undefined" ||
+        typeof DecompressionStream === "undefined") { done(); return; }
+    gunzip(b64ToBytes(wasmB64)).then(function (wasm) {
+      var worker = new Worker(URL.createObjectURL(new Blob([wsrc], { type: "text/javascript" })));
+      var remaining = blocks.length, idx = 0;
+      var finish = function () { try { worker.terminate(); } catch (e) {} done(); };
+      function loadNext() {
+        if (idx >= blocks.length) return;
+        var b = blocks[idx++], bytes = b64ToBytes(b.b64);
+        worker.postMessage({ type: "load", name: b.name, parquet: bytes.buffer }, [bytes.buffer]);
+      }
+      worker.onmessage = function (e) {
+        var m = e.data || {};
+        if (m.type === "inited") { loadNext(); }
+        else if (m.type === "loaded") { worker.postMessage({ type: "rows", name: m.name, id: 1 }); }
+        else if (m.type === "rows") {
+          var rows = m.rows || [];
+          _blocks[m.name] = { cols: m.cols || (rows[0] ? Object.keys(rows[0]) : []), rows: rows };
+          if (--remaining <= 0) finish(); else loadNext();
+        } else if (m.type === "error") {
+          if (--remaining <= 0) finish(); else loadNext();
+        }
+      };
+      var wbuf = wasm.buffer;
+      worker.postMessage({ type: "init", wasm: wbuf }, [wbuf]);
+    })["catch"](function () { done(); });
+  }
+
   /* DOM-ready, then requestAnimationFrame: the author's inline script.js has
    * already run by DOMContentLoaded, so its configureChart patches are
    * registered before any chart is drawn. */
@@ -1102,10 +1175,11 @@
       if (typeof requestAnimationFrame === "function") requestAnimationFrame(hydrate);
       else hydrate();
     };
+    var boot = function () { ensureData(schedule); };
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", schedule);
+      document.addEventListener("DOMContentLoaded", boot);
     } else {
-      schedule();
+      boot();
     }
   }
 

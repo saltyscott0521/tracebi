@@ -46,8 +46,11 @@ class TestAssetHygiene:
         # 25 KiB → 26 KiB when the badge anchor (tables) and the scatter /
         # tooltip valueFormat coverage landed; → 44 KiB when the control
         # grammar (filters/search), scrollable tables, the verbatim CSV
-        # download, tabs, and the receipt drawer landed — behavior, not bloat.
-        assert os.path.getsize(ASSET) < 44 * 1024
+        # download, tabs, and the receipt drawer landed; → 48 KiB when the
+        # Parquet worker-decode path (large-detail artifacts) landed — the async
+        # pre-decode that fills _blocks from embedded Parquet via the inlined
+        # worker engine before hydration. Behavior, not bloat.
+        assert os.path.getsize(ASSET) < 48 * 1024
 
     def test_no_eval(self):
         with open(ASSET, encoding="utf-8") as f:

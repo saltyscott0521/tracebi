@@ -31735,7 +31735,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
         self.postMessage({ type: "loaded", name: m.name, rows: tables[m.name].numRows() });
       } else if (m.type === "rows") {
         const dt = tables[m.name];
-        self.postMessage({ type: "rows", name: m.name, id: m.id, rows: dt ? toPlain(dt.objects()) : [] });
+        self.postMessage({ type: "rows", name: m.name, id: m.id, rows: dt ? toPlain(dt.objects()) : [], cols: dt ? dt.columnNames() : [] });
       } else if (m.type === "query") {
         const dt = tables[m.name];
         if (!dt) {
@@ -31754,7 +31754,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
           }
           out = f.groupby(...m.groupby).rollup(rollup2);
         }
-        self.postMessage({ type: "result", name: m.name, id: m.id, rows: toPlain(out.objects()) });
+        self.postMessage({ type: "result", name: m.name, id: m.id, rows: toPlain(out.objects()), cols: out.columnNames() });
       }
     } catch (err) {
       self.postMessage({ type: "error", name: m.name, id: m.id, message: String(err && err.message || err) });
