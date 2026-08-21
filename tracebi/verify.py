@@ -613,21 +613,22 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
 
     # When the rendered file is in hand, decode its Parquet payloads so each
     # section's DISPLAYED data can be tied to its re-run result (the F5 check).
-    # A Parquet binding's embed record carries embedded_sha256 == the section's
-    # dataset_fingerprint, so a section finds its payload by that fingerprint.
+    # A section resolves its payload by BINDING NAME — its ``id``, which the
+    # package sets to the binding name, the same key the runtime picks a block
+    # by (``_blocks[name]``) and a figure references (``data-tb-binding``). It
+    # is the one 1:1 link. NOT the content fingerprint: embedded_sha256 is
+    # non-unique (two bindings with identical data share one) AND an attacker-
+    # supplied manifest field, so keying on it let a decoy record — or a second
+    # honest binding with the same data — redirect the tie to a block the
+    # browser does not render, and a forged binding slipped through.
     decoded = _decoded_parquet_fingerprints(html) if html else {}
-    name_by_fp = {
-        r.get("embedded_sha256"): r.get("name")
-        for r in (manifest.get("embedded_data") or [])
-        if isinstance(r, dict) and r.get("embed_format") == "parquet"
-    }
 
     results: list[dict] = []
     for i, s in enumerate(_walk_sections(manifest.get("sections") or []), start=1):
         if not s.get("dataset_fingerprint"):
             continue
         label = s.get("id") or s.get("title") or f"section[{i}]"
-        payload_fp = decoded.get(name_by_fp.get(s.get("dataset_fingerprint")))
+        payload_fp = decoded.get(s.get("id"))
         results.append(_verify_section(s, models, label, payload_fp=payload_fp))
 
     # ── Semantic-contract diagnosis — purely diagnostic ──────────────────

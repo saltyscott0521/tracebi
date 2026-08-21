@@ -386,3 +386,74 @@ class TestParquetDisplayTie:
         manifest = self._manifest(tmp_path, v2_model)
         result = verify_manifest(manifest, {"v2_model": v2_model})
         assert self._status(result) == "reproduces"
+
+
+class TestParquetDisplayTieEvasion:
+    """The tie must resolve a section to its payload by BINDING IDENTITY, not by
+    content fingerprint — else a forged binding escapes whenever another block
+    shares its data (a natural two-figure dashboard) or an attacker appends a
+    decoy record with a colliding fingerprint."""
+
+    _Q = {"fact": "f", "measures": {"revenue": "sum"}, "dimensions": ["dim_r.region"]}
+
+    @staticmethod
+    def _block(name, frame):
+        import base64
+        from tracebi.reports.embed import embed_json
+        from tracebi.reports.parquet_embed import to_parquet_bytes
+        b64 = base64.b64encode(to_parquet_bytes(frame)).decode()
+        return embed_json({"name": name, "format": "parquet", "parquet_b64": b64},
+                          f"tracebi-data-{name}")
+
+    def _honest(self, model):
+        from tracebi.model.data_model import QuerySpec
+        return model.execute(QuerySpec.from_dict(self._Q)).to_pandas()
+
+    def _render(self, tmp_path, model, bindings):
+        import json as _json
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(_json.dumps({
+            "name": "pkg",
+            "data": {b: {"model": "v2_model", "query": self._Q} for b in bindings},
+        }))
+        body = "".join(f'<table data-tb-figure="table" data-tb-binding="{b}" '
+                       f'id="fig-{b}"></table>' for b in bindings)
+        (pkg / "template.html").write_text(
+            f"<html><head><title>x</title></head><body>{body}</body></html>")
+        manifest = TemplatePackage(str(pkg)).render(
+            {"v2_model": model}, str(tmp_path / "out.html")).to_dict()
+        for rec in manifest["embedded_data"]:
+            rec["embed_format"] = "parquet"
+        return manifest
+
+    def _statuses(self, model, manifest, html):
+        result = verify_manifest(manifest, {"v2_model": model}, html=html)
+        return {s["section"]: s["status"] for s in result["sections"]}
+
+    def test_collision_between_two_identical_bindings_still_catches_forgery(
+            self, v2_model, tmp_path):
+        manifest = self._render(tmp_path, v2_model, ["a_region", "b_region"])
+        honest = self._honest(v2_model)
+        forged = honest.copy()
+        forged["revenue"] = forged["revenue"] * 999
+        html = self._block("a_region", forged) + "\n" + self._block("b_region", honest)
+        st = self._statuses(v2_model, manifest, html)
+        assert st["a_region"] == "display_forged"       # the forged one
+        assert st["b_region"] == "reproduces"           # its honest twin unaffected
+
+    def test_a_decoy_record_cannot_redirect_the_tie(self, v2_model, tmp_path):
+        import hashlib
+
+        from tracebi.reports.parquet_embed import to_parquet_bytes
+        manifest = self._render(tmp_path, v2_model, ["a_region"])
+        honest = self._honest(v2_model)
+        forged = honest.copy()
+        forged["revenue"] = forged["revenue"] * 999
+        fp = manifest["sections"][0]["dataset_fingerprint"]
+        # A decoy record sharing a_region's fingerprint, plus an honest decoy block.
+        manifest["embedded_data"].append({
+            "name": "decoy", "embed_format": "parquet", "embedded_sha256": fp,
+            "payload_sha256": hashlib.sha256(to_parquet_bytes(honest)).hexdigest()})
+        html = self._block("a_region", forged) + "\n" + self._block("decoy", honest)
+        assert self._statuses(v2_model, manifest, html)["a_region"] == "display_forged"
