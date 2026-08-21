@@ -1,7 +1,9 @@
 # Large-detail artifacts — data-heavy, offline, still verifiable
 
-**Status:** design agreed, not yet built. Supersedes the "just add a size guard" stopgap
-and the DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).
+**Status:** BUILT on `feat/artifact-parquet-embed` (not yet merged). The design below is the
+plan as agreed; §11 records where the implementation deliberately diverged after two
+adversarial reviews. Supersedes the "just add a size guard" stopgap and the
+DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).
 
 **One-line:** let a single self-contained artifact embed up to ~500MB-of-JSON-equivalent
 of detail, filter it client-side, and still open offline and re-check with `verify --file` —
@@ -280,3 +282,30 @@ exploration, not pre-declared aggregates), it becomes a deliberate **opt-in heav
 - Perspective (ex-JPMorgan, FINOS): https://perspective.finos.org/
 - V8 string cap / self-contained limits: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length
 - Retool "keep what React holds small": https://docs.retool.com/apps/guides/data/table/pagination
+
+---
+
+## 11. How the implementation diverged from this plan
+
+Two adversarial reviews (38 then 27 confirmed findings) changed three things:
+
+1. **pyarrow, not DuckDB, does the Parquet round-trip.** The receipt depends on a frame
+   coming back *exactly* as it went in, and that is a property of the writer. DuckDB maps
+   Parquet through its own SQL types and rewrote tz-aware timestamps into the READER's
+   local zone — so the same untouched artifact verified INTACT in New York and ALTERED in
+   London. pyarrow preserves far more, but not everything.
+2. **The format choice PROVES the round-trip instead of trusting a dtype list.**
+   Three separate attempts to enumerate "safe" dtypes each missed cases (non-string
+   categoricals, object columns of non-strings, `datetime64[s]`, differing Decimal scales).
+   `choose_embed_format` now encodes, decodes and re-fingerprints the actual data, and
+   falls back to CSV unless the receipt demonstrably survives — correct by construction,
+   including for dtypes nobody has thought of yet.
+3. **Parquet also requires types the BROWSER renders identically.** The receipt survives
+   more types than the display does: Arrow hands the worker a Decimal as an unscaled
+   integer, a tz-aware timestamp with the zone dropped, a timedelta as raw nanoseconds.
+   Reproducing pandas' formatting in JS for every such type is the same losing game, so
+   those types keep the CSV transport. Only numbers, booleans, strings and naive datetimes
+   take the Parquet path.
+
+The net effect is that Parquet is used **less often than this plan assumed** — and always
+provably, never hopefully.

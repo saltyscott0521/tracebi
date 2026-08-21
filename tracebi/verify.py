@@ -766,6 +766,15 @@ def _triple_from_parquet(parquet_b64: str) -> Optional[dict]:
     return canonical_triple(df)
 
 
+#: The triple reported for a block the checker cannot read (undecodable, or a
+#: forgery shape carrying two formats at once). It is a real triple, so it flows
+#: through the normal rehash path — and it can never match a recorded
+#: fingerprint, so such a block always FAILS rather than silently disappearing.
+_UNREADABLE_TRIPLE = {
+    "columns": "<unreadable>", "dtypes": "<unreadable>", "csv": "<unreadable>",
+}
+
+
 def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
     """Every embedded data block, as ``(name, triple)`` pairs.
 
@@ -785,14 +794,26 @@ def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
         if not isinstance(parsed, dict):
             continue
         name = str(parsed.get("name") or m.group("id"))
-        if all(k in parsed for k in ("columns", "dtypes", "csv")):
-            out.append((name, parsed))
-        elif parsed.get("format") == "parquet" and isinstance(
+        has_triple = all(k in parsed for k in ("columns", "dtypes", "csv"))
+        has_parquet = parsed.get("format") == "parquet" and isinstance(
             parsed.get("parquet_b64"), str
-        ):
+        )
+        if has_triple and has_parquet:
+            # A FORGERY SHAPE, refused by name. The runtime draws from the
+            # Parquet payload whenever `format` says parquet, while the hash
+            # here would come from the inline triple — so a block carrying both
+            # displays one set of numbers and vouches for another. An emitter
+            # never produces this. Report it as unreadable so the binding it
+            # claims fails, rather than passing on the half nobody renders.
+            out.append((name, _UNREADABLE_TRIPLE))
+        elif has_triple:
+            out.append((name, parsed))
+        elif has_parquet:
             triple = _triple_from_parquet(parsed["parquet_b64"])
-            if triple is not None:
-                out.append((name, triple))
+            # A present-but-undecodable block must still be REPORTED, not
+            # dropped: dropping it lets a block the checker cannot read slip
+            # past every check as though it were not there.
+            out.append((name, triple if triple is not None else _UNREADABLE_TRIPLE))
     return out
 
 

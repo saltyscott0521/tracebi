@@ -13,7 +13,7 @@ import * as aq from 'arquero';
  * non-numeric, losing alignment and formatting), and int64 to BigInt (which
  * JSON cannot serialise, and which Number() silently truncates past 2^53).
  * Normalising here keeps ONE rendering for both transports. */
-function cellToText(v) {
+function cellToText(v, dateOnly) {
   if (v === null || v === undefined) return '';        /* CSV writes empty */
   const t = typeof v;
   if (t === 'string') return v;
@@ -23,7 +23,7 @@ function cellToText(v) {
     return v.toString();
   }
   if (t === 'boolean') return v ? 'True' : 'False';    /* pandas CSV spelling */
-  if (v instanceof Date) return isoLike(v);
+  if (v instanceof Date) return isoLike(v, dateOnly);
   if (t === 'number') {
     /* Arrow surfaces temporal columns as epoch millis; the caller tags those
      * columns so they are converted before reaching here. A plain number is a
@@ -33,12 +33,26 @@ function cellToText(v) {
   return String(v);
 }
 
-/* "2024-01-15" for a midnight-UTC instant, else "2024-01-15 10:00:00" — the
- * shapes pandas' to_csv writes, so a date reads as a date on both paths. */
-function isoLike(d) {
+/* pandas' to_csv drops the time part for a datetime column only when EVERY
+ * value is midnight — a per-COLUMN decision. Deciding per value would render
+ * the midnight rows of a mixed column as bare dates while their neighbours keep
+ * a time, which the CSV transport never does. *dateOnly* carries the column's
+ * verdict. (Only naive datetimes reach here: choose_embed_format keeps
+ * tz-aware, timedelta, decimal and friends on the CSV transport, because the
+ * engine cannot reproduce their rendering.) */
+function isoLike(d, dateOnly) {
   const s = d.toISOString();
-  return s.endsWith('T00:00:00.000Z') ? s.slice(0, 10)
-                                      : s.slice(0, 19).replace('T', ' ');
+  return dateOnly ? s.slice(0, 10) : s.slice(0, 19).replace('T', ' ');
+}
+
+function allMidnight(rows, col) {
+  for (const r of rows) {
+    const v = r[col];
+    if (v === null || v === undefined) continue;
+    const d = (v instanceof Date) ? v : new Date(typeof v === 'bigint' ? Number(v) : v);
+    if (d.getTime() % 86400000 !== 0) return false;
+  }
+  return true;
 }
 
 function temporalColumns(schema) {
@@ -51,6 +65,9 @@ function temporalColumns(schema) {
 }
 
 function toPlain(rows, temporal) {
+  /* Decide date-vs-datetime once per column, as pandas does. */
+  const dateOnly = {};
+  for (const k in (temporal || {})) dateOnly[k] = allMidnight(rows, k);
   return rows.map((r) => {
     const o = {};
     for (const k in r) {
@@ -59,7 +76,7 @@ function toPlain(rows, temporal) {
           && !(v instanceof Date)) {
         v = new Date(typeof v === 'bigint' ? Number(v) : v);
       }
-      o[k] = cellToText(v);
+      o[k] = cellToText(v, dateOnly[k]);
     }
     return o;
   });

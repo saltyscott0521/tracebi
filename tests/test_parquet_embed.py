@@ -206,9 +206,11 @@ def test_format_choice_never_changes_the_receipt():
         assert _fp(triple) == expected
 
 
-def test_undecodable_parquet_block_is_not_a_pass():
-    """A present-but-corrupt Parquet block is skipped (its binding reads
-    MISSING → a failure), never silently accepted."""
+def test_undecodable_parquet_block_is_reported_not_dropped():
+    """A present-but-corrupt Parquet block must be REPORTED as unreadable, never
+    dropped: dropping lets a block the checker cannot read slip past every check
+    as though it were not there. It is reported with a triple that can never
+    match a recorded fingerprint, so the binding always fails."""
     import base64
 
     from tracebi.reports.embed import embed_json
@@ -218,7 +220,36 @@ def test_undecodable_parquet_block_is_not_a_pass():
     html = embed_json(
         {"name": "x", "format": "parquet", "parquet_b64": bad}, "tracebi-data-x"
     )
-    assert _extract_data_blocks(html) == []
+    blocks = _extract_data_blocks(html)
+    assert len(blocks) == 1 and blocks[0][0] == "x"
+    assert _fp(blocks[0][1]) != "anything a real frame could hash to"
+
+
+def test_a_block_carrying_both_formats_is_refused():
+    """The forgery shape: the runtime draws from the Parquet payload while the
+    hash would come from the inline CSV triple, so such a block displays one set
+    of numbers and vouches for another. It must never verify."""
+    import json as _json
+
+    from tracebi.reports.embed import (
+        embed_block, embed_block_parquet, embed_json, stamp_frame,
+    )
+    from tracebi.verify import _extract_data_blocks
+
+    honest = stamp_frame(_CASES["realistic"], name="d")
+    evil = _CASES["realistic"].copy()
+    evil.loc[0, "revenue"] = 999_999.99
+
+    def _payload(block):
+        return _json.loads(block.split('">', 1)[1].rsplit("</script>", 1)[0])
+
+    forged = _payload(embed_block(honest, fmt="csv"))          # legit triple
+    forged["format"] = "parquet"                                # …but drawn from
+    forged["parquet_b64"] = _payload(                           # attacker data
+        embed_block_parquet(stamp_frame(evil, name="d")))["parquet_b64"]
+
+    (_name, triple), = _extract_data_blocks(embed_json(forged, "tracebi-data-d"))
+    assert _fp(triple) != honest.fingerprint
 
 
 def test_unsafe_column_labels_fall_back_to_csv():
@@ -259,3 +290,47 @@ def test_untrusted_parquet_decode_is_bounded():
         pe.MAX_DECODE_ROWS = original
     # and a normal block still decodes
     assert len(pe.from_parquet_bytes(data)) == 1000
+
+
+# ── The invariant that actually matters ───────────────────────────────────────
+# Not "these dtypes round-trip" (three attempts to enumerate that missed cases),
+# but: WHATEVER format is chosen, the receipt verifies. choose_embed_format
+# proves the round-trip for the exact data in hand and falls back to CSV when it
+# does not hold, so a false FILE ALTERED is impossible by construction — for
+# dtypes nobody has thought of yet.
+
+def _big(extra, n=400_000):
+    base = {"region": ["North", "South", "East", "West"] * (n // 4),
+            "rev": [1705495.22, 250000.0, 99999.99, 42000.5] * (n // 4)}
+    base.update(extra)
+    return pd.DataFrame(base)
+
+
+_HOSTILE = {
+    "string_categorical": {"c": pd.Categorical(["a", "b", "c", "d"] * 100_000)},
+    "int_categorical": {"c": pd.Categorical([1, 2, 3, 4] * 100_000)},
+    "object_of_ints": {"q": pd.Series([1, 2, 3, 4] * 100_000, dtype=object)},
+    "object_with_none": {"q": pd.Series([1, None, 3, 4] * 100_000, dtype=object)},
+    "datetime_seconds": {
+        "d": pd.Series(pd.to_datetime(["2024-01-15"] * 400_000)).dt.as_unit("s")
+    },
+    "plain_int64": {"q": pd.array(list(range(4)) * 100_000, dtype="int64")},
+    "all_null_column": {"q": pd.Series([None] * 400_000, dtype=object)},
+    "bools": {"q": pd.Series([True, False, True, False] * 100_000)},
+}
+
+
+@pytest.mark.parametrize("name", list(_HOSTILE))
+def test_whatever_format_is_chosen_the_receipt_verifies(name):
+    from tracebi.reports.embed import (
+        data_blocks_html, embedded_record, stamp_frame,
+    )
+    from tracebi.verify import _extract_data_blocks
+
+    stamped = stamp_frame(_big(_HOSTILE[name]), name="d")
+    (_n, triple), = _extract_data_blocks(data_blocks_html([stamped]))
+    assert _fp(triple) == embedded_record(stamped)["embedded_sha256"], (
+        f"{name}: a freshly built artifact would verify as FILE ALTERED — the "
+        f"format choice must fall back to CSV when the round-trip does not "
+        f"preserve the fingerprint."
+    )

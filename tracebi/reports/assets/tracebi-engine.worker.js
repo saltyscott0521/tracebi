@@ -31709,7 +31709,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
   }
 
   // engine.worker.mjs
-  function cellToText(v) {
+  function cellToText(v, dateOnly) {
     if (v === null || v === void 0) return "";
     const t2 = typeof v;
     if (t2 === "string") return v;
@@ -31717,15 +31717,24 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
       return v.toString();
     }
     if (t2 === "boolean") return v ? "True" : "False";
-    if (v instanceof Date) return isoLike(v);
+    if (v instanceof Date) return isoLike(v, dateOnly);
     if (t2 === "number") {
       return String(v);
     }
     return String(v);
   }
-  function isoLike(d) {
+  function isoLike(d, dateOnly) {
     const s = d.toISOString();
-    return s.endsWith("T00:00:00.000Z") ? s.slice(0, 10) : s.slice(0, 19).replace("T", " ");
+    return dateOnly ? s.slice(0, 10) : s.slice(0, 19).replace("T", " ");
+  }
+  function allMidnight(rows, col) {
+    for (const r of rows) {
+      const v = r[col];
+      if (v === null || v === void 0) continue;
+      const d = v instanceof Date ? v : new Date(typeof v === "bigint" ? Number(v) : v);
+      if (d.getTime() % 864e5 !== 0) return false;
+    }
+    return true;
   }
   function temporalColumns(schema) {
     const out = {};
@@ -31736,6 +31745,8 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
     return out;
   }
   function toPlain(rows, temporal) {
+    const dateOnly = {};
+    for (const k in temporal || {}) dateOnly[k] = allMidnight(rows, k);
     return rows.map((r) => {
       const o = {};
       for (const k in r) {
@@ -31743,7 +31754,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
         if (temporal && temporal[k] && v !== null && v !== void 0 && !(v instanceof Date)) {
           v = new Date(typeof v === "bigint" ? Number(v) : v);
         }
-        o[k] = cellToText(v);
+        o[k] = cellToText(v, dateOnly[k]);
       }
       return o;
     });

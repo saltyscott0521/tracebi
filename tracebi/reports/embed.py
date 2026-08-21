@@ -298,6 +298,32 @@ def engine_cost_bytes() -> int:
     return worker + (wasm_gz * 4) // 3
 
 
+def _renders_identically(series) -> bool:
+    """Whether the browser engine renders *series* exactly as the CSV path does.
+
+    Deliberately conservative: numbers, booleans, strings, and naive datetimes
+    only. Anything else keeps the CSV transport — correctness of the displayed
+    number outranks the size win, and a type added to pandas or Arrow later
+    starts out excluded rather than silently mis-rendered.
+    """
+    import pandas as pd
+
+    dtype = series.dtype
+    if isinstance(dtype, pd.CategoricalDtype):
+        return False                      # codes' type survives, the dtype does not
+    kind = getattr(dtype, "kind", "")
+    if kind in "ifbu":                    # int, float, bool, unsigned
+        return True
+    if kind == "M":                       # datetime — only NAIVE (no tz to drop)
+        return getattr(dtype, "tz", None) is None
+    if kind == "O":
+        # An object column is only safe when it really is strings: an object
+        # column of ints comes back int64, of Decimals comes back unscaled.
+        non_null = series.dropna()
+        return bool(non_null.map(lambda v: isinstance(v, str)).all())
+    return False                          # timedelta, period, interval, bytes, …
+
+
 def choose_embed_format(stamped: "list[StampedData]") -> str:
     """Pick the transport for a whole artifact, by size.
 
@@ -316,14 +342,26 @@ def choose_embed_format(stamped: "list[StampedData]") -> str:
     triple, which Parquet round-trips exactly), so this is purely a transport
     decision — no report is more or less verifiable for having crossed it.
     """
-    # Parquet column names are strings and must be unique. A frame whose labels
-    # are not (a report.py `pivot()` yields integer labels; a careless join
-    # yields duplicates) would either come back with rewritten column names — a
-    # changed fingerprint, i.e. a false ALTERED — or fail the write outright.
-    # Neither is acceptable, and CSV handles both, so stay on CSV.
     for sd in stamped:
-        cols = list(sd.dataset.to_pandas().columns)
+        frame = sd.dataset.to_pandas()
+        # Parquet column names are strings and must be unique. A frame whose
+        # labels are not (a report.py `pivot()` yields integer labels; a careless
+        # join yields duplicates) would either come back with rewritten column
+        # names — a changed fingerprint, i.e. a false ALTERED — or fail the write
+        # outright. Neither is acceptable, and CSV handles both.
+        cols = list(frame.columns)
         if len(set(cols)) != len(cols) or any(not isinstance(c, str) for c in cols):
+            return EMBED_FORMAT_CSV
+        # And every column must be a type the BROWSER engine renders the same
+        # way the CSV transport does. The receipt survives more types than the
+        # display does: Arrow hands the worker a Decimal as an unscaled integer,
+        # a tz-aware timestamp with the zone dropped, and a timedelta as raw
+        # nanoseconds — each of which would show a DIFFERENT number on a large
+        # report than on a small one, from identical stamped bytes. Reproducing
+        # pandas' formatting in JS for every such type is the same losing game
+        # as enumerating dtypes, so those types simply keep the CSV transport,
+        # which the runtime already renders correctly.
+        if not all(_renders_identically(frame[c]) for c in cols):
             return EMBED_FORMAT_CSV
 
     total_csv = sum(len(sd.triple["csv"].encode("utf-8")) for sd in stamped)
@@ -335,15 +373,30 @@ def choose_embed_format(stamped: "list[StampedData]") -> str:
     # Otherwise MEASURE rather than assume a compression ratio: how well Parquet
     # does is data-dependent (high-cardinality columns compress poorly), and
     # assuming ~10× could make the artifact BIGGER than the CSV it replaced.
-    # Encoding is only paid here, where the data is already large enough to be
-    # worth the check.
+    #
+    # And, in the same pass, PROVE the round-trip for this exact data instead of
+    # trusting a list of dtypes believed to be safe. Parquet's type system does
+    # not map one-to-one onto pandas': a non-string categorical comes back as
+    # its codes' type, an object column of ints comes back int64, datetime64[s]
+    # comes back [ms] — each changing the fingerprinted dtypes string, so an
+    # untouched artifact would verify as ALTERED. Enumerating those cases is a
+    # losing game (three separate attempts missed some), but checking is cheap
+    # and exact: encode, decode, re-fingerprint, and only choose Parquet when
+    # the receipt demonstrably survives. Correct by construction, for dtypes
+    # nobody has thought of yet.
     try:
-        from tracebi.reports.parquet_embed import to_parquet_bytes
-
-        total_parquet_b64 = sum(
-            (len(to_parquet_bytes(sd.dataset.to_pandas())) * 4) // 3
-            for sd in stamped
+        from tracebi.model.dataset import frame_fingerprint
+        from tracebi.reports.parquet_embed import (
+            from_parquet_bytes, to_parquet_bytes,
         )
+
+        total_parquet_b64 = 0
+        for sd in stamped:
+            frame = sd.dataset.to_pandas()
+            encoded = to_parquet_bytes(frame)
+            if frame_fingerprint(from_parquet_bytes(encoded)) != sd.fingerprint:
+                return EMBED_FORMAT_CSV
+            total_parquet_b64 += (len(encoded) * 4) // 3
     except Exception:  # noqa: BLE001 — no Parquet writer, or a frame it cannot
         # encode: stay on the format that always works.
         return EMBED_FORMAT_CSV
