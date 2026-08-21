@@ -31719,19 +31719,50 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
     if (t2 === "boolean") return v ? "True" : "False";
     if (v instanceof Date) return isoLike(v, dateOnly);
     if (t2 === "number") {
-      if (isFloat) return floatToText(v);
+      if (isFloat) return floatToText(v, isFloat === "f32");
       return String(v);
     }
     return String(v);
   }
-  function floatToText(v) {
+  function floatToText(v, f32) {
     if (v === Infinity) return "inf";
     if (v === -Infinity) return "-inf";
     if (Number.isNaN(v)) return "";
-    if (Number.isInteger(v) && Math.abs(v) < 1e16) {
-      return (Object.is(v, -0) ? "-0" : String(v)) + ".0";
+    if (Object.is(v, -0)) return "-0.0";
+    if (f32) {
+      for (let p = 1; p <= 9; p++) {
+        const s = v.toPrecision(p);
+        if (Math.fround(parseFloat(s)) === v) return pyRepr(parseFloat(s));
+      }
     }
-    return String(v);
+    return pyRepr(v);
+  }
+  function pyRepr(v) {
+    const parts = v.toExponential().split("e");
+    const exp2 = parseInt(parts[1], 10);
+    if (exp2 >= 16 || exp2 < -4) {
+      const sign2 = exp2 < 0 ? "-" : "+";
+      const mag = String(Math.abs(exp2)).padStart(2, "0");
+      return parts[0] + "e" + sign2 + mag;
+    }
+    let m = parts[0];
+    let neg = "";
+    if (m[0] === "-") {
+      neg = "-";
+      m = m.slice(1);
+    }
+    const digits = m.replace(".", "");
+    let out;
+    if (exp2 >= 0) {
+      if (exp2 + 1 >= digits.length) {
+        out = digits + "0".repeat(exp2 + 1 - digits.length) + ".0";
+      } else {
+        out = digits.slice(0, exp2 + 1) + "." + digits.slice(exp2 + 1);
+      }
+    } else {
+      out = "0." + "0".repeat(-exp2 - 1) + digits;
+    }
+    return neg + out;
   }
   function isoLike(d, dateOnly) {
     const s = d.toISOString();
@@ -31749,7 +31780,8 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
   function floatColumns(schema) {
     const out = {};
     for (const f of schema && schema.fields || []) {
-      if (/^Float/i.test(String(f.type || ""))) out[f.name] = true;
+      const t2 = String(f.type || "");
+      if (/^Float/i.test(t2)) out[f.name] = /32/.test(t2) ? "f32" : "f64";
     }
     return out;
   }

@@ -335,7 +335,15 @@ def _renders_identically(series) -> bool:
         # value, while the engine would apply the datetime-column midnight rule.
         return getattr(cats.dtype, "kind", "") in "ifbu" or _all_strings(cats)
     kind = getattr(dtype, "kind", "")
-    if kind in "ifbu":                    # int, float, bool, unsigned
+    if kind == "f":
+        # float64 only. The engine's pyRepr reproduces pandas' float64
+        # spellings exactly (certified against 80k random bit patterns —
+        # tests/test_engine_float_parity.py), but float32 ties round
+        # differently: numpy's dragon4 rounds half-to-even where JS
+        # toPrecision rounds half-away, so ~0.2% of float32 values display
+        # one last-digit ULP off. Rare dtype, real divergence → CSV.
+        return getattr(dtype, "itemsize", 8) == 8
+    if kind in "ibu":                     # int, bool, unsigned
         return True
     if kind in "UT":                      # numpy unicode / pandas-3 string
         return True

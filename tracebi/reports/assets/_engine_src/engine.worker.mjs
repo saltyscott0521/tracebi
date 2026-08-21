@@ -27,7 +27,7 @@ function cellToText(v, dateOnly, isFloat) {
   if (t === 'number') {
     /* Arrow surfaces temporal columns as epoch millis; the caller tags those
      * columns so they are converted before reaching here. */
-    if (isFloat) return floatToText(v);
+    if (isFloat) return floatToText(v, isFloat === 'f32');
     return String(v);
   }
   return String(v);
@@ -39,14 +39,55 @@ function cellToText(v, dateOnly, isFloat) {
  * Arrow stores it as null, which renders '' exactly as pandas writes it. A
  * column the runtime derives no number format for (an id, a year) shows these
  * strings verbatim, so they have to be right. */
-function floatToText(v) {
+function floatToText(v, f32) {
   if (v === Infinity) return 'inf';
   if (v === -Infinity) return '-inf';
   if (Number.isNaN(v)) return '';
-  if (Number.isInteger(v) && Math.abs(v) < 1e16) {
-    return (Object.is(v, -0) ? '-0' : String(v)) + '.0';
+  if (Object.is(v, -0)) return '-0.0';
+  if (f32) {
+    /* Shortest decimal that round-trips through float32 — numpy/pandas print
+     * this; a float32 needs at most 9 significant digits. JS holds the value
+     * widened to float64, so String() would print the widening
+     * ('1.100000023841858' for 1.1f). */
+    for (let p = 1; p <= 9; p++) {
+      const s = v.toPrecision(p);
+      if (Math.fround(parseFloat(s)) === v) return pyRepr(parseFloat(s));
+    }
   }
-  return String(v);
+  return pyRepr(v);
+}
+
+/* Format finite *v* exactly as Python's repr (hence pandas' to_csv) would.
+ * toExponential() with no argument yields the shortest round-trip digits —
+ * the same digits Python computes — so only the NOTATION decision remains:
+ * fixed while the decimal exponent is in [-4, 16) (with '.0' kept on
+ * integral values), else scientific with a two-digit zero-padded exponent
+ * ('1e+16', '1e-07'). JS String() differs at every edge: it switches to
+ * scientific at 1e21, writes '1e-7', and drops the '.0'. */
+function pyRepr(v) {
+  const parts = v.toExponential().split('e');
+  const exp = parseInt(parts[1], 10);
+  if (exp >= 16 || exp < -4) {
+    const sign = exp < 0 ? '-' : '+';
+    const mag = String(Math.abs(exp)).padStart(2, '0');
+    return parts[0] + 'e' + sign + mag;
+  }
+  /* Fixed notation, rebuilt from the digit string — no float re-rounding. */
+  let m = parts[0];
+  let neg = '';
+  if (m[0] === '-') { neg = '-'; m = m.slice(1); }
+  const digits = m.replace('.', '');
+  let out;
+  if (exp >= 0) {
+    if (exp + 1 >= digits.length) {
+      out = digits + '0'.repeat(exp + 1 - digits.length) + '.0';
+    } else {
+      out = digits.slice(0, exp + 1) + '.' + digits.slice(exp + 1);
+    }
+  } else {
+    out = '0.' + '0'.repeat(-exp - 1) + digits;
+  }
+  return neg + out;
 }
 
 /* pandas' to_csv drops the time part for a datetime column only when EVERY
@@ -74,7 +115,8 @@ function allMidnight(rows, col) {
 function floatColumns(schema) {
   const out = {};
   for (const f of (schema && schema.fields) || []) {
-    if (/^Float/i.test(String(f.type || ''))) out[f.name] = true;
+    const t = String(f.type || '');
+    if (/^Float/i.test(t)) out[f.name] = /32/.test(t) ? 'f32' : 'f64';
   }
   return out;
 }
