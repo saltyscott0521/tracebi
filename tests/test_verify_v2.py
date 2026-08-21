@@ -457,3 +457,21 @@ class TestParquetDisplayTieEvasion:
             "payload_sha256": hashlib.sha256(to_parquet_bytes(honest)).hexdigest()})
         html = self._block("a_region", forged) + "\n" + self._block("decoy", honest)
         assert self._statuses(v2_model, manifest, html)["a_region"] == "display_forged"
+
+    def test_renaming_the_section_id_to_skip_the_tie_still_fails(self, v2_model,
+                                                                 tmp_path):
+        # Keying the tie on the section id (binding name) can only be dodged by
+        # renaming that id — which unbinds the figure that references it, so the
+        # figure layer errors and the verdict fails anyway. The tie and the
+        # figure↔binding check key on the same name, so they compose.
+        manifest = self._render(tmp_path, v2_model, ["a_region"])
+        honest = self._honest(v2_model)
+        forged = honest.copy()
+        forged["revenue"] = forged["revenue"] * 999
+        for sec in manifest["sections"]:
+            if sec.get("id") == "a_region":
+                sec["id"] = "renamed_to_skip"
+        html = self._block("a_region", forged)
+        result = verify_manifest(manifest, {"v2_model": v2_model}, html=html)
+        assert result["verdict"] == "not_reproduced"
+        assert result["exit_code"] == 1
