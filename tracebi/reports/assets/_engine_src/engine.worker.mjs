@@ -13,7 +13,7 @@ import * as aq from 'arquero';
  * non-numeric, losing alignment and formatting), and int64 to BigInt (which
  * JSON cannot serialise, and which Number() silently truncates past 2^53).
  * Normalising here keeps ONE rendering for both transports. */
-function cellToText(v, dateOnly) {
+function cellToText(v, dateOnly, isFloat) {
   if (v === null || v === undefined) return '';        /* CSV writes empty */
   const t = typeof v;
   if (t === 'string') return v;
@@ -26,9 +26,25 @@ function cellToText(v, dateOnly) {
   if (v instanceof Date) return isoLike(v, dateOnly);
   if (t === 'number') {
     /* Arrow surfaces temporal columns as epoch millis; the caller tags those
-     * columns so they are converted before reaching here. A plain number is a
-     * measure: leave its full precision to the runtime's formatter. */
+     * columns so they are converted before reaching here. */
+    if (isFloat) return floatToText(v);
     return String(v);
+  }
+  return String(v);
+}
+
+/* pandas' to_csv spellings for a float column, which JS String() does not
+ * match: an integral float keeps its '.0', the infinities are 'inf'/'-inf'
+ * (not 'Infinity'), and negative zero keeps its sign. NaN never reaches here —
+ * Arrow stores it as null, which renders '' exactly as pandas writes it. A
+ * column the runtime derives no number format for (an id, a year) shows these
+ * strings verbatim, so they have to be right. */
+function floatToText(v) {
+  if (v === Infinity) return 'inf';
+  if (v === -Infinity) return '-inf';
+  if (Number.isNaN(v)) return '';
+  if (Number.isInteger(v) && Math.abs(v) < 1e16) {
+    return (Object.is(v, -0) ? '-0' : String(v)) + '.0';
   }
   return String(v);
 }
@@ -55,6 +71,14 @@ function allMidnight(rows, col) {
   return true;
 }
 
+function floatColumns(schema) {
+  const out = {};
+  for (const f of (schema && schema.fields) || []) {
+    if (/^Float/i.test(String(f.type || ''))) out[f.name] = true;
+  }
+  return out;
+}
+
 function temporalColumns(schema) {
   const out = {};
   for (const f of (schema && schema.fields) || []) {
@@ -64,7 +88,7 @@ function temporalColumns(schema) {
   return out;
 }
 
-function toPlain(rows, temporal) {
+function toPlain(rows, temporal, floats) {
   /* Decide date-vs-datetime once per column, as pandas does. */
   const dateOnly = {};
   for (const k in (temporal || {})) dateOnly[k] = allMidnight(rows, k);
@@ -76,7 +100,7 @@ function toPlain(rows, temporal) {
           && !(v instanceof Date)) {
         v = new Date(typeof v === 'bigint' ? Number(v) : v);
       }
-      o[k] = cellToText(v, dateOnly[k]);
+      o[k] = cellToText(v, dateOnly[k], floats && floats[k]);
     }
     return o;
   });
@@ -93,11 +117,12 @@ function toCsv(cols, rows) {
 
 const tables = {};
 const temporals = {};
+const floats = {};
 let ready = null;
 
 function reply(type, m, dt) {
   const cols = dt ? dt.columnNames() : [];
-  const rows = dt ? toPlain(dt.objects(), temporals[m.name]) : [];
+  const rows = dt ? toPlain(dt.objects(), temporals[m.name], floats[m.name]) : [];
   self.postMessage({ type, name: m.name, id: m.id, rows, cols, csv: toCsv(cols, rows) });
 }
 
@@ -113,6 +138,7 @@ self.onmessage = async (e) => {
       const wt = readParquet(new Uint8Array(m.parquet));
       const at = Arrow.tableFromIPC(wt.intoIPCStream());
       temporals[m.name] = temporalColumns(at.schema);
+      floats[m.name] = floatColumns(at.schema);
       tables[m.name] = aq.fromArrow(at);
       self.postMessage({ type: 'loaded', name: m.name, rows: tables[m.name].numRows() });
     } else if (m.type === 'rows') {

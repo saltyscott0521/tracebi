@@ -334,3 +334,49 @@ def test_whatever_format_is_chosen_the_receipt_verifies(name):
         f"format choice must fall back to CSV when the round-trip does not "
         f"preserve the fingerprint."
     )
+
+
+def test_decode_memory_bound_is_measured_not_declared():
+    """total_byte_size counts ENCODED bytes, so a footer figure cannot bound
+    memory: dictionary/RLE data materialises far larger. The limit must be
+    enforced against what is actually read."""
+    import tracebi.reports.parquet_embed as pe
+
+    data = pe.to_parquet_bytes(pd.DataFrame({"x": range(100_000)}))
+    original = pe.MAX_DECODE_UNCOMPRESSED_BYTES
+    try:
+        pe.MAX_DECODE_UNCOMPRESSED_BYTES = 1_000
+        with pytest.raises(pe.ParquetTooLarge, match="while reading"):
+            pe.from_parquet_bytes(data)
+    finally:
+        pe.MAX_DECODE_UNCOMPRESSED_BYTES = original
+
+
+def test_hostile_pandas_metadata_is_refused():
+    """A Parquet file's `pandas` metadata can rename columns; pyarrow honours it
+    and the browser engine ignores it, so a crafted file could decode one way
+    for the checker and render another for the reader."""
+    import io
+    import json as _json
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    import tracebi.reports.parquet_embed as pe
+
+    table = pa.table({"region": ["N", "S"], "rev": [1.0, 2.0]})
+    cols = [
+        {"name": "region", "field_name": "region", "pandas_type": "unicode",
+         "numpy_type": "object", "metadata": None},
+        # claims a different name than the schema field carries
+        {"name": "NOT_REV", "field_name": "rev", "pandas_type": "float64",
+         "numpy_type": "float64", "metadata": None},
+    ]
+    table = table.replace_schema_metadata({
+        b"pandas": _json.dumps({"index_columns": [], "column_indexes": [],
+                                "columns": cols, "pandas_version": "2.2.3"}).encode()
+    })
+    buf = io.BytesIO()
+    pq.write_table(table, buf)
+    with pytest.raises(ValueError, match="rewrote the decoded columns"):
+        pe.from_parquet_bytes(buf.getvalue())

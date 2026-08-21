@@ -31709,7 +31709,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
   }
 
   // engine.worker.mjs
-  function cellToText(v, dateOnly) {
+  function cellToText(v, dateOnly, isFloat) {
     if (v === null || v === void 0) return "";
     const t2 = typeof v;
     if (t2 === "string") return v;
@@ -31719,7 +31719,17 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
     if (t2 === "boolean") return v ? "True" : "False";
     if (v instanceof Date) return isoLike(v, dateOnly);
     if (t2 === "number") {
+      if (isFloat) return floatToText(v);
       return String(v);
+    }
+    return String(v);
+  }
+  function floatToText(v) {
+    if (v === Infinity) return "inf";
+    if (v === -Infinity) return "-inf";
+    if (Number.isNaN(v)) return "";
+    if (Number.isInteger(v) && Math.abs(v) < 1e16) {
+      return (Object.is(v, -0) ? "-0" : String(v)) + ".0";
     }
     return String(v);
   }
@@ -31736,6 +31746,13 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
     }
     return true;
   }
+  function floatColumns(schema) {
+    const out = {};
+    for (const f of schema && schema.fields || []) {
+      if (/^Float/i.test(String(f.type || ""))) out[f.name] = true;
+    }
+    return out;
+  }
   function temporalColumns(schema) {
     const out = {};
     for (const f of schema && schema.fields || []) {
@@ -31744,7 +31761,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
     }
     return out;
   }
-  function toPlain(rows, temporal) {
+  function toPlain(rows, temporal, floats2) {
     const dateOnly = {};
     for (const k in temporal || {}) dateOnly[k] = allMidnight(rows, k);
     return rows.map((r) => {
@@ -31754,7 +31771,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
         if (temporal && temporal[k] && v !== null && v !== void 0 && !(v instanceof Date)) {
           v = new Date(typeof v === "bigint" ? Number(v) : v);
         }
-        o[k] = cellToText(v, dateOnly[k]);
+        o[k] = cellToText(v, dateOnly[k], floats2 && floats2[k]);
       }
       return o;
     });
@@ -31767,10 +31784,11 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
   }
   var tables = {};
   var temporals = {};
+  var floats = {};
   var ready = null;
   function reply(type, m, dt) {
     const cols = dt ? dt.columnNames() : [];
-    const rows = dt ? toPlain(dt.objects(), temporals[m.name]) : [];
+    const rows = dt ? toPlain(dt.objects(), temporals[m.name], floats[m.name]) : [];
     self.postMessage({ type, name: m.name, id: m.id, rows, cols, csv: toCsv(cols, rows) });
   }
   self.onmessage = async (e) => {
@@ -31785,6 +31803,7 @@ Note: ${ERROR_CLOSURE}. ${ERROR_ESCAPE}, or ${ERROR_ADD_FUNCTION}.`;
         const wt = readParquet(new Uint8Array(m.parquet));
         const at2 = tableFromIPC(wt.intoIPCStream());
         temporals[m.name] = temporalColumns(at2.schema);
+        floats[m.name] = floatColumns(at2.schema);
         tables[m.name] = fromArrow(at2);
         self.postMessage({ type: "loaded", name: m.name, rows: tables[m.name].numRows() });
       } else if (m.type === "rows") {
