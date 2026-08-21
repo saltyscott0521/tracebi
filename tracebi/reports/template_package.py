@@ -60,7 +60,7 @@ from typing import Optional
 import pandas as pd
 
 from tracebi.reports.embed import (
-    KNOWN_LIBS, StampedData, embed_block, embed_json, embedded_record,
+    KNOWN_LIBS, StampedData, data_blocks_html, embed_json, embedded_record,
     insert_before, stamp, stamp_frame,
 )
 from tracebi.reports.figures import (
@@ -879,8 +879,9 @@ class TemplatePackage:
         return apply_stack(
             page,
             libs=self.libs,
-            data_blocks_html=("".join(embed_block(sd) + "\n" for sd in stamped)
-                              + extra_blocks_html),
+            # One format for the whole artifact, chosen by size (embed.py):
+            # Parquet only once the data outweighs the engine it would inline.
+            data_blocks_html=(data_blocks_html(stamped) + extra_blocks_html),
             stage=stage,
             project_css=project_theme_css(),
             report_css=self.style_css,

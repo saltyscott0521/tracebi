@@ -34,7 +34,7 @@ import pandas as pd
 from tracebi.model.dataset import DataSet
 from tracebi.reports.base_renderer import BaseRenderer, _warn_if_unknown_git_sha
 from tracebi.reports.embed import (
-    csp_meta, embed_block, embedded_record, insert_before, stamp_dataset,
+    csp_meta, data_blocks_html, embedded_record, insert_before, stamp_dataset,
 )
 from tracebi.reports.report import (
     Report, ReportManifest, SectionType,
@@ -337,7 +337,9 @@ class HTMLRenderer(BaseRenderer):
         )
         page = insert_before(page, "</head>", csp_meta())
         if bindings:
-            tail = "".join(embed_block(sd) + "\n" for _section, sd, _plan in bindings)
+            # One format for the whole artifact, chosen by size (embed.py):
+            # Parquet only once the data outweighs the engine it would inline.
+            tail = data_blocks_html([sd for _section, sd, _plan in bindings])
             page = insert_before(page, "</body>", tail)
         return page
 

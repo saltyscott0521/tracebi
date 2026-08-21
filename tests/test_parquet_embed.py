@@ -111,6 +111,75 @@ def test_tampered_parquet_data_is_caught():
     assert _fp(blocks[0][1]) != original.fingerprint
 
 
+# ── automatic format selection (one format per artifact, chosen by size) ──────
+
+def _frame(rows):
+    return pd.DataFrame({
+        "region": ["North", "South", "East", "West"] * (rows // 4),
+        "revenue": [1705495.22, 250000.0, 99999.99, 42000.5] * (rows // 4),
+    })
+
+
+def test_small_report_stays_csv_and_ships_no_engine():
+    """A KPI-shaped dashboard must not pay megabytes for an engine: below the
+    crossover the CSV artifact is genuinely smaller."""
+    from tracebi.reports.embed import (
+        EMBED_FORMAT_CSV, choose_embed_format, data_blocks_html, stamp_frame,
+    )
+    from tracebi.reports.stack import stack_tail
+
+    stamped = [stamp_frame(_frame(40), name="d")]
+    assert choose_embed_format(stamped) == EMBED_FORMAT_CSV
+    blocks = data_blocks_html(stamped)
+    assert '"csv"' in blocks
+    assert 'id="tracebi-engine-worker"' not in stack_tail(libs=(),
+                                                          data_blocks_html=blocks)
+
+
+def test_large_report_switches_to_parquet_and_gets_smaller():
+    """Past the crossover Parquet wins outright — the engine pays for itself."""
+    from tracebi.reports.embed import (
+        EMBED_FORMAT_PARQUET, choose_embed_format, data_blocks_html, stamp_frame,
+    )
+    from tracebi.reports.stack import stack_tail
+
+    stamped = [stamp_frame(_frame(400_000), name="d")]
+    assert choose_embed_format(stamped) == EMBED_FORMAT_PARQUET
+    blocks = data_blocks_html(stamped)
+    assert '"parquet"' in blocks
+    # smaller than the CSV it replaced, and the engine now ships
+    assert len(blocks) < len(stamped[0].triple["csv"])
+    assert 'id="tracebi-engine-worker"' in stack_tail(libs=(),
+                                                      data_blocks_html=blocks)
+
+
+def test_one_format_per_artifact_never_a_mix():
+    """The engine is a per-file cost, so once any binding justifies it every
+    block uses it — a file never carries both formats."""
+    from tracebi.reports.embed import data_blocks_html, stamp_frame
+
+    blocks = data_blocks_html([
+        stamp_frame(_frame(400_000), name="big"),
+        stamp_frame(_frame(8), name="tiny"),
+    ])
+    assert blocks.count('"format": "parquet"') == 2
+    assert '"csv"' not in blocks
+
+
+def test_format_choice_never_changes_the_receipt():
+    """The whole point: transport is not trust. Both formats fingerprint the
+    same, so crossing the threshold cannot make a report more or less
+    verifiable."""
+    from tracebi.reports.embed import embed_block, embedded_record, stamp_frame
+    from tracebi.verify import _extract_data_blocks
+
+    stamped = stamp_frame(_frame(400), name="d")
+    expected = embedded_record(stamped)["embedded_sha256"]
+    for fmt in ("csv", "parquet"):
+        (_name, triple), = _extract_data_blocks(embed_block(stamped, fmt=fmt))
+        assert _fp(triple) == expected
+
+
 def test_undecodable_parquet_block_is_not_a_pass():
     """A present-but-corrupt Parquet block is skipped (its binding reads
     MISSING → a failure), never silently accepted."""

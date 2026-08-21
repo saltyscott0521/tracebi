@@ -277,10 +277,62 @@ def stamp_frame(
 EMBED_FORMAT_CSV = "csv"
 EMBED_FORMAT_PARQUET = "parquet"
 
-#: The default transport for a generated artifact. CSV keeps the common
-#: aggregate dashboard small; a report that embeds large detail opts into
-#: Parquet (see ``docs/large-detail-artifacts.md``).
+#: The default transport when no choice is made. Callers that hold the whole
+#: binding set should use :func:`choose_embed_format` instead, which picks by
+#: size (see ``docs/large-detail-artifacts.md``).
 DEFAULT_EMBED_FORMAT = EMBED_FORMAT_CSV
+
+
+def engine_cost_bytes() -> int:
+    """Roughly what inlining the worker engine adds to an artifact.
+
+    The worker source verbatim plus the gzipped wasm base64'd (4/3 expansion).
+    This is a fixed cost **per artifact**, paid once however many bindings the
+    report has — which is why the format choice belongs to the artifact rather
+    than the block.
+    """
+    worker = os.path.getsize(
+        os.path.join(_ASSETS_DIR, "tracebi-engine.worker.js"))
+    wasm_gz = os.path.getsize(
+        os.path.join(_ASSETS_DIR, "parquet_wasm_bg.wasm.gz"))
+    return worker + (wasm_gz * 4) // 3
+
+
+def choose_embed_format(stamped: "list[StampedData]") -> str:
+    """Pick the transport for a whole artifact, by size.
+
+    **The rule: embed Parquet only once the data is big enough that the engine
+    pays for itself.** Parquet is ~8–17× smaller than the same CSV, but it costs
+    a fixed ~:func:`engine_cost_bytes` of inlined engine, so below the crossover
+    the CSV artifact is genuinely smaller — a KPI dashboard stays tens of KB
+    instead of megabytes, keeps its numbers readable as text in the file, needs
+    no Worker/WebAssembly/DecompressionStream, and needs none of the CSP grants
+    the engine requires.
+
+    One format per artifact, never a mix inside a file: the engine cost is
+    per-file, so once any binding justifies it every block may as well use it.
+
+    The receipt is identical either way (the fingerprint is the frame's content
+    triple, which Parquet round-trips exactly), so this is purely a transport
+    decision — no report is more or less verifiable for having crossed it.
+    """
+    total_csv = sum(
+        len(sd.triple["csv"].encode("utf-8")) for sd in stamped
+    )
+    return (EMBED_FORMAT_PARQUET if total_csv > engine_cost_bytes()
+            else EMBED_FORMAT_CSV)
+
+
+def data_blocks_html(stamped: "list[StampedData]",
+                     fmt: Optional[str] = None) -> str:
+    """Every binding's data block for one artifact, in one chosen format.
+
+    The single place the artifact-level format decision is made and applied, so
+    both render lanes (the governed HTMLRenderer and the freeform
+    TemplatePackage) agree. Pass *fmt* to force a format.
+    """
+    chosen = fmt or choose_embed_format(list(stamped))
+    return "".join(embed_block(sd, fmt=chosen) + "\n" for sd in stamped)
 
 
 def embed_block(stamped: StampedData, elem_id: Optional[str] = None,
