@@ -294,6 +294,30 @@ def _mapping_index(lineage: list) -> dict[str, list[str]]:
     return out
 
 
+def _roundtrip_fp(df) -> "Optional[str]":
+    """``frame_fingerprint`` of *df* after a Parquet round-trip.
+
+    The tie compares the decoded payload to the re-run result, and BOTH must go
+    through the same Parquet normalization first, or an honest artifact false-
+    alarms. The payload keeps only the dtypes Parquet round-trips (an int
+    categorical comes back int64, a ``datetime64[s]`` comes back ``[ms]``, an
+    object-of-ints comes back int64) — all display-identical, so the display
+    gate lets them onto Parquet, but each changes the raw fingerprint.
+    Round-tripping the re-run the same way cancels that: same data → same
+    normalized frame → same fingerprint; a forged payload → a different one.
+    ``None`` if the encoder is unavailable (the tie is then skipped, never
+    treated as a forgery).
+    """
+    try:
+        from tracebi.model.dataset import frame_fingerprint
+        from tracebi.reports.parquet_embed import (
+            from_parquet_bytes, to_parquet_bytes,
+        )
+        return frame_fingerprint(from_parquet_bytes(to_parquet_bytes(df)))
+    except Exception:  # noqa: BLE001 — no encoder: skip the tie, do not forge-flag
+        return None
+
+
 def _decoded_parquet_fingerprints(html: str) -> "dict[str, Optional[str]]":
     """``{binding name: content fingerprint of its decoded Parquet payload}``.
 
@@ -416,7 +440,8 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str,
         # over drifted data also has payload_fp != actual, and that case is
         # already classified below — so the forgery verdict is reserved for the
         # green-receipt swap it uniquely identifies.)
-        if payload_fp is not None and payload_fp != actual:
+        rt = _roundtrip_fp(ds.to_pandas()) if payload_fp is not None else None
+        if rt is not None and payload_fp != rt:
             return {**base, "status": DISPLAY_FORGED, "actual_fingerprint": actual,
                     "detail": "the query reproduces its recorded fingerprint, but "
                               "the data embedded in this file decodes to a "
