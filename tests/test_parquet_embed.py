@@ -72,3 +72,55 @@ def test_parquet_is_more_compact_than_csv_for_wide_data():
         {"a": range(5000), "b": [i * 1.5 for i in range(5000)], "c": ["xyz"] * 5000}
     )
     assert len(to_parquet_bytes(df)) < len(df.to_csv(index=False).encode())
+
+
+# ── verify path: a Parquet-embedded block checks out exactly like a CSV block ──
+
+def _fp(triple):
+    from tracebi.reports.embed import fingerprint_triple
+
+    return fingerprint_triple(triple)
+
+
+def test_parquet_block_verifies_like_the_csv_block():
+    """embed_block_parquet + verify's decode branch recompute the SAME
+    fingerprint as the CSV embed — so verify_file reads FILE INTACT."""
+    from tracebi.reports.embed import embed_block, embed_block_parquet, stamp_frame
+    from tracebi.verify import _extract_data_blocks
+
+    stamped = stamp_frame(_CASES["realistic"], name="revenue")
+    csv_blocks = _extract_data_blocks(embed_block(stamped))
+    pq_blocks = _extract_data_blocks(embed_block_parquet(stamped))
+    assert len(csv_blocks) == len(pq_blocks) == 1
+    assert csv_blocks[0][0] == pq_blocks[0][0] == "revenue"
+    assert _fp(pq_blocks[0][1]) == _fp(csv_blocks[0][1]) == stamped.fingerprint
+
+
+def test_tampered_parquet_data_is_caught():
+    """A changed value in a Parquet block recomputes to a different fingerprint
+    than the binding recorded — verify_file would read FILE ALTERED."""
+    from tracebi.reports.embed import embed_block_parquet, stamp_frame
+    from tracebi.verify import _extract_data_blocks
+
+    original = stamp_frame(_CASES["realistic"], name="revenue")
+    tampered = _CASES["realistic"].copy()
+    tampered.loc[0, "revenue"] = 999999.99
+    blocks = _extract_data_blocks(
+        embed_block_parquet(stamp_frame(tampered, name="revenue"))
+    )
+    assert _fp(blocks[0][1]) != original.fingerprint
+
+
+def test_undecodable_parquet_block_is_not_a_pass():
+    """A present-but-corrupt Parquet block is skipped (its binding reads
+    MISSING → a failure), never silently accepted."""
+    import base64
+
+    from tracebi.reports.embed import embed_json
+    from tracebi.verify import _extract_data_blocks
+
+    bad = base64.b64encode(b"not a parquet file").decode("ascii")
+    html = embed_json(
+        {"name": "x", "format": "parquet", "parquet_b64": bad}, "tracebi-data-x"
+    )
+    assert _extract_data_blocks(html) == []

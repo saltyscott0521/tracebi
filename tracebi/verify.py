@@ -737,13 +737,38 @@ def _fingerprint_triple(triple: Mapping[str, str]) -> str:
     return fingerprint_triple(dict(triple))
 
 
-def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
-    """Every embedded data block that carries a canonical triple.
+def _triple_from_parquet(parquet_b64: str) -> Optional[dict]:
+    """Decode a Parquet-embedded block and recompute its canonical triple.
 
-    Returns ``(name, parsed)`` pairs. A block is a data block only if its
-    parsed JSON holds all three canonical-triple keys; other
-    ``application/json`` blocks (a config blob, say) are skipped. ``name`` is
-    the payload's own ``name`` when present, else the element id.
+    The Parquet embed does not change the receipt: the fingerprint is still the
+    ``{columns, dtypes, csv}`` content triple, which survives the Parquet
+    round-trip exactly (``tests/test_parquet_embed.py``). So verify decodes the
+    Parquet, recomputes the triple, and hashes it exactly as it hashes an
+    embedded CSV triple. Returns ``None`` for an undecodable block — a
+    present-but-corrupt block then reports as a failure (the manifest binding it
+    should satisfy reads as MISSING), never as a pass.
+    """
+    import base64
+
+    try:
+        from tracebi.reports.embed import canonical_triple
+        from tracebi.reports.parquet_embed import from_parquet_bytes
+
+        df = from_parquet_bytes(base64.b64decode(parquet_b64))
+        return canonical_triple(df)
+    except Exception:  # noqa: BLE001 — any decode failure ⇒ not a valid block
+        return None
+
+
+def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
+    """Every embedded data block, as ``(name, triple)`` pairs.
+
+    Two embed formats are recognised, both hashed via the *same* ``{columns,
+    dtypes, csv}`` triple: a CSV block carries the triple inline; a Parquet block
+    (``{format: "parquet", parquet_b64}``) is decoded and its triple recomputed
+    (:func:`_triple_from_parquet`). Any other ``application/json`` block (a
+    config blob, say) is skipped. ``name`` is the payload's own ``name`` when
+    present, else the element id.
     """
     out: list[tuple[str, dict]] = []
     for m in _DATA_BLOCK_RE.finditer(html):
@@ -753,10 +778,15 @@ def _extract_data_blocks(html: str) -> list[tuple[str, dict]]:
             continue
         if not isinstance(parsed, dict):
             continue
-        if not all(k in parsed for k in ("columns", "dtypes", "csv")):
-            continue
-        name = parsed.get("name") or m.group("id")
-        out.append((str(name), parsed))
+        name = str(parsed.get("name") or m.group("id"))
+        if all(k in parsed for k in ("columns", "dtypes", "csv")):
+            out.append((name, parsed))
+        elif parsed.get("format") == "parquet" and isinstance(
+            parsed.get("parquet_b64"), str
+        ):
+            triple = _triple_from_parquet(parsed["parquet_b64"])
+            if triple is not None:
+                out.append((name, triple))
     return out
 
 

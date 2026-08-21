@@ -264,6 +264,31 @@ def embed_block(stamped: StampedData, elem_id: Optional[str] = None) -> str:
     return embed_json(payload, elem_id or f"tracebi-data-{stamped.name}")
 
 
+def embed_block_parquet(stamped: StampedData, elem_id: Optional[str] = None) -> str:
+    """A binding's data embedded as **Parquet** (base64) — the transport the
+    client-side worker engine (parquet-wasm + Arquero) decodes to draw and
+    filter, and ≈50× smaller than the CSV triple on real data.
+
+    The receipt is **unchanged**: the binding's ``embedded_sha256`` is still the
+    ``{columns, dtypes, csv}`` content fingerprint, which survives the Parquet
+    round-trip exactly (``tests/test_parquet_embed.py``). ``verify`` decodes this
+    block and recomputes the same triple — Parquet is transport, not the hashed
+    thing. Emitted through :func:`embed_json` so the base64 payload cannot break
+    out of the ``<script>`` block.
+    """
+    import base64
+
+    from tracebi.reports.parquet_embed import to_parquet_bytes
+
+    frame = stamped.dataset.to_pandas()
+    payload = {
+        "name": stamped.name,
+        "format": "parquet",
+        "parquet_b64": base64.b64encode(to_parquet_bytes(frame)).decode("ascii"),
+    }
+    return embed_json(payload, elem_id or f"tracebi-data-{stamped.name}")
+
+
 def embedded_record(stamped: StampedData, verifiable: bool = True) -> dict:
     """The per-binding entry for the manifest's ``embedded_data`` block.
 
