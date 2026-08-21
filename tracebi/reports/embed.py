@@ -314,8 +314,30 @@ def _renders_identically(series) -> bool:
     kind = getattr(dtype, "kind", "")
     if kind in "ifbu":                    # int, float, bool, unsigned
         return True
-    if kind == "M":                       # datetime — only NAIVE (no tz to drop)
-        return getattr(dtype, "tz", None) is None
+    if kind == "M":
+        # Datetimes only when NAIVE and whole-second. Both checks go through the
+        # pandas API, never attribute sniffing: an Arrow-backed timestamp column
+        # (pd.ArrowDtype) also reports kind "M" but carries no ``.tz`` attribute
+        # at all, so `getattr(dtype, "tz", None) is None` read a zoned column as
+        # naive and let it onto a transport that drops the zone — a silent
+        # hours-long shift under a green receipt.
+        try:
+            values = pd.to_datetime(series.dropna())
+        except Exception:  # noqa: BLE001 — anything unconvertible is not safe
+            return False
+        if getattr(values.dt, "tz", None) is not None:
+            return False
+        # The engine renders through toISOString().slice(0,19), so anything
+        # finer than a second would be truncated — two distinct rows would
+        # display as one.
+        try:
+            if len(values) and (values.dt.microsecond != 0).any():
+                return False
+            if len(values) and (values.dt.nanosecond != 0).any():
+                return False
+        except (AttributeError, ValueError):
+            return False
+        return True
     if kind == "O":
         # An object column is only safe when it really is strings: an object
         # column of ints comes back int64, of Decimals comes back unscaled.

@@ -380,3 +380,30 @@ def test_hostile_pandas_metadata_is_refused():
     pq.write_table(table, buf)
     with pytest.raises(ValueError, match="rewrote the decoded columns"):
         pe.from_parquet_bytes(buf.getvalue())
+
+
+def test_zoned_and_subsecond_datetimes_never_take_the_parquet_transport():
+    """The browser renders a timestamp through toISOString().slice(0,19): it
+    drops the zone and truncates below a second. Such a column must therefore
+    stay on CSV — the receipt would still verify, but the READER would see a
+    shifted or collapsed value, which is worse than a failed check.
+
+    The tz test must go through the pandas API, not attribute sniffing: an
+    Arrow-backed timestamp reports kind 'M' with NO `.tz` attribute, so a
+    getattr-based check read a zoned column as naive.
+    """
+    import pyarrow as pa
+
+    from tracebi.reports.embed import _renders_identically
+
+    naive = pd.Series(pd.to_datetime(["2024-01-15 12:00:00"] * 4))
+    assert _renders_identically(naive)
+
+    assert not _renders_identically(
+        pd.Series(pd.to_datetime(["2024-01-15 12:00:00.123456"] * 4))
+    )
+    assert not _renders_identically(naive.dt.tz_localize("America/New_York"))
+    assert not _renders_identically(pd.Series(
+        pd.to_datetime(["2024-01-15 12:00:00"] * 4).tz_localize("America/New_York"),
+        dtype=pd.ArrowDtype(pa.timestamp("us", tz="America/New_York")),
+    ))
