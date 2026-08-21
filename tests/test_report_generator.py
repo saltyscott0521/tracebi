@@ -475,7 +475,10 @@ class TestTemplatePackageRender:
         html = out.read_text(encoding="utf-8")
         assert 'http-equiv="Content-Security-Policy"' in html
         assert "connect-src 'none'" in html
-        assert "unsafe-eval" not in html
+        # JS eval is never granted. 'wasm-unsafe-eval' IS (WebAssembly
+        # compilation only, for the artifact's worker engine) — and since
+        # it CONTAINS "'unsafe-eval'", drop it before checking.
+        assert "'unsafe-eval'" not in html.replace("'wasm-unsafe-eval'", "")
 
     def test_author_text_cannot_suppress_the_csp(self):
         """The strict CSP must not be dropped just because a template mentions

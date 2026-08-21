@@ -508,7 +508,10 @@ class TestChartEnhancements:
         assert html.count('<svg class="tb-chart') == 2   # two SVG charts, no runtime
         assert "!function(" not in html                  # no ECharts bundle inlined
         assert "connect-src 'none'" in html
-        assert "unsafe-eval" not in html
+        # JS eval is never granted. 'wasm-unsafe-eval' IS (WebAssembly
+        # compilation only, for the artifact's worker engine) — and since
+        # it CONTAINS "'unsafe-eval'", drop it before checking.
+        assert "'unsafe-eval'" not in html.replace("'wasm-unsafe-eval'", "")
 
     def test_no_chart_report_gets_no_echarts_but_keeps_the_csp(self):
         # The chart machinery is scoped to reports that actually have a chart,
@@ -521,7 +524,10 @@ class TestChartEnhancements:
         assert "!function(" not in html
         assert "Content-Security-Policy" in html
         assert "connect-src 'none'" in html
-        assert "unsafe-eval" not in html
+        # JS eval is never granted. 'wasm-unsafe-eval' IS (WebAssembly
+        # compilation only, for the artifact's worker engine) — and since
+        # it CONTAINS "'unsafe-eval'", drop it before checking.
+        assert "'unsafe-eval'" not in html.replace("'wasm-unsafe-eval'", "")
 
 
 class TestGovernedChartFileIntegrity:

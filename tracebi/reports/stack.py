@@ -26,7 +26,9 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from tracebi.reports.embed import csp_meta, embed_json, insert_before, read_lib
+from tracebi.reports.embed import (
+    csp_meta, embed_json, engine_blocks_html, insert_before, read_lib,
+)
 
 _ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
@@ -96,11 +98,18 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
 
 def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
                report_js: str = "") -> str:
-    """The body-end injection: libs → runtime → data → config → author."""
+    """The body-end injection: libs → runtime → engine → data → config → author."""
     tail = ""
     for lib in libs or ():
         tail += f"<script>\n{read_lib(lib)}\n</script>\n"
     tail += f"<script>\n{read_asset('tracebi.js')}\n</script>\n"
+    # The worker engine ships ONLY when a binding is embedded as Parquet — a
+    # CSV artifact would otherwise pay megabytes for an engine it never starts.
+    # Test the DATA BLOCKS, never the assembled tail: the runtime source itself
+    # mentions parquet (in comments), so scanning `tail` ships the engine always.
+    if '"format": "parquet"' in data_blocks_html or \
+            '"format":"parquet"' in data_blocks_html:
+        tail += engine_blocks_html()
     tail += data_blocks_html
     if figures_cfg is not None:
         tail += embed_json(figures_cfg, "tracebi-figures") + "\n"

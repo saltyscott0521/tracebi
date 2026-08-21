@@ -26,6 +26,7 @@ Two jobs, kept together because they are two halves of one contract:
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -53,9 +54,23 @@ KNOWN_LIBS = {"echarts"}
 #: The strict CSP embedded in every generated page (architecture §5). Inline
 #: script/style are unavoidable in a static self-contained file; ``connect-src
 #: 'none'`` is the real win — a bundled library cannot phone home with the
-#: embedded data. ECharts needs no ``'unsafe-eval'``, so it is not granted.
+#: embedded data. JavaScript ``'unsafe-eval'`` is NOT granted (ECharts needs
+#: none, and neither does the runtime).
+#:
+#: Three grants serve the artifact's worker engine, which decodes embedded
+#: Parquet off the main thread: ``worker-src blob:`` and ``script-src blob:``
+#: let the runtime start the inlined worker from a blob URL (the only way to
+#: run a worker in a self-contained file with no sidecar), and
+#: ``'wasm-unsafe-eval'`` permits compiling the inlined WebAssembly module.
+#: ``'wasm-unsafe-eval'`` is strictly narrower than ``'unsafe-eval'``: it allows
+#: WebAssembly compilation ONLY — it does not enable ``eval()`` or
+#: ``new Function()`` on JavaScript strings. ``connect-src 'none'`` still holds,
+#: so the engine cannot phone home either.
 CSP = (
-    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+    "default-src 'none'; "
+    "script-src 'unsafe-inline' 'wasm-unsafe-eval' blob:; "
+    "worker-src blob:; "
+    "style-src 'unsafe-inline'; "
     "img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; "
     "form-action 'none'"
 )
@@ -248,13 +263,38 @@ def stamp_frame(
     )
 
 
-def embed_block(stamped: StampedData, elem_id: Optional[str] = None) -> str:
+#: How a binding's data is embedded. Both formats carry the SAME receipt — the
+#: fingerprint is the frame's ``{columns, dtypes, csv}`` content triple either
+#: way (Parquet round-trips it exactly), so this is a transport choice, not a
+#: trust one, and ``verify`` handles both.
+#:
+#: ``"csv"``     — the triple inline. No engine needed: the runtime parses it
+#:                 directly, so the artifact stays small (KBs). Right for the
+#:                 aggregate-shaped dashboards that are the common case.
+#: ``"parquet"`` — compact columnar data (≈50× smaller than JSON) decoded by the
+#:                 inlined worker engine. Costs ~9 MB of engine, and is what
+#:                 makes large-detail, client-side-filterable artifacts possible.
+EMBED_FORMAT_CSV = "csv"
+EMBED_FORMAT_PARQUET = "parquet"
+
+#: The default transport for a generated artifact. CSV keeps the common
+#: aggregate dashboard small; a report that embeds large detail opts into
+#: Parquet (see ``docs/large-detail-artifacts.md``).
+DEFAULT_EMBED_FORMAT = EMBED_FORMAT_CSV
+
+
+def embed_block(stamped: StampedData, elem_id: Optional[str] = None,
+                fmt: Optional[str] = None) -> str:
     """The ``<script type="application/json">`` data block for one binding.
 
-    Carries only the canonical triple — the exact bytes the checker hashes and
-    the same bytes the page parses to draw. Embedded through :func:`embed_json`
-    so any hostile cell value is neutralised.
+    With ``fmt="csv"`` (the default) the block carries the canonical triple —
+    the exact bytes the checker hashes and the same bytes the page parses to
+    draw. With ``fmt="parquet"`` it carries the data as Parquet for the worker
+    engine (:func:`embed_block_parquet`); the receipt is identical either way.
+    Embedded through :func:`embed_json` so any hostile cell value is neutralised.
     """
+    if (fmt or DEFAULT_EMBED_FORMAT) == EMBED_FORMAT_PARQUET:
+        return embed_block_parquet(stamped, elem_id)
     payload = {
         "name": stamped.name,
         "columns": stamped.triple["columns"],
@@ -287,6 +327,41 @@ def embed_block_parquet(stamped: StampedData, elem_id: Optional[str] = None) -> 
         "parquet_b64": base64.b64encode(to_parquet_bytes(frame)).decode("ascii"),
     }
     return embed_json(payload, elem_id or f"tracebi-data-{stamped.name}")
+
+
+#: Element ids the runtime (``tracebi.js``) reads to start the worker engine.
+ENGINE_WORKER_ID = "tracebi-engine-worker"
+ENGINE_WASM_ID = "tracebi-engine-wasm"
+
+
+def engine_blocks_html() -> str:
+    """The inlined worker-engine assets, as the two blocks the runtime reads.
+
+    A self-contained artifact carries its own query engine: the bundled worker
+    source (started from a blob URL — the only way to run a worker with no
+    sidecar file) and the gzipped ``parquet-wasm`` module, base64'd and
+    decompressed in the browser via ``DecompressionStream``. Together they let a
+    figure decode and filter its embedded Parquet **offline, with no network**
+    (see ``assets/ENGINE_NOTICE.md``).
+
+    Emitted only for artifacts that embed Parquet — a CSV artifact would pay
+    megabytes for an engine it never starts.
+    """
+    # Read from _ASSETS_DIR directly rather than stack.read_asset: stack
+    # imports from this module, so importing back would be circular.
+    with open(os.path.join(_ASSETS_DIR, "tracebi-engine.worker.js"),
+              encoding="utf-8") as fh:
+        worker_src = fh.read()
+    with open(os.path.join(_ASSETS_DIR, "parquet_wasm_bg.wasm.gz"), "rb") as fh:
+        wasm_b64 = base64.b64encode(fh.read()).decode("ascii")
+    # The worker source goes in a non-executable text block (the runtime reads
+    # its textContent and builds the blob); "</script" is neutralised the same
+    # way embed_json neutralises it in data.
+    safe_worker = worker_src.replace("</script", "<\\/script")
+    return (
+        f'<script type="text/plain" id="{ENGINE_WORKER_ID}">{safe_worker}</script>\n'
+        f'<script type="application/base64" id="{ENGINE_WASM_ID}">{wasm_b64}</script>\n'
+    )
 
 
 def embedded_record(stamped: StampedData, verifiable: bool = True) -> dict:
