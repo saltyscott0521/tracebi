@@ -191,7 +191,12 @@ you tell a human a report is done.
 2. Read the sample files: `transforms/sample_transform.py`,
    `models/sample_model.py`, `reports/sample_dashboard/`. They are a complete
    working example of the loop, receipt included.
-3. Read `README.md` for the run commands.
+3. Run `tracebi knowledge` — the analyst good-practice lessons. Read the one
+   whose *when* matches your decision (`tracebi knowledge <slug>`) before
+   choosing a measure or grain: a rate is a ratio of totals not a mean of
+   ratios, a "weighted" average needs a weight, pick the grain first. Doing the
+   analysis *right* is the job; these catch the confident-but-wrong number.
+4. Read `README.md` for the run commands.
 
 ## The honest boundary — do not overclaim
 

@@ -460,6 +460,24 @@ def _conventions() -> dict:
     }
 
 
+def _analyst_knowledge() -> dict:
+    """The good-practice curriculum, as a cheap index (slug/title/when) plus how
+    to pull a lesson in full. Present in BOTH tiers, brief included — teaching an
+    agent to reach for the right lesson is exactly what the lean loop needs, and
+    the index is small. The bodies live in ``tracebi/knowledge/lessons`` and are
+    fetched on demand (``tracebi knowledge <slug>``), so this never bloats the
+    payload."""
+    from tracebi.knowledge import index
+
+    return {
+        "what": "Good-practice lessons for doing the analysis RIGHT, not just "
+                "producing a number. Reach for the one whose 'when' matches the "
+                "decision you are making.",
+        "fetch": "tracebi knowledge <slug>  (or the tracebi-analyst skill)",
+        "lessons": index(),
+    }
+
+
 def describe(brief: bool = False) -> dict:
     """
     Return TraceBi's vocabulary as plain, JSON-serializable data.
@@ -558,6 +576,7 @@ def describe(brief: bool = False) -> dict:
         "presentation": _presentation(),
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
+        "analyst_knowledge": _analyst_knowledge(),
     }
     if not brief:
         return full

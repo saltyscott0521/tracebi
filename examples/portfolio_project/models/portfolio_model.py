@@ -55,8 +55,14 @@ model = (
                  description="Position count")
     .add_measure("unrealized", expr="fair_value - cost", agg="sum",
                  description="Unrealized gain / loss", format="currency0")
-    .add_measure("avg_spread_bps", column="spread_bps", agg="mean",
-                 description="Weighted avg spread (bps)")
+    # A par-weighted spread is a ratio of totals, not a plain mean — a $1M and a
+    # $1k position must NOT count equally. See `tracebi knowledge
+    # weighted-vs-plain-mean`. (This measure previously declared agg="mean" and
+    # called it "weighted" — the exact silent-wrong trap the lesson warns about.)
+    .add_measure("spread_x_par", expr="spread_bps * par", agg="sum",
+                 description="Σ(spread × par) — par-weighted-spread numerator")
+    .add_measure("wtd_spread_bps", ratio=("spread_x_par", "par_amount"),
+                 description="Par-weighted average spread (bps)")
     .add_measure("mark", ratio=("fair_value", "cost_basis"),
                  description="Fair value / cost", format="percent")
 )

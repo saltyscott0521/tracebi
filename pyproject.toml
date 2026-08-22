@@ -159,7 +159,7 @@ packages = ["tracebi"]
 # Listing them here also force-includes them past any future .gitignore pattern
 # (e.g. a broad *.txt) that would otherwise silently drop a scaffold file.
 artifacts = ["tracebi/web/ui/dist/**", "tracebi/reports/assets/**",
-             "tracebi/_scaffold/**"]
+             "tracebi/_scaffold/**", "tracebi/knowledge/lessons/**"]
 # The Node workspace itself (web/ui/src, package.json, the lockfile) stays at
 # the repo root and is deliberately not packaged: it is a build input, not a
 # runtime one, and the no-bundle page points a checkout at it by path.

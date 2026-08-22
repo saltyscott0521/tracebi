@@ -468,6 +468,36 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_knowledge(args: argparse.Namespace) -> int:
+    """
+    The analyst knowledge base — good-practice lessons for authoring analysis.
+
+    ``tracebi knowledge`` lists the curriculum (slug — title — when to reach for
+    it); ``tracebi knowledge <slug>`` prints one lesson in full. The same
+    lessons back the ``knowledge`` block of ``tracebi context`` and the
+    ``tracebi-analyst`` skill, so an agent can pull the relevant one at the
+    moment it's making the decision the lesson is about.
+    """
+    from tracebi.knowledge import get_lesson, list_lessons
+
+    slug = getattr(args, "slug", None)
+    if not slug:
+        for ls in list_lessons():
+            print(f"{ls.slug}\n    {ls.title}")
+            if ls.when:
+                print(f"    when: {ls.when}")
+        print("\nRead one with:  tracebi knowledge <slug>")
+        return 0
+    lesson = get_lesson(slug)
+    if lesson is None:
+        print(f"No lesson '{slug}'. Run 'tracebi knowledge' to list them.",
+              file=sys.stderr)
+        return 1
+    print(f"# {lesson.title}\n")
+    print(lesson.body)
+    return 0
+
+
 def cmd_context(args: argparse.Namespace) -> int:
     """
     Print TraceBi's vocabulary as JSON — every section and panel type with
@@ -1901,6 +1931,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_context.add_argument("--compact", action="store_true",
                            help="Single-line JSON.")
     p_context.set_defaults(func=cmd_context)
+
+    p_knowledge = sub.add_parser(
+        "knowledge",
+        help="Analyst good-practice lessons. No arg lists the curriculum; "
+             "'knowledge <slug>' prints one lesson.",
+    )
+    p_knowledge.add_argument("slug", nargs="?",
+                             help="Lesson slug to print in full.")
+    p_knowledge.set_defaults(func=cmd_knowledge)
 
     p_serve = sub.add_parser(
         "serve",

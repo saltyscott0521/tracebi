@@ -172,6 +172,29 @@ exploration-stamped and carries no receipts; `verify` refuses it by name.
 The distillation ladder: session record → contract notes → the report's
 methodology appendix.
 
+## Do the analysis right — the knowledge base
+
+Producing *a* number is easy; producing the *right* one, clearly, is the job.
+The framework ships a curriculum of analyst good-practice so any agent behaves
+like a senior analyst, not just a query typist. **Reach for it whenever you
+choose a measure, a grain, or a model** — the guidance for the decision you are
+making is one command away:
+
+- `tracebi knowledge` — list the lessons (each with a *when* to reach for it).
+- `tracebi knowledge <slug>` — read one in full; the same set rides in
+  `tracebi context` under `analyst_knowledge`.
+
+The ones you will use constantly: **ratio-of-totals** (a rate is a ratio of
+summed totals, never a mean of per-row ratios — `agg="mean"` on a rate is almost
+always wrong), **weighted-vs-plain-mean** (a "weighted average" with `agg="mean"`
+underneath is a lie — a weighted mean is a ratio whose numerator carries the
+weight), **grain-and-fanout** (pick the grain first; the fanout guard refusing
+your query means your grain is wrong), and **verify-your-own-work** (close the
+loop yourself before claiming a number). Skill-aware agents can activate the
+same discipline as the **`tracebi-analyst`** skill. Silent-wrong output — a
+confident, well-formatted, wrong number — is this project's cardinal sin; the
+knowledge base exists to help you catch it before a reader does.
+
 ## The two planes rule
 
 **Change the contract in git. Use the contract over MCP.**
