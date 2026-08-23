@@ -159,3 +159,63 @@ class TestMeanOfARatioGuard:
         assert any("allow_rate_agg" in c for c in constraints), (
             "the mean-of-a-ratio guard must be in the vocabulary so an agent "
             "knows it exists and knows the escape hatch")
+
+
+# ── Expressiveness pulled back into the governed lane: distribution aggs ───────
+# A mean hides skew; median/stddev used to force report.py (ungoverned, no
+# receipt, no guard). Now they are declarative measures — governed, verifiable,
+# deterministic — paired with the summarize-a-distribution lesson.
+
+class TestDistributionAggregations:
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        fact = pd.DataFrame({"desk_id": [1, 1, 1, 1, 2, 2, 2, 2],
+                             "pnl": [10, 12, 11, 500, 9, 11, 10, 12]})
+        dim = pd.DataFrame({"desk_id": [1, 2], "desk": ["A", "B"]})
+        m = DataModel("risk")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact, "dim_desk": dim}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_desk", connector="mem", source="dim_desk")
+        m.add_dimension("dim_desk", table_name="dim_desk", key_col="desk_id",
+                        attributes=["desk"])
+        m.add_fact("f", table_name="fact", measures=["pnl"],
+                   foreign_keys={"dim_desk": "desk_id"})
+        m.add_measure("mean_pnl", column="pnl", agg="mean")
+        m.add_measure("median_pnl", column="pnl", agg="median")
+        m.add_measure("stddev_pnl", column="pnl", agg="stddev")
+        m.connect()
+        return m
+
+    def _run(self, m):
+        from tracebi.model.data_model import QuerySpec
+        return m.execute(QuerySpec.from_dict(
+            {"fact": "f", "measures": ["mean_pnl", "median_pnl", "stddev_pnl"],
+             "dimensions": ["dim_desk.desk"]})).to_pandas()
+
+    def test_median_is_robust_where_the_mean_is_dragged_by_an_outlier(self):
+        row = self._run(self._model()).set_index("dim_desk.desk").loc["A"]
+        assert row["mean_pnl"] > 100        # dragged by the 500 outlier
+        assert 11 <= row["median_pnl"] <= 12   # the honest centre
+        assert row["stddev_pnl"] > 100      # the spread flags the skew
+
+    def test_distribution_aggs_are_deterministic(self):
+        m = self._model()
+        assert self._run(m).equals(self._run(m))
+
+    def test_median_and_stddev_are_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        aggs = describe()["semantic_model"]["aggregations"]
+        assert "median" in aggs and "stddev" in aggs
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        assert get_lesson("summarize-a-distribution") is not None
+        slugs = {ls["slug"] for ls in index()}
+        assert "summarize-a-distribution" in slugs
+
+    def test_median_of_a_rate_is_not_refused(self):
+        # The rate guard targets ADDITIVE aggs (sum/mean); a median or stddev of
+        # a rate is a legitimate summary and must stay allowed.
+        from tracebi import DataModel
+        DataModel("t").add_measure("median_spread_bps", column="spread_bps",
+                                   agg="median")

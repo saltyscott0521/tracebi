@@ -531,6 +531,11 @@ def describe(brief: bool = False) -> dict:
                 },
             ],
             "aggregations": sorted(_AGG_FUNCS),
+            "aggregations_note": "median and stddev summarize a distribution's "
+                                 "shape — a mean hides skew and tails, so use "
+                                 "them for returns/P&L/sizes/spreads (see the "
+                                 "summarize-a-distribution lesson). count counts "
+                                 "non-null rows; nunique counts distinct values.",
             "filter_operators": list(FILTER_OPS),
             "filter_forms": [
                 {"form": "{'status': 'shipped'}", "means": "equality"},

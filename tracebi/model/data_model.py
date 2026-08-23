@@ -39,7 +39,12 @@ from tracebi.model.dataset import (
 # lineage warning. Visible in the lineage chain, non-blocking.
 LARGE_LOAD_WARN_ROWS = 100_000
 
-_AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique"}
+_AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique",
+              # Distribution aggregations — a mean hides skew and tails, so
+              # dispersion/robust-centre reporting used to force report.py.
+              # DuckDB-native and deterministic; map to MEDIAN()/STDDEV() by the
+              # default func.upper() path, no special-casing.
+              "median", "stddev"}
 
 #: Name tokens that mark a measure as already a rate/ratio — summing or
 #: averaging one of these per-row is a silent-wrong number (see the rate-
