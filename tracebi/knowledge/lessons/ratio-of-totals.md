@@ -22,9 +22,12 @@ model.add_measure("margin_pct", ratio=("gross_margin", "revenue"), format="perce
 `margin_pct` is `sum(gross_margin) / sum(revenue)` at whatever grain you query —
 correct at the company level, per region, per month, everywhere.
 
-**The tell.** If you're reaching for `agg="mean"` on something that is itself a
-rate, %, or "per" quantity, stop — you almost certainly want a ratio of its
-numerator and denominator instead. A mean is only right for a genuinely additive
-quantity you want the typical value of.
+**The tell.** If you're reaching for `agg="mean"` — or `agg="sum"` — on
+something that is itself a rate, %, or "per" quantity, stop. You do not add
+rates (summing percentages is meaningless) and you do not average them (it
+overweights small rows); you want a ratio of their numerator and denominator.
+The framework refuses both by default and points you here; `min`/`max` of a
+rate (the widest spread, the lowest yield) stay fine. A `mean` is only right for
+a genuinely additive quantity whose typical value you want.
 
 **Weighted averages are a ratio too** — see [[weighted-vs-plain-mean]].

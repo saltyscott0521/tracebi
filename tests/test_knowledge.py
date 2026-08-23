@@ -104,16 +104,30 @@ class TestMeanOfARatioGuard:
         from tracebi import DataModel
         return DataModel("t")
 
-    def test_refuses_a_mean_of_a_rate_named_measure(self):
+    def test_refuses_additive_aggregation_of_a_rate(self):
         import pytest
-        for name, col in [("avg_margin_pct", "margin_pct"), ("yield", "y"),
-                          ("avg_spread_bps", "spread_bps"), ("default_rate", "d")]:
-            with pytest.raises(ValueError, match="rate or ratio"):
-                self._model().add_measure(name, column=col, agg="mean")
+        # mean AND sum of a rate are both refused; min/max are not.
+        for agg in ("mean", "avg", "sum"):
+            for name, col in [("avg_margin_pct", "margin_pct"), ("yield", "y"),
+                              ("total_spread_bps", "spread_bps")]:
+                with pytest.raises(ValueError, match="aggregates a rate"):
+                    self._model().add_measure(name, column=col, agg=agg)
+
+    def test_min_max_of_a_rate_are_allowed(self):
+        # The widest spread / lowest yield are legitimate.
+        self._model().add_measure("max_spread_bps", column="spread_bps", agg="max")
+        self._model().add_measure("min_yield", column="yield", agg="min")
+
+    def test_summing_a_weighted_numerator_is_allowed(self):
+        # Σ(value × weight) is the CORRECT building block of a weighted average —
+        # "weighted" in the description must NOT refuse a sum (only a mean).
+        self._model().add_measure(
+            "spread_x_par", expr="spread_bps * par", agg="sum",
+            description="Σ(spread × par) — par-weighted-spread numerator")
 
     def test_refuses_a_weighted_mean_declared_as_a_plain_mean(self):
         import pytest
-        with pytest.raises(ValueError, match="rate or ratio"):
+        with pytest.raises(ValueError, match="aggregates a rate"):
             self._model().add_measure("wtd", column="spread", agg="mean",
                                       description="Weighted average spread")
 
@@ -123,7 +137,7 @@ class TestMeanOfARatioGuard:
             self._model().add_measure("avg_yield", column="yield", agg="mean")
         msg = str(exc.value)
         assert "ratio-of-totals" in msg          # cites the lesson
-        assert "allow_mean=True" in msg          # names the escape hatch
+        assert "allow_rate_agg=True" in msg      # names the escape hatch
         assert "sum(numerator)" in msg           # gives the correct pattern
 
     def test_does_not_false_positive_on_additive_means(self):
@@ -132,14 +146,16 @@ class TestMeanOfARatioGuard:
                           ("mean_qty", "quantity")]:
             self._model().add_measure(name, column=col, agg="mean")
 
-    def test_allow_mean_is_the_escape_hatch(self):
+    def test_allow_rate_agg_is_the_escape_hatch(self):
         # Explicit opt-out, like allow_fanout — never blocks a deliberate choice.
         self._model().add_measure("avg_pct", column="p", agg="mean",
-                                   allow_mean=True)
+                                   allow_rate_agg=True)
+        self._model().add_measure("sum_pct", column="p2", agg="sum",
+                                   allow_rate_agg=True)
 
     def test_guard_is_documented_in_the_vocabulary(self):
         from tracebi.capabilities import describe
         constraints = describe()["semantic_model"]["constraints"]
-        assert any("allow_mean" in c for c in constraints), (
+        assert any("allow_rate_agg" in c for c in constraints), (
             "the mean-of-a-ratio guard must be in the vocabulary so an agent "
             "knows it exists and knows the escape hatch")

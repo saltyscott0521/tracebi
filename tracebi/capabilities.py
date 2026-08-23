@@ -570,11 +570,13 @@ def describe(brief: bool = False) -> dict:
                 "cannot be serialized, diffed, or validated before execution.",
                 "A dimension whose key is not unique raises rather than silently "
                 "inflating every additive measure. Override with allow_fanout=True.",
-                "A mean/avg of a rate-named measure (*_pct, *_bps, *_yield, "
-                "anything 'weighted') is REFUSED — the mean of per-row rates "
-                "overweights small rows. Declare a ratio measure instead "
-                "(ratio of totals); see the ratio-of-totals lesson. Override "
-                "with allow_mean=True only when a plain mean is truly correct.",
+                "Aggregating a rate-named measure (*_pct, *_bps, *_yield, "
+                "anything 'weighted') with sum/mean/avg is REFUSED — you do not "
+                "additively combine per-row rates (summing is meaningless, "
+                "averaging overweights small rows); min/max stay fine. Declare a "
+                "ratio measure instead (ratio of totals); see the ratio-of-totals "
+                "lesson. Override with allow_rate_agg=True only when it is truly "
+                "correct.",
             ],
         },
         "number_formats": dict(NAMED_NUMBER_FORMATS),
