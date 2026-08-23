@@ -92,3 +92,54 @@ def test_reference_model_obeys_the_weighted_mean_lesson():
             "portfolio_model declares a 'weighted' measure as a plain mean — "
             "see tracebi knowledge weighted-vs-plain-mean; use a ratio of "
             "sum(value*weight) / sum(weight) instead.")
+
+
+# ── The guardrail that teaches — the fanout raise's sibling ────────────────────
+# A guardrail is worth more than a paragraph of prose because it fires at the
+# moment of the mistake and no model can skip it. This one refuses a mean of a
+# rate/ratio and cites the lesson.
+
+class TestMeanOfARatioGuard:
+    def _model(self):
+        from tracebi import DataModel
+        return DataModel("t")
+
+    def test_refuses_a_mean_of_a_rate_named_measure(self):
+        import pytest
+        for name, col in [("avg_margin_pct", "margin_pct"), ("yield", "y"),
+                          ("avg_spread_bps", "spread_bps"), ("default_rate", "d")]:
+            with pytest.raises(ValueError, match="rate or ratio"):
+                self._model().add_measure(name, column=col, agg="mean")
+
+    def test_refuses_a_weighted_mean_declared_as_a_plain_mean(self):
+        import pytest
+        with pytest.raises(ValueError, match="rate or ratio"):
+            self._model().add_measure("wtd", column="spread", agg="mean",
+                                      description="Weighted average spread")
+
+    def test_the_refusal_teaches(self):
+        import pytest
+        with pytest.raises(ValueError) as exc:
+            self._model().add_measure("avg_yield", column="yield", agg="mean")
+        msg = str(exc.value)
+        assert "ratio-of-totals" in msg          # cites the lesson
+        assert "allow_mean=True" in msg          # names the escape hatch
+        assert "sum(numerator)" in msg           # gives the correct pattern
+
+    def test_does_not_false_positive_on_additive_means(self):
+        # Legitimate means of additive quantities must still work.
+        for name, col in [("avg_order_value", "revenue"), ("avg_age", "age"),
+                          ("mean_qty", "quantity")]:
+            self._model().add_measure(name, column=col, agg="mean")
+
+    def test_allow_mean_is_the_escape_hatch(self):
+        # Explicit opt-out, like allow_fanout — never blocks a deliberate choice.
+        self._model().add_measure("avg_pct", column="p", agg="mean",
+                                   allow_mean=True)
+
+    def test_guard_is_documented_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        constraints = describe()["semantic_model"]["constraints"]
+        assert any("allow_mean" in c for c in constraints), (
+            "the mean-of-a-ratio guard must be in the vocabulary so an agent "
+            "knows it exists and knows the escape hatch")

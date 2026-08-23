@@ -41,6 +41,23 @@ LARGE_LOAD_WARN_ROWS = 100_000
 
 _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique"}
 
+#: Name tokens that mark a measure as already a rate/ratio — averaging one of
+#: these per-row silently overweights small rows (see the mean-of-a-ratio guard
+#: in add_measure and `tracebi knowledge ratio-of-totals`).
+_RATE_TOKEN = re.compile(r"(?:^|_)(pct|percent|ratio|rate|bps|yield|apr|apy)(?:_|$)")
+
+
+def _looks_like_a_rate(name: str, description: str) -> bool:
+    """Whether *name*/*description* almost certainly denote a rate or ratio, so a
+    plain mean of it is the mean-of-a-ratio mistake. High-precision on purpose:
+    a ``weighted`` label (a contradiction with a plain mean) anywhere, or a rate
+    token in the NAME. Description prose alone does not trigger it — only the
+    unambiguous 'weighted' word does — so an innocent mention of 'rate' in a
+    sentence cannot false-positive."""
+    if "weighted" in f"{name} {description}".lower():
+        return True
+    return bool(_RATE_TOKEN.search(name.lower()))
+
 # Filter operators. A closed set rather than free SQL: free SQL cannot be
 # validated and is an injection surface. Every operator below is parameterised
 # in the DuckDB path.
@@ -494,6 +511,7 @@ class DataModel:
         ratio: Optional[tuple[str, str]] = None,
         description: str = "",
         format: Optional[str] = None,
+        allow_mean: bool = False,
     ) -> "DataModel":
         """
         Declare a named measure on the model.
@@ -515,6 +533,11 @@ class DataModel:
         ``agg`` is required for the first two. Ratios are computed after
         aggregation, so they are a ratio of totals rather than a mean of
         per-row ratios.
+
+        A ``mean``/``avg`` of a rate-named measure (``*_pct``, ``*_bps``,
+        ``*_yield``, anything "weighted") is REFUSED — averaging per-row rates
+        silently overweights small rows; declare a ratio measure instead. Pass
+        ``allow_mean=True`` in the rare case a plain mean is genuinely correct.
 
         Everything here is declarative data — callables are rejected, since
         a lambda cannot be serialized, diffed, reviewed, or validated
@@ -564,6 +587,24 @@ class DataModel:
                     f"Supported: {', '.join(sorted(_AGG_FUNCS))}"
                 )
             agg = agg.lower()
+            # The mean-of-a-ratio guard — the fanout raise's sibling. Averaging
+            # a per-row rate overweights small rows and returns a confident wrong
+            # number; refuse it at the moment of definition, cite the lesson, and
+            # offer the one legitimate escape (like allow_fanout).
+            if (agg in ("mean", "avg") and not allow_mean
+                    and _looks_like_a_rate(name, description)):
+                raise ValueError(
+                    f"Measure '{name}': agg='{agg}' takes the mean of what looks "
+                    f"like a rate or ratio. The average of per-row rates "
+                    f"overweights small rows — the blended rate is "
+                    f"sum(numerator) / sum(denominator), NOT the mean of the "
+                    f"per-row ratios. Declare it as a ratio measure instead "
+                    f"(ratio=(numerator, denominator)); a weighted average is a "
+                    f"ratio whose numerator carries the weight. See `tracebi "
+                    f"knowledge ratio-of-totals` and `weighted-vs-plain-mean`. "
+                    f"If a plain mean genuinely is correct here, pass "
+                    f"allow_mean=True."
+                )
 
         if kind == "expression":
             if not _EXPR_ALLOWED.match(expr or ""):
