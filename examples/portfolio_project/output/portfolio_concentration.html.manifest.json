@@ -1,0 +1,348 @@
+{
+  "schema_version": 2,
+  "report_name": "Portfolio Concentration",
+  "rendered_at": "2026-08-24T02:25:57.849875+00:00",
+  "rendered_by": "risk",
+  "format": "html",
+  "output_path": "/Users/andrewscott/Documents/Claude/tracebi/examples/portfolio_project/output/portfolio_concentration.html",
+  "git_sha": "ff460251bcecaec8f8717bd25f0a7756ee5beb85",
+  "parameters": {},
+  "sections": [
+    {
+      "section_type": "table",
+      "title": "concentration",
+      "id": "concentration",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        13,
+        6
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-08-24T02:25:57.816859+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "0b87d0716db4399a88eead932cbf219555d2ab7f180bb14af35db6d083a163f8",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-08-24T02:25:57.817429+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-24T02:25:57.824205+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-24T02:25:57.827159+00:00",
+          "metadata": {
+            "shares": {
+              "fv_share": "fair_value"
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Window measure(s): fv_rank = rank(fair_value desc), fv_cum_share = running(fv_share desc)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-24T02:25:57.829244+00:00",
+          "metadata": {
+            "ranks": {
+              "fv_rank": "fair_value"
+            },
+            "runnings": {
+              "fv_cum_share": "fv_share"
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fv_rank, dim_issuer.issuer, dim_issuer.sector, fair_value, fv_share, fv_cum_share",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-24T02:25:57.829695+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fv_rank",
+                "desc": false
+              },
+              {
+                "column": "dim_issuer.issuer",
+                "desc": false
+              },
+              {
+                "column": "dim_issuer.sector",
+                "desc": false
+              },
+              {
+                "column": "fair_value",
+                "desc": false
+              },
+              {
+                "column": "fv_share",
+                "desc": false
+              },
+              {
+                "column": "fv_cum_share",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-08-24T02:25:57.829700+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.3",
+            "fingerprint_algo": 2,
+            "rows_out": 13,
+            "measures": {
+              "fair_value": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fv_rank",
+                "fair_value",
+                "fv_share",
+                "fv_cum_share"
+              ],
+              "dimensions": [
+                "dim_issuer.issuer",
+                "dim_issuer.sector"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "fv_rank",
+                  "desc": false
+                },
+                {
+                  "column": "dim_issuer.issuer",
+                  "desc": false
+                },
+                {
+                  "column": "dim_issuer.sector",
+                  "desc": false
+                },
+                {
+                  "column": "fair_value",
+                  "desc": false
+                },
+                {
+                  "column": "fv_share",
+                  "desc": false
+                },
+                {
+                  "column": "fv_cum_share",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "f4867f69a502e94ce0e31304a118488fa887d58c7450ad793db0862ff7daadf4",
+      "columns": null,
+      "max_rows": null
+    }
+  ],
+  "embedded_data": [
+    {
+      "name": "concentration",
+      "embedded_sha256": "f4867f69a502e94ce0e31304a118488fa887d58c7450ad793db0862ff7daadf4",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fv_rank",
+          "fair_value",
+          "fv_share",
+          "fv_cum_share"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer",
+          "dim_issuer.sector"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "fv_rank",
+            "desc": false
+          },
+          {
+            "column": "dim_issuer.issuer",
+            "desc": false
+          },
+          {
+            "column": "dim_issuer.sector",
+            "desc": false
+          },
+          {
+            "column": "fair_value",
+            "desc": false
+          },
+          {
+            "column": "fv_share",
+            "desc": false
+          },
+          {
+            "column": "fv_cum_share",
+            "desc": false
+          }
+        ]
+      },
+      "model": "portfolio_model"
+    }
+  ],
+  "stage": "final",
+  "figures": [],
+  "transform_contracts": {
+    "dim_issuer": {
+      "status": "satisfied",
+      "transform": "holdings",
+      "checked_at": "2026-08-24T02:25:57.299269+00:00",
+      "checks": 2,
+      "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+      "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"
+    },
+    "fact_holdings": {
+      "status": "satisfied",
+      "transform": "holdings",
+      "checked_at": "2026-08-24T02:25:57.299269+00:00",
+      "checks": 4,
+      "fingerprint": "0b87d0716db4399a88eead932cbf219555d2ab7f180bb14af35db6d083a163f8",
+      "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"
+    }
+  },
+  "semantic_contract": {
+    "portfolio_model": {
+      "slice": {
+        "model": "portfolio_model",
+        "facts": [
+          {
+            "name": "fact_holdings",
+            "table": "fact_holdings",
+            "measures": [
+              "cost",
+              "fair_value",
+              "par",
+              "spread_bps"
+            ],
+            "foreign_keys": {
+              "dim_fund": "fund_id",
+              "dim_issuer": "issuer_id"
+            }
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "dim_issuer",
+            "table": "dim_issuer",
+            "key": "issuer_id",
+            "attributes": [
+              "issuer",
+              "sector"
+            ]
+          }
+        ],
+        "measures": [
+          {
+            "agg": "sum",
+            "column": "fair_value",
+            "description": "Total fair value",
+            "format": "currency0",
+            "kind": "simple",
+            "name": "fair_value"
+          },
+          {
+            "description": "Cumulative % of total (largest first)",
+            "format": "percent",
+            "kind": "running",
+            "name": "fv_cum_share"
+          },
+          {
+            "description": "Rank by fair value (1 = largest)",
+            "kind": "rank",
+            "name": "fv_rank"
+          },
+          {
+            "description": "Fair value as % of total",
+            "format": "percent",
+            "kind": "share",
+            "name": "fv_share"
+          }
+        ],
+        "tables": [
+          {
+            "name": "dim_issuer",
+            "connector": "warehouse",
+            "source": "dim_issuer"
+          },
+          {
+            "name": "fact_holdings",
+            "connector": "warehouse",
+            "source": "fact_holdings"
+          }
+        ]
+      },
+      "sha256": "8a954618e26de012585950b13ecad80c3edaee90bd304e695a28f09acf28bbbd"
+    }
+  }
+}

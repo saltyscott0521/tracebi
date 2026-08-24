@@ -32,7 +32,7 @@ from tracebi._version import get_version
 
 # Closed value domains, imported from where they are enforced so the two
 # can never disagree.
-from tracebi.model.data_model import _AGG_FUNCS, FILTER_OPS
+from tracebi.model.data_model import _AGG_FUNCS, _TIME_GRAINS, FILTER_OPS
 from tracebi.reports.report import (
     CHART_TYPES,
     NAMED_NUMBER_FORMATS,
@@ -560,6 +560,16 @@ def describe(brief: bool = False) -> dict:
                             "concentration table, governed — what report.py did.",
                 },
             ],
+            "time_grains": {
+                "declare": "model.add_time_grain(dim, name, source, grain)",
+                "grains": sorted(_TIME_GRAINS),
+                "note": "Group by a date rolled up to a grain (month/quarter/…) "
+                        "— a governed date_trunc. Declared on a dimension over a "
+                        "date column, referenced as dim.name like any attribute; "
+                        "a model's declared grains show under its dimensions' "
+                        "'derived'. This is 'group by month' without dropping to "
+                        "report.py or pre-baking the bucket in the transform.",
+            },
             "aggregations": sorted(_AGG_FUNCS),
             "aggregations_note": "median and stddev summarize a distribution's "
                                  "shape — a mean hides skew and tails, so use "

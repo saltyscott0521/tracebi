@@ -338,3 +338,54 @@ class TestRankAndRunning:
         slugs = {ls["slug"] for ls in index()}
         assert "rank-and-cumulative" in slugs
         assert get_lesson("rank-and-cumulative") is not None
+
+
+class TestTimeGrain:
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        dates = pd.DataFrame({"d": [1, 2, 3, 4], "order_date": pd.to_datetime(
+            ["2024-01-15", "2024-01-20", "2024-02-10", "2024-03-05"])})
+        fact = pd.DataFrame({"date_id": [1, 2, 3, 4], "rev": [100.0, 200.0, 300.0, 400.0]})
+        m = DataModel("t")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact, "dim_date": dates}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_date", connector="mem", source="dim_date")
+        m.add_dimension("dim_date", table_name="dim_date", key_col="d",
+                        attributes=["order_date"])
+        m.add_time_grain("dim_date", "order_month", source="order_date", grain="month")
+        m.add_fact("f", table_name="fact", measures=["rev"],
+                   foreign_keys={"dim_date": "date_id"})
+        m.add_measure("revenue", column="rev", agg="sum")
+        m.connect()
+        return m
+
+    def _by_month(self, m):
+        from tracebi.model.data_model import QuerySpec
+        return m.execute(QuerySpec.from_dict(
+            {"fact": "f", "measures": ["revenue"],
+             "dimensions": ["dim_date.order_month"]}))
+
+    def test_group_by_month_rolls_up_governed(self):
+        df = self._by_month(self._model()).to_pandas()
+        assert df["revenue"].tolist() == [300.0, 300.0, 400.0]   # Jan/Feb/Mar
+
+    def test_time_grain_is_deterministic(self):
+        m = self._model()
+        assert self._by_month(m).fingerprint() == self._by_month(m).fingerprint()
+
+    def test_bad_grain_is_refused(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="not supported"):
+            m.add_time_grain("dim_date", "x", source="order_date", grain="fortnight")
+
+    def test_grain_is_discoverable_in_model_info(self):
+        info = self._model().info()
+        dim = next(d for d in info["dimensions"] if d["name"] == "dim_date")
+        assert dim["derived"]["order_month"] == {"grain": "month", "of": "order_date"}
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "group-by-time" in slugs
+        assert get_lesson("group-by-time") is not None

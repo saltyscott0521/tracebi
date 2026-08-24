@@ -39,6 +39,10 @@ from tracebi.model.dataset import (
 # lineage warning. Visible in the lineage chain, non-blocking.
 LARGE_LOAD_WARN_ROWS = 100_000
 
+#: Date grains a declared time-grain attribute can roll up to (DuckDB
+#: ``date_trunc`` units). All deterministic — no fingerprint-algo concern.
+_TIME_GRAINS = {"year", "quarter", "month", "week", "day"}
+
 _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique",
               # Distribution aggregations — a mean hides skew and tails, so
               # dispersion/robust-centre reporting used to force report.py.
@@ -318,6 +322,12 @@ class _DimensionDef:
     table_name: str
     key_col: str
     attributes: list[str] = field(default_factory=list)
+    # Derived attributes computed at query time, e.g. a date grain:
+    #   {"order_month": {"kind": "date_trunc", "grain": "month",
+    #                    "source": "order_date"}}
+    # Referenced like any attribute (dim.name); the SQL builder emits the
+    # transform instead of a raw column.
+    derived: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -503,6 +513,47 @@ class DataModel:
             key_col=key_col,
             attributes=list(attributes) if attributes else [],
         )
+        return self
+
+    def add_time_grain(
+        self,
+        dim: str,
+        name: str,
+        source: str,
+        grain: str,
+    ) -> "DataModel":
+        """Declare a derived date-grain attribute on a dimension.
+
+        ``name`` becomes a groupable attribute that rolls ``source`` (a date/
+        timestamp column on the dimension) up to ``grain`` — a governed
+        "group by month" (``date_trunc``) instead of pre-baking every bucket in
+        the transform or dropping to report.py::
+
+            model.add_dimension("dim_date", table_name="dates", key_col="d",
+                                attributes=["order_date"])
+            model.add_time_grain("dim_date", "order_month",
+                                 source="order_date", grain="month")
+            model.query(fact="orders", measures=["revenue"],
+                        dimensions=["dim_date.order_month"])   # governed monthly
+
+        Reference it like any attribute (``dim.name``); it is deterministic, so
+        the result stays reproducible.
+        """
+        if dim not in self._dimensions:
+            raise ValueError(
+                f"Dimension '{dim}' is not registered in model '{self.name}'. "
+                f"Available: {list(self._dimensions)}"
+            )
+        g = grain.lower()
+        if g not in _TIME_GRAINS:
+            raise ValueError(
+                f"Time grain '{grain}' is not supported."
+                f"{self._hint(g, sorted(_TIME_GRAINS))} "
+                f"One of: {', '.join(sorted(_TIME_GRAINS))}."
+            )
+        self._dimensions[dim].derived[name] = {
+            "kind": "date_trunc", "grain": g, "source": str(source),
+        }
         return self
 
     def add_fact(
@@ -1925,14 +1976,30 @@ class DataModel:
                 )
         for dim_name, attribute in parsed_dims:
             dim_def = self._dimensions[dim_name]
+            dim_cols = set(dim_dfs[dim_name].columns)
+            derived = dim_def.derived.get(attribute)
+            if derived is not None:
+                # A declared derived attribute (e.g. a date grain): valid as a
+                # group key; validate its SOURCE column exists instead.
+                src = derived["source"]
+                if src not in dim_cols:
+                    raise ValueError(
+                        f"Derived attribute '{attribute}' on dimension "
+                        f"'{dim_name}' reads source column '{src}', which is not "
+                        f"on table '{dim_def.table_name}'."
+                        f"{self._hint(src, dim_cols)} "
+                        f"Available columns: {sorted(dim_cols)}"
+                    )
+                continue
             declared = dim_def.attributes
             if declared and attribute not in declared and attribute != dim_def.key_col:
                 raise ValueError(
                     f"Attribute '{attribute}' is not declared on dimension "
-                    f"'{dim_name}'.{self._hint(attribute, declared)} "
+                    f"'{dim_name}'.{self._hint(attribute, declared + list(dim_def.derived))} "
                     f"Declared attributes: {declared}"
+                    + (f"; derived: {sorted(dim_def.derived)}"
+                       if dim_def.derived else "")
                 )
-            dim_cols = set(dim_dfs[dim_name].columns)
             if attribute not in dim_cols:
                 raise ValueError(
                     f"Attribute '{attribute}' not found on dimension table "
@@ -2225,8 +2292,16 @@ class DataModel:
             select_cols_sql: list[str] = []
             for dim_name, attribute in parsed_dims:
                 alias = f'"{dim_name}.{attribute}"'
-                expr = f'dim_{dim_name}."{attribute}" AS {alias}'
-                select_cols_sql.append(expr)
+                derived = self._dimensions[dim_name].derived.get(attribute)
+                if derived and derived["kind"] == "date_trunc":
+                    # A declared date grain: group by date_trunc(grain, source).
+                    # grain is validated against a closed set at declaration, so
+                    # it is never attacker/free text here.
+                    col_sql = (f"date_trunc('{derived['grain']}', "
+                               f'dim_{dim_name}."{derived["source"]}")')
+                else:
+                    col_sql = f'dim_{dim_name}."{attribute}"'
+                select_cols_sql.append(f"{col_sql} AS {alias}")
                 group_cols_sql.append(alias)
 
             if aggregate:
@@ -2349,6 +2424,12 @@ class DataModel:
                     "table": d.table_name,
                     "key": d.key_col,
                     "attributes": list(d.attributes),
+                    # Derived groupable attributes (e.g. date grains): reference
+                    # as dim.name like any attribute. Present only when declared.
+                    **({"derived": {
+                        n: {"grain": v.get("grain"), "of": v.get("source")}
+                        for n, v in d.derived.items()}}
+                       if d.derived else {}),
                 }
                 for d in self._dimensions.values()
             ],
