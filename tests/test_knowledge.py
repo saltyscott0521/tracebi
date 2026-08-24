@@ -389,3 +389,160 @@ class TestTimeGrain:
         slugs = {ls["slug"] for ls in index()}
         assert "group-by-time" in slugs
         assert get_lesson("group-by-time") is not None
+
+
+class TestSemiAdditive:
+    """period_end (semi-additive) measures: sum a stock across dimensions but
+    take the latest snapshot over time — never the AUM double-count."""
+
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        # Two funds, two month-end snapshots each. balance is a point-in-time
+        # stock: snapshot 1 (Jan 31), snapshot 2 (Feb 29).
+        fact = pd.DataFrame({
+            "holding_id": range(1, 9),
+            "fund_id": [1, 1, 2, 2, 1, 1, 2, 2],
+            "as_of_id": [1, 1, 1, 1, 2, 2, 2, 2],
+            "balance": [100.0, 50.0, 200.0, 20.0, 120.0, 60.0, 190.0, 30.0],
+        })
+        dim_fund = pd.DataFrame({"fund_id": [1, 2], "fund": ["Alpha", "Beta"]})
+        dim_date = pd.DataFrame({
+            "as_of_id": [1, 2],
+            "as_of_date": pd.to_datetime(["2024-01-31", "2024-02-29"]),
+            "month": ["2024-01", "2024-02"],
+        })
+        m = DataModel("sa")
+        m.add_connector(MemoryConnector("mem", tables={
+            "fact": fact, "dim_fund": dim_fund, "dim_date": dim_date}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_fund", connector="mem", source="dim_fund")
+        m.add_table("dim_date", connector="mem", source="dim_date")
+        m.add_dimension("dim_fund", table_name="dim_fund", key_col="fund_id",
+                        attributes=["fund"])
+        m.add_dimension("dim_date", table_name="dim_date", key_col="as_of_id",
+                        attributes=["as_of_date", "month"])
+        m.add_fact("fact", table_name="fact", measures=["balance"],
+                   foreign_keys={"dim_fund": "fund_id", "dim_date": "as_of_id"})
+        m.add_measure("aum", period_end=("balance", "dim_date.as_of_date"),
+                      description="Period-end AUM")
+        m.connect()
+        return m
+
+    def _q(self, m, **kw):
+        return m.query(fact="fact", measures=["aum"], **kw).to_pandas()
+
+    def test_by_dimension_takes_each_group_latest_snapshot(self):
+        # Latest snapshot is Feb 29: Alpha 120+60=180, Beta 190+30=220.
+        df = self._q(self._model(), dimensions=["dim_fund.fund"])
+        got = dict(zip(df["dim_fund.fund"], df["aum"]))
+        assert got == {"Alpha": 180.0, "Beta": 220.0}
+
+    def test_by_time_grain_is_a_real_period_end_series_not_a_sum(self):
+        # Each month takes its own latest snapshot — NOT Jan+Feb summed.
+        df = self._q(self._model(), dimensions=["dim_date.month"])
+        got = dict(zip(df["dim_date.month"], df["aum"]))
+        assert got == {"2024-01": 370.0, "2024-02": 400.0}
+
+    def test_total_is_the_latest_snapshot_not_every_snapshot_summed(self):
+        # The trap: naive sum(balance) = 770 (both snapshots). period_end = 400.
+        df = self._q(self._model())
+        assert df["aum"].iloc[0] == 400.0
+
+    def test_a_filter_applies_before_the_period_end(self):
+        df = self._q(self._model(), filters={"dim_fund.fund": "Alpha"})
+        assert df["aum"].iloc[0] == 180.0
+
+    def test_period_end_is_deterministic(self):
+        m = self._model()
+        a = m.query(fact="fact", measures=["aum"], dimensions=["dim_fund.fund"])
+        b = m.query(fact="fact", measures=["aum"], dimensions=["dim_fund.fund"])
+        assert a.fingerprint() == b.fingerprint()
+
+    def test_a_ratio_can_reference_a_period_end_measure(self):
+        m = self._model()
+        m.add_measure("cost_basis", column="balance", agg="sum",
+                      allow_additive=True)   # stand-in denominator
+        m.add_measure("aum_over_base", ratio=("aum", "cost_basis"))
+        df = m.query(fact="fact", measures=["aum", "cost_basis", "aum_over_base"],
+                     dimensions=["dim_fund.fund"]).to_pandas()
+        # Alpha: aum 180 / base 330 (100+50+120+60); ratio computed on totals.
+        row = df[df["dim_fund.fund"] == "Alpha"].iloc[0]
+        assert row["aum_over_base"] == row["aum"] / row["cost_basis"]
+
+    def test_period_end_takes_no_agg(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="take no agg"):
+            m.add_measure("bad", period_end=("balance", "dim_date.as_of_date"),
+                          agg="sum")
+
+    def test_period_end_date_must_be_a_dim_attribute(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="dim_name.attribute"):
+            m.add_measure("bad", period_end=("balance", "as_of_date"))
+
+    def test_aggregate_false_is_refused(self):
+        import pytest
+        from tracebi.model.data_model import QuerySpec
+        m = self._model()
+        with pytest.raises(ValueError, match="aggregate=False"):
+            m.execute(QuerySpec.from_dict(
+                {"fact": "fact", "measures": ["aum"], "aggregate": False}))
+
+    def test_period_end_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
+        assert "period_end" in kinds
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "semi-additive" in slugs
+        assert get_lesson("semi-additive") is not None
+
+
+class TestStockSumGuard:
+    """Summing a stock-named measure double-counts across snapshots — refused
+    at declaration, with a genuine-flow escape."""
+
+    def _model(self):
+        from tracebi import DataModel, MemoryConnector
+        import pandas as pd
+        m = DataModel("g")
+        m.add_connector(MemoryConnector("mem", tables={
+            "fact": pd.DataFrame({"k": [1], "balance": [1.0]})}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_fact("fact", table_name="fact", measures=["balance"])
+        return m
+
+    def test_refuses_a_plain_sum_of_a_stock(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="point-in-time stock"):
+            m.add_measure("aum", column="balance", agg="sum")
+
+    def test_the_refusal_points_at_period_end(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="period_end"):
+            m.add_measure("total_nav", column="balance", agg="sum")
+
+    def test_mean_of_a_stock_is_allowed(self):
+        # Average balance is a legitimate metric — only sum double-counts.
+        self._model().add_measure("avg_balance", column="balance", agg="mean")
+
+    def test_allow_additive_is_the_escape_for_a_genuine_flow(self):
+        self._model().add_measure("balance_change", column="balance", agg="sum",
+                                  allow_additive=True)
+
+    def test_a_non_stock_sum_is_untouched(self):
+        self._model().add_measure("headcountish", column="balance", agg="sum",
+                                  allow_additive=True)
+        # a name with no stock token sums freely
+        self._model().add_measure("revenue", column="balance", agg="sum")
+
+    def test_guard_is_documented_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        text = str(describe()["semantic_model"]["constraints"])
+        assert "stock" in text and "allow_additive" in text

@@ -55,6 +55,13 @@ _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique",
 #: aggregation guard in add_measure and `tracebi knowledge ratio-of-totals`).
 _RATE_TOKEN = re.compile(r"(?:^|_)(pct|percent|ratio|rate|bps|yield|apr|apy)(?:_|$)")
 
+#: Name tokens that mark a measure as a point-in-time STOCK (a balance, not a
+#: flow): summing one across snapshots double-counts it (Jan AUM + Feb AUM is
+#: not "AUM"). Guarded in add_measure; the fix is a period_end (semi-additive)
+#: measure. See `tracebi knowledge semi-additive`.
+_STOCK_TOKEN = re.compile(
+    r"(?:^|_)(aum|nav|balance|headcount|inventory|outstanding)(?:_|$)")
+
 # Filter operators. A closed set rather than free SQL: free SQL cannot be
 # validated and is an injection surface. Every operator below is parameterised
 # in the DuckDB path.
@@ -140,16 +147,22 @@ class MeasureDef:
           add_measure("rev_rank", rank="revenue")
           add_measure("cum_share", running="revenue_share", format="percent")
 
-    These cover the large majority of real usage, run on both
-    engines, and need no expression parser. A richer grammar can arrive
-    later as sugar that compiles down to these same structures.
+    * **period_end** — a semi-additive (point-in-time) measure: a balance
+      summed across non-time dimensions but taken at the LATEST snapshot over
+      time, never summed across snapshots (the AUM/NAV double-count)::
+
+          add_measure("aum", period_end=("balance", "dim_date.as_of_date"))
+
+    These cover the large majority of real usage and need no expression
+    parser. A richer grammar can arrive later as sugar that compiles down to
+    these same structures.
 
     Measures are **data, never callables.** A lambda cannot be serialized,
     diffed, reviewed as data, validated before execution, or sent over the
     wire — accepting one would forfeit reproducibility at the root.
     """
     name: str
-    kind: str                        # simple|expression|ratio|share|rank|running
+    kind: str                        # simple|expression|ratio|share|rank|running|period_end
     agg: Optional[str] = None
     column: Optional[str] = None
     expr: Optional[str] = None
@@ -157,6 +170,7 @@ class MeasureDef:
     share: Optional[str] = None                # measure name: value / total(value)
     rank: Optional[str] = None                 # measure name: 1..N by it, desc
     running: Optional[str] = None              # measure name: cumsum by it, desc
+    period_end: Optional[tuple[str, str]] = None  # (value_column, date_dim_attr)
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
 
@@ -168,6 +182,8 @@ class MeasureDef:
                 d[key] = val
         if self.ratio:
             d["ratio"] = list(self.ratio)
+        if self.period_end:
+            d["period_end"] = list(self.period_end)
         return d
 
 
@@ -343,9 +359,11 @@ class _Resolved:
     """What ``_resolve_measures`` produces — each measure kind in its own bucket,
     applied at the right stage of ``execute()``. ``agg_map`` runs in the engine
     (GROUP BY); the rest run post-aggregation in this order: ``derived`` (row
-    expressions, materialised pre-agg), ``ratios``, ``shares``, then the window
-    measures ``ranks``/``runnings``. A named result rather than a growing tuple,
-    so a new measure kind adds a field, never re-arities every call site."""
+    expressions, materialised pre-agg), ``period_ends`` (semi-additive rollups,
+    which run their own internal aggregation so later kinds can reference them),
+    ``ratios``, ``shares``, then the window measures ``ranks``/``runnings``. A
+    named result rather than a growing tuple, so a new measure kind adds a
+    field, never re-arities every call site."""
 
     agg_map: "dict[str, str]"                    # {output: agg_func}
     derived: "dict[str, str]"                    # {output: row_expression}
@@ -353,6 +371,7 @@ class _Resolved:
     shares: "dict[str, str]"                     # {output: base measure}
     ranks: "dict[str, str]"                      # {output: base measure}
     runnings: "dict[str, str]"                   # {output: base measure}
+    period_ends: "dict[str, tuple[str, str]]"    # {output: (value_col, date_attr)}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -588,9 +607,11 @@ class DataModel:
         share: Optional[str] = None,
         rank: Optional[str] = None,
         running: Optional[str] = None,
+        period_end: Optional[tuple[str, str]] = None,
         description: str = "",
         format: Optional[str] = None,
         allow_rate_agg: bool = False,
+        allow_additive: bool = False,
     ) -> "DataModel":
         """
         Declare a named measure on the model.
@@ -608,11 +629,19 @@ class DataModel:
                         measures=["revenue", "margin_pct"],
                         dimensions=["dim_customer.region"])
 
-        Exactly one of ``column``, ``expr``, ``ratio``, ``share``, ``rank``, or
-        ``running`` must be given. ``agg`` is required for the first two. Ratios and shares are
+        Exactly one of ``column``, ``expr``, ``ratio``, ``share``, ``rank``,
+        ``running``, or ``period_end`` must be given. ``agg`` is required for
+        the first two. Ratios and shares are
         computed after aggregation — a ratio is a ratio of totals (not a mean of
         per-row ratios), a share is a value over the total of the measure it
         names (a governed ``%`` of total).
+
+        ``period_end=(value_column, "dim_date.attr")`` declares a semi-additive
+        (point-in-time) measure — a balance summed across non-time dimensions
+        but taken at the LATEST snapshot date within each query group, so it is
+        never summed across snapshots (Jan AUM + Feb AUM is not "AUM"). Assumes
+        entities snapshot on common dates (month-end); see
+        ``tracebi knowledge semi-additive``.
 
         Aggregating a rate-named measure (``*_pct``, ``*_bps``, ``*_yield``,
         anything "weighted") with ``sum``/``mean``/``avg`` is REFUSED — you do
@@ -620,6 +649,12 @@ class DataModel:
         overweights small rows); declare a ratio measure instead. ``min``/
         ``max`` stay fine. Pass ``allow_rate_agg=True`` in the rare case an
         additive aggregation of a rate is genuinely correct.
+
+        Summing a stock-named measure (``aum``, ``nav``, ``balance``,
+        ``headcount``, ``inventory``) is REFUSED for the same reason — a
+        point-in-time balance double-counts when summed across snapshots.
+        Declare a ``period_end`` measure instead, or pass ``allow_additive=True``
+        if the column is genuinely a flow (a delta, not a level).
 
         Everything here is declarative data — callables are rejected, since
         a lambda cannot be serialized, diffed, reviewed, or validated
@@ -636,16 +671,19 @@ class DataModel:
 
         given = [k for k, v in (("column", column), ("expr", expr),
                                 ("ratio", ratio), ("share", share),
-                                ("rank", rank), ("running", running))
+                                ("rank", rank), ("running", running),
+                                ("period_end", period_end))
                  if v is not None]
         if len(given) != 1:
             raise ValueError(
                 f"Measure '{name}' must specify exactly one of column=, expr=, "
-                f"ratio=, share=, rank=, or running=, got {given or 'none'}."
+                f"ratio=, share=, rank=, running=, or period_end=, got "
+                f"{given or 'none'}."
             )
 
         kind = {"column": "simple", "expr": "expression", "ratio": "ratio",
-                "share": "share", "rank": "rank", "running": "running"}[given[0]]
+                "share": "share", "rank": "rank", "running": "running",
+                "period_end": "period_end"}[given[0]]
 
         # share/rank/running are all post-aggregation window measures over a
         # named base measure — none takes an agg.
@@ -671,6 +709,26 @@ class DataModel:
                     f"is computed from the aggregated numerator and denominator."
                 )
             ratio = (str(ratio[0]), str(ratio[1]))
+        elif kind == "period_end":
+            if agg is not None:
+                raise ValueError(
+                    f"Measure '{name}': period_end measures take no agg — the "
+                    f"balance is summed across non-time dimensions and taken at "
+                    f"the latest snapshot over time."
+                )
+            if not (isinstance(period_end, (tuple, list)) and len(period_end) == 2):
+                raise ValueError(
+                    f"Measure '{name}': period_end must be a (value_column, "
+                    f"'dim_name.attribute') pair, got {period_end!r}."
+                )
+            value_col, date_ref = str(period_end[0]), str(period_end[1])
+            if "." not in date_ref:
+                raise ValueError(
+                    f"Measure '{name}': period_end's date must be a dimension "
+                    f"attribute in 'dim_name.attribute' form (the snapshot date "
+                    f"axis), got {date_ref!r}."
+                )
+            period_end = (value_col, date_ref)
         elif kind in ("simple", "expression"):    # these require an agg
             if agg is None:
                 raise ValueError(
@@ -714,6 +772,26 @@ class DataModel:
                     f"`weighted-vs-plain-mean`. If this aggregation genuinely is "
                     f"correct here, pass allow_rate_agg=True."
                 )
+            # The stock (semi-additive) guard — the rate guard's twin for a
+            # different silent-wrong number. A stock-named measure (aum, nav,
+            # balance, headcount, inventory) is a point-in-time LEVEL; summing
+            # it across snapshots double-counts (Jan AUM + Feb AUM is not
+            # "AUM"). Summing across NON-time dimensions is fine — but that is
+            # exactly what period_end does, correctly, so a true stock never
+            # wants a plain sum. mean/min/max of a level are legitimate (average
+            # / peak balance), so guard only sum. Escape for a genuine flow.
+            if (not allow_additive and agg == "sum"
+                    and _STOCK_TOKEN.search(name.lower())):
+                raise ValueError(
+                    f"Measure '{name}': agg='sum' sums a point-in-time stock "
+                    f"across snapshots — a double-count (Jan AUM + Feb AUM is "
+                    f"not 'AUM'). Declare a semi-additive measure instead: "
+                    f"period_end=('{column or name}', 'dim_date.<date>'), which "
+                    f"sums across non-time dimensions but takes the latest "
+                    f"snapshot over time. See `tracebi knowledge semi-additive`. "
+                    f"If this column is genuinely a flow (a delta, not a level), "
+                    f"pass allow_additive=True."
+                )
 
         if kind == "expression":
             if not _EXPR_ALLOWED.match(expr or ""):
@@ -734,6 +812,7 @@ class DataModel:
             name=name, kind=kind, agg=agg, column=column, expr=expr,
             ratio=tuple(ratio) if ratio else None, share=share,
             rank=rank, running=running,
+            period_end=tuple(period_end) if period_end else None,
             description=description, format=format,
         )
         return self
@@ -1055,6 +1134,16 @@ class DataModel:
                                      resolved.ratios)
         shares, ranks, runnings = (resolved.shares, resolved.ranks,
                                    resolved.runnings)
+        period_ends = resolved.period_ends
+
+        # A semi-additive rollup is an aggregation (latest-snapshot-then-sum);
+        # there is no per-row "period end", so refuse it in the raw-row mode.
+        if period_ends and not aggregate:
+            raise ValueError(
+                f"period_end measure(s) {sorted(period_ends)} aggregate to a "
+                f"latest-snapshot total, but this query has aggregate=False. "
+                f"Query them with aggregate=True (the default)."
+            )
 
         # ── Parse dimension references ─────────────────────────
         parsed_dims: list[tuple[str, str]] = []
@@ -1121,9 +1210,21 @@ class DataModel:
         )
         pushed = set(pushdown) if load_pushed_down else set()
 
-        # ── Load dimensions: those grouped by AND those filtered on ───
+        # ── Load dimensions: those grouped by, those filtered on, AND the
+        # snapshot-date dimension each period_end measure names ───
         needed_dims = {dim_name for dim_name, _ in parsed_dims}
         needed_dims |= {p.dim_name for p in predicates if p.is_dim}
+        period_end_dims: dict[str, tuple[str, str]] = {}   # {name: (dim, attr)}
+        for pname, (value_col, date_ref) in period_ends.items():
+            date_dim, date_attr = date_ref.split(".", 1)
+            if date_dim not in self._dimensions:
+                raise ValueError(
+                    f"period_end measure '{pname}': dimension '{date_dim}' is "
+                    f"not registered in model '{self.name}'. Available: "
+                    f"{list(self._dimensions.keys())}"
+                )
+            period_end_dims[pname] = (date_dim, date_attr)
+            needed_dims.add(date_dim)
         dim_dfs: dict[str, pd.DataFrame] = {}
         for dim_name in needed_dims:
             dim_def = self._dimensions[dim_name]
@@ -1135,6 +1236,24 @@ class DataModel:
         self._validate_query_columns(
             fact_def, fact_df, dim_dfs, parsed_dims, measures, {}
         )
+        # period_end measures name a fact value column and a snapshot-date
+        # dimension attribute — both outside `measures`/`parsed_dims`, so
+        # validate them here rather than letting a typo surface as a raw engine
+        # error deep in the internal aggregation.
+        for pname, (value_col, date_ref) in period_ends.items():
+            if value_col not in fact_df.columns:
+                raise ValueError(
+                    f"period_end measure '{pname}': value column '{value_col}' "
+                    f"is not a column of fact '{fact_def.table_name}'. "
+                    f"Columns: {sorted(fact_df.columns)}."
+                )
+            date_dim, date_attr = period_end_dims[pname]
+            if date_attr not in dim_dfs[date_dim].columns:
+                raise ValueError(
+                    f"period_end measure '{pname}': '{date_attr}' is not a "
+                    f"column of dimension '{date_dim}'. Columns: "
+                    f"{sorted(dim_dfs[date_dim].columns)}."
+                )
         self._validate_dim_predicates(predicates, dim_dfs)
         # Neither must a non-unique dimension key. Every joined dimension is
         # checked, including ones joined only to satisfy a filter.
@@ -1175,6 +1294,25 @@ class DataModel:
         )
         engine = "duckdb"
         engine_version = duckdb.__version__
+
+        # Semi-additive (period_end) measures run their own internal
+        # aggregation over (query dims + snapshot date), then reduce to each
+        # group's latest snapshot — computed first so a ratio/share/rank can
+        # reference a period_end measure like any other aggregated column.
+        if period_ends:
+            result_df = self._apply_period_ends(
+                result_df, period_ends, period_end_dims,
+                fact_df=fact_df, fact_def=fact_def, dim_dfs=dim_dfs,
+                parsed_dims=parsed_dims, predicates=predicates,
+            )
+            lineage.append(LineageNode(
+                operation="assign",
+                description=("Semi-additive measure(s): " + ", ".join(
+                    f"{k} = period_end({v[0]} over {v[1]})"
+                    for k, v in period_ends.items())),
+                metadata={"period_ends": {k: list(v)
+                                          for k, v in period_ends.items()}},
+            ))
 
         # Ratios divide the aggregated totals, so they must run after the
         # engine — sum(margin)/sum(revenue), not the mean of row ratios.
@@ -1380,6 +1518,7 @@ class DataModel:
         shares: dict[str, str] = {}            # {output: base measure name}
         ranks: dict[str, str] = {}
         runnings: dict[str, str] = {}
+        period_ends: dict[str, tuple[str, str]] = {}
 
         if isinstance(measures, dict):
             if not measures:
@@ -1434,7 +1573,8 @@ class DataModel:
                             f"it (e.g. {{{ref!r}: 'sum'}}). Measures here: "
                             f"{sorted(produced - {out_col})}."
                         )
-            return _Resolved(agg_map, derived, ratios, shares, ranks, runnings)
+            return _Resolved(agg_map, derived, ratios, shares, ranks,
+                             runnings, period_ends)
 
         names = list(measures or [])
         if not names:
@@ -1442,7 +1582,8 @@ class DataModel:
 
         def _expand(mname: str, seen: tuple) -> None:
             if (mname in agg_map or mname in ratios or mname in shares
-                    or mname in ranks or mname in runnings):
+                    or mname in ranks or mname in runnings
+                    or mname in period_ends):
                 return
             if mname not in self._measures:
                 raise ValueError(
@@ -1474,6 +1615,10 @@ class DataModel:
             elif m.kind == "running":
                 _expand(m.running, seen + (mname,))
                 runnings[m.name] = m.running
+            elif m.kind == "period_end":
+                # value_col is a raw fact column, date is a dim attribute —
+                # neither is another measure, so nothing to recurse into.
+                period_ends[m.name] = m.period_end
             else:  # ratio
                 num, den = m.ratio
                 _expand(num, seen + (mname,))
@@ -1482,7 +1627,8 @@ class DataModel:
 
         for n in names:
             _expand(n, ())
-        return _Resolved(agg_map, derived, ratios, shares, ranks, runnings)
+        return _Resolved(agg_map, derived, ratios, shares, ranks,
+                         runnings, period_ends)
 
     def _apply_derived(
         self,
@@ -1604,6 +1750,66 @@ class DataModel:
                 continue
             order = _ordered_index(base)
             out[name] = out.loc[order, base].cumsum().reindex(out.index)
+        return out
+
+    def _apply_period_ends(
+        self,
+        result_df: pd.DataFrame,
+        period_ends: dict[str, tuple[str, str]],
+        period_end_dims: dict[str, tuple[str, str]],
+        *,
+        fact_df: pd.DataFrame,
+        fact_def: "_FactDef",
+        dim_dfs: dict[str, pd.DataFrame],
+        parsed_dims: list[tuple[str, str]],
+        predicates: list["_Predicate"],
+    ) -> pd.DataFrame:
+        """Compute semi-additive (period_end) measures.
+
+        A stock — AUM, NAV, headcount — is additive across ordinary dimensions
+        but NOT across time: Jan AUM + Feb AUM is not "AUM". For each such
+        measure this runs an internal aggregation grouped by the query's
+        dimensions PLUS the snapshot date (reusing the engine, so the same
+        filters and joins apply), then in pandas keeps each group's LATEST
+        snapshot rows and sums the balance across them. So the balance is summed
+        across non-time dimensions and taken at period-end over time.
+
+        With no dimensions the group is the whole result — one global latest
+        snapshot. With a time grain among the dimensions (``dim_date.month``),
+        each period takes its own latest snapshot. Deterministic: max-date
+        selection and a sum are both order-independent, so no ordering
+        machinery and no fingerprint-algorithm concern.
+
+        Assumes entities snapshot on common dates (the month-end convention).
+        Where entities carry different latest dates, a per-entity variant is
+        future work; documented on :meth:`add_measure`.
+        """
+        out = result_df.copy()
+        group_aliases = [f"{d}.{a}" for d, a in parsed_dims]
+        for name, (value_col, _date_ref) in period_ends.items():
+            date_dim, date_attr = period_end_dims[name]
+            date_alias = f"{date_dim}.{date_attr}"
+            # Group by (query dims + the raw snapshot date), summing the
+            # balance. The date is added only if it is not already grouped on.
+            inner_dims = list(parsed_dims)
+            if (date_dim, date_attr) not in inner_dims:
+                inner_dims.append((date_dim, date_attr))
+            snap = self._execute_duckdb(
+                fact_df=fact_df, fact_def=fact_def, dim_dfs=dim_dfs,
+                parsed_dims=inner_dims, measures={value_col: "sum"},
+                predicates=predicates, aggregate=True, lineage=[],
+            )
+            if group_aliases:
+                grp = snap.groupby(group_aliases, dropna=False)
+                latest = grp[date_alias].transform("max")
+                period = snap[snap[date_alias] == latest]
+                reduced = (period.groupby(group_aliases, dropna=False)[value_col]
+                           .sum().reset_index()
+                           .rename(columns={value_col: name}))
+                out = out.merge(reduced, on=group_aliases, how="left")
+            else:
+                latest = snap[date_alias].max()
+                out[name] = snap.loc[snap[date_alias] == latest, value_col].sum()
         return out
 
     def _parse_filters(
@@ -2241,6 +2447,7 @@ class DataModel:
             + list(r.shares)
             + list(r.ranks)
             + list(r.runnings)
+            + list(r.period_ends)
         )
 
     @staticmethod
@@ -2363,9 +2570,19 @@ class DataModel:
                 where_clauses.append(clause)
                 params.extend(vals)
 
+            # A dimensionless aggregate with no engine measures (its only
+            # measures are semi-additive period_ends, filled in afterwards)
+            # would emit an empty SELECT list. Emit a single-row skeleton the
+            # post-passes attach to, then drop the placeholder column.
+            skeleton = aggregate and not select_cols_sql
+            if skeleton:
+                select_cols_sql = ["1 AS __skeleton__"]
+
             sql = "SELECT " + ", ".join(select_cols_sql) + f" FROM {from_clause}"
             if where_clauses:
                 sql += " WHERE " + " AND ".join(where_clauses)
+            if skeleton:
+                sql += " LIMIT 1"
             if aggregate and group_cols_sql:
                 sql += " GROUP BY " + ", ".join(group_cols_sql)
                 # Deterministic row order. Without it DuckDB returns groups in
@@ -2374,7 +2591,10 @@ class DataModel:
                 # and manifest fingerprints were not re-verifiable.
                 sql += " ORDER BY " + ", ".join(group_cols_sql)
 
-            return con.execute(sql, params).df()
+            out = con.execute(sql, params).df()
+            if skeleton:
+                out = out.drop(columns=["__skeleton__"])
+            return out
         finally:
             con.close()
 

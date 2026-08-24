@@ -2138,7 +2138,8 @@ class TestCapabilitySurface:
         assert sm["filter_operators"] == list(FILTER_OPS)
         assert set(sm["aggregations"]) == _AGG_FUNCS
         assert {k["kind"] for k in sm["measure_kinds"]} == {
-            "simple", "expression", "ratio", "share", "rank", "running"
+            "simple", "expression", "ratio", "share", "rank", "running",
+            "period_end"
         }
 
     def test_discovery_conventions_are_described(self):

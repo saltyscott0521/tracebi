@@ -559,6 +559,21 @@ def describe(brief: bool = False) -> dict:
                             "total. rank + share + running(share) is the whole "
                             "concentration table, governed — what report.py did.",
                 },
+                {
+                    "kind": "period_end",
+                    "args": ["period_end"],
+                    "example": "add_measure('aum', period_end=('balance', "
+                               "'dim_date.as_of_date'))",
+                    "note": "semi-additive (point-in-time) measure: a balance — "
+                            "AUM/NAV/headcount/inventory — summed across non-time "
+                            "dimensions but taken at the LATEST snapshot over "
+                            "time, never summed across snapshots (Jan AUM + Feb "
+                            "AUM is not AUM). Group by a time grain to get the "
+                            "period-end series. Assumes entities snapshot on "
+                            "common dates. A plain sum of a stock-named measure "
+                            "is refused (pass allow_additive=True for a genuine "
+                            "flow). See the semi-additive lesson.",
+                },
             ],
             "time_grains": {
                 "declare": "model.add_time_grain(dim, name, source, grain)",
@@ -622,6 +637,11 @@ def describe(brief: bool = False) -> dict:
                 "ratio measure instead (ratio of totals); see the ratio-of-totals "
                 "lesson. Override with allow_rate_agg=True only when it is truly "
                 "correct.",
+                "Summing a stock-named measure (aum, nav, balance, headcount, "
+                "inventory) with agg='sum' is REFUSED — a point-in-time balance "
+                "double-counts when summed across snapshots. Declare a period_end "
+                "(semi-additive) measure instead; see the semi-additive lesson. "
+                "Override with allow_additive=True only for a genuine flow.",
             ],
         },
         "number_formats": dict(NAMED_NUMBER_FORMATS),
