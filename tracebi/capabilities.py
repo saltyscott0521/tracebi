@@ -529,6 +529,17 @@ def describe(brief: bool = False) -> dict:
                     "example": "add_measure('margin_pct', ratio=('margin', 'revenue'))",
                     "note": "Divides aggregated totals, not per-row values.",
                 },
+                {
+                    "kind": "share",
+                    "args": ["share"],
+                    "example": "add_measure('revenue_share', share='revenue', "
+                               "format='percent')",
+                    "note": "% of total — each row's value over the total of the "
+                            "named measure across the WHOLE result (before any "
+                            "limit), computed governed at query time. This is the "
+                            "share-of-total a report.py used to compute "
+                            "ungoverned; a governed query keeps its receipt.",
+                },
             ],
             "aggregations": sorted(_AGG_FUNCS),
             "aggregations_note": "median and stddev summarize a distribution's "

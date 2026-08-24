@@ -108,7 +108,7 @@ class MeasureDef:
     what makes the model a shared vocabulary rather than a pile of ad-hoc
     groupbys.
 
-    Exactly three kinds, deliberately closed:
+    Exactly four kinds, deliberately closed:
 
     * **simple** — an aggregation of one column::
 
@@ -124,7 +124,12 @@ class MeasureDef:
 
           add_measure("margin_pct", ratio=("gross_margin", "revenue"))
 
-    These three cover the large majority of real usage, run on both
+    * **share** — a value over the total of the measure it names, computed
+      after aggregation — a governed "% of total"::
+
+          add_measure("revenue_share", share="revenue", format="percent")
+
+    These cover the large majority of real usage, run on both
     engines, and need no expression parser. A richer grammar can arrive
     later as sugar that compiles down to these same structures.
 
@@ -133,11 +138,12 @@ class MeasureDef:
     wire — accepting one would forfeit reproducibility at the root.
     """
     name: str
-    kind: str                                  # simple | expression | ratio
+    kind: str                                  # simple | expression | ratio | share
     agg: Optional[str] = None
     column: Optional[str] = None
     expr: Optional[str] = None
     ratio: Optional[tuple[str, str]] = None    # (numerator, denominator)
+    share: Optional[str] = None                # measure name: value / total(value)
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
 
@@ -502,6 +508,7 @@ class DataModel:
         agg: Optional[str] = None,
         expr: Optional[str] = None,
         ratio: Optional[tuple[str, str]] = None,
+        share: Optional[str] = None,
         description: str = "",
         format: Optional[str] = None,
         allow_rate_agg: bool = False,
@@ -522,10 +529,11 @@ class DataModel:
                         measures=["revenue", "margin_pct"],
                         dimensions=["dim_customer.region"])
 
-        Exactly one of ``column``, ``expr``, or ``ratio`` must be given.
-        ``agg`` is required for the first two. Ratios are computed after
-        aggregation, so they are a ratio of totals rather than a mean of
-        per-row ratios.
+        Exactly one of ``column``, ``expr``, ``ratio``, or ``share`` must be
+        given. ``agg`` is required for the first two. Ratios and shares are
+        computed after aggregation — a ratio is a ratio of totals (not a mean of
+        per-row ratios), a share is a value over the total of the measure it
+        names (a governed ``%`` of total).
 
         Aggregating a rate-named measure (``*_pct``, ``*_bps``, ``*_yield``,
         anything "weighted") with ``sum``/``mean``/``avg`` is REFUSED — you do
@@ -547,15 +555,29 @@ class DataModel:
                     f"a lambda."
                 )
 
-        given = [k for k, v in (("column", column), ("expr", expr), ("ratio", ratio))
+        given = [k for k, v in (("column", column), ("expr", expr),
+                                ("ratio", ratio), ("share", share))
                  if v is not None]
         if len(given) != 1:
             raise ValueError(
                 f"Measure '{name}' must specify exactly one of column=, expr=, "
-                f"or ratio=, got {given or 'none'}."
+                f"ratio=, or share=, got {given or 'none'}."
             )
 
-        kind = {"column": "simple", "expr": "expression", "ratio": "ratio"}[given[0]]
+        kind = {"column": "simple", "expr": "expression", "ratio": "ratio",
+                "share": "share"}[given[0]]
+
+        if kind == "share":
+            # value / total(value) over the result — a governed "% of total",
+            # computed post-aggregation like a ratio. Takes no agg; names the
+            # measure it is a share of.
+            if agg is not None:
+                raise ValueError(
+                    f"Measure '{name}': share measures take no agg — a share is "
+                    f"the value divided by the total of the measure it names, "
+                    f"computed after aggregation."
+                )
+            share = str(share)
 
         if kind == "ratio":
             if not (isinstance(ratio, (tuple, list)) and len(ratio) == 2):
@@ -569,7 +591,7 @@ class DataModel:
                     f"is computed from the aggregated numerator and denominator."
                 )
             ratio = (str(ratio[0]), str(ratio[1]))
-        else:
+        elif kind != "share":              # simple / expression: agg required
             if agg is None:
                 raise ValueError(
                     f"Measure '{name}' needs an agg (one of "
@@ -630,7 +652,7 @@ class DataModel:
 
         self._measures[name] = MeasureDef(
             name=name, kind=kind, agg=agg, column=column, expr=expr,
-            ratio=tuple(ratio) if ratio else None,
+            ratio=tuple(ratio) if ratio else None, share=share,
             description=description, format=format,
         )
         return self
@@ -947,7 +969,8 @@ class DataModel:
         fact_def = self._facts[fact]
         dimensions = list(dimensions or [])
         filters = dict(filters or {})
-        measures, derived, ratios = self._resolve_measures(measures, fact_def)
+        measures, derived, ratios, shares = self._resolve_measures(
+            measures, fact_def)
 
         # ── Parse dimension references ─────────────────────────
         parsed_dims: list[tuple[str, str]] = []
@@ -1082,6 +1105,20 @@ class DataModel:
                 metadata={"ratios": {k: list(v) for k, v in ratios.items()}},
             ))
 
+        # Shares (% of total): each value over the total of its base measure,
+        # computed on the FULL aggregated result (before HAVING/limit) so it is
+        # a true share of the whole. Order-independent, so it needs none of the
+        # ordering machinery rank/running would — the reason it ships first.
+        if shares:
+            result_df = self._apply_shares(result_df, shares)
+            lineage.append(LineageNode(
+                operation="assign",
+                description=("Share measure(s): "
+                             + ", ".join(f"{k} = {b} / total({b})"
+                                         for k, b in shares.items())),
+                metadata={"shares": dict(shares)},
+            ))
+
         # Post-aggregation filters (HAVING): applied after the engine AND
         # ratios, so they filter the aggregated measures/ratios — the
         # difference between "groups whose total ≥ 250" and `filters`'
@@ -1203,7 +1240,7 @@ class DataModel:
         self,
         measures: "dict[str, str] | list[str]",
         fact_def: "_FactDef",
-    ) -> tuple[dict[str, str], dict[str, str], dict[str, tuple[str, str]]]:
+    ) -> "tuple[dict[str, str], dict[str, str], dict[str, tuple[str, str]], dict[str, str]]":
         """
         Expand the ``measures`` argument into what the engine understands.
 
@@ -1222,6 +1259,7 @@ class DataModel:
         agg_map: dict[str, str] = {}
         derived: dict[str, str] = {}
         ratios: dict[str, tuple[str, str]] = {}
+        shares: dict[str, str] = {}            # {output: base measure name}
 
         if isinstance(measures, dict):
             if not measures:
@@ -1276,14 +1314,14 @@ class DataModel:
                             f"it (e.g. {{{ref!r}: 'sum'}}). Measures here: "
                             f"{sorted(produced - {out_col})}."
                         )
-            return agg_map, derived, ratios
+            return agg_map, derived, ratios, shares
 
         names = list(measures or [])
         if not names:
             raise ValueError("query() requires at least one measure.")
 
         def _expand(mname: str, seen: tuple) -> None:
-            if mname in agg_map or mname in ratios:
+            if mname in agg_map or mname in ratios or mname in shares:
                 return
             if mname not in self._measures:
                 raise ValueError(
@@ -1306,6 +1344,9 @@ class DataModel:
             elif m.kind == "expression":
                 agg_map[m.name] = m.agg
                 derived[m.name] = m.expr
+            elif m.kind == "share":
+                _expand(m.share, seen + (mname,))    # the measure it's a share of
+                shares[m.name] = m.share
             else:  # ratio
                 num, den = m.ratio
                 _expand(num, seen + (mname,))
@@ -1314,7 +1355,7 @@ class DataModel:
 
         for n in names:
             _expand(n, ())
-        return agg_map, derived, ratios
+        return agg_map, derived, ratios, shares
 
     def _apply_derived(
         self,
@@ -1378,6 +1419,24 @@ class DataModel:
                 continue
             denominator = out[den].replace(0, pd.NA)
             out[name] = out[num] / denominator
+        return out
+
+    def _apply_shares(
+        self,
+        df: pd.DataFrame,
+        shares: dict[str, str],
+    ) -> pd.DataFrame:
+        """Compute share (% of total) measures: each row's value over the total
+        of its base measure across the whole result. Order-independent and
+        deterministic — no ordering needed, unlike rank or running totals."""
+        if not shares:
+            return df
+        out = df.copy()
+        for name, base in shares.items():
+            if base not in out.columns:
+                continue
+            total = out[base].sum()
+            out[name] = (out[base] / total) if total else pd.NA
         return out
 
     def _parse_filters(
@@ -1991,11 +2050,13 @@ class DataModel:
             raise ValueError(
                 f"Fact '{spec.fact}' is not registered in model '{self.name}'."
             )
-        agg_map, _derived, ratios = self._resolve_measures(spec.measures, fact_def)
+        agg_map, _derived, ratios, shares = self._resolve_measures(
+            spec.measures, fact_def)
         return (
             [str(d) for d in (spec.dimensions or ())]
             + list(agg_map)
             + list(ratios)
+            + list(shares)
         )
 
     @staticmethod

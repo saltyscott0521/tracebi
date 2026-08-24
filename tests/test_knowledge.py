@@ -219,3 +219,63 @@ class TestDistributionAggregations:
         from tracebi import DataModel
         DataModel("t").add_measure("median_spread_bps", column="spread_bps",
                                    agg="median")
+
+
+# ── Share-of-total: a report.py computation pulled into the governed lane ──────
+
+class TestShareMeasure:
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        fact = pd.DataFrame({"region_id": [1, 2, 3], "rev": [600.0, 300.0, 100.0]})
+        dim = pd.DataFrame({"region_id": [1, 2, 3],
+                            "region": ["West", "East", "North"]})
+        m = DataModel("s")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact, "dim_region": dim}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_region", connector="mem", source="dim_region")
+        m.add_dimension("dim_region", table_name="dim_region", key_col="region_id",
+                        attributes=["region"])
+        m.add_fact("f", table_name="fact", measures=["rev"],
+                   foreign_keys={"dim_region": "region_id"})
+        m.add_measure("revenue", column="rev", agg="sum")
+        m.add_measure("revenue_share", share="revenue", format="percent")
+        m.connect()
+        return m
+
+    def _run(self, m, **extra):
+        from tracebi.model.data_model import QuerySpec
+        q = {"fact": "f", "measures": ["revenue", "revenue_share"],
+             "dimensions": ["dim_region.region"], **extra}
+        return m.execute(QuerySpec.from_dict(q))
+
+    def test_shares_are_the_fraction_of_the_total(self):
+        df = self._run(self._model()).to_pandas().set_index("dim_region.region")
+        assert df.loc["West", "revenue_share"] == 0.6
+        assert df.loc["East", "revenue_share"] == 0.3
+        assert round(df["revenue_share"].sum(), 6) == 1.0
+
+    def test_share_is_deterministic_and_a_known_result_column(self):
+        m = self._model()
+        assert self._run(m).fingerprint() == self._run(m).fingerprint()
+        from tracebi.model.data_model import QuerySpec
+        cols = m.spec_result_columns(QuerySpec.from_dict(
+            {"fact": "f", "measures": ["revenue", "revenue_share"],
+             "dimensions": ["dim_region.region"]}))
+        assert "revenue_share" in cols
+
+    def test_share_takes_no_agg(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="take no agg"):
+            DataModel("t").add_measure("s", share="revenue", agg="sum")
+
+    def test_share_is_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
+        assert "share" in kinds
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "share-of-total" in slugs
+        assert get_lesson("share-of-total") is not None
