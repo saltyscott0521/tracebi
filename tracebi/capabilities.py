@@ -540,6 +540,25 @@ def describe(brief: bool = False) -> dict:
                             "share-of-total a report.py used to compute "
                             "ungoverned; a governed query keeps its receipt.",
                 },
+                {
+                    "kind": "rank",
+                    "args": ["rank"],
+                    "example": "add_measure('rev_rank', rank='revenue')",
+                    "note": "1..N position ordered by the named measure "
+                            "descending (rank 1 = largest), with a total "
+                            "tie-break so it is reproducible.",
+                },
+                {
+                    "kind": "running",
+                    "args": ["running"],
+                    "example": "add_measure('cum_share', running='revenue_share', "
+                               "format='percent')",
+                    "note": "cumulative (running) sum of the named measure, "
+                            "largest-first — the Pareto/concentration direction. "
+                            "running of a share measure is the cumulative % of "
+                            "total. rank + share + running(share) is the whole "
+                            "concentration table, governed — what report.py did.",
+                },
             ],
             "aggregations": sorted(_AGG_FUNCS),
             "aggregations_note": "median and stddev summarize a distribution's "

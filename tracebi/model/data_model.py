@@ -108,7 +108,7 @@ class MeasureDef:
     what makes the model a shared vocabulary rather than a pile of ad-hoc
     groupbys.
 
-    Exactly four kinds, deliberately closed:
+    Exactly six kinds, deliberately closed:
 
     * **simple** — an aggregation of one column::
 
@@ -129,6 +129,13 @@ class MeasureDef:
 
           add_measure("revenue_share", share="revenue", format="percent")
 
+    * **rank** / **running** — window measures over a base measure, ordered by
+      it descending (rank 1 = largest; running is the cumulative sum,
+      largest-first) — the concentration/Pareto direction::
+
+          add_measure("rev_rank", rank="revenue")
+          add_measure("cum_share", running="revenue_share", format="percent")
+
     These cover the large majority of real usage, run on both
     engines, and need no expression parser. A richer grammar can arrive
     later as sugar that compiles down to these same structures.
@@ -138,12 +145,14 @@ class MeasureDef:
     wire — accepting one would forfeit reproducibility at the root.
     """
     name: str
-    kind: str                                  # simple | expression | ratio | share
+    kind: str                        # simple|expression|ratio|share|rank|running
     agg: Optional[str] = None
     column: Optional[str] = None
     expr: Optional[str] = None
     ratio: Optional[tuple[str, str]] = None    # (numerator, denominator)
     share: Optional[str] = None                # measure name: value / total(value)
+    rank: Optional[str] = None                 # measure name: 1..N by it, desc
+    running: Optional[str] = None              # measure name: cumsum by it, desc
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
 
@@ -317,6 +326,23 @@ class _FactDef:
     table_name: str
     measures: list[str]
     foreign_keys: dict[str, str] = field(default_factory=dict)  # dim_name -> fk_col
+
+
+@dataclass
+class _Resolved:
+    """What ``_resolve_measures`` produces — each measure kind in its own bucket,
+    applied at the right stage of ``execute()``. ``agg_map`` runs in the engine
+    (GROUP BY); the rest run post-aggregation in this order: ``derived`` (row
+    expressions, materialised pre-agg), ``ratios``, ``shares``, then the window
+    measures ``ranks``/``runnings``. A named result rather than a growing tuple,
+    so a new measure kind adds a field, never re-arities every call site."""
+
+    agg_map: "dict[str, str]"                    # {output: agg_func}
+    derived: "dict[str, str]"                    # {output: row_expression}
+    ratios: "dict[str, tuple[str, str]]"         # {output: (numerator, denom)}
+    shares: "dict[str, str]"                     # {output: base measure}
+    ranks: "dict[str, str]"                      # {output: base measure}
+    runnings: "dict[str, str]"                   # {output: base measure}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -509,6 +535,8 @@ class DataModel:
         expr: Optional[str] = None,
         ratio: Optional[tuple[str, str]] = None,
         share: Optional[str] = None,
+        rank: Optional[str] = None,
+        running: Optional[str] = None,
         description: str = "",
         format: Optional[str] = None,
         allow_rate_agg: bool = False,
@@ -529,8 +557,8 @@ class DataModel:
                         measures=["revenue", "margin_pct"],
                         dimensions=["dim_customer.region"])
 
-        Exactly one of ``column``, ``expr``, ``ratio``, or ``share`` must be
-        given. ``agg`` is required for the first two. Ratios and shares are
+        Exactly one of ``column``, ``expr``, ``ratio``, ``share``, ``rank``, or
+        ``running`` must be given. ``agg`` is required for the first two. Ratios and shares are
         computed after aggregation — a ratio is a ratio of totals (not a mean of
         per-row ratios), a share is a value over the total of the measure it
         names (a governed ``%`` of total).
@@ -556,28 +584,29 @@ class DataModel:
                 )
 
         given = [k for k, v in (("column", column), ("expr", expr),
-                                ("ratio", ratio), ("share", share))
+                                ("ratio", ratio), ("share", share),
+                                ("rank", rank), ("running", running))
                  if v is not None]
         if len(given) != 1:
             raise ValueError(
                 f"Measure '{name}' must specify exactly one of column=, expr=, "
-                f"ratio=, or share=, got {given or 'none'}."
+                f"ratio=, share=, rank=, or running=, got {given or 'none'}."
             )
 
         kind = {"column": "simple", "expr": "expression", "ratio": "ratio",
-                "share": "share"}[given[0]]
+                "share": "share", "rank": "rank", "running": "running"}[given[0]]
 
-        if kind == "share":
-            # value / total(value) over the result — a governed "% of total",
-            # computed post-aggregation like a ratio. Takes no agg; names the
-            # measure it is a share of.
+        # share/rank/running are all post-aggregation window measures over a
+        # named base measure — none takes an agg.
+        if kind in ("share", "rank", "running"):
             if agg is not None:
                 raise ValueError(
-                    f"Measure '{name}': share measures take no agg — a share is "
-                    f"the value divided by the total of the measure it names, "
-                    f"computed after aggregation."
+                    f"Measure '{name}': {kind} measures take no agg — they are "
+                    f"computed after aggregation from the measure they name."
                 )
-            share = str(share)
+            share = str(share) if share is not None else None
+            rank = str(rank) if rank is not None else None
+            running = str(running) if running is not None else None
 
         if kind == "ratio":
             if not (isinstance(ratio, (tuple, list)) and len(ratio) == 2):
@@ -591,7 +620,7 @@ class DataModel:
                     f"is computed from the aggregated numerator and denominator."
                 )
             ratio = (str(ratio[0]), str(ratio[1]))
-        elif kind != "share":              # simple / expression: agg required
+        elif kind in ("simple", "expression"):    # these require an agg
             if agg is None:
                 raise ValueError(
                     f"Measure '{name}' needs an agg (one of "
@@ -653,6 +682,7 @@ class DataModel:
         self._measures[name] = MeasureDef(
             name=name, kind=kind, agg=agg, column=column, expr=expr,
             ratio=tuple(ratio) if ratio else None, share=share,
+            rank=rank, running=running,
             description=description, format=format,
         )
         return self
@@ -969,8 +999,11 @@ class DataModel:
         fact_def = self._facts[fact]
         dimensions = list(dimensions or [])
         filters = dict(filters or {})
-        measures, derived, ratios, shares = self._resolve_measures(
-            measures, fact_def)
+        resolved = self._resolve_measures(measures, fact_def)
+        measures, derived, ratios = (resolved.agg_map, resolved.derived,
+                                     resolved.ratios)
+        shares, ranks, runnings = (resolved.shares, resolved.ranks,
+                                   resolved.runnings)
 
         # ── Parse dimension references ─────────────────────────
         parsed_dims: list[tuple[str, str]] = []
@@ -1119,6 +1152,22 @@ class DataModel:
                 metadata={"shares": dict(shares)},
             ))
 
+        # Window measures — rank and running (cumulative), each over its own base
+        # measure descending, with a TOTAL tie-break so the value is
+        # reproducible. Applied on the full result, before HAVING/limit, so a
+        # rank/cumulative is of the whole (top-10 shows its rank among all).
+        if ranks or runnings:
+            result_df = self._apply_windows(result_df, ranks, runnings)
+            lineage.append(LineageNode(
+                operation="assign",
+                description=("Window measure(s): "
+                             + ", ".join([f"{k} = rank({b} desc)"
+                                          for k, b in ranks.items()]
+                                         + [f"{k} = running({b} desc)"
+                                            for k, b in runnings.items()])),
+                metadata={"ranks": dict(ranks), "runnings": dict(runnings)},
+            ))
+
         # Post-aggregation filters (HAVING): applied after the engine AND
         # ratios, so they filter the aggregated measures/ratios — the
         # difference between "groups whose total ≥ 250" and `filters`'
@@ -1258,7 +1307,7 @@ class DataModel:
         self,
         measures: "dict[str, str] | list[str]",
         fact_def: "_FactDef",
-    ) -> "tuple[dict[str, str], dict[str, str], dict[str, tuple[str, str]], dict[str, str]]":
+    ) -> "_Resolved":
         """
         Expand the ``measures`` argument into what the engine understands.
 
@@ -1278,6 +1327,8 @@ class DataModel:
         derived: dict[str, str] = {}
         ratios: dict[str, tuple[str, str]] = {}
         shares: dict[str, str] = {}            # {output: base measure name}
+        ranks: dict[str, str] = {}
+        runnings: dict[str, str] = {}
 
         if isinstance(measures, dict):
             if not measures:
@@ -1332,14 +1383,15 @@ class DataModel:
                             f"it (e.g. {{{ref!r}: 'sum'}}). Measures here: "
                             f"{sorted(produced - {out_col})}."
                         )
-            return agg_map, derived, ratios, shares
+            return _Resolved(agg_map, derived, ratios, shares, ranks, runnings)
 
         names = list(measures or [])
         if not names:
             raise ValueError("query() requires at least one measure.")
 
         def _expand(mname: str, seen: tuple) -> None:
-            if mname in agg_map or mname in ratios or mname in shares:
+            if (mname in agg_map or mname in ratios or mname in shares
+                    or mname in ranks or mname in runnings):
                 return
             if mname not in self._measures:
                 raise ValueError(
@@ -1365,6 +1417,12 @@ class DataModel:
             elif m.kind == "share":
                 _expand(m.share, seen + (mname,))    # the measure it's a share of
                 shares[m.name] = m.share
+            elif m.kind == "rank":
+                _expand(m.rank, seen + (mname,))
+                ranks[m.name] = m.rank
+            elif m.kind == "running":
+                _expand(m.running, seen + (mname,))
+                runnings[m.name] = m.running
             else:  # ratio
                 num, den = m.ratio
                 _expand(num, seen + (mname,))
@@ -1373,7 +1431,7 @@ class DataModel:
 
         for n in names:
             _expand(n, ())
-        return agg_map, derived, ratios, shares
+        return _Resolved(agg_map, derived, ratios, shares, ranks, runnings)
 
     def _apply_derived(
         self,
@@ -1455,6 +1513,46 @@ class DataModel:
                 continue
             total = out[base].sum()
             out[name] = (out[base] / total) if total else pd.NA
+        return out
+
+    def _apply_windows(
+        self,
+        df: pd.DataFrame,
+        ranks: dict[str, str],
+        runnings: dict[str, str],
+    ) -> pd.DataFrame:
+        """Compute rank (1..N) and running (cumulative sum) window measures.
+
+        Each is ordered by its OWN base measure descending, with a total
+        tie-break on every other column — so ties never fall back to input
+        order and the values are reproducible. Deterministic; needs no
+        ``order_by`` on the query. rank 1 is the largest; running accumulates
+        largest-first (the concentration / Pareto direction)."""
+        out = df.copy()
+
+        def _ordered_index(base: str):
+            # base descending, then every other column ascending — a total order.
+            tie = [c for c in out.columns if c != base]
+            by, asc = [base] + tie, [False] + [True] * len(tie)
+            try:
+                return out.sort_values(by=by, ascending=asc, kind="mergesort",
+                                       na_position="last").index
+            except TypeError:
+                return out.sort_values(by=by, ascending=asc, kind="mergesort",
+                                       na_position="last",
+                                       key=lambda s: s.astype(str)).index
+
+        for name, base in ranks.items():
+            if base not in out.columns:
+                continue
+            order = _ordered_index(base)
+            out[name] = (pd.Series(range(1, len(order) + 1), index=order)
+                         .reindex(out.index))
+        for name, base in runnings.items():
+            if base not in out.columns:
+                continue
+            order = _ordered_index(base)
+            out[name] = out.loc[order, base].cumsum().reindex(out.index)
         return out
 
     def _parse_filters(
@@ -2068,13 +2166,14 @@ class DataModel:
             raise ValueError(
                 f"Fact '{spec.fact}' is not registered in model '{self.name}'."
             )
-        agg_map, _derived, ratios, shares = self._resolve_measures(
-            spec.measures, fact_def)
+        r = self._resolve_measures(spec.measures, fact_def)
         return (
             [str(d) for d in (spec.dimensions or ())]
-            + list(agg_map)
-            + list(ratios)
-            + list(shares)
+            + list(r.agg_map)
+            + list(r.ratios)
+            + list(r.shares)
+            + list(r.ranks)
+            + list(r.runnings)
         )
 
     @staticmethod

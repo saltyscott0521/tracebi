@@ -31,8 +31,8 @@ the shown rows' shares sum to less than 100%, and that is correct.
 **The tell.** If you're about to compute a percent-of-total, a contribution, or a
 concentration in `report.py`, stop — that's a `share` measure. Reach for
 `report.py` only when the number genuinely cannot come from a query; a
-share-of-total can. (`rank` and running/cumulative are the same story — governed
-query surface coming; ask if you need them.)
+share-of-total can. `rank` and running/cumulative are governed measures too —
+see [[rank-and-cumulative]] for the full concentration table.
 
 The escape hatch is the *transform* for missing structure, or a governed measure
 for missing computation — see [[ratio-of-totals]] for the sibling discipline.

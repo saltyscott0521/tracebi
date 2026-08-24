@@ -279,3 +279,62 @@ class TestShareMeasure:
         slugs = {ls["slug"] for ls in index()}
         assert "share-of-total" in slugs
         assert get_lesson("share-of-total") is not None
+
+
+class TestRankAndRunning:
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        fact = pd.DataFrame({"rid": [1, 2, 3, 4], "rev": [500.0, 300.0, 150.0, 50.0]})
+        dim = pd.DataFrame({"rid": [1, 2, 3, 4],
+                            "region": ["West", "East", "North", "South"]})
+        m = DataModel("c")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact, "dim_region": dim}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_region", connector="mem", source="dim_region")
+        m.add_dimension("dim_region", table_name="dim_region", key_col="rid",
+                        attributes=["region"])
+        m.add_fact("f", table_name="fact", measures=["rev"],
+                   foreign_keys={"dim_region": "rid"})
+        m.add_measure("revenue", column="rev", agg="sum")
+        m.add_measure("revenue_share", share="revenue", format="percent")
+        m.add_measure("rev_rank", rank="revenue")
+        m.add_measure("cum_share", running="revenue_share", format="percent")
+        m.connect()
+        return m
+
+    def _run(self, m):
+        from tracebi.model.data_model import QuerySpec
+        return m.execute(QuerySpec.from_dict({
+            "fact": "f",
+            "measures": ["revenue", "rev_rank", "revenue_share", "cum_share"],
+            "dimensions": ["dim_region.region"],
+            "order_by": [{"column": "rev_rank", "desc": False}]}))
+
+    def test_the_full_concentration_table_is_governed(self):
+        import pytest
+        df = self._run(self._model()).to_pandas()
+        assert df["rev_rank"].tolist() == [1, 2, 3, 4]          # largest first
+        assert df["revenue_share"].tolist() == pytest.approx([0.5, 0.3, 0.15, 0.05])
+        assert df["cum_share"].tolist() == pytest.approx([0.5, 0.8, 0.95, 1.0])
+
+    def test_windows_are_deterministic(self):
+        m = self._model()
+        assert self._run(m).fingerprint() == self._run(m).fingerprint()
+
+    def test_rank_and_running_take_no_agg(self):
+        import pytest
+        from tracebi import DataModel
+        for kw in ({"rank": "revenue"}, {"running": "revenue"}):
+            with pytest.raises(ValueError, match="take no agg"):
+                DataModel("t").add_measure("w", agg="sum", **kw)
+
+    def test_rank_and_running_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
+        assert {"rank", "running"} <= kinds
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "rank-and-cumulative" in slugs
+        assert get_lesson("rank-and-cumulative") is not None
