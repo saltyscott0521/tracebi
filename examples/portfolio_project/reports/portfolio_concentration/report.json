@@ -1,14 +1,15 @@
 {
   "name": "Portfolio Concentration",
   "author": "risk",
-  "description": "Issuer concentration with a running cumulative share — a windowed metric the declarative query surface cannot express, so report.py computes it from a stamped input query.",
+  "description": "Issuer concentration — rank, % of total, and running cumulative % — expressed as governed window measures (rank/share/running). Every number is query-reproducible; this was once a report.py escape hatch and no longer needs to be.",
   "data": {
-    "by_issuer": {
+    "concentration": {
       "model": "portfolio_model",
       "query": {
         "fact": "fact_holdings",
-        "measures": ["fair_value"],
-        "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"]
+        "measures": ["fv_rank", "fair_value", "fv_share", "fv_cum_share"],
+        "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"],
+        "order_by": [{"column": "fv_rank", "desc": false}]
       }
     }
   }

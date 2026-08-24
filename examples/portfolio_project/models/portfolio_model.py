@@ -65,4 +65,15 @@ model = (
                  description="Par-weighted average spread (bps)")
     .add_measure("mark", ratio=("fair_value", "cost_basis"),
                  description="Fair value / cost", format="percent")
+    # Concentration window measures — rank, % of total, and cumulative %. These
+    # used to live in reports/portfolio_concentration/report.py (ungoverned,
+    # verifiable:false); as governed measures every number is query-reproducible
+    # and `verify` reads green. See `tracebi knowledge rank-and-cumulative`.
+    .add_measure("fv_rank", rank="fair_value",
+                 description="Rank by fair value (1 = largest)")
+    .add_measure("fv_share", share="fair_value",
+                 description="Fair value as % of total", format="percent")
+    .add_measure("fv_cum_share", running="fv_share",
+                 description="Cumulative % of total (largest first)",
+                 format="percent")
 )

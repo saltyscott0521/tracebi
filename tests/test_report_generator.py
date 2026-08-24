@@ -820,18 +820,18 @@ class TestShippedExample:
         assert set(pkg.bindings) == {"by_sector", "top_issuers"}
         assert all(ref.model == "portfolio_model" for ref in pkg.bindings.values())
 
-    def test_portfolio_concentration_escape_hatch_loads_structurally(self):
+    def test_portfolio_concentration_is_governed_and_loads_structurally(self):
         """The committed examples/portfolio_project/reports/portfolio_concentration/
-        is a report.py package:
-        it loads structurally (no warehouse), its `by_issuer` binding is the
-        stamped input, and report.py is detected as the escape hatch."""
+        is now FULLY GOVERNED — rank/share/running window measures, not a
+        report.py escape hatch. It loads structurally (no warehouse), its single
+        `concentration` binding queries the model, and there is no report.py."""
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
                                "reports", "portfolio_concentration")
         pkg = TemplatePackage(pkg_dir)
-        assert set(pkg.bindings) == {"by_issuer"}
-        assert pkg.bindings["by_issuer"].model == "portfolio_model"
-        assert pkg.report_py_path is not None
+        assert set(pkg.bindings) == {"concentration"}
+        assert pkg.bindings["concentration"].model == "portfolio_model"
+        assert pkg.report_py_path is None    # no escape hatch — it is governed
 
 
 # ── M3: the report.py escape hatch + honesty (architecture §4, §8-M3) ─────────
@@ -1033,12 +1033,12 @@ class TestPerBindingVerifiability:
         assert "python-derived" in result["verdict_detail"]
         assert "not query-reproducible" in result["verdict_detail"]
 
-    def test_portfolio_concentration_mixed_receipt_end_to_end(self, tmp_path):
-        """The committed real-world mixed case renders and verifies with
-        per-binding truth: `by_issuer` (query binding) green-eligible and
-        reproducing, `concentration` (report.py output) verifiable=false and
-        UNVERIFIABLE, file intact. Runs against an in-memory stand-in for
-        portfolio_model (no warehouse), per the no-demo-data-in-tests rule."""
+    def test_portfolio_concentration_is_fully_governed_end_to_end(self, tmp_path):
+        """Once a report.py escape hatch computing a window the query surface
+        could not express — now fully governed rank/share/running measures. The
+        single `concentration` binding is query-reproducible: verify reads
+        REPRODUCES (green), no verifiable=false, file intact. Runs against an
+        in-memory stand-in for portfolio_model (no warehouse)."""
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
                                "reports", "portfolio_concentration")
@@ -1065,24 +1065,26 @@ class TestPerBindingVerifiability:
                    measures=["fair_value"],
                    foreign_keys={"dim_issuer": "issuer_id"})
         m.add_measure("fair_value", column="fair_value", agg="sum")
+        m.add_measure("fv_rank", rank="fair_value")
+        m.add_measure("fv_share", share="fair_value", format="percent")
+        m.add_measure("fv_cum_share", running="fv_share", format="percent")
 
         out = tmp_path / "concentration.html"
         manifest = TemplatePackage(pkg_dir).render(
             {m.name: m}, str(out)).to_dict()
 
         by_name = {r["name"]: r for r in manifest["embedded_data"]}
-        assert by_name["by_issuer"].get("verifiable") is None
-        assert by_name["concentration"]["verifiable"] is False
+        # governed query binding — no verifiable:false, unlike a report.py output
+        assert by_name["concentration"].get("verifiable") is None
 
         result = verify_manifest(manifest, {m.name: m})
         by_section = {s["section"]: s for s in result["sections"]}
-        assert by_section["by_issuer"]["status"] == REPRODUCES
-        assert by_section["concentration"]["status"] == UNVERIFIABLE
+        assert by_section["concentration"]["status"] == REPRODUCES
         assert result["ok"] is True
 
         file_result = verify_file(out.read_text(encoding="utf-8"), manifest)
         assert file_result["verdict"] == FILE_INTACT
-        assert file_result["summary"][FILE_MATCHES] == 2
+        assert file_result["summary"][FILE_MATCHES] == 1
 
 
 class TestEscapeHatchContract:
