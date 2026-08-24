@@ -1160,17 +1160,35 @@ class DataModel:
             # already ORDER BYs the group columns — so no aggregate fingerprint
             # moves; a non-aggregate spec without order_by is total-ordered in
             # the branch just below.
+            # Total tie-break: after the stated order_by keys, break remaining
+            # ties by EVERY other column — the grouped dimensions first (the
+            # natural secondary sort), then every measure — so the sort key
+            # uniquely orders every row. Dimension columns alone do NOT identify
+            # a row, so a tie on them used to fall back to the engine's
+            # nondeterministic scan order — which made "top 10" (order_by +
+            # limit) return a different set/order across identical runs whenever
+            # values tied at the boundary. Ordering by all columns removes that.
             named = {o["column"] for o in resolved}
-            for dim_name, attribute in parsed_dims:
-                ref = f"{dim_name}.{attribute}"
-                if ref in result_df.columns and ref not in named:
-                    resolved.append({"column": ref, "desc": False})
-                    named.add(ref)
-            result_df = result_df.sort_values(
-                by=[o["column"] for o in resolved],
-                ascending=[not o["desc"] for o in resolved],
-                kind="mergesort",   # stable — the tie-break is total anyway
-            ).reset_index(drop=True)
+            tie_cols = ([f"{d}.{a}" for d, a in parsed_dims]
+                        + list(result_df.columns))
+            for col in tie_cols:
+                if col in result_df.columns and col not in named:
+                    resolved.append({"column": col, "desc": False})
+                    named.add(col)
+            by = [o["column"] for o in resolved]
+            asc = [not o["desc"] for o in resolved]
+            try:
+                result_df = result_df.sort_values(
+                    by=by, ascending=asc, kind="mergesort", na_position="last",
+                ).reset_index(drop=True)
+            except TypeError:
+                # A column holds values pandas can't order natively (a decoded
+                # BLOB, a list cell) — order by a stable string projection so the
+                # result stays deterministic rather than crashing.
+                result_df = result_df.sort_values(
+                    by=by, ascending=asc, kind="mergesort", na_position="last",
+                    key=lambda s: s.astype(str),
+                ).reset_index(drop=True)
             stamped_spec["order_by"] = [dict(o) for o in resolved]
             if spec.limit is not None:
                 result_df = result_df.head(int(spec.limit)).reset_index(drop=True)

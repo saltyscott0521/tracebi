@@ -841,6 +841,32 @@ class TestQueryDeterminism:
             "— raw rows must come back in a canonical total order"
         )
 
+    def test_top_n_with_a_boundary_tie_is_reproducible(self):
+        """order_by used to break ties only on dimension columns, which do NOT
+        identify a row — so a 'top N' whose values tied at the boundary returned
+        a DIFFERENT set/order across identical runs (the engine's scan order).
+        The tie-break is now total (every column), so top-N replays exactly."""
+        import pandas as pd
+
+        from tracebi import DataModel, MemoryConnector
+        from tracebi.model.data_model import QuerySpec
+        # three holdings tie at 100; a "top 3 by value" must be deterministic
+        holds = pd.DataFrame({"hid": [1, 2, 3, 4, 5], "name": list("EDCBA"),
+                              "mv": [300.0, 100.0, 100.0, 100.0, 50.0]})
+        m = DataModel("d")
+        m.add_connector(MemoryConnector("mem", tables={"fact": holds}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_fact("f", table_name="fact", measures=["mv"], foreign_keys={})
+        m.add_measure("mv", column="mv", agg="sum")
+        m.connect()
+        spec = QuerySpec.from_dict({
+            "fact": "f", "measures": ["mv"], "aggregate": False,
+            "order_by": [{"column": "mv", "desc": True}], "limit": 3})
+        prints = {m.execute(spec).fingerprint() for _ in range(20)}
+        rowsets = {tuple(m.execute(spec).to_pandas()["mv"]) for _ in range(20)}
+        assert len(prints) == 1, "top-N with a boundary tie is non-reproducible"
+        assert len(rowsets) == 1
+
     def test_result_stamps_the_current_fingerprint_algo(self):
         """Every stamped result records the algorithm that produced it, so a
         future algorithm change never silently re-classifies old receipts."""
