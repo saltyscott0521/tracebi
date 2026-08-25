@@ -748,7 +748,7 @@ class TestPackageDiscovery:
 # ── M2: the CLI (new-report → report build → verify --file) ───────────────────
 
 class TestReportCLI:
-    def test_new_report_scaffolds_four_files_and_binds_first_model(
+    def test_new_report_scaffolds_a_teaching_package_and_binds_first_model(
         self, tmp_path, model, monkeypatch
     ):
         from tracebi import cli
@@ -760,13 +760,24 @@ class TestReportCLI:
                          "--reports-dir", str(reports)]) == 0
 
         pkg = reports / "regions_demo"
-        for f in ("report.json", "template.html", "style.css", "script.js"):
+        # Two files, and NO hand-rolled script.js/style.css — the runtime draws
+        # every figure from the stamped bytes (the L0 trap round 3 flagged).
+        for f in ("report.json", "template.html"):
             assert (pkg / f).is_file()
+        assert not (pkg / "script.js").exists()
+        assert not (pkg / "style.css").exists()
         decl = json.loads((pkg / "report.json").read_text())
-        binding = decl["data"]["rows"]
-        assert binding["model"] == model.name
-        assert binding["query"]["fact"] == "fact_orders"
-        assert binding["query"]["measures"] == ["revenue"]
+        totals = decl["data"]["totals"]
+        assert totals["model"] == model.name
+        assert totals["query"]["fact"] == "fact_orders"
+        assert totals["query"]["measures"] == ["revenue"]
+        # The template TEACHES the grammar, not a bare table.
+        template = (pkg / "template.html").read_text()
+        for marker in ("data-tb-figure", "data-tb-binding", "data-tb-filter",
+                       "data-tb-search", "data-tb-download", "data-tb-stage",
+                       "data-tb-methodology"):
+            assert marker in template, f"scaffold no longer teaches {marker}"
+        assert "parseCsv" not in template   # no reimplemented runtime
 
     def test_scaffold_placeholder_when_no_model(self, tmp_path, monkeypatch):
         from tracebi import cli

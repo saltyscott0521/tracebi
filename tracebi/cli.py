@@ -22,6 +22,7 @@ Its scaffold templates are data files under ``tracebi/_scaffold/`` (loaded by
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import os
 import re
@@ -42,7 +43,7 @@ from tracebi._version import get_version as _tracebi_version
 def _scaffold_text(name: str) -> str:
     """Read a bundled scaffold template from ``tracebi/_scaffold/``.
 
-    The init/new-report templates live as data files there rather than as
+    The init scaffold's files live as data files there rather than as
     inline string constants, so they read and diff as the file type they
     are. Anchored on the ``tracebi`` package so it resolves in a wheel.
     """
@@ -1425,36 +1426,151 @@ def _scaffold_binding() -> tuple[str, dict, str]:
     )
 
 
+def _humanise_label(ref: str) -> str:
+    """"dim_region.region" → "Region"; "revenue" → "Revenue" — a readable label
+    for a scaffolded heading, mirroring the runtime's humanise."""
+    name = str(ref).split(".")[-1]
+    name = re.sub(r"^(dim|fact)_", "", name).replace("_", " ").strip()
+    return name[:1].upper() + name[1:] if name else str(ref)
+
+
 def _report_json_text(title: str, model: str, query: dict) -> str:
+    """Two teaching bindings from the derived query: ``totals`` (measures only,
+    one row — for KPI cards and bound prose) and, when the model has a
+    dimension, ``breakdown`` (measures by that dimension, sorted — for a chart
+    and a filterable table). The generated template references both, so the
+    scaffold demonstrates the whole figure grammar rather than a bare table."""
+    fact = query["fact"]
+    measures = query["measures"]
+    dims = query.get("dimensions")
+    data = {"totals": {"model": model,
+                       "query": {"fact": fact, "measures": measures}}}
+    if dims:
+        data["breakdown"] = {"model": model, "query": {
+            "fact": fact, "measures": measures, "dimensions": dims,
+            "order_by": ["-" + measures[0]]}}
     declaration = {
         "name": title,
         "author": "",
-        "description": "Freeform report package scaffolded by tracebi new-report.",
+        "description": "Freeform report package scaffolded by tracebi "
+                       "new-report. Every figure claims a stamped binding; edit "
+                       "template.html to reshape the page — nothing re-runs the "
+                       "pandas.",
         "libs": ["echarts"],
-        "data": {"rows": {"model": model, "query": query}},
+        "data": data,
     }
     return json.dumps(declaration, indent=2) + "\n"
 
 
-_REPORT_TEMPLATE_HTML = _scaffold_text("report_template.html")
-
-_REPORT_STYLE_CSS = _scaffold_text("report_style.css")
-
-# Reads the embedded data and draws the table with DOM APIs only — the data
-# never reaches innerHTML, so a hostile cell value cannot execute (architecture
-# §5). The block is <script type="application/json">, parsed with JSON.parse.
-_REPORT_SCRIPT_JS = _scaffold_text("report_script.js")
+def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> str:
+    """A starter ``template.html`` that TEACHES the figure grammar: a bound
+    prose number, a KPI card, and — when the model has a dimension — a chart and
+    a filter/search/download table, plus a methodology block and an exploration
+    stage. Generated (not a static file) because ``data-tb-*`` attributes name
+    the model's real measure and dimension. No ``script.js`` or ``style.css``:
+    the runtime (``tracebi.js`` + ``tracebi.css``) draws every figure from the
+    stamped bytes — hand-rolling a CSV parser and a chart is exactly the L0 trap
+    a scaffold must not teach."""
+    esc = _html.escape
+    m_label = _humanise_label(measure)
+    table_binding = "breakdown" if dim_ref else "totals"
+    parts = [
+        "<!doctype html>",
+        '<html lang="en">',
+        f"<head><meta charset=\"utf-8\"><title>{esc(title)}</title></head>",
+        "<body>",
+        '<main class="tb-page">',
+        f"  <h1>{esc(title)}</h1>",
+        '  <p class="tb-note">Every number on this page is a live, fingerprinted',
+        f"    query — including this one: {esc(m_label)} totals",
+        f'    <span data-tb-figure="value" data-tb-binding="totals"',
+        f'          data-tb-cell="{esc(measure)}" id="val-{esc(measure)}">—</span>.',
+        "    Bind prose numbers too; never type one in. Check the file offline",
+        "    with <code>tracebi verify --file</code>.</p>",
+        "",
+        '  <div class="tb-grid">',
+        f'    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="totals"',
+        f'         data-tb-cell="{esc(measure)}" id="kpi-{esc(measure)}">',
+        f'      <span class="tb-kpi-label">{esc(m_label)}</span>',
+        '      <span class="tb-kpi-value"></span>',
+        "    </div>",
+        "  </div>",
+    ]
+    if dim_ref:
+        d_label = _humanise_label(dim_ref)
+        parts += [
+            "",
+            '  <div class="tb-card">',
+            f"    <h2>{esc(m_label)} by {esc(d_label)}</h2>",
+            f'    <div data-tb-figure="chart" data-tb-binding="breakdown"',
+            f'         data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
+            f'         data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
+            '         id="chart-breakdown"></div>',
+            "  </div>",
+            "",
+            '  <div class="tb-card">',
+            "    <h2>Detail</h2>",
+            '    <p class="tb-note">Filter and search subset which stamped rows',
+            "      display — they never compute new numbers. The CSV button",
+            "      exports the stamped bytes verbatim.</p>",
+            "    <p>",
+            f"      {esc(d_label)}:",
+            f'      <select data-tb-filter data-tb-binding="breakdown"',
+            f'              data-tb-column="{esc(dim_ref)}"></select>',
+            '      Search:',
+            '      <input data-tb-search data-tb-binding="breakdown"',
+            '             placeholder="type to filter…">',
+            '      <button data-tb-download data-tb-binding="breakdown"',
+            '              data-tb-label="Download CSV"></button>',
+            "    </p>",
+            f'    <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+            '           class="tb-table--striped" id="tbl-detail"></table>',
+            "  </div>",
+        ]
+    else:
+        parts += [
+            "",
+            '  <div class="tb-card">',
+            "    <h2>Detail</h2>",
+            f'    <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+            '           class="tb-table--striped" id="tbl-detail"></table>',
+            "  </div>",
+        ]
+    parts += [
+        "",
+        '  <section class="tb-card" data-tb-methodology>',
+        "    <h2>How these numbers were made</h2>",
+        '    <p class="tb-note">The build appends the transform\'s stated',
+        "      methodology (the sink <code>note=</code>) below this line. It is",
+        '      the author\'s prose — "the sink satisfied its contract", never',
+        '      "the transform was verified".</p>',
+        "  </section>",
+        "",
+        '  <section data-tb-stage="exploration">',
+        "    <h3>Working notes</h3>",
+        "    <p>Scratch space: this block renders under <code>tracebi dev</code>",
+        "       and is DELETED at the final build. Promote what matters into a",
+        "       figure above.</p>",
+        "  </section>",
+        "</main>",
+        "</body></html>",
+        "",
+    ]
+    return "\n".join(parts)
 
 
 def cmd_new_report(args: argparse.Namespace) -> int:
     """
     Scaffold a freeform report package under ``reports/<name>/``.
 
-    Four starter files — ``report.json`` (a data binding), ``template.html``,
-    ``style.css``, ``script.js`` — that render a titled page with a table out of
-    the box against the first model in ``models/``. A directory holding
-    ``report.json`` + ``template.html`` is discovered as a report (architecture
-    §7) and built with ``tracebi report build <name>``.
+    Two starter files — ``report.json`` (data bindings) and ``template.html``
+    (a page that TEACHES the ``data-tb-*`` figure grammar: bound prose, a KPI, a
+    chart, and a filter/search/download table) — bound to the first model in
+    ``models/``. No ``script.js``/``style.css``: the runtime draws every figure
+    from the stamped bytes, so hand-rolling a parser and a chart (the L0 trap) is
+    unnecessary. A directory holding ``report.json`` + ``template.html`` is
+    discovered as a report (architecture §7) and built with ``tracebi report
+    build <name>``.
     """
     reports_dir: Path = args.reports_dir
     slug = _slugify(args.title)
@@ -1466,14 +1582,15 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     pkg_dir.mkdir(parents=True, exist_ok=True)
 
     model, query, note = _scaffold_binding()
+    measure = query["measures"][0]
+    dims = query.get("dimensions")
+    dim_ref = dims[0] if dims else None
     (pkg_dir / "report.json").write_text(
         _report_json_text(args.title, model, query), encoding="utf-8")
     (pkg_dir / "template.html").write_text(
-        _REPORT_TEMPLATE_HTML.replace("{{ title }}", args.title), encoding="utf-8")
-    (pkg_dir / "style.css").write_text(_REPORT_STYLE_CSS, encoding="utf-8")
-    (pkg_dir / "script.js").write_text(_REPORT_SCRIPT_JS, encoding="utf-8")
+        _report_template_html(args.title, measure, dim_ref), encoding="utf-8")
 
-    print(f"Created {pkg_dir}/ (report.json, template.html, style.css, script.js)")
+    print(f"Created {pkg_dir}/ (report.json, template.html)")
     if note:
         print(f"  {note}")
     else:
@@ -2026,7 +2143,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_new_report = sub.add_parser(
         "new-report",
         help="Scaffold a freeform report package (reports/<name>/): report.json "
-             "+ template.html + style.css + script.js.",
+             "bindings + a template.html that teaches the data-tb-* figure grammar.",
     )
     p_new_report.add_argument("title", help='Free-form title, e.g. "Portfolio Book".')
     p_new_report.add_argument("--force", action="store_true", help="Overwrite if exists.")
