@@ -1717,6 +1717,12 @@ def cmd_report(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
         print(f"failed to build report '{args.name}': "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        # A one-line message that names only the exception type leaves the
+        # author guessing which binding or column died — the traceback names
+        # the figure and the frame, so print it rather than swallowing it. The
+        # header above stays for the common bare-eyed read.
+        import traceback
+        traceback.print_exc()
         return 1
 
     manifest = output.with_name(output.name + ".manifest.json")

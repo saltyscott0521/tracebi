@@ -143,6 +143,19 @@ class TestSsrValueFormatParity:
             got = _ssr_format(v, n)
             assert got == expected, f"{v} {n}: python {got!r} != js {expected!r}"
 
+    def test_non_finite_renders_the_raw_token_and_never_crashes(self):
+        # A null in a formatted numeric column used to crash `report build` in
+        # _is_tie (NaN slips past `a >= 1e15`). The runtime's toNum returns null
+        # for a non-finite value, so renderBody skips the format and shows the
+        # raw token: NaN → blank, inf → "inf". SSR must match, byte for byte.
+        from tracebi.reports.template_package import _ssr_format, _is_tie
+        assert _is_tie(float("nan"), 0) is False        # the crash site, hardened
+        assert _is_tie(float("inf"), 3) is False
+        for name in self.NAMES:
+            assert _ssr_format(float("nan"), name) == ""
+            assert _ssr_format(float("inf"), name) == "inf"
+            assert _ssr_format(float("-inf"), name) == "-inf"
+
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestChartValueFormat:

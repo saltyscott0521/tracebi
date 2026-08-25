@@ -87,6 +87,13 @@ REPORT_PY = "report.py"
 
 def _is_tie(a: float, digits: int) -> bool:
     """Mirror tracebi.js ``isTie``: is *a* (>= 0) exactly halfway at *digits*?"""
+    # A non-finite value is never a tie. The old ``a >= 1e15`` early-out caught
+    # +inf only by accident (inf >= 1e15 is True) and let NaN through — every
+    # comparison with NaN is False, so ``nan >= 1e15`` was False and NaN fell
+    # into format(nan, '.Nf') → 'nan' → split('.')[1] → IndexError, crashing the
+    # build on any null in a formatted numeric column. Make the guard explicit.
+    if not math.isfinite(a):
+        return False
     if a >= 1e15:
         return False
     frac = format(a, f".{digits + 15}f").split(".")[1]
@@ -119,6 +126,13 @@ def _ssr_format(raw, name: str) -> str:
         num = float(raw)               # the runtime formats toNum(raw): a float64
     except (TypeError, ValueError):
         return str(raw)                # non-numeric: the runtime leaves it raw
+    if not math.isfinite(num):
+        # The runtime's toNum returns null for a non-finite value (isFinite),
+        # so renderBody skips the format and shows the raw token — a NaN cell is
+        # blank, an inf cell prints "inf". Mirror that (and never crash): a null
+        # in a formatted numeric column now renders empty instead of killing the
+        # build. _ssr_cell gives NaN → "", inf/-inf → the string, matching CSV.
+        return _ssr_cell(raw)
     if num == 0:
         num = 0.0                      # JS renders no negative zero; -0.0 -> 0.0
     if name == "compact":
