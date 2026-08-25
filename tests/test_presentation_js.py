@@ -913,3 +913,60 @@ process.stdout.write(JSON.stringify({
         assert out["wrap_children"] == ["SPAN", "TABLE"]
         assert out["table_badge_class"] == "tb-badge tb-badge--unverified"
         assert out["table_badge_title"] == "stale"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestChartThemeColors:
+    """Charts derive their text/line colours from the page's ink tokens, so a
+    report on a dark ground shows legible axis labels/legends instead of
+    ECharts' near-black default — without every author needing a configureChart
+    block. An author's explicit patch still wins (applied after)."""
+
+    def _apply(self, option, tokens):
+        # Load the IIFE with `document` undefined so its bootstrap stays inert,
+        # THEN stub getComputedStyle/document and call applyThemeColors — it
+        # reads them at call time.
+        script = (
+            "var fs=require('fs');var src=fs.readFileSync(process.argv[1],'utf8');"
+            "var p=src.replace('root.tracebi = {',"
+            " 'root.tracebi = { applyThemeColors: applyThemeColors,');"
+            "if(p===src) throw new Error('export line not found');"
+            "new Function(p)();"
+            "var TOK=JSON.parse(process.argv[3]);"
+            "globalThis.document={documentElement:{}};"
+            "globalThis.getComputedStyle=function(){return {getPropertyValue:"
+            "  function(n){return TOK[n]||'';}};};"
+            "var opt=JSON.parse(process.argv[2]);"
+            "globalThis.tracebi.applyThemeColors(opt);"
+            "process.stdout.write(JSON.stringify(opt));"
+        )
+        r = subprocess.run(
+            ["node", "-e", script, ASSET, json.dumps(option), json.dumps(tokens)],
+            capture_output=True, text=True, timeout=30)
+        assert r.returncode == 0, r.stderr
+        return json.loads(r.stdout)
+
+    _DARK = {"--tb-ink": "#e5e7eb", "--tb-muted": "#9ca3af", "--tb-rule": "#374151"}
+
+    def test_axis_labels_and_legend_follow_the_ink_tokens(self):
+        opt = {"xAxis": {"type": "category", "data": []},
+               "yAxis": {"type": "value"}, "legend": {}, "series": []}
+        out = self._apply(opt, self._DARK)
+        assert out["textStyle"]["color"] == "#e5e7eb"
+        assert out["xAxis"]["axisLabel"]["color"] == "#9ca3af"
+        assert out["yAxis"]["axisLabel"]["color"] == "#9ca3af"
+        assert out["yAxis"]["splitLine"]["lineStyle"]["color"] == "#374151"
+        assert out["legend"]["textStyle"]["color"] == "#e5e7eb"
+
+    def test_an_existing_colour_is_not_overwritten(self):
+        # An author's explicit axisLabel colour survives (the patch-wins rule).
+        opt = {"xAxis": {"type": "category", "axisLabel": {"color": "#ff0000"}},
+               "series": []}
+        out = self._apply(opt, self._DARK)
+        assert out["xAxis"]["axisLabel"]["color"] == "#ff0000"
+
+    def test_no_tokens_is_a_noop(self):
+        opt = {"xAxis": {"type": "category"}, "series": []}
+        out = self._apply(opt, {})
+        assert "color" not in out.get("xAxis", {}).get("axisLabel", {})
+        assert "textStyle" not in out

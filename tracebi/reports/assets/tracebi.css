@@ -20,6 +20,11 @@
   --tb-muted: #6b7280;
   --tb-accent: #2e74b5;
   --tb-rule: #e3e7ee;
+  /* Subtle raised surfaces (striped rows, code blocks, callouts). Tokens, not
+   * hard-coded hex, so overriding the palette for a dark ground carries them
+   * too — a report on a dark background used to keep these light. */
+  --tb-surface: #f6f7f9;
+  --tb-surface-accent: #f2f7fc;
 
   --tb-space-1: 4px;
   --tb-space-2: 8px;
@@ -70,7 +75,7 @@ hr { border: 0; border-top: 1px solid var(--tb-rule);
      margin: var(--tb-space-4) 0; }
 code, pre { font-size: 0.9em; }
 pre { overflow-x: auto; padding: var(--tb-space-2);
-      background: #f6f7f9; border-radius: var(--tb-radius); }
+      background: var(--tb-surface); border-radius: var(--tb-radius); }
 img, svg { max-width: 100%; }
 
 /* ── 3. Layout ─────────────────────────────────────────────────────────── */
@@ -163,7 +168,7 @@ img, svg { max-width: 100%; }
 }
 
 /* Variant: striped — even body rows tinted (field-notes finding #13). */
-.tb-table--striped tbody tr:nth-child(even) { background: #f6f7f9; }
+.tb-table--striped tbody tr:nth-child(even) { background: var(--tb-surface); }
 
 /* Variant: compact — tighter padding, smaller type. */
 .tb-table--compact th, .tb-table--compact td {
@@ -183,7 +188,7 @@ img, svg { max-width: 100%; }
 
 .tb-callout {
   border-left: 3px solid var(--tb-accent);
-  background: #f2f7fc;
+  background: var(--tb-surface-accent);
   border-radius: 0 var(--tb-radius) var(--tb-radius) 0;
   padding: var(--tb-space-2) var(--tb-space-3);
   margin: var(--tb-space-3) 0;

@@ -716,10 +716,59 @@
     return out;
   }
 
+  function cssVar(cs, name) {
+    var v = cs.getPropertyValue(name);
+    return (v && trim(v)) ? trim(v) : null;
+  }
+
+  /* Derive ECharts text/line colours from the page's ink tokens, so axis
+   * labels, legends and grid lines follow the theme instead of ECharts'
+   * near-black default — which is invisible on any dark ground. Only fills a
+   * colour the option has not already set, so an author's configureChart patch
+   * (applied after this) still wins. A no-op without getComputedStyle (node). */
+  function applyThemeColors(option) {
+    if (typeof getComputedStyle === "undefined") return option;
+    var cs = getComputedStyle(document.documentElement);
+    var ink = cssVar(cs, "--tb-ink");
+    var muted = cssVar(cs, "--tb-muted");
+    var rule = cssVar(cs, "--tb-rule");
+    if (!ink && !muted && !rule) return option;
+    if (ink) {
+      option.textStyle = option.textStyle || {};
+      if (option.textStyle.color == null) option.textStyle.color = ink;
+    }
+    function styleAxis(ax) {
+      if (!ax || typeof ax !== "object") return;
+      if (ax.length !== undefined) {
+        for (var i = 0; i < ax.length; i++) styleAxis(ax[i]);
+        return;
+      }
+      if (muted) {
+        ax.axisLabel = ax.axisLabel || {};
+        if (ax.axisLabel.color == null) ax.axisLabel.color = muted;
+      }
+      if (rule) {
+        ax.axisLine = ax.axisLine || {};
+        ax.axisLine.lineStyle = ax.axisLine.lineStyle || {};
+        if (ax.axisLine.lineStyle.color == null) ax.axisLine.lineStyle.color = rule;
+        ax.splitLine = ax.splitLine || {};
+        ax.splitLine.lineStyle = ax.splitLine.lineStyle || {};
+        if (ax.splitLine.lineStyle.color == null) ax.splitLine.lineStyle.color = rule;
+      }
+    }
+    styleAxis(option.xAxis);
+    styleAxis(option.yAxis);
+    if (option.legend && ink) {
+      option.legend.textStyle = option.legend.textStyle || {};
+      if (option.legend.textStyle.color == null) option.legend.textStyle.color = ink;
+    }
+    return option;
+  }
+
   /* The built option for one chart, patch applied — shared by the first
    * hydration and every control-driven re-render. */
   function buildOption(el, plan, rows) {
-    var option = optionFor(plan, rows);
+    var option = applyThemeColors(optionFor(plan, rows));
 
     var patch = el.id ? _patches[el.id] : null;
     if (patch) {
