@@ -564,6 +564,22 @@ def cmd_spec(args: argparse.Namespace) -> int:
         print(f"No such file: {path}", file=sys.stderr)
         return 1
 
+    # A template-package report.json (a 'data' bindings block, or a template.html
+    # sibling) is not a ReportSpec — from_json would reject its 'data'/'libs'
+    # keys as "unknown fields", which reads as "your file is malformed" rather
+    # than "wrong lane". Name it, and point at the package flow.
+    try:
+        _raw = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        _raw = None
+    if isinstance(_raw, dict) and (
+            "data" in _raw or (path.parent / "template.html").is_file()):
+        print(f"{path} is a template-package report.json (data bindings + a "
+              f"template.html), not a JSON ReportSpec — `tracebi spec validate` "
+              f"only checks the spec lane. Validate a package by building it: "
+              f"`tracebi report build {path.parent.name}`.", file=sys.stderr)
+        return 1
+
     try:
         spec = ReportSpec.from_json(path.read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001 — a bad file is a user error

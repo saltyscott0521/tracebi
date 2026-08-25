@@ -818,6 +818,42 @@ class TestReportCLI:
                          "--reports-dir", str(tmp_path / "reports"),
                          "--output", str(tmp_path / "out.html")]) == 1
 
+    def test_spec_validate_names_a_package_report_json_by_lane(self, tmp_path):
+        # A package report.json (a 'data' block) is not a JSON ReportSpec —
+        # spec validate must say so by name, not reject it as "unknown fields"
+        # (which reads as malformed).
+        from tracebi import cli
+        pkg = tmp_path / "reports" / "my_pkg"
+        pkg.mkdir(parents=True)
+        (pkg / "report.json").write_text(json.dumps({
+            "name": "P", "libs": ["echarts"],
+            "data": {"rows": {"model": "m", "query": {"fact": "f",
+                                                      "measures": ["x"]}}}}))
+        rc = cli.main(["spec", "validate", str(pkg / "report.json")])
+        assert rc == 1
+
+    def test_package_build_warns_on_unknown_git_sha(
+        self, tmp_path, model, monkeypatch, capsys
+    ):
+        # The primary (package) lane used to write git_sha:"unknown" silently;
+        # the build is the moment to say the receipt can't pin its code state.
+        import tracebi.reports.base_renderer as br
+        import tracebi.reports.report as report_mod
+        from tracebi import cli
+
+        monkeypatch.setattr(cli, "_load_project_models",
+                            lambda: {model.name: model})
+        monkeypatch.setattr(report_mod, "_GIT_SHA", "unknown")
+        monkeypatch.setattr(br, "_GIT_SHA_WARNED", False)
+        reports = tmp_path / "reports"
+        out = tmp_path / "data" / "gitless.html"
+        assert cli.main(["new-report", "Gitless",
+                         "--reports-dir", str(reports)]) == 0
+        assert cli.main(["report", "build", "gitless",
+                         "--reports-dir", str(reports),
+                         "--output", str(out)]) == 0
+        assert "git_sha is 'unknown'" in capsys.readouterr().err
+
 
 class TestShippedExample:
     def test_portfolio_book_package_loads_structurally(self):

@@ -67,6 +67,7 @@ from tracebi.reports.figures import (
     Figure, FigureError, assign_figure_ids, extract_figures, fill_figures,
     methodology_insertion, strip_stage,
 )
+from tracebi.reports.base_renderer import _warn_if_unknown_git_sha
 from tracebi.reports.html_renderer import HTMLRenderer
 from tracebi.reports.report import (
     ARTIFACT_MANIFEST_SCHEMA_VERSION, PARQUET_MANIFEST_SCHEMA_VERSION,
@@ -355,6 +356,11 @@ class TemplatePackage:
         # in it (schema v2: the refuse-newer-schema path in verify is the
         # compatibility mechanism it was reserved for).
         manifest = report.build_manifest("html", output_path)
+        # A receipt that cannot pin itself to a code state is worth less, and the
+        # build is the moment to say so — one loud line, not a silent
+        # git_sha:"unknown" in the manifest. Same warning the spec/HTML lane
+        # already emits; the package lane (the primary one) was missing it.
+        _warn_if_unknown_git_sha(manifest)
         # ONE embed plan for the whole artifact: the format decision, the page
         # blocks, and the manifest's payload hashes all come from the same
         # single encoding (embed.py plan_embed) — so for a Parquet artifact the
