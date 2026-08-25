@@ -867,6 +867,34 @@ class TestQueryDeterminism:
         assert len(prints) == 1, "top-N with a boundary tie is non-reproducible"
         assert len(rowsets) == 1
 
+    def test_order_by_accepts_a_lone_key_not_only_a_list(self):
+        """The vocabulary shows {'column':..,'desc':..} and '-col' as the per-key
+        forms; passing one bare used to iterate as characters/keys and fail with
+        'column ... is not a result column'. A singular form is now wrapped, and
+        a directly-built QuerySpec normalizes it too."""
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        from tracebi.model.data_model import QuerySpec
+        holds = pd.DataFrame({"hid": [1, 2, 3], "name": list("abc"),
+                              "mv": [30.0, 10.0, 20.0]})
+        m = DataModel("d")
+        m.add_connector(MemoryConnector("mem", tables={"fact": holds}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_fact("f", table_name="fact", measures=["mv"], foreign_keys={})
+        m.add_measure("mv", column="mv", agg="sum")
+        m.connect()
+        # bare "-col", bare "col", and a bare dict all sort as documented.
+        assert m.query(fact="f", measures=["mv"], order_by="-mv",
+                       aggregate=False).to_pandas()["mv"].tolist() == [30.0, 20.0, 10.0]
+        assert m.query(fact="f", measures=["mv"], order_by="mv",
+                       aggregate=False).to_pandas()["mv"].tolist() == [10.0, 20.0, 30.0]
+        assert m.query(fact="f", measures=["mv"], order_by={"column": "mv", "desc": True},
+                       aggregate=False).to_pandas()["mv"].tolist() == [30.0, 20.0, 10.0]
+        # a directly-constructed spec normalizes to the canonical list-of-dicts.
+        s = QuerySpec(fact="f", measures=["mv"], order_by="-mv", aggregate=False)
+        assert s.order_by == ({"column": "mv", "desc": True},)
+        assert s.to_dict()["order_by"] == [{"column": "mv", "desc": True}]
+
     def test_result_stamps_the_current_fingerprint_algo(self):
         """Every stamped result records the algorithm that produced it, so a
         future algorithm change never silently re-classifies old receipts."""

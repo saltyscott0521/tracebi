@@ -216,11 +216,19 @@ def _normalize_order_by(raw: Any) -> tuple[dict, ...]:
     Normalize ``order_by`` to the canonical tuple-of-dicts form.
 
     Accepts ``{"column": str, "desc": bool}`` dicts and the ``"col"`` /
-    ``"-col"`` string shorthand. The stamped resolved spec always carries
-    the dict form, so replay compares like with like.
+    ``"-col"`` string shorthand, either as a list of them or as a lone element.
+    The stamped resolved spec always carries the dict form, so replay compares
+    like with like.
     """
     if not raw:
         return ()
+    # A lone element form, not a list of them: order_by documents both
+    # {"column":..,"desc":..} and "-col" as PER-KEY forms, and an agent (or the
+    # docs read literally) naturally passes one bare. Left as-is a bare string
+    # would iterate as characters ("-col" → column "") and a bare dict as its
+    # keys — a cryptic error pointing at a character. Wrap the singular in a list.
+    if isinstance(raw, (str, dict)):
+        raw = [raw]
     out: list[dict] = []
     for i, entry in enumerate(raw):
         if isinstance(entry, str):
@@ -272,6 +280,14 @@ class QuerySpec:
     allow_rate_agg: bool = False                    # skip the value-based rate guard
     order_by: tuple = ()                            # ({"column": str, "desc": bool}, ...)
     limit: Optional[int] = None
+
+    def __post_init__(self):
+        # Normalize order_by at construction so EVERY path is forgiving — not
+        # only query()/from_dict, which already normalize, but a QuerySpec built
+        # directly with a bare "-col" or a lone {"column":..} dict. Without this
+        # a singular form iterates as characters/keys and fails cryptically in
+        # to_dict/execute. Idempotent, so double-normalization is harmless.
+        object.__setattr__(self, "order_by", _normalize_order_by(self.order_by))
 
     def to_dict(self) -> dict:
         d = {

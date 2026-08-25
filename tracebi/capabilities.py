@@ -612,13 +612,17 @@ def describe(brief: bool = False) -> dict:
             },
             "ordering": {
                 "order_by": [
-                    {"form": "{'column': 'fair_value', 'desc': True}",
-                     "means": "sort the result by a result column — dimension "
-                              "refs, measure names, ratio measures included"},
-                    {"form": "'-fair_value'",
-                     "means": "string shorthand: '-col' descending, 'col' "
-                              "ascending"},
+                    {"form": "[{'column': 'fair_value', 'desc': True}]",
+                     "means": "a LIST of sort keys, each a result column — "
+                              "dimension refs, measure names, ratio measures "
+                              "included; earlier keys sort first"},
+                    {"form": "['-fair_value']",
+                     "means": "string shorthand in the list: '-col' descending, "
+                              "'col' ascending"},
                 ],
+                "order_by_note": "order_by is a LIST of keys. A lone key — "
+                                 "'-fair_value' or {'column':..} — is accepted "
+                                 "and wrapped, but the canonical form is a list.",
                 "limit": "keep the first N rows after sorting; REFUSED without "
                          "order_by — 'first N' must never masquerade as 'top N'",
                 "note": "Ties are broken by the remaining dimension columns and "
