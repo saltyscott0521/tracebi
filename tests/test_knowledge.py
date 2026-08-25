@@ -161,6 +161,95 @@ class TestMeanOfARatioGuard:
             "knows it exists and knows the escape hatch")
 
 
+class TestValueBasedRateGuard:
+    """The name guard is blind to a per-row ratio whose column name matches no
+    token (mark_cost = fair_value / cost). At execution the values are here, so
+    an additive aggregation of a ratio-shaped column is refused — the mark_cost
+    hole a round-3 field test drove a mean-of-8.488 straight through."""
+
+    def _model(self, n=40):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        # mark_cost ~1.0, fractional, with one 316,000x warrant in the tail —
+        # the exact shape (median ≈ 1) the guard keys on.
+        mark = [round(0.9 + 0.005 * i, 4) for i in range(n)]
+        mark[0] = 316000.0
+        fact = pd.DataFrame({
+            "hid": range(n), "fund_id": [1] * n, "mark_cost": mark,
+            "fair_value": [1_000_000.0 + i for i in range(n)],
+            "cost": [900_000.0 + i for i in range(n)],
+        })
+        dim = pd.DataFrame({"fund_id": [1], "fund": ["A"]})
+        m = DataModel("m")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact, "dim": dim}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim", connector="mem", source="dim")
+        m.add_dimension("dim", table_name="dim", key_col="fund_id",
+                        attributes=["fund"])
+        m.add_fact("fact", table_name="fact",
+                   measures=["mark_cost", "fair_value", "cost"],
+                   foreign_keys={"dim": "fund_id"})
+        return m
+
+    def test_refuses_mean_and_sum_of_a_ratio_shaped_column(self):
+        import pytest
+        for agg in ("mean", "sum", "avg"):
+            with pytest.raises(ValueError, match="per-row ratios"):
+                self._model().query(fact="fact", measures={"mc": ("mark_cost", agg)})
+
+    def test_min_max_of_the_same_column_are_allowed(self):
+        # extremes of a ratio are legitimate — the guard only refuses additive aggs.
+        m = self._model()
+        m.query(fact="fact", measures={"hi": ("mark_cost", "max")})
+        m.query(fact="fact", measures={"lo": ("mark_cost", "min")})
+
+    def test_the_ratio_of_totals_is_the_correct_form_and_is_allowed(self):
+        m = self._model()
+        m.add_measure("fv", column="fair_value", agg="sum")
+        m.add_measure("cb", column="cost", agg="sum")
+        m.add_measure("mark", ratio=("fv", "cb"))
+        df = m.query(fact="fact", measures=["fv", "cb", "mark"]).to_pandas()
+        assert df["mark"].iloc[0] == df["fv"].iloc[0] / df["cb"].iloc[0]
+
+    def test_query_flag_is_the_escape(self):
+        df = self._model().query(fact="fact", measures={"mc": ("mark_cost", "mean")},
+                                 allow_rate_agg=True).to_pandas()
+        assert df["mc"].iloc[0] > 1.0   # the (wrong) mean, explicitly permitted
+
+    def test_declared_measure_allow_rate_agg_persists_to_query_time(self):
+        m = self._model()
+        m.add_measure("avg_mark", column="mark_cost", agg="mean", allow_rate_agg=True)
+        m.query(fact="fact", measures=["avg_mark"])   # no raise
+
+    def test_money_columns_are_not_tripped(self):
+        # median in the millions — nowhere near 1.0, so the guard stays silent.
+        self._model().query(fact="fact", measures={"fv": ("fair_value", "sum")})
+
+    def test_small_fixtures_do_not_trip(self):
+        # below the row-count gate — a per-row-ratio problem matters at scale.
+        self._model(n=10).query(fact="fact", measures={"mc": ("mark_cost", "mean")})
+
+    def test_the_refusal_teaches(self):
+        import pytest
+        with pytest.raises(ValueError) as exc:
+            self._model().query(fact="fact", measures={"mc": ("mark_cost", "mean")})
+        msg = str(exc.value)
+        assert "ratio-of-totals" in msg
+        assert "allow_rate_agg=True" in msg
+        assert "sum(numerator)" in msg
+
+    def test_integer_counts_stored_as_float_are_not_tripped(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        # whole numbers near 1 (a 0/1/2 flag as float) are not ratios.
+        fact = pd.DataFrame({"hid": range(40), "flag": [float(i % 2) for i in range(40)]})
+        m = DataModel("f")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_fact("fact", table_name="fact", measures=["flag"])
+        m.query(fact="fact", measures={"flags": ("flag", "sum")})   # no raise
+
+
 # ── Expressiveness pulled back into the governed lane: distribution aggs ───────
 # A mean hides skew; median/stddev used to force report.py (ungoverned, no
 # receipt, no guard). Now they are declarative measures — governed, verifiable,

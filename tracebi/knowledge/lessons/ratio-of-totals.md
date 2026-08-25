@@ -30,4 +30,10 @@ The framework refuses both by default and points you here; `min`/`max` of a
 rate (the widest spread, the lowest yield) stay fine. A `mean` is only right for
 a genuinely additive quantity whose typical value you want.
 
+The refusal is not only spelled on the name. A column named nothing like a rate
+— `mark_cost`, a fair-value-over-cost ratio sitting near 1.0 — is caught at
+query time by its *values*: an additive aggregation of a floating column centred
+near 1.0 is refused even when the name matches no rate token. If the column
+genuinely is additive, `allow_rate_agg=True` on the measure or the query says so.
+
 **Weighted averages are a ratio too** — see [[weighted-vs-plain-mean]].

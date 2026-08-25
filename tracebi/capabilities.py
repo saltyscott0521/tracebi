@@ -637,6 +637,13 @@ def describe(brief: bool = False) -> dict:
                 "ratio measure instead (ratio of totals); see the ratio-of-totals "
                 "lesson. Override with allow_rate_agg=True only when it is truly "
                 "correct.",
+                "The same guard also fires at QUERY time on values, not just the "
+                "name: an additive aggregation (sum/mean) of a column whose "
+                "values look like per-row ratios — floating, centred near 1.0 "
+                "(e.g. mark_cost = fair_value/cost) — is refused even when the "
+                "name matches no rate token. Declare a ratio measure, or pass "
+                "allow_rate_agg=True on the measure or the query if the column is "
+                "genuinely additive.",
                 "Summing a stock-named measure (aum, nav, balance, headcount, "
                 "inventory) with agg='sum' is REFUSED — a point-in-time balance "
                 "double-counts when summed across snapshots. Declare a period_end "

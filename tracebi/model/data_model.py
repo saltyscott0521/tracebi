@@ -55,6 +55,18 @@ _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique",
 #: aggregation guard in add_measure and `tracebi knowledge ratio-of-totals`).
 _RATE_TOKEN = re.compile(r"(?:^|_)(pct|percent|ratio|rate|bps|yield|apr|apy)(?:_|$)")
 
+#: Value-based rate guard. The name guard above is blind to a per-row ratio
+#: whose column name matches no token (``mark_cost`` = fair_value/cost, ~1.0):
+#: summing/averaging it is the same silent-wrong number. So at execution — where
+#: the values ARE available — refuse an additive aggregation of a column that
+#: LOOKS like per-row ratios: floating, mostly non-integer, robust centre within
+#: a 2× band of 1.0. Additive quantities (money, counts, sizes) are essentially
+#: never centred at ~1, so this fires narrowly; gated on row count so small
+#: fixtures never trip. See `tracebi knowledge ratio-of-totals`.
+_RATE_MIN_ROWS = 20
+_RATE_BAND_LO, _RATE_BAND_HI = 0.5, 2.0
+_RATE_GUARD_AGGS = ("sum", "mean", "avg")
+
 #: Name tokens that mark a measure as a point-in-time STOCK (a balance, not a
 #: flow): summing one across snapshots double-counts it (Jan AUM + Feb AUM is
 #: not "AUM"). Guarded in add_measure; the fix is a period_end (semi-additive)
@@ -173,6 +185,7 @@ class MeasureDef:
     period_end: Optional[tuple[str, str]] = None  # (value_column, date_dim_attr)
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
+    allow_rate_agg: bool = False               # author vouched: skip the value guard
 
     def to_dict(self) -> dict:
         d = {"name": self.name, "kind": self.kind}
@@ -256,6 +269,7 @@ class QuerySpec:
     having: Any = None                              # HAVING — after aggregation
     aggregate: bool = True
     allow_fanout: bool = False
+    allow_rate_agg: bool = False                    # skip the value-based rate guard
     order_by: tuple = ()                            # ({"column": str, "desc": bool}, ...)
     limit: Optional[int] = None
 
@@ -271,7 +285,11 @@ class QuerySpec:
         }
         # Only when present: a spec without ordering serializes byte-for-byte
         # as it did before order_by/limit existed, so recorded specs in
-        # existing manifests and lineage stay stable.
+        # existing manifests and lineage stay stable. allow_rate_agg is the
+        # same — a query that never sets it stamps identically to before the
+        # guard existed, so no issued receipt moves.
+        if self.allow_rate_agg:
+            d["allow_rate_agg"] = True
         if self.having:
             d["having"] = dict(self.having)
         if self.order_by:
@@ -288,13 +306,13 @@ class QuerySpec:
             raise ValueError("QuerySpec requires 'measures'.")
         unknown = set(d) - {
             "fact", "measures", "dimensions", "filters", "having", "aggregate",
-            "allow_fanout", "order_by", "limit",
+            "allow_fanout", "allow_rate_agg", "order_by", "limit",
         }
         if unknown:
             raise ValueError(
                 f"Unknown QuerySpec field(s): {sorted(unknown)}. "
                 f"Allowed: fact, measures, dimensions, filters, having, "
-                f"aggregate, allow_fanout, order_by, limit."
+                f"aggregate, allow_fanout, allow_rate_agg, order_by, limit."
             )
         measures = d["measures"]
         limit = d.get("limit")
@@ -310,6 +328,7 @@ class QuerySpec:
             having=dict(d.get("having") or {}) or None,
             aggregate=bool(d.get("aggregate", True)),
             allow_fanout=bool(d.get("allow_fanout", False)),
+            allow_rate_agg=bool(d.get("allow_rate_agg", False)),
             order_by=_normalize_order_by(d.get("order_by")),
             limit=limit,
         )
@@ -814,6 +833,7 @@ class DataModel:
             rank=rank, running=running,
             period_end=tuple(period_end) if period_end else None,
             description=description, format=format,
+            allow_rate_agg=bool(allow_rate_agg),
         )
         return self
 
@@ -1016,6 +1036,7 @@ class DataModel:
         having: Optional[dict[str, Any]] = None,
         aggregate: bool = True,
         allow_fanout: bool = False,
+        allow_rate_agg: bool = False,
         order_by: Optional[list] = None,
         limit: Optional[int] = None,
     ) -> DataSet:
@@ -1089,6 +1110,7 @@ class DataModel:
             having=having,
             aggregate=aggregate,
             allow_fanout=allow_fanout,
+            allow_rate_agg=allow_rate_agg,
             order_by=_normalize_order_by(order_by),
             limit=limit,
         ))
@@ -1194,6 +1216,39 @@ class DataModel:
                 metadata={"derived": dict(derived)},
             ))
         fact_cols = set(fact_df.columns) | probe_cols
+
+        # Value-based rate guard. The name guard at add_measure is blind to a
+        # per-row ratio whose column name matches no token (mark_cost =
+        # fair_value / cost, ~1.0); at execution the values are here, so refuse
+        # an additive aggregation of a column that LOOKS like per-row ratios —
+        # the same silent-wrong number (a mean of ratios), caught where the name
+        # could not see it. The author (a declared measure's allow_rate_agg) or
+        # the query (spec.allow_rate_agg) may vouch that the column is additive.
+        if not spec.allow_rate_agg:
+            for out_name, func in measures.items():
+                if func not in _RATE_GUARD_AGGS:
+                    continue
+                md = self._measures.get(out_name)
+                if md is not None and md.allow_rate_agg:
+                    continue
+                src = derived.get(out_name, out_name)
+                if not (isinstance(src, str)
+                        and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", src)
+                        and src in fact_df.columns):
+                    continue
+                if self._looks_like_per_row_ratio(fact_df[src]):
+                    raise ValueError(
+                        f"Measure '{out_name}': agg='{func}' aggregates column "
+                        f"'{src}', whose values look like per-row ratios (a "
+                        f"floating column centred near 1.0) — summing per-row "
+                        f"ratios is meaningless and their mean overweights small "
+                        f"rows. The blended rate is sum(numerator) / "
+                        f"sum(denominator): declare a ratio measure "
+                        f"(ratio=(numerator, denominator)). See `tracebi "
+                        f"knowledge ratio-of-totals`. If this column really is an "
+                        f"additive quantity, pass allow_rate_agg=True (on the "
+                        f"measure or the query)."
+                    )
 
         predicates = self._parse_filters(filters, fact_def, fact_cols)
         # A predicate is `pushed_down` only when the connector ACTUALLY filtered
@@ -1811,6 +1866,26 @@ class DataModel:
                 latest = snap[date_alias].max()
                 out[name] = snap.loc[snap[date_alias] == latest, value_col].sum()
         return out
+
+    @staticmethod
+    def _looks_like_per_row_ratio(series: "pd.Series") -> bool:
+        """Value-based signal that a column holds per-row ratios (marks,
+        multiples) rather than an additive quantity: floating, mostly
+        non-integer, and a robust centre within a 2× band of 1.0. Additive
+        business quantities (money, counts, sizes) are essentially never centred
+        at ~1, so this fires narrowly. Uses the median, so a heavy tail (one
+        316,000× warrant) does not hide the ~1.0 centre; gated on row count so
+        small fixtures never trip it."""
+        if not pd.api.types.is_float_dtype(series):
+            return False
+        a = series[series.notna()].abs()
+        a = a[a != float("inf")]
+        if len(a) < _RATE_MIN_ROWS:
+            return False
+        if float((a.mod(1.0) != 0.0).mean()) < 0.5:   # mostly non-integer
+            return False
+        med = float(a.median())
+        return _RATE_BAND_LO <= med <= _RATE_BAND_HI
 
     def _parse_filters(
         self,
