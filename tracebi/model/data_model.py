@@ -43,6 +43,19 @@ LARGE_LOAD_WARN_ROWS = 100_000
 #: ``date_trunc`` units). All deterministic — no fingerprint-algo concern.
 _TIME_GRAINS = {"year", "quarter", "month", "week", "day"}
 
+
+def _pop_offset(unit: str, n: int):
+    """A period offset as a ``pandas.DateOffset`` — the shift a period-over-
+    period measure applies to the time axis to find the prior period. Aligns
+    with the same units a time grain buckets to, so ``unit`` shifting a
+    grain-start lands on the earlier grain-start exactly (deterministic match)."""
+    if unit == "year":    return pd.DateOffset(years=n)
+    if unit == "quarter": return pd.DateOffset(months=3 * n)
+    if unit == "month":   return pd.DateOffset(months=n)
+    if unit == "week":    return pd.DateOffset(weeks=n)
+    if unit == "day":     return pd.DateOffset(days=n)
+    raise ValueError(f"Unsupported period unit '{unit}'.")
+
 _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique",
               # Distribution aggregations — a mean hides skew and tails, so
               # dispersion/robust-centre reporting used to force report.py.
@@ -237,6 +250,8 @@ class MeasureDef:
     running: Optional[str] = None              # measure name: cumsum by it, desc
     partition_by: tuple[str, ...] = ()         # rank/running restart per group
     period_end: Optional[tuple[str, str]] = None  # (value_column, date_dim_attr)
+    offset: Optional[tuple[str, str, int]] = None  # (base, unit, n): prior value
+    growth: Optional[tuple[str, str, int]] = None  # (base, unit, n): (cur-prior)/prior
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
     allow_rate_agg: bool = False               # author vouched: skip the value guard
@@ -253,6 +268,10 @@ class MeasureDef:
             d["period_end"] = list(self.period_end)
         if self.partition_by:
             d["partition_by"] = list(self.partition_by)
+        if self.offset:
+            d["offset"] = list(self.offset)
+        if self.growth:
+            d["growth"] = list(self.growth)
         return d
 
 
@@ -464,6 +483,7 @@ class _Resolved:
     runnings: "dict[str, str]"                   # {output: base measure}
     period_ends: "dict[str, tuple[str, str]]"    # {output: (value_col, date_attr)}
     partitions: "dict[str, tuple[str, ...]]"     # {rank/running output: part cols}
+    pops: "dict[str, tuple[str, str, int, str]]"  # {output: (base, unit, n, mode)}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -779,6 +799,8 @@ class DataModel:
         running: Optional[str] = None,
         partition_by: "str | list[str] | None" = None,
         period_end: Optional[tuple[str, str]] = None,
+        offset: Optional[tuple[str, str, int]] = None,
+        growth: Optional[tuple[str, str, int]] = None,
         description: str = "",
         format: Optional[str] = None,
         allow_rate_agg: bool = False,
@@ -843,18 +865,20 @@ class DataModel:
         given = [k for k, v in (("column", column), ("expr", expr),
                                 ("ratio", ratio), ("share", share),
                                 ("rank", rank), ("running", running),
-                                ("period_end", period_end))
+                                ("period_end", period_end),
+                                ("offset", offset), ("growth", growth))
                  if v is not None]
         if len(given) != 1:
             raise ValueError(
                 f"Measure '{name}' must specify exactly one of column=, expr=, "
-                f"ratio=, share=, rank=, running=, or period_end=, got "
-                f"{given or 'none'}."
+                f"ratio=, share=, rank=, running=, period_end=, offset=, or "
+                f"growth=, got {given or 'none'}."
             )
 
         kind = {"column": "simple", "expr": "expression", "ratio": "ratio",
                 "share": "share", "rank": "rank", "running": "running",
-                "period_end": "period_end"}[given[0]]
+                "period_end": "period_end", "offset": "offset",
+                "growth": "growth"}[given[0]]
 
         # share/rank/running are all post-aggregation window measures over a
         # named base measure — none takes an agg.
@@ -919,6 +943,39 @@ class DataModel:
                     f"axis), got {date_ref!r}."
                 )
             period_end = (value_col, date_ref)
+        elif kind in ("offset", "growth"):
+            # Period-over-period: the base measure's value one (unit, n) earlier
+            # (offset), or its growth vs then ((cur - prior) / prior). No agg —
+            # the base is already an aggregated measure; the query must group by
+            # a declared time grain (checked at execution).
+            if agg is not None:
+                raise ValueError(
+                    f"Measure '{name}': {kind} measures take no agg — they read "
+                    f"the base measure's value in an earlier period."
+                )
+            spec_val = offset if kind == "offset" else growth
+            if not (isinstance(spec_val, (tuple, list)) and len(spec_val) == 3):
+                raise ValueError(
+                    f"Measure '{name}': {kind} must be a (base_measure, unit, n) "
+                    f"triple — e.g. ('revenue', 'year', 1), got {spec_val!r}."
+                )
+            base_m, unit, n = str(spec_val[0]), str(spec_val[1]).lower(), spec_val[2]
+            if unit not in _TIME_GRAINS:
+                raise ValueError(
+                    f"Measure '{name}': {kind} unit '{spec_val[1]}' is not "
+                    f"supported.{self._hint(unit, sorted(_TIME_GRAINS))} "
+                    f"One of: {', '.join(sorted(_TIME_GRAINS))}."
+                )
+            if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+                raise ValueError(
+                    f"Measure '{name}': {kind} n must be a positive integer "
+                    f"(periods back), got {n!r}."
+                )
+            triple = (base_m, unit, n)
+            if kind == "offset":
+                offset = triple
+            else:
+                growth = triple
         elif kind in ("simple", "expression"):    # these require an agg
             if agg is None:
                 raise ValueError(
@@ -1002,6 +1059,8 @@ class DataModel:
             ratio=tuple(ratio) if ratio else None, share=share,
             rank=rank, running=running, partition_by=part,
             period_end=tuple(period_end) if period_end else None,
+            offset=tuple(offset) if offset else None,
+            growth=tuple(growth) if growth else None,
             description=description, format=format,
             allow_rate_agg=bool(allow_rate_agg),
         )
@@ -1328,6 +1387,7 @@ class DataModel:
                                    resolved.runnings)
         period_ends = resolved.period_ends
         partitions = resolved.partitions
+        pops = resolved.pops
 
         # A semi-additive rollup is an aggregation (latest-snapshot-then-sum);
         # there is no per-row "period end", so refuse it in the raw-row mode.
@@ -1604,6 +1664,21 @@ class DataModel:
                           "partitions": {k: list(v) for k, v in partitions.items()}},
             ))
 
+        # Period-over-period (offset/growth): read each base measure's value one
+        # (unit, n) earlier by shifting the query's time-grain column and matching
+        # on the other dimensions — YoY / QoQ / MoM. Runs after windows so a base
+        # can be any earlier-computed measure; before HAVING/order so a PoP is
+        # filterable and sortable.
+        if pops:
+            result_df = self._apply_pop(result_df, pops, parsed_dims)
+            lineage.append(LineageNode(
+                operation="assign",
+                description=("Period-over-period measure(s): " + ", ".join(
+                    f"{k} = {mode}({b}, {n} {unit} back)"
+                    for k, (b, unit, n, mode) in pops.items())),
+                metadata={"pops": {k: list(v) for k, v in pops.items()}},
+            ))
+
         # Post-aggregation filters (HAVING): applied after the engine AND
         # ratios, so they filter the aggregated measures/ratios — the
         # difference between "groups whose total ≥ 250" and `filters`'
@@ -1767,6 +1842,7 @@ class DataModel:
         runnings: dict[str, str] = {}
         period_ends: dict[str, tuple[str, str]] = {}
         partitions: dict[str, tuple[str, ...]] = {}
+        pops: dict[str, tuple[str, str, int, str]] = {}
 
         if isinstance(measures, dict):
             if not measures:
@@ -1822,7 +1898,7 @@ class DataModel:
                             f"{sorted(produced - {out_col})}."
                         )
             return _Resolved(agg_map, derived, ratios, shares, ranks,
-                             runnings, period_ends, partitions)
+                             runnings, period_ends, partitions, pops)
 
         names = list(measures or [])
         if not names:
@@ -1831,7 +1907,7 @@ class DataModel:
         def _expand(mname: str, seen: tuple) -> None:
             if (mname in agg_map or mname in ratios or mname in shares
                     or mname in ranks or mname in runnings
-                    or mname in period_ends):
+                    or mname in period_ends or mname in pops):
                 return
             if mname not in self._measures:
                 raise ValueError(
@@ -1871,6 +1947,11 @@ class DataModel:
                 # value_col is a raw fact column, date is a dim attribute —
                 # neither is another measure, so nothing to recurse into.
                 period_ends[m.name] = m.period_end
+            elif m.kind in ("offset", "growth"):
+                base_m, unit, n = m.offset if m.kind == "offset" else m.growth
+                _expand(base_m, seen + (mname,))     # the measure shifted in time
+                pops[m.name] = (base_m, unit, n,
+                                "value" if m.kind == "offset" else "growth")
             else:  # ratio
                 num, den = m.ratio
                 _expand(num, seen + (mname,))
@@ -1880,7 +1961,7 @@ class DataModel:
         for n in names:
             _expand(n, ())
         return _Resolved(agg_map, derived, ratios, shares, ranks,
-                         runnings, period_ends, partitions)
+                         runnings, period_ends, partitions, pops)
 
     def _apply_derived(
         self,
@@ -2024,6 +2105,59 @@ class DataModel:
             else:
                 col = col.cumsum()
             out[name] = col.reindex(out.index)
+        return out
+
+    def _apply_pop(
+        self,
+        result_df: pd.DataFrame,
+        pops: "dict[str, tuple[str, str, int, str]]",
+        parsed_dims: list[tuple[str, str]],
+    ) -> pd.DataFrame:
+        """Compute period-over-period (offset/growth) measures.
+
+        For each row, read the base measure's value one ``(unit, n)`` earlier —
+        the prior period — by shifting the query's time-grain column back and
+        matching on the OTHER dimensions. ``offset`` returns that prior value;
+        ``growth`` returns ``(current - prior) / prior``. YoY is
+        ``('revenue', 'year', 1)``; QoQ/MoM change the unit.
+
+        The query must group by exactly ONE declared time grain (the period
+        axis) — a ``date_trunc`` attribute, whose values are period-aligned, so
+        shifting a period-start lands on the earlier period-start exactly. The
+        match is exact-date equality, so the result is deterministic; a period
+        with no prior in the data is NULL."""
+        out = result_df.copy()
+        time_aliases = [
+            f"{d}.{a}" for d, a in parsed_dims
+            if (self._dimensions[d].derived.get(a) or {}).get("kind") == "date_trunc"
+        ]
+        if len(time_aliases) != 1:
+            raise ValueError(
+                f"Period-over-period measure(s) {sorted(pops)} need exactly one "
+                f"declared time grain among the query's dimensions (the period "
+                f"axis), found {time_aliases or 'none'}. Group by a time-grain "
+                f"dimension (add_time_grain) — e.g. dimensions=['dim_date.month']."
+            )
+        time_alias = time_aliases[0]
+        others = [f"{d}.{a}" for d, a in parsed_dims
+                  if f"{d}.{a}" != time_alias]
+        tcol = pd.to_datetime(out[time_alias])
+        for name, (base, unit, n, mode) in pops.items():
+            if base not in out.columns:
+                continue
+            # Match each row to the row at (same other dims, this time − n·unit).
+            left = out[others].copy()
+            left["__shifted__"] = tcol - _pop_offset(unit, n)
+            prior = out[[*others, base]].copy()
+            prior["__shifted__"] = pd.to_datetime(out[time_alias])
+            prior = prior.rename(columns={base: "__prior__"})
+            merged = left.merge(prior, on=[*others, "__shifted__"], how="left")
+            prior_s = pd.Series(merged["__prior__"].to_numpy(), index=out.index)
+            if mode == "value":
+                out[name] = prior_s
+            else:  # growth: (current − prior) / prior, null-safe
+                denom = prior_s.where(prior_s != 0)
+                out[name] = (out[base] - prior_s) / denom
         return out
 
     def _apply_period_ends(
@@ -2832,6 +2966,7 @@ class DataModel:
             + list(r.ranks)
             + list(r.runnings)
             + list(r.period_ends)
+            + list(r.pops)
         )
 
     @staticmethod

@@ -582,6 +582,32 @@ def describe(brief: bool = False) -> dict:
                             "is refused (pass allow_additive=True for a genuine "
                             "flow). See the semi-additive lesson.",
                 },
+                {
+                    "kind": "offset",
+                    "args": ["offset"],
+                    "example": "add_measure('rev_ly', offset=('revenue', "
+                               "'year', 1))",
+                    "note": "period-over-period: the base measure's value one "
+                            "(unit, n) EARLIER — the prior period's value. unit "
+                            "is a time grain (year/quarter/month/week/day). The "
+                            "query must group by exactly one declared time grain "
+                            "(the period axis). Compares against periods PRESENT "
+                            "in the result, so include the comparison period — "
+                            "restrict the display with order_by+limit (after the "
+                            "shift), not a filter (WHERE removes the prior). See "
+                            "the period-over-period lesson.",
+                },
+                {
+                    "kind": "growth",
+                    "args": ["growth"],
+                    "example": "add_measure('rev_yoy', growth=('revenue', "
+                               "'year', 1), format='percent')",
+                    "note": "period-over-period GROWTH: (current - prior) / "
+                            "prior, where prior is the base one (unit, n) earlier "
+                            "— YoY with ('revenue','year',1), QoQ/MoM by unit. "
+                            "Same time-grain requirement and same "
+                            "compares-against-what's-in-the-result rule as offset.",
+                },
             ],
             "time_grains": {
                 "declare": "model.add_time_grain(dim, name, source, grain)",

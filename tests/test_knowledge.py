@@ -980,3 +980,110 @@ class TestBooleanOrFilters:
         slugs = {ls["slug"] for ls in index()}
         assert "boolean-or-filters" in slugs
         assert get_lesson("boolean-or-filters") is not None
+
+
+class TestPeriodOverPeriod:
+    """offset/growth measures: year-over-year and friends as governed measures
+    over a declared time grain, not a self-join in report.py."""
+
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        dates = pd.date_range("2023-01-01", "2024-03-01", freq="MS")
+        rows, dim_rows, did = [], [], 0
+        for d in dates:
+            did += 1
+            dim_rows.append({"dt_id": did, "d": d})
+            rows.append({"id": did, "dt_id": did,
+                         "rev": 1000.0 + (d.year - 2023) * 1200 + d.month * 100})
+        m = DataModel("m")
+        m.add_connector(MemoryConnector("mem", tables={
+            "fact": pd.DataFrame(rows), "dim_date": pd.DataFrame(dim_rows)}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_date", connector="mem", source="dim_date")
+        m.add_dimension("dim_date", table_name="dim_date", key_col="dt_id",
+                        attributes=["d"])
+        m.add_time_grain("dim_date", "month", source="d", grain="month")
+        m.add_fact("fact", table_name="fact", measures=["rev"],
+                   foreign_keys={"dim_date": "dt_id"})
+        m.add_measure("revenue", column="rev", agg="sum")
+        m.add_measure("rev_ly", offset=("revenue", "year", 1))
+        m.add_measure("rev_yoy", growth=("revenue", "year", 1), format="percent")
+        m.add_measure("rev_mom", growth=("revenue", "month", 1))
+        m.connect()
+        return m
+
+    def _by_month(self, m, measures):
+        import pandas as pd
+        df = m.query(fact="fact", measures=measures,
+                     dimensions=["dim_date.month"]).to_pandas()
+        df["m"] = pd.to_datetime(df["dim_date.month"]).dt.strftime("%Y-%m")
+        return df.set_index("m")
+
+    def test_offset_reads_the_prior_year_value(self):
+        df = self._by_month(self._model(), ["revenue", "rev_ly"])
+        # 2024-01 revenue 2300 (1000+1200+100); prior = 2023-01 = 1100.
+        assert df.loc["2024-01", "revenue"] == 2300.0
+        assert df.loc["2024-01", "rev_ly"] == 1100.0
+
+    def test_offset_is_null_when_no_prior_period_is_present(self):
+        df = self._by_month(self._model(), ["revenue", "rev_ly"])
+        assert df.loc["2023-01", "rev_ly"] != df.loc["2023-01", "rev_ly"]  # NaN
+
+    def test_growth_is_current_minus_prior_over_prior(self):
+        df = self._by_month(self._model(), ["revenue", "rev_yoy"])
+        assert df.loc["2024-01", "rev_yoy"] == (2300.0 - 1100.0) / 1100.0
+
+    def test_month_over_month(self):
+        df = self._by_month(self._model(), ["revenue", "rev_mom"])
+        # 2023-02 (1200) vs 2023-01 (1100)
+        assert df.loc["2023-02", "rev_mom"] == (1200.0 - 1100.0) / 1100.0
+
+    def test_limit_after_the_shift_keeps_the_comparison(self):
+        # order_by+limit runs AFTER the pop, so "latest month" keeps its YoY.
+        m = self._model()
+        df = m.query(fact="fact", measures=["revenue", "rev_yoy"],
+                     dimensions=["dim_date.month"],
+                     order_by=["-dim_date.month"], limit=1).to_pandas()
+        assert df["rev_yoy"].iloc[0] == (2500.0 - 1300.0) / 1300.0   # 2024-03
+
+    def test_pop_is_deterministic(self):
+        m = self._model()
+        a = m.query(fact="fact", measures=["revenue", "rev_yoy"],
+                    dimensions=["dim_date.month"])
+        b = m.query(fact="fact", measures=["revenue", "rev_yoy"],
+                    dimensions=["dim_date.month"])
+        assert a.fingerprint() == b.fingerprint()
+
+    def test_needs_a_time_grain_in_the_query(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="declared time grain"):
+            m.query(fact="fact", measures=["revenue", "rev_yoy"])
+
+    def test_offset_takes_no_agg_and_needs_a_triple(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="take no agg"):
+            DataModel("t").add_measure("x", offset=("revenue", "year", 1),
+                                       agg="sum")
+        with pytest.raises(ValueError, match="triple"):
+            DataModel("t").add_measure("x", offset=("revenue", "year"))
+
+    def test_bad_unit_and_bad_n_are_refused(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="not.*supported|unit"):
+            DataModel("t").add_measure("x", offset=("revenue", "fortnight", 1))
+        with pytest.raises(ValueError, match="positive integer"):
+            DataModel("t").add_measure("x", growth=("revenue", "year", 0))
+
+    def test_pop_kinds_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
+        assert {"offset", "growth"} <= kinds
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "period-over-period" in slugs
+        assert get_lesson("period-over-period") is not None

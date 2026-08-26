@@ -2141,7 +2141,7 @@ class TestCapabilitySurface:
         assert any("percentile" in str(a) for a in sm["aggregations"])
         assert {k["kind"] for k in sm["measure_kinds"]} == {
             "simple", "expression", "ratio", "share", "rank", "running",
-            "period_end"
+            "period_end", "offset", "growth"
         }
 
     def test_discovery_conventions_are_described(self):
