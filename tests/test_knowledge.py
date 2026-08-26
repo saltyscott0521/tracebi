@@ -886,3 +886,97 @@ class TestStockSumGuard:
         from tracebi.capabilities import describe
         text = str(describe()["semantic_model"]["constraints"])
         assert "stock" in text and "allow_additive" in text
+
+
+class TestBooleanOrFilters:
+    """OR across different columns is a filter group, not two queries. filters
+    AND-s by default; the reserved 'or'/'and' keys build a boolean tree."""
+
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        fact = pd.DataFrame({"id": range(1, 7), "iid": [1, 2, 3, 4, 5, 6],
+                             "amt": [10., 20, 30, 40, 50, 60],
+                             "status": ["a", "a", "b", "b", "a", "b"]})
+        dim = pd.DataFrame({"iid": [1, 2, 3, 4, 5, 6],
+                            "sector": ["Tech", "Fin", "Tech", "Energy", "Fin", "Tech"],
+                            "rating": ["AAA", "BBB", "BBB", "AAA", "AAA", "CCC"]})
+        m = DataModel("m")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact, "dim": dim}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim", connector="mem", source="dim")
+        m.add_dimension("dim", table_name="dim", key_col="iid",
+                        attributes=["sector", "rating"])
+        m.add_fact("fact", table_name="fact", measures=["amt"],
+                   foreign_keys={"dim": "iid"})
+        m.add_measure("n", column="id", agg="count")
+        m.connect()
+        return m
+
+    def _ids(self, m, filters):
+        # the set of matching row ids, via a count over a dimension we can invert
+        df = m.query(fact="fact", measures=["n"], filters=filters).to_pandas()
+        return int(df["n"].iloc[0])
+
+    def test_plain_filters_still_and(self):
+        m = self._model()
+        assert self._ids(m, {"status": "a", "dim.sector": "Tech"}) == 1  # only id 1
+
+    def test_or_across_different_columns(self):
+        m = self._model()
+        # Tech {1,3,6} OR AAA {1,4,5} = {1,3,4,5,6}
+        assert self._ids(m, {"or": [{"dim.sector": "Tech"},
+                                    {"dim.rating": "AAA"}]}) == 5
+
+    def test_and_of_a_leaf_with_an_or_group(self):
+        m = self._model()
+        # status=a {1,2,5} AND (Tech OR AAA) {1,3,4,5,6} = {1,5}
+        assert self._ids(m, {"status": "a",
+                             "or": [{"dim.sector": "Tech"},
+                                    {"dim.rating": "AAA"}]}) == 2
+
+    def test_nested_or_of_and_with_operators(self):
+        m = self._model()
+        # (amt>=50) {5,6} OR (Tech AND BBB) {3} = {3,5,6}
+        assert self._ids(m, {"or": [{"amt": {"gte": 50}},
+                                    {"and": [{"dim.sector": "Tech"},
+                                             {"dim.rating": "BBB"}]}]}) == 3
+
+    def test_or_is_deterministic(self):
+        m = self._model()
+        f = {"or": [{"dim.rating": "AAA"}, {"amt": {"gte": 40}}]}
+        a = m.query(fact="fact", measures=["n"], dimensions=["dim.sector"], filters=f)
+        b = m.query(fact="fact", measures=["n"], dimensions=["dim.sector"], filters=f)
+        assert a.fingerprint() == b.fingerprint()
+
+    def test_malformed_or_groups_are_refused(self):
+        import pytest
+        m = self._model()
+        for bad in ({"or": {"x": 1}}, {"or": []}, {"or": ["nope"]}):
+            with pytest.raises(ValueError):
+                m.query(fact="fact", measures=["n"], filters=bad)
+
+    def test_a_bad_column_inside_or_is_validated(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="not found"):
+            m.query(fact="fact", measures=["n"],
+                    filters={"or": [{"badcol": 1}, {"dim.sector": "Tech"}]})
+
+    def test_spec_validate_recurses_into_or(self):
+        from tracebi.model.data_model import QuerySpec
+        m = self._model()
+        errs, _ = m.check_query_spec(QuerySpec.from_dict({
+            "fact": "fact", "measures": ["n"],
+            "filters": {"or": [{"dim.sector": "Tech"}, {"dim.nope": "x"}]}}))
+        assert any("nope" in e[1] for e in errs)
+
+    def test_or_is_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        forms = str(describe()["semantic_model"]["filter_forms"])
+        assert "'or'" in forms or '"or"' in forms
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "boolean-or-filters" in slugs
+        assert get_lesson("boolean-or-filters") is not None

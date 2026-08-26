@@ -149,6 +149,32 @@ class _Predicate:
 
 
 @dataclass(frozen=True)
+class _FilterNode:
+    """A node in the filter's boolean tree. A leaf holds one ``_Predicate``; an
+    ``and``/``or`` node holds children. The common all-AND filter is a single
+    ``and`` node over leaves and renders exactly as before; an ``or`` node is
+    what a ``{"or": [...]}`` group builds."""
+    op: str                                     # "and" | "or" | "leaf"
+    children: tuple = ()                        # tuple[_FilterNode] for and/or
+    predicate: Optional[_Predicate] = None      # for a leaf
+
+
+def _filter_leaves(node: "Optional[_FilterNode]") -> "list[_Predicate]":
+    """Every leaf predicate in the tree, left to right — the flat set the
+    consumers that only care WHICH columns are filtered use (dim loading,
+    per-condition lineage, dim-value validation), independent of the AND/OR
+    structure the WHERE renderer needs."""
+    if node is None:
+        return []
+    if node.op == "leaf":
+        return [node.predicate] if node.predicate is not None else []
+    out: list[_Predicate] = []
+    for child in node.children:
+        out.extend(_filter_leaves(child))
+    return out
+
+
+@dataclass(frozen=True)
 class MeasureDef:
     """
     A named, governed measure declared on the model.
@@ -1395,7 +1421,11 @@ class DataModel:
                         f"measure or the query)."
                     )
 
-        predicates = self._parse_filters(filters, fact_def, fact_cols)
+        filter_tree = self._parse_filters(filters, fact_def, fact_cols)
+        # The flat leaf set drives dim loading, per-condition lineage, and
+        # dim-value validation — none of which cares about the AND/OR structure;
+        # only the WHERE renderer (via filter_tree) does.
+        predicates = _filter_leaves(filter_tree)
         # A predicate is `pushed_down` only when the connector ACTUALLY filtered
         # at source — which its load node records as pushdown=True (it requires
         # supports_pushdown() and a filter). The old guard `fact_ds.lineage` is
@@ -1488,7 +1518,7 @@ class DataModel:
             dim_dfs=dim_dfs,
             parsed_dims=parsed_dims,
             measures=measures,
-            predicates=predicates,
+            filter_tree=filter_tree,
             aggregate=aggregate,
             lineage=lineage,
         )
@@ -1503,7 +1533,7 @@ class DataModel:
             result_df = self._apply_period_ends(
                 result_df, period_ends, period_end_dims,
                 fact_df=fact_df, fact_def=fact_def, dim_dfs=dim_dfs,
-                parsed_dims=parsed_dims, predicates=predicates,
+                parsed_dims=parsed_dims, filter_tree=filter_tree,
             )
             lineage.append(LineageNode(
                 operation="assign",
@@ -2006,7 +2036,7 @@ class DataModel:
         fact_def: "_FactDef",
         dim_dfs: dict[str, pd.DataFrame],
         parsed_dims: list[tuple[str, str]],
-        predicates: list["_Predicate"],
+        filter_tree: "_FilterNode",
     ) -> pd.DataFrame:
         """Compute semi-additive (period_end) measures.
 
@@ -2041,7 +2071,7 @@ class DataModel:
             snap = self._execute_duckdb(
                 fact_df=fact_df, fact_def=fact_def, dim_dfs=dim_dfs,
                 parsed_dims=inner_dims, measures={value_col: "sum"},
-                predicates=predicates, aggregate=True, lineage=[],
+                filter_tree=filter_tree, aggregate=True, lineage=[],
             )
             if group_aliases:
                 grp = snap.groupby(group_aliases, dropna=False)
@@ -2081,92 +2111,163 @@ class DataModel:
         filters: dict[str, Any],
         fact_def: "_FactDef",
         fact_cols: set,
-    ) -> list[_Predicate]:
+    ) -> "_FilterNode":
         """
-        Turn the user-facing filter dict into validated predicates.
+        Turn the user-facing filter dict into a validated boolean tree.
 
-        Accepts three spellings per entry::
+        Accepts three spellings per column condition::
 
             {"status": "shipped"}                 # eq
             {"region": ["NE", "SE"]}              # in
             {"revenue": {"gte": 1000}}            # explicit operator
 
         A key containing a dot is resolved as ``dim_name.attribute`` against
-        the registered dimensions — filtering by a dimension attribute is the
-        most common analytic gesture and used to raise.
+        the registered dimensions.
+
+        The reserved keys ``"or"`` and ``"and"`` take a list of condition
+        groups (each itself a filter dict) and build a boolean node — every
+        other key in the same dict AND-s with it::
+
+            {"or": [{"sector": "Tech"}, {"rating": "AAA"}]}
+            {"status": "active",
+             "or": [{"region": "West"}, {"revenue": {"gte": 1000}}]}
+
+        The all-AND case (no ``or``/``and``) is a single AND node over leaves —
+        byte-equivalent row selection to before boolean grouping existed.
         """
-        preds: list[_Predicate] = []
+        return self._parse_filter_dict(filters, fact_def, fact_cols)
 
-        for key, raw in filters.items():
-            dim_name = attribute = None
-            if "." in key:
-                cand_dim, cand_attr = key.split(".", 1)
-                if cand_dim not in self._dimensions:
+    def _parse_filter_dict(
+        self, node: Any, fact_def: "_FactDef", fact_cols: set,
+    ) -> "_FilterNode":
+        if not isinstance(node, dict):
+            raise ValueError(
+                f"A filter group must be a dict of conditions, got "
+                f"{type(node).__name__}: {node!r}."
+            )
+        children: list[_FilterNode] = []
+        for key, raw in node.items():
+            kl = str(key).lower()
+            if kl in ("or", "and"):
+                if not isinstance(raw, (list, tuple)) or not raw:
                     raise ValueError(
-                        f"Filter '{key}' refers to dimension '{cand_dim}', "
-                        f"which is not registered in model '{self.name}'."
-                        f"{self._hint(cand_dim, self._dimensions)} "
-                        f"Available dimensions: {sorted(self._dimensions)}"
+                        f"filter '{kl}' takes a non-empty list of condition "
+                        f"groups (each a filter dict), got {raw!r}."
                     )
-                dim_name, attribute = cand_dim, cand_attr
-            elif key not in fact_cols:
-                # Not a fact column — maybe they meant a dimension attribute.
-                matches = [
-                    f"{dn}.{key}" for dn, dd in self._dimensions.items()
-                    if key in (dd.attributes or []) or key == dd.key_col
-                ]
-                extra = (
-                    f" It exists on {matches[0].split('.')[0]}; "
-                    f"reference it as '{matches[0]}'."
-                    if matches else self._hint(key, fact_cols)
+                subs = tuple(
+                    self._parse_filter_dict(sub, fact_def, fact_cols)
+                    for sub in raw
                 )
-                raise ValueError(
-                    f"Filter column '{key}' not found on fact table "
-                    f"'{fact_def.table_name}'.{extra} "
-                    f"Available columns: {sorted(fact_cols)}"
-                )
-
-            # Normalise the value into (op, value)
-            if isinstance(raw, dict):
-                if len(raw) != 1:
-                    raise ValueError(
-                        f"Filter '{key}' must specify exactly one operator, "
-                        f"got {sorted(raw)}. Combine conditions by passing "
-                        f"separate filter entries."
-                    )
-                op, value = next(iter(raw.items()))
-                op = str(op).lower()
-                if op not in FILTER_OPS:
-                    raise ValueError(
-                        f"Unknown filter operator '{op}' for '{key}'."
-                        f"{self._hint(op, FILTER_OPS)} "
-                        f"Supported: {', '.join(FILTER_OPS)}"
-                    )
-            elif isinstance(raw, (list, tuple, set)):
-                op, value = "in", list(raw)
+                children.append(_FilterNode(op=kl, children=subs))
             else:
-                op, value = "eq", raw
+                children.append(_FilterNode(
+                    op="leaf",
+                    predicate=self._parse_one_predicate(
+                        key, raw, fact_def, fact_cols),
+                ))
+        if len(children) == 1:
+            return children[0]
+        return _FilterNode(op="and", children=tuple(children))
 
-            if op in _LIST_OPS and not isinstance(value, (list, tuple, set)):
+    def _parse_one_predicate(
+        self, key: str, raw: Any, fact_def: "_FactDef", fact_cols: set,
+    ) -> "_Predicate":
+        """Validate and normalise one column condition into a ``_Predicate``."""
+        dim_name = attribute = None
+        if "." in key:
+            cand_dim, cand_attr = key.split(".", 1)
+            if cand_dim not in self._dimensions:
                 raise ValueError(
-                    f"Filter '{key}' with operator '{op}' needs a list of "
-                    f"values, got {type(value).__name__}."
+                    f"Filter '{key}' refers to dimension '{cand_dim}', "
+                    f"which is not registered in model '{self.name}'."
+                    f"{self._hint(cand_dim, self._dimensions)} "
+                    f"Available dimensions: {sorted(self._dimensions)}"
                 )
-            if op == "between":
-                if not isinstance(value, (list, tuple)) or len(value) != 2:
-                    raise ValueError(
-                        f"Filter '{key}' with operator 'between' needs a "
-                        f"two-element [low, high], got {value!r}."
-                    )
-            if op in _LIST_OPS:
-                value = list(value)
+            dim_name, attribute = cand_dim, cand_attr
+        elif key not in fact_cols:
+            # Not a fact column — maybe they meant a dimension attribute.
+            matches = [
+                f"{dn}.{key}" for dn, dd in self._dimensions.items()
+                if key in (dd.attributes or []) or key == dd.key_col
+            ]
+            extra = (
+                f" It exists on {matches[0].split('.')[0]}; "
+                f"reference it as '{matches[0]}'."
+                if matches else self._hint(key, fact_cols)
+            )
+            raise ValueError(
+                f"Filter column '{key}' not found on fact table "
+                f"'{fact_def.table_name}'.{extra} "
+                f"Available columns: {sorted(fact_cols)}"
+            )
 
-            preds.append(_Predicate(
-                target=key, op=op, value=value,
-                dim_name=dim_name, attribute=attribute,
-            ))
+        # Normalise the value into (op, value)
+        if isinstance(raw, dict):
+            if len(raw) != 1:
+                raise ValueError(
+                    f"Filter '{key}' must specify exactly one operator, "
+                    f"got {sorted(raw)}. Combine conditions by passing "
+                    f"separate filter entries."
+                )
+            op, value = next(iter(raw.items()))
+            op = str(op).lower()
+            if op not in FILTER_OPS:
+                raise ValueError(
+                    f"Unknown filter operator '{op}' for '{key}'."
+                    f"{self._hint(op, FILTER_OPS)} "
+                    f"Supported: {', '.join(FILTER_OPS)}"
+                )
+        elif isinstance(raw, (list, tuple, set)):
+            op, value = "in", list(raw)
+        else:
+            op, value = "eq", raw
 
-        return preds
+        if op in _LIST_OPS and not isinstance(value, (list, tuple, set)):
+            raise ValueError(
+                f"Filter '{key}' with operator '{op}' needs a list of "
+                f"values, got {type(value).__name__}."
+            )
+        if op == "between":
+            if not isinstance(value, (list, tuple)) or len(value) != 2:
+                raise ValueError(
+                    f"Filter '{key}' with operator 'between' needs a "
+                    f"two-element [low, high], got {value!r}."
+                )
+        if op in _LIST_OPS:
+            value = list(value)
+
+        return _Predicate(
+            target=key, op=op, value=value,
+            dim_name=dim_name, attribute=attribute,
+        )
+
+    def _filter_where(self, node: "Optional[_FilterNode]") -> "tuple[str, list]":
+        """Render a filter tree to a parameterised SQL boolean expression.
+
+        Leaves parameterise through ``_predicate_sql``; ``and``/``or`` nodes
+        join their children with the matching keyword and parenthesise. Params
+        come out left-to-right, matching the positional ``?`` order DuckDB
+        expects. Empty groups contribute nothing."""
+        if node is None:
+            return "", []
+        if node.op == "leaf":
+            p = node.predicate
+            col = (f'dim_{p.dim_name}."{p.attribute}"' if p.is_dim
+                   else f'fact."{p.target}"')
+            return self._predicate_sql(p, col)
+        parts: list[str] = []
+        params: list[Any] = []
+        for child in node.children:
+            sql, ps = self._filter_where(child)
+            if sql:
+                parts.append(sql)
+                params.extend(ps)
+        if not parts:
+            return "", []
+        if len(parts) == 1:
+            return parts[0], params
+        joiner = " AND " if node.op == "and" else " OR "
+        return "(" + joiner.join(parts) + ")", params
 
     def _apply_having(
         self,
@@ -2588,54 +2689,73 @@ class DataModel:
                 errors.append(("dimensions", err))
 
         # ── Filters ───────────────────────────────────────────
-        for key in (spec.filters or {}):
-            key_s = str(key)
-            sub = f"filters.{key_s}"
-            val = (spec.filters or {}).get(key)
-            if isinstance(val, dict):
-                for op in val:
-                    if str(op) not in FILTER_OPS:
-                        errors.append((
-                            f"{sub}.{op}",
-                            f"unknown filter operator '{op}'."
-                            f"{self._hint(str(op), sorted(FILTER_OPS))} "
-                            f"Supported: {', '.join(sorted(FILTER_OPS))}",
-                        ))
-            if "." in key_s:
-                dim_name, attribute = key_s.split(".", 1)
-                err = self._check_declared_dim_ref(dim_name, attribute)
-                if err:
-                    errors.append((sub, err))
-                continue
-            if key_s in declared_cols:
-                continue
-            matches = [
-                f"{dn}.{key_s}" for dn, dd in self._dimensions.items()
-                if key_s in (dd.attributes or []) or key_s == dd.key_col
-            ]
-            if matches:
-                # A warning, not an error: the name may also be a physical
-                # column on the fact table (denormalised facts do this), and
-                # a bare fact-column filter and a dimension-attribute filter
-                # have different semantics — execution accepts the former.
-                warnings.append((
-                    sub,
-                    f"'{key_s}' is not a declared column on fact "
-                    f"'{spec.fact}' but matches dimension attribute "
-                    f"'{matches[0]}'. If you mean the dimension, reference "
-                    f"it as '{matches[0]}'; a bare name filters the fact "
-                    f"table's own column, which is checked at execution.",
-                ))
-            else:
-                warnings.append((
-                    sub,
-                    f"filter column '{key_s}' is not among the declared "
-                    f"columns of fact '{spec.fact}'."
-                    f"{self._hint(key_s, declared_cols)} "
-                    f"Declared: {sorted(declared_cols)}. It cannot be "
-                    f"verified before execution, which checks it against "
-                    f"the actual table.",
-                ))
+        # A filter group AND-s its keys; the reserved "or"/"and" keys hold a
+        # list of sub-groups, so validation recurses into them exactly as the
+        # execution-time parser does.
+        def _check_filter_group(group: Any, path: str) -> None:
+            if not isinstance(group, dict):
+                errors.append((path, "a filter group must be a dict of "
+                                     "conditions."))
+                return
+            for key, val in group.items():
+                key_s = str(key)
+                sub = f"{path}.{key_s}"
+                if key_s.lower() in ("or", "and"):
+                    if not isinstance(val, (list, tuple)) or not val:
+                        errors.append((sub, f"'{key_s.lower()}' takes a "
+                                            f"non-empty list of condition "
+                                            f"groups."))
+                        continue
+                    for i, item in enumerate(val):
+                        _check_filter_group(item, f"{sub}[{i}]")
+                    continue
+                if isinstance(val, dict):
+                    for op in val:
+                        if str(op) not in FILTER_OPS:
+                            errors.append((
+                                f"{sub}.{op}",
+                                f"unknown filter operator '{op}'."
+                                f"{self._hint(str(op), sorted(FILTER_OPS))} "
+                                f"Supported: {', '.join(sorted(FILTER_OPS))}",
+                            ))
+                if "." in key_s:
+                    dim_name, attribute = key_s.split(".", 1)
+                    err = self._check_declared_dim_ref(dim_name, attribute)
+                    if err:
+                        errors.append((sub, err))
+                    continue
+                if key_s in declared_cols:
+                    continue
+                matches = [
+                    f"{dn}.{key_s}" for dn, dd in self._dimensions.items()
+                    if key_s in (dd.attributes or []) or key_s == dd.key_col
+                ]
+                if matches:
+                    # A warning, not an error: the name may also be a physical
+                    # column on the fact table (denormalised facts do this), and
+                    # a bare fact-column filter and a dimension-attribute filter
+                    # have different semantics — execution accepts the former.
+                    warnings.append((
+                        sub,
+                        f"'{key_s}' is not a declared column on fact "
+                        f"'{spec.fact}' but matches dimension attribute "
+                        f"'{matches[0]}'. If you mean the dimension, reference "
+                        f"it as '{matches[0]}'; a bare name filters the fact "
+                        f"table's own column, which is checked at execution.",
+                    ))
+                else:
+                    warnings.append((
+                        sub,
+                        f"filter column '{key_s}' is not among the declared "
+                        f"columns of fact '{spec.fact}'."
+                        f"{self._hint(key_s, declared_cols)} "
+                        f"Declared: {sorted(declared_cols)}. It cannot be "
+                        f"verified before execution, which checks it against "
+                        f"the actual table.",
+                    ))
+
+        if spec.filters:
+            _check_filter_group(spec.filters, "filters")
 
         # ── Ordering ──────────────────────────────────────────
         if spec.limit is not None and not (spec.order_by or ()):
@@ -2747,7 +2867,7 @@ class DataModel:
         dim_dfs: dict[str, pd.DataFrame],
         parsed_dims: list[tuple[str, str]],
         measures: dict[str, str],
-        predicates: list[_Predicate],
+        filter_tree: "_FilterNode",
         aggregate: bool,
         lineage: list[LineageNode],
     ) -> pd.DataFrame:
@@ -2842,16 +2962,10 @@ class DataModel:
                     },
                 ))
 
-            where_clauses: list[str] = []
-            params: list[Any] = []
-            for p in predicates:
-                if p.is_dim:
-                    column_sql = f'dim_{p.dim_name}."{p.attribute}"'
-                else:
-                    column_sql = f'fact."{p.target}"'
-                clause, vals = self._predicate_sql(p, column_sql)
-                where_clauses.append(clause)
-                params.extend(vals)
+            # The filter tree renders to one parameterised boolean expression —
+            # a flat AND for the common case, parenthesised AND/OR when the
+            # query used an `or`/`and` group.
+            where_sql, params = self._filter_where(filter_tree)
 
             # A dimensionless aggregate with no engine measures (its only
             # measures are semi-additive period_ends, filled in afterwards)
@@ -2862,8 +2976,8 @@ class DataModel:
                 select_cols_sql = ["1 AS __skeleton__"]
 
             sql = "SELECT " + ", ".join(select_cols_sql) + f" FROM {from_clause}"
-            if where_clauses:
-                sql += " WHERE " + " AND ".join(where_clauses)
+            if where_sql:
+                sql += " WHERE " + where_sql
             if skeleton:
                 sql += " LIMIT 1"
             if aggregate and group_cols_sql:

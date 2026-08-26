@@ -621,6 +621,13 @@ def describe(brief: bool = False) -> dict:
                 {"form": "{'revenue': {'gte': 1000}}", "means": "explicit operator"},
                 {"form": "{'dim_customer.region': 'West'}",
                  "means": "filter on a dimension attribute"},
+                {"form": "{'or': [{'sector': 'Tech'}, {'rating': 'AAA'}]}",
+                 "means": "OR of condition groups — sector=Tech OR rating=AAA. "
+                          "'and' groups the same way. Every OTHER key in the "
+                          "same dict AND-s with the group, and groups nest, so "
+                          "{'status':'active', 'or':[A, B]} is status=active AND "
+                          "(A OR B). Use 'in' for OR over one column's values; "
+                          "use 'or' for OR across DIFFERENT columns/operators."},
             ],
             "having": {
                 "means": "post-aggregation filters (HAVING) on result columns — "
