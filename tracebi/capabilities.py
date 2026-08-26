@@ -585,12 +585,15 @@ def describe(brief: bool = False) -> dict:
                         "'derived'. This is 'group by month' without dropping to "
                         "report.py or pre-baking the bucket in the transform.",
             },
-            "aggregations": sorted(_AGG_FUNCS),
+            "aggregations": sorted(_AGG_FUNCS) + ["p<N> (percentile, e.g. p90)"],
             "aggregations_note": "median and stddev summarize a distribution's "
                                  "shape — a mean hides skew and tails, so use "
                                  "them for returns/P&L/sizes/spreads (see the "
                                  "summarize-a-distribution lesson). count counts "
-                                 "non-null rows; nunique counts distinct values.",
+                                 "non-null rows; nunique counts distinct values. "
+                                 "p<N> is a percentile (p50 = median, p90/p95/p99 "
+                                 "the tail a mean and even a median hide — worst "
+                                 "marks, largest drawdowns); any p0–p100.",
             "filter_operators": list(FILTER_OPS),
             "filter_forms": [
                 {"form": "{'status': 'shipped'}", "means": "equality"},

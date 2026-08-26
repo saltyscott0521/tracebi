@@ -50,6 +50,33 @@ _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique",
               # default func.upper() path, no special-casing.
               "median", "stddev"}
 
+#: Percentile aggregations, spelled ``p<N>`` (p0–p100): p50 is the median, p90/
+#: p95/p99 are the tail a mean and even a median hide — the fund-ops tail-risk
+#: view (worst marks, largest drawdowns). A parameterised family rather than a
+#: fixed member of _AGG_FUNCS; maps to DuckDB ``quantile_cont`` (interpolated,
+#: deterministic). See `tracebi knowledge summarize-a-distribution`.
+_PERCENTILE_RE = re.compile(r"^p(\d{1,3})$")
+
+
+def _percentile_fraction(func: str) -> "float | None":
+    """``"p90"`` → 0.90, for any p0–p100; ``None`` if not a percentile agg."""
+    m = _PERCENTILE_RE.match(func.lower())
+    if not m:
+        return None
+    n = int(m.group(1))
+    return n / 100 if 0 <= n <= 100 else None
+
+
+def _valid_agg(func: str) -> bool:
+    """True for a named aggregation or a ``p<N>`` percentile."""
+    return func.lower() in _AGG_FUNCS or _percentile_fraction(func) is not None
+
+
+def _agg_choices() -> str:
+    """Human list of aggregations for an error/hint — the named set plus the
+    percentile family, described once so every site reads the same."""
+    return ", ".join(sorted(_AGG_FUNCS)) + ", p0–p100 (percentiles, e.g. p90)"
+
 #: Name tokens that mark a measure as already a rate/ratio — summing or
 #: averaging one of these per-row is a silent-wrong number (see the rate-
 #: aggregation guard in add_measure and `tracebi knowledge ratio-of-totals`).
@@ -767,14 +794,13 @@ class DataModel:
         elif kind in ("simple", "expression"):    # these require an agg
             if agg is None:
                 raise ValueError(
-                    f"Measure '{name}' needs an agg (one of "
-                    f"{', '.join(sorted(_AGG_FUNCS))})."
+                    f"Measure '{name}' needs an agg (one of {_agg_choices()})."
                 )
-            if agg.lower() not in _AGG_FUNCS:
+            if not _valid_agg(agg):
                 raise ValueError(
                     f"Measure '{name}': unsupported aggregation '{agg}'."
                     f"{self._hint(agg, sorted(_AGG_FUNCS))} "
-                    f"Supported: {', '.join(sorted(_AGG_FUNCS))}"
+                    f"Supported: {_agg_choices()}"
                 )
             agg = agg.lower()
             # The rate-aggregation guard — the fanout raise's sibling. You do not
@@ -2365,12 +2391,12 @@ class DataModel:
                     src, func = str(mspec[0]), str(mspec[1])
                 else:
                     src, func = str(out_col), str(mspec)
-                if func.lower() not in _AGG_FUNCS:
+                if not _valid_agg(func):
                     errors.append((
                         f"measures.{out_col}",
                         f"unsupported aggregation '{func}'."
                         f"{self._hint(func, sorted(_AGG_FUNCS))} "
-                        f"Supported: {', '.join(sorted(_AGG_FUNCS))}",
+                        f"Supported: {_agg_choices()}",
                     ))
                 if src not in declared_cols:
                     warnings.append((
@@ -2605,18 +2631,24 @@ class DataModel:
             if aggregate:
                 for col, func in measures.items():
                     func_l = func.lower()
-                    if func_l not in _AGG_FUNCS:
+                    frac = _percentile_fraction(func_l)
+                    if not (frac is not None or func_l in _AGG_FUNCS):
                         raise ValueError(
                             f"Unsupported aggregation '{func}' for measure '{col}'"
                         )
-                    sql_func = "AVG" if func_l == "mean" else (
-                        "COUNT(DISTINCT" if func_l == "nunique" else func_l.upper()
-                    )
-                    if func_l == "nunique":
+                    if frac is not None:
+                        # Interpolated percentile (p90 → quantile_cont(col, 0.9)).
+                        # Deterministic; the fraction comes from a validated
+                        # p0–p100 integer, never free text.
+                        select_cols_sql.append(
+                            f'quantile_cont(fact."{col}", {frac}) AS "{col}"'
+                        )
+                    elif func_l == "nunique":
                         select_cols_sql.append(
                             f'COUNT(DISTINCT fact."{col}") AS "{col}"'
                         )
                     else:
+                        sql_func = "AVG" if func_l == "mean" else func_l.upper()
                         select_cols_sql.append(
                             f'{sql_func}(fact."{col}") AS "{col}"'
                         )

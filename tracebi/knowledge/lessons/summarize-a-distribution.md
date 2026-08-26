@@ -22,11 +22,22 @@ model.add_measure("mean_pnl",   column="pnl", agg="mean")      # keep it, but re
 out the values are. Report them together — a mean beside a median that's far
 below it is itself the signal that the distribution is skewed.
 
+**When the tail is the point, report the tail.** Risk lives in the worst marks,
+the largest drawdowns, the slowest requests — which a mean *and* a median both
+hide. Percentile aggregations spell it `p<N>` (`p50` is the median):
+
+```python
+model.add_measure("p90_mark", column="mark", agg="p90")   # 90th percentile
+model.add_measure("p99_mark", column="mark", agg="p99")   # the deep tail
+```
+
+Any `p0`–`p100`, interpolated and deterministic. `p95`/`p99` are the fund-ops
+tail-risk view; `p90`/`p95` the latency SLO view.
+
 **The tell.** If you're about to report "average X" for anything that can have a
 few large values — trade sizes, returns, balances, response times — pause. The
 mean alone is almost never the honest summary of a skewed quantity; lead with the
-median and show the spread. (Tail measures — p95/p99 for worst-case risk — are a
-natural next step; ask for them if you need the tail, not the centre.)
+median, show the spread, and report a `p95`/`p99` when the tail is what matters.
 
 Not to be confused with a *rate* — a mean of a per-row rate is a different
 mistake; see [[ratio-of-totals]].

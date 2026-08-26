@@ -2136,7 +2136,9 @@ class TestCapabilitySurface:
 
         sm = describe()["semantic_model"]
         assert sm["filter_operators"] == list(FILTER_OPS)
-        assert set(sm["aggregations"]) == _AGG_FUNCS
+        # The named aggregations plus the parameterised percentile family.
+        assert _AGG_FUNCS <= set(sm["aggregations"])
+        assert any("percentile" in str(a) for a in sm["aggregations"])
         assert {k["kind"] for k in sm["measure_kinds"]} == {
             "simple", "expression", "ratio", "share", "rank", "running",
             "period_end"

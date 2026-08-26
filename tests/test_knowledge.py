@@ -310,6 +310,73 @@ class TestDistributionAggregations:
                                    agg="median")
 
 
+class TestPercentiles:
+    """p<N> percentile aggregations — the tail a mean and even a median hide
+    (worst marks, largest drawdowns). p50 is the median; any p0–p100."""
+
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        fact = pd.DataFrame({"hid": range(100), "fund_id": [1] * 100,
+                             "mark": [float(i) for i in range(1, 101)]})
+        dim = pd.DataFrame({"fund_id": [1], "fund": ["A"]})
+        m = DataModel("p")
+        m.add_connector(MemoryConnector("mem", tables={"fact": fact, "dim": dim}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim", connector="mem", source="dim")
+        m.add_dimension("dim", table_name="dim", key_col="fund_id",
+                        attributes=["fund"])
+        m.add_fact("fact", table_name="fact", measures=["mark"],
+                   foreign_keys={"dim": "fund_id"})
+        m.add_measure("p90_mark", column="mark", agg="p90")
+        m.connect()
+        return m
+
+    def test_percentiles_match_the_interpolated_quantile(self):
+        import numpy as np
+        vals = [float(i) for i in range(1, 101)]
+        m = self._model()
+        # declared p90 and ad-hoc p50/p95/p99 all match numpy's linear interp.
+        df = m.query(fact="fact", measures=["p90_mark"]).to_pandas()
+        assert df["p90_mark"].iloc[0] == np.percentile(vals, 90)
+        adhoc = m.query(fact="fact", measures={
+            "p50": ("mark", "p50"), "p95": ("mark", "p95"),
+            "p99": ("mark", "p99")}).to_pandas()
+        assert adhoc["p50"].iloc[0] == np.percentile(vals, 50)
+        assert adhoc["p95"].iloc[0] == np.percentile(vals, 95)
+        assert adhoc["p99"].iloc[0] == np.percentile(vals, 99)
+
+    def test_percentiles_are_deterministic(self):
+        m = self._model()
+        a = m.query(fact="fact", measures=["p90_mark"])
+        b = m.query(fact="fact", measures=["p90_mark"])
+        assert a.fingerprint() == b.fingerprint()
+
+    def test_out_of_range_percentile_is_refused(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="unsupported aggregation"):
+            DataModel("t").add_measure("bad", column="x", agg="p150")
+
+    def test_a_non_percentile_p_name_is_refused(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="unsupported aggregation"):
+            DataModel("t").add_measure("bad", column="x", agg="pinky")
+
+    def test_percentiles_are_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        aggs = describe()["semantic_model"]["aggregations"]
+        assert any("percentile" in str(a) for a in aggs)
+        note = describe()["semantic_model"]["aggregations_note"]
+        assert "p50" in note and "tail" in note
+
+    def test_the_lesson_teaches_percentiles(self):
+        lesson = get_lesson("summarize-a-distribution")
+        assert lesson is not None
+        assert "p90" in lesson.body and 'agg="p99"' in lesson.body
+
+
 # ── Share-of-total: a report.py computation pulled into the governed lane ──────
 
 class TestShareMeasure:
