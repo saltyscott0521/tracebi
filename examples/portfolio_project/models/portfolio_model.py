@@ -76,4 +76,16 @@ model = (
     .add_measure("fv_cum_share", running="fv_share",
                  description="Cumulative % of total (largest first)",
                  format="percent")
+    # Top-N-per-group: rank within each sector, not globally. Query with
+    # dimensions=[dim_issuer.sector, dim_issuer.issuer] and
+    # having={"fv_rank_in_sector": {"lte": 3}} for the top 3 issuers per sector
+    # — governed. See `tracebi knowledge rank-and-cumulative`.
+    .add_measure("fv_rank_in_sector", rank="fair_value",
+                 partition_by="dim_issuer.sector",
+                 description="Rank by fair value within each sector (1 = largest)")
+    # Tail risk: the 90th-percentile spread is the widest 10% of marks, which a
+    # weighted average (wtd_spread_bps) hides. p<N> is any percentile; p50 is the
+    # median. See `tracebi knowledge summarize-a-distribution`.
+    .add_measure("spread_p90", column="spread_bps", agg="p90",
+                 description="90th-percentile spread (bps) — the wide tail")
 )
