@@ -593,6 +593,18 @@ def describe(brief: bool = False) -> dict:
                         "'derived'. This is 'group by month' without dropping to "
                         "report.py or pre-baking the bucket in the transform.",
             },
+            "value_bins": {
+                "declare": "model.add_value_bins(dim, name, source, edges, "
+                           "labels=None)",
+                "note": "Group by a BAND of a numeric dimension column (credit "
+                        "score, age, vintage) — a governed CASE over ranges. N "
+                        "edges make N+1 bands; referenced as dim.name like any "
+                        "attribute. A NULL source groups as NULL, not the top "
+                        "band. Bands sort lexicographically by label, so choose "
+                        "labels that sort if magnitude order matters. Groupable, "
+                        "not filterable — filter on the source column. 'group by "
+                        "band' without report.py or a pre-baked bucket column.",
+            },
             "aggregations": sorted(_AGG_FUNCS) + ["p<N> (percentile, e.g. p90)"],
             "aggregations_note": "median and stddev summarize a distribution's "
                                  "shape — a mean hides skew and tails, so use "

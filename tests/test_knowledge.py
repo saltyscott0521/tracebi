@@ -628,12 +628,107 @@ class TestTimeGrain:
     def test_grain_is_discoverable_in_model_info(self):
         info = self._model().info()
         dim = next(d for d in info["dimensions"] if d["name"] == "dim_date")
-        assert dim["derived"]["order_month"] == {"grain": "month", "of": "order_date"}
+        assert dim["derived"]["order_month"] == {
+            "kind": "date_trunc", "of": "order_date", "grain": "month"}
 
     def test_the_lesson_exists_and_is_delivered(self):
         slugs = {ls["slug"] for ls in index()}
         assert "group-by-time" in slugs
         assert get_lesson("group-by-time") is not None
+
+
+class TestValueBins:
+    """Value bins: group by a BAND of a numeric dimension column — a governed
+    CASE over ranges, instead of a pre-baked bucket or report.py."""
+
+    def _model(self, **bins):
+        import numpy as np
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        cust = pd.DataFrame({"id": [1, 2, 3, 4, 5, 6],
+                             "score": [550.0, 650.0, 720.0, 830.0, 700.0, np.nan]})
+        fact = pd.DataFrame({"lid": range(1, 7), "cust_id": [1, 2, 3, 4, 5, 6],
+                             "amt": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0]})
+        m = DataModel("m")
+        m.add_connector(MemoryConnector("mem", tables={
+            "fact": fact, "dim_customer": cust}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_customer", connector="mem", source="dim_customer")
+        m.add_dimension("dim_customer", table_name="dim_customer", key_col="id",
+                        attributes=["score"])
+        m.add_value_bins("dim_customer", "score_band", source="score",
+                         edges=bins.get("edges", [600, 700, 800]),
+                         labels=bins.get("labels"))
+        m.add_fact("fact", table_name="fact", measures=["amt"],
+                   foreign_keys={"dim_customer": "cust_id"})
+        m.add_measure("total", column="amt", agg="sum")
+        m.connect()
+        return m
+
+    def _by_band(self, m):
+        return {r["dim_customer.score_band"]: r["total"] for _, r in
+                m.query(fact="fact", measures=["total"],
+                        dimensions=["dim_customer.score_band"]).to_pandas().iterrows()}
+
+    def test_values_land_in_the_right_band(self):
+        got = self._by_band(self._model())
+        assert got["< 600"] == 10.0        # 550
+        assert got["600–700"] == 20.0      # 650
+        assert got["700–800"] == 80.0      # 720 + 700
+        assert got["≥ 800"] == 40.0        # 830
+
+    def test_null_source_groups_as_null_not_the_top_band(self):
+        got = self._by_band(self._model())
+        assert got.get("≥ 800") == 40.0    # the NULL row (60) did NOT land here
+        assert 60.0 in got.values()        # it is its own (NULL) group
+
+    def test_custom_labels(self):
+        m = self._model(edges=[700], labels=["subprime", "prime"])
+        got = self._by_band(m)
+        # < 700: 550,650,700? no — 700 is NOT < 700, so prime. subprime: 550,650.
+        assert got["subprime"] == 30.0     # 10 + 20
+        assert got["prime"] == 120.0       # 30 + 40 + 50 (720,830,700)
+
+    def test_bins_are_deterministic(self):
+        m = self._model()
+        a = m.query(fact="fact", measures=["total"],
+                    dimensions=["dim_customer.score_band"])
+        b = m.query(fact="fact", measures=["total"],
+                    dimensions=["dim_customer.score_band"])
+        assert a.fingerprint() == b.fingerprint()
+
+    def test_edges_must_be_increasing_and_nonempty(self):
+        import pytest
+        from tracebi import DataModel, MemoryConnector
+        import pandas as pd
+        m = DataModel("t")
+        m.add_connector(MemoryConnector("mem", tables={
+            "d": pd.DataFrame({"k": [1], "x": [1.0]})}))
+        m.add_table("d", connector="mem", source="d")
+        m.add_dimension("d", table_name="d", key_col="k", attributes=["x"])
+        with pytest.raises(ValueError, match="at least one edge"):
+            m.add_value_bins("d", "b", source="x", edges=[])
+        with pytest.raises(ValueError, match="strictly increasing"):
+            m.add_value_bins("d", "b", source="x", edges=[700, 600])
+        with pytest.raises(ValueError, match="one label per band"):
+            m.add_value_bins("d", "b", source="x", edges=[600, 700], labels=["a"])
+
+    def test_bins_are_discoverable_in_model_info(self):
+        info = self._model().info()
+        dim = next(d for d in info["dimensions"] if d["name"] == "dim_customer")
+        band = dim["derived"]["score_band"]
+        assert band["kind"] == "bin" and band["of"] == "score"
+        assert band["bands"] == ["< 600", "600–700", "700–800", "≥ 800"]
+
+    def test_bins_are_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        vb = describe()["semantic_model"]["value_bins"]
+        assert "add_value_bins" in vb["declare"]
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "group-by-band" in slugs
+        assert get_lesson("group-by-band") is not None
 
 
 class TestSemiAdditive:

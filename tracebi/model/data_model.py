@@ -641,6 +641,84 @@ class DataModel:
         }
         return self
 
+    @staticmethod
+    def _default_bin_labels(edges: "list[float]") -> "list[str]":
+        """Readable band labels for ``edges`` — ``"< 600"``, ``"600–700"``,
+        ``"≥ 800"``. Whole numbers render without a trailing ``.0``."""
+        def n(v: float) -> str:
+            return str(int(v)) if float(v).is_integer() else str(v)
+        labels = [f"< {n(edges[0])}"]
+        for i in range(1, len(edges)):
+            labels.append(f"{n(edges[i - 1])}–{n(edges[i])}")
+        labels.append(f"≥ {n(edges[-1])}")
+        return labels
+
+    def add_value_bins(
+        self,
+        dim: str,
+        name: str,
+        source: str,
+        edges: "list[float]",
+        labels: "list[str] | None" = None,
+    ) -> "DataModel":
+        """Declare a derived banding attribute on a dimension: bucket a numeric
+        ``source`` column into ranges, groupable as ``dim.name``.
+
+        ``edges`` are the strictly increasing breakpoints; ``N`` edges make
+        ``N+1`` bands (below the first, between each pair, at/above the last).
+        A governed "group by band" — a CASE expression built once — instead of
+        pre-baking the bucket in the transform or dropping to report.py::
+
+            model.add_dimension("dim_customer", table_name="customers",
+                                key_col="id", attributes=["credit_score"])
+            model.add_value_bins("dim_customer", "score_band",
+                                  source="credit_score", edges=[600, 700, 800])
+            model.query(fact="loans", measures=["balance"],
+                        dimensions=["dim_customer.score_band"])   # by band
+
+        Reference it like any attribute (``dim.name``); it is deterministic
+        (a CASE), so the result stays reproducible. ``labels`` (one per band,
+        ``len(edges)+1`` of them) overrides the defaults; band values sort
+        lexicographically by label, so choose labels that sort if magnitude
+        order matters. A NULL ``source`` groups as NULL, never the top band.
+        Bins are groupable, not filterable — filter on the ``source`` column.
+        """
+        if dim not in self._dimensions:
+            raise ValueError(
+                f"Dimension '{dim}' is not registered in model '{self.name}'. "
+                f"Available: {list(self._dimensions)}"
+            )
+        try:
+            edge_vals = [float(e) for e in edges]
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                f"value bins '{name}': edges must be numbers, got {edges!r}."
+            ) from e
+        if not edge_vals:
+            raise ValueError(
+                f"value bins '{name}': need at least one edge (N edges make "
+                f"N+1 bands)."
+            )
+        if any(edge_vals[i] >= edge_vals[i + 1] for i in range(len(edge_vals) - 1)):
+            raise ValueError(
+                f"value bins '{name}': edges must be strictly increasing, got "
+                f"{edge_vals}."
+            )
+        if labels is not None:
+            labels = [str(v) for v in labels]
+            if len(labels) != len(edge_vals) + 1:
+                raise ValueError(
+                    f"value bins '{name}': need one label per band — "
+                    f"len(edges)+1 = {len(edge_vals) + 1}, got {len(labels)}."
+                )
+        else:
+            labels = self._default_bin_labels(edge_vals)
+        self._dimensions[dim].derived[name] = {
+            "kind": "bin", "source": str(source),
+            "edges": edge_vals, "labels": labels,
+        }
+        return self
+
     def add_fact(
         self,
         name: str,
@@ -2692,6 +2770,19 @@ class DataModel:
                     # it is never attacker/free text here.
                     col_sql = (f"date_trunc('{derived['grain']}', "
                                f'dim_{dim_name}."{derived["source"]}")')
+                elif derived and derived["kind"] == "bin":
+                    # A declared value band: CASE the source into ranges. edges
+                    # are validated floats (never free text); labels are quoted
+                    # with '' escaping. NULL groups as NULL, not the top band.
+                    src_sql = f'dim_{dim_name}."{derived["source"]}"'
+                    edges, labels = derived["edges"], derived["labels"]
+                    whens = [f"WHEN {src_sql} IS NULL THEN NULL"]
+                    for i, edge in enumerate(edges):
+                        lit = labels[i].replace("'", "''")
+                        whens.append(f"WHEN {src_sql} < {edge} THEN '{lit}'")
+                    else_lit = labels[-1].replace("'", "''")
+                    col_sql = ("CASE " + " ".join(whens)
+                               + f" ELSE '{else_lit}' END")
                 else:
                     col_sql = f'dim_{dim_name}."{attribute}"'
                 select_cols_sql.append(f"{col_sql} AS {alias}")
@@ -2836,10 +2927,13 @@ class DataModel:
                     "table": d.table_name,
                     "key": d.key_col,
                     "attributes": list(d.attributes),
-                    # Derived groupable attributes (e.g. date grains): reference
-                    # as dim.name like any attribute. Present only when declared.
+                    # Derived groupable attributes (date grains, value bins):
+                    # reference as dim.name like any attribute. Present only
+                    # when declared; each carries its kind and source column.
                     **({"derived": {
-                        n: {"grain": v.get("grain"), "of": v.get("source")}
+                        n: {"kind": v.get("kind"), "of": v.get("source"),
+                            **({"grain": v["grain"]} if v.get("grain") else {}),
+                            **({"bands": v["labels"]} if v.get("labels") else {})}
                         for n, v in d.derived.items()}}
                        if d.derived else {}),
                 }
