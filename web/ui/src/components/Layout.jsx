@@ -174,8 +174,10 @@ export default function Layout({ children }) {
               boxShadow: '0 4px 16px rgba(9,26,85,0.45)',
               flexShrink: 0,
             }}>
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="white">
-                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M6.6 4.5 H4.6 V15.5 H6.6 M13.4 4.5 H15.4 V15.5 H13.4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                <rect x="8.1" y="9.6" width="1.7" height="4.4" rx=".7" fill="white" />
+                <rect x="11" y="7.2" width="1.7" height="6.8" rx=".7" fill="white" />
               </svg>
             </div>
             <h1 className="gradient-text-on-dark" style={{ fontSize: 18, fontWeight: 800, letterSpacing: .2 }}>
