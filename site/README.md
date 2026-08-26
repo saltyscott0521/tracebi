@@ -38,7 +38,9 @@ the three-phase workflow and a stepped, real user loop, foregrounds the semantic
 layer, and demotes the receipt to one property of the output. Grow the copy and
 add pages (pricing, docs) as the product firms up.
 
-Identity: **Fraunces** (display) + **Hanken Grotesk** (body) + **JetBrains Mono**
-(the code/stamped-data voice); a verification-green brand accent; the
-three-phase "layers" motif. It follows the visitor's system theme and offers a
-toggle. Links: "Try the demo" → `/app`; GitHub → the repo.
+Identity: **follows the product theme** — the web UI + report system, so a
+visitor lands in a coherent world. **IBM Plex Sans + IBM Plex Mono**; the cool
+blue-grey ground (`#eef2f8`), navy ink, the TraceBi blue (`#2e74b5`) as the
+accent and deep navy for solid buttons; green/amber/red reserved for the verdict
+badges only; the three-phase "layers" motif. It follows the visitor's system
+theme and offers a toggle. Links: "Try the demo" → `/app`; GitHub → the repo.
