@@ -329,6 +329,7 @@
     <p>TraceBi is built for the analyst that is now an agent — <em>and</em> for the human who stays in control of what it ships. Both author the same code against the same contracts; neither gets a shortcut around review or the receipt. This is a first-class design goal, not a plugin.</p>
 
     <p class="rowlabel">the agent builds</p>
+    <p style="max-width:44rem">It works from a <strong>clean structure</strong>, never a blank canvas. <span class="mono">tracebi init</span> scaffolds the three-folder project; <span class="mono">tracebi context</span> hands the agent the exact vocabulary that exists — the facts, dimensions, measure kinds, and operators — so it never guesses; and a report is structured slots to fill against a closed, declarative grammar. There is a right shape for the work, and the framework shows the agent where it is.</p>
     <div class="grid g3">
       <div class="card val"><div class="ic">LESSONS · SFT</div><h3>Does it right</h3><p>Good practice is baked into the <em>environment</em>, not a prompt — a curated knowledge base it reads, cited by the errors — and it drives the whole loop over the <span class="mono">MCP</span> gateway.</p></div>
       <div class="card val"><div class="ic">GUARDRAILS · RLHF</div><h3>Can’t ship the wrong one</h3><p>The silent-wrong patterns are refused by construction, so even a weaker model can’t push a confidently-wrong number through.</p></div>
