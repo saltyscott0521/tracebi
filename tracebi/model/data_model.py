@@ -56,6 +56,15 @@ def _pop_offset(unit: str, n: int):
     if unit == "day":     return pd.DateOffset(days=n)
     raise ValueError(f"Unsupported period unit '{unit}'.")
 
+
+#: Fine-to-coarse ordering of the time grains, so a to-date measure can refuse a
+#: reset period that is not COARSER than the query's grain (YTD over monthly is
+#: fine; MTD over monthly is degenerate — one row per bucket).
+_GRAIN_RANK = {"day": 1, "week": 2, "month": 3, "quarter": 4, "year": 5}
+
+#: The pandas period frequency each to-date reset partition truncates to.
+_PERIOD_FREQ = {"year": "Y", "quarter": "Q", "month": "M", "week": "W"}
+
 _AGG_FUNCS = {"sum", "count", "mean", "avg", "min", "max", "nunique",
               # Distribution aggregations — a mean hides skew and tails, so
               # dispersion/robust-centre reporting used to force report.py.
@@ -252,6 +261,7 @@ class MeasureDef:
     period_end: Optional[tuple[str, str]] = None  # (value_column, date_dim_attr)
     offset: Optional[tuple[str, str, int]] = None  # (base, unit, n): prior value
     growth: Optional[tuple[str, str, int]] = None  # (base, unit, n): (cur-prior)/prior
+    to_date: Optional[tuple[str, str]] = None      # (base, period): YTD/QTD/MTD
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
     allow_rate_agg: bool = False               # author vouched: skip the value guard
@@ -272,6 +282,8 @@ class MeasureDef:
             d["offset"] = list(self.offset)
         if self.growth:
             d["growth"] = list(self.growth)
+        if self.to_date:
+            d["to_date"] = list(self.to_date)
         return d
 
 
@@ -484,6 +496,7 @@ class _Resolved:
     period_ends: "dict[str, tuple[str, str]]"    # {output: (value_col, date_attr)}
     partitions: "dict[str, tuple[str, ...]]"     # {rank/running output: part cols}
     pops: "dict[str, tuple[str, str, int, str]]"  # {output: (base, unit, n, mode)}
+    to_dates: "dict[str, tuple[str, str]]"        # {output: (base, reset period)}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -801,6 +814,7 @@ class DataModel:
         period_end: Optional[tuple[str, str]] = None,
         offset: Optional[tuple[str, str, int]] = None,
         growth: Optional[tuple[str, str, int]] = None,
+        to_date: Optional[tuple[str, str]] = None,
         description: str = "",
         format: Optional[str] = None,
         allow_rate_agg: bool = False,
@@ -866,19 +880,20 @@ class DataModel:
                                 ("ratio", ratio), ("share", share),
                                 ("rank", rank), ("running", running),
                                 ("period_end", period_end),
-                                ("offset", offset), ("growth", growth))
+                                ("offset", offset), ("growth", growth),
+                                ("to_date", to_date))
                  if v is not None]
         if len(given) != 1:
             raise ValueError(
                 f"Measure '{name}' must specify exactly one of column=, expr=, "
-                f"ratio=, share=, rank=, running=, period_end=, offset=, or "
-                f"growth=, got {given or 'none'}."
+                f"ratio=, share=, rank=, running=, period_end=, offset=, "
+                f"growth=, or to_date=, got {given or 'none'}."
             )
 
         kind = {"column": "simple", "expr": "expression", "ratio": "ratio",
                 "share": "share", "rank": "rank", "running": "running",
                 "period_end": "period_end", "offset": "offset",
-                "growth": "growth"}[given[0]]
+                "growth": "growth", "to_date": "to_date"}[given[0]]
 
         # share/rank/running are all post-aggregation window measures over a
         # named base measure — none takes an agg.
@@ -976,6 +991,29 @@ class DataModel:
                 offset = triple
             else:
                 growth = triple
+        elif kind == "to_date":
+            # Cumulative from the start of a reset period (year/quarter/month/
+            # week) up to the current period — YTD/QTD/MTD. No agg; the query
+            # must group by a time grain FINER than the reset period (checked at
+            # execution against the grain).
+            if agg is not None:
+                raise ValueError(
+                    f"Measure '{name}': to_date measures take no agg — they "
+                    f"accumulate the base measure over the query's time grain."
+                )
+            if not (isinstance(to_date, (tuple, list)) and len(to_date) == 2):
+                raise ValueError(
+                    f"Measure '{name}': to_date must be a (base_measure, period) "
+                    f"pair — e.g. ('revenue', 'year') for YTD, got {to_date!r}."
+                )
+            base_m, period = str(to_date[0]), str(to_date[1]).lower()
+            if period not in _PERIOD_FREQ:
+                raise ValueError(
+                    f"Measure '{name}': to_date period '{to_date[1]}' is not "
+                    f"supported.{self._hint(period, sorted(_PERIOD_FREQ))} "
+                    f"One of: {', '.join(sorted(_PERIOD_FREQ))}."
+                )
+            to_date = (base_m, period)
         elif kind in ("simple", "expression"):    # these require an agg
             if agg is None:
                 raise ValueError(
@@ -1061,6 +1099,7 @@ class DataModel:
             period_end=tuple(period_end) if period_end else None,
             offset=tuple(offset) if offset else None,
             growth=tuple(growth) if growth else None,
+            to_date=tuple(to_date) if to_date else None,
             description=description, format=format,
             allow_rate_agg=bool(allow_rate_agg),
         )
@@ -1388,6 +1427,7 @@ class DataModel:
         period_ends = resolved.period_ends
         partitions = resolved.partitions
         pops = resolved.pops
+        to_dates = resolved.to_dates
 
         # A semi-additive rollup is an aggregation (latest-snapshot-then-sum);
         # there is no per-row "period end", so refuse it in the raw-row mode.
@@ -1679,6 +1719,19 @@ class DataModel:
                 metadata={"pops": {k: list(v) for k, v in pops.items()}},
             ))
 
+        # To-date cumulatives (YTD/QTD/MTD): a running total from the start of
+        # the reset period, over the query's finer time grain — a time-ordered
+        # cumulative, distinct from the concentration `running` (base-ordered).
+        if to_dates:
+            result_df = self._apply_to_date(result_df, to_dates, parsed_dims)
+            lineage.append(LineageNode(
+                operation="assign",
+                description=("To-date measure(s): " + ", ".join(
+                    f"{k} = {b} accumulated within each {period}"
+                    for k, (b, period) in to_dates.items())),
+                metadata={"to_dates": {k: list(v) for k, v in to_dates.items()}},
+            ))
+
         # Post-aggregation filters (HAVING): applied after the engine AND
         # ratios, so they filter the aggregated measures/ratios — the
         # difference between "groups whose total ≥ 250" and `filters`'
@@ -1843,6 +1896,7 @@ class DataModel:
         period_ends: dict[str, tuple[str, str]] = {}
         partitions: dict[str, tuple[str, ...]] = {}
         pops: dict[str, tuple[str, str, int, str]] = {}
+        to_dates: dict[str, tuple[str, str]] = {}
 
         if isinstance(measures, dict):
             if not measures:
@@ -1898,7 +1952,7 @@ class DataModel:
                             f"{sorted(produced - {out_col})}."
                         )
             return _Resolved(agg_map, derived, ratios, shares, ranks,
-                             runnings, period_ends, partitions, pops)
+                             runnings, period_ends, partitions, pops, to_dates)
 
         names = list(measures or [])
         if not names:
@@ -1907,7 +1961,8 @@ class DataModel:
         def _expand(mname: str, seen: tuple) -> None:
             if (mname in agg_map or mname in ratios or mname in shares
                     or mname in ranks or mname in runnings
-                    or mname in period_ends or mname in pops):
+                    or mname in period_ends or mname in pops
+                    or mname in to_dates):
                 return
             if mname not in self._measures:
                 raise ValueError(
@@ -1952,6 +2007,10 @@ class DataModel:
                 _expand(base_m, seen + (mname,))     # the measure shifted in time
                 pops[m.name] = (base_m, unit, n,
                                 "value" if m.kind == "offset" else "growth")
+            elif m.kind == "to_date":
+                base_m, period = m.to_date
+                _expand(base_m, seen + (mname,))     # the measure accumulated
+                to_dates[m.name] = (base_m, period)
             else:  # ratio
                 num, den = m.ratio
                 _expand(num, seen + (mname,))
@@ -1961,7 +2020,7 @@ class DataModel:
         for n in names:
             _expand(n, ())
         return _Resolved(agg_map, derived, ratios, shares, ranks,
-                         runnings, period_ends, partitions, pops)
+                         runnings, period_ends, partitions, pops, to_dates)
 
     def _apply_derived(
         self,
@@ -2158,6 +2217,63 @@ class DataModel:
             else:  # growth: (current − prior) / prior, null-safe
                 denom = prior_s.where(prior_s != 0)
                 out[name] = (out[base] - prior_s) / denom
+        return out
+
+    def _apply_to_date(
+        self,
+        result_df: pd.DataFrame,
+        to_dates: "dict[str, tuple[str, str]]",
+        parsed_dims: list[tuple[str, str]],
+    ) -> pd.DataFrame:
+        """Compute to-date cumulative (YTD/QTD/MTD) measures.
+
+        A running total from the start of each reset period (year/quarter/month/
+        week) up to the current period — accumulating the base measure over the
+        query's finer time grain, within each other-dimension group. Ordered by
+        time ascending, so YTD revenue in March is Jan+Feb+Mar.
+
+        The query must group by exactly one declared time grain, and that grain
+        must be FINER than the reset period (YTD/QTD over monthly; MTD needs a
+        daily/weekly grain). ``(other dims, time)`` is unique in the result, so
+        the ascending-time order within each reset partition is total — the
+        cumulative is deterministic."""
+        out = result_df.copy()
+        time_grains = [
+            (f"{d}.{a}", self._dimensions[d].derived.get(a) or {})
+            for d, a in parsed_dims
+            if (self._dimensions[d].derived.get(a) or {}).get("kind") == "date_trunc"
+        ]
+        if len(time_grains) != 1:
+            raise ValueError(
+                f"To-date measure(s) {sorted(to_dates)} need exactly one declared "
+                f"time grain among the query's dimensions (the period axis), "
+                f"found {[a for a, _ in time_grains] or 'none'}. Group by a "
+                f"time-grain dimension (add_time_grain)."
+            )
+        time_alias, grain_def = time_grains[0]
+        query_grain = grain_def.get("grain")
+        others = [f"{d}.{a}" for d, a in parsed_dims if f"{d}.{a}" != time_alias]
+        tcol = pd.to_datetime(out[time_alias])
+        for name, (base, period) in to_dates.items():
+            if base not in out.columns:
+                continue
+            if _GRAIN_RANK.get(period, 0) <= _GRAIN_RANK.get(query_grain, 0):
+                raise ValueError(
+                    f"To-date measure '{name}': reset period '{period}' must be "
+                    f"coarser than the query's time grain '{query_grain}' — a "
+                    f"{period}-to-date over a {query_grain} grain has one row per "
+                    f"bucket. Group by a finer grain, or pick a coarser period."
+                )
+            part = tcol.dt.to_period(_PERIOD_FREQ[period])
+            keyframe = out[others].copy()
+            keyframe["__part__"] = part.astype(str)
+            keyframe["__t__"] = tcol
+            order = keyframe.sort_values(
+                by=[*others, "__part__", "__t__"], kind="mergesort").index
+            keys = ([keyframe.loc[order, c] for c in others]
+                    + [keyframe.loc[order, "__part__"]])
+            cum = out.loc[order, base].groupby(keys, sort=False).cumsum()
+            out[name] = cum.reindex(out.index)
         return out
 
     def _apply_period_ends(
@@ -2967,6 +3083,7 @@ class DataModel:
             + list(r.runnings)
             + list(r.period_ends)
             + list(r.pops)
+            + list(r.to_dates)
         )
 
     @staticmethod

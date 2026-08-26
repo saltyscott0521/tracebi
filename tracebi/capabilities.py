@@ -608,6 +608,20 @@ def describe(brief: bool = False) -> dict:
                             "Same time-grain requirement and same "
                             "compares-against-what's-in-the-result rule as offset.",
                 },
+                {
+                    "kind": "to_date",
+                    "args": ["to_date"],
+                    "example": "add_measure('rev_ytd', to_date=('revenue', "
+                               "'year'))",
+                    "note": "to-date cumulative (YTD/QTD/MTD): a running total "
+                            "from the start of the reset period (year/quarter/"
+                            "month/week) up to the current period, over the "
+                            "query's finer time grain — YTD revenue in March is "
+                            "Jan+Feb+Mar. The query must group by exactly one time "
+                            "grain, and it must be FINER than the reset period "
+                            "(YTD/QTD over monthly; MTD needs a daily/weekly "
+                            "grain). See the year-to-date lesson.",
+                },
             ],
             "time_grains": {
                 "declare": "model.add_time_grain(dim, name, source, grain)",

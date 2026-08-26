@@ -1087,3 +1087,97 @@ class TestPeriodOverPeriod:
         slugs = {ls["slug"] for ls in index()}
         assert "period-over-period" in slugs
         assert get_lesson("period-over-period") is not None
+
+
+class TestToDate:
+    """to_date measures: YTD/QTD as governed cumulatives that reset on a period
+    boundary, not a hand-rolled running sum in report.py."""
+
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        dates = pd.date_range("2023-01-01", "2024-03-01", freq="MS")
+        rows, dim_rows, did = [], [], 0
+        for d in dates:
+            did += 1
+            dim_rows.append({"dt_id": did, "d": d})
+            rows.append({"id": did, "dt_id": did, "rev": 100.0})
+        m = DataModel("m")
+        m.add_connector(MemoryConnector("mem", tables={
+            "fact": pd.DataFrame(rows), "dim_date": pd.DataFrame(dim_rows)}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_date", connector="mem", source="dim_date")
+        m.add_dimension("dim_date", table_name="dim_date", key_col="dt_id",
+                        attributes=["d"])
+        m.add_time_grain("dim_date", "month", source="d", grain="month")
+        m.add_fact("fact", table_name="fact", measures=["rev"],
+                   foreign_keys={"dim_date": "dt_id"})
+        m.add_measure("revenue", column="rev", agg="sum")
+        m.add_measure("rev_ytd", to_date=("revenue", "year"))
+        m.add_measure("rev_qtd", to_date=("revenue", "quarter"))
+        m.connect()
+        return m
+
+    def _by_month(self, m, measures):
+        import pandas as pd
+        df = m.query(fact="fact", measures=measures,
+                     dimensions=["dim_date.month"]).to_pandas()
+        df["m"] = pd.to_datetime(df["dim_date.month"]).dt.strftime("%Y-%m")
+        return df.set_index("m")
+
+    def test_ytd_accumulates_and_resets_each_year(self):
+        df = self._by_month(self._model(), ["revenue", "rev_ytd"])
+        assert df.loc["2023-03", "rev_ytd"] == 300.0    # Jan+Feb+Mar
+        assert df.loc["2023-12", "rev_ytd"] == 1200.0   # full year
+        assert df.loc["2024-01", "rev_ytd"] == 100.0    # reset
+
+    def test_qtd_resets_each_quarter(self):
+        df = self._by_month(self._model(), ["revenue", "rev_qtd"])
+        assert df.loc["2023-03", "rev_qtd"] == 300.0    # end of Q1
+        assert df.loc["2023-04", "rev_qtd"] == 100.0    # start of Q2
+
+    def test_to_date_is_deterministic(self):
+        m = self._model()
+        a = m.query(fact="fact", measures=["revenue", "rev_ytd"],
+                    dimensions=["dim_date.month"])
+        b = m.query(fact="fact", measures=["revenue", "rev_ytd"],
+                    dimensions=["dim_date.month"])
+        assert a.fingerprint() == b.fingerprint()
+
+    def test_reset_period_must_be_coarser_than_the_grain(self):
+        import pytest
+        m = self._model()
+        m.add_measure("rev_mtd", to_date=("revenue", "month"))
+        with pytest.raises(ValueError, match="coarser"):
+            m.query(fact="fact", measures=["revenue", "rev_mtd"],
+                    dimensions=["dim_date.month"])
+
+    def test_needs_a_time_grain_in_the_query(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="time grain"):
+            m.query(fact="fact", measures=["revenue", "rev_ytd"])
+
+    def test_to_date_takes_no_agg_and_needs_a_pair(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="take no agg"):
+            DataModel("t").add_measure("x", to_date=("revenue", "year"), agg="sum")
+        with pytest.raises(ValueError, match="pair"):
+            DataModel("t").add_measure("x", to_date=("revenue",))
+
+    def test_bad_period_is_refused(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="not.*supported|period"):
+            DataModel("t").add_measure("x", to_date=("revenue", "fortnight"))
+
+    def test_to_date_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
+        assert "to_date" in kinds
+
+    def test_the_lesson_exists_and_is_delivered(self):
+        slugs = {ls["slug"] for ls in index()}
+        assert "year-to-date" in slugs
+        assert get_lesson("year-to-date") is not None

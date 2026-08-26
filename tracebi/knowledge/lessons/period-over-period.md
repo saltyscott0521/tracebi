@@ -37,4 +37,5 @@ compare to. To show only the latest period, use `order_by` + `limit` (which run
 
 **The tell.** Shifting a series and joining it to itself in `report.py` to get
 YoY or MoM? That's an `offset`/`growth` measure. (For a running total *to date*
-— YTD/QTD — that's a time-ordered cumulative, a different shape.)
+— YTD/QTD — that's a time-ordered cumulative, a different shape: see
+[[year-to-date]].)
