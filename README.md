@@ -4,15 +4,19 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/saltyscott0521/tracebi)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**The trust layer for AI-generated analytics** — a code-first BI framework
-for Python where **every number has a receipt**.
+**A code-first BI framework for Python** — build BI the way you build software.
 
-Governance tooling assumes a human wrote the transformation and is still
-around to ask. TraceBi assumes a machine wrote it and is gone — so from the
-model boundary onward, every figure carries its resolved query, lineage, and
-SHA-256 fingerprint, and `tracebi verify` re-checks the receipt on demand.
-The mechanism is a three-phase workflow that takes data from messy to
-reportable. The full identity, vocabulary, and refusals live in
+Pull the data, model it, and ship a live report — all in plain Python and JSON
+you review in a pull request, run in CI, and hand to an agent. The metric logic
+lives in your repo, not inside a GUI: a real **semantic layer** where a measure
+is declared once and referenced by name, a **three-phase workflow** that keeps
+the slow analysis and the fast reporting from blocking each other, and batteries
+included — connectors, pipelines, and a report engine.
+
+And because every figure is a live query, the report it renders is
+self-contained and **reproducible**: `tracebi verify` re-runs the recorded
+queries, and `tracebi verify --file` checks an emailed report offline, with no
+database and no account. The full identity, vocabulary, and refusals live in
 **[MANIFESTO.md](MANIFESTO.md)**.
 
 ---
@@ -91,14 +95,14 @@ report engine for phase 3, and — **from the model boundary onward (phases 2 an
 
 ## Why TraceBi?
 
-| Trust capability | Dash / Streamlit | dbt | Qlik / Tableau | **TraceBi** |
+| Capability | Dash / Streamlit | dbt | Qlik / Tableau | **TraceBi** |
 |---|---|---|---|---|
-| Semantic contract agents query (facts, dims, named measures) | ✗ | ✓ (Semantic Layer, cloud) | partial (governed models, not agent-first) | ✓ |
-| Every query stamped: resolved query + lineage + result fingerprint | ✗ | ✗ | ✗ | ✓ |
+| Code-first Python framework — metric logic in the repo, reviewed in a PR | ✓ (app code, no model) | ✗ (SQL + YAML) | ✗ | ✓ |
+| Declarative semantic layer agents query (facts, dims, named measures) | ✗ | ✓ (Semantic Layer, cloud) | partial (governed models, not agent-first) | ✓ |
+| Governed expressiveness (ratios, windows, semi-additive, time intelligence) as declared measures | ✗ | partial (metrics, SQL underneath) | partial | ✓ |
+| Self-contained HTML artifact (charts + data + styling inlined) | ✗ (live app, no artifact) | ✗ (docs site, not reports) | partial (exports, no lineage) | ✓ |
 | Report specs validated *before* execution | ✗ | ✗ (compiles SQL, no report layer) | ✗ | ✓ |
-| Reproducible artifacts (`tracebi verify` re-runs the receipts) | ✗ | ✗ | ✗ | ✓ |
-| Self-contained HTML artifact + lineage manifest | ✗ (live app, no artifact) | ✗ (docs site, not reports) | partial (exports, no lineage) | ✓ |
-| Code-first Python framework underneath | ✓ | ✗ (SQL + YAML) | ✗ | ✓ |
+| Every figure reproducible — `tracebi verify` re-runs the recorded queries | ✗ | ✗ | ✗ | ✓ |
 
 ---
 

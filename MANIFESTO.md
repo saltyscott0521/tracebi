@@ -1,16 +1,24 @@
 # The TraceBi Manifesto
 
-Governance tooling assumes a human wrote the transformation and is still
-around to ask. TraceBi assumes a machine wrote it and is gone.
+TraceBi is a code-first BI framework. You build BI the way you build software:
+the connectors, the star schema, the measures, and the report are all code in
+your repo — declarative, reviewed in a pull request, versioned, tested, and
+handed to an agent. The metric logic does not hide inside a GUI. A measure is
+declared once and referenced by name, everywhere a number appears; the hard
+patterns a BI tool pushes into a hand-written script are first-class, governed
+measures instead.
 
-AI made producing reports nearly free; believing them is the expensive part.
-When an agent composes forty reports overnight, "ask the author" is not a
-control, code review of the pandas is not a control, and a dashboard tool's
-polish is not a control. The only control that scales is a mechanical one: a
-contract the number was computed against, a fingerprint of what came out, and
-a command that re-checks both without trusting anyone's memory.
+That "handed to an agent" is why the framework has the shape it does. AI made
+producing reports nearly free; believing them is the expensive part. When an
+agent composes forty reports overnight, "ask the author" is not a control, code
+review of the pandas is not a control, and a dashboard tool's polish is not a
+control. So the framework does two things a GUI cannot: it refuses the
+silently-wrong number at the keystroke, and it gives every published figure a
+mechanical receipt — a contract it was computed against, a fingerprint of what
+came out, and a command that re-checks both without trusting anyone's memory.
 
-Producing analysis is now cheap. TraceBi exists so believing it can be too.
+Producing analysis is now cheap. TraceBi is how a team that writes code keeps it
+trustworthy too.
 
 ## The work
 
@@ -78,9 +86,9 @@ There is no third state where a number silently looks covered.
 The trust boundary needs somewhere to draw the line, and the line is drawn at
 the **sink** — the freeze point where free-form analysis becomes named
 tables, and the numbers become a contract you can report against. The
-three-phase workflow is not a style preference; it is the mechanism that
-makes the trust layer possible. The trust layer is the identity; the workflow
-is how it works.
+three-phase workflow is not a style preference; it is the framework's spine —
+and the same mechanism that makes the receipt possible. The framework is the
+identity; the receipt is what earns trust in the agent era.
 
 It is also why the spec is JSON. Python stays strictly more powerful: a spec
 cannot express arbitrary computation, which is exactly why it is safe for a
@@ -88,8 +96,7 @@ machine to generate and checkable without executing. Python and JSON are two
 serializations of one object graph — an analyst prototypes in a notebook,
 exports with `from_report()`, and the governed artifact needs no rewrite.
 
-TraceBi is the trust layer for AI-generated analytics: humans and machines
-author against the same contracts. Nothing on the agent surface is a second-class
+In TraceBi, humans and machines author against the same contracts. Nothing on the agent surface is a second-class
 copy of the human surface — a report has only ever been a name and a zero-arg
 callable, and neither author gets a shortcut around the receipt. The analyst
 gets a model they can read in one screen and a `verify` they can run before a
@@ -200,8 +207,10 @@ One canon, used everywhere — code, docs, UI, agent context:
 
 ## Commitments
 
-1. **The receipt is the product.** Any feature that weakens the
-   stamp–manifest–verify loop is rejected, whatever it adds elsewhere.
+1. **Never weaken the receipt.** Every published figure stays re-runnable; any
+   feature that weakens the stamp–manifest–verify loop is rejected, whatever it
+   adds elsewhere. The framework is the product; a receipt you can't trust would
+   quietly unmake it.
 2. **Never overclaim.** The boundary at the sink, the unsigned manifest, the
    unverifiable section — all stated plainly, in the tool's own output, not
    buried in docs.
