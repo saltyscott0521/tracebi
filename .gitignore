@@ -41,3 +41,6 @@ tracebi/web/ui/dist/
 # under data/ (already ignored above). Raw pulls live in inputs/ (tracked; a
 # large or sensitive real pull can be ignored per-file).
 .vercel_out/
+
+# Internal positioning doc — never ships to the public repo or the wheel
+docs/north-star.md

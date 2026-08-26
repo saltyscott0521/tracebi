@@ -2,486 +2,702 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<title>TraceBi — build BI like software</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TraceBi — every number has a receipt</title>
-<meta name="description" content="The trust layer for AI-generated analytics: a report that proves its own numbers offline, with no account and no server.">
+<meta name="description" content="A code-first BI framework for Python: pull the data, model it, and ship a live, self-contained report — all in code you review in a pull request, run in CI, and hand to an agent.">
+<meta property="og:title" content="TraceBi — build BI like software">
+<meta property="og:description" content="A code-first BI framework for Python. A real semantic layer, an agent-native workflow, and reports that carry their own working.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%23161b20'/%3E%3Crect%20x='7'%20y='8'%20width='18'%20height='4'%20rx='2'%20fill='%231f7a52'/%3E%3Crect%20x='7'%20y='14'%20width='14'%20height='4'%20rx='2'%20fill='%235c6570'/%3E%3Crect%20x='7'%20y='20'%20width='18'%20height='4'%20rx='2'%20fill='%231f7a52'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    /* Light — receipt paper. Neutrals biased cool-green toward the accent. */
-    --paper:      #eef2f8;
-    --paper-2:    #f6f8fc;
-    --card:       #ffffff;
-    --ink:        #0a1628;
-    --muted:      #5a6e88;
-    --rule:       #dce4ef;
-    --rule-strong:#c3d0e2;
-    --verified:   #091a55;
-    --verified-wash: rgba(9,26,85,.08);
-    --tamper:     #b23b2e;
-    --tamper-wash:rgba(178,59,46,.07);
-    --shadow:     0 1px 0 var(--rule), 0 14px 32px -18px rgba(9,20,50,.18);
-    --maxw: 1080px;
+  :root{
+    --paper:#f3f2ec;
+    --paper-2:#eceae1;
+    --card:#faf9f5;
+    --ink:#171b20;
+    --ink-2:#3a424c;
+    --ink-soft:#5c6570;
+    --rule:#d9d6cc;
+    --rule-2:#e6e3d9;
+    --repro:#1c7a51;      /* verified / reproduces */
+    --repro-bg:#e2efe6;
+    --altered:#b23c2a;    /* file altered / wrong */
+    --altered-bg:#f4e2dd;
+    --stale:#a4701f;      /* unverified / degraded */
+    --stale-bg:#f1e7d3;
+    --accent:#1c5c7a;     /* structural cool blue-ink */
+
+    --serif:"Fraunces",Georgia,serif;
+    --sans:"Hanken Grotesk",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+    --maxw:920px;
+    --measure:34rem;
+    --r:10px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --paper:      #0d1623;
-      --paper-2:    #111d2c;
-      --card:       #1a2a3e;
-      --ink:        #dde8f5;
-      --muted:      #8199b8;
-      --rule:       #2a3d54;
-      --rule-strong:#3a4f68;
-      --verified:   #7ab4f0;
-      --verified-wash: rgba(100,160,240,.14);
-      --tamper:     #e0685c;
-      --tamper-wash:rgba(224,104,92,.12);
-      --shadow:     0 1px 0 var(--rule), 0 18px 40px -22px rgba(0,0,0,.5);
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme:dark){
+      --paper:#111419;
+      --paper-2:#171b21;
+      --card:#191d24;
+      --ink:#eef0f2;
+      --ink-2:#c2c8d0;
+      --ink-soft:#8b95a1;
+      --rule:#2a3038;
+      --rule-2:#232830;
+      --repro:#5cc38d;
+      --repro-bg:#13291f;
+      --altered:#e2705c;
+      --altered-bg:#311915;
+      --stale:#d5a24e;
+      --stale-bg:#2c2213;
+      --accent:#6fb6d6;
     }
   }
-  :root[data-theme="dark"] {
-    --paper:      #0d1623;
-    --paper-2:    #111d2c;
-    --card:       #1a2a3e;
-    --ink:        #dde8f5;
-    --muted:      #8199b8;
-    --rule:       #2a3d54;
-    --rule-strong:#3a4f68;
-    --verified:   #7ab4f0;
-    --verified-wash: rgba(100,160,240,.14);
-    --tamper:     #e0685c;
-    --tamper-wash:rgba(224,104,92,.12);
-    --shadow:     0 1px 0 var(--rule), 0 18px 40px -22px rgba(0,0,0,.5);
+  :root[data-theme="dark"]{
+    --paper:#111419;
+    --paper-2:#171b21;
+    --card:#191d24;
+    --ink:#eef0f2;
+    --ink-2:#c2c8d0;
+    --ink-soft:#8b95a1;
+    --rule:#2a3038;
+    --rule-2:#232830;
+    --repro:#5cc38d;
+    --repro-bg:#13291f;
+    --altered:#e2705c;
+    --altered-bg:#311915;
+    --stale:#d5a24e;
+    --stale-bg:#2c2213;
+    --accent:#6fb6d6;
   }
 
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    font-size: 17px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:17px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
   }
-  .mono { font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; }
-  a { color: inherit; }
-  h1, h2, h3 { text-wrap: balance; line-height: 1.1; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
-  p { margin: 0; }
-  .wrap { max-width: var(--maxw); margin-inline: auto; padding-inline: 28px; }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  section{padding:clamp(48px,7vw,88px) 0}
+  section + section{border-top:1px solid var(--rule-2)}
 
-  .eyebrow {
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-size: 12px; font-weight: 500;
-    letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--verified);
-  }
+  h1,h2,h3{font-family:var(--serif);font-weight:500;letter-spacing:-.01em;text-wrap:balance;margin:0}
+  h2{font-size:clamp(1.7rem,3.6vw,2.5rem);line-height:1.08;margin-bottom:.5em}
+  h3{font-size:1.22rem;line-height:1.2;letter-spacing:0}
+  p{margin:0 0 1.05em;max-width:var(--measure)}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+  strong{font-weight:600;color:var(--ink)}
+  .lede{font-size:1.15rem;color:var(--ink-2);max-width:38rem}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 1.1em}
+  .mono{font-family:var(--mono)}
+  .muted{color:var(--ink-soft)}
 
-  /* ── Nav ─────────────────────────────────────────────── */
-  header.nav {
-    position: sticky; top: 0; z-index: 20;
-    background: color-mix(in srgb, var(--paper) 86%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--rule);
-  }
-  .nav-in { display: flex; align-items: center; gap: 28px; height: 62px; }
-  .brand {
-    font-family: "IBM Plex Mono", monospace; font-weight: 600;
-    font-size: 17px; letter-spacing: -0.02em; text-decoration: none;
-    display: inline-flex; align-items: center; gap: 9px;
-  }
-  .brand .mark {
-    width: 15px; height: 15px; border: 2px solid var(--verified);
-    border-radius: 3px; position: relative; flex: none;
-  }
-  .brand .mark::after {
-    content: ""; position: absolute; inset: 2px 3px auto 2px; top: 4px;
-    height: 2px; background: var(--verified);
-    box-shadow: 0 3px 0 var(--verified);
-  }
-  .nav-links { display: flex; gap: 26px; margin-left: auto; align-items: center; }
-  .nav-links a { text-decoration: none; color: var(--muted); font-size: 14.5px; font-weight: 500; transition: color .15s; }
-  .nav-links a:hover { color: var(--ink); }
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-family: "IBM Plex Sans", sans-serif; font-weight: 600; font-size: 14.5px;
-    text-decoration: none; padding: 9px 16px; border-radius: 7px;
-    border: 1px solid transparent; cursor: pointer; transition: transform .12s, background .15s, border-color .15s;
-  }
-  .btn-primary { background: var(--verified); color: #f6f7f4; }
-  :root[data-theme="dark"] .btn-primary { color: #0b1512; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-primary { color: #0b1512; } }
-  .btn-primary:hover { transform: translateY(-1px); }
-  .btn-ghost { border-color: var(--rule-strong); color: var(--ink); background: transparent; }
-  .btn-ghost:hover { border-color: var(--verified); color: var(--verified); }
-  .nav-links .btn { padding: 8px 14px; }
+  /* ---------- badges (the product's own verdict language, used as a design device) ---------- */
+  .badge{display:inline-flex;align-items:center;gap:.4em;font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.04em;
+    padding:.28em .6em;border-radius:999px;white-space:nowrap;vertical-align:middle}
+  .badge::before{content:"";width:.5em;height:.5em;border-radius:50%;background:currentColor;flex:none}
+  .b-repro{color:var(--repro);background:var(--repro-bg)}
+  .b-alt{color:var(--altered);background:var(--altered-bg)}
+  .b-stale{color:var(--stale);background:var(--stale-bg)}
 
-  /* ── Hero ────────────────────────────────────────────── */
-  .hero { padding-top: 76px; padding-bottom: 84px; border-bottom: 1px solid var(--rule); }
-  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
-  .hero h1 {
-    font-size: clamp(38px, 5.4vw, 62px); letter-spacing: -0.03em; margin-top: 18px;
-  }
-  .hero h1 em { font-style: normal; color: var(--verified); }
-  .hero-sub { color: var(--muted); font-size: 19px; margin-top: 20px; max-width: 30ch; }
-  .hero-cta { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
-  .cmd {
-    margin-top: 30px; border: 1px solid var(--rule-strong); border-radius: 9px;
-    background: var(--paper-2); overflow: hidden; max-width: 480px;
-  }
-  .cmd-bar { display: flex; align-items: center; gap: 7px; padding: 9px 13px; border-bottom: 1px solid var(--rule); }
-  .cmd-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule-strong); }
-  .cmd-label { margin-left: auto; font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  .cmd-body { padding: 14px 16px; font-family: "IBM Plex Mono", monospace; font-size: 14px; line-height: 1.7; }
-  .cmd-body .prompt { color: var(--muted); }
-  .cmd-body .ok { color: var(--verified); font-weight: 600; }
+  /* ---------- hero ---------- */
+  .hero{padding-top:clamp(56px,9vw,104px);text-align:left}
+  .kicker{font-family:var(--mono);font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);display:flex;gap:.9em;align-items:center;margin-bottom:2.2em}
+  .kicker .dot{width:5px;height:5px;border-radius:50%;background:var(--repro)}
+  .hero h1{font-size:clamp(2.8rem,8vw,5rem);line-height:.98;font-weight:500;letter-spacing:-.025em;margin-bottom:.32em}
+  .hero h1 em{font-style:italic;color:var(--repro)}
+  .hero .lede{font-size:clamp(1.15rem,2.3vw,1.4rem);max-width:33rem;color:var(--ink-2)}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:.6em;margin-top:2em}
+  .chip{font-family:var(--mono);font-size:.74rem;color:var(--ink-2);border:1px solid var(--rule);border-radius:999px;padding:.4em .85em;background:var(--card)}
 
-  /* ── The receipt (hero right) ────────────────────────── */
-  .receipt {
-    position: relative; background: var(--card); color: var(--ink);
-    border: 1px solid var(--rule-strong); border-radius: 4px;
-    padding: 26px 26px 30px; box-shadow: var(--shadow);
-    font-family: "IBM Plex Mono", monospace; font-size: 13px;
-  }
-  .receipt::before, .receipt::after {
-    content: ""; position: absolute; left: 0; right: 0; height: 8px;
-    background-image: radial-gradient(circle at 6px -2px, transparent 5px, var(--paper) 5px);
-    background-size: 14px 8px;
-  }
-  .receipt::before { top: -1px; transform: rotate(180deg); }
-  .receipt::after { bottom: -1px; }
-  .r-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px dashed var(--rule-strong); padding-bottom: 12px; margin-bottom: 14px; }
-  .r-title { font-weight: 600; letter-spacing: .02em; }
-  .r-meta { color: var(--muted); font-size: 11px; }
-  .r-row { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; }
-  .r-row .k { color: var(--muted); }
-  .r-row .v { font-variant-numeric: tabular-nums; font-weight: 500; }
-  .r-figure { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-  .r-fp { font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px dashed var(--rule-strong); margin-top: 14px; padding-top: 12px; }
-  .r-fp b { color: var(--ink); font-weight: 600; }
-  .stamp {
-    display: inline-flex; align-items: center; gap: 7px; margin-top: 16px;
-    border: 2px solid var(--verified); color: var(--verified);
-    border-radius: 6px; padding: 6px 12px; font-weight: 600; letter-spacing: .06em;
-    transform: rotate(-2.5deg); transition: color .25s, border-color .25s;
-  }
-  .stamp .tick { width: 15px; height: 15px; }
-  .receipt.is-tampered .stamp { border-color: var(--tamper); color: var(--tamper); }
-  .receipt.is-tampered .r-figure { color: var(--tamper); }
-  .receipt.is-tampered { background: var(--tamper-wash); }
-  .receipt-controls { margin-top: 16px; display: flex; align-items: center; gap: 14px; }
-  .link-btn {
-    background: none; border: none; padding: 0; cursor: pointer;
-    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--muted);
-    text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--rule-strong);
-  }
-  .link-btn:hover { color: var(--ink); }
-  .receipt-note { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; color: var(--muted); }
+  /* ---------- generic card ---------- */
+  .card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r)}
+  .grid{display:grid;gap:18px}
+  @media(min-width:680px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}}
 
-  /* ── Sections ────────────────────────────────────────── */
-  section { border-bottom: 1px solid var(--rule); }
-  .band { padding-block: 78px; }
-  .band h2 { font-size: clamp(27px, 3.4vw, 38px); letter-spacing: -0.02em; margin-top: 12px; max-width: 20ch; }
-  .lead { color: var(--muted); font-size: 18px; margin-top: 16px; max-width: 60ch; }
+  /* ---------- three-phase flow ---------- */
+  .flow{display:grid;gap:14px;margin-top:8px}
+  @media(min-width:760px){.flow{grid-template-columns:1fr auto 1fr auto 1fr;align-items:stretch}}
+  .phase{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:22px}
+  .phase .n{font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--repro);letter-spacing:.05em}
+  .phase h3{margin:.5em 0 .35em}
+  .phase p{font-size:.92rem;margin:0;color:var(--ink-2)}
+  .phase .path{font-family:var(--mono);font-size:.74rem;color:var(--ink-soft);margin-top:.9em;display:block}
+  .freeze{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5em;color:var(--ink-soft);font-family:var(--mono);font-size:.64rem;letter-spacing:.05em;text-transform:uppercase;padding:6px}
+  .freeze .ar{font-size:1.3rem;color:var(--repro);line-height:1}
+  .freeze span{max-width:8ch;text-align:center;line-height:1.3}
+  @media(max-width:759px){.freeze{flex-direction:row}.freeze .ar{transform:rotate(90deg)}}
 
-  .problem .big {
-    font-size: clamp(26px, 3.6vw, 40px); font-weight: 600; letter-spacing: -0.02em;
-    max-width: 24ch; line-height: 1.18;
-  }
-  .problem .big span { color: var(--muted); }
+  /* ---------- receipt / tamper demo ---------- */
+  .receipt{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+  .receipt-top{padding:22px 24px;border-bottom:1px dashed var(--rule)}
+  .kpi-label{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:.4em}
+  .kpi-row{display:flex;align-items:baseline;gap:.7em;flex-wrap:wrap}
+  .kpi-val{font-family:var(--serif);font-size:clamp(2.1rem,6vw,2.9rem);font-weight:500;letter-spacing:-.02em;line-height:1}
+  .kpi-val.tampered{color:var(--altered)}
+  .receipt-body{padding:18px 24px 22px;font-family:var(--mono);font-size:.79rem;color:var(--ink-2);line-height:1.85}
+  .receipt-body .k{color:var(--ink-soft)}
+  .receipt-body .hash{word-break:break-all}
+  .receipt-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  button{font-family:var(--mono);font-size:.78rem;font-weight:500;cursor:pointer;border-radius:8px;padding:.6em 1em;border:1px solid var(--rule);background:var(--paper-2);color:var(--ink);transition:transform .08s ease,background .15s ease}
+  button:hover{background:var(--rule-2)}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  button.primary:hover{opacity:.9}
+  .verdict{margin-top:16px;font-family:var(--mono);font-size:.82rem;padding:.7em .9em;border-radius:8px;border:1px solid transparent;line-height:1.5}
+  .verdict.ok{color:var(--repro);background:var(--repro-bg);border-color:color-mix(in srgb,var(--repro) 25%,transparent)}
+  .verdict.bad{color:var(--altered);background:var(--altered-bg);border-color:color-mix(in srgb,var(--altered) 30%,transparent)}
 
-  /* Phases */
-  .phases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 40px; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
-  .phase { padding: 26px 24px; border-right: 1px solid var(--rule); }
-  .phase:last-child { border-right: none; }
-  .phase .n { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--verified); font-weight: 600; }
-  .phase h3 { font-size: 19px; margin-top: 10px; }
-  .phase p { color: var(--muted); font-size: 15px; margin-top: 8px; }
-  .phase .file { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--muted); margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--rule-strong); }
-  .freeze { text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 18px; }
+  /* ---------- comparison ---------- */
+  .cmp{display:grid;gap:16px}
+  @media(min-width:720px){.cmp{grid-template-columns:1fr 1fr}}
+  .cmp-col{border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;background:var(--card)}
+  .cmp-h{padding:14px 18px;font-family:var(--mono);font-size:.76rem;font-weight:600;letter-spacing:.04em;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:1em}
+  .cmp-col.bad .cmp-h{background:var(--stale-bg);color:var(--stale)}
+  .cmp-col.good .cmp-h{background:var(--repro-bg);color:var(--repro)}
+  .cmp-b{padding:18px}
+  .cmp-b pre{margin:0;font-family:var(--mono);font-size:.76rem;line-height:1.65;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
+  .cmp-b .note{font-size:.86rem;color:var(--ink-soft);margin:.9em 0 0}
+  .tok-c{color:var(--ink-soft)}
 
-  /* Feature split */
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 52px; align-items: center; }
-  .feature-list { display: flex; flex-direction: column; gap: 18px; margin-top: 26px; }
-  .feature-list li { list-style: none; display: flex; gap: 13px; align-items: flex-start; }
-  .feature-list .dot { color: var(--verified); font-family: "IBM Plex Mono", monospace; font-weight: 600; margin-top: 1px; flex: none; }
-  .feature-list p { font-size: 15.5px; }
-  .feature-list b { font-weight: 600; }
-  ul.feature-list { margin: 0; padding: 0; }
+  /* ---------- guardrails ---------- */
+  .guard{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--altered);border-radius:var(--r);padding:20px 22px}
+  .guard .wrong{font-family:var(--mono);font-size:.82rem;color:var(--altered);margin-bottom:.5em}
+  .guard h3{font-size:1rem;margin-bottom:.35em}
+  .guard p{font-size:.9rem;margin:0;color:var(--ink-2)}
 
-  .verdict-demo { border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--paper-2); padding: 22px; }
-  .verdict-demo .cmd-body { padding: 0; font-size: 13.5px; }
-  .verdict-row { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; }
-  .verdict-row .ok { color: var(--verified); font-weight: 600; }
-  .verdict-row .bad { color: var(--tamper); font-weight: 600; }
+  /* ---------- measure grid ---------- */
+  .mtable{width:100%;border-collapse:collapse;font-size:.9rem}
+  .mtable td{padding:.72em .3em;border-bottom:1px solid var(--rule-2);vertical-align:top}
+  .mtable tr:last-child td{border-bottom:0}
+  .mtable .m{font-family:var(--mono);font-size:.82rem;color:var(--ink);white-space:nowrap;padding-right:1.4em;font-weight:500}
+  .mtable .d{color:var(--ink-2)}
+  .scroll{overflow-x:auto}
 
-  /* Honesty */
-  .honesty { background: var(--paper-2); }
-  .honesty .lead { max-width: 62ch; }
-  .quote { font-size: clamp(21px, 2.6vw, 27px); font-weight: 500; letter-spacing: -0.01em; max-width: 24ch; line-height: 1.28; }
-  .quote em { font-style: normal; color: var(--verified); }
+  /* ---------- value cards ---------- */
+  .val{padding:24px}
+  .val .ic{font-family:var(--mono);font-size:.72rem;font-weight:600;color:var(--repro);letter-spacing:.05em;margin-bottom:1em}
+  .val h3{margin-bottom:.4em}
+  .val p{font-size:.94rem;margin:0;color:var(--ink-2)}
 
-  /* CTA */
-  .cta { text-align: center; padding-block: 90px; }
-  .cta h2 { font-size: clamp(30px, 4vw, 46px); margin-inline: auto; }
-  .cta .lead { margin-inline: auto; }
-  .cta-row { display: flex; gap: 14px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
-  .cta .btn { padding: 12px 22px; font-size: 15.5px; }
-  .install { margin-top: 26px; font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--muted); }
-  .install code { color: var(--ink); background: var(--paper-2); padding: 3px 9px; border-radius: 6px; border: 1px solid var(--rule); }
+  /* ---------- pull / statement ---------- */
+  .statement{font-family:var(--serif);font-size:clamp(1.5rem,3.6vw,2.15rem);line-height:1.24;font-weight:400;letter-spacing:-.01em;max-width:24ch;color:var(--ink)}
+  .statement b{font-weight:600;color:var(--repro);font-style:normal}
 
-  /* Footer */
-  footer { padding-block: 40px; color: var(--muted); font-size: 13.5px; }
-  .foot-in { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-  .foot-in .sep { margin-left: auto; }
-  footer a { color: var(--muted); text-decoration: none; }
-  footer a:hover { color: var(--ink); }
+  footer{padding:44px 0 60px;color:var(--ink-soft);font-size:.86rem}
+  footer .rule{height:1px;background:var(--rule);margin-bottom:26px}
+  footer .mono{font-size:.76rem;line-height:1.9}
 
-  /* Reveal — content is visible by default; only hidden once JS is present to
-     bring it back, so a stuck observer or no-JS never blanks the page. */
-  .reveal { transition: opacity .55s ease, transform .55s ease; }
-  .reveal-js .reveal:not(.in) { opacity: 0; transform: translateY(14px); }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal-js .reveal:not(.in) { opacity: 1; transform: none; }
-    .reveal, .btn:hover, .stamp { transition: none; }
-  }
+  .rowlabel{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 1.4em;display:flex;align-items:center;gap:1em}
+  .rowlabel::after{content:"";flex:1;height:1px;background:var(--rule)}
 
-  :where(a, button):focus-visible { outline: 2px solid var(--verified); outline-offset: 3px; border-radius: 4px; }
+  /* ---------- user walkthrough (stepper + terminal) ---------- */
+  .walk{margin-top:1.6em}
+  .steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .step-btn{display:flex;align-items:center;gap:.55em;font-family:var(--mono);font-size:.76rem;font-weight:500;
+    padding:.5em .8em;border-radius:8px;border:1px solid var(--rule);background:var(--card);color:var(--ink-soft);cursor:pointer;transition:all .15s ease}
+  .step-btn .num{display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;border-radius:50%;
+    background:var(--rule-2);color:var(--ink-soft);font-size:.72rem;font-weight:600;flex:none}
+  .step-btn:hover{border-color:var(--ink-soft);color:var(--ink-2)}
+  .step-btn[aria-current="true"]{border-color:var(--repro);color:var(--ink);background:var(--card)}
+  .step-btn[aria-current="true"] .num{background:var(--repro);color:#fff}
+  :root[data-theme="dark"] .step-btn[aria-current="true"] .num{color:#0d1a12}
+  @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .step-btn[aria-current="true"] .num{color:#0d1a12}}
 
-  @media (max-width: 860px) {
-    .hero-grid, .split { grid-template-columns: 1fr; gap: 40px; }
-    .phases { grid-template-columns: 1fr; }
-    .phase { border-right: none; border-bottom: 1px solid var(--rule); }
-    .phase:last-child { border-bottom: none; }
-    .nav-links a:not(.btn) { display: none; }
-    .hero { padding-top: 52px; }
-  }
+  .step-panel{display:grid;gap:16px}
+  @media(min-width:820px){.step-panel{grid-template-columns:1.4fr 1fr;align-items:start}}
+  .step-panel[hidden]{display:none}
+
+  /* terminal — a component that commits to one dark look in both themes */
+  .term{background:#12161c;border:1px solid #232a33;border-radius:12px;overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+  .term-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;background:#171d25;border-bottom:1px solid #232a33}
+  .term-bar i{width:11px;height:11px;border-radius:50%;background:#2f3843;display:block}
+  .term-bar i:first-child{background:#e05c4b}.term-bar i:nth-child(2){background:#d5a24e}.term-bar i:nth-child(3){background:#5cc38d}
+  .term-bar span{margin-left:8px;font-family:var(--mono);font-size:.7rem;color:#6b7686}
+  .term-body{padding:18px 18px 20px;font-family:var(--mono);font-size:.82rem;line-height:1.75;color:#c7cfd8;overflow-x:auto}
+  .term-body .cmd{color:#eef2f6}
+  .term-body .cmd .p{color:#5cc38d;user-select:none}
+  .term-body .cmt{color:#6b7686}
+  .term-body .out{color:#93a0ad}
+  .term-body .ok{color:#5cc38d}
+  .term-body .hl{color:#e6c07a}
+  .term-body .file{color:#7fc7e6}
+  .term-body b{color:#eef2f6;font-weight:600}
+  .term-body .blank{display:block;height:.5em}
+  .step-note h3{font-size:1.05rem;margin-bottom:.4em}
+  .step-note p{font-size:.92rem;color:var(--ink-2);margin:0 0 .7em}
+  .step-note .tag{font-family:var(--mono);font-size:.7rem;color:var(--repro);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.8em;display:block}
+  .walk-nav{display:flex;gap:10px;margin-top:18px}
+
+  /* ---------- marketing nav + CTAs ---------- */
+  .topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 82%,transparent);
+    backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--rule-2)}
+  .topbar .bar{max-width:var(--maxw);margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:16px}
+  .brand{display:flex;align-items:center;gap:.55em;font-family:var(--serif);font-weight:600;font-size:1.12rem;letter-spacing:-.01em;color:var(--ink);text-decoration:none;border:0}
+  .brand svg{width:22px;height:22px;flex:none}
+  .nav-links{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .nav-links a{font-family:var(--sans);font-size:.9rem;color:var(--ink-2);text-decoration:none;border:0;padding:.45em .7em;border-radius:8px}
+  .nav-links a:hover{color:var(--ink);background:var(--rule-2)}
+  .nav-links a.cta{background:var(--ink);color:var(--paper);font-weight:600;padding:.5em 1em}
+  .nav-links a.cta:hover{opacity:.9;background:var(--ink)}
+  .nav-links .hide-sm{}
+  @media(max-width:640px){.nav-links .hide-sm{display:none}}
+  .tgl{font-family:var(--mono);font-size:.9rem;line-height:1;background:transparent;border:1px solid var(--rule);color:var(--ink-2);width:34px;height:32px;border-radius:8px;cursor:pointer;padding:0}
+  .tgl:hover{border-color:var(--ink-soft);color:var(--ink)}
+
+  .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:2em}
+  a.btn{font-family:var(--sans);font-weight:600;font-size:.98rem;text-decoration:none;border:1px solid var(--ink);border-radius:10px;padding:.72em 1.3em;display:inline-flex;align-items:center;gap:.5em;transition:transform .08s ease}
+  a.btn:hover{transform:translateY(-1px)}
+  a.btn.solid{background:var(--ink);color:var(--paper)}
+  a.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule-strong,var(--rule))}
+  footer .flinks{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:26px;font-size:.92rem}
+  footer .flinks a{color:var(--ink-2);text-decoration:none;border:0}
+  footer .flinks a:hover{color:var(--ink)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 
-<header class="nav">
-  <div class="wrap nav-in">
-    <a class="brand" href="#top"><span class="mark" aria-hidden="true"></span>tracebi</a>
-    <nav class="nav-links">
-      <a href="#how">How it works</a>
-      <a href="#receipt">The receipt</a>
-      <a href="#docs">Docs</a>
-      <a class="btn btn-primary" href="/app">Try the demo</a>
-    </nav>
+<nav class="topbar">
+  <div class="bar">
+    <a class="brand" href="#top" aria-label="TraceBi home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--ink)"/><rect x="7" y="8" width="18" height="4" rx="2" fill="var(--repro)"/><rect x="7" y="14" width="14" height="4" rx="2" fill="var(--ink-soft)"/><rect x="7" y="20" width="18" height="4" rx="2" fill="var(--repro)"/></svg>
+      TraceBi
+    </a>
+    <div class="nav-links">
+      <a class="hide-sm" href="#workflow">How it works</a>
+      <a class="hide-sm" href="#layer">Semantic layer</a>
+      <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+      <a class="cta" href="/app">Try the demo →</a>
+      <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+    </div>
   </div>
-</header>
+</nav>
 
-<main id="top">
+<div class="wrap" id="top">
 
   <!-- HERO -->
-  <section class="hero">
-    <div class="wrap hero-grid">
-      <div class="reveal in">
-        <span class="eyebrow">The trust layer for AI-generated analytics</span>
-        <h1>Every number has&nbsp;a <em>receipt</em>.</h1>
-        <p class="hero-sub">Agents write the numbers now. TraceBi makes each one a report that proves itself — offline, with no account and no server.</p>
-        <div class="hero-cta">
-          <a class="btn btn-primary" href="/app">Try the demo →</a>
-          <a class="btn btn-ghost" href="#how">See how it works</a>
-        </div>
-        <div class="cmd" aria-label="Example: verifying a report offline">
-          <div class="cmd-bar">
-            <span class="cmd-dot"></span><span class="cmd-dot"></span><span class="cmd-dot"></span>
-            <span class="cmd-label">offline · no database</span>
-          </div>
-          <div class="cmd-body">
-<span class="prompt">$</span> tracebi verify --file report.html<br>
-<span class="ok">✓ FILE INTACT</span> — the numbers in this file are<br>
-&nbsp;&nbsp;exactly what was fingerprinted.
-          </div>
-        </div>
-      </div>
-
-      <!-- Live receipt -->
-      <div class="reveal in" style="transition-delay:.08s">
-        <div class="receipt" id="receipt">
-          <div class="r-head">
-            <span class="r-title">Q3 · Revenue by region</span>
-            <span class="r-meta">manifest&nbsp;v2</span>
-          </div>
-          <div class="r-row"><span class="k">Total revenue</span><span class="v r-figure" id="rFig">$1,705,495.22</span></div>
-          <div class="r-row"><span class="k">Rows</span><span class="v">4,182</span></div>
-          <div class="r-row"><span class="k">Model</span><span class="v">sales · region</span></div>
-          <div class="r-fp"><b>fingerprint</b> <span id="rFp" class="mono">sha256:9f2c…a4e1</span></div>
-          <div class="stamp" id="rStamp">
-            <svg class="tick" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path id="rStampPath" d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span id="rStampText">REPRODUCES</span>
-          </div>
-          <div class="receipt-controls">
-            <button class="link-btn" id="tamperBtn">try editing the number →</button>
-            <span class="receipt-note" id="rNote">Every figure re-checks against its fingerprint.</span>
-          </div>
-        </div>
-      </div>
+  <header class="hero">
+    <div class="kicker"><span class="dot"></span> TraceBi &nbsp;·&nbsp; a code-first BI framework for Python</div>
+    <h1>Build BI like<br>you build <em>software.</em></h1>
+    <p class="lede">Pull the data, model it, ship a live report — all in plain Python you review in a pull request, run in CI, and hand to an agent. A real semantic layer, batteries included.</p>
+    <div class="hero-meta">
+      <span class="chip">Python · DuckDB</span>
+      <span class="chip">transform → model → report</span>
+      <span class="chip">declarative semantic layer</span>
+      <span class="chip">agent-native</span>
+      <span class="chip">MIT</span>
     </div>
-  </section>
+    <div class="cta-row">
+      <a class="btn solid" href="/app">See a live report →</a>
+      <a class="btn ghost" href="https://github.com/saltyscott0521/tracebi">View on GitHub</a>
+    </div>
+  </header>
 
   <!-- PROBLEM -->
-  <section class="problem">
-    <div class="wrap band">
-      <span class="eyebrow reveal">The problem</span>
-      <p class="big reveal">A model writes a number into a deck. <span>By the time someone questions it, the query, the data, and the author are three tools away.</span></p>
-      <p class="lead reveal">Legacy BI answered “who draws the chart.” The question now is “which numbers can anyone believe” — and a dashboard has no receipt, structurally. TraceBi draws the trust boundary where the numbers become a contract, and stamps everything downstream of it.</p>
-    </div>
+  <section>
+    <p class="eyebrow">Why a framework</p>
+    <h2>BI lives in GUIs you can’t<br>review, version, or hand to an agent.</h2>
+    <p>You can’t diff a dashboard in a pull request, run it in CI, or point a coding agent at it. The measure logic hides inside a tool; the “single source of truth” is a screenshot. So teams that write code end up rebuilding their metrics by hand in every place a number is needed.</p>
+    <p>TraceBi is the opposite: <strong>analytics as code.</strong> The connectors, the star schema, the measures, and the report are all Python and JSON in your repo — declarative, testable, and versioned, the way the rest of your stack already is.</p>
+    <p class="statement" style="margin-top:1.6em">Everything that makes a number is <b>in the repo, and reviewable.</b></p>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section id="how">
-    <div class="wrap band">
-      <span class="eyebrow reveal">How it works</span>
-      <h2 class="reveal">Three steps, from messy data to a report that proves itself.</h2>
-      <p class="lead reveal">Each phase hands the next a frozen artifact, so slow analysis and fast reporting never block each other — and the trust machinery attaches at the freeze points.</p>
+  <!-- THE WORKFLOW -->
+  <section id="workflow">
+    <p class="eyebrow">The spine · three phases, two freeze points</p>
+    <h2>Messy data to a live report, decoupled.</h2>
+    <p style="margin-bottom:2em">The slow, unconstrained analysis and the fast, iterated reporting never block each other — because the model between them is a frozen contract. Editing a report never re-runs the pandas; the page re-renders in milliseconds.</p>
 
-      <div class="phases reveal">
-        <div class="phase">
-          <div class="n">① Transform</div>
-          <h3>Clean the data</h3>
-          <p>Ordinary pandas — parse, dedupe, key — then sink clean star-schema tables into a warehouse you own.</p>
-          <div class="file mono">transforms/ → warehouse.duckdb</div>
+    <div class="flow">
+      <div class="phase">
+        <span class="n">① TRANSFORM</span>
+        <h3>Do the real work</h3>
+        <p>Ordinary, unconstrained pandas — pull the queries, clean, dedupe, parse. Then <em>sink</em> clean star-schema tables into a file-backed warehouse.</p>
+        <span class="path">transforms/ → warehouse.duckdb</span>
+      </div>
+      <div class="freeze"><span class="ar">→</span><span>freeze: the tables</span></div>
+      <div class="phase">
+        <span class="n">② MODEL</span>
+        <h3>Name the contract</h3>
+        <p>A declarative star schema over the warehouse — grain, keys, measures — in a few dozen lines a reviewer reads in one screen.</p>
+        <span class="path">models/ → the semantic contract</span>
+      </div>
+      <div class="freeze"><span class="ar">→</span><span>freeze: the model</span></div>
+      <div class="phase">
+        <span class="n">③ REPORT</span>
+        <h3>Bind the figures</h3>
+        <p>A page where every KPI, chart and table cell is a live query against the model — no pandas in the loop.</p>
+        <span class="path">reports/ → a self-contained artifact</span>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.9rem;margin-top:1.6em;max-width:44rem">Each phase is a folder with its own cadence. The <span class="mono">tracebi</span> CLI scaffolds them, runs each one, and serves the result — no BI server to stand up.</p>
+  </section>
+
+  <!-- USER WALKTHROUGH -->
+  <section>
+    <p class="eyebrow">See it as a user · the whole loop in five commands</p>
+    <h2>What you actually type.</h2>
+    <p>From an empty folder to a shareable, self-verifying report — the real commands, and what each one gives you back. Step through it.</p>
+
+    <div class="walk">
+      <div class="steps" role="tablist" aria-label="Walkthrough steps">
+        <button class="step-btn" data-step="0" role="tab"><span class="num">1</span> scaffold</button>
+        <button class="step-btn" data-step="1" role="tab"><span class="num">2</span> transform</button>
+        <button class="step-btn" data-step="2" role="tab"><span class="num">3</span> model</button>
+        <button class="step-btn" data-step="3" role="tab"><span class="num">4</span> report</button>
+        <button class="step-btn" data-step="4" role="tab"><span class="num">5</span> verify &amp; share</button>
+      </div>
+
+      <div class="step-panel" data-panel="0">
+        <div class="term">
+          <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
+          <div class="term-body">
+<div class="cmd"><span class="p">$ </span>tracebi init altsvault</div>
+<div class="ok">✓ created <b>altsvault/</b></div>
+<div class="out">  ├─ transforms/   <span class="cmt"># ① your pandas</span></div>
+<div class="out">  ├─ models/       <span class="cmt"># ② the star schema</span></div>
+<div class="out">  ├─ reports/      <span class="cmt"># ③ the dashboards</span></div>
+<div class="out">  ├─ inputs/       <span class="cmt"># raw pulls</span></div>
+<div class="out">  └─ AGENTS.md · sample_dashboard <span class="cmt"># a working example</span></div>
+<span class="blank"></span>
+<div class="cmd"><span class="p">$ </span>cd altsvault</div>
+          </div>
         </div>
-        <div class="phase">
-          <div class="n">② Model</div>
-          <h3>Define the contract</h3>
-          <p>A declarative star schema over the warehouse: grain, keys, measures — a few dozen lines a reviewer reads.</p>
-          <div class="file mono">models/ → the semantic contract</div>
-        </div>
-        <div class="phase">
-          <div class="n">③ Report</div>
-          <h3>Publish the receipt</h3>
-          <p>Every figure is a live query. Build one self-contained HTML file with the receipt embedded inside it.</p>
-          <div class="file mono">reports/ → report.html + manifest</div>
+        <div class="step-note">
+          <span class="tag">one command</span>
+          <h3>Scaffold the project</h3>
+          <p>A three-folder project — one per phase — plus a working sample dashboard and an <span class="mono">AGENTS.md</span> that teaches an agent the whole grammar. It’s a repo from minute one: <span class="mono">git init</span> and commit.</p>
         </div>
       </div>
-      <p class="freeze reveal">— freeze point · freeze point · every number stamped downstream —</p>
+
+      <div class="step-panel" data-panel="1" hidden>
+        <div class="term">
+          <div class="term-bar"><i></i><i></i><i></i><span>transforms/holdings.py — then run it</span></div>
+          <div class="term-body">
+<div class="cmt"># ordinary pandas — clean, dedupe, parse …</div>
+<div class="out">df = clean(pd.read_csv("inputs/holdings.csv"))</div>
+<div class="out">DuckDBConnector("warehouse").write(fact,  "fact_holdings")</div>
+<div class="out">DuckDBConnector("warehouse").write(funds, "dim_fund")</div>
+<span class="blank"></span>
+<div class="cmd"><span class="p">$ </span>tracebi run-transform holdings</div>
+<div class="out">▸ inputs/holdings.csv … <span class="hl">233,338 rows</span></div>
+<div class="out">▸ cleaning · deduping · building star tables</div>
+<div class="ok">✓ sank fact_holdings, dim_fund, dim_issuer</div>
+<div class="ok">  → <span class="file">data/warehouse.duckdb</span></div>
+          </div>
+        </div>
+        <div class="step-note">
+          <span class="tag">phase ① · unconstrained</span>
+          <h3>Do the real analysis</h3>
+          <p>This phase is just Python — the framework doesn’t constrain it. Do whatever the data needs, then <em>sink</em> clean star-schema tables into a file-backed warehouse. That sink is the contract; nothing downstream ever opens this script.</p>
+        </div>
+      </div>
+
+      <div class="step-panel" data-panel="2" hidden>
+        <div class="term">
+          <div class="term-bar"><i></i><i></i><i></i><span>models/portfolio_model.py</span></div>
+          <div class="term-body">
+<div class="out">model = (DataModel(<span class="hl">"portfolio_model"</span>)</div>
+<div class="out">  .add_table("fact_holdings", source="fact_holdings")</div>
+<div class="out">  .add_dimension("dim_issuer", attributes=["issuer","sector"])</div>
+<span class="blank"></span>
+<div class="out">  <span class="cmt"># measures — declared once, used everywhere</span></div>
+<div class="out">  .add_measure("fair_value", column="fair_value", agg="sum")</div>
+<div class="out">  .add_measure("<b>wtd_spread</b>", ratio=("spread_x_par","par"))</div>
+<div class="out">  .add_measure("<b>fv_rank_in_sector</b>", rank="fair_value",</div>
+<div class="out">               partition_by="dim_issuer.sector")</div>
+<div class="out">  .add_measure("<b>rev_yoy</b>", growth=("fair_value","year",1)))</div>
+          </div>
+        </div>
+        <div class="step-note">
+          <span class="tag">phase ② · the contract</span>
+          <h3>Declare the model</h3>
+          <p>A few dozen declarative lines a reviewer reads in one screen — grain, keys, and named measures. This is the semantic layer: define <span class="mono">wtd_spread</span> or a per-sector rank <em>once</em>, and every report calls it by name.</p>
+        </div>
+      </div>
+
+      <div class="step-panel" data-panel="3" hidden>
+        <div class="term">
+          <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
+          <div class="term-body">
+<div class="cmt"># reports/portfolio_dashboard.json binds figures to measures</div>
+<div class="cmd"><span class="p">$ </span>tracebi report build portfolio_dashboard</div>
+<div class="out">▸ resolving 21 figures against portfolio_model</div>
+<div class="out">▸ inlining charts · data · styles</div>
+<div class="ok">✓ <span class="file">output/portfolio_dashboard.html</span>  <span class="cmt"># 1.8 MB, self-contained</span></div>
+<span class="blank"></span>
+<div class="cmd"><span class="p">$ </span>tracebi dev portfolio_dashboard  <span class="cmt"># or iterate live</span></div>
+<div class="out">▸ serving on http://127.0.0.1:8000 · hot-reload</div>
+          </div>
+        </div>
+        <div class="step-note">
+          <span class="tag">phase ③ · milliseconds</span>
+          <h3>Build the report</h3>
+          <p>Every figure is a live query against the frozen model, so the page renders in milliseconds — no pandas in the loop. The output is <em>one</em> HTML file with charts, data and styling all inlined. Edit the layout all day; it never re-runs the analysis.</p>
+        </div>
+      </div>
+
+      <div class="step-panel" data-panel="4" hidden>
+        <div class="term">
+          <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
+          <div class="term-body">
+<div class="cmd"><span class="p">$ </span>tracebi verify output/portfolio_dashboard.html</div>
+<div class="out">▸ re-running 21 recorded queries · hashing bytes</div>
+<div class="ok">✓ <b>REPRODUCES · FILE INTACT</b></div>
+<div class="ok">  21/21 figures match their stamped queries</div>
+<span class="blank"></span>
+<div class="cmt"># email the file. months later, anyone can re-check it —</div>
+<div class="cmt"># offline, no database, no account.</div>
+<div class="cmd"><span class="p">$ </span>tracebi serve  <span class="cmt"># or browse the whole project</span></div>
+          </div>
+        </div>
+        <div class="step-note">
+          <span class="tag">ship it</span>
+          <h3>Verify &amp; share</h3>
+          <p>The report you send carries its own working. <span class="mono">verify</span> re-runs the recorded queries and confirms the file wasn’t edited after the fact — the reproducibility guarantee that comes for free once every figure was a query.</p>
+        </div>
+      </div>
+
+      <div class="walk-nav">
+        <button id="walkPrev">← back</button>
+        <button class="primary" id="walkNext">next step →</button>
+      </div>
     </div>
   </section>
 
-  <!-- THE RECEIPT / WEDGE -->
-  <section id="receipt">
-    <div class="wrap band split">
-      <div>
-        <span class="eyebrow reveal">The verifier</span>
-        <h2 class="reveal">Hand someone the file. It re-checks itself.</h2>
-        <p class="lead reveal">The data, the query, and a SHA-256 fingerprint travel inside the HTML. A reviewer runs one command — no model, no warehouse, no account — and the file tells them whether a single byte moved.</p>
-        <ul class="feature-list reveal">
-          <li><span class="dot">→</span><p><b>Offline &amp; database-free.</b> The check needs nothing but the file itself.</p></li>
-          <li><span class="dot">→</span><p><b>Tamper-evident.</b> Edit a figure and verification names exactly what changed.</p></li>
-          <li><span class="dot">→</span><p><b>Fires where BI fails</b> — the moment a number in an emailed deck is questioned.</p></li>
-        </ul>
+  <!-- SEMANTIC LAYER -->
+  <section id="layer">
+    <p class="eyebrow">The semantic layer · where the depth is</p>
+    <h2>Measures declared once.<br>Referenced by name, everywhere.</h2>
+    <p>The heart of the framework is a real semantic layer: a metric is defined in <em>one</em> place on the model — reviewed in a pull request, versioned in git — and every report calls it by name. No more re-deriving “revenue” five different ways in five different scripts.</p>
+    <p>And the hard patterns that used to force a hand-written script are first-class measures. A whole concentration table is three lines:</p>
+
+    <div class="cmp" style="margin:1.8em 0">
+      <div class="cmp-col bad">
+        <div class="cmp-h"><span>hand-rolled in a script</span></div>
+        <div class="cmp-b">
+<pre># somewhere in report.py
+df = q("select * from holdings")
+df = df.sort_values("fv", ascending=False)
+df["rank"]  = range(1, len(df)+1)
+df["share"] = df.fv / df.fv.sum()
+<span class="tok-c"># re-implemented per report,
+# reviewed by nobody</span></pre>
+          <p class="note">Metric logic scattered across scripts — the definition drifts, and the next report reinvents it.</p>
+        </div>
       </div>
-      <div class="verdict-demo reveal">
-        <div class="cmd-body mono">
-          <div class="verdict-row"><span class="prompt" style="color:var(--muted)">$</span><span>tracebi verify --file q3.html</span></div>
-          <div class="verdict-row"><span class="ok">✓ FILE INTACT</span><span style="color:var(--muted)">3/3 bindings match · 6/6 figures</span></div>
-          <div style="height:14px"></div>
-          <div class="verdict-row"><span class="prompt" style="color:var(--muted)">$</span><span style="color:var(--muted)"># after someone edits a value…</span></div>
-          <div class="verdict-row"><span class="prompt" style="color:var(--muted)">$</span><span>tracebi verify --file q3.html</span></div>
-          <div class="verdict-row"><span class="bad">✗ TAMPERED</span><span style="color:var(--muted)">kpis — embedded bytes hash differently</span></div>
+      <div class="cmp-col good">
+        <div class="cmp-h"><span>declared on the model</span></div>
+        <div class="cmp-b">
+<pre>model.add_measure("fv_rank",  rank="fair_value")
+model.add_measure("fv_share", share="fair_value")
+model.add_measure("fv_cum",   running="fv_share")
+<span class="tok-c"># one definition, referenced by name
+# from every report and every query</span></pre>
+          <p class="note">Reviewed once, versioned in git, called by name — the same number everywhere it appears.</p>
         </div>
       </div>
     </div>
+
+    <p class="rowlabel">the grammar</p>
+    <div class="scroll">
+      <table class="mtable">
+        <tr><td class="m">ratio · share · rank · running</td><td class="d">Ratios of totals (never a mean of ratios), % of total, concentration &amp; Pareto tables.</td></tr>
+        <tr><td class="m">median · stddev · p90 / p95 / p99</td><td class="d">The distribution and its <em>tail</em> — the worst marks a mean and even a median hide.</td></tr>
+        <tr><td class="m">period_end</td><td class="d">Semi-additive AUM / NAV — summed across funds, latest snapshot over time. Never double-counted.</td></tr>
+        <tr><td class="m">offset · growth</td><td class="d">Period-over-period — YoY, QoQ, MoM — as a measure, not a self-join.</td></tr>
+        <tr><td class="m">to_date</td><td class="d">YTD / QTD / MTD cumulatives that reset on the period boundary.</td></tr>
+        <tr><td class="m">rank + partition_by · having</td><td class="d">Top-3-issuers-<em>per-sector</em> — a governed query, not a spreadsheet pivot.</td></tr>
+        <tr><td class="m">time grains · value bins · or / and filters</td><td class="d">Group by month, by balance band; filter on <em>this</em> OR <em>that</em> across columns.</td></tr>
+      </table>
+    </div>
+    <p class="muted" style="font-size:.9rem;margin-top:1.4em;max-width:44rem">A closed, declarative grammar — no free-form SQL to review, and every measure is data you can diff, validate before it runs, and generate.</p>
   </section>
 
-  <!-- HONESTY -->
-  <section class="honesty">
-    <div class="wrap band split">
-      <div>
-        <span class="eyebrow reveal">What it claims</span>
-        <p class="quote reveal">We won’t tell you a number is <em>correct</em>. We tell you it <em>reproduces</em> — and we let you check.</p>
+  <!-- GUARDRAILS -->
+  <section>
+    <p class="eyebrow">Guardrails that teach</p>
+    <h2>The wrong number is made<br>unavailable — at the keystroke.</h2>
+    <p>The framework’s cardinal rule is that it never returns a confident, silently-<em>wrong</em> total. So the model refuses the classic mistakes the moment you declare them, and the refusal names the fix — a guardrail is a lesson that fires when it matters, that no author (human or agent) can skip.</p>
+
+    <div class="grid g3" style="margin-top:1.6em">
+      <div class="guard">
+        <div class="wrong">mean(mark) → 8.49 ✕</div>
+        <h3>Mean of a ratio</h3>
+        <p>A per-row ratio averaged overweights small rows. Refused — even when the column name hides it — with a pointer to a ratio of totals. Truth was 1.05.</p>
       </div>
-      <div class="reveal">
-        <p class="lead" style="margin-top:0">The receipt is a reproduction-and-integrity check, not a blessing. It proves the number on the page is the number the recorded query produced — not a transcription, not a hallucination. That honesty is the point: a claim you can check beats a claim you’re asked to trust. The whole framework is open-source and runs on your own machine; nothing phones home.</p>
+      <div class="guard">
+        <div class="wrong">sum(aum) over time ✕</div>
+        <h3>Stock double-count</h3>
+        <p>Summing a balance across snapshots triple-counts the same money. Refused, with a pointer to a semi-additive <span class="mono">period_end</span>.</p>
+      </div>
+      <div class="guard">
+        <div class="wrong">join on a non-unique key ✕</div>
+        <h3>Fan-out inflation</h3>
+        <p>A join that silently multiplies every additive measure is refused by default — a total never inflates by accident.</p>
       </div>
     </div>
   </section>
 
-  <!-- CTA -->
-  <section id="docs">
-    <div class="wrap cta">
-      <span class="eyebrow reveal">See it work</span>
-      <h2 class="reveal">Watch a report prove its own&nbsp;numbers.</h2>
-      <p class="lead reveal">The demo is the reference project, live — click through real models, run a report, and verify the file yourself.</p>
-      <div class="cta-row reveal">
-        <a class="btn btn-primary" href="/app">Try the demo →</a>
-        <a class="btn btn-ghost" href="https://github.com/saltyscott0521/tracebi">Read the docs</a>
-      </div>
-      <p class="install reveal">or run it yourself &nbsp;<code>pip install tracebi</code></p>
+  <!-- AGENT NATIVE -->
+  <section>
+    <p class="eyebrow">Agent-native by design</p>
+    <h2>Built for the analyst<br>that is now an agent.</h2>
+    <p>Because the whole framework is code with a declarative grammar, an agent can author with it — and the good practice is baked into the <em>environment</em>, not a prompt. A curated knowledge base it reads, refusals it can’t skip, and errors that name the fix. Any capable model, driving TraceBi over its <span class="mono">MCP</span> gateway, produces clear, stable, reviewable output.</p>
+    <div class="grid g3" style="margin-top:1.4em">
+      <div class="card val"><div class="ic">LESSONS · SFT</div><h3>Do it right</h3><p>Worked lessons — ratio-of-totals, weighted means, distributions, period-over-period — delivered in context, cited by the errors.</p></div>
+      <div class="card val"><div class="ic">GUARDRAILS · RLHF</div><h3>Refuse the wrong</h3><p>The silent-wrong patterns are unavailable by construction, so a weaker model can’t ship them.</p></div>
+      <div class="card val"><div class="ic">VERIFY · REWARD</div><h3>Check its own work</h3><p><span class="mono">tracebi verify</span> mechanically re-runs an agent’s overnight reports and localizes any drift to its source.</p></div>
     </div>
   </section>
 
-</main>
+  <!-- THE OUTPUT (artifact + reproducible, with demo) -->
+  <section>
+    <p class="eyebrow">The output</p>
+    <h2>A report is one file.<br>And every number in it checks out.</h2>
+    <p>The framework renders a report to a single self-contained HTML artifact — charts, data, and styling all inlined, no server, no CDN. It opens anywhere and emails cleanly. And because every figure was a live query, each one ships stamped with the query and a fingerprint of its bytes, so <span class="mono">tracebi verify --file</span> can confirm — offline — that nothing was edited after the fact.</p>
 
-<footer>
-  <div class="wrap foot-in">
-    <a class="brand" href="#top" style="font-size:15px"><span class="mark" aria-hidden="true"></span>tracebi</a>
-    <span>Every number has a receipt.</span>
-    <span class="sep"></span>
-    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
-    <a href="/app">Demo</a>
-    <button class="link-btn" id="themeToggle" style="text-decoration:none">◐ theme</button>
-  </div>
-</footer>
+    <div class="receipt" id="demo" style="margin-top:1.8em">
+      <div class="receipt-top">
+        <div class="kpi-label">Total fair value · <span class="mono">portfolio_model</span></div>
+        <div class="kpi-row">
+          <span class="kpi-val mono" id="kpiVal">$628,412,900</span>
+          <span class="badge b-repro" id="kpiBadge">reproduces</span>
+        </div>
+      </div>
+      <div class="receipt-body">
+        <div><span class="k">query&nbsp;&nbsp;&nbsp;</span> fact_holdings · measures=[fair_value] · agg=sum</div>
+        <div><span class="k">engine&nbsp;&nbsp;</span> duckdb 1.5.5 · rows=1,204</div>
+        <div class="hash"><span class="k">sha-256&nbsp;</span> <span id="hash">a3f1…9b7c · e8d2…4f10</span></div>
+        <div class="receipt-actions">
+          <button class="primary" id="btnVerify">▶ tracebi verify --file report.html</button>
+          <button id="btnTamper">✎ edit the number in the file</button>
+          <button id="btnReset" hidden>↺ reset</button>
+        </div>
+        <div class="verdict ok" id="verdict" hidden></div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.88rem;margin-top:1.1em">A live demo of the mechanic — the real verifier hashes the embedded bytes. It proves a number <em>reproduces</em> and the file is <em>intact</em>; it doesn’t claim the number is “correct.”</p>
+  </section>
+
+  <!-- BATTERIES / DEV EXPERIENCE -->
+  <section>
+    <p class="eyebrow">Batteries included</p>
+    <h2>A framework, not a library<br>of loose parts.</h2>
+    <p>Everything the workflow needs ships in the box — and it all runs from your machine, offline, no account.</p>
+    <div class="grid g3" style="margin-top:1.4em">
+      <div class="card val"><div class="ic">CONNECTORS</div><h3>Read from anywhere</h3><p>CSV, SQL, DuckDB, BigQuery, Snowflake, in-memory — one <span class="mono">BaseConnector</span> interface, and lineage on every load.</p></div>
+      <div class="card val"><div class="ic">PIPELINES</div><h3>Schedule the refresh</h3><p>Register medallion layers, run them upstream-first, and keep a run history — or hand the sink to the pipeline you already have.</p></div>
+      <div class="card val"><div class="ic">RENDERERS</div><h3>Ship the report</h3><p>Self-contained HTML with live charts, or an Excel workbook — from the same model, same measures.</p></div>
+      <div class="card val"><div class="ic">LINEAGE</div><h3>Immutable by construction</h3><p>Every operation returns a new dataset with a node appended — the audit chain can’t silently break.</p></div>
+      <div class="card val"><div class="ic">CLI + WEB</div><h3>Scaffold, dev, serve</h3><p><span class="mono">tracebi init · dev · report · verify · serve</span> — plus a FastAPI + React app over the same registry.</p></div>
+      <div class="card val"><div class="ic">MIT</div><h3>Yours to run</h3><p>Code-first and open. No BI server to license, no data leaving your environment.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="rule"></div>
+    <p class="statement" style="font-size:clamp(1.3rem,3vw,1.8rem);max-width:28ch">The dashboard you can <b>read, review, and re-run</b> — because it was code the whole time.</p>
+    <div class="flinks" style="margin-top:1.8em">
+      <a href="/app">Try the demo</a>
+      <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+      <a href="#workflow">How it works</a>
+      <a href="#layer">Semantic layer</a>
+    </div>
+    <p class="mono muted" style="margin-top:1.8em;max-width:52rem">A note on scope: TraceBi draws its trust line at the sink, where messy analysis becomes named tables — the reproducible-receipt guarantee applies from the model boundary onward, and is a reproduction-and-integrity check, not a proof that a number is “correct.” Every claim on this page is one the framework can stand behind.</p>
+  </footer>
+
+</div>
 
 <script>
-  // Live receipt: tamper toggles the verdict from REPRODUCES to TAMPERED.
-  (function () {
-    var r = document.getElementById('receipt');
-    var fig = document.getElementById('rFig');
-    var fp = document.getElementById('rFp');
-    var stampText = document.getElementById('rStampText');
-    var stampPath = document.getElementById('rStampPath');
-    var note = document.getElementById('rNote');
-    var btn = document.getElementById('tamperBtn');
-    var clean = { fig: '$1,705,495.22', fp: 'sha256:9f2c…a4e1', text: 'REPRODUCES', note: 'Every figure re-checks against its fingerprint.', path: 'M4 10.5l4 4 8-9' };
-    var dirty = { fig: '$1,805,495.22', fp: 'sha256:c17b…0d9f', text: 'TAMPERED', note: 'One byte changed — and the file says so.', path: 'M5 5l10 10M15 5L5 15' };
-    var tampered = false;
-    btn.addEventListener('click', function () {
-      tampered = !tampered;
-      var s = tampered ? dirty : clean;
-      r.classList.toggle('is-tampered', tampered);
-      fig.textContent = s.fig;
-      fp.textContent = s.fp;
-      stampText.textContent = s.text;
-      stampPath.setAttribute('d', s.path);
-      note.textContent = s.note;
-      btn.textContent = tampered ? '↩ restore the original →' : 'try editing the number →';
-    });
-  })();
+(function(){
+  var TRUE_VAL = "$628,412,900", TAMP_VAL = "$639,000,000";
+  var kpi=document.getElementById('kpiVal'), badge=document.getElementById('kpiBadge'),
+      verdict=document.getElementById('verdict'), hash=document.getElementById('hash'),
+      bV=document.getElementById('btnVerify'), bT=document.getElementById('btnTamper'), bR=document.getElementById('btnReset');
+  var tampered=false;
+  function setBadge(cls,txt){badge.className='badge '+cls;badge.textContent=txt;}
+  function show(el){el.hidden=false;} function hide(el){el.hidden=true;}
+  bT.addEventListener('click',function(){
+    tampered=true;
+    kpi.textContent=TAMP_VAL; kpi.classList.add('tampered');
+    hash.textContent='a3f1…9b7c · e8d2…4f10  (bytes changed)';
+    setBadge('b-stale','unverified');
+    hide(verdict); show(bR);
+    bT.disabled=true; bT.style.opacity=.5;
+  });
+  bV.addEventListener('click',function(){
+    if(tampered){
+      setBadge('b-alt','file altered');
+      verdict.className='verdict bad';
+      verdict.innerHTML='✕ FILE ALTERED — the displayed number no longer matches its fingerprint.<br>Caught offline, with no database and no account.';
+    }else{
+      setBadge('b-repro','reproduces');
+      verdict.className='verdict ok';
+      verdict.innerHTML='✓ REPRODUCES · FILE INTACT — 21/21 figures match their stamped queries.';
+    }
+    show(verdict);
+  });
+  bR.addEventListener('click',function(){
+    tampered=false;
+    kpi.textContent=TRUE_VAL; kpi.classList.remove('tampered');
+    hash.textContent='a3f1…9b7c · e8d2…4f10';
+    setBadge('b-repro','reproduces');
+    hide(verdict); hide(bR);
+    bT.disabled=false; bT.style.opacity=1;
+  });
+})();
 
-  // Theme toggle (cycles the explicit override; default follows the OS).
-  (function () {
-    var t = document.getElementById('themeToggle');
-    t.addEventListener('click', function () {
-      var root = document.documentElement;
-      var cur = root.getAttribute('data-theme');
-      var dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-      root.setAttribute('data-theme', dark ? 'light' : 'dark');
-    });
-  })();
+/* ---- walkthrough stepper ---- */
+(function(){
+  var btns=[].slice.call(document.querySelectorAll('.step-btn'));
+  var panels=[].slice.call(document.querySelectorAll('.step-panel'));
+  var prev=document.getElementById('walkPrev'), next=document.getElementById('walkNext');
+  if(!btns.length) return;
+  var i=0, n=panels.length;
+  function go(k){
+    i=Math.max(0,Math.min(n-1,k));
+    panels.forEach(function(p,j){p.hidden=(j!==i);});
+    btns.forEach(function(b,j){b.setAttribute('aria-current', j===i?'true':'false');});
+    prev.disabled=(i===0); prev.style.opacity=i===0?.45:1;
+    next.textContent = i===n-1 ? 'start over ↺' : 'next step →';
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){go(+b.dataset.step);});});
+  prev.addEventListener('click',function(){go(i-1);});
+  next.addEventListener('click',function(){go(i===n-1?0:i+1);});
+  go(0);
+})();
 
-  // Scroll reveal — enhancement only. The page opts into the hidden initial
-  // state here, so without JS everything stays visible; a safety timer reveals
-  // anything the observer never reports, so content can never stay hidden.
-  (function () {
-    document.documentElement.classList.add('reveal-js');
-    var els = [].slice.call(document.querySelectorAll('.reveal:not(.in)'));
-    function revealAll() { els.forEach(function (e) { e.classList.add('in'); }); }
-    if (!('IntersectionObserver' in window)) { revealAll(); return; }
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-    }, { rootMargin: '0px 0px -6% 0px' });
-    els.forEach(function (e) { io.observe(e); });
-    setTimeout(revealAll, 1600);   // never leave content hidden
-  })();
+/* ---- theme toggle (system default; explicit choice remembered) ---- */
+(function(){
+  var btn=document.getElementById('themeToggle');
+  if(!btn) return;
+  try{var saved=localStorage.getItem('tb-theme'); if(saved){document.documentElement.setAttribute('data-theme',saved);}}catch(e){}
+  function current(){
+    var set=document.documentElement.getAttribute('data-theme');
+    if(set) return set;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+  }
+  btn.addEventListener('click',function(){
+    var next=current()==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',next);
+    try{localStorage.setItem('tb-theme',next);}catch(e){}
+  });
+})();
 </script>
 </body>
 </html>
