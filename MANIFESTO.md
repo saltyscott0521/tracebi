@@ -1,11 +1,12 @@
 # The TraceBi Manifesto
 
-TraceBi is a code-first BI framework. You build BI the way you build software:
-the connectors, the star schema, the measures, and the report are all code in
-your repo — declarative, reviewed in a pull request, versioned, tested, and
-handed to an agent. The metric logic does not hide inside a GUI. A measure is
-declared once and referenced by name, everywhere a number appears; the hard
-patterns a BI tool pushes into a hand-written script are first-class, governed
+TraceBi is a report-as-code framework — the way you keep an agent in line. You
+build a report the way you build software: the connectors, the star schema, the
+measures, and the figures are all code in your repo — declarative, reviewed in a
+pull request, versioned, tested, and authored as easily by an agent as by a
+person. The metric logic does not hide inside a GUI. A measure is declared once
+and referenced by name, everywhere a number appears; the hard patterns a
+dashboard tool pushes into a hand-written script are first-class, governed
 measures instead.
 
 That "handed to an agent" is why the framework has the shape it does. AI made

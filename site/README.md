@@ -33,9 +33,11 @@ when the demo instance is live.
 ## Status
 
 The **framework-first marketing page** (ratified 2026-08-26 — see the North Star
-positioning). It leads with the framework — *"Build BI like software"* — walks
-the three-phase workflow and a stepped, real user loop, foregrounds the semantic
-layer, and demotes the receipt to one property of the output. Grow the copy and
+positioning). It leads with the framework — *"Reports as code — to keep agents
+in line"* — treats the dual-author model (built for agents, controlled by
+humans) as a top pillar, walks the three-phase workflow and a stepped user loop,
+foregrounds the semantic layer, and demotes the receipt to one property of the
+output. Grow the copy and
 add pages (pricing, docs) as the product firms up.
 
 Identity: **follows the product theme** — the web UI + report system, so a

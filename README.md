@@ -4,12 +4,13 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/saltyscott0521/tracebi)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**A code-first BI framework for Python** — build BI the way you build software.
+**A report-as-code framework for Python — that keeps agents in line.**
 
-Pull the data, model it, and ship a live report — in code an **agent** can
-author end to end and a **human** reviews, edits, and approves in a pull
-request. TraceBi is built for both authors at once: the metric logic lives in
-your repo, not inside a GUI — a real **semantic layer** where a measure is
+AI writes the analysis now, and a confident wrong number reads exactly like a
+right one. TraceBi makes every report *code*: an **agent** authors it, a
+**human** reviews and approves it in a pull request, guardrails refuse the bad
+numbers, and a receipt proves the rest reproduce. It is built for both authors
+at once — the metric logic lives in your repo, not inside a GUI — a real **semantic layer** where a measure is
 declared once and referenced by name, a **three-phase workflow** that keeps the
 slow analysis and the fast reporting from blocking each other, and batteries
 included — connectors, pipelines, and a report engine. The agent gets a

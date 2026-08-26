@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>TraceBi — build BI like software</title>
+<title>TraceBi — the report-as-code framework</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A code-first BI framework for Python: pull the data, model it, and ship a live, self-contained report — all in code you review in a pull request, run in CI, and hand to an agent.">
-<meta property="og:title" content="TraceBi — build BI like software">
-<meta property="og:description" content="A code-first BI framework for Python. A real semantic layer, an agent-native workflow, and reports that carry their own working.">
+<meta name="description" content="A report-as-code framework for Python that keeps agents in line: an agent authors every report, a human approves it, guardrails refuse the bad numbers, and a receipt proves the rest reproduce.">
+<meta property="og:title" content="TraceBi — reports as code, to keep agents in line">
+<meta property="og:description" content="A report-as-code framework for Python. Agents author, humans control; guardrails refuse silent-wrong numbers and every figure reproduces.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%23091a55'/%3E%3Crect%20x='7'%20y='8'%20width='18'%20height='4'%20rx='2'%20fill='%232e74b5'/%3E%3Crect%20x='7'%20y='14'%20width='14'%20height='4'%20rx='2'%20fill='%235a6e88'/%3E%3Crect%20x='7'%20y='20'%20width='18'%20height='4'%20rx='2'%20fill='%232e74b5'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -297,14 +297,14 @@
 
   <!-- HERO -->
   <header class="hero">
-    <div class="kicker"><span class="dot"></span> TraceBi &nbsp;·&nbsp; a code-first BI framework for Python</div>
-    <h1>Build BI like<br>you build <em>software.</em></h1>
-    <p class="lede">Pull the data, model it, ship a live report — in code an <strong>agent</strong> can author end to end and a <strong>human</strong> reviews, edits, and approves in a pull request. A real semantic layer, batteries included.</p>
+    <div class="kicker"><span class="dot"></span> TraceBi &nbsp;·&nbsp; the report-as-code framework</div>
+    <h1>Reports as code —<br>to keep agents <em>in line.</em></h1>
+    <p class="lede">AI writes the analysis now — fast, and confidently wrong when it’s wrong. TraceBi turns every report into code: an <strong>agent</strong> authors it, a <strong>human</strong> approves it, guardrails refuse the bad numbers, and a receipt proves the rest reproduce.</p>
     <div class="hero-meta">
       <span class="chip">Python · DuckDB</span>
-      <span class="chip">transform → model → report</span>
-      <span class="chip">declarative semantic layer</span>
-      <span class="chip">agent-native</span>
+      <span class="chip">reports as code</span>
+      <span class="chip">agent-native · human-controlled</span>
+      <span class="chip">guardrails + receipts</span>
       <span class="chip">MIT</span>
     </div>
     <div class="cta-row">
@@ -315,11 +315,11 @@
 
   <!-- PROBLEM -->
   <section>
-    <p class="eyebrow">Why a framework</p>
-    <h2>BI lives in GUIs you can’t<br>review, version, or hand to an agent.</h2>
-    <p>You can’t diff a dashboard in a pull request, run it in CI, or point a coding agent at it. The measure logic hides inside a tool; the “single source of truth” is a screenshot. So teams that write code end up rebuilding their metrics by hand in every place a number is needed.</p>
-    <p>TraceBi is the opposite: <strong>analytics as code.</strong> The connectors, the star schema, the measures, and the report are all Python and JSON in your repo — declarative, testable, and versioned, the way the rest of your stack already is.</p>
-    <p class="statement" style="margin-top:1.6em">Everything that makes a number is <b>in the repo, and reviewable.</b></p>
+    <p class="eyebrow">The problem</p>
+    <h2>A dashboard can’t keep<br>an agent in line.</h2>
+    <p>An agent generates reports faster than anyone can check them, and a confident wrong number reads exactly like a right one. A BI tool can’t govern that — you can’t diff a dashboard in a pull request, review its measure logic, or make it refuse a bad aggregation. The metric hides inside the GUI; the “source of truth” is a screenshot.</p>
+    <p>TraceBi makes the report <strong>code</strong> instead: the connectors, the star schema, the measures, and the figures are all Python and JSON in your repo — the one place an agent’s work can be reviewed, versioned, tested, and governed like any other pull request.</p>
+    <p class="statement" style="margin-top:1.6em">Everything that makes a number is <b>in the repo, reviewable, and governed.</b></p>
   </section>
 
   <!-- TWO AUTHORS -->
@@ -626,7 +626,7 @@ model.add_measure("fv_cum",   running="fv_share")
 
   <footer>
     <div class="rule"></div>
-    <p class="statement" style="font-size:clamp(1.3rem,3vw,1.8rem);max-width:28ch">The dashboard you can <b>read, review, and re-run</b> — because it was code the whole time.</p>
+    <p class="statement" style="font-size:clamp(1.3rem,3vw,1.8rem);max-width:28ch">The report you can <b>read, review, and re-run</b> — because it was code the whole time.</p>
     <div class="flinks" style="margin-top:1.8em">
       <a href="/app">Try the demo</a>
       <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
