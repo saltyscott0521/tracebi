@@ -496,6 +496,95 @@ class TestRankAndRunning:
         assert get_lesson("rank-and-cumulative") is not None
 
 
+class TestPerGroupTopN:
+    """A partitioned rank restarts per group; with a having on it, that is
+    top-N-per-group — which a global order_by+limit cannot express."""
+
+    def _model(self):
+        import pandas as pd
+        from tracebi import DataModel, MemoryConnector
+        fv = {("Tech", "A"): 100, ("Tech", "B"): 90, ("Tech", "C"): 80,
+              ("Fin", "E"): 200, ("Fin", "F"): 150, ("Fin", "G"): 50}
+        rows, dims, i = [], [], 0
+        for (sec, iss), v in fv.items():
+            i += 1
+            rows.append({"hid": i, "issuer_id": i, "fair_value": float(v)})
+            dims.append({"issuer_id": i, "issuer": iss, "sector": sec})
+        m = DataModel("m")
+        m.add_connector(MemoryConnector("mem", tables={
+            "fact": pd.DataFrame(rows), "dim_issuer": pd.DataFrame(dims)}))
+        m.add_table("fact", connector="mem", source="fact")
+        m.add_table("dim_issuer", connector="mem", source="dim_issuer")
+        m.add_dimension("dim_issuer", table_name="dim_issuer", key_col="issuer_id",
+                        attributes=["issuer", "sector"])
+        m.add_fact("fact", table_name="fact", measures=["fair_value"],
+                   foreign_keys={"dim_issuer": "issuer_id"})
+        m.add_measure("fv", column="fair_value", agg="sum")
+        m.add_measure("rank_in_sector", rank="fv",
+                      partition_by="dim_issuer.sector")
+        m.add_measure("global_rank", rank="fv")
+        m.connect()
+        return m
+
+    def _rows(self, m, **extra):
+        q = dict(fact="fact", measures=["fv", "rank_in_sector"],
+                 dimensions=["dim_issuer.sector", "dim_issuer.issuer"], **extra)
+        return m.query(**q).to_pandas()
+
+    def test_rank_restarts_per_partition(self):
+        df = self._rows(self._model())
+        got = {(r["dim_issuer.sector"], r["dim_issuer.issuer"]): r["rank_in_sector"]
+               for _, r in df.iterrows()}
+        assert got[("Fin", "E")] == 1 and got[("Fin", "G")] == 3
+        assert got[("Tech", "A")] == 1 and got[("Tech", "C")] == 3
+
+    def test_global_rank_and_partitioned_rank_coexist(self):
+        df = self._model().query(
+            fact="fact", measures=["fv", "rank_in_sector", "global_rank"],
+            dimensions=["dim_issuer.sector", "dim_issuer.issuer"]).to_pandas()
+        g = dict(zip(df["dim_issuer.issuer"], df["global_rank"]))
+        assert g["E"] == 1 and g["G"] == 6          # global across both sectors
+
+    def test_having_on_the_partitioned_rank_is_top_n_per_group(self):
+        df = self._rows(self._model(), having={"rank_in_sector": {"lte": 2}},
+                        order_by=["dim_issuer.sector", "rank_in_sector"])
+        assert list(df["dim_issuer.issuer"]) == ["E", "F", "A", "B"]
+
+    def test_partitioned_rank_is_deterministic(self):
+        m = self._model()
+        assert self._rows(m).equals(self._rows(m))
+
+    def test_partition_column_must_be_a_query_dimension(self):
+        import pytest
+        m = self._model()
+        with pytest.raises(ValueError, match="partition_by references"):
+            m.query(fact="fact", measures=["fv", "rank_in_sector"],
+                    dimensions=["dim_issuer.issuer"])   # sector not selected
+
+    def test_partition_by_only_on_rank_or_running(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="only applies to rank and running"):
+            DataModel("t").add_measure("s", share="revenue",
+                                       partition_by="dim_x.y")
+
+    def test_partition_by_needs_dotted_refs(self):
+        import pytest
+        from tracebi import DataModel
+        with pytest.raises(ValueError, match="dim_name.attribute"):
+            DataModel("t").add_measure("r", rank="revenue", partition_by="sector")
+
+    def test_partition_is_documented_in_the_vocabulary(self):
+        from tracebi.capabilities import describe
+        kinds = {k["kind"]: k for k in describe()["semantic_model"]["measure_kinds"]}
+        assert "partition_by" in kinds["rank"]["args"]
+        assert "top-n-per-group" in kinds["rank"]["note"].lower()
+
+    def test_the_lesson_teaches_top_n_per_group(self):
+        body = get_lesson("rank-and-cumulative").body
+        assert "partition_by" in body and "top 3 per sector" in body.lower()
+
+
 class TestTimeGrain:
     def _model(self):
         import pandas as pd

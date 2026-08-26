@@ -209,6 +209,7 @@ class MeasureDef:
     share: Optional[str] = None                # measure name: value / total(value)
     rank: Optional[str] = None                 # measure name: 1..N by it, desc
     running: Optional[str] = None              # measure name: cumsum by it, desc
+    partition_by: tuple[str, ...] = ()         # rank/running restart per group
     period_end: Optional[tuple[str, str]] = None  # (value_column, date_dim_attr)
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
@@ -224,6 +225,8 @@ class MeasureDef:
             d["ratio"] = list(self.ratio)
         if self.period_end:
             d["period_end"] = list(self.period_end)
+        if self.partition_by:
+            d["partition_by"] = list(self.partition_by)
         return d
 
 
@@ -434,6 +437,7 @@ class _Resolved:
     ranks: "dict[str, str]"                      # {output: base measure}
     runnings: "dict[str, str]"                   # {output: base measure}
     period_ends: "dict[str, tuple[str, str]]"    # {output: (value_col, date_attr)}
+    partitions: "dict[str, tuple[str, ...]]"     # {rank/running output: part cols}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -669,6 +673,7 @@ class DataModel:
         share: Optional[str] = None,
         rank: Optional[str] = None,
         running: Optional[str] = None,
+        partition_by: "str | list[str] | None" = None,
         period_end: Optional[tuple[str, str]] = None,
         description: str = "",
         format: Optional[str] = None,
@@ -758,6 +763,25 @@ class DataModel:
             share = str(share) if share is not None else None
             rank = str(rank) if rank is not None else None
             running = str(running) if running is not None else None
+
+        # partition_by makes rank/running restart per group (top-N-per-group).
+        part: tuple[str, ...] = ()
+        if partition_by is not None:
+            if kind not in ("rank", "running"):
+                raise ValueError(
+                    f"Measure '{name}': partition_by only applies to rank and "
+                    f"running measures (it restarts the window per group); "
+                    f"{kind} measures do not take it."
+                )
+            cols = ([partition_by] if isinstance(partition_by, str)
+                    else list(partition_by))
+            for c in cols:
+                if "." not in str(c):
+                    raise ValueError(
+                        f"Measure '{name}': partition_by expects dimension "
+                        f"references in 'dim_name.attribute' form, got {c!r}."
+                    )
+            part = tuple(str(c) for c in cols)
 
         if kind == "ratio":
             if not (isinstance(ratio, (tuple, list)) and len(ratio) == 2):
@@ -872,7 +896,7 @@ class DataModel:
         self._measures[name] = MeasureDef(
             name=name, kind=kind, agg=agg, column=column, expr=expr,
             ratio=tuple(ratio) if ratio else None, share=share,
-            rank=rank, running=running,
+            rank=rank, running=running, partition_by=part,
             period_end=tuple(period_end) if period_end else None,
             description=description, format=format,
             allow_rate_agg=bool(allow_rate_agg),
@@ -1199,6 +1223,7 @@ class DataModel:
         shares, ranks, runnings = (resolved.shares, resolved.ranks,
                                    resolved.runnings)
         period_ends = resolved.period_ends
+        partitions = resolved.partitions
 
         # A semi-additive rollup is an aggregation (latest-snapshot-then-sum);
         # there is no per-row "period end", so refuse it in the raw-row mode.
@@ -1441,17 +1466,34 @@ class DataModel:
         # Window measures — rank and running (cumulative), each over its own base
         # measure descending, with a TOTAL tie-break so the value is
         # reproducible. Applied on the full result, before HAVING/limit, so a
-        # rank/cumulative is of the whole (top-10 shows its rank among all).
+        # rank/cumulative is of the whole (top-10 shows its rank among all). A
+        # partition_by restarts the window per group — rank 1 per group — which
+        # a HAVING on the rank turns into top-N-per-group.
         if ranks or runnings:
-            result_df = self._apply_windows(result_df, ranks, runnings)
+            # A partition column must be one of the query's dimensions (a result
+            # column) — else "rank within sector" silently ranks globally.
+            for wname, part in partitions.items():
+                for col in part:
+                    if col not in result_df.columns:
+                        raise ValueError(
+                            f"Measure '{wname}': partition_by references "
+                            f"'{col}', which is not in the result — add it to "
+                            f"the query's dimensions so the window can group by "
+                            f"it. Dimensions present: "
+                            f"{[c for c in result_df.columns if '.' in str(c)]}."
+                        )
+            result_df = self._apply_windows(result_df, ranks, runnings, partitions)
             lineage.append(LineageNode(
                 operation="assign",
-                description=("Window measure(s): "
-                             + ", ".join([f"{k} = rank({b} desc)"
-                                          for k, b in ranks.items()]
-                                         + [f"{k} = running({b} desc)"
-                                            for k, b in runnings.items()])),
-                metadata={"ranks": dict(ranks), "runnings": dict(runnings)},
+                description=("Window measure(s): " + ", ".join(
+                    [f"{k} = rank({b} desc"
+                     + (f" within {'/'.join(partitions[k])}" if partitions.get(k) else "")
+                     + ")" for k, b in ranks.items()]
+                    + [f"{k} = running({b} desc"
+                       + (f" within {'/'.join(partitions[k])}" if partitions.get(k) else "")
+                       + ")" for k, b in runnings.items()])),
+                metadata={"ranks": dict(ranks), "runnings": dict(runnings),
+                          "partitions": {k: list(v) for k, v in partitions.items()}},
             ))
 
         # Post-aggregation filters (HAVING): applied after the engine AND
@@ -1616,6 +1658,7 @@ class DataModel:
         ranks: dict[str, str] = {}
         runnings: dict[str, str] = {}
         period_ends: dict[str, tuple[str, str]] = {}
+        partitions: dict[str, tuple[str, ...]] = {}
 
         if isinstance(measures, dict):
             if not measures:
@@ -1671,7 +1714,7 @@ class DataModel:
                             f"{sorted(produced - {out_col})}."
                         )
             return _Resolved(agg_map, derived, ratios, shares, ranks,
-                             runnings, period_ends)
+                             runnings, period_ends, partitions)
 
         names = list(measures or [])
         if not names:
@@ -1709,9 +1752,13 @@ class DataModel:
             elif m.kind == "rank":
                 _expand(m.rank, seen + (mname,))
                 ranks[m.name] = m.rank
+                if m.partition_by:
+                    partitions[m.name] = m.partition_by
             elif m.kind == "running":
                 _expand(m.running, seen + (mname,))
                 runnings[m.name] = m.running
+                if m.partition_by:
+                    partitions[m.name] = m.partition_by
             elif m.kind == "period_end":
                 # value_col is a raw fact column, date is a dim attribute —
                 # neither is another measure, so nothing to recurse into.
@@ -1725,7 +1772,7 @@ class DataModel:
         for n in names:
             _expand(n, ())
         return _Resolved(agg_map, derived, ratios, shares, ranks,
-                         runnings, period_ends)
+                         runnings, period_ends, partitions)
 
     def _apply_derived(
         self,
@@ -1814,6 +1861,7 @@ class DataModel:
         df: pd.DataFrame,
         ranks: dict[str, str],
         runnings: dict[str, str],
+        partitions: "dict[str, tuple[str, ...]] | None" = None,
     ) -> pd.DataFrame:
         """Compute rank (1..N) and running (cumulative sum) window measures.
 
@@ -1821,13 +1869,23 @@ class DataModel:
         tie-break on every other column — so ties never fall back to input
         order and the values are reproducible. Deterministic; needs no
         ``order_by`` on the query. rank 1 is the largest; running accumulates
-        largest-first (the concentration / Pareto direction)."""
-        out = df.copy()
+        largest-first (the concentration / Pareto direction).
 
-        def _ordered_index(base: str):
-            # base descending, then every other column ascending — a total order.
-            tie = [c for c in out.columns if c != base]
-            by, asc = [base] + tie, [False] + [True] * len(tie)
+        With a ``partition_by`` the window restarts per partition: rank 1 is the
+        largest WITHIN each group (top-N-per-group, paired with a ``having`` on
+        the rank), and running accumulates within the group. Partition columns
+        sort first so groups are contiguous; the global path (no partition) is
+        byte-identical to before, so existing receipts are unmoved."""
+        out = df.copy()
+        partitions = partitions or {}
+
+        def _ordered_index(base: str, part: tuple):
+            # partition columns first (contiguous groups), then base descending,
+            # then every remaining column ascending — a total order per partition.
+            part = list(part)
+            rest = [c for c in out.columns if c != base and c not in part]
+            by = part + [base] + rest
+            asc = [True] * len(part) + [False] + [True] * len(rest)
             try:
                 return out.sort_values(by=by, ascending=asc, kind="mergesort",
                                        na_position="last").index
@@ -1839,14 +1897,25 @@ class DataModel:
         for name, base in ranks.items():
             if base not in out.columns:
                 continue
-            order = _ordered_index(base)
-            out[name] = (pd.Series(range(1, len(order) + 1), index=order)
-                         .reindex(out.index))
+            part = partitions.get(name) or ()
+            order = _ordered_index(base, part)
+            if part:
+                pos = out.loc[order].groupby(list(part), sort=False).cumcount() + 1
+            else:
+                pos = pd.Series(range(1, len(order) + 1), index=order)
+            out[name] = pos.reindex(out.index)
         for name, base in runnings.items():
             if base not in out.columns:
                 continue
-            order = _ordered_index(base)
-            out[name] = out.loc[order, base].cumsum().reindex(out.index)
+            part = partitions.get(name) or ()
+            order = _ordered_index(base, part)
+            col = out.loc[order, base]
+            if part:
+                keys = [out.loc[order, c] for c in part]
+                col = col.groupby(keys, sort=False).cumsum()
+            else:
+                col = col.cumsum()
+            out[name] = col.reindex(out.index)
         return out
 
     def _apply_period_ends(

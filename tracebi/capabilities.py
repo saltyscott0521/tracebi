@@ -542,22 +542,30 @@ def describe(brief: bool = False) -> dict:
                 },
                 {
                     "kind": "rank",
-                    "args": ["rank"],
-                    "example": "add_measure('rev_rank', rank='revenue')",
+                    "args": ["rank", "partition_by"],
+                    "example": "add_measure('rev_rank', rank='revenue'); "
+                               "add_measure('rank_in_region', rank='revenue', "
+                               "partition_by='dim_region.region')",
                     "note": "1..N position ordered by the named measure "
                             "descending (rank 1 = largest), with a total "
-                            "tie-break so it is reproducible.",
+                            "tie-break so it is reproducible. partition_by (one "
+                            "or more dimension refs, which must be in the query's "
+                            "dimensions) restarts the rank per group — rank 1 per "
+                            "group; pair it with having={'rank_in_region':{'lte': "
+                            "3}} for TOP-N-PER-GROUP (top 3 per region), which a "
+                            "global order_by+limit cannot express.",
                 },
                 {
                     "kind": "running",
-                    "args": ["running"],
+                    "args": ["running", "partition_by"],
                     "example": "add_measure('cum_share', running='revenue_share', "
                                "format='percent')",
                     "note": "cumulative (running) sum of the named measure, "
                             "largest-first — the Pareto/concentration direction. "
                             "running of a share measure is the cumulative % of "
                             "total. rank + share + running(share) is the whole "
-                            "concentration table, governed — what report.py did.",
+                            "concentration table, governed — what report.py did. "
+                            "partition_by restarts the cumulative per group.",
                 },
                 {
                     "kind": "period_end",

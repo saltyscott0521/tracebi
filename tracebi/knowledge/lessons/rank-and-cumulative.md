@@ -34,6 +34,24 @@ cumulative sum in that same largest-first order — a `running` of a *share* is 
 cumulative % of total. Every one carries a receipt, and a total tie-break makes
 them reproducible (see [[share-of-total]]).
 
+**Top-N per group** — "the top 3 issuers *in each sector*" — is the same rank,
+partitioned. A global `order_by` + `limit` can only take the top N overall; a
+`partition_by` restarts the rank per group, and a `having` on it keeps the top N
+in each:
+
+```python
+model.add_measure("rank_in_sector", rank="revenue",
+                  partition_by="dim_issuer.sector")   # rank 1 = largest in its sector
+
+model.query(fact="holdings",
+            measures=["revenue", "rank_in_sector"],
+            dimensions=["dim_issuer.sector", "dim_issuer.issuer"],
+            having={"rank_in_sector": {"lte": 3}})     # top 3 per sector
+```
+
+The `partition_by` columns must be among the query's dimensions. `running`
+accepts `partition_by` too — a cumulative that restarts per group.
+
 **The tell.** Reaching for `report.py` to compute a rank, a running total, or a
 concentration curve? You don't need it — those are `rank` and `running`
 measures. Save `report.py` for the genuinely bespoke; a concentration table is
