@@ -283,6 +283,7 @@
       TraceBi
     </a>
     <div class="nav-links">
+      <a class="hide-sm" href="#agents">Built for agents</a>
       <a class="hide-sm" href="#workflow">How it works</a>
       <a class="hide-sm" href="#layer">Semantic layer</a>
       <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
@@ -298,7 +299,7 @@
   <header class="hero">
     <div class="kicker"><span class="dot"></span> TraceBi &nbsp;·&nbsp; a code-first BI framework for Python</div>
     <h1>Build BI like<br>you build <em>software.</em></h1>
-    <p class="lede">Pull the data, model it, ship a live report — all in plain Python you review in a pull request, run in CI, and hand to an agent. A real semantic layer, batteries included.</p>
+    <p class="lede">Pull the data, model it, ship a live report — in code an <strong>agent</strong> can author end to end and a <strong>human</strong> reviews, edits, and approves in a pull request. A real semantic layer, batteries included.</p>
     <div class="hero-meta">
       <span class="chip">Python · DuckDB</span>
       <span class="chip">transform → model → report</span>
@@ -319,6 +320,27 @@
     <p>You can’t diff a dashboard in a pull request, run it in CI, or point a coding agent at it. The measure logic hides inside a tool; the “single source of truth” is a screenshot. So teams that write code end up rebuilding their metrics by hand in every place a number is needed.</p>
     <p>TraceBi is the opposite: <strong>analytics as code.</strong> The connectors, the star schema, the measures, and the report are all Python and JSON in your repo — declarative, testable, and versioned, the way the rest of your stack already is.</p>
     <p class="statement" style="margin-top:1.6em">Everything that makes a number is <b>in the repo, and reviewable.</b></p>
+  </section>
+
+  <!-- TWO AUTHORS -->
+  <section id="agents">
+    <p class="eyebrow">Built for agents · controlled by humans</p>
+    <h2>Two authors, one contract.</h2>
+    <p>TraceBi is built for the analyst that is now an agent — <em>and</em> for the human who stays in control of what it ships. Both author the same code against the same contracts; neither gets a shortcut around review or the receipt. This is a first-class design goal, not a plugin.</p>
+
+    <p class="rowlabel">the agent builds</p>
+    <div class="grid g3">
+      <div class="card val"><div class="ic">LESSONS · SFT</div><h3>Does it right</h3><p>Good practice is baked into the <em>environment</em>, not a prompt — a curated knowledge base it reads, cited by the errors — and it drives the whole loop over the <span class="mono">MCP</span> gateway.</p></div>
+      <div class="card val"><div class="ic">GUARDRAILS · RLHF</div><h3>Can’t ship the wrong one</h3><p>The silent-wrong patterns are refused by construction, so even a weaker model can’t push a confidently-wrong number through.</p></div>
+      <div class="card val"><div class="ic">VERIFY · REWARD</div><h3>Checks its own work</h3><p><span class="mono">tracebi verify</span> mechanically re-runs an agent’s overnight reports and localizes any drift to its source.</p></div>
+    </div>
+
+    <p class="rowlabel" style="margin-top:2em">the human controls</p>
+    <div class="grid g3">
+      <div class="card val"><div class="ic">REVIEW</div><h3>Read it in a pull request</h3><p>The agent’s output is a diff — a measure on the model, a figure binding — a person reads in one screen and approves, edits, or rejects. You hold the merge button.</p></div>
+      <div class="card val"><div class="ic">EDIT</div><h3>Change it by hand, anytime</h3><p>It’s plain Python and JSON. Rename a measure, retune a band, rewrite a section — no black box, no round-trip through the agent to fix a typo.</p></div>
+      <div class="card val"><div class="ic">CONTAIN</div><h3>It writes only its own report</h3><p>The gateway has no write access to your warehouse — the only thing the agent produces is its rendered artifact and receipt. It can check everything and rewrite nothing you depend on.</p></div>
+    </div>
   </section>
 
   <!-- THE WORKFLOW -->
@@ -555,18 +577,6 @@ model.add_measure("fv_cum",   running="fv_share")
         <h3>Fan-out inflation</h3>
         <p>A join that silently multiplies every additive measure is refused by default — a total never inflates by accident.</p>
       </div>
-    </div>
-  </section>
-
-  <!-- AGENT NATIVE -->
-  <section>
-    <p class="eyebrow">Agent-native by design</p>
-    <h2>Built for the analyst<br>that is now an agent.</h2>
-    <p>Because the whole framework is code with a declarative grammar, an agent can author with it — and the good practice is baked into the <em>environment</em>, not a prompt. A curated knowledge base it reads, refusals it can’t skip, and errors that name the fix. Any capable model, driving TraceBi over its <span class="mono">MCP</span> gateway, produces clear, stable, reviewable output.</p>
-    <div class="grid g3" style="margin-top:1.4em">
-      <div class="card val"><div class="ic">LESSONS · SFT</div><h3>Do it right</h3><p>Worked lessons — ratio-of-totals, weighted means, distributions, period-over-period — delivered in context, cited by the errors.</p></div>
-      <div class="card val"><div class="ic">GUARDRAILS · RLHF</div><h3>Refuse the wrong</h3><p>The silent-wrong patterns are unavailable by construction, so a weaker model can’t ship them.</p></div>
-      <div class="card val"><div class="ic">VERIFY · REWARD</div><h3>Check its own work</h3><p><span class="mono">tracebi verify</span> mechanically re-runs an agent’s overnight reports and localizes any drift to its source.</p></div>
     </div>
   </section>
 

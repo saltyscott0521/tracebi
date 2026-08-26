@@ -6,12 +6,15 @@
 
 **A code-first BI framework for Python** — build BI the way you build software.
 
-Pull the data, model it, and ship a live report — all in plain Python and JSON
-you review in a pull request, run in CI, and hand to an agent. The metric logic
-lives in your repo, not inside a GUI: a real **semantic layer** where a measure
-is declared once and referenced by name, a **three-phase workflow** that keeps
-the slow analysis and the fast reporting from blocking each other, and batteries
-included — connectors, pipelines, and a report engine.
+Pull the data, model it, and ship a live report — in code an **agent** can
+author end to end and a **human** reviews, edits, and approves in a pull
+request. TraceBi is built for both authors at once: the metric logic lives in
+your repo, not inside a GUI — a real **semantic layer** where a measure is
+declared once and referenced by name, a **three-phase workflow** that keeps the
+slow analysis and the fast reporting from blocking each other, and batteries
+included — connectors, pipelines, and a report engine. The agent gets a
+knowledge base, guardrails it can't skip, and an MCP gateway; the human holds
+review, the merge button, and a warehouse the agent can't write to.
 
 And because every figure is a live query, the report it renders is
 self-contained and **reproducible**: `tracebi verify` re-runs the recorded
