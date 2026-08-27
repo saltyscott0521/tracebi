@@ -1881,15 +1881,18 @@ class TestDocsEndpoints:
         assert r.status_code == 200
         guides = r.json()
         names = {g["name"] for g in guides}
-        assert "analyst-guide" in names
+        # docs/ is a vault: pages live under concepts/, guides/, reference/
+        # and architecture/, and a subdirectory page is addressed "dir--stem".
+        assert "guides--analyst-guide" in names
+        assert "index" in names, "the vault's home page must be addressable"
         for g in guides:
             assert set(g) == {"name", "title", "bytes"}
 
     def test_get_guide_content(self, client):
-        r = client.get("/api/docs/analyst-guide")
+        r = client.get("/api/docs/guides--analyst-guide")
         assert r.status_code == 200
         body = r.json()
-        assert body["name"] == "analyst-guide"
+        assert body["name"] == "guides--analyst-guide"
         assert body["title"] == "TraceBi Analyst Guide"
         assert "TraceBi" in body["content"]
 

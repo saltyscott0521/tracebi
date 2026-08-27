@@ -896,7 +896,7 @@ def verify_file(html: str, manifest: dict) -> dict:
     honest, passes both (as a CSV author-forgery also would). Closing that would
     need the verifier to determine which block a browser renders for each figure
     — which means parsing the page exactly as a browser does — and that display
-    tie is intentionally not shipped here (see ``docs/large-detail-artifacts.md``
+    tie is intentionally not shipped here (see ``docs/architecture/large-detail-artifacts.md``
     §11). Use a CSV artifact where the display↔query tie matters; use Parquet's
     ``verify --file`` as tamper-evidence for a large one.
 

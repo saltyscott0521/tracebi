@@ -244,7 +244,7 @@ TRACEBI_DEV_MODE=1 python -m tracebi.web.run           # Enables POST /api/_dev/
 # Multiple workers requires Postgres — see the note below.
 uvicorn tracebi.web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 docker compose up --build                      # Or the docker-compose path
-vercel --prod                                  # Vercel + Supabase (see docs/deploy-vercel-supabase.md)
+vercel --prod                                  # Vercel + Supabase (see docs/guides/deploy-vercel-supabase.md)
 
 # Database
 python examples/seeds/seed_db.py               # Create + seed data/tracebi.db
@@ -634,7 +634,7 @@ Don't add these unless asked.
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.py` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_dashboard.json` |
-| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_book/` + `docs/report-generator-architecture.md` |
+| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
 | See every artifact feature at once | `examples/portfolio_project/reports/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
 | Understand architecture decisions | `NOTES.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |

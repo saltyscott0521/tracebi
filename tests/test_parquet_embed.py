@@ -1,7 +1,7 @@
 """The Parquet embed transport preserves the content fingerprint exactly.
 
 This is the load-bearing invariant behind switching the artifact's embedded data
-from CSV to Parquet (docs/large-detail-artifacts.md, Phase 2/3): because the
+from CSV to Parquet (docs/architecture/large-detail-artifacts.md, Phase 2/3): because the
 receipt is the frame's ``{columns, dtypes, csv}`` fingerprint — not the embedded
 bytes — a frame that round-trips through Parquet keeps the *same* fingerprint, so
 no ``fingerprint_algo`` change is needed and receipts issued under the CSV embed

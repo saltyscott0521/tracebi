@@ -1,7 +1,7 @@
 # Artifact worker engine — vendored assets & attribution
 
 Two vendored assets power the large-detail artifact's in-browser query engine
-(see `docs/large-detail-artifacts.md`). They are inlined into a generated
+(see `docs/architecture/large-detail-artifacts.md`). They are inlined into a generated
 artifact so it runs **offline, with no network**, decoding and filtering the
 embedded Parquet on a background thread.
 

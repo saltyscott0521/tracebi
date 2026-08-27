@@ -194,16 +194,23 @@ The differences that matter:
 
 ## Choose your path
 
+**📚 [Full documentation → `docs/`](docs/index.md)** — concepts, guides and a
+complete reference, organised as a linked vault. Open the folder in Obsidian for
+backlinks and the graph view, or just read it on GitHub.
+
 | I want to… | Start here |
 |---|---|
+| Get running in five minutes | [docs/guides/quickstart.md](docs/guides/quickstart.md) |
+| Author a report end to end | [docs/guides/your-first-report.md](docs/guides/your-first-report.md) |
+| Look up a command, key, or measure kind | [docs/index.md](docs/index.md#reference) |
 | Understand the three-phase workflow (transform → model → report) | [WORKFLOW.md](WORKFLOW.md) — the spine, with the reference implementation |
-| Follow the full analyst flow start-to-finish | [docs/analyst-guide.md](docs/analyst-guide.md) — scaffold → transform → report → publish |
-| Work in a notebook with rich previews | [docs/notebook-guide.md](docs/notebook-guide.md) + `examples/analyst_quickstart.py` |
+| Follow the full analyst flow start-to-finish | [docs/guides/analyst-guide.md](docs/guides/analyst-guide.md) — scaffold → transform → report → publish |
+| Work in a notebook with rich previews | [docs/guides/notebook-guide.md](docs/guides/notebook-guide.md) + `examples/analyst_quickstart.py` |
 | Write a one-off report or query | `tracebi new-report "My Report"` then `tracebi dev my_report` — explore inside the artifact (exploration blocks die at build) |
 | Migrate a JSON spec to the artifact form | `tracebi migrate spec reports/<name>.json` — compiles every section to a default-component figure; the package shadows the spec until you delete it |
 | Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
 | Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
-| Point the web app at my own data / restyle the UI | [docs/web-customization.md](docs/web-customization.md) — app modules, registry, theming, auth, deploy |
+| Point the web app at my own data / restyle the UI | [docs/guides/web-customization.md](docs/guides/web-customization.md) — app modules, registry, theming, auth, deploy |
 | Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open the **Explore** page |
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
@@ -680,7 +687,7 @@ Your module just needs to import `registry` and call `registry.add_connector()`,
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | `TRACEBI_PIPELINES_DIR` |
 | `reports/` | a `.py` factory (`@register.report(...)`), a `.json` `ReportSpec` (workflow phase ③), or a `<name>/` artifact package — all served as reports. A package directory shadows a same-named `.json` spec (the migration cutover) | `TRACEBI_REPORTS_DIR` |
 
-Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/web-customization.md](docs/web-customization.md) for the full wiring guide.
+Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/guides/web-customization.md](docs/guides/web-customization.md) for the full wiring guide.
 
 ### Shared models and pipelines (no web server required)
 

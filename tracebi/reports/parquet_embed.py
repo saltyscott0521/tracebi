@@ -2,7 +2,7 @@
 
 The artifact embeds a figure's data as **Parquet** — compact (≈8–17× smaller
 than the same CSV), and the format the client-side worker engine decodes in the
-browser. See ``docs/large-detail-artifacts.md``.
+browser. See ``docs/architecture/large-detail-artifacts.md``.
 
 The receipt for a Parquet block hashes the SHIPPED BYTES. The manifest records
 ``payload_sha256`` — SHA-256 over the exact base64-decoded Parquet payload the

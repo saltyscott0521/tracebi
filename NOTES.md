@@ -35,7 +35,7 @@ rule: *a logged-out stranger's content is .com; anything needing a customer's
 warehouse loaded is the app.* Growing the app is endorsed — as an operational +
 **trust console** (browse/verify/run/schedule, trust made visible), never a
 drag-and-drop viz builder, which is the Tableau turf the artifact displaces.
-Full write-up: [docs/frontend-surfaces.md](docs/frontend-surfaces.md).
+Full write-up: [docs/architecture/frontend-surfaces.md](docs/architecture/frontend-surfaces.md).
 
 ## 2026-08-19 — Design decisions of the artifact arc (recorded after the fact)
 
@@ -377,7 +377,7 @@ More than expected, and worth not undoing:
   used `INTEGER PRIMARY KEY AUTOINCREMENT`, the layer upsert used
   `INSERT OR REPLACE`, and run ids came from `last_insert_rowid()` — all three
   SQLite-only. Pointing it at Postgres, which is exactly what
-  `docs/deploy-vercel-supabase.md` §5 instructs, raised on the first
+  `docs/guides/deploy-vercel-supabase.md` §5 instructs, raised on the first
   `CREATE TABLE`. This was assumed from the signature rather than checked, and
   only surfaced on actually running it. Now dialect-aware and verified against
   a real Postgres end to end.
@@ -404,7 +404,7 @@ More than expected, and worth not undoing:
 Ship the product as a container with Postgres as its only hard dependency and
 scheduling pluggable. Vercel then becomes one deployment target for the demo
 and marketing surface rather than the architecture. This is also what
-`docs/deploy-vercel-supabase.md` already prescribes — "run the API in a
+`docs/guides/deploy-vercel-supabase.md` already prescribes — "run the API in a
 container and keep only the UI on Vercel" — so the split is a matter of
 following advice the project already gives, once the registry allows it.
 
@@ -1453,7 +1453,7 @@ loudly before execution.
   schedulers on one DB can still race; a DB advisory/file lock is the
   cross-process answer if that deployment shape becomes real.~~
   **Done 2026-07-27.** That deployment shape was already real — README,
-  CLAUDE.md and docs/web-customization.md all show `uvicorn --workers 4`, so
+  CLAUDE.md and docs/guides/web-customization.md all show `uvicorn --workers 4`, so
   the docs were steering people straight into it. `_execute` now takes a
   `pg_try_advisory_lock` per layer on Postgres, keyed on a namespaced crc32 of
   the layer name; session-scoped, so a crashed worker's lock is released by

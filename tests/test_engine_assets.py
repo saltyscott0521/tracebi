@@ -1,7 +1,7 @@
 """The vendored artifact worker-engine assets ship and are well-formed.
 
 These are inlined into a large-detail artifact so it decodes + filters its
-embedded Parquet offline (docs/large-detail-artifacts.md, increment 3). Like the
+embedded Parquet offline (docs/architecture/large-detail-artifacts.md, increment 3). Like the
 ECharts bundle, they live in ``tracebi/reports/assets`` and are force-included in
 the wheel; this test guards their presence and shape so a build that drops them
 fails in CI rather than shipping an artifact whose engine cannot load.

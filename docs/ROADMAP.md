@@ -2,7 +2,7 @@
 
 > **2026-08-16:** The report layer is being reshaped — one lane, free
 > presentation, per-figure verification, transform contracts. The build plan
-> is `docs/report-architecture-v2.md`; it absorbs field-notes findings
+> is `docs/architecture/report-architecture-v2.md`; it absorbs field-notes findings
 > #1/#2/#5/#10/#11/#13 structurally. Items below that intersect it are
 > sequenced there.
 
@@ -157,7 +157,7 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 
 ### 10. Harden web auth defaults: revisit warn-only
 
-- **Done:** the role-header spoof is closed. `_Authorizer` takes a required `trust_role_header` — proxy mode passes `True`, Basic auth `False` — so under Basic a client's `X-Forwarded-Groups: admin` no longer promotes anybody, and proxy mode reads the *last* occurrence so an appending proxy's own claim wins over a client copy. The strip-inbound-headers requirement is documented in `tracebi/web/api/auth.py`, `docs/web-customization.md` and `.env.example`.
+- **Done:** the role-header spoof is closed. `_Authorizer` takes a required `trust_role_header` — proxy mode passes `True`, Basic auth `False` — so under Basic a client's `X-Forwarded-Groups: admin` no longer promotes anybody, and proxy mode reads the *last* occurrence so an appending proxy's own claim wins over a client copy. The strip-inbound-headers requirement is documented in `tracebi/web/api/auth.py`, `docs/guides/web-customization.md` and `.env.example`.
 - **What's left:** make the deliberate call NOTES.md deferred: warn-only fallbacks (no auth → serve everything; no *usable* role source → everyone is admin) were a demo posture whose stated revisit trigger — someone deploying this as a company trust layer — has now fired. The remaining gap is Basic auth configured with only a role header and no `TRACEBI_AUTH_ROLE_MAP` or `TRACEBI_AUTH_DEFAULT_ROLE`: it warns loudly and leaves everyone `admin`, because switching enforcement on there would pin the deployment to `viewer` with no way to grant anything more.
 - **Why:** The fund-ops audit flagged "every principal resolves to admin" as the quietest gap in a trust product.
 - **Effort:** S

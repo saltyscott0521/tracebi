@@ -1,7 +1,7 @@
 """
 The binding grammar — QuerySpec order_by/limit and the determinism guard.
 
-Two protections, per docs/report-architecture-v2.md §2.2:
+Two protections, per docs/architecture/report-architecture-v2.md §2.2:
 
 * The fingerprint corpus: queries WITHOUT order_by/limit must produce
   byte-identical results (and therefore identical fingerprints) before and
