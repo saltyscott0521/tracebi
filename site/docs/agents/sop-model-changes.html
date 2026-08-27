@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOP: Changing the Semantic Contract — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SOP: Changing the Semantic Contract">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a class="on" href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="sop-changing-the-semantic-contract">SOP: Changing the Semantic Contract</h1>
+<p><strong>Audience:</strong> an engineer-agent (or a human doing the same job) editing the
+<strong>definition plane</strong> — the <code>models/*.py</code> files that declare what numbers mean
+in this project.</p>
+<p><strong>Where this sits in the three-phase workflow (see <code>WORKFLOW.md</code>).</strong> This is
+<strong>phase ② — MODEL</strong>, the freeze point between the unconstrained phase-① transform
+(<code>transforms/*.py</code>, ordinary pandas that sinks the warehouse) and the fast
+phase-③ report (<code>reports/*.json</code>) that queries the model by name. The
+model <strong>reads the sink; it never sees the transform</strong> — it is the semantic
+contract, a few dozen declarative lines a reviewer reads without opening the
+pandas above it (<code>models/portfolio_model.py</code> is the reference). It is also where
+the trust machinery begins: everything from this boundary onward is stamped and
+verifiable; phase ① below it is unverified by design, trusted as reviewed code.</p>
+<p><strong>The rule this whole document unpacks:</strong> <em>change the contract in git; use the
+contract over MCP.</em> The gateway (<code>tracebi mcp</code>) is read-and-compute only. When
+an agent authoring a dashboard hits a vocabulary gap — a measure that does not
+exist, a definition that should — the fix is a reviewed, committed change to a
+model file, never a workaround at the report layer and never a runtime
+mutation. Every consumer then inherits the fix (fresh gateway processes immediately;
+long-running ones after restart).</p>
+<hr>
+<h2 id="1-is-a-model-change-the-right-fix">1. Is a model change the right fix?</h2>
+<p>First, a phase question: <strong>is the data even in the warehouse?</strong> A model can only
+name measures over columns and tables phase ① actually sank. If the number needs
+a column the transform never wrote — a field it dropped, a table it never built —
+no <code>add_measure</code> will conjure it; the fix is <strong>upstream in phase ①</strong>, sinking the
+missing column or table in <code>transforms/*.py</code> (unconstrained pandas), after which
+the model can reference it. Only once the underlying data is in the sink is a
+model change the right tool. Check the warehouse's tables (<code>describe_model</code>, or
+the Models page) before assuming this is a phase-② edit.</p>
+<p>Then the plane question: <strong>is this shared meaning, or presentation?</strong></p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Plane</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A business definition several reports should agree on ("unrealized gain", "margin %")</td>
+<td>Definition</td>
+<td><code>add_measure</code> in <code>models/&lt;name&gt;.py</code></td>
+</tr>
+<tr>
+<td>The canonical display format for a measure, everywhere it appears</td>
+<td>Definition</td>
+<td><code>format=</code> on the measure</td>
+</tr>
+<tr>
+<td>A new slicing attribute, table, or join everyone needs</td>
+<td>Definition</td>
+<td><code>add_dimension</code> / <code>add_table</code> / <code>add_relationship</code> in the model file</td>
+</tr>
+<tr>
+<td>One report wants a different label, column order, section layout, or a one-off format</td>
+<td>Presentation</td>
+<td>The report spec (<code>column_labels</code>, <code>number_formats</code>, sections)</td>
+</tr>
+<tr>
+<td>One report needs a derived column nothing else will ever use</td>
+<td>Presentation first</td>
+<td>Keep it in the report/request; promote to a measure only when a second consumer wants it</td>
+</tr>
+</tbody>
+</table>
+<p>The canonical example (see <code>examples/agent_gateway/README.md</code>): an agent
+wanted an <em>unrealized gain</em> column. A spec cannot express arbitrary
+computation — by design — so the correct fix was a small, code-reviewed
+change in <code>models/wealth_model.py</code> (the actual commit also declared
+<code>market_value</code> and <code>cost_basis</code> as named measures with formats; the two
+gain measures were the point):</p>
+<pre><code class="language-python">model.add_measure(&quot;unrealized_gain&quot;, expr=&quot;market_value - cost_basis&quot;,
+                  agg=&quot;sum&quot;, format=&quot;currency0&quot;)
+model.add_measure(&quot;gain_pct&quot;, ratio=(&quot;unrealized_gain&quot;, &quot;cost_basis&quot;),
+                  format=&quot;percent&quot;)
+</code></pre>
+<p>Defining it once in the model means every report, query, and agent gets the
+<em>same</em> "unrealized gain" — instead of each consumer re-deriving it, perhaps
+differently. That is the entire point of the semantic contract.</p>
+<p>If the ask is genuinely ambiguous ("add a margin column" — to the model, or to
+this one report?), surface the interpretations before implementing, per
+CLAUDE.md §1.</p>
+<hr>
+<h2 id="2-mechanics">2. Mechanics</h2>
+<h3 id="21-where-model-changes-live">2.1 Where model changes live</h3>
+<ul>
+<li>Edit <code>models/&lt;name&gt;.py</code>. The file <strong>must</strong> expose a module-level variable
+  named <code>model</code> (a <code>DataModel</code>) — that is the convention the registry looks
+  for.</li>
+<li>Files starting with <code>_</code> are skipped; model discovery loads only <code>.py</code>;
+  subdirectories are not scanned. A file that raises on import is skipped
+  with a warning, not an error — run <code>tracebi validate</code> if something silently
+  disappears.</li>
+<li>A one-shot gateway process (stdio, spawned per call) picks up a committed
+  change on its next spawn; a long-running gateway keeps already-imported
+  model modules cached and must be restarted. Either way a change is
+  visible to agents on their <strong>next</strong> gateway call — no server restart, no
+  cache to invalidate.</li>
+</ul>
+<h3 id="22-add_measure-the-exact-signature">2.2 <code>add_measure</code> — the exact signature</h3>
+<p>From <code>tracebi/model/data_model.py</code>:</p>
+<pre><code class="language-python">model.add_measure(
+    name,                 # positional; everything else is keyword-only
+    *,
+    column=None,          # simple:     aggregate one column
+    agg=None,             # required for column= and expr=; forbidden for ratio=
+    expr=None,            # expression: aggregate a row-level arithmetic expr
+    ratio=None,           # ratio:      (numerator, denominator) measure names
+    description=&quot;&quot;,       # write this — it is the shared meaning, documented
+    format=None,          # presentation hint; becomes the renderer default
+)
+</code></pre>
+<p>Exactly <strong>one</strong> of <code>column=</code>, <code>expr=</code>, or <code>ratio=</code> must be given. The three
+kinds, deliberately closed:</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Example</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>simple</strong></td>
+<td><code>add_measure("revenue", column="revenue", agg="sum")</code></td>
+<td>Aggregation of one fact column. <code>agg</code> is one of <code>sum, count, mean</code> (alias <code>avg</code>), <code>min, max, nunique</code>.</td>
+</tr>
+<tr>
+<td><strong>expression</strong></td>
+<td><code>add_measure("gross_margin", expr="revenue - cost", agg="sum")</code></td>
+<td>Row-level arithmetic, then aggregated.</td>
+</tr>
+<tr>
+<td><strong>ratio</strong></td>
+<td><code>add_measure("margin_pct", ratio=("gross_margin", "revenue"), format="percent")</code></td>
+<td>Takes <strong>no</strong> <code>agg</code>. Computed <em>after</em> aggregation — a true ratio of totals, not a mean of per-row ratios.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-expr-is-arithmetic-only-and-callables-are-rejected-by-design">2.3 <code>expr</code> is arithmetic-only, and callables are rejected — by design</h3>
+<p>An <code>expr</code> may contain <strong>only bare column names, numeric literals, and
+<code>+ - * / ( )</code></strong>. No function calls, no quotes, no SQL fragments — an
+identifier followed by <code>(</code> is rejected as a function call, and the expression
+is validated against the fact's actual columns before it ever reaches an
+engine. Aggregation is declared separately via <code>agg=</code>.</p>
+<p>Passing a callable for <code>column</code>, <code>expr</code>, or <code>agg</code> raises <code>TypeError</code>. This is
+the single most consequential API constraint in the codebase and it is not a
+limitation to route around: <strong>a lambda cannot be serialized, diffed, reviewed
+as data, validated before execution, or sent over the wire.</strong> Accepting one
+would forfeit reproducibility at the root — the model would stop being a
+checkable contract and become opaque code. If your calculation does not fit
+<code>column</code>/<code>expr</code>/<code>ratio</code>, that is a design conversation (a richer declarative
+grammar compiling down to these structures), not a reason to smuggle in a
+function. Do not relax <code>_EXPR_ALLOWED</code> / <code>_EXPR_CALL</code> in <code>tracebi/model/
+data_model.py</code> for a project need.</p>
+<h3 id="24-declared-formats-flow-to-renderers">2.4 Declared formats flow to renderers</h3>
+<p><code>format=</code> takes a named shortcut — <code>currency</code> (<code>${:,.2f}</code>), <code>currency0</code>,
+<code>percent</code>, <code>comma</code>, <code>decimal</code> — or a raw Python format string. With
+<code>HTMLRenderer(derive_defaults=True)</code> (the default), the precedence for a
+column's number format is:</p>
+<ol>
+<li>the report author's explicit <code>number_formats</code> (always wins),</li>
+<li><strong>the format declared on the model's measure</strong>,</li>
+<li>a column-name suffix hint (<code>_pct</code>, <code>_rate</code>, …),</li>
+<li>shape-based fallback.</li>
+</ol>
+<p>So declaring <code>format="currency0"</code> on a measure means every report that names
+it renders correctly with <strong>no formatting code in the spec at all</strong> — which is
+exactly what an agent composing at volume needs, since nobody is proofreading
+its raw output.</p>
+<hr>
+<h2 id="3-tests-then-the-full-suite">3. Tests, then the full suite</h2>
+<p>Per CLAUDE.md §4: run <code>pytest tests/</code> <strong>before</strong> your change (confirm a green
+baseline) and <strong>after</strong>. A passing suite is the minimum bar.</p>
+<ul>
+<li>Measure-definition behavior is tested in <code>tests/test_phase25.py</code> (see the
+  existing <code>add_measure</code> tests around the callable-rejection and expr-
+  validation cases) and gateway-visible behavior in
+  <code>tests/test_mcp_gateway.py</code>. Add your tests to the phase file they belong
+  to — test files are phase-scoped; do not reorganize across files or add
+  shared cross-phase fixtures.</li>
+<li>Test the <em>meaning</em>, not just the plumbing: assert the computed value on a
+  small known dataset. Bias toward asserting the <strong>absence of a wrong
+  answer</strong> (e.g. a ratio measure is a ratio of totals, not a mean of per-row
+  ratios), not just the presence of a right one — silent-wrong-output is this
+  framework's named enemy.</li>
+<li>For a demo-model change, re-render affected specs and check fingerprints:
+  sections whose data your change touches <strong>should</strong> drift; untouched
+  sections' fingerprints must stay byte-identical. Drift where something
+  moved, stability where nothing did — that is your review signal.</li>
+<li><strong>Renaming or removing</strong> a measure is a breaking contract change: grep
+  <code>reports/</code>, <code>requests/</code>, and <code>examples/</code> for references and run
+  <code>tracebi spec validate</code> on any spec that names it.</li>
+</ul>
+<p>Useful while working:</p>
+<pre><code class="language-bash">tracebi context --model &lt;name&gt;     # see the vocabulary as an agent sees it
+tracebi spec validate report.json  # check a downstream spec without running it
+pytest tests/                      # full suite (run it for the current count)
+</code></pre>
+<hr>
+<h2 id="4-git-commit-pr-etiquette">4. Git commit / PR etiquette</h2>
+<p>Per CLAUDE.md:</p>
+<ul>
+<li><strong>Surgical diffs.</strong> Every changed line traces directly to the request. Do
+  not reformat, "improve", or refactor adjacent code; match existing style.
+  A measure addition is typically a handful of lines in one model file plus
+  tests.</li>
+<li><strong>Commit messages</strong> follow the repo's style: one imperative, descriptive
+  sentence — e.g. <code>Declare the wealth model's shared measures; collapse
+  gateway model aliases</code>. Say what changed and, when it matters, why.</li>
+<li><strong>CHANGELOG.md</strong> is keep-a-changelog format; record user-visible contract
+  changes (new/renamed/removed measures, format changes) there.</li>
+<li><strong>In the PR description</strong>, state the shared-meaning justification (why this
+  belongs in the model and not a report), your assumptions, and the
+  before/after suite result. Surface open questions rather than deciding them
+  silently.</li>
+<li>Suite green before and after is the bar for merging; the model files are
+  the contract, and review of this diff <strong>is</strong> the governance step — that is
+  why the definition plane lives in git at all.</li>
+</ul>
+<hr>
+<h2 id="5-what-not-to-do">5. What NOT to do</h2>
+<ul>
+<li><strong>No runtime mutation of the contract.</strong> Never call <code>add_measure</code> (or
+  <code>add_fact</code>, <code>add_dimension</code>, …) from a request script, a report factory, a
+  route handler, or anything executed at serve time to patch a gap. The
+  registry is populated at startup and read at request time; the gateway is
+  read-and-compute only. A measure that exists only in one process's memory
+  is exactly the ungoverned state this architecture exists to prevent.</li>
+<li><strong>No lambdas or callables, ever</strong> — see §2.3. Do not wrap one, do not
+  precompute a column in an ad-hoc transform and pretend it is governed.</li>
+<li><strong>Do not edit <code>tracebi/</code> internals for a project need.</strong> Adding a measure,
+  a dimension, or a format belongs in <code>models/*.py</code>. New measure kinds,
+  relaxed expression rules, new aggregation functions, or reaching into
+  <code>_measures</code> and other <code>_private</code> attributes are framework changes with their
+  own review bar — propose them, don't sneak them in with a model change.</li>
+<li><strong>Do not solve presentation problems in the definition plane</strong> (a
+  one-report label tweak is <code>column_labels</code> in the spec) <strong>or shared-meaning
+  problems in the presentation plane</strong> (recomputing "gain" inside a report is
+  how two reports disagree about the same number).</li>
+<li><strong>Do not duplicate a definition.</strong> Before adding a measure, check
+  <code>model.measures()</code> / <code>tracebi context --model &lt;name&gt;</code> — if a near-duplicate
+  exists, fix or reuse it; two names for almost the same number is a
+  trust-layer bug.</li>
+</ul>
+<hr>
+<h2 id="6-checklist">6. Checklist</h2>
+<p>Before opening the PR, confirm every box:</p>
+<ul>
+<li>[ ] The change is <strong>shared meaning</strong>, not one report's presentation (§1);
+      ambiguity was surfaced, not silently resolved.</li>
+<li>[ ] Edited <code>models/&lt;name&gt;.py</code> only; module-level <code>model</code> variable intact;
+      no <code>tracebi/</code> internals touched.</li>
+<li>[ ] Each new measure uses exactly one of <code>column=</code> / <code>expr=</code> / <code>ratio=</code>;
+      <code>agg</code> present for the first two, absent for <code>ratio</code>.</li>
+<li>[ ] Any <code>expr</code> is bare-column arithmetic only — no functions, quotes, or
+      SQL; no callables anywhere.</li>
+<li>[ ] <code>description=</code> written; <code>format=</code> declared where a canonical display
+      format exists.</li>
+<li>[ ] No duplicate/near-duplicate of an existing measure
+      (<code>tracebi context --model &lt;name&gt;</code> checked).</li>
+<li>[ ] Tests added in the correct phase-scoped file, asserting computed
+      values (including the absence-of-wrong-answer case).</li>
+<li>[ ] <code>pytest tests/</code> green <strong>before and after</strong> the change.</li>
+<li>[ ] Renames/removals: downstream specs and reports grepped and
+      re-validated (<code>tracebi spec validate</code>).</li>
+<li>[ ] Fingerprint drift confined to sections the change actually touches;
+      untouched sections byte-identical.</li>
+<li>[ ] CHANGELOG.md updated; diff is surgical; commit message is one
+      imperative, descriptive sentence.</li>
+<li>[ ] PR states the shared-meaning rationale and the suite result.</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

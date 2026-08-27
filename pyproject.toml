@@ -114,6 +114,10 @@ dev = [
     # mcp so CI actually exercises the gateway registration + auth tests
     # instead of importorskip-ing them.
     "mcp>=2.0",
+    # site/build_docs.py renders docs/ into the static docs site; declared so
+    # CI can run the drift test that keeps the two in step. Build-time only —
+    # nothing under tracebi/ imports it.
+    "markdown>=3.5",
     "openpyxl>=3.1.5",
     "pyarrow>=14.0",
     "matplotlib>=3.10.9",

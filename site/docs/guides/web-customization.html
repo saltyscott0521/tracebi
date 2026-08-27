@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Customizing the TraceBi Web App — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Preferred — project-root directories (auto-discovered, no registration code):">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a class="on" href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="customizing-the-tracebi-web-app">Customizing the TraceBi Web App</h1>
+<p>How to point the web server at your own data, add your own reports and
+restyle or extend the React UI, and deploy. Written for the
+person who has outgrown the demo app.</p>
+<hr>
+<h2 id="architecture-in-one-paragraph">Architecture in one paragraph</h2>
+<p>The web layer is a FastAPI app (<a href="../tracebi/web/api/main.py">tracebi/web/api/main.py</a>) that
+serves a JSON API under <code>/api</code> and serves the built React SPA
+(<code>tracebi/web/ui/dist/</code>) at <code>/</code>. Everything the API exposes — connectors, models,
+reports, pipelines — is read from a <strong>singleton registry</strong>
+(<a href="../tracebi/registry.py">tracebi/registry.py</a>, also re-exported as
+<code>tracebi.web.api.registry</code> for older code) that your <em>app module</em>
+populates once at startup. Routes never construct resources themselves;
+they only read the registry. That seam is what makes the whole web layer
+swappable onto your data.</p>
+<pre><code>your app module ──populates──▶ registry ◀──reads── API routes ◀── React UI
+(import time)                 (singleton)          (request time)
+</code></pre>
+<h2 id="the-three-phase-workflow-this-serves">The three-phase workflow this serves</h2>
+<p>The server front-ends the analyst workflow described in
+<a href="../WORKFLOW.md">WORKFLOW.md</a>: phase ① <code>transforms/</code> writes clean star-schema
+tables into a DuckDB warehouse, phase ② <code>models/</code> declares a thin <code>DataModel</code>
+over that warehouse, and phase ③ <code>reports/</code> holds artifact packages
+(<code>reports/&lt;name&gt;/</code>) and <code>ReportSpec</code> JSON files pointed at the model.
+Phases ② and ③ are auto-discovered directories (below) and land
+on the <strong>Models</strong> and <strong>Reports</strong> pages; phase ① runs explicitly (e.g. via
+<code>python run_workflow.py</code>) and is not something the server discovers — the sink
+it produces is the input the model reads.</p>
+<h2 id="step-1-project-root-directories-recommended">Step 1: Project-root directories (recommended)</h2>
+<p>The server auto-discovers these directories at the project root. This is the
+lowest-friction way to add resources — no app module configuration needed:</p>
+<table>
+<thead>
+<tr>
+<th>Directory</th>
+<th>Convention</th>
+<th>What the server does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/</code></td>
+<td>each <code>.py</code> exposes a <code>model</code> variable (a <code>DataModel</code>)</td>
+<td>registers it via <code>registry.add_model()</code></td>
+</tr>
+<tr>
+<td><code>pipelines/</code></td>
+<td>each <code>.py</code> exposes a <code>runner</code> variable (a <code>PipelineRunner</code>)</td>
+<td>registers it via <code>registry.add_pipeline()</code></td>
+</tr>
+<tr>
+<td><code>reports/</code></td>
+<td>a <code>&lt;name&gt;/</code> <strong>artifact package</strong> (the current report lane; a package directory shadows a same-named <code>.json</code> spec), a <code>.json</code> <code>ReportSpec</code> (phase ③), or a <code>.py</code> <code>@register.report(...)</code> factory</td>
+<td>registered as a report on the Reports page</td>
+</tr>
+<tr>
+<td><code>requests/</code></td>
+<td>ad-hoc scripts with <code>request_params()</code> and <code>run()</code> — <strong>deprecated, removed in 0.8</strong></td>
+<td>still appears on the Requests page through 0.7, with a deprecation notice</td>
+</tr>
+</tbody>
+</table>
+<p>Scaffold files with the CLI, then edit and commit them:</p>
+<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;     # → models/sales_model.py
+tracebi new-pipeline &quot;Sales ETL&quot;    # → pipelines/sales_etl.py
+tracebi new-report &quot;Weekly Report&quot;  # → reports/weekly_report/ (artifact package)
+</code></pre>
+<p>These directories also work without the web server — notebooks and scripts
+can import from them directly:</p>
+<pre><code class="language-python">from tracebi.model_registry import get_model
+from tracebi.pipeline_registry import get_runner
+
+model = get_model(&quot;sales_model&quot;)    # no server needed
+runner = get_runner(&quot;sales_etl&quot;)
+</code></pre>
+<p>Override any directory path via env var (<code>TRACEBI_MODELS_DIR</code>,
+<code>TRACEBI_PIPELINES_DIR</code>, <code>TRACEBI_REPORTS_DIR</code>, <code>TRACEBI_REQUESTS_DIR</code>).</p>
+<h2 id="step-1b-create-an-app-module-for-connectors">Step 1b: Create an app module (for connectors)</h2>
+<p>Connectors still need an app module — credential-bearing construction can't
+be expressed as a simple file convention. The demo (<a href="../tracebi/web/demo_app/">tracebi/web/demo_app/</a>) is
+the reference — copy its layout:</p>
+<pre><code>myapp/
+  __init__.py        # imports registry module (one line, like demo_app)
+  model.py           # connectors + DataModel construction (optional if using models/)
+  pipeline.py        # PipelineRunner + layer setup (optional if using pipelines/)
+  registry.py        # THE wiring file — connector registration lives here
+</code></pre>
+<p><code>registry.py</code> is the only file with registration side effects:</p>
+<pre><code class="language-python">import os
+from tracebi.registry import registry
+from myapp.model import connector, model
+
+registry.add_connector(connector)
+# Models and pipelines in models/ and pipelines/ are auto-discovered;
+# register here only if you build them inside the app module.
+registry.add_model(model, default=True)
+</code></pre>
+<p>Then point the server at it:</p>
+<pre><code class="language-bash">TRACEBI_APP=myapp python -m tracebi.web.run
+</code></pre>
+<p><code>TRACEBI_APP</code> defaults to none — a serve shows your project's discovered
+directories; set <code>TRACEBI_APP=tracebi.web.demo_app</code> for the bundled demo. If
+the named module fails to import, the
+server emits a <code>UserWarning</code> and starts with an <strong>empty registry</strong> — no
+connectors, no models — rather than refusing to boot, so check the startup log
+after changing it. <code>/api/health</code> returns 200 either way, which means a
+healthcheck alone will not tell you the app module loaded.</p>
+<p>The one exception is a <code>TRACEBI_APP</code> still naming the old top-level <code>web</code>
+package (<code>web.demo_app</code>): that is refused outright with the replacement
+spelling, because it is an unfinished upgrade rather than a broken module.</p>
+<p><strong>Rules that keep you out of trouble</strong> (enforced by convention, violated at
+your peril):</p>
+<ul>
+<li>Register everything at import time; never mutate the registry inside a
+  route handler.</li>
+<li>Construct connectors in your app module and pass credential-bearing URLs
+  via <code>os.environ[...]</code> explicitly. The framework never reads connector
+  URLs from env vars implicitly. See <a href="../.env.example">.env.example</a>.</li>
+</ul>
+<h2 id="step-2-add-resources">Step 2: Add resources</h2>
+<p><strong>Preferred — project-root directories (auto-discovered, no registration code):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Directory</th>
+<th>File convention</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/</code></td>
+<td><code>model = DataModel(...)</code> variable</td>
+<td><strong>Models</strong> + <strong>Explore</strong></td>
+</tr>
+<tr>
+<td><code>pipelines/</code></td>
+<td><code>runner = PipelineRunner(...)</code> variable</td>
+<td><strong>Pipelines</strong> page</td>
+</tr>
+<tr>
+<td><code>reports/</code></td>
+<td>a <code>&lt;name&gt;/</code> <strong>artifact package</strong> (current lane; shadows a same-named <code>.json</code> spec), a <code>.json</code> <code>ReportSpec</code>, or a <code>@register.report("name")</code> factory</td>
+<td><strong>Reports</strong> page</td>
+</tr>
+<tr>
+<td><code>requests/</code></td>
+<td>any <code>.py</code> / <code>.ipynb</code> with <code>run()</code> — <strong>deprecated, removed in 0.8</strong></td>
+<td><strong>Requests</strong> page (through 0.7)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Or register explicitly</strong> (in your app module's <code>registry.py</code>, or the notebook facade <code>tracebi.web.register</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Call</th>
+<th>Appears in UI as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Connector</td>
+<td><code>registry.add_connector(conn)</code></td>
+<td><strong>Connectors</strong> page</td>
+</tr>
+<tr>
+<td>Model</td>
+<td><code>registry.add_model(model, default=False)</code></td>
+<td><strong>Models</strong> + <strong>Explore</strong></td>
+</tr>
+<tr>
+<td>Report</td>
+<td><code>@registry.report("name", description="…")</code> on a zero-arg factory</td>
+<td><strong>Reports</strong> page</td>
+</tr>
+<tr>
+<td>Scheduled report</td>
+<td><code>@registry.scheduled("name", cron="0 7 * * *")</code></td>
+<td><strong>Reports</strong> + scheduler</td>
+</tr>
+<tr>
+<td>Pipeline</td>
+<td><code>registry.add_pipeline("name", runner)</code></td>
+<td><strong>Pipelines</strong> (DAG, run buttons, history)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="step-3-the-development-loop">Step 3: The development loop</h2>
+<pre><code class="language-bash">python -m tracebi.web.run                       # uvicorn with hot-reload, port 8000
+python -m tracebi.web.run --port 9000           # different port
+TRACEBI_DEV_MODE=1 python -m tracebi.web.run    # adds POST /api/_dev/reload
+</code></pre>
+<p>Hot-reload restarts the server on Python file changes. Dev mode additionally
+mounts <code>POST /api/_dev/reload</code>, which re-imports every auto-discovered
+module <em>without</em> a restart — useful when iterating on report factories (and
+legacy request scripts, through 0.7).</p>
+<p>For UI work, run Vite's dev server alongside the API (see below).</p>
+<h2 id="step-4-customize-the-react-ui">Step 4: Customize the React UI</h2>
+<p>The UI lives in <a href="../web/ui/">web/ui/</a> — React 18 + Vite, React Query for
+data, React Flow for lineage/ERD graphs, Recharts for charts.</p>
+<pre><code class="language-bash">cd web/ui
+npm install
+npm run dev      # Vite dev server on :5173, proxies /api to the API server
+npm run build    # writes tracebi/web/ui/dist/ — FastAPI serves it at / when present
+</code></pre>
+<p>Layout of <code>src/</code>:</p>
+<pre><code>api.js               # all API hooks (React Query) — one hook per endpoint
+components/
+  Layout.jsx         # sidebar, nav items, theme toggle, ⌘K trigger
+  Shared.jsx         # Card, Badge, Btn, Tabs, toasts, skeletons…
+  Lineage.jsx        # React Flow lineage graph renderer
+  CommandPalette.jsx # ⌘K navigation
+pages/               # one file per route
+styles/global.css    # ALL design tokens — start here for theming
+</code></pre>
+<p><strong>Theming:</strong> every color in the UI is a CSS variable defined at the top of
+<a href="../web/ui/src/styles/global.css">global.css</a>. Light theme under <code>:root</code>,
+dark under <code>[data-theme="dark"]</code>. To rebrand, edit the tokens (<code>--blue</code>,
+<code>--bg</code>, <code>--card</code>, the <code>--op-*</code> lineage-node palette) — components never
+hard-code colors. The brand gradient is <code>--brand</code>.</p>
+<p><strong>Adding a nav page:</strong> create <code>pages/MyPage.jsx</code>, add a route in
+<code>App.jsx</code>, and an entry in the <code>NAV</code> array in <code>Layout.jsx</code>. Use the hooks
+in <code>api.js</code> for data and the primitives in <code>Shared.jsx</code> for visual
+consistency.</p>
+<h2 id="step-5-extend-the-api">Step 5: Extend the API</h2>
+<p>New endpoints follow one pattern: a router file under
+<a href="../tracebi/web/api/routers/">tracebi/web/api/routers/</a>, included in <code>main.py</code> with the
+<code>/api</code> prefix, reading <strong>only from the registry</strong> — never importing your
+app module directly. Failed runs should return the structured error shape
+(<code>{message, exception_type, traceback}</code>) via <code>tracebi/web/api/errors.py</code>; the UI
+knows how to render it.</p>
+<h2 id="auth">Auth</h2>
+<p>Optional, enabled entirely by env vars (see
+<a href="../tracebi/web/api/auth.py">tracebi/web/api/auth.py</a> and <code>.env.example</code>):</p>
+<pre><code class="language-bash"># Basic auth — single shared credential
+TRACEBI_AUTH_USER=admin
+TRACEBI_AUTH_PASS=changeme
+
+# OR reverse-proxy header trust (Authelia, oauth2-proxy, Cloudflare Access)
+TRACEBI_AUTH_PROXY_HEADER=X-Forwarded-User
+TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.0/8,172.16.0.0/12
+</code></pre>
+<p>No auth vars set ⇒ the app is open (fine on localhost, not on a network).</p>
+<p><strong>Roles.</strong> Authentication says who a caller is; authorization says what they
+may do. Three ordered roles, split by side effect: <code>viewer</code> (read models,
+reports, lineage; run Explore queries and spec validation — they compute
+but persist nothing), <code>analyst</code> (viewer + execute report and request code),
+<code>admin</code> (analyst + run pipeline layers, which write to the warehouse, and
+<code>/api/_dev/reload</code>). Assign roles per principal with
+<code>TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst</code> or, <strong>in proxy mode only</strong>,
+from the proxy's group claim with
+<code>TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups</code> — your proxy must <em>replace</em>
+that header on client requests, not append to it; TraceBi reads the last
+occurrence, so an appending proxy still wins over a client copy, but a proxy
+that does neither hands the role to the caller. Under Basic auth there is no
+upstream, so the header would be self-asserted by the caller it promotes: it
+is ignored there, with a startup warning. Unlisted principals get
+<code>TRACEBI_AUTH_DEFAULT_ROLE</code> (default <code>viewer</code>); setting it explicitly is
+itself a usable role source, so a Basic deployment that sets it is enforced
+even though its role header is ignored. With <em>no usable</em> role source set,
+every authenticated principal is <code>admin</code> — role enforcement is opt-in so
+enabling auth cannot lock a deployment out of its own pipelines.</p>
+<p><strong>The MCP gateway authenticates separately.</strong> <code>tracebi mcp --transport http</code>
+is not behind the web app's auth — it requires its own bearer token
+(<code>TRACEBI_MCP_TOKEN</code>; every request sends <code>Authorization: Bearer &lt;token&gt;</code>)
+and refuses to start without one unless <code>--insecure</code> is passed explicitly.
+See the README's Agent gateway section.</p>
+<h2 id="deployment">Deployment</h2>
+<pre><code class="language-bash"># Bare uvicorn
+uvicorn tracebi.web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Docker — multi-stage build compiles the React UI, then runs the API
+docker compose up --build
+</code></pre>
+<blockquote>
+<p><strong>More than one worker requires Postgres.</strong> Each process gets its own
+in-process layer lock, so the lock that counts is the database one: on
+Postgres a <code>pg_try_advisory_lock</code> per layer refuses a concurrent run with a
+clear error, while on SQLite the cross-process lock is a no-op and two
+workers will both execute the same layer — interleaving writes to the sink
+and leaving two "running" rows in the run history. Point
+<code>PipelineRunner(db_url=...)</code> at Postgres before scaling past one process.</p>
+</blockquote>
+<h2 id="environment-variable-reference">Environment variable reference</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_APP</code></td>
+<td><em>(none)</em></td>
+<td>App module imported at startup; <code>tracebi.web.demo_app</code> opts into the bundled demo</td>
+</tr>
+<tr>
+<td><code>TRACEBI_MODELS_DIR</code></td>
+<td><code>models</code></td>
+<td>Folder scanned for <code>model</code> variable files</td>
+</tr>
+<tr>
+<td><code>TRACEBI_PIPELINES_DIR</code></td>
+<td><code>pipelines</code></td>
+<td>Folder scanned for <code>runner</code> variable files</td>
+</tr>
+<tr>
+<td><code>TRACEBI_REPORTS_DIR</code></td>
+<td><code>reports</code></td>
+<td>Folder scanned for <code>&lt;name&gt;/</code> artifact packages, <code>.json</code> <code>ReportSpec</code>s (phase ③), and <code>@register.report()</code> factories; all served on the Reports page</td>
+</tr>
+<tr>
+<td><code>TRACEBI_REQUESTS_DIR</code></td>
+<td><code>requests</code></td>
+<td>Folder scanned for ad-hoc request scripts — deprecated lane, removed in 0.8</td>
+</tr>
+<tr>
+<td><code>TRACEBI_SCHEDULED_DIR</code></td>
+<td><code>scheduled</code></td>
+<td>Folder scanned for <code>@register.scheduled()</code> factories</td>
+</tr>
+<tr>
+<td><code>TRACEBI_DEV_MODE</code></td>
+<td>unset</td>
+<td><code>1</code> mounts <code>POST /api/_dev/reload</code></td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_USER</code> / <code>TRACEBI_AUTH_PASS</code></td>
+<td>unset</td>
+<td>HTTP Basic auth</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_PROXY_HEADER</code> / <code>TRACEBI_AUTH_PROXY_TRUSTED_IPS</code></td>
+<td>unset</td>
+<td>Proxy-header auth</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_REALM</code></td>
+<td><code>TraceBi</code></td>
+<td>Basic-auth realm string</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_ROLE_MAP</code></td>
+<td>unset</td>
+<td><code>principal:role</code> pairs (e.g. <code>alice:admin,bob:analyst</code>)</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_ROLE_HEADER</code></td>
+<td>unset</td>
+<td>Read roles from the proxy's group header (e.g. <code>X-Forwarded-Groups</code>) — proxy mode only; ignored under Basic auth</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_DEFAULT_ROLE</code></td>
+<td><code>viewer</code></td>
+<td>Role for principals not covered above. Not a role source by itself — set alone it leaves enforcement off and everyone <code>admin</code>; it switches enforcement on only alongside <code>TRACEBI_AUTH_ROLE_HEADER</code></td>
+</tr>
+<tr>
+<td><code>TRACEBI_DOCS_DIR</code></td>
+<td><code>docs</code></td>
+<td>Folder the Getting Started page serves markdown guides from</td>
+</tr>
+<tr>
+<td><code>TRACEBI_MCP_TOKEN</code></td>
+<td>unset</td>
+<td>Bearer token for <code>tracebi mcp --transport http</code> (gateway, not the web app — required unless <code>--insecure</code>)</td>
+</tr>
+<tr>
+<td><code>TRACEBI_MCP_ACTOR</code></td>
+<td><code>agent</code></td>
+<td>Audit attribution for gateway work (recorded as <code>mcp:&lt;actor&gt;</code>)</td>
+</tr>
+</tbody>
+</table>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

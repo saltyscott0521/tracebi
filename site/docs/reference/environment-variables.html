@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Environment variables — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Every TRACEBI_ variable the framework reads.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a class="on" href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="environment-variables">Environment variables</h1>
+<p><strong>Every <code>TRACEBI_*</code> variable the framework reads.</strong></p>
+<p>TraceBi does <strong>not</strong> auto-load <code>.env</code>. <code>python-dotenv</code> ships with the
+<code>analyst</code>/<code>all</code> extras, but a transform script calls <code>load_dotenv()</code> itself.</p>
+<hr>
+<h2 id="project-layout">Project layout</h2>
+<p>Where each phase of <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> lives. Each has a CLI flag
+equivalent where it matters.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_TRANSFORMS_DIR</code></td>
+<td><code>transforms</code></td>
+<td><code>new-transform</code>, <code>run-transform</code></td>
+</tr>
+<tr>
+<td><code>TRACEBI_MODELS_DIR</code></td>
+<td><code>models</code></td>
+<td><code>validate</code>, <code>new-model</code>, <code>verify</code>, discovery</td>
+</tr>
+<tr>
+<td><code>TRACEBI_REPORTS_DIR</code></td>
+<td><code>reports</code></td>
+<td><code>new-report</code>, <code>report</code>, discovery</td>
+</tr>
+<tr>
+<td><code>TRACEBI_PIPELINES_DIR</code></td>
+<td><code>pipelines</code></td>
+<td><code>run-pipeline</code>, discovery</td>
+</tr>
+<tr>
+<td><code>TRACEBI_SCHEDULED_DIR</code></td>
+<td><code>scheduled</code></td>
+<td>discovery</td>
+</tr>
+<tr>
+<td><code>TRACEBI_WORKBENCH_DIR</code></td>
+<td><code>.tracebi/workbench</code></td>
+<td><code>dev</code>, <code>session</code></td>
+</tr>
+<tr>
+<td><code>TRACEBI_OUTPUT_ROOT</code></td>
+<td><code>output</code></td>
+<td>build outputs</td>
+</tr>
+<tr>
+<td><code>TRACEBI_DOCS_DIR</code></td>
+<td>—</td>
+<td>the served docs browser</td>
+</tr>
+</tbody>
+</table>
+<h2 id="application">Application</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_APP</code></td>
+<td>app module to import at startup. Default: none. <code>tracebi serve</code> sets it to empty so the bundled demo is never dragged into your project — set it yourself to opt in.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_DEV_MODE</code></td>
+<td>enables <code>POST /api/_dev/reload</code>, <strong>and</strong> allows tracebacks in API error payloads</td>
+</tr>
+<tr>
+<td><code>TRACEBI_DEBUG</code></td>
+<td><code>run-transform</code> re-raises a <code>ContractViolation</code> with the full traceback instead of the clean message</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong><code>TRACEBI_DEV_MODE</code> is security-relevant.</strong> Without it, API error responses
+carry a message and exception type but an <strong>empty traceback</strong> — a traceback
+leaks file paths, the server username and package versions. Do not set it in
+production.</p>
+</blockquote>
+<h2 id="authentication-and-roles">Authentication and roles</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_AUTH_USER</code> / <code>TRACEBI_AUTH_PASS</code></td>
+<td>HTTP Basic credentials</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_REALM</code></td>
+<td>the Basic auth realm</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_PROXY_HEADER</code></td>
+<td>header carrying the authenticated user, when a proxy sets it</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_PROXY_TRUSTED_IPS</code></td>
+<td>CIDRs allowed to assert that header</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_ROLE_HEADER</code></td>
+<td>header carrying the caller's role</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_ROLE_MAP</code></td>
+<td><code>alice:admin,bob:analyst</code></td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_DEFAULT_ROLE</code></td>
+<td>fallback role for principals the map omits</td>
+</tr>
+<tr>
+<td><code>TRACEBI_ALLOWED_ORIGINS</code></td>
+<td>CORS allowlist</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Enforcement is opt-in, and the default is permissive.</strong> With no usable role
+source — no <code>TRACEBI_AUTH_ROLE_MAP</code>, and no <code>TRACEBI_AUTH_ROLE_HEADER</code> —
+<strong>every principal resolves to <code>admin</code></strong>, including on the pipeline routes that
+write to the warehouse. This is deliberate, so adding authorization could not
+lock a running deployment out of its own pipelines.</p>
+<p><code>TRACEBI_AUTH_DEFAULT_ROLE</code> is <strong>not a role source on its own</strong>: set by itself
+it names a fallback but leaves enforcement off. It switches enforcement on
+only alongside <code>TRACEBI_AUTH_ROLE_HEADER</code>.</p>
+</blockquote>
+<p>Roles: <code>viewer</code> (read, and run queries that persist nothing) → <code>analyst</code>
+(+ execute reports) → <code>admin</code> (+ run pipeline layers, which write).</p>
+<h2 id="delivery">Delivery</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_SMTP_URL</code></td>
+<td><code>smtp://user:pass@host:587</code> (STARTTLS) or <code>smtps://</code> (implicit TLS)</td>
+</tr>
+<tr>
+<td><code>TRACEBI_SMTP_FROM</code></td>
+<td>sender address</td>
+</tr>
+<tr>
+<td><code>TRACEBI_SLACK_WEBHOOK</code></td>
+<td>optional ping after a successful <code>report send</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both SMTP variables are required by <code>tracebi report send</code>. A Slack failure is
+reported but does not fail the command — the report already went out.</p>
+<h2 id="agent-gateway">Agent gateway</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_MCP_TOKEN</code></td>
+<td>bearer token for <code>tracebi mcp --transport http</code></td>
+</tr>
+<tr>
+<td><code>TRACEBI_MCP_ACTOR</code></td>
+<td>audit attribution for gateway work (default <code>agent</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The http transport <strong>refuses to start</strong> until you either set the token or pass
+<code>--insecure</code> deliberately.</p>
+<h2 id="connector-urls">Connector URLs</h2>
+<p>The framework never reads a connector URL implicitly. Construct connectors in
+your own code and pass credential-bearing URLs explicitly:</p>
+<pre><code class="language-python">DuckDBConnector(&quot;warehouse&quot;, database=os.environ[&quot;MY_WAREHOUSE_PATH&quot;])
+</code></pre>
+<p><code>.env.example</code> shows the pattern with names like <code>TRACEBI_SALES_DB_URL</code> — those
+are <strong>yours to read</strong>, not framework-read variables.</p>
+<hr>
+<h2 id="known-drift">Known drift</h2>
+<p>A handful of variables are read by the code but absent from <code>.env.example</code>:
+<code>TRACEBI_DEBUG</code>, <code>TRACEBI_DEV_MODE</code>, <code>TRACEBI_AUTH_REALM</code>, <code>TRACEBI_DOCS_DIR</code>,
+and the demo app's <code>TRACEBI_DEMO_DB_URL</code> / <code>TRACEBI_DEMO_DB_DIR</code>.
+<code>TRACEBI_SCHEDULED_DIR</code> is documented only in a module docstring.</p>
+<p>Conversely <code>TRACEBI_WAREHOUSE_URL</code> appears in <code>.env.example</code> and <strong>no code reads
+it</strong> — it is a leftover.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/cli.html">CLI reference</a> — the flags that override these</li>
+<li><a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a> — hosting configuration</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

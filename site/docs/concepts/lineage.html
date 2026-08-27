@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lineage — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Lineage">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a class="on" href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="lineage">Lineage</h1>
+<p><strong>Every data operation appends a node describing what happened. The chain is
+not optional, and it cannot be edited after the fact.</strong></p>
+<hr>
+<h2 id="the-two-invariants">The two invariants</h2>
+<p><strong>1. <code>DataSet</code> is immutable.</strong> Every transform method returns a <em>new</em> <code>DataSet</code>.
+Nothing mutates <code>.df</code> or <code>.lineage</code> in place.</p>
+<pre><code class="language-python">ds2 = ds.filter(region=&quot;West&quot;)     # ds is unchanged
+</code></pre>
+<p><strong>2. Every operation produces a <code>LineageNode</code>.</strong> If an operation skipped the
+lineage step, the audit chain would break silently — so the two happen together
+or not at all.</p>
+<p><code>LineageNode</code> is <strong>frozen</strong>: every field, including <code>metadata</code>, is passed at
+construction. You cannot edit a node afterwards, by design.</p>
+<h2 id="what-a-node-records">What a node records</h2>
+<p>The operation, its parameters, the source, a timestamp, and operation-specific
+metadata — enough to say <em>what produced this frame</em> without re-reading the code
+that produced it.</p>
+<pre><code class="language-python">for node in ds.lineage:
+    print(node.operation, node.source)
+</code></pre>
+<h2 id="where-it-shows-up">Where it shows up</h2>
+<ul>
+<li><strong>In the receipt.</strong> A figure's manifest entry carries the resolved query and
+  the model it ran against — recovered from lineage, not re-derived.</li>
+<li><strong>In the web UI.</strong> <code>GET /api/reports/{name}/lineage</code> returns a graph;
+  <code>/mermaid</code> returns a diagram.</li>
+<li><strong>In <code>tracebi verify</code>.</strong> Source fingerprints recorded in lineage are what let
+  drift be <em>diagnosed</em> — <code>SOURCE DRIFT</code> (an input moved) is distinguishable
+  from <code>UNEXPLAINED</code> (the inputs did not move but the answer did), and that
+  distinction is the difference between a shrug and an alarm.</li>
+</ul>
+<h2 id="where-it-deliberately-stops">Where it deliberately stops</h2>
+<p>Lineage covers the <a href="../concepts/model.html">Model — phase ②</a> and <a href="../concepts/report.html">Report — phase ③</a> phases. It does <strong>not</strong> trace
+through phase-① <a href="../concepts/transform.html">Transform — phase ①</a> pandas.</p>
+<p>That is the honest boundary described in
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> — drawn at the sink, where
+numbers become a contract you can query. Claiming otherwise would mean claiming
+to audit arbitrary Python.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../concepts/receipts.html">Receipts</a> — what the chain is ultimately used for</li>
+<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — narrowing the phase-① gap</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

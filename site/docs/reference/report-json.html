@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>report.json — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="report.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a class="on" href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="reportjson"><code>report.json</code></h1>
+<p><strong>The package declaration: what data a report binds, and which figures the
+framework builds for it.</strong></p>
+<p>Every report package is a directory under <code>reports/</code>:</p>
+<pre><code>reports/my_report/
+  report.json      ← this page
+  template.html    the page you draw          → [template.html — the figure grammar](../reference/template-html.html)
+  style.css        optional, your CSS
+  script.js        optional, your JS
+  report.py        optional escape hatch      → [Receipts](../concepts/receipts.html)
+</code></pre>
+<hr>
+<h2 id="minimal-example">Minimal example</h2>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;Portfolio Overview&quot;,
+  &quot;data&quot;: {
+    &quot;by_sector&quot;: {
+      &quot;model&quot;: &quot;portfolio_model&quot;,
+      &quot;query&quot;: {
+        &quot;fact&quot;: &quot;fact_holdings&quot;,
+        &quot;measures&quot;: [&quot;fair_value&quot;],
+        &quot;dimensions&quot;: [&quot;dim_issuer.sector&quot;],
+        &quot;order_by&quot;: [&quot;-fair_value&quot;]
+      }
+    }
+  }
+}
+</code></pre>
+<h2 id="keys">Keys</h2>
+<h3 id="name-string"><code>name</code> — string</h3>
+<p>The report's display title. Defaults to the directory name.</p>
+<h3 id="author-string-optional"><code>author</code> — string, optional</h3>
+<p>Recorded in the manifest as <code>rendered_by</code>.</p>
+<h3 id="description-string-optional"><code>description</code> — string, optional</h3>
+<p>Shown on the Reports page in the web UI.</p>
+<h3 id="data-object-required"><code>data</code> — object, <strong>required</strong></h3>
+<p>Maps a <strong>binding name</strong> to a query. A binding is the unit of trust: it is
+resolved once, fingerprinted, embedded in the artifact, and recorded in the
+receipt.</p>
+<pre><code class="language-json">&quot;data&quot;: {
+  &quot;&lt;binding_name&gt;&quot;: {
+    &quot;model&quot;: &quot;&lt;model name&gt;&quot;,
+    &quot;query&quot;: { ... }                  → [Queries](../reference/queries.html)
+  }
+}
+</code></pre>
+<p>Must be a non-empty object. Each entry must have <code>model</code> and <code>query</code>.</p>
+<p>Figures refer to bindings by name — see <a href="../reference/template-html.html">template.html — the figure grammar</a> and <a href="../reference/figure-helper.html">{{ figure("name") }}</a>.</p>
+<h3 id="figures-object-optional"><code>figures</code> — object, optional</h3>
+<p>Figures the framework builds for you, placed in <code>template.html</code> with
+<code>{{ figure("name") }}</code>. Full page: <a href="../reference/figure-helper.html">{{ figure("name") }}</a>.</p>
+<pre><code class="language-json">&quot;figures&quot;: {
+  &quot;total&quot;:  {&quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;totals&quot;, &quot;cell&quot;: &quot;revenue&quot;,
+             &quot;label&quot;: &quot;Revenue&quot;, &quot;format&quot;: &quot;currency&quot;},
+  &quot;detail&quot;: {&quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;by_sector&quot;}
+}
+</code></pre>
+<p>Omit it entirely if you hand-write your figure markup — both styles work, and
+they produce the same bytes.</p>
+<h3 id="libs-array-optional"><code>libs</code> — array, optional</h3>
+<p>Charting libraries to inline into the self-contained file. Currently only
+<code>"echarts"</code>.</p>
+<pre><code class="language-json">&quot;libs&quot;: [&quot;echarts&quot;]
+</code></pre>
+<p><strong>A package with charts must opt in</strong>, or every chart panel renders
+permanently blank. A data-only report omits it and ships smaller. An unknown
+value is refused at load.</p>
+<hr>
+<h2 id="what-is-checked-and-when">What is checked, and when</h2>
+<p>Checked when the package <strong>loads</strong> (before any query runs):</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Refusal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>top level is an object</td>
+<td><code>the top level must be an object</code></td>
+</tr>
+<tr>
+<td><code>data</code> is a non-empty object</td>
+<td><code>needs a non-empty 'data' object mapping…</code></td>
+</tr>
+<tr>
+<td>each binding is an object with <code>model</code>/<code>query</code></td>
+<td><code>data binding 'x' must be an object…</code></td>
+</tr>
+<tr>
+<td><code>libs</code> ⊆ known libraries</td>
+<td><code>'libs' must be a list drawn from ['echarts']</code></td>
+</tr>
+<tr>
+<td><code>figures</code> is an object</td>
+<td><code>'figures' must be an object mapping…</code></td>
+</tr>
+<tr>
+<td>a figure's <code>kind</code> is known</td>
+<td><code>has kind 'x'; expected one of [...]</code></td>
+</tr>
+<tr>
+<td>a figure's <code>binding</code> exists in <code>data</code></td>
+<td><code>names binding 'x', which is not declared in 'data'</code></td>
+</tr>
+<tr>
+<td>a <code>value</code> figure has <code>cell</code></td>
+<td><code>is a value figure and needs 'cell'</code></td>
+</tr>
+</tbody>
+</table>
+<p>Checked when the report <strong>builds</strong>:</p>
+<ul>
+<li>every declared figure is placed in <code>template.html</code> exactly once
+  (<a href="../reference/figure-helper.html">{{ figure("name") }}</a>)</li>
+<li>every figure's binding resolves against a registered model</li>
+<li>the query is valid against the model's grain and <a href="../reference/measures.html">Measures</a></li>
+</ul>
+<blockquote>
+<p><strong>Known gap.</strong> Unknown keys are currently <strong>ignored, not rejected</strong> — a typo
+like <code>"figure"</code> for <code>"figures"</code> loads quietly with no figures declared, and a
+typo inside a figure entry falls back to a default. The <code>.json</code> spec format
+does reject unknown keys with a suggestion; the package format does not yet.</p>
+</blockquote>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup side</li>
+<li><a href="../reference/figure-helper.html">{{ figure("name") }}</a> — declaring figures instead of hand-writing them</li>
+<li><a href="../reference/queries.html">Queries</a> — what goes inside <code>query</code></li>
+<li><a href="../concepts/report.html">Report — phase ③</a> — the concept</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

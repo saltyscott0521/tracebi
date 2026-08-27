@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Large-detail artifacts — data-heavy, offline, still verifiable — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Real risks (design around, not blockers):">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a class="on" href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="large-detail-artifacts-data-heavy-offline-still-verifiable">Large-detail artifacts — data-heavy, offline, still verifiable</h1>
+<p><strong>Status:</strong> BUILT on <code>feat/artifact-parquet-embed</code> (not yet merged). The design below is the
+plan as agreed; §11 records where the implementation deliberately diverged after two
+adversarial reviews. Supersedes the "just add a size guard" stopgap and the
+DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).</p>
+<p><strong>One-line:</strong> let a single self-contained artifact embed up to ~500MB-of-JSON-equivalent
+of detail, filter it client-side, and still open offline and re-check with <code>verify --file</code> —
+by shipping <strong>Parquet + parquet-wasm + Arquero in a Web Worker</strong>, all inlined, with the
+receipt moved to a format-independent content hash.</p>
+<hr>
+<h2 id="1-the-problem">1. The problem</h2>
+<p>Today every figure's data is embedded as <strong>CSV</strong> in <code>&lt;script type="application/json"&gt;</code>, and
+<code>tracebi.js</code> renders one <code>&lt;tr&gt;</code> per row. Measured ceiling (scale audit): the browser render
+wall hits first — ~500k rows freezes the tab — and file size hits second (~44MB HTML at 500k
+rows). That caps the artifact at "aggregates + small tables," and any interactive filter over
+detail is impossible because the detail isn't there.</p>
+<p>Requirement (maintainer): hold up to <strong>~500MB JSON-equivalent</strong> of detail so a reader can
+<strong>filter interactively</strong> — and keep <strong>one method for every artifact</strong> (no CSV/Parquet split,
+engine always included), still <strong>opening offline from <code>file://</code></strong> (emailable receipt).</p>
+<hr>
+<h2 id="2-the-decision">2. The decision</h2>
+<p><strong>Embed Parquet(ZSTD). Decode it with parquet-wasm. Query it with Arquero (Arrow bridge =
+<code>@uwdata/flechette</code>). Run all of that in a blob-URL Web Worker. Inline everything so it opens
+offline with no network.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data format</td>
+<td><strong>Parquet (ZSTD)</strong></td>
+<td>~50× smaller than JSON <em>on our data</em>; the one self-compressing columnar container that a WASM reader decodes natively. No CSV/Parquet mix.</td>
+</tr>
+<tr>
+<td>Decoder</td>
+<td><strong>parquet-wasm</strong> (~1.2MB brotli; read-only build ~456KB)</td>
+<td>Small WASM, instantiates from an embedded byte buffer — no HTTP fetch, works from <code>file://</code>.</td>
+</tr>
+<tr>
+<td>Query engine</td>
+<td><strong>Arquero</strong> (~0.2MB) via <strong>flechette</strong> (~14KB gz)</td>
+<td>Column-oriented filter/groupby/rollup over the decoded Arrow; million-row proven; tiny.</td>
+</tr>
+<tr>
+<td>Execution</td>
+<td><strong>blob-URL Web Worker</strong></td>
+<td>Keeps the 0.5–0.9s query off the main thread so the UI never freezes; blob workers run from <code>file://</code>.</td>
+</tr>
+<tr>
+<td>Charts / tables</td>
+<td><strong>ECharts</strong> (shipped); grouped results render directly in the vanilla runtime</td>
+<td>We aggregate first, so the rendered output is always small — no virtualization library needed. The artifact runtime is vanilla <code>tracebi.js</code>, not React.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Engine floor ≈ 3MB</strong> per artifact (parquet-wasm + Arquero + flechette), in the same weight
+class as the ECharts runtime we already ship. A 500MB-JSON-equivalent artifact lands <strong>~14MB</strong>.</p>
+<h3 id="why-not-duckdb-wasm">Why not DuckDB-WASM</h3>
+<p>Not a speed decision — it's fast enough (TPC-H Q1 0.855s/3M rows; HF SQL Console filters 12.6M
+rows in &lt;3s). It loses on our constraints:
+- <strong>Hostile to <code>file://</code></strong>: needs its wasm fetched over HTTP with CORS, wants COOP/COEP headers a
+  double-clicked offline file can't set. Effectively requires a web server.
+- <strong>~18MB eh.wasm (~6–10MB gz)</strong> engine — every artifact would pay it.
+- Needs cross-origin isolation to multithread (unavailable in a static file).</p>
+<p><strong>Reserve DuckDB-WASM</strong> only if full in-browser SQL (multi-table joins, window functions) or</p>
+<blockquote>
+<p>~10–20M rows ever becomes a hard requirement. hyparquet (pure-JS, ~10KB) is dead on its
+row-object path (measured 22s / 2M rows) but has a columnar <code>onChunk</code> API worth a re-benchmark
+to maybe drop parquet-wasm's WASM — later, not now.</p>
+</blockquote>
+<hr>
+<h2 id="3-everything-runs-offline-no-internet-ever">3. Everything runs offline — no internet, ever</h2>
+<p>The Web Worker is a background thread <em>inside the tab</em>, not a server. Self-contained means:
+- <strong>Worker code</strong> — embedded as text, started via a <code>blob:</code> URL built in memory.
+- <strong>Engine (parquet-wasm)</strong> — embedded as base64, decoded to bytes, <code>WebAssembly.instantiate(bytes)</code>
+  inside the worker. No download.
+- <strong>Data (Parquet)</strong> — embedded as base64 in the same file.</p>
+<p>Open the <code>.html</code> on a plane → worker spins up locally → engine loads from embedded bytes →
+queries embedded data. Zero network in the loop. Keep the <strong>strict CSP</strong>; the one thing that
+would need a network fetch (apache-arrow-js's ZSTD-IPC codec) is avoided because parquet-wasm
+decodes ZSTD-Parquet internally.</p>
+<hr>
+<h2 id="4-scale-envelope-measured-validated">4. Scale envelope (measured + validated)</h2>
+<p>Measured in-app Chromium, representative BI fact table (dims + high-card id + float measures):</p>
+<table>
+<thead>
+<tr>
+<th>rows</th>
+<th>Parquet(ZSTD)</th>
+<th>JSON-equiv</th>
+<th>parquet-wasm decode</th>
+<th>Arquero query</th>
+<th>self-contained file</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1M</td>
+<td>4.3 MB</td>
+<td>~214 MB</td>
+<td>~420 ms</td>
+<td>~450–900 ms</td>
+<td>~7 MB</td>
+</tr>
+<tr>
+<td>2M</td>
+<td>8.4 MB</td>
+<td>~427 MB</td>
+<td>~420 ms</td>
+<td>~500–935 ms</td>
+<td>~14 MB</td>
+</tr>
+</tbody>
+</table>
+<p>Validated against production usage:
+- 2.3M rows / ~14MB is <strong>~8× below</strong> the demonstrated 18M-rows-in-browser point (Mosaic/DuckDB-WASM)
+  and <strong>~40× below</strong> the ~100M-row / 2–4GB-WASM OOM wall.
+- Base64 ~14MB in one <code>&lt;script&gt;</code> node ≈ 2% of V8's ~512M-char string cap, and lives in one node
+  (no DOM-node memory blowup).
+- Precedent: HF SQL Console, Observable/Mosaic, Evidence, Tableau Public (15M rows / 1GB cap).</p>
+<p><strong>We are novel</strong> in inlining data into <em>one</em> file — Evidence, Observable Framework, and marimo all
+deliberately split data into HTTP-fetched assets (caching/lazy-load). We forgo browser caching for
+portability; a fair trade for an emailable receipt.</p>
+<p><strong>Real risks (design around, not blockers):</strong>
+- <strong>Mobile Safari memory</strong> — decoded columns materialize in RAM (~100–200MB at 2M rows), and WASM
+  memory plateaus at its high-water mark. The grain contract (§6) is the governor; mobile needs
+  explicit testing.
+- <strong>Interaction latency</strong> — a full rescan per brush is &gt;100ms. Mitigate with the worker (perceived
+  responsiveness) and, for continuous brushing, precomputed bins (§6).</p>
+<hr>
+<h2 id="5-rendering-the-result-vanilla-small-by-default-virtualized-when-not">5. Rendering the result — vanilla, small by default, virtualized when not</h2>
+<p>The artifact runtime is vanilla <code>tracebi.js</code>, <strong>not React</strong> — but "aggregate-first" does <strong>not</strong>
+guarantee a small <em>output</em>: a high-cardinality group-by ("revenue by customer" over millions of
+customers) or a <strong>filtered detail view</strong> (the core of the "hold detail + filter" premise) can return
+tens of thousands to millions of rows. So:</p>
+<ul>
+<li><strong>Charts</strong>: <strong>ECharts</strong> (canvas, already vendored) — TanStack is a tabular/list tool, not a charting
+  library, so it plays no part here.</li>
+<li><strong>Tables ≤ ~10 rows</strong>: render inline, no scroll box.</li>
+<li><strong>Tables &gt; ~10 rows (configurable): one fixed-height, scrollable table component</strong>, backed by
+  <strong><code>@tanstack/virtual-core</code></strong> — framework-agnostic (zero deps, no React; a few KB), drops into vanilla
+  <code>tracebi.js</code>. It's headless: it hands back visible row indices + offsets and <code>tracebi.js</code> renders the
+  <code>&lt;tr&gt;</code>s. The <em>same</em> component serves 11 rows and 900k rows with identical UX — at 11 it renders all 11
+  and scrolls; at scale it renders only the ~visible window. No small-vs-large code fork. Pairs with the
+  worker (worker returns the result, virtual-core windows the DOM).</li>
+<li><strong>Print / no-JS / screen-reader</strong>: <strong>expand to the full set</strong> — print CSS unsets <code>max-height</code>, the
+  runtime renders all rows (or the SSR'd full slice) — so the numbers stay real, verifiable text on
+  paper and offline. Compact scroll box on screen; linearized full table on print.</li>
+</ul>
+<p><strong>Why DOM virtualization, not a canvas grid (Glide/Perspective):</strong> <code>virtual-core</code> keeps <strong>semantic
+DOM</strong> — the numbers stay real text, so they <strong>print, are screen-reader accessible, and server-render</strong>
+for the no-JS/receipt story. A canvas grid's cells are <em>pixels</em> — no print, no a11y, no SSR — which
+breaks the "the number in the file is real, verifiable text" property the receipt depends on. DOM
+virtualization caps ~650k–930k rows (browser scroll-pixel ceiling); past that, paginate or cap. Reach
+for a canvas grid (Glide) or FINOS Perspective only if a raw multi-million-row grid ever becomes the
+deliverable — explicitly outside this design, and in tension with the receipt.</p>
+<p>No WebGL/deck.gl (that's for 1M+ individual marks, which an aggregated BI artifact never draws).</p>
+<hr>
+<h2 id="6-trust-core-orthogonal-to-the-engine-but-this-is-where-the-care-goes">6. Trust core (orthogonal to the engine, but this is where the care goes)</h2>
+<ol>
+<li><strong>Content-hash fingerprint (fingerprint_algo v-next). — DE-RISKED (Phase-2 spike).</strong> Parquet bytes
+   are <strong>not reproducible</strong> (writer version, row-group layout, codec details vary), so we cannot hash
+   the blob. Hash a <strong>format-independent canonical content digest</strong>: SHA-256 over column names +
+   per-column canonical serialization of values <strong>in row order</strong> (row order is preserved across
+   writers — do NOT sort). Serialize <strong>by declared type</strong>: <code>Decimal</code>→exact <code>str</code> (money-safe),
+   float→shortest-round-trip <code>repr</code> normalizing <code>-0.0</code>→<code>0.0</code> and NaN, int→<code>str</code>, date/ts→ISO instant
+   (tz-normalized), null→sentinel. <strong>Proven format-independent</strong>: one hash across 5 Parquet
+   encodings/writers while raw bytes differ; verify recomputes it from the decoded data. Storage
+   (Parquet) is transport; the receipt is over content, so storage can change later without orphaning
+   a receipt. <strong>Money decision resolved:</strong> no float-vs-decimal fork — a <code>DECIMAL</code> column round-trips
+   exact, so preserving declared types is sufficient (the connector already protects Decimal on write).</li>
+<li><strong>Server-render the default (unfiltered) figure values</strong> at build time, so numbers are legible with
+   JS off (email/print/screen-reader). The worker engine hydrates only for filtering/drill.</li>
+<li><strong><code>verify</code> re-runs the aggregations</strong> against the embedded Parquet — a <em>stronger</em> receipt than
+   today: it can prove a KPI equals <code>SUM(...)</code> over the shipped detail, not just re-hash a pre-agg
+   result. Two tiers: integrity (hash the embedded content, no deps) and reproduction (re-run queries,
+   needs a Parquet engine — Python <code>verify</code> already has DuckDB).</li>
+<li><strong>Filter-grain contract</strong> — the size + memory governor <em>and</em> an honesty guarantee: embed at the
+   <strong>coarsest grain that still contains every declared control's column</strong>; a control over a missing
+   column is a <strong>build error</strong>. This is Tableau's row-level-vs-aggregated-extract rule, made
+   mechanical. For continuous brushing, extend it to <strong>precompute the bins the controls brush over</strong>
+   (Falcon/Mosaic data-cube pattern).</li>
+</ol>
+<hr>
+<h2 id="7-open-decisions-to-lock-at-kickoff">7. Open decisions to lock at kickoff</h2>
+<ul>
+<li>~~<strong>Money/decimal serialization</strong> in the content hash~~ — <strong>RESOLVED</strong> (Phase-2 spike): no
+  float-vs-decimal fork; serialize by declared type (Decimal exact, float via canonical repr). See §6.1.</li>
+<li><strong><code>fingerprint_algo</code> / <code>ARTIFACT_MANIFEST_SCHEMA_VERSION</code> sequencing</strong> — this change wants a bump;
+  coordinate with the other pending v3 wants (time-intelligence, governed-figures) so the
+  <code>refused_newer_schema</code> forward-compat gate isn't undermined.</li>
+<li><strong>Does author <code>script.js</code> run in the receipted lane</strong> once the engine is client-side? (The red-team
+  laundering question — badge/docs language must not overclaim while page scripting is unprovable.)</li>
+<li><strong>Brushing scope for v1</strong> — click-to-filter (worker + ~0.5s, ship first) vs continuous brushing
+  (needs precomputed bins, later).</li>
+</ul>
+<hr>
+<h2 id="8-implementation-plan-sequenced">8. Implementation plan (sequenced)</h2>
+<p><strong>Phase 0 — Lock the receipt decisions.</strong> Content-hash algo design + money/decimal call +
+schema-version sequencing. Gates everything; one-time.</p>
+<p><strong>Phase 1 — End-to-end prototype (scratch, de-risk).</strong> Parquet embed + parquet-wasm + Arquero <strong>in a
+blob-URL worker</strong> + one live filter + SSR'd default values + a <code>verify</code> re-run. Measure <em>perceived</em>
+latency (not just query time) and mobile memory. Decide brushing scope from real numbers.</p>
+<p><strong>Phase 2 — Content-hash fingerprint</strong> in the Python build + <code>verify</code> (the v-next algo), behind the
+schema-version bump. Re-pin the fingerprint corpus.</p>
+<p><strong>Phase 3 — Columnar embed + worker runtime in the artifact build.</strong> Vendor parquet-wasm + Arquero +
+flechette (self-contained, offline, provenance/NOTICE like ECharts). Emit Parquet instead of CSV;
+build the worker; keep strict CSP.</p>
+<p><strong>Phase 4 — Filter-grain contract + interactive controls</strong> wired to the worker engine (build-time
+grain check → build error on a control the grain can't back).</p>
+<p><strong>Phase 5 — No-JS / print legibility</strong> — SSR default values + print receipt appendix (also fixes the
+artifact-last-mile "blank verified numbers" finding).</p>
+<p><strong>Phase 6 (optional/later) — Precomputed bins/cubes</strong> for continuous brushing; hyparquet-columnar
+re-benchmark to maybe shed parquet-wasm's WASM.</p>
+<p><strong>Cross-cutting gates (execution charter):</strong> full suite green on both pandas majors before every push;
+receipts-monotonicity + showcase + agent-guides drift tests as hard gates; the discoverability trio
+(vocabulary + scaffold + both guides) for any new authoring surface; browser drills incl. <code>file://</code>
+open and mobile; NOTICE/SBOM for the new WASM deps.</p>
+<hr>
+<h2 id="9-phase-1-prototype-results-proven">9. Phase 1 prototype — results (proven)</h2>
+<p>A scratch end-to-end prototype was built and measured (in-app Chromium). All core bets held,
+and it surfaced one decision-grade finding.</p>
+<p><strong>Proven:</strong>
+- <strong>Self-contained + offline.</strong> A single <code>artifact.html</code> (11.7 MB) with the engine, data, and
+  worker all inlined ran with <strong>zero network</strong> — the network log showed only the document itself
+  plus an in-memory <code>blob:</code> worker; no fetch of the wasm, Parquet, worker, ECharts, or engine. It
+  opens identically offline / from <code>file://</code>.
+- <strong>The full loop works:</strong> embedded Parquet → blob-URL Web Worker → parquet-wasm decode → Arquero
+  query → ECharts + a <code>virtual-core</code> fixed-height virtualized table.
+- <strong>The worker offloads the freeze:</strong> running the same query on the main thread froze the UI for
+  the query's full duration; in the worker the main thread stayed responsive.</p>
+<p><strong>The decision-grade finding — the grain contract is the performance foundation, not a nicety:</strong>
+- Over <strong>raw 2M rows</strong>, Arquero is too slow for interactive filtering: the <em>filter alone</em> is
+  ~1.8 s and each rollup ~1–2.7 s → a realistic multi-figure query is <strong>~4 s</strong>.
+- Pre-aggregating to the <strong>control grain</strong> (segment × region × product = <strong>6,000 rows</strong>) is a
+  <strong>one-time ~2.9 s build step</strong> (in Python/DuckDB) after which interactive queries are <strong>1–2 ms</strong>
+  — ~2000× faster — and the embedded data is <strong>50 KB</strong> instead of 8.4 MB.
+- So: <strong>never embed raw millions for interactive filtering; embed at the control grain.</strong> This is
+  exactly what §6's filter-grain contract enforces, and it simultaneously governs size, memory,
+  and latency. It also settles the engine debate: at grain scale Arquero is instant, so
+  parquet-wasm + Arquero is more than sufficient and DuckDB's raw-scan speed is moot.</p>
+<p><strong>Refinements to bank:</strong>
+- <strong>Engine floor ≈ 9–12 MB</strong> (the parquet-wasm wasm base64-inlined dominates); data is negligible
+  once grain-contracted. The KPI-floor number in §2 (~3 MB) assumes the read-only-no-codecs
+  parquet-wasm build + gzip-inlining; the prototype used the full 6.5 MB wasm raw-base64 → 11.7 MB.
+  Confirm the smaller build + gzip-inline path in Phase 3 to hit the ~3 MB floor.
+- <strong>Measuring perceived latency needs a foreground browser</strong> — a backgrounded/automated tab
+  throttles <code>requestAnimationFrame</code> (ECharts won't paint) and clamps timers to ~1 s (inflates any
+  freeze metric). Decomposed main-thread timing gave the clean numbers; re-measure perceived
+  latency on a real foreground browser (and mobile Safari) before finalizing.</p>
+<h2 id="10-future-tier-parked-raw-scan-explorable-data-app">10. Future tier (PARKED) — raw-scan "explorable data app"</h2>
+<p>Not being built now; documented so the door stays open. The grain contract is the <em>default</em>, not a
+ceiling. When a report genuinely needs to <strong>scan/pivot millions of raw records</strong> (Tableau-class ad-hoc
+exploration, not pre-declared aggregates), it becomes a deliberate <strong>opt-in heavy tier</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Engine</th>
+<th>Data</th>
+<th>Feels like</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Governed dashboard</strong> (default, built)</td>
+<td>parquet-wasm + Arquero</td>
+<td>grain-contracted</td>
+<td>instant, emailable</td>
+<td>~3–12 MB</td>
+</tr>
+<tr>
+<td><strong>Explorable data app</strong> (parked)</td>
+<td>DuckDB-WASM</td>
+<td>raw detail</td>
+<td>Tableau-class scan/pivot</td>
+<td>~34 MB + data</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Engine:</strong> DuckDB-WASM is the one that genuinely does it — HF's SQL Console filters 12.6M raw rows
+  in &lt;3s client-side; ceiling ~100M rows / 4GB, which <em>exceeds</em> Tableau Public's 15M/1GB. Arquero
+  can't (Phase-1: ~4s over raw 2M). This is the "reserve DuckDB" case from §2, now given a name.</li>
+<li><strong>Costs:</strong> ~34MB engine (every such file; it's a "download the data app," not an email attachment),
+  hundreds-of-MB–GB tab memory, low-tens-of-millions-row ceiling.</li>
+<li><strong>The reason it's worth it (and beyond a BI tool):</strong> fingerprint the embedded <strong>raw</strong> detail and
+  <strong>every number a reader derives by exploring is verifiable against the sealed raw</strong> — an explorable
+  AND tamper-evident dataset. No incumbent (Tableau/Qlik) ships that. This is the strongest form of the
+  receipt story, not a compromise of it. Mirrors Tableau's aggregated-vs-row-level extract distinction.</li>
+<li><strong>Can be hybrid in one file:</strong> grain for instant dashboards + raw detail for drill-through, DuckDB
+  scanning the raw only on a deliberate explore action.</li>
+<li><strong>The one unverified assumption blocking it:</strong> whether DuckDB-WASM runs in a <em>self-contained offline</em>
+  file (<code>file://</code>, inlined wasm, blob worker, single-threaded, no COOP/COEP). The plan earlier <em>assumed</em>
+  it's file://-hostile — that was a guess, not a test. The inline-wasm + blob-worker pattern proven for
+  parquet-wasm in Phase 1 may well carry single-threaded DuckDB too. <strong>A ~half-day spike settles it</strong>;
+  do that first if/when this tier is pursued.</li>
+</ul>
+<h2 id="appendix-key-sources-20242025">Appendix — key sources (2024–2025)</h2>
+<ul>
+<li>HF SQL Console (DuckDB-WASM client-side, 12.6M rows &lt;3s): https://huggingface.co/blog/sql-console</li>
+<li>Mosaic / 18M points in-browser: https://motherduck.com/case-studies/dominik-moritz/ ; https://github.com/uwdata/mosaic</li>
+<li>Mosaic Selections paper (~100M-row / 4GB ceiling, data cubes): https://arxiv.org/html/2507.19690v1</li>
+<li>DuckDB-WASM COOP/COEP + single-thread: https://duckdb.org/2021/10/29/duckdb-wasm</li>
+<li>parquet-wasm sizes/adoption: https://github.com/kylebarron/parquet-wasm ; https://developmentseed.org/lonboard/</li>
+<li>Arquero + flechette: https://github.com/uwdata/arquero ; https://github.com/uwdata/flechette</li>
+<li>Perspective (ex-JPMorgan, FINOS): https://perspective.finos.org/</li>
+<li>V8 string cap / self-contained limits: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length</li>
+<li>Retool "keep what React holds small": https://docs.retool.com/apps/guides/data/table/pagination</li>
+</ul>
+<hr>
+<h2 id="11-how-the-implementation-diverged-from-this-plan">11. How the implementation diverged from this plan</h2>
+<p>Two adversarial reviews (38 then 27 confirmed findings) changed three things:</p>
+<ol>
+<li><strong>pyarrow, not DuckDB, does the Parquet round-trip.</strong> The receipt depends on a frame
+   coming back <em>exactly</em> as it went in, and that is a property of the writer. DuckDB maps
+   Parquet through its own SQL types and rewrote tz-aware timestamps into the READER's
+   local zone — so the same untouched artifact verified INTACT in New York and ALTERED in
+   London. pyarrow preserves far more, but not everything.</li>
+<li><strong>The format choice PROVES the round-trip instead of trusting a dtype list.</strong>
+   Three separate attempts to enumerate "safe" dtypes each missed cases (non-string
+   categoricals, object columns of non-strings, <code>datetime64[s]</code>, differing Decimal scales).
+   <code>choose_embed_format</code> now encodes, decodes and re-fingerprints the actual data, and
+   falls back to CSV unless the receipt demonstrably survives — correct by construction,
+   including for dtypes nobody has thought of yet.</li>
+<li><strong>Parquet also requires types the BROWSER renders identically.</strong> The receipt survives
+   more types than the display does: Arrow hands the worker a Decimal as an unscaled
+   integer, a tz-aware timestamp with the zone dropped, a timedelta as raw nanoseconds.
+   Reproducing pandas' formatting in JS for every such type is the same losing game, so
+   those types keep the CSV transport. Only numbers, booleans, strings and naive datetimes
+   take the Parquet path.</li>
+</ol>
+<p>The net effect is that Parquet is used <strong>less often than this plan assumed</strong> — and always
+provably, never hopefully.</p>
+<ol start="4">
+<li>
+<p><strong>(Final architecture.) The Parquet receipt hashes the SHIPPED bytes — nothing is ever
+   re-derived.</strong> A third review proved re-derivation is unfixable in principle: pandas'
+   <code>to_csv</code> line terminator follows the <em>host's</em> <code>os.linesep</code>, so a Windows-built artifact
+   read FILE ALTERED on Linux — and no build-time check can see cross-machine drift, because
+   build-time checks run on one machine. The manifest now records <code>payload_sha256</code> (SHA-256
+   of the exact embedded Parquet bytes, from the ONE encoding that also produced the page
+   block — <code>EmbedPlan</code>), and <code>verify --file</code> re-hashes the shipped bytes: byte-exact,
+   host-independent, and dependency-free (no Parquet reader needed to verify). This REVERSED
+   divergence #2's narrowing: with the receipt no longer hostage to Parquet's type mapping,
+   the round-trip gate was deleted and formerly excluded dtypes (non-string categoricals,
+   object-of-scalars, any datetime unit) take the Parquet transport freely. The only
+   remaining gate is display parity (<code>_renders_identically</code>): types the browser engine
+   cannot yet render exactly as pandas spells them (tz-aware, sub-second, timedelta,
+   Decimal, mixed-object) stay on CSV — a display concern, not a trust one.</p>
+</li>
+<li>
+<p><strong>A Parquet artifact has WEAKER display verification than CSV, by deliberate scope.</strong> For a
+   CSV artifact the embedded bytes hash to <code>embedded_sha256</code>, which is also the section
+   <code>dataset_fingerprint</code> that <code>verify_manifest</code> reproduces — so offline file-integrity and
+   model-side reproduction pin the <em>same</em> value and compose into a display↔query tie for free.
+   A Parquet block is hashed by a separate <code>payload_sha256</code>, which reproduction does not
+   reproduce, so <code>verify --file</code> on a Parquet artifact is tamper-evidence only: it proves the
+   file was not edited after render relative to its manifest, but a payload swapped <strong>at build</strong>
+   for different numbers (with <code>payload_sha256</code> updated to match and <code>embedded_sha256</code> left
+   honest) passes it — exactly as a CSV author-forgery would.</p>
+</li>
+</ol>
+<p><strong>What is NOT shipped, and why.</strong> A model-bearing tie was prototyped — decode each Parquet
+   payload at verify time and compare to the re-run result — but closing it soundly requires the
+   verifier to determine <em>which block a browser renders for each figure</em>, i.e. to parse the page
+   byte-for-byte as a browser's HTML5 parser + runtime does. Python's <code>html.parser</code> is not that,
+   and successive adversarial reviews each found a new parser/selection divergence an attacker
+   could exploit (attribute order, an escaped <code>"parquet"</code> token, a duplicated <code>id</code> attribute, …).
+   That is a browser-grade problem, not a patch, so the tie is intentionally <strong>deferred</strong>: doing
+   it right needs a spec-compliant HTML5 parser (e.g. html5lib) or a headless-browser oracle, as
+   its own design pass. <strong>Guidance:</strong> use a CSV artifact where the display↔query tie matters
+   (small/medium reports, the common case); use a Parquet artifact for large detail, where
+   <code>verify --file</code> gives tamper-evidence and the model-side <code>verify</code> still proves every query
+   reproduces.</p>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

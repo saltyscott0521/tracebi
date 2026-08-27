@@ -17,9 +17,28 @@ Just open `index.html`, or serve the folder:
 cd site && python3 -m http.server 8899   # → http://localhost:8899
 ```
 
-No build step — a single self-contained `index.html` (styles inline, fonts from
-Google Fonts, one small script for the live receipt + theme toggle). It works
-in both light and dark, following the visitor's system theme.
+The landing page is a single self-contained `index.html` (styles inline, fonts
+from Google Fonts, one small script for the live receipt + theme toggle). It
+works in both light and dark, following the visitor's system theme.
+
+## The docs site (`site/docs/`)
+
+`/docs/` is generated from the `docs/` vault at the repo root — that markdown
+is the single source, shared with Obsidian and the app's own Docs page.
+
+```bash
+python site/build_docs.py     # docs/*.md → site/docs/*.html
+```
+
+**Run this whenever you edit `docs/`.** The output is committed on purpose, so
+the site still deploys with no build step; the price is that it can go stale,
+which is why `tests/test_docs_site.py` regenerates it in CI and fails if the
+result differs from what is checked in. The failure names the fix.
+
+The generator takes the palette and the favicon out of `index.html` rather than
+keeping a second copy, so the docs site cannot drift into a different blue than
+the landing page. Internal documents (`north-star.md`, `ROADMAP.md`) are never
+published, and a test asserts the positioning doc never appears.
 
 ## Deploy
 

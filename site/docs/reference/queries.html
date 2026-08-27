@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Queries — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="This is the distinction that quietly ruins totals if you get it backwards:">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a class="on" href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="queries">Queries</h1>
+<p><strong>What a report may ask a <a href="../concepts/model.html">Model — phase ②</a>: measures, dimensions, filters, <code>having</code>,
+ordering, limits — as data, not SQL.</strong></p>
+<p>A query is a <code>QuerySpec</code>: validatable, serializable, diffable in a pull request,
+and replayable. That is what lets <a href="../concepts/receipts.html">tracebi verify</a> re-run it later.</p>
+<hr>
+<h2 id="the-shape">The shape</h2>
+<pre><code class="language-python">model.query(
+    fact,                 # required — a registered fact
+    measures,             # required — declared names, or {out_col: spec}
+    dimensions=None,      # [&quot;dim_name.attribute&quot;, ...]; None = totals only
+    filters=None,         # WHERE  — before aggregation
+    having=None,          # HAVING — after aggregation
+    aggregate=True,
+    allow_fanout=False,
+    allow_rate_agg=False,
+    order_by=None,
+    limit=None,
+)
+</code></pre>
+<p>The same thing as JSON, which is what a <a href="../reference/report-json.html">report.json</a> binding holds:</p>
+<pre><code class="language-json">{
+  &quot;fact&quot;: &quot;fact_orders&quot;,
+  &quot;measures&quot;: [&quot;revenue&quot;, &quot;margin_pct&quot;],
+  &quot;dimensions&quot;: [&quot;dim_customer.region&quot;],
+  &quot;filters&quot;: {&quot;status&quot;: &quot;shipped&quot;},
+  &quot;having&quot;: {&quot;revenue&quot;: {&quot;gte&quot;: 250}},
+  &quot;order_by&quot;: [{&quot;column&quot;: &quot;revenue&quot;, &quot;desc&quot;: true}],
+  &quot;limit&quot;: 10
+}
+</code></pre>
+<p>Unknown fields are rejected by name.</p>
+<h2 id="measures">Measures</h2>
+<p><strong>By declared name</strong> — the governed form:</p>
+<pre><code class="language-python">measures=[&quot;revenue&quot;, &quot;gross_margin&quot;, &quot;margin_pct&quot;]
+</code></pre>
+<p><strong>Ad hoc</strong>, when the model hasn't declared it yet — the same three kinds:</p>
+<pre><code class="language-python">measures={
+    &quot;revenue&quot;:    &quot;sum&quot;,                                    # aggregate a column
+    &quot;units&quot;:      (&quot;qty&quot;, &quot;sum&quot;),                           # aggregate a renamed column
+    &quot;margin&quot;:     {&quot;expr&quot;: &quot;revenue - cost&quot;, &quot;agg&quot;: &quot;sum&quot;}, # a row expression
+    &quot;margin_pct&quot;: {&quot;ratio&quot;: [&quot;margin&quot;, &quot;revenue&quot;]},         # divided AFTER aggregation
+}
+</code></pre>
+<p>An undeclared name in the list form is refused, and tells you both fixes:
+declare it with <code>add_measure()</code>, or pass the ad-hoc form.</p>
+<h2 id="dimensions">Dimensions</h2>
+<p>Dotted references — <code>"dim_name.attribute"</code>. Attributes include declared ones
+plus derived <a href="../reference/measures.html">time grains</a>
+and <a href="../reference/measures.html">value bins</a>.</p>
+<p>Omit them for totals only.</p>
+<hr>
+<h2 id="filters-where-before-aggregation">Filters — <code>WHERE</code>, before aggregation</h2>
+<h3 id="operators">Operators</h3>
+<pre><code>eq  ne  in  not_in  gt  gte  lt  lte  between  is_null  not_null  contains
+</code></pre>
+<p>A <strong>closed set</strong>, deliberately: free SQL cannot be validated and is an injection
+surface. Every operator is parameterised.</p>
+<ul>
+<li><code>between</code> takes <code>[low, high]</code></li>
+<li><code>in</code> / <code>not_in</code> take a list — an empty list matches nothing / everything,
+  explicitly</li>
+<li><code>contains</code> is a substring match</li>
+<li><code>is_null</code> / <code>not_null</code> ignore the value</li>
+</ul>
+<h3 id="the-five-forms">The five forms</h3>
+<pre><code class="language-python">filters={&quot;status&quot;: &quot;shipped&quot;}                    # 1. equality
+filters={&quot;region&quot;: [&quot;NE&quot;, &quot;SE&quot;]}                 # 2. list → in
+filters={&quot;revenue&quot;: {&quot;gte&quot;: 1000}}               # 3. explicit operator
+filters={&quot;dim_customer.region&quot;: &quot;West&quot;}          # 4. dimension attribute
+filters={&quot;or&quot;: [{&quot;sector&quot;: &quot;Tech&quot;},              # 5. boolean group
+                {&quot;rating&quot;: &quot;AAA&quot;}]}
+</code></pre>
+<p>A dimension referenced only by a filter is still joined.</p>
+<h3 id="boolean-groups">Boolean groups</h3>
+<p><code>or</code> and <code>and</code> are reserved keys taking a list of condition groups. <strong>Every
+other key in the same dict ANDs with the group</strong>, and groups nest:</p>
+<pre><code class="language-python">filters={
+    &quot;status&quot;: &quot;shipped&quot;,                      # AND-ed with the group below
+    &quot;or&quot;: [
+        {&quot;dim_customer.segment&quot;: &quot;Enterprise&quot;},
+        {&quot;revenue&quot;: {&quot;gte&quot;: 10_000}},
+        {&quot;and&quot;: [                             # groups nest
+            {&quot;dim_customer.region&quot;: [&quot;NE&quot;, &quot;SE&quot;]},
+            {&quot;qty&quot;: {&quot;gt&quot;: 100}},
+        ]},
+    ],
+}
+# WHERE status = 'shipped'
+#   AND (segment = 'Enterprise' OR revenue &gt;= 10000
+#        OR (region IN ('NE','SE') AND qty &gt; 100))
+</code></pre>
+<p>Use <code>in</code> for OR over <strong>one column's values</strong>; use <code>or</code> for OR across
+<strong>different columns or operators</strong>.</p>
+<hr>
+<h2 id="having-after-aggregation"><code>having</code> — after aggregation</h2>
+<p><strong>This is the distinction that quietly ruins totals if you get it backwards:</strong></p>
+<pre><code class="language-python">having={&quot;revenue&quot;: {&quot;gte&quot;: 250}}    # keeps GROUPS whose summed revenue ≥ 250 — totals intact
+filters={&quot;revenue&quot;: {&quot;gte&quot;: 250}}   # drops raw ROWS below 250 BEFORE summing — every total changes
+</code></pre>
+<p>Same operators and value spellings as filters, on <strong>result</strong> columns — measure
+names, ratios, shares, ranks, running totals, growth. It runs after every
+post-aggregation measure is computed, which is exactly why it can filter them.</p>
+<p>Two limits worth knowing:</p>
+<ul>
+<li><strong>No boolean grouping.</strong> <code>having</code> is a flat dict; every entry ANDs. Only
+  <code>filters</code> supports <code>or</code>/<code>and</code>.</li>
+<li>Refused with <code>aggregate=False</code> — there are no group totals to filter.</li>
+</ul>
+<hr>
+<h2 id="ordering-and-limit">Ordering and limit</h2>
+<pre><code class="language-python">order_by=[&quot;-revenue&quot;]                            # '-col' desc, 'col' asc
+order_by=[{&quot;column&quot;: &quot;revenue&quot;, &quot;desc&quot;: True}]   # canonical form
+order_by=[&quot;dim_customer.region&quot;, &quot;-revenue&quot;]     # earlier keys sort first
+</code></pre>
+<p>A lone key (<code>"-revenue"</code>, or a single dict) is accepted and wrapped — otherwise
+a bare string would iterate as characters and fail at a character. The canonical
+form is a list.</p>
+<p>Keys may be any <strong>result</strong> column, measures included.</p>
+<h3 id="limit-requires-order_by"><code>limit</code> requires <code>order_by</code></h3>
+<pre><code class="language-python">limit=10                       # REFUSED on its own
+order_by=[&quot;-revenue&quot;], limit=10  # correct
+</code></pre>
+<blockquote>
+<p><em>"without a stated ordering, 'first N rows' silently masquerades as 'top N'."</em></p>
+</blockquote>
+<h3 id="ties-break-deterministically">Ties break deterministically</h3>
+<p>After your stated keys, <strong>every remaining column</strong> is appended as an ascending
+tie-break — the dimension columns first, then the measures — so the sort key
+uniquely orders every row.</p>
+<p>Without this, a "top 10" whose values tie at the boundary returns a different
+set across identical runs, and the fingerprint moves for no reason.</p>
+<p>The fully resolved ordering is stamped into the recorded query, so a replay
+compares like with like. A non-aggregate query with no <code>order_by</code> gets a
+canonical total order imposed for the same reason.</p>
+<hr>
+<h2 id="a-complete-query">A complete query</h2>
+<pre><code class="language-python">top_segments = model.query(
+    fact=&quot;fact_orders&quot;,
+    measures=[&quot;revenue&quot;, &quot;gross_margin&quot;, &quot;margin_pct&quot;,
+              &quot;rev_rank&quot;, &quot;revenue_share&quot;, &quot;cum_share&quot;],
+    dimensions=[&quot;dim_customer.region&quot;, &quot;dim_customer.segment&quot;],
+    filters={
+        &quot;status&quot;: &quot;shipped&quot;,
+        &quot;or&quot;: [{&quot;dim_customer.region&quot;: [&quot;NE&quot;, &quot;SE&quot;]},
+               {&quot;revenue&quot;: {&quot;gte&quot;: 10_000}}],
+    },
+    having={&quot;revenue&quot;: {&quot;gte&quot;: 250}},
+    order_by=[&quot;-revenue&quot;],
+    limit=10,
+)
+
+top_segments.print_lineage()   # load → join → filter → aggregate → assign → filter → sort
+top_segments.fingerprint()     # reproducible content hash
+</code></pre>
+<p>Returns a <code>DataSet</code> with full <a href="../concepts/lineage.html">Lineage</a> — hand it to a report section and the
+lineage travels into the manifest.</p>
+<h2 id="order-of-operations">Order of operations</h2>
+<p>Worth knowing, because it explains what <code>having</code> can filter and what <code>share</code>
+and <code>running</code> are computed over:</p>
+<pre><code>engine aggregation → ratios → shares → windows (rank/running)
+  → period-over-period → to-date → having → order_by → limit
+</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/measures.html">Measures</a> — what you can ask for</li>
+<li><a href="../reference/report-json.html">report.json</a> — where a query lives in a report</li>
+<li><a href="../concepts/model.html">Model — phase ②</a> — what answers it</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

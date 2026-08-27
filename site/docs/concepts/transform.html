@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Transform — phase ① — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Transform — phase ①">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a class="on" href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="transform-phase-1">Transform — phase ①</h1>
+<p><strong>Unconstrained pandas that ends by landing clean star-schema tables in the
+warehouse.</strong></p>
+<p>Lives in <code>transforms/</code>. This is the one phase the framework does not constrain.</p>
+<hr>
+<h2 id="the-contract">The contract</h2>
+<p>The contract is <strong>not how you clean</strong>. Window functions, prose parsing, fuzzy
+dedupe, three APIs and a spreadsheet — whatever the data needs.</p>
+<p>The contract is <strong>what lands</strong>: the named tables at the end of the script.</p>
+<pre><code class="language-python">from tracebi import DuckDBConnector
+
+# … whatever pandas the data needs …
+
+DuckDBConnector(&quot;warehouse&quot;, database=WAREHOUSE).write(dim_issuer, &quot;dim_issuer&quot;)
+DuckDBConnector(&quot;warehouse&quot;, database=WAREHOUSE).write(fact_holdings, &quot;fact_holdings&quot;)
+</code></pre>
+<p>Those table names are the <a href="../concepts/freeze-points.html">freeze point</a>. Nothing downstream
+imports this file.</p>
+<h2 id="notebook-shaped-by-default">Notebook-shaped by default</h2>
+<p>Scaffolded transforms use <code># %%</code> percent cells with <code># %% [markdown]</code> prose, so
+every notebook editor — VS Code, Cursor, PyCharm, Jupyter via jupytext — opens
+the file <strong>as a notebook</strong>: collapse cells, run cell by cell, markdown beside
+code.</p>
+<p>It stays plain, reviewable Python that runs top to bottom.</p>
+<p>Literal <code>.ipynb</code> transforms work too. Either form runs the same way:</p>
+<pre><code class="language-bash">tracebi run-transform holdings
+</code></pre>
+<p>which executes it <strong>top to bottom in a fresh namespace</strong> — the sink never comes
+from out-of-order kernel state.</p>
+<h2 id="keep-it-idempotent">Keep it idempotent</h2>
+<p>A rerun replaces the warehouse tables rather than appending. This is what makes
+refreshing a <a href="../concepts/freeze-points.html">freeze point</a> safe to do at any time.</p>
+<h2 id="declare-a-sink-contract">Declare a sink contract</h2>
+<p>After the writes, state what the tables must satisfy:</p>
+<pre><code class="language-python">with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
+    c.rows(&quot;fact_holdings&quot;, min=1)
+    c.not_null(&quot;fact_holdings&quot;, &quot;issuer_id&quot;)
+    c.foreign_key(&quot;fact_holdings&quot;, &quot;issuer_id&quot;, &quot;dim_issuer&quot;, &quot;issuer_id&quot;)
+</code></pre>
+<p>A failed check raises at sink time. Success records a certificate the report
+manifests join against. See <a href="../concepts/sink-contracts.html">Sink contracts</a>.</p>
+<h2 id="what-this-phase-is-not">What this phase is <em>not</em></h2>
+<p>Lineage is <strong>not</strong> traced through this code, deliberately. The trust boundary
+starts at the sink — see <a href="../concepts/receipts.html">Receipts</a> and
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</p>
+<p>Phase ① is trusted the way you trust reviewed code in git.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — checks at the boundary</li>
+<li><a href="../concepts/model.html">Model — phase ②</a> — what reads the tables you land</li>
+<li><a href="../reference/cli.html">CLI reference</a> — <code>tracebi new-transform</code>, <code>tracebi run-transform</code></li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

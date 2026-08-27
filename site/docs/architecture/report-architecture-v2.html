@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Report Architecture v2 — the one-lane reshape — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Rules (all build-enforced):">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a class="on" href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="report-architecture-v2-the-one-lane-reshape">Report Architecture v2 — the one-lane reshape</h1>
+<blockquote>
+<p>Supersedes <a href="report-generator-architecture.md">report-generator-architecture.md</a>
+(the two-lane build). That document is kept as the historical record and the
+reference for <em>why the kernel is shaped this way</em> — the safe embedder, the CSP,
+the receipt semantics, and the ECharts layer it describes survived verbatim
+into the code. This document is the current architecture.</p>
+</blockquote>
+<p>Status: <strong>decided</strong>. This document is the build plan. Inputs: <code>reshape-decisions.md</code> (locked owner direction), the AltsVault field notes, three candidate designs, and three judge verdicts. The skeleton is the <em>artifact-first</em> design (selected by two of three judges); mechanisms from <em>loop-first</em> and <em>presentation-first</em> flagged as graft-worthy are incorporated as decisions, not options, and every fatal flaw raised by any judge is resolved by name in §6.</p>
+<hr>
+<h2 id="1-decision-summary">1. Decision summary</h2>
+<p><strong>What changes:</strong> TraceBi collapses to one report lane. A report is a directory under <code>reports/</code> — the existing template package, promoted — containing free agent-authored HTML/CSS/JS plus a <code>report.json</code> of stamped data bindings. Verification becomes a property of each <strong>figure</strong> (a DOM element declaring which binding feeds it), not of which folder the file lives in. The <code>requests/</code> lane was removed (0.8); JSON specs survive as a serialization that compiles into the same artifact; the section enum becomes a component vocabulary, not renderer control flow.</p>
+<p><strong>The trust contract, restated per-figure:</strong> every element that displays data either names a stamped binding (resolved query + lineage + SHA-256, embedded as fingerprinted bytes — the existing <code>embed.py</code> kernel, untouched) or carries an explicit <code>data-tb-unverified</code> mark that is recorded in the manifest and badged on the page. A figure with neither <strong>fails the build</strong>. There is no fourth state, and no silent third one. <code>report.py</code> remains the escape hatch; its outputs are stamped <code>verifiable: false</code> per binding — never per package — and never read green.</p>
+<p><strong>Why:</strong> the field notes showed the two-lane split forces a rewrite at the exploration→governed boundary, so exploration gets skipped and specs get written cold; meanwhile the governed lane's most-read numbers (metric KPIs) carried no receipt at all while <code>verify</code> printed "REPRODUCES", the binding grammar couldn't express "top 10", the REST surface couldn't reach declared measures, and the themed lane was the un-governed one. The reshape fixes all of these structurally rather than patching them: one artifact that starts unverified and <em>earns</em> its receipt figure by figure, one binding grammar across Python/spec/REST/MCP, one presentation stack that defaults well and lets agent CSS/JS win by cascade order, and transform contracts that extend the receipt to phase ① with honest wording ("the sink satisfied its contract," never "the pandas was verified").</p>
+<p><strong>What does not change:</strong> the stamping kernel (<code>embed.py</code> entire), <code>frame_fingerprint</code> as the one algorithm, manifest-first ordering, the CSP and self-contained single-file guarantee, <code>verifiable: false</code> never-green, presentation defaults never changing a number, the MCP gateway's no-write-to-warehouse rule, the registry contract (a report is a name plus a zero-arg factory resolving models at call time), the router import paths (the <code>test_phase5</code> rebind isolation is untouched), and the three-phase workflow with its freeze points.</p>
+<p><strong>Naming decision (churn resolved):</strong> no file renames. <code>template.html</code>, <code>report.json</code>, <code>style.css</code>, <code>script.js</code>, <code>report.py</code> keep their names; <code>TemplatePackage</code> grows in place (the once-proposed <code>ReportArtifact</code> alias was never added — the class keeps its name). Two of three judges scored zero-rename migration as materially lower-risk than artifact-first's <code>page.html</code> proposal; the skeleton's rename is dropped.</p>
+<hr>
+<h2 id="2-architecture">2. Architecture</h2>
+<h3 id="21-the-artifact-what-a-report-is-on-disk">2.1 The artifact — what a report IS on disk</h3>
+<p>A directory under <code>reports/</code> (or <code>TRACEBI_REPORTS_DIR</code>), building to one self-contained HTML plus one manifest:</p>
+<pre><code>reports/credit_marks/
+  report.json      # declaration: identity + bindings (the stamped part) + libs/theme
+  template.html    # the page — free HTML; figures marked with data-tb-* attributes
+  style.css        # optional — stacked AFTER the default design system (later wins)
+  script.js        # optional — runs AFTER the tracebi.js runtime
+  report.py        # optional escape hatch AND exploration scratchpad — per-binding verifiable:false
+</code></pre>
+<p>Worked example, <code>report.json</code> (each <code>data</code> entry is exactly today's <code>DataRef</code>, resolved through <code>stamp()</code> → <code>embed_block()</code> → <code>embedded_record()</code> — kernel untouched):</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;credit_marks&quot;,
+  &quot;author&quot;: &quot;agent&quot;,
+  &quot;description&quot;: &quot;BDC credit marks — book stress, Q2 2026&quot;,
+  &quot;libs&quot;: [&quot;echarts&quot;],
+  &quot;theme&quot;: &quot;brand.css&quot;,
+  &quot;data&quot;: {
+    &quot;kpi_universe&quot;: {
+      &quot;model&quot;: &quot;altsvault_credit_marks&quot;,
+      &quot;query&quot;: {&quot;fact&quot;: &quot;fact_fund_marks&quot;,
+                &quot;measures&quot;: [&quot;funds&quot;, &quot;book_fv&quot;, &quot;share_below_stress&quot;]}
+    },
+    &quot;marks_by_band&quot;: {
+      &quot;model&quot;: &quot;altsvault_credit_marks&quot;,
+      &quot;query&quot;: {&quot;fact&quot;: &quot;fact_fund_marks&quot;, &quot;measures&quot;: [&quot;marked_fv&quot;],
+                &quot;dimensions&quot;: [&quot;dim_mark_band.band_label&quot;],
+                &quot;order_by&quot;: [{&quot;column&quot;: &quot;dim_mark_band.band_order&quot;}]}
+    },
+    &quot;top_stressed&quot;: {
+      &quot;model&quot;: &quot;altsvault_credit_marks&quot;,
+      &quot;query&quot;: {&quot;fact&quot;: &quot;fact_fund_marks&quot;,
+                &quot;measures&quot;: [&quot;marked_fv&quot;, &quot;fv_below_stress&quot;],
+                &quot;dimensions&quot;: [&quot;dim_fund.fund_name&quot;],
+                &quot;order_by&quot;: [{&quot;column&quot;: &quot;fv_below_stress&quot;, &quot;desc&quot;: true}],
+                &quot;limit&quot;: 10}
+    }
+  }
+}
+</code></pre>
+<p>And <code>template.html</code> (excerpt) — the <strong>figure grammar</strong>:</p>
+<pre><code class="language-html">&lt;!-- KPI: one cell of a one-row stamped binding. Closes field-notes finding #1. --&gt;
+&lt;div class=&quot;tb-kpi&quot; data-tb-figure=&quot;value&quot; data-tb-binding=&quot;kpi_universe&quot;
+     data-tb-cell=&quot;book_fv&quot; data-tb-format=&quot;compact&quot; id=&quot;fig-book&quot;&gt;
+  &lt;span class=&quot;tb-kpi-label&quot;&gt;Book at fair value&lt;/span&gt;
+  &lt;span class=&quot;tb-kpi-value&quot;&gt;&lt;!-- filled by tracebi.js from the fingerprinted csv --&gt;&lt;/span&gt;
+&lt;/div&gt;
+
+&lt;!-- Chart: default wiring draws from the embedded triple via ECharts. --&gt;
+&lt;div data-tb-figure=&quot;chart&quot; data-tb-binding=&quot;marks_by_band&quot; data-tb-type=&quot;bar&quot;
+     data-tb-x=&quot;dim_mark_band.band_label&quot; data-tb-y=&quot;marked_fv&quot;
+     data-tb-value-format=&quot;compact&quot; id=&quot;fig-bands&quot; style=&quot;height:320px&quot;&gt;&lt;/div&gt;
+
+&lt;!-- Table: rendered by tracebi.js with derived labels/formats. --&gt;
+&lt;table data-tb-figure=&quot;table&quot; data-tb-binding=&quot;top_stressed&quot; id=&quot;fig-top10&quot;&gt;&lt;/table&gt;
+
+&lt;!-- Free-form: the agent's own script.js draws it; the receipt still covers the bytes. --&gt;
+&lt;div data-tb-figure=&quot;custom&quot; data-tb-binding=&quot;marks_by_band&quot; id=&quot;fig-heat&quot;&gt;&lt;/div&gt;
+
+&lt;!-- Honestly unverified: allowed, badged, recorded in the manifest, never green. --&gt;
+&lt;div class=&quot;tb-kpi&quot; data-tb-figure=&quot;value&quot; data-tb-unverified
+     data-tb-note=&quot;analyst estimate, not model-backed&quot; id=&quot;fig-estimate&quot;&gt;…&lt;/div&gt;
+
+&lt;!-- Exploration content: ships in dev and snapshots, stripped at final build. --&gt;
+&lt;section data-tb-stage=&quot;exploration&quot;&gt;
+  &lt;h3&gt;Working note: null-mark funds&lt;/h3&gt;
+  &lt;p&gt;9 of 179 funds have a book but no computable marks. Options considered…&lt;/p&gt;
+  &lt;table data-tb-figure=&quot;table&quot; data-tb-binding=&quot;null_mark_funds&quot; id=&quot;fig-nulls&quot;&gt;&lt;/table&gt;
+&lt;/section&gt;
+</code></pre>
+<p><strong>Rules (all build-enforced):</strong></p>
+<ul>
+<li>Any element carrying <code>data-tb-figure</code> must either name a binding (<code>data-tb-binding</code> naming a <code>report.json</code> entry or a <code>report.py</code> output) or carry <code>data-tb-unverified</code>. Neither → <strong>hard build error</strong> with did-you-mean hints. No fourth state.</li>
+<li>A <code>value</code> figure reads row 0 of the named column from the embedded triple — the same bytes the fingerprint covers (the <code>embed.py</code> no-display-copy invariant, extended to KPIs). A <code>value</code> figure over a multi-row binding is a <strong>build error</strong> with a hint.</li>
+<li><code>id</code> is the stable figure address. Build assigns <code>fig-&lt;n&gt;</code> when absent, with a warning — authors should set ids, because ids are how humans redirect agents (§2.5).</li>
+<li>Figure extraction uses <strong>stdlib <code>html.parser</code></strong> — a single tokenizer module, <code>tracebi/reports/figures.py</code>, shared by <code>report build</code>, the exploration-strip, and <code>verify --file</code>. Never a regex. Malformed nesting fails loudly (the <code>insert_before</code> philosophy). This resolves the skeleton's one silent-receipt-weakening vector (§6, flaw 1).</li>
+<li>Prose numbers outside figures are the accepted unprovable remainder (owner concession: layout is not provable, numbers are). The workbench and <code>report status</code> lint them non-blockingly ("3 numeric literals outside figures") — visibility, while the marked path remains the only compliant one for anything KPI-shaped.</li>
+</ul>
+<p><strong>Embedding is never keyed off figures</strong> (§6, flaw 3). At every build, all declared <code>data</code> bindings are embedded with <code>verifiable: true</code> and all <code>report.py</code> outputs with <code>verifiable: false</code> — always, whether zero figures or fifty reference them. Figures are a <em>claims layer</em> joined at verify time, not the embed driver. A zero-figure legacy package (e.g. <code>examples/portfolio_project/reports/portfolio_concentration/</code>) therefore embeds exactly what it does today, gains <code>figures: []</code> in its manifest, and verifies per-binding — no implementer guess, no silent coverage change.</p>
+<p><strong>The per-binding verifiability seam:</strong> the flattening at <code>template_package.py:221–227</code> is removed. A <code>report.py</code> in the directory no longer poisons the declarative bindings beside it — query bindings stay green-eligible; only python outputs are grey. <code>verify</code>'s <code>_verdict_fields</code> already handles the mixed receipt; this is a receipt <em>strengthening</em> (see monotonicity harness, §5).</p>
+<p><strong>Lifecycle — exploratory to earned.</strong> No mode field, no promotion step. Day 1 the agent scaffolds the artifact, writes everything in <code>report.py</code>, binds figures to python outputs: everything renders, everything badges grey, <code>verify</code> says so honestly. Hardening = moving stabilized queries from <code>report.py</code> into <code>data</code> bindings (and their logic upstream into transforms + declared measures); the figure markup doesn't change, only the binding's source. Exploration blocks hold scratch tables and working notes in the same file and are deleted by the build, not by a rewrite. <strong>The file that found the answer is the file that ships.</strong></p>
+<h3 id="22-the-binding-grammar-one-grammar-four-surfaces">2.2 The binding grammar — one grammar, four surfaces</h3>
+<p>The grammar is <code>DataRef = {model, query: QuerySpec}</code>. Two changes:</p>
+<p><strong><code>QuerySpec</code> gains <code>order_by</code> and <code>limit</code></strong> (<code>tracebi/model/data_model.py:153–209</code>):</p>
+<pre><code class="language-python">order_by: tuple[dict, ...] = ()   # ({&quot;column&quot;: str, &quot;desc&quot;: bool}, ...)
+limit: Optional[int] = None
+</code></pre>
+<ul>
+<li><code>from_dict</code> accepts the dict form plus <code>"col"</code>/<code>"-col"</code> string shorthand, normalized to the dict form — the stamped resolved spec is always canonical, so replay compares like with like.</li>
+<li>Sort applies after aggregation over result columns (validated via <code>spec_result_columns</code> in <code>check_query_spec</code>, agent-shaped did-you-mean errors); <code>limit</code> applies after sort.</li>
+<li><strong><code>limit</code> without <code>order_by</code> is a validation ERROR, not a warning</strong> (§6, flaw 2). "First 10 in groupby order" masquerading as "top 10" is the exact finding-#5 trap; the grammar refuses to express it.</li>
+<li><strong>Determinism guard, fingerprint-safe</strong> (§6, flaw 7): when <code>order_by</code> or <code>limit</code> is present, the engine appends the remaining dimension columns as an implicit ascending tie-break and records the fully resolved ordering in the stamped spec — a "top 10" is reproducible on ties. When <em>neither</em> is present, the engine's output path is <strong>byte-for-byte unchanged</strong> — no tie-break is applied — so no existing v1 fingerprint can move. The regression test cites <code>data_model.py:1758–1760</code> (the engine already <code>ORDER BY</code>s group columns) as the reason today's fingerprints are stable, and asserts a corpus of pre-change fingerprints byte-identical post-change.</li>
+<li>Touch list: <code>QuerySpec</code> <code>to_dict</code>/<code>from_dict</code>, both engines, <code>check_query_spec</code>, <code>spec.json_schema()</code>, MCP tool schemas, <code>tracebi context</code>.</li>
+</ul>
+<p><strong>One parser everywhere</strong> (closes finding #2): <code>POST /api/models/{name}/query</code> drops its dict-only pydantic body and becomes a passthrough validated by <code>QuerySpec.from_dict</code> + <code>check_query_spec</code> — <code>measures: list[str] | dict[str,str]</code>, declared measures (ratio measures especially) reachable over HTTP, <code>order_by</code>/<code>limit</code> included, structured error shape preserved. The dict form remains valid, so no consumer breaks. The MCP gateway's query tool uses the same <code>from_dict</code>. One grammar in Python, JSON, REST, MCP; one validator behind all four.</p>
+<p><strong>The metric-receipt hole (finding #1) closes in both lanes:</strong></p>
+<ul>
+<li><em>Artifact lane, by construction:</em> a KPI is a <code>value</code> figure over a one-row binding — stamped, embedded, offline-checkable, replay-checkable, with zero new trust code.</li>
+<li><em>Legacy spec lane, patched:</em> <code>spec.section_from_dict</code> stops discarding the metrics one-row frame — it attaches it as <code>section.dataset</code>, so the base-class manifest hook fingerprints it automatically and <code>verify</code> classifies it like any table; <code>data_coverage</code> counts METRICS as data-bearing; and <code>HTMLRenderer</code> generalizes <code>_chart_bindings</code> to <code>_data_bindings</code> so the one-row triple is <strong>embedded in legacy spec HTML too</strong> — <code>verify --file</code> covers the five biggest numbers on unmigrated pages, not just the manifest.</li>
+</ul>
+<h3 id="23-per-figure-verification-manifest-v2-and-both-checks">2.3 Per-figure verification — manifest v2 and both checks</h3>
+<p><code>MANIFEST_SCHEMA_VERSION = 2</code> for artifact builds (legacy renderer output stays v1; the refuse-newer-schema path in <code>verify.py:424–440</code> is the compatibility mechanism it was reserved for). v2 adds:</p>
+<pre><code class="language-json">{
+  &quot;schema_version&quot;: 2,
+  &quot;stage&quot;: &quot;final&quot;,
+  &quot;figures&quot;: [
+    {&quot;id&quot;: &quot;fig-book&quot;,     &quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;kpi_universe&quot;, &quot;cell&quot;: &quot;book_fv&quot;},
+    {&quot;id&quot;: &quot;fig-bands&quot;,    &quot;kind&quot;: &quot;chart&quot;, &quot;binding&quot;: &quot;marks_by_band&quot;},
+    {&quot;id&quot;: &quot;fig-top10&quot;,    &quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;top_stressed&quot;},
+    {&quot;id&quot;: &quot;fig-heat&quot;,     &quot;kind&quot;: &quot;custom&quot;,&quot;binding&quot;: &quot;marks_by_band&quot;},
+    {&quot;id&quot;: &quot;fig-estimate&quot;, &quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: null, &quot;unverified&quot;: true,
+     &quot;note&quot;: &quot;analyst estimate, not model-backed&quot;}
+  ],
+  &quot;embedded_data&quot;: [ {&quot;name&quot;: &quot;...&quot;, &quot;embedded_sha256&quot;: &quot;...&quot;, &quot;query_spec&quot;: {},
+                      &quot;model&quot;: &quot;...&quot;, &quot;verifiable&quot;: true} ],
+  &quot;sections&quot;: [&quot;...carrier sections, unchanged shape...&quot;],
+  &quot;transform_contracts&quot;: {&quot;...&quot;: &quot;see §2.6&quot;}
+}
+</code></pre>
+<p><strong><code>verify</code> (replay):</strong> per-binding classification is unchanged (<code>_verify_section</code> statuses: <code>reproduces / source_drift / model_changed / unverifiable / …</code>, including the <code>verifiable:false → UNVERIFIABLE</code> short-circuit). New rollup: each figure inherits its binding's status; <code>unverified: true</code> figures get a distinct <strong><code>UNVERIFIED</code></strong> status (author-marked — distinguishable from python-derived <code>UNVERIFIABLE</code>, so the receipt separates "we ran python" from "nobody claimed anything"); a figure naming a binding absent from the receipt is <code>ERROR</code> (internally inconsistent — fails). Verdict speaks figures first, bindings second:</p>
+<pre><code>figures: 12 checked — 9 reproduce, 2 unverifiable (python-derived), 1 unverified (marked)
+bindings: 7 — 6 reproduce, 1 unverifiable
+NOT fully verified: 3 figure(s) carry no green receipt (listed above)
+</code></pre>
+<p>Exit codes stay decided in one place: tampering/inconsistency fails; <code>unverifiable</code>/<code>unverified</code> never fail by default and never read green. New <code>--strict</code> flag fails when figure coverage &lt; 100% — the CI gate for finalized reports. A v1 manifest (no <code>figures</code>) verifies exactly as today.</p>
+<p><strong><code>verify --file</code> (offline):</strong> byte checks unchanged (<code>matches / tampered / missing_in_file / unrecorded_in_manifest / unbacked_by_section</code>). Added, using the same <code>figures.py</code> parser as build:</p>
+<ul>
+<li>every manifest figure must exist in the file with the same binding → else <code>figure_missing_in_file</code> (fails);</li>
+<li>every figure in the file must exist in <code>manifest.figures</code> → else <code>figure_unrecorded</code> (<strong>fails</strong> — an agent adding a figure to a shipped page, even one wired to an already-embedded block, is caught; symmetric with <code>unrecorded_in_manifest</code>);</li>
+<li>a bound figure whose data block is tampered/missing inherits that failure;</li>
+<li><strong>stage check:</strong> the built HTML carries <code>&lt;meta name="tracebi-stage"&gt;</code>; manifest <code>stage</code> vs file meta mismatch → <code>file_altered</code>. A draft can never be passed off as final.</li>
+</ul>
+<p>The honest limit is printed, not hidden: <em>"figure markup verified; page scripting is not provable — the receipt covers the embedded bytes and the declared figure↔binding map."</em></p>
+<p><strong>Web parity:</strong> artifact runs through the reports router stop using in-memory <code>build_manifest</code> (which bypasses <code>_augment_manifest</code> and ships no <code>embedded_data</code>); the router serves the real artifact render with read-only DuckDB connections, so web-rendered HTML becomes file-checkable for the first time. Rendering requires <code>analyst</code> (it executes queries); it persists nothing.</p>
+<p><strong>Consolidation:</strong> the three copies of the last-node-with-<code>query_spec</code> rule (<code>embed._query_metadata</code>, <code>verify._query_node</code>, <code>spec._data_ref_of</code>) collapse into one helper in <code>tracebi/model/dataset.py</code>.</p>
+<h3 id="24-the-presentation-system">2.4 The presentation system</h3>
+<p><strong>The stack.</strong> New <code>tracebi/reports/stack.py</code> with one function, <code>presentation_stack(...)</code>, called by both <code>TemplatePackage.render</code> and <code>HTMLRenderer</code>. Injection order — via the existing <code>insert_before</code>, loud on missing tags — <em>is</em> the override chain (the <code>Theme.with_overrides</code> append-so-later-wins semantic promoted to page scale):</p>
+<pre><code>&lt;head&gt;:  CSP meta → tracebi.css (shipped) → reports/_theme.css (project) → style.css (report)
+&lt;/body&gt;: echarts → tracebi.js (shipped) → data blocks → tracebi-figures config → script.js (report)
+</code></pre>
+<p>The agent adopts, overrides, or ignores; it never forks. <code>reports/_theme.css</code> is the project-wide brand layer (underscore prefix — already skipped by discovery). CSP unchanged; everything inlined; self-contained guarantee intact.</p>
+<p><strong><code>tracebi.css</code></strong> — tokens (<code>--tb-font</code>, <code>--tb-ink</code>, <code>--tb-accent</code>, <code>--tb-chart-1..8</code> seeded from <code>ChartSpec.DEFAULT_PALETTE</code>, spacing/radius scale) and components: <code>.tb-page</code>, <code>.tb-grid</code>, <code>.tb-card</code>, <code>.tb-kpi</code>, <code>.tb-table</code> <strong>including real <code>--striped</code>/<code>--compact</code> variants (finding #13 dies here)</strong>, <code>.tb-callout</code>, receipt badges (<code>.tb-badge--verified</code> green, <code>.tb-badge--derived</code> grey "python-derived", <code>.tb-badge--unverified</code> amber), the exploration-block treatment, print rules. Rebranding is a dozen token overrides. The misleading "themeable from here" comment on the SVG chart classes in <code>theme.py</code> is corrected to "print/PDF path only."</p>
+<p><strong><code>tracebi.js</code></strong> — dependency-free runtime: parses each <code>tracebi-data-*</code> block once (the RFC-4180 parser promoted out of <code>_CHART_INIT_JS</code> — one parser, both lanes; <strong>the stamped bytes are the only data source</strong>); exposes <code>tracebi.data(name)</code>; auto-hydrates figures (tables with labels/formats derived per <code>derive.py</code> precedence including the <code>_FRACTION_BOUND</code> percent guard ported verbatim; <code>value</code> cells; ECharts option building with a <code>formatter</code> that is a JS port of <code>ChartSpec._fmt(compact=True)</code> — one implementation of "550.7B", so screen and print finally agree and <strong>finding #11 dies</strong>). A raw-ECharts deep-merge escape valve exists, but data series are always re-sourced from the stamped bytes afterward — config can restyle, never re-source. <strong>Presentation defaults never change a number.</strong></p>
+<p><strong>Receipt badges are OFF by default in final output</strong> (a mark on every figure is noise; the receipt drawer carries provenance in one opt-in place), rendered from the manifest-derived <code>tracebi-figures</code> config — author CSS cannot flip a grey badge green because the badge class is chosen from provenance, not by stylesheet. <code>report build --badges</code> opts them back in; the manifest is unaffected either way. (Originally shipped on-by-default with <code>--no-badges</code>; reversed on maintainer feedback.)</p>
+<p><strong>Threading:</strong> <code>HTMLRenderer.for_project(root)</code> (resolving stack layers 1–2) is the themed chokepoint. It is now called at the reports router (<code>routers/reports.py</code>, the three render/download/lineage handlers) and the notebook <code>_repr_html_</code> preview (<code>reports/report.py</code>); the once-longer construction-site list shrank as the requests router was removed and other sites moved onto the package renderer. <code>ReportSpec</code> gains top-level <code>theme</code> and <code>script</code> keys (schema regenerated, <code>additionalProperties</code> stays false); <code>report build</code> and <code>spec render</code> gain <code>--theme</code>. One choke point; no future site can regress to unthemeable. Finding #10 dies as a category.</p>
+<p><strong>Vocabulary as data:</strong> <code>tracebi context</code> gains a <code>presentation</code> key — tokens, component classes, <code>data-tb-*</code> attributes, runtime signatures as JSON. The field notes proved agents author successfully from context JSON alone; the new surface ships the same way.</p>
+<h3 id="25-the-authoring-loop-and-the-human-review-surface">2.5 The authoring loop and the human-review surface</h3>
+<p><strong>Division of labor, stated plainly:</strong> the <em>narrative</em> of an investigation — "I
+tried X, saw Y, so did Z" — lives in the agent↔human conversation, which does
+it better than any artifact could. TraceBi's job is the <strong>evidence layer the
+narrative points at</strong>: addressable figures, inspectable data, visible code,
+honest badges. The built <em>artifact</em> deliberately stops short of carrying
+narrative prose — but the narrative surface still exists on the dev side: the
+workbench's <strong>exhibit feed</strong> (below) is the agent's show surface during
+authoring, and <code>tracebi session export</code> writes the committed lab-notebook
+record of a discovery session (with no manifest, refused by <code>verify</code> by name).
+The line is drawn at the artifact, not at the tool. (Scaffold guidance:
+exploration blocks are allowed to be ugly — default components only; layout
+polish is finalization work.)</p>
+<p><strong><code>tracebi dev &lt;name&gt;</code> becomes artifact-native.</strong> The dev server's build function is replaced by a form-aware <code>render_target</code> (artifact directory → in-memory artifact render; legacy <code>.json</code> spec → spec render). (The request-script branch this once carried was removed with the lane in 0.8.) The watcher is <strong>rewritten from single-file mtime to a directory + <code>models/</code> scan</strong> — the current loop watches one file (<code>_dev_server.py:93–107</code>), and no milestone estimate assumes otherwise (§6, flaw 5). All DuckDB connections in dev/serve open <strong>read-only</strong>, so <code>dev</code>, <code>report build</code>, and <code>serve</code> coexist (bug #12's fix is a sequenced dependency, see M3). Errors render as the existing auto-reloading traceback page.</p>
+<p><strong>The workbench</strong> — <code>GET /__workbench</code> on the dev server (dev-only; never injected into build output): a generated review page, same design system, four panels:</p>
+<ol>
+<li><strong>Figures</strong> — every figure: id, kind, binding, live provenance badge, resolved query pretty-printed, and a <strong>copy-address</strong> (<code>credit_marks#fig:top10</code>) so the human redirects the agent in precise terms ("kill <code>#fig:by_manager</code>, make <code>#fig:top10</code> a top-10 by marked dollars"). Coverage headline: <em>"9 of 12 figures model-backed"</em> — the earn-your-receipt progress bar.</li>
+<li><strong>Data</strong> — per binding: first rows (the exact triple bytes), dtypes, row count, fingerprint prefix, source (query vs <code>report.py</code>), unused-binding warnings. <strong>Quick-charts:</strong> pick a binding and x/y in the panel to see a dev-only chart immediately — with the generated <code>data-tb-figure</code> markup beside it, ready to paste into <code>template.html</code>. This keeps interrogation at notebook-cell ceremony (declare a binding, see the table; two clicks, see the chart); adopting a figure is copying markup you already watched work. Quick-charts never persist and never touch the build.</li>
+<li><strong>Code</strong> — <code>report.py</code>, <code>report.json</code>, <code>script.js</code>, read-only and highlighted; the eight-cleaning-decisions problem becomes visible to the reviewer instead of buried.</li>
+<li><strong>Lint</strong> — non-blocking: numeric literals outside figures, bindings no figure references.</li>
+</ol>
+<p><strong>The exhibit feed (owner iteration, 2026-08-16: "steer from chat, see
+results in the workbench").</strong> A fifth panel — chronological, newest first —
+that makes the workbench the agent's <em>show</em> surface, not only an inspection
+surface. Two sources feed it:</p>
+<ul>
+<li><strong>Explicit exhibits</strong> — <code>from tracebi.workbench import show;
+  show(df, note="after dropping the 9 null-mark funds")</code> callable from
+  <code>report.py</code> or any exploration code. Accepts a frame (excerpt + dtypes), a
+  binding name (renders its table/quick-chart), a code string, or markdown.
+  Zero ceremony — the notebook-cell-output equivalent. <code>show()</code> is a <strong>no-op
+  outside dev</strong> (a build or CI run ignores it entirely), exhibits carry no
+  receipts and never enter builds; snapshots include the feed as part of the
+  exploration record.</li>
+<li><strong>Auto-entries</strong> — the dev loop appends one-line events as work lands:
+  "binding <code>marks_by_band</code> updated · 6 rows · fingerprint 18ac…", "figure
+  <code>#fig:top10</code> bound". The feed reads as a live lab log of the session.</li>
+</ul>
+<p><strong>Pins — the one portal→chat gesture.</strong> The human can pin any exhibit or
+figure in the workbench; pins (with an optional one-line note) surface in
+<code>tracebi report status --json</code> and the MCP <code>workbench_state</code> tool, so the
+agent's next look at the project sees exactly what the human flagged.
+Steering stays in chat; <em>pointing</em> happens where the evidence is. Pins are
+dev-state, never in builds or manifests.</p>
+<p><strong>The sendable snapshot</strong> — for a human not at the dev server: <code>tracebi report snapshot &lt;name&gt;</code> → one self-contained file with exploration blocks kept, a persistent visible EXPLORATION banner, <code>&lt;meta name="tracebi-stage" content="exploration"&gt;</code>, and <strong>no manifest at all</strong>; <code>verify --file</code> recognizes the meta and refuses by name ("this is a review snapshot, not a published report"). The snapshot ends with a <strong>code appendix</strong> — <code>report.py</code>, <code>report.json</code>, <code>script.js</code>, read-only and highlighted — so a reviewer away from the dev server can still "look through the code if necessary" (notebook-export parity), receipt-free like the rest of the file. A weaker-looking receipt is worse than none, so the snapshot carries none — and the stage meta plus manifest <code>stage</code> cross-check (§2.3) means no draft-shaped output can ever read as final. This resolves the skeleton's missing non-colocated handoff without ever minting a draft receipt.</p>
+<p><strong>Agent-facing coverage:</strong> <code>tracebi report status &lt;name&gt;</code> prints the earned state from the CLI (<code>17 figures: 12 query-backed, 3 python-derived, 1 unverified, 1 unbound-ERROR; 1 declared binding unused</code>) — what a driving agent and CI actually call. The MCP gateway gains a read-only <code>workbench_state</code> tool returning the same JSON the panels render from; no-write-to-warehouse untouched.</p>
+<p><strong>Finalize:</strong> <code>tracebi report build &lt;name&gt;</code> → exploration blocks stripped (same <code>figures.py</code> parser, loud on malformed nesting), manifest-first, one HTML + v2 manifest in <code>output/</code>; <code>tracebi verify --strict</code> as the CI gate for "finished."</p>
+<h3 id="26-transform-contracts-the-receipt-extends-to-phase-1-honestly">2.6 Transform contracts — the receipt extends to phase ①, honestly</h3>
+<p>New module <code>tracebi/contracts.py</code>. Declared in the transform, checked at sink time against the sunk tables as read-only SQL, recorded — never tracing the pandas (manifesto refusal stands).</p>
+<pre><code class="language-python"># transforms/holdings_transform.py — after the sinks
+from tracebi.contracts import contract
+
+with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
+    c.rows(&quot;fact_fund_marks&quot;, at_least=50_000)
+    c.unique(&quot;dim_fund&quot;, [&quot;fund_key&quot;])
+    c.not_null(&quot;fact_fund_marks&quot;, [&quot;fund_key&quot;, &quot;marked_fv&quot;])
+    c.foreign_key(&quot;fact_fund_marks&quot;, &quot;fund_key&quot;, refers_to=(&quot;dim_fund&quot;, &quot;fund_key&quot;))
+    c.reconcile(&quot;fact_fund_marks&quot;, &quot;book_fv&quot;, against=(&quot;fact_positions&quot;, &quot;fv&quot;),
+                by=&quot;fund_key&quot;, tolerance=0.01)
+</code></pre>
+<p>Closed declarative check vocabulary (<code>rows</code>, <code>unique</code>, <code>not_null</code>, <code>foreign_key</code>, <code>values</code>, <code>reconcile</code>) — no callables, fully re-runnable data. Any failure <strong>raises</strong>: a sink that violates its contract does not freeze a warehouse that claims otherwise. On success the record is written to <code>data/warehouse.contracts.json</code> beside the warehouse (the freeze point carries its own certificate): per check <code>{check, params, observed, passed}</code>, per table a fingerprint, timestamp, transform name.</p>
+<p><strong>The fingerprint join, pinned</strong> (§6, flaw 4 — the one flaw all three designs shared): the sink-time table fingerprint is <strong>not</strong> computed from the in-memory pandas frame handed to <code>write()</code>. It is computed by reading the sunk table back through <strong><code>DuckDBConnector.load()</code> — the same connector path the model uses at load time</strong> — and fingerprinting that frame with the one algorithm (<code>frame_fingerprint</code>, <code>dataset.py:20–35</code>). Any dtype or ordering normalization the write-then-read round trip performs is therefore <em>inside</em> both sides of the comparison, and the join to the manifest's per-table input fingerprints (<code>_input_index</code>) cannot be permanently "stale" with no actual drift. A round-trip equivalence test (write → load → fingerprint twice, must match) gates M4.</p>
+<p>At <code>report build</code>, contract results attach to the manifest's <code>transform_contracts</code> block only where the recorded table fingerprint <strong>equals</strong> the report's input fingerprint → <code>satisfied</code>; mismatch → <code>stale</code> (the warehouse moved after the check — stale can never inherit green); absent → <code>no_contract</code> (reported, never failed — contracts are opt-in like all attribution). Fixed verify language, locked by design review: <strong>"the sink satisfied its contract" — never "the transform was verified"</strong> — and <strong>"contract status never colors figure statuses: two claims, reported side by side, never blended."</strong> <code>tracebi verify --contracts</code> optionally re-runs the checks against the current warehouse and classifies drift. The scaffold transform and <code>tracebi context</code> grow a contract stanza so agents declare them by default — the field notes' "it was conscience, not the framework" becomes the framework.</p>
+<hr>
+<h2 id="3-what-happens-to-every-existing-form">3. What happens to every existing form</h2>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Fate</th>
+<th>Mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Template packages</strong> (<code>reports/&lt;name&gt;/</code>)</td>
+<td><strong>They ARE the artifact.</strong></td>
+<td>No file renames. Per-binding <code>verifiable</code> replaces the flatten; figure grammar and stack are additive. Zero-figure packages embed exactly as today (§2.1) and verify per-binding. <code>TemplatePackage</code> keeps its name (the proposed <code>ReportArtifact</code> alias was not added).</td>
+</tr>
+<tr>
+<td><strong>JSON specs</strong> (<code>reports/&lt;name&gt;.json</code>)</td>
+<td><strong>Kept as a serialization; not a lane.</strong></td>
+<td>Continue rendering through the current path (now themed via <code>for_project</code>, with metric fingerprints + embedded KPI triples — findings #1/#10 closed in place). <code>tracebi migrate spec &lt;file&gt;</code> compiles a spec into an artifact: each section becomes a default-component figure bound to its <code>DataRef</code>; the section enum becomes compile vocabulary, not renderer control flow. Until migrated, nothing breaks.</td>
+</tr>
+<tr>
+<td><strong><code>requests/</code></strong></td>
+<td><strong>Removed in 0.8 (done).</strong></td>
+<td>The router, <code>tracebi run</code>, <code>dev --request</code>, <code>new-request</code>/<code>list-requests</code>, <code>request_params</code>, and the Requests UI page are gone; <code>tracebi init</code> never scaffolds the folder; docs and <code>tracebi context</code> present the one lane. Migration is mechanical: queries → bindings, pandas → <code>report.py</code>, sections → component figures. A JSON spec migrates with <code>tracebi migrate spec</code>.</td>
+</tr>
+<tr>
+<td><strong>Section enum</strong> (<code>SECTION_CLASSES</code>)</td>
+<td><strong>Kept</strong> as the compiler's vocabulary and the carrier-section mechanism; dies as renderer control flow for the primary lane.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Excel renderer</strong></td>
+<td><strong>Kept, unchanged semantics</strong> — applies only explicit <code>number_formats</code>, derives nothing; a spec rendering to both stays checked in both.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>PDF/SVG chart path</strong></td>
+<td><strong>Kept, unshipped</strong>, for the future PDF renderer only; docstring corrected. <code>chart_dpi</code>/<code>chart_style</code> no-ops stay deprecated.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong><code>Theme</code> / <code>DEFAULT_CSS</code></strong></td>
+<td><strong>Kept</strong> — <code>Theme</code> feeds the stack; <code>DEFAULT_CSS</code> serves the legacy shell.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Kernel, verify, registry, discovery, CSP</strong></td>
+<td><strong>Kept, untouched in contract</strong> — <code>embed.py</code> entire; verify statuses extended, never re-meant; report = name + zero-arg factory; no router import paths change.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Removed now</strong></td>
+<td><strong>Nothing.</strong> The first release is purely additive plus the M0 fixes.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="4-phased-build-plan-riskiest-first">4. Phased build plan — riskiest first</h2>
+<p>The kernel exists; the two genuinely risky claims are (i) the per-figure receipt on a free-form page and (ii) whether the one-lane loop is actually good to author in. M0 de-risks (i)'s seams inside the current lanes; M1 proves (i) and (ii) together on the real workload, with kill criteria.</p>
+<p><strong>M0 — Kernel seams (small; de-risks everything; v1 manifests throughout).</strong> ✅ <strong>Shipped 2026-08-16</strong> — all proof gates green (mixed receipt honest; grammar unified with fingerprint parity; pre-change corpus byte-identical; findings #1/#2/#5 closed; monotonicity harness in CI).
+Per-binding <code>verifiable</code> in <code>TemplatePackage.render</code>; <code>QuerySpec.order_by/limit</code> with canonical normalization, the guarded tie-break (only when order_by/limit present), and limit-without-order_by as a hard error; REST/MCP grammar unification on <code>QuerySpec.from_dict</code>; <code>MetricSection.dataset</code> retention + <code>data_coverage</code> counting METRICS + <code>_data_bindings</code> KPI embedding in legacy HTML; the query-node-rule consolidation; the <strong>receipt-monotonicity harness</strong> built as a fixture (see §5) and wired into CI from here on.
+<em>Proof gate:</em> a mixed receipt verifies honestly today with v1 manifests; the same spec through Python/spec/REST returns identical fingerprints; a corpus of pre-change fingerprints is byte-identical post-change (citing <code>data_model.py:1758–1760</code>); findings #1/#2/#5 closed in the current lanes before any new artifact exists.</p>
+<p><strong>M1 — The artifact, figures, verify v2 (the riskiest, on solid seams).</strong> ✅ <strong>Shipped 2026-08-16</strong> — mechanical proof gates green (figure validation, strip, schema-2 manifests, per-figure verify + --strict, symmetric offline cross-check, snapshot refused by name, stage mismatch caught; drilled live on the reference project). <em>Outstanding: the AltsVault artifact rebuild with the maintainer reviewing — the authoring-experience kill criterion is judged there.</em>
+<code>figures.py</code> (<code>html.parser</code> extraction — build, strip, and <code>--file</code> share it); figure↔binding build validation incl. <code>data-tb-unverified</code> and the multi-row-value error; exploration blocks + strip; manifest schema 2 (<code>figures</code>, <code>stage</code>); verify per-figure rollup with <code>UNVERIFIED</code>; <code>--file</code> symmetric cross-check (<code>figure_missing_in_file</code> / <code>figure_unrecorded</code>) + stage check; <code>--strict</code>; <code>report snapshot</code> (no manifest, refused by verify); output to <code>output/</code>.
+<em>Proof gate (the milestone that validates or falsifies the design):</em> <strong>rebuild the AltsVault 28-section report end-to-end as one artifact, agent-driving, human reviewing</strong> — mixed verifiable/derived/unverified figures classified correctly offline and by replay; a tampered figure caught offline; a snapshot refused; a stage mismatch caught. <em>Kill criterion, stated honestly:</em> if authoring free HTML with components is worse than the spec enum was, we learn it here for the price of one milestone, before M2+ builds on it.</p>
+<p><strong>M2 — The presentation system.</strong> ✅ <strong>Shipped 2026-08-16</strong> — all proof gates green (zero-effort page browser-verified; later-wins chain pinned; byte-exact fmt parity fuzz-verified; CSP + self-containment hold; findings #10/#11/#13 dead at every surface including the notebook preview).
+<code>tracebi.css</code> (tokens, components incl. <code>--striped/--compact</code>, badges, print), <code>tracebi.js</code> (parser promotion, hydration, <code>_fmt</code> port, config merge), <code>stack.py</code> + <code>HTMLRenderer.for_project</code> threaded through every renderer site, <code>reports/_theme.css</code> layer, spec <code>theme</code>/<code>script</code> keys, <code>--theme</code>, badges (default-on at M2, later reversed to default-off + <code>--badges</code> — §2.4), <code>presentation</code> key in <code>tracebi context</code>.
+<em>Proof gate:</em> zero-effort page looks shipped; later-wins override chain tested; screen and print agree on <code>550.7B</code>; CSP and self-containment byte-verified; findings #10/#11/#13 dead at every surface including the notebook preview.</p>
+<p><strong>M3 — The loop.</strong> ✅ <strong>Shipped 2026-08-16</strong> — proof gates green live: the workbench served with coverage bar, provenance badges, copy-addresses, quick-charts; a pin placed in the portal read back through <code>report status</code> (📌) and MCP <code>workbench_state</code>; <code>report build</code> succeeded WHILE <code>tracebi dev</code> served the same warehouse (bug #12 dead); web-rendered artifact HTML passes <code>verify --file</code>.
+<code>tracebi dev</code> artifact-native with the rewritten directory + <code>models/</code> watcher; read-only DuckDB in dev/serve (<strong>hard dependency: bug #12's fix lands first</strong>); <code>__workbench</code> with the four panels and copy-addresses; <code>report status</code>; MCP <code>workbench_state</code>; web-run parity (<code>embedded_data</code> over HTTP, mtime-cached).
+<em>Proof gate:</em> land → interrogate → review at one URL → finalize with no rewrite; <code>dev</code> + <code>build</code> + <code>serve</code> coexist against one warehouse; web-rendered artifact HTML passes <code>verify --file</code>.</p>
+<p><strong>M4 — Transform contracts.</strong> ✅ <strong>Shipped 2026-08-16</strong> — all proof gates drilled live on the reference project: the transform's assertions (row floor, unique issuer key, not-null, two foreign keys) declared as its contract and surfaced in the shipped manifest's <code>transform_contracts</code> block; a violated contract raised at sink time and wrote no certificate; a silent re-sink read <code>stale</code> in the rebuilt manifest while the figures stayed honestly green (two claims, side by side, never blended); <code>verify --contracts</code> re-ran the declaration and exited 1 on a check the sink no longer satisfied; the write→load→fingerprint round-trip equivalence test (ints, floats+NaN, strings+None, dates, booleans, nullable Int64) gates the join in CI.
+<code>tracebi/contracts.py</code> with the closed vocabulary; <code>data/warehouse.contracts.json</code>; the <strong>pinned</strong> connector-load-path fingerprint plus the round-trip equivalence test; manifest <code>transform_contracts</code> join (<code>satisfied/stale/no_contract</code>); <code>verify --contracts</code>; scaffold + <code>tracebi context</code> stanzas.
+<em>Proof gate:</em> the AltsVault transform's four hand-written assertions express as declared contracts and surface in the shipped receipt; a violated contract fails the transform run; a re-sunk table reads <code>stale</code>, never green; the round-trip test passes on every shipped connector dtype.</p>
+<p><strong>M5 — Migration and deprecation.</strong> ✅ <strong>Shipped 2026-08-16</strong> — the reference spec compiled live (<code>tracebi migrate spec reports/portfolio_dashboard.json</code>): every dropped presentation knob warned by name, the compiled package built through the ordinary artifact gate with all 7 figures REPRODUCES and the contract join satisfied, its claim set a superset of the spec render's (4/4 fingerprints carried, then figures on top), the package shadowed the spec at discovery with a warning naming both, and rollback was deleting the directory — the spec lane rebuilt and verified green. A superset test (<code>test_compile_spec.py::TestCompiledArtifactBuilds</code>) pins the monotonicity gate in CI; <code>init</code> no longer scaffolds <code>requests/</code>; the requests surfaces (router, <code>tracebi run</code>, <code>dev</code> script branch, <code>new-request</code>) carry one shared deprecation note, removal in 0.8.
+<code>tracebi migrate spec</code> compiler (every <code>SectionType</code> compiles, markdown TextSections honored — absorbing #4's docs promise); <code>init</code>/<code>new-report</code> scaffold the artifact and no <code>requests/</code>; deprecation notices (requests router, <code>tracebi run</code>, <code>dev --request</code>); docs/<code>AGENTS.md</code>/MANIFESTO/<code>WORKFLOW.md</code>/CHANGELOG vocabulary; the test-flip ledger (§5) fully executed.
+<em>Proof gate:</em> the AltsVault 28-section spec compiles to an artifact whose verify output is a strict superset of the original's (monotonicity harness) — nothing that was green goes dark; a fresh <code>tracebi init</code> onboards an agent straight into the loop.</p>
+<p>Intersecting pure bugs, sequenced not designed: <strong>#12</strong> (DuckDB lock) before M3; <strong>#14</strong> (<code>output/</code> naming) settled in M1; <strong>#3</strong> (preview NaN) sanitizer reused by the workbench data panel; <strong>#8</strong> (<code>git init</code>) strengthens every manifest M1 produces.</p>
+<hr>
+<h2 id="5-the-test-and-migration-story">5. The test and migration story</h2>
+<p>The suite (run <code>pytest tests/</code> for the current count) grows and is never reorganized. Phase-scoped files stay phase-scoped (CLAUDE.md rule); the deliberately-fragile registry-rebind isolation in <code>tests/test_phase5.py::TestPipelineRunEndpoint::test_run_all_layers</code> is untouched by every milestone — no router import paths change.</p>
+<p><strong>New files, one per area:</strong> <code>tests/test_artifact.py</code> (folder load, figure extraction incl. hostile markup through <code>html.parser</code>, exploration strip, per-binding verifiable, zero-figure embed equivalence, stack injection order), <code>tests/test_binding_grammar.py</code> (order_by/limit canonicalization; tie-break determinism; limit-without-order_by rejected; REST/Python/spec fingerprint parity; pre-change fingerprint corpus), <code>tests/test_verify_v2.py</code> (figure rollup, <code>UNVERIFIED</code> vs <code>UNVERIFIABLE</code>, <code>figure_unrecorded</code>, stage mismatch, snapshot refusal, <code>--strict</code>, v1-manifest bit-for-bit regression), <code>tests/test_presentation.py</code> (later-wins, badge provenance, formatter parity, CSP), <code>tests/test_contracts.py</code> (vocabulary, sink failure raises, round-trip fingerprint equivalence, <code>stale</code>/<code>no_contract</code>), <code>tests/test_compile_spec.py</code> (every SectionType compiles).</p>
+<p><strong>The receipt-monotonicity harness</strong> (grafted; CI from M0): for every example spec and package, build old-path and new-path manifests and assert the set of fingerprinted, verifiable claims in the new one is a <strong>superset</strong>. A change that silently weakens a receipt fails CI — the design's own contract applied to itself.</p>
+<p><strong>The test-flip ledger</strong> (grafted) — existing expectations that change, each tied to its milestone, enumerated up front rather than discovered mid-build:</p>
+<table>
+<thead>
+<tr>
+<th>Milestone</th>
+<th>Flip</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0</td>
+<td>Package tests asserting all-or-nothing <code>verifiable</code> → per-binding. Metric-manifest golden dicts gain <code>dataset_fingerprint</code>/<code>dataset_lineage</code>. <code>data_coverage</code> tallies change. REST tests asserting 422 on list-form measures → 200.</td>
+</tr>
+<tr>
+<td>M1</td>
+<td>Artifact-build manifest goldens → <code>schema_version: 2</code> + <code>figures</code> + <code>stage</code>. <code>report build</code> output path assertions → <code>output/</code>.</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Any golden HTML → includes the default stack (badges on).</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Discovery test asserting the package factory returns the carrier Report → returns the real page.</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>v2 manifest goldens gain <code>transform_contracts</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Everything else in the current suite passes unmodified: the v1 manifest path and the legacy render path are its subject, and both are unchanged except the M0 fixes, whose assertions land inside the owning phase files.</p>
+<hr>
+<h2 id="6-explicitly-resolved-flaws-and-open-questions">6. Explicitly resolved flaws, and open questions</h2>
+<h3 id="every-fatal-flaw-the-judges-raised-and-how-it-is-resolved">Every fatal flaw the judges raised, and how it is resolved</h3>
+<ol>
+<li><strong>Regex figure extraction (artifact-first; judges 1 &amp; 2 — the silent-receipt-weakening vector).</strong> A regex-missed figure would vanish from both build validation and the offline check. <em>Resolved:</em> one stdlib <code>html.parser</code> tokenizer module (<code>tracebi/reports/figures.py</code>) is the sole extractor, shared by <code>report build</code>, the exploration strip, and <code>verify --file</code>; malformed nesting fails loudly. No regex touches figure markup anywhere (§2.1, §2.3, M1).</li>
+<li><strong><code>limit</code> without <code>order_by</code> only warns (artifact-first; judges 2 &amp; 3).</strong> <em>Resolved:</em> hard validation error in <code>check_query_spec</code> — the grammar refuses to express "first N masquerading as top N" (§2.2, M0).</li>
+<li><strong>Zero-figure embedding unspecified (artifact-first; judge 1).</strong> <em>Resolved:</em> embedding is decoupled from figures entirely — all declared bindings always embed <code>verifiable:true</code>, all <code>report.py</code> outputs <code>verifiable:false</code>, figures are a claims layer joined at verify. Zero-figure legacy packages embed exactly as today, with a dedicated equivalence test (§2.1, M1).</li>
+<li><strong>Contract fingerprint join can be permanently stale (all three designs; judge 1).</strong> <em>Resolved:</em> the sink-time fingerprint is pinned to the connector load path — read the sunk table back through <code>DuckDBConnector.load()</code> and fingerprint that frame, so any write/read dtype or ordering normalization sits inside both sides of the join; a round-trip equivalence test gates M4 (§2.6).</li>
+<li><strong>"Dev watch loop kept verbatim" is false (loop-first; judge 1).</strong> <em>Resolved by not inheriting the claim:</em> M3 explicitly budgets a rewrite from single-file mtime polling to a directory + <code>models/</code> scan (§2.5).</li>
+<li><strong>No explicit unverified mark (loop-first &amp; presentation-first; all judges).</strong> <em>Not applicable to the skeleton, and locked in:</em> <code>data-tb-unverified</code> + <code>data-tb-note</code>, recorded in the manifest, distinct <code>UNVERIFIED</code> verify status, build fails on a figure with neither binding nor mark (§2.1, §2.3).</li>
+<li><strong>Always-on total ordering could move existing v1 fingerprints (loop-first; judge 2).</strong> <em>Resolved:</em> the tie-break applies only when <code>order_by</code>/<code>limit</code> is present; queries without them keep today's byte-for-byte output, guarded by a pre/post fingerprint corpus test citing <code>data_model.py:1758–1760</code> (§2.2, M0).</li>
+<li><strong>Receipt badges opt-in on shipped pages (presentation-first; judges 2 &amp; 3).</strong> <em>Resolved:</em> badges are default-OFF in final output, provenance-derived so author CSS can't flip them, <code>--badges</code> to opt them back in for a review copy, manifest unaffected either way (§2.4).</li>
+<li><strong>Missing figure cross-check on shipped pages (loop-first; judge 2).</strong> <em>Kept from the skeleton and made symmetric:</em> <code>figure_unrecorded</code> and <code>figure_missing_in_file</code> both fail <code>verify --file</code> (§2.3).</li>
+<li><strong>No non-colocated review handoff / draft-receipt risk (artifact-first ding; judges 1 &amp; 2 with conflicting grafts).</strong> <em>Resolved by combining them:</em> the sendable form is the receipt-<strong>free</strong> snapshot (EXPLORATION banner, stage meta, no manifest, refused by verify by name) — no draft receipt ever exists to launder — while the stage meta + manifest <code>stage</code> cross-check supplies loop-first's draft-never-reads-final guarantee for anything that <em>does</em> carry a manifest (§2.5, §2.3).</li>
+</ol>
+<h3 id="open-questions-resolved-by-the-maintainer-2026-08-16">Open questions — resolved by the maintainer (2026-08-16)</h3>
+<ol>
+<li><strong><code>requests/</code> removal horizon</strong> — confirmed and <strong>executed</strong>: the lane was removed in 0.8 (CLI, public API, web API, UI, discovery, examples).</li>
+<li><strong><code>output/</code> naming</strong> — confirmed: <code>report build</code> renders to <code>output/</code> (finding #14 absorbed the cheap way; no folder renames).</li>
+<li><strong><code>migrate spec</code> disposition</strong> — confirmed: emit alongside, warn on name collision; the discovery-shadowing rule is: an artifact directory shadows a same-named <code>.json</code> spec, with a startup warning naming both.</li>
+<li><strong>0.6.0 sequencing</strong> — moot: no release for months by the maintainer's direction; milestones are release-agnostic and the cut point stays the maintainer's.</li>
+</ol>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

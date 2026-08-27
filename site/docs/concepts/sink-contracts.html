@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sink contracts — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Sink contracts">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a class="on" href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="sink-contracts">Sink contracts</h1>
+<p><strong>Closed, declarative checks a <a href="../concepts/transform.html">Transform — phase ①</a>'s tables must satisfy before the
+data counts. The narrowest honest claim about phase ①.</strong></p>
+<hr>
+<h2 id="why-they-exist">Why they exist</h2>
+<p><a href="../concepts/lineage.html">Lineage</a> deliberately stops at the sink. Everything above it is arbitrary
+pandas, which nothing machine-checks — see
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</p>
+<p>A sink contract does not close that gap. It narrows it: it lets you state, in a
+form a machine can re-run, what the tables you just wrote must be true of.</p>
+<h2 id="declaring-one">Declaring one</h2>
+<p>After the writes, in the same transform:</p>
+<pre><code class="language-python">from tracebi.contracts import contract
+
+with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
+    c.rows(&quot;fact_holdings&quot;, min=1)
+    c.unique(&quot;dim_issuer&quot;, &quot;issuer_id&quot;)
+    c.not_null(&quot;fact_holdings&quot;, &quot;fair_value&quot;)
+    c.foreign_key(&quot;fact_holdings&quot;, &quot;issuer_id&quot;, &quot;dim_issuer&quot;, &quot;issuer_id&quot;)
+    c.values(&quot;dim_issuer&quot;, &quot;sector&quot;, allowed=[&quot;Tech&quot;, &quot;Energy&quot;, &quot;Financials&quot;])
+    c.reconcile(&quot;fact_holdings&quot;, &quot;fair_value&quot;, equals=1_705_495.22, tolerance=0.01)
+</code></pre>
+<p>The vocabulary is <strong>closed</strong> — <code>rows</code>, <code>unique</code>, <code>not_null</code>, <code>foreign_key</code>,
+<code>values</code>, <code>reconcile</code>. No callables, for the same reason <a href="../reference/measures.html">Measures</a> rejects
+them: a check that cannot be serialized cannot be re-run by someone else.</p>
+<p>The checks run as read-only SQL against the tables you just sank.</p>
+<h2 id="what-happens">What happens</h2>
+<ul>
+<li><strong>A failed check raises at sink time.</strong> The transform stops; bad data does not
+  become a <a href="../concepts/freeze-points.html">freeze point</a>.</li>
+<li><strong>Success records a certificate</strong> — <code>data/warehouse.contracts.json</code> — carrying
+  per-table fingerprints.</li>
+</ul>
+<p>Report manifests join against that certificate, so a built report can say what
+the warehouse certified about itself at build time.</p>
+<h2 id="statuses">Statuses</h2>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>satisfied</code></td>
+<td>the checks passed, and the data still matches the fingerprint</td>
+</tr>
+<tr>
+<td><code>stale</code></td>
+<td>the tables were re-sunk after the transform checked them — the certificate no longer describes this data</td>
+</tr>
+<tr>
+<td><code>no_contract</code></td>
+<td>the transform declared none</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>stale</code> never reads green.</strong> A certificate that describes different data is
+not evidence.</p>
+<h2 id="re-running-them">Re-running them</h2>
+<pre><code class="language-bash">tracebi verify output/report.html.manifest.json --contracts
+</code></pre>
+<p>Re-runs the recorded contracts against the <em>current</em> warehouse <strong>and</strong> compares
+the certified fingerprints to the data now — catching an out-of-band change that
+would still pass the declared checks.</p>
+<h2 id="the-locked-language">The locked language</h2>
+<blockquote>
+<p><strong>"the sink satisfied its contract"</strong> — never <em>"the transform was verified"</em>.</p>
+</blockquote>
+<p>A contract checks what you thought to check. It says nothing about the pandas
+that produced the numbers, and nothing about whether the numbers are right.
+Contract status <strong>never colours a figure status</strong>; it is reported in its own
+block.</p>
+<p>That wording is fixed for the same reason as the rest of the vocabulary in
+<a href="../concepts/receipts.html">Receipts</a>: paraphrasing is how an honest guarantee
+becomes an overclaim.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../concepts/transform.html">Transform — phase ①</a> — where contracts are declared</li>
+<li><a href="../concepts/receipts.html">Receipts</a> — the separate, downstream claim</li>
+<li><a href="../reference/cli.html">CLI reference</a> — <code>tracebi verify --contracts</code></li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

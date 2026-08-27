@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Report Generator — Architecture (locked) — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Proven">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a class="on" href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="report-generator-architecture-locked">Report Generator — Architecture (locked)</h1>
+<blockquote>
+<p><strong>⚠️ Superseded by <a href="report-architecture-v2.md">report-architecture-v2.md</a></strong> —
+the one-lane reshape (shipped 2026-08-16). This document describes the earlier
+<strong>two-lane</strong> build (a governed spec lane <em>and</em> a freeform package lane). The
+reshape collapsed them: a report is now a single artifact package under
+<code>reports/</code>, and a JSON spec is one serialization that compiles into the same
+artifact, not a separate lane. Kept as the historical record of the two-lane
+build; its still-true kernel (the safe embedder, the CSP, the receipt
+semantics of §4, and the ECharts layer of §6) survived verbatim into the code
+and is restated in v2 §1. Read v2 for the current architecture; read this for
+why the kernel is shaped the way it is.</p>
+</blockquote>
+<p>Status (at the time): <strong>shipped.</strong> Product and architecture were nailed down with
+the maintainer, then pressure-tested against the code by a five-lens design review
+(17 findings, 4 blocking — all resolved below, none papered over). The build plan
+in §8 (M0–M4) was complete: the trust kernel, template packages, the <code>report.py</code>
+escape hatch, and the ECharts chart layer, all in <code>tracebi/reports/</code> with tests,
+and <code>dashboards/</code> folded into <code>reports/</code>.</p>
+<hr>
+<h2 id="1-product">1. Product</h2>
+<p>The report generator is a <strong>build step</strong>. It takes a report definition plus live
+model data and emits <strong>one self-contained <code>.html</code></strong> — CSS in <code>&lt;style&gt;</code>, JS in
+<code>&lt;script&gt;</code>, the model's data embedded as JSON — plus a <code>.manifest.json</code> receipt.
+The <code>.html</code> is portable: open it offline, email it, archive it.</p>
+<p>It is differentiated because it is <strong>self-contained AND provable</strong>: the numbers the
+page is built on are embedded, fingerprinted, and recorded, so a reviewer with the
+file alone can confirm — offline, no model access — that the data it ships is
+exactly what the recorded queries produced. The presentation (CSS/JS) is free and
+unvalidated by design; <strong>the receipt covers the numbers, not the pixels</strong> (§4).</p>
+<hr>
+<h2 id="2-architecture-one-kernel-two-lanes-one-output">2. Architecture — one kernel, two lanes, one output</h2>
+<pre><code>   (A) GOVERNED SPEC   reports/*.json            (B) FREEFORM PACKAGE   reports/&lt;name&gt;/
+       built-in renderers draw the page              report.json (queries) + report.py?
+                 │                                    template.html · style.css · script.js
+                 └───────────────┬─────────────────────────┘
+                                 ▼
+        ┌─────────────────── SHARED KERNEL ───────────────────┐
+        │ 1  resolve + stamp   ds = model.execute(query)       │
+        │                      → last lineage node stamps      │
+        │                        {model, query_spec}; fingerprint
+        │ 2  embed             canonical bytes + display JSON,  │
+        │                      via the safe encoder (§5)        │
+        │ 3  receipt           manifest-first; fingerprints all │
+        │                      data-bearing sections            │
+        │ 4  inline            one file: CSS + JS + ECharts +   │
+        │                      embedded data                    │
+        └───────────────────────────┬──────────────────────────┘
+                                     ▼
+             report.html   +   report.html.manifest.json
+             self-contained · offline · portable · checkable
+</code></pre>
+<p>The two lanes differ only in <strong>who draws the page</strong> — the built-in renderers (from a
+spec) or the analyst's own <code>template.html</code> (a freeform package). Both run through
+the same data + receipt kernel and emit the same two artifacts.</p>
+<h3 id="reuse-vs-new-the-honest-map">Reuse vs new (the honest map)</h3>
+<p>Almost every kernel <em>primitive</em> already exists:</p>
+<table>
+<thead>
+<tr>
+<th>Kernel step</th>
+<th>Reuse</th>
+<th>New</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>resolve + stamp</td>
+<td><code>DataRef</code>/<code>QuerySpec</code> validation; <code>model.execute()</code> stamps query+model+input fingerprints</td>
+<td>resolver glue (~40 lines)</td>
+</tr>
+<tr>
+<td>fingerprint</td>
+<td><code>frame_fingerprint</code> (<code>dataset.py:18-35</code>)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>receipt</td>
+<td><code>to_manifest_dict</code> fingerprints any DataSet section incl. custom types; <code>build_manifest</code>; manifest-first ordering</td>
+<td>an <code>embedded_data</code> block on the manifest</td>
+</tr>
+<tr>
+<td>inline one file</td>
+<td><code>render_shell</code> string-inlining; <code>template</code>/<code>head_extra</code>/<code>body_extra</code>/<code>template_context</code> seams; <code>HTMLRenderer.serve</code></td>
+<td>the <strong>safe JSON embedder</strong>; the <strong>template-package loader</strong></td>
+</tr>
+<tr>
+<td>discovery</td>
+<td><code>_register_spec_file</code> factory pattern; registry name+factory contract</td>
+<td><code>_register_template_package(dir)</code> branch</td>
+</tr>
+<tr>
+<td>CLI</td>
+<td>the scaffold + subcommand plumbing (<code>cmd_new_model</code> et al.)</td>
+<td><code>tracebi new-report</code>, <code>tracebi report build/preview</code>, <code>tracebi verify --file</code></td>
+</tr>
+<tr>
+<td>verify (model reproduction)</td>
+<td><code>verify_manifest</code> — <strong>zero changes</strong></td>
+<td>a <strong>separate</strong> offline file checker</td>
+</tr>
+</tbody>
+</table>
+<p>Net: the new code is small — a safe embedder, a thin template-package renderer, a
+discovery branch, an offline checker, and CLI. The one genuinely new <em>primitive</em> is
+the canonical-bytes data embed.</p>
+<hr>
+<h2 id="3-what-the-pressure-test-caught-blocking-resolved">3. What the pressure test caught (blocking, resolved)</h2>
+<ol>
+<li>
+<p><strong>A tampered file still passed <code>verify</code>.</strong> Editing a shipped report's grand total
+   to <code>$99,999,999</code> left <code>tracebi verify</code> returning REPRODUCES / exit 0 — it re-runs
+   queries against the model and never opens the file.
+   <strong>Fix:</strong> a separate offline checker, <code>tracebi verify --file report.html</code>, that
+   extracts the embedded data and rehashes it against the manifest. Runs by default
+   when the <code>.html</code> sits next to its manifest.</p>
+</li>
+<li>
+<p><strong>The "reviewer can re-check the numbers" claim was broken.</strong> Embedding data as
+   JSON records and re-fingerprinting does <em>not</em> match the stored fingerprint —
+   floats truncate, dtypes are lost, CSV reserialization drifts by 1 ULP.
+   <strong>Fix:</strong> embed the <em>exact bytes the fingerprint was taken over</em> — <code>repr(columns)</code>,
+   <code>repr(dtypes)</code>, and <code>df.to_csv(index=False)</code> verbatim. The checker hashes the
+   recovered strings <strong>without rebuilding a DataFrame</strong>. Proven to match exactly.
+   Do <strong>not</strong> introduce a second fingerprint algorithm — <code>frame_fingerprint</code> stays
+   the single algorithm across <code>verify</code>, manifests, and <code>DataModel.load</code>.</p>
+</li>
+<li>
+<p><strong>Embedded data was a stored-XSS vector.</strong> Model data carries
+   attacker-influencable strings (issuer names parsed from prose blobs). A cell
+   containing <code>&lt;/script&gt;&lt;img onerror=…&gt;</code> naively embedded breaks out and executes in
+   a file the recipient opens offline.
+   <strong>Fix:</strong> the safe encoder in §5.</p>
+</li>
+<li>
+<p><strong>The receipt covers the data — not the pixels.</strong> The fingerprint covers the
+   embedded JSON, never the rendered DOM. The page's JS can round, rescale, hardcode
+   a figure, or run a wrong client-side sum, all invisible to the receipt.
+   <strong>Handle:</strong> state it plainly (§4); flag <code>report.py</code>-computed data as unverifiable;
+   ship a lint that flags hardcoded numbers — a nudge, never a proof.</p>
+</li>
+</ol>
+<hr>
+<h2 id="4-what-the-receipt-proves-and-what-it-doesnt">4. What the receipt proves — and what it doesn't</h2>
+<p>Ships in the docs <strong>and</strong> in <code>verify</code> output.</p>
+<p><strong>Proven</strong>
+- These queries against these models produced data with these fingerprints, at render time.
+- Re-running the queries reproduces them — <code>tracebi verify manifest.json</code>.
+- The bytes shipped in <em>this file</em> are exactly those fingerprinted bytes — <code>tracebi verify --file</code>.</p>
+<p><strong>Not proven</strong>
+- <strong>Embedded → displayed.</strong> The JS can show a number that isn't in the stamped data.
+  The receipt covers the blob, not the render.
+- <strong><code>report.py</code> outputs.</strong> Arbitrary Python is unverifiable-by-replay; its <em>inputs</em>
+  are stamped, its <em>output</em> is not re-run — and must never read as green
+  (verdict <code>unverifiable</code>, but surfaced as a coverage line, not a silent exit 0).</p>
+<blockquote>
+<p>Verified: the data in this file came from these queries and reproduces from the
+model. Trusted, not verified: everything the page draws from that data.</p>
+</blockquote>
+<p>Two verify checks, kept distinct: <code>verify manifest.json</code> (query → model) and
+<code>verify --file report.html</code> (embedded bytes → manifest). Neither implies the other.</p>
+<hr>
+<h2 id="5-security-posture-the-shipped-file-is-emailed-and-opened-by-third-parties">5. Security posture (the shipped file is emailed and opened by third parties)</h2>
+<p><strong>Safe data-embedding contract</strong> — escaping happens in Python before the string
+reaches the shell (the custom-template Jinja env is <code>autoescape=False</code>; there is no
+safe embedder to inherit):</p>
+<pre><code class="language-python">def embed_json(obj, elem_id: str) -&gt; str:
+    raw  = json.dumps(obj, ensure_ascii=False, default=str)
+    safe = (raw.replace(&quot;&amp;&quot;, &quot;\\u0026&quot;).replace(&quot;&lt;&quot;, &quot;\\u003c&quot;).replace(&quot;&gt;&quot;, &quot;\\u003e&quot;)
+               .replace(&quot;\u2028&quot;, &quot;\\u2028&quot;).replace(&quot;\u2029&quot;, &quot;\\u2029&quot;))
+    return f'&lt;script id=&quot;{elem_id}&quot; type=&quot;application/json&quot;&gt;{safe}&lt;/script&gt;'
+</code></pre>
+<p><code>type="application/json"</code> (non-executable); the client reads via
+<code>JSON.parse(el.textContent)</code> only; data-derived strings are <strong>never</strong> passed to
+<code>innerHTML</code> / <code>insertAdjacentHTML</code> / <code>document.write</code>. Verified to neutralize the
+injection payload and round-trip the exact bytes for the §3.2 checker.</p>
+<p><strong>CSP</strong> — a conservative meta as the first child of <code>&lt;head&gt;</code>:</p>
+<pre><code>default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';
+img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'
+</code></pre>
+<p><code>connect-src 'none'</code> kills phone-home (a bundled lib cannot beacon the embedded fund
+data). ECharts needs <strong>no <code>'unsafe-eval'</code></strong> — a concrete win of choosing it over
+Plotly; <code>'unsafe-inline'</code> is unavoidable in a static file, so <strong>CSP is defense in
+depth, not the XSS control — the safe embedder is.</strong> A malicious analyst is out of
+scope by design.</p>
+<hr>
+<h2 id="6-charts-echarts-pluggable">6. Charts — ECharts, pluggable</h2>
+<p>The whole product renders charts <strong>client-side</strong> from the embedded data. This fits
+the kernel: a chart is just the stamped JSON handed to a library in the browser. The
+Python side stays light (it emits data + config; the browser draws), preserving the
+earlier no-matplotlib decision.</p>
+<ul>
+<li><strong>Library: Apache ECharts, default, pluggable.</strong> No <code>eval</code> (clean CSP), canvas
+  performance for fund-scale data, tree-shakeable so the inlined bundle carries only
+  the chart types a report uses. A freeform package may inline a different library.</li>
+<li><strong>Governed lane:</strong> <code>ChartSection</code>'s config (<code>chart_type</code>, <code>x</code>, <code>y</code>, <code>color</code>…)
+  compiles to an ECharts <code>option</code> object + a small init script.</li>
+<li><strong>Freeform lane:</strong> the analyst's <code>script.js</code> calls ECharts directly on the embedded
+  data.</li>
+<li><strong>The bundle is inlined</strong> (offline, no CDN — enforced by <code>connect-src 'none'</code>).</li>
+<li><strong>PDF stays lib-agnostic.</strong> WeasyPrint runs no JS, so client-side charts can't
+  render in a PDF. The existing server-side SVG renderer (<code>chart.py</code>,
+  <code>ChartSpec.to_svg</code>) is <strong>kept for the print path only</strong>: one <code>ChartSection</code> config
+  → two renderers (ECharts for interactive HTML, SVG for PDF). No new dependency, no
+  kaleido, no headless browser.</li>
+</ul>
+<hr>
+<h2 id="7-coexistence-one-reports">7. Coexistence — one <code>reports/</code></h2>
+<p>A file is a spec or a factory; a <strong>directory containing <code>report.json</code> + <code>template.html</code></strong>
+is a freeform package. All three authoring forms live under <code>reports/</code>, with one CLI
+noun (<code>tracebi report build/preview</code>) an analyst learns regardless of form.</p>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Location</th>
+<th>Who draws</th>
+<th>Discovery</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Code factory</td>
+<td><code>reports/*.py</code></td>
+<td><code>@register.report</code> → <code>Report</code></td>
+<td>existing <code>.py</code> branch</td>
+</tr>
+<tr>
+<td>Governed spec</td>
+<td><code>reports/*.json</code></td>
+<td>built-in section renderers</td>
+<td>existing <code>_register_spec_file</code></td>
+</tr>
+<tr>
+<td>Freeform package</td>
+<td><code>reports/&lt;name&gt;/</code> (a directory)</td>
+<td>the analyst's <code>template.html</code></td>
+<td><strong>new</strong> <code>_register_template_package</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>dashboards/</code> has folded into <code>reports/</code> (one location): the demo
+<code>portfolio_dashboard.json</code> now lives in the reference project's <code>reports/</code>
+(<code>examples/portfolio_project/</code>), and the
+<code>TRACEBI_DASHBOARDS_DIR</code> discovery branch is gone.</p>
+<hr>
+<h2 id="8-build-plan">8. Build plan</h2>
+<p><em>All five milestones below have shipped; this section is kept as the record of how
+the work was staged and what each milestone proved.</em></p>
+<p><strong>M0 — kernel primitives (proves the trust story first).</strong> The safe embedder + the
+stamped-data helper (canonical bytes), and <code>tracebi verify --file</code>. Proof gate:
+build one hand-wired package, tamper a number in the <code>.html</code>, confirm <code>verify --file</code>
+fails while <code>verify manifest.json</code> still passes — closing §3.1.</p>
+<p><strong>M1 — template-package renderer.</strong> Thin orchestration over <code>HTMLRenderer</code>: read
+<code>report.json</code>, resolve+stamp, build synthetic carrier sections for the receipt, then
+<strong>inject the data/style/script blocks by string insertion</strong> before <code>&lt;/head&gt;</code>/<code>&lt;/body&gt;</code>
+of the rendered HTML — do not depend on the analyst placing <code>{{ head_extra }}</code> /
+<code>{{ body_extra }}</code> (StrictUndefined fails only on <em>referenced</em> undefined names, not
+<em>omitted</em> ones, so a forgotten placeholder silently ships a page with no data).</p>
+<p><strong>M2 — discovery + CLI.</strong> <code>_register_template_package</code> branch (subdirectories are
+currently skipped); <code>tracebi new-report</code>, <code>tracebi report build/preview</code>; fold
+<code>dashboards/</code> into <code>reports/</code>.</p>
+<p><strong>M3 — escape hatch + honesty.</strong> The <code>report.py</code> <code>inputs</code>/<code>build()</code> contract; resolve
+inputs as stamped DataRefs; fingerprint outputs; set <code>verifiable=false</code>; add a
+<code>data_coverage</code>-style line to <code>verify</code> so a Python-derived page never reads as green.</p>
+<p><strong>M4 — chart layer.</strong> <code>ChartSection</code> → ECharts <code>option</code>; inline the tree-shaken
+bundle; keep <code>ChartSpec.to_svg</code> for the PDF path. Optional <code>report lint</code> for
+hardcoded numbers.</p>
+<p><strong>Deliberately not yet:</strong> live callback from the shipped file; live re-render through
+the web route (the build step + static serve avoids a new registry seam that would
+require converting the tests that rebind <code>web.api.registry</code>); any <code>report.py</code>
+replay-proof (impossible for arbitrary Python); a new fingerprint algorithm.</p>
+<hr>
+<h2 id="9-decisions-all-locked">9. Decisions (all locked)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Decision</th>
+<th>Call</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Data binding</td>
+<td>declarative model queries by default; <code>report.py</code> escape hatch (inputs stamped, output not replay-proved)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Portability</td>
+<td>static embedded stamped data; client-side render; no live callback</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Trust boundary</td>
+<td>receipt covers the numbers, not the pixels; stated plainly</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Chart engine</td>
+<td><strong>ECharts</strong>, default, pluggable; SVG renderer retained for PDF</td>
+</tr>
+<tr>
+<td>5</td>
+<td>PDF</td>
+<td>static SVG fallback per chart via the existing renderer (no new dep)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Folders</td>
+<td>one <code>reports/</code>; a file is a spec, a directory is a package</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Self-verifying file</td>
+<td>also embed the manifest into the <code>.html</code>; still write the loose manifest</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Unverifiable surfacing</td>
+<td>manifest flag + coverage line; exit 0 stays for hand-authored pages, but green never reads as "verified"</td>
+</tr>
+</tbody>
+</table>
+<p>The worked example (AltsVault API output → phase-① transform → model → report) drives
+the first real package once M0–M2 land.</p>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

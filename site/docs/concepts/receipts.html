@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Receipts — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="It is a reproduction-and-integrity check, not a correctness check.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a class="on" href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="receipts">Receipts</h1>
+<p><strong>A receipt proves a number <em>reproduces</em> and the file was not <em>altered</em>. It
+does not prove the number is correct.</strong></p>
+<p>That distinction is the most important sentence in these docs, and the wording
+is deliberately locked — see <a href="#the-locked-language">The locked language</a>.</p>
+<hr>
+<h2 id="what-ships">What ships</h2>
+<p>Every built report writes two files:</p>
+<pre><code>output/my_report.html                   the self-contained artifact
+output/my_report.html.manifest.json     the receipt
+</code></pre>
+<p>The manifest records, per figure: the model it came from, the exact query, and
+a SHA-256 fingerprint of the data the query returned. The artifact embeds the
+same fingerprinted bytes it draws from — so what the reader sees and what the
+receipt covers are the same thing, by construction.</p>
+<h2 id="what-you-can-check">What you can check</h2>
+<pre><code class="language-bash">tracebi verify output/my_report.html.manifest.json
+</code></pre>
+<p>Re-runs every recorded query against the model and compares fingerprints.
+Each figure lands on one verdict:</p>
+<table>
+<thead>
+<tr>
+<th>Verdict</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REPRODUCES</code></td>
+<td>re-running the query produced byte-identical data</td>
+</tr>
+<tr>
+<td><code>ALTERED</code></td>
+<td>the data changed — the number moved since the render</td>
+</tr>
+<tr>
+<td><code>UNVERIFIABLE</code></td>
+<td>no re-runnable query backs it (see <a href="#unverifiable-figures">Unverifiable figures</a>)</td>
+</tr>
+<tr>
+<td><code>UNVERIFIED (marked)</code></td>
+<td>the author explicitly marked it as not a claim</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash">tracebi verify --file output/my_report.html
+</code></pre>
+<p>Checks the <strong>file alone</strong>, offline, with no database and no account: do the
+embedded bytes still hash to what the embedded manifest says? This catches a
+number edited in the HTML after the fact.</p>
+<h2 id="what-it-does-not-prove">What it does not prove</h2>
+<p><strong>It is a reproduction-and-integrity check, not a correctness check.</strong></p>
+<ul>
+<li>A wrong number that reproduces reliably still says <code>REPRODUCES</code>. If phase ①
+  sank bad data, every badge is green.</li>
+<li>Between two parties it travels as <em>documentation</em>, not evidence: the data,
+  the query and the fingerprint are generated together by the same author. It
+  becomes evidence only when the verifier independently holds the warehouse.</li>
+<li>It says nothing about the pandas above the sink. See
+  <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</li>
+</ul>
+<p>This is a real, useful guarantee — <em>"these 40 overnight reports still reproduce,
+and this one doesn't"</em> is exactly the question it answers — but it is a narrower
+one than "the numbers are right", and the docs never widen it.</p>
+<h2 id="unverifiable-figures">Unverifiable figures</h2>
+<p>Some numbers cannot be expressed as a model query — several queries combined, a
+window function, an algorithm. Those go in a package's <code>report.py</code> escape
+hatch. Its <strong>inputs</strong> are stamped and re-runnable; its <strong>outputs</strong> are not.</p>
+<p>An output figure is stamped <code>verifiable: false</code>, permanently and
+un-overridably. It never reads green. The receipt says the number is
+python-derived and not query-reproducible, because it is.</p>
+<h2 id="the-locked-language">The locked language</h2>
+<p>These phrases are fixed. The runtime writes them literally, and tests pin them:</p>
+<ul>
+<li><strong>"reproduces"</strong> — never "verified". The green badge means a re-runnable
+  query backs the number, not that anyone checked it is correct.</li>
+<li><strong>"the sink satisfied its contract"</strong> — never "the transform was verified".
+  See <a href="../concepts/sink-contracts.html">Sink contracts</a>.</li>
+<li><strong>"stated methodology"</strong> — the author's own description, not a framework
+  claim.</li>
+</ul>
+<p>Paraphrasing these is how an honest guarantee quietly becomes an overclaim, so
+they are treated as vocabulary rather than prose.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../concepts/lineage.html">Lineage</a> — what gets recorded on the way</li>
+<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — narrowing the phase-① gap</li>
+<li><a href="../reference/cli.html">CLI reference</a> — <code>tracebi verify</code> flags</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

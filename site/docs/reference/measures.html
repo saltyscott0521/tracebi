@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Measures — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Measures">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a class="on" href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="measures">Measures</h1>
+<p><strong>Named, declarative calculations on a <a href="../concepts/model.html">Model — phase ②</a>. Ten kinds, a closed set of
+aggregations, and guardrails that refuse the arithmetic that is quietly wrong.</strong></p>
+<p>A report asks for a measure <strong>by name</strong>. That is what makes a figure
+re-runnable, and therefore <a href="../concepts/receipts.html">receiptable</a>.</p>
+<hr>
+<h2 id="declaring-one">Declaring one</h2>
+<pre><code class="language-python">model.add_measure(
+    name, *,
+    column=None, expr=None, ratio=None, share=None, rank=None, running=None,
+    period_end=None, offset=None, growth=None, to_date=None,   # exactly ONE
+    partition_by=None,      # rank / running only
+    agg=None,               # required for column= / expr=; rejected by the rest
+    description=&quot;&quot;, format=None,
+    allow_rate_agg=False, allow_additive=False,
+)
+</code></pre>
+<p>Exactly one kind argument. <code>format</code> takes a name from <a href="../reference/number-formats.html">Number formats</a>.
+Chainable — it returns the model.</p>
+<hr>
+<h2 id="the-ten-kinds">The ten kinds</h2>
+<h3 id="simple-one-column-one-aggregation"><code>simple</code> — one column, one aggregation</h3>
+<pre><code class="language-python">model.add_measure(&quot;revenue&quot;, column=&quot;revenue&quot;, agg=&quot;sum&quot;, format=&quot;currency0&quot;)
+model.add_measure(&quot;orders&quot;,  column=&quot;order_id&quot;, agg=&quot;nunique&quot;)
+</code></pre>
+<h3 id="expression-row-arithmetic-then-aggregate"><code>expression</code> — row arithmetic, then aggregate</h3>
+<pre><code class="language-python">model.add_measure(&quot;gross_margin&quot;, expr=&quot;revenue - cost&quot;, agg=&quot;sum&quot;)
+</code></pre>
+<p><strong>Arithmetic over column names only</strong> — no function calls, no quotes, no SQL
+fragments. A spec that cannot be validated before execution is not a spec.</p>
+<h3 id="ratio-divide-aggregated-totals"><code>ratio</code> — divide aggregated totals</h3>
+<pre><code class="language-python">model.add_measure(&quot;margin_pct&quot;, ratio=(&quot;gross_margin&quot;, &quot;revenue&quot;), format=&quot;percent&quot;)
+</code></pre>
+<p><strong>Divides totals, not per-row values</strong> — <code>sum(a) / sum(b)</code>, never the mean of
+per-row ratios. This is the fix the rate guard points you at, and it is also how
+you express a <strong>weighted average</strong>: a ratio whose numerator carries the weight
+(sum it, then divide).</p>
+<p>Null-safe: a zero denominator yields null, not an infinity.</p>
+<h3 id="share-percent-of-total"><code>share</code> — percent of total</h3>
+<pre><code class="language-python">model.add_measure(&quot;revenue_share&quot;, share=&quot;revenue&quot;, format=&quot;percent&quot;)
+</code></pre>
+<p>Each row's value over the total <strong>across the whole result, before <code>having</code> and
+before <code>limit</code></strong> — so a top-10 table shows each row's share of the whole
+population, not of the ten rows displayed.</p>
+<h3 id="rank-1n-position"><code>rank</code> — 1..N position</h3>
+<pre><code class="language-python">model.add_measure(&quot;rev_rank&quot;,       rank=&quot;revenue&quot;)
+model.add_measure(&quot;rank_in_region&quot;, rank=&quot;revenue&quot;, partition_by=&quot;dim_customer.region&quot;)
+</code></pre>
+<p>Ordered by the named measure descending (rank 1 = largest), with a total
+tie-break so it reproduces.</p>
+<p><code>partition_by</code> restarts the rank per group. Paired with <code>having</code>, it expresses
+<strong>top-N-per-group</strong> — which a global <code>order_by</code> + <code>limit</code> cannot:</p>
+<pre><code class="language-python">model.query(
+    fact=&quot;fact_orders&quot;,
+    measures=[&quot;revenue&quot;, &quot;rank_in_region&quot;],
+    dimensions=[&quot;dim_customer.region&quot;, &quot;dim_customer.segment&quot;],
+    having={&quot;rank_in_region&quot;: {&quot;lte&quot;: 3}},        # top 3 per region
+    order_by=[&quot;dim_customer.region&quot;, &quot;-revenue&quot;],
+)
+</code></pre>
+<p>Every <code>partition_by</code> column must be in the query's <code>dimensions</code>.</p>
+<h3 id="running-cumulative-largest-first"><code>running</code> — cumulative, largest first</h3>
+<pre><code class="language-python">model.add_measure(&quot;cum_share&quot;, running=&quot;revenue_share&quot;, format=&quot;percent&quot;)
+</code></pre>
+<p>The Pareto/concentration direction. <code>running</code> of a share is the cumulative
+percent of total, so <code>rank</code> + <code>share</code> + <code>running(share)</code> is the whole
+concentration table — governed, with its receipt intact.</p>
+<h3 id="period_end-semi-additive-balances"><code>period_end</code> — semi-additive balances</h3>
+<pre><code class="language-python">model.add_measure(&quot;aum&quot;, period_end=(&quot;balance&quot;, &quot;dim_date.as_of_date&quot;),
+                  format=&quot;currency0&quot;)
+</code></pre>
+<p>For <strong>stocks</strong>, not flows: AUM, NAV, headcount, inventory. Summed across
+non-time dimensions, but taken at the <strong>latest snapshot</strong> over time — never
+summed across snapshots, because January AUM + February AUM is not AUM.</p>
+<p>Group by a time grain to get the period-end series.</p>
+<h3 id="offset-the-prior-periods-value"><code>offset</code> — the prior period's value</h3>
+<pre><code class="language-python">model.add_measure(&quot;rev_ly&quot;, offset=(&quot;revenue&quot;, &quot;year&quot;, 1), format=&quot;currency0&quot;)
+</code></pre>
+<p>A <code>(base, unit, n)</code> triple; unit is <code>day</code>/<code>week</code>/<code>month</code>/<code>quarter</code>/<code>year</code>.</p>
+<h3 id="growth-period-over-period-change"><code>growth</code> — period-over-period change</h3>
+<pre><code class="language-python">model.add_measure(&quot;rev_yoy&quot;, growth=(&quot;revenue&quot;, &quot;year&quot;, 1), format=&quot;percent&quot;)
+</code></pre>
+<p><code>(current − prior) / prior</code>. YoY with <code>('revenue','year',1)</code>; QoQ and MoM by
+unit.</p>
+<blockquote>
+<p><strong>Both compare against periods <em>present in the result</em>.</strong> Don't filter out the
+comparison period — a <code>WHERE</code> removes the prior period the measure needs.
+Restrict the display with <code>order_by</code> + <code>limit</code>, which run <em>after</em> the shift.</p>
+</blockquote>
+<pre><code class="language-python">model.query(
+    fact=&quot;fact_orders&quot;,
+    measures=[&quot;revenue&quot;, &quot;rev_ly&quot;, &quot;rev_yoy&quot;],
+    dimensions=[&quot;dim_date.order_month&quot;],
+    order_by=[&quot;-dim_date.order_month&quot;], limit=12,     # not a filter
+)
+</code></pre>
+<h3 id="to_date-ytd-qtd-mtd"><code>to_date</code> — YTD / QTD / MTD</h3>
+<pre><code class="language-python">model.add_measure(&quot;rev_ytd&quot;, to_date=(&quot;revenue&quot;, &quot;year&quot;), format=&quot;currency0&quot;)
+</code></pre>
+<p>A running total from the start of the reset period. Reset periods are
+<code>week</code>/<code>month</code>/<code>quarter</code>/<code>year</code> — <strong><code>day</code> is not one</strong>.</p>
+<p>The query's time grain must be <strong>finer</strong> than the reset period: YTD over
+monthly works; YTD over yearly does not.</p>
+<blockquote>
+<p><strong><code>running</code> vs <code>to_date</code>:</strong> <code>running</code> is a cumulative ordered by the <em>base
+measure</em> (largest first, Pareto). <code>to_date</code> is a cumulative ordered by <em>time</em>
+within a reset partition. Different orderings, different questions.</p>
+</blockquote>
+<p>Both <code>offset</code>/<code>growth</code>/<code>to_date</code> require exactly <strong>one</strong> declared time grain
+among the query's dimensions.</p>
+<hr>
+<h2 id="aggregations">Aggregations</h2>
+<pre><code>avg  count  max  mean  median  min  nunique  stddev  sum  p&lt;N&gt;
+</code></pre>
+<ul>
+<li><code>count</code> counts non-null rows; <code>nunique</code> counts distinct values.</li>
+<li><code>median</code> and <code>stddev</code> summarize a distribution's <strong>shape</strong> — a mean hides skew
+  and tails, so reach for them on returns, P&amp;L, sizes and spreads.</li>
+<li><code>p&lt;N&gt;</code> is any percentile from <code>p0</code> to <code>p100</code>. <code>p50</code> is the median; <code>p90</code>/<code>p95</code>/
+  <code>p99</code> are the tail a mean and even a median hide.</li>
+</ul>
+<pre><code class="language-python">model.add_measure(&quot;p95_order&quot;, column=&quot;revenue&quot;, agg=&quot;p95&quot;, format=&quot;currency&quot;)
+</code></pre>
+<hr>
+<h2 id="derived-dimension-attributes">Derived dimension attributes</h2>
+<p>Two governed ways to group by something the warehouse doesn't store as a column.
+Both are declared on a dimension and referenced as <code>dim.name</code> like any attribute.</p>
+<h3 id="add_time_grain-group-by-monthquarter"><code>add_time_grain</code> — group by month/quarter/…</h3>
+<pre><code class="language-python">model.add_time_grain(&quot;dim_date&quot;, &quot;order_month&quot;, source=&quot;order_date&quot;, grain=&quot;month&quot;)
+
+model.query(fact=&quot;fact_orders&quot;, measures=[&quot;revenue&quot;],
+            dimensions=[&quot;dim_date.order_month&quot;])
+</code></pre>
+<p>A governed <code>date_trunc</code>. Grains: <code>day</code>, <code>week</code>, <code>month</code>, <code>quarter</code>, <code>year</code>.
+This is "group by month" without dropping to <code>report.py</code> or pre-baking the
+bucket in the <a href="../concepts/transform.html">Transform — phase ①</a>.</p>
+<h3 id="add_value_bins-group-by-a-numeric-band"><code>add_value_bins</code> — group by a numeric band</h3>
+<pre><code class="language-python">model.add_value_bins(&quot;dim_customer&quot;, &quot;score_band&quot;,
+                     source=&quot;credit_score&quot;, edges=[600, 700, 800])
+# 3 edges → 4 bands: &quot;&lt; 600&quot;, &quot;600–700&quot;, &quot;700–800&quot;, &quot;≥ 800&quot;
+</code></pre>
+<p>A governed <code>CASE</code> over ranges — credit score, age, vintage. Custom <code>labels</code> take
+one per band (<code>len(edges) + 1</code>).</p>
+<p>Three things to know:
+- A <strong>null</strong> source groups as null, not as the top band.
+- Bands sort <strong>lexicographically by label</strong>, so choose labels that sort if
+  magnitude order matters (<code>"1 subprime"</code>, <code>"2 near-prime"</code>, …).
+- Bands are <strong>groupable, not filterable</strong> — filter on the source column.</p>
+<hr>
+<h2 id="the-guardrails">The guardrails</h2>
+<p>Five refusals. Each exists because the alternative is a confident wrong number.</p>
+<h3 id="callables-are-rejected">Callables are rejected</h3>
+<p>A <code>column</code>, <code>expr</code> or <code>agg</code> that is a function is refused outright, with no
+override. A function cannot be serialized, diffed, or validated before
+execution — so it cannot be part of a declarative contract.</p>
+<h3 id="non-unique-dimension-keys-allow_fanouttrue">Non-unique dimension keys → <code>allow_fanout=True</code></h3>
+<p>Joining a dimension whose key repeats fans out the fact table and <strong>inflates
+every additive measure</strong>. The refusal names the duplicate values and the exact
+row multiplication.</p>
+<p>The override is a <em>query</em> argument, and taking it records a <code>warning</code> lineage
+node — so the opt-in leaves its own receipt.</p>
+<h3 id="rate-aggregation-by-name-allow_rate_aggtrue">Rate aggregation, by name → <code>allow_rate_agg=True</code></h3>
+<p>Aggregating a rate-named measure (<code>*_pct</code>, <code>*_bps</code>, <code>*_yield</code>, <code>*_rate</code>, or
+anything described as "weighted") with <code>sum</code>/<code>mean</code>/<code>avg</code> is refused.</p>
+<p>You do not additively combine per-row rates: summing is meaningless, and
+averaging overweights small rows. <code>min</code>/<code>max</code> stay fine.</p>
+<p><strong>The fix is a <code>ratio</code> measure</strong> — the blended rate is
+<code>sum(numerator) / sum(denominator)</code>.</p>
+<h3 id="rate-aggregation-by-value-allow_rate_aggtrue">Rate aggregation, by value → <code>allow_rate_agg=True</code></h3>
+<p>The name guard is blind to a per-row ratio whose name matches nothing —
+<code>mark_cost = fair_value / cost</code>, sitting near 1.0. So the same guard fires again
+at <strong>query</strong> time on the values: a floating column centred near 1.0, over at
+least 20 rows, refuses <code>sum</code>/<code>mean</code>.</p>
+<p>Override on the measure or on the query.</p>
+<h3 id="summing-a-stock-allow_additivetrue">Summing a stock → <code>allow_additive=True</code></h3>
+<p><code>agg="sum"</code> on a measure named <code>aum</code>, <code>nav</code>, <code>balance</code>, <code>headcount</code>,
+<code>inventory</code> or <code>outstanding</code> is refused — a point-in-time balance
+double-counts when summed across snapshots.</p>
+<p><strong>The fix is a <code>period_end</code> measure.</strong> Override only for a genuine <em>flow</em> (a
+delta, not a level). This one is declare-time only; there is no query-level
+escape.</p>
+<hr>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/queries.html">Queries</a> — asking for these measures</li>
+<li><a href="../concepts/model.html">Model — phase ②</a> — where they are declared</li>
+<li><a href="../reference/number-formats.html">Number formats</a> — the <code>format</code> argument</li>
+<li>Lessons: <code>tracebi knowledge ratio-of-totals</code>, <code>semi-additive</code>,
+  <code>period-over-period</code>, <code>year-to-date</code>, <code>group-by-band</code></li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

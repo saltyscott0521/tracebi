@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>API routes — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="API routes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a class="on" href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="api-routes">API routes</h1>
+<p><strong>The HTTP surface served by <code>tracebi serve</code>.</strong> Everything reads from the
+registry; nothing is app-specific.</p>
+<p>Roles in the table are the minimum required when authorization is enabled — see
+<a href="../reference/environment-variables.html">Environment variables</a>.</p>
+<hr>
+<h2 id="health-and-discovery">Health and discovery</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/health</code></td>
+<td>—</td>
+<td>liveness</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/schema</code></td>
+<td>viewer</td>
+<td>the machine-readable vocabulary (same source as <code>tracebi context</code>)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/discovery</code></td>
+<td>viewer</td>
+<td>per-file registered / skipped / failed, <strong>with the reason</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>/api/discovery</code> is the first place to look when something you wrote doesn't
+appear: auto-discovery is convention-based and quiet, and this is where the
+silence gets a reason.</p>
+<h2 id="models">Models</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/models</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/models/{name}</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/models/{name}/tables/{table}/preview</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/models/{name}/tables/{table}/export.csv</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/models/{name}/query</code></td>
+<td>viewer</td>
+</tr>
+</tbody>
+</table>
+<p><code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
+graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
+<h2 id="reports">Reports</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/reports</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/reports/{name}/run</code></td>
+<td>analyst</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/reports/{name}/runs</code></td>
+<td>analyst</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/reports/{name}/runs</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/reports/{name}/runs/{run_id}</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/reports/{name}/download?format=xlsx\|html</code></td>
+<td>analyst</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/reports/{name}/lineage</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/reports/{name}/mermaid</code></td>
+<td>viewer</td>
+</tr>
+</tbody>
+</table>
+<p><code>/run</code> returns <code>{name, html, manifest}</code> — the <strong>real artifact render</strong>, so what
+the browser shows is what <code>verify --file</code> can check. <code>POST /runs</code> starts the
+same work in the background and returns a <code>run_id</code> to poll.</p>
+<blockquote>
+<p><strong>There is one renderer.</strong> A registered report with no package is refused with
+<code>422</code> naming the fix, never served through a weaker path. See <a href="../concepts/report.html">Report — phase ③</a>.</p>
+</blockquote>
+<p>The <code>html</code> download is that same artifact. <code>xlsx</code> goes through the Excel
+renderer, which derives no <a href="../reference/number-formats.html">formats</a>.</p>
+<h2 id="report-specs">Report specs</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/spec/schema</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/spec/validate</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/spec/render</code></td>
+<td>analyst</td>
+</tr>
+</tbody>
+</table>
+<p><code>/render</code> compiles the spec to a package and renders it like a hand-authored
+one — same figures, same receipt drawer, same schema-2 manifest.</p>
+<h2 id="verify">Verify</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/verify/file</code></td>
+<td>viewer</td>
+</tr>
+</tbody>
+</table>
+<p>The offline file check over HTTP: embedded bytes against the manifest. No model
+needed. See <a href="../concepts/receipts.html">Receipts</a>.</p>
+<h2 id="pipelines">Pipelines</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/pipelines</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/pipelines/{name}/run</code></td>
+<td><strong>admin</strong></td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/pipelines/{name}/layers/{layer}/run</code></td>
+<td><strong>admin</strong></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/pipelines/{name}/layers/{layer}/history</code></td>
+<td>viewer</td>
+</tr>
+</tbody>
+</table>
+<p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
+in the role model is by side effect, not by resource.</p>
+<h2 id="connectors-docs-dev">Connectors, docs, dev</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/connectors</code> · <code>/api/connectors/{name}</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/docs</code> · <code>/api/docs/{name}</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/_dev/reload</code></td>
+<td><strong>admin</strong>, and only with <code>TRACEBI_DEV_MODE</code></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/_dev/discovered</code></td>
+<td>admin</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-spa">The SPA</h2>
+<p><code>GET /</code> serves the built React bundle. When it has not been built, the page
+says so and names the build command rather than 404ing.</p>
+<hr>
+<h2 id="error-shape">Error shape</h2>
+<p>A failed run returns a structured <code>detail</code>:</p>
+<pre><code class="language-json">{&quot;message&quot;: &quot;...&quot;, &quot;exception_type&quot;: &quot;ValueError&quot;, &quot;traceback&quot;: &quot;&quot;}
+</code></pre>
+<p><strong><code>traceback</code> is empty unless <code>TRACEBI_DEV_MODE</code> is set</strong> — a traceback leaks
+file paths, the server username and package versions. Keep it unset in
+production.</p>
+<h2 id="adding-a-route">Adding a route</h2>
+<p>Add a file under <code>tracebi/web/api/routers/</code>, include it in <code>main.py</code>, and read
+resources <strong>only from the registry</strong> — never import app-specific objects.</p>
+<p>Any non-GET route the authorizer does not recognise requires <code>analyst</code> by
+default, so a new write route is guarded rather than open. Add an explicit rule
+when it needs <code>admin</code>.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/environment-variables.html">Environment variables</a> — auth configuration</li>
+<li><a href="../reference/cli.html">CLI reference</a> — the same operations from the terminal</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

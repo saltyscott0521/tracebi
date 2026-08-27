@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>template.html — the figure grammar — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="template.html — the figure grammar">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a class="on" href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="templatehtml-the-figure-grammar"><code>template.html</code> — the figure grammar</h1>
+<p><strong>Ordinary HTML you fully control. A handful of <code>data-tb-*</code> attributes turn an
+element into a live figure backed by a <a href="../reference/report-json.html">binding</a>.</strong></p>
+<p>Nothing here is a component library. Any element can be a figure — including a
+<code>&lt;span&gt;</code> mid-sentence.</p>
+<blockquote>
+<p>Prefer not to write these by hand? Declare the figure instead and place it
+with <code>{{ figure("name") }}</code> — see <a href="../reference/figure-helper.html">{{ figure("name") }}</a>. Both produce identical
+markup; mix freely.</p>
+</blockquote>
+<hr>
+<h2 id="claiming-a-figure">Claiming a figure</h2>
+<pre><code class="language-html">&lt;div data-tb-figure=&quot;chart&quot; data-tb-binding=&quot;by_sector&quot;
+     data-tb-type=&quot;bar&quot; data-tb-x=&quot;dim_issuer.sector&quot;
+     data-tb-y=&quot;fair_value&quot; id=&quot;chart-sector&quot;&gt;&lt;/div&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data-tb-figure</code></td>
+<td><code>value</code> | <code>chart</code> | <code>table</code> | <code>custom</code></td>
+</tr>
+<tr>
+<td><code>data-tb-binding</code></td>
+<td>which stamped binding feeds this element</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td><strong>give every figure one</strong> — it is the receipt's address, and how a human redirects you</td>
+</tr>
+</tbody>
+</table>
+<p>A figure with no binding must carry <code>data-tb-unverified</code>. <strong>There is no third
+state:</strong> a number is either backed by a re-runnable query or honestly marked as
+not being one.</p>
+<h3 id="value-figures">Value figures</h3>
+<pre><code class="language-html">&lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;totals&quot;
+      data-tb-cell=&quot;revenue&quot; data-tb-format=&quot;currency&quot; id=&quot;kpi-rev&quot;&gt;—&lt;/span&gt;
+</code></pre>
+<ul>
+<li><code>data-tb-cell</code> — the column to read, from row 0</li>
+<li><code>data-tb-format</code> — see <a href="../reference/number-formats.html">Number formats</a></li>
+</ul>
+<p>The runtime fills a <code>.tb-kpi-value</code> child when one exists, otherwise the
+element itself.</p>
+<h3 id="chart-figures">Chart figures</h3>
+<p><code>data-tb-type</code> (<code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>),
+<code>data-tb-x</code>, <code>data-tb-y</code> (comma-list for multi-series), <code>data-tb-color</code>,
+and <code>data-tb-value-format</code> for labels, axes and tooltips.</p>
+<p>Requires <code>"libs": ["echarts"]</code> in <a href="../reference/report-json.html">report.json</a>.</p>
+<h3 id="table-figures">Table figures</h3>
+<p><code>data-tb-columns</code> — a column allowlist and order. Classes
+<code>tb-table--striped</code> / <code>tb-table--compact</code> restyle it.</p>
+<hr>
+<h2 id="bind-prose-numbers">Bind prose numbers</h2>
+<p>The single highest-value habit in this file:</p>
+<pre><code class="language-html">&lt;p&gt;Fair value grew to
+   &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;totals&quot;
+         data-tb-cell=&quot;fair_value&quot; data-tb-format=&quot;compact&quot;&gt;—&lt;/span&gt;
+   this quarter.&lt;/p&gt;
+</code></pre>
+<p>Narrative prose is where hard-coded numbers hide. Here the honest path costs
+one attribute, and each bound span becomes a verified figure in the receipt.</p>
+<h2 id="interactivity">Interactivity</h2>
+<p><strong>Controls subset which stamped rows a figure displays. They never compute new
+numbers</strong> — client-side aggregation would mint numbers nobody can re-run, so a
+filtered KPI needs its own binding, and value figures never react to controls.</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Markup</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dropdown filter</td>
+<td><code>&lt;select data-tb-filter data-tb-binding="B" data-tb-column="C"&gt;</code></td>
+</tr>
+<tr>
+<td>Search</td>
+<td><code>&lt;input data-tb-search data-tb-binding="B"&gt;</code></td>
+</tr>
+<tr>
+<td>Download</td>
+<td><code>&lt;button data-tb-download data-tb-binding="B" data-tb-label="…"&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p>Filters on one binding AND-combine, and search ANDs with them. Download exports
+the binding's <strong>stamped CSV verbatim</strong> — a receipt-preserving export, always the
+full binding, never the filtered view.</p>
+<p>Tables scroll past <code>data-tb-rows</code> (default 10); <code>data-tb-rows="all"</code> opts out.</p>
+<h2 id="layout">Layout</h2>
+<ul>
+<li><strong>Tabs</strong> — <code>&lt;div class="tb-tabs"&gt;&lt;section data-tb-tab="Label"&gt;…&lt;/section&gt;&lt;/div&gt;</code>;
+  the runtime builds the tab bar from the labels.</li>
+<li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, collapsing to one column under 720px.</li>
+</ul>
+<h2 id="stage-blocks">Stage blocks</h2>
+<pre><code class="language-html">&lt;section data-tb-stage=&quot;exploration&quot;&gt; … &lt;/section&gt;
+</code></pre>
+<p>Exploration content is <strong>deleted</strong> at final build. Use it to keep scratch
+queries beside the page while iterating with <code>tracebi dev</code>.</p>
+<h2 id="stated-methodology">Stated methodology</h2>
+<pre><code class="language-html">&lt;section data-tb-methodology&gt; your own notes … &lt;/section&gt;
+</code></pre>
+<p>One per page. Your children stay first; the build appends the pipeline's
+stated methodology — transform notes, per-check rationale, measure
+descriptions. It is an appendix, never a claim: no badge, no status.</p>
+<h2 id="reading-data-in-scriptjs">Reading data in <code>script.js</code></h2>
+<pre><code class="language-js">tracebi.ready(function (data) { /* … */ });
+</code></pre>
+<p><strong>Never call <code>tracebi.data()</code> at the top level.</strong> A large-detail artifact
+decodes its data in a worker <em>after</em> <code>script.js</code> runs, so a bare call returns
+<code>[]</code> there and rows on a small report. <code>ready(fn)</code> behaves the same on both.</p>
+<p>Sorting and slicing belong in the query (<code>order_by</code> + <code>limit</code>, see
+<a href="../reference/queries.html">Queries</a>), never in JS — that moves ordering out of the receipt.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/figure-helper.html">{{ figure("name") }}</a> — declare figures instead of writing this</li>
+<li><a href="../guides/styling-a-report.html">Styling a report</a> — the CSS stack and design tokens</li>
+<li><a href="../reference/report-json.html">report.json</a> — where bindings are declared</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

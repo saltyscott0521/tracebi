@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Front-end surfaces — tracebi.com vs. the distributed app — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Front-end surfaces — tracebi.com vs. the distributed app">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a class="on" href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="front-end-surfaces-tracebicom-vs-the-distributed-app">Front-end surfaces — tracebi.com vs. the distributed app</h1>
+<p><strong>Status: decided (2026-08-20).</strong> How the web front-ends are split, so the
+public product site and the UI that ships to customer deployments stay cleanly
+separable as both grow.</p>
+<h2 id="three-surfaces-three-audiences">Three surfaces, three audiences</h2>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Who it's for</th>
+<th>Talks to</th>
+<th>Home</th>
+<th>In the wheel?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>tracebi.com</strong></td>
+<td>strangers — marketing, explanation, docs, pricing</td>
+<td>nothing (or a demo instance)</td>
+<td>its <strong>own</strong> project</td>
+<td>❌ never</td>
+</tr>
+<tr>
+<td><strong>The app UI</strong> (<code>web/ui/</code> → <code>tracebi/web/ui/dist</code>)</td>
+<td>a customer, against <em>their own</em> registry</td>
+<td>the customer's own FastAPI</td>
+<td>the wheel, served at their <code>/</code></td>
+<td>✅ yes</td>
+</tr>
+<tr>
+<td><strong>Hosted control plane</strong> (later)</td>
+<td>paying orgs — auditor pane, retention, identity</td>
+<td>the paid backend</td>
+<td>separate SaaS</td>
+<td>❌ its own thing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-boundary-rule">The boundary rule</h2>
+<blockquote>
+<p>If a logged-out stranger should see it, it belongs on <strong>tracebi.com</strong>. If it
+only means anything with a customer's models and warehouse loaded, it belongs
+in the <strong>app</strong>.</p>
+</blockquote>
+<p>Hold that line and the two never entangle: they are different codebases talking
+to different things. The app is a pure API client of the customer's own
+FastAPI — it needs <strong>zero</strong> knowledge that tracebi.com exists.</p>
+<h2 id="the-adopted-flow-marketing-demo">The adopted flow: marketing → demo</h2>
+<p><code>tracebi.com</code> is the marketing and explanation page for the product. It carries
+the pitch (the receipt, the offline verifier, the self-contained artifact),
+the docs, and pricing — and its primary call to action <strong>branches into a live
+demo app</strong>: a hosted instance of the distributed app UI, seeded with the
+reference project, so a visitor can click through real models, run a report,
+and verify a file without installing anything.</p>
+<p>The demo instance is exactly the app UI running the
+<a href="deploy-vercel-supabase.md">Vercel + Supabase</a> deploy — which is honestly a
+<strong>demo topology</strong> (rendered receipts don't persist on a read-only serverless
+FS; see that doc). That is the right role for it: a try-it surface, not a
+production claim.</p>
+<pre><code>tracebi.com  ──&quot;Try the demo&quot;──▶  demo.tracebi.com   (the app UI, seeded)
+ (marketing, its own project)      (a hosted instance of tracebi/web/ui/dist)
+                                            │
+                                   a customer installs the wheel and gets
+                                   the SAME app UI against THEIR data, at /
+</code></pre>
+<h2 id="what-ships-where">What ships where</h2>
+<ul>
+<li>The <strong>wheel packages only the app UI</strong> (<code>artifacts = ["tracebi/web/ui/dist/**"]</code>).
+  A CI job asserts the bundle is in the wheel and that nothing top-level named
+  <code>web</code> ships. The marketing site is a <strong>different build</strong>, deployed
+  independently, and must never touch the wheel.</li>
+<li>No route collision: <code>tracebi.com</code> is a public apex domain; the app is served
+  at each customer's own <code>/</code>.</li>
+</ul>
+<h2 id="keeping-them-separable-set-up-when-tracebicom-is-built">Keeping them separable (set up when tracebi.com is built)</h2>
+<ol>
+<li><strong>Its own project.</strong> Build tracebi.com in a separate repo, or — if it must
+   live here — a top-level <code>site/</code> that is explicitly excluded from wheel
+   packaging. Never nest it inside <code>web/ui/</code>.</li>
+<li><strong>Share brand, not runtime.</strong> If you want one visual identity, extract a
+   tiny <code>@tracebi/brand</code> package (tokens, logo, fonts) both import. That keeps
+   them <em>looking</em> like one product without either <em>depending</em> on the other.</li>
+<li><strong>Two deploys, always.</strong> The day tracebi.com ships, keep marketing and the
+   demo app as separate deployments (<code>tracebi.com</code> vs. <code>demo.tracebi.com</code>).
+   Don't let marketing content — pricing, "about", the pitch — creep into
+   <code>web/ui/</code>.</li>
+</ol>
+<h2 id="growing-the-app-into-a-real-app-on-thesis">Growing the app into a real app (on-thesis)</h2>
+<p>Making the distributed UI a full <strong>app</strong> is the direction — but as an
+<strong>operational + trust console</strong>, not a viz builder. On-thesis growth:</p>
+<ul>
+<li>browse and run published reports; download the HTML-with-receipt</li>
+<li><strong>verify status at a glance</strong>, click-to-verify a file, the receipt drawer
+  front-and-centre — making the trust <em>visible</em> is the UI's highest-leverage
+  work</li>
+<li>manage models and pipelines; schedule and deliver reports</li>
+</ul>
+<p>The one line to hold: <strong>the product is the verifiable file, not a dashboard
+server.</strong> Don't grow the app into drag-and-drop chart authoring — that is the
+Tableau turf the self-contained artifact exists to displace. Authoring already
+has two better homes: the CLI / <code>tracebi dev</code> for humans, and the MCP gateway
+for agents.</p>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

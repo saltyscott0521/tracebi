@@ -2265,6 +2265,57 @@ class TestHelpTextIsReadable:
         assert "DataModel" in DataModel("m").help_text()
         assert "Report" in Report("r").help_text()
 
+    def test_cheat_sheet_kwargs_are_real_parameters(self):
+        """A cheat sheet that names a keyword the method does not take is
+        worse than no cheat sheet: it is copied verbatim and raises TypeError.
+
+        This shipped — the DataModel sheet advertised ``add_dimension(table=,
+        key=)`` against real parameters ``table_name=`` / ``key_col=``, and
+        ``tracebi context`` republished it to every agent. Pin the sheets to
+        the signatures so the next rename cannot quietly reintroduce it.
+        """
+        import inspect
+        import re
+
+        import pandas as pd
+
+        from tracebi import DataModel, DataSet
+        from tracebi.reports.report import Report
+
+        subjects = [
+            DataSet(pd.DataFrame(), name="t"),
+            DataModel("m"),
+            Report("r"),
+        ]
+        checked = 0
+        problems = []
+        for obj in subjects:
+            for line in obj.help_text().splitlines():
+                m = re.search(r"\.(\w+)\(([^)]*)", line)
+                if not m:
+                    continue
+                method = getattr(type(obj), m.group(1), None)
+                if method is None or not callable(method):
+                    continue
+                sig = inspect.signature(method)
+                # A **kwargs method (``assign(margin=…)``, ``aggregate(
+                # revenue="sum")``) legitimately takes any keyword — the
+                # user's column names are the arguments.
+                if any(p.kind is inspect.Parameter.VAR_KEYWORD
+                       for p in sig.parameters.values()):
+                    continue
+                params = set(sig.parameters)
+                for kw in re.findall(r"(\w+)=", m.group(2)):
+                    checked += 1
+                    if kw not in params:
+                        problems.append(
+                            f"{type(obj).__name__}.{m.group(1)}() has no "
+                            f"parameter '{kw}' — the cheat sheet says "
+                            f"'{line.strip()}'"
+                        )
+        assert checked > 10, "the cheat sheets must advertise keyword arguments"
+        assert not problems, "\n".join(problems)
+
     def test_help_still_prints_the_same_text(self, capsys):
         import pandas as pd
 

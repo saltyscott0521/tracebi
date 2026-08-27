@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your first report — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Your first report">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a class="on" href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="your-first-report">Your first report</h1>
+<p><strong>Author a report package end to end — from <code>tracebi new-report</code> to a verified
+artifact.</strong></p>
+<p>Assumes you have a <a href="../concepts/model.html">Model — phase ②</a> over a warehouse. If not, start with
+<a href="../guides/quickstart.html">Quickstart</a>.</p>
+<hr>
+<h2 id="1-scaffold">1. Scaffold</h2>
+<pre><code class="language-bash">tracebi new-report &quot;Portfolio Book&quot;
+</code></pre>
+<p>Creates <code>reports/portfolio_book/</code> with <code>report.json</code> and <code>template.html</code>, bound
+to the first model it finds.</p>
+<p>There is deliberately <strong>no <code>script.js</code> or <code>style.css</code></strong> yet. The runtime draws
+every figure from the stamped bytes, so hand-rolling a CSV parser and a chart is
+the classic wasted afternoon. Add them when you actually need them.</p>
+<h2 id="2-declare-the-data">2. Declare the data</h2>
+<p>Open <code>report.json</code>. Each entry under <code>data</code> is a <strong>binding</strong> — the unit of
+trust, resolved once, fingerprinted, and recorded in the receipt.</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;Portfolio Book&quot;,
+  &quot;libs&quot;: [&quot;echarts&quot;],
+  &quot;data&quot;: {
+    &quot;totals&quot;: {
+      &quot;model&quot;: &quot;portfolio_model&quot;,
+      &quot;query&quot;: {&quot;fact&quot;: &quot;fact_holdings&quot;, &quot;measures&quot;: [&quot;fair_value&quot;, &quot;positions&quot;]}
+    },
+    &quot;by_sector&quot;: {
+      &quot;model&quot;: &quot;portfolio_model&quot;,
+      &quot;query&quot;: {
+        &quot;fact&quot;: &quot;fact_holdings&quot;,
+        &quot;measures&quot;: [&quot;fair_value&quot;],
+        &quot;dimensions&quot;: [&quot;dim_issuer.sector&quot;],
+        &quot;order_by&quot;: [&quot;-fair_value&quot;]
+      }
+    }
+  }
+}
+</code></pre>
+<p>Note <code>totals</code> has <strong>no dimensions</strong> — it returns one row. A KPI needs a one-row
+binding; a value figure over a multi-row binding is refused.</p>
+<p><code>"libs": ["echarts"]</code> is required for charts, or the panel renders blank.</p>
+<p>→ <a href="../reference/report-json.html">report.json</a> · <a href="../reference/queries.html">Queries</a></p>
+<h2 id="3-declare-the-figures">3. Declare the figures</h2>
+<p>Add a <code>figures</code> block and let the framework build the markup:</p>
+<pre><code class="language-json">&quot;figures&quot;: {
+  &quot;kpi_value&quot;:  {&quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;totals&quot;, &quot;cell&quot;: &quot;fair_value&quot;,
+                 &quot;label&quot;: &quot;Fair value&quot;, &quot;format&quot;: &quot;currency0&quot;},
+  &quot;kpi_count&quot;:  {&quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;totals&quot;, &quot;cell&quot;: &quot;positions&quot;,
+                 &quot;label&quot;: &quot;Positions&quot;, &quot;format&quot;: &quot;comma&quot;},
+  &quot;sector_mix&quot;: {&quot;kind&quot;: &quot;chart&quot;, &quot;binding&quot;: &quot;by_sector&quot;, &quot;chart_type&quot;: &quot;bar&quot;,
+                 &quot;x&quot;: &quot;dim_issuer.sector&quot;, &quot;y&quot;: &quot;fair_value&quot;,
+                 &quot;value_format&quot;: &quot;compact&quot;},
+  &quot;sector_tbl&quot;: {&quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;by_sector&quot;}
+}
+</code></pre>
+<p>→ <a href="../reference/figure-helper.html">{{ figure("name") }}</a></p>
+<h2 id="4-draw-the-page">4. Draw the page</h2>
+<p><code>template.html</code> is yours. Place each figure where it belongs:</p>
+<pre><code class="language-html">&lt;!doctype html&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;title&gt;{{ title }}&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;main class=&quot;tb-page&quot;&gt;
+  &lt;h1&gt;Portfolio Book&lt;/h1&gt;
+
+  &lt;div class=&quot;tb-cols-2&quot;&gt;
+    &lt;div class=&quot;tb-card&quot;&gt;{{ figure(&quot;kpi_value&quot;) }}&lt;/div&gt;
+    &lt;div class=&quot;tb-card&quot;&gt;{{ figure(&quot;kpi_count&quot;) }}&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;tb-card&quot;&gt;
+    &lt;h2&gt;Fair value by sector&lt;/h2&gt;
+    {{ figure(&quot;sector_mix&quot;) }}
+  &lt;/div&gt;
+
+  &lt;div class=&quot;tb-card&quot;&gt;
+    &lt;h2&gt;Detail&lt;/h2&gt;
+    &lt;input data-tb-search data-tb-binding=&quot;by_sector&quot; placeholder=&quot;Search…&quot;&gt;
+    {{ figure(&quot;sector_tbl&quot;) }}
+  &lt;/div&gt;
+&lt;/main&gt;
+&lt;/body&gt;&lt;/html&gt;
+</code></pre>
+<p>Every declared figure must be placed <strong>exactly once</strong>, or the build fails —
+a declared number must not silently vanish.</p>
+<blockquote>
+<p>Prefer writing the attributes yourself? Do — <a href="../reference/template-html.html">template.html — the figure grammar</a> documents the
+grammar, and both styles produce identical bytes. Mix them freely.</p>
+</blockquote>
+<h2 id="5-bind-the-prose">5. Bind the prose</h2>
+<p>The highest-value habit in the whole file:</p>
+<pre><code class="language-html">&lt;p&gt;The book stands at
+   &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;totals&quot;
+         data-tb-cell=&quot;fair_value&quot; data-tb-format=&quot;compact&quot;
+         id=&quot;prose-fv&quot;&gt;—&lt;/span&gt;
+   across
+   &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;totals&quot;
+         data-tb-cell=&quot;positions&quot; data-tb-format=&quot;comma&quot;
+         id=&quot;prose-pos&quot;&gt;—&lt;/span&gt;
+   positions.&lt;/p&gt;
+</code></pre>
+<p>Narrative prose is where hard-coded numbers hide. Here the honest path costs one
+attribute — and each bound span becomes a verified figure in the receipt.</p>
+<h2 id="6-iterate-live">6. Iterate live</h2>
+<pre><code class="language-bash">tracebi dev portfolio_book
+</code></pre>
+<p>Edit and the page reloads. <code>/__workbench</code> shows what each figure is bound to and
+what it has earned. Wrap scratch work in <code>data-tb-stage="exploration"</code> — it is
+deleted at final build.</p>
+<h2 id="7-build-and-verify">7. Build and verify</h2>
+<pre><code class="language-bash">tracebi report build portfolio_book
+tracebi verify output/portfolio_book.html.manifest.json
+tracebi verify --file output/portfolio_book.html
+</code></pre>
+<p>You want <code>✓ REPRODUCES</code> per figure. See <a href="../concepts/receipts.html">Receipts</a> for what that does and
+does not claim.</p>
+<h2 id="8-check-what-it-earned">8. Check what it earned</h2>
+<pre><code class="language-bash">tracebi report status portfolio_book
+</code></pre>
+<p>Per figure: verified, python-derived, or unverified — plus unused and failing
+bindings. Exits 1 on any binding error, so CI can gate on it.</p>
+<hr>
+<h2 id="common-refusals-and-what-they-mean">Common refusals, and what they mean</h2>
+<table>
+<thead>
+<tr>
+<th>Refusal</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>a value figure needs a one-row binding</em></td>
+<td>aggregate the query, or use a table figure</td>
+</tr>
+<tr>
+<td><em>names binding 'x', which is not declared in 'data'</em></td>
+<td>typo, or you forgot the binding</td>
+</tr>
+<tr>
+<td><em>declares 'x' … but template.html never places it</em></td>
+<td>add <code>{{ figure("x") }}</code>, or drop the declaration</td>
+</tr>
+<tr>
+<td><em>figure('x') is placed more than once</em></td>
+<td>declare a second figure; one id addresses one number</td>
+</tr>
+<tr>
+<td>chart renders blank</td>
+<td>add <code>"libs": ["echarts"]</code></td>
+</tr>
+<tr>
+<td><em>limit without order_by is refused</em></td>
+<td>state the ranking → <a href="../reference/queries.html">Queries</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="next">Next</h2>
+<ul>
+<li><a href="../guides/styling-a-report.html">Styling a report</a> — your own CSS and JS</li>
+<li><a href="../reference/measures.html">Measures</a> — add a measure instead of computing in Python</li>
+<li><a href="../reference/cli.html">CLI reference</a> — <code>report send</code>, <code>snapshot</code>, <code>preview</code></li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

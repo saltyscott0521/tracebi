@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CLI reference — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="CLI reference">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a class="on" href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="cli-reference">CLI reference</h1>
+<p><strong>Every <code>tracebi</code> command.</strong> Start with <a href="#the-everyday-loop">The everyday loop</a> — it is five
+commands, and most days you use only those.</p>
+<pre><code class="language-bash">tracebi [--models-dir DIR] [--pipelines-dir DIR] &lt;command&gt; [...]
+</code></pre>
+<p>Global flags come <strong>before</strong> the subcommand. Directory defaults come from the
+environment — see <a href="../reference/environment-variables.html">Environment variables</a>.</p>
+<hr>
+<h2 id="the-everyday-loop">The everyday loop</h2>
+<pre><code class="language-bash">tracebi dev                      # the live surface (no name = discovery mode)
+tracebi run-transform holdings   # ① clean + sink to the warehouse
+tracebi report build my_report   # ③ render one self-contained .html + receipt
+tracebi report status my_report  # what the artifact has actually earned
+tracebi verify output/my_report.html.manifest.json
+</code></pre>
+<p>Everything else is scaffolding, serving, or one-time migration.</p>
+<hr>
+<h2 id="authoring">Authoring</h2>
+<h3 id="tracebi-init"><code>tracebi init</code></h3>
+<pre><code class="language-bash">tracebi init &lt;project&gt; [--force]
+</code></pre>
+<p>Scaffolds a complete three-phase project whose sample loop ends in
+<code>tracebi verify</code> printing REPRODUCES.</p>
+<p>Creates <code>inputs/ transforms/ models/ pipelines/ reports/ scheduled/ data/
+output/</code>, plus a sample transform, model and report package, <code>.gitignore</code>,
+<code>.env.example</code>, <code>README.md</code> and <code>AGENTS.md</code>.</p>
+<ul>
+<li><code>--force</code> — overwrite existing files, and required to init into a non-empty
+  directory. Without it, an existing file is skipped with a note and the run
+  still succeeds.</li>
+</ul>
+<h3 id="tracebi-new-transform-title-new-model-new-report-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-pipeline</code></h3>
+<pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--transforms-dir DIR]
+tracebi new-model     &quot;Sales Model&quot;   [--force]
+tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
+tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
+</code></pre>
+<p>Each scaffolds one file (or, for <code>new-report</code>, a package directory) with the
+title slugified: <code>"Portfolio Book"</code> → <code>portfolio_book</code>.</p>
+<p>All refuse to overwrite without <code>--force</code>.</p>
+<p><code>new-report</code> deliberately writes <strong>no</strong> <code>script.js</code> or <code>style.css</code> — the
+runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser
+and a chart is a trap. Its <code>template.html</code> teaches the grammar instead: bound
+prose, a KPI, a chart, and a filter/search/download table.
+See <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
+<hr>
+<h2 id="building-and-checking">Building and checking</h2>
+<h3 id="tracebi-report-build"><code>tracebi report build</code></h3>
+<pre><code class="language-bash">tracebi report build &lt;name&gt; [--output PATH] [--badges] [--reports-dir DIR]
+</code></pre>
+<p>Renders to one self-contained, offline <code>.html</code> plus a sibling
+<code>&lt;output&gt;.html.manifest.json</code>. Default output is <code>output/&lt;name&gt;.html</code>.</p>
+<ul>
+<li><code>--badges</code> — draw per-figure provenance badges on the page. Off by default;
+  the receipt drawer already carries provenance in one place. <strong>The manifest is
+  identical either way.</strong></li>
+</ul>
+<p>A <code>.json</code> spec target is compiled to a package first, then rendered like a
+hand-authored one — one report form.</p>
+<h3 id="tracebi-report-status"><code>tracebi report status</code></h3>
+<pre><code class="language-bash">tracebi report status &lt;name&gt; [--json]
+</code></pre>
+<p>The earned state of an artifact — what a driving agent or CI calls between
+edits. Prints a per-figure line (<code>✓</code> verified, <code>·</code> derived or unverified,
+<code>✗</code> otherwise), then unused and failing bindings.</p>
+<p><strong>Exits 1</strong> if any binding errors. Packages only.</p>
+<h3 id="tracebi-verify"><code>tracebi verify</code></h3>
+<pre><code class="language-bash">tracebi verify &lt;manifest.json&gt; [--strict] [--contracts]
+tracebi verify --file &lt;report.html&gt; [--manifest PATH] [--strict]
+</code></pre>
+<p>Two deliberately separate checks. See <a href="../concepts/receipts.html">Receipts</a> for what each proves.</p>
+<p><strong>Mode 1 — query → model.</strong> Re-runs every recorded query and classifies each
+section: <code>REPRODUCES</code>, <code>SOURCE DRIFT</code>, <code>MODEL CHANGED</code>, <code>UNEXPLAINED</code>, or
+<code>UNVERIFIABLE</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Exit</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>all reproduce or are unverifiable</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>diagnosed drift only</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>anything unexplained or errored — <strong>or a manifest with nothing to verify</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Mode 2 — <code>--file</code>.</strong> Rehashes the bytes embedded in the shipped HTML against
+the manifest. No model, no database, fully offline. Catches a number edited in
+the file after the fact.</p>
+<ul>
+<li><code>--strict</code> — fail unless <strong>every figure</strong> reproduces. The CI gate.</li>
+<li><code>--contracts</code> — also re-run the warehouse's recorded <a href="../concepts/sink-contracts.html">Sink contracts</a> and
+  compare certified fingerprints to the data now. Reported separately; it never
+  colours a figure status.</li>
+</ul>
+<p>Verify is read-only and refuses a review snapshot by name rather than printing
+a check that looks like it ran.</p>
+<h3 id="tracebi-validate"><code>tracebi validate</code></h3>
+<pre><code class="language-bash">tracebi validate
+</code></pre>
+<p>Cheap pre-flight: checks the project layout, reports any discovery import that
+failed, and runs <code>DataModel.validate()</code> on every model — chiefly that dimension
+keys are unique, since a non-unique key silently inflates every additive
+measure. Exits 1 on any problem.</p>
+<hr>
+<h2 id="working-live">Working live</h2>
+<h3 id="tracebi-dev"><code>tracebi dev</code></h3>
+<pre><code class="language-bash">tracebi dev [name] [--port 8001] [--no-browser]
+</code></pre>
+<p>The live-preview loop, and <strong>the everyday surface</strong>.</p>
+<p>With a package name, serves <code>reports/&lt;name&gt;/</code> with the exploration render plus
+the workbench at <code>/__workbench</code>. With <strong>no name</strong> it enters <em>discovery mode</em>:
+warehouse tables, sink contracts, models and packages — the live surface before
+any report exists.</p>
+<h3 id="tracebi-report-preview"><code>tracebi report preview</code></h3>
+<pre><code class="language-bash">tracebi report preview &lt;name&gt; [--port 8080] [--no-browser]
+</code></pre>
+<p>Builds, then serves the built static file. Bound to <code>127.0.0.1</code> only, because
+it serves a directory of rendered reports unauthenticated.</p>
+<h3 id="tracebi-serve"><code>tracebi serve</code></h3>
+<pre><code class="language-bash">tracebi serve [--host 127.0.0.1] [--port 8000] [--reload]
+</code></pre>
+<p>Serves the project's web UI. Refuses with an actionable message if there is no
+project in the current directory, or if <code>uvicorn</code> is not installed.</p>
+<h3 id="tracebi-session"><code>tracebi session</code></h3>
+<pre><code class="language-bash">tracebi session export [name] [-o PATH] [--format {html,md}] [--title T]
+tracebi session clear  [name]
+</code></pre>
+<p>Saves or resets the workbench exhibit feed that <code>tracebi dev</code> writes (stored
+under <code>.tracebi/workbench/&lt;name&gt;/</code>). Omit <code>name</code> for the discovery session.</p>
+<p><code>export</code> writes <strong>one living record per session</strong> — re-exporting overwrites the
+same file so git carries the timeline as a readable diff. The <code>md</code> format is
+the pull-request twin. It is a lab notebook: <strong>no manifest</strong>, and <code>verify</code>
+refuses it by name.</p>
+<p><code>clear</code> refuses while a dev-server heartbeat is fresh (15s), since the live
+watcher would post straight over the reset.</p>
+<hr>
+<h2 id="sharing">Sharing</h2>
+<h3 id="tracebi-report-send"><code>tracebi report send</code></h3>
+<pre><code class="language-bash">tracebi report send &lt;name&gt; --to a@b.com[,c@d.com] [--subject S] [--force]
+</code></pre>
+<p>Builds, <strong>verifies the fresh manifest in-process</strong>, then emails the HTML and
+its receipt together.</p>
+<p><strong>It refuses to send when the receipt does not verify</strong> — distribution never
+outruns verification. <code>--force</code> sends anyway with the failing verdict pasted
+into the body, so the red flag travels <em>with</em> the report.</p>
+<p>Requires <code>TRACEBI_SMTP_URL</code> and <code>TRACEBI_SMTP_FROM</code>; optional
+<code>TRACEBI_SLACK_WEBHOOK</code> pings after a successful send.</p>
+<p><strong>Scheduling is plain cron</strong> — no daemon ships:</p>
+<pre><code class="language-bash">0 7 * * MON cd /path/to/project &amp;&amp; tracebi report send weekly --to team@example.com
+</code></pre>
+<h3 id="tracebi-report-snapshot"><code>tracebi report snapshot</code></h3>
+<pre><code class="language-bash">tracebi report snapshot &lt;name&gt; [--output PATH]
+</code></pre>
+<p>Writes the sendable <strong>working state</strong> — exploration blocks kept, a self-banner,
+a read-only code appendix, and deliberately <strong>no manifest</strong>, because a
+weaker-looking receipt is worse than none. <code>verify --file</code> refuses it by name.</p>
+<hr>
+<h2 id="agent-surfaces">Agent surfaces</h2>
+<h3 id="tracebi-context"><code>tracebi context</code></h3>
+<pre><code class="language-bash">tracebi context [--model NAME] [--brief] [--compact]
+</code></pre>
+<p>The framework's vocabulary as JSON — generated from the code, so it cannot
+drift. This is what an agent reads first.</p>
+<ul>
+<li><code>--brief</code> — the token-lean tier: semantic model, figure grammar, contracts,
+  conventions</li>
+<li><code>--model NAME</code> — also include that model's schema</li>
+</ul>
+<h3 id="tracebi-knowledge"><code>tracebi knowledge</code></h3>
+<pre><code class="language-bash">tracebi knowledge [slug]
+</code></pre>
+<p>Analyst good-practice lessons. No argument lists the curriculum; a slug prints
+that lesson in full.</p>
+<h3 id="tracebi-mcp"><code>tracebi mcp</code></h3>
+<pre><code class="language-bash">tracebi mcp [--transport {stdio,http}] [--port 8765] [--insecure]
+</code></pre>
+<p>Serves the agent gateway over MCP. <strong>The http transport refuses to start until
+an auth decision is made</strong> — set <code>TRACEBI_MCP_TOKEN</code>, or pass <code>--insecure</code>
+deliberately.</p>
+<hr>
+<h2 id="pipelines">Pipelines</h2>
+<h3 id="tracebi-run-pipeline"><code>tracebi run-pipeline</code></h3>
+<pre><code class="language-bash">tracebi run-pipeline &lt;name&gt; [--layer LAYER] [--refresh] [--status]
+</code></pre>
+<p>Runs a pipeline's layers, upstream first. Any external scheduler can drive it.</p>
+<ul>
+<li><code>--layer</code> — run only this layer; add <code>--refresh</code> to run its upstream chain</li>
+<li><code>--status</code> — show each layer's last run, executing nothing</li>
+</ul>
+<p><strong>It does not stop at the first failure</strong> — downstream layers read what upstream
+wrote, so every failure is reported, then a summary and exit 1.</p>
+<p>Records the OS user as the audit actor, so "who ran this" answers for cron and
+CI runs too.</p>
+<h3 id="tracebi-list-models-tracebi-list-pipelines"><code>tracebi list-models</code> · <code>tracebi list-pipelines</code></h3>
+<p>List definition files. Never fail: a missing or empty directory prints a note
+and exits 0.</p>
+<hr>
+<h2 id="legacy">Legacy</h2>
+<h3 id="tracebi-spec"><code>tracebi spec</code></h3>
+<pre><code class="language-bash">tracebi spec {schema|validate|render} [file] [--theme CSS] [--output PATH]
+</code></pre>
+<p>Works with the JSON <code>ReportSpec</code> form: print its JSON Schema, validate without
+running, or compile and render.</p>
+<p>It <strong>refuses a package <code>report.json</code> by name</strong> and points you at
+<code>tracebi report build</code> rather than emitting confusing "unknown field" errors.</p>
+<h3 id="tracebi-migrate-spec"><code>tracebi migrate spec</code></h3>
+<pre><code class="language-bash">tracebi migrate spec reports/&lt;name&gt;.json [--force]
+</code></pre>
+<p>Compiles a spec into <code>reports/&lt;name&gt;/</code> <strong>alongside</strong> the original — it emits,
+never replaces. At discovery the directory shadows the same-named spec, so the
+cutover is the directory existing and the rollback is deleting it.</p>
+<hr>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/environment-variables.html">Environment variables</a> — every <code>TRACEBI_*</code> variable</li>
+<li><a href="../guides/quickstart.html">Quickstart</a> — these commands in order, once</li>
+<li><a href="../concepts/receipts.html">Receipts</a> — what <code>verify</code> proves</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

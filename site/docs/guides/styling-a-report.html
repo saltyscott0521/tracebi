@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Styling a report — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Presentation never changes a number.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a class="on" href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="styling-a-report">Styling a report</h1>
+<p><strong>Your CSS and JS, unrestricted — plus a design system you can lean on instead
+of fighting.</strong></p>
+<hr>
+<h2 id="the-stack">The stack</h2>
+<p>Three layers, later wins:</p>
+<pre><code>1. tracebi.css            the shipped design system
+2. reports/_theme.css     your project brand layer   (optional)
+3. style.css              this report                (optional)
+</code></pre>
+<p><strong>Override tokens; don't fork the sheet.</strong> Redefining a token restyles every
+component coherently; copying the stylesheet means inheriting every future fix
+by hand.</p>
+<h2 id="design-tokens">Design tokens</h2>
+<pre><code class="language-css">:root {
+  --tb-accent: #2e74b5;
+  --tb-ink:    #0a1628;
+  --tb-bg:     #eef2f8;
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--tb-font</code></td>
+<td>the type family</td>
+</tr>
+<tr>
+<td><code>--tb-ink</code> / <code>--tb-bg</code> / <code>--tb-muted</code></td>
+<td>text and ground</td>
+</tr>
+<tr>
+<td><code>--tb-accent</code></td>
+<td>the accent</td>
+</tr>
+<tr>
+<td><code>--tb-rule</code></td>
+<td>borders and rules</td>
+</tr>
+<tr>
+<td><code>--tb-radius</code>, <code>--tb-space-1..4</code></td>
+<td>shape and rhythm</td>
+</tr>
+<tr>
+<td><code>--tb-chart-1..8</code></td>
+<td>the chart palette</td>
+</tr>
+</tbody>
+</table>
+<p>Setting <code>--tb-chart-1..8</code> in <code>reports/_theme.css</code> is usually all a house style
+needs: charts follow it automatically.</p>
+<h2 id="components">Components</h2>
+<pre><code>.tb-page   .tb-grid   .tb-card
+.tb-kpi  (.tb-kpi-label / .tb-kpi-value)
+.tb-table  (.tb-table--striped / .tb-table--compact)
+.tb-callout   .tb-note   .tb-badge
+.tb-cols-2 / .tb-cols-3      responsive, collapse under 720px
+.tb-tabs                     with data-tb-tab sections
+</code></pre>
+<p>Use them or ignore them — <a href="../reference/template-html.html">template.html</a> is your page, and
+nothing requires these classes.</p>
+<h2 id="the-one-rule">The one rule</h2>
+<p><strong>Presentation never changes a number.</strong></p>
+<p>A stylesheet may restyle a <code>.tb-badge</code>; it may never re-colour honesty.
+Provenance chooses the badge class — <code>--verified</code> / <code>--derived</code> /
+<code>--unverified</code> — and CSS cannot move a figure between them.</p>
+<p>Likewise <a href="../reference/number-formats.html">derived formats</a> change how a number is <em>displayed</em>,
+never its value.</p>
+<h2 id="writing-scriptjs">Writing <code>script.js</code></h2>
+<pre><code class="language-js">tracebi.ready(function (data) {
+  // data is the stamped rows, already decoded
+});
+</code></pre>
+<p><strong>Never call <code>tracebi.data()</code> at the top level.</strong> On a large-detail artifact the
+data decodes in a worker <em>after</em> <code>script.js</code> runs, so a bare call returns <code>[]</code>
+there and rows on a small report. <code>ready(fn)</code> behaves identically on both.</p>
+<p>Two things that belong in the query, not in JS:</p>
+<ul>
+<li><strong>Sorting and slicing</strong> — <code>order_by</code> + <code>limit</code> (<a href="../reference/queries.html">Queries</a>). Sorting in JS
+  moves the ordering out of the receipt.</li>
+<li><strong>Aggregation</strong> — never. Client-side aggregation mints numbers nobody can
+  re-run; a filtered KPI needs its own binding.</li>
+</ul>
+<h2 id="what-you-cannot-load">What you cannot load</h2>
+<p>The artifact ships with a strict CSP and is meant to work offline, on a plane,
+from an email attachment. So:</p>
+<ul>
+<li><strong>no CDN scripts, stylesheets, fonts or images</strong></li>
+<li><strong>no <code>fetch</code>/XHR</strong> — <code>connect-src 'none'</code></li>
+</ul>
+<p>Everything must be inlined at build time. That constraint is what makes the file
+self-contained and the offline <code>verify --file</code> check meaningful.</p>
+<p>Charting is already inlined for you — opt in with <code>"libs": ["echarts"]</code> in
+<a href="../reference/report-json.html">report.json</a>.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup</li>
+<li><a href="../guides/web-customization.html">Customizing the TraceBi Web App</a> — theming the served web UI (a different surface)</li>
+<li><a href="../reference/number-formats.html">Number formats</a> — display defaults</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

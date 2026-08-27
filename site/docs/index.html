@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TraceBi Docs — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Reports as code — to keep agents in line.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a class="on" href="index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="concepts/freeze-points.html">Freeze points</a>
+<a href="concepts/lineage.html">Lineage</a>
+<a href="concepts/model.html">Model — phase ②</a>
+<a href="concepts/receipts.html">Receipts</a>
+<a href="concepts/report.html">Report — phase ③</a>
+<a href="concepts/sink-contracts.html">Sink contracts</a>
+<a href="concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="guides/quickstart.html">Quickstart</a>
+<a href="guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="guides/styling-a-report.html">Styling a report</a>
+<a href="guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="reference/api-routes.html">API routes</a>
+<a href="reference/cli.html">CLI reference</a>
+<a href="reference/environment-variables.html">Environment variables</a>
+<a href="reference/measures.html">Measures</a>
+<a href="reference/number-formats.html">Number formats</a>
+<a href="reference/queries.html">Queries</a>
+<a href="reference/report-json.html">report.json</a>
+<a href="reference/template-html.html">template.html — the figure grammar</a>
+<a href="reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="tracebi-docs">TraceBi Docs</h1>
+<p><strong>Reports as code — to keep agents in line.</strong></p>
+<p>You build a report the way you build software: the connectors, the star schema,
+the measures and the figures are all code in your repo — reviewed in a pull
+request, versioned, tested, and authored as easily by an agent as by a person.</p>
+<blockquote>
+<p>This folder is an <a href="#using-this-vault">Obsidian vault</a> — pages link to each
+other with wiki links, so you can open <code>docs/</code> as a vault and navigate the
+graph.</p>
+</blockquote>
+<hr>
+<h2 id="start-here">Start here</h2>
+<table>
+<thead>
+<tr>
+<th>If you want to…</th>
+<th>Read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Understand what TraceBi is in five minutes</td>
+<td><a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a></td>
+</tr>
+<tr>
+<td>Get something running</td>
+<td><a href="guides/quickstart.html">Quickstart</a></td>
+</tr>
+<tr>
+<td>Build your first report</td>
+<td><a href="guides/your-first-report.html">Your first report</a></td>
+</tr>
+<tr>
+<td>Look up a specific thing</td>
+<td><a href="#reference">Reference</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="concepts">Concepts</h2>
+<p>The ideas. Read these once and the rest of the docs make sense.</p>
+<ul>
+<li><a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a> — the spine: transform → model → report</li>
+<li><a href="concepts/transform.html">Transform — phase ①</a> — phase ①: unconstrained pandas that lands clean tables</li>
+<li><a href="concepts/model.html">Model — phase ②</a> — phase ②: the star-schema contract over those tables</li>
+<li><a href="concepts/report.html">Report — phase ③</a> — phase ③: figures that are live queries, not typed-in numbers</li>
+<li><a href="concepts/freeze-points.html">Freeze points</a> — why the three phases don't block each other</li>
+<li><a href="concepts/receipts.html">Receipts</a> — what a receipt proves, and what it deliberately does not</li>
+<li><a href="concepts/lineage.html">Lineage</a> — every operation leaves a node; nothing is untracked</li>
+<li><a href="concepts/sink-contracts.html">Sink contracts</a> — checks a transform must satisfy before its data counts</li>
+</ul>
+<h2 id="guides">Guides</h2>
+<p>Task-shaped walkthroughs.</p>
+<ul>
+<li><a href="guides/quickstart.html">Quickstart</a> — install, scaffold, and build one report</li>
+<li><a href="guides/your-first-report.html">Your first report</a> — author a report package end to end</li>
+<li><a href="guides/styling-a-report.html">Styling a report</a> — your own CSS and JS, and where the framework stops</li>
+<li><a href="guides/analyst-guide.html">TraceBi Analyst Guide</a> — the longer analyst walkthrough</li>
+<li><a href="guides/notebook-guide.html">TraceBi in Notebooks</a> — working in notebooks</li>
+<li><a href="guides/web-customization.html">Customizing the TraceBi Web App</a> — theming the served web UI</li>
+<li><a href="guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a> — hosting</li>
+</ul>
+<h2 id="reference">Reference</h2>
+<p>Look-up pages. These are kept in step with <code>tracebi context</code>, the generated
+vocabulary, so they describe what the code actually accepts.</p>
+<ul>
+<li><a href="reference/report-json.html">report.json</a> — the package declaration, key by key</li>
+<li><a href="reference/template-html.html">template.html — the figure grammar</a> — the <code>data-tb-*</code> figure grammar</li>
+<li><a href="reference/figure-helper.html">{{ figure("name") }}</a> — <code>{{ figure("name") }}</code>: framework-built figures, your layout</li>
+<li><a href="reference/measures.html">Measures</a> — every measure kind the semantic layer knows</li>
+<li><a href="reference/queries.html">Queries</a> — filters, <code>having</code>, ordering, limits</li>
+<li><a href="reference/number-formats.html">Number formats</a> — the named formats and how defaults are derived</li>
+<li><a href="reference/cli.html">CLI reference</a> — every <code>tracebi</code> command</li>
+<li><a href="reference/environment-variables.html">Environment variables</a> — every <code>TRACEBI_*</code> variable</li>
+<li><a href="reference/api-routes.html">API routes</a> — the HTTP surface</li>
+</ul>
+<h2 id="architecture">Architecture</h2>
+<p>Deep design documents. Written for someone changing the framework, not using it.</p>
+<ul>
+<li><a href="architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a> — the current report artifact design</li>
+<li><a href="architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a> — how big datasets ship inside one HTML file</li>
+<li><a href="architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a> — the three separate front ends and why</li>
+<li><a href="architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a> — superseded; kept for its kernel sections</li>
+</ul>
+<h2 id="the-canon">The canon</h2>
+<p>Short, stable, opinionated documents that define the project.</p>
+<ul>
+<li><strong>MANIFESTO</strong> — what TraceBi is and what it refuses to build</li>
+<li><strong>WORKFLOW</strong> — the three-phase workflow, stated normatively</li>
+<li><strong>AGENTS</strong> — the brief an agent reads before authoring</li>
+<li><strong>CLAUDE</strong> — behavioural guidelines for AI assistants in this repo</li>
+</ul>
+<hr>
+<h2 id="using-this-vault">Using this vault</h2>
+<p>Open the <code>docs/</code> folder as an Obsidian vault to get backlinks, the graph view,
+and wiki-link autocomplete. Everything is plain Markdown, so it also reads fine
+in an editor or on GitHub — GitHub renders a wiki link as literal text rather
+than a link, which is the one cost of this style.</p>
+<p><strong>Conventions used throughout:</strong></p>
+<ul>
+<li>One page is about <strong>one thing</strong>. If a page needs two headings that could each
+  be a page, it becomes two pages.</li>
+<li>Every page opens with a one-sentence answer to <em>"what is this?"</em></li>
+<li>Reference pages state what the code accepts, with the refusal it raises when
+  you get it wrong — the refusals are part of the contract, not an afterthought.</li>
+<li>Locked language is quoted exactly: <em>"the sink satisfied its contract"</em>,
+  <em>"reproduces"</em> (never "verified"). See <a href="concepts/receipts.html">Receipts</a> for why the wording is
+  load-bearing.</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

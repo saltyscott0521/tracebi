@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deploying TraceBi on Vercel with Supabase — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Works on Vercel">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <aside class="side"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a class="on" href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+  <main class="doc">
+<h1 id="deploying-tracebi-on-vercel-with-supabase">Deploying TraceBi on Vercel with Supabase</h1>
+<p>Vercel hosts the React UI and the FastAPI layer as Python serverless
+functions; Supabase Postgres holds your data and, if you use pipelines, their
+run history.</p>
+<p>This pairing works because of one property of each side. TraceBi never caches
+a query — every call recomputes from source, which is exactly what an
+ephemeral function wants. And Supabase gives you a <em>remote</em> Postgres, which
+solves the thing serverless otherwise breaks: TraceBi's default SQLite sits on
+a local disk that Vercel functions cannot write to.</p>
+<hr>
+<h2 id="what-works-and-what-does-not">What works, and what does not</h2>
+<p>This pairing is ideal for a live read-and-compute demo: models, Explore, and
+synchronous report render, backed by a real Postgres. Nothing rendered is
+persisted server-side — only the Postgres/Supabase run history survives an
+invocation.</p>
+<p>Be clear-eyed about this before you deploy.</p>
+<p><strong>Works on Vercel</strong></p>
+<ul>
+<li>Models, tables, previews, CSV export</li>
+<li>Explore: star-schema queries with dimension filters and named measures</li>
+<li>Reports: synchronous run, HTML/Excel download, lineage graphs</li>
+<li>Report specs: <code>POST /api/spec/validate</code> and <code>/api/spec/render</code></li>
+<li>The capability schema (<code>/api/schema</code>) and discovery diagnostics</li>
+</ul>
+<p><strong>Does not work on Vercel, architecturally</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Why</th>
+<th>What to do instead</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scheduled reports and pipelines</td>
+<td>APScheduler needs a process that outlives a request</td>
+<td>Supabase <code>pg_cron</code>, or Vercel Cron hitting a run endpoint</td>
+</tr>
+<tr>
+<td>Background report runs (<code>POST /reports/{n}/runs</code> then poll)</td>
+<td>The <code>run_id</code> lives in an in-process thread pool; the next poll lands in a different, fresh process</td>
+<td>Use the synchronous <code>POST /reports/{n}/run</code></td>
+</tr>
+<tr>
+<td>Local SQLite</td>
+<td>The filesystem is read-only outside <code>/tmp</code>, and <code>/tmp</code> is not shared between invocations</td>
+<td>Point everything at Supabase Postgres</td>
+</tr>
+<tr>
+<td>Persisting rendered <code>.html</code> / <code>.manifest.json</code> receipts</td>
+<td>The serverless filesystem is read-only outside <code>/tmp</code>, and <code>/tmp</code> is per-invocation</td>
+<td>Render synchronously and return to the client, or deliver with <code>tracebi report send</code></td>
+</tr>
+</tbody>
+</table>
+<p>Cold starts cost roughly a second importing pandas. That is inherent, not a
+misconfiguration.</p>
+<p>If you need scheduling badly enough, run the API in a container (Fly, Render,
+Railway) and keep only the UI on Vercel — set <code>VITE_API_BASE</code> and everything
+else here still applies.</p>
+<hr>
+<h2 id="1-get-your-supabase-connection-string">1. Get your Supabase connection string</h2>
+<p>In the Supabase dashboard: <strong>Project Settings → Database → Connection string
+→ URI</strong>. You want the <strong>connection pooler</strong> (port <code>6543</code>), not the direct
+connection — serverless functions open and drop connections constantly, and
+the pooler is built for that.</p>
+<p>Convert it to a SQLAlchemy URL by naming the driver:</p>
+<pre><code>postgresql+psycopg://postgres.&lt;ref&gt;:&lt;password&gt;@aws-0-&lt;region&gt;.pooler.supabase.com:6543/postgres
+</code></pre>
+<p>Set it in Vercel under <strong>Settings → Environment Variables</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_SUPABASE_URL</code></td>
+<td>the URL above</td>
+</tr>
+<tr>
+<td><code>TRACEBI_APP</code></td>
+<td><em>(empty string)</em> — skip the bundled demo app</td>
+</tr>
+<tr>
+<td><code>TRACEBI_AUTH_USER</code> / <code>TRACEBI_AUTH_PASS</code></td>
+<td>pick something; see §4</td>
+</tr>
+<tr>
+<td><code>TRACEBI_DEMO_DB_URL</code></td>
+<td><em>(only when running the bundled demo, <code>TRACEBI_APP=tracebi.web.demo_app</code>)</em> — same URL. See below.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="running-the-bundled-demo-against-postgres">Running the bundled demo against Postgres</h3>
+<p>If you deploy the demo app rather than your own project, point
+<code>TRACEBI_DEMO_DB_URL</code> at the same database. That changes what importing the
+app module does:</p>
+<ul>
+<li><strong>With it set</strong>, importing only <em>defines</em> layers. Nothing is seeded, nothing
+  is executed, and the web process does no batch work at all — it reads
+  results that are already in Postgres.</li>
+<li><strong>Without it</strong>, the demo falls back to an ephemeral SQLite file and seeds
+  and runs itself at import, because otherwise there would be nowhere for
+  anything else to have written and the demo would come up empty.</li>
+</ul>
+<p>Seed it once, from anywhere with the URL — a laptop, a CI job, a container:</p>
+<pre><code class="language-bash">TRACEBI_DEMO_DB_URL='postgresql+psycopg://…' \
+  python -c &quot;from tracebi.web.demo_app.pipeline import seed_and_run; seed_and_run()&quot;
+</code></pre>
+<p>That command is the execution plane. For a project of your own with pipelines
+in <code>pipelines/</code>, the equivalent is <code>tracebi run-pipeline &lt;name&gt;</code>, which needs
+no web server and exits non-zero if a layer fails — so cron, a Kubernetes
+CronJob, an Airflow task or a CI step can own the schedule instead of the API
+process. See NOTES.md, "Deployment planes".</p>
+<p>Never commit the password. The framework reads connector URLs only from
+<code>os.environ</code>, deliberately — see <a href="../.env.example">.env.example</a>.</p>
+<h2 id="2-define-a-model-against-supabase">2. Define a model against Supabase</h2>
+<p>Create <code>models/supabase.py</code> at the repo root — the file convention the server
+discovers at startup. It must expose a module-level <code>model</code>. (The Vercel entry
+serves the repo root unless <code>examples/portfolio_project/</code> carries a built
+warehouse in the deployment, which a normal deploy of your own project never
+does — so your root <code>models/</code> is what gets discovered. A copyable starting
+point ships at <code>examples/seeds/supabase.py.example</code>.)</p>
+<pre><code class="language-python">import os
+
+from tracebi import DataModel, SQLConnector
+
+# Fail loudly at import if it is missing, rather than at first query.
+url = os.environ[&quot;TRACEBI_SUPABASE_URL&quot;]
+
+db = SQLConnector(&quot;supabase&quot;, url=url)
+
+model = DataModel(&quot;Sales&quot;)
+model.add_connector(db)
+model.add_table(&quot;orders&quot;,    connector=&quot;supabase&quot;, source=&quot;orders&quot;)
+model.add_table(&quot;customers&quot;, connector=&quot;supabase&quot;, source=&quot;customers&quot;)
+
+model.add_dimension(
+    &quot;dim_customer&quot;, table_name=&quot;customers&quot;,
+    key_col=&quot;customer_id&quot;, attributes=[&quot;region&quot;, &quot;tier&quot;],
+)
+model.add_fact(
+    &quot;fact_orders&quot;, table_name=&quot;orders&quot;,
+    measures=[&quot;revenue&quot;, &quot;cost&quot;],
+    foreign_keys={&quot;dim_customer&quot;: &quot;customer_id&quot;},
+)
+
+# Define measures once here, reference them by name everywhere.
+model.add_measure(&quot;revenue&quot;, column=&quot;revenue&quot;, agg=&quot;sum&quot;,
+                  description=&quot;Gross booked revenue&quot;)
+model.add_measure(&quot;gross_margin&quot;, expr=&quot;revenue - cost&quot;, agg=&quot;sum&quot;)
+model.add_measure(&quot;margin_pct&quot;, ratio=(&quot;gross_margin&quot;, &quot;revenue&quot;),
+                  format=&quot;percent&quot;)
+
+model.connect()
+</code></pre>
+<p>Then, <strong>before you trust a number</strong>:</p>
+<pre><code class="language-bash">TRACEBI_SUPABASE_URL=... tracebi validate
+</code></pre>
+<p>That loads the model and checks every dimension key is unique. A duplicate key
+silently inflates every additive measure, so this is worth running in CI.</p>
+<h2 id="3-deploy">3. Deploy</h2>
+<p>The repo already contains <a href="../vercel.json"><code>vercel.json</code></a> and
+<a href="../api/index.py"><code>api/index.py</code></a>.</p>
+<pre><code class="language-bash">npm i -g vercel
+vercel link
+vercel --prod
+</code></pre>
+<p>Vercel will:</p>
+<ol>
+<li>run <code>cd web/ui &amp;&amp; npm ci &amp;&amp; npm run build</code> → <code>tracebi/web/ui/dist</code></li>
+<li>build <code>api/index.py</code> as a Python function from
+   <a href="../api/requirements.txt"><code>api/requirements.txt</code></a></li>
+<li>rewrite <code>/api/*</code> to the function and everything else to <code>index.html</code></li>
+</ol>
+<h3 id="why-apirequirementstxt-is-narrower-than-the-project-extras">Why <code>api/requirements.txt</code> is narrower than the project extras</h3>
+<p>Vercel functions have a 250 MB unzipped limit. That set measures ~150 MB
+because it omits three things it no longer needs:</p>
+<ul>
+<li><strong>matplotlib</strong> (~35 MB) — HTML charts render as inline SVG (spec and code
+  reports) or a bundled, self-contained ECharts runtime in the browser
+  (artifact packages), never via matplotlib; Excel charts are openpyxl-native</li>
+<li><strong>networkx</strong> (~17 MB) — only used for drawing lineage graphs;
+  <code>LineageDiagram.to_mermaid()</code> works without it</li>
+<li><strong>apscheduler</strong> — a scheduler cannot outlive a request here</li>
+</ul>
+<h2 id="4-auth-do-not-skip-this">4. Auth — do not skip this</h2>
+<p>With no auth configured the API is open to anyone who finds the URL, and that
+includes the endpoints that execute report and pipeline code (report
+factories, <code>report.py</code>, spec render, and pipeline layer runs). The server
+prints a warning at startup; take it seriously on a public deployment.</p>
+<p>The quickest safe thing is HTTP Basic:</p>
+<pre><code>TRACEBI_AUTH_USER=someone
+TRACEBI_AUTH_PASS=&lt;a real password&gt;
+</code></pre>
+<p>For per-user identity, put the deployment behind a proxy that authenticates
+and set <code>TRACEBI_AUTH_PROXY_HEADER</code> plus <code>TRACEBI_AUTH_PROXY_TRUSTED_IPS</code> —
+without the trusted-IP list, anyone can spoof the header.</p>
+<h2 id="5-pipelines-if-you-want-them">5. Pipelines, if you want them</h2>
+<p>Point <code>PipelineRunner</code> at Supabase so run history survives, in
+<code>pipelines/&lt;name&gt;.py</code>:</p>
+<pre><code class="language-python">import os
+from tracebi import PipelineRunner
+
+runner = PipelineRunner(db_url=os.environ[&quot;TRACEBI_SUPABASE_URL&quot;])
+# runner.register(layer, name=&quot;orders_landing&quot;, ...)
+</code></pre>
+<p>Layers still run on demand via <code>POST /api/pipelines/{name}/layers/{layer}/run</code>.
+For a <em>schedule</em>, trigger that endpoint from Supabase <code>pg_cron</code> or Vercel Cron
+— <code>runner.start()</code> will not survive on serverless.</p>
+<hr>
+<h2 id="getting-a-receipt-off-the-deployment">Getting a receipt off the deployment</h2>
+<p>Because the serverless filesystem is per-invocation, a rendered report and its
+manifest cannot be left on disk for later — the hosted function renders
+synchronously and returns to the client. To keep a receipt, deliver it:</p>
+<pre><code class="language-bash">TRACEBI_SMTP_URL='smtp://user:pass@host:port' \
+TRACEBI_SMTP_FROM='reports@example.com' \
+  tracebi report send &lt;name&gt; --to team@example.com
+</code></pre>
+<p><code>report send</code> builds the report, re-runs the manifest's recorded queries to
+verify it, and refuses to send while the receipt does not verify — <code>--force</code>
+sends anyway with the failing verdict pasted into the body. It emails the
+<code>.html</code> and its <code>.manifest.json</code> side by side; <code>--subject</code> overrides the
+default. If <code>TRACEBI_SLACK_WEBHOOK</code> is set, it pings that after a send.</p>
+<p>Like seeding and pipeline runs, this belongs to the execution plane — a CI
+job, cron, or a laptop that has the env vars above — not the serverless
+function. No daemon ships; the receipt does.</p>
+<hr>
+<h2 id="hosting-only-the-ui-on-vercel">Hosting only the UI on Vercel</h2>
+<p>If the API lives elsewhere, build the UI against it:</p>
+<pre><code class="language-bash">VITE_API_BASE=https://your-api.example.com/api  npm run build
+</code></pre>
+<p>Then deploy <code>tracebi/web/ui/dist</code> as a static site and drop <code>api/</code> and the <code>functions</code>
+block from <code>vercel.json</code>. Make sure the API allows your Vercel origin in
+<code>tracebi/web/api/main.py</code>'s CORS list.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reports list is empty</td>
+<td><code>reports/</code> is empty, or a file failed to import — check <code>GET /api/discovery</code></td>
+</tr>
+<tr>
+<td>Models list is empty</td>
+<td><code>models/</code> files did not expose <code>model</code>, or the Supabase URL is unset. <code>GET /api/discovery</code> names the failure</td>
+</tr>
+<tr>
+<td><code>250 MB</code> build error</td>
+<td>Something heavy crept into <code>api/requirements.txt</code></td>
+</tr>
+<tr>
+<td>Every request slow</td>
+<td>Cold start. Raise <code>memory</code> in <code>vercel.json</code>; Vercel scales CPU with it</td>
+</tr>
+<tr>
+<td>Queries hang or drop</td>
+<td>Use the pooler on <code>6543</code>, not the direct connection on <code>5432</code></td>
+</tr>
+</tbody>
+</table>
+  </main>
+</div>
+<script>
+(function(){
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>
