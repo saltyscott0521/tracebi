@@ -146,7 +146,7 @@ export default function Layout({ children }) {
         borderRight: '1px solid var(--sidebar-border)',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
         position: 'fixed', top: 0, left: 0, zIndex: 300,
-      }} className={open ? 'nav-open' : ''}>
+      }} className={`app-nav${open ? ' nav-open' : ''}`}>
 
         {/* Close button — mobile only, positioned top-right of sidebar */}
         <button
@@ -293,8 +293,11 @@ export default function Layout({ children }) {
       <style>{`
         @media (max-width: 768px) {
           .mobile-header { display: flex !important; }
-          nav { transform: translateX(-100%); transition: transform .25s ease; }
-          nav.nav-open { transform: translateX(0); }
+          /* Scoped to this sidebar. A bare element selector here also slid
+             every page's own nav off-screen — the docs sidebar did exactly
+             that, landing at x=-343 as an empty box. */
+          .app-nav { transform: translateX(-100%); transition: transform .25s ease; }
+          .app-nav.nav-open { transform: translateX(0); }
           main { margin-left: 0 !important; margin-top: 52px; padding: 20px 16px !important; max-width: 100% !important; }
         }
       `}</style>

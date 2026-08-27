@@ -31,6 +31,20 @@ const FIRST = { concepts: 'the-three-phase-workflow', guides: 'quickstart' }
 
 const clean = t => (t || '').replace(/`/g, '')
 
+/** Track a media query, so an inline-styled layout can still be responsive. */
+function useNarrow(query = '(max-width: 820px)') {
+  const [narrow, setNarrow] = useState(
+    () => typeof matchMedia !== 'undefined' && matchMedia(query).matches)
+  useEffect(() => {
+    const mq = matchMedia(query)
+    const on = e => setNarrow(e.matches)
+    mq.addEventListener('change', on)
+    setNarrow(mq.matches)
+    return () => mq.removeEventListener('change', on)
+  }, [query])
+  return narrow
+}
+
 function split(name) {
   const i = name.indexOf('--')
   return i === -1 ? { section: '', stem: name } : {
@@ -107,6 +121,10 @@ function Reader({ name, byStem, titles, onNavigate }) {
 export default function Docs() {
   const { data: guides, isLoading } = useGuides()
   const [active, setActive] = useState(null)
+  const narrow = useNarrow()
+  // On a phone the sidebar is 31 links between the reader and the first word,
+  // so it collapses to a disclosure that closes again after a tap.
+  const [navOpen, setNavOpen] = useState(false)
 
   const { tree, byStem, titles, home } = useMemo(() => {
     const tree = new Map(SECTIONS.map(s => [s.key, []]))
@@ -147,11 +165,34 @@ export default function Docs() {
         Obsidian vault if you open the folder.
       </PageSub>
 
-      <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start', marginTop: 20 }}>
-        <nav style={{
+      <div style={{
+        display: 'flex', gap: narrow ? 14 : 28, marginTop: 20,
+        flexDirection: narrow ? 'column' : 'row', alignItems: 'stretch',
+      }}>
+        {narrow && (
+          <button onClick={() => setNavOpen(o => !o)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', padding: '10px 13px', borderRadius: 8, cursor: 'pointer',
+              background: 'var(--card)', border: '1px solid var(--border)',
+              color: 'var(--text)', font: 'inherit', fontSize: 13.5, fontWeight: 600,
+            }}>
+            Docs menu
+            <span style={{ color: 'var(--muted)', fontSize: 11 }}>
+              {navOpen ? '▲' : '▼'}
+            </span>
+          </button>
+        )}
+        <nav style={narrow ? {
+          display: navOpen ? 'block' : 'none',
+          background: 'var(--card)', border: '1px solid var(--border)',
+          borderRadius: 8, padding: '8px 8px 12px',
+          maxHeight: '60vh', overflowY: 'auto',
+        } : {
           flex: '0 0 232px', position: 'sticky', top: 20,
           maxHeight: 'calc(100vh - 40px)', overflowY: 'auto', paddingBottom: 20,
-        }}>
+        }}
+          onClick={e => { if (narrow && e.target.tagName === 'BUTTON') setNavOpen(false) }}>
           {home && (
             <button onClick={() => setActive(home)}
               style={navItemStyle(current === home)}>Overview</button>
@@ -184,7 +225,8 @@ export default function Docs() {
           // rendered artifacts do, and keep the column left-aligned.
           flex: 1, minWidth: 0, maxWidth: '76ch', background: 'var(--card)',
           border: '1px solid var(--border)', borderRadius: 10,
-          padding: '22px 30px',
+          padding: narrow ? '16px 15px 22px' : '22px 30px',
+          overflowWrap: 'anywhere',
         }}>
           {current
             ? <Reader name={current} byStem={byStem} titles={titles}

@@ -183,13 +183,26 @@ SHELL = """<!doctype html>
   </div>
 </div></nav>
 <div class="shell">
-  <aside class="side">{nav}</aside>
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links">{nav}</div>
+  </details>
   <main class="doc">
 {body}
   </main>
 </div>
 <script>
 (function(){{
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){{ nav.open = !narrow.matches; }}
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){{
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  }});
+
   var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
   if(s) r.setAttribute('data-theme',s);
   document.getElementById('themeToggle').addEventListener('click',function(){{
@@ -335,10 +348,34 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
 .doc th{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:700}
 .doc hr{border:0;border-top:1px solid var(--rule);margin:2rem 0}
 
+/* The nav is a <details>: a disclosure on a phone, always-open on a desktop
+   where the summary is hidden and it behaves as a plain sidebar. */
+.side>summary{display:none}
+.side>summary::-webkit-details-marker{display:none}
+
 @media(max-width:900px){
-  .shell{grid-template-columns:1fr;gap:1.2rem}
-  .side{position:static;max-height:none;border-bottom:1px solid var(--rule);padding-bottom:1rem}
-  .doc{padding:1.4rem 1.2rem 2rem}
+  .shell{grid-template-columns:1fr;gap:.9rem;padding:1rem .9rem 3rem}
+  .side{position:sticky;top:3.3rem;z-index:10;max-height:none;padding-bottom:0;
+    background:var(--card);border:1px solid var(--rule);border-radius:var(--r)}
+  .side>summary{display:flex;align-items:center;justify-content:space-between;
+    padding:.62rem .85rem;font-size:.86rem;font-weight:600;color:var(--ink);
+    cursor:pointer;list-style:none;user-select:none}
+  .side>summary::after{content:"▾";color:var(--ink-soft);font-size:.8rem;
+    transition:transform .15s ease}
+  .side[open]>summary{border-bottom:1px solid var(--rule-2)}
+  .side[open]>summary::after{transform:rotate(180deg)}
+  .side>.links{max-height:62vh;overflow-y:auto;padding:.5rem .55rem .8rem}
+  .side .sec{margin:.85rem 0 .25rem}
+  .side a{padding:.42rem .55rem;font-size:.9rem}
+  .doc{padding:1.25rem 1.05rem 2rem;border-radius:var(--r)}
+  .doc h1{font-size:1.6rem}
+  .doc h2{font-size:1.12rem;margin-top:1.7rem}
+  .bar{padding:.6rem .9rem}
+  .nav-links{gap:.85rem}
+  /* Long unbroken tokens — a URL, a fingerprint — must not widen the page. */
+  .doc p,.doc li,.doc td{overflow-wrap:anywhere}
+  .doc pre{padding:.75rem .8rem}
+  .doc pre code{font-size:.78rem}
 }
 """
 

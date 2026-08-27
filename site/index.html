@@ -258,7 +258,16 @@
   .nav-links a.cta{background:var(--ink);color:var(--paper);font-weight:600;padding:.5em 1em}
   .nav-links a.cta:hover{opacity:.9;background:var(--ink)}
   .nav-links .hide-sm{}
-  @media(max-width:640px){.nav-links .hide-sm{display:none}}
+  @media(max-width:640px){
+    .nav-links .hide-sm{display:none}
+    /* The bar must stay one line: the CTA was wrapping to three and pushing
+       the theme toggle off the edge once "Docs" joined it. */
+    .topbar .bar{padding:11px 16px;gap:10px}
+    .nav-links{gap:2px;flex-wrap:nowrap;min-width:0}
+    .nav-links a{padding:.45em .5em;font-size:.86rem;white-space:nowrap}
+    .nav-links a.cta{padding:.5em .75em}
+    .nav-links a.cta .cta-long{display:none}
+  }
   .tgl{font-family:var(--mono);font-size:.9rem;line-height:1;background:transparent;border:1px solid var(--rule);color:var(--ink-2);width:34px;height:32px;border-radius:8px;cursor:pointer;padding:0}
   .tgl:hover{border-color:var(--ink-soft);color:var(--ink)}
 
@@ -288,7 +297,7 @@
       <a class="hide-sm" href="#layer">Semantic layer</a>
       <a href="/docs/">Docs</a>
       <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
-      <a class="cta" href="/app">Try the demo →</a>
+      <a class="cta" href="/app"><span class="cta-long">Try the </span>demo →</a>
       <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
     </div>
   </div>

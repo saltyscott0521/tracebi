@@ -21,7 +21,9 @@
   </div>
 </div></nav>
 <div class="shell">
-  <aside class="side"><a href="../index.html">Overview</a>
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
 <div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
@@ -56,7 +58,8 @@
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></aside>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
   <main class="doc">
 <h1 id="large-detail-artifacts-data-heavy-offline-still-verifiable">Large-detail artifacts — data-heavy, offline, still verifiable</h1>
 <p><strong>Status:</strong> BUILT on <code>feat/artifact-parquet-embed</code> (not yet merged). The design below is the
@@ -443,6 +446,16 @@ provably, never hopefully.</p>
 </div>
 <script>
 (function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
   var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
   if(s) r.setAttribute('data-theme',s);
   document.getElementById('themeToggle').addEventListener('click',function(){
