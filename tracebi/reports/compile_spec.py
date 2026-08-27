@@ -36,6 +36,12 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from tracebi.reports.figure_markup import (
+    chart_element,
+    table_element,
+    unverified_value_element,
+    value_element,
+)
 from tracebi.reports.report import SectionType
 from tracebi.spec import ReportSpec
 
@@ -205,22 +211,19 @@ class _Compiler:
             )
             return f"{self._title(raw)}  <table></table>\n"
         binding = self._binding_for(raw, where)
-        attrs = ['data-tb-figure="table"', f'data-tb-binding="{binding}"',
-                 f'id="{self._fig_id(binding)}"']
-        if raw.get("columns"):
-            cols = ",".join(raw["columns"])
-            attrs.append(f'data-tb-columns="{html.escape(cols)}"')
-        cls = {"striped": "tb-table--striped",
-               "compact": "tb-table--compact"}.get(raw.get("style"))
-        if cls:
-            attrs.append(f'class="{cls}"')
+        element = table_element(
+            binding,
+            fig_id=self._fig_id(binding),
+            columns=raw.get("columns"),
+            style=raw.get("style"),
+        )
         self._warn_dropped(raw, where, (
             "column_labels", "number_formats", "totals", "max_rows",
             "highlight_negatives", "color_scale", "column_widths",
         ))
         return (f"{self._title(raw)}"
                 f"  <div class=\"tb-card\">\n"
-                f"    <table {' '.join(attrs)}></table>\n"
+                f"    {element}\n"
                 f"  </div>\n")
 
     def _chart(self, raw: dict, where: str) -> str:
@@ -231,34 +234,27 @@ class _Compiler:
             )
             return f"{self._title(raw)}  <div></div>\n"
         binding = self._binding_for(raw, where)
-        y = raw.get("y")
-        y_list = y if isinstance(y, list) else ([y] if y else [])
-        attrs = ['data-tb-figure="chart"', f'data-tb-binding="{binding}"',
-                 f'data-tb-type="{html.escape(str(raw.get("chart_type", "bar")))}"',
-                 f'id="{self._fig_id(binding)}"']
-        if raw.get("x"):
-            attrs.append(f'data-tb-x="{html.escape(str(raw["x"]))}"')
-        if y_list:
-            attrs.append(f'data-tb-y="{html.escape(",".join(map(str, y_list)))}"')
-        if raw.get("color"):
-            attrs.append(f'data-tb-color="{html.escape(str(raw["color"]))}"')
-        if raw.get("palette"):
-            attrs.append(
-                f'data-tb-palette="{html.escape(",".join(raw["palette"]))}"'
-            )
+        element = chart_element(
+            binding,
+            fig_id=self._fig_id(binding),
+            chart_type=raw.get("chart_type", "bar"),
+            x=raw.get("x"),
+            y=raw.get("y"),
+            color=raw.get("color"),
+            palette=raw.get("palette"),
+        )
         self._warn_dropped(raw, where, (
             "xlabel", "ylabel", "figsize", "show_values",
         ))
         return (f"{self._title(raw)}"
                 f"  <div class=\"tb-card\">\n"
-                f"    <div {' '.join(attrs)}></div>\n"
+                f"    {element}\n"
                 f"  </div>\n")
 
     def _metrics(self, raw: dict, where: str) -> str:
         binding = self._binding_for(raw, where) if raw.get("data") else None
         cards: list[str] = []
         for j, m in enumerate(raw.get("metrics", [])):
-            label = html.escape(str(m.get("label", "")))
             value = m.get("value")
             fmt = m.get("format")
             if m.get("delta") is not None:
@@ -269,31 +265,18 @@ class _Compiler:
             live = binding is not None and isinstance(value, str)
             if live:
                 fid = self._fig_id(f"{binding}-{_slug(value)}")
-                attrs = ['class="tb-kpi"', 'data-tb-figure="value"',
-                         f'data-tb-binding="{binding}"',
-                         f'data-tb-cell="{html.escape(value)}"',
-                         f'id="{fid}"']
-                if fmt:
-                    attrs.append(f'data-tb-format="{html.escape(str(fmt))}"')
-                cards.append(
-                    f"    <div {' '.join(attrs)}>\n"
-                    f"      <span class=\"tb-kpi-label\">{label}</span>\n"
-                    f"      <span class=\"tb-kpi-value\"></span>\n"
-                    f"    </div>\n"
-                )
+                cards.append("    " + value_element(
+                    binding, fig_id=fid, cell=value,
+                    label=m.get("label", ""), fmt=fmt, indent="    ",
+                ) + "\n")
             else:
                 # A literal card value is exactly what the unverified mark is
                 # for: shown, and honestly not a claim against any binding.
                 fid = self._fig_id(f"{_slug(m.get('label') or 'metric')}")
-                cards.append(
-                    f"    <div class=\"tb-kpi\" data-tb-figure=\"value\" "
-                    f"data-tb-unverified data-tb-note=\"literal spec value\" "
-                    f"id=\"{fid}\">\n"
-                    f"      <span class=\"tb-kpi-label\">{label}</span>\n"
-                    f"      <span class=\"tb-kpi-value\">"
-                    f"{html.escape(str(value))}</span>\n"
-                    f"    </div>\n"
-                )
+                cards.append("    " + unverified_value_element(
+                    fig_id=fid, label=m.get("label", ""), value=value,
+                    note="literal spec value", indent="    ",
+                ) + "\n")
         return (f"{self._title(raw)}"
                 f"  <div class=\"tb-grid\">\n{''.join(cards)}  </div>\n")
 

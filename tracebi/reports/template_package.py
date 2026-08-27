@@ -68,6 +68,11 @@ from tracebi.reports.figures import (
     methodology_insertion, strip_stage,
 )
 from tracebi.reports.base_renderer import _warn_if_unknown_git_sha
+from tracebi.reports.figure_markup import (
+    chart_element,
+    table_element,
+    value_element,
+)
 from tracebi.reports.html_renderer import HTMLRenderer
 from tracebi.reports.report import (
     ARTIFACT_MANIFEST_SCHEMA_VERSION, PARQUET_MANIFEST_SCHEMA_VERSION,
@@ -84,6 +89,43 @@ TEMPLATE_HTML = "template.html"
 STYLE_CSS = "style.css"
 SCRIPT_JS = "script.js"
 REPORT_PY = "report.py"
+
+#: Figure kinds ``{{ figure(...) }}`` can build. ``custom`` is deliberately
+#: absent: a custom figure is one the analyst's own script draws, so there is
+#: no framework markup to emit for it — it stays hand-written.
+BUILDABLE_FIGURE_KINDS = ("value", "chart", "table")
+
+
+def _validate_figure(name: str, fig, bindings: dict, where: str) -> dict:
+    """Structurally check one ``figures`` entry, loudly.
+
+    A figure naming a binding that does not exist is the silent-blank-panel
+    failure caught at load instead of at render, where it would surface as an
+    empty box the reader cannot distinguish from "no data".
+    """
+    if not isinstance(fig, dict):
+        raise ValueError(
+            f"{where}: figure '{name}' must be an object with 'kind' and "
+            f"'binding'."
+        )
+    kind = fig.get("kind")
+    if kind not in BUILDABLE_FIGURE_KINDS:
+        raise ValueError(
+            f"{where}: figure '{name}' has kind {kind!r}; expected one of "
+            f"{list(BUILDABLE_FIGURE_KINDS)}."
+        )
+    binding = fig.get("binding")
+    if binding not in bindings:
+        raise ValueError(
+            f"{where}: figure '{name}' names binding {binding!r}, which is not "
+            f"declared in 'data'. Available: {sorted(bindings)}."
+        )
+    if kind == "value" and not fig.get("cell"):
+        raise ValueError(
+            f"{where}: figure '{name}' is a value figure and needs 'cell' — "
+            f"the column it reads from binding '{binding}'."
+        )
+    return dict(fig)
 
 
 def _is_tie(a: float, digits: int) -> bool:
@@ -245,6 +287,22 @@ class TemplatePackage:
             )
         self.libs = libs
 
+        # Declared figures the template places with ``{{ figure("name") }}``.
+        # The framework builds the element; the analyst owns everything around
+        # it. Optional: a package that hand-writes its own data-tb-* markup
+        # declares none and is unaffected.
+        self.figures: dict[str, dict] = {}
+        declared = declaration.get("figures", {})
+        if not isinstance(declared, dict):
+            raise ValueError(
+                f"{report_json_path}: 'figures' must be an object mapping each "
+                f"figure name to its declaration."
+            )
+        for fig_name, fig in declared.items():
+            self.figures[fig_name] = _validate_figure(
+                fig_name, fig, self.bindings, report_json_path
+            )
+
         # The escape hatch (architecture §8-M3). When present, the ``data``
         # bindings above are the *stamped inputs* to report.py's ``build``;
         # the page embeds its python-derived *outputs* beside them.
@@ -286,6 +344,28 @@ class TemplatePackage:
                                     id=binding_name))
         return report, stamped
 
+    def _build_figure(self, name: str, fig: dict) -> str:
+        """Emit the ``data-tb-*`` element for one declared figure.
+
+        The markup comes from the shared emitter, so a figure the template
+        places is byte-for-byte the figure the spec compiler would have built
+        for the same declaration.
+        """
+        kind, binding, fig_id = fig["kind"], fig["binding"], f"fig-{name}"
+        if kind == "table":
+            return table_element(binding, fig_id=fig_id,
+                                 columns=fig.get("columns"),
+                                 style=fig.get("style"))
+        if kind == "chart":
+            return chart_element(binding, fig_id=fig_id,
+                                 chart_type=fig.get("chart_type", "bar"),
+                                 x=fig.get("x"), y=fig.get("y"),
+                                 color=fig.get("color"),
+                                 palette=fig.get("palette"),
+                                 value_format=fig.get("value_format"))
+        return value_element(binding, fig_id=fig_id, cell=fig["cell"],
+                             label=fig.get("label", ""), fmt=fig.get("format"))
+
     def render_page(self, report: Report, *, strip_exploration: bool):
         """Render a carrier *report* through this package's template.
 
@@ -293,18 +373,49 @@ class TemplatePackage:
         assignment are wired — shared by :meth:`render` (final build,
         ``strip_exploration=True``), :meth:`render_exploration` and the
         workbench's ``collect_state`` (dev view, exploration kept). Returns
-        ``(page, id_warnings)``; each caller extracts and validates figures
-        itself, because a final build raises where the dev view captures.
+        ``(page, id_warnings, unplaced)``; each caller extracts and validates
+        figures itself, because a final build raises where the dev view
+        captures.
+
+        ``{{ figure("name") }}`` is the framework's half of the freeform lane:
+        the analyst owns the layout, the CSS and the script, and the framework
+        supplies the figure element so the ``data-tb-*`` grammar never has to
+        be hand-written. Placing one twice raises here — a figure id is the
+        receipt's address for one number — and *unplaced* carries the mirror
+        case (declared, never placed) back to the caller, because a declared
+        figure that silently fails to appear is the failure this package
+        format exists to prevent.
         """
+        emitted: dict[str, int] = {}
+
+        def figure(name: str) -> str:
+            fig = self.figures.get(name)
+            if fig is None:
+                raise ValueError(
+                    f"Package '{self.name}': template calls figure('{name}'), "
+                    f"which is not declared in {REPORT_JSON} 'figures'. "
+                    f"Declared: {sorted(self.figures)}."
+                )
+            emitted[name] = emitted.get(name, 0) + 1
+            if emitted[name] > 1:
+                raise ValueError(
+                    f"Package '{self.name}': figure('{name}') is placed more "
+                    f"than once. A figure id is the receipt's address for one "
+                    f"number — declare a second figure instead of reusing it."
+                )
+            return self._build_figure(name, fig)
+
         renderer = HTMLRenderer(
             template=self.template_html,
-            template_context={"bindings": list(self.bindings)},
+            template_context={"bindings": list(self.bindings),
+                              "figure": figure},
         )
         page = renderer.to_html(report)
         if strip_exploration:
             page = strip_stage(page, "exploration")
         page, id_warnings = assign_figure_ids(page)
-        return page, id_warnings
+        unplaced = [n for n in self.figures if n not in emitted]
+        return page, id_warnings, unplaced
 
     def render(
         self,
@@ -337,9 +448,23 @@ class TemplatePackage:
         # rewrite (v2 §2.1) — then ids are assigned and the figure claims
         # validated against what is actually embedded. Extraction, the strip,
         # and verify --file all share the one tokenizer in figures.py.
-        page, id_warnings = self.render_page(report, strip_exploration=True)
+        page, id_warnings, unplaced = self.render_page(
+            report, strip_exploration=True)
         for w in id_warnings:
             print(f"[tracebi] {self.name}: {w}", file=sys.stderr)
+        if unplaced:
+            # Declared and never placed: the figure is simply absent from the
+            # page. The dev view only warns (the template is mid-edit), but a
+            # final build must not ship a report quietly missing a number the
+            # author declared.
+            raise ValueError(
+                f"Package '{self.name}': {REPORT_JSON} declares "
+                f"{', '.join(repr(n) for n in unplaced)} under 'figures', but "
+                f"{TEMPLATE_HTML} never places "
+                f"{'them' if len(unplaced) > 1 else 'it'} — add "
+                + " ".join('{{ figure("%s") }}' % n for n in unplaced)
+                + " where the figure belongs, or remove the declaration."
+            )
         figs = extract_figures(page)
         self._validate_figures(figs, inputs, outputs)
 
@@ -779,7 +904,8 @@ class TemplatePackage:
         if self.report_py_path is not None:
             outputs = self.apply_report_py(report, inputs)
 
-        page, _warnings = self.render_page(report, strip_exploration=False)
+        page, _warnings, _unplaced = self.render_page(
+            report, strip_exploration=False)
         try:
             work_figs = extract_figures(page)
         except FigureError:

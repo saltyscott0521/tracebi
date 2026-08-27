@@ -45,12 +45,14 @@
                data-tb-y="fair_value" data-tb-value-format="compact"
                id="chart-sector"></div>
         </div>
+        <!-- The same figure kind as its neighbour, but DECLARED in
+             report.json under "figures" and placed with the figure helper
+             below: the framework emits the data-tb-* element, this card
+             keeps the layout. (Jinja parses inside HTML comments too, so
+             never write a figure call in one.) -->
         <div class="tb-card">
           <h2>Fair value by fund</h2>
-          <div data-tb-figure="chart" data-tb-binding="by_fund"
-               data-tb-type="pie" data-tb-x="dim_fund.fund"
-               data-tb-y="fair_value" data-tb-value-format="compact"
-               id="chart-fund"></div>
+          {{ figure("chart_fund") }}
         </div>
       </div>
       <div class="tb-cols-2">

@@ -463,7 +463,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
     try:
         # The one shared render wiring (TemplatePackage.render_page); the dev
         # view keeps exploration blocks — the final build strips them.
-        page, _warnings = pkg.render_page(report, strip_exploration=False)
+        page, _warnings, _unplaced = pkg.render_page(
+            report, strip_exploration=False)
     except Exception as exc:  # noqa: BLE001 — captured into the state
         render_error = f"{type(exc).__name__}: {exc}"
         page = None

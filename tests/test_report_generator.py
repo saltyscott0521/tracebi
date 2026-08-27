@@ -428,7 +428,8 @@ _SCRIPT = (
 
 def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
                    script=_SCRIPT, data=None, name="Regions",
-                   dirname="regions", report_py=None, libs=None):
+                   dirname="regions", report_py=None, libs=None,
+                   figures=None):
     """Write a package dir and return its path."""
     if data is None:
         data = {
@@ -446,6 +447,8 @@ def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
     decl = {"name": name, "author": "t", "data": data}
     if libs is not None:
         decl["libs"] = libs
+    if figures is not None:
+        decl["figures"] = figures
     (pkg / "report.json").write_text(json.dumps(decl), encoding="utf-8")
     (pkg / "template.html").write_text(template, encoding="utf-8")
     if style is not None:
@@ -497,6 +500,177 @@ class TestTemplatePackageRender:
         page2 = f"<html><head>{csp_meta()}</head><body></body></html>"
         out2 = apply_stack(page2, libs=(), data_blocks_html="")
         assert out2.count('http-equiv="Content-Security-Policy"') == 1
+
+
+#: A template that owns its own layout and asks the framework only for the
+#: figure elements — the "custom layout, framework-built figures" middle
+#: ground between a rigid spec and hand-written data-tb-* markup.
+_FIGURE_TEMPLATE = """<!doctype html>
+<html><head><meta charset="utf-8"><title>{{ title }}</title></head>
+<body><main class="my-own-grid">
+  <section class="my-card">{{ figure("total") }}</section>
+  <section class="my-wide">{{ figure("detail") }}</section>
+</main></body></html>
+"""
+
+
+def _doc(body: str) -> str:
+    """A complete document — the data/style/script injection needs one."""
+    return (f"<!doctype html>\n<html><head><meta charset=\"utf-8\">"
+            f"<title>t</title></head><body>{body}</body></html>\n")
+
+
+class TestFigureHelper:
+    """``{{ figure("name") }}`` — the framework builds the figure, the
+    analyst keeps the layout."""
+
+    _DATA = {
+        "by_region": {
+            "model": "kernel_model",
+            "query": {"fact": "fact_orders", "measures": ["revenue"],
+                      "dimensions": ["dim_customer.region"]},
+        },
+        "totals": {
+            "model": "kernel_model",
+            "query": {"fact": "fact_orders", "measures": ["revenue"]},
+        },
+    }
+
+    _FIGURES = {
+        "total": {"kind": "value", "binding": "totals", "cell": "revenue",
+                  "label": "Revenue", "format": "currency"},
+        "detail": {"kind": "table", "binding": "by_region"},
+    }
+
+    def _pkg(self, tmp_path, **kw):
+        kw.setdefault("template", _FIGURE_TEMPLATE)
+        kw.setdefault("figures", self._FIGURES)
+        kw.setdefault("data", self._DATA)
+        kw.setdefault("script", None)
+        return _write_package(tmp_path, **kw)
+
+    def test_helper_emits_the_grammar_and_keeps_author_layout(
+            self, tmp_path, model):
+        out = tmp_path / "out.html"
+        TemplatePackage(str(self._pkg(tmp_path))).render(
+            {model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        # The framework's grammar, which the author never hand-wrote…
+        assert 'data-tb-figure="value"' in html
+        assert 'data-tb-binding="by_region"' in html
+        assert 'data-tb-cell="revenue"' in html
+        assert 'data-tb-figure="table"' in html
+        # …placed inside the author's own markup, untouched.
+        assert '<section class="my-card">' in html
+        assert 'class="my-own-grid"' in html
+
+    def test_helper_figures_are_receipted_like_hand_written_ones(
+            self, tmp_path, model):
+        """The receipt cannot tell who typed the markup — that is the point."""
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(self._pkg(tmp_path))).render(
+            {model.name: model}, str(out))
+        ids = {f["id"] for f in manifest.to_dict()["figures"]}
+        assert {"fig-total", "fig-detail"} <= ids
+        html = out.read_text(encoding="utf-8")
+        assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
+
+    def test_byte_identical_to_the_spec_compiler(self, tmp_path, model):
+        """One emitter, two lanes: the same declaration must produce the same
+        bytes whether the spec compiler or the template helper built it — or
+        the lanes have quietly forked."""
+        from tracebi.reports.compile_spec import compile_spec
+        from tracebi.spec import ReportSpec
+
+        ref = {"model": model.name,
+               "query": {"fact": "fact_orders", "measures": ["revenue"],
+                         "dimensions": ["dim_customer.region"]}}
+        spec = ReportSpec.from_dict({
+            "name": "Cmp",
+            "sections": [{"type": "chart", "id": "by_region", "data": ref,
+                          "chart_type": "line", "x": "region",
+                          "y": ["revenue"]}],
+        })
+        compiled = compile_spec(spec).files["template.html"]
+
+        pkg = TemplatePackage(str(self._pkg(
+            tmp_path,
+            figures={"by_region": {"kind": "chart", "binding": "by_region",
+                                   "chart_type": "line", "x": "region",
+                                   "y": ["revenue"]}},
+            template=_doc('{{ figure("by_region") }}'),
+        )))
+        element = pkg._build_figure("by_region", pkg.figures["by_region"])
+        assert element in compiled, (
+            f"the helper emitted:\n  {element}\nwhich the spec compiler's "
+            f"output does not contain:\n{compiled}"
+        )
+
+    def test_declared_but_never_placed_refuses_to_build(self, tmp_path, model):
+        """The failure this package format exists to prevent: a declared
+        number that silently does not appear."""
+        pkg = self._pkg(
+            tmp_path,
+            template=_doc('{{ figure("total") }}'),
+        )
+        with pytest.raises(ValueError, match=r"never places"):
+            TemplatePackage(str(pkg)).render(
+                {model.name: model}, str(tmp_path / "out.html"))
+
+    def test_placing_one_figure_twice_refuses(self, tmp_path, model):
+        """A figure id is the receipt's address for ONE number."""
+        pkg = self._pkg(
+            tmp_path,
+            figures={"total": self._FIGURES["total"]},
+            template=_doc('{{ figure("total") }}{{ figure("total") }}'),
+        )
+        with pytest.raises(ValueError, match=r"more than once"):
+            TemplatePackage(str(pkg)).render(
+                {model.name: model}, str(tmp_path / "out.html"))
+
+    def test_undeclared_figure_name_refuses(self, tmp_path, model):
+        pkg = self._pkg(
+            tmp_path,
+            figures={"total": self._FIGURES["total"]},
+            template=_doc('{{ figure("nope") }}'),
+        )
+        with pytest.raises(ValueError, match=r"not declared"):
+            TemplatePackage(str(pkg)).render(
+                {model.name: model}, str(tmp_path / "out.html"))
+
+    def test_figure_naming_an_undeclared_binding_fails_at_load(self, tmp_path):
+        """Caught when the package loads, not as a blank panel at render."""
+        pkg = self._pkg(
+            tmp_path,
+            figures={"total": {"kind": "value", "binding": "ghost",
+                               "cell": "revenue"}},
+        )
+        with pytest.raises(ValueError, match=r"not declared in 'data'"):
+            TemplatePackage(str(pkg))
+
+    def test_value_figure_without_a_cell_fails_at_load(self, tmp_path):
+        pkg = self._pkg(
+            tmp_path,
+            figures={"total": {"kind": "value", "binding": "by_region"}},
+        )
+        with pytest.raises(ValueError, match=r"needs 'cell'"):
+            TemplatePackage(str(pkg))
+
+    def test_unknown_kind_fails_at_load(self, tmp_path):
+        pkg = self._pkg(
+            tmp_path,
+            figures={"total": {"kind": "sparkline", "binding": "by_region"}},
+        )
+        with pytest.raises(ValueError, match=r"expected one of"):
+            TemplatePackage(str(pkg))
+
+    def test_packages_without_figures_are_unaffected(self, tmp_path, model):
+        """Hand-written data-tb-* packages keep working: the helper is sugar."""
+        out = tmp_path / "out.html"
+        TemplatePackage(str(_write_package(tmp_path))).render(
+            {model.name: model}, str(out))
+        assert TemplatePackage(str(_write_package(
+            tmp_path, dirname="r2"))).figures == {}
 
 
 class TestChartLibraries:

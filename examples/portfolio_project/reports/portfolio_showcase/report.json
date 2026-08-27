@@ -39,5 +39,11 @@
         "order_by": ["-fair_value"], "limit": 8
       }
     }
+  },
+  "figures": {
+    "chart_fund": {
+      "kind": "chart", "binding": "by_fund", "chart_type": "pie",
+      "x": "dim_fund.fund", "y": "fair_value", "value_format": "compact"
+    }
   }
 }

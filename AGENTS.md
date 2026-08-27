@@ -93,6 +93,31 @@ there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
 `presentation` block.
 
+**You can also have the framework build the figure for you.** Declare it in
+`report.json` under `figures`, then place it in `template.html` with
+`{{ figure("name") }}`:
+
+```json
+"figures": {
+  "total":  {"kind": "value", "binding": "totals", "cell": "revenue",
+             "label": "Revenue", "format": "currency"},
+  "detail": {"kind": "table", "binding": "by_region"}
+}
+```
+```html
+<section class="my-own-card">{{ figure("total") }}</section>
+```
+
+The emitted element is byte-identical to what a spec would compile, so you
+keep the whole layout, stylesheet and script while never hand-writing the
+grammar. The declared name becomes the figure id (`fig-<name>`). Kinds:
+`value` (needs `cell`), `chart` (`chart_type`/`x`/`y`/`color`/`palette`),
+`table` (`columns`/`style`) — a `custom` figure has no framework markup, so
+draw and mark that one yourself. It refuses the silent failures: a figure
+naming an undeclared binding fails at load, and a figure declared but never
+placed — or placed twice — fails the build. Hand-written figures still work
+everywhere; this is sugar, not a replacement.
+
 Three rules that keep pages honest:
 
 - **Bind prose numbers.** Any element works as a value figure — a `<span>`

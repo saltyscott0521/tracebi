@@ -238,6 +238,31 @@ def _presentation() -> dict:
                                    "appendix, never a claim: no badge, no "
                                    "status",
         },
+        "figure_helper": {
+            "rule": "You keep the layout; the framework builds the figure. "
+                    "Declare figures in report.json under 'figures', then "
+                    "place each one in template.html with "
+                    "{{ figure(\"name\") }} — anywhere inside your own "
+                    "markup, CSS and script. The emitted element is "
+                    "byte-identical to what a spec would compile, so you "
+                    "never hand-write the data-tb-* grammar. Hand-written "
+                    "figures still work; this is sugar, not a replacement.",
+            "declaration": "\"figures\": {\"total\": {\"kind\": \"value\", "
+                           "\"binding\": \"totals\", \"cell\": \"revenue\", "
+                           "\"label\": \"Revenue\", \"format\": "
+                           "\"currency\"}}",
+            "kinds": "value (needs 'cell') | chart (chart_type, x, y, color, "
+                     "palette) | table (columns, style). A 'custom' figure "
+                     "has no framework markup — draw it in script.js and "
+                     "mark it yourself.",
+            "figure_id": "The declared name becomes the figure id "
+                         "(fig-<name>) — the receipt's stable address.",
+            "refusals": "A figure naming an undeclared binding fails when "
+                        "the package loads. Declaring a figure and never "
+                        "placing it fails the build (a declared number must "
+                        "not silently vanish); placing one twice fails too "
+                        "(one id addresses one number).",
+        },
         "controls": {
             "rule": "Controls subset which stamped rows figures display; "
                     "they never compute new numbers — client-side "

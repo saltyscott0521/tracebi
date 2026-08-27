@@ -67,6 +67,18 @@ whose figures each name a binding from `report.json`:
   `data-tb-columns` and the `tb-table--striped` / `tb-table--compact` classes.
 - **Give every figure an `id`** — ids are how humans redirect you
   ("fix `tbl-seniority`").
+- **Or let the framework build the figure.** Declare it in `report.json`
+  under `figures` — e.g. `"total": {"kind": "value", "binding": "totals",
+  "cell": "revenue", "format": "currency"}` — and place it in
+  `template.html` with `{{ figure("total") }}`. You keep the whole layout,
+  stylesheet and script; the emitted element is byte-identical to what a
+  spec would compile, so the grammar above never has to be hand-written.
+  The name becomes the id (`fig-<name>`). Kinds: `value` (needs `cell`),
+  `chart` (`chart_type`/`x`/`y`/`color`/`palette`), `table`
+  (`columns`/`style`); a `custom` figure has no framework markup, so draw
+  that one yourself. It refuses the silent failures — an undeclared binding
+  fails at load, and a figure declared but never placed (or placed twice)
+  fails the build. Hand-written figures still work; this is sugar.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the
