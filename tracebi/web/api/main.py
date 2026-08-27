@@ -12,7 +12,8 @@ artifacts outside of the app module package:
 
     models/       DataModel definitions (each file exposes a ``model`` variable)
     pipelines/    PipelineRunner definitions (each file exposes a ``runner`` variable)
-    reports/      Named report factories (use @register.report() decorator)
+    reports/      Report packages — <name>/ (report.json + template.html) or
+                  a <name>.json spec compiled into one
     scheduled/    Scheduled report scripts
 
 Environment switches:

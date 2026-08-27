@@ -529,7 +529,18 @@ spec migrates with `tracebi migrate spec reports/<name>.json` — the compiled
 package shadows the same-named spec at discovery.)
 
 ### New report (web-exposed)
-Put a `.py` file in `reports/`. Decorate a factory function with `@register.report("name")`. The file is auto-discovered at startup; the function receives no args and returns a `Report`.
+Put a report **package** in `reports/` — a `<name>/` directory (`report.json` +
+`template.html`, plus optional `style.css` / `script.js`), or a `<name>.json`
+spec that is compiled into exactly that at discovery. Either is auto-discovered
+at startup and served on the Reports page.
+
+**There is one renderer.** A registered report with no package is refused
+(HTTP 422 naming the fix), never served through a second path. The old bare
+`@register.report` factory rendered a page with no `tracebi.js` runtime, no
+receipt drawer, no figure claims and a schema-1 manifest — report-shaped, but
+carrying materially less of one. `registry.add_report` is still the underlying
+registration seam (discovery uses it for packages and specs alike); what was
+removed is the fallback that rendered a factory with no package.
 
 ### New dashboard (phase ③)
 1. Add a `ReportSpec` `.json` under `reports/`, pointed at a model (grain +

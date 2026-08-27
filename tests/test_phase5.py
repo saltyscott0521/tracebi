@@ -29,6 +29,82 @@ from tracebi import (
 from tracebi.model.data_model import LARGE_LOAD_WARN_ROWS
 
 
+# ── Package-backed report helper ────────────────────────────────────────────
+# There is ONE renderer: a served report is built from its own package. These
+# helpers register a real one (and, for the failure cases, one whose render
+# raises) so the API tests exercise the path the product actually ships.
+
+def _package_model(name: str) -> "DataModel":
+    m = DataModel(name).add_connector(MemoryConnector("mem", {
+        "orders": pd.DataFrame({"order_id": [1, 2, 3], "customer_id": [1, 2, 1],
+                                "revenue": [100.0, 200.0, 300.0]}),
+        "customers": pd.DataFrame({"customer_id": [1, 2],
+                                   "region": ["West", "NE"]}),
+    }))
+    m.add_table("orders", connector="mem", source="orders")
+    m.add_table("customers", connector="mem", source="customers")
+    m.add_dimension("dim_customer", table_name="customers",
+                    key_col="customer_id", attributes=["region"])
+    m.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+               foreign_keys={"dim_customer": "customer_id"})
+    m.add_measure("total_revenue", column="revenue", agg="sum")
+    m.connect()
+    return m
+
+
+def _client_with_package(tmp_path, name, *, broken=False):
+    """Register a package-backed report; returns ``(client, cleanup)``.
+
+    ``broken=True`` binds a model that is never registered, so the package
+    loads but its RENDER raises — the failure path the structured-error
+    tests need now that there is no second renderer to fall back to.
+    """
+    import json
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    import tracebi.model_registry as model_registry
+    from tracebi.web.api.registry import registry
+    from tracebi.web.api.routers import reports as reports_router
+
+    model_name = f"{name}_model"
+    pkg = tmp_path / name
+    pkg.mkdir()
+    (pkg / "report.json").write_text(json.dumps({
+        "name": name,
+        "data": {"by_region": {
+            "model": "no_such_model_at_all" if broken else model_name,
+            "query": {"fact": "fact_orders", "measures": ["total_revenue"],
+                      "dimensions": ["dim_customer.region"]},
+        }},
+        "figures": {"detail": {"kind": "table", "binding": "by_region"}},
+    }), encoding="utf-8")
+    (pkg / "template.html").write_text(
+        '<!doctype html>\n<html><head><meta charset="utf-8">'
+        "<title>{{ title }}</title></head><body>"
+        '<main>{{ figure("detail") }}</main></body></html>\n',
+        encoding="utf-8")
+
+    if not broken:
+        model_registry.register(_package_model(model_name))
+
+    def factory():
+        from tracebi.reports.template_package import TemplatePackage
+        return TemplatePackage(str(pkg))
+    factory._tracebi_package_dir = str(pkg)
+    registry.add_report(name, factory)
+
+    app = FastAPI()
+    app.include_router(reports_router.router, prefix="/api")
+
+    def cleanup():
+        registry._report_factories.pop(name, None)
+        model_registry._registry._models.pop(model_name, None)
+
+    return TestClient(app), cleanup
+
+
 # ── Fixtures ────────────────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -1015,13 +1091,29 @@ class TestAnalystEndpoints:
         ds = memory_model.load("orders")
         return Report("T Report").add(TableSection(title="Orders", dataset=ds))
 
-    def test_download_html_attachment(self, memory_model):
-        client = self._client_with_report(lambda: self._sample_report(memory_model))
+    def test_download_html_attachment(self, tmp_path, memory_model):
+        """The HTML download is the ARTIFACT — the same bytes verify --file
+        checks — so it comes from the package, not a second renderer."""
+        client, cleanup = _client_with_package(tmp_path, "t_report")
         try:
             r = client.get("/api/reports/t_report/download?format=html")
-            assert r.status_code == 200
+            assert r.status_code == 200, r.text
             assert "attachment" in r.headers["content-disposition"]
-            assert r.text.startswith("<!DOCTYPE html>")
+            assert "data-tb-figure" in r.text
+        finally:
+            cleanup()
+
+    def test_a_report_with_no_package_is_refused_not_served_weaker(
+            self, memory_model):
+        """There is ONE renderer. A registered report with no package used to
+        fall back to a page with no runtime, no receipt drawer and a schema-1
+        manifest — a report-shaped thing carrying materially less. It is now
+        refused, and the refusal says how to fix it."""
+        client = self._client_with_report(lambda: self._sample_report(memory_model))
+        try:
+            r = client.post("/api/reports/t_report/run")
+            assert r.status_code == 422
+            assert "tracebi new-report" in r.json()["detail"]
         finally:
             self._cleanup_report()
 
@@ -1044,36 +1136,31 @@ class TestAnalystEndpoints:
         finally:
             self._cleanup_report()
 
-    def test_failing_factory_returns_structured_traceback(self, monkeypatch):
+    def test_failing_render_returns_structured_traceback(self, tmp_path,
+                                                         monkeypatch):
         monkeypatch.setenv("TRACEBI_DEV_MODE", "1")   # traceback is dev-only
-        def boom():
-            raise RuntimeError("kapow")
-
-        client = self._client_with_report(boom)
+        client, cleanup = _client_with_package(tmp_path, "t_broken", broken=True)
         try:
-            r = client.post("/api/reports/t_report/run")
+            r = client.post("/api/reports/t_broken/run")
             assert r.status_code == 500
             detail = r.json()["detail"]
-            assert "kapow" in detail["message"]
-            assert detail["exception_type"] == "RuntimeError"
-            assert "RuntimeError: kapow" in detail["traceback"]
+            assert "no_such_model_at_all" in detail["message"]
+            assert detail["exception_type"] == "ValueError"
+            assert "ValueError" in detail["traceback"]
         finally:
-            self._cleanup_report()
+            cleanup()
 
-    def test_error_detail_omits_traceback_by_default(self):
+    def test_error_detail_omits_traceback_by_default(self, tmp_path):
         """Security: without TRACEBI_DEV_MODE the traceback (which leaks paths,
         the server username, and versions) is empty — message and type only."""
-        def boom():
-            raise RuntimeError("kapow")
-
-        client = self._client_with_report(boom)
+        client, cleanup = _client_with_package(tmp_path, "t_broken2", broken=True)
         try:
-            detail = client.post("/api/reports/t_report/run").json()["detail"]
-            assert "kapow" in detail["message"]
-            assert detail["exception_type"] == "RuntimeError"
+            detail = client.post("/api/reports/t_broken2/run").json()["detail"]
+            assert "no_such_model_at_all" in detail["message"]
+            assert detail["exception_type"] == "ValueError"
             assert detail["traceback"] == "", "traceback must not leak by default"
         finally:
-            self._cleanup_report()
+            cleanup()
 
 
 # ── Explore: star-schema query endpoint ───────────────────────────────────
@@ -1624,50 +1711,35 @@ class TestBackgroundReportRuns:
             time.sleep(0.05)
         raise AssertionError("background run did not finish in time")
 
-    def test_run_succeeds_and_returns_payload(self, memory_model):
-        from tracebi.reports import Report, TableSection
-
-        def factory():
-            ds = memory_model.load("orders")
-            return Report("BG").add(TableSection(title="Orders", dataset=ds))
-
-        client = self._client_with_report(factory)
+    def test_run_succeeds_and_returns_payload(self, tmp_path):
+        client, cleanup = _client_with_package(tmp_path, "bg_report")
         try:
             r = client.post("/api/reports/bg_report/runs")
             assert r.status_code == 202
             run_id = r.json()["run_id"]
             body = self._poll(client, "bg_report", run_id)
-            assert body["status"] == "succeeded"
-            assert "<html" in body["result"]["html"].lower()
-            assert body["result"]["manifest"]
+            assert body["status"] == "succeeded", body
+            assert "data-tb-figure" in body["result"]["html"]
+            assert body["result"]["manifest"]["schema_version"] >= 2
             assert body["finished_at"]
         finally:
-            self._cleanup_report()
+            cleanup()
 
-    def test_failed_run_carries_structured_error(self, monkeypatch):
+    def test_failed_run_carries_structured_error(self, tmp_path, monkeypatch):
         monkeypatch.setenv("TRACEBI_DEV_MODE", "1")   # traceback is dev-only
-        def boom():
-            raise RuntimeError("bg kapow")
-
-        client = self._client_with_report(boom)
+        client, cleanup = _client_with_package(tmp_path, "bg_broken", broken=True)
         try:
-            run_id = client.post("/api/reports/bg_report/runs").json()["run_id"]
-            body = self._poll(client, "bg_report", run_id)
+            run_id = client.post("/api/reports/bg_broken/runs").json()["run_id"]
+            body = self._poll(client, "bg_broken", run_id)
             assert body["status"] == "failed"
-            assert "bg kapow" in body["error"]["message"]
-            assert body["error"]["exception_type"] == "RuntimeError"
-            assert "RuntimeError: bg kapow" in body["error"]["traceback"]
+            assert "no_such_model_at_all" in body["error"]["message"]
+            assert body["error"]["exception_type"] == "ValueError"
+            assert "ValueError" in body["error"]["traceback"]
         finally:
-            self._cleanup_report()
+            cleanup()
 
-    def test_history_lists_runs_without_payload(self, memory_model):
-        from tracebi.reports import Report, TableSection
-
-        def factory():
-            ds = memory_model.load("orders")
-            return Report("BG").add(TableSection(title="Orders", dataset=ds))
-
-        client = self._client_with_report(factory)
+    def test_history_lists_runs_without_payload(self, tmp_path):
+        client, cleanup = _client_with_package(tmp_path, "bg_report")
         try:
             run_id = client.post("/api/reports/bg_report/runs").json()["run_id"]
             self._poll(client, "bg_report", run_id)
@@ -1678,7 +1750,7 @@ class TestBackgroundReportRuns:
             assert runs[0]["status"] == "succeeded"
             assert "result" not in runs[0]
         finally:
-            self._cleanup_report()
+            cleanup()
 
     def test_unknown_run_or_report_404(self, memory_model):
         from tracebi.reports import Report, TableSection

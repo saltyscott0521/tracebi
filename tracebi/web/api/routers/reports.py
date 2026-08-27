@@ -97,50 +97,49 @@ def _artifact_payload(name: str):
     return payload
 
 
+#: Every served report is built from its own package — the analyst's
+#: ``template.html`` + ``style.css`` + ``script.js``, or a ``.json`` spec
+#: compiled into exactly that. There is no second renderer: the old fallback
+#: produced a page with no runtime, no receipt drawer, no figure claims and a
+#: schema-1 manifest, which reads as a report while carrying materially less
+#: of one. A report with no package is refused here rather than served weaker.
+_NO_PACKAGE = (
+    "Report '{name}' has no report package, so there is nothing to render. "
+    "A report is a directory reports/{name}/ (report.json + template.html, "
+    "plus optional style.css / script.js), or a reports/{name}.json spec that "
+    "compiles into one. Scaffold it with: tracebi new-report \"{name}\"."
+)
+
+
+def _artifact_payload_or_refuse(name: str) -> dict:
+    """The one render path: the package artifact, or a clear refusal."""
+    payload = _artifact_payload(name)
+    if payload is None:
+        raise HTTPException(status_code=422,
+                            detail=_NO_PACKAGE.format(name=name))
+    return payload
+
+
 @router.post("/{name}/run")
 def run_report(name: str):
     """
     Run a registered report and return the rendered HTML + manifest.
 
     The HTML is self-contained and can be rendered in an iframe with srcdoc.
-    An artifact-backed report serves the real artifact render (embedded
-    data, figure claims), so what the browser shows is what ``verify
-    --file`` can check.
+    It is the real artifact render (embedded data, figure claims), so what
+    the browser shows is what ``verify --file`` can check.
     """
     try:
-        payload = _artifact_payload(name)
+        return _artifact_payload_or_refuse(name)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=_error_detail("Render failed", exc))
-    if payload is not None:
-        return payload
-
-    report = _run_report_or_502(name)
-
-    try:
-        from tracebi.reports.html_renderer import HTMLRenderer
-        html = HTMLRenderer.for_project().to_html(report)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=_error_detail("Render failed", exc))
-
-    manifest = report.build_manifest(format="html", output_path="(in-memory)")
-
-    return {
-        "name": name,
-        "html": html,
-        "manifest": manifest.to_dict(),
-    }
 
 
 def _render_report_payload(name: str) -> dict:
     """Run + render a report; shared by the sync and background paths."""
-    payload = _artifact_payload(name)
-    if payload is not None:
-        return payload
-    report = registry.run_report(name)
-    from tracebi.reports.html_renderer import HTMLRenderer
-    html = HTMLRenderer.for_project().to_html(report)
-    manifest = report.build_manifest(format="html", output_path="(in-memory)")
-    return {"name": name, "html": html, "manifest": manifest.to_dict()}
+    return _artifact_payload_or_refuse(name)
 
 
 @router.post("/{name}/runs", status_code=202)
@@ -190,20 +189,21 @@ def download_report(name: str, format: str = "xlsx"):
         raise HTTPException(
             status_code=400, detail=f"Unsupported format '{format}'. Use xlsx or html."
         )
-    report = _run_report_or_502(name)
     fname = _safe_filename(name)
 
-    try:
-        if format == "html":
-            from tracebi.reports.html_renderer import HTMLRenderer
-            html = HTMLRenderer.for_project().to_html(report)
-            return HTMLResponse(
-                html,
-                headers={
-                    "Content-Disposition": f'attachment; filename="{fname}.html"',
-                },
-            )
+    # The HTML download is the artifact itself — the same bytes ``verify
+    # --file`` checks — so it goes through the one render path.
+    if format == "html":
+        return HTMLResponse(
+            _artifact_payload_or_refuse(name)["html"],
+            headers={
+                "Content-Disposition": f'attachment; filename="{fname}.html"',
+            },
+        )
 
+    report = _run_report_or_502(name)
+
+    try:
         from tracebi.reports.excel_renderer import ExcelRenderer
         fd, tmp_path = tempfile.mkstemp(suffix=".xlsx")
         os.close(fd)

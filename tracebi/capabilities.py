@@ -465,8 +465,13 @@ def _conventions() -> dict:
             {
                 "path": "reports/",
                 "must_define": None,
-                "type": "Report",
-                "note": "Decorate a zero-arg factory with @register.report('name')",
+                "type": "report package",
+                "note": "A report is a PACKAGE: reports/<name>/ (report.json + "
+                        "template.html, plus optional style.css / script.js), "
+                        "or a reports/<name>.json spec compiled into one. "
+                        "Scaffold with `tracebi new-report \"<name>\"`. There "
+                        "is one renderer: a registered report with no package "
+                        "is refused, never served as a weaker page.",
             },
         ],
         "rules": [
