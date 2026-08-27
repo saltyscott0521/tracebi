@@ -58,6 +58,7 @@ const NAV = [
   { path: '/',                 label: 'Home',          icon: 'home',       color: '#93c5fd' },
   { path: '/workflow',         label: 'Workflow',      icon: 'workflow',   color: '#67e8f9' },
   { path: '/getting-started',  label: 'Get Started',   icon: 'guide',      color: '#86efac' },
+  { path: '/handbook',         label: 'Docs',          icon: 'guide',      color: '#c4b5fd' },
   { path: '/connectors',       label: 'Connectors',    icon: 'connectors', color: '#6ee7b7' },
   { path: '/models',     label: 'Models',     icon: 'models',     color: '#93c5fd' },
   { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#7dd3fc' },
@@ -185,7 +186,7 @@ export default function Layout({ children }) {
             </h1>
           </div>
           <p style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 43, letterSpacing: .2 }}>
-            Trust layer for AI-generated analytics
+            Reports as code — to keep agents in line
           </p>
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
