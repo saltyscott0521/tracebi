@@ -16,8 +16,8 @@ const PAGES = [
 
 const KIND_META = {
   page:      { tag: 'Page',      color: '#64748b' },
-  model:     { tag: 'Model',     color: '#091a55' },
-  report:    { tag: 'Report',    color: '#1d4ed8' },
+  model:     { tag: 'Model',     color: '#1d4ed8' },
+  report:    { tag: 'Report',    color: '#0369a1' },
   pipeline:  { tag: 'Pipeline',  color: '#0e7490' },
 }
 
