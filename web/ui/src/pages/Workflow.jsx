@@ -24,7 +24,7 @@ function Card({ children, style }) {
 
 const PHASE_DETAIL = [
   {
-    n: '1', color: '#0891b2', folder: 'transforms/', title: 'Transform',
+    n: '1', color: '#0e7490', folder: 'transforms/', title: 'Transform',
     lead: 'The phase the framework does not constrain. Pull the queries you need and write as much Python as the work takes — window functions, algorithmic passes, prose parsing, cleaning — then write the result into the warehouse.',
     point: 'The contract is not how you clean, it is what lands: the named tables at the end of the script.',
     code: `# transforms/holdings_transform.py
@@ -36,7 +36,7 @@ wh.write(fact,  "fact_holdings")   # ← sink
 wh.write(dim_issuer, "dim_issuer")`,
   },
   {
-    n: '2', color: '#7c3aed', folder: 'models/', title: 'Model',
+    n: '2', color: '#1d4ed8', folder: 'models/', title: 'Model',
     lead: 'A star schema over the warehouse. This is the reviewable contract — grain, keys and measures in a few dozen declarative lines. It reads the sink; it never sees the pandas above it.',
     point: 'A reviewer checks the model, not the transform. Change the shape here without touching the analysis.',
     code: `# models/portfolio_model.py
@@ -50,7 +50,7 @@ model = (DataModel("portfolio_model")
   .add_measure("fair_value", column="fair_value", agg="sum", format="currency0"))`,
   },
   {
-    n: '3', color: '#db2777', folder: 'reports/', title: 'Report',
+    n: '3', color: '#0369a1', folder: 'reports/', title: 'Report',
     lead: 'A spec pointed at the model. KPI cards, charts and tables, each a query. Because the model is materialized, the page re-renders in milliseconds — no pandas in the loop.',
     point: 'Edit the JSON to reshape the page. A metrics card whose value names a measure reads it live.',
     code: `// reports/portfolio_dashboard.json

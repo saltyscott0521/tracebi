@@ -16,9 +16,9 @@ const PAGES = [
 
 const KIND_META = {
   page:      { tag: 'Page',      color: '#64748b' },
-  model:     { tag: 'Model',     color: '#7c3aed' },
-  report:    { tag: 'Report',    color: '#db2777' },
-  pipeline:  { tag: 'Pipeline',  color: '#d97706' },
+  model:     { tag: 'Model',     color: '#091a55' },
+  report:    { tag: 'Report',    color: '#1d4ed8' },
+  pipeline:  { tag: 'Pipeline',  color: '#0e7490' },
 }
 
 export default function CommandPalette() {

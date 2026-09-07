@@ -18,24 +18,23 @@ function formatDate() {
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, color, href, loading }) {
+function StatCard({ label, value, icon, href, loading }) {
   const inner = (
     <div style={{
       background: 'var(--card)', border: '1px solid var(--border)',
-      borderRadius: 14, padding: '20px 22px',
+      borderRadius: 'var(--radius)', padding: '18px 20px',
       display: 'flex', alignItems: 'flex-start', gap: 14,
-      '--card-accent-color': color,
-    }} className="card-hover card-accent">
+    }} className="card-hover">
       <div style={{
-        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-        background: `${color}18`, border: `1px solid ${color}30`,
+        width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+        background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color,
+        color: 'var(--accent-text)',
       }}>
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>
+        <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
           {loading ? <Skeleton width={36} height={24} /> : value}
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{label}</div>
@@ -209,7 +208,6 @@ const I = {
   doc: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>,
   bolt: <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>,
   receipt: <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 2a1 1 0 00-1 1v14l2-1 2 1 2-1 2 1 2-1 2 1V3a1 1 0 00-1-1H5zm2.5 4a.75.75 0 000 1.5h5a.75.75 0 000-1.5h-5zm0 3a.75.75 0 000 1.5h5a.75.75 0 000-1.5h-5zm0 3a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z" clipRule="evenodd" /></svg>,
-  shield: <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.661 2.237a.531.531 0 01.678 0 11.947 11.947 0 007.078 2.749.5.5 0 01.479.425A12.11 12.11 0 0118 7c0 5.163-3.26 9.564-7.834 11.256a.48.48 0 01-.332 0C5.26 16.564 2 12.163 2 7c0-.538.036-1.066.105-1.588a.5.5 0 01.48-.425 11.947 11.947 0 007.076-2.75zm4.196 5.954a.75.75 0 00-1.214-.882l-3.236 4.53-1.53-1.53a.75.75 0 00-1.061 1.06l2.152 2.152a.75.75 0 001.137-.089l3.752-5.25z" clipRule="evenodd" /></svg>,
 }
 
 // ── Trust "how it works" bullets ──────────────────────────────────────────────
@@ -254,34 +252,28 @@ export default function Home() {
 
   return (
     <div className="fade-in">
-      {/* Trust hero — the thesis, stated */}
-      <div className="card-accent home-hero" style={{
-        background: 'var(--card)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)', padding: '28px 30px', marginBottom: 34,
-        boxShadow: 'var(--shadow-sm)', '--card-accent-color': 'var(--brand)',
-      }}>
+      {/* Workspace header — product first, verify available but not the lead CTA */}
+      <div className="home-hero" style={{ marginBottom: 32 }}>
         <div className="home-hero-grid">
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 10, fontWeight: 500 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 8, fontWeight: 500 }}>
               {greeting()} · {formatDate()}
             </div>
-            <h1 className="gradient-text home-thesis" style={{
-              fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.08, marginBottom: 12,
+            <h1 className="home-thesis" style={{
+              fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 10,
+              color: 'var(--text)',
             }}>
-              Every number has a receipt.
+              Workspace
             </h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: '58ch', margin: 0 }}>
-              Every figure drawn through the model is a live query, stamped with a
-              SHA-256 fingerprint of its result; anything computed outside it is marked
-              as not having a receipt. The rendered file carries those stamps — so anyone
-              can re-check the numbers offline, with no model, no warehouse, and no account.
+            <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.55, maxWidth: '56ch', margin: 0 }}>
+              Models, reports, and pipelines registered in this deployment.
+              Figures drawn through the model carry a fingerprint you can re-check later.
             </p>
-            <div style={{ marginTop: 16, minHeight: 20 }}>
+            <div style={{ marginTop: 14, minHeight: 18 }}>
               {lr
                 ? <Skeleton width={240} height={13} />
                 : (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)' }}>
-                    <span style={{ color: 'var(--green-text)', display: 'inline-flex' }}>{I.shield}</span>
+                  <span style={{ fontSize: 13, color: 'var(--muted)' }}>
                     {trustLine}
                   </span>
                 )}
@@ -289,23 +281,22 @@ export default function Home() {
           </div>
 
           <div className="home-hero-cta">
-            <Link to="/verify" style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              padding: '10px 18px', borderRadius: 'var(--radius-sm)',
-              background: 'var(--brand)', color: '#fff', fontWeight: 600, fontSize: 13.5,
-              textDecoration: 'none', boxShadow: '0 2px 12px rgba(9,26,85,.28)',
-              whiteSpace: 'nowrap',
-            }}>
-              {I.shield} Verify a report file
-            </Link>
             <Link to="/reports" style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              padding: '9px 18px', borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--blue-br)', background: 'var(--blue-lt)',
-              color: 'var(--accent-text)', fontWeight: 600, fontSize: 13.5,
+              padding: '9px 16px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--blue)', color: '#fff', fontWeight: 600, fontSize: 13,
               textDecoration: 'none', whiteSpace: 'nowrap',
             }}>
-              Browse reports →
+              Browse reports
+            </Link>
+            <Link to="/getting-started" style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '9px 16px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)', background: 'var(--card)',
+              color: 'var(--text-2)', fontWeight: 500, fontSize: 13,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+            }}>
+              Get started
             </Link>
           </div>
         </div>
@@ -328,11 +319,11 @@ export default function Home() {
       </div>
 
       {/* Stats row */}
-      <div className="grid-4" style={{ marginBottom: 40 }}>
-        <StatCard label="Connectors" value={nConn} icon={I.db}   color="#2563eb" href="/connectors" loading={lc} />
-        <StatCard label="Models"     value={nMod}  icon={I.cube} color="#7c3aed" href="/models"     loading={lm} />
-        <StatCard label="Reports"    value={nRep}  icon={I.doc}  color="#db2777" href="/reports"    loading={lr} />
-        <StatCard label="Pipelines"  value={nPipe} icon={I.bolt} color="#d97706" href="/pipelines"  loading={lp} />
+      <div className="grid-4" style={{ marginBottom: 36 }}>
+        <StatCard label="Connectors" value={nConn} icon={I.db}   href="/connectors" loading={lc} />
+        <StatCard label="Models"     value={nMod}  icon={I.cube} href="/models"     loading={lm} />
+        <StatCard label="Reports"    value={nRep}  icon={I.doc}  href="/reports"    loading={lr} />
+        <StatCard label="Pipelines"  value={nPipe} icon={I.bolt} href="/pipelines"  loading={lp} />
       </div>
 
       {/* Two-column layout */}
@@ -343,7 +334,7 @@ export default function Home() {
           <SH title="Reports & their receipts" action={{ href: '/reports', label: 'Open reports' }} />
           <div style={{
             background: 'var(--card)', border: '1px solid var(--border)',
-            borderRadius: 14, overflow: 'hidden', marginBottom: 32,
+            borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: 32,
           }}>
             <TrustLedger reports={reports} loading={lr} />
           </div>
@@ -351,7 +342,7 @@ export default function Home() {
           <SH title="Recent pipeline activity" action={{ href: '/pipelines', label: 'View all' }} />
           <div style={{
             background: 'var(--card)', border: '1px solid var(--border)',
-            borderRadius: 14, padding: '8px 4px',
+            borderRadius: 'var(--radius)', padding: '8px 4px',
           }}>
             {lp
               ? <div style={{ padding: '12px 12px' }}>
@@ -368,11 +359,11 @@ export default function Home() {
           <SH title="How the receipt works" />
           <div style={{
             background: 'var(--card)', border: '1px solid var(--border)',
-            borderRadius: 14, padding: '20px 22px', marginBottom: 20,
+            borderRadius: 'var(--radius)', padding: '20px 22px', marginBottom: 20,
           }}>
             {RECEIPT_BULLETS.map(([title, desc], i) => (
               <div key={title} style={{ marginBottom: i < RECEIPT_BULLETS.length - 1 ? 14 : 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{title}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55 }}>{desc}</div>
               </div>
             ))}
@@ -381,7 +372,7 @@ export default function Home() {
           <SH title="Quick start" />
           <div style={{
             background: 'var(--card)', border: '1px solid var(--border)',
-            borderRadius: 14, padding: '20px 22px', marginBottom: 20,
+            borderRadius: 'var(--radius)', padding: '20px 22px', marginBottom: 20,
           }}>
             <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.65, marginBottom: 16 }}>
               Take data from messy to reportable in three phases — write the analysis, freeze it into a model, dashboard the model. Every figure on the page stays a live query.
@@ -389,9 +380,9 @@ export default function Home() {
             {QUICK_START.map((text, n) => (
               <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
                 <span style={{
-                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
                   background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
-                  color: 'var(--accent-text)', fontSize: 11, fontWeight: 800,
+                  color: 'var(--accent-text)', fontSize: 11, fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>{n + 1}</span>
                 <span style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, paddingTop: 2 }}>{text}</span>
@@ -410,7 +401,7 @@ export default function Home() {
               <SH title="Connectors" action={{ href: '/connectors', label: 'Details' }} />
               <div style={{
                 background: 'var(--card)', border: '1px solid var(--border)',
-                borderRadius: 14, overflow: 'hidden',
+                borderRadius: 'var(--radius)', overflow: 'hidden',
               }}>
                 {connectors.slice(0, 6).map((c, i) => (
                   <div key={c.name} style={{

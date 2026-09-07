@@ -107,17 +107,17 @@
   --space-8:  32px;
 
   --nav-w:       232px;
-  --radius-sm:   6px;
-  --radius:      12px;
-  --radius-lg:   16px;
+  --radius-sm:   5px;
+  --radius:      8px;
+  --radius-lg:   10px;
   /* Two layers, not one: a tight contact shadow pins the element to the
      surface and a wide ambient one gives it height. A single soft blur on a
      near-white ground reads as smudge rather than elevation. */
-  --shadow:      0 1px 2px rgba(15,28,52,.05), 0 6px 20px rgba(15,28,52,.07);
-  --shadow-sm:   0 1px 2px rgba(15,28,52,.05), 0 2px 6px rgba(15,28,52,.04);
-  --shadow-lift: 0 2px 4px rgba(15,28,52,.06), 0 12px 28px rgba(15,28,52,.10);
-  --shadow-glow: 0 1px 2px rgba(9,26,85,.06), 0 6px 22px rgba(9,26,85,.14);
-  --t:           0.16s ease;
+  --shadow:      0 1px 2px rgba(15,28,52,.04), 0 4px 12px rgba(15,28,52,.05);
+  --shadow-sm:   0 1px 2px rgba(15,28,52,.04);
+  --shadow-lift: 0 1px 3px rgba(15,28,52,.05), 0 8px 18px rgba(15,28,52,.08);
+  --shadow-glow: 0 1px 2px rgba(9,26,85,.05), 0 4px 14px rgba(9,26,85,.1);
+  --t:           0.14s ease;
 
   /* Brand gradient. --brand-text is for text on a *page* surface and so flips
      with the theme (see the dark block). --brand-on-dark is for the surfaces
@@ -241,29 +241,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ambient background orbs — rendered in Layout as fixed divs */
+/* Ambient wash — kept very quiet so the page reads as a product surface,
+   not a marketing landing. */
 .orb {
   position: fixed;
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
-  transition: opacity 1s ease;
+  opacity: 0;
+  display: none;
 }
-.orb-1 {
-  width: 760px; height: 760px;
-  top: -18%; right: -10%;
-  background: radial-gradient(circle, rgba(9,26,85,0.05) 0%, transparent 65%);
-}
-.orb-2 {
-  width: 600px; height: 600px;
-  bottom: 0%; left: 10%;
-  background: radial-gradient(circle, rgba(9,26,85,0.04) 0%, transparent 65%);
-}
-.orb-3 {
-  width: 400px; height: 400px;
-  top: 38%; right: 22%;
-  background: radial-gradient(circle, rgba(9,26,85,0.03) 0%, transparent 60%);
-}
+.orb-1, .orb-2, .orb-3 { display: none; }
 
 /* Content sits above orbs */
 .layout-main { position: relative; z-index: 1; }
@@ -373,10 +361,6 @@ tbody td {
 }
 .card-hover:hover {
   border-color: var(--border-hl) !important;
-  transform: translateY(-2px);
-  /* --shadow is already a two-layer contact+ambient pair; stacking
-     --shadow-glow on top of it put four layers on one hovered card and the
-     lift turned muddy. One pair, lifted a little further, reads cleaner. */
   box-shadow: var(--shadow-lift);
 }
 
@@ -422,15 +406,13 @@ tbody td {
 
 /* ── Buttons ────────────────────────────────────────── */
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 0 6px 20px rgba(9,26,85,.35) !important;
-  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: var(--shadow-lift) !important;
 }
-.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:active:not(:disabled) { filter: brightness(0.98); }
 .btn-outline:hover:not(:disabled) {
   background: var(--blue-lt) !important;
   border-color: var(--blue) !important;
-  box-shadow: 0 0 12px rgba(9,26,85,.1);
 }
 .btn-red:hover:not(:disabled) {
   background: rgba(220,38,38,.16) !important;
@@ -515,18 +497,16 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 }
 
 /* ── Home-page layout helpers ────────────────────────── */
-.home-thesis    { font-size: 30px; }
+.home-thesis    { font-size: 28px; }
 /* auto-fit, not repeat(4, …): four fixed 1fr tracks don't fit beside the
    sidebar at iPad-portrait / narrow-desktop widths (769–900px) and overflow.
    auto-fit reflows the stat cards to 3 (then the ≤768 rule pins 2). */
-.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
 /* minmax(0,1fr) — not plain 1fr — so the wide left column shrinks to the
    track instead of forcing the grid (and the page) wider than the viewport. */
-.home-main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; align-items: start; }
-/* Trust hero: thesis + subtitle on the left, the verify/browse CTAs on the
-   right; the CTAs stack in their own column so both read as a pair. */
-.home-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: center; }
-.home-hero-cta  { display: flex; flex-direction: column; gap: 10px; align-items: stretch; min-width: 210px; }
+.home-main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
+.home-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; }
+.home-hero-cta  { display: flex; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* ── Responsive ─────────────────────────────────────── */
 .split-layout {
@@ -565,10 +545,10 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
      descriptions force the column (and the page) wider than a phone/iPad — the
      desktop grid already uses minmax(0,1fr) for the same reason. */
   .home-main-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  /* Hero stacks: text over CTAs; the CTAs go side-by-side full-width. */
-  .home-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .home-hero-cta  { flex-direction: row; flex-wrap: wrap; min-width: 0; }
-  .home-hero-cta > a { flex: 1 1 auto; }
+  /* Hero stacks: text over CTAs. */
+  .home-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .home-hero-cta  { flex-direction: row; flex-wrap: wrap; }
+  .home-hero-cta > a { flex: 0 1 auto; }
 }
 @media (max-width: 480px) {
   .grid-3 { grid-template-columns: 1fr; }
@@ -613,20 +593,20 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   min-width: 0;
   background: var(--card);
   border: 1px solid var(--border);
-  border-top: 3px solid var(--wf);
-  border-radius: 12px;
+  border-top: 2px solid var(--wf);
+  border-radius: var(--radius);
   padding: 16px 16px 14px;
   display: flex;
   flex-direction: column;
 }
 .wf-phase-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
 .wf-num {
-  width: 24px; height: 24px; flex: none;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--wf) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--wf) 34%, transparent);
+  width: 22px; height: 22px; flex: none;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--wf) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wf) 28%, transparent);
   color: var(--wf);
-  font-size: 13px; font-weight: 800;
+  font-size: 12px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
 .wf-tag {

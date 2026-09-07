@@ -158,10 +158,11 @@ export function CardTitle({ children, action }) {
 
 export function PageTitle({ children }) {
   return (
-    <h1 className="gradient-text" style={{
-      fontSize: 'var(--text-2xl)', fontWeight: 800,
+    <h1 style={{
+      fontSize: 'var(--text-2xl)', fontWeight: 700,
       marginBottom: 'var(--space-1)', lineHeight: 1.2,
       letterSpacing: 'var(--tracking-tight)',
+      color: 'var(--text)',
     }}>{children}</h1>
   )
 }
@@ -190,15 +191,15 @@ const BADGE_STYLES = {
   silver:       { background: 'rgba(100,116,139,.08)',   color: '#475569', border: '1px solid rgba(100,116,139,.25)' },
   bronze:       { background: 'rgba(180,120,40,.12)',    color: '#92531a', border: '1px solid rgba(180,120,40,.3)' },
   landing:      { background: 'rgba(37,99,235,.08)',     color: '#1d4ed8', border: '1px solid rgba(37,99,235,.28)' },
-  manipulation: { background: 'rgba(109,40,217,.08)',    color: '#6d28d9', border: '1px solid rgba(109,40,217,.28)' },
+  manipulation: { background: 'rgba(9,26,85,.08)',      color: '#091a55', border: '1px solid rgba(9,26,85,.22)' },
   final:        { background: 'rgba(5,150,105,.08)',     color: '#047857', border: '1px solid rgba(5,150,105,.3)' },
-  purple:       { background: 'var(--purple-lt)',        color: '#6d28d9', border: '1px solid rgba(124,58,237,.28)' },
+  purple:       { background: 'var(--blue-lt)',          color: 'var(--accent-text)', border: '1px solid var(--blue-br)' },
 }
 
 export function Badge({ variant = 'gray', children, style, title }) {
   return (
     <span title={title} style={{
-      display: 'inline-block', padding: '2px 9px', borderRadius: 20,
+      display: 'inline-block', padding: '2px 8px', borderRadius: 4,
       fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .4,
       ...BADGE_STYLES[variant],
       ...style,

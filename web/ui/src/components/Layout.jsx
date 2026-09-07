@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 
 import CommandPalette from './CommandPalette'
 
@@ -47,24 +47,29 @@ const ICONS = {
       <path fillRule="evenodd" d="M6 8.5a.5.5 0 01.5.5v2a2 2 0 002 2h3a.5.5 0 010 1h-3a3 3 0 01-3-3V9a.5.5 0 01.5-.5z" clipRule="evenodd" />
     </svg>
   ),
-  verify: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-      <path d="M4 10.5l4 4 8-9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  docs: (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
     </svg>
   ),
 }
 
-const NAV = [
-  { path: '/',                 label: 'Home',          icon: 'home',       color: '#93c5fd' },
-  { path: '/workflow',         label: 'Workflow',      icon: 'workflow',   color: '#67e8f9' },
-  { path: '/getting-started',  label: 'Get Started',   icon: 'guide',      color: '#86efac' },
-  { path: '/handbook',         label: 'Docs',          icon: 'guide',      color: '#c4b5fd' },
-  { path: '/connectors',       label: 'Connectors',    icon: 'connectors', color: '#6ee7b7' },
-  { path: '/models',     label: 'Models',     icon: 'models',     color: '#93c5fd' },
-  { path: '/explore',    label: 'Explore',    icon: 'explore',    color: '#7dd3fc' },
-  { path: '/reports',    label: 'Reports',    icon: 'reports',    color: '#f9a8d4' },
-  { path: '/verify',     label: 'Verify',     icon: 'verify',     color: '#7ab4f0' },
-  { path: '/pipelines',  label: 'Pipelines',  icon: 'pipelines',  color: '#fde68a' },
+// Workspace first; learn/docs below. Verify is intentionally not a primary
+// nav peer — it lives as a quiet footer action so the chrome reads as product
+// surfaces, not a trust marketing strip.
+const NAV_PRIMARY = [
+  { path: '/',          label: 'Home',       icon: 'home' },
+  { path: '/connectors', label: 'Connectors', icon: 'connectors' },
+  { path: '/models',    label: 'Models',     icon: 'models' },
+  { path: '/explore',   label: 'Explore',    icon: 'explore' },
+  { path: '/reports',   label: 'Reports',    icon: 'reports' },
+  { path: '/pipelines', label: 'Pipelines',  icon: 'pipelines' },
+]
+
+const NAV_SECONDARY = [
+  { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
+  { path: '/getting-started', label: 'Get Started', icon: 'guide' },
+  { path: '/handbook',        label: 'Docs',        icon: 'docs' },
 ]
 
 function SunIcon() {
@@ -83,6 +88,66 @@ function MoonIcon() {
   )
 }
 
+function NavItem({ path, label, icon, onNavigate }) {
+  return (
+    <li>
+      <NavLink
+        to={path}
+        end={path === '/'}
+        onClick={onNavigate}
+        className="nav-link"
+        style={({ isActive }) => ({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '8px 12px',
+          margin: '0 8px',
+          borderRadius: 6,
+          color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+          textDecoration: 'none',
+          fontSize: 13,
+          fontWeight: isActive ? 600 : 400,
+          background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+        })}
+      >
+        <span style={{
+          width: 15, height: 15,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+          opacity: 0.9,
+        }}>
+          {ICONS[icon]}
+        </span>
+        {label}
+      </NavLink>
+    </li>
+  )
+}
+
+function NavSection({ label, items, onNavigate }) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      {label && (
+        <div style={{
+          padding: '14px 20px 6px',
+          fontSize: 10.5,
+          fontWeight: 600,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'rgba(200,220,255,0.38)',
+        }}>
+          {label}
+        </div>
+      )}
+      <ul style={{ listStyle: 'none', padding: label ? '0 0 4px' : '8px 0 4px' }}>
+        {items.map(item => (
+          <NavItem key={item.path} {...item} onNavigate={onNavigate} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false)
   const [dark, setDark] = useState(() => {
@@ -94,14 +159,11 @@ export default function Layout({ children }) {
     try { localStorage.setItem('tracebi-theme', dark ? 'dark' : 'light') } catch { /* ignore */ }
   }, [dark])
 
+  const close = () => setOpen(false)
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <CommandPalette />
-
-      {/* Background orbs */}
-      <div className="orb orb-1" />
-      <div className="orb orb-2" />
-      <div className="orb orb-3" />
 
       {/* Mobile top bar */}
       <div className="mobile-header" style={{
@@ -114,7 +176,9 @@ export default function Layout({ children }) {
         alignItems: 'center', justifyContent: 'space-between', padding: '0 16px',
         zIndex: 200,
       }}>
-        <span className="gradient-text" style={{ fontSize: 16, fontWeight: 800 }}>TraceBi</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          TraceBi
+        </span>
         <button onClick={() => setOpen(true)} style={{
           background: 'none', border: 'none', cursor: 'pointer',
           display: 'flex', flexDirection: 'column', gap: 5,
@@ -122,17 +186,17 @@ export default function Layout({ children }) {
           alignItems: 'center', justifyContent: 'center',
         }}>
           {[0,1,2].map(i => (
-            <span key={i} style={{ display: 'block', width: 20, height: 2, background: 'var(--text-2)', borderRadius: 2 }} />
+            <span key={i} style={{ display: 'block', width: 20, height: 2, background: 'var(--text-2)', borderRadius: 1 }} />
           ))}
         </button>
       </div>
 
       {/* Overlay */}
       {open && (
-        <div onClick={() => setOpen(false)} style={{
+        <div onClick={close} style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(22,35,60,.4)',
-          backdropFilter: 'blur(4px)',
+          background: 'rgba(10,18,40,.45)',
+          backdropFilter: 'blur(2px)',
           zIndex: 250,
         }} />
       )}
@@ -141,22 +205,19 @@ export default function Layout({ children }) {
       <nav style={{
         width: 'var(--nav-w)', minHeight: '100vh',
         background: 'var(--sidebar-bg)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
         borderRight: '1px solid var(--sidebar-border)',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
         position: 'fixed', top: 0, left: 0, zIndex: 300,
       }} className={`app-nav${open ? ' nav-open' : ''}`}>
 
-        {/* Close button — mobile only, positioned top-right of sidebar */}
         <button
           className="nav-close-btn"
-          onClick={() => setOpen(false)}
+          onClick={close}
           style={{
             display: 'none',
             position: 'absolute', top: 10, right: 10,
-            background: 'rgba(255,255,255,0.1)',
-            border: '1px solid rgba(255,255,255,0.18)',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.12)',
             borderRadius: 6, width: 32, height: 32,
             alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
@@ -166,36 +227,37 @@ export default function Layout({ children }) {
         >×</button>
 
         {/* Brand */}
-        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid var(--sidebar-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 5 }}>
+        <div style={{ padding: '22px 20px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 9,
-              background: 'linear-gradient(135deg, #091a55, #0369a1)',
+              width: 28, height: 28, borderRadius: 6,
+              background: '#091a55',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 16px rgba(9,26,85,0.45)',
               flexShrink: 0,
             }}>
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
                 <path d="M6.6 4.5 H4.6 V15.5 H6.6 M13.4 4.5 H15.4 V15.5 H13.4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                <rect x="8.1" y="9.6" width="1.7" height="4.4" rx=".7" fill="white" />
-                <rect x="11" y="7.2" width="1.7" height="6.8" rx=".7" fill="white" />
+                <rect x="8.1" y="9.6" width="1.7" height="4.4" rx=".4" fill="white" />
+                <rect x="11" y="7.2" width="1.7" height="6.8" rx=".4" fill="white" />
               </svg>
             </div>
-            <h1 className="gradient-text-on-dark" style={{ fontSize: 18, fontWeight: 800, letterSpacing: .2 }}>
-              TraceBi
-            </h1>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                TraceBi
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(200,220,255,0.45)', marginTop: 1 }}>
+                Analytics trust layer
+              </div>
+            </div>
           </div>
-          <p style={{ fontSize: 11, color: 'var(--muted)', paddingLeft: 43, letterSpacing: .2 }}>
-            Reports as code — to keep agents in line
-          </p>
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
             style={{
-              marginTop: 14, width: '100%',
+              width: '100%',
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 8, padding: '7px 10px', cursor: 'pointer',
-              color: 'rgba(200,220,255,0.55)', fontSize: 12, fontFamily: 'inherit',
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 6, padding: '7px 10px', cursor: 'pointer',
+              color: 'rgba(200,220,255,0.5)', fontSize: 12, fontFamily: 'inherit',
               transition: 'background .15s',
             }}
           >
@@ -205,87 +267,63 @@ export default function Layout({ children }) {
             Search…
             <kbd style={{
               marginLeft: 'auto', fontSize: 10, padding: '1px 5px',
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.14)',
-              borderRadius: 4, color: 'rgba(200,220,255,0.6)',
+              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 3, color: 'rgba(200,220,255,0.5)',
             }}>⌘K</kbd>
           </button>
         </div>
 
-        {/* Nav items */}
-        <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1 }}>
-          {NAV.map(({ path, label, icon, color }) => (
-            <li key={path}>
-              <NavLink
-                to={path}
-                end={path === '/'}
-                onClick={() => setOpen(false)}
-                className="nav-link"
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '9px 20px',
-                  color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-                  textDecoration: 'none',
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                  borderLeft: `2px solid ${isActive ? color : 'transparent'}`,
-                  background: isActive ? 'rgba(255,255,255,0.13)' : 'transparent',
-                })}
-              >
-                <span style={{
-                  width: 15, height: 15,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                  color: 'inherit',
-                }}>
-                  {ICONS[icon]}
-                </span>
-                {label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
+          <NavSection items={NAV_PRIMARY} onNavigate={close} />
+          <NavSection label="Learn" items={NAV_SECONDARY} onNavigate={close} />
+        </div>
 
         {/* Footer */}
         <div style={{
-          padding: '14px 20px',
+          padding: '12px 16px 14px',
           borderTop: '1px solid var(--sidebar-border)',
-          display: 'flex', alignItems: 'center', gap: 8,
+          display: 'flex', flexDirection: 'column', gap: 10,
         }}>
-          <span className="pulse-glow" style={{
-            display: 'inline-block', width: 7, height: 7,
-            borderRadius: '50%', background: '#22c55e', flexShrink: 0,
-          }} />
-          <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>TraceBi v0.5.2</span>
-          <span style={{
-            fontSize: 10, color: 'rgba(200,220,255,0.8)',
-            background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)',
-            padding: '1px 6px', borderRadius: 4,
-          }}>BETA</span>
-          <button
-            onClick={() => setDark(d => !d)}
-            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          <Link
+            to="/verify"
+            onClick={close}
             style={{
-              marginLeft: 'auto', background: 'rgba(255,255,255,0.09)',
-              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 6,
-              color: 'rgba(200,220,255,0.75)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 26, height: 26, flexShrink: 0, transition: 'background .15s',
+              fontSize: 12,
+              color: 'rgba(200,220,255,0.48)',
+              textDecoration: 'none',
+              padding: '2px 4px',
             }}
+            className="nav-footer-link"
           >
-            {dark ? <SunIcon /> : <MoonIcon />}
-          </button>
+            Verify a report file
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              display: 'inline-block', width: 6, height: 6,
+              borderRadius: '50%', background: '#22c55e', flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v0.5.2</span>
+            <button
+              onClick={() => setDark(d => !d)}
+              title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{
+                marginLeft: 'auto', background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5,
+                color: 'rgba(200,220,255,0.7)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 26, height: 26, flexShrink: 0, transition: 'background .15s',
+              }}
+            >
+              {dark ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </div>
         </div>
       </nav>
 
       {/* Main content */}
       <main style={{
-        // minWidth:0 lets this flex child shrink to the space beside the
-        // sidebar; without it, a wide child (grid min-content) expands main
-        // to its maxWidth and the page scrolls sideways at ~1280 widths.
         marginLeft: 'var(--nav-w)', flex: 1, minWidth: 0,
-        padding: '40px 44px', maxWidth: 1340,
+        padding: '36px 44px', maxWidth: 1340,
       }} className="layout-main">
         {children}
       </main>
@@ -293,13 +331,11 @@ export default function Layout({ children }) {
       <style>{`
         @media (max-width: 768px) {
           .mobile-header { display: flex !important; }
-          /* Scoped to this sidebar. A bare element selector here also slid
-             every page's own nav off-screen — the docs sidebar did exactly
-             that, landing at x=-343 as an empty box. */
           .app-nav { transform: translateX(-100%); transition: transform .25s ease; }
           .app-nav.nav-open { transform: translateX(0); }
           main { margin-left: 0 !important; margin-top: 52px; padding: 20px 16px !important; max-width: 100% !important; }
         }
+        .nav-footer-link:hover { color: rgba(200,220,255,0.85) !important; }
       `}</style>
     </div>
   )

@@ -13,7 +13,7 @@ import {
 } from '../components/Shared'
 
 const AGG_FUNCS = ['sum', 'count', 'mean', 'min', 'max', 'nunique']
-const MEASURE_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#db2777', '#0891b2']
+const MEASURE_COLORS = ['#091a55', '#1d4ed8', '#0e7490', '#334155', '#475569', '#0369a1']
 
 // ── Builder controls ─────────────────────────────────────────────────────────
 
