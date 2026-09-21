@@ -258,16 +258,21 @@ def evaluate_selection(package, models: dict, filters: dict) -> dict:
 def _distinct(model, ref, column: str, selection_filters: dict) -> list[str]:
     """Sorted distinct values of *column* under *selection_filters*.
 
-    The control's own predicate is omitted by the caller, so a sector with no
-    rows under the *rest* of the selection is absent here and shows as excluded.
-    ``order_by`` and ``limit`` stay off this probe: a top-N binding must not
-    hide a value that still has rows.
+    The control's own predicate is omitted — from the selection (the caller)
+    and from the binding. That column is the control, so the selection wins
+    on it and the domain has to offer the other values. A sector with no
+    rows under the *rest* of the selection is absent here and shows as
+    excluded. ``order_by`` and ``limit`` stay off this probe: a top-N
+    binding must not hide a value that still has rows.
     """
     dims = list(ref.query.dimensions)
     if column not in dims:
         dims.append(column)
+    binding_filters = dict(ref.query.filters or {})
+    binding_filters.pop(column, None)
     probe = dataclasses.replace(
         ref.query, dimensions=tuple(dims), order_by=(), limit=None,
+        filters=binding_filters or None,
     )
     probe = query_under_selection(probe, selection_filters)
     from tracebi.reports.embed import stamp

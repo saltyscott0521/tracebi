@@ -127,7 +127,9 @@ function AskCut({ reportName, frameRef }) {
   const [kept, setKept] = useState(null)
   const select = useReportSelection()
   const keep = useKeepSelection()
-  const quoted = (reply?.figures || []).filter(fig => fig.fingerprint)
+  const quoted = (reply?.figures || []).filter(fig =>
+    fig.kind === 'value' && fig.fingerprint &&
+    (fig.formatted != null || typeof fig.value === 'number'))
 
   const apply = () => {
     const filters = parseCut(text)
@@ -150,7 +152,7 @@ function AskCut({ reportName, frameRef }) {
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder={'dim_issuer.sector=Technology'}
+        placeholder={'dim_issuer.sector=Software'}
         rows={2}
         style={{
           width: '100%', boxSizing: 'border-box', font: '12px/1.4 ui-monospace, monospace',

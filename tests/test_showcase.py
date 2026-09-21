@@ -59,7 +59,9 @@ class TestShowcase:
         for marker in ("data-tb-filter", "data-tb-search", "data-tb-download",
                        "tb-tabs", "tb-cols-2", 'id="tracebi-receipt"',
                        "tb-methodology", "data-tb-unverified",
-                       "tb-semantic-contract-portfolio_model"):
+                       "tb-semantic-contract-portfolio_model",
+                       'id="tracebi-selection"', 'id="tracebi-grain"',
+                       "connect-src 'self'"):
             assert marker in html, f"showcase lost its {marker} affordance"
         assert "Working notes" not in html, "exploration must die at build"
 
@@ -88,3 +90,52 @@ class TestShowcase:
         out = _run(["verify", "--file", "output/portfolio_showcase.html"],
                    proj)
         assert out.returncode == 0, out.stdout + out.stderr
+
+        # A sector cut moves fair value, the ratio, and the holdings table
+        # together. The fingerprint is the model's, not a browser sum.
+        self._sector_recomputes_on_the_model(proj)
+
+    def _sector_recomputes_on_the_model(self, proj):
+        import os
+
+        from tracebi.model_registry import ModelRegistry
+        from tracebi.reports.selection import evaluate_selection
+        from tracebi.reports.template_package import TemplatePackage
+
+        previous = os.getcwd()
+        os.chdir(proj)
+        try:
+            registry = ModelRegistry()
+            registry.auto_discover(str(proj / "models"))
+            model = registry.get("portfolio_model")
+            package = TemplatePackage(
+                str(proj / "reports" / "portfolio_showcase"))
+            models = {"portfolio_model": model}
+            base = evaluate_selection(package, models, {})
+            control = next(
+                c for c in base["controls"]
+                if c["column"] == "dim_issuer.sector")
+            assert len(control["included"]) > 1
+            sector = control["included"][0]
+            cut = evaluate_selection(
+                package, models, {"dim_issuer.sector": sector})
+        finally:
+            os.chdir(previous)
+
+        def cell(result, figure_id):
+            return next(f for f in result["figures"] if f["id"] == figure_id)
+
+        fair = cell(cut, "kpi-fv")
+        mark = cell(cut, "kpi-mark")
+        detail = cell(cut, "tbl-detail")
+        assert fair["value"] != cell(base, "kpi-fv")["value"]
+        assert mark["value"] != cell(base, "kpi-mark")["value"]
+        assert len(detail["rows"]) < len(cell(base, "tbl-detail")["rows"])
+        assert detail["rows"]
+        assert all(row["dim_issuer.sector"] == sector for row in detail["rows"])
+        expected = model.query(
+            "fact_holdings", ["fair_value", "positions", "mark"],
+            filters={"dim_issuer.sector": sector},
+        )
+        assert fair["fingerprint"] == expected.fingerprint()
+        assert mark["fingerprint"] == expected.fingerprint()
