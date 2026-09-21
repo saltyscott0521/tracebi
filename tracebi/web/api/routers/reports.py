@@ -158,6 +158,99 @@ def _artifact_payload_or_refuse(name: str) -> dict:
     return payload
 
 
+def _selection_models(model_name: str) -> dict:
+    """The one model a selection recomputes, keyed both ways a binding names it."""
+    from tracebi.model_registry import get_model
+
+    model = get_model(model_name)
+    return {model_name: model, getattr(model, "name", model_name): model}
+
+
+def _package_or_404(name: str):
+    if name not in {r["name"] for r in registry.list_reports()}:
+        raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
+    pkg_dir = registry.report_package_dir(name)
+    if not pkg_dir:
+        raise HTTPException(status_code=422, detail=_NO_PACKAGE.format(name=name))
+    return pkg_dir
+
+
+@router.post("/{name}/selection")
+def report_selection(name: str, payload: dict):
+    """Recompute an opted-in report under a selection.
+
+    Computes and returns stamps. Does not write the warehouse or the package.
+    Auth is the report-run rule: this is a POST, so analyst when enforcement
+    is on.
+    """
+    from tracebi.reports.selection import evaluate_selection
+    from tracebi.reports.template_package import TemplatePackage
+
+    pkg_dir = _package_or_404(name)
+    filters = (payload or {}).get("filters") or {}
+    if not isinstance(filters, dict):
+        raise HTTPException(status_code=400, detail="filters must be an object")
+    try:
+        package = TemplatePackage(pkg_dir)
+        if package.selection is None:
+            raise ValueError(
+                f"Report '{name}' has no selection block. Controls on this "
+                f"report subset stamped rows; they do not recompute measures."
+            )
+        models = _selection_models(package.selection["model"])
+        return evaluate_selection(package, models, filters)
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=_error_detail("Selection failed", exc)
+        )
+
+
+@router.post("/{name}/selection/keep")
+def keep_report_selection(name: str, payload: dict):
+    """Write the cut into the package, rebuild, and verify.
+
+    The authored selection becomes the filters on screen. This writes
+    ``report.json`` and the artifact. It does not write the warehouse.
+    """
+    from tracebi.reports.selection import keep_cut
+
+    pkg_dir = _package_or_404(name)
+    filters = (payload or {}).get("filters") or {}
+    if not isinstance(filters, dict):
+        raise HTTPException(status_code=400, detail="filters must be an object")
+    try:
+        from tracebi.reports.template_package import TemplatePackage
+        package = TemplatePackage(pkg_dir)
+        if package.selection is None:
+            raise ValueError(
+                f"Report '{name}' has no selection block to keep a cut in."
+            )
+        models = _selection_models(package.selection["model"])
+        output = _writable_output_html(name)
+        if output is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Cannot keep this cut: output/ is not writable.",
+            )
+        result = keep_cut(pkg_dir, filters, models, output)
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=_error_detail("Keep failed", exc)
+        )
+    _ARTIFACT_CACHE.pop(name, None)
+    return result
+
+
 @router.post("/{name}/run")
 def run_report(name: str):
     """

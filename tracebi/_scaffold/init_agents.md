@@ -87,7 +87,16 @@ whose figures each name a binding from `report.json`:
 - Interactivity: `data-tb-filter` dropdowns + `data-tb-search` inputs subset
   WHICH stamped rows a binding's tables/charts display — they never compute
   new numbers (client-side aggregation would mint numbers; value figures
-  never react; a filtered KPI needs its own binding). Tables scroll past
+  never react; a filtered KPI needs its own binding). A `selection` block
+  in `report.json` (`{"model", "filters"}`) opts in: `data-tb-filter` posts
+  the selection and the model recomputes every figure on it, value figures
+  included. The browser displays that result. Excluded options stay visible
+  and inert. The receipt names the selection and whether it is the authored
+  one. `data-tb-download` stays the full stamped binding; the receipt
+  downloads the sliced view and names the selection in the filename and the
+  header. Offline, further slices need the model unless a sealed grain can
+  recompute `simple` aggregations and `ratio`; `period_end` does not
+  recompute offline. Tables scroll past
   `data-tb-rows` (default 10). `data-tb-download` buttons export the
   stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
   `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Every built
