@@ -1322,6 +1322,28 @@ class TestNamedMeasures:
         assert by_name["margin_pct"]["ratio"] == ["gross_margin", "revenue"]
         assert "between" in info["filter_operators"]
 
+    def test_info_includes_column_names_from_the_connector(self):
+        info = self._model().info()
+        orders = next(t for t in info["tables"] if t["name"] == "orders")
+        names = [c["name"] for c in orders["columns"]]
+        assert names == ["order_id", "customer_id", "revenue", "cost"]
+        assert all(c["dtype"] for c in orders["columns"])
+
+    def test_duckdb_column_schema_is_describe_not_a_scan(self, tmp_path):
+        import duckdb
+        from tracebi.connectors.duckdb_connector import DuckDBConnector
+        path = tmp_path / "wh.duckdb"
+        con = duckdb.connect(str(path))
+        con.execute("CREATE TABLE orders (order_id INTEGER, revenue DOUBLE)")
+        con.close()
+        connector = DuckDBConnector("wh", database=str(path))
+        try:
+            cols = connector.column_schema("orders")
+        finally:
+            connector.disconnect()
+        assert [c["name"] for c in cols] == ["order_id", "revenue"]
+        assert cols[0]["dtype"]
+
 
 class TestQuerySpec:
     """A query as data: serializable, diffable, committable, replayable."""

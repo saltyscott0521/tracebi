@@ -65,7 +65,7 @@ from tracebi.reports.embed import (
 )
 from tracebi.reports.figures import (
     Figure, FigureError, assign_figure_ids, extract_figures, fill_figures,
-    methodology_insertion, strip_stage,
+    lint_numeric_literals, methodology_insertion, strip_stage,
 )
 from tracebi.reports.base_renderer import _warn_if_unknown_git_sha
 from tracebi.reports.figure_markup import (
@@ -467,6 +467,19 @@ class TemplatePackage:
             )
         figs = extract_figures(page)
         self._validate_figures(figs, inputs, outputs)
+        # Exploration is already stripped. A numeral left in the prose is a
+        # number the build would ship with no figure claim.
+        outside = lint_numeric_literals(page)
+        if outside:
+            raise FigureError(
+                f"Package '{self.name}': {outside} numeric literal"
+                f"{'s' if outside != 1 else ''} "
+                f"{'sit' if outside != 1 else 'sits'} outside figures. "
+                f"Bind each one — a <span> with data-tb-figure=\"value\" "
+                f"works inside a sentence — or move it into "
+                f"data-tb-stage=\"exploration\", which this build strips. "
+                f"A hand-typed number cannot ship as if it were checked."
+            )
 
         # Server-side render (SSR): fill each figure's value/table/chart with the
         # resolved data at build, so a reader with JavaScript off still sees the

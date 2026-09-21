@@ -68,6 +68,14 @@ class DuckDBConnector(BaseConnector):
             out["directory"] = self.directory
         return out
 
+    def column_schema(self, source: str) -> list[dict[str, str]]:
+        """Column names and types via ``DESCRIBE``. No rows are returned."""
+        if self._conn is None:
+            self.connect()
+        ref = self._resolve_source(source)
+        rows = self._conn.execute(f"DESCRIBE SELECT * FROM {ref}").fetchall()
+        return [{"name": str(r[0]), "dtype": str(r[1])} for r in rows]
+
     @staticmethod
     def _duckdb():
         try:

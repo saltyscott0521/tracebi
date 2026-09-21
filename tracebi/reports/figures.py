@@ -446,10 +446,11 @@ def lint_numeric_literals(html_text: str) -> int:
     """
     Count numeric literals in prose outside every figure element.
 
-    Prose numbers are the accepted unprovable remainder (v2 §2.1) — the
-    workbench and ``report status`` surface this count non-blockingly, while
-    the marked figure path stays the only compliant one for anything
-    KPI-shaped. Text inside figures and inside script/style is exempt.
+    The workbench surfaces this count while a draft is open. A final build
+    fails when the count is greater than zero, after exploration blocks
+    have been stripped. Text inside figures and inside script/style is
+    exempt. A single digit is not a token — the pattern wants two — so a
+    label like "Q3" is left alone.
     """
     parsed = _parse(html_text)
     return sum(len(_NUMERIC_TOKEN.findall(chunk))
