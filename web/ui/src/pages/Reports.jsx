@@ -132,16 +132,26 @@ function AskCut({ reportName, frameRef }) {
     (fig.formatted != null || typeof fig.value === 'number'))
 
   const apply = () => {
-    const filters = parseCut(text)
+    const trimmed = text.trim()
+    const request = (!trimmed || trimmed.includes('='))
+      ? { name: reportName, filters: parseCut(text) }
+      : { name: reportName, question: trimmed }
     setKept(null)
-    select.mutate({ name: reportName, filters }, {
+    select.mutate(request, {
       onSuccess: (payload) => {
         setReply(payload)
+        const filters = payload?.filters || {}
         const tb = frameRef.current?.contentWindow?.tracebi
         if (tb && typeof tb.setSelection === 'function') tb.setSelection(filters)
       },
     })
   }
+
+  const cutLine = reply
+    ? Object.entries(reply.filters || {}).map(([key, value]) => (
+      `${key} = ${Array.isArray(value) ? value.join(', ') : value}`
+    )).join('; ')
+    : ''
 
   return (
     <div style={{
@@ -152,7 +162,7 @@ function AskCut({ reportName, frameRef }) {
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder={'dim_issuer.sector=Software'}
+        placeholder={'what about Software'}
         rows={2}
         style={{
           width: '100%', boxSizing: 'border-box', font: '12px/1.4 ui-monospace, monospace',
@@ -173,6 +183,11 @@ function AskCut({ reportName, frameRef }) {
       {select.error && (
         <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
           {select.error.message}
+        </div>
+      )}
+      {reply && (
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
+          {cutLine ? `cut: ${cutLine}` : 'cut: none'}
         </div>
       )}
       {quoted.length > 0 && (

@@ -22,7 +22,9 @@ from tracebi.reports.selection import (
     evaluate_selection,
     filters_equal,
     keep_cut,
+    match_question,
     query_under_selection,
+    resolve_question,
 )
 from tracebi.reports.selection_eval import (
     OfflineRefusal,
@@ -283,6 +285,57 @@ class TestKeep:
             assert node_specs[-1]["filters"]["dim_customer.region"] == "East"
 
 
+class TestAsk:
+    def test_a_question_names_one_declared_value(self):
+        assert match_question("what about west", {
+            "dim_customer.region": ["East", "West"],
+        }) == {"dim_customer.region": "West"}
+
+    def test_several_values_on_one_column_become_a_list(self):
+        assert match_question("east and west", {
+            "dim_customer.region": ["East", "West"],
+        }) == {"dim_customer.region": ["East", "West"]}
+
+    def test_a_longer_value_wins_over_its_prefix(self):
+        assert match_question("what about north america", {
+            "dim.region": ["North", "North America"],
+        }) == {"dim.region": "North America"}
+
+    def test_two_columns_are_refused(self):
+        with pytest.raises(ValueError, match="more than one control"):
+            match_question("east", {
+                "dim_customer.region": ["East", "West"],
+                "dim_store.name": ["East"],
+            })
+
+    def test_an_unknown_word_is_refused(self):
+        with pytest.raises(ValueError, match="does not name a value"):
+            match_question("what about nowhere", {
+                "dim_customer.region": ["East", "West"],
+            })
+
+    def test_a_key_value_cut_is_returned_as_written(self):
+        assert match_question(
+            "dim_customer.region=West", {},
+        ) == {"dim_customer.region": "West"}
+
+    def test_question_recomputes_with_the_model_fingerprint(self, tmp_path):
+        model = _model()
+        pkg = TemplatePackage(str(_package(
+            tmp_path, selection={"model": "selection_model", "filters": {}},
+        )))
+        filters = resolve_question(pkg, {"selection_model": model}, "what about west")
+        assert filters == {"dim_customer.region": "West"}
+        result = evaluate_selection(pkg, {"selection_model": model}, filters)
+        expected = model.query(
+            "fact_orders", ["revenue", "margin"],
+            filters={"dim_customer.region": "West"},
+        )
+        fig = next(f for f in result["figures"] if f["id"] == "fig-total")
+        assert fig["fingerprint"] == expected.fingerprint()
+        assert fig["value"] == pytest.approx(100.0)
+
+
 class TestEndpoint:
     def test_post_selection_returns_the_query_fingerprint(self, tmp_path):
         from fastapi import FastAPI
@@ -319,6 +372,43 @@ class TestEndpoint:
         # A report that never opted in is not this package; the empty-filters
         # request on an opted-in package is the authored cut.
         assert bare.json()["authored"] is True
+
+    def test_a_question_posts_the_resolved_cut(self, tmp_path):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from tracebi import model_registry
+        from tracebi.web.api.routers import reports as reports_router
+        from tracebi.web.discovery import _register_template_package
+
+        model = _model()
+        model_registry.register(model)
+        pkg = _package(
+            tmp_path, selection={"model": "selection_model", "filters": {}},
+        )
+        registered = _register_template_package(str(pkg), "ask_demo")
+        assert registered["status"] == "registered", registered
+        app = FastAPI()
+        app.include_router(reports_router.router, prefix="/api")
+        client = TestClient(app)
+        res = client.post(
+            "/api/reports/ask_demo/selection",
+            json={"question": "what about west"},
+        )
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["filters"] == {"dim_customer.region": "West"}
+        fig = next(f for f in body["figures"] if f["id"] == "fig-total")
+        expected = model.query(
+            "fact_orders", ["revenue", "margin"],
+            filters={"dim_customer.region": "West"},
+        )
+        assert fig["fingerprint"] == expected.fingerprint()
+        missed = client.post(
+            "/api/reports/ask_demo/selection",
+            json={"question": "what about nowhere"},
+        )
+        assert missed.status_code == 422
 
 
 class TestOfflinePort:

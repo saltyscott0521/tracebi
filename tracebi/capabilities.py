@@ -283,7 +283,13 @@ def _presentation() -> dict:
                          "filters are the receipt; verify re-runs them. "
                          "Binding filters always apply; the selection "
                          "wins on the same target. having, order_by, and "
-                         "limit stay on the binding.",
+                         "limit stay on the binding. Ask resolves a "
+                         "question to a value one of those controls "
+                         "already has, then posts that filter tuple. A "
+                         "question that names no declared value, or "
+                         "names two columns, is refused. A number in "
+                         "the reply is a value figure beside its "
+                         "fingerprint.",
             "data-tb-filter": "<select data-tb-filter data-tb-binding=\"B\" "
                               "data-tb-column=\"C\"> — without a selection "
                               "block the runtime populates it with the "

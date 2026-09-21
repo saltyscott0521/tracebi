@@ -154,6 +154,143 @@ def _on_model(ref, selection_model: str, model) -> bool:
     return model is not None and ref.model == getattr(model, "name", None)
 
 
+def parse_cut(text: str) -> dict:
+    """The key=value cut the Ask box already accepts. Repeated keys become a list."""
+    filters: dict[str, Any] = {}
+    for line in (text or "").splitlines() or [text or ""]:
+        trimmed = line.strip()
+        if not trimmed or trimmed.startswith("#"):
+            continue
+        eq = trimmed.find("=")
+        if eq < 1:
+            continue
+        key = trimmed[:eq].strip()
+        val = trimmed[eq + 1:].strip()
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+            val = val[1:-1]
+        if key in filters:
+            prev = filters[key]
+            filters[key] = (prev + [val]) if isinstance(prev, list) else [prev, val]
+        else:
+            filters[key] = val
+    return filters
+
+
+def _looks_like_cut(text: str) -> bool:
+    for line in (text or "").splitlines():
+        trimmed = line.strip()
+        if not trimmed or trimmed.startswith("#"):
+            continue
+        if trimmed.find("=") > 0:
+            return True
+    return False
+
+
+def match_question(question: str, domains: dict) -> dict:
+    """Turn a question into filters over declared control values.
+
+    *domains* maps a control column to the values that column already
+    has. A value matches when it appears as a whole word. One column
+    and one value is equality. One column and several values is a list.
+    Two columns, or no declared value, raises — the caller does not guess.
+    A key=value cut is returned as written.
+    """
+    import re
+
+    text = (question or "").strip()
+    if not text:
+        raise ValueError("Ask needs a question or a key=value cut.")
+    if _looks_like_cut(text):
+        parsed = parse_cut(text)
+        if not parsed:
+            raise ValueError(f"Could not read a cut from {text!r}.")
+        return parsed
+
+    hits: list[tuple[int, int, str, str]] = []
+    for column, values in (domains or {}).items():
+        for value in values or []:
+            label = str(value).strip()
+            if not label:
+                continue
+            pattern = re.compile(
+                rf"(?<![\w]){re.escape(label)}(?![\w])", re.IGNORECASE,
+            )
+            for found in pattern.finditer(text):
+                hits.append((found.start(), found.end() - found.start(), str(column), label))
+
+    if not hits:
+        columns = ", ".join(sorted(str(c) for c in (domains or {}))) or "none"
+        raise ValueError(
+            f"{text!r} does not name a value this report can cut. "
+            f"Control columns: {columns}."
+        )
+
+    hits.sort(key=lambda hit: (-hit[1], hit[0]))
+    occupied: list[tuple[int, int]] = []
+    kept: list[tuple[int, str, str]] = []
+    for start, length, column, label in hits:
+        end = start + length
+        if any(not (end <= left or start >= right) for left, right in occupied):
+            continue
+        occupied.append((start, end))
+        kept.append((start, column, label))
+
+    by_column: dict[str, list[str]] = {}
+    for _start, column, label in sorted(kept, key=lambda hit: hit[0]):
+        bucket = by_column.setdefault(column, [])
+        if label not in bucket:
+            bucket.append(label)
+    if len(by_column) > 1:
+        named = ", ".join(
+            f"{column}={' / '.join(vals)}" for column, vals in by_column.items()
+        )
+        raise ValueError(
+            f"{text!r} matches more than one control ({named}). "
+            f"Name the column with a key=value cut."
+        )
+    column, labels = next(iter(by_column.items()))
+    if len(labels) == 1:
+        return {column: labels[0]}
+    return {column: labels}
+
+
+def control_domains(package, models: dict) -> dict:
+    """Declared values for each filter control on the selection model."""
+    if package.selection is None:
+        raise ValueError(
+            f"Report '{package.package_id}' has no selection block. "
+            f"A question can only cut a report that recomputes."
+        )
+    selection_model = package.selection["model"]
+    model = _resolve_model(models, selection_model)
+    if model is None:
+        raise ValueError(
+            f"Cannot resolve a question on '{package.package_id}': model "
+            f"'{selection_model}' was not supplied. Available: {sorted(models)}."
+        )
+    from tracebi.reports.report import Report
+
+    page, _warnings, _unplaced = package.render_page(
+        Report(package.name), strip_exploration=True)
+    domains: dict[str, list[str]] = {}
+    for binding, column in filter_controls(page):
+        ref = package.bindings.get(binding)
+        if ref is None or not _on_model(ref, selection_model, model):
+            continue
+        bucket = domains.setdefault(column, [])
+        for value in _distinct(model, ref, column, {}):
+            if value not in bucket:
+                bucket.append(value)
+    return domains
+
+
+def resolve_question(package, models: dict, question: str) -> dict:
+    """The filter tuple a question names, using values the report already cuts."""
+    if _looks_like_cut(question or ""):
+        return match_question(question, {})
+    return match_question(question, control_domains(package, models))
+
+
 def evaluate_selection(package, models: dict, filters: dict) -> dict:
     """Re-run every binding on the package's selection model.
 

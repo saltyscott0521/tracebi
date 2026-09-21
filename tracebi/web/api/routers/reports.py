@@ -183,13 +183,17 @@ def report_selection(name: str, payload: dict):
     Auth is the report-run rule: this is a POST, so analyst when enforcement
     is on.
     """
-    from tracebi.reports.selection import evaluate_selection
+    from tracebi.reports.selection import evaluate_selection, resolve_question
     from tracebi.reports.template_package import TemplatePackage
 
     pkg_dir = _package_or_404(name)
-    filters = (payload or {}).get("filters") or {}
-    if not isinstance(filters, dict):
+    payload = payload or {}
+    question = payload.get("question")
+    filters = payload.get("filters")
+    if filters is not None and not isinstance(filters, dict):
         raise HTTPException(status_code=400, detail="filters must be an object")
+    if question is not None and not isinstance(question, str):
+        raise HTTPException(status_code=400, detail="question must be a string")
     try:
         package = TemplatePackage(pkg_dir)
         if package.selection is None:
@@ -198,6 +202,15 @@ def report_selection(name: str, payload: dict):
                 f"report subset stamped rows; they do not recompute measures."
             )
         models = _selection_models(package.selection["model"])
+        if isinstance(question, str) and question.strip():
+            if filters:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Send a question or filters, not both.",
+                )
+            filters = resolve_question(package, models, question)
+        elif not filters:
+            filters = {}
         return evaluate_selection(package, models, filters)
     except HTTPException:
         raise

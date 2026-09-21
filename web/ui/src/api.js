@@ -124,8 +124,9 @@ export const useReportLineage = () =>
 // Ask is a client of the selection endpoint: a cut, not a private query path.
 export const useReportSelection = () =>
   useMutation({
-    mutationFn: ({ name, filters }) =>
-      postJson(`/reports/${encodeURIComponent(name)}/selection`, { filters }),
+    mutationFn: ({ name, filters, question }) =>
+      postJson(`/reports/${encodeURIComponent(name)}/selection`,
+        question ? { question } : { filters: filters || {} }),
   })
 
 export const useKeepSelection = () =>
