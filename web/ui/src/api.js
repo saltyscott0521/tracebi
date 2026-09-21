@@ -121,6 +121,19 @@ export const useReportRunHistory = (name) =>
 export const useReportLineage = () =>
   useMutation({ mutationFn: (name) => get(`/reports/${name}/lineage`) })
 
+// Ask is a client of the selection endpoint: a cut, not a private query path.
+export const useReportSelection = () =>
+  useMutation({
+    mutationFn: ({ name, filters }) =>
+      postJson(`/reports/${encodeURIComponent(name)}/selection`, { filters }),
+  })
+
+export const useKeepSelection = () =>
+  useMutation({
+    mutationFn: ({ name, filters }) =>
+      postJson(`/reports/${encodeURIComponent(name)}/selection/keep`, { filters }),
+  })
+
 export const usePipelines = () =>
   useQuery({ queryKey: ['pipelines'], queryFn: () => get('/pipelines'), refetchInterval: 10000 })
 

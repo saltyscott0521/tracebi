@@ -102,6 +102,10 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     tail = ""
     for lib in libs or ():
         tail += f"<script>\n{read_lib(lib)}\n</script>\n"
+    # The selection worker is a few kilobytes and ships only with a sealed
+    # grain. A report that did not opt in stays byte-for-byte as before.
+    if 'id="tracebi-grain"' in data_blocks_html:
+        tail += f"<script>\n{read_asset('selection_eval.js')}\n</script>\n"
     tail += f"<script>\n{read_asset('tracebi.js')}\n</script>\n"
     # The worker engine ships ONLY when a binding is embedded as Parquet — a
     # CSV artifact would otherwise pay megabytes for an engine it never starts.

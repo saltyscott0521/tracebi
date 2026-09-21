@@ -970,3 +970,93 @@ class TestChartThemeColors:
         out = self._apply(opt, {})
         assert "color" not in out.get("xAxis", {}).get("axisLabel", {})
         assert "textStyle" not in out
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestSelectionControls:
+    """An opted-in page does not subset-and-sum when the model is unreachable,
+    and paints the query result — value figures included — when it answers."""
+
+    _OFFLINE = """
+dataBlock('b', 'region,mv\\nEast,10\\nWest,20\\n');
+var cfg = el('script', { id: 'tracebi-selection', type: 'application/json' });
+cfg.textContent = JSON.stringify({ report: 'demo', model: 'm', filters: {} });
+var kpi = el('div', { 'data-tb-figure': 'value', 'data-tb-binding': 'b',
+                      'data-tb-cell': 'mv', id: 'fig-kpi' });
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
+var f = el('select', { 'data-tb-filter': '', 'data-tb-binding': 'b',
+                       'data-tb-column': 'region' });
+loadRuntime();
+var tbody = tbl.querySelector('tbody');
+var before = tbody.children.length;
+var kpiBefore = kpi.textContent;
+f.value = 'East';
+f._fire('change');
+process.stdout.write(JSON.stringify({
+  before: before,
+  after: tbody.children.length,
+  kpi_before: kpiBefore,
+  kpi_after: kpi.textContent,
+  title: f.title,
+  value: f.value
+}));
+"""
+
+    _ONLINE = """
+dataBlock('b', 'region,mv\\nEast,10\\nWest,20\\n');
+var cfg = el('script', { id: 'tracebi-selection', type: 'application/json' });
+cfg.textContent = JSON.stringify({ report: 'demo', model: 'm', filters: {} });
+var kpi = el('div', { 'data-tb-figure': 'value', 'data-tb-binding': 'b',
+                      'data-tb-cell': 'mv', id: 'fig-kpi' });
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
+var f = el('select', { 'data-tb-filter': '', 'data-tb-binding': 'b',
+                       'data-tb-column': 'region' });
+function Thenable(value) { this.value = value; }
+Thenable.prototype.then = function (ok) {
+  var ret = ok(this.value);
+  return (ret && ret.then) ? ret : new Thenable(ret);
+};
+Thenable.prototype.catch = function () { return this; };
+var PAYLOAD = {
+  authored: false,
+  filters: { region: 'East' },
+  figures: [{
+    id: 'fig-kpi', binding: 'b', kind: 'value', cell: 'mv',
+    value: 99, formatted: '99', fingerprint: 'abc123',
+    rows: [{ region: 'East', mv: 99 }]
+  }],
+  controls: [{ binding: 'b', column: 'region', included: ['East'], excluded: ['West'] }]
+};
+globalThis.fetch = function () {
+  return new Thenable({
+    ok: true,
+    json: function () { return new Thenable(PAYLOAD); }
+  });
+};
+loadRuntime();
+f.value = 'East';
+f._fire('change');
+var tbody = tbl.querySelector('tbody');
+var west = null;
+f.children.forEach(function (o) { if (o.value === 'West') west = o; });
+process.stdout.write(JSON.stringify({
+  kpi: kpi.textContent,
+  rows: tbody.children.length,
+  west_disabled: !!(west && west.disabled),
+  receipt: (document.getElementById('tb-selection-status') || {}).textContent || ''
+}));
+"""
+
+    def test_offline_keeps_the_authored_view(self):
+        out = _run_dom(self._OFFLINE)
+        assert out["before"] == out["after"] == 2
+        assert out["kpi_before"] == out["kpi_after"]
+        assert out["title"] == "Further slices need the model"
+        assert out["value"] == "All"  # the failed change is reverted
+
+    def test_a_reachable_model_paints_value_figures(self):
+        out = _run_dom(self._ONLINE)
+        assert out["kpi"] == "99"
+        assert out["rows"] == 1
+        assert out["west_disabled"] is True
+        assert "live" in out["receipt"]

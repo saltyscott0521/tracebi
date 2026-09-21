@@ -242,7 +242,7 @@ export function Empty({ icon, message, action }) {
  * ResizeObserver covers content that settles after load (late fonts, images)
  * rather than trusting a single measurement at the load event.
  */
-export function ReportFrame({ html, title }) {
+export function ReportFrame({ html, title, frameRef }) {
   const ref = useRef(null)
   const [height, setHeight] = useState(480)
 
@@ -277,7 +277,10 @@ export function ReportFrame({ html, title }) {
 
   return (
     <iframe
-      ref={ref}
+      ref={(node) => {
+        ref.current = node
+        if (frameRef) frameRef.current = node
+      }}
       srcDoc={html}
       title={title}
       scrolling="no"

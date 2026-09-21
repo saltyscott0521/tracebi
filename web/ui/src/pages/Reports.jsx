@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
-  useReportLineage, reportDownloadUrl,
+  useReportLineage, useReportSelection, useKeepSelection, reportDownloadUrl,
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
@@ -98,11 +98,112 @@ function ReportReceipt({ manifest }) {
   )
 }
 
+function parseCut(text) {
+  const filters = {}
+  String(text || '').split('\n').forEach(line => {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) return
+    const eq = trimmed.indexOf('=')
+    if (eq < 1) return
+    const key = trimmed.slice(0, eq).trim()
+    let val = trimmed.slice(eq + 1).trim()
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) val = val.slice(1, -1)
+    if (Object.prototype.hasOwnProperty.call(filters, key)) {
+      const prev = filters[key]
+      filters[key] = Array.isArray(prev) ? prev.concat([val]) : [prev, val]
+    } else {
+      filters[key] = val
+    }
+  })
+  return filters
+}
+
+function AskCut({ reportName, frameRef }) {
+  const [text, setText] = useState('')
+  const [reply, setReply] = useState(null)
+  const [kept, setKept] = useState(null)
+  const select = useReportSelection()
+  const keep = useKeepSelection()
+  const quoted = (reply?.figures || []).filter(fig => fig.fingerprint)
+
+  const apply = () => {
+    const filters = parseCut(text)
+    setKept(null)
+    select.mutate({ name: reportName, filters }, {
+      onSuccess: (payload) => {
+        setReply(payload)
+        const tb = frameRef.current?.contentWindow?.tracebi
+        if (tb && typeof tb.setSelection === 'function') tb.setSelection(filters)
+      },
+    })
+  }
+
+  return (
+    <div style={{
+      border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px',
+      marginBottom: 14,
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Ask</div>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder={'dim_issuer.sector=Technology'}
+        rows={2}
+        style={{
+          width: '100%', boxSizing: 'border-box', font: '12px/1.4 ui-monospace, monospace',
+          marginBottom: 8,
+        }}
+      />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Btn onClick={apply} disabled={select.isPending}>Apply cut</Btn>
+        {reply && (
+          <Btn onClick={() => keep.mutate(
+            { name: reportName, filters: reply.filters || {} },
+            { onSuccess: setKept },
+          )} disabled={keep.isPending}>
+            Keep this cut
+          </Btn>
+        )}
+      </div>
+      {select.error && (
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
+          {select.error.message}
+        </div>
+      )}
+      {quoted.length > 0 && (
+        <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.6 }}>
+          {quoted.map(fig => (
+            <div key={fig.id || fig.binding}>
+              <span>{fig.formatted ?? fig.value}</span>
+              {' · '}
+              <code title={fig.fingerprint}>{String(fig.fingerprint).slice(0, 12)}</code>
+            </div>
+          ))}
+        </div>
+      )}
+      {kept && (
+        <div style={{ marginTop: 8, fontSize: 12 }}>
+          verdict: {kept.verdict}
+        </div>
+      )}
+      {keep.error && (
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
+          {keep.error.message}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ReportDetail({ report }) {
   const [tab, setTab] = useState('Output')
   const [runId, setRunId] = useState(null)
   const [lineageData, setLineageData] = useState(null)
   const toast = useToast()
+  const frameRef = useRef(null)
   const { mutate: startRun, isPending: starting, error: startErr } = useStartReportRun()
   const { data: run } = useReportRun(report?.name, runId)
   const { mutate: fetchLineage, isPending: loadingLineage } = useReportLineage()
@@ -206,7 +307,10 @@ function ReportDetail({ report }) {
           />
 
           {tab === 'Output' && (
-            <ReportFrame html={result.html} title={report.name} />
+            <>
+              <AskCut reportName={report.name} frameRef={frameRef} />
+              <ReportFrame html={result.html} title={report.name} frameRef={frameRef} />
+            </>
           )}
 
           {tab === 'Lineage' && lineageData && (

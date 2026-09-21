@@ -150,7 +150,18 @@ Three rules that keep pages honest:
   re-serialised on a Parquet one) — all subset WHICH stamped rows figures
   display. They never compute new numbers: client-side aggregation would
   mint numbers, so value figures never react and a filtered KPI needs its
-  own binding. Download buttons take `data-tb-label` for their text.
+  own binding. A `selection` block on `report.json` opts in to a different
+  control: `data-tb-filter` posts that selection and `DataModel.query`
+  recomputes every figure on the model, value figures included — the
+  browser displays the result and still does not compute it. Excluded
+  options stay visible and inert. The receipt names the selection and
+  whether it is the authored one; `verify` re-runs the authored filters.
+  Binding filters always apply; the selection wins on the same target.
+  `having`, `order_by`, and `limit` stay on the binding. The receipt
+  downloads the sliced view and names the selection in the filename and
+  the header. Offline, the page keeps the authored view unless a sealed
+  grain can recompute `simple` aggregations and `ratio`; `period_end`
+  does not recompute offline. Download buttons take `data-tb-label` for their text.
   Every artifact also carries the receipt drawer (the floating Receipt
   button); the manifest remains the receipt of record. Methodology ships
   via ONE `<section data-tb-methodology>` — the build appends the
