@@ -50,8 +50,10 @@ class TestAssetHygiene:
         # Parquet worker-decode path (large-detail artifacts) landed — the async
         # pre-decode that fills _blocks from embedded Parquet via the inlined
         # worker engine before hydration, plus tracebi.ready() so author code
-        # sees the same data on either transport. Behavior, not bloat.
-        assert os.path.getsize(ASSET) < 52 * 1024
+        # sees the same data on either transport. → 64 KiB when an opted-in
+        # package posts a selection and paints the model's result, including
+        # the fail-closed path that does not subset-and-sum. Behavior, not bloat.
+        assert os.path.getsize(ASSET) < 64 * 1024
 
     def test_no_eval(self):
         with open(ASSET, encoding="utf-8") as f:
@@ -986,6 +988,10 @@ var kpi = el('div', { 'data-tb-figure': 'value', 'data-tb-binding': 'b',
 var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
 var f = el('select', { 'data-tb-filter': '', 'data-tb-binding': 'b',
                        'data-tb-column': 'region' });
+function Rejected() {}
+Rejected.prototype.then = function () { return this; };
+Rejected.prototype.catch = function (fn) { fn(); return this; };
+globalThis.fetch = function () { return new Rejected(); };
 loadRuntime();
 var tbody = tbl.querySelector('tbody');
 var before = tbody.children.length;
@@ -1011,6 +1017,8 @@ var kpi = el('div', { 'data-tb-figure': 'value', 'data-tb-binding': 'b',
 var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
 var f = el('select', { 'data-tb-filter': '', 'data-tb-binding': 'b',
                        'data-tb-column': 'region' });
+var rec = el('script', { id: 'tracebi-receipt', type: 'application/json' });
+rec.textContent = JSON.stringify({ report: 'demo', figures: [] });
 function Thenable(value) { this.value = value; }
 Thenable.prototype.then = function (ok) {
   var ret = ok(this.value);
