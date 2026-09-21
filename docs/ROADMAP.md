@@ -1,5 +1,11 @@
 # TraceBi end-to-end: what to build next
 
+> **2026-09-21:** The production sequence for the agent-report product —
+> desk, authoring loop, relational selection through `DataModel`, then
+> offline slicing after parity — is `docs/architecture/production-plan.md`.
+> Where this file and that plan disagree on order, the plan wins. The
+> items below remain the historical backlog.
+
 > **2026-08-16:** The report layer is being reshaped — one lane, free
 > presentation, per-figure verification, transform contracts. The build plan
 > is `docs/architecture/report-architecture-v2.md`; it absorbs field-notes findings
