@@ -66,6 +66,7 @@ vocabulary, so they describe what the code actually accepts.
 Deep design documents. Written for someone changing the framework, not using it.
 
 - [[report-architecture-v2]] — the current report artifact design
+- [[production-plan]] — how the agent-report product gets to production
 - [[large-detail-artifacts]] — how big datasets ship inside one HTML file
 - [[frontend-surfaces]] — the three separate front ends and why
 - [[report-generator-architecture]] — superseded; kept for its kernel sections
