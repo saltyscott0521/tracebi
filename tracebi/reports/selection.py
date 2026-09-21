@@ -230,7 +230,13 @@ def match_question(question: str, domains: dict) -> dict:
     kept: list[tuple[int, str, str]] = []
     for start, length, column, label in hits:
         end = start + length
-        if any(not (end <= left or start >= right) for left, right in occupied):
+        overlaps = [
+            (left, right) for left, right in occupied
+            if not (end <= left or start >= right)
+        ]
+        # A longer phrase swallows a shorter one. The same span on two
+        # columns is the ambiguity the caller must see.
+        if overlaps and not all(left == start and right == end for left, right in overlaps):
             continue
         occupied.append((start, end))
         kept.append((start, column, label))
