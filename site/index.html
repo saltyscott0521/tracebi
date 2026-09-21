@@ -617,7 +617,7 @@ model.add_measure("fv_cum",   running="fv_share")
         <div class="verdict ok" id="verdict" hidden></div>
       </div>
     </div>
-    <p class="muted" style="font-size:.88rem;margin-top:1.1em">A live demo of the mechanic — the real verifier hashes the embedded bytes. It proves a number <em>reproduces</em> and the file is <em>intact</em>; it doesn’t claim the number is “correct.”</p>
+    <p class="muted" style="font-size:.88rem;margin-top:1.1em">An illustration of the mechanic. This button does not hash the page. <span class="mono">tracebi verify --file</span> is the check: it proves a number <em>reproduces</em> and the file is <em>intact</em>, and it does not claim the number is “correct.”</p>
   </section>
 
   <!-- BATTERIES / DEV EXPERIENCE -->
@@ -674,7 +674,7 @@ model.add_measure("fv_cum",   running="fv_share")
     }else{
       setBadge('b-repro','reproduces');
       verdict.className='verdict ok';
-      verdict.innerHTML='✓ REPRODUCES · FILE INTACT — 21/21 figures match their stamped queries.';
+      verdict.innerHTML='Illustration only — this button does not hash the page. tracebi verify --file is the check.';
     }
     show(verdict);
   });

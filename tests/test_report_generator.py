@@ -460,6 +460,26 @@ def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
     return pkg
 
 
+class TestProseNumericGate:
+    def test_a_hand_typed_number_fails_the_build(self, tmp_path, model):
+        template = _BARE_TEMPLATE.replace(
+            "<h1>Bare</h1>",
+            "<h1>Bare</h1><p>The book is worth 12.</p>",
+        )
+        pkg = _write_package(tmp_path, template=template, dirname="prose")
+        with pytest.raises(Exception, match="numeric literal"):
+            TemplatePackage(str(pkg)).render({model.name: model}, str(tmp_path / "out.html"))
+
+    def test_a_number_inside_exploration_is_stripped_before_the_gate(self, tmp_path, model):
+        template = _BARE_TEMPLATE.replace(
+            "<h1>Bare</h1>",
+            '<h1>Bare</h1><div data-tb-stage="exploration"><p>Worth 12.</p></div>',
+        )
+        pkg = _write_package(tmp_path, template=template, dirname="explore_num")
+        TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(tmp_path / "out.html"))
+
+
 class TestTemplatePackageRender:
     def test_self_contained_no_external_refs(self, tmp_path, model):
         pkg = _write_package(tmp_path)

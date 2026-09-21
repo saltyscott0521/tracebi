@@ -41,6 +41,24 @@ _ARTIFACT_CACHE: dict = {}
 _ARTIFACT_TTL_S = 5.0
 
 
+def _writable_output_html(name: str):
+    """``output/<name>.html`` when that directory can be written, else None.
+
+    Same names ``tracebi report build`` uses. A probe file distinguishes
+    "the disk refused" from a later render error, which must still raise.
+    """
+    out_dir = os.path.join(os.getcwd(), "output")
+    probe = os.path.join(out_dir, ".tracebi-write-probe")
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("")
+        os.unlink(probe)
+    except OSError:
+        return None
+    return os.path.join(out_dir, f"{_safe_filename(name)}.html")
+
+
 def _artifact_payload(name: str):
     """The REAL artifact render for a package-backed report, or None.
 
@@ -82,17 +100,37 @@ def _artifact_payload(name: str):
         models[mname] = m
         models[getattr(m, "name", mname)] = m
 
-    fd, tmp = tempfile.mkstemp(suffix=".html")
-    os.close(fd)
-    try:
+    retained_path = _writable_output_html(name)
+    if retained_path is not None:
         manifest = TemplatePackage(pkg_dir).render(
-            models, tmp, save_manifest=False)
-        with open(tmp, encoding="utf-8") as f:
+            models, retained_path, save_manifest=True)
+        with open(retained_path, encoding="utf-8") as f:
             html = f.read()
-    finally:
-        os.unlink(tmp)
+        receipt = {
+            "retained": True,
+            "html_path": retained_path,
+            "manifest_path": retained_path + ".manifest.json",
+        }
+    else:
+        # A read-only filesystem (the demo topology) still renders. The
+        # response carries the manifest; it says the file was not kept.
+        fd, tmp = tempfile.mkstemp(suffix=".html")
+        os.close(fd)
+        try:
+            manifest = TemplatePackage(pkg_dir).render(
+                models, tmp, save_manifest=False)
+            with open(tmp, encoding="utf-8") as f:
+                html = f.read()
+        finally:
+            os.unlink(tmp)
+        receipt = {"retained": False}
 
-    payload = {"name": name, "html": html, "manifest": manifest.to_dict()}
+    payload = {
+        "name": name,
+        "html": html,
+        "manifest": manifest.to_dict(),
+        **receipt,
+    }
     _ARTIFACT_CACHE[name] = {"mtime": mtime, "at": now, "payload": payload}
     return payload
 

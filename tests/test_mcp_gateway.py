@@ -149,6 +149,16 @@ def test_query_success_carries_the_ok_envelope(gateway_model):
     assert _query()["ok"] is True
 
 
+def test_query_returns_a_binding_stub(gateway_model):
+    out = _query(filters={"status": "shipped"})
+    binding = out["binding"]
+    assert binding["model"] == "gw_demo"
+    assert binding["query"]["fact"] == out["query"]["fact"]
+    assert binding["query"]["measures"] == out["query"]["measures"]
+    assert binding["query"]["filters"] == {"status": "shipped"}
+    assert "rows" not in binding
+
+
 def test_include_lineage_false_drops_the_chain_but_keeps_the_stamp(gateway_model):
     lean = _query(include_lineage=False)
     assert lean["ok"] is True

@@ -378,11 +378,11 @@ export default function Models() {
 
   return (
     <>
-      <PageTitle>Models</PageTitle>
+      <PageTitle>Contract</PageTitle>
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${models.length} data model${models.length !== 1 ? 's' : ''} registered. Select a model to explore its tables, relationships, and ERD schema diagram.`
+          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to read its grain, measures, and tables. Connectors live on their own page.`
         }
       </PageSub>
 

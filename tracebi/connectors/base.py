@@ -59,6 +59,16 @@ class BaseConnector(ABC):
         """
         return {"name": self.name, "type": type(self).__name__}
 
+    def column_schema(self, source: str) -> Optional[list[dict[str, str]]]:
+        """
+        Column names and dtypes for *source*, from metadata.
+
+        Return ``None`` when the connector cannot answer without reading
+        the table's rows. A list (possibly empty) means the schema was
+        read. Implementations must not ``SELECT *``.
+        """
+        return None
+
     @staticmethod
     def _quote_ident(name: str, quote: str = '"') -> str:
         """

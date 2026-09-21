@@ -48,6 +48,17 @@ class MemoryConnector(BaseConnector):
     def describe(self) -> dict:
         return {**super().describe(), "tables": list(self._tables.keys())}
 
+    def column_schema(self, source: str) -> list[dict[str, str]]:
+        """Names and dtypes of the frame already held in memory."""
+        if source not in self._tables:
+            available = list(self._tables.keys())
+            raise KeyError(
+                f"MemoryConnector '{self.name}': source '{source}' not found. "
+                f"Available: {available}"
+            )
+        df = self._tables[source]
+        return [{"name": str(c), "dtype": str(df.dtypes[c])} for c in df.columns]
+
     def load(
         self,
         source: str,

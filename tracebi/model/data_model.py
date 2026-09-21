@@ -3249,6 +3249,30 @@ class DataModel:
 
     # ── Inspection ─────────────────────────────────────────────
 
+    def _table_info(self, tdef) -> dict:
+        """One table's public description, plus columns when metadata can say.
+
+        A connector that cannot describe the source, or a warehouse that is
+        not there yet, leaves the key off. ``info()`` must not fail a model
+        listing because one table could not be described, and it must not
+        scan the table to learn the names.
+        """
+        entry = {
+            "name": tdef.name,
+            "connector": tdef.connector_name,
+            "source": tdef.source,
+        }
+        conn = self._connectors.get(tdef.connector_name)
+        if conn is None:
+            return entry
+        try:
+            cols = conn.column_schema(tdef.source)
+        except Exception:  # noqa: BLE001 — schema is optional metadata
+            return entry
+        if cols is not None:
+            entry["columns"] = cols
+        return entry
+
     def info(self) -> dict:
         """
         The model's structure as a plain dict (tables, relationships,
@@ -3263,10 +3287,7 @@ class DataModel:
         return {
             "name": self.name,
             "connectors": list(self._connectors.keys()),
-            "tables": [
-                {"name": t.name, "connector": t.connector_name, "source": t.source}
-                for t in self._tables.values()
-            ],
+            "tables": [self._table_info(t) for t in self._tables.values()],
             "relationships": [
                 {
                     "name": r.name,
