@@ -41,6 +41,24 @@ _ARTIFACT_CACHE: dict = {}
 _ARTIFACT_TTL_S = 5.0
 
 
+def _writable_output_html(name: str):
+    """``output/<name>.html`` when that directory can be written, else None.
+
+    Same names ``tracebi report build`` uses. A probe file distinguishes
+    "the disk refused" from a later render error, which must still raise.
+    """
+    out_dir = os.path.join(os.getcwd(), "output")
+    probe = os.path.join(out_dir, ".tracebi-write-probe")
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("")
+        os.unlink(probe)
+    except OSError:
+        return None
+    return os.path.join(out_dir, f"{_safe_filename(name)}.html")
+
+
 def _artifact_payload(name: str):
     """The REAL artifact render for a package-backed report, or None.
 
@@ -82,17 +100,37 @@ def _artifact_payload(name: str):
         models[mname] = m
         models[getattr(m, "name", mname)] = m
 
-    fd, tmp = tempfile.mkstemp(suffix=".html")
-    os.close(fd)
-    try:
+    retained_path = _writable_output_html(name)
+    if retained_path is not None:
         manifest = TemplatePackage(pkg_dir).render(
-            models, tmp, save_manifest=False)
-        with open(tmp, encoding="utf-8") as f:
+            models, retained_path, save_manifest=True)
+        with open(retained_path, encoding="utf-8") as f:
             html = f.read()
-    finally:
-        os.unlink(tmp)
+        receipt = {
+            "retained": True,
+            "html_path": retained_path,
+            "manifest_path": retained_path + ".manifest.json",
+        }
+    else:
+        # A read-only filesystem (the demo topology) still renders. The
+        # response carries the manifest; it says the file was not kept.
+        fd, tmp = tempfile.mkstemp(suffix=".html")
+        os.close(fd)
+        try:
+            manifest = TemplatePackage(pkg_dir).render(
+                models, tmp, save_manifest=False)
+            with open(tmp, encoding="utf-8") as f:
+                html = f.read()
+        finally:
+            os.unlink(tmp)
+        receipt = {"retained": False}
 
-    payload = {"name": name, "html": html, "manifest": manifest.to_dict()}
+    payload = {
+        "name": name,
+        "html": html,
+        "manifest": manifest.to_dict(),
+        **receipt,
+    }
     _ARTIFACT_CACHE[name] = {"mtime": mtime, "at": now, "payload": payload}
     return payload
 
@@ -118,6 +156,112 @@ def _artifact_payload_or_refuse(name: str) -> dict:
         raise HTTPException(status_code=422,
                             detail=_NO_PACKAGE.format(name=name))
     return payload
+
+
+def _selection_models(model_name: str) -> dict:
+    """The one model a selection recomputes, keyed both ways a binding names it."""
+    from tracebi.model_registry import get_model
+
+    model = get_model(model_name)
+    return {model_name: model, getattr(model, "name", model_name): model}
+
+
+def _package_or_404(name: str):
+    if name not in {r["name"] for r in registry.list_reports()}:
+        raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
+    pkg_dir = registry.report_package_dir(name)
+    if not pkg_dir:
+        raise HTTPException(status_code=422, detail=_NO_PACKAGE.format(name=name))
+    return pkg_dir
+
+
+@router.post("/{name}/selection")
+def report_selection(name: str, payload: dict):
+    """Recompute an opted-in report under a selection.
+
+    Computes and returns stamps. Does not write the warehouse or the package.
+    Auth is the report-run rule: this is a POST, so analyst when enforcement
+    is on.
+    """
+    from tracebi.reports.selection import evaluate_selection, resolve_question
+    from tracebi.reports.template_package import TemplatePackage
+
+    pkg_dir = _package_or_404(name)
+    payload = payload or {}
+    question = payload.get("question")
+    filters = payload.get("filters")
+    if filters is not None and not isinstance(filters, dict):
+        raise HTTPException(status_code=400, detail="filters must be an object")
+    if question is not None and not isinstance(question, str):
+        raise HTTPException(status_code=400, detail="question must be a string")
+    try:
+        package = TemplatePackage(pkg_dir)
+        if package.selection is None:
+            raise ValueError(
+                f"Report '{name}' has no selection block. Controls on this "
+                f"report subset stamped rows; they do not recompute measures."
+            )
+        models = _selection_models(package.selection["model"])
+        if isinstance(question, str) and question.strip():
+            if filters:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Send a question or filters, not both.",
+                )
+            filters = resolve_question(package, models, question)
+        elif not filters:
+            filters = {}
+        return evaluate_selection(package, models, filters)
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=_error_detail("Selection failed", exc)
+        )
+
+
+@router.post("/{name}/selection/keep")
+def keep_report_selection(name: str, payload: dict):
+    """Write the cut into the package, rebuild, and verify.
+
+    The authored selection becomes the filters on screen. This writes
+    ``report.json`` and the artifact. It does not write the warehouse.
+    """
+    from tracebi.reports.selection import keep_cut
+
+    pkg_dir = _package_or_404(name)
+    filters = (payload or {}).get("filters") or {}
+    if not isinstance(filters, dict):
+        raise HTTPException(status_code=400, detail="filters must be an object")
+    try:
+        from tracebi.reports.template_package import TemplatePackage
+        package = TemplatePackage(pkg_dir)
+        if package.selection is None:
+            raise ValueError(
+                f"Report '{name}' has no selection block to keep a cut in."
+            )
+        models = _selection_models(package.selection["model"])
+        output = _writable_output_html(name)
+        if output is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Cannot keep this cut: output/ is not writable.",
+            )
+        result = keep_cut(pkg_dir, filters, models, output)
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=_error_detail("Keep failed", exc)
+        )
+    _ARTIFACT_CACHE.pop(name, None)
+    return result
 
 
 @router.post("/{name}/run")

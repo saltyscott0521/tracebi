@@ -16,7 +16,11 @@
  *
  * Controls (data-tb-filter / data-tb-search / data-tb-download, tabs) obey
  * the same law: they subset WHICH STAMPED ROWS figures display — they NEVER
- * compute new numbers. See the view layer below.
+ * compute new numbers. See the view layer below. A package that embeds
+ * #tracebi-selection opts in: data-tb-filter POSTs the selection and paints
+ * the query result, value figures included. The browser still does not
+ * compute the measure. Offline, further slices need the model unless a
+ * sealed grain can recompute simple aggregations and ratio.
  *
  * Every hydration step is defensive: a missing block, empty rows, or absent
  * echarts skips that figure silently — the author's content still shows.
@@ -353,17 +357,45 @@
     return true;
   }
 
-  /* The one gate reactive figures re-render through: the stamped rows,
-   * subset by the binding's active filters (AND across columns) and its
-   * search term (case-insensitive substring across all columns, ANDed in). */
+  /* binding → rows from the last selection response (or an offline port).
+   * Absent on a package that did not opt in, so filteredRows stays the
+   * stamped-row subset. */
+  var _liveRows = {};
+  var _lastSelection = null;
+
+  /* The one gate reactive figures re-render through. Without a selection
+   * block: the stamped rows, subset by the binding's filters and search.
+   * With one: column filters were already applied by the query, so only
+   * search subsets the live rows — and value figures are painted from the
+   * result, not from this gate. */
   function filteredRows(binding) {
     var block = readBlock(binding);
+    if (selectionConfig()) {
+      var live = _liveRows[binding];
+      var rows = live || (block ? block.rows : []);
+      var cols = block ? block.cols : [];
+      var view = _views[binding];
+      if (!view || !view.search) return rows;
+      return rows.filter(function (r) {
+        return rowMatches(r, cols, { filters: {}, search: view.search });
+      });
+    }
     if (!block) return [];
-    var view = _views[binding];
-    if (!view) return block.rows;
+    var plain = _views[binding];
+    if (!plain) return block.rows;
     return block.rows.filter(function (r) {
-      return rowMatches(r, block.cols, view);
+      return rowMatches(r, block.cols, plain);
     });
+  }
+
+  function selectionConfig() {
+    if (typeof document === "undefined") return null;
+    var el = document.getElementById("tracebi-selection");
+    if (!el) return null;
+    try {
+      var cfg = JSON.parse(el.textContent);
+      return (cfg && typeof cfg === "object") ? cfg : null;
+    } catch (e) { return null; }
   }
 
   /* Hydrated figures, registered so a control change can re-render them. */
@@ -901,8 +933,318 @@
     try { el.title = what; } catch (e) { /* defensive */ }
   }
 
-  function hydrateControls() {
+  function collectFilters() {
+    var cfg = selectionConfig() || {};
+    var filters = {}, k, base = cfg.filters || {};
+    for (k in base) if (base.hasOwnProperty(k)) filters[k] = base[k];
     controlEls("data-tb-filter").forEach(function (el) {
+      var column = attr(el, "data-tb-column");
+      if (!column) return;
+      if (!el.value || el.value === "All") delete filters[column];
+      else filters[column] = el.value;
+    });
+    return filters;
+  }
+
+  function failClosed(filters) {
+    /* Do not subset-and-sum. The authored view stays. A sealed grain may
+     * recompute simple aggregations and ratio; anything else needs the model. */
+    if (!tryOffline(filters)) {
+      controlEls("data-tb-filter").forEach(function (el) {
+        if (el._tbValue !== undefined) el.value = el._tbValue;
+        el.title = "Further slices need the model";
+      });
+    }
+  }
+
+  function tryOffline(filters) {
+    var el = document.getElementById("tracebi-grain");
+    if (!el || typeof tracebiSelectionEval !== "function") return false;
+    var grain;
+    try { grain = JSON.parse(el.textContent); } catch (e) { return false; }
+    if (!grain || !grain.bindings || !grain.facts) return false;
+    var any = false, refused = false, name, plan, fact, result, seen = {};
+    for (name in grain.bindings) {
+      if (!grain.bindings.hasOwnProperty(name)) continue;
+      plan = grain.bindings[name];
+      fact = grain.facts[plan.fact];
+      if (!fact) { refused = true; continue; }
+      result = tracebiSelectionEval(fact.rows || [], plan, filters || {});
+      if (result.refused) { refused = true; continue; }
+      any = true;
+      _liveRows[name] = result.rows;
+      seen[name] = true;
+      paintValues(name, result.rows);
+    }
+    for (name in seen) if (seen.hasOwnProperty(name)) refreshBinding(name);
+    if (any) {
+      paintSelectionReceipt({
+        filters: filters || {},
+        authored: false,
+        offline: true
+      });
+    }
+    if (refused) {
+      controlEls("data-tb-filter").forEach(function (ctrl) {
+        ctrl.title = "Further slices need the model";
+      });
+    }
+    return any;
+  }
+
+  function paintValues(binding, rows) {
+    var row = rows && rows.length ? rows[0] : null;
+    figureEls("value").forEach(function (el) {
+      try {
+        if (attr(el, "data-tb-binding") !== binding) return;
+        if (!row) return;
+        var cell = attr(el, "data-tb-cell");
+        if (!cell) {
+          var keys = [], k;
+          for (k in row) if (row.hasOwnProperty(k)) keys.push(k);
+          if (keys.length !== 1) return;
+          cell = keys[0];
+        }
+        var raw = row[cell];
+        if (raw === undefined || raw === null || raw === "") return;
+        var text = raw;
+        var name = attr(el, "data-tb-format");
+        if (name) {
+          var n = toNum(raw);
+          if (n !== null) {
+            var formatted = applyNamedFormat(n, name);
+            if (formatted !== null) text = formatted;
+          }
+        }
+        var target = el.querySelector(".tb-kpi-value") || el;
+        target.textContent = text;
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  function applySelection(payload) {
+    if (!payload) return;
+    _lastSelection = payload;
+    var figs = payload.figures || [], i, fig, el, text, target, seen = {};
+    for (i = 0; i < figs.length; i++) {
+      fig = figs[i];
+      if (fig.binding && fig.rows) {
+        _liveRows[fig.binding] = fig.rows;
+        seen[fig.binding] = true;
+      }
+      if (fig.kind !== "value" || !fig.id) continue;
+      el = document.getElementById(fig.id);
+      if (!el) continue;
+      text = fig.formatted;
+      if (text === null || text === undefined || text === "") {
+        text = (fig.value === null || fig.value === undefined) ? "" : String(fig.value);
+      }
+      target = el.querySelector(".tb-kpi-value") || el;
+      target.textContent = text;
+    }
+    for (i in seen) if (seen.hasOwnProperty(i)) refreshBinding(i);
+    applyControlDomains(payload.controls);
+    paintSelectionReceipt(payload);
+    controlEls("data-tb-filter").forEach(function (ctrl) {
+      ctrl._tbValue = ctrl.value;
+    });
+    try {
+      if (root.parent && root.parent !== root) {
+        root.parent.postMessage({ type: "tracebi-selection", payload: payload }, "*");
+      }
+    } catch (e) { /* defensive */ }
+  }
+
+  function applyControlDomains(controls) {
+    (controls || []).forEach(function (c) {
+      var el = null;
+      controlEls("data-tb-filter").forEach(function (candidate) {
+        if (attr(candidate, "data-tb-binding") === c.binding &&
+            attr(candidate, "data-tb-column") === c.column) el = candidate;
+      });
+      if (!el) return;
+      var current = el.value;
+      while (el.firstChild) el.removeChild(el.firstChild);
+      appendOption(el, "All", false);
+      (c.included || []).forEach(function (v) { appendOption(el, v, false); });
+      (c.excluded || []).forEach(function (v) { appendOption(el, v, true); });
+      el.value = current || "All";
+    });
+  }
+
+  function appendOption(el, value, disabled) {
+    var o = document.createElement("option");
+    o.value = String(value);
+    o.textContent = String(value);
+    if (disabled) {
+      o.disabled = true;
+      try { o.setAttribute("disabled", "disabled"); } catch (e) { /* defensive */ }
+    }
+    el.appendChild(o);
+  }
+
+  function postSelection(filters) {
+    var cfg = selectionConfig();
+    if (!cfg || !cfg.report) { failClosed(filters); return; }
+    var url = "/api/reports/" + encodeURIComponent(cfg.report) + "/selection";
+    try {
+      if (typeof fetch !== "function") { failClosed(filters); return; }
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filters: filters || {} })
+      }).then(function (res) {
+        if (!res || !res.ok) throw new Error("selection");
+        return res.json();
+      }).then(function (payload) {
+        applySelection(payload);
+      }).catch(function () { failClosed(filters); });
+    } catch (e) { failClosed(filters); }
+  }
+
+  function setSelection(filters) {
+    if (!selectionConfig()) return;
+    var wanted = filters || {};
+    controlEls("data-tb-filter").forEach(function (el) {
+      var column = attr(el, "data-tb-column");
+      if (!column) return;
+      if (wanted.hasOwnProperty(column) && wanted[column] !== null &&
+          wanted[column] !== undefined) {
+        el.value = String(wanted[column]);
+      } else {
+        el.value = "All";
+      }
+    });
+    postSelection(wanted);
+  }
+
+  function selectionSlug(filters) {
+    var parts = [], k, s;
+    for (k in filters) if (filters.hasOwnProperty(k)) parts.push(k + "=" + filters[k]);
+    s = parts.join("_") || "authored";
+    return s.replace(/[^A-Za-z0-9._=-]+/g, "_").slice(0, 80);
+  }
+
+  function selectionCsv(rows) {
+    if (!rows || !rows.length) return "";
+    var cols = [], k, i, lines, r;
+    for (k in rows[0]) if (rows[0].hasOwnProperty(k)) cols.push(k);
+    function cell(v) {
+      if (v === null || v === undefined) return "";
+      var s = String(v);
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+    lines = [cols.join(",")];
+    for (i = 0; i < rows.length; i++) {
+      r = rows[i];
+      lines.push(cols.map(function (c) { return cell(r[c]); }).join(","));
+    }
+    return lines.join("\n");
+  }
+
+  function downloadSelection() {
+    var filters, groups = {}, k, name, header, body, blob, url, a;
+    if (_lastSelection && _lastSelection.figures) {
+      filters = _lastSelection.filters || {};
+      _lastSelection.figures.forEach(function (fig) {
+        if (fig.binding && fig.rows) groups[fig.binding] = fig.rows;
+      });
+    } else {
+      var cfg = selectionConfig() || {};
+      filters = cfg.filters || {};
+      controlEls("data-tb-download").forEach(function (el) {
+        var binding = attr(el, "data-tb-binding");
+        var block = binding && readBlock(binding);
+        if (block) groups[binding] = block.rows;
+      });
+      if (!Object.keys) {
+        /* ES5: collect bindings from figures instead. */
+      }
+      figureEls("table").concat(figureEls("chart")).concat(figureEls("value"))
+        .forEach(function (el) {
+          var binding = attr(el, "data-tb-binding");
+          var block = binding && readBlock(binding);
+          if (binding && block && !groups[binding]) groups[binding] = block.rows;
+        });
+    }
+    header = "# selection: " + (selectionSlug(filters).replace(/_/g, ", ") || "authored");
+    for (name in groups) {
+      if (!groups.hasOwnProperty(name)) continue;
+      body = header + "\n" + selectionCsv(groups[name]);
+      blob = new Blob([body], { type: "text/csv" });
+      url = URL.createObjectURL(blob);
+      a = document.createElement("a");
+      a.href = url;
+      a.download = name + "--" + selectionSlug(filters) + ".csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  function paintSelectionReceipt(payload) {
+    var line = document.getElementById("tb-selection-status");
+    if (!line || !payload) return;
+    var filters = payload.filters || {}, parts = [], k, text;
+    for (k in filters) if (filters.hasOwnProperty(k)) parts.push(k + " = " + filters[k]);
+    text = "selection: " + (parts.length ? parts.join(", ") : "no extra cut");
+    if (payload.offline) text += " · offline";
+    else text += payload.authored ? " · authored" : " · live";
+    line.textContent = text;
+  }
+
+  function populateFilterOptions(el, column, block) {
+    var values = [];
+    block.rows.forEach(function (r) {
+      var v = r[column];
+      if (v === undefined) return;
+      v = String(v);
+      if (values.indexOf(v) === -1) values.push(v);
+    });
+    values.sort();
+    var all = document.createElement("option");
+    all.value = "All";
+    all.textContent = "All";
+    el.appendChild(all);
+    values.forEach(function (v) {
+      var o = document.createElement("option");
+      o.value = v;
+      o.textContent = v;
+      el.appendChild(o);
+    });
+  }
+
+  function hydrateSelectionFilters() {
+    var cfg = selectionConfig();
+    controlEls("data-tb-filter").forEach(function (el) {
+      try {
+        var binding = attr(el, "data-tb-binding");
+        var column = attr(el, "data-tb-column");
+        var block = readBlock(binding);
+        if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
+        if (!column || block.cols.indexOf(column) === -1) {
+          noteUnknown(el, "unknown column: " + column);
+          return;
+        }
+        populateFilterOptions(el, column, block);
+        var authored = cfg && cfg.filters && cfg.filters.hasOwnProperty(column)
+          ? String(cfg.filters[column]) : "All";
+        el.value = authored;
+        el._tbValue = el.value;
+        el.addEventListener("change", function () {
+          postSelection(collectFilters());
+        });
+      } catch (e) { /* defensive */ }
+    });
+    /* Learn excluded values when the model answers. On failure the authored
+     * view stays and the title says further slices need the model. */
+    postSelection(collectFilters());
+  }
+
+  function hydrateControls() {
+    if (selectionConfig()) {
+      try { hydrateSelectionFilters(); } catch (e) { /* defensive */ }
+    } else controlEls("data-tb-filter").forEach(function (el) {
       try {
         var binding = attr(el, "data-tb-binding");
         var column = attr(el, "data-tb-column");
@@ -1147,6 +1489,17 @@
       receiptLine(drawer, "stated methodology aboard");
     }
 
+    if (selectionConfig()) {
+      var status = receiptLine(drawer, "selection: authored", "tb-receipt-line");
+      status.id = "tb-selection-status";
+      var slice = document.createElement("button");
+      slice.type = "button";
+      slice.className = "tb-receipt-line";
+      slice.textContent = "Download this selection";
+      slice.addEventListener("click", downloadSelection);
+      drawer.appendChild(slice);
+    }
+
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tb-receipt-btn";
@@ -1160,6 +1513,12 @@
     });
     document.body.appendChild(drawer);
     document.body.appendChild(btn);
+    if (selectionConfig()) {
+      paintSelectionReceipt(_lastSelection || {
+        filters: (selectionConfig().filters || {}),
+        authored: true
+      });
+    }
   }
 
   function hydrate() {
@@ -1295,7 +1654,8 @@
     data: data,
     ready: ready,
     fmt: fmt,
-    configureChart: configureChart
+    configureChart: configureChart,
+    setSelection: setSelection
   };
 })(typeof window !== "undefined" ? window
    : typeof globalThis !== "undefined" ? globalThis : this);

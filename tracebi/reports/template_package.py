@@ -65,7 +65,7 @@ from tracebi.reports.embed import (
 )
 from tracebi.reports.figures import (
     Figure, FigureError, assign_figure_ids, extract_figures, fill_figures,
-    methodology_insertion, strip_stage,
+    lint_numeric_literals, methodology_insertion, strip_stage,
 )
 from tracebi.reports.base_renderer import _warn_if_unknown_git_sha
 from tracebi.reports.figure_markup import (
@@ -232,7 +232,10 @@ class TemplatePackage:
 
     def __init__(self, directory: str):
         self.directory = directory
-        self.name = os.path.basename(os.path.normpath(directory))
+        # Registry key is the directory name. ``name`` below may be a display
+        # title; the selection endpoint is addressed by this id.
+        self.package_id = os.path.basename(os.path.normpath(directory))
+        self.name = self.package_id
 
         report_json_path = os.path.join(directory, REPORT_JSON)
         template_path = os.path.join(directory, TEMPLATE_HTML)
@@ -271,6 +274,18 @@ class TemplatePackage:
                     f"an object with 'model' and 'query'."
                 )
             self.bindings[binding_name] = DataRef.from_dict(ref_raw)
+
+        # Opt-in. Absent: controls subset stamped rows and value figures stay
+        # still. Present: a filter is a selection DataModel re-runs.
+        from tracebi.reports.selection import parse_selection_block
+        if "selection" in declaration:
+            self.selection = parse_selection_block(
+                declaration.get("selection"),
+                path=report_json_path,
+                binding_models={ref.model for ref in self.bindings.values()},
+            )
+        else:
+            self.selection = None
 
         self.template_html = _read_text(template_path)
         self.style_css = _read_optional(os.path.join(directory, STYLE_CSS))
@@ -335,7 +350,11 @@ class TemplatePackage:
                     f"'{binding_name}' names model '{ref.model}', which was not "
                     f"supplied. Available: {sorted(models or {})}."
                 )
-            sd = stamp(model, ref.query, name=binding_name)
+            query = ref.query
+            if self.selection and ref.model == self.selection["model"]:
+                from tracebi.reports.selection import query_under_selection
+                query = query_under_selection(ref.query, self.selection["filters"])
+            sd = stamp(model, query, name=binding_name)
             stamped.append(sd)
             # A synthetic carrier: it exists only so the manifest-first receipt
             # fingerprints this binding through the ordinary to_manifest_dict
@@ -467,6 +486,19 @@ class TemplatePackage:
             )
         figs = extract_figures(page)
         self._validate_figures(figs, inputs, outputs)
+        # Exploration is already stripped. A numeral left in the prose is a
+        # number the build would ship with no figure claim.
+        outside = lint_numeric_literals(page)
+        if outside:
+            raise FigureError(
+                f"Package '{self.name}': {outside} numeric literal"
+                f"{'s' if outside != 1 else ''} "
+                f"{'sit' if outside != 1 else 'sits'} outside figures. "
+                f"Bind each one — a <span> with data-tb-figure=\"value\" "
+                f"works inside a sentence — or move it into "
+                f"data-tb-stage=\"exploration\", which this build strips. "
+                f"A hand-typed number cannot ship as if it were checked."
+            )
 
         # Server-side render (SSR): fill each figure's value/table/chart with the
         # resolved data at build, so a reader with JavaScript off still sees the
@@ -571,6 +603,7 @@ class TemplatePackage:
             contracts=contracts,
         )
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
+        contract_blocks.append(self._selection_blocks(models))
 
         # Provenance for the runtime's badges, decided from what was actually
         # embedded (v2 §2.4): a stylesheet can restyle a badge, never re-color
@@ -585,6 +618,7 @@ class TemplatePackage:
         page = self._inject(page, embed_plan.blocks_html, stage="final",
                             figures_cfg=cfg,
                             extra_blocks_html="".join(contract_blocks))
+        page = self._allow_selection_connect(page)
 
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
@@ -915,7 +949,9 @@ class TemplatePackage:
                "figures": figures_config(work_figs,
                                          {sd.name for sd in outputs})}
         page = self._inject(page, data_blocks_html(inputs + outputs),
-                            stage="exploration", figures_cfg=cfg)
+                            stage="exploration", figures_cfg=cfg,
+                            extra_blocks_html=self._selection_blocks(models))
+        page = self._allow_selection_connect(page)
         return page, inputs, outputs
 
     def snapshot(self, models: dict, output_path: str) -> None:
@@ -1034,6 +1070,53 @@ class TemplatePackage:
         return result
 
     # ── Injection ───────────────────────────────────────────────────────────
+
+    def _selection_blocks(self, models: dict) -> str:
+        """The selection marker, and the sealed grain when a port exists.
+
+        The marker is what opts the runtime into posting ``data-tb-filter``
+        instead of subsetting. The grain is the offline port's input; a
+        package whose measures are all server-only still gets the marker
+        and recomputes only while the model is reachable. A grain that
+        cannot be built does not fail the render — the server path remains
+        the calculator.
+        """
+        if not self.selection:
+            return ""
+        from tracebi.reports.embed import embed_json
+        from tracebi.reports.selection import filter_controls
+        from tracebi.reports.selection_eval import build_grain_payload
+
+        payload = {
+            "report": self.package_id,
+            "model": self.selection["model"],
+            "filters": self.selection["filters"],
+        }
+        blocks = embed_json(payload, "tracebi-selection") + "\n"
+        model = (models or {}).get(self.selection["model"])
+        if model is None:
+            return blocks
+        try:
+            grain = build_grain_payload(
+                model, self.bindings, self.selection,
+                filter_controls(self.template_html),
+            )
+        except Exception:  # noqa: BLE001 — the server path still answers
+            grain = None
+        if grain:
+            blocks += embed_json(grain, "tracebi-grain") + "\n"
+        return blocks
+
+    def _allow_selection_connect(self, page: str) -> str:
+        """``connect-src 'self'`` only when the package opted into selection.
+
+        The emailed file still cannot reach another origin. Served inside
+        the app, the page can POST the selection endpoint. A package with
+        no selection block keeps ``connect-src 'none'``.
+        """
+        if not self.selection:
+            return page
+        return page.replace("connect-src 'none'", "connect-src 'self'", 1)
 
     def _inject(self, page: str, data_blocks: str, stage: Optional[str] = None,
                 figures_cfg: Optional[dict] = None,

@@ -381,6 +381,7 @@ class QueryResult(TypedDict, total=False):
     fingerprint: str
     lineage: Any
     actor: str
+    binding: dict[str, Any]
 
 
 class ValidateResult(TypedDict, total=False):
@@ -522,6 +523,32 @@ def gateway_model_info(model: str) -> ModelInfoResult:
     return _get_model(model).info()
 
 
+_BINDING_QUERY_KEYS = (
+    "fact", "measures", "dimensions", "filters", "having",
+    "order_by", "limit", "aggregate", "allow_fanout", "allow_rate_agg",
+)
+
+
+def _binding_stub(model: str, stamped: dict) -> dict:
+    """A ``report.json`` data entry for the query that just ran.
+
+    The agent pastes this under ``data``. It is the resolved query, not a
+    transcription of the rows.
+    """
+    query = {}
+    for key in _BINDING_QUERY_KEYS:
+        if key not in stamped:
+            continue
+        value = stamped[key]
+        if value is None or value == [] or value == {}:
+            continue
+        query[key] = value
+    query["fact"] = stamped.get("fact")
+    if "measures" in stamped:
+        query["measures"] = stamped["measures"]
+    return {"model": model, "query": query}
+
+
 def gateway_query(
     model: str,
     fact: str,
@@ -602,6 +629,7 @@ def gateway_query(
         "ok": True,
         "model": model,
         "query": stamped,
+        "binding": _binding_stub(model, stamped),
         "columns": list(df.columns),
         "row_count": len(df),
         "rows": _json_rows(df, preview_rows),
@@ -1017,7 +1045,9 @@ def build_server(token: Optional[str] = None):
             "limit (requires order_by) keeps the top N. preview_rows caps "
             "only the transport. Returns rows plus a stamp: the resolved "
             "query, lineage chain, and a fingerprint of the full result. "
-            "Quote the fingerprint with any number you cite. Pass "
+            "Quote the fingerprint with any number you cite. The "
+            "response includes binding: a report.json fragment for this "
+            "query — paste it, do not transcribe the number into HTML. Pass "
             "include_lineage=false while exploring to drop the lineage chain "
             "(the fingerprint and resolved query still let you cite and "
             "re-verify) for lighter responses."

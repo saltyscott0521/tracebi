@@ -44,6 +44,20 @@ class SQLConnector(BaseConnector):
     def describe(self) -> dict:
         return {**super().describe(), "url": self._redacted_url()}
 
+    def column_schema(self, source: str) -> Optional[list[dict[str, str]]]:
+        """Column names and types from the dialect's inspector. Not a scan.
+
+        A raw ``SELECT`` source has no catalog entry; return ``None``
+        rather than executing it.
+        """
+        if source.strip().upper().startswith("SELECT"):
+            return None
+        if self._engine is None:
+            self.connect()
+        from sqlalchemy import inspect
+        cols = inspect(self._engine).get_columns(source)
+        return [{"name": str(c["name"]), "dtype": str(c["type"])} for c in cols]
+
     def _redacted_url(self) -> str:
         """Connection URL with any password replaced by ***."""
         try:

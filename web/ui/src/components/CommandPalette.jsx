@@ -4,14 +4,14 @@ import { useModels, useReports, usePipelines } from '../api'
 
 // Static page destinations — always available, even before data loads.
 const PAGES = [
-  { label: 'Home',            path: '/',                kind: 'page' },
+  { label: 'Desk',            path: '/',                kind: 'page' },
   { label: 'Getting Started', path: '/getting-started', kind: 'page' },
   { label: 'Connectors',      path: '/connectors',      kind: 'page' },
-  { label: 'Models',          path: '/models',          kind: 'page' },
-  { label: 'Explore',         path: '/explore',         kind: 'page' },
-  { label: 'Reports',         path: '/reports',         kind: 'page' },
+  { label: 'Contract',        path: '/models',          kind: 'page' },
+  { label: 'Ask',             path: '/explore',         kind: 'page' },
+  { label: 'Report',          path: '/reports',         kind: 'page' },
   { label: 'Verify a file',   path: '/verify',          kind: 'page' },
-  { label: 'Pipelines',       path: '/pipelines',       kind: 'page' },
+  { label: 'Refresh',         path: '/pipelines',       kind: 'page' },
 ]
 
 const KIND_META = {

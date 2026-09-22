@@ -240,6 +240,10 @@ export default function Home() {
   const nRep   = (reports    || []).length
   const nPipe  = (pipelines  || []).length
 
+  const artifact = (reports || []).find(r => r.kind === 'artifact')
+  const openReport = artifact
+    ? `/reports?r=${encodeURIComponent(artifact.name)}`
+    : '/reports'
   const verifiable = (reports || []).filter(r => r.kind === 'artifact').length
   const trustLine =
     nRep === 0
@@ -263,11 +267,11 @@ export default function Home() {
               fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 10,
               color: 'var(--text)',
             }}>
-              Workspace
+              Desk
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.55, maxWidth: '56ch', margin: 0 }}>
-              Models, reports, and pipelines registered in this deployment.
-              Figures drawn through the model carry a fingerprint you can re-check later.
+              What needs a person: the published report, the contract behind it,
+              and a receipt you can re-check. Pins and drafts live in tracebi dev.
             </p>
             <div style={{ marginTop: 14, minHeight: 18 }}>
               {lr
@@ -281,13 +285,13 @@ export default function Home() {
           </div>
 
           <div className="home-hero-cta">
-            <Link to="/reports" style={{
+            <Link to={openReport} style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               padding: '9px 16px', borderRadius: 'var(--radius-sm)',
               background: 'var(--blue)', color: '#fff', fontWeight: 600, fontSize: 13,
               textDecoration: 'none', whiteSpace: 'nowrap',
             }}>
-              Browse reports
+              Open report
             </Link>
             <Link to="/getting-started" style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -321,9 +325,9 @@ export default function Home() {
       {/* Stats row */}
       <div className="grid-4" style={{ marginBottom: 36 }}>
         <StatCard label="Connectors" value={nConn} icon={I.db}   href="/connectors" loading={lc} />
-        <StatCard label="Models"     value={nMod}  icon={I.cube} href="/models"     loading={lm} />
+        <StatCard label="Contract"   value={nMod}  icon={I.cube} href="/models"     loading={lm} />
         <StatCard label="Reports"    value={nRep}  icon={I.doc}  href="/reports"    loading={lr} />
-        <StatCard label="Pipelines"  value={nPipe} icon={I.bolt} href="/pipelines"  loading={lp} />
+        <StatCard label="Refresh"    value={nPipe} icon={I.bolt} href="/pipelines"  loading={lp} />
       </div>
 
       {/* Two-column layout */}

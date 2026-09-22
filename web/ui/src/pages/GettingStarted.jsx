@@ -5,69 +5,39 @@ import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
 const STEPS = [
   {
     n: 1,
-    title: 'Install',
-    desc: 'One install gets you connectors, transforms, reports, and the CLI.',
-    code: `pip install "tracebi[analyst]"`,
+    title: 'Install and scaffold',
+    desc: 'One install, then a project with the three folders the workflow uses.',
+    code: `pip install "tracebi[analyst]"
+tracebi init`,
   },
   {
     n: 2,
-    title: 'Connect to your data',
-    desc: 'Register a connector and define a DataModel. Mix sources — SQL, CSV, BigQuery — and reference them all by name.',
-    code: `from tracebi import DataModel, SQLConnector
-
-db = SQLConnector("sales_db", url="sqlite:///data/sales.db")
-
-model = DataModel("SalesModel")
-model.add_connector(db)
-model.add_table("orders", connector="sales_db", source="orders")
-model.connect()`,
+    title: 'Sink the warehouse',
+    desc: 'Phase ① is ordinary pandas in transforms/. It ends by writing named tables. The sink contract checks what landed.',
+    code: `tracebi new-transform "holdings"
+tracebi run-transform holdings`,
   },
   {
     n: 3,
-    title: 'Load and transform',
-    desc: 'Every method returns a new immutable DataSet with the step appended to its lineage chain.',
-    code: `orders = model.load("orders")
-
-result = (
-    orders
-    .filter("status == 'shipped'", description="Shipped orders only")
-    .transform(
-        lambda df: df.assign(margin=df["revenue"] - df["cost"]),
-        description="margin = revenue - cost",
-    )
-    .sort("margin", ascending=False)
-)
-
-result.print_lineage()
-# Step 1: [LOAD]       Loaded 'orders' from 'sales_db'
-# Step 2: [FILTER]     Shipped orders only  (250 → 198 rows)
-# Step 3: [TRANSFORM]  margin = revenue - cost
-# Step 4: [SORT]       Sorted by margin (desc)`,
+    title: 'Declare the contract',
+    desc: 'Phase ② is a DataModel in models/: grain, keys, measures. A reviewer reads it without opening the pandas above it.',
+    code: `tracebi new-model "Portfolio"`,
   },
   {
     n: 4,
-    title: 'Build and verify a report',
-    desc: 'Point a report spec at your model and build a self-contained HTML artifact — every figure a live query, backed by an embedded, fingerprinted receipt you can re-check offline.',
-    code: `# reports/revenue.json — a spec that queries your model
-$ tracebi report build revenue
-  → output/revenue.html                # self-contained: data + receipt inlined
-  → output/revenue.html.manifest.json  # the lineage manifest
-
-$ tracebi verify output/revenue.html.manifest.json
-  ✓ every figure re-runs and reproduces`,
+    title: 'Build the report and verify it',
+    desc: 'Phase ③ is a package in reports/. The build fills every figure from a query. verify re-runs those queries.',
+    code: `tracebi new-report "portfolio"
+tracebi dev portfolio
+tracebi report build portfolio
+tracebi verify output/portfolio.html.manifest.json`,
   },
   {
     n: 5,
-    title: 'Author from the CLI',
-    desc: 'Scaffold a report package, live-preview it while you edit, then serve the published portal — the CLI handles the whole loop.',
-    code: `# Scaffold a report package (report.json + template.html + style.css)
-tracebi new-report "revenue by region"
-
-# Live-preview while you edit — exploration blocks that die at build
-tracebi dev revenue_by_region   # → http://localhost:8001
-
-# Serve the published portal (Reports page surfaces every artifact)
-python -m tracebi.web.run       # → http://localhost:8000`,
+    title: 'Open the desk',
+    desc: 'The published file is the thing a person approves. The Reports page opens it; the Contract page reads the model.',
+    code: `python -m tracebi.web.run
+# → http://localhost:8000`,
   },
 ]
 
@@ -135,11 +105,11 @@ export default function GettingStarted() {
       }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link to="/reports" style={LINK_STYLE}>▤ Report</Link>
+          <Link to="/models" style={LINK_STYLE}>⬡ Contract</Link>
+          <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
           <Link to="/connectors" style={LINK_STYLE}>⇌ Connectors</Link>
-          <Link to="/models" style={LINK_STYLE}>⬡ Data Models</Link>
-          <Link to="/pipelines" style={LINK_STYLE}>⧖ Pipelines</Link>
-          <Link to="/reports" style={LINK_STYLE}>▤ Reports</Link>
-          <Link to="/explore" style={LINK_STYLE}>◬ Explore</Link>
+          <Link to="/pipelines" style={LINK_STYLE}>↻ Refresh</Link>
         </div>
       </div>
     </div>

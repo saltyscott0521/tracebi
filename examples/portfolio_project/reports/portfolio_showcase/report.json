@@ -40,6 +40,10 @@
       }
     }
   },
+  "selection": {
+    "model": "portfolio_model",
+    "filters": {}
+  },
   "figures": {
     "chart_fund": {
       "kind": "chart", "binding": "by_fund", "chart_type": "pie",

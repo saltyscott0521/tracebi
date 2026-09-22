@@ -38,6 +38,16 @@ class CSVConnector(BaseConnector):
     def describe(self) -> dict:
         return {**super().describe(), "directory": self.directory}
 
+    def column_schema(self, source: str) -> list[dict[str, str]]:
+        """Header and dtypes from a zero-row read. The body is not loaded."""
+        path = os.path.join(self.directory, source)
+        ext = os.path.splitext(source)[1].lower()
+        if ext in (".xls", ".xlsx"):
+            df = pd.read_excel(path, nrows=0)
+        else:
+            df = pd.read_csv(path, encoding=self.encoding, nrows=0)
+        return [{"name": str(c), "dtype": str(df.dtypes[c])} for c in df.columns]
+
     def connect(self) -> None:
         if not os.path.isdir(self.directory):
             raise FileNotFoundError(

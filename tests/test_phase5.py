@@ -557,6 +557,37 @@ class TestModelRegistry:
         model = reg.get("SalesModel")      # now resolves via .name index
         assert model.name == "SalesModel"
 
+    def test_get_reloads_when_the_file_changes(self, tmp_path):
+        import os
+        import time
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        path = tmp_path / "sales.py"
+        self._make_model_file(path, name="SalesModel", connect=True)
+        reg.auto_discover(str(tmp_path))
+        assert reg.get("sales").name == "SalesModel"
+        self._make_model_file(path, name="SalesModelV2", connect=True)
+        later = time.time() + 5
+        os.utime(path, (later, later))
+        assert reg.get("sales").name == "SalesModelV2"
+        assert reg.get("SalesModelV2").name == "SalesModelV2"
+
+    def test_failed_reload_keeps_the_previous_model_and_raises(self, tmp_path):
+        import os
+        import time
+        from tracebi.model_registry import ModelRegistry
+        reg = ModelRegistry()
+        path = tmp_path / "sales.py"
+        self._make_model_file(path, name="SalesModel", connect=True)
+        reg.auto_discover(str(tmp_path))
+        reg.get("sales")
+        path.write_text("this is not python (\n")
+        later = time.time() + 5
+        os.utime(path, (later, later))
+        with pytest.raises(SyntaxError):
+            reg.get("sales")
+        assert reg._models["sales"].name == "SalesModel"
+
     def test_get_missing_raises_key_error(self, tmp_path):
         from tracebi.model_registry import ModelRegistry
         reg = ModelRegistry()
@@ -3263,7 +3294,7 @@ class TestArtifactWebParity:
         )
         return pkg
 
-    def test_web_rendered_artifact_html_passes_verify_file(self, tmp_path):
+    def test_web_rendered_artifact_html_passes_verify_file(self, tmp_path, monkeypatch):
         from tracebi.verify import verify_file
         from tracebi.web.api.routers import reports as reports_router
         from tracebi.web.discovery import _register_template_package
@@ -3272,8 +3303,13 @@ class TestArtifactWebParity:
         out = _register_template_package(str(pkg), "parity_pkg")
         assert out["status"] == "registered", out
 
+        monkeypatch.chdir(tmp_path)
+        reports_router._ARTIFACT_CACHE.pop("parity_pkg", None)
         payload = reports_router._artifact_payload("parity_pkg")
         assert payload is not None, "package-backed report must take the artifact path"
+        assert payload["retained"] is True
+        assert (tmp_path / "output" / "parity_pkg.html").is_file()
+        assert (tmp_path / "output" / "parity_pkg.html.manifest.json").is_file()
         manifest = payload["manifest"]
         assert manifest["schema_version"] == 2
         assert manifest["figures"], "the figure claims layer must ride the web render"
