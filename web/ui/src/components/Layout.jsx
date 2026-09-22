@@ -67,7 +67,7 @@ const NAV_SECONDARY = [
   { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
   { path: '/getting-started', label: 'Get Started', icon: 'guide' },
   { path: '/connectors',      label: 'Connectors',  icon: 'connectors' },
-  { path: '/explore',         label: 'Ask',         icon: 'explore' },
+  { path: '/explore',         label: 'Explore',     icon: 'explore' },
   { path: '/pipelines',       label: 'Refresh',     icon: 'pipelines' },
   { path: '/handbook',        label: 'Docs',        icon: 'docs' },
 ]

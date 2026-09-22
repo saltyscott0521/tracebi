@@ -208,10 +208,11 @@ equals `query_model` with those filters conjoined; a report without a
 
 Chat and the page share step 2's protocol.
 
-**Ask on the desk** sends the question through the gateway the agent
-already uses: context, `query_model`, then `POST .../selection` when the
-person is cutting an open report. The reply quotes a number only beside
-the fingerprint in the tool result. Pins are read before the next edit.
+The page control is the dropdown. It posts the selection. The desk
+does not host a question box: a sentence that only names a value the
+dropdown already has is the dropdown. Questions stay with the agent
+outside the site (Cursor or Claude on the gateway). Pins are read
+before the next edit.
 
 **Keep this cut** writes the current filters into the package `selection`
 block and runs `build_report`, then `verify_manifest`. The agent does
@@ -220,13 +221,12 @@ the detail was never a binding — is a new binding in `report.json`, then
 a rebuild, not a total computed in the session.
 
 The HTTP gateway (`tracebi mcp --transport http`) is the backend. Cursor
-and Claude use it directly. The desk Ask box is a client of the same
-tools, not a second analyst.
+and Claude use it directly. The site is Desk, Report, and Contract.
 
-**Accept when:** a question in Ask moves the open report's selection, the
-thread contains no number that lacks a fingerprint, and "keep this cut"
-produces a new manifest whose authored selection is the one on screen
-and whose verdict is `reproduces`.
+**Accept when:** choosing a sector on the open report moves the
+selection, the page contains no number that lacks a fingerprint, and
+keeping that cut produces a new manifest whose authored selection is
+the one on screen and whose verdict is `reproduces`.
 
 ## 4. Offline slicing, after parity
 

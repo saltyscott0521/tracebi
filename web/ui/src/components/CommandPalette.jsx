@@ -8,7 +8,7 @@ const PAGES = [
   { label: 'Getting Started', path: '/getting-started', kind: 'page' },
   { label: 'Connectors',      path: '/connectors',      kind: 'page' },
   { label: 'Contract',        path: '/models',          kind: 'page' },
-  { label: 'Ask',             path: '/explore',         kind: 'page' },
+  { label: 'Explore',         path: '/explore',         kind: 'page' },
   { label: 'Report',          path: '/reports',         kind: 'page' },
   { label: 'Verify a file',   path: '/verify',          kind: 'page' },
   { label: 'Refresh',         path: '/pipelines',       kind: 'page' },

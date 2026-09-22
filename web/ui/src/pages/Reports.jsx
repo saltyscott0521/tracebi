@@ -1,11 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 
 import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
-  useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
-  fetchBuiltReport, reportDownloadUrl,
+  useReportLineage, useBuiltReport, reportDownloadUrl,
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
@@ -100,160 +98,11 @@ function ReportReceipt({ manifest }) {
   )
 }
 
-function parseCut(text) {
-  const filters = {}
-  String(text || '').split('\n').forEach(line => {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) return
-    const eq = trimmed.indexOf('=')
-    if (eq < 1) return
-    const key = trimmed.slice(0, eq).trim()
-    let val = trimmed.slice(eq + 1).trim()
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) val = val.slice(1, -1)
-    if (Object.prototype.hasOwnProperty.call(filters, key)) {
-      const prev = filters[key]
-      filters[key] = Array.isArray(prev) ? prev.concat([val]) : [prev, val]
-    } else {
-      filters[key] = val
-    }
-  })
-  return filters
-}
-
-function AskCut({ reportName, frameRef, onPackageChange }) {
-  const [text, setText] = useState('')
-  const [reply, setReply] = useState(null)
-  const [kept, setKept] = useState(null)
-  const select = useReportSelection()
-  const keep = useKeepSelection()
-  const quoted = (reply?.figures || []).filter(fig =>
-    fig.kind === 'value' && fig.fingerprint &&
-    (fig.formatted != null || typeof fig.value === 'number'))
-  const added = reply?.added_binding
-    ? (reply.figures || []).find(fig => fig.binding === reply.added_binding)
-    : null
-
-  const apply = () => {
-    const trimmed = text.trim()
-    const request = (!trimmed || trimmed.includes('='))
-      ? { name: reportName, filters: parseCut(text) }
-      : { name: reportName, question: trimmed }
-    setKept(null)
-    select.mutate(request, {
-      onSuccess: (payload) => {
-        setReply(payload)
-        if (payload?.added_binding) {
-          onPackageChange?.()
-          return
-        }
-        const filters = payload?.filters || {}
-        const tb = frameRef.current?.contentWindow?.tracebi
-        if (tb && typeof tb.setSelection === 'function') tb.setSelection(filters)
-      },
-    })
-  }
-
-  const cutLine = reply
-    ? Object.entries(reply.filters || {}).map(([key, value]) => (
-      `${key} = ${Array.isArray(value) ? value.join(', ') : value}`
-    )).join('; ')
-    : ''
-
-  return (
-    <div style={{
-      border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px',
-      marginBottom: 14,
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Ask</div>
-      <textarea
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder={'what about Software'}
-        rows={2}
-        style={{
-          width: '100%', boxSizing: 'border-box', font: '12px/1.4 ui-monospace, monospace',
-          marginBottom: 8,
-        }}
-      />
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Btn onClick={apply} disabled={select.isPending}>Apply cut</Btn>
-        {reply && !reply.added_binding && (
-          <Btn onClick={() => keep.mutate(
-            { name: reportName, filters: reply.filters || {} },
-            { onSuccess: (payload) => { setKept(payload); onPackageChange?.() } },
-          )} disabled={keep.isPending}>
-            Keep this cut
-          </Btn>
-        )}
-      </div>
-      {select.error && (
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
-          {select.error.message}
-        </div>
-      )}
-      {(reply?.pins || []).length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.5 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Pins first</div>
-          {reply.pins.map(pin => (
-            <div key={`${pin.report}-${pin.id}`}>
-              {pin.report}{pin.note ? ` · ${pin.note}` : ''}
-            </div>
-          ))}
-        </div>
-      )}
-      {reply?.added_binding && (
-        <div style={{ marginTop: 10, fontSize: 12 }}>
-          added binding {reply.added_binding}
-          {added?.fingerprint && (
-            <>
-              {' · '}
-              <code title={added.fingerprint}>{String(added.fingerprint).slice(0, 12)}</code>
-            </>
-          )}
-          {reply.verdict && <> · {reply.verdict}</>}
-        </div>
-      )}
-      {reply && (
-        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
-          {cutLine ? `cut: ${cutLine}` : 'cut: none'}
-        </div>
-      )}
-      {quoted.length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.6 }}>
-          {quoted.map(fig => (
-            <div key={fig.id || fig.binding}>
-              <span>{fig.formatted ?? fig.value}</span>
-              {' · '}
-              <code title={fig.fingerprint}>{String(fig.fingerprint).slice(0, 12)}</code>
-            </div>
-          ))}
-        </div>
-      )}
-      {kept && (
-        <div style={{ marginTop: 8, fontSize: 12 }}>
-          verdict: {kept.verdict}
-        </div>
-      )}
-      {keep.error && (
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
-          {keep.error.message}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function ReportDetail({ report }) {
   const [tab, setTab] = useState('Output')
   const [runId, setRunId] = useState(null)
-  const [disk, setDisk] = useState(null)
   const [lineageData, setLineageData] = useState(null)
   const toast = useToast()
-  const frameRef = useRef(null)
-  const qc = useQueryClient()
   const { mutate: startRun, isPending: starting, error: startErr } = useStartReportRun()
   const { data: run } = useReportRun(report?.name, runId)
   const built = useBuiltReport(report?.name)
@@ -263,7 +112,7 @@ function ReportDetail({ report }) {
   // until it settles. Result/error derive from the polled record.
   const running = starting || run?.status === 'running'
   const result = run?.status === 'succeeded' ? run.result : null
-  const shown = (runId && result) ? result : (disk || built.data || null)
+  const shown = (runId && result) ? result : (built.data || null)
   const runErr = run?.status === 'failed'
     ? { message: run.error?.message || 'Run failed', detail: run.error }
     : startErr
@@ -273,16 +122,6 @@ function ReportDetail({ report }) {
     if (run?.status === 'failed') toast(`Run failed: ${run.error?.message || 'unknown error'}`, 'error')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.status])
-
-  const refreshBuilt = useCallback(async () => {
-    if (!report?.name) return
-    setRunId(null)
-    const fresh = await qc.fetchQuery({
-      queryKey: ['built-report', report.name],
-      queryFn: () => fetchBuiltReport(report.name),
-    })
-    setDisk(fresh || null)
-  }, [qc, report?.name])
 
   const handleRun = useCallback(() => {
     startRun(report.name, {
@@ -374,10 +213,7 @@ function ReportDetail({ report }) {
           />
 
           {tab === 'Output' && (
-            <>
-              <AskCut reportName={report.name} frameRef={frameRef} onPackageChange={refreshBuilt} />
-              <ReportFrame html={shown.html} title={report.name} frameRef={frameRef} />
-            </>
+            <ReportFrame html={shown.html} title={report.name} />
           )}
 
           {tab === 'Lineage' && lineageData && (

@@ -270,22 +270,22 @@ equals <code>query_model</code> with those filters conjoined; a report without a
 <code>selection</code> block still subsets rows and leaves value figures still.</p>
 <h2 id="3-ask-then-keep">3. Ask, then keep</h2>
 <p>Chat and the page share step 2's protocol.</p>
-<p><strong>Ask on the desk</strong> sends the question through the gateway the agent
-already uses: context, <code>query_model</code>, then <code>POST .../selection</code> when the
-person is cutting an open report. The reply quotes a number only beside
-the fingerprint in the tool result. Pins are read before the next edit.</p>
+<p>The page control is the dropdown. It posts the selection. The desk
+does not host a question box: a sentence that only names a value the
+dropdown already has is the dropdown. Questions stay with the agent
+outside the site (Cursor or Claude on the gateway). Pins are read
+before the next edit.</p>
 <p><strong>Keep this cut</strong> writes the current filters into the package <code>selection</code>
 block and runs <code>build_report</code>, then <code>verify_manifest</code>. The agent does
 not edit digits in <code>template.html</code>. A new grain the page cannot cut —
 the detail was never a binding — is a new binding in <code>report.json</code>, then
 a rebuild, not a total computed in the session.</p>
 <p>The HTTP gateway (<code>tracebi mcp --transport http</code>) is the backend. Cursor
-and Claude use it directly. The desk Ask box is a client of the same
-tools, not a second analyst.</p>
-<p><strong>Accept when:</strong> a question in Ask moves the open report's selection, the
-thread contains no number that lacks a fingerprint, and "keep this cut"
-produces a new manifest whose authored selection is the one on screen
-and whose verdict is <code>reproduces</code>.</p>
+and Claude use it directly. The site is Desk, Report, and Contract.</p>
+<p><strong>Accept when:</strong> choosing a sector on the open report moves the
+selection, the page contains no number that lacks a fingerprint, and
+keeping that cut produces a new manifest whose authored selection is
+the one on screen and whose verdict is <code>reproduces</code>.</p>
 <h2 id="4-offline-slicing-after-parity">4. Offline slicing, after parity</h2>
 <p>Only after step 2 is what people use. This is the parked tier in
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a> §10, narrowed.</p>
