@@ -230,8 +230,9 @@
     if (name === "compact") return fmt(n, "compact");
     if (name === "comma") return fixedGrouped(n, 0);
     if (name === "decimal") return fixedGrouped(n, 2);
-    if (name === "currency") return "$" + fixedGrouped(n, 2);
-    if (name === "currency0") return "$" + fixedGrouped(n, 0);
+    /* The sign leads the symbol: -$1,234, never $-1,234. */
+    if (name === "currency") return (n < 0 ? "-$" : "$") + fixedGrouped(Math.abs(n), 2);
+    if (name === "currency0") return (n < 0 ? "-$" : "$") + fixedGrouped(Math.abs(n), 0);
     if (name === "percent") return pyFixed(n * 100, 1) + "%";
     return null; /* unknown name — caller falls back to the raw value */
   }
@@ -683,6 +684,19 @@
     });
   }
 
+  /* "col=Value; col2=Value" → {col: "Value", col2: "Value"}. Pairs split on
+   * ";" so a label may hold a comma; the build has already validated them. */
+  function columnMap(value) {
+    var out = {};
+    if (!value) return out;
+    String(value).split(";").forEach(function (pair) {
+      var i = pair.indexOf("=");
+      if (i < 1) return;
+      out[trim(pair.slice(0, i))] = trim(pair.slice(i + 1));
+    });
+    return out;
+  }
+
   function hydrateTables() {
     figureEls("table").forEach(function (el) {
       try {
@@ -708,10 +722,16 @@
         }
         if (!cols.length) return;
 
+        /* data-tb-labels / data-tb-formats: author overrides for the named
+         * columns ("col=Value; col2=Value"). They win over the derived label
+         * and format; a format applies only to a numeric column. */
+        var labels = columnMap(attr(el, "data-tb-labels"));
+        var ownFormats = columnMap(attr(el, "data-tb-formats"));
         var numeric = {}, formats = {};
         cols.forEach(function (col) {
           numeric[col] = isNumericColumn(rows, col);
-          formats[col] = numeric[col] ? deriveFormat(rows, col) : null;
+          formats[col] = numeric[col]
+            ? (ownFormats[col] || deriveFormat(rows, col)) : null;
         });
 
         /* Build via createElement/textContent only — data never becomes
@@ -721,7 +741,7 @@
           var htr = document.createElement("tr");
           cols.forEach(function (col) {
             var th = document.createElement("th");
-            th.textContent = humanise(col);
+            th.textContent = labels[col] || humanise(col);
             if (numeric[col]) th.className = "tb-num";
             htr.appendChild(th);
           });
@@ -790,6 +810,15 @@
     }
     styleAxis(option.xAxis);
     styleAxis(option.yAxis);
+    if (option.tooltip) {
+      var bg = cssVar(cs, "--tb-bg");
+      if (bg && option.tooltip.backgroundColor == null) option.tooltip.backgroundColor = bg;
+      if (rule && option.tooltip.borderColor == null) option.tooltip.borderColor = rule;
+      if (ink) {
+        option.tooltip.textStyle = option.tooltip.textStyle || {};
+        if (option.tooltip.textStyle.color == null) option.tooltip.textStyle.color = ink;
+      }
+    }
     if (option.legend && ink) {
       option.legend.textStyle = option.legend.textStyle || {};
       if (option.legend.textStyle.color == null) option.legend.textStyle.color = ink;
@@ -797,10 +826,91 @@
     return option;
   }
 
+  /* House style for a built option: thin rounded bars, 2px lines, a donut
+   * for pie, recessive axes, compact value-axis ticks, readable category
+   * labels, and a quiet tooltip. Display only — it never touches series
+   * data — and it runs before the theme colours and the author's
+   * configureChart patch, so either can still override it. */
+  function polishOption(option, plan) {
+    var kind = String(plan.type).toLowerCase();
+    option.grid = option.grid || {
+      left: 8, right: 24, bottom: 8, top: option.legend ? 40 : 16,
+      containLabel: true
+    };
+    if (option.legend) {
+      option.legend.top = option.legend.top == null ? 0 : option.legend.top;
+      option.legend.icon = option.legend.icon || "roundRect";
+      option.legend.itemWidth = option.legend.itemWidth || 10;
+      option.legend.itemHeight = option.legend.itemHeight || 10;
+    }
+    option.tooltip = option.tooltip || {};
+    option.tooltip.borderWidth = 1;
+    option.tooltip.extraCssText =
+      "box-shadow:0 4px 16px rgba(16,24,40,.12);border-radius:8px;";
+    if (option.tooltip.trigger === "axis") {
+      option.tooltip.axisPointer = { type: kind === "line" || kind === "area"
+        ? "line" : "shadow" };
+    }
+    function valueAxis(ax) {
+      if (!ax) return;
+      ax.axisLine = ax.axisLine || { show: false };
+      ax.axisTick = ax.axisTick || { show: false };
+      ax.axisLabel = ax.axisLabel || {};
+      if (!ax.axisLabel.formatter) {
+        /* Ticks only: the plotted values and the tooltip keep full precision. */
+        ax.axisLabel.formatter = function (v) {
+          var f = applyNamedFormat(Number(v), "compact");
+          return f === null ? v : f;
+        };
+      }
+    }
+    function categoryAxis(ax, isXAxis) {
+      if (!ax) return;
+      var n = (ax.data || []).length;
+      ax.axisTick = ax.axisTick || { show: false };
+      ax.axisLabel = ax.axisLabel || {};
+      if (n && n <= 12 && ax.axisLabel.interval == null) {
+        ax.axisLabel.interval = 0;          /* every category gets its name */
+        if (isXAxis && n > 6) ax.axisLabel.rotate = 30;
+      }
+    }
+    var horizontal = kind === "barh";
+    [[option.xAxis, true], [option.yAxis, false]].forEach(function (pair) {
+      var ax = pair[0];
+      if (!ax) return;
+      if (ax.type === "category") categoryAxis(ax, pair[1]);
+      else if (ax.type === "value" && kind !== "scatter") valueAxis(ax);
+    });
+    (option.series || []).forEach(function (s) {
+      if (s.type === "bar") {
+        s.barMaxWidth = s.barMaxWidth || 44;
+        s.itemStyle = s.itemStyle || {};
+        if (s.itemStyle.borderRadius == null) {
+          s.itemStyle.borderRadius = horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0];
+        }
+      } else if (s.type === "line") {
+        s.symbol = s.symbol || "circle";
+        s.symbolSize = s.symbolSize || 7;
+        s.lineStyle = s.lineStyle || { width: 2 };
+        if (s.areaStyle && s.areaStyle.opacity == null) s.areaStyle.opacity = 0.12;
+      } else if (s.type === "pie") {
+        s.radius = ["42%", "64%"];
+        s.itemStyle = s.itemStyle || { borderColor: "#fff", borderWidth: 2 };
+        s.avoidLabelOverlap = true;
+        /* Wrap long category names instead of truncating them. */
+        if (s.label && s.label.overflow == null) {
+          s.label.overflow = "break";
+          s.label.width = 110;
+        }
+      }
+    });
+    return option;
+  }
+
   /* The built option for one chart, patch applied — shared by the first
    * hydration and every control-driven re-render. */
   function buildOption(el, plan, rows) {
-    var option = applyThemeColors(optionFor(plan, rows));
+    var option = applyThemeColors(polishOption(optionFor(plan, rows), plan));
 
     var patch = el.id ? _patches[el.id] : null;
     if (patch) {

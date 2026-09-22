@@ -52,8 +52,10 @@ class TestAssetHygiene:
         # worker engine before hydration, plus tracebi.ready() so author code
         # sees the same data on either transport. → 64 KiB when an opted-in
         # package posts a selection and paints the model's result, including
-        # the fail-closed path that does not subset-and-sum. Behavior, not bloat.
-        assert os.path.getsize(ASSET) < 64 * 1024
+        # the fail-closed path that does not subset-and-sum. → 72 KiB for the
+        # house chart style (polishOption) and a table's data-tb-labels /
+        # data-tb-formats overrides. Behavior, not bloat.
+        assert os.path.getsize(ASSET) < 72 * 1024
 
     def test_no_eval(self):
         with open(ASSET, encoding="utf-8") as f:
@@ -1068,3 +1070,41 @@ process.stdout.write(JSON.stringify({
         assert out["rows"] == 1
         assert out["west_disabled"] is True
         assert "live" in out["receipt"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestTableOverridesAndChartPolish:
+    """data-tb-labels / data-tb-formats override a table's derived header and
+    number format; the house chart style restyles without touching data."""
+
+    _SCRIPT = """
+dataBlock('b', 'region,revenue\\nUS,1234.5\\nEU,-50\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b',
+                        'data-tb-labels': 'region=Market; revenue=Net revenue, USD',
+                        'data-tb-formats': 'revenue=currency' });
+var cht = el('div', { 'data-tb-figure': 'chart', 'data-tb-binding': 'b',
+                      'data-tb-x': 'region', 'data-tb-y': 'revenue' });
+loadRuntime();
+var opt = __charts[0].options[0];
+process.stdout.write(JSON.stringify({
+  head: tbl.querySelector('thead').children[0].children.map(function (th) {
+    return th.textContent; }),
+  rows: tbl.querySelector('tbody').children.map(function (tr) {
+    return tr.children.map(function (td) { return td.textContent; }); }),
+  data: opt.series[0].data,
+  radius: opt.series[0].itemStyle.borderRadius,
+  tick: opt.yAxis.axisLabel.formatter(2500000)
+}));
+"""
+
+    def test_labels_and_formats_override_the_derived_defaults(self):
+        out = _run_dom(self._SCRIPT)
+        assert out["head"] == ["Market", "Net revenue, USD"]
+        # the sign leads the symbol
+        assert out["rows"] == [["US", "$1,234.50"], ["EU", "-$50.00"]]
+
+    def test_chart_polish_restyles_but_never_changes_the_data(self):
+        out = _run_dom(self._SCRIPT)
+        assert out["data"] == [1234.5, -50]
+        assert out["radius"] == [4, 4, 0, 0]
+        assert out["tick"] == "2.5M"          # compact ticks, full-precision data

@@ -6,6 +6,45 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — a better-looking default report
+
+- **New house style** in `tracebi.css`: a soft page background with white,
+  lightly shadowed cards, a clearer type scale, quieter table headers, row
+  hover, and numeric columns that actually right-align (a more specific rule
+  used to override `.tb-num`).
+- **Colour-blind-checked chart palette** (`DEFAULT_PALETTE` and
+  `--tb-chart-1..8`), validated for colour-vision deficiency and normal-vision
+  separation.
+- **Chart defaults** (`polishOption` in `tracebi.js`): rounded bars with a
+  width cap, 2px lines, a donut for pie, compact value-axis ticks (`80M`), every
+  category label shown, and a styled tooltip. It restyles only: series data is
+  untouched, and a `configureChart` patch still wins.
+- **Negative money** reads `-$6,272,735`, not `$-6,272,735`, in the runtime and
+  in the build's server-side render alike.
+
+### Added — table headers and number formats per column
+
+`data-tb-labels="col=Label; …"` and `data-tb-formats="col=currency0; …"` on a
+table figure (or `labels` / `formats` in a `report.json` figure declaration)
+override the derived header and number format for the columns they name. A
+column the binding doesn't have, or an unknown format, fails the build. Spec
+tables now pass `column_labels` and named `number_formats` through instead of
+dropping them.
+
+### Fixed — spec compiler layout
+
+A `row` of sections compiles to real side-by-side columns (each section's
+title now sits inside its own card), and a heading keeps its content as a lead
+paragraph.
+
+### Changed — the example reports
+
+The portfolio examples were redesigned. Concentration now uses framework
+figures (share bar chart, cumulative-share curve, a labelled ranking table),
+not a hand-drawn table of raw column names. Book has a refreshed editorial
+style. The dashboard sorts its bars and tables. The showcase and the
+`tracebi init` sample demonstrate `data-tb-formats`.
+
 ### Added — product strategy documents: `docs/strategy/`
 
 Five pages: vision and positioning, users and their jobs, product strategy

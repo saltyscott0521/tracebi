@@ -38,8 +38,8 @@ from typing import Any
 # Default series colours. Kept here rather than in the renderer so a chart
 # spec is fully self-describing.
 DEFAULT_PALETTE = (
-    "#2E74B5", "#ED7D31", "#70AD47", "#FFC000",
-    "#5B9BD5", "#A9D18E", "#C00000", "#7030A0",
+    "#2a78d6", "#eb6834", "#1baf7a", "#eda100",
+    "#e87ba4", "#008300", "#4a3aa7", "#e34948",
 )
 
 _W = 840          # viewBox width; the SVG scales to its container

@@ -5,16 +5,30 @@
   <title>Portfolio Concentration</title>
 </head>
 <body>
-  <main class="report">
+  <main class="tb-page">
     <h1>Portfolio Concentration</h1>
-    <p class="note">Rank, share of total, and the running cumulative share below
-      are <strong>governed window measures</strong> (<code>rank</code>,
-      <code>share</code>, <code>running</code>) — every number is
-      query-reproducible, so <code>tracebi verify</code> reads green and
-      <code>tracebi verify --file</code> confirms the file. This report was once
-      a <code>report.py</code> escape hatch computing these as a window the query
-      surface couldn't express; it no longer needs to be.</p>
-    <table id="concentration"><thead></thead><tbody></tbody></table>
+    <p>How concentrated the book is by issuer. Rank, share of the book and
+      cumulative share are <strong>governed window measures</strong>
+      (<code>rank</code>, <code>share</code>, <code>running</code>) declared in
+      the model, so every number on this page re-runs with
+      <code>tracebi verify</code>. This report was once a <code>report.py</code>
+      escape hatch; it no longer needs to be.</p>
+
+    <div class="tb-cols-2">
+      <div class="tb-card">
+        <h2>Share of the book, by issuer</h2>
+        {{ figure("share_chart") }}
+      </div>
+      <div class="tb-card">
+        <h2>Cumulative share, largest issuer first</h2>
+        {{ figure("curve_chart") }}
+      </div>
+    </div>
+
+    <h2>Issuer ranking</h2>
+    <div class="tb-card">
+      {{ figure("ranking") }}
+    </div>
   </main>
 </body>
 </html>

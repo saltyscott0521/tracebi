@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 
 from tracebi.model.dataset import DataSet
-from tracebi.reports.chart import ChartSpec
+from tracebi.reports.chart import DEFAULT_PALETTE, ChartSpec
 from tracebi.reports.report import ChartSection
 
 
@@ -60,7 +60,8 @@ class TestColorGrouping:
         assert svg.count('class="tb-legend-swatch"') == 2
         assert "Retail" in svg and "Wholesale" in svg
         # successive palette colours
-        assert 'fill="#2E74B5"' in svg and 'fill="#ED7D31"' in svg
+        assert (f'fill="{DEFAULT_PALETTE[0]}"' in svg
+                and f'fill="{DEFAULT_PALETTE[1]}"' in svg)
 
     def test_bar_color_differs_from_no_color(self):
         with_colour = spec(dataset=grouped_ds(), chart_type="bar",
@@ -87,8 +88,8 @@ class TestColorGrouping:
         # Every data point survives — no merging of points across groups.
         assert svg.count('class="tb-point"') == 4
         # Two points per group colour.
-        assert svg.count('fill="#2E74B5"') >= 2
-        assert svg.count('fill="#ED7D31"') >= 2
+        assert svg.count(f'fill="{DEFAULT_PALETTE[0]}"') >= 2
+        assert svg.count(f'fill="{DEFAULT_PALETTE[1]}"') >= 2
 
     def test_group_with_missing_x_draws_nothing_not_zero(self):
         # Wholesale has no East row: no phantom zero-height bar for it.
@@ -159,21 +160,23 @@ class TestNoColorByteIdentical:
     """
     Charts that do not use color= must render exactly the SVG they rendered
     before grouping existed (show_values labels excepted, by design). The
-    hashes were captured from the pre-change implementation.
+    hashes were captured from the pre-change implementation, then re-captured
+    when DEFAULT_PALETTE changed (mapping the new colours back to the old ones
+    reproduced the original hashes exactly — the palette was the only change).
     """
 
     def test_plain_bar_chart_is_byte_identical(self):
         svg = spec(dataset=plain_ds(), chart_type="bar",
                    x="region", y="revenue").to_svg()
         assert hashlib.sha256(svg.encode()).hexdigest() == (
-            "9c982ce1c952208dfc060ab3de1da0974027d03a04ba00fbc2821b9ad734c729"
+            "6579b9909057bc7f35fbcb3ca69b0df298fc21c2c2568f7811ad0addfec5d0e6"
         )
 
     def test_multi_series_line_chart_is_byte_identical(self):
         svg = spec(dataset=plain_ds(), chart_type="line",
                    x="region", y=["revenue", "cost"]).to_svg()
         assert hashlib.sha256(svg.encode()).hexdigest() == (
-            "b98cd632dd15a3b05e9f804b0db3d73c650abeb92701355c25075835b63bd855"
+            "3576a25a8954e41ec26f2ce5a7a6c6fc6eb385a0823bbfdeb6081683b0edc208"
         )
 
 

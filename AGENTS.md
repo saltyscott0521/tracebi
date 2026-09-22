@@ -88,7 +88,9 @@ binding: `data-tb-figure="value|chart|table|custom"` +
 `data-tb-binding="<name>"` (values add `data-tb-cell` and optionally
 `data-tb-format`; charts add `data-tb-type`/`data-tb-x`/`data-tb-y` and
 optionally `data-tb-color`/`data-tb-value-format`; tables optionally
-`data-tb-columns`). A figure with no binding carries `data-tb-unverified` —
+`data-tb-columns`, plus `data-tb-labels` and `data-tb-formats` to name headers
+and number formats per column, e.g. `data-tb-formats="fair_value=currency0;
+mark=percent"`). A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
 `presentation` block.

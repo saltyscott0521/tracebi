@@ -69,7 +69,9 @@ from tracebi.reports.figures import (
 )
 from tracebi.reports.base_renderer import _warn_if_unknown_git_sha
 from tracebi.reports.figure_markup import (
+    TABLE_FORMATS,
     chart_element,
+    parse_column_map,
     table_element,
     value_element,
 )
@@ -125,6 +127,14 @@ def _validate_figure(name: str, fig, bindings: dict, where: str) -> dict:
             f"{where}: figure '{name}' is a value figure and needs 'cell' — "
             f"the column it reads from binding '{binding}'."
         )
+    for key in ("labels", "formats"):
+        if key in fig and not (isinstance(fig[key], dict) and all(
+                isinstance(k, str) and isinstance(v, str)
+                and ";" not in k + v and "=" not in k
+                for k, v in fig[key].items())):
+            raise ValueError(
+                f"{where}: figure '{name}' '{key}' must map column names to "
+                f"strings, e.g. {{\"fair_value\": \"currency0\"}}.")
     return dict(fig)
 
 
@@ -183,8 +193,8 @@ def _ssr_format(raw, name: str) -> str:
         return ChartSpec._fmt(num, compact=True)
     if name == "comma":     return _py_fixed(num, 0, grouped=True)
     if name == "decimal":   return _py_fixed(num, 2, grouped=True)
-    if name == "currency":  return "$" + _py_fixed(num, 2, grouped=True)
-    if name == "currency0": return "$" + _py_fixed(num, 0, grouped=True)
+    if name == "currency":  return ("-$" if num < 0 else "$") + _py_fixed(abs(num), 2, grouped=True)
+    if name == "currency0": return ("-$" if num < 0 else "$") + _py_fixed(abs(num), 0, grouped=True)
     if name == "percent":   return _py_fixed(num * 100, 1) + "%"
     return str(raw)                    # unknown name: applyNamedFormat -> raw
 
@@ -383,7 +393,9 @@ class TemplatePackage:
         if kind == "table":
             return table_element(binding, fig_id=fig_id,
                                  columns=fig.get("columns"),
-                                 style=fig.get("style"))
+                                 style=fig.get("style"),
+                                 labels=fig.get("labels"),
+                                 formats=fig.get("formats"))
         if kind == "chart":
             return chart_element(binding, fig_id=fig_id,
                                  chart_type=fig.get("chart_type", "bar"),
@@ -748,10 +760,16 @@ class TemplatePackage:
             return None
         numeric = {str(c) for c in df.select_dtypes(include="number").columns}
         formats = derive_number_formats(df)      # dataset=None: shape-only == JS
+        # Author overrides win over the derived defaults (validated at build);
+        # a format applies only to a numeric column, as in the runtime.
+        labels = parse_column_map(fig.attrs.get("data-tb-labels"))
+        formats.update({c: v for c, v in
+                        parse_column_map(fig.attrs.get("data-tb-formats")).items()
+                        if c in numeric})
         head = []
         for c in cols:
             cls = ' class="tb-num"' if c in numeric else ""
-            head.append(f"<th{cls}>{_html.escape(humanise(c))}</th>")
+            head.append(f"<th{cls}>{_html.escape(labels.get(c) or humanise(c))}</th>")
         thead = "<thead><tr>" + "".join(head) + "</tr></thead>"
         if df.empty:
             # An empty binding says so, rather than showing a header over a void
@@ -846,6 +864,26 @@ class TemplatePackage:
                         f"{where}: cell '{cell}' is not a column of binding "
                         f"'{f.binding}'.{hint} Columns: {list(df.columns)}."
                     )
+            if f.kind == "table":
+                cols = [str(c) for c in frames[f.binding].columns]
+                for attr_name in ("data-tb-labels", "data-tb-formats"):
+                    try:
+                        mapping = parse_column_map(f.attrs.get(attr_name))
+                    except ValueError as exc:
+                        raise FigureError(f"{where}: {attr_name}: {exc}") from None
+                    for col, val in mapping.items():
+                        if col not in cols:
+                            close = difflib.get_close_matches(col, cols, n=1)
+                            hint = f" Did you mean '{close[0]}'?" if close else ""
+                            raise FigureError(
+                                f"{where}: {attr_name} names '{col}', which is "
+                                f"not a column of binding '{f.binding}'.{hint} "
+                                f"Columns: {cols}.")
+                        if attr_name == "data-tb-formats" and val not in TABLE_FORMATS:
+                            raise FigureError(
+                                f"{where}: data-tb-formats gives '{col}' the "
+                                f"format '{val}'. Use one of "
+                                f"{list(TABLE_FORMATS)}.")
 
     def _semantic_slice(self, model_name: str, model) -> dict:
         """The model contract AS EXERCISED by this package's bindings.

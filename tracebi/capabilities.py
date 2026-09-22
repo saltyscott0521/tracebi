@@ -228,6 +228,16 @@ def _presentation() -> dict:
                                     "currency0 | percent | decimal "
                                     "(compact → '550.7B')",
             "data-tb-columns": "table figures: column allowlist/order",
+            "data-tb-labels": "table figures: header text per column, "
+                              "\"col=Label; col2=Label\" (';' separates "
+                              "pairs, so a label may hold a comma); wins "
+                              "over the derived header",
+            "data-tb-formats": "table figures: number format per column, "
+                               "\"fair_value=currency0; mark=percent\" — "
+                               "compact | comma | currency | currency0 | "
+                               "percent | decimal; wins over the derived "
+                               "format. A column or format that does not "
+                               "exist fails the build",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
             "data-tb-methodology": "one per page, on any container element; "
@@ -252,7 +262,8 @@ def _presentation() -> dict:
                            "\"label\": \"Revenue\", \"format\": "
                            "\"currency\"}}",
             "kinds": "value (needs 'cell') | chart (chart_type, x, y, color, "
-                     "palette) | table (columns, style). A 'custom' figure "
+                     "palette, value_format) | table (columns, style, labels, formats — "
+                     "labels/formats are {column: text} objects). A 'custom' figure "
                      "has no framework markup — draw it in script.js and "
                      "mark it yourself.",
             "figure_id": "The declared name becomes the figure id "

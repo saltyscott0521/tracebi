@@ -125,6 +125,17 @@ and <code>data-tb-value-format</code> for labels, axes and tooltips.</p>
 <h3 id="table-figures">Table figures</h3>
 <p><code>data-tb-columns</code> — a column allowlist and order. Classes
 <code>tb-table--striped</code> / <code>tb-table--compact</code> restyle it.</p>
+<p><code>data-tb-labels</code> and <code>data-tb-formats</code> — header text and number format per
+column, written as <code>col=value</code> pairs separated by <code>;</code> (so a label may contain
+a comma). They win over the derived header and format for the columns they
+name; the others keep their defaults.</p>
+<pre><code class="language-html">&lt;table data-tb-figure=&quot;table&quot; data-tb-binding=&quot;holdings&quot;
+       data-tb-labels=&quot;dim_issuer.issuer=Issuer; mark=Mark (FV / cost)&quot;
+       data-tb-formats=&quot;fair_value=currency0; mark=percent&quot;&gt;&lt;/table&gt;
+</code></pre>
+<p>Formats: <code>compact</code>, <code>comma</code>, <code>currency</code>, <code>currency0</code>, <code>percent</code>, <code>decimal</code>.
+A column that isn't in the binding, or an unknown format, fails the build
+and names the fix.</p>
 <hr>
 <h2 id="bind-prose-numbers">Bind prose numbers</h2>
 <p>The single highest-value habit in this file:</p>

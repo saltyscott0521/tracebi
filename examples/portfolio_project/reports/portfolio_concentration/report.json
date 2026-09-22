@@ -7,9 +7,65 @@
       "model": "portfolio_model",
       "query": {
         "fact": "fact_holdings",
-        "measures": ["fv_rank", "fair_value", "fv_share", "fv_cum_share"],
-        "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"],
-        "order_by": [{"column": "fv_rank", "desc": false}]
+        "measures": [
+          "fv_rank",
+          "fair_value",
+          "fv_share",
+          "fv_cum_share"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer",
+          "dim_issuer.sector"
+        ],
+        "order_by": [
+          {
+            "column": "fv_rank",
+            "desc": false
+          }
+        ]
+      }
+    }
+  },
+  "libs": [
+    "echarts"
+  ],
+  "figures": {
+    "share_chart": {
+      "kind": "chart",
+      "binding": "concentration",
+      "chart_type": "barh",
+      "x": "dim_issuer.issuer",
+      "y": "fv_share",
+      "value_format": "percent"
+    },
+    "curve_chart": {
+      "kind": "chart",
+      "binding": "concentration",
+      "chart_type": "line",
+      "x": "fv_rank",
+      "y": "fv_cum_share",
+      "value_format": "percent"
+    },
+    "ranking": {
+      "kind": "table",
+      "binding": "concentration",
+      "columns": [
+        "fv_rank",
+        "dim_issuer.issuer",
+        "dim_issuer.sector",
+        "fair_value",
+        "fv_share",
+        "fv_cum_share"
+      ],
+      "labels": {
+        "fv_rank": "Rank",
+        "fv_share": "Share of book",
+        "fv_cum_share": "Cumulative share"
+      },
+      "formats": {
+        "fair_value": "currency0",
+        "fv_share": "percent",
+        "fv_cum_share": "percent"
       }
     }
   }

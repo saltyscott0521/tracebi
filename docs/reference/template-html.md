@@ -56,6 +56,21 @@ Requires `"libs": ["echarts"]` in [[report-json]].
 `data-tb-columns` — a column allowlist and order. Classes
 `tb-table--striped` / `tb-table--compact` restyle it.
 
+`data-tb-labels` and `data-tb-formats` — header text and number format per
+column, written as `col=value` pairs separated by `;` (so a label may contain
+a comma). They win over the derived header and format for the columns they
+name; the others keep their defaults.
+
+```html
+<table data-tb-figure="table" data-tb-binding="holdings"
+       data-tb-labels="dim_issuer.issuer=Issuer; mark=Mark (FV / cost)"
+       data-tb-formats="fair_value=currency0; mark=percent"></table>
+```
+
+Formats: `compact`, `comma`, `currency`, `currency0`, `percent`, `decimal`.
+A column that isn't in the binding, or an unknown format, fails the build
+and names the fix.
+
 ---
 
 ## Bind prose numbers

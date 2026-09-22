@@ -52,7 +52,10 @@
       <button data-tb-download data-tb-binding="region_detail"
               data-tb-label="Download CSV"></button>
     </p>
+    <!-- data-tb-labels / data-tb-formats override the derived header and
+         number format for the columns they name ("col=Value; col=Value"). -->
     <table data-tb-figure="table" data-tb-binding="region_detail"
+           data-tb-formats="revenue=currency"
            class="tb-table--striped" id="tbl-regions"></table>
   </div>
 

@@ -37,6 +37,7 @@ import re
 from dataclasses import dataclass, field
 
 from tracebi.reports.figure_markup import (
+    TABLE_FORMATS,
     chart_element,
     table_element,
     unverified_value_element,
@@ -170,6 +171,17 @@ class _Compiler:
         t = raw.get("title")
         return f"    <h2>{html.escape(t)}</h2>\n" if t else ""
 
+    @staticmethod
+    def _card(raw: dict, element: str) -> str:
+        """One card holding the section's title and its figure — a single
+        element, so a row lays sections out side by side instead of giving
+        each title a cell of its own."""
+        t = raw.get("title")
+        head = f"    <h3>{html.escape(t)}</h3>\n" if t else ""
+        return (f"  <div class=\"tb-card\">\n{head}"
+                f"    {element}\n"
+                f"  </div>\n")
+
     # ── per-section compilers (one per SectionType; the test pins this) ──
 
     def compile_section(self, raw: dict, where: str) -> str:
@@ -192,10 +204,14 @@ class _Compiler:
         style = raw.get("style", "normal")
         content = raw.get("content", "")
         title = self._title(raw)
-        if style == "heading1":
-            return f"  <h2>{_inline(raw.get('title') or content)}</h2>\n"
-        if style == "heading2":
-            return f"  <h3>{_inline(raw.get('title') or content)}</h3>\n"
+        if style in ("heading1", "heading2"):
+            tag = "h2" if style == "heading1" else "h3"
+            head = f"  <{tag}>{_inline(raw.get('title') or content)}</{tag}>\n"
+            # A heading with both a title and content keeps the content as
+            # its lead paragraph instead of dropping it.
+            if raw.get("title") and content:
+                head += f"  <p>{_inline(content)}</p>\n"
+            return head
         body = md_to_html(content)
         if style == "note":
             return f"{title}  <div class=\"tb-note\">{body}</div>\n"
@@ -211,20 +227,31 @@ class _Compiler:
             )
             return f"{self._title(raw)}  <table></table>\n"
         binding = self._binding_for(raw, where)
+        labels = {str(k): str(v) for k, v in (raw.get("column_labels") or {}).items()
+                  if not any(ch in str(k) + str(v) for ch in ";=")}
+        formats, custom = {}, []
+        for col, fmt in (raw.get("number_formats") or {}).items():
+            (formats.__setitem__(str(col), fmt) if fmt in TABLE_FORMATS
+             else custom.append(str(col)))
+        if custom:
+            self.warnings.append(
+                f"{where}: number_formats for {', '.join(sorted(custom))} are "
+                f"not named formats ({', '.join(TABLE_FORMATS)}) — dropped; "
+                f"those columns keep the derived format"
+            )
         element = table_element(
             binding,
             fig_id=self._fig_id(binding),
             columns=raw.get("columns"),
             style=raw.get("style"),
+            labels=labels,
+            formats=formats,
         )
         self._warn_dropped(raw, where, (
-            "column_labels", "number_formats", "totals", "max_rows",
+            "totals", "max_rows",
             "highlight_negatives", "color_scale", "column_widths",
         ))
-        return (f"{self._title(raw)}"
-                f"  <div class=\"tb-card\">\n"
-                f"    {element}\n"
-                f"  </div>\n")
+        return self._card(raw, element)
 
     def _chart(self, raw: dict, where: str) -> str:
         if "data" not in raw:
@@ -246,10 +273,7 @@ class _Compiler:
         self._warn_dropped(raw, where, (
             "xlabel", "ylabel", "figsize", "show_values",
         ))
-        return (f"{self._title(raw)}"
-                f"  <div class=\"tb-card\">\n"
-                f"    {element}\n"
-                f"  </div>\n")
+        return self._card(raw, element)
 
     def _metrics(self, raw: dict, where: str) -> str:
         binding = self._binding_for(raw, where) if raw.get("data") else None
@@ -281,16 +305,19 @@ class _Compiler:
                 f"  <div class=\"tb-grid\">\n{''.join(cards)}  </div>\n")
 
     def _row(self, raw: dict, where: str) -> str:
-        if raw.get("widths"):
+        widths = raw.get("widths") or []
+        if len(set(widths)) > 1:
             self.warnings.append(
-                f"{where}: widths has no runtime equivalent — children "
-                f"compile to an equal-width tb-grid; adjust in style.css"
+                f"{where}: unequal widths have no runtime equivalent — "
+                f"children compile to equal-width columns; adjust in style.css"
             )
+        sections = raw.get("sections", [])
         children = "".join(
             self.compile_section(s, f"{where}.sections[{i}]")
-            for i, s in enumerate(raw.get("sections", []))
+            for i, s in enumerate(sections)
         )
-        return f"{self._title(raw)}  <div class=\"tb-grid\">\n{children}  </div>\n"
+        layout = {2: "tb-cols-2", 3: "tb-cols-3"}.get(len(sections), "tb-grid")
+        return f"{self._title(raw)}  <div class=\"{layout}\">\n{children}  </div>\n"
 
     def _spacer(self, raw: dict, where: str) -> str:
         height = raw.get("height", 1)

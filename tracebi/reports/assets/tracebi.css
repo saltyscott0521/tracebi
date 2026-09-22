@@ -15,32 +15,35 @@
 :root {
   --tb-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
              Arial, sans-serif;
-  --tb-ink: #1f2937;
-  --tb-bg: #ffffff;
-  --tb-muted: #6b7280;
-  --tb-accent: #2e74b5;
-  --tb-rule: #e3e7ee;
+  --tb-ink: #16181d;
+  --tb-bg: #ffffff;              /* cards, tables, tooltips */
+  --tb-page: #f6f6f3;            /* the plane cards sit on */
+  --tb-muted: #62615c;
+  --tb-accent: #1f63b8;
+  --tb-rule: #e4e3dd;
+  --tb-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   /* Subtle raised surfaces (striped rows, code blocks, callouts). Tokens, not
    * hard-coded hex, so overriding the palette for a dark ground carries them
    * too — a report on a dark background used to keep these light. */
-  --tb-surface: #f6f7f9;
-  --tb-surface-accent: #f2f7fc;
+  --tb-surface: #f6f6f3;
+  --tb-surface-accent: #eef4fc;
 
   --tb-space-1: 4px;
   --tb-space-2: 8px;
   --tb-space-3: 16px;
   --tb-space-4: 32px;
-  --tb-radius: 6px;
+  --tb-radius: 10px;
 
-  /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). */
-  --tb-chart-1: #2E74B5;
-  --tb-chart-2: #ED7D31;
-  --tb-chart-3: #70AD47;
-  --tb-chart-4: #FFC000;
-  --tb-chart-5: #5B9BD5;
-  --tb-chart-6: #A9D18E;
-  --tb-chart-7: #C00000;
-  --tb-chart-8: #7030A0;
+  /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). A
+   * colour-blind-checked order: keep it fixed, never cycle past eight. */
+  --tb-chart-1: #2a78d6;
+  --tb-chart-2: #eb6834;
+  --tb-chart-3: #1baf7a;
+  --tb-chart-4: #eda100;
+  --tb-chart-5: #e87ba4;
+  --tb-chart-6: #008300;
+  --tb-chart-7: #4a3aa7;
+  --tb-chart-8: #e34948;
 
   /* Shipped documents open identically anywhere — one theme, like print. */
   color-scheme: light;
@@ -51,23 +54,27 @@
 body {
   font-family: var(--tb-font);
   color: var(--tb-ink);
-  background: var(--tb-bg);
-  max-width: 1100px;
+  background: var(--tb-page);
+  max-width: 1120px;
   margin: 0 auto;
-  padding: var(--tb-space-4) var(--tb-space-3);
+  padding: 40px var(--tb-space-3) 64px;
   line-height: 1.55;
   font-size: 15px;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4 {
   line-height: 1.25;
   margin: var(--tb-space-4) 0 var(--tb-space-2);
+  letter-spacing: -0.01em;
 }
-h1 { font-size: 1.9em; margin-top: 0; }
-h2 { font-size: 1.4em; border-bottom: 1px solid var(--tb-rule);
-     padding-bottom: var(--tb-space-1); }
-h3 { font-size: 1.15em; }
-h4 { font-size: 1em; color: var(--tb-muted); }
+h1 { font-size: 2em; font-weight: 700; letter-spacing: -0.025em; margin-top: 0; }
+h1 + p { color: var(--tb-muted); font-size: 1.05em; max-width: 72ch;
+         margin-top: 0; }
+h2 { font-size: 1.2em; font-weight: 650; margin-top: 40px; }
+h3 { font-size: 1em; font-weight: 600; }
+h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
+     text-transform: uppercase; letter-spacing: 0.06em; }
 
 p { margin: var(--tb-space-2) 0 var(--tb-space-3); }
 a { color: var(--tb-accent); }
@@ -92,9 +99,21 @@ img, svg { max-width: 100%; }
 .tb-card {
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
-  padding: var(--tb-space-3);
+  padding: 20px;
   background: var(--tb-bg);
+  box-shadow: var(--tb-shadow);
+  min-width: 0;
 }
+/* Cards stacked in normal flow keep the grid's gap between them. */
+.tb-card + .tb-card { margin-top: var(--tb-space-3); }
+.tb-grid > .tb-card, .tb-cols-2 > .tb-card, .tb-cols-3 > .tb-card { margin-top: 0; }
+/* A card's own title sits flush at the top, smaller than a page section. */
+.tb-card > h2:first-child, .tb-card > h3:first-child {
+  margin: 0 0 var(--tb-space-3);
+  font-size: 0.95em;
+  font-weight: 600;
+}
+.tb-card .tb-table, .tb-card [data-tb-figure="table"] { margin: 0; }
 
 /* ── 4. KPI — big number, small label ──────────────────────────────────── */
 /* The card is the CLASS's opt-in. A bare [data-tb-figure="value"] — an
@@ -104,25 +123,29 @@ img, svg { max-width: 100%; }
 .tb-kpi {
   display: flex;
   flex-direction: column;
-  gap: var(--tb-space-1);
-  padding: var(--tb-space-3);
+  gap: 6px;
+  padding: 18px 20px;
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
+  background: var(--tb-bg);
+  box-shadow: var(--tb-shadow);
   position: relative; /* anchors a .tb-badge in the corner */
 }
 
 .tb-kpi-label {
-  font-size: 0.8em;
+  font-size: 0.75em;
+  font-weight: 600;
   color: var(--tb-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   order: -1;
 }
 
 .tb-kpi-value {
-  font-size: 1.8em;
+  font-size: 2em;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 /* ── 5. Tables ─────────────────────────────────────────────────────────── */
@@ -136,18 +159,26 @@ img, svg { max-width: 100%; }
 
 .tb-table th, [data-tb-figure="table"] th,
 .tb-table td, [data-tb-figure="table"] td {
-  padding: var(--tb-space-2) var(--tb-space-3);
+  padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid var(--tb-rule);
 }
 
 .tb-table thead th, [data-tb-figure="table"] thead th {
-  border-bottom: 2px solid var(--tb-ink);
-  font-size: 0.85em;
+  border-bottom: 1px solid var(--tb-rule);
+  font-size: 0.72em;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   color: var(--tb-muted);
+  white-space: nowrap;
 }
+
+.tb-table tbody tr:hover, [data-tb-figure="table"] tbody tr:hover {
+  background: var(--tb-surface);
+}
+.tb-table tbody tr:last-child td,
+[data-tb-figure="table"] tbody tr:last-child td { border-bottom: 0; }
 
 /* The empty-binding row: a table with no rows says "no data", not a bare head. */
 .tb-empty {
@@ -157,8 +188,10 @@ img, svg { max-width: 100%; }
   padding: var(--tb-space-3);
 }
 
-/* Numeric cells right-align; runtime tags them, authors may too. */
-.tb-num { text-align: right; }
+/* Numeric cells right-align; runtime tags them, authors may too. Matched at
+ * the table rule's specificity, or its text-align: left would win. */
+.tb-num,
+.tb-table .tb-num, [data-tb-figure="table"] .tb-num { text-align: right; }
 
 /* Totals row */
 .tb-total td, tr.tb-total th {
@@ -360,6 +393,7 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
  * shows the recorded statuses in their own tones, untouched. */
 
 .tb-receipt-btn {
+  box-shadow: var(--tb-shadow);
   position: fixed;
   right: var(--tb-space-3);
   bottom: var(--tb-space-3);
@@ -417,7 +451,8 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
 /* ── 14. Print — honesty survives printing ─────────────────────────────── */
 
 @media print {
-  body { max-width: none; padding: 0; }
+  body { max-width: none; padding: 0; background: #fff; }
+  .tb-card, .tb-kpi { box-shadow: none; }
 
   .tb-card, .tb-kpi, [data-tb-figure] {
     page-break-inside: avoid;

@@ -60,7 +60,9 @@
           <h2>Top issuers <button data-tb-download
               data-tb-binding="top_issuers">CSV</button></h2>
           <table data-tb-figure="table" data-tb-binding="top_issuers"
-                 class="tb-table--striped" id="tbl-top"></table>
+                 data-tb-labels="mark=Mark (FV / cost)"
+                 data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
+                 id="tbl-top"></table>
         </div>
         <div class="tb-card">
           <h2>Concentration (python-derived)</h2>
@@ -90,6 +92,7 @@
                   data-tb-label="Download CSV"></button>
         </p>
         <table data-tb-figure="table" data-tb-binding="holdings_detail"
+               data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
                class="tb-table--striped" id="tbl-detail"></table>
       </div>
     </section>
