@@ -312,7 +312,7 @@ export default function Pipelines() {
 
   return (
     <>
-      <PageTitle>Pipelines</PageTitle>
+      <PageTitle>Refresh</PageTitle>
       <PageSub>
         {isLoading
           ? 'Loading…'

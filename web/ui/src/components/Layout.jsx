@@ -9,11 +9,6 @@ const ICONS = {
       <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
     </svg>
   ),
-  connectors: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
-    </svg>
-  ),
   models: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
@@ -29,11 +24,6 @@ const ICONS = {
   reports: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-    </svg>
-  ),
-  pipelines: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
     </svg>
   ),
   guide: (
@@ -54,21 +44,19 @@ const ICONS = {
   ),
 }
 
-// Workspace first; learn/docs below. Verify is intentionally not a primary
-// nav peer — it lives as a quiet footer action so the chrome reads as product
-// surfaces, not a trust marketing strip.
+// Workspace first. Learn is only the guides. Connectors are a tab on
+// Contract; Refresh is the runner, linked from that page. Verify stays a
+// footer action so the chrome reads as product surfaces.
 const NAV_PRIMARY = [
   { path: '/',        label: 'Desk',     icon: 'home' },
   { path: '/reports', label: 'Report',   icon: 'reports' },
   { path: '/models',  label: 'Contract', icon: 'models' },
+  { path: '/explore', label: 'Explore',  icon: 'explore' },
 ]
 
 const NAV_SECONDARY = [
   { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
   { path: '/getting-started', label: 'Get Started', icon: 'guide' },
-  { path: '/connectors',      label: 'Connectors',  icon: 'connectors' },
-  { path: '/explore',         label: 'Explore',     icon: 'explore' },
-  { path: '/pipelines',       label: 'Refresh',     icon: 'pipelines' },
   { path: '/handbook',        label: 'Docs',        icon: 'docs' },
 ]
 

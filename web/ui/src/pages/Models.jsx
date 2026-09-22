@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -431,7 +432,10 @@ export default function Models() {
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to read its grain, measures, and tables. Connectors are a tab on the model.`
+          : <>
+              {models.length} model{models.length !== 1 ? 's' : ''} declared in models/. Select one to read its grain, measures, and tables. Connectors are a tab on the model.{' '}
+              <Link to="/pipelines" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Refresh</Link> runs the layers that write the warehouse.
+            </>
         }
       </PageSub>
 

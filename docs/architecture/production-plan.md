@@ -90,7 +90,6 @@ What does not match the product yet:
 | `info()` tables are name, connector, and source | `DataModel.info` |
 | Numeric literals outside figures are a workbench count | `lint_numeric_literals` in `tracebi/reports/figures.py` |
 | Web renders return the manifest in memory | `tracebi/web/api/routers/reports.py` (`save_manifest=False`) |
-| The app leads with Connectors, Explore, Pipelines | `web/ui/src/components/Layout.jsx` |
 | Get Started teaches `DataSet` chaining | `web/ui/src/pages/GettingStarted.jsx` |
 | Filters subset rows; value figures ignore them | `tracebi/reports/assets/tracebi.js` `hydrateControls` |
 | The homepage verify button swaps predetermined strings | `site/index.html` |
@@ -130,7 +129,8 @@ names as `tracebi report build`. The HTTP response still carries both.
 A read-only filesystem (the demo topology) does not fail the render; the
 payload says the manifest was not retained.
 
-**The desk.** Primary navigation is Desk, Report, Contract. Desk lists
+**The desk.** The workspace nav is Desk, Report, Contract, and Explore.
+Learn is Workflow, Get Started, and Docs. Desk lists
 open pins, drafts that still contain exploration, published reports
 whose verdict is not `reproduces`, and sinks that are `stale` or
 `no_contract`. Report opens the last built artifact, with rebuild as a
