@@ -526,6 +526,31 @@ def _conventions() -> dict:
     }
 
 
+def _schedule() -> dict:
+    """A recurring report: the report.json ``schedule`` block
+    (``tracebi/schedule.py``)."""
+    return {
+        "rule": "A report that repeats declares when it runs and who "
+                "receives it in its own report.json, so a reviewer approves "
+                "when and to whom in the same diff as what. One run is "
+                "build → verify → email → record; a receipt that does not "
+                "verify is recorded 'refused' and nothing is sent.",
+        "block": "\"schedule\": {\"cron\": \"0 9 * * MON\", "
+                 "\"timezone\": \"America/New_York\", "
+                 "\"to\": [\"cfo@example.com\"]}",
+        "fields": "cron: five fields, required. timezone: IANA name, "
+                  "default UTC. to: email list, optional; without it a run "
+                  "rebuilds the artifact and delivers nothing. Any other "
+                  "field fails when the package loads.",
+        "commands": "tracebi schedule list | run <name> [--no-send] | serve. "
+                    "Runs append to output/schedule_runs.jsonl with status "
+                    "delivered | built | refused | failed. serve needs "
+                    "tracebi[pipeline]; cron can call `schedule run` instead.",
+        "delivery_env": "TRACEBI_SMTP_URL, TRACEBI_SMTP_FROM; "
+                        "TRACEBI_SLACK_WEBHOOK adds a Slack ping.",
+    }
+
+
 def _analyst_knowledge() -> dict:
     """The good-practice curriculum, as a cheap index (slug/title/when) plus how
     to pull a lesson in full. Present in BOTH tiers, brief included — teaching an
@@ -795,6 +820,7 @@ def describe(brief: bool = False) -> dict:
         "presentation": _presentation(),
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
+        "schedule": _schedule(),
         "analyst_knowledge": _analyst_knowledge(),
     }
     if not brief:

@@ -1929,6 +1929,108 @@ def _report_send(args: argparse.Namespace, output: Path,
     return 0
 
 
+# ── Scheduled reports: list / run / serve ───────────────────────────────────
+
+def cmd_schedule(args: argparse.Namespace) -> int:
+    """
+    Reports that run and deliver themselves, from a package's ``schedule``
+    block (see :mod:`tracebi.schedule`).
+
+        tracebi schedule list              # every scheduled package + last run
+        tracebi schedule run <name>        # build → verify → deliver → record, now
+        tracebi schedule serve             # run every schedule until Ctrl+C
+    """
+    import getpass
+
+    from tracebi import schedule as sched
+    from tracebi.audit import set_actor
+
+    reports_dir: Path = args.reports_dir
+    output_dir = Path(args.output_dir)
+    schedules, errors = sched.discover_schedules(reports_dir)
+    for err in errors:
+        print(f"skipped {err['report']}: {err['error']}", file=sys.stderr)
+
+    if args.action == "list":
+        if getattr(args, "json", False):
+            last = sched.last_runs(output_dir)
+            print(json.dumps([{**s, "last_run": last.get(s["report"])}
+                              for s in schedules], indent=2))
+            return 0
+        if not schedules:
+            print(f"No scheduled reports in {reports_dir}/. Add a \"schedule\" "
+                  f"block to a package's report.json, e.g. "
+                  f"{{\"cron\": \"0 9 * * MON\", \"to\": [\"a@example.com\"]}}.")
+            return 0
+        last = sched.last_runs(output_dir)
+        for s in schedules:
+            print(sched.describe_schedule(s, last.get(s["report"])))
+        return 0
+
+    if args.action == "run":
+        if not args.name:
+            print("schedule run: name the report to run", file=sys.stderr)
+            return 1
+        match = [s for s in schedules if s["report"] == args.name]
+        if not match:
+            print(f"schedule run: '{args.name}' has no schedule block in "
+                  f"{reports_dir}/{args.name}/report.json", file=sys.stderr)
+            return 1
+        try:
+            set_actor(getpass.getuser(), role="cli")
+        except Exception:  # noqa: BLE001 — no controlling user (some containers)
+            set_actor(None, role="cli")
+        rec = sched.run_schedule(match[0], reports_dir=reports_dir,
+                                 output_dir=output_dir,
+                                 models_dir=args.models_dir,
+                                 send=not args.no_send)
+        _print_schedule_run(rec)
+        return 0 if rec["status"] in (sched.DELIVERED, sched.BUILT) else 1
+
+    # serve
+    if not schedules:
+        print(f"No scheduled reports in {reports_dir}/ — nothing to serve.",
+              file=sys.stderr)
+        return 1
+    from tracebi.audit import actor
+
+    def job(s: dict) -> None:
+        # Jobs run on APScheduler's worker threads, which do not inherit
+        # this thread's ContextVar, so attribute each run where it runs.
+        with actor("scheduler", role="cli"):
+            _print_schedule_run(sched.run_schedule(
+                s, reports_dir=reports_dir, output_dir=output_dir,
+                models_dir=args.models_dir))
+
+    try:
+        scheduler = sched.build_scheduler(schedules, job, blocking=True)
+    except (ImportError, ValueError) as exc:
+        print(f"schedule serve: {exc}", file=sys.stderr)
+        return 1
+    for s in schedules:
+        print("  " + sched.describe_schedule(s))
+    print(f"\nRunning {len(schedules)} schedule(s). Runs are recorded in "
+          f"{output_dir / sched.RUN_LOG}. Restart after changing a schedule. "
+          f"Press Ctrl+C to stop.")
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    return 0
+
+
+def _print_schedule_run(rec: dict) -> None:
+    line = f"{rec['report']}: {rec['status']}"
+    if rec.get("verdict"):
+        line += f" · {rec['verdict']}"
+    if rec.get("recipients"):
+        line += f" → {', '.join(rec['recipients'])}"
+    ok = rec["status"] in ("delivered", "built")
+    print(line, file=sys.stdout if ok else sys.stderr)
+    if rec.get("error"):
+        print(f"  {rec['error']}", file=sys.stdout if ok else sys.stderr)
+
+
 # ── Workbench sessions: export / clear ──────────────────────────────────────
 
 def cmd_session(args: argparse.Namespace) -> int:
@@ -2185,11 +2287,9 @@ def build_parser() -> argparse.ArgumentParser:
              "overrides, pasting the verdict into the body). Email needs "
              "TRACEBI_SMTP_URL (smtp://user:pass@host:port or smtps://) "
              "and TRACEBI_SMTP_FROM; TRACEBI_SLACK_WEBHOOK adds a Slack "
-             "ping. Scheduling is plain cron — a crontab line such as "
-             "`0 7 * * MON cd /path/to/project && tracebi report send "
-             "weekly --to team@example.com`, or a script under scheduled/ "
-             "(the project's scheduled-jobs folder) that your scheduler "
-             "runs. No daemon ships; the receipt does.",
+             "ping. To send on a schedule, add a \"schedule\" block to "
+             "report.json and use `tracebi schedule` (serve, or call "
+             "`tracebi schedule run <name>` from cron).",
     )
     p_report.add_argument(
         "--subject",
@@ -2225,6 +2325,28 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("--no-browser", action="store_true",
                           help="With `preview`, do not open the browser.")
     p_report.set_defaults(func=cmd_report)
+
+    p_schedule = sub.add_parser(
+        "schedule",
+        help="Reports that run and deliver themselves: list the packages with "
+             "a report.json \"schedule\" block, run one now (build → verify "
+             "→ email → record), or serve every schedule until Ctrl+C.",
+    )
+    p_schedule.add_argument("action", choices=["list", "run", "serve"])
+    p_schedule.add_argument("name", nargs="?",
+                            help="With `run`: the report package to run.")
+    p_schedule.add_argument(
+        "--no-send", action="store_true",
+        help="With `run`: build and verify, record the run, send nothing.")
+    p_schedule.add_argument("--json", action="store_true",
+                            help="With `list`: print JSON, with each last run.")
+    p_schedule.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
+                            help="Directory holding report packages (default: ./reports).")
+    p_schedule.add_argument(
+        "--output-dir", default="output",
+        help="Where runs write the artifact, its manifest, and "
+             "schedule_runs.jsonl (default: ./output).")
+    p_schedule.set_defaults(func=cmd_schedule)
 
     p_session = sub.add_parser(
         "session",

@@ -35,7 +35,7 @@ reporting.
 | User | Job | Main surface | Must have (❌ = not built yet) |
 | --- | --- | --- | --- |
 | **Requester** (business user) | "I need a weekly view of X." | Web app: request form, Ask | ❌ request inbox that turns a sentence into an agent task |
-| **Reader** (exec, client, LP) | Reads the numbers, often by email | Delivered HTML, Slack, the web viewer | ❌ scheduled delivery, ❌ per-recipient versions |
+| **Reader** (exec, client, LP) | Reads the numbers, often by email | Delivered HTML, Slack, the web viewer | ✅ scheduled email (`tracebi schedule`). ❌ per-recipient versions |
 | **Approver** (data owner) | Signs off on definitions and new reports | Pull request, Desk | ❌ review in the app, not only on GitHub |
 | **Builder** (analytics engineer) | Owns the warehouse link, the models, the hard cases | Repo, CLI, `tracebi dev` | ✅ largely built |
 | **Agent** | Authors and maintains reports | MCP gateway, `AGENTS.md`, skills | ✅ authoring loop. ❌ can't fix a failing scheduled run on its own |
@@ -62,8 +62,8 @@ This is the product. Every step must work without the builder in the loop.
 | Author | MCP gateway, `build_report`, `workbench_state`, model hot-reload | Report templates to start from. Agent can scaffold a model from warehouse metadata. |
 | Review | Git pull request, Desk pins | GitHub App: agent opens the PR, and the app shows the rendered preview and model diff in plain language. |
 | Publish | Discovery at server startup | Publish on merge: server pulls `main` and reloads. No restart. |
-| Run | `registry.scheduled()` stores a cron string that **nothing executes** | **Report runner**: on schedule, refresh the source, build, check, record the run. |
-| Deliver | `tracebi report send` (SMTP/Slack) by hand | `deliver` block per report: recipients, channel, format, and per-recipient parameters ("bursting"). |
+| Run | ✅ `schedule` block in `report.json` + `tracebi schedule run`/`serve` (build → check → record). `registry.scheduled()` is still unread. | Refresh the source before the build. Run history in Postgres and the app. |
+| Deliver | ✅ scheduled email to the block's `to` list, plus the Slack ping | More channels (Slack files, Teams, webhook), formats, and per-recipient parameters ("bursting"). |
 | Monitor | `tracebi verify`, run history for pipelines | Report run history, alerts on failure, empty data or threshold breach. Agent gets the failure and proposes a fix PR. |
 
 ## 4. Architecture
@@ -106,8 +106,8 @@ This is the product. Every step must work without the builder in the loop.
 3. **Phase ① is optional.** Most teams already have dbt or warehouse tables.
    A model can point at existing tables directly, or import dbt marts as the
    sink. `transforms/` stays available for teams without a warehouse.
-4. **Schedules and delivery live in the repo.** A `schedule` and `deliver`
-   block in `report.json` means a reviewer approves *when* and *to whom*
+4. **Schedules and delivery live in the repo.** A `schedule` block in
+   `report.json` (shipped: cron, time zone, recipients) means a reviewer approves *when* and *to whom*
    along with *what*. The runner reads them. Nothing is configured by
    clicking.
 5. **Parameters are the existing filter grammar.** A report declares
@@ -168,7 +168,9 @@ Each stage ends with a demo that works end to end. Build in order.
 
 **Stage 1: Repeatable (runs itself)**
 - Report runner: `schedule` block → refresh → build → check → record the
-  run → `deliver` (email, Slack) with retries.
+  run → deliver (email, Slack) with retries. **Shipped:** the block,
+  `tracebi schedule list | run | serve`, email, and the run log. **Next:**
+  refresh before the build, and retries.
 - Parameters and per-recipient delivery.
 - Report run history and failure alerts in the app.
 - PyPI 0.6.0 release. Docker image with workers.

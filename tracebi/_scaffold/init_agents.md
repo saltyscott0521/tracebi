@@ -149,6 +149,7 @@ tracebi dev <name>                          # the live loop (see below)
 tracebi report status <name>                # earned state in the terminal (📌 pins)
 tracebi report build <name>                 # render → output/<name>.html + manifest
 tracebi verify output/<name>.html.manifest.json --contracts
+tracebi schedule run <name>                 # a report.json "schedule" block: build → verify → email
 tracebi serve                               # browse at http://127.0.0.1:8000
 ```
 
@@ -202,6 +203,16 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    `.manifest.json`) is the deliverable to hand over or commit — and the
    package is already served live on the Reports page of `tracebi serve`;
    there is no separate publish step.
+
+**Repeat it with a `schedule` block.** A recurring report declares when it
+runs and who receives it in `report.json`:
+`"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
+"to": ["cfo@example.com"]}` (`to` optional: without it a run only rebuilds).
+The reviewer approves when and to whom in the same diff as what.
+`tracebi schedule run <name>` runs it now (build → verify → email → record
+in `output/schedule_runs.jsonl`); a receipt that does not verify is
+recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
+schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 `tracebi verify` is the point: it re-runs the recorded queries and confirms
 every figure still reproduces. Only `REPRODUCES` means a number was re-run

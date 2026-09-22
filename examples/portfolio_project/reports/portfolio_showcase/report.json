@@ -44,6 +44,10 @@
     "model": "portfolio_model",
     "filters": {}
   },
+  "schedule": {
+    "cron": "0 7 * * MON",
+    "timezone": "America/New_York"
+  },
   "figures": {
     "chart_fund": {
       "kind": "chart", "binding": "by_fund", "chart_type": "pie",

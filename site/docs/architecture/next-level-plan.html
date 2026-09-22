@@ -116,7 +116,7 @@ approves it. It then refreshes and delivers itself on schedule.</p>
 <td><strong>Reader</strong> (exec, client, LP)</td>
 <td>Reads the numbers, often by email</td>
 <td>Delivered HTML, Slack, the web viewer</td>
-<td>❌ scheduled delivery, ❌ per-recipient versions</td>
+<td>✅ scheduled email (<code>tracebi schedule</code>). ❌ per-recipient versions</td>
 </tr>
 <tr>
 <td><strong>Approver</strong> (data owner)</td>
@@ -185,13 +185,13 @@ two readers: the person, and the agent acting for them.</p>
 </tr>
 <tr>
 <td>Run</td>
-<td><code>registry.scheduled()</code> stores a cron string that <strong>nothing executes</strong></td>
-<td><strong>Report runner</strong>: on schedule, refresh the source, build, check, record the run.</td>
+<td>✅ <code>schedule</code> block in <code>report.json</code> + <code>tracebi schedule run</code>/<code>serve</code> (build → check → record). <code>registry.scheduled()</code> is still unread.</td>
+<td>Refresh the source before the build. Run history in Postgres and the app.</td>
 </tr>
 <tr>
 <td>Deliver</td>
-<td><code>tracebi report send</code> (SMTP/Slack) by hand</td>
-<td><code>deliver</code> block per report: recipients, channel, format, and per-recipient parameters ("bursting").</td>
+<td>✅ scheduled email to the block's <code>to</code> list, plus the Slack ping</td>
+<td>More channels (Slack files, Teams, webhook), formats, and per-recipient parameters ("bursting").</td>
 </tr>
 <tr>
 <td>Monitor</td>
@@ -237,8 +237,8 @@ two readers: the person, and the agent acting for them.</p>
 <li><strong>Phase ① is optional.</strong> Most teams already have dbt or warehouse tables.
    A model can point at existing tables directly, or import dbt marts as the
    sink. <code>transforms/</code> stays available for teams without a warehouse.</li>
-<li><strong>Schedules and delivery live in the repo.</strong> A <code>schedule</code> and <code>deliver</code>
-   block in <code>report.json</code> means a reviewer approves <em>when</em> and <em>to whom</em>
+<li><strong>Schedules and delivery live in the repo.</strong> A <code>schedule</code> block in
+   <code>report.json</code> (shipped: cron, time zone, recipients) means a reviewer approves <em>when</em> and <em>to whom</em>
    along with <em>what</em>. The runner reads them. Nothing is configured by
    clicking.</li>
 <li><strong>Parameters are the existing filter grammar.</strong> A report declares
@@ -321,7 +321,9 @@ aligns price with repeatable value.</p>
 <p>Each stage ends with a demo that works end to end. Build in order.</p>
 <p><strong>Stage 1: Repeatable (runs itself)</strong>
 - Report runner: <code>schedule</code> block → refresh → build → check → record the
-  run → <code>deliver</code> (email, Slack) with retries.
+  run → deliver (email, Slack) with retries. <strong>Shipped:</strong> the block,
+  <code>tracebi schedule list | run | serve</code>, email, and the run log. <strong>Next:</strong>
+  refresh before the build, and retries.
 - Parameters and per-recipient delivery.
 - Report run history and failure alerts in the app.
 - PyPI 0.6.0 release. Docker image with workers.

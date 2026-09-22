@@ -212,10 +212,30 @@ into the body, so the red flag travels *with* the report.
 Requires `TRACEBI_SMTP_URL` and `TRACEBI_SMTP_FROM`; optional
 `TRACEBI_SLACK_WEBHOOK` pings after a successful send.
 
-**Scheduling is plain cron** — no daemon ships:
+To send on a schedule, declare it in the package and use
+`tracebi schedule` below.
+
+### `tracebi schedule`
 
 ```bash
-0 7 * * MON cd /path/to/project && tracebi report send weekly --to team@example.com
+tracebi schedule list [--json]              # scheduled packages + each last run
+tracebi schedule run <name> [--no-send]     # build → verify → email → record, now
+tracebi schedule serve                      # run every schedule until Ctrl+C
+```
+
+Reads the `schedule` block in each package's `report.json` (see
+[[report-json]]). A run is `report send` with
+the recipients taken from the package: a receipt that does not verify is
+recorded `refused` and nothing is sent. Every run appends one line to
+`output/schedule_runs.jsonl`: `delivered`, `built` (no recipients, or
+`--no-send`), `refused` or `failed`, with the verdict and who ran it.
+
+`serve` needs `pip install "tracebi[pipeline]"` (APScheduler) and reads the
+schedules at startup, so restart it after changing one. To use your own
+scheduler instead, call `run` from it:
+
+```bash
+0 7 * * MON cd /path/to/project && tracebi schedule run weekly
 ```
 
 ### `tracebi report snapshot`

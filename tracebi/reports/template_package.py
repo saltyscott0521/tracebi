@@ -287,6 +287,15 @@ class TemplatePackage:
         else:
             self.selection = None
 
+        # Optional: when this report runs and who receives it. Read by
+        # `tracebi schedule`; the build itself ignores it.
+        if "schedule" in declaration:
+            from tracebi.schedule import parse_schedule_block
+            self.schedule = parse_schedule_block(
+                declaration.get("schedule"), path=report_json_path)
+        else:
+            self.schedule = None
+
         self.template_html = _read_text(template_path)
         self.style_css = _read_optional(os.path.join(directory, STYLE_CSS))
         self.script_js = _read_optional(os.path.join(directory, SCRIPT_JS))

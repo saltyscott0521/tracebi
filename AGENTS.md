@@ -191,6 +191,16 @@ is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
 is already served on the Reports page — there is no separate publish step.
 
+**Repeat it with a `schedule` block.** A recurring report declares when it
+runs and who receives it in `report.json`:
+`"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
+"to": ["cfo@example.com"]}` (`to` optional: without it a run only rebuilds).
+The reviewer approves when and to whom in the same diff as what.
+`tracebi schedule run <name>` runs it now (build → verify → email → record
+in `output/schedule_runs.jsonl`); a receipt that does not verify is
+recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
+schedule until stopped; `tracebi schedule list` shows each one's last run.
+
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
 name** opens the **discovery workbench** — the live surface for phase ① and
 ②: while this server is up, `tracebi.workbench.show(df, note=...)` from ANY

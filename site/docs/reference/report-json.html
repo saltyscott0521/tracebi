@@ -133,6 +133,39 @@ they produce the same bytes.</p>
 <p><strong>A package with charts must opt in</strong>, or every chart panel renders
 permanently blank. A data-only report omits it and ships smaller. An unknown
 value is refused at load.</p>
+<h3 id="schedule-object-optional"><code>schedule</code> — object, optional</h3>
+<p>When the report runs and who receives it. Read by <code>tracebi schedule</code> (<a href="../reference/cli.html">CLI reference</a>).
+The build itself ignores it.</p>
+<pre><code class="language-json">&quot;schedule&quot;: {
+  &quot;cron&quot;: &quot;0 9 * * MON&quot;,
+  &quot;timezone&quot;: &quot;America/New_York&quot;,
+  &quot;to&quot;: [&quot;cfo@example.com&quot;]
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cron</code></td>
+<td>Required. Five fields: minute hour day month day_of_week.</td>
+</tr>
+<tr>
+<td><code>timezone</code></td>
+<td>Optional IANA name. Default <code>UTC</code>.</td>
+</tr>
+<tr>
+<td><code>to</code></td>
+<td>Optional list of email addresses. Without it, a run rebuilds the artifact and records the run, and sends nothing.</td>
+</tr>
+</tbody>
+</table>
+<p>Any other field, a cron that isn't five fields, an unknown time zone or an
+address with no <code>@</code> is refused when the package loads.</p>
 <hr>
 <h2 id="what-is-checked-and-when">What is checked, and when</h2>
 <p>Checked when the package <strong>loads</strong> (before any query runs):</p>

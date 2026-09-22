@@ -6,6 +6,30 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — scheduled reports: `tracebi schedule`
+
+A report package can now declare when it runs and who receives it, in its own
+`report.json`:
+
+```json
+"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
+             "to": ["cfo@example.com"]}
+```
+
+- `tracebi schedule run <name>` runs it now: build → verify → email → record.
+  A receipt that does not verify is recorded `refused`, and nothing is sent.
+  `--no-send` builds and records only.
+- `tracebi schedule serve` runs every schedule in one process (APScheduler,
+  `tracebi[pipeline]`). Cron or any other scheduler can call `schedule run`
+  instead.
+- `tracebi schedule list` shows each schedule and its last run. Runs are
+  appended to `output/schedule_runs.jsonl` with status, verdict, recipients
+  and the actor.
+- A malformed block fails when the package loads. The block is documented in
+  `tracebi context` (`schedule`), `AGENTS.md`, the `tracebi init` agent guide,
+  and the report.json and CLI references. The portfolio showcase carries a
+  build-only schedule.
+
 ### Fixed — the report download button, and what the offline check needs
 
 - The Reports page's **↓ HTML (with receipt)** button rendered white on white

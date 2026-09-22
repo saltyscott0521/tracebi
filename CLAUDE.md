@@ -177,7 +177,8 @@ tracebi/               # Core Python package (~24,000 LOC)
                        # (gitignored; Docker, Vercel and the release workflow build it. A
                        # wheel built from a tree without it ships no UI — / says so.)
   cli.py               # tracebi init / new-model / new-transform / new-report / dev / report
-                       #   / verify / migrate / serve / mcp / session (see `tracebi --help`)
+                       #   / schedule / verify / migrate / serve / mcp / session (see `tracebi --help`)
+  schedule.py          # report.json "schedule" block: build → verify → email → record
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 11 tools + the author_report prompt
@@ -273,6 +274,9 @@ tracebi mcp                                    # agent gateway over MCP (stdio)
 tracebi mcp --transport http --port 8765       # remote agent — needs TRACEBI_MCP_TOKEN (or --insecure)
 tracebi verify output/report.manifest.json     # re-run recorded queries; classify drift
 tracebi verify output/report.manifest.json --contracts  # + re-run the sink contracts
+tracebi schedule list                          # packages with a report.json "schedule" block
+tracebi schedule run <name> [--no-send]        # build → verify → email → record, now
+tracebi schedule serve                         # run every schedule (needs [pipeline])
 tracebi serve                                  # browse the project
 
 # Tests
