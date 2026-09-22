@@ -194,6 +194,20 @@ def list_models() -> list[str]:
     return _registry.list_models()
 
 
+def model_path(name: str) -> Optional[str]:
+    """Absolute path of the ``models/*.py`` file for *name*, if it has one.
+
+    A model registered only in memory has no file. The web Contract screen
+    uses this; ``DataModel.info()`` stays the vocabulary and does not grow
+    a path.
+    """
+    _ensure_discovered()
+    stem = _registry._stem_for(name)
+    if not stem:
+        return None
+    return _registry._paths.get(stem)
+
+
 def register(model: Any, default: bool = False) -> None:
     """Explicitly register a DataModel instance with the global registry."""
     _registry.register(model, default=default)

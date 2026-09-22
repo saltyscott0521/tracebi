@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 
@@ -179,11 +180,15 @@ def _package_or_404(name: str):
 def report_selection(name: str, payload: dict):
     """Recompute an opted-in report under a selection.
 
-    Computes and returns stamps. Does not write the warehouse or the package.
-    Auth is the report-run rule: this is a POST, so analyst when enforcement
-    is on.
+    Computes and returns stamps. Does not write the warehouse. A question
+    that names one declared dimension the report does not already cut writes
+    that binding into the package, rebuilds, and verifies. Pins are read
+    before that write. Auth is the report-run rule: this is a POST, so
+    analyst when enforcement is on.
     """
-    from tracebi.reports.selection import evaluate_selection, resolve_question
+    from tracebi.reports.selection import (
+        answer_question, evaluate_selection, open_pins,
+    )
     from tracebi.reports.template_package import TemplatePackage
 
     pkg_dir = _package_or_404(name)
@@ -208,10 +213,19 @@ def report_selection(name: str, payload: dict):
                     status_code=400,
                     detail="Send a question or filters, not both.",
                 )
-            filters = resolve_question(package, models, question)
-        elif not filters:
+            result = answer_question(
+                pkg_dir, models, question,
+                output_html=_writable_output_html(name),
+                project_root=os.getcwd(),
+            )
+            if result.get("added_binding"):
+                _ARTIFACT_CACHE.pop(name, None)
+            return result
+        if not filters:
             filters = {}
-        return evaluate_selection(package, models, filters)
+        result = evaluate_selection(package, models, filters)
+        result["pins"] = open_pins(os.getcwd(), package.package_id)
+        return result
     except HTTPException:
         raise
     except ValueError as exc:
@@ -262,6 +276,34 @@ def keep_report_selection(name: str, payload: dict):
         )
     _ARTIFACT_CACHE.pop(name, None)
     return result
+
+
+@router.get("/{name}/built")
+def built_report(name: str):
+    """The last build on disk: ``output/<name>.html`` and its manifest.
+
+    Report opens this file. Rebuild is a separate action.
+    """
+    _package_or_404(name)
+    path = os.path.join(os.getcwd(), "output", f"{_safe_filename(name)}.html")
+    manifest_path = path + ".manifest.json"
+    if not os.path.isfile(path) or not os.path.isfile(manifest_path):
+        raise HTTPException(
+            status_code=404, detail=f"No built artifact for '{name}'.",
+        )
+    with open(path, encoding="utf-8") as fh:
+        html = fh.read()
+    with open(manifest_path, encoding="utf-8") as fh:
+        manifest = json.load(fh)
+    return {
+        "name": name,
+        "html": html,
+        "manifest": manifest,
+        "retained": True,
+        "built": True,
+        "html_path": path,
+        "manifest_path": manifest_path,
+    }
 
 
 @router.post("/{name}/run")

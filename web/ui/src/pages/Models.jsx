@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { useModels, useModel, useTablePreview, tableCsvUrl } from '../api'
+import { useModels, useModel, useTablePreview, useConnectors, useDesk, tableCsvUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Tabs, SplitLayout, ListItem, SearchInput, SkeletonList, SkeletonCard,
@@ -260,8 +260,39 @@ function ERDLegend() {
 
 // ── Model Detail ──────────────────────────────────────────────────────────────
 
+function ModelConnectors({ names }) {
+  const { data, isLoading } = useConnectors()
+  if (isLoading) return (
+    <div style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', fontSize: 13 }}>
+      <Spinner size={14} /> Loading connectors…
+    </div>
+  )
+  if (!names?.length) return <Empty message="This model declares no connector." />
+  const byName = Object.fromEntries((data || []).map(c => [c.name, c]))
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Source</th></tr></thead>
+        <tbody>
+          {names.map(n => {
+            const c = byName[n]
+            return (
+              <tr key={n}>
+                <td><code>{n}</code></td>
+                <td style={{ color: 'var(--text-2)' }}>{c?.type || 'on the model'}</td>
+                <td style={{ color: 'var(--muted)' }}>{c?.url || c?.directory || ''}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function ModelDetail({ name }) {
   const { data, isLoading } = useModel(name)
+  const { data: desk } = useDesk()
   const [tab, setTab] = useState('Tables')
   const [previewTable, setPreviewTable] = useState(null)
 
@@ -269,18 +300,34 @@ function ModelDetail({ name }) {
     <Card>
       <Empty
         icon="⬡"
-        message="Select a model to explore its tables, relationships, and schema diagram."
+        message="Select a model to read its file, grain, measures, tables, and connectors."
       />
     </Card>
   )
   if (isLoading) return <SkeletonCard />
   if (!data) return null
 
-  const tabs = ['Tables', 'Relationships', ...(data.relationships.length > 0 ? ['ERD'] : [])]
+  const tabs = ['Tables', 'Relationships', 'Connectors', ...(data.relationships.length > 0 ? ['ERD'] : [])]
+  const grain = (data.dimensions || []).flatMap(d =>
+    (d.attributes || []).map(attr => `${d.name}.${attr}`)
+  ).join(', ')
+  const measureNames = (data.measures || []).map(m => m.name).join(', ')
+  const sinks = desk?.sinks || []
 
   return (
     <Card className="fade-in">
       <CardTitle>{data.name}</CardTitle>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
+        {data.source_file && <div><code>{data.source_file}</code></div>}
+        {grain && <div>Grain: {grain}</div>}
+        {measureNames && <div>Measures: {measureNames}</div>}
+        {desk?.warehouse && sinks.length === 0 && <div>Sink tables are current.</div>}
+        {sinks.length > 0 && (
+          <div>
+            {sinks.map(s => `${s.table} ${s.status}`).join(' · ')}
+          </div>
+        )}
+      </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         {data.connectors.map(c => <Badge key={c} variant="blue">{c}</Badge>)}
         <Badge variant="gray">{data.tables.length} table{data.tables.length !== 1 ? 's' : ''}</Badge>
@@ -353,6 +400,8 @@ function ModelDetail({ name }) {
           )
       )}
 
+      {tab === 'Connectors' && <ModelConnectors names={data.connectors} />}
+
       {tab === 'ERD' && (
         <div className="fade-in">
           <ERDLegend />
@@ -382,7 +431,7 @@ export default function Models() {
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to read its grain, measures, and tables. Connectors live on their own page.`
+          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to read its grain, measures, and tables. Connectors are a tab on the model.`
         }
       </PageSub>
 

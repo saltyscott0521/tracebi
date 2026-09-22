@@ -480,3 +480,224 @@ def keep_cut(package_dir: str, filters: dict, models: dict, output_html: str) ->
         "html_path": output_html,
         "manifest_path": output_html + ".manifest.json",
     }
+
+
+def open_pins(project_root: str, report_name: str) -> list[dict]:
+    """Pins on this report and on the discovery workbench.
+
+    Read before a package edit. Dev-state only: the list rides on the
+    reply so the next edit sees it, and it is not written into the artifact.
+    """
+    from tracebi.workbench import DISCOVERY_NAME, read_pins
+
+    found: list[dict] = []
+    seen: set[str] = set()
+    for name in (report_name, DISCOVERY_NAME):
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        directory = os.path.join(project_root, ".tracebi", "workbench", name)
+        for pin in read_pins(directory):
+            if not isinstance(pin, dict):
+                continue
+            found.append({
+                "report": name,
+                "id": pin.get("id"),
+                "note": pin.get("note") or "",
+                "at_seq": pin.get("at_seq"),
+            })
+    return found
+
+
+def answer_question(
+    package_dir: str,
+    models: dict,
+    question: str,
+    *,
+    output_html: Optional[str] = None,
+    project_root: Optional[str] = None,
+) -> dict:
+    """Resolve a question, or turn one new grain into a binding.
+
+    A value the report already cuts becomes the selection filters. A
+    question that names one declared dimension the report does not already
+    cut writes ``by_<attribute>`` into ``report.json``, places a table
+    figure with no typed numeral, rebuilds, and returns ``verify_manifest``.
+    Pins are read before that write. The warehouse is not written.
+    """
+    from tracebi.reports.template_package import TemplatePackage
+
+    package = TemplatePackage(package_dir)
+    root = project_root or os.getcwd()
+    pins = open_pins(root, package.package_id)
+    try:
+        filters = resolve_question(package, models, question)
+    except ValueError as exc:
+        if "does not name a value" not in str(exc):
+            raise
+        return _answer_with_new_grain(
+            package_dir, package, models, question, exc, pins, output_html,
+        )
+    result = evaluate_selection(package, models, filters)
+    result["pins"] = pins
+    return result
+
+
+def _grain_matches(model, question: str) -> list[str]:
+    """``dim.attr`` strings named as a whole word in *question*.
+
+    An attribute name matches that attribute. A dimension name, with or
+    without the ``dim_`` prefix, matches every attribute of that dimension
+    when the question did not name an attribute itself.
+    """
+    import re
+
+    words = {w.lower() for w in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", question or "")}
+    matched: list[str] = []
+    for dim in model.info().get("dimensions") or []:
+        dname = str(dim.get("name") or "")
+        if not dname:
+            continue
+        short = dname[4:] if dname.lower().startswith("dim_") else dname
+        attrs = list(dim.get("attributes") or [])
+        attrs.extend((dim.get("derived") or {}).keys())
+        named = [a for a in attrs if str(a).lower() in words]
+        if named:
+            chosen = named
+        elif dname.lower() in words or short.lower() in words:
+            chosen = attrs
+        else:
+            continue
+        for attr in chosen:
+            ref = f"{dname}.{attr}"
+            if ref not in matched:
+                matched.append(ref)
+    return matched
+
+
+def _bound_dimensions(package, selection_model: str, model) -> set[str]:
+    bound: set[str] = set()
+    for ref in package.bindings.values():
+        if not _on_model(ref, selection_model, model):
+            continue
+        for dim in ref.query.dimensions or ():
+            bound.add(dim)
+    return bound
+
+
+def _write_grain_binding(package_dir: str, package, model, grain: str) -> str:
+    """Copy the first binding's fact and measures onto a new grain.
+
+    The figure is a table with no numeral. Filters, having, and limit stay
+    off the new binding; the first measure orders it descending.
+    """
+    import re
+
+    attr = grain.split(".")[-1]
+    slug = re.sub(r"[^A-Za-z0-9_]+", "_", attr).strip("_").lower()
+    if not slug:
+        raise ValueError(f"Cannot name a binding for {grain}.")
+    binding = f"by_{slug}"
+    if binding in package.bindings:
+        raise ValueError(
+            f"Binding '{binding}' already exists on '{package.package_id}'."
+        )
+    source = None
+    for ref in package.bindings.values():
+        if _on_model(ref, package.selection["model"], model):
+            source = ref
+            break
+    if source is None:
+        raise ValueError(
+            f"Report '{package.package_id}' has no binding on "
+            f"'{package.selection['model']}' to copy."
+        )
+    measures = source.query.measures
+    if isinstance(measures, dict):
+        first = next(iter(measures))
+        measures_out: Any = dict(measures)
+    else:
+        measures_out = list(measures)
+        if not measures_out:
+            raise ValueError(
+                f"Report '{package.package_id}' has no measure to copy "
+                f"onto {grain}."
+            )
+        first = measures_out[0]
+    query = {
+        "fact": source.query.fact,
+        "measures": measures_out,
+        "dimensions": [grain],
+        "order_by": [{"column": str(first), "desc": True}],
+    }
+    path = os.path.join(package_dir, "report.json")
+    with open(path, encoding="utf-8") as fh:
+        document = json.load(fh)
+    data = document.get("data")
+    if not isinstance(data, dict):
+        raise ValueError(f"{path}: needs a data object to add a binding.")
+    data[binding] = {"model": source.model, "query": query}
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(document, fh, indent=2)
+        fh.write("\n")
+
+    template_path = os.path.join(package_dir, "template.html")
+    with open(template_path, encoding="utf-8") as fh:
+        html = fh.read()
+    figure = (
+        f'<table data-tb-figure="table" data-tb-binding="{binding}" '
+        f'id="fig-{binding}"></table>'
+    )
+    if f'data-tb-binding="{binding}"' not in html:
+        marker = "</body>"
+        html = (
+            html.replace(marker, figure + marker, 1)
+            if marker in html else html + figure
+        )
+        with open(template_path, "w", encoding="utf-8") as fh:
+            fh.write(html)
+    return binding
+
+
+def _answer_with_new_grain(
+    package_dir, package, models, question, original, pins, output_html,
+) -> dict:
+    from tracebi.reports.template_package import TemplatePackage
+    from tracebi.verify import verify_manifest
+
+    selection_model = package.selection["model"] if package.selection else None
+    model = _resolve_model(models, selection_model) if selection_model else None
+    if model is None:
+        raise original
+    grains = _grain_matches(model, question)
+    if not grains:
+        raise original
+    if len(grains) > 1:
+        raise ValueError(
+            f"{question!r} names more than one grain ({', '.join(grains)}). "
+            f"Name one."
+        )
+    grain = grains[0]
+    if grain in _bound_dimensions(package, selection_model, model):
+        raise ValueError(
+            f"{question!r} names {grain}, already a dimension on this report. "
+            f"Name a value this report can cut."
+        )
+    if not output_html:
+        raise ValueError(
+            "Cannot add a binding: output/ is not writable, so the rebuild "
+            "cannot be verified."
+        )
+    binding = _write_grain_binding(package_dir, package, model, grain)
+    reloaded = TemplatePackage(package_dir)
+    manifest = reloaded.render(models, output_html, save_manifest=True)
+    checked = verify_manifest(manifest.to_dict(), models)
+    filters = (reloaded.selection or {}).get("filters") or {}
+    result = evaluate_selection(reloaded, models, filters)
+    result["pins"] = pins
+    result["added_binding"] = binding
+    result["grain"] = grain
+    result["verdict"] = checked["verdict"]
+    result["ok"] = checked["ok"]
+    result["verdict_detail"] = checked.get("verdict_detail")
+    return result

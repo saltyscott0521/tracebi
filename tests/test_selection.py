@@ -18,6 +18,7 @@ import pytest
 from tracebi import DataModel, MemoryConnector, QuerySpec
 from tracebi.model.dataset import frame_fingerprint
 from tracebi.reports.selection import (
+    answer_question,
     conjoin_filters,
     evaluate_selection,
     filters_equal,
@@ -409,6 +410,160 @@ class TestEndpoint:
             json={"question": "what about nowhere"},
         )
         assert missed.status_code == 422
+
+    def test_built_report_opens_the_saved_artifact(self, tmp_path, monkeypatch):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from tracebi.web.api.routers import reports as reports_router
+        from tracebi.web.discovery import _register_template_package
+
+        monkeypatch.chdir(tmp_path)
+        pkg = _package(tmp_path, selection={"model": "selection_model", "filters": {}})
+        registered = _register_template_package(str(pkg), "built_demo")
+        assert registered["status"] == "registered", registered
+        out = tmp_path / "output"
+        out.mkdir()
+        (out / "built_demo.html").write_text("<html>saved</html>", encoding="utf-8")
+        (out / "built_demo.html.manifest.json").write_text(
+            '{"report_name": "built_demo"}', encoding="utf-8",
+        )
+        app = FastAPI()
+        app.include_router(reports_router.router, prefix="/api")
+        client = TestClient(app)
+        res = client.get("/api/reports/built_demo/built")
+        assert res.status_code == 200, res.text
+        assert "saved" in res.json()["html"]
+        other = _register_template_package(str(pkg), "unbuilt_demo")
+        assert other["status"] == "registered"
+        assert client.get("/api/reports/unbuilt_demo/built").status_code == 404
+
+
+class TestNewGrain:
+    def _segment_model(self):
+        orders = pd.DataFrame({
+            "customer_id": [10, 10, 20, 20],
+            "revenue": [100, 50, 80, 20],
+            "cost": [40, 10, 30, 10],
+            "order_id": [1, 2, 3, 4],
+        })
+        customers = pd.DataFrame({
+            "customer_id": [10, 20],
+            "region": ["East", "West"],
+            "segment": ["Retail", "Wholesale"],
+            "tier": ["A", "B"],
+        })
+        model = DataModel("selection_model")
+        model.add_connector(MemoryConnector("seg_mem", tables={
+            "orders": orders, "customers": customers,
+        }))
+        model.add_table("orders", connector="seg_mem", source="orders")
+        model.add_table("customers", connector="seg_mem", source="customers")
+        model.add_dimension(
+            "dim_customer", table_name="customers", key_col="customer_id",
+            attributes=["region", "segment", "tier"],
+        )
+        model.add_fact(
+            "fact_orders", table_name="orders",
+            measures=["revenue", "cost", "order_id"],
+            foreign_keys={"dim_customer": "customer_id"},
+        )
+        model.add_measure("revenue", column="revenue", agg="sum")
+        model.add_measure("cost", column="cost", agg="sum")
+        model.add_measure("orders", column="order_id", agg="count")
+        model.add_measure("margin", ratio=("revenue", "cost"))
+        return model
+
+    def test_a_new_grain_becomes_a_binding_and_reproduces(self, tmp_path):
+        model = self._segment_model()
+        pkg = _package(
+            tmp_path, selection={"model": "selection_model", "filters": {}},
+        )
+        pin_dir = tmp_path / ".tracebi" / "workbench" / "demo"
+        pin_dir.mkdir(parents=True)
+        (pin_dir / "pins.json").write_text(json.dumps([
+            {"id": "fig-total", "note": "check the total", "at_seq": 1},
+        ]), encoding="utf-8")
+        result = answer_question(
+            str(pkg), {"selection_model": model}, "what about segment",
+            output_html=str(tmp_path / "output" / "demo.html"),
+            project_root=str(tmp_path),
+        )
+        assert result["added_binding"] == "by_segment"
+        assert result["verdict"] == "reproduces"
+        assert result["pins"][0]["note"] == "check the total"
+        saved = json.loads((pkg / "report.json").read_text(encoding="utf-8"))
+        binding = saved["data"]["by_segment"]
+        assert binding["query"]["dimensions"] == ["dim_customer.segment"]
+        assert "filters" not in binding["query"]
+        assert saved["selection"]["filters"] == {}
+        html = (pkg / "template.html").read_text(encoding="utf-8")
+        tag = html[html.index('data-tb-binding="by_segment"') - 40:]
+        tag = tag[:tag.index(">") + 1]
+        assert not any(ch.isdigit() for ch in tag)
+        expected = model.query(
+            "fact_orders", ["revenue", "orders", "margin"],
+            dimensions=["dim_customer.segment"],
+            order_by=[{"column": "revenue", "desc": True}],
+        )
+        fig = next(f for f in result["figures"] if f["binding"] == "by_segment")
+        assert fig["fingerprint"] == expected.fingerprint()
+        assert fig["kind"] == "table"
+        # The thread cites the fingerprint. The table cells are not a value.
+        assert "value" not in fig
+
+    def test_an_unknown_word_stays_refused(self, tmp_path):
+        model = self._segment_model()
+        pkg = _package(
+            tmp_path, selection={"model": "selection_model", "filters": {}},
+        )
+        with pytest.raises(ValueError, match="does not name a value"):
+            answer_question(
+                str(pkg), {"selection_model": model}, "what about nowhere",
+                output_html=str(tmp_path / "output" / "demo.html"),
+                project_root=str(tmp_path),
+            )
+        saved = json.loads((pkg / "report.json").read_text(encoding="utf-8"))
+        assert "by_segment" not in saved["data"]
+
+    def test_an_existing_grain_is_refused(self, tmp_path):
+        model = self._segment_model()
+        pkg = _package(
+            tmp_path, selection={"model": "selection_model", "filters": {}},
+        )
+        with pytest.raises(ValueError, match="already a dimension"):
+            answer_question(
+                str(pkg), {"selection_model": model}, "what about region",
+                output_html=str(tmp_path / "output" / "demo.html"),
+                project_root=str(tmp_path),
+            )
+
+    def test_two_grains_are_refused(self, tmp_path):
+        model = self._segment_model()
+        pkg = _package(
+            tmp_path, selection={"model": "selection_model", "filters": {}},
+        )
+        with pytest.raises(ValueError, match="more than one grain"):
+            answer_question(
+                str(pkg), {"selection_model": model}, "what about customer",
+                output_html=str(tmp_path / "output" / "demo.html"),
+                project_root=str(tmp_path),
+            )
+
+    def test_a_value_question_does_not_write_a_binding(self, tmp_path):
+        model = self._segment_model()
+        pkg = _package(
+            tmp_path, selection={"model": "selection_model", "filters": {}},
+        )
+        result = answer_question(
+            str(pkg), {"selection_model": model}, "what about west",
+            output_html=str(tmp_path / "output" / "demo.html"),
+            project_root=str(tmp_path),
+        )
+        assert "added_binding" not in result
+        assert result["filters"] == {"dim_customer.region": "West"}
+        saved = json.loads((pkg / "report.json").read_text(encoding="utf-8"))
+        assert set(saved["data"]) == {"by_region", "totals"}
 
 
 class TestOfflinePort:

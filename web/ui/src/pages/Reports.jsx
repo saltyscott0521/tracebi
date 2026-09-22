@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 
 import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
-  useReportLineage, useReportSelection, useKeepSelection, reportDownloadUrl,
+  useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
+  fetchBuiltReport, reportDownloadUrl,
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
@@ -121,7 +123,7 @@ function parseCut(text) {
   return filters
 }
 
-function AskCut({ reportName, frameRef }) {
+function AskCut({ reportName, frameRef, onPackageChange }) {
   const [text, setText] = useState('')
   const [reply, setReply] = useState(null)
   const [kept, setKept] = useState(null)
@@ -130,6 +132,9 @@ function AskCut({ reportName, frameRef }) {
   const quoted = (reply?.figures || []).filter(fig =>
     fig.kind === 'value' && fig.fingerprint &&
     (fig.formatted != null || typeof fig.value === 'number'))
+  const added = reply?.added_binding
+    ? (reply.figures || []).find(fig => fig.binding === reply.added_binding)
+    : null
 
   const apply = () => {
     const trimmed = text.trim()
@@ -140,6 +145,10 @@ function AskCut({ reportName, frameRef }) {
     select.mutate(request, {
       onSuccess: (payload) => {
         setReply(payload)
+        if (payload?.added_binding) {
+          onPackageChange?.()
+          return
+        }
         const filters = payload?.filters || {}
         const tb = frameRef.current?.contentWindow?.tracebi
         if (tb && typeof tb.setSelection === 'function') tb.setSelection(filters)
@@ -171,10 +180,10 @@ function AskCut({ reportName, frameRef }) {
       />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Btn onClick={apply} disabled={select.isPending}>Apply cut</Btn>
-        {reply && (
+        {reply && !reply.added_binding && (
           <Btn onClick={() => keep.mutate(
             { name: reportName, filters: reply.filters || {} },
-            { onSuccess: setKept },
+            { onSuccess: (payload) => { setKept(payload); onPackageChange?.() } },
           )} disabled={keep.isPending}>
             Keep this cut
           </Btn>
@@ -183,6 +192,28 @@ function AskCut({ reportName, frameRef }) {
       {select.error && (
         <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
           {select.error.message}
+        </div>
+      )}
+      {(reply?.pins || []).length > 0 && (
+        <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.5 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Pins first</div>
+          {reply.pins.map(pin => (
+            <div key={`${pin.report}-${pin.id}`}>
+              {pin.report}{pin.note ? ` · ${pin.note}` : ''}
+            </div>
+          ))}
+        </div>
+      )}
+      {reply?.added_binding && (
+        <div style={{ marginTop: 10, fontSize: 12 }}>
+          added binding {reply.added_binding}
+          {added?.fingerprint && (
+            <>
+              {' · '}
+              <code title={added.fingerprint}>{String(added.fingerprint).slice(0, 12)}</code>
+            </>
+          )}
+          {reply.verdict && <> · {reply.verdict}</>}
         </div>
       )}
       {reply && (
@@ -218,17 +249,21 @@ function AskCut({ reportName, frameRef }) {
 function ReportDetail({ report }) {
   const [tab, setTab] = useState('Output')
   const [runId, setRunId] = useState(null)
+  const [disk, setDisk] = useState(null)
   const [lineageData, setLineageData] = useState(null)
   const toast = useToast()
   const frameRef = useRef(null)
+  const qc = useQueryClient()
   const { mutate: startRun, isPending: starting, error: startErr } = useStartReportRun()
   const { data: run } = useReportRun(report?.name, runId)
+  const built = useBuiltReport(report?.name)
   const { mutate: fetchLineage, isPending: loadingLineage } = useReportLineage()
 
   // The run executes in the background on the server; useReportRun polls
   // until it settles. Result/error derive from the polled record.
   const running = starting || run?.status === 'running'
   const result = run?.status === 'succeeded' ? run.result : null
+  const shown = (runId && result) ? result : (disk || built.data || null)
   const runErr = run?.status === 'failed'
     ? { message: run.error?.message || 'Run failed', detail: run.error }
     : startErr
@@ -238,6 +273,16 @@ function ReportDetail({ report }) {
     if (run?.status === 'failed') toast(`Run failed: ${run.error?.message || 'unknown error'}`, 'error')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.status])
+
+  const refreshBuilt = useCallback(async () => {
+    if (!report?.name) return
+    setRunId(null)
+    const fresh = await qc.fetchQuery({
+      queryKey: ['built-report', report.name],
+      queryFn: () => fetchBuiltReport(report.name),
+    })
+    setDisk(fresh || null)
+  }, [qc, report?.name])
 
   const handleRun = useCallback(() => {
     startRun(report.name, {
@@ -256,7 +301,7 @@ function ReportDetail({ report }) {
     })
   }, [report?.name, fetchLineage, toast])
 
-  if (!report) return <Card><Empty message="Select a report from the list to run it and view its output." /></Card>
+  if (!report) return <Card><Empty message="Select a report from the list to open its last build." /></Card>
 
   return (
     <Card>
@@ -273,21 +318,26 @@ function ReportDetail({ report }) {
 
       {runErr && <ErrorDetail error={runErr} />}
 
-      {!result && !running && (
+      {!shown && !running && built.isLoading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
+          <Spinner /> Opening the last build…
+        </div>
+      )}
+      {!shown && !running && !built.isLoading && (
         <Btn onClick={handleRun}>▶ Run Report</Btn>
       )}
       {running && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
-          <Spinner /> Running in background… you can keep browsing; a toast will confirm when it finishes.
+          <Spinner /> Rebuilding… you can keep browsing; a toast will confirm when it finishes.
         </div>
       )}
 
-      {result && (
+      {shown && (
         <>
-          <ReportReceipt manifest={result.manifest} />
+          <ReportReceipt manifest={shown.manifest} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <Btn onClick={handleRun} disabled={running} variant="outline" size="sm">
-              {running ? <><Spinner size={12} /> Running…</> : '↺ Re-run'}
+              {running ? <><Spinner size={12} /> Rebuilding…</> : '↺ Rebuild'}
             </Btn>
             {!lineageData && (
               <Btn onClick={handleLineage} disabled={loadingLineage} variant="outline" size="sm">
@@ -325,8 +375,8 @@ function ReportDetail({ report }) {
 
           {tab === 'Output' && (
             <>
-              <AskCut reportName={report.name} frameRef={frameRef} />
-              <ReportFrame html={result.html} title={report.name} frameRef={frameRef} />
+              <AskCut reportName={report.name} frameRef={frameRef} onPackageChange={refreshBuilt} />
+              <ReportFrame html={shown.html} title={report.name} frameRef={frameRef} />
             </>
           )}
 
@@ -349,7 +399,7 @@ function ReportDetail({ report }) {
 
           {tab === 'Manifest' && (
             <pre className="code-block" style={{ maxHeight: 400, overflowY: 'auto' }}>
-              {JSON.stringify(result.manifest, null, 2)}
+              {JSON.stringify(shown.manifest, null, 2)}
             </pre>
           )}
         </>
@@ -402,7 +452,7 @@ export default function Reports() {
     <>
       <PageTitle>Reports</PageTitle>
       <PageSub>
-        {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''} registered. Select one to run it.`}
+        {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''} registered. Select one to open its last build. Rebuild is the second action.`}
       </PageSub>
 
       {!isLoading && reports.length === 0 ? (

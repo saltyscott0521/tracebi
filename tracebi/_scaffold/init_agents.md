@@ -90,10 +90,13 @@ whose figures each name a binding from `report.json`:
   never react; a filtered KPI needs its own binding). A `selection` block
   in `report.json` (`{"model", "filters"}`) opts in: `data-tb-filter` posts
   the selection and the model recomputes every figure on it, value figures
-  included. The browser displays that result. Ask resolves a question
-  to a value one of those controls already has, then posts that filter
-  tuple. A question that names no declared value, or names two columns,
-  is refused. A number in the reply is a value figure beside its
+  included. The browser displays that result. Ask reads pins, then
+  resolves a question to a value one of those controls already has,
+  then posts that filter tuple. A question that names one declared
+  dimension the report does not already cut becomes a new binding in
+  `report.json`, then a rebuild whose verdict is on the reply. A
+  question that names no declared value, or names two columns, is
+  refused. A number in the reply is a value figure beside its
   fingerprint. Excluded options stay visible
   and inert. The receipt names the selection and whether it is the authored
   one. `data-tb-download` stays the full stamped binding; the receipt

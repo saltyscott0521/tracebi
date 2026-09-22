@@ -35,6 +35,13 @@ async function get(path) {
   return r.json()
 }
 
+async function getOrNull(path) {
+  const r = await fetch(BASE + path, { cache: 'no-store' })
+  if (r.status === 404) return null
+  if (!r.ok) throw await toError(r)
+  return r.json()
+}
+
 async function post(path) {
   const r = await fetch(BASE + path, { method: 'POST' })
   if (!r.ok) throw await toError(r)
@@ -94,6 +101,20 @@ export const useTablePreview = (model, table) =>
 
 export const useReports = () =>
   useQuery({ queryKey: ['reports'], queryFn: () => get('/reports') })
+
+export const useDesk = () =>
+  useQuery({ queryKey: ['desk'], queryFn: () => get('/desk') })
+
+export const fetchBuiltReport = (name) =>
+  getOrNull(`/reports/${encodeURIComponent(name)}/built`)
+
+export const useBuiltReport = (name) =>
+  useQuery({
+    queryKey: ['built-report', name],
+    queryFn: () => fetchBuiltReport(name),
+    enabled: !!name,
+    retry: false,
+  })
 
 // Background report runs: start returns a run_id; the status query polls
 // every 1.2s while the run is in flight, then stops on its own.
