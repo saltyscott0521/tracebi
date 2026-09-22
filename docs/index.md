@@ -16,6 +16,7 @@ request, versioned, tested, and authored as easily by an agent as by a person.
 
 | If you want to… | Read |
 | --- | --- |
+| Understand where TraceBi is going and why | [[vision-and-positioning]] |
 | Understand TraceBi without a technical background | [[plain-english]] |
 | Show TraceBi to someone in ten minutes | [[demo-script]] |
 | Understand what TraceBi is in five minutes | [[the-three-phase-workflow]] |
@@ -64,6 +65,16 @@ vocabulary, so they describe what the code actually accepts.
 - [[cli]] — every `tracebi` command
 - [[environment-variables]] — every `TRACEBI_*` variable
 - [[api-routes]] — the HTTP surface
+
+## Strategy
+
+Where the product is going and how it's built to get there.
+
+- [[vision-and-positioning]] — the bet, the positioning, the principles
+- [[users-and-jobs]] — the six user types and their journeys
+- [[product-strategy]] — the repeatable-report loop, BI parity, templates
+- [[target-architecture]] — components and the decisions behind them
+- [[deployment]] — local, self-hosted, Cloud, customer VPC
 
 ## Architecture
 

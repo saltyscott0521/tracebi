@@ -6,6 +6,14 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — product strategy documents: `docs/strategy/`
+
+Five pages: vision and positioning, users and their jobs, product strategy
+(the repeatable-report loop, BI parity, templates), target architecture, and
+deployment. They appear in a Strategy section on the app's Docs page and are
+kept off the public docs site, like `ROADMAP`.
+`docs/architecture/next-level-plan.md` is kept as the first draft.
+
 ### Added — scheduled reports: `tracebi schedule`
 
 A report package can now declare when it runs and who receives it, in its own

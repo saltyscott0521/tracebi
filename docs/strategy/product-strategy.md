@@ -1,0 +1,107 @@
+# Product strategy
+
+**Own the repeatable-report loop from request to delivery. Match BI tools on
+what recurring reports need. Deliberately skip what they need only for
+drag-and-drop exploration.**
+
+---
+
+## The product is a loop
+
+```
+REQUEST → AUTHOR → REVIEW → PUBLISH → RUN → DELIVER → MONITOR
+   ▲                                                      │
+   └──────────── a failure or a new question ─────────────┘
+```
+
+| Step | What happens | Today | Target | Quarter |
+| --- | --- | --- | --- | --- |
+| **Request** | A person asks in plain words | Ask on one report | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
+| **Author** | An agent writes the model and report | MCP gateway, package grammar, validation, `tracebi dev` | Templates, model scaffold from warehouse metadata | Q1–Q2 |
+| **Review** | A person approves | Git pull request, Desk pins | Plain-language review in the app: rendered preview, what changed, which definitions it uses | Q3 |
+| **Publish** | Merge makes it live | Server discovers at startup | Publish on merge, no restart | Q3 |
+| **Run** | It refreshes and builds on schedule | ✅ `schedule` block, `tracebi schedule run / serve` | Refresh before build, retries, run history in the app | Q1 |
+| **Deliver** | It reaches readers | ✅ Email with the report attached | Slack/Teams, links, in-body summary, per-recipient versions | Q1–Q2 |
+| **Monitor** | Failures and surprises get handled | Run log, `tracebi verify` | Alerts on failure, empty data and thresholds. Agent opens a fix PR. | Q3 |
+
+**Rule:** a quarter's work finishes a step end to end before starting the
+next one. A half-built loop is worth less than a narrow, complete one.
+
+## BI parity map
+
+What a team expects from a BI tool, and our answer.
+
+| Capability | Needed for recurring reports? | TraceBi answer | Status |
+| --- | --- | --- | --- |
+| Dashboards and reports | Yes | Report packages (HTML), specs | ✅ |
+| Charts, tables, KPIs | Yes | ECharts figures, tables, value cards | ✅ |
+| Filters and drill-down | Yes | Controls; selection that recomputes through the model | ✅ partial |
+| Semantic layer and metrics | Yes | `DataModel`: facts, dimensions, measures (ratios, windows, time intelligence) | ✅ |
+| Scheduled delivery | Yes | `tracebi schedule`, email | ✅ v1 |
+| Per-recipient versions (bursting) | Yes | Parameters in the filter grammar | ❌ Q2 |
+| Connectors | Yes | CSV, SQL/Postgres, Snowflake, BigQuery, DuckDB | ✅ partial. Queries not yet pushed down (Q2). |
+| Performance at warehouse scale | Yes | Query compiler + per-run cache | ❌ Q2 |
+| Exports | Yes | HTML, Excel. PDF untested. | ✅ partial |
+| Access control | Yes | Roles (viewer, analyst, admin) | ✅ partial. SSO, row-level security Q4. |
+| Alerts | Yes | Thresholds and failures | ❌ Q3 |
+| Catalog and search | Yes | Reports list | ✅ basic. Owners and usage Q4. |
+| Version history | Yes | Git | ✅ (better than BI) |
+| Embedding | Sometimes | Signed-URL embed | ❌ Q4 |
+| Natural-language questions | Sometimes | Ask, through the agent | ✅ partial |
+| Drag-and-drop authoring | No | Agents author | Won't build |
+| Pixel-perfect paginated layout | Rarely | HTML + CSS; PDF later | Later |
+| Real-time streaming dashboards | No | Out of scope | Won't build |
+
+## Where to be better, not just equal
+
+1. **Authoring by agents.** A closed vocabulary, validation before execution,
+   repair-path errors and templates, so an agent gets a report right the
+   first time. Measure it: first-build success rate.
+2. **Consistency.** One definition used everywhere, with a linter that
+   refuses silently wrong aggregations (already shipped: rate and stock
+   guards).
+3. **Review.** A plain-language diff of what a report change does, so an
+   approver who doesn't code can approve it.
+4. **Repeatability and proof.** Schedules in the repo, run history, and
+   receipts that re-run.
+5. **Ownership.** Plain files in the customer's git. Leaving TraceBi means
+   keeping everything.
+
+## The template gallery
+
+Templates are the product's front door for a horizontal market. Each one
+is a model plus two or three reports, which an agent adapts to the customer's
+tables.
+
+| Order | Template | Why this one |
+| --- | --- | --- |
+| 1 | **SaaS metrics** (MRR, churn, cohorts) | Huge, horizontal, well-known definitions |
+| 2 | **Sales pipeline** (by stage, rep, region) | Every company has one; perfect bursting demo |
+| 3 | **Finance close pack** (P&L, budget vs actual) | Recurring, high-stakes, loved by approvers |
+| 4 | **Marketing funnel** | Horizontal, frequent requests |
+| 5 | **Fund / portfolio reporting** | The existing reference demo; regulated segment |
+| 6 | **Support operations** (SLA, backlog) | Common, easy data |
+
+Each template ships with sample data, a `tracebi init --template <name>`
+path, and a landing page.
+
+## What we won't build
+
+| Won't build | Because |
+| --- | --- |
+| A drag-and-drop chart editor | Agents author. A GUI editor puts logic back into the tool. |
+| A second calculator (browser SQL, server-side re-aggregation) | One definition, one calculator |
+| Warehouse writes by agents or Cloud | Read-only on customer data |
+| Our own ETL platform | Sits on dbt and the warehouse. `transforms/` stays for teams without one. |
+| Cloud-only features that change what a report can compute | Open by default |
+| Real-time streaming dashboards | Not the recurring-report job |
+
+## Product quality bars
+
+| Bar | Target |
+| --- | --- |
+| Install to first scheduled report, on your own data | < 30 minutes |
+| Agent first-build success (report builds and validates on the first try) | > 80% on template-based requests |
+| Scheduled runs delivered on time | > 99% |
+| Report build time on a warehouse (compiled queries) | < 60 s for a typical pack |
+| Approver can review without reading code | Every report change |

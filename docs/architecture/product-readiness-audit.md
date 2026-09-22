@@ -7,7 +7,7 @@ almost all *outside* the engine: a release, a hosted demo that's always up, a
 reader experience written for non-engineers, and one sharply chosen buyer.**
 
 > **Positioning superseded (2026-09-22):** the buyer, positioning and
-> "what not to do" sections below are replaced by [[next-level-plan]], which
+> "what not to do" sections below are replaced by the strategy in `docs/strategy/` ([[vision-and-positioning]]), which
 > targets agents building repeatable reports that replace recurring BI. The
 > findings stand.
 

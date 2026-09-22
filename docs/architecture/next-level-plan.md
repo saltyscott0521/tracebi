@@ -1,5 +1,9 @@
 # Next-level plan: agents build the BI
 
+> **Superseded (2026-09-22):** the full strategy now lives in
+> `docs/strategy/`, starting at [[vision-and-positioning]]. This page was its first
+> draft and is kept for history. Where they differ, `docs/strategy/` wins.
+
 **Status: plan (2026-09-22).** TraceBi's next goal: be the framework
 agents use to build **repeatable reports**, and replace the BI tool for
 recurring reporting.
