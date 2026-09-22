@@ -38,7 +38,7 @@ from fastapi.staticfiles import StaticFiles
 
 from tracebi.web.api.errors import error_detail
 
-from tracebi.web.api.routers import connectors, models, reports, pipelines, docs, verify
+from tracebi.web.api.routers import connectors, models, reports, pipelines, docs, verify, desk
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
 from tracebi.web.api.csrf import allowed_origins as _allowed_origins
@@ -78,6 +78,7 @@ else:
     )
 
 app.include_router(connectors.router, prefix="/api")
+app.include_router(desk.router,       prefix="/api")
 app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")
 app.include_router(pipelines.router,  prefix="/api")

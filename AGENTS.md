@@ -158,11 +158,13 @@ Three rules that keep pages honest:
   whether it is the authored one; `verify` re-runs the authored filters.
   Binding filters always apply; the selection wins on the same target.
   `having`, `order_by`, and `limit` stay on the binding. Ask on the
-  desk resolves a question to a value one of those controls already has
-  ("software" becomes the sector filter), then posts that tuple. A
-  question that names no declared value, or names two columns, is
-  refused. A number in the reply is a value figure beside its
-  fingerprint. The receipt downloads the sliced view and names the selection in the filename and
+  desk reads pins, then resolves a question to a value one of those
+  controls already has ("software" becomes the sector filter), then
+  posts that tuple. A question that names one declared dimension the
+  report does not already cut becomes a new binding in `report.json`,
+  then a rebuild whose verdict is on the reply. A question that names
+  no declared value, or names two columns, is refused. A number in
+  the reply is a value figure beside its fingerprint. The receipt downloads the sliced view and names the selection in the filename and
   the header. Offline, the page keeps the authored view unless a sealed
   grain can recompute `simple` aggregations and `ratio`; `period_end`
   does not recompute offline. Download buttons take `data-tb-label` for their text.

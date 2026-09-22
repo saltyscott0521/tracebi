@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useConnectors, useModels, useReports, usePipelines } from '../api'
+import { useConnectors, useModels, useReports, usePipelines, useDesk } from '../api'
 import { Skeleton, Badge } from '../components/Shared'
 import WorkflowDiagram from '../components/WorkflowDiagram'
 
@@ -187,6 +187,108 @@ function PipelineActivity({ pipelines }) {
 
 // ── Section header ────────────────────────────────────────────────────────────
 
+function reviewHref(report) {
+  if (!report || report === '_discovery') return null
+  return `/reports?r=${encodeURIComponent(report)}`
+}
+
+function ReviewRow({ kind, title, detail, href, last }) {
+  const inner = (
+    <>
+      <span style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: 0.3, textTransform: 'uppercase',
+        color: 'var(--muted)', width: 64, flexShrink: 0,
+      }}>{kind}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{
+          display: 'block', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5,
+          color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{title}</span>
+        {detail && (
+          <span style={{
+            display: 'block', fontSize: 11.5, color: 'var(--muted)', marginTop: 1,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{detail}</span>
+        )}
+      </span>
+    </>
+  )
+  const style = {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '11px 16px', textDecoration: 'none',
+    borderBottom: last ? 'none' : '1px solid var(--border)',
+  }
+  return href
+    ? <Link to={href} className="list-item-hover" style={style}>{inner}</Link>
+    : <div style={style}>{inner}</div>
+}
+
+function NeedsPerson({ desk, loading }) {
+  if (loading) {
+    return (
+      <div style={{ padding: '12px 16px' }}>
+        <Skeleton height={13} style={{ marginBottom: 10 }} />
+        <Skeleton width="72%" height={13} />
+      </div>
+    )
+  }
+  const pins = desk?.pins || []
+  const drafts = desk?.drafts || []
+  const verdicts = desk?.verdicts || []
+  const sinks = desk?.sinks || []
+  const rows = [
+    ...pins.map(pin => ({
+      kind: 'Pin',
+      title: pin.id || pin.report,
+      detail: pin.note || pin.report,
+      href: reviewHref(pin.report),
+      key: `pin-${pin.report}-${pin.id}`,
+    })),
+    ...drafts.map(draft => ({
+      kind: 'Draft',
+      title: draft.report,
+      detail: 'exploration',
+      href: reviewHref(draft.report),
+      key: `draft-${draft.report}`,
+    })),
+    ...verdicts.map(row => ({
+      kind: 'Receipt',
+      title: row.report,
+      detail: row.verdict,
+      href: reviewHref(row.report),
+      key: `verdict-${row.report}`,
+    })),
+    ...sinks.map(sink => ({
+      kind: 'Sink',
+      title: sink.table,
+      detail: sink.status,
+      href: '/models',
+      key: `sink-${sink.status}-${sink.table}`,
+    })),
+  ]
+  if (!rows.length) {
+    return (
+      <div style={{ color: 'var(--muted)', fontSize: 13, padding: '16px 16px', lineHeight: 1.6 }}>
+        Nothing waiting.
+      </div>
+    )
+  }
+  return (
+    <div>
+      {rows.map((row, i) => (
+        <ReviewRow
+          key={row.key}
+          kind={row.kind}
+          title={row.title}
+          detail={row.detail}
+          href={row.href}
+          last={i === rows.length - 1}
+        />
+      ))}
+    </div>
+  )
+}
+
 function SH({ title, action }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
@@ -234,6 +336,7 @@ export default function Home() {
   const { data: models,     isLoading: lm } = useModels()
   const { data: reports,    isLoading: lr } = useReports()
   const { data: pipelines,  isLoading: lp } = usePipelines()
+  const { data: desk,       isLoading: ld } = useDesk()
 
   const nConn  = (connectors || []).length
   const nMod   = (models     || []).length
@@ -241,8 +344,9 @@ export default function Home() {
   const nPipe  = (pipelines  || []).length
 
   const artifact = (reports || []).find(r => r.kind === 'artifact')
-  const openReport = artifact
-    ? `/reports?r=${encodeURIComponent(artifact.name)}`
+  const openName = desk?.open?.report || artifact?.name
+  const openReport = openName
+    ? `/reports?r=${encodeURIComponent(openName)}`
     : '/reports'
   const verifiable = (reports || []).filter(r => r.kind === 'artifact').length
   const trustLine =
@@ -270,8 +374,8 @@ export default function Home() {
               Desk
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.55, maxWidth: '56ch', margin: 0 }}>
-              What needs a person: the published report, the contract behind it,
-              and a receipt you can re-check. Pins and drafts live in tracebi dev.
+              What needs a person: an open pin, a draft that still explores,
+              a receipt that does not reproduce, a sink that is stale or has no contract.
             </p>
             <div style={{ marginTop: 14, minHeight: 18 }}>
               {lr
@@ -303,6 +407,16 @@ export default function Home() {
               Get started
             </Link>
           </div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 32 }}>
+        <SH title="Needs a person" />
+        <div style={{
+          background: 'var(--card)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)', overflow: 'hidden',
+        }}>
+          <NeedsPerson desk={desk} loading={ld} />
         </div>
       </div>
 

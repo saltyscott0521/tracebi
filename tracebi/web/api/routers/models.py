@@ -1,4 +1,5 @@
 import io
+import os
 import time
 from typing import Any, Optional
 
@@ -25,6 +26,15 @@ def get_model(name: str):
     detail = registry.describe_model(name)
     if not detail:
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    detail = dict(detail)
+    from tracebi.model_registry import model_path
+
+    path = model_path(name) or model_path(detail.get("name") or name)
+    if path:
+        try:
+            detail["source_file"] = os.path.relpath(path, os.getcwd())
+        except ValueError:
+            detail["source_file"] = path
     return detail
 
 
