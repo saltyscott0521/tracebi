@@ -118,6 +118,11 @@ def test_a_reproducing_artifact_is_what_desk_opens(tmp_path):
         "report_name": "note",
         "sections": [{"title": "prose"}],
     }), encoding="utf-8")
+    # A reproduces receipt with no HTML beside it is not a review item.
+    kept_manifest = tmp_path / "output" / "kept.html.manifest.json"
+    (tmp_path / "output" / "ghost.html.manifest.json").write_text(
+        kept_manifest.read_text(encoding="utf-8"), encoding="utf-8",
+    )
 
     body = review(str(tmp_path), models={"desk_model": model})
     assert body["open"]["report"] == "kept"

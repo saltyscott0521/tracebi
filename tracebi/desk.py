@@ -122,19 +122,20 @@ def _verdicts(root: str, models: Mapping[str, Any]) -> tuple[Optional[dict], lis
             "detail": detail,
             "path": _rel(root, path),
         }
-        if verdict == "reproduces" and os.path.isfile(html_path):
-            try:
-                mtime = os.path.getmtime(html_path)
-            except OSError:
-                mtime = 0.0
-            if mtime >= opened_mtime:
-                opened_mtime = mtime
-                opened = {
-                    "report": report,
-                    "verdict": "reproduces",
-                    "html_path": _rel(root, html_path),
-                    "manifest_path": _rel(root, path),
-                }
+        if verdict == "reproduces":
+            if os.path.isfile(html_path):
+                try:
+                    mtime = os.path.getmtime(html_path)
+                except OSError:
+                    mtime = 0.0
+                if mtime >= opened_mtime:
+                    opened_mtime = mtime
+                    opened = {
+                        "report": report,
+                        "verdict": "reproduces",
+                        "html_path": _rel(root, html_path),
+                        "manifest_path": _rel(root, path),
+                    }
             continue
         waiting.append(row)
     return opened, waiting
