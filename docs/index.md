@@ -71,6 +71,7 @@ Deep design documents. Written for someone changing the framework, not using it.
 
 - [[report-architecture-v2]] — the current report artifact design
 - [[production-plan]] — how the agent-report product gets to production
+- [[next-level-plan]] — the product direction: agents build repeatable reports that replace recurring BI
 - [[product-readiness-audit]] — product fit, findings, and the checklist to a sellable product
 - [[large-detail-artifacts]] — how big datasets ship inside one HTML file
 - [[frontend-surfaces]] — the three separate front ends and why

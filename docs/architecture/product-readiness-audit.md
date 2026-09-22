@@ -6,6 +6,11 @@ tested, honest core that no close competitor ships: per-figure receipts, a
 almost all *outside* the engine: a release, a hosted demo that's always up, a
 reader experience written for non-engineers, and one sharply chosen buyer.**
 
+> **Positioning superseded (2026-09-22):** the buyer, positioning and
+> "what not to do" sections below are replaced by [[next-level-plan]], which
+> targets agents building repeatable reports that replace recurring BI. The
+> findings stand.
+
 This audit sits alongside [[production-plan]] (the engineering sequence) and
 [[ROADMAP]] (the historical backlog). It covers what those don't: fitness as a
 *product*, the non-technical experience, and the checklist between here and

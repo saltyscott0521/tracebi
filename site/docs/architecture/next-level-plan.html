@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Next-level plan: agents build the BI — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Decisions">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a class="on" href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
+<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
+<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="next-level-plan-agents-build-the-bi">Next-level plan: agents build the BI</h1>
+<p><strong>Status: plan (2026-09-22).</strong> TraceBi's next goal: be the framework
+agents use to build <strong>repeatable reports</strong>, and replace the BI tool for
+recurring reporting.</p>
+<p>This plan sets the product direction. <a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a> still sequences
+the report-engine work inside it. Where this plan disagrees with
+<strong>ROADMAP</strong> on positioning, this plan wins. The ROADMAP's line "don't pitch
+a Tableau replacement" is deliberately reversed, and narrowed to recurring
+reporting.</p>
+<hr>
+<h2 id="1-positioning">1. Positioning</h2>
+<blockquote>
+<p><strong>Your BI tool, written by agents and approved by people.</strong> Ask for a report
+in plain words. An agent builds it as code against your definitions. A person
+approves it. It then refreshes and delivers itself on schedule.</p>
+</blockquote>
+<ul>
+<li><strong>What it replaces:</strong> the recurring layer of BI. That's the weekly KPI pack,
+  the monthly investor report, the board deck numbers, the dashboard that's
+  rebuilt by hand every quarter. Most BI seats exist to maintain these.</li>
+<li><strong>Why agents change the math:</strong> BI tools are built on the assumption that
+  authoring is expensive, so they offer drag-and-drop for humans. Agents make
+  authoring cheap. What stays scarce is <strong>consistency</strong> (the same definitions
+  everywhere), <strong>review</strong> (someone approved this), and <strong>repeatability</strong> (it
+  runs itself next month). TraceBi is built on those three.</li>
+<li><strong>What it doesn't replace:</strong> drag-and-drop exploration by humans. The Ask
+  box, backed by an agent, answers the ad hoc question. It doesn't draw charts
+  by hand.</li>
+</ul>
+<h2 id="2-user-types">2. User types</h2>
+<table>
+<thead>
+<tr>
+<th>User</th>
+<th>Job</th>
+<th>Main surface</th>
+<th>Must have (❌ = not built yet)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Requester</strong> (business user)</td>
+<td>"I need a weekly view of X."</td>
+<td>Web app: request form, Ask</td>
+<td>❌ request inbox that turns a sentence into an agent task</td>
+</tr>
+<tr>
+<td><strong>Reader</strong> (exec, client, LP)</td>
+<td>Reads the numbers, often by email</td>
+<td>Delivered HTML, Slack, the web viewer</td>
+<td>❌ scheduled delivery, ❌ per-recipient versions</td>
+</tr>
+<tr>
+<td><strong>Approver</strong> (data owner)</td>
+<td>Signs off on definitions and new reports</td>
+<td>Pull request, Desk</td>
+<td>❌ review in the app, not only on GitHub</td>
+</tr>
+<tr>
+<td><strong>Builder</strong> (analytics engineer)</td>
+<td>Owns the warehouse link, the models, the hard cases</td>
+<td>Repo, CLI, <code>tracebi dev</code></td>
+<td>✅ largely built</td>
+</tr>
+<tr>
+<td><strong>Agent</strong></td>
+<td>Authors and maintains reports</td>
+<td>MCP gateway, <code>AGENTS.md</code>, skills</td>
+<td>✅ authoring loop. ❌ can't fix a failing scheduled run on its own</td>
+</tr>
+<tr>
+<td><strong>Admin</strong></td>
+<td>Deploys, connects data, sets access</td>
+<td>Config, CLI, admin page</td>
+<td>❌ SSO, row-level security, secrets management</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The agent is a user type, not a feature.</strong> Every surface is designed for
+two readers: the person, and the agent acting for them.</p>
+<h2 id="3-the-repeatable-report-loop">3. The repeatable-report loop</h2>
+<p>This is the product. Every step must work without the builder in the loop.</p>
+<pre><code> REQUEST ──▶ AUTHOR ──▶ REVIEW ──▶ PUBLISH ──▶ RUN ──▶ DELIVER ──▶ MONITOR
+ requester   agent      approver   merge       schedule  email/     failure or
+ in plain    writes     reads the  to main     refresh + Slack/     drift → agent
+ words       model +    diff                   build     web        opens a fix PR
+             report
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Today</th>
+<th>Gap to close</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Request</td>
+<td>Ask on one report</td>
+<td>Request inbox. Each request becomes an agent task tied to a branch.</td>
+</tr>
+<tr>
+<td>Author</td>
+<td>MCP gateway, <code>build_report</code>, <code>workbench_state</code>, model hot-reload</td>
+<td>Report templates to start from. Agent can scaffold a model from warehouse metadata.</td>
+</tr>
+<tr>
+<td>Review</td>
+<td>Git pull request, Desk pins</td>
+<td>GitHub App: agent opens the PR, and the app shows the rendered preview and model diff in plain language.</td>
+</tr>
+<tr>
+<td>Publish</td>
+<td>Discovery at server startup</td>
+<td>Publish on merge: server pulls <code>main</code> and reloads. No restart.</td>
+</tr>
+<tr>
+<td>Run</td>
+<td><code>registry.scheduled()</code> stores a cron string that <strong>nothing executes</strong></td>
+<td><strong>Report runner</strong>: on schedule, refresh the source, build, check, record the run.</td>
+</tr>
+<tr>
+<td>Deliver</td>
+<td><code>tracebi report send</code> (SMTP/Slack) by hand</td>
+<td><code>deliver</code> block per report: recipients, channel, format, and per-recipient parameters ("bursting").</td>
+</tr>
+<tr>
+<td>Monitor</td>
+<td><code>tracebi verify</code>, run history for pipelines</td>
+<td>Report run history, alerts on failure, empty data or threshold breach. Agent gets the failure and proposes a fix PR.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-architecture">4. Architecture</h2>
+<pre><code>┌──────────────────────── Git repo (source of truth) ────────────────────────┐
+│ transforms/  models/  reports/&lt;name&gt;/{report.json, template.html, schedule} │
+└──────────────▲──────────────────────────────────────────────▲──────────────┘
+               │ PRs (agent via GitHub App)                    │ pull on merge
+┌──────────────┴──────────┐   ┌───────────────────────────────┴──────────────┐
+│ Agent gateway (MCP)     │   │ TraceBi server                                │
+│ context · query · build │◀─▶│ API + web app: Desk, Reports, Ask, Requests   │
+│ validate · run · status │   │ Runner/scheduler workers (report jobs)        │
+└──────────────┬──────────┘   │ Delivery: email · Slack · Teams · webhook     │
+               │              │ Auth: SSO/OIDC · roles · row-level policies   │
+               ▼              └───────┬───────────────────────────┬──────────┘
+┌──────────────────────────┐          │                           │
+│ Engine (the library)     │◀─────────┘                   ┌───────▼────────┐
+│ DataModel · query compiler│                             │ State store     │
+│ report build · receipts   │                             │ Postgres: runs, │
+└──────────────┬───────────┘                              │ schedules, users│
+               │ read-only SQL                            │ requests, audit │
+┌──────────────▼───────────────────────────────────────┐  └────────────────┘
+│ Customer data: Snowflake · BigQuery · Postgres ·      │
+│ Databricks · DuckDB file · dbt marts                  │
+└───────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Decisions</strong></p>
+<ol>
+<li><strong>Git is the source of truth. The server never edits a report in
+   place.</strong> Every change, from an agent or from a person, arrives as a
+   PR. This is what makes reports repeatable and reviewable, and it's the line
+   against BI tools, where the logic lives inside the tool.</li>
+<li><strong>Push queries down to the warehouse.</strong> Today a model query loads the fact
+   table into Python (simple filters are pushed down, aggregation isn't), and
+   that doesn't scale to a warehouse. Add a <strong>query compiler</strong>: <code>DataModel</code>
+   query → SQL in the warehouse's dialect, run where the data lives, with
+   results cached per run. Keep in-process DuckDB for local projects.</li>
+<li><strong>Phase ① is optional.</strong> Most teams already have dbt or warehouse tables.
+   A model can point at existing tables directly, or import dbt marts as the
+   sink. <code>transforms/</code> stays available for teams without a warehouse.</li>
+<li><strong>Schedules and delivery live in the repo.</strong> A <code>schedule</code> and <code>deliver</code>
+   block in <code>report.json</code> means a reviewer approves <em>when</em> and <em>to whom</em>
+   along with <em>what</em>. The runner reads them. Nothing is configured by
+   clicking.</li>
+<li><strong>Parameters are the existing filter grammar.</strong> A report declares
+   parameters (for example <code>fund</code>, <code>region</code>, <code>period</code>). Delivery fans out one
+   build per recipient value. Row-level policies use the same grammar, keyed
+   on the viewer's identity.</li>
+<li><strong>One engine, three runtimes.</strong> The same library runs in the CLI, the
+   server's workers, and the gateway. The server adds state, identity and
+   schedules. It adds no second query path.</li>
+<li><strong>Postgres for anything with more than one process.</strong> SQLite remains for
+   local use only (see "Running More Than One Worker" in <code>CLAUDE.md</code>).</li>
+</ol>
+<h2 id="5-deployment">5. Deployment</h2>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>For</th>
+<th>Shape</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Local</strong></td>
+<td>Builder, evaluation</td>
+<td><code>pip install tracebi</code> → <code>tracebi init</code> → <code>tracebi serve</code></td>
+<td>✅ works, not on PyPI yet</td>
+</tr>
+<tr>
+<td><strong>Self-hosted team</strong></td>
+<td>First production users</td>
+<td>One Docker image (web + workers) + Postgres + a git checkout. Docker Compose, Helm chart, one-click Railway/Render</td>
+<td>Partly: Dockerfile, compose, Railway, Vercel exist. Workers, Helm and git sync to build.</td>
+</tr>
+<tr>
+<td><strong>TraceBi Cloud</strong></td>
+<td>Teams without ops capacity</td>
+<td>Managed server and workers. Customer connects the warehouse (read-only credentials) and the GitHub repo. Data stays in the warehouse. Only results and receipts are stored.</td>
+<td>To build, after self-hosted is proven</td>
+</tr>
+<tr>
+<td><strong>Customer VPC</strong></td>
+<td>Regulated buyers</td>
+<td>Cloud's control plane with workers inside the customer's network</td>
+<td>Later, when a buyer requires it</td>
+</tr>
+</tbody>
+</table>
+<p>Rule: <strong>anything in Cloud must also run self-hosted.</strong> Cloud sells
+operations, identity and retention, not features held back from the
+library.</p>
+<h2 id="6-distribution">6. Distribution</h2>
+<p><strong>Open core.</strong> The library, CLI, gateway and self-hosted server are MIT.
+Paid features: Cloud, SSO/SCIM, row-level security at scale, audit
+retention, and support.</p>
+<p>Channels, in order of leverage:</p>
+<ol>
+<li><strong>Where agents already are.</strong> Publish the MCP server to the MCP registries
+   and the Claude/Cursor/VS Code catalogs. Ship <code>skills/tracebi-analyst</code> and an
+   "author a report" skill as installable packs. The pitch to a developer: <em>add
+   one MCP server, and your agent can build governed reports.</em></li>
+<li><strong>PyPI and GitHub.</strong> <code>pip install tracebi</code>, tagged releases, a Docker
+   image on GHCR, a template repo ("Use this template" → working project).</li>
+<li><strong>Report template gallery.</strong> Ready-made report packs by domain (SaaS
+   metrics, finance close, fund/LP reporting, sales pipeline, marketing
+   funnel), each a model plus reports an agent adapts to the customer's
+   tables. Templates are the growth loop: each one is a landing page and a
+   starting point.</li>
+<li><strong>The dbt community.</strong> "Point TraceBi at your dbt marts" is the shortest
+   path to a team that already has clean data and no BI they like.</li>
+<li><strong>Design partners.</strong> Five teams migrating their recurring BI reports.
+   Measure the reports moved, and the hours per month no longer spent
+   maintaining them.</li>
+</ol>
+<p><strong>Pricing hypothesis (Cloud):</strong> per <em>active scheduled report</em>, not per seat.
+Readers are free. That makes BI seat costs the thing TraceBi removes, and
+aligns price with repeatable value.</p>
+<h2 id="7-stages">7. Stages</h2>
+<p>Each stage ends with a demo that works end to end. Build in order.</p>
+<p><strong>Stage 1: Repeatable (runs itself)</strong>
+- Report runner: <code>schedule</code> block → refresh → build → check → record the
+  run → <code>deliver</code> (email, Slack) with retries.
+- Parameters and per-recipient delivery.
+- Report run history and failure alerts in the app.
+- PyPI 0.6.0 release. Docker image with workers.
+- <em>Done when:</em> a report scheduled in <code>report.json</code> arrives in an inbox every
+  Monday without anyone touching it, and a failure alerts the owner.</p>
+<p><strong>Stage 2: On your warehouse</strong>
+- Query compiler with push-down for Snowflake, BigQuery and Postgres, plus a
+  per-run result cache.
+- Model points at existing tables. dbt marts import. Model scaffold from
+  warehouse metadata (agent drafts it, a person approves).
+- Add Databricks and Redshift connectors.
+- <em>Done when:</em> a 1-billion-row fact table in Snowflake backs a scheduled
+  report that builds in under a minute, with no transform written.</p>
+<p><strong>Stage 3: Agent-run team workflow</strong>
+- Request inbox → agent task → PR through the GitHub App → preview in the
+  app → approve → publish on merge.
+- Monitor loop: a failed or drifted run becomes an agent fix PR.
+- Template gallery (five domains). MCP registry listings.
+- <em>Done when:</em> a business user types a request, and a reviewed, scheduled
+  report reaches them. The builder never opens an editor.</p>
+<p><strong>Stage 4: Replace the BI tool</strong>
+- SSO/OIDC, row-level security from identity, per-report sharing, a
+  catalog with owners and usage.
+- Embedding (signed-URL iframe), Microsoft Teams delivery, PDF export.
+- Migration assistant: the agent reads an exported Tableau/Power BI/Looker
+  definition and drafts the model and report.
+- TraceBi Cloud general availability.
+- <em>Done when:</em> a design partner switches off BI seats for its recurring
+  reporting.</p>
+<h2 id="8-what-we-wont-build">8. What we won't build</h2>
+<ul>
+<li>A drag-and-drop chart editor. Agents author, people approve.</li>
+<li>A second query path in the browser or the server. The engine is the only
+  calculator.</li>
+<li>Writes to the customer's warehouse from agents or from Cloud.</li>
+<li>Features that exist only in Cloud.</li>
+</ul>
+<h2 id="9-metrics">9. Metrics</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scheduled reports active</td>
+<td>The unit of value, and of pricing</td>
+</tr>
+<tr>
+<td>Scheduled runs delivered on time</td>
+<td>Proof of repeatability</td>
+</tr>
+<tr>
+<td>Request → published report (median hours)</td>
+<td>Proof that agents author</td>
+</tr>
+<tr>
+<td>Share of report changes authored by agents</td>
+<td>The thesis</td>
+</tr>
+<tr>
+<td>BI seats switched off at design partners</td>
+<td>Proof of replacement</td>
+</tr>
+</tbody>
+</table>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

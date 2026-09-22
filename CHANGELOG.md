@@ -22,6 +22,9 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   Desk links to it.
 - `docs/guides/demo-script.md`: a click-by-click ten-minute demo for a
   non-technical audience.
+- `docs/architecture/next-level-plan.md`: the product plan. It covers user
+  types, the repeatable-report loop, architecture, deployment, distribution,
+  and stages toward replacing recurring BI.
 - `docs/architecture/product-readiness-audit.md`: product fit, ranked findings,
   and the checklist from here to a product a company can buy.
 
