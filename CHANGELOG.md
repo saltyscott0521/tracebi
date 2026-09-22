@@ -6,6 +6,25 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Fixed — the report download button, and what the offline check needs
+
+- The Reports page's **↓ HTML (with receipt)** button rendered white on white
+  because it used an undefined `--accent` CSS variable. It now uses `--blue`,
+  like the app's other primary buttons.
+- `tracebi init` and the Receipts page said `verify --file` needs only the
+  `.html`. It reads the `.manifest.json` beside it too, and the wording now
+  says so.
+
+### Added — docs for readers who don't code
+
+- `docs/guides/plain-english.md`: what TraceBi does, and a glossary, for
+  readers, approvers and buyers. It's the first guide in the Docs page, and the
+  Desk links to it.
+- `docs/guides/demo-script.md`: a click-by-click ten-minute demo for a
+  non-technical audience.
+- `docs/architecture/product-readiness-audit.md`: product fit, ranked findings,
+  and the checklist from here to a product a company can buy.
+
 ### Removed — **BREAKING**: the `requests/` lane
 
 The ad-hoc request-script lane, deprecated since the reshape, is gone. A

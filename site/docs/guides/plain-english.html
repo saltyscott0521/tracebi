@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TraceBi in plain English — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="TraceBi in plain English">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a class="on" href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
+<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="tracebi-in-plain-english">TraceBi in plain English</h1>
+<p><strong>TraceBi makes reports where every number comes with a receipt, so anyone can
+check later that the number still matches what it was built from.</strong></p>
+<p>This page is for people who read, approve or pay for reports and don't write
+code. No technical background is needed. Engineers should start at
+<a href="../guides/quickstart.html">Quickstart</a>.</p>
+<hr>
+<h2 id="the-problem">The problem</h2>
+<p>AI tools can now write a full report in minutes: charts, tables, headline
+numbers. That is useful. But <strong>a wrong number looks exactly like a right one.</strong>
+A figure the AI got wrong shows up in the same font and the same chart as the
+ones it got right.</p>
+<p>Today, most of the checking happens by memory and by trust. People ask "where
+did this number come from?", someone digs through a spreadsheet, and the answer
+is "I think it was the March export." When reports get made faster than anyone
+can check them, that approach stops working.</p>
+<h2 id="the-idea-in-one-picture">The idea, in one picture</h2>
+<p>Think of a <strong>store receipt</strong>. When you buy something, the receipt lists each
+item and its price, so you can check it against the shelf later. You don't have
+to trust the cashier's memory.</p>
+<p>TraceBi gives every number in a report a receipt like that. The receipt records:</p>
+<ul>
+<li><strong>where the number came from:</strong> which data and which definition (for example
+  "total fair value = the sum of fair value across all holdings"), and</li>
+<li><strong>what came out:</strong> a tamper-evident "fingerprint" of the exact data behind
+  it. If one digit changes, the fingerprint no longer matches.</li>
+</ul>
+<p>Anyone can later ask two questions, and a computer answers them in seconds:</p>
+<ol>
+<li><strong>"If I run this again today, do I get the same number?"</strong> TraceBi calls this
+   <em>reproduces</em>.</li>
+<li><strong>"Has anyone edited the numbers in this file since it was made?"</strong> If
+   someone changed a figure by hand, the check says <em>file altered</em> and points to
+   the figure.</li>
+</ol>
+<h2 id="how-a-report-gets-made-three-steps">How a report gets made: three steps</h2>
+<p>A report travels through three stages. Each one is a separate folder, owned by
+whoever is best at that job.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>In everyday terms</th>
+<th>Who usually does it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Clean</strong> (<code>transforms/</code>)</td>
+<td>Take messy exports and tidy them into clean, well-labelled tables. Like prepping ingredients before cooking.</td>
+<td>An analyst, an engineer or an AI assistant</td>
+</tr>
+<tr>
+<td><strong>2. Define</strong> (<code>models/</code>)</td>
+<td>Write down, once, what each business term means: what "fair value" is, what a "sector" is, how totals add up. Like a recipe card everyone cooks from.</td>
+<td>An analyst, reviewed by someone who knows the business</td>
+</tr>
+<tr>
+<td><strong>3. Present</strong> (<code>reports/</code>)</td>
+<td>Lay out the page: headline numbers, charts, tables. Every number on the page is looked up from step 2, never typed in by hand.</td>
+<td>An analyst or an AI assistant</td>
+</tr>
+</tbody>
+</table>
+<p>Because the definitions in step 2 are written down once, "revenue" means the
+same thing in every report. Nobody can quietly use a different formula on one
+page.</p>
+<h2 id="who-does-what">Who does what</h2>
+<ul>
+<li><strong>The builder</strong> (a person or an AI assistant) prepares the data and designs
+  the report.</li>
+<li><strong>The reviewer</strong> reads the definitions and the finished page, then approves
+  them. The changes arrive as a proposal to approve, edit or reject, the way
+  engineers review code. An AI working through TraceBi's gateway can check its
+  own work, but it has no write access to the data it reports on.</li>
+<li><strong>The reader</strong> gets one file. It opens in any web browser, works offline, and
+  carries its own receipt. They can check it with the <strong>Verify</strong> page in the app
+  by dropping in the report and its receipt file.</li>
+</ul>
+<h2 id="what-the-receipt-does-not-promise">What the receipt does <em>not</em> promise</h2>
+<p>This matters, and TraceBi is deliberately strict about it.</p>
+<ul>
+<li><strong>A receipt shows a number is consistent. It does not show the number is
+  right.</strong> If bad data went in at step 1, the report will faithfully and
+  repeatably show the bad number. The receipt proves it <em>reproduces</em>, not that
+  it is <em>correct</em>.</li>
+<li><strong>Step 1, the cleaning, is checked by people, not by the receipt.</strong> TraceBi
+  can run simple checks on the cleaned tables ("no duplicate holdings", "every
+  holding belongs to a known fund"). When they pass, the phrase is <em>"the sink
+  satisfied its contract."</em> It is not a guarantee that the analysis was right.</li>
+<li><strong>The receipt is made by whoever made the report.</strong> Between two companies it
+  is good documentation, not independent proof. It becomes proof when the
+  person checking also has access to the original data. Signed receipts, which
+  prove <em>who</em> issued them, are planned but not built yet.</li>
+</ul>
+<h2 id="words-you-will-see-in-the-app">Words you will see in the app</h2>
+<table>
+<thead>
+<tr>
+<th>Word in the app</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Receipt</strong> / <strong>manifest</strong></td>
+<td>The record of where each number came from and its fingerprint. Saved as a small <code>.manifest.json</code> file next to the report.</td>
+</tr>
+<tr>
+<td><strong>Fingerprint</strong></td>
+<td>A short code computed from the exact data. Any change to the data gives a different code.</td>
+</tr>
+<tr>
+<td><strong>Reproduces</strong></td>
+<td>Running it again gave exactly the same data.</td>
+</tr>
+<tr>
+<td><strong>File altered</strong></td>
+<td>Someone changed numbers in the file after it was built.</td>
+</tr>
+<tr>
+<td><strong>Unverified</strong></td>
+<td>The author marked this number as not checkable, for example a hand-written note. It is labelled, never hidden.</td>
+</tr>
+<tr>
+<td><strong>Model</strong> / <strong>Contract</strong></td>
+<td>The written-down definitions from step 2: what each measure and category means.</td>
+</tr>
+<tr>
+<td><strong>Measure</strong></td>
+<td>A defined calculation, such as "total fair value" or "average spread".</td>
+</tr>
+<tr>
+<td><strong>Sink</strong> / <strong>warehouse</strong></td>
+<td>The clean tables produced by step 1, stored in one file.</td>
+</tr>
+<tr>
+<td><strong>Contract satisfied / no contract</strong></td>
+<td>Whether the cleaned tables passed their declared checks, or have no checks declared.</td>
+</tr>
+<tr>
+<td><strong>Desk</strong></td>
+<td>The app's home page: what needs a person's attention right now.</td>
+</tr>
+<tr>
+<td><strong>Draft / exploration</strong></td>
+<td>A report still being worked on. It contains scratch work that is removed before publishing.</td>
+</tr>
+<tr>
+<td><strong>Agent</strong></td>
+<td>An AI assistant that builds reports using the same rules as a person.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-one-sentence-version-for-your-boss">The one-sentence version for your boss</h2>
+<blockquote>
+<p>"Our reports are built from written-down definitions, every number carries a
+receipt, and anyone can check in seconds that a number still matches its
+source and hasn't been edited, including numbers an AI produced."</p>
+</blockquote>
+<h2 id="next">Next</h2>
+<ul>
+<li>See it working: <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>, a ten-minute walkthrough you can give to
+  anyone.</li>
+<li>The technical version of this page: <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> and
+  <a href="../concepts/receipts.html">Receipts</a>.</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

@@ -374,8 +374,11 @@ export default function Home() {
               Desk
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.55, maxWidth: '56ch', margin: 0 }}>
-              What needs a person: an open pin, a draft that still explores,
-              a receipt that does not reproduce, a sink that is stale or has no contract.
+              What needs a person: an open review note, a draft still in progress,
+              a receipt that no longer matches, clean data whose checks are stale or missing.
+              {' '}<Link to="/handbook" style={{ color: 'var(--accent-text)', textDecoration: 'none' }}>
+                New here? TraceBi in plain English →
+              </Link>
             </p>
             <div style={{ marginTop: 14, minHeight: 18 }}>
               {lr

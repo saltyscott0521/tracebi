@@ -27,7 +27,7 @@ const HIDDEN = new Set(['north-star', 'ROADMAP'])
 const WIKI_PREFIX = 'tb-doc:'
 
 // Within a section, lead with the page that orients you.
-const FIRST = { concepts: 'the-three-phase-workflow', guides: 'quickstart' }
+const FIRST = { concepts: 'the-three-phase-workflow', guides: 'plain-english' }
 
 const clean = t => (t || '').replace(/`/g, '')
 

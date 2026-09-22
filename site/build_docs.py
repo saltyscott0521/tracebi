@@ -48,7 +48,7 @@ SECTIONS = [
 ]
 
 #: Within a section, the page that orients you comes first.
-FIRST = {"concepts": "the-three-phase-workflow", "guides": "quickstart"}
+FIRST = {"concepts": "the-three-phase-workflow", "guides": "plain-english"}
 
 
 def _require_markdown():

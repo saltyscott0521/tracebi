@@ -16,6 +16,8 @@ request, versioned, tested, and authored as easily by an agent as by a person.
 
 | If you want to… | Read |
 | --- | --- |
+| Understand TraceBi without a technical background | [[plain-english]] |
+| Show TraceBi to someone in ten minutes | [[demo-script]] |
 | Understand what TraceBi is in five minutes | [[the-three-phase-workflow]] |
 | Get something running | [[quickstart]] |
 | Build your first report | [[your-first-report]] |
@@ -38,6 +40,8 @@ The ideas. Read these once and the rest of the docs make sense.
 
 Task-shaped walkthroughs.
 
+- [[plain-english]] — what TraceBi does, for readers and approvers who don't code
+- [[demo-script]] — a click-by-click ten-minute demo for a non-technical audience
 - [[quickstart]] — install, scaffold, and build one report
 - [[your-first-report]] — author a report package end to end
 - [[styling-a-report]] — your own CSS and JS, and where the framework stops
@@ -67,6 +71,7 @@ Deep design documents. Written for someone changing the framework, not using it.
 
 - [[report-architecture-v2]] — the current report artifact design
 - [[production-plan]] — how the agent-report product gets to production
+- [[product-readiness-audit]] — product fit, findings, and the checklist to a sellable product
 - [[large-detail-artifacts]] — how big datasets ship inside one HTML file
 - [[frontend-surfaces]] — the three separate front ends and why
 - [[report-generator-architecture]] — superseded; kept for its kernel sections

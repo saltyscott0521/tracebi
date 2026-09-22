@@ -463,7 +463,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(f"  python transforms/sample_transform.py  # ① clean + sink the sample input")
     print(f"  tracebi report build sample_dashboard  # ③ render + receipt")
     print(f"  tracebi verify output/sample_dashboard.html.manifest.json   # re-run the queries")
-    print(f"  tracebi verify --file output/sample_dashboard.html          # a reviewer's offline check (needs only the .html)")
+    print(f"  tracebi verify --file output/sample_dashboard.html          # a reviewer's offline check (the .html + its .manifest.json)")
     print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
     print(f"AGENTS.md orients an AI agent working in this project.")
     return 0
