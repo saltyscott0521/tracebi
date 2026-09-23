@@ -20,7 +20,7 @@ REQUEST → AUTHOR → REVIEW → PUBLISH → RUN → DELIVER → MONITOR
 | **Author** | An agent writes the model and report | MCP gateway, package grammar, validation, `tracebi dev` | Templates, model scaffold from warehouse metadata | Q1–Q2 |
 | **Review** | A person approves | Git pull request, Desk pins | Plain-language review in the app: rendered preview, what changed, which definitions it uses | Q3 |
 | **Publish** | Merge makes it live | Server discovers at startup | Publish on merge, no restart | Q3 |
-| **Run** | It refreshes and builds on schedule | ✅ `schedule` block, `tracebi schedule run / serve` | Refresh before build, retries, run history in the app | Q1 |
+| **Run** | It refreshes and builds on schedule | ✅ `schedule` block, `tracebi schedule run / serve`, refresh before build | Retries, run history in the app | Q1 |
 | **Deliver** | It reaches readers | ✅ Email with the report attached | Slack/Teams, links, in-body summary, per-recipient versions | Q1–Q2 |
 | **Monitor** | Failures and surprises get handled | Run log, `tracebi verify` | Alerts on failure, empty data and thresholds. Agent opens a fix PR. | Q3 |
 

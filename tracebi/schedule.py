@@ -11,12 +11,20 @@ A package opts in with a ``schedule`` block in its ``report.json``::
 
 ``cron`` is required (five fields). ``timezone`` is an IANA name, default
 UTC. ``to`` is optional: without it a run rebuilds the artifact and records
-the run, and delivers nothing.
+the run, and delivers nothing. ``refresh`` is optional::
+
+    "refresh": {"transforms": ["holdings_transform"], "pipelines": ["sales_etl"]}
+
+names what to run BEFORE the build so the report shows fresh data: each
+transform (``tracebi run-transform``), then each pipeline (``tracebi
+run-pipeline``), in order, each in a fresh process. A step that fails —
+including a sink contract that refuses the new data — fails the run, and
+nothing is built or sent.
 
 The schedule lives in the repo beside the bindings, so a reviewer approves
 *when* and *to whom* in the same pull request as *what*.
 
-One run is: build → verify → deliver → record. It is ``tracebi report
+One run is: refresh → build → verify → deliver → record. It is ``tracebi report
 send`` with the recipients read from the package, and the same rule —
 distribution never outruns verification: a receipt that does not verify is
 recorded as ``refused`` and nothing is sent. Every run appends one JSON line
@@ -39,17 +47,19 @@ from typing import Callable, Optional, Union
 DELIVERED = "delivered"   # built, verified, sent
 BUILT = "built"           # built and verified; no recipients, or --no-send
 REFUSED = "refused"       # built; the receipt did not verify, nothing sent
-FAILED = "failed"         # the build, verify, or send raised
+FAILED = "failed"         # a refresh step failed, or the build, verify or send raised
 
 RUN_LOG = "schedule_runs.jsonl"
 
-_ALLOWED_KEYS = {"cron", "timezone", "to"}
+_ALLOWED_KEYS = {"cron", "timezone", "to", "refresh"}
+_REFRESH_KINDS = ("transforms", "pipelines")
 
 
 def parse_schedule_block(raw, *, path: str) -> dict:
     """Validate a package's ``schedule`` block; return it normalized.
 
-    Returns ``{"cron": str, "timezone": str | None, "to": list[str]}``.
+    Returns ``{"cron": str, "timezone": str | None, "to": list[str],
+    "refresh": {"transforms": list[str], "pipelines": list[str]}}``.
     Raises ``ValueError`` naming *path* and the fix.
     """
     if not isinstance(raw, dict):
@@ -95,7 +105,17 @@ def parse_schedule_block(raw, *, path: str) -> dict:
         raise ValueError(
             f"{path}: schedule 'to' must be a list of email addresses."
         )
-    return {"cron": " ".join(cron.split()), "timezone": tz, "to": list(to)}
+    refresh = raw.get("refresh", {})
+    if not isinstance(refresh, dict) or set(refresh) - set(_REFRESH_KINDS) or any(
+            not isinstance(refresh.get(k, []), list)
+            or not all(isinstance(n, str) and n for n in refresh.get(k, []))
+            for k in _REFRESH_KINDS):
+        raise ValueError(
+            f"{path}: schedule 'refresh' must be an object like "
+            f"{{\"transforms\": [\"holdings_transform\"], "
+            f"\"pipelines\": [\"sales_etl\"]}}.")
+    return {"cron": " ".join(cron.split()), "timezone": tz, "to": list(to),
+            "refresh": {k: list(refresh.get(k, [])) for k in _REFRESH_KINDS}}
 
 
 def discover_schedules(reports_dir: Union[str, Path]) -> tuple[list[dict], list[dict]]:
@@ -162,7 +182,7 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
                  output_dir: Union[str, Path],
                  models_dir: Union[str, Path, None] = None,
                  send: bool = True) -> dict:
-    """Run one schedule now: build → verify → deliver → record.
+    """Run one schedule now: refresh → build → verify → deliver → record.
 
     Returns the run record (also appended to the run log). Never raises for
     a failed run — the failure is the record's ``status`` and ``error``, so
@@ -176,6 +196,7 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
         "report": name, "started_at": _now(), "finished_at": None,
         "status": FAILED, "verdict": None, "recipients": [],
         "output": None, "error": None, "actor": user, "actor_role": role,
+        "refresh": [],
     }
     try:
         _run(schedule, record, Path(reports_dir), Path(output_dir),
@@ -195,6 +216,8 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
 
     name = schedule["report"]
     kind, path = _resolve_report_target(name, reports_dir)
+    if not _refresh(schedule.get("refresh") or {}, record):
+        return                           # status stays FAILED, error says why
     output = output_dir / f"{name}.html"
     _build_report_target(kind, path, output)
     manifest_path = output.with_name(output.name + ".manifest.json")
@@ -225,6 +248,32 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
                                   f"{result['verdict'].upper().replace('_', ' ')}")
         except Exception as exc:  # noqa: BLE001 — the report already went out
             record["error"] = f"slack notify failed (report was sent): {exc}"
+
+
+def _refresh(refresh: dict, record: dict) -> bool:
+    """Run the schedule's refresh steps in order, each in a fresh process —
+    the same commands a person runs, so a transform's sink contract still
+    guards what lands. Returns False (with ``record["error"]`` set) at the
+    first step that fails; later steps and the build do not run."""
+    import subprocess
+    import sys
+    import time
+
+    steps = [("transform", "run-transform", n) for n in refresh.get("transforms", [])]
+    steps += [("pipeline", "run-pipeline", n) for n in refresh.get("pipelines", [])]
+    for kind, command, name in steps:
+        started = time.monotonic()
+        proc = subprocess.run([sys.executable, "-m", "tracebi.cli", command, name],
+                              capture_output=True, text=True)
+        ok = proc.returncode == 0
+        record["refresh"].append({"step": f"{kind}:{name}", "ok": ok,
+                                  "seconds": round(time.monotonic() - started, 2)})
+        if not ok:
+            tail = (proc.stderr or proc.stdout).strip().splitlines()[-3:]
+            record["error"] = (f"refresh {kind} '{name}' failed, so nothing was "
+                               f"built or sent: " + " | ".join(tail))
+            return False
+    return True
 
 
 def build_scheduler(schedules: list[dict], job: Callable[[dict], object],

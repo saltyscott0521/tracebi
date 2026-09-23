@@ -216,9 +216,12 @@ runs and who receives it in `report.json`:
 `"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
 "to": ["cfo@example.com"]}` (`to` optional: without it a run only rebuilds).
 The reviewer approves when and to whom in the same diff as what.
-`tracebi schedule run <name>` runs it now (build → verify → email → record
-in `output/schedule_runs.jsonl`); a receipt that does not verify is
-recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
+Add `"refresh": {"transforms": ["<name>"], "pipelines": ["<name>"]}` to
+run those first, so the report shows fresh data; a failed step (including a
+sink contract that refuses the new data) fails the run before anything is
+built or sent. `tracebi schedule run <name>` runs it now (refresh → build →
+verify → email → record in `output/schedule_runs.jsonl`); a receipt that
+does not verify is recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 `tracebi verify` is the point: it re-runs the recorded queries and confirms

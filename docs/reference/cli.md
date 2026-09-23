@@ -223,7 +223,8 @@ tracebi schedule run <name> [--no-send]     # build → verify → email → rec
 tracebi schedule serve                      # run every schedule until Ctrl+C
 ```
 
-Reads the `schedule` block in each package's `report.json` (see
+A run is refresh → build → verify → email → record. It reads the `schedule`
+block in each package's `report.json` (see
 [[report-json]]). A run is `report send` with
 the recipients taken from the package: a receipt that does not verify is
 recorded `refused` and nothing is sent. Every run appends one line to

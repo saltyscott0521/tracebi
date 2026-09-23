@@ -141,7 +141,8 @@ The build itself ignores it.</p>
 <pre><code class="language-json">&quot;schedule&quot;: {
   &quot;cron&quot;: &quot;0 9 * * MON&quot;,
   &quot;timezone&quot;: &quot;America/New_York&quot;,
-  &quot;to&quot;: [&quot;cfo@example.com&quot;]
+  &quot;to&quot;: [&quot;cfo@example.com&quot;],
+  &quot;refresh&quot;: {&quot;transforms&quot;: [&quot;holdings_transform&quot;]}
 }
 </code></pre>
 <table>
@@ -164,10 +165,15 @@ The build itself ignores it.</p>
 <td><code>to</code></td>
 <td>Optional list of email addresses. Without it, a run rebuilds the artifact and records the run, and sends nothing.</td>
 </tr>
+<tr>
+<td><code>refresh</code></td>
+<td>Optional. <code>{"transforms": [...], "pipelines": [...]}</code> to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (<code>tracebi run-transform</code> / <code>tracebi run-pipeline</code>). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent.</td>
+</tr>
 </tbody>
 </table>
-<p>Any other field, a cron that isn't five fields, an unknown time zone or an
-address with no <code>@</code> is refused when the package loads.</p>
+<p>Any other field, a cron that isn't five fields, an unknown time zone, an
+address with no <code>@</code> or a malformed <code>refresh</code> is refused when the package
+loads. A <code>refresh</code> name that doesn't exist fails the run, not the load.</p>
 <hr>
 <h2 id="what-is-checked-and-when">What is checked, and when</h2>
 <p>Checked when the package <strong>loads</strong> (before any query runs):</p>

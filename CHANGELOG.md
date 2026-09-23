@@ -6,6 +6,16 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — scheduled reports refresh their data first
+
+A `schedule` block can name what to run before the build:
+`"refresh": {"transforms": ["holdings_transform"], "pipelines": ["sales_etl"]}`.
+Transforms run first, then pipelines, each in a fresh process through the same
+commands a person runs (`tracebi run-transform`, `tracebi run-pipeline`), so a
+sink contract still guards what lands. A failed step fails the run before
+anything is built or sent, and the run log records each step with its time.
+The portfolio showcase's schedule refreshes `holdings_transform`.
+
 ### Added — fonts and images in reports, and a showcase that uses them
 
 - **`assets/` in a report package.** `url(assets/…)` in `style.css` and
