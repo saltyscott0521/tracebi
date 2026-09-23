@@ -25,7 +25,7 @@ SCHEDULE ─ review → publish → run → deliver → monitor ┘
 | **Question** | A person asks in plain words, in the app, Slack or their agent tool | Ask on an open report; any MCP agent via `query_model` | Ask anywhere in the app, not only on a report; Slack | Q2–Q3 |
 | **Answer** | The agent queries the model; every number carries its query and fingerprint | ✅ `query_model`, selections on the model | Answers with a small chart or table, and the definition used, in plain words | Q2 |
 | **One-off report** | For a bigger question, the agent builds a report file to share | ✅ `tracebi new-report`, `tracebi dev`, `build_report` | One click from an answer to a shareable report | Q3 |
-| **Keep it** | A useful answer becomes a published report | Manual: add a package and a `schedule` block | "Keep this" opens the pull request for review | Q3 |
+| **Keep it** | A useful answer becomes a published report | Manual: add a package and a `schedule` block | "Keep this" opens a publish request for review | Q3 |
 
 No review per question: an answer uses only definitions a person already
 approved in the model. If the question needs a definition that doesn't exist,
@@ -55,7 +55,7 @@ agent that does the querying, charting and first draft when asked.
 | --- | --- | --- | --- | --- |
 | **Request** | A person asks for a recurring report, or keeps an answer or analysis | Ask on one report | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
 | **Author** | An agent writes the model and report | MCP gateway, package grammar, validation, `tracebi dev` | Templates, model scaffold from warehouse metadata | Q1–Q2 |
-| **Review** | A person approves | Git pull request, Desk pins | Plain-language review in the app: rendered preview, what changed, which definitions it uses | Q3 |
+| **Review** | A person approves | A pull request where a team uses git, Desk pins | Plain-language review in the app: rendered preview, what changed, which definitions it uses | Q3 |
 | **Publish** | Merge makes it live | Server discovers at startup | Publish on merge, no restart | Q3 |
 | **Run** | It refreshes and builds on schedule | ✅ `schedule` block, `tracebi schedule run / serve`, refresh before build | Retries, run history in the app | Q1 |
 | **Deliver** | It reaches readers | ✅ Email with the report attached | Slack/Teams, links, in-body summary, per-recipient versions | Q1–Q2 |
@@ -106,7 +106,8 @@ What a team expects from a BI tool, and our answer.
    approver who doesn't code can approve it.
 5. **Repeatability and proof.** Schedules in the repo, run history, and
    receipts that re-run.
-6. **Ownership.** Plain files in the customer's git. Leaving TraceBi means
+6. **Ownership.** Plain files the customer owns, in their folders or source
+   control. Leaving TraceBi means
    keeping everything.
 
 ## The template gallery

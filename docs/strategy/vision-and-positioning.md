@@ -45,7 +45,7 @@ TraceBi is built around those three. BI tools are built around the editor.
 | Who | Anyone: a sales lead, a CFO | An analyst, usually working with an agent; or an agent on a request | Whoever owns a report that should repeat |
 | Starts with | A question: "What was fair value in Software last quarter?" | A piece of work: a deep dive, a board memo, a client deliverable, a one-off investigation | "Send the sales leads this every Monday." |
 | What happens | An agent queries the model and answers in seconds | The analyst explores live (`tracebi dev`), shapes the story, lays out the page their way, and builds one self-contained file | The report gets a `schedule` block and runs on its own: refresh, build, check, deliver |
-| Review | None per question: it only uses definitions already approved | The analyst's call. Peer review for anything that leaves the team, as with any analysis. | Approved once, in a pull request |
+| Review | None per question: it only uses definitions already approved | The analyst's call. Peer review for anything that leaves the team, as with any analysis. | Approved once, before it is published |
 | Result | An answer with the query and a fingerprint behind every number | A one-off artifact: charts, tables and prose, every number traceable, shareable as one file | A report that arrives on time, every time |
 | Today | Ask on a report; any MCP agent (`query_model`) | ✅ `tracebi new-report`, `tracebi dev` with the workbench, `report build`, custom styling and assets | ✅ `schedule` block, `tracebi schedule` |
 
@@ -85,7 +85,7 @@ repository, so any agent can build on them and any change can be reviewed.
 | Buyer (head of data, CFO, COO) | "Every report your team needs, from one set of definitions: ask it, build it, or schedule it." |
 | Business user | "Ask a question, get a number you can trust, and keep it as a weekly report if it's useful." |
 | Analyst | "Build the analysis your way, with an agent doing the heavy lifting, and every number in it checkable." |
-| Data / analytics engineer | "A semantic model and report format your analysts and agents can write, with PR review and a scheduler built in." |
+| Data / analytics engineer | "A semantic model and report format your analysts and agents can write, with review before publishing and a scheduler built in." |
 | Agent developer | "Add one MCP server and your agent can answer questions and build governed reports." |
 | Skeptic | "Every number comes from a declared definition, every scheduled report is reviewed, and every number can be re-run to prove it." |
 
@@ -112,10 +112,10 @@ These decide trade-offs when the documents don't.
    reviewed. A question answered from approved definitions is not held up
    waiting for one, and a one-off analysis follows the team's own review
    habits.
-3. **Everything kept is code in the customer's repo.** Definitions,
-   analyses, scheduled reports and recipients live in files, are reviewable
-   in pull requests, and are versioned by git. The server never edits them in
-   place.
+3. **Everything kept is files the customer owns.** Definitions, analyses,
+   scheduled reports and recipients live in files, in folders or in source
+   control (never required, and git on any host when used). A published file
+   changes only through an approved publish, and every version is kept.
 4. **One definition, one calculator.** A measure is declared once, and the
    engine is the only thing that computes it, for a quick answer and a
    published report alike. No second query path in the browser or the server.

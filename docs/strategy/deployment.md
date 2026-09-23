@@ -11,8 +11,8 @@ them. Nothing is Cloud-only except running it for you.**
 | Tier | For | What runs | Who operates it | Available |
 | --- | --- | --- | --- | --- |
 | **Local** | Builders trying it, solo analysts | `pip install tracebi`, `tracebi serve`, DuckDB or a database connection, SQLite state | The user | Now (from git). PyPI in Q1. |
-| **Self-hosted** | Teams with an engineer and a cloud account | One Docker image (web + workers) + Postgres + a git checkout | The customer | Q1 (image), Q2 (workers + Postgres state) |
-| **TraceBi Cloud** | Teams without ops capacity | Managed deployment per customer; connects to their warehouse and GitHub | Us | Private beta Q3, GA Q4 |
+| **Self-hosted** | Teams with an engineer and a cloud account | One Docker image (web + workers) + Postgres + a report library (a folder, a network share or a source control checkout) | The customer | Q1 (image), Q2 (workers + Postgres state) |
+| **TraceBi Cloud** | Teams without ops capacity | Managed deployment per customer; connects to their warehouse, and to their source control if they use one | Us | Private beta Q3, GA Q4 |
 | **Customer VPC** | Regulated or security-strict buyers | Cloud's management, with workers in the customer's network | Shared | When a paying customer requires it |
 
 ## Self-hosted: the reference deployment
@@ -31,7 +31,8 @@ them. Nothing is Cloud-only except running it for you.**
       ┌──────▼─────┐  ┌─────▼──────────────┐
       │ Postgres   │  │ customer warehouse │ read-only
       └────────────┘  └────────────────────┘
-      + a git checkout of the project, synced on merge (webhook or poll)
+      + the report library: a folder, a network share, or a source control
+        checkout synced on publish (webhook or poll)
 ```
 
 **Packaging:**
@@ -56,8 +57,8 @@ platform. The customer connects:
 
 1. **Their warehouse**, with read-only credentials stored in the platform's
    secret store.
-2. **Their GitHub repo**, through the TraceBi GitHub App. Or we host a repo
-   for teams without one.
+2. **Their source control, if they use one** (git on any host first). Teams
+   without one get a hosted library with TraceBi's own version history.
 3. **Their identity provider** (Q4). Before that, email sign-in.
 
 **What Cloud stores:** run history, receipts, delivered artifacts (for the

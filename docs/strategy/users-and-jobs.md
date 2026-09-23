@@ -33,7 +33,7 @@ What an agent needs from TraceBi:
 | Write in a closed, checkable format | Package grammar (`report.json` + `data-tb-*`), validation before execution | ✅ |
 | Get told exactly what's wrong | Errors with a repair path (`sections[0].data.query.fact`) | ✅ |
 | Check its own work | `build_report`, `verify_manifest`, `workbench_state` | ✅ |
-| Take a request and open a PR | Request inbox + GitHub App | ❌ Q3 |
+| Take a request and propose a report | Request inbox + publish requests (a pull request where the team uses git) | ❌ Q3 |
 | Fix a report that broke overnight | Run failure → agent task with the error and the last good run | ❌ Q3 |
 | Start from a known-good pattern | Template gallery | ❌ Q1 |
 
@@ -80,13 +80,13 @@ live exploration link are Q2.
 ### 4. A new recurring report (requester → agent → approver)
 
 The requester types "weekly pipeline by region, to the sales leads" → an agent
-task starts → the agent builds the report on a branch and opens a PR with a
-rendered preview → the approver reviews it in the app, asks for a change or
-approves → merge publishes it → it arrives Monday.
+task starts → the agent builds the report as a draft and asks to publish it,
+with a rendered preview → the approver reviews it in the app, asks for a change
+or approves → approval publishes it → it arrives Monday.
 
 **Target:** request to published in under a day, with the builder not
-involved. **Today:** the agent loop works from an IDE. The inbox, the PR app
-and in-app review are Q3.
+involved. **Today:** the agent loop works from an IDE. The inbox, publish
+requests and in-app review are Q3 (see [[report-library]]).
 
 ### 5. Monday morning (reader)
 
@@ -100,8 +100,8 @@ Slack file delivery, in-body summaries and links are Q1–Q2.
 ### 6. Something broke (admin → agent → approver)
 
 A source column was renamed. The Monday run fails and is recorded, and the
-owner is alerted. An agent reads the failure, proposes a fix PR, and the
-approver merges it. The run is retried.
+owner is alerted. An agent reads the failure, proposes a fix as a draft, and
+the approver publishes it. The run is retried.
 
 **Today:** failures are recorded in `schedule_runs.jsonl`. Alerts and the
 agent fix loop are Q3.
