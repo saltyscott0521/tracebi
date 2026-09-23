@@ -111,11 +111,15 @@ services:
       TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
       PORT: "8000"
     volumes:
-      # The image serves examples/portfolio_project (see Dockerfile WORKDIR);
-      # bind the host copies of its writable/editable dirs so rendered
-      # receipts land on the host and request scripts hot-edit.
-      - ./examples/portfolio_project/output:/app/examples/portfolio_project/output
-      - ./examples/portfolio_project/requests:/app/examples/portfolio_project/requests
+      # Report builds (and their receipts) live in a named volume, not a host
+      # folder. The app runs as uid 10001, and a bind-mounted host folder is
+      # usually owned by root, so builds could not be saved and every visit
+      # had to rebuild; a bind mount also hid the builds baked into the image.
+      # A named volume is filled from the image on first start and is writable
+      # by the app. Copy a build out with:
+      #   docker compose cp app:/app/examples/portfolio_project/output ./output
+      - tracebi-output:/app/examples/portfolio_project/output
+      # Scheduled scripts are read from the host so they can be edited live.
       - ./examples/portfolio_project/scheduled:/app/examples/portfolio_project/scheduled
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]
@@ -126,3 +130,4 @@ services:
 
 volumes:
   pgdata:
+  tracebi-output:

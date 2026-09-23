@@ -17,6 +17,13 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 - **The HTML download is the last build,** the file on screen, instead of a
   fresh render that could differ from it and query the database again.
 - **Each report shows when it was built.**
+- **Docker: builds are kept in a named volume.** `docker-compose.yml` used to
+  bind-mount a host folder over the image's `output/`. That hid the builds
+  baked into the image, and the folder was usually owned by root while the app
+  runs as uid 10001, so no build could be saved. The `tracebi-output` volume is
+  filled from the image on first start and is writable by the app. The stale
+  `requests/` mount (that lane was removed in 0.8) is gone, and the server now
+  warns at startup when it cannot write builds.
 - **Ask is hidden on reports for now.** When it returns it will answer only
   from what is on the report or in its model's data.
 

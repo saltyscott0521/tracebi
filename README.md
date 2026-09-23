@@ -259,9 +259,11 @@ pip install -e ".[all]"               # everything
 ### Docker / deployment
 
 The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
-Python app) and a `docker-compose.yml` that mounts `./output` and
-`./scheduled` from the host so your rendered receipts survive container
-restarts; the pipeline DB lives in the Postgres `pgdata` volume.
+Python app) and a `docker-compose.yml`. Report builds and their receipts live
+in the `tracebi-output` volume, so they survive container restarts and the app
+can always write them; `./scheduled` is read from the host. The pipeline DB
+lives in the Postgres `pgdata` volume. Copy builds out with
+`docker compose cp app:/app/examples/portfolio_project/output ./output`.
 
 ```bash
 # Local: web UI on http://localhost:8000
