@@ -376,3 +376,51 @@ class TestServerSideRender:
         html = out.read_text(encoding="utf-8")
         m = re.search(r"<tbody data-tb-hydrate>(.*?)</tbody>", html, re.S)
         assert m and 'class="tb-empty"' in m.group(1) and "no data" in m.group(1)
+
+
+class TestPackageAssets:
+    """Fonts and images under a package's assets/ ride inside the one file."""
+
+    def test_css_and_img_references_are_inlined_as_data_uris(
+            self, stack_model, tmp_path):
+        pkg = _pkg(tmp_path)
+        (pkg / "assets").mkdir()
+        (pkg / "assets" / "mark.svg").write_text("<svg xmlns='http://www.w3.org/2000/svg'/>")
+        (pkg / "assets" / "face.woff2").write_bytes(b"wOF2fake")
+        (pkg / "style.css").write_text(
+            "@font-face { font-family: X; src: url(assets/face.woff2); }\n"
+            ".hero { background: url('assets/mark.svg'); }")
+        tpl = (pkg / "template.html").read_text().replace(
+            "<body>", '<body><img src="assets/mark.svg" alt="">')
+        (pkg / "template.html").write_text(tpl)
+        out = tmp_path / "o.html"
+        TemplatePackage(str(pkg)).render({"stack_model": stack_model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert 'url("data:font/woff2;base64,' in html
+        assert 'url("data:image/svg+xml;base64,' in html
+        assert '<img src="data:image/svg+xml;base64,' in html
+        assert "url(assets/" not in html and "url('assets/" not in html
+        assert 'src="assets/' not in html
+
+    @pytest.mark.parametrize("ref, err, fragment", [
+        ("assets/missing.png", FileNotFoundError, "does not exist"),
+        ("assets/../report.json", ValueError, "leaves the package"),
+        ("assets/notes.txt", ValueError, "has type '.txt'"),
+    ])
+    def test_a_bad_reference_fails_the_load(self, tmp_path, ref, err, fragment):
+        pkg = _pkg(tmp_path)
+        (pkg / "assets").mkdir()
+        (pkg / "assets" / "notes.txt").write_text("x")
+        (pkg / "style.css").write_text(f".a {{ background: url({ref}); }}")
+        with pytest.raises(err, match=fragment):
+            TemplatePackage(str(pkg))
+
+
+def test_every_report_names_what_it_inlines(stack_model, tmp_path):
+    out = tmp_path / "o.html"
+    TemplatePackage(str(_pkg(tmp_path))).render(
+        {"stack_model": stack_model}, str(out))
+    head = out.read_text(encoding="utf-8").split("</head>")[0]
+    assert "Built with TraceBi" in head
+    assert "tracebi.css  TraceBi design system (MIT)" in head
+    assert "<!-- style.css: this report's own styles -->" in head

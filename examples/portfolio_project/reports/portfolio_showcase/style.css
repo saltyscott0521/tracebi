@@ -1,0 +1,198 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * Portfolio Showcase: the custom theme.
+ *
+ * This file stacks AFTER tracebi.css (the framework's design system), so
+ * everything here wins. It shows what a report can do with plain CSS:
+ *
+ *   • Fonts. Inter (text) and Fraunces (display), both SIL Open Font
+ *     License 1.1, loaded from assets/fonts/. The build inlines them as
+ *     data: URIs, so the file still works offline and makes no web request.
+ *   • A gradient hero with artwork. assets/contours.svg is inlined the same
+ *     way and layered over the gradient.
+ *   • Token overrides. Changing --tb-* variables restyles every framework
+ *     component (cards, tables, tabs, KPI tiles) and the chart ink at once.
+ *
+ * Presentation only: nothing here can change a number.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-display: swap;
+  src: url(assets/fonts/inter-latin-400-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/fonts/inter-latin-600-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
+}
+
+:root {
+  --tb-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --tb-ink: #101828;
+  --tb-muted: #5a6478;
+  --tb-page: #f4f5f9;
+  --tb-rule: #e2e5ee;
+  --tb-accent: #3b5bdb;
+  --tb-radius: 14px;
+  --tb-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 8px 24px -12px rgba(16, 24, 40, .18);
+  /* Chart series for this report: indigo, teal, amber (checked for
+     colour-blind separation). */
+  --tb-chart-1: #3b5bdb;
+  --tb-chart-2: #0f9d8a;
+  --tb-chart-3: #f08c00;
+  --hero-from: #0a1330;
+  --hero-mid: #1b2f7a;
+  --hero-to: #0d6b73;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 100% 0%, rgba(59, 91, 219, .06), transparent 60%),
+    var(--tb-page);
+  padding-top: 0;
+}
+
+/* ── Hero ────────────────────────────────────────────────────────────── */
+
+.sc-hero {
+  /* Full-bleed band inside the centred page column. */
+  margin: 0 calc(50% - 50vw);
+  padding: 72px calc(50vw - 50% + 16px) 104px;
+  color: #fff;
+  background:
+    url(assets/contours.svg) center / cover no-repeat,
+    radial-gradient(900px 420px at 85% 10%, rgba(45, 212, 191, .28), transparent 60%),
+    linear-gradient(125deg, var(--hero-from) 0%, var(--hero-mid) 55%, var(--hero-to) 100%);
+}
+.sc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .78);
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+  backdrop-filter: blur(4px);
+}
+.sc-eyebrow::before {
+  content: "";
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #5eead4;
+  box-shadow: 0 0 0 4px rgba(94, 234, 212, .2);
+}
+.sc-hero h1 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  letter-spacing: -.02em;
+  line-height: 1.05;
+  margin: 20px 0 14px;
+  color: #fff;
+}
+.sc-hero h1 em { font-style: normal; color: #9fb4ff; }
+.sc-hero .sc-lede {
+  max-width: 62ch;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, .8);
+  margin: 0;
+}
+.sc-hero .sc-lede strong { color: #fff; }
+.sc-hero [data-tb-figure="value"] { color: #fff; font-weight: 600; }
+
+/* ── KPI tiles overlap the hero's lower edge ──────────────────────────── */
+
+.sc-kpis { margin-top: -64px; position: relative; }
+.sc-kpis .tb-kpi {
+  border: 0;
+  overflow: hidden;
+  box-shadow: var(--tb-shadow);
+}
+.sc-kpis .tb-kpi::before {
+  /* a thin gradient rule across the top of each tile */
+  content: "";
+  position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, #3b5bdb, #0f9d8a);
+}
+.sc-kpis .tb-kpi-value {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 2.3em;
+  letter-spacing: -.01em;
+}
+
+/* ── Tabs as pills ────────────────────────────────────────────────────── */
+
+.tb-tab-bar {
+  border: 0;
+  gap: 4px;
+  padding: 4px;
+  width: max-content;
+  background: #e8ebf3;
+  border-radius: 999px;
+  margin-top: 8px;
+}
+.tb-tab {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-weight: 600;
+  font-size: .9em;
+}
+.tb-tab.tb-tab-active {
+  background: #fff;
+  color: var(--tb-ink);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, .12);
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+
+.tb-card { border-color: transparent; transition: box-shadow .2s ease, transform .2s ease; }
+.tb-card:hover { box-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 16px 32px -16px rgba(16, 24, 40, .28); }
+.tb-card > h2:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .95em;
+}
+.tb-card > h2:first-child::before {
+  content: "";
+  width: 8px; height: 8px; border-radius: 2px;
+  background: linear-gradient(135deg, #3b5bdb, #0f9d8a);
+}
+.tb-card h2 button[data-tb-download] { margin-left: auto; }
+
+.tb-table thead th, [data-tb-figure="table"] thead th { background: #f7f8fb; }
+
+/* The table gets the wider column; one column again on a phone. */
+.sc-split { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+@media (max-width: 720px) { .sc-split { grid-template-columns: 1fr; } }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+
+.sc-footer {
+  margin-top: 48px;
+  padding: 24px 28px;
+  border-radius: var(--tb-radius);
+  background: linear-gradient(135deg, #0a1330, #1b2f7a);
+  color: rgba(255, 255, 255, .78);
+  font-size: .85em;
+}
+.sc-footer h2 { font-family: var(--display); color: #fff; font-size: 1.1rem; margin: 0 0 8px; }
+.sc-footer ul { margin: 8px 0 0; padding-left: 18px; }
+.sc-footer code { color: #c7d2fe; }
+
+.tb-receipt-btn { font-weight: 600; color: var(--tb-accent); }

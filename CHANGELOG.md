@@ -6,6 +6,39 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — fonts and images in reports, and a showcase that uses them
+
+- **`assets/` in a report package.** `url(assets/…)` in `style.css` and
+  `src="assets/…"` in `template.html` are inlined as `data:` URIs when the
+  package loads, so custom fonts and images ride inside the one
+  self-contained file. A missing file, an unsupported type, or a path outside
+  `assets/` fails the load. Documented in `tracebi context`, both agent guides
+  and the styling guide.
+- **Every built report names what it contains.** A comment at the top lists
+  the inlined parts and their licences (TraceBi CSS and runtime, Apache
+  ECharts with its bundled version), and each inlined block carries a comment
+  saying what it is.
+- **The portfolio showcase gets a custom theme**: Inter and Fraunces
+  (SIL OFL, licences shipped beside the fonts), a gradient hero with inlined
+  contour artwork, KPI tiles overlapping the hero, pill tabs, chart gradients
+  through `configureChart`, and an "About this file" footer. It shows what the
+  stack can do without changing any figure.
+
+### Fixed
+
+- A report with live filtering opened from disk (`file://`) no longer logs a
+  failed request; it takes the offline path directly.
+- Wide tables scroll inside their card on phones instead of widening the page.
+- Chart category labels rotate when the chart is too narrow for them.
+
+### Removed — tests that pinned appearance
+
+13 tests that asserted colours, CSS text, SVG hashes or theme tokens
+(`test_presentation_css.py`, `TestNoColorByteIdentical`, `TestChartThemeColors`,
+and two single tests). `docs/architecture/test-suite-review.md` explains the
+rule and lists further candidates. `docs/agents/pitfalls.md` records the bugs
+hit during this work and the rule that prevents each.
+
 ### Changed — a better-looking default report
 
 - **New house style** in `tracebi.css`: a soft page background with white,

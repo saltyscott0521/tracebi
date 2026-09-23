@@ -340,6 +340,17 @@ def _presentation() -> dict:
                                 "receipt-preserving export, saved as "
                                 "<B>.csv",
         },
+        "assets": {
+            "rule": "Fonts and images live in the package's assets/ folder. "
+                    "url(assets/…) in style.css and src=\"assets/…\" in "
+                    "template.html are inlined as data: URIs when the "
+                    "package loads, so the file stays self-contained and "
+                    "fetches nothing from the web.",
+            "types": "woff2 | woff | ttf | otf | svg | png | jpg | jpeg | "
+                     "webp | gif | avif",
+            "refusals": "A missing file, any other type, or a path that "
+                        "leaves assets/ fails the load and names the file.",
+        },
         "layout": {
             "tabs": "<div class=\"tb-tabs\"><section "
                     "data-tb-tab=\"Label\">…</section>…</div> — the "

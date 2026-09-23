@@ -831,7 +831,7 @@
    * labels, and a quiet tooltip. Display only — it never touches series
    * data — and it runs before the theme colours and the author's
    * configureChart patch, so either can still override it. */
-  function polishOption(option, plan) {
+  function polishOption(option, plan, width) {
     var kind = String(plan.type).toLowerCase();
     option.grid = option.grid || {
       left: 8, right: 24, bottom: 8, top: option.legend ? 40 : 16,
@@ -871,7 +871,8 @@
       ax.axisLabel = ax.axisLabel || {};
       if (n && n <= 12 && ax.axisLabel.interval == null) {
         ax.axisLabel.interval = 0;          /* every category gets its name */
-        if (isXAxis && n > 6) ax.axisLabel.rotate = 30;
+        /* rotate when names would collide: many categories, or little room */
+        if (isXAxis && (n > 6 || (width && width / n < 80))) ax.axisLabel.rotate = 30;
       }
     }
     var horizontal = kind === "barh";
@@ -910,7 +911,8 @@
   /* The built option for one chart, patch applied — shared by the first
    * hydration and every control-driven re-render. */
   function buildOption(el, plan, rows) {
-    var option = applyThemeColors(polishOption(optionFor(plan, rows), plan));
+    var option = applyThemeColors(
+      polishOption(optionFor(plan, rows), plan, el && el.clientWidth));
 
     var patch = el.id ? _patches[el.id] : null;
     if (patch) {
@@ -1198,7 +1200,12 @@
     if (!cfg || !cfg.report) { failClosed(filters); return; }
     var url = "/api/reports/" + encodeURIComponent(cfg.report) + "/selection";
     try {
-      if (typeof fetch !== "function") { failClosed(filters); return; }
+      /* A file opened from disk has no server to ask: take the offline path
+       * directly rather than logging a failed request in the console. */
+      if (typeof fetch !== "function" ||
+          (root.location && root.location.protocol === "file:")) {
+        failClosed(filters); return;
+      }
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

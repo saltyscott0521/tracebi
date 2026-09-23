@@ -3,7 +3,8 @@
 Read this before touching a TraceBi project. Deeper references: `WORKFLOW.md`
 (the three-phase workflow, end to end), `CLAUDE.md` (codebase rules), `NOTES.md`
 (design decisions), `examples/agent_gateway/` (a complete recorded agent
-session).
+session), `docs/agents/pitfalls.md` (bugs already hit here, and the rule that
+prevents each: read it before changing the runtime, styles or compiler).
 
 ## What TraceBi is
 
@@ -119,6 +120,10 @@ draw and mark that one yourself. It refuses the silent failures: a figure
 naming an undeclared binding fails at load, and a figure declared but never
 placed — or placed twice — fails the build. Hand-written figures still work
 everywhere; this is sugar, not a replacement.
+
+**Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
+(`examples/portfolio_project/reports/portfolio_showcase/`) uses it for two
+typefaces and its hero artwork.
 
 Three rules that keep pages honest:
 

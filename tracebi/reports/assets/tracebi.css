@@ -357,6 +357,9 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
 .tb-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 720px) {
   .tb-cols-2, .tb-cols-3 { grid-template-columns: 1fr; }
+  /* A table wider than the phone scrolls inside its card instead of
+     widening the whole page. */
+  .tb-table, [data-tb-figure="table"] { display: block; overflow-x: auto; }
 }
 
 .tb-tabs { margin: var(--tb-space-3) 0; }

@@ -117,14 +117,3 @@ class TestSiteProperties:
             if "[[" in p.read_text(encoding="utf-8")
         ]
         assert not offenders, f"unrendered wiki links in {offenders}"
-
-    def test_the_palette_comes_from_the_landing_page(self):
-        """The docs site and the landing page must not drift into two
-        different blues — the generator extracts the tokens rather than
-        keeping a second copy."""
-        index = (REPO / "site" / "index.html").read_text(encoding="utf-8")
-        css = (SITE_DOCS / "docs.css").read_text(encoding="utf-8")
-        for token in ("--accent:", "--brand:", "--paper:", "--ink:"):
-            value = index.split(token, 1)[1].split(";", 1)[0].strip()
-            assert f"{token}{value};" in css.replace(" ", "") or value in css, (
-                f"{token} differs between the landing page and the docs site")

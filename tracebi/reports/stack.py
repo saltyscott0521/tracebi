@@ -23,6 +23,7 @@ restyle a badge but never re-color honesty.
 
 from __future__ import annotations
 
+import functools
 import os
 from typing import Optional
 
@@ -82,17 +83,50 @@ def figures_config(figures, output_names, badges: bool = True) -> list[dict]:
     return out
 
 
+@functools.lru_cache(maxsize=None)
+def _lib_credit(lib: str) -> str:
+    """"Apache ECharts 6.1.0 (Apache-2.0)" from the vendored file's own
+    header, so the credit can never drift from the bundled version."""
+    import re
+    m = re.search(r"Apache ECharts ([0-9][0-9.]*)", read_lib(lib)[:2000])
+    return f"Apache ECharts {m.group(1)} (Apache-2.0)" if m else lib
+
+
+def libraries_comment(libs) -> str:
+    """An HTML comment at the top of every report naming what is inlined in
+    it, and under which licence — a reader who opens the source learns what
+    the file contains without leaving it."""
+    from tracebi._version import __version__
+    lines = [
+        f"Built with TraceBi {__version__}. Everything below is inlined: no "
+        "script, style, font or image is fetched from a CDN or the web.",
+        "  tracebi.css  TraceBi design system (MIT)",
+        "  tracebi.js   TraceBi runtime (MIT): fills each figure from the "
+        "embedded, fingerprinted data; tabs, filters, receipt drawer",
+    ]
+    for lib in libs or ():
+        lines.append(f"  {_lib_credit(lib)}: draws the charts")
+    lines.append("  Report files: style.css and script.js when present; "
+                 "fonts and images from the package's assets/ folder")
+    return "<!--\n" + "\n".join(lines) + "\n-->\n"
+
+
 def stack_head(stage: Optional[str] = None, project_css: str = "",
-               report_css: str = "", include_csp: bool = True) -> str:
+               report_css: str = "", include_csp: bool = True,
+               libs=None) -> str:
     """The head injection, in override order (later wins)."""
     head = csp_meta() if include_csp else ""
+    head += libraries_comment(libs)
     if stage:
         head += f'<meta name="tracebi-stage" content="{stage}">\n'
-    head += f"<style>\n{read_asset('tracebi.css')}\n</style>\n"
+    head += ("<!-- tracebi.css: the TraceBi design system -->\n"
+             f"<style>\n{read_asset('tracebi.css')}\n</style>\n")
     if project_css.strip():
-        head += f"<style>\n{project_css}\n</style>\n"
+        head += ("<!-- reports/_theme.css: the project theme -->\n"
+                 f"<style>\n{project_css}\n</style>\n")
     if report_css.strip():
-        head += f"<style>\n{report_css}\n</style>\n"
+        head += ("<!-- style.css: this report's own styles -->\n"
+                 f"<style>\n{report_css}\n</style>\n")
     return head
 
 
@@ -101,12 +135,14 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     """The body-end injection: libs → runtime → engine → data → config → author."""
     tail = ""
     for lib in libs or ():
-        tail += f"<script>\n{read_lib(lib)}\n</script>\n"
+        tail += (f"<!-- {_lib_credit(lib)} -->\n"
+                 f"<script>\n{read_lib(lib)}\n</script>\n")
     # The selection worker is a few kilobytes and ships only with a sealed
     # grain. A report that did not opt in stays byte-for-byte as before.
     if 'id="tracebi-grain"' in data_blocks_html:
         tail += f"<script>\n{read_asset('selection_eval.js')}\n</script>\n"
-    tail += f"<script>\n{read_asset('tracebi.js')}\n</script>\n"
+    tail += ("<!-- tracebi.js: the TraceBi runtime -->\n"
+             f"<script>\n{read_asset('tracebi.js')}\n</script>\n")
     # The worker engine ships ONLY when a binding is embedded as Parquet — a
     # CSV artifact would otherwise pay megabytes for an engine it never starts.
     # Test the DATA BLOCKS, never the assembled tail: the runtime source itself
@@ -118,7 +154,8 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     if figures_cfg is not None:
         tail += embed_json(figures_cfg, "tracebi-figures") + "\n"
     if report_js.strip():
-        tail += f"<script>\n{report_js}\n</script>\n"
+        tail += ("<!-- script.js: this report's own script -->\n"
+                 f"<script>\n{report_js}\n</script>\n")
     return tail
 
 
@@ -136,7 +173,7 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
     page = insert_before(
         page, "</head>",
         stack_head(stage, project_css, report_css,
-                   include_csp=csp_meta().strip() not in page))
+                   include_csp=csp_meta().strip() not in page, libs=libs))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))

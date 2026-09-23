@@ -8,7 +8,6 @@ query with a group column drew one bar per row under repeated x labels —
 a confident-looking wrong chart.
 """
 
-import hashlib
 import json
 
 import pandas as pd
@@ -150,34 +149,6 @@ class TestShowValuesCompact:
                    x="r", y="v", show_values=True).to_svg()
         assert 'class="tb-tick"' in svg
         assert "2,000,000" in svg   # tick formatter untouched
-
-
-# ─────────────────────────────────────────────
-# Byte-identical regression for color-less charts
-# ─────────────────────────────────────────────
-
-class TestNoColorByteIdentical:
-    """
-    Charts that do not use color= must render exactly the SVG they rendered
-    before grouping existed (show_values labels excepted, by design). The
-    hashes were captured from the pre-change implementation, then re-captured
-    when DEFAULT_PALETTE changed (mapping the new colours back to the old ones
-    reproduced the original hashes exactly — the palette was the only change).
-    """
-
-    def test_plain_bar_chart_is_byte_identical(self):
-        svg = spec(dataset=plain_ds(), chart_type="bar",
-                   x="region", y="revenue").to_svg()
-        assert hashlib.sha256(svg.encode()).hexdigest() == (
-            "6579b9909057bc7f35fbcb3ca69b0df298fc21c2c2568f7811ad0addfec5d0e6"
-        )
-
-    def test_multi_series_line_chart_is_byte_identical(self):
-        svg = spec(dataset=plain_ds(), chart_type="line",
-                   x="region", y=["revenue", "cost"]).to_svg()
-        assert hashlib.sha256(svg.encode()).hexdigest() == (
-            "3576a25a8954e41ec26f2ce5a7a6c6fc6eb385a0823bbfdeb6081683b0edc208"
-        )
 
 
 # ─────────────────────────────────────────────

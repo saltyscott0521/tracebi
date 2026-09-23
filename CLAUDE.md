@@ -641,6 +641,8 @@ Don't add these unless asked.
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
 | See every artifact feature at once | `examples/portfolio_project/reports/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
 | Understand architecture decisions | `NOTES.md` |
+| Avoid bugs already hit in this repo | `docs/agents/pitfalls.md` |
+| Decide whether a test is worth writing | `docs/architecture/test-suite-review.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |

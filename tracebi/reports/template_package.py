@@ -54,6 +54,7 @@ import importlib.util
 import json
 import math
 import os
+import re
 import sys
 from typing import Optional
 
@@ -136,6 +137,60 @@ def _validate_figure(name: str, fig, bindings: dict, where: str) -> dict:
                 f"{where}: figure '{name}' '{key}' must map column names to "
                 f"strings, e.g. {{\"fair_value\": \"currency0\"}}.")
     return dict(fig)
+
+
+#: File types a package may inline from its ``assets/`` folder, by extension.
+#: The artifact's CSP allows ``data:`` for images and fonts only.
+ASSET_MIME = {
+    ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
+    ".otf": "font/otf", ".svg": "image/svg+xml", ".png": "image/png",
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+    ".gif": "image/gif", ".avif": "image/avif",
+}
+
+_CSS_ASSET = re.compile(r"""url\(\s*(['"]?)(assets/[^'")\s]+)\1\s*\)""")
+_HTML_ASSET = re.compile(r"""\b(src)=(["'])(assets/[^"']+)\2""")
+
+
+def _asset_data_uri(directory: str, ref: str, where: str) -> str:
+    """``assets/<file>`` inside *directory* → a base64 ``data:`` URI.
+
+    Refuses a path that leaves ``assets/``, a missing file, and a type the
+    artifact's CSP would block — each naming the file and the fix, so a
+    broken image or font fails the load instead of shipping blank.
+    """
+    import base64
+
+    root = os.path.realpath(os.path.join(directory, "assets"))
+    path = os.path.realpath(os.path.join(directory, ref))
+    if not path.startswith(root + os.sep):
+        raise ValueError(f"{where}: '{ref}' leaves the package's assets/ folder.")
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in ASSET_MIME:
+        raise ValueError(
+            f"{where}: '{ref}' has type '{ext}'; a report can inline "
+            f"{sorted(ASSET_MIME)}.")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(
+            f"{where}: '{ref}' does not exist. Put the file in the package's "
+            f"assets/ folder.")
+    with open(path, "rb") as f:
+        payload = base64.b64encode(f.read()).decode("ascii")
+    return f"data:{ASSET_MIME[ext]};base64,{payload}"
+
+
+def inline_package_assets(text: str, directory: str, where: str) -> str:
+    """Replace ``url(assets/…)`` (CSS) and ``src="assets/…"`` (HTML) with
+    ``data:`` URIs, so fonts and images ride inside the one self-contained
+    file. Anything not under ``assets/`` is left alone."""
+    if "assets/" not in text:
+        return text
+    text = _CSS_ASSET.sub(
+        lambda m: f'url("{_asset_data_uri(directory, m.group(2), where)}")',
+        text)
+    return _HTML_ASSET.sub(
+        lambda m: f'{m.group(1)}="{_asset_data_uri(directory, m.group(3), where)}"',
+        text)
 
 
 def _is_tie(a: float, digits: int) -> bool:
@@ -306,8 +361,13 @@ class TemplatePackage:
         else:
             self.schedule = None
 
-        self.template_html = _read_text(template_path)
-        self.style_css = _read_optional(os.path.join(directory, STYLE_CSS))
+        # Fonts and images under assets/ are inlined as data: URIs here, at
+        # load, so every render path (dev, build, snapshot, web) carries them.
+        self.template_html = inline_package_assets(
+            _read_text(template_path), directory, TEMPLATE_HTML)
+        self.style_css = inline_package_assets(
+            _read_optional(os.path.join(directory, STYLE_CSS)), directory,
+            STYLE_CSS)
         self.script_js = _read_optional(os.path.join(directory, SCRIPT_JS))
 
         # Charting libraries to inline into the self-contained file (offline, no

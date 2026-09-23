@@ -99,6 +99,32 @@ self-contained and the offline `verify --file` check meaningful.
 Charting is already inlined for you — opt in with `"libs": ["echarts"]` in
 [[report-json]].
 
+## Fonts and images
+
+Put them in the package's `assets/` folder and reference them by relative path.
+The build inlines each one as a `data:` URI, so the file still fetches nothing:
+
+```css
+@font-face {
+  font-family: "Inter";
+  src: url(assets/fonts/inter-latin-400-normal.woff2) format("woff2");
+}
+.hero { background: url(assets/contours.svg) center / cover, linear-gradient(125deg, #0a1330, #1b2f7a); }
+```
+
+```html
+<img src="assets/logo.svg" alt="Company">
+```
+
+Allowed types: woff2, woff, ttf, otf, svg, png, jpg, webp, gif, avif. A missing
+file, any other type, or a path outside `assets/` fails the load with the file
+named. Keep images small: every byte ships inside the report. Check a font's
+licence allows embedding (SIL OFL fonts do; ship the licence text alongside).
+
+`examples/portfolio_project/reports/portfolio_showcase/` shows it all: two
+typefaces, a gradient hero with inlined artwork, pill tabs, and chart gradients
+through `tracebi.configureChart`.
+
 ## Related
 
 - [[template-html]] — the markup

@@ -83,10 +83,17 @@ Deep design documents. Written for someone changing the framework, not using it.
 - [[report-architecture-v2]] — the current report artifact design
 - [[production-plan]] — how the agent-report product gets to production
 - [[next-level-plan]] — the product direction: agents build repeatable reports that replace recurring BI
+- [[test-suite-review]] — what the tests should cover, what was removed, and why
 - [[product-readiness-audit]] — product fit, findings, and the checklist to a sellable product
 - [[large-detail-artifacts]] — how big datasets ship inside one HTML file
 - [[frontend-surfaces]] — the three separate front ends and why
 - [[report-generator-architecture]] — superseded; kept for its kernel sections
+
+## Agent SOPs
+
+- [[pitfalls]] — bugs already hit in this repo, and the rule that prevents each
+- [[sop-authoring]] — authoring a report
+- [[sop-model-changes]] — changing a model
 
 ## The canon
 

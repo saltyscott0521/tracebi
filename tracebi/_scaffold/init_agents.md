@@ -118,6 +118,11 @@ whose figures each name a binding from `report.json`:
   `tracebi.configureChart` — config can restyle, never re-source: series data
   always comes from the stamped bytes. Provenance badges pick their state
   from the manifest; a stylesheet can restyle a badge, never re-color honesty.
+  Fonts and images go in the package's `assets/` folder: `url(assets/…)` in
+  `style.css` and `src="assets/…"` in `template.html` are inlined as `data:`
+  URIs at load, so the file stays self-contained (woff2/woff/ttf/otf,
+  svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside
+  `assets/` fails the load).
 - Reading data in `script.js`: ALWAYS wrap it in `tracebi.ready(fn)`, never
   call `tracebi.data()` at the top level. A large-detail report embeds its
   data as Parquet and decodes it in a worker AFTER `script.js` runs, so a bare

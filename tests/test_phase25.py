@@ -423,13 +423,6 @@ class TestLineageDiagram:
         assert "TRANSFORM" in mermaid
         assert "N0 --> N1" in mermaid
 
-    def test_to_mermaid_colors(self):
-        ds = self._make_ds()
-        diag = LineageDiagram(ds)
-        mermaid = diag.to_mermaid()
-        assert "#003366" in mermaid   # load = navy
-        assert "#2E7D32" in mermaid   # filter = green
-
     def test_to_html(self):
         ds = self._make_ds()
         diag = LineageDiagram(ds)

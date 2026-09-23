@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Test suite review, 2026-09-22 — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Test suite review, 2026-09-22">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
+<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
+<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a class="on" href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="test-suite-review-2026-09-22">Test suite review, 2026-09-22</h1>
+<p><strong>Test what the product does, not what it looks like.</strong> A test earns its
+place when it would catch a real bug: a wrong number, a broken receipt, a
+security hole, two implementations drifting apart. A test that pins a colour, a
+CSS rule, a file size or a sentence in the README catches nothing. It just
+makes every design or wording change also a test change.</p>
+<p>This review applied that rule to all 36 test files.</p>
+<hr>
+<h2 id="removed-in-this-change">Removed in this change</h2>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Why it went</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tests/test_presentation_css.py</code> (whole file, 6 tests)</td>
+<td>Read <code>tracebi.css</code> as text and asserted selectors, property values, a 20 KB size cap, and that the chart colours matched <code>DEFAULT_PALETTE</code>. Every restyle broke it; no behaviour depended on it.</td>
+</tr>
+<tr>
+<td><code>test_chart_grouping.py::TestNoColorByteIdentical</code> (2 tests)</td>
+<td>SHA-256 hashes of rendered SVG charts. Any colour or spacing change failed them. The grouping <em>behaviour</em> is still covered by the other tests in that file.</td>
+</tr>
+<tr>
+<td><code>test_phase25.py::test_to_mermaid_colors</code></td>
+<td>Asserted two hex colours in the lineage diagram.</td>
+</tr>
+<tr>
+<td><code>test_docs_site.py::test_the_palette_comes_from_the_landing_page</code></td>
+<td>Asserted the docs site and the marketing page share colour tokens.</td>
+</tr>
+<tr>
+<td><code>test_presentation_js.py::TestChartThemeColors</code> (3 tests)</td>
+<td>Asserted chart axis colours follow CSS tokens. Theme mechanics, not behaviour.</td>
+</tr>
+<tr>
+<td>Two assertions in <code>TestTableOverridesAndChartPolish</code></td>
+<td>Pinned bar corner radius and tick text. The test now asserts only that chart styling never changes the data.</td>
+</tr>
+</tbody>
+</table>
+<p>13 tests removed. The suite is 1,414 passing after this change, plus the tests
+added for the new features.</p>
+<h2 id="recommended-for-removal-not-yet-removed">Recommended for removal (not yet removed)</h2>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Why</th>
+<th>Suggested action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_presentation_js.py::TestAssetHygiene::test_asset_exists_and_under_size_budget</code></td>
+<td>Caps <code>tracebi.js</code> at a byte size. See <a href="#why-is-there-a-kb-limit">Why is there a KB limit?</a></td>
+<td>Remove. Keep <code>test_no_eval</code>, <code>test_no_innerhtml</code> and <code>test_public_api_defined</code> in the same class; those are security and API checks.</td>
+</tr>
+<tr>
+<td><code>test_engine_assets.py::test_parquet_wasm_is_gzipped_and_substantial</code></td>
+<td>Asserts the WebAssembly file is "substantial" (a size check).</td>
+<td>Keep the gzip check, drop the size assertion.</td>
+</tr>
+<tr>
+<td><code>test_journey_fixes.py::test_readme_uses_git_url_install_form</code>, <code>test_readme_has_no_bare_pypi_install_line</code>, <code>test_missing_uvicorn_message_uses_git_url_form</code></td>
+<td>Pin the README's install wording to "install from git". They will fail the day TraceBi is published on PyPI, which is the plan.</td>
+<td>Remove when 0.6 ships to PyPI (or now).</td>
+</tr>
+<tr>
+<td><code>test_phase1.py::test_dataset_help_prints</code>, <code>test_datamodel_help_prints</code>; <code>test_phase2.py::test_report_help_prints</code>; <code>test_phase5.py::test_help_text_returns_the_string</code>, <code>test_help_still_prints_the_same_text</code></td>
+<td>Assert that <code>help()</code> prints some text containing a few method names. Nothing breaks for a user if the cheat sheet is reworded.</td>
+<td>Remove, or keep one smoke test.</td>
+</tr>
+<tr>
+<td><code>test_phase1.py::test_dataset_repr_html</code>, <code>test_datamodel_repr_html</code>; <code>test_phase2.py::test_report_repr_html_is_iframe</code></td>
+<td>Pin the notebook display markup.</td>
+<td>Remove. <strong>Keep</strong> <code>test_dataset_repr_html_escapes</code> and <code>test_dataset_repr_html_caps_preview</code>: one is an HTML-injection guard, the other stops a huge frame freezing a notebook.</td>
+</tr>
+<tr>
+<td><code>test_phase2.py</code> checks of <code>os.path.getsize(path) &gt; 1000</code></td>
+<td>"The file isn't tiny" says little.</td>
+<td>Replace with an assertion about the content, or remove.</td>
+</tr>
+<tr>
+<td><code>test_docs_site.py::test_regenerating_produces_no_diff</code></td>
+<td>Forces the generated docs HTML to be committed and rebuilt by hand after every docs edit.</td>
+<td>Build the docs site during deploy instead, then remove the committed HTML and this test.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="keep-even-though-they-look-presentational">Keep, even though they look presentational</h2>
+<p>These touch presentation but guard behaviour:</p>
+<ul>
+<li><strong>Style injection order</strong> (<code>test_presentation.py::test_later_wins_layer_order</code>):
+  the override chain is a feature authors rely on.</li>
+<li><strong>Security:</strong> no <code>eval</code>, no <code>innerHTML</code>, CSP present and not suppressible,
+  escaping of labels and prose.</li>
+<li><strong>Parity between two implementations:</strong> the Python and JavaScript number
+  formatters must produce the same text, or a number flickers on load. Same for
+  the worker engine's float spelling.</li>
+<li><strong>Honesty rules:</strong> provenance badges, unverified marks, exploration stripped
+  at build, receipts and fingerprints.</li>
+<li><strong>Agent guides</strong> (<code>test_agent_guides.py</code>): documentation <em>is</em> the agent
+  interface here. A feature the guides don't name doesn't get used.</li>
+</ul>
+<h2 id="why-is-there-a-kb-limit">Why is there a KB limit?</h2>
+<p><code>tracebi.js</code> is inlined into every report, so every byte ships in every file.
+The limit was meant to stop the runtime growing unnoticed. It has been raised
+five times, each with a note ("Behavior, not bloat"), which shows it never
+stopped a change. It only added a step.</p>
+<p>It also guards the wrong thing. A report with charts is around 700–860 KB. Of
+that, the bundled ECharts is 620 KB and <code>tracebi.js</code> is 70 KB, under a tenth
+of the file. If file size matters, measure the <strong>built report</strong>,
+and report it in the build output rather than failing a test.</p>
+<p><strong>Recommendation:</strong> remove the test. If size ever becomes a real complaint, add
+a line to <code>tracebi report build</code> output ("report.html: 862 KB") and let people
+decide.</p>
+<h2 id="the-rule-for-new-tests">The rule for new tests</h2>
+<p>Before adding a test, answer: <em>what bug would this catch?</em> If the answer is
+"someone changed a colour, a size, or a sentence", don't add it. See
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a> for the bugs that did happen, and the checks that would have
+caught them.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>
