@@ -9,6 +9,21 @@
       "content": "Holdings market value aggregated by the branch that manages the account."
     },
     {
+      "type": "chart",
+      "title": "Market value by region",
+      "chart_type": "bar",
+      "x": "dim_branch.region",
+      "y": "market_value",
+      "data": {
+        "model": "wealth_model",
+        "query": {
+          "fact": "fact_holdings",
+          "measures": {"market_value": "sum"},
+          "dimensions": ["dim_branch.region"]
+        }
+      }
+    },
+    {
       "type": "table",
       "title": "By region",
       "column_labels": {"dim_branch.region": "Region", "market_value": "Market value"},

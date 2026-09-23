@@ -130,6 +130,13 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
     # real artifact render (embedded data, figure claims, schema-2 manifest)
     # instead of the carrier — the same mechanism a hand-authored package uses.
     factory._tracebi_package_dir = pkg_dir
+    # Where the report is defined, for the Reports page's Source view: the
+    # spec file itself (the compiled package above is a temp dir, not source).
+    factory._tracebi_source = {
+        "form": "spec",
+        "path": full_path,
+        "extras": [n for n in (getattr(spec, "theme", ""), getattr(spec, "script", "")) if n],
+    }
 
     registry.add_report(stem, factory, spec.description or "")
     return {"status": "registered", "module": stem}
@@ -185,6 +192,7 @@ def _register_template_package(dir_path: str, stem: str) -> dict:
     # — instead of the carrier (architecture v2 §2.3, web parity). The
     # factory contract itself is unchanged: a name and a zero-arg callable.
     factory._tracebi_package_dir = dir_path
+    factory._tracebi_source = {"form": "package", "path": dir_path, "extras": []}
 
     registry.add_report(stem, factory, pkg.description or "")
     return {"status": "registered", "module": stem}

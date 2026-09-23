@@ -45,6 +45,14 @@ graph. It computes but persists nothing, which is why `viewer` may call it.
 | `GET` | `/api/reports/{name}/download?format=xlsx\|html` | analyst |
 | `GET` | `/api/reports/{name}/lineage` | viewer |
 | `GET` | `/api/reports/{name}/mermaid` | viewer |
+| `GET` | `/api/reports/{name}/source` | viewer |
+
+`GET /api/reports` gives each report a `form`: `spec` (a `reports/<name>.json`
+in the default style), `package` (a `reports/<name>/` with its own template
+and style) or `code`. `/source` returns the files that define the report —
+the spec, or the package's `report.json`, `template.html`, `style.css`,
+`script.js` and `report.py` — read-only, and only the files discovery
+registered for it.
 
 `/run` returns `{name, html, manifest}` — the **real artifact render**, so what
 the browser shows is what `verify --file` can check. `POST /runs` starts the

@@ -406,6 +406,75 @@ def download_report(name: str, format: str = "xlsx"):
         raise HTTPException(status_code=500, detail=_error_detail("Render failed", exc))
 
 
+#: The files that define a report package, in reading order. Anything else in
+#: the package (assets/, notes) is listed by name only.
+_PACKAGE_SOURCE_FILES = ("report.json", "template.html", "style.css", "script.js", "report.py")
+_SOURCE_LANG = {".json": "json", ".html": "html", ".css": "css", ".js": "javascript", ".py": "python"}
+_SOURCE_MAX_BYTES = 256 * 1024
+
+
+def _display_path(path: str, reports_dir: str) -> str:
+    """A path the reader recognises: relative to the working directory when
+    the file is inside it, else relative to the reports folder's parent."""
+    cwd = os.getcwd()
+    if os.path.commonpath([os.path.abspath(path), cwd]) == cwd:
+        return os.path.relpath(path, cwd)
+    return os.path.relpath(path, os.path.dirname(reports_dir))
+
+
+def _source_file(path: str, reports_dir: str) -> dict:
+    with open(path, "rb") as fh:
+        raw = fh.read(_SOURCE_MAX_BYTES + 1)
+    return {
+        "path": _display_path(path, reports_dir),
+        "language": _SOURCE_LANG.get(os.path.splitext(path)[1], "text"),
+        "content": raw[:_SOURCE_MAX_BYTES].decode("utf-8", errors="replace"),
+        "truncated": len(raw) > _SOURCE_MAX_BYTES,
+    }
+
+
+@router.get("/{name}/source")
+def report_source(name: str):
+    """The files that define a report: the spec, or the package's files.
+
+    Read-only, and limited to the files discovery registered for this report,
+    so a request can never name an arbitrary path.
+    """
+    if name not in {r["name"] for r in registry.list_reports()}:
+        raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
+    src = registry.report_source(name)
+    if not src:
+        return {"form": "code", "files": [], "other_files": [],
+                "hint": "Registered in Python code (a report factory), not from reports/."}
+
+    files, other = [], []
+    if src["form"] == "spec":
+        reports_dir = os.path.dirname(src["path"])
+        # Extras are the spec's theme/script siblings: basenames only, so a spec
+        # can't point this view outside its folder.
+        for p in [src["path"], *(os.path.join(reports_dir, os.path.basename(e))
+                                  for e in src["extras"])]:
+            if os.path.isfile(p):
+                files.append(_source_file(p, reports_dir))
+        hint = (f"A JSON spec in the default style. To give it a custom layout and look, "
+                f"run: tracebi migrate spec {_display_path(src['path'], reports_dir)}")
+    else:
+        pkg = src["path"]
+        reports_dir = os.path.dirname(pkg)
+        for fname in _PACKAGE_SOURCE_FILES:
+            p = os.path.join(pkg, fname)
+            if os.path.isfile(p):
+                files.append(_source_file(p, reports_dir))
+        for root, dirs, fnames in os.walk(pkg):
+            dirs[:] = sorted(d for d in dirs if d != "__pycache__")
+            for fname in sorted(fnames):
+                rel = os.path.relpath(os.path.join(root, fname), pkg)
+                if rel not in _PACKAGE_SOURCE_FILES:
+                    other.append(rel)
+        hint = f"A custom report package. Edit it with a live preview: tracebi dev {name}"
+    return {"form": src["form"], "files": files, "other_files": other, "hint": hint}
+
+
 @router.get("/{name}/mermaid")
 def report_mermaid(name: str):
     """Return a Mermaid flowchart string for the report's combined lineage."""

@@ -1,0 +1,135 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * AUM by Branch: the custom theme for the demo's wealth report.
+ *
+ * Stacks after tracebi.css (the default style every JSON spec gets), so the
+ * rules here win. Fonts and the hero artwork come from assets/ and are
+ * inlined at build, so the file still works offline.
+ *
+ * Presentation only: nothing here can change a number.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-display: swap;
+  src: url(assets/fonts/inter-latin-400-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/fonts/inter-latin-600-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
+}
+
+:root {
+  --tb-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --tb-ink: #10201c;
+  --tb-muted: #56655f;
+  --tb-page: #f3f5f2;
+  --tb-rule: #dfe5e0;
+  --tb-accent: #1f6f5c;
+  --tb-radius: 14px;
+  --tb-shadow: 0 1px 2px rgba(16, 32, 28, .05), 0 8px 24px -12px rgba(16, 32, 28, .2);
+  /* Chart series: pine, brass, slate blue, clay (checked for colour-blind
+     separation). */
+  --tb-chart-1: #1f6f5c;
+  --tb-chart-2: #c08a2b;
+  --tb-chart-3: #4c6ea8;
+  --tb-chart-4: #b5563c;
+  --brass: #d9b36a;
+  --hero-from: #08201b;
+  --hero-to: #1d4a3f;
+}
+
+body { padding-top: 0; }
+
+/* ── Hero ────────────────────────────────────────────────────────────── */
+
+.wm-hero {
+  margin: 0 calc(50% - 50vw);
+  padding: 64px calc(50vw - 50% + 16px) 104px;
+  color: #fff;
+  background:
+    url(assets/rings.svg) center / cover no-repeat,
+    radial-gradient(700px 380px at 80% 90%, rgba(217, 179, 106, .22), transparent 65%),
+    linear-gradient(160deg, var(--hero-from) 0%, var(--hero-to) 100%);
+}
+.wm-eyebrow {
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.wm-hero h1 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(2.1rem, 4.4vw, 3.3rem);
+  letter-spacing: -.015em;
+  line-height: 1.06;
+  margin: 16px 0 14px;
+  color: #fff;
+}
+.wm-hero h1 em { font-style: normal; color: var(--brass); }
+.wm-hero .wm-lede {
+  max-width: 60ch;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, .8);
+  margin: 0;
+}
+.wm-hero .wm-lede strong,
+.wm-hero [data-tb-figure="value"] { color: #fff; font-weight: 600; }
+
+/* ── KPI tiles sit on the hero's lower edge ───────────────────────────── */
+
+.wm-kpis { margin-top: -64px; position: relative; }
+.wm-kpis .tb-kpi {
+  border: 0;
+  border-bottom: 3px solid var(--brass);
+  box-shadow: var(--tb-shadow);
+}
+.wm-kpis .tb-kpi-value {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 2.2em;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+
+.tb-card { border-color: transparent; box-shadow: var(--tb-shadow); }
+.tb-card > h2:first-child {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.1em;
+  letter-spacing: 0;
+}
+.tb-table thead th, [data-tb-figure="table"] thead th {
+  background: #eef2ee;
+  color: var(--tb-muted);
+}
+
+/* The bar chart gets the wider column; one column again on a phone. */
+.wm-split { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+@media (max-width: 720px) { .wm-split { grid-template-columns: 1fr; } }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+
+.wm-footer {
+  margin-top: 40px;
+  padding: 22px 26px;
+  border-radius: var(--tb-radius);
+  background: var(--hero-from);
+  color: rgba(255, 255, 255, .78);
+  font-size: .86em;
+}
+.wm-footer h2 { font-family: var(--display); color: var(--brass); font-size: 1.05rem; margin: 0 0 6px; }
+.wm-footer p { margin: 0; max-width: 72ch; }
+
+.tb-receipt-btn { font-weight: 600; color: var(--tb-accent); }
