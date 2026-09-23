@@ -21,7 +21,7 @@ What the compile promises:
   compiles to an honestly ``data-tb-unverified`` card. Nothing is inlined
   as dead text that reads as governed.
 - **Nothing silently drops.** Presentation knobs the runtime has no
-  equivalent for (totals rows, heat maps, column widths, metric deltas…)
+  equivalent for (heat maps, column widths, metric deltas…)
   are reported as warnings, not swallowed.
 
 The compiler is structural — it needs no models and executes no query. The
@@ -35,6 +35,7 @@ import html
 import json
 import re
 from dataclasses import dataclass, field
+from typing import Optional
 
 from tracebi.reports.figure_markup import (
     TABLE_FORMATS,
@@ -246,12 +247,55 @@ class _Compiler:
             style=raw.get("style"),
             labels=labels,
             formats=formats,
+            totals=self._totals_binding(raw, binding, where),
         )
         self._warn_dropped(raw, where, (
-            "totals", "max_rows",
+            "max_rows",
             "highlight_negatives", "color_scale", "column_widths",
         ))
         return self._card(raw, element)
+
+    def _totals_binding(self, raw: dict, binding: str, where: str) -> Optional[str]:
+        """A spec's ``totals`` become their own one-row query: the table's
+        query with the listed measures and no dimensions, so the model computes
+        each total (a ratio's total is a ratio of totals, never a sum of rows).
+
+        Refused, with a warning, when the rows shown are not the whole result
+        (``limit`` or ``having``): a grand total under a cut table would not
+        add up to what the reader sees.
+        """
+        wanted = [str(t) for t in (raw.get("totals") or [])]
+        if not wanted:
+            return None
+        data = raw["data"]
+        query = dict(data.get("query") or {})
+        cut = [k for k in ("limit", "having") if query.get(k)]
+        if cut:
+            self.warnings.append(
+                f"{where}: totals dropped — the query uses {' and '.join(cut)}, "
+                f"so the table shows only some rows and a grand total would not "
+                f"match them")
+            return None
+        measures = query.get("measures")
+        if isinstance(measures, dict):
+            kept = {k: v for k, v in measures.items() if str(k) in wanted}
+        else:
+            kept = [m for m in (measures or []) if str(m) in wanted]
+        missing = sorted(set(wanted) - {str(k) for k in kept})
+        if missing:
+            self.warnings.append(
+                f"{where}: totals for {', '.join(missing)} dropped — only a "
+                f"measure the query computes can be totalled")
+        if not kept:
+            return None
+        totals_query = {k: v for k, v in query.items()
+                        if k not in ("dimensions", "order_by")}
+        totals_query["measures"] = kept
+        name, n = f"{binding}_totals", 2
+        while name in self.bindings:
+            name, n = f"{binding}_totals_{n}", n + 1
+        self.bindings[name] = {**data, "query": totals_query}
+        return name
 
     def _chart(self, raw: dict, where: str) -> str:
         if "data" not in raw:

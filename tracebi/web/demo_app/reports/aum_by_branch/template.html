@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>AUM by Branch &amp; Asset Class</title>
+<!--
+  The custom demo report. The other demo reports are JSON specs in the
+  default style; this one is a report package with its own look.
+
+  report.json    The data: one model query per binding name.
+  template.html  This layout. Each data-tb-figure element claims a binding
+                 and the runtime fills it with the fingerprinted rows.
+  style.css      The theme: fonts, the hero, colours, KPI tiles.
+  script.js      Chart restyling through tracebi.configureChart.
+  assets/        Fonts (Inter, Fraunces; SIL Open Font License) and the
+                 hero artwork, inlined at build.
+-->
+</head>
+<body>
+<main class="tb-page">
+
+  <header class="wm-hero">
+    <span class="wm-eyebrow">Wealth management · Demo</span>
+    <h1>Where the book sits, <em>branch by branch.</em></h1>
+    <p class="wm-lede">Assets under management across six branches and four
+      asset classes. The book stands at
+      <span data-tb-figure="value" data-tb-binding="at_a_glance"
+            data-tb-cell="market_value" data-tb-format="compact"
+            id="val-aum-inline">—</span>,
+      and every number on this page is a live query against the wealth
+      model, with its fingerprint in the <strong>Receipt</strong> drawer.</p>
+  </header>
+
+  <div class="tb-grid wm-kpis">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="at_a_glance"
+         data-tb-cell="market_value" data-tb-format="currency0" id="kpi-aum">
+      <span class="tb-kpi-label">Total AUM</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="at_a_glance"
+         data-tb-cell="unrealized_gain" data-tb-format="currency0" id="kpi-gain">
+      <span class="tb-kpi-label">Unrealized gain</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="at_a_glance"
+         data-tb-cell="gain_pct" data-tb-format="percent" id="kpi-gain-pct">
+      <span class="tb-kpi-label">Gain on cost</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+  </div>
+
+  <div class="tb-cols-2 wm-split">
+    <div class="tb-card">
+      <h2>AUM by branch</h2>
+      <div data-tb-figure="chart" data-tb-binding="by_branch"
+           data-tb-type="bar" data-tb-x="dim_branch.branch"
+           data-tb-y="market_value" data-tb-value-format="compact"
+           id="chart-branch"></div>
+    </div>
+    <div class="tb-card">
+      <h2>AUM by asset class</h2>
+      <div data-tb-figure="chart" data-tb-binding="by_asset_class"
+           data-tb-type="pie" data-tb-x="dim_product.asset_class"
+           data-tb-y="market_value" data-tb-value-format="compact"
+           id="chart-asset"></div>
+    </div>
+  </div>
+
+  <div class="tb-card">
+    <h2>Branch summary</h2>
+    <table data-tb-figure="table" data-tb-binding="branch_summary"
+           data-tb-columns="dim_branch.branch,dim_branch.region,market_value,unrealized_gain,gain_pct"
+           data-tb-labels="dim_branch.branch=Branch; dim_branch.region=Region; market_value=AUM; unrealized_gain=Unrealized gain; gain_pct=Gain on cost"
+           data-tb-formats="market_value=currency0; unrealized_gain=currency0; gain_pct=percent"
+           data-tb-totals="at_a_glance"
+           id="tbl-branch"></table>
+  </div>
+
+  <div class="tb-card">
+    <h2>Asset class breakdown</h2>
+    <table data-tb-figure="table" data-tb-binding="by_asset_class"
+           data-tb-labels="dim_product.asset_class=Asset class; market_value=AUM; unrealized_gain=Unrealized gain"
+           data-tb-formats="market_value=currency0; unrealized_gain=currency0"
+           data-tb-totals="at_a_glance"
+           id="tbl-asset"></table>
+  </div>
+
+  <footer class="wm-footer">
+    <h2>How this page is built</h2>
+    <p>Same model and same receipts as the plain demo reports; only the
+      presentation differs. Gain on cost is the model's declared ratio of
+      totals (unrealized gain ÷ cost basis), not an average of per-row
+      percentages.</p>
+  </footer>
+
+</main>
+</body></html>

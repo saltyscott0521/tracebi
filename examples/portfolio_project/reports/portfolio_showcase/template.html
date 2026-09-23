@@ -107,7 +107,9 @@
         <p class="tb-note">Filter and search subset which stamped rows
           display — they never compute new numbers. The table scrolls past
           the first page of rows; the CSV button exports the stamped bytes
-          verbatim.</p>
+          verbatim. The totals row is its own one-row query, so the model
+          computes it (the mark total is a ratio of totals); it steps aside
+          while a filter or search is on.</p>
         <p>
           Sector:
           <select data-tb-filter data-tb-binding="holdings_detail"
@@ -120,6 +122,7 @@
         </p>
         <table data-tb-figure="table" data-tb-binding="holdings_detail"
                data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
+               data-tb-totals="holdings_total"
                class="tb-table--striped" id="tbl-detail"></table>
       </div>
     </section>

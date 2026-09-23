@@ -173,6 +173,11 @@ class Registry:
                     "kind": "artifact"
                     if getattr(v["factory"], "_tracebi_package_dir", None)
                     else "carrier",
+                    # How it is authored: "spec" (a reports/<name>.json in the
+                    # default style), "package" (reports/<name>/ with its own
+                    # template and style), or "code" (a registered factory).
+                    "form": (getattr(v["factory"], "_tracebi_source", None)
+                             or {}).get("form", "code"),
                 }
                 for k, v in self._report_factories.items()
             ]
@@ -207,6 +212,15 @@ class Registry:
         """
         factory = self.report_factory(name)
         return getattr(factory, "_tracebi_package_dir", None) if factory else None
+
+    def report_source(self, name: str) -> Optional[dict]:
+        """Where *name* is defined: ``{"form", "path", "extras"}``, or ``None``.
+
+        Discovery tags a spec's or package's factory with its source location
+        so the web layer can show the files behind a report.
+        """
+        factory = self.report_factory(name)
+        return getattr(factory, "_tracebi_source", None) if factory else None
 
     # ── Scheduled reports ──────────────────────────────────────
 

@@ -139,6 +139,14 @@ export const useReportRunHistory = (name) =>
     enabled: !!name,
   })
 
+// The files that define a report (its spec, or its package's files).
+export const useReportSource = (name, enabled) =>
+  useQuery({
+    queryKey: ['report-source', name],
+    queryFn: () => get(`/reports/${encodeURIComponent(name)}/source`),
+    enabled: !!(name && enabled),
+  })
+
 export const useReportLineage = () =>
   useMutation({ mutationFn: (name) => get(`/reports/${name}/lineage`) })
 

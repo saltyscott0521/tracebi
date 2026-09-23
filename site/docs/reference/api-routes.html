@@ -197,8 +197,19 @@ graph. It computes but persists nothing, which is why <code>viewer</code> may ca
 <td><code>/api/reports/{name}/mermaid</code></td>
 <td>viewer</td>
 </tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/reports/{name}/source</code></td>
+<td>viewer</td>
+</tr>
 </tbody>
 </table>
+<p><code>GET /api/reports</code> gives each report a <code>form</code>: <code>spec</code> (a <code>reports/&lt;name&gt;.json</code>
+in the default style), <code>package</code> (a <code>reports/&lt;name&gt;/</code> with its own template
+and style) or <code>code</code>. <code>/source</code> returns the files that define the report —
+the spec, or the package's <code>report.json</code>, <code>template.html</code>, <code>style.css</code>,
+<code>script.js</code> and <code>report.py</code> — read-only, and only the files discovery
+registered for it.</p>
 <p><code>/run</code> returns <code>{name, html, manifest}</code> — the <strong>real artifact render</strong>, so what
 the browser shows is what <code>verify --file</code> can check. <code>POST /runs</code> starts the
 same work in the background and returns a <code>run_id</code> to poll.</p>

@@ -1034,3 +1034,62 @@ process.stdout.write(JSON.stringify({
     def test_chart_polish_restyles_but_never_changes_the_data(self):
         out = _run_dom(self._SCRIPT)
         assert out["data"] == [1234.5, -50]
+
+    def test_a_declared_measure_format_beats_the_shape_guess(self):
+        # The build writes the model's declared formats to tracebi-formats;
+        # the runtime must use them, as the server render does.
+        out = _run_dom("""
+dataBlock('b', 'region,cost\\nUS,1000.4\\nEU,2000.75\\n');
+var f = el('script', { id: 'tracebi-formats', type: 'application/json' });
+f.textContent = JSON.stringify({ b: { cost: 'currency0' } });
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
+loadRuntime();
+process.stdout.write(JSON.stringify({
+  rows: tbl.querySelector('tbody').children.map(function (tr) {
+    return tr.children.map(function (td) { return td.textContent; }); })
+}));
+""")
+        assert out["rows"] == [["US", "$1,000"], ["EU", "$2,001"]]
+
+    def test_a_narrow_pie_names_slices_in_a_legend_and_keeps_its_data(self):
+        out = _run_dom("""
+dataBlock('b', 'asset_class,aum\\nfixed income,2726364\\nmoney market,1688904\\n');
+var pie = el('div', { 'data-tb-figure': 'chart', 'data-tb-binding': 'b',
+                      'data-tb-type': 'pie', 'data-tb-x': 'asset_class',
+                      'data-tb-y': 'aum' });
+pie.clientWidth = 420;
+loadRuntime();
+var opt = __charts[0].options[0];
+process.stdout.write(JSON.stringify({
+  label: opt.series[0].label.show, legend: !!(opt.legend && opt.legend.show),
+  data: opt.series[0].data.map(function (d) { return d.value; })
+}));
+""")
+        assert out == {"label": False, "legend": True, "data": [2726364, 1688904]}
+
+    _TOTALS = """
+dataBlock('b', 'region,revenue,margin_pct\\nUS,1000,0.2\\nEU,3000,0.4\\n');
+dataBlock('b_totals', 'revenue,margin_pct\\n4000,0.35\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b',
+                        'data-tb-totals': 'b_totals' });
+var sel = el('select', { 'data-tb-filter': '', 'data-tb-binding': 'b',
+                         'data-tb-column': 'region' });
+loadRuntime();
+var foot = tbl.querySelector('tfoot');
+var cells = foot.children[0].children.map(function (td) { return td.textContent; });
+var before = foot.hidden;
+sel.value = 'US';
+sel._fire('change');
+process.stdout.write(JSON.stringify({ cells: cells, hidden: before,
+                                      filtered: tbl.querySelector('tfoot').hidden }));
+"""
+
+    def test_totals_row_shows_the_models_one_row_result(self):
+        out = _run_dom(self._TOTALS)
+        # 0.35 is the model's ratio of totals, not the 0.30 mean of the rows.
+        assert out["cells"] == ["Total", "4,000", "35.0%"]
+        assert out["hidden"] is False
+
+    def test_totals_row_steps_aside_while_a_filter_is_on(self):
+        # A grand total under a filtered view would not match the rows shown.
+        assert _run_dom(self._TOTALS)["filtered"] is True

@@ -424,3 +424,43 @@ def test_every_report_names_what_it_inlines(stack_model, tmp_path):
     assert "Built with TraceBi" in head
     assert "tracebi.css  TraceBi design system (MIT)" in head
     assert "<!-- style.css: this report's own styles -->" in head
+
+
+class TestDeclaredFormats:
+    """A format the model declares on a measure reaches the table, including
+    a ratio's inputs, which the query returns as their own columns."""
+
+    def test_ratio_input_column_uses_its_declared_format(self, tmp_path):
+        import re
+
+        df = pd.DataFrame({"region": ["NE", "SE"], "gain": [10.5, 20.25],
+                           "cost": [1000.4, 2000.75]})
+        m = DataModel("fmt_model")
+        m.add_connector(MemoryConnector("fm", tables={"t": df}))
+        m.add_table("t", connector="fm", source="t")
+        m.add_dimension("dim_r", table_name="t", key_col="region", attributes=["region"])
+        m.add_fact("f", table_name="t", measures=["gain", "cost"], foreign_keys={})
+        m.add_measure("gain", column="gain", agg="sum", format="currency0")
+        m.add_measure("cost", column="cost", agg="sum", format="currency0")
+        m.add_measure("gain_pct", ratio=("gain", "cost"), format="percent")
+        m.connect()
+
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({"name": "p", "data": {"t": {
+            "model": "fmt_model",
+            "query": {"fact": "f", "measures": ["gain_pct"],
+                      "dimensions": ["dim_r.region"]}}}}))
+        (pkg / "template.html").write_text(
+            '<html><head><title>p</title></head><body><table data-tb-figure="table" data-tb-binding="t" '
+            'id="tbl"></table></body></html>')
+        out = tmp_path / "o.html"
+        TemplatePackage(str(pkg)).render({"fmt_model": m}, str(out))
+        html = out.read_text(encoding="utf-8")
+
+        # The server-rendered rows use the declared format, not the shape guess.
+        assert "$1,000" in html and "1,000.40" not in html
+        # The browser gets the same map, so hydration writes the same text.
+        block = re.search(
+            r'<script id="tracebi-formats" type="application/json">(.*?)</script>', html)
+        assert block and json.loads(block.group(1))["t"]["cost"] == "currency0"

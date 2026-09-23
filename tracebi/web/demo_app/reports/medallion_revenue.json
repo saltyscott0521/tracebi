@@ -21,11 +21,6 @@
       ]
     },
     {
-      "type": "text",
-      "style": "heading2",
-      "title": "Revenue by Region"
-    },
-    {
       "type": "chart",
       "title": "Revenue by Region",
       "chart_type": "bar",
@@ -62,11 +57,6 @@
           "dimensions": ["dim_customer.region"]
         }
       }
-    },
-    {
-      "type": "text",
-      "style": "heading2",
-      "title": "Revenue by Segment (Shipped)"
     },
     {
       "type": "chart",

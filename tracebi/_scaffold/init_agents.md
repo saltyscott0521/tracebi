@@ -66,7 +66,9 @@ whose figures each name a binding from `report.json`:
   `data-tb-color` and `data-tb-value-format`. Tables optionally add
   `data-tb-columns` and the `tb-table--striped` / `tb-table--compact` classes;
   `data-tb-labels` and `data-tb-formats` set headers and number formats per
-  column (`data-tb-formats="revenue=currency; share=percent"`).
+  column (`data-tb-formats="revenue=currency; share=percent"`), and
+  `data-tb-totals="<binding>"` adds a totals row from a one-row binding (the
+  same query with no dimensions — the model computes each total).
 - **Give every figure an `id`** — ids are how humans redirect you
   ("fix `tbl-seniority`").
 - **Or let the framework build the figure.** Declare it in `report.json`

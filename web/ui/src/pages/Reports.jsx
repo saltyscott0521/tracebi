@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
-  fetchBuiltReport, reportDownloadUrl,
+  useReportSource, fetchBuiltReport, reportDownloadUrl,
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
@@ -307,6 +307,7 @@ function ReportDetail({ report }) {
     <Card>
       <CardTitle>
         {report.name}
+        <FormChip form={report.form} style={{ marginLeft: 8, verticalAlign: 'middle' }} />
         {report.description && (
           <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>
             {report.description}
@@ -324,7 +325,13 @@ function ReportDetail({ report }) {
         </div>
       )}
       {!shown && !running && !built.isLoading && (
-        <Btn onClick={handleRun}>▶ Run Report</Btn>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn onClick={handleRun}>▶ Run Report</Btn>
+          <Btn onClick={() => setTab('Source')} variant="outline">{'</>'} View source</Btn>
+        </div>
+      )}
+      {!shown && tab === 'Source' && (
+        <div style={{ marginTop: 18 }}><ReportSource name={report.name} /></div>
       )}
       {running && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
@@ -368,7 +375,7 @@ function ReportDetail({ report }) {
           </div>
 
           <Tabs
-            tabs={lineageData ? ['Output', 'Lineage', 'Manifest'] : ['Output', 'Manifest']}
+            tabs={lineageData ? ['Output', 'Lineage', 'Manifest', 'Source'] : ['Output', 'Manifest', 'Source']}
             active={tab}
             onChange={setTab}
           />
@@ -397,6 +404,8 @@ function ReportDetail({ report }) {
             </div>
           )}
 
+          {tab === 'Source' && <ReportSource name={report.name} />}
+
           {tab === 'Manifest' && (
             <pre className="code-block" style={{ maxHeight: 400, overflowY: 'auto' }}>
               {JSON.stringify(shown.manifest, null, 2)}
@@ -405,6 +414,73 @@ function ReportDetail({ report }) {
         </>
       )}
     </Card>
+  )
+}
+
+// How a report is authored, from the reports API's `form` field: a JSON spec
+// in the default style, or a custom package with its own template and style.
+const FORMS = {
+  spec: { label: 'JSON spec', title: 'A reports/<name>.json spec: sections in the default style' },
+  package: { label: 'Custom', title: 'A reports/<name>/ package: its own template, style and scripts' },
+  code: { label: 'Code', title: 'Registered from Python code' },
+}
+
+function FormChip({ form, style }) {
+  const f = FORMS[form] || FORMS.code
+  const custom = form === 'package'
+  return (
+    <span
+      title={f.title}
+      style={{
+        display: 'inline-flex', alignItems: 'center',
+        fontSize: 10, fontWeight: 700, letterSpacing: 0.2,
+        padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap',
+        background: custom ? 'var(--amber-lt)' : 'var(--blue-lt)',
+        color: custom ? 'var(--amber-text)' : 'var(--accent-text)',
+        border: `1px solid ${custom ? 'var(--amber-br)' : 'var(--border)'}`,
+        ...style,
+      }}
+    >
+      {f.label}
+    </span>
+  )
+}
+
+// The files that define the report, read-only. A spec is one JSON file; a
+// package is report.json + template.html + style.css + script.js (+ assets).
+function ReportSource({ name }) {
+  const { data, isLoading, error } = useReportSource(name, true)
+  const [active, setActive] = useState(0)
+  if (isLoading) return <div style={{ color: 'var(--muted)', fontSize: 13 }}><Spinner /> Loading source…</div>
+  if (error) return <ErrorDetail error={error} />
+  const files = data?.files || []
+  const file = files[Math.min(active, files.length - 1)]
+  return (
+    <div className="fade-in">
+      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>{data?.hint}</div>
+      {files.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {files.map((f, i) => (
+            <Btn key={f.path} size="sm" variant={i === active ? undefined : 'outline'} onClick={() => setActive(i)}>
+              {f.path.split('/').pop()}
+            </Btn>
+          ))}
+        </div>
+      )}
+      {file && (
+        <>
+          <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>
+            {file.path}{file.truncated ? ' (first 256 KB)' : ''}
+          </div>
+          <pre className="code-block" style={{ maxHeight: 480, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{file.content}</pre>
+        </>
+      )}
+      {data?.other_files?.length > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
+          Also in the package: {data.other_files.join(', ')}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -472,7 +548,12 @@ export default function Reports() {
                       onClick={() => select(r.name)}
                       name={r.name}
                       sub={r.description}
-                      right={<TrustChip kind={r.kind} />}
+                      right={
+                        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <FormChip form={r.form} />
+                          <TrustChip kind={r.kind} />
+                        </span>
+                      }
                     />
                   ))
                 }

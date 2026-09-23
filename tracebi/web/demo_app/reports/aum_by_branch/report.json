@@ -1,0 +1,42 @@
+{
+  "name": "AUM by Branch & Asset Class",
+  "author": "TraceBi Demo",
+  "description": "The custom-styled demo report: AUM and unrealized gain by branch and asset class, every figure a live query against wealth_model.",
+  "libs": ["echarts"],
+  "data": {
+    "at_a_glance": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value", "unrealized_gain", "gain_pct"]
+      }
+    },
+    "by_branch": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value"],
+        "dimensions": ["dim_branch.branch"],
+        "order_by": ["-market_value"]
+      }
+    },
+    "branch_summary": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value", "unrealized_gain", "gain_pct"],
+        "dimensions": ["dim_branch.branch", "dim_branch.region"],
+        "order_by": ["-market_value"]
+      }
+    },
+    "by_asset_class": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value", "unrealized_gain"],
+        "dimensions": ["dim_product.asset_class"],
+        "order_by": ["-market_value"]
+      }
+    }
+  }
+}

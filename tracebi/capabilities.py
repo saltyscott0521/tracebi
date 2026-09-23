@@ -238,6 +238,12 @@ def _presentation() -> dict:
                                "percent | decimal; wins over the derived "
                                "format. A column or format that does not "
                                "exist fails the build",
+            "data-tb-totals": "table figures: a one-row binding (the same "
+                              "query with no dimensions) whose values fill a "
+                              "totals row — the model computes each total, so "
+                              "a ratio's total is a ratio of totals. Hidden "
+                              "while a filter or search is on. A spec's "
+                              "table 'totals' compiles to this",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
             "data-tb-methodology": "one per page, on any container element; "

@@ -180,13 +180,13 @@ class TestFigures:
 
     def test_dropped_knobs_are_warned_never_swallowed(self):
         compiled = compile_spec(_spec([
-            {"type": "table", "data": _DATA, "totals": ["revenue"],
+            {"type": "table", "data": _DATA, "max_rows": 5,
              "color_scale": {"revenue": "#ff0000"}},
             {"type": "metrics", "data": _KPI_DATA,
              "metrics": [{"label": "T", "value": "total", "delta": 0.12}]},
         ]))
         text = "\n".join(compiled.warnings)
-        assert "totals" in text and "color_scale" in text
+        assert "max_rows" in text and "color_scale" in text
         assert "delta" in text
 
     def test_a_chart_section_opts_the_package_into_echarts(self):
@@ -464,3 +464,63 @@ def test_negative_currency_puts_the_sign_before_the_symbol():
     assert _ssr_format(-6272735.39, "currency0") == "-$6,272,735"
     assert _ssr_format(-0.5, "currency") == "-$0.50"
     assert _ssr_format(12.5, "currency") == "$12.50"
+
+
+class TestTotalsRows:
+    """A spec's ``totals`` become a one-row query the model computes."""
+
+    def test_totals_compile_to_their_own_binding(self):
+        compiled = compile_spec(_spec([
+            {"type": "table", "title": "By region", "id": "by_region",
+             "data": _DATA, "totals": ["revenue"]},
+        ]))
+        bindings = json.loads(compiled.files["report.json"])["data"]
+        assert bindings["by_region_totals"]["query"] == {
+            "fact": "f", "measures": {"revenue": "sum"}}
+        assert 'data-tb-totals="by_region_totals"' in compiled.files["template.html"]
+        assert not compiled.warnings
+
+    def test_totals_under_a_limit_are_refused_with_a_warning(self):
+        limited = {**_DATA, "query": {**_DATA["query"], "limit": 2}}
+        compiled = compile_spec(_spec([
+            {"type": "table", "title": "Top", "data": limited, "totals": ["revenue"]},
+        ]))
+        assert "data-tb-totals" not in compiled.files["template.html"]
+        assert any("limit" in w for w in compiled.warnings)
+
+    def test_build_renders_the_totals_row_and_records_it(self, cs_model, tmp_path):
+        from tracebi.reports.template_package import TemplatePackage
+        from tracebi.verify import verify_file
+        compiled = compile_spec(_spec([
+            {"type": "table", "title": "By region", "id": "by_region",
+             "data": _DATA, "totals": ["revenue"],
+             "number_formats": {"revenue": "currency0"}},
+        ]))
+        out = tmp_path / "out.html"
+        manifest = TemplatePackage(str(_write_package(tmp_path, compiled))).render(
+            {"cs_model": cs_model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert ('<tfoot><tr class="tb-total"><td>Total</td>'
+                '<td class="tb-num">$425</td></tr></tfoot>') in html
+        fig = next(f for f in manifest.figures if f.get("binding") == "by_region")
+        assert fig["totals"] == "by_region_totals"
+        result = verify_file(html, manifest.to_dict())
+        assert result["ok"], result["verdict_detail"]
+        # Unhooking the totals row from its binding is an edit verify catches.
+        edited = html.replace(' data-tb-totals="by_region_totals"', "")
+        assert not verify_file(edited, manifest.to_dict())["ok"]
+
+    def test_build_refuses_a_totals_binding_with_many_rows(self, cs_model, tmp_path):
+        from tracebi.reports.figures import FigureError
+        from tracebi.reports.template_package import TemplatePackage
+        pkg = tmp_path / "bad"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps(
+            {"name": "Bad", "data": {"t": _DATA, "t2": _DATA}}), encoding="utf-8")
+        (pkg / "template.html").write_text(
+            "<html><head><title>x</title></head><body>"
+            '<table data-tb-figure="table" data-tb-binding="t" data-tb-totals="t2"></table>'
+            "</body></html>", encoding="utf-8")
+        with pytest.raises(FigureError, match="one-row binding"):
+            TemplatePackage(str(pkg)).render(
+                {"cs_model": cs_model}, str(tmp_path / "o.html"))
