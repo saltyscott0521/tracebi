@@ -562,9 +562,14 @@ def _schedule() -> dict:
                  "\"to\": [\"cfo@example.com\"]}",
         "fields": "cron: five fields, required. timezone: IANA name, "
                   "default UTC. to: email list, optional; without it a run "
-                  "rebuilds the artifact and delivers nothing. Any other "
-                  "field fails when the package loads.",
-        "commands": "tracebi schedule list | run <name> [--no-send] | serve. "
+                  "rebuilds the artifact and delivers nothing. refresh: "
+                  "optional {\"transforms\": [...], \"pipelines\": [...]} "
+                  "run first, in that order, each in a fresh process; a "
+                  "failed step (a sink contract included) fails the run "
+                  "before anything is built or sent. Any other field fails "
+                  "when the package loads.",
+        "commands": "tracebi schedule list | run <name> [--no-send] | serve "
+                    "(one run: refresh → build → verify → email → record). "
                     "Runs append to output/schedule_runs.jsonl with status "
                     "delivered | built | refused | failed. serve needs "
                     "tracebi[pipeline]; cron can call `schedule run` instead.",

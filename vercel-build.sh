@@ -18,5 +18,6 @@ rm -rf .vercel_out
 mkdir -p .vercel_out/app
 cp -r tracebi/web/ui/dist/. .vercel_out/app/
 cp site/index.html .vercel_out/index.html
+cp -r site/assets site/sample .vercel_out/
 
 echo "Assembled .vercel_out: / = marketing, /app = demo app"

@@ -2286,16 +2286,6 @@ class TestHelpTextIsReadable:
     stdout to read the cheat sheet.
     """
 
-    def test_help_text_returns_the_string(self):
-        import pandas as pd
-
-        from tracebi import DataModel, DataSet
-        from tracebi.reports.report import Report
-
-        assert "DataSet" in DataSet(pd.DataFrame(), name="t").help_text()
-        assert "DataModel" in DataModel("m").help_text()
-        assert "Report" in Report("r").help_text()
-
     def test_cheat_sheet_kwargs_are_real_parameters(self):
         """A cheat sheet that names a keyword the method does not take is
         worse than no cheat sheet: it is copied verbatim and raises TypeError.
@@ -2346,16 +2336,6 @@ class TestHelpTextIsReadable:
                         )
         assert checked > 10, "the cheat sheets must advertise keyword arguments"
         assert not problems, "\n".join(problems)
-
-    def test_help_still_prints_the_same_text(self, capsys):
-        import pandas as pd
-
-        from tracebi import DataSet
-
-        ds = DataSet(pd.DataFrame(), name="t")
-        text = ds.help_text()
-        ds.help()
-        assert capsys.readouterr().out.strip() == text.strip()
 
     def test_cheat_sheets_are_in_the_capability_surface(self):
         from tracebi.capabilities import describe

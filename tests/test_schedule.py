@@ -32,7 +32,8 @@ class TestParseScheduleBlock:
         got = sched.parse_schedule_block(
             {"cron": "0  9 * *   MON", "to": "a@x.com, b@x.com"}, path="r")
         assert got == {"cron": "0 9 * * MON", "timezone": None,
-                       "to": ["a@x.com", "b@x.com"]}
+                       "to": ["a@x.com", "b@x.com"],
+                       "refresh": {"transforms": [], "pipelines": []}}
 
     def test_recipients_are_optional(self):
         assert sched.parse_schedule_block({"cron": "0 9 * * *"}, path="r")["to"] == []
@@ -43,6 +44,8 @@ class TestParseScheduleBlock:
         ({"cron": "0 9 * * MON", "every": "day"}, "unknown schedule field"),
         ({"cron": "0 9 * * MON", "to": ["not-an-address"]}, "email addresses"),
         ({"cron": "0 9 * * MON", "timezone": "Mars/Olympus"}, "unknown schedule timezone"),
+        ({"cron": "0 9 * * MON", "refresh": ["t"]}, "'refresh' must be an object"),
+        ({"cron": "0 9 * * MON", "refresh": {"models": ["m"]}}, "'refresh' must be an object"),
     ])
     def test_refuses(self, raw, fragment):
         with pytest.raises(ValueError, match=fragment):
@@ -108,7 +111,8 @@ class TestDiscovery:
     def test_finds_scheduled_packages_only(self, scheduled):
         schedules, errors = sched.discover_schedules(scheduled / "reports")
         assert errors == []
-        assert schedules == [{"report": "sample_dashboard", **SCHEDULE}]
+        assert schedules == [{"report": "sample_dashboard", **SCHEDULE,
+                              "refresh": {"transforms": [], "pipelines": []}}]
 
     def test_unscheduled_project_has_none(self, project):
         assert sched.discover_schedules(project / "reports") == ([], [])
@@ -172,6 +176,58 @@ class TestScheduleRun:
         out = _run(["schedule", "list", "--json"], scheduled)
         [entry] = json.loads(out.stdout)
         assert entry["last_run"]["status"] == sched.BUILT
+
+
+def _kpi_orders(proj: Path) -> int:
+    import csv as _csv
+    import io
+    import re
+    html = (proj / "output" / "sample_dashboard.html").read_text()
+    block = re.search(r'<script[^>]*id="tracebi-data-kpis"[^>]*>(.*?)</script>',
+                      html, re.S).group(1)
+    row = next(_csv.DictReader(io.StringIO(json.loads(block)["csv"])))
+    return int(float(row["orders"]))
+
+
+class TestRefresh:
+    """A schedule's refresh steps run before the build, so the report shows
+    fresh data; a failed step stops the run before anything is built."""
+
+    def _with_refresh(self, proj, transforms):
+        rj = proj / "reports" / "sample_dashboard" / "report.json"
+        decl = json.loads(rj.read_text())
+        decl["schedule"]["refresh"] = {"transforms": transforms}
+        rj.write_text(json.dumps(decl))
+
+    def test_refresh_runs_the_transform_before_the_build(self, scheduled):
+        # Baseline: a build before any new data.
+        assert _run(["report", "build", "sample_dashboard"], scheduled).returncode == 0
+        before = _kpi_orders(scheduled)
+        # One new order lands in the raw input after the warehouse was built.
+        csv = scheduled / "inputs" / "orders.csv"
+        lines = csv.read_text().splitlines()
+        new_row = "9999" + lines[1][lines[1].index(","):]
+        csv.write_text("\n".join(lines + [new_row]) + "\n")
+
+        self._with_refresh(scheduled, ["sample_transform"])
+        out = _run(["schedule", "run", "sample_dashboard", "--no-send"], scheduled)
+        assert out.returncode == 0, out.stderr
+        [rec] = _runs(scheduled)
+        assert rec["status"] == sched.BUILT
+        assert [s["step"] for s in rec["refresh"]] == ["transform:sample_transform"]
+        assert rec["refresh"][0]["ok"] is True
+        # The built report's embedded, fingerprinted KPI data counts it.
+        assert _kpi_orders(scheduled) == before + 1
+
+    def test_a_failed_refresh_builds_and_sends_nothing(self, scheduled):
+        self._with_refresh(scheduled, ["no_such_transform"])
+        out = _run(["schedule", "run", "sample_dashboard"], scheduled, _STUB_SEND)
+        assert out.returncode == 1
+        [rec] = _runs(scheduled)
+        assert rec["status"] == sched.FAILED
+        assert "refresh transform 'no_such_transform' failed" in rec["error"]
+        assert not (scheduled / "output" / "sample_dashboard.html").exists()
+        assert not (scheduled / "sent.json").exists()
 
 
 def test_a_failed_run_is_recorded_not_raised(tmp_path):

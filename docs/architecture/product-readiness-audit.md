@@ -8,7 +8,7 @@ reader experience written for non-engineers, and one sharply chosen buyer.**
 
 > **Positioning superseded (2026-09-22):** the buyer, positioning and
 > "what not to do" sections below are replaced by the strategy in `docs/strategy/` ([[vision-and-positioning]]), which
-> targets agents building repeatable reports that replace recurring BI. The
+> targets agent-built reporting, ad hoc and recurring, from approved definitions. The
 > findings stand.
 
 This audit sits alongside [[production-plan]] (the engineering sequence) and
@@ -50,7 +50,7 @@ Everything below was run, not just read.
 | Agent surface (MCP, context, guardrails) | **A−** | Mature and tested. The main differentiator for technical buyers. |
 | Analyst / developer UX | **B** | The CLI loop is good. Five `tracebi` concepts (sink, freeze point, binding, grain, stage) must be learned before the first report. |
 | Non-technical reader UX | **C** | The file and the Verify page work, but the words on screen are engineer-speak, and the "send the file, reader checks it" story has a gap (P1-1). |
-| Packaging and release | **C** | Never released to PyPI, `0.6.0.dev0` in `pyproject.toml` while the UI shows `v0.5.2`, no tags. |
+| Packaging and release | **C** | PyPI has `tracebi` 0.5.0–0.5.3 (confirm it is ours), but the README installs from git; `0.6.0.dev0` in `pyproject.toml` while the UI shows `v0.5.2`, no tags. |
 | Security and operations | **B−** | Opt-in auth and roles, bearer-token MCP, pip-audit in CI. Identity is self-asserted for agents, and SQLite is single-process. |
 | Commercial readiness | **D** | Open-core line is decided on paper. No paid tier built, no pricing, no named design partner in the repo. |
 

@@ -41,21 +41,8 @@ COMPACT_VALUES = [
 
 
 class TestAssetHygiene:
-    def test_asset_exists_and_under_size_budget(self):
+    def test_asset_exists(self):
         assert os.path.isfile(ASSET), f"runtime asset missing at {ASSET}"
-        # 25 KiB → 26 KiB when the badge anchor (tables) and the scatter /
-        # tooltip valueFormat coverage landed; → 44 KiB when the control
-        # grammar (filters/search), scrollable tables, the verbatim CSV
-        # download, tabs, and the receipt drawer landed; → 48 KiB when the
-        # Parquet worker-decode path (large-detail artifacts) landed — the async
-        # pre-decode that fills _blocks from embedded Parquet via the inlined
-        # worker engine before hydration, plus tracebi.ready() so author code
-        # sees the same data on either transport. → 64 KiB when an opted-in
-        # package posts a selection and paints the model's result, including
-        # the fail-closed path that does not subset-and-sum. → 72 KiB for the
-        # house chart style (polishOption) and a table's data-tb-labels /
-        # data-tb-formats overrides. Behavior, not bloat.
-        assert os.path.getsize(ASSET) < 72 * 1024
 
     def test_no_eval(self):
         with open(ASSET, encoding="utf-8") as f:

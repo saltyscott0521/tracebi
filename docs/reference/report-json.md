@@ -106,7 +106,8 @@ The build itself ignores it.
 "schedule": {
   "cron": "0 9 * * MON",
   "timezone": "America/New_York",
-  "to": ["cfo@example.com"]
+  "to": ["cfo@example.com"],
+  "refresh": {"transforms": ["holdings_transform"]}
 }
 ```
 
@@ -115,9 +116,11 @@ The build itself ignores it.
 | `cron` | Required. Five fields: minute hour day month day_of_week. |
 | `timezone` | Optional IANA name. Default `UTC`. |
 | `to` | Optional list of email addresses. Without it, a run rebuilds the artifact and records the run, and sends nothing. |
+| `refresh` | Optional. `{"transforms": [...], "pipelines": [...]}` to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (`tracebi run-transform` / `tracebi run-pipeline`). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent. |
 
-Any other field, a cron that isn't five fields, an unknown time zone or an
-address with no `@` is refused when the package loads.
+Any other field, a cron that isn't five fields, an unknown time zone, an
+address with no `@` or a malformed `refresh` is refused when the package
+loads. A `refresh` name that doesn't exist fails the run, not the load.
 
 ---
 

@@ -46,7 +46,8 @@
   },
   "schedule": {
     "cron": "0 7 * * MON",
-    "timezone": "America/New_York"
+    "timezone": "America/New_York",
+    "refresh": {"transforms": ["holdings_transform"]}
   },
   "figures": {
     "chart_fund": {
