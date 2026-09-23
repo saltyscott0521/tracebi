@@ -10,7 +10,7 @@ code.**
 
 | User | Who they are | Job to be done | Main surface | Technical? |
 | --- | --- | --- | --- | --- |
-| **Requester** | Sales lead, finance manager, ops manager | "Get me a weekly view of X without waiting a month." | Web app: Ask, request form. Email and Slack for results | No |
+| **Requester** | Sales lead, finance manager, ops manager | "Answer this question now, and get me a weekly view of X without waiting a month." | Web app: Ask, request form. Slack for questions; email and Slack for results | No |
 | **Reader** | Exec, board member, client, investor | "Show me the numbers I need, where I already look." | Delivered report (email, Slack, link), mobile | No |
 | **Approver** | Data owner, finance controller, team lead | "Make sure what goes out is right and uses our definitions." | Review in the app, or the pull request | Some |
 | **Builder** | Analytics engineer, data engineer, technical analyst | "Connect the data once, define it once, let agents do the rest." | Repo, CLI, `tracebi dev`, models | Yes |
@@ -47,7 +47,20 @@ the first report from a template → it's scheduled for Monday.
 builder's own data. **Today:** only possible on the sample data. Needs
 templates, connection setup and a model scaffold (Q1–Q2).
 
-### 2. A new request (requester → agent → approver)
+### 2. A quick question (requester → agent)
+
+The requester asks "What was fair value in Software last quarter, by fund?"
+→ the agent answers from the model in seconds, with a small table, the
+definition it used, and a fingerprint behind each number → a follow-up ("and
+the quarter before?") refines it → if it's useful, "Keep this" turns it into
+a request (journey 3).
+
+**Target:** answer in under 10 seconds, no data person involved, and the
+number matches the board pack because it uses the same definition.
+**Today:** works through any MCP agent (`query_model`) and through Ask on an
+open report. Ask anywhere in the app, Slack, and "Keep this" are Q2–Q3.
+
+### 3. A new recurring report (requester → agent → approver)
 
 The requester types "weekly pipeline by region, to the sales leads" → an agent
 task starts → the agent builds the report on a branch and opens a PR with a
@@ -58,7 +71,7 @@ approves → merge publishes it → it arrives Monday.
 involved. **Today:** the agent loop works from an IDE. The inbox, the PR app
 and in-app review are Q3.
 
-### 3. Monday morning (reader)
+### 4. Monday morning (reader)
 
 The report arrives by email or Slack. It opens on a phone. The numbers match
 last week's definitions. A "Ask about this report" link answers follow-up
@@ -67,7 +80,7 @@ questions without a new request.
 **Today:** scheduled email with the HTML attached works (`tracebi schedule`).
 Slack file delivery, in-body summaries and links are Q1–Q2.
 
-### 4. Something broke (admin → agent → approver)
+### 5. Something broke (admin → agent → approver)
 
 A source column was renamed. The Monday run fails and is recorded, and the
 owner is alerted. An agent reads the failure, proposes a fix PR, and the
@@ -76,7 +89,7 @@ approver merges it. The run is retried.
 **Today:** failures are recorded in `schedule_runs.jsonl`. Alerts and the
 agent fix loop are Q3.
 
-### 5. Proving a number (approver or auditor)
+### 6. Proving a number (approver or auditor)
 
 "Where did this number in March's board pack come from?" The receipt names
 the definition, the query and the fingerprint. `tracebi verify` re-runs it.
@@ -87,7 +100,7 @@ the definition, the query and the fingerprint. `tracebi verify` re-runs it.
 
 | User | Never |
 | --- | --- |
-| Requester | Learn a tool, file a ticket with a template, or wait for a sprint |
+| Requester | Learn a tool, file a ticket, or wait for a sprint to get a simple answer |
 | Reader | Log in to see a report that was sent to them, or install anything |
 | Approver | Read Python to approve a report. Plain-language review is the goal. |
 | Builder | Rebuild the same report for a new region or month by hand |

@@ -1,22 +1,41 @@
 # Product strategy
 
-**Own the repeatable-report loop from request to delivery. Match BI tools on
-what recurring reports need. Deliberately skip what they need only for
-drag-and-drop exploration.**
+**Own two paths that share one set of definitions: Ask, which answers a
+question in seconds, and Publish, which turns the answers worth keeping into
+reports that run themselves. Match BI tools on what those need. Deliberately
+skip what they need only for drag-and-drop exploration.**
 
 ---
 
-## The product is a loop
+## Two paths, one set of definitions
 
 ```
-REQUEST → AUTHOR → REVIEW → PUBLISH → RUN → DELIVER → MONITOR
-   ▲                                                      │
-   └──────────── a failure or a new question ─────────────┘
+            ┌─ ASK ───── agent answers from the model ── answer / one-off report
+QUESTION ───┤                                            │  "keep this"
+            └─ PUBLISH ─ AUTHOR → REVIEW → PUBLISH → RUN → DELIVER → MONITOR
+                              ▲                                      │
+                              └──── a failure or a new question ─────┘
 ```
+
+### Ask: the ad hoc path
 
 | Step | What happens | Today | Target | Quarter |
 | --- | --- | --- | --- | --- |
-| **Request** | A person asks in plain words | Ask on one report | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
+| **Question** | A person asks in plain words, in the app, Slack or their agent tool | Ask on an open report; any MCP agent via `query_model` | Ask anywhere in the app, not only on a report; Slack | Q2–Q3 |
+| **Answer** | The agent queries the model; every number carries its query and fingerprint | ✅ `query_model`, selections on the model | Answers with a small chart or table, and the definition used, in plain words | Q2 |
+| **One-off report** | For a bigger question, the agent builds a report file to share | ✅ `tracebi new-report`, `tracebi dev`, `build_report` | One click from an answer to a shareable report | Q3 |
+| **Keep it** | A useful answer becomes a published report | Manual: add a package and a `schedule` block | "Keep this" opens the pull request for review | Q3 |
+
+No review per question: an answer uses only definitions a person already
+approved in the model. If the question needs a definition that doesn't exist,
+the agent says so and proposes one, and that proposal is reviewed like any
+model change.
+
+### Publish: the recurring path
+
+| Step | What happens | Today | Target | Quarter |
+| --- | --- | --- | --- | --- |
+| **Request** | A person asks for a report, or keeps an answer from Ask | Ask on one report | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
 | **Author** | An agent writes the model and report | MCP gateway, package grammar, validation, `tracebi dev` | Templates, model scaffold from warehouse metadata | Q1–Q2 |
 | **Review** | A person approves | Git pull request, Desk pins | Plain-language review in the app: rendered preview, what changed, which definitions it uses | Q3 |
 | **Publish** | Merge makes it live | Server discovers at startup | Publish on merge, no restart | Q3 |
@@ -25,13 +44,13 @@ REQUEST → AUTHOR → REVIEW → PUBLISH → RUN → DELIVER → MONITOR
 | **Monitor** | Failures and surprises get handled | Run log, `tracebi verify` | Alerts on failure, empty data and thresholds. Agent opens a fix PR. | Q3 |
 
 **Rule:** a quarter's work finishes a step end to end before starting the
-next one. A half-built loop is worth less than a narrow, complete one.
+next one. A half-built path is worth less than a narrow, complete one.
 
 ## BI parity map
 
 What a team expects from a BI tool, and our answer.
 
-| Capability | Needed for recurring reports? | TraceBi answer | Status |
+| Capability | Needed? | TraceBi answer | Status |
 | --- | --- | --- | --- |
 | Dashboards and reports | Yes | Report packages (HTML), specs | ✅ |
 | Charts, tables, KPIs | Yes | ECharts figures, tables, value cards | ✅ |
@@ -47,24 +66,28 @@ What a team expects from a BI tool, and our answer.
 | Catalog and search | Yes | Reports list | ✅ basic. Owners and usage Q4. |
 | Version history | Yes | Git | ✅ (better than BI) |
 | Embedding | Sometimes | Signed-URL embed | ❌ Q4 |
-| Natural-language questions | Sometimes | Ask, through the agent | ✅ partial |
+| Natural-language questions | Yes: the ad hoc path | Ask, through the agent, from the approved definitions | ✅ partial (on a report and via MCP) |
 | Drag-and-drop authoring | No | Agents author | Won't build |
 | Pixel-perfect paginated layout | Rarely | HTML + CSS; PDF later | Later |
 | Real-time streaming dashboards | No | Out of scope | Won't build |
 
 ## Where to be better, not just equal
 
-1. **Authoring by agents.** A closed vocabulary, validation before execution,
+1. **Fast answers without going around the definitions.** Today a quick
+   question goes to a spreadsheet export or a one-off query, and gets a number
+   that disagrees with the board pack. Ask answers in seconds from the same
+   model the published reports use.
+2. **Authoring by agents.** A closed vocabulary, validation before execution,
    repair-path errors and templates, so an agent gets a report right the
    first time. Measure it: first-build success rate.
-2. **Consistency.** One definition used everywhere, with a linter that
+3. **Consistency.** One definition used everywhere, with a linter that
    refuses silently wrong aggregations (already shipped: rate and stock
    guards).
-3. **Review.** A plain-language diff of what a report change does, so an
+4. **Review.** A plain-language diff of what a report change does, so an
    approver who doesn't code can approve it.
-4. **Repeatability and proof.** Schedules in the repo, run history, and
+5. **Repeatability and proof.** Schedules in the repo, run history, and
    receipts that re-run.
-5. **Ownership.** Plain files in the customer's git. Leaving TraceBi means
+6. **Ownership.** Plain files in the customer's git. Leaving TraceBi means
    keeping everything.
 
 ## The template gallery
@@ -94,12 +117,13 @@ path, and a landing page.
 | Warehouse writes by agents or Cloud | Read-only on customer data |
 | Our own ETL platform | Sits on dbt and the warehouse. `transforms/` stays for teams without one. |
 | Cloud-only features that change what a report can compute | Open by default |
-| Real-time streaming dashboards | Not the recurring-report job |
+| Real-time streaming dashboards | Not the reporting job, ad hoc or recurring |
 
 ## Product quality bars
 
 | Bar | Target |
 | --- | --- |
+| Question to answer (Ask), on a model that exists | < 10 seconds |
 | Install to first scheduled report, on your own data | < 30 minutes |
 | Agent first-build success (report builds and validates on the first try) | > 80% on template-based requests |
 | Scheduled runs delivered on time | > 99% |

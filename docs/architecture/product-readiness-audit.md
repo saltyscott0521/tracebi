@@ -8,7 +8,7 @@ reader experience written for non-engineers, and one sharply chosen buyer.**
 
 > **Positioning superseded (2026-09-22):** the buyer, positioning and
 > "what not to do" sections below are replaced by the strategy in `docs/strategy/` ([[vision-and-positioning]]), which
-> targets agents building repeatable reports that replace recurring BI. The
+> targets agent-built reporting, ad hoc and recurring, from approved definitions. The
 > findings stand.
 
 This audit sits alongside [[production-plan]] (the engineering sequence) and
