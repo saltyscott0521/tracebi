@@ -123,6 +123,10 @@ function parseCut(text) {
   return filters
 }
 
+// Ask is off for now: when it returns it answers only from what is on the
+// report or in its model's data.
+const SHOW_ASK = false
+
 function AskCut({ reportName, frameRef, onPackageChange }) {
   const [text, setText] = useState('')
   const [reply, setReply] = useState(null)
@@ -341,6 +345,12 @@ function ReportDetail({ report }) {
 
       {shown && (
         <>
+          {shown.manifest?.rendered_at && (
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}
+                 title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">
+              Built {new Date(shown.manifest.rendered_at).toLocaleString()}
+            </div>
+          )}
           <ReportReceipt manifest={shown.manifest} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <Btn onClick={handleRun} disabled={running} variant="outline" size="sm">
@@ -382,7 +392,9 @@ function ReportDetail({ report }) {
 
           {tab === 'Output' && (
             <>
-              <AskCut reportName={report.name} frameRef={frameRef} onPackageChange={refreshBuilt} />
+              {SHOW_ASK && (
+                <AskCut reportName={report.name} frameRef={frameRef} onPackageChange={refreshBuilt} />
+              )}
               <ReportFrame html={shown.html} title={report.name} frameRef={frameRef} />
             </>
           )}

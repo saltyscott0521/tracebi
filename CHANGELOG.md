@@ -6,6 +6,20 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Fixed — opening a report no longer asks you to run it
+
+- **The last build is kept.** On a read-only disk (a serverless deploy such
+  as the Vercel demo) a build was thrown away, so every click asked for Run
+  again. The server now keeps the last build in memory as well as on disk.
+- **A report never built on this server is built once on first open,** and
+  everyone after sees that build. Opening never re-queries after that; fresh
+  data comes from Rebuild or a schedule.
+- **The HTML download is the last build,** the file on screen, instead of a
+  fresh render that could differ from it and query the database again.
+- **Each report shows when it was built.**
+- **Ask is hidden on reports for now.** When it returns it will answer only
+  from what is on the report or in its model's data.
+
 ### Added — totals rows the model computes
 
 - **`data-tb-totals="<binding>"`** on a table figure fills a totals row from

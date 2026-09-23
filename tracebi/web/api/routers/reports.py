@@ -34,6 +34,11 @@ def list_reports():
     return registry.list_reports()
 
 
+#: The last build of each report, kept in memory as well as on disk, so a
+#: server whose disk is read-only (a serverless deploy) still opens the last
+#: build instead of asking every visitor to run the report again.
+_LAST_BUILD: dict = {}
+
 #: Web renders of artifact-backed reports, cached per name: the full
 #: TemplatePackage render is real work (queries + embedding), and the UI
 #: polls. Keyed on the package files' max mtime plus a short TTL so a
@@ -133,6 +138,7 @@ def _artifact_payload(name: str):
         **receipt,
     }
     _ARTIFACT_CACHE[name] = {"mtime": mtime, "at": now, "payload": payload}
+    _LAST_BUILD[name] = payload
     return payload
 
 
@@ -278,32 +284,48 @@ def keep_report_selection(name: str, payload: dict):
     return result
 
 
-@router.get("/{name}/built")
-def built_report(name: str):
-    """The last build on disk: ``output/<name>.html`` and its manifest.
+def _last_build(name: str) -> dict:
+    """The last build of *name*: ``output/<name>.html`` on disk, else the
+    copy kept in memory, else — when the report has never been built on
+    this server — one build now, kept for everyone after.
 
-    Report opens this file. Rebuild is a separate action.
+    Opening and downloading read this; they never re-query on their own.
+    Fresh data comes from a schedule or Rebuild.
     """
     _package_or_404(name)
     path = os.path.join(os.getcwd(), "output", f"{_safe_filename(name)}.html")
     manifest_path = path + ".manifest.json"
-    if not os.path.isfile(path) or not os.path.isfile(manifest_path):
+    if os.path.isfile(path) and os.path.isfile(manifest_path):
+        with open(path, encoding="utf-8") as fh:
+            html = fh.read()
+        with open(manifest_path, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        return {
+            "name": name,
+            "html": html,
+            "manifest": manifest,
+            "retained": True,
+            "built": True,
+            "html_path": path,
+            "manifest_path": manifest_path,
+        }
+    if name in _LAST_BUILD:
+        return {**_LAST_BUILD[name], "built": True}
+    try:
+        return {**_artifact_payload_or_refuse(name), "built": True}
+    except Exception:  # noqa: BLE001 — a failed first build is a Run away, not a 500
         raise HTTPException(
             status_code=404, detail=f"No built artifact for '{name}'.",
-        )
-    with open(path, encoding="utf-8") as fh:
-        html = fh.read()
-    with open(manifest_path, encoding="utf-8") as fh:
-        manifest = json.load(fh)
-    return {
-        "name": name,
-        "html": html,
-        "manifest": manifest,
-        "retained": True,
-        "built": True,
-        "html_path": path,
-        "manifest_path": manifest_path,
-    }
+        ) from None
+
+
+@router.get("/{name}/built")
+def built_report(name: str):
+    """The last build: on disk, in memory, or built once if there is none.
+
+    Report opens this. Rebuild is a separate action.
+    """
+    return _last_build(name)
 
 
 @router.post("/{name}/run")
@@ -377,11 +399,11 @@ def download_report(name: str, format: str = "xlsx"):
         )
     fname = _safe_filename(name)
 
-    # The HTML download is the artifact itself — the same bytes ``verify
-    # --file`` checks — so it goes through the one render path.
+    # The HTML download is the last build — the file the reader is looking
+    # at, the same bytes ``verify --file`` checks — never a fresh render.
     if format == "html":
         return HTMLResponse(
-            _artifact_payload_or_refuse(name)["html"],
+            _last_build(name)["html"],
             headers={
                 "Content-Disposition": f'attachment; filename="{fname}.html"',
             },
