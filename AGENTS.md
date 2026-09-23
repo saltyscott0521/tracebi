@@ -3,7 +3,8 @@
 Read this before touching a TraceBi project. Deeper references: `WORKFLOW.md`
 (the three-phase workflow, end to end), `CLAUDE.md` (codebase rules), `NOTES.md`
 (design decisions), `examples/agent_gateway/` (a complete recorded agent
-session).
+session), `docs/agents/pitfalls.md` (bugs already hit here, and the rule that
+prevents each: read it before changing the runtime, styles or compiler).
 
 ## What TraceBi is
 
@@ -88,7 +89,9 @@ binding: `data-tb-figure="value|chart|table|custom"` +
 `data-tb-binding="<name>"` (values add `data-tb-cell` and optionally
 `data-tb-format`; charts add `data-tb-type`/`data-tb-x`/`data-tb-y` and
 optionally `data-tb-color`/`data-tb-value-format`; tables optionally
-`data-tb-columns`). A figure with no binding carries `data-tb-unverified` —
+`data-tb-columns`, plus `data-tb-labels` and `data-tb-formats` to name headers
+and number formats per column, e.g. `data-tb-formats="fair_value=currency0;
+mark=percent"`). A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
 `presentation` block.
@@ -117,6 +120,10 @@ draw and mark that one yourself. It refuses the silent failures: a figure
 naming an undeclared binding fails at load, and a figure declared but never
 placed — or placed twice — fails the build. Hand-written figures still work
 everywhere; this is sugar, not a replacement.
+
+**Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
+(`examples/portfolio_project/reports/portfolio_showcase/`) uses it for two
+typefaces and its hero artwork.
 
 Three rules that keep pages honest:
 
@@ -190,6 +197,16 @@ kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
 is already served on the Reports page — there is no separate publish step.
+
+**Repeat it with a `schedule` block.** A recurring report declares when it
+runs and who receives it in `report.json`:
+`"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
+"to": ["cfo@example.com"]}` (`to` optional: without it a run only rebuilds).
+The reviewer approves when and to whom in the same diff as what.
+`tracebi schedule run <name>` runs it now (build → verify → email → record
+in `output/schedule_runs.jsonl`); a receipt that does not verify is
+recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
+schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
 name** opens the **discovery workbench** — the live surface for phase ① and

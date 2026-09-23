@@ -228,6 +228,16 @@ def _presentation() -> dict:
                                     "currency0 | percent | decimal "
                                     "(compact → '550.7B')",
             "data-tb-columns": "table figures: column allowlist/order",
+            "data-tb-labels": "table figures: header text per column, "
+                              "\"col=Label; col2=Label\" (';' separates "
+                              "pairs, so a label may hold a comma); wins "
+                              "over the derived header",
+            "data-tb-formats": "table figures: number format per column, "
+                               "\"fair_value=currency0; mark=percent\" — "
+                               "compact | comma | currency | currency0 | "
+                               "percent | decimal; wins over the derived "
+                               "format. A column or format that does not "
+                               "exist fails the build",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
             "data-tb-methodology": "one per page, on any container element; "
@@ -252,7 +262,8 @@ def _presentation() -> dict:
                            "\"label\": \"Revenue\", \"format\": "
                            "\"currency\"}}",
             "kinds": "value (needs 'cell') | chart (chart_type, x, y, color, "
-                     "palette) | table (columns, style). A 'custom' figure "
+                     "palette, value_format) | table (columns, style, labels, formats — "
+                     "labels/formats are {column: text} objects). A 'custom' figure "
                      "has no framework markup — draw it in script.js and "
                      "mark it yourself.",
             "figure_id": "The declared name becomes the figure id "
@@ -328,6 +339,17 @@ def _presentation() -> dict:
                                 "stamped CSV verbatim — a "
                                 "receipt-preserving export, saved as "
                                 "<B>.csv",
+        },
+        "assets": {
+            "rule": "Fonts and images live in the package's assets/ folder. "
+                    "url(assets/…) in style.css and src=\"assets/…\" in "
+                    "template.html are inlined as data: URIs when the "
+                    "package loads, so the file stays self-contained and "
+                    "fetches nothing from the web.",
+            "types": "woff2 | woff | ttf | otf | svg | png | jpg | jpeg | "
+                     "webp | gif | avif",
+            "refusals": "A missing file, any other type, or a path that "
+                        "leaves assets/ fails the load and names the file.",
         },
         "layout": {
             "tabs": "<div class=\"tb-tabs\"><section "
@@ -523,6 +545,31 @@ def _conventions() -> dict:
             "TRACEBI_REPORTS_DIR", "TRACEBI_TRANSFORMS_DIR",
             "TRACEBI_SCHEDULED_DIR", "TRACEBI_APP", "TRACEBI_DOCS_DIR",
         ],
+    }
+
+
+def _schedule() -> dict:
+    """A recurring report: the report.json ``schedule`` block
+    (``tracebi/schedule.py``)."""
+    return {
+        "rule": "A report that repeats declares when it runs and who "
+                "receives it in its own report.json, so a reviewer approves "
+                "when and to whom in the same diff as what. One run is "
+                "build → verify → email → record; a receipt that does not "
+                "verify is recorded 'refused' and nothing is sent.",
+        "block": "\"schedule\": {\"cron\": \"0 9 * * MON\", "
+                 "\"timezone\": \"America/New_York\", "
+                 "\"to\": [\"cfo@example.com\"]}",
+        "fields": "cron: five fields, required. timezone: IANA name, "
+                  "default UTC. to: email list, optional; without it a run "
+                  "rebuilds the artifact and delivers nothing. Any other "
+                  "field fails when the package loads.",
+        "commands": "tracebi schedule list | run <name> [--no-send] | serve. "
+                    "Runs append to output/schedule_runs.jsonl with status "
+                    "delivered | built | refused | failed. serve needs "
+                    "tracebi[pipeline]; cron can call `schedule run` instead.",
+        "delivery_env": "TRACEBI_SMTP_URL, TRACEBI_SMTP_FROM; "
+                        "TRACEBI_SLACK_WEBHOOK adds a Slack ping.",
     }
 
 
@@ -795,6 +842,7 @@ def describe(brief: bool = False) -> dict:
         "presentation": _presentation(),
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
+        "schedule": _schedule(),
         "analyst_knowledge": _analyst_knowledge(),
     }
     if not brief:

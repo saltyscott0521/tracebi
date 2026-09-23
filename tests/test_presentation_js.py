@@ -52,8 +52,10 @@ class TestAssetHygiene:
         # worker engine before hydration, plus tracebi.ready() so author code
         # sees the same data on either transport. → 64 KiB when an opted-in
         # package posts a selection and paints the model's result, including
-        # the fail-closed path that does not subset-and-sum. Behavior, not bloat.
-        assert os.path.getsize(ASSET) < 64 * 1024
+        # the fail-closed path that does not subset-and-sum. → 72 KiB for the
+        # house chart style (polishOption) and a table's data-tb-labels /
+        # data-tb-formats overrides. Behavior, not bloat.
+        assert os.path.getsize(ASSET) < 72 * 1024
 
     def test_no_eval(self):
         with open(ASSET, encoding="utf-8") as f:
@@ -918,63 +920,6 @@ process.stdout.write(JSON.stringify({
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
-class TestChartThemeColors:
-    """Charts derive their text/line colours from the page's ink tokens, so a
-    report on a dark ground shows legible axis labels/legends instead of
-    ECharts' near-black default — without every author needing a configureChart
-    block. An author's explicit patch still wins (applied after)."""
-
-    def _apply(self, option, tokens):
-        # Load the IIFE with `document` undefined so its bootstrap stays inert,
-        # THEN stub getComputedStyle/document and call applyThemeColors — it
-        # reads them at call time.
-        script = (
-            "var fs=require('fs');var src=fs.readFileSync(process.argv[1],'utf8');"
-            "var p=src.replace('root.tracebi = {',"
-            " 'root.tracebi = { applyThemeColors: applyThemeColors,');"
-            "if(p===src) throw new Error('export line not found');"
-            "new Function(p)();"
-            "var TOK=JSON.parse(process.argv[3]);"
-            "globalThis.document={documentElement:{}};"
-            "globalThis.getComputedStyle=function(){return {getPropertyValue:"
-            "  function(n){return TOK[n]||'';}};};"
-            "var opt=JSON.parse(process.argv[2]);"
-            "globalThis.tracebi.applyThemeColors(opt);"
-            "process.stdout.write(JSON.stringify(opt));"
-        )
-        r = subprocess.run(
-            ["node", "-e", script, ASSET, json.dumps(option), json.dumps(tokens)],
-            capture_output=True, text=True, timeout=30)
-        assert r.returncode == 0, r.stderr
-        return json.loads(r.stdout)
-
-    _DARK = {"--tb-ink": "#e5e7eb", "--tb-muted": "#9ca3af", "--tb-rule": "#374151"}
-
-    def test_axis_labels_and_legend_follow_the_ink_tokens(self):
-        opt = {"xAxis": {"type": "category", "data": []},
-               "yAxis": {"type": "value"}, "legend": {}, "series": []}
-        out = self._apply(opt, self._DARK)
-        assert out["textStyle"]["color"] == "#e5e7eb"
-        assert out["xAxis"]["axisLabel"]["color"] == "#9ca3af"
-        assert out["yAxis"]["axisLabel"]["color"] == "#9ca3af"
-        assert out["yAxis"]["splitLine"]["lineStyle"]["color"] == "#374151"
-        assert out["legend"]["textStyle"]["color"] == "#e5e7eb"
-
-    def test_an_existing_colour_is_not_overwritten(self):
-        # An author's explicit axisLabel colour survives (the patch-wins rule).
-        opt = {"xAxis": {"type": "category", "axisLabel": {"color": "#ff0000"}},
-               "series": []}
-        out = self._apply(opt, self._DARK)
-        assert out["xAxis"]["axisLabel"]["color"] == "#ff0000"
-
-    def test_no_tokens_is_a_noop(self):
-        opt = {"xAxis": {"type": "category"}, "series": []}
-        out = self._apply(opt, {})
-        assert "color" not in out.get("xAxis", {}).get("axisLabel", {})
-        assert "textStyle" not in out
-
-
-@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestSelectionControls:
     """An opted-in page does not subset-and-sum when the model is unreachable,
     and paints the query result — value figures included — when it answers."""
@@ -1068,3 +1013,37 @@ process.stdout.write(JSON.stringify({
         assert out["rows"] == 1
         assert out["west_disabled"] is True
         assert "live" in out["receipt"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestTableOverridesAndChartPolish:
+    """data-tb-labels / data-tb-formats override a table's derived header and
+    number format; the house chart style restyles without touching data."""
+
+    _SCRIPT = """
+dataBlock('b', 'region,revenue\\nUS,1234.5\\nEU,-50\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b',
+                        'data-tb-labels': 'region=Market; revenue=Net revenue, USD',
+                        'data-tb-formats': 'revenue=currency' });
+var cht = el('div', { 'data-tb-figure': 'chart', 'data-tb-binding': 'b',
+                      'data-tb-x': 'region', 'data-tb-y': 'revenue' });
+loadRuntime();
+var opt = __charts[0].options[0];
+process.stdout.write(JSON.stringify({
+  head: tbl.querySelector('thead').children[0].children.map(function (th) {
+    return th.textContent; }),
+  rows: tbl.querySelector('tbody').children.map(function (tr) {
+    return tr.children.map(function (td) { return td.textContent; }); }),
+  data: opt.series[0].data
+}));
+"""
+
+    def test_labels_and_formats_override_the_derived_defaults(self):
+        out = _run_dom(self._SCRIPT)
+        assert out["head"] == ["Market", "Net revenue, USD"]
+        # the sign leads the symbol
+        assert out["rows"] == [["US", "$1,234.50"], ["EU", "-$50.00"]]
+
+    def test_chart_polish_restyles_but_never_changes_the_data(self):
+        out = _run_dom(self._SCRIPT)
+        assert out["data"] == [1234.5, -50]

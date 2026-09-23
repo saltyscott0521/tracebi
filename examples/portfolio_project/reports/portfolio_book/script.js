@@ -61,27 +61,34 @@
     chart.setOption({
       // A report is a static document — render immediately, don't animate.
       animation: false,
-      grid: { left: 96, right: 40, top: 16, bottom: 24 },
+      grid: { left: 8, right: 96, top: 8, bottom: 8, containLabel: true },
       tooltip: {
         trigger: "axis",
+        axisPointer: { type: "shadow" },
         valueFormatter: function (v) { return money(v); },
       },
       xAxis: {
         type: "value",
         axisLabel: {
+          color: "#898781",
           formatter: function (v) { return "$" + Math.round(v / 1e6) + "M"; },
         },
+        splitLine: { lineStyle: { color: "#e4e3dd" } },
       },
       yAxis: {
         type: "category",
         data: sectors.map(function (r) { return r["dim_issuer.sector"]; }),
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: "#c3c2b7" } },
+        axisLabel: { color: "#16181d", fontSize: 13 },
       },
       series: [{
         type: "bar",
+        barMaxWidth: 26,
         data: sectors.map(function (r) { return Number(r.fair_value); }),
-        itemStyle: { color: "#1f4e79" },
+        itemStyle: { color: "#2a78d6", borderRadius: [0, 4, 4, 0] },
         label: {
-          show: true, position: "right",
+          show: true, position: "right", color: "#62615c",
           formatter: function (p) { return money(p.value); },
         },
       }],

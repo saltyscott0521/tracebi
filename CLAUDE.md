@@ -177,7 +177,8 @@ tracebi/               # Core Python package (~24,000 LOC)
                        # (gitignored; Docker, Vercel and the release workflow build it. A
                        # wheel built from a tree without it ships no UI — / says so.)
   cli.py               # tracebi init / new-model / new-transform / new-report / dev / report
-                       #   / verify / migrate / serve / mcp / session (see `tracebi --help`)
+                       #   / schedule / verify / migrate / serve / mcp / session (see `tracebi --help`)
+  schedule.py          # report.json "schedule" block: build → verify → email → record
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 11 tools + the author_report prompt
@@ -273,6 +274,9 @@ tracebi mcp                                    # agent gateway over MCP (stdio)
 tracebi mcp --transport http --port 8765       # remote agent — needs TRACEBI_MCP_TOKEN (or --insecure)
 tracebi verify output/report.manifest.json     # re-run recorded queries; classify drift
 tracebi verify output/report.manifest.json --contracts  # + re-run the sink contracts
+tracebi schedule list                          # packages with a report.json "schedule" block
+tracebi schedule run <name> [--no-send]        # build → verify → email → record, now
+tracebi schedule serve                         # run every schedule (needs [pipeline])
 tracebi serve                                  # browse the project
 
 # Tests
@@ -637,6 +641,8 @@ Don't add these unless asked.
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
 | See every artifact feature at once | `examples/portfolio_project/reports/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
 | Understand architecture decisions | `NOTES.md` |
+| Avoid bugs already hit in this repo | `docs/agents/pitfalls.md` |
+| Decide whether a test is worth writing | `docs/architecture/test-suite-review.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |

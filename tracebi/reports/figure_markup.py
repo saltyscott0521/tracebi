@@ -29,13 +29,51 @@ def _attr(name: str, value) -> str:
     return f'{name}="{html.escape(str(value))}"'
 
 
+#: Number formats the runtime's ``applyNamedFormat`` (tracebi.js) and the
+#: build's ``_ssr_format`` both render. A table's ``data-tb-formats`` may name
+#: only these.
+TABLE_FORMATS = ("comma", "compact", "currency", "currency0", "decimal",
+                 "percent")
+
+
+def column_map_attr(mapping: dict) -> str:
+    """``{"col": "Value"}`` → ``"col=Value; col2=Value2"`` — the value of a
+    table's ``data-tb-labels`` / ``data-tb-formats``. Pairs are separated by
+    ``;`` so a label may contain a comma."""
+    return "; ".join(f"{k}={v}" for k, v in mapping.items())
+
+
+def parse_column_map(value) -> dict[str, str]:
+    """Inverse of :func:`column_map_attr`. Blank pairs are ignored; a pair
+    without ``=`` raises ``ValueError`` naming it."""
+    out: dict[str, str] = {}
+    for pair in str(value or "").split(";"):
+        if not pair.strip():
+            continue
+        if "=" not in pair:
+            raise ValueError(
+                f"'{pair.strip()}' is not a column=value pair (write "
+                f"\"fair_value=currency0; mark=percent\").")
+        col, val = pair.split("=", 1)
+        out[col.strip()] = val.strip()
+    return out
+
+
 def table_element(binding: str, *, fig_id: str, columns=None,
-                  style: str = "") -> str:
-    """A ``data-tb-figure="table"`` element the runtime fills with rows."""
+                  style: str = "", labels=None, formats=None) -> str:
+    """A ``data-tb-figure="table"`` element the runtime fills with rows.
+
+    *labels* and *formats* map column → header text / named number format;
+    they override the derived header and format for the columns they name.
+    """
     attrs = ['data-tb-figure="table"', _attr("data-tb-binding", binding),
              _attr("id", fig_id)]
     if columns:
         attrs.append(_attr("data-tb-columns", ",".join(map(str, columns))))
+    if labels:
+        attrs.append(_attr("data-tb-labels", column_map_attr(labels)))
+    if formats:
+        attrs.append(_attr("data-tb-formats", column_map_attr(formats)))
     cls = {"striped": "tb-table--striped",
            "compact": "tb-table--compact"}.get(style)
     if cls:

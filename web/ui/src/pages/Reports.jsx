@@ -351,7 +351,7 @@ function ReportDetail({ report }) {
               className="dl-link"
               title="The self-contained artifact with the embedded receipt"
               style={{
-                background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)',
+                background: 'var(--blue)', color: '#fff', borderColor: 'var(--blue)',
                 fontWeight: 600,
               }}
             >

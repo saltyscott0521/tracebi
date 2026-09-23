@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Product readiness audit, 2026-09-22 — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Product readiness audit, 2026-09-22">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
+<a class="on" href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
+<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="product-readiness-audit-2026-09-22">Product readiness audit, 2026-09-22</h1>
+<p><strong>Verdict: the engine is ready and the product isn't yet. TraceBi has a real,
+tested, honest core that no close competitor ships: per-figure receipts, a
+<code>verify</code> that re-runs them, and an offline tamper check. What's missing is
+almost all <em>outside</em> the engine: a release, a hosted demo that's always up, a
+reader experience written for non-engineers, and one sharply chosen buyer.</strong></p>
+<blockquote>
+<p><strong>Positioning superseded (2026-09-22):</strong> the buyer, positioning and
+"what not to do" sections below are replaced by the strategy in <code>docs/strategy/</code> (<strong>vision-and-positioning</strong>), which
+targets agents building repeatable reports that replace recurring BI. The
+findings stand.</p>
+</blockquote>
+<p>This audit sits alongside <a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a> (the engineering sequence) and
+<strong>ROADMAP</strong> (the historical backlog). It covers what those don't: fitness as a
+<em>product</em>, the non-technical experience, and the checklist between here and
+something a company can buy.</p>
+<hr>
+<h2 id="how-this-audit-was-done">How this audit was done</h2>
+<p>Everything below was run, not just read.</p>
+<ul>
+<li>Read the canon (<strong>MANIFESTO</strong>, <strong>WORKFLOW</strong>, README, <a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>,
+  <strong>ROADMAP</strong>, <code>UX_FEEDBACK.md</code>).</li>
+<li>Ran the full test suite: <strong>1,396 passed, 1 skipped</strong> on <code>claude/tracebi-audit-readiness-gbl07i</code>.
+  (The first run in a fresh container had 12 failures. All were the
+  environment: a broken system <code>cryptography</code> wheel and no <code>tzdata</code>. See P2-4.)</li>
+<li>Ran the reference project (<code>examples/portfolio_project/run_workflow.py</code>):
+  about 1 second end to end.</li>
+<li>Walked the new-user path in a scratch folder: <code>tracebi init</code> →
+  run the transform → <code>tracebi report build</code> → <code>tracebi verify</code> →
+  hand-edited a number → <code>tracebi verify --file</code>. Every step behaved as
+  documented, apart from the finding in P1-2.</li>
+<li>Served the reference project and drove the web app in headless Chromium: Desk,
+  Report, Ask, download, the Verify page with an edited file, and the receipt
+  drawer in the standalone file.</li>
+<li>Could not reach <code>tracebi.com</code> or <code>demo.tracebi.com</code> from the audit
+  environment (egress is restricted), so the live-site status in
+  <code>UX_FEEDBACK.md</code> is carried forward unverified.</li>
+</ul>
+<h2 id="scorecard">Scorecard</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Grade</th>
+<th>One line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Core engine (model, query, measures, render)</td>
+<td><strong>A</strong></td>
+<td>About 1,400 tests, a 1-second reference run, and every figure in the reference reports reproduces on re-run.</td>
+</tr>
+<tr>
+<td>Trust mechanism (receipts, verify, tamper check)</td>
+<td><strong>A−</strong></td>
+<td>Works and catches edits precisely. Honest about its limits. Unsigned, so it isn't evidence between parties yet.</td>
+</tr>
+<tr>
+<td>Honesty of claims</td>
+<td><strong>A</strong></td>
+<td>Unusually disciplined. The locked language ("reproduces", "the sink satisfied its contract") is enforced by tests.</td>
+</tr>
+<tr>
+<td>Agent surface (MCP, context, guardrails)</td>
+<td><strong>A−</strong></td>
+<td>Mature and tested. The main differentiator for technical buyers.</td>
+</tr>
+<tr>
+<td>Analyst / developer UX</td>
+<td><strong>B</strong></td>
+<td>The CLI loop is good. Five <code>tracebi</code> concepts (sink, freeze point, binding, grain, stage) must be learned before the first report.</td>
+</tr>
+<tr>
+<td>Non-technical reader UX</td>
+<td><strong>C</strong></td>
+<td>The file and the Verify page work, but the words on screen are engineer-speak, and the "send the file, reader checks it" story has a gap (P1-1).</td>
+</tr>
+<tr>
+<td>Packaging and release</td>
+<td><strong>C</strong></td>
+<td>Never released to PyPI, <code>0.6.0.dev0</code> in <code>pyproject.toml</code> while the UI shows <code>v0.5.2</code>, no tags.</td>
+</tr>
+<tr>
+<td>Security and operations</td>
+<td><strong>B−</strong></td>
+<td>Opt-in auth and roles, bearer-token MCP, pip-audit in CI. Identity is self-asserted for agents, and SQLite is single-process.</td>
+</tr>
+<tr>
+<td>Commercial readiness</td>
+<td><strong>D</strong></td>
+<td>Open-core line is decided on paper. No paid tier built, no pricing, no named design partner in the repo.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="is-the-product-fit">Is the product fit?</h2>
+<p><strong>The problem is real and getting bigger.</strong> AI now drafts reports faster than
+anyone can check them, and "a confident wrong number reads exactly like a right
+one" is a pain finance, fund operations and compliance teams already feel. The
+answer TraceBi gives is mechanical checkability: every number is a query against
+declared definitions, with a fingerprint and a re-run command. That's a better
+answer than "trust the dashboard", and better than "review the AI's pandas".</p>
+<p><strong>The risk is that trust is a feature, not a product, unless the buyer is
+someone whose job is trust.</strong> An analytics team choosing a BI tool will compare
+TraceBi to report-as-code tools (Evidence, Observable Framework), dbt-based BI
+(Lightdash, the dbt Semantic Layer) and notebooks (Hex). On chart drawing and
+connectors, TraceBi loses or ties. It wins only when someone <em>has to be able to
+prove a number later</em>. So the buyer should be:</p>
+<ul>
+<li><strong>Primary: fund administrators, private-credit and asset managers, and
+  their auditors.</strong> Recurring investor and board reports, numbers that get
+  challenged months later, AI drafting coming in fast, and a compliance function
+  that already speaks "receipt". The reference demo (a direct-lending holdings
+  book) is already in this domain. Lean in.</li>
+<li><strong>Secondary: any regulated reporting team</strong> (insurance, banking MI, pharma
+  ops) where "reproduce the number from last quarter's pack" is a recurring
+  request.</li>
+<li><strong>Not the buyer: self-serve BI for business users.</strong> TraceBi deliberately
+  refuses drag-and-drop authoring (<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a> "Out of scope"). Don't
+  market to that audience, or the refusal reads as a missing feature.</li>
+</ul>
+<p><strong>Who is "non-technical" in this product?</strong> They aren't authors. Authoring is
+code, by design. They are the <strong>readers, approvers and budget holders</strong>: the
+CFO who receives the pack, the reviewer who approves it, the auditor who checks
+it. Making TraceBi easier for them means (1) explaining it in their words, (2)
+making the file they receive self-explanatory, and (3) making "check this
+number" a one-click act. It does <strong>not</strong> mean adding a chart builder.</p>
+<h2 id="findings">Findings</h2>
+<p>Ranked by what they cost a first-time viewer or buyer. <strong>Fixed</strong> means fixed in
+this change.</p>
+<h3 id="p0-blocks-a-demo-or-misstates-the-product">P0: blocks a demo or misstates the product</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0-1</td>
+<td><strong>The main download button was invisible.</strong> On every report, <strong>↓ HTML (with receipt)</strong> rendered white-on-white because <code>Reports.jsx</code> used <code>var(--accent)</code>, a CSS variable that's never defined. The single most important action in the product (take the file with its receipt) couldn't be seen.</td>
+<td><strong>Fixed</strong>: uses <code>var(--blue)</code>, like the other primary buttons.</td>
+</tr>
+<tr>
+<td>P0-2</td>
+<td><strong>The advertised demo host may be down.</strong> <code>UX_FEEDBACK.md</code> (2026-09-06) found <code>demo.tracebi.com</code> doesn't resolve, and <code>site/README.md</code> still says "Try the demo" points there. It couldn't be re-checked from here.</td>
+<td>Open. Check DNS. Make <code>site/README.md</code> and every external link agree on one URL.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="p1-confuses-a-non-technical-viewer-or-breaks-the-story">P1: confuses a non-technical viewer or breaks the story</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1-1</td>
+<td><strong>The receipt can't be downloaded from the app.</strong> The Verify page requires the <code>.html</code> <em>and</em> its <code>.manifest.json</code>, but the Reports page offers only HTML and Excel. The Manifest tab shows raw JSON. Worse, each HTML download <em>re-renders</em>, so a receipt saved from an earlier build can fail against a later download if the data moved.</td>
+<td>Now: a <strong>↓ Report + receipt</strong> download that serves a <code>.zip</code> of the html and manifest <em>from the same render</em>. Later, once receipts are signed (P2-3): embed the signed manifest in the HTML so <code>verify --file</code> needs one file. "Email one file, anyone can check it" is the pitch. Embedding <em>before</em> signing makes the file vouch for itself, which catches accidental edits but not deliberate ones. Keep the separate receipt until then, so it can travel by a different channel (or be retained server-side).</td>
+</tr>
+<tr>
+<td>P1-2</td>
+<td><strong>The CLI said the offline check "needs only the .html"</strong>, and <a href="../concepts/receipts.html">Receipts</a> said "Checks the file alone". Both are false: <code>verify --file</code> looks for <code>&lt;file&gt;.manifest.json</code> beside it.</td>
+<td><strong>Fixed</strong> (wording). The product fix is P1-1.</td>
+</tr>
+<tr>
+<td>P1-3</td>
+<td><strong>The flagship dashboard's Ask box is a trap.</strong> Its placeholder suggests <code>what about Software</code>, and applying it returns a red developer error ("…has no selection block. Controls on this report subset stamped rows…"). Ask works only on <code>portfolio_showcase</code>.</td>
+<td>Either opt <code>portfolio_dashboard</code> into <code>selection</code>, or hide Ask on reports that can't answer and show a plain sentence instead.</td>
+</tr>
+<tr>
+<td>P1-4</td>
+<td><strong>Ask's answers are unlabeled.</strong> A successful cut shows <code>60M · 89f4b924a04d</code>, <code>4 · 89f4b924a04d</code>, <code>96.9% · …</code>: numbers and hashes with no measure names.</td>
+<td>Label each line with the measure's display name. Put the fingerprint behind a "receipt" disclosure.</td>
+</tr>
+<tr>
+<td>P1-5</td>
+<td><strong>The in-report receipt drawer is written for engineers.</strong> Rows read <code>kpi-fv · value · kpis ea55a070ee46</code>. In the app's embedded view the Receipt button sits at the bottom of the scroll area, so it's hard to find.</td>
+<td>Rows should read "Fair value · $285.9M · fingerprint ea55…". Pin the button to the app viewport, not the iframe's.</td>
+</tr>
+<tr>
+<td>P1-6</td>
+<td><strong>The demo's Desk says the product is unfinished.</strong> Three of the five reference reports show as <strong>DRAFT · exploration</strong> under "Needs a person". A first-time viewer lands on a to-do list.</td>
+<td>Publish the reference reports (strip exploration blocks), or start a non-authenticated demo on <strong>Report</strong>.</td>
+</tr>
+<tr>
+<td>P1-7</td>
+<td><strong>Every surface speaks the engine's vocabulary.</strong> Counted on the pages a newcomer sees: "sink" ×14 on Home + Get Started, "lineage" ×34 and "manifest" ×24 in README. Report descriptions read like changelogs ("kitchen-sink demo… trust affordance"). The Desk subtitle is "an open pin, a draft that still explores, a receipt that does not reproduce, a sink that is stale or has no contract."</td>
+<td><strong>Partly fixed</strong>: added <a href="../guides/plain-english.html">TraceBi in plain English</a> (explainer and glossary) and <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>, and linked them first in the docs. Still to do: a plain-language pass on the Desk subtitle, report descriptions and the marketing hero. Keep the locked terms, and put the plain word first.</td>
+</tr>
+<tr>
+<td>P1-8</td>
+<td><strong>No release exists.</strong> <code>pyproject.toml</code> is <code>0.6.0.dev0</code>, there are no git tags, and the install is from git. The UI footer is hard-coded to <code>v0.5.2</code> (<code>Layout.jsx</code>).</td>
+<td>Tag and publish 0.6.0 to PyPI (the <strong>ROADMAP</strong>'s stated near-term target). Serve the version from <code>/api/health</code> and render it, instead of a literal.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="p2-polish-and-hygiene">P2: polish and hygiene</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Finding</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P2-1</td>
+<td>The test suite writes receipts into the repo's <code>output/</code> (<code>bg_report</code>, <code>byreg</code>, <code>t_report</code> manifests), and serving the example writes into <code>examples/portfolio_project/output/</code>. That's untracked noise in every contributor's <code>git status</code>.</td>
+<td>Point the tests at <code>tmp_path</code>.</td>
+</tr>
+<tr>
+<td>P2-2</td>
+<td>Charts drop every other category label at the default width (sector bars show Consumer, Software, Financials only).</td>
+<td>Rotate or wrap axis labels in the ECharts defaults.</td>
+</tr>
+<tr>
+<td>P2-3</td>
+<td>Unsigned receipts: <code>verify --file</code> checks the file against a manifest supplied by the same sender, so anyone who can edit both can re-seal them. <a href="../concepts/receipts.html">Receipts</a> already says this honestly. It's the reason for the signing tier.</td>
+<td>Keep the honesty. Schedule signing (see "Institutional tier" below).</td>
+</tr>
+<tr>
+<td>P2-4</td>
+<td><code>tests/test_parquet_embed.py</code> needs the IANA tz database (<code>US/Eastern</code>), which isn't a declared dependency. It fails at collection on slim Linux images with no system <code>tzdata</code>.</td>
+<td>Add <code>tzdata</code> to the <code>dev</code> extra (and to <code>uv.lock</code>), or skip when <code>zoneinfo</code> can't load.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-an-actual-product-needs-in-order">What "an actual product" needs, in order</h2>
+<h3 id="1-ship-the-library-weeks-not-months">1. Ship the library (weeks, not months)</h3>
+<ul>
+<li>[ ] Fix P0-1 (done), P1-1 and P1-3 so the core demo story holds with no
+      caveats.</li>
+<li>[ ] Tag and publish <strong>0.6.0 to PyPI</strong>, with <code>pip install tracebi</code> in the
+      README's first screen. Version comes from one place (P1-8).</li>
+<li>[ ] A <strong>hosted demo that's always up</strong> on the reference project, read-only,
+      starting on the Report page. It's the most-clicked link the product will
+      ever have. Monitor it.</li>
+<li>[ ] A 90-second screen recording of <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a> beats 1–3 on the
+      homepage. Most buyers will never run a command.</li>
+</ul>
+<h3 id="2-make-the-readers-experience-the-product">2. Make the reader's experience the product</h3>
+<p>The file is what travels. It should explain itself to someone who has never
+heard of TraceBi.</p>
+<ul>
+<li>[ ] <strong>Report and receipt from one download</strong> (P1-1). After signing ships,
+      <strong>one file, one check</strong>: the signed receipt embedded, so "drag the file
+      onto the Verify page" or "open it and click <em>Check this report</em>" is the
+      whole story.</li>
+<li>[ ] A <strong>plain-language receipt panel</strong> (P1-5): for each figure, what it is, its
+      value, "re-runs to the same number" / "edited since it was built" /
+      "not checkable", and one line on what that means.</li>
+<li>[ ] A plain-language <strong>"About this report"</strong> footer that's on by default:
+      who built it, when, from which definitions, and what the receipt does and
+      doesn't prove. It exists today as the <code>methodology</code> block. Make it the
+      default and write it in plain words.</li>
+<li>[ ] A copy pass on the Desk, report descriptions and the marketing hero
+      (P1-7), using <a href="../guides/plain-english.html">TraceBi in plain English</a> as the style guide.</li>
+</ul>
+<h3 id="3-prove-it-with-design-partners-in-parallel-with-12">3. Prove it with design partners (in parallel with 1–2)</h3>
+<ul>
+<li>[ ] <strong>Three design partners in fund administration or private credit.</strong> Run
+      <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a> with each. Success means one of their real recurring
+      reports rebuilt in TraceBi and sent to <em>their</em> reviewer.</li>
+<li>[ ] Write down the before/after: hours spent answering "where did this
+      number come from?" last quarter versus this one. That becomes the case
+      study and the pricing anchor.</li>
+<li>[ ] Decide the <strong>wedge sentence</strong> and put it everywhere. Suggested: <em>"Every
+      number in your investor reports, with a receipt, including the ones AI
+      wrote."</em></li>
+</ul>
+<h3 id="4-the-institutional-tier-the-paid-product">4. The institutional tier (the paid product)</h3>
+<p>The <strong>ROADMAP</strong> already draws this line: producing a receipt is free, and
+institutionalising a book of them is the product. In order of what a
+compliance buyer asks first:</p>
+<ol>
+<li><strong>Retention.</strong> Every receipt ever issued, kept and searchable, not just a
+   file in git.</li>
+<li><strong>Identity.</strong> Who built and who approved each report, authenticated (SSO),
+   not self-declared (<code>TRACEBI_MCP_ACTOR</code> today).</li>
+<li><strong>Signing.</strong> Receipts signed by the organisation, so a receipt is evidence
+   between parties, not only documentation (P2-3).</li>
+<li><strong>The auditor's view.</strong> One page to check any report ever sent, by dropping
+   in the file.</li>
+<li>Row-level security, then SOC 2 once a partner asks for it.</li>
+</ol>
+<h3 id="5-business-basics-that-arent-code">5. Business basics that aren't code</h3>
+<ul>
+<li>[ ] Pricing hypothesis (per published report or per seat of approver,
+      not per analyst).</li>
+<li>[ ] Terms, privacy policy, and a data-handling statement ("runs in your
+      environment, nothing is sent to us" is a strong line: make it
+      contractual).</li>
+<li>[ ] A support channel and a public changelog cadence.</li>
+<li>[ ] A trademark and domain check on the name.</li>
+</ul>
+<h2 id="what-not-to-do">What not to do</h2>
+<ul>
+<li><strong>Don't add drag-and-drop authoring</strong> to win non-technical users. The
+  non-technical user is the reader, not the author. Serve them with the file.</li>
+<li><strong>Don't soften the locked language</strong> to sound friendlier. Put a plain
+  explanation <em>next to</em> "reproduces", never replace it with "verified". The
+  honesty is the brand.</li>
+<li><strong>Don't pitch "Tableau replacement".</strong> <strong>ROADMAP</strong> already says why. Pitch
+  "the numbers you can prove".</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

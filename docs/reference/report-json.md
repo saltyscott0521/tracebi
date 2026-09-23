@@ -97,6 +97,28 @@ Charting libraries to inline into the self-contained file. Currently only
 permanently blank. A data-only report omits it and ships smaller. An unknown
 value is refused at load.
 
+### `schedule` — object, optional
+
+When the report runs and who receives it. Read by `tracebi schedule` ([[cli]]).
+The build itself ignores it.
+
+```json
+"schedule": {
+  "cron": "0 9 * * MON",
+  "timezone": "America/New_York",
+  "to": ["cfo@example.com"]
+}
+```
+
+| Field | |
+| --- | --- |
+| `cron` | Required. Five fields: minute hour day month day_of_week. |
+| `timezone` | Optional IANA name. Default `UTC`. |
+| `to` | Optional list of email addresses. Without it, a run rebuilds the artifact and records the run, and sends nothing. |
+
+Any other field, a cron that isn't five fields, an unknown time zone or an
+address with no `@` is refused when the package loads.
+
 ---
 
 ## What is checked, and when

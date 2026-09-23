@@ -79,6 +79,8 @@ Requires `"libs": ["echarts"]` in [[report-json]], or the panel renders blank.
 | --- | --- |
 | `columns` | allowlist and column order |
 | `style` | `striped` or `compact` |
+| `labels` | `{column: header}` — overrides the derived header |
+| `formats` | `{column: format}` — `compact`, `comma`, `currency`, `currency0`, `percent`, `decimal`; overrides the derived format |
 
 ### Not `custom`
 

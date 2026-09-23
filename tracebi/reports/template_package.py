@@ -54,6 +54,7 @@ import importlib.util
 import json
 import math
 import os
+import re
 import sys
 from typing import Optional
 
@@ -69,7 +70,9 @@ from tracebi.reports.figures import (
 )
 from tracebi.reports.base_renderer import _warn_if_unknown_git_sha
 from tracebi.reports.figure_markup import (
+    TABLE_FORMATS,
     chart_element,
+    parse_column_map,
     table_element,
     value_element,
 )
@@ -125,7 +128,69 @@ def _validate_figure(name: str, fig, bindings: dict, where: str) -> dict:
             f"{where}: figure '{name}' is a value figure and needs 'cell' — "
             f"the column it reads from binding '{binding}'."
         )
+    for key in ("labels", "formats"):
+        if key in fig and not (isinstance(fig[key], dict) and all(
+                isinstance(k, str) and isinstance(v, str)
+                and ";" not in k + v and "=" not in k
+                for k, v in fig[key].items())):
+            raise ValueError(
+                f"{where}: figure '{name}' '{key}' must map column names to "
+                f"strings, e.g. {{\"fair_value\": \"currency0\"}}.")
     return dict(fig)
+
+
+#: File types a package may inline from its ``assets/`` folder, by extension.
+#: The artifact's CSP allows ``data:`` for images and fonts only.
+ASSET_MIME = {
+    ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
+    ".otf": "font/otf", ".svg": "image/svg+xml", ".png": "image/png",
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+    ".gif": "image/gif", ".avif": "image/avif",
+}
+
+_CSS_ASSET = re.compile(r"""url\(\s*(['"]?)(assets/[^'")\s]+)\1\s*\)""")
+_HTML_ASSET = re.compile(r"""\b(src)=(["'])(assets/[^"']+)\2""")
+
+
+def _asset_data_uri(directory: str, ref: str, where: str) -> str:
+    """``assets/<file>`` inside *directory* → a base64 ``data:`` URI.
+
+    Refuses a path that leaves ``assets/``, a missing file, and a type the
+    artifact's CSP would block — each naming the file and the fix, so a
+    broken image or font fails the load instead of shipping blank.
+    """
+    import base64
+
+    root = os.path.realpath(os.path.join(directory, "assets"))
+    path = os.path.realpath(os.path.join(directory, ref))
+    if not path.startswith(root + os.sep):
+        raise ValueError(f"{where}: '{ref}' leaves the package's assets/ folder.")
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in ASSET_MIME:
+        raise ValueError(
+            f"{where}: '{ref}' has type '{ext}'; a report can inline "
+            f"{sorted(ASSET_MIME)}.")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(
+            f"{where}: '{ref}' does not exist. Put the file in the package's "
+            f"assets/ folder.")
+    with open(path, "rb") as f:
+        payload = base64.b64encode(f.read()).decode("ascii")
+    return f"data:{ASSET_MIME[ext]};base64,{payload}"
+
+
+def inline_package_assets(text: str, directory: str, where: str) -> str:
+    """Replace ``url(assets/…)`` (CSS) and ``src="assets/…"`` (HTML) with
+    ``data:`` URIs, so fonts and images ride inside the one self-contained
+    file. Anything not under ``assets/`` is left alone."""
+    if "assets/" not in text:
+        return text
+    text = _CSS_ASSET.sub(
+        lambda m: f'url("{_asset_data_uri(directory, m.group(2), where)}")',
+        text)
+    return _HTML_ASSET.sub(
+        lambda m: f'{m.group(1)}="{_asset_data_uri(directory, m.group(3), where)}"',
+        text)
 
 
 def _is_tie(a: float, digits: int) -> bool:
@@ -183,8 +248,8 @@ def _ssr_format(raw, name: str) -> str:
         return ChartSpec._fmt(num, compact=True)
     if name == "comma":     return _py_fixed(num, 0, grouped=True)
     if name == "decimal":   return _py_fixed(num, 2, grouped=True)
-    if name == "currency":  return "$" + _py_fixed(num, 2, grouped=True)
-    if name == "currency0": return "$" + _py_fixed(num, 0, grouped=True)
+    if name == "currency":  return ("-$" if num < 0 else "$") + _py_fixed(abs(num), 2, grouped=True)
+    if name == "currency0": return ("-$" if num < 0 else "$") + _py_fixed(abs(num), 0, grouped=True)
     if name == "percent":   return _py_fixed(num * 100, 1) + "%"
     return str(raw)                    # unknown name: applyNamedFormat -> raw
 
@@ -287,8 +352,22 @@ class TemplatePackage:
         else:
             self.selection = None
 
-        self.template_html = _read_text(template_path)
-        self.style_css = _read_optional(os.path.join(directory, STYLE_CSS))
+        # Optional: when this report runs and who receives it. Read by
+        # `tracebi schedule`; the build itself ignores it.
+        if "schedule" in declaration:
+            from tracebi.schedule import parse_schedule_block
+            self.schedule = parse_schedule_block(
+                declaration.get("schedule"), path=report_json_path)
+        else:
+            self.schedule = None
+
+        # Fonts and images under assets/ are inlined as data: URIs here, at
+        # load, so every render path (dev, build, snapshot, web) carries them.
+        self.template_html = inline_package_assets(
+            _read_text(template_path), directory, TEMPLATE_HTML)
+        self.style_css = inline_package_assets(
+            _read_optional(os.path.join(directory, STYLE_CSS)), directory,
+            STYLE_CSS)
         self.script_js = _read_optional(os.path.join(directory, SCRIPT_JS))
 
         # Charting libraries to inline into the self-contained file (offline, no
@@ -374,7 +453,9 @@ class TemplatePackage:
         if kind == "table":
             return table_element(binding, fig_id=fig_id,
                                  columns=fig.get("columns"),
-                                 style=fig.get("style"))
+                                 style=fig.get("style"),
+                                 labels=fig.get("labels"),
+                                 formats=fig.get("formats"))
         if kind == "chart":
             return chart_element(binding, fig_id=fig_id,
                                  chart_type=fig.get("chart_type", "bar"),
@@ -739,10 +820,16 @@ class TemplatePackage:
             return None
         numeric = {str(c) for c in df.select_dtypes(include="number").columns}
         formats = derive_number_formats(df)      # dataset=None: shape-only == JS
+        # Author overrides win over the derived defaults (validated at build);
+        # a format applies only to a numeric column, as in the runtime.
+        labels = parse_column_map(fig.attrs.get("data-tb-labels"))
+        formats.update({c: v for c, v in
+                        parse_column_map(fig.attrs.get("data-tb-formats")).items()
+                        if c in numeric})
         head = []
         for c in cols:
             cls = ' class="tb-num"' if c in numeric else ""
-            head.append(f"<th{cls}>{_html.escape(humanise(c))}</th>")
+            head.append(f"<th{cls}>{_html.escape(labels.get(c) or humanise(c))}</th>")
         thead = "<thead><tr>" + "".join(head) + "</tr></thead>"
         if df.empty:
             # An empty binding says so, rather than showing a header over a void
@@ -837,6 +924,26 @@ class TemplatePackage:
                         f"{where}: cell '{cell}' is not a column of binding "
                         f"'{f.binding}'.{hint} Columns: {list(df.columns)}."
                     )
+            if f.kind == "table":
+                cols = [str(c) for c in frames[f.binding].columns]
+                for attr_name in ("data-tb-labels", "data-tb-formats"):
+                    try:
+                        mapping = parse_column_map(f.attrs.get(attr_name))
+                    except ValueError as exc:
+                        raise FigureError(f"{where}: {attr_name}: {exc}") from None
+                    for col, val in mapping.items():
+                        if col not in cols:
+                            close = difflib.get_close_matches(col, cols, n=1)
+                            hint = f" Did you mean '{close[0]}'?" if close else ""
+                            raise FigureError(
+                                f"{where}: {attr_name} names '{col}', which is "
+                                f"not a column of binding '{f.binding}'.{hint} "
+                                f"Columns: {cols}.")
+                        if attr_name == "data-tb-formats" and val not in TABLE_FORMATS:
+                            raise FigureError(
+                                f"{where}: data-tb-formats gives '{col}' the "
+                                f"format '{val}'. Use one of "
+                                f"{list(TABLE_FORMATS)}.")
 
     def _semantic_slice(self, model_name: str, model) -> dict:
         """The model contract AS EXERCISED by this package's bindings.

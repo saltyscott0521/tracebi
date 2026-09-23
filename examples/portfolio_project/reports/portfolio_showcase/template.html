@@ -1,42 +1,69 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Portfolio Showcase</title></head>
+<head><meta charset="utf-8"><title>Portfolio Showcase</title>
+<!--
+  How this report is put together
+  ───────────────────────────────
+  template.html (this file)  Layout. Each data-tb-figure element claims a
+                             binding from report.json; the runtime fills it.
+  report.json                The data bindings (model + query per name), the
+                             declared figures placed with figure("…"), and
+                             "libs": ["echarts"], which inlines Apache ECharts.
+  report.py                  The escape hatch: python-derived data, which the
+                             receipt marks as not query-reproducible.
+  style.css                  The custom theme: fonts, gradient hero, pill
+                             tabs, token overrides.
+  script.js                  Chart restyling (gradients, smoothing) through
+                             tracebi.configureChart. It restyles only.
+  assets/                    Fonts (Inter, Fraunces; SIL Open Font License)
+                             and hero artwork, inlined at build.
+
+  At build, TraceBi adds its design system (tracebi.css), its runtime
+  (tracebi.js) and the charting library, each marked with a comment, plus
+  the embedded data and the receipt. The finished file is self-contained.
+-->
+</head>
 <body>
 <main class="tb-page">
-  <h1>Direct Lending — Portfolio Showcase</h1>
-  <p class="tb-note">The kitchen-sink reference: every figure kind, control,
-    layout, and trust affordance in one page. Every number is live from the
-    stamped bindings — including this one: total fair value is
-    <span data-tb-figure="value" data-tb-binding="kpis"
-          data-tb-cell="fair_value" data-tb-format="compact"
-          id="val-fv-inline">—</span>.
-    Open the <strong>Receipt</strong> drawer (bottom right) to see each
-    figure's fingerprint and the sink-contract status.</p>
+
+  <header class="sc-hero">
+    <span class="sc-eyebrow">Direct lending · Portfolio showcase</span>
+    <h1>The book at a glance, <em>every number receipted.</em></h1>
+    <p class="sc-lede">Three funds, cleaned from a Schedule of Investments and
+      modelled as a star schema. Every figure below is a live query with a
+      fingerprint, including this one: total fair value is
+      <span data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="fair_value" data-tb-format="compact"
+            id="val-fv-inline">—</span>.
+      Open the <strong>Receipt</strong> drawer to see each figure's
+      fingerprint and the sink-contract status.</p>
+  </header>
+
+  <div class="tb-grid sc-kpis">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">
+      <span class="tb-kpi-label">Fair value</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="positions" data-tb-format="comma" id="kpi-pos">
+      <span class="tb-kpi-label">Positions</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="mark" data-tb-format="percent" id="kpi-mark">
+      <span class="tb-kpi-label">Avg mark</span>
+      <span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-unverified
+         data-tb-note="analyst estimate" id="kpi-est">
+      <span class="tb-kpi-label">Est. Q3 deployments</span>
+      <span class="tb-kpi-value">4</span>
+    </div>
+  </div>
 
   <div class="tb-tabs">
     <section data-tb-tab="Overview">
-      <div class="tb-grid">
-        <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-             data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">
-          <span class="tb-kpi-label">Fair value</span>
-          <span class="tb-kpi-value"></span>
-        </div>
-        <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-             data-tb-cell="positions" data-tb-format="comma" id="kpi-pos">
-          <span class="tb-kpi-label">Positions</span>
-          <span class="tb-kpi-value"></span>
-        </div>
-        <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-             data-tb-cell="mark" data-tb-format="percent" id="kpi-mark">
-          <span class="tb-kpi-label">Avg mark</span>
-          <span class="tb-kpi-value"></span>
-        </div>
-        <div class="tb-kpi" data-tb-figure="value" data-tb-unverified
-             data-tb-note="analyst estimate" id="kpi-est">
-          <span class="tb-kpi-label">Est. Q3 deployments</span>
-          <span class="tb-kpi-value">4</span>
-        </div>
-      </div>
       <div class="tb-cols-2">
         <div class="tb-card">
           <h2>Fair value by sector</h2>
@@ -55,12 +82,14 @@
           {{ figure("chart_fund") }}
         </div>
       </div>
-      <div class="tb-cols-2">
+      <div class="tb-cols-2 sc-split">
         <div class="tb-card">
           <h2>Top issuers <button data-tb-download
               data-tb-binding="top_issuers">CSV</button></h2>
           <table data-tb-figure="table" data-tb-binding="top_issuers"
-                 class="tb-table--striped" id="tbl-top"></table>
+                 data-tb-labels="mark=Mark (FV / cost)"
+                 data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
+                 id="tbl-top"></table>
         </div>
         <div class="tb-card">
           <h2>Concentration (python-derived)</h2>
@@ -90,6 +119,7 @@
                   data-tb-label="Download CSV"></button>
         </p>
         <table data-tb-figure="table" data-tb-binding="holdings_detail"
+               data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
                class="tb-table--striped" id="tbl-detail"></table>
       </div>
     </section>
@@ -102,6 +132,18 @@
       </section>
     </section>
   </div>
+
+  <footer class="sc-footer">
+    <h2>About this file</h2>
+    One self-contained HTML file that works offline. Inside it:
+    <ul>
+      <li>the data behind every figure, fingerprinted, with its receipt;</li>
+      <li>TraceBi's design system and runtime (MIT);</li>
+      <li>Apache ECharts for the charts (Apache License);</li>
+      <li>the Inter and Fraunces typefaces (SIL Open Font License).</li>
+    </ul>
+    Check it with <code>tracebi verify --file</code>.
+  </footer>
 
   <section data-tb-stage="exploration">
     <h3>Working notes</h3>

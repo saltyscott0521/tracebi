@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pitfalls: bugs we hit, and the rule that prevents each — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="1. An undefined CSS variable fails silently.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
+<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
+<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a class="on" href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="pitfalls-bugs-we-hit-and-the-rule-that-prevents-each">Pitfalls: bugs we hit, and the rule that prevents each</h1>
+<p><strong>Every entry here happened while working on this repo. Read it before
+changing the report runtime, the stylesheet, the spec compiler or the CLI.</strong>
+Each one has a rule for authors (agents and people) and, where one exists, a
+framework change that would make the mistake impossible.</p>
+<p>Add to this page whenever you hit a new one.</p>
+<hr>
+<h2 id="styling-and-the-report-runtime">Styling and the report runtime</h2>
+<p><strong>1. An undefined CSS variable fails silently.</strong>
+The Reports page's main download button used <code>var(--accent)</code>, which was never
+defined. It rendered white on white, invisible.
+- <em>Rule:</em> use only tokens defined in <code>tracebi.css</code> (or your own <code>:root</code>).
+  Search for the definition before you use a <code>var(--…)</code>.
+- <em>Framework:</em> a lint that flags <code>var(--name)</code> with no definition in the stack.</p>
+<p><strong>2. A modifier class can lose to a more specific rule.</strong>
+<code>.tb-num { text-align: right }</code> never applied, because
+<code>.tb-table td { text-align: left }</code> is more specific. Every numeric column was
+left-aligned.
+- <em>Rule:</em> when a class modifies a component, match the component rule's
+  specificity (<code>.tb-table .tb-num</code>), then look at the result.</p>
+<p><strong>3. A chart default must allow for the space it gets.</strong>
+Forcing every category label to show made labels overlap in narrow cards.
+- <em>Rule:</em> defaults that add content (labels, legends, values) must check the
+  available width. <code>polishOption</code> now rotates labels when each category gets
+  less than about 80px.</p>
+<p><strong>4. A wide table must not widen the page on a phone.</strong>
+- <em>Rule:</em> check new layouts at 390px wide. The stylesheet now makes tables
+  scroll inside their card on narrow screens.</p>
+<p><strong>5. A server-only feature must detect when there is no server.</strong>
+A report with live filtering tried to reach its server when opened from disk
+(<code>file://</code>) and logged an error in the console.
+- <em>Rule:</em> anything that calls the server takes the documented offline path
+  when <code>location.protocol</code> is <code>file:</code>.</p>
+<p><strong>6. Two formatters mean two places to change.</strong>
+Numbers are formatted in JavaScript (<code>applyNamedFormat</code>) and again in Python
+(<code>_ssr_format</code>) for the no-JavaScript view. Fixing negative money
+(<code>-$1,234</code>, not <code>$-1,234</code>) needed both.
+- <em>Rule:</em> change them in the same commit. The parity test catches a
+  mismatch.</p>
+<h2 id="the-spec-compiler-and-emitters">The spec compiler and emitters</h2>
+<p><strong>7. Emit one element per logical block.</strong>
+The compiler emitted each chart's title and card as siblings. In a
+side-by-side row, the title took one grid cell and the chart was squashed
+into the next.
+- <em>Rule:</em> a title belongs inside its card. Emitters return one element that
+  a layout can place.</p>
+<p><strong>8. "Warn and drop" still ships a broken page.</strong>
+The compiler dropped a table's column labels and currency formats with a
+warning nobody read, so spec reports showed raw numbers.
+- <em>Rule:</em> if the runtime can express a setting, pass it through. Warn only
+  for what truly has no equivalent.</p>
+<h2 id="concurrency-and-state">Concurrency and state</h2>
+<p><strong>9. Context variables don't cross into worker threads.</strong>
+<code>tracebi schedule serve</code> set the audit actor in the main thread; APScheduler
+runs jobs on worker threads, which don't inherit it, so runs were recorded with
+no actor.
+- <em>Rule:</em> set context (<code>with actor(...)</code>) inside the job, where it runs.</p>
+<p><strong>10. Two downloads are two renders.</strong>
+The web app re-renders a report on each download, so a receipt saved earlier
+can fail to match an HTML file downloaded later.
+- <em>Rule:</em> hand out a report and its receipt from the same render.</p>
+<h2 id="docs-and-claims">Docs and claims</h2>
+<p><strong>11. A claim about behaviour must be run, not remembered.</strong>
+The docs said <code>tracebi verify --file</code> needs "only the .html". It also needs the
+<code>.manifest.json</code> beside it.
+- <em>Rule:</em> before writing what a command does, run it.</p>
+<p><strong>12. Check where a document will be published.</strong>
+The repo is public, and <code>site/docs/</code> publishes <code>docs/</code> to the website.
+Business strategy almost went out with it.
+- <em>Rule:</em> before committing pricing, revenue, competitor or hiring material,
+  check the repo's visibility. Keep internal documents out of the public
+  site (<code>HIDDEN</code> in <code>site/build_docs.py</code>) or out of the repo.</p>
+<p><strong>13. Generated files must be regenerated.</strong>
+<code>site/docs/</code> is committed. After editing <code>docs/</code>, run
+<code>python site/build_docs.py</code>, or <code>test_docs_site.py</code> fails.</p>
+<h2 id="tests">Tests</h2>
+<p><strong>14. Don't pin presentation in tests.</strong>
+Tests pinned hex colours, CSS text, SVG hashes and file sizes. None caught a
+bug; every design change broke them. They were removed (see
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>).
+- <em>Rule:</em> test behaviour: the data is unchanged, honesty rules hold, two
+  implementations agree, security holds. Not how it looks.</p>
+<p><strong>15. Tests must write to temporary folders.</strong>
+Some tests write receipts into the repo's <code>output/</code> folder, leaving untracked
+files in every contributor's checkout.
+- <em>Rule:</em> use <code>tmp_path</code>.</p>
+<p><strong>16. A failing test run may be the environment.</strong>
+In a fresh container, 12 tests failed because the system <code>cryptography</code>
+package was broken and <code>tzdata</code> was missing.
+- <em>Rule:</em> read the traceback before touching code. Install the missing
+  package (<code>pip install --ignore-installed cryptography cffi tzdata</code>) and
+  rerun.</p>
+<h2 id="editing-files">Editing files</h2>
+<p><strong>17. Rewriting JSON with a library reformats the whole file.</strong>
+<code>json.load</code> then <code>json.dump</code> turned a three-line change into an 80-line diff.
+- <em>Rule:</em> edit JSON as text for small changes, so the diff shows only what
+  changed.</p>
+<p><strong>18. Bound numbers only in report prose.</strong>
+The final build fails when a template's text contains a typed-in number of
+two or more digits (a single digit, as in "Q3", is allowed). Bind the number
+(<code>data-tb-figure="value"</code>) or leave it out of the prose.</p>
+<h2 id="assets-and-licences">Assets and licences</h2>
+<p><strong>19. Everything must be inlined.</strong>
+The report's security policy blocks web fonts, CDN scripts and remote images.
+- <em>Rule:</em> put fonts and images in the package's <code>assets/</code> folder; the build
+  inlines them.</p>
+<p><strong>20. Ship the licence with a font.</strong>
+Open-licence fonts (SIL OFL) may be embedded, but the licence must travel with
+them. The showcase keeps <code>Inter-OFL.txt</code> and <code>Fraunces-OFL.txt</code> beside the font
+files.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

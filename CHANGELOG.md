@@ -6,6 +6,132 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — fonts and images in reports, and a showcase that uses them
+
+- **`assets/` in a report package.** `url(assets/…)` in `style.css` and
+  `src="assets/…"` in `template.html` are inlined as `data:` URIs when the
+  package loads, so custom fonts and images ride inside the one
+  self-contained file. A missing file, an unsupported type, or a path outside
+  `assets/` fails the load. Documented in `tracebi context`, both agent guides
+  and the styling guide.
+- **Every built report names what it contains.** A comment at the top lists
+  the inlined parts and their licences (TraceBi CSS and runtime, Apache
+  ECharts with its bundled version), and each inlined block carries a comment
+  saying what it is.
+- **The portfolio showcase gets a custom theme**: Inter and Fraunces
+  (SIL OFL, licences shipped beside the fonts), a gradient hero with inlined
+  contour artwork, KPI tiles overlapping the hero, pill tabs, chart gradients
+  through `configureChart`, and an "About this file" footer. It shows what the
+  stack can do without changing any figure.
+
+### Fixed
+
+- A report with live filtering opened from disk (`file://`) no longer logs a
+  failed request; it takes the offline path directly.
+- Wide tables scroll inside their card on phones instead of widening the page.
+- Chart category labels rotate when the chart is too narrow for them.
+
+### Removed — tests that pinned appearance
+
+13 tests that asserted colours, CSS text, SVG hashes or theme tokens
+(`test_presentation_css.py`, `TestNoColorByteIdentical`, `TestChartThemeColors`,
+and two single tests). `docs/architecture/test-suite-review.md` explains the
+rule and lists further candidates. `docs/agents/pitfalls.md` records the bugs
+hit during this work and the rule that prevents each.
+
+### Changed — a better-looking default report
+
+- **New house style** in `tracebi.css`: a soft page background with white,
+  lightly shadowed cards, a clearer type scale, quieter table headers, row
+  hover, and numeric columns that actually right-align (a more specific rule
+  used to override `.tb-num`).
+- **Colour-blind-checked chart palette** (`DEFAULT_PALETTE` and
+  `--tb-chart-1..8`), validated for colour-vision deficiency and normal-vision
+  separation.
+- **Chart defaults** (`polishOption` in `tracebi.js`): rounded bars with a
+  width cap, 2px lines, a donut for pie, compact value-axis ticks (`80M`), every
+  category label shown, and a styled tooltip. It restyles only: series data is
+  untouched, and a `configureChart` patch still wins.
+- **Negative money** reads `-$6,272,735`, not `$-6,272,735`, in the runtime and
+  in the build's server-side render alike.
+
+### Added — table headers and number formats per column
+
+`data-tb-labels="col=Label; …"` and `data-tb-formats="col=currency0; …"` on a
+table figure (or `labels` / `formats` in a `report.json` figure declaration)
+override the derived header and number format for the columns they name. A
+column the binding doesn't have, or an unknown format, fails the build. Spec
+tables now pass `column_labels` and named `number_formats` through instead of
+dropping them.
+
+### Fixed — spec compiler layout
+
+A `row` of sections compiles to real side-by-side columns (each section's
+title now sits inside its own card), and a heading keeps its content as a lead
+paragraph.
+
+### Changed — the example reports
+
+The portfolio examples were redesigned. Concentration now uses framework
+figures (share bar chart, cumulative-share curve, a labelled ranking table),
+not a hand-drawn table of raw column names. Book has a refreshed editorial
+style. The dashboard sorts its bars and tables. The showcase and the
+`tracebi init` sample demonstrate `data-tb-formats`.
+
+### Added — product strategy documents: `docs/strategy/`
+
+Five pages: vision and positioning, users and their jobs, product strategy
+(the repeatable-report loop, BI parity, templates), target architecture, and
+deployment. They appear in a Strategy section on the app's Docs page and are
+kept off the public docs site, like `ROADMAP`.
+`docs/architecture/next-level-plan.md` is kept as the first draft.
+
+### Added — scheduled reports: `tracebi schedule`
+
+A report package can now declare when it runs and who receives it, in its own
+`report.json`:
+
+```json
+"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
+             "to": ["cfo@example.com"]}
+```
+
+- `tracebi schedule run <name>` runs it now: build → verify → email → record.
+  A receipt that does not verify is recorded `refused`, and nothing is sent.
+  `--no-send` builds and records only.
+- `tracebi schedule serve` runs every schedule in one process (APScheduler,
+  `tracebi[pipeline]`). Cron or any other scheduler can call `schedule run`
+  instead.
+- `tracebi schedule list` shows each schedule and its last run. Runs are
+  appended to `output/schedule_runs.jsonl` with status, verdict, recipients
+  and the actor.
+- A malformed block fails when the package loads. The block is documented in
+  `tracebi context` (`schedule`), `AGENTS.md`, the `tracebi init` agent guide,
+  and the report.json and CLI references. The portfolio showcase carries a
+  build-only schedule.
+
+### Fixed — the report download button, and what the offline check needs
+
+- The Reports page's **↓ HTML (with receipt)** button rendered white on white
+  because it used an undefined `--accent` CSS variable. It now uses `--blue`,
+  like the app's other primary buttons.
+- `tracebi init` and the Receipts page said `verify --file` needs only the
+  `.html`. It reads the `.manifest.json` beside it too, and the wording now
+  says so.
+
+### Added — docs for readers who don't code
+
+- `docs/guides/plain-english.md`: what TraceBi does, and a glossary, for
+  readers, approvers and buyers. It's the first guide in the Docs page, and the
+  Desk links to it.
+- `docs/guides/demo-script.md`: a click-by-click ten-minute demo for a
+  non-technical audience.
+- `docs/architecture/next-level-plan.md`: the product plan. It covers user
+  types, the repeatable-report loop, architecture, deployment, distribution,
+  and stages toward replacing recurring BI.
+- `docs/architecture/product-readiness-audit.md`: product fit, ranked findings,
+  and the checklist from here to a product a company can buy.
+
 ### Removed — **BREAKING**: the `requests/` lane
 
 The ad-hoc request-script lane, deprecated since the reshape, is gone. A

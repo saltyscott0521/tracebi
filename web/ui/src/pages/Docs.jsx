@@ -15,6 +15,7 @@ const SECTIONS = [
   { key: 'reference',    label: 'Reference',    blurb: 'Look things up.' },
   { key: 'architecture', label: 'Architecture', blurb: 'For changing the framework.' },
   { key: 'agents',       label: 'Agent SOPs',   blurb: 'Standard operating procedures.' },
+  { key: 'strategy',     label: 'Strategy',     blurb: 'Where TraceBi is going, and why.' },
 ]
 
 // Internal working documents that ship in a source checkout but are not
@@ -27,7 +28,7 @@ const HIDDEN = new Set(['north-star', 'ROADMAP'])
 const WIKI_PREFIX = 'tb-doc:'
 
 // Within a section, lead with the page that orients you.
-const FIRST = { concepts: 'the-three-phase-workflow', guides: 'quickstart' }
+const FIRST = { concepts: 'the-three-phase-workflow', guides: 'plain-english', strategy: 'vision-and-positioning' }
 
 const clean = t => (t || '').replace(/`/g, '')
 

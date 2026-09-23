@@ -64,7 +64,9 @@ whose figures each name a binding from `report.json`:
   `data-tb-type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`),
   `data-tb-x`, `data-tb-y` (comma-list for multi-series), optional
   `data-tb-color` and `data-tb-value-format`. Tables optionally add
-  `data-tb-columns` and the `tb-table--striped` / `tb-table--compact` classes.
+  `data-tb-columns` and the `tb-table--striped` / `tb-table--compact` classes;
+  `data-tb-labels` and `data-tb-formats` set headers and number formats per
+  column (`data-tb-formats="revenue=currency; share=percent"`).
 - **Give every figure an `id`** — ids are how humans redirect you
   ("fix `tbl-seniority`").
 - **Or let the framework build the figure.** Declare it in `report.json`
@@ -116,6 +118,11 @@ whose figures each name a binding from `report.json`:
   `tracebi.configureChart` — config can restyle, never re-source: series data
   always comes from the stamped bytes. Provenance badges pick their state
   from the manifest; a stylesheet can restyle a badge, never re-color honesty.
+  Fonts and images go in the package's `assets/` folder: `url(assets/…)` in
+  `style.css` and `src="assets/…"` in `template.html` are inlined as `data:`
+  URIs at load, so the file stays self-contained (woff2/woff/ttf/otf,
+  svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside
+  `assets/` fails the load).
 - Reading data in `script.js`: ALWAYS wrap it in `tracebi.ready(fn)`, never
   call `tracebi.data()` at the top level. A large-detail report embeds its
   data as Parquet and decodes it in a worker AFTER `script.js` runs, so a bare
@@ -149,6 +156,7 @@ tracebi dev <name>                          # the live loop (see below)
 tracebi report status <name>                # earned state in the terminal (📌 pins)
 tracebi report build <name>                 # render → output/<name>.html + manifest
 tracebi verify output/<name>.html.manifest.json --contracts
+tracebi schedule run <name>                 # a report.json "schedule" block: build → verify → email
 tracebi serve                               # browse at http://127.0.0.1:8000
 ```
 
@@ -202,6 +210,16 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    `.manifest.json`) is the deliverable to hand over or commit — and the
    package is already served live on the Reports page of `tracebi serve`;
    there is no separate publish step.
+
+**Repeat it with a `schedule` block.** A recurring report declares when it
+runs and who receives it in `report.json`:
+`"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
+"to": ["cfo@example.com"]}` (`to` optional: without it a run only rebuilds).
+The reviewer approves when and to whom in the same diff as what.
+`tracebi schedule run <name>` runs it now (build → verify → email → record
+in `output/schedule_runs.jsonl`); a receipt that does not verify is
+recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
+schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 `tracebi verify` is the point: it re-runs the recorded queries and confirms
 every figure still reproduces. Only `REPRODUCES` means a number was re-run

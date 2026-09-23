@@ -341,3 +341,126 @@ class TestDiscoveryShadowing:
         assert outcomes["sales"]["status"] == "registered"
         err = capsys.readouterr().err
         assert "shadows spec" in err and "sales.json" in err
+
+
+# ── table labels / formats and row layout ──────────────────────────────────
+
+def _write_package(tmp_path, compiled):
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    for fname, content in compiled.files.items():
+        (pkg / fname).write_text(content, encoding="utf-8")
+    return pkg
+
+
+class TestTableLabelsAndFormats:
+    def test_spec_labels_and_named_formats_compile_to_attributes(self):
+        compiled = compile_spec(_spec([
+            {"type": "table", "title": "By region", "data": _DATA,
+             "column_labels": {"dim_r.region": "Market"},
+             "number_formats": {"revenue": "currency", "other": "{:.3f}"}},
+        ]))
+        page = compiled.files["template.html"]
+        assert 'data-tb-labels="dim_r.region=Market"' in page
+        assert 'data-tb-formats="revenue=currency"' in page
+        # a Python format string has no runtime equivalent: warned, not emitted
+        text = "\n".join(compiled.warnings)
+        assert "other" in text and "column_labels" not in text
+
+    def test_a_row_lays_titled_sections_side_by_side(self):
+        compiled = compile_spec(_spec([
+            {"type": "row", "widths": [1, 1], "sections": [
+                {"type": "chart", "title": "Left", "chart_type": "bar",
+                 "x": "dim_r.region", "y": "revenue", "data": _DATA},
+                {"type": "table", "title": "Right", "data": _DATA},
+            ]},
+        ]))
+        page = compiled.files["template.html"]
+        assert '<div class="tb-cols-2">' in page
+        # each title sits INSIDE its card, so a row has two cells, not four
+        assert page.count('<div class="tb-card">') == 2
+        assert '<div class="tb-card">\n    <h3>Left</h3>' in page
+        assert not compiled.warnings    # equal widths need no warning
+
+    def test_a_heading_keeps_its_content(self):
+        compiled = compile_spec(_spec([
+            {"type": "text", "style": "heading1", "title": "Book",
+             "content": "Three funds."},
+        ]))
+        page = compiled.files["template.html"]
+        assert "<h2>Book</h2>" in page and "<p>Three funds.</p>" in page
+
+    def test_build_renders_labels_and_formats_server_side(self, cs_model, tmp_path):
+        from tracebi.reports.template_package import TemplatePackage
+        compiled = compile_spec(_spec([
+            {"type": "table", "title": "By region", "id": "by_region",
+             "data": _DATA, "column_labels": {"dim_r.region": "Market"},
+             "number_formats": {"revenue": "currency0"}},
+        ]))
+        out = tmp_path / "out.html"
+        TemplatePackage(str(_write_package(tmp_path, compiled))).render(
+            {"cs_model": cs_model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert "<th>Market</th>" in html
+        assert '<td class="tb-num">$250</td>' in html
+
+    @pytest.mark.parametrize("attrs, fragment", [
+        ('data-tb-formats="nope=currency"', "names 'nope'"),
+        ('data-tb-labels="revenu=Revenue"', "Did you mean 'revenue'"),
+        ('data-tb-formats="revenue=money"', "format 'money'"),
+        ('data-tb-formats="revenue"', "not a column=value pair"),
+    ])
+    def test_build_refuses_a_bad_override(self, cs_model, tmp_path, attrs, fragment):
+        from tracebi.reports.figures import FigureError
+        from tracebi.reports.template_package import TemplatePackage
+        pkg = tmp_path / "bad"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps(
+            {"name": "Bad", "data": {"t": _DATA}}), encoding="utf-8")
+        (pkg / "template.html").write_text(
+            "<html><head><title>x</title></head><body>"
+            f'<table data-tb-figure="table" data-tb-binding="t" {attrs}></table>'
+            "</body></html>", encoding="utf-8")
+        with pytest.raises(FigureError, match=fragment):
+            TemplatePackage(str(pkg)).render(
+                {"cs_model": cs_model}, str(tmp_path / "o.html"))
+
+    def test_figure_helper_declares_labels_and_formats(self, tmp_path):
+        from tracebi.reports.template_package import TemplatePackage
+        pkg = tmp_path / "helper"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({
+            "name": "Helper", "data": {"t": _DATA},
+            "figures": {"tbl": {"kind": "table", "binding": "t",
+                                "labels": {"dim_r.region": "Market"},
+                                "formats": {"revenue": "currency0"}}},
+        }), encoding="utf-8")
+        (pkg / "template.html").write_text(
+            "<html><head><title>x</title></head><body>"
+            '{{ figure("tbl") }}</body></html>', encoding="utf-8")
+        element = TemplatePackage(str(pkg))._build_figure(
+            "tbl", {"kind": "table", "binding": "t",
+                    "labels": {"dim_r.region": "Market"},
+                    "formats": {"revenue": "currency0"}})
+        assert 'data-tb-labels="dim_r.region=Market"' in element
+        assert 'data-tb-formats="revenue=currency0"' in element
+
+    def test_figure_helper_refuses_a_non_string_map(self, tmp_path):
+        from tracebi.reports.template_package import TemplatePackage
+        pkg = tmp_path / "helper_bad"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({
+            "name": "Helper", "data": {"t": _DATA},
+            "figures": {"tbl": {"kind": "table", "binding": "t",
+                                "formats": {"revenue": 2}}},
+        }), encoding="utf-8")
+        (pkg / "template.html").write_text("<html></html>", encoding="utf-8")
+        with pytest.raises(ValueError, match="'formats' must map column names"):
+            TemplatePackage(str(pkg))
+
+
+def test_negative_currency_puts_the_sign_before_the_symbol():
+    from tracebi.reports.template_package import _ssr_format
+    assert _ssr_format(-6272735.39, "currency0") == "-$6,272,735"
+    assert _ssr_format(-0.5, "currency") == "-$0.50"
+    assert _ssr_format(12.5, "currency") == "$12.50"

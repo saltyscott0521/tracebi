@@ -42,9 +42,11 @@ Each figure lands on one verdict:
 tracebi verify --file output/my_report.html
 ```
 
-Checks the **file alone**, offline, with no database and no account: do the
-embedded bytes still hash to what the embedded manifest says? This catches a
-number edited in the HTML after the fact.
+Checks the **file and its receipt**, offline, with no database and no account:
+do the embedded bytes still hash to what the manifest says? The manifest is
+read from `<file>.manifest.json` beside the report (or `--manifest <path>`), so
+send both files together. This catches a number edited in the HTML after the
+fact.
 
 ## What it does not prove
 

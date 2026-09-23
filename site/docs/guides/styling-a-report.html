@@ -34,9 +34,11 @@
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
-<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
 <a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
+<a href="../guides/quickstart.html">Quickstart</a>
 <a class="on" href="../guides/styling-a-report.html">Styling a report</a>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
 <a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
@@ -54,10 +56,14 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
+<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
 <a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
@@ -161,6 +167,24 @@ from an email attachment. So:</p>
 self-contained and the offline <code>verify --file</code> check meaningful.</p>
 <p>Charting is already inlined for you — opt in with <code>"libs": ["echarts"]</code> in
 <a href="../reference/report-json.html">report.json</a>.</p>
+<h2 id="fonts-and-images">Fonts and images</h2>
+<p>Put them in the package's <code>assets/</code> folder and reference them by relative path.
+The build inlines each one as a <code>data:</code> URI, so the file still fetches nothing:</p>
+<pre><code class="language-css">@font-face {
+  font-family: &quot;Inter&quot;;
+  src: url(assets/fonts/inter-latin-400-normal.woff2) format(&quot;woff2&quot;);
+}
+.hero { background: url(assets/contours.svg) center / cover, linear-gradient(125deg, #0a1330, #1b2f7a); }
+</code></pre>
+<pre><code class="language-html">&lt;img src=&quot;assets/logo.svg&quot; alt=&quot;Company&quot;&gt;
+</code></pre>
+<p>Allowed types: woff2, woff, ttf, otf, svg, png, jpg, webp, gif, avif. A missing
+file, any other type, or a path outside <code>assets/</code> fails the load with the file
+named. Keep images small: every byte ships inside the report. Check a font's
+licence allows embedding (SIL OFL fonts do; ship the licence text alongside).</p>
+<p><code>examples/portfolio_project/reports/portfolio_showcase/</code> shows it all: two
+typefaces, a gradient hero with inlined artwork, pill tabs, and chart gradients
+through <code>tracebi.configureChart</code>.</p>
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup</li>

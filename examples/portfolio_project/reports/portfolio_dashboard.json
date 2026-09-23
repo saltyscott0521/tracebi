@@ -45,7 +45,8 @@
             "query": {
               "fact": "fact_holdings",
               "measures": ["fair_value"],
-              "dimensions": ["dim_issuer.sector"]
+              "dimensions": ["dim_issuer.sector"],
+              "order_by": ["-fair_value"]
             }
           }
         },
@@ -63,7 +64,8 @@
             "query": {
               "fact": "fact_holdings",
               "measures": ["fair_value"],
-              "dimensions": ["dim_fund.fund"]
+              "dimensions": ["dim_fund.fund"],
+              "order_by": ["-fair_value"]
             }
           }
         }
@@ -94,7 +96,8 @@
         "query": {
           "fact": "fact_holdings",
           "measures": ["fair_value", "cost_basis", "unrealized", "mark", "positions"],
-          "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"]
+          "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"],
+          "order_by": ["-fair_value"]
         }
       }
     }
