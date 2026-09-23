@@ -1,20 +1,21 @@
 # Product strategy
 
-**Own two paths that share one set of definitions: Ask, which answers a
-question in seconds, and Publish, which turns the answers worth keeping into
-reports that run themselves. Match BI tools on what those need. Deliberately
+**Own three paths that share one set of definitions: Ask, which answers a
+question in seconds; Build, where an analyst (with an agent) makes a one-off
+analysis; and Schedule, which turns the pieces worth repeating into reports
+that run themselves. Match BI tools on what those need. Deliberately
 skip what they need only for drag-and-drop exploration.**
 
 ---
 
-## Two paths, one set of definitions
+## Three paths, one set of definitions
 
 ```
-            ┌─ ASK ───── agent answers from the model ── answer / one-off report
-QUESTION ───┤                                            │  "keep this"
-            └─ PUBLISH ─ AUTHOR → REVIEW → PUBLISH → RUN → DELIVER → MONITOR
-                              ▲                                      │
-                              └──── a failure or a new question ─────┘
+ASK ────── question → answer in seconds ──────────────┐
+                                                      │ grows into
+BUILD ──── explore → shape → lay out → build one file ┤
+                                                      │ worth repeating
+SCHEDULE ─ review → publish → run → deliver → monitor ┘
 ```
 
 ### Ask: the ad hoc path
@@ -31,11 +32,28 @@ approved in the model. If the question needs a definition that doesn't exist,
 the agent says so and proposes one, and that proposal is reviewed like any
 model change.
 
-### Publish: the recurring path
+### Build: the analyst's one-off path
+
+A deep dive, a board memo, a client deliverable, an investigation. Most
+analysis is done once, and that's fine: TraceBi treats a one-off artifact as
+first-class, not as a report waiting for a schedule.
 
 | Step | What happens | Today | Target | Quarter |
 | --- | --- | --- | --- | --- |
-| **Request** | A person asks for a report, or keeps an answer from Ask | Ask on one report | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
+| **Explore** | The analyst (or their agent) queries the model and tries ideas; scratch work stays out of the final file | ✅ `tracebi dev`, the workbench, exploration blocks, `tracebi.workbench.show()`, `tracebi session export` | Share a live exploration link with a colleague | Q2 |
+| **Shape** | Pick what the story needs: figures, prose, tables | ✅ Package grammar, `{{ figure() }}`, `report.py` for the analysis the model can't express | Templates for common analyses (variance, cohort, concentration) | Q2 |
+| **Lay out** | The page looks the way the analyst wants | ✅ `style.css`, `assets/` fonts and images, `configureChart` | A small gallery of layouts to start from | Q2 |
+| **Build and share** | One self-contained file, every number receipted | ✅ `tracebi report build`, `tracebi report send`, `verify --file` | Download as PDF; a shareable link from the app | Q2–Q3 |
+| **Review** | Peer review, the way the team already reviews analysis | Git pull request, pins in the workbench | Review in the app for people who don't use git | Q3 |
+
+The analyst stays in charge: plain files, their own layout and prose, and an
+agent that does the querying, charting and first draft when asked.
+
+### Schedule: the recurring path
+
+| Step | What happens | Today | Target | Quarter |
+| --- | --- | --- | --- | --- |
+| **Request** | A person asks for a recurring report, or keeps an answer or analysis | Ask on one report | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
 | **Author** | An agent writes the model and report | MCP gateway, package grammar, validation, `tracebi dev` | Templates, model scaffold from warehouse metadata | Q1–Q2 |
 | **Review** | A person approves | Git pull request, Desk pins | Plain-language review in the app: rendered preview, what changed, which definitions it uses | Q3 |
 | **Publish** | Merge makes it live | Server discovers at startup | Publish on merge, no restart | Q3 |
@@ -77,9 +95,10 @@ What a team expects from a BI tool, and our answer.
    question goes to a spreadsheet export or a one-off query, and gets a number
    that disagrees with the board pack. Ask answers in seconds from the same
    model the published reports use.
-2. **Authoring by agents.** A closed vocabulary, validation before execution,
-   repair-path errors and templates, so an agent gets a report right the
-   first time. Measure it: first-build success rate.
+2. **Authoring by analysts and agents together.** The analyst keeps full
+   control of the story and the page; the agent works in a closed, validated
+   vocabulary so its drafts are right the first time. Measure it: first-build
+   success rate.
 3. **Consistency.** One definition used everywhere, with a linter that
    refuses silently wrong aggregations (already shipped: rate and stock
    guards).
