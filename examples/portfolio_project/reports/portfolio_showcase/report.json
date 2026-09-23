@@ -31,6 +31,10 @@
         "order_by": ["-fair_value"]
       }
     },
+    "holdings_total": {
+      "model": "portfolio_model",
+      "query": { "fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"] }
+    },
     "top_issuers": {
       "model": "portfolio_model",
       "query": {

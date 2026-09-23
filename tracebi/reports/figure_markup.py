@@ -60,11 +60,13 @@ def parse_column_map(value) -> dict[str, str]:
 
 
 def table_element(binding: str, *, fig_id: str, columns=None,
-                  style: str = "", labels=None, formats=None) -> str:
+                  style: str = "", labels=None, formats=None,
+                  totals=None) -> str:
     """A ``data-tb-figure="table"`` element the runtime fills with rows.
 
     *labels* and *formats* map column → header text / named number format;
     they override the derived header and format for the columns they name.
+    *totals* names a one-row binding whose values fill a totals row.
     """
     attrs = ['data-tb-figure="table"', _attr("data-tb-binding", binding),
              _attr("id", fig_id)]
@@ -74,6 +76,8 @@ def table_element(binding: str, *, fig_id: str, columns=None,
         attrs.append(_attr("data-tb-labels", column_map_attr(labels)))
     if formats:
         attrs.append(_attr("data-tb-formats", column_map_attr(formats)))
+    if totals:
+        attrs.append(_attr("data-tb-totals", totals))
     cls = {"striped": "tb-table--striped",
            "compact": "tb-table--compact"}.get(style)
     if cls:

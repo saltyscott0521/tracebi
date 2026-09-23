@@ -91,7 +91,9 @@ binding: `data-tb-figure="value|chart|table|custom"` +
 optionally `data-tb-color`/`data-tb-value-format`; tables optionally
 `data-tb-columns`, plus `data-tb-labels` and `data-tb-formats` to name headers
 and number formats per column, e.g. `data-tb-formats="fair_value=currency0;
-mark=percent"`). A figure with no binding carries `data-tb-unverified` —
+mark=percent"`, and `data-tb-totals="<one-row binding>"` for a totals row:
+declare the same query with no dimensions, so the model computes each total
+and never the browser). A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
 `presentation` block.

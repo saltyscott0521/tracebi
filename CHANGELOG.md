@@ -6,6 +6,33 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — totals rows the model computes
+
+- **`data-tb-totals="<binding>"`** on a table figure fills a totals row from
+  a one-row binding: the table's query with no dimensions. The model computes
+  every total, so a ratio's total is a ratio of totals, never a sum or mean of
+  the rows shown. The row steps aside while a filter or search is on, since a
+  grand total would not match the filtered rows. The build refuses a totals
+  binding that is missing, has more than one row, or shares no column with
+  the table; the manifest records it on the figure, and `verify --file`
+  checks both.
+- **A JSON spec's table `totals` now compile** to exactly that, instead of
+  being dropped with a warning. They are still dropped, with a warning, when
+  the query uses `limit` or `having`, because the table then shows only some
+  rows.
+- The showcase's holdings table and the demo reports carry totals rows.
+
+### Fixed — declared measure formats in report packages
+
+- A format the model declares on a measure (`format="currency0"`) now
+  reaches package tables, including a ratio's inputs, which the query returns
+  as their own columns. It previously fell back to a shape guess
+  (`1,112,411.10`). The build writes the formats to a `tracebi-formats`
+  block; the server render and the browser both read it. An author's
+  `data-tb-formats` still wins.
+- **Doughnut charts in narrow cards** name their slices in a legend below the
+  chart instead of outside labels that ran off the edge.
+
 ### Added — see what kind of report it is, and the files behind it
 
 - **Reports page badge.** Each report shows **JSON spec** (a

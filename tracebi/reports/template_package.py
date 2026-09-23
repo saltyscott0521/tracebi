@@ -588,7 +588,8 @@ class TemplatePackage:
         # runtime reads and nothing touches the embed blocks, so no fingerprint
         # moves. See _ssr_content.
         frames = {sd.name: sd.dataset for sd in (inputs + outputs)}
-        page = fill_figures(page, self._ssr_content(figs, frames))
+        declared_formats = self._declared_column_formats(models, frames)
+        page = fill_figures(page, self._ssr_content(figs, frames, declared_formats))
 
         # Manifest first, artifact second — and the figure claims layer rides
         # in it (schema v2: the refuse-newer-schema path in verify is the
@@ -684,6 +685,7 @@ class TemplatePackage:
             contracts=contracts,
         )
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
+        contract_blocks.append(embed_json(declared_formats, "tracebi-formats") + "\n")
         contract_blocks.append(self._selection_blocks(models))
 
         # Provenance for the runtime's badges, decided from what was actually
@@ -710,7 +712,7 @@ class TemplatePackage:
 
     # ── Server-side render (progressive enhancement) ────────────────────────
 
-    def _ssr_content(self, figs, frames) -> dict:
+    def _ssr_content(self, figs, frames, declared_formats=None) -> dict:
         """Server-rendered inner content per figure id, for the SSR fill.
 
         VALUE figures get the formatted number the runtime would hydrate, so a
@@ -732,7 +734,9 @@ class TemplatePackage:
                 if text is not None:
                     content[fig.id] = _html.escape(text)
             elif fig.kind == "table":
-                markup = self._ssr_table(ds, fig)
+                markup = self._ssr_table(
+                    ds, fig, (declared_formats or {}).get(fig.binding),
+                    frames.get(fig.attrs.get("data-tb-totals") or ""))
                 if markup is not None:
                     content[fig.id] = markup
             elif fig.kind == "chart":
@@ -740,6 +744,24 @@ class TemplatePackage:
                 if svg is not None:
                     content[fig.id] = svg
         return content
+
+    def _declared_column_formats(self, models: dict, frames: dict) -> dict:
+        """``{binding: {column: format}}`` for columns that are measures the
+        model declares a format on — including a ratio's inputs, which the
+        query returns as their own columns. Presentation only: it picks how a
+        number is written, never which number."""
+        out: dict = {}
+        for name, ref in self.bindings.items():
+            ds, model = frames.get(name), models.get(ref.model)
+            if ds is None or model is None:
+                continue
+            declared = model.measures()
+            cols = {str(c) for c in ds.to_pandas().columns}
+            fmts = {c: declared[c].format for c in sorted(cols)
+                    if c in declared and declared[c].format}
+            if fmts:
+                out[name] = fmts
+        return out
 
     @staticmethod
     def _ssr_chart(ds, fig):
@@ -799,7 +821,7 @@ class TemplatePackage:
         return _ssr_format(raw, fig.attrs.get("data-tb-format") or "")
 
     @staticmethod
-    def _ssr_table(ds, fig):
+    def _ssr_table(ds, fig, declared=None, totals_ds=None):
         """Server-rendered ``<thead>`` + ``<tbody data-tb-hydrate>`` for a table
         figure, matching the runtime's hydrateTables/renderBody: numeric columns
         (pandas number dtype) get ``tb-num`` and the shape-derived format
@@ -820,6 +842,9 @@ class TemplatePackage:
             return None
         numeric = {str(c) for c in df.select_dtypes(include="number").columns}
         formats = derive_number_formats(df)      # dataset=None: shape-only == JS
+        # A format the model declares on a measure beats the shape guess (the
+        # runtime reads the same map from the tracebi-formats block).
+        formats.update({c: v for c, v in (declared or {}).items() if c in numeric})
         # Author overrides win over the derived defaults (validated at build);
         # a format applies only to a numeric column, as in the runtime.
         labels = parse_column_map(fig.attrs.get("data-tb-labels"))
@@ -861,7 +886,24 @@ class TemplatePackage:
             body.append(f'<tr><td class="tb-empty" colspan="{len(cols)}">'
                         f"+{more:,} more rows — enable JavaScript to load them"
                         f"</td></tr>")
-        return thead + "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>"
+        tfoot = ""
+        if totals_ds is not None:
+            tf = totals_ds.to_pandas()
+            if len(tf) == 1:
+                row, cells = tf.iloc[0], []
+                for i, c in enumerate(cols):
+                    if c in tf.columns:
+                        fmt = formats.get(c)
+                        text = _ssr_format(row[c], fmt) if fmt else _ssr_cell(row[c])
+                        cells.append(f'<td class="tb-num">{_html.escape(text)}</td>')
+                    elif i == 0 and c not in numeric:
+                        cells.append("<td>Total</td>")
+                    else:
+                        cells.append("<td></td>")
+                tfoot = ('<tfoot><tr class="tb-total">' + "".join(cells)
+                         + "</tr></tfoot>")
+        return (thead + "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>"
+                + tfoot)
 
     def _validate_figures(
         self,
@@ -926,6 +968,23 @@ class TemplatePackage:
                     )
             if f.kind == "table":
                 cols = [str(c) for c in frames[f.binding].columns]
+                totals = f.attrs.get("data-tb-totals")
+                if totals:
+                    if totals not in frames:
+                        raise FigureError(
+                            f"{where}: data-tb-totals names binding '{totals}', "
+                            f"which is not declared in report.json.{_hint(totals)}")
+                    tdf = frames[totals]
+                    if len(tdf) != 1:
+                        raise FigureError(
+                            f"{where}: data-tb-totals binding '{totals}' has "
+                            f"{len(tdf)} rows — a totals row needs a one-row "
+                            f"binding (the same query with no dimensions).")
+                    if not set(map(str, tdf.columns)) & set(cols):
+                        raise FigureError(
+                            f"{where}: data-tb-totals binding '{totals}' shares "
+                            f"no column with '{f.binding}' ({cols}), so the "
+                            f"totals row would be empty.")
                 for attr_name in ("data-tb-labels", "data-tb-formats"):
                     try:
                         mapping = parse_column_map(f.attrs.get(attr_name))
@@ -1373,6 +1432,8 @@ def _figure_record(f: Figure) -> dict:
         d["unverified"] = True
     if f.note:
         d["note"] = f.note
+    if f.attrs.get("data-tb-totals"):
+        d["totals"] = f.attrs["data-tb-totals"]
     return d
 
 

@@ -61,7 +61,7 @@ class TestShowcase:
                        "tb-methodology", "data-tb-unverified",
                        "tb-semantic-contract-portfolio_model",
                        'id="tracebi-selection"', 'id="tracebi-grain"',
-                       "connect-src 'self'"):
+                       "connect-src 'self'", 'class="tb-total"'):
             assert marker in html, f"showcase lost its {marker} affordance"
         assert "Working notes" not in html, "exploration must die at build"
 

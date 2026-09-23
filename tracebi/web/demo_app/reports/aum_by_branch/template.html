@@ -70,6 +70,7 @@
            data-tb-columns="dim_branch.branch,dim_branch.region,market_value,unrealized_gain,gain_pct"
            data-tb-labels="dim_branch.branch=Branch; dim_branch.region=Region; market_value=AUM; unrealized_gain=Unrealized gain; gain_pct=Gain on cost"
            data-tb-formats="market_value=currency0; unrealized_gain=currency0; gain_pct=percent"
+           data-tb-totals="at_a_glance"
            id="tbl-branch"></table>
   </div>
 
@@ -78,6 +79,7 @@
     <table data-tb-figure="table" data-tb-binding="by_asset_class"
            data-tb-labels="dim_product.asset_class=Asset class; market_value=AUM; unrealized_gain=Unrealized gain"
            data-tb-formats="market_value=currency0; unrealized_gain=currency0"
+           data-tb-totals="at_a_glance"
            id="tbl-asset"></table>
   </div>
 

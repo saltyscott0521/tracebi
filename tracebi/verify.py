@@ -1044,7 +1044,9 @@ def verify_file(html: str, manifest: dict) -> dict:
             fid, binding = f.get("id"), f.get("binding")
             recorded_ids.add(fid)
             got = file_figs.get(fid)
-            if got is None or got.binding != binding:
+            totals = f.get("totals")
+            got_totals = got.attrs.get("data-tb-totals") if got is not None else None
+            if got is None or got.binding != binding or (got_totals or None) != totals:
                 figure_rows.append({
                     "figure": fid, "binding": binding,
                     "status": FIGURE_MISSING,
@@ -1063,6 +1065,14 @@ def verify_file(html: str, manifest: dict) -> dict:
                     "status": FIGURE_DATA_FAILED,
                     "detail": f"its data block '{binding}' did not check out "
                               f"({block_status.get(binding, 'absent')})",
+                })
+                fig_failed = True
+            elif totals and block_status.get(totals) != FILE_MATCHES:
+                figure_rows.append({
+                    "figure": fid, "binding": binding,
+                    "status": FIGURE_DATA_FAILED,
+                    "detail": f"its totals block '{totals}' did not check out "
+                              f"({block_status.get(totals, 'absent')})",
                 })
                 fig_failed = True
             else:

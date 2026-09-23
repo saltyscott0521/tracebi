@@ -643,8 +643,47 @@
   /* Rebuild a hydrated table's body from *rows*. Labels and formats were
    * derived ONCE from the full stamped rows, so a filtered subset can never
    * flip a column's presentation between control states. */
+  /* data-tb-totals names a one-row binding the model computed (the table's
+   * query with no dimensions): its values fill a <tfoot> row. Nothing is
+   * summed here — a ratio's total is the model's ratio of totals. */
+  function totalsRow(el, cols, numeric, formats) {
+    var name = attr(el, "data-tb-totals");
+    if (!name) return null;
+    var old = el.querySelector("tfoot");
+    if (old) el.removeChild(old);           /* the server-rendered copy */
+    var block = readBlock(name);
+    if (!block || block.rows.length !== 1) return null;
+    var row = block.rows[0];
+    if (!el.querySelector("tbody")) el.appendChild(document.createElement("tbody"));
+    var tfoot = document.createElement("tfoot");
+    var tr = document.createElement("tr");
+    tr.className = "tb-total";
+    cols.forEach(function (col, i) {
+      var td = document.createElement("td");
+      if (block.cols.indexOf(col) !== -1) {
+        td.className = "tb-num";
+        var n = toNum(row[col]), text = row[col] === undefined ? "" : row[col];
+        var fmt = formats[col] || deriveFormat(block.rows, col);
+        if (n !== null && fmt) {
+          var formatted = applyNamedFormat(n, fmt);
+          if (formatted !== null) text = formatted;
+        }
+        td.textContent = text;
+      } else if (i === 0 && !numeric[col]) {
+        td.textContent = "Total";
+      }
+      tr.appendChild(td);
+    });
+    tfoot.appendChild(tr);
+    el.appendChild(tfoot);
+    return tfoot;
+  }
+
   function renderBody(entry, rows) {
     var el = entry.el;
+    /* A grand total under a filtered view would not add up to the rows
+     * shown, so the totals row steps aside while a filter or search is on. */
+    if (entry.tfoot) entry.tfoot.hidden = rows.length !== entry.rowCount;
     var tbody = el.querySelector("tbody");
     if (!tbody) {
       tbody = document.createElement("tbody");
@@ -697,6 +736,19 @@
     return out;
   }
 
+  /* {binding: {column: format}} for measures the model declares a format
+   * on — a presentation block, not part of the fingerprinted data. */
+  var _declaredFormats = null;
+  function declaredFormats() {
+    if (_declaredFormats) return _declaredFormats;
+    _declaredFormats = {};
+    try {
+      var el = document.getElementById("tracebi-formats");
+      if (el) _declaredFormats = JSON.parse(el.textContent) || {};
+    } catch (e) { /* defensive */ }
+    return _declaredFormats;
+  }
+
   function hydrateTables() {
     figureEls("table").forEach(function (el) {
       try {
@@ -727,11 +779,14 @@
          * and format; a format applies only to a numeric column. */
         var labels = columnMap(attr(el, "data-tb-labels"));
         var ownFormats = columnMap(attr(el, "data-tb-formats"));
+        /* Then a format the model declares on the measure (tracebi-formats,
+         * written at build), then the shape guess. */
+        var declared = declaredFormats()[binding] || {};
         var numeric = {}, formats = {};
         cols.forEach(function (col) {
           numeric[col] = isNumericColumn(rows, col);
           formats[col] = numeric[col]
-            ? (ownFormats[col] || deriveFormat(rows, col)) : null;
+            ? (ownFormats[col] || declared[col] || deriveFormat(rows, col)) : null;
         });
 
         /* Build via createElement/textContent only — data never becomes
@@ -751,6 +806,7 @@
         var entry = { el: el, binding: binding, cols: cols,
                       numeric: numeric, formats: formats,
                       rowCount: rows.length };
+        entry.tfoot = totalsRow(el, cols, numeric, formats);
         _tables.push(entry);
         renderBody(entry, filteredRows(binding));
       } catch (e) { /* defensive */ }
@@ -902,6 +958,16 @@
         if (s.label && s.label.overflow == null) {
           s.label.overflow = "break";
           s.label.width = 110;
+        }
+        /* In a narrow container, outside labels run off the edge: name the
+         * slices in a legend below instead (hover still shows each value). */
+        if (width && width < 560) {
+          s.label = { show: false };
+          s.labelLine = { show: false };
+          s.center = ["50%", "44%"];
+          option.legend = option.legend || {
+            show: true, bottom: 0, icon: "circle", itemWidth: 10, itemHeight: 10
+          };
         }
       }
     });
