@@ -46,7 +46,7 @@ TraceBi is built around those three. BI tools are built around the editor.
 | Starts with | A question: "What was fair value in Software last quarter?" | A piece of work: a deep dive, a board memo, a client deliverable, a one-off investigation | "Send the sales leads this every Monday." |
 | What happens | An agent queries the model and answers in seconds | The analyst explores live (`tracebi dev`), shapes the story, lays out the page their way, and builds one self-contained file | The report gets a `schedule` block and runs on its own: refresh, build, check, deliver |
 | Review | None per question: it only uses definitions already approved | The analyst's call. Peer review for anything that leaves the team, as with any analysis. | Approved once, in a pull request |
-| Result | An answer with the query and a fingerprint behind every number | A one-off artifact: charts, tables and prose, every number receipted, shareable as one file | A report that arrives on time, every time |
+| Result | An answer with the query and a fingerprint behind every number | A one-off artifact: charts, tables and prose, every number traceable, shareable as one file | A report that arrives on time, every time |
 | Today | Ask on a report; any MCP agent (`query_model`) | ✅ `tracebi new-report`, `tracebi dev` with the workbench, `report build`, custom styling and assets | ✅ `schedule` block, `tracebi schedule` |
 
 **They connect.** A question can grow into a one-off analysis, and a one-off

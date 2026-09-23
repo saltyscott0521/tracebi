@@ -7,7 +7,7 @@ when: bucketing a numeric attribute into ranges — score bands, age brackets, s
 by raw columns only — grouping by `credit_score` gives one row per distinct
 score, useless. So the band gets pre-baked as a column in the transform (a
 maintenance burden, and every new cut is a schema change) or computed in
-`report.py` (ungoverned, `verifiable: false`), out of the receipted lane.
+`report.py` (ungoverned, `verifiable: false`), out of the verifiable lane.
 
 **The correct pattern in TraceBi.** Declare **value bins** on the dimension — a
 governed CASE over ranges, referenced like any attribute:

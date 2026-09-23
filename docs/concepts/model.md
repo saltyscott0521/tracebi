@@ -50,7 +50,7 @@ a `report.py` whose outputs are stamped `verifiable: false` and never read
 green.
 
 So adding a measure kind is not only a convenience feature; it pulls a number
-back into the receipted lane. That is why the [[measures]] vocabulary is
+back into the verifiable lane. That is why the [[measures]] vocabulary is
 deliberately broad and deliberately closed: broad, so real analysis fits; closed,
 so nothing arbitrary slips in.
 

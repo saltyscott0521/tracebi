@@ -69,7 +69,7 @@ asks their agent to pull margin by region and product, and explores in
 scratch blocks that never reach the final file. They keep three charts and a
 table, write the explanation in their own words, and lay the page out with
 the team's style. `tracebi report build` produces one file with every number
-receipted; a colleague reviews it, and it goes to the CFO. Nobody schedules
+traceable; a colleague reviews it, and it goes to the CFO. Nobody schedules
 it. It answered the question.
 
 **Target:** from question to a polished, shareable analysis in an afternoon.

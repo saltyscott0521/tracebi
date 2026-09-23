@@ -43,7 +43,7 @@ first-class, not as a report waiting for a schedule.
 | **Explore** | The analyst (or their agent) queries the model and tries ideas; scratch work stays out of the final file | ✅ `tracebi dev`, the workbench, exploration blocks, `tracebi.workbench.show()`, `tracebi session export` | Share a live exploration link with a colleague | Q2 |
 | **Shape** | Pick what the story needs: figures, prose, tables | ✅ Package grammar, `{{ figure() }}`, `report.py` for the analysis the model can't express | Templates for common analyses (variance, cohort, concentration) | Q2 |
 | **Lay out** | The page looks the way the analyst wants | ✅ `style.css`, `assets/` fonts and images, `configureChart` | A small gallery of layouts to start from | Q2 |
-| **Build and share** | One self-contained file, every number receipted | ✅ `tracebi report build`, `tracebi report send`, `verify --file` | Download as PDF; a shareable link from the app | Q2–Q3 |
+| **Build and share** | One self-contained file, every number traceable | ✅ `tracebi report build`, `tracebi report send`, `verify --file` | Download as PDF; a shareable link from the app | Q2–Q3 |
 | **Review** | Peer review, the way the team already reviews analysis | Git pull request, pins in the workbench | Review in the app for people who don't use git | Q3 |
 
 The analyst stays in charge: plain files, their own layout and prose, and an

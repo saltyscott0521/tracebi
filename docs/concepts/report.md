@@ -73,7 +73,7 @@ Add `report.py` with a `build(inputs) -> {name: DataFrame}` function. Its
 
 That asymmetry is deliberate — see [[receipts#Unverifiable figures]]. Reach for
 it only when the [[model]] genuinely cannot express the number, because
-everything you compute here leaves the receipted lane.
+everything you compute here leaves the verifiable lane.
 
 ## Related
 
