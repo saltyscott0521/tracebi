@@ -113,50 +113,54 @@ makes every design or wording change also a test change.</p>
 </table>
 <p>13 tests removed. The suite is 1,414 passing after this change, plus the tests
 added for the new features.</p>
-<h2 id="recommended-for-removal-not-yet-removed">Recommended for removal (not yet removed)</h2>
+<h2 id="removed-in-the-follow-up-change">Removed in the follow-up change</h2>
 <table>
 <thead>
 <tr>
 <th>Test</th>
-<th>Why</th>
-<th>Suggested action</th>
+<th>Why it went</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>test_presentation_js.py::TestAssetHygiene::test_asset_exists_and_under_size_budget</code></td>
-<td>Caps <code>tracebi.js</code> at a byte size. See <a href="#why-is-there-a-kb-limit">Why is there a KB limit?</a></td>
-<td>Remove. Keep <code>test_no_eval</code>, <code>test_no_innerhtml</code> and <code>test_public_api_defined</code> in the same class; those are security and API checks.</td>
+<td>The size cap in <code>test_presentation_js.py::TestAssetHygiene</code></td>
+<td>Capped <code>tracebi.js</code> at a byte size. See <a href="#why-is-there-a-kb-limit">Why is there a KB limit?</a> The test now only checks the asset exists; <code>test_no_eval</code>, <code>test_no_innerhtml</code> and <code>test_public_api_defined</code> stay.</td>
 </tr>
 <tr>
-<td><code>test_engine_assets.py::test_parquet_wasm_is_gzipped_and_substantial</code></td>
-<td>Asserts the WebAssembly file is "substantial" (a size check).</td>
-<td>Keep the gzip check, drop the size assertion.</td>
-</tr>
-<tr>
-<td><code>test_journey_fixes.py::test_readme_uses_git_url_install_form</code>, <code>test_readme_has_no_bare_pypi_install_line</code>, <code>test_missing_uvicorn_message_uses_git_url_form</code></td>
-<td>Pin the README's install wording to "install from git". They will fail the day TraceBi is published on PyPI, which is the plan.</td>
-<td>Remove when 0.6 ships to PyPI (or now).</td>
+<td>The size assertion in <code>test_engine_assets.py::test_parquet_wasm_is_gzipped</code></td>
+<td>Asserted the WebAssembly file was "substantial". The gzip check stays.</td>
 </tr>
 <tr>
 <td><code>test_phase1.py::test_dataset_help_prints</code>, <code>test_datamodel_help_prints</code>; <code>test_phase2.py::test_report_help_prints</code>; <code>test_phase5.py::test_help_text_returns_the_string</code>, <code>test_help_still_prints_the_same_text</code></td>
-<td>Assert that <code>help()</code> prints some text containing a few method names. Nothing breaks for a user if the cheat sheet is reworded.</td>
-<td>Remove, or keep one smoke test.</td>
+<td>Asserted <code>help()</code> prints text with a few method names in it. <code>test_cheat_sheet_kwargs_are_real_parameters</code> still checks the cheat sheets name real parameters, which is the bug that actually shipped.</td>
 </tr>
 <tr>
 <td><code>test_phase1.py::test_dataset_repr_html</code>, <code>test_datamodel_repr_html</code>; <code>test_phase2.py::test_report_repr_html_is_iframe</code></td>
-<td>Pin the notebook display markup.</td>
-<td>Remove. <strong>Keep</strong> <code>test_dataset_repr_html_escapes</code> and <code>test_dataset_repr_html_caps_preview</code>: one is an HTML-injection guard, the other stops a huge frame freezing a notebook.</td>
+<td>Pinned the notebook display markup. <code>test_dataset_repr_html_escapes</code> (HTML injection) and <code>test_dataset_repr_html_caps_preview</code> (a huge frame can't freeze a notebook) stay.</td>
 </tr>
 <tr>
-<td><code>test_phase2.py</code> checks of <code>os.path.getsize(path) &gt; 1000</code></td>
-<td>"The file isn't tiny" says little.</td>
-<td>Replace with an assertion about the content, or remove.</td>
+<td><code>os.path.getsize(path) &gt; 1000</code> / <code>&gt; 2000</code> in <code>test_phase2.py</code></td>
+<td>"The file isn't tiny" said little. The tests still check the file is written, and the neighbouring tests check its sheets and markup.</td>
+</tr>
+</tbody>
+</table>
+<p>8 tests and 5 size assertions removed.</p>
+<h2 id="kept-after-a-second-look">Kept after a second look</h2>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Why it stays</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_journey_fixes.py::test_readme_uses_git_url_install_form</code>, <code>test_readme_has_no_bare_pypi_install_line</code>, <code>test_missing_uvicorn_message_uses_git_url_form</code></td>
+<td>These looked like wording tests, but they are a <strong>security guard</strong>. A package named <code>tracebi</code> exists on PyPI (0.5.0–0.5.3). If that package isn't ours, a bare <code>pip install tracebi</code> installs someone else's code (dependency confusion). If it is ours, the tests go when 0.6 is published and the README switches to <code>pip install tracebi</code>. Confirm ownership before removing them.</td>
 </tr>
 <tr>
 <td><code>test_docs_site.py::test_regenerating_produces_no_diff</code></td>
-<td>Forces the generated docs HTML to be committed and rebuilt by hand after every docs edit.</td>
-<td>Build the docs site during deploy instead, then remove the committed HTML and this test.</td>
+<td>The site deploys with no build step (<code>site/README.md</code>), so the generated HTML has to be committed, and this test is what keeps it current. Remove it only after the deploy runs <code>python site/build_docs.py</code> itself.</td>
 </tr>
 </tbody>
 </table>
@@ -184,7 +188,7 @@ stopped a change. It only added a step.</p>
 that, the bundled ECharts is 620 KB and <code>tracebi.js</code> is 70 KB, under a tenth
 of the file. If file size matters, measure the <strong>built report</strong>,
 and report it in the build output rather than failing a test.</p>
-<p><strong>Recommendation:</strong> remove the test. If size ever becomes a real complaint, add
+<p><strong>Done:</strong> the test is removed. If size ever becomes a real complaint, add
 a line to <code>tracebi report build</code> output ("report.html: 862 KB") and let people
 decide.</p>
 <h2 id="the-rule-for-new-tests">The rule for new tests</h2>

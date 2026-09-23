@@ -24,17 +24,24 @@ This review applied that rule to all 36 test files.
 13 tests removed. The suite is 1,414 passing after this change, plus the tests
 added for the new features.
 
-## Recommended for removal (not yet removed)
+## Removed in the follow-up change
 
-| Test | Why | Suggested action |
-| --- | --- | --- |
-| `test_presentation_js.py::TestAssetHygiene::test_asset_exists_and_under_size_budget` | Caps `tracebi.js` at a byte size. See [[#Why is there a KB limit?]] | Remove. Keep `test_no_eval`, `test_no_innerhtml` and `test_public_api_defined` in the same class; those are security and API checks. |
-| `test_engine_assets.py::test_parquet_wasm_is_gzipped_and_substantial` | Asserts the WebAssembly file is "substantial" (a size check). | Keep the gzip check, drop the size assertion. |
-| `test_journey_fixes.py::test_readme_uses_git_url_install_form`, `test_readme_has_no_bare_pypi_install_line`, `test_missing_uvicorn_message_uses_git_url_form` | Pin the README's install wording to "install from git". They will fail the day TraceBi is published on PyPI, which is the plan. | Remove when 0.6 ships to PyPI (or now). |
-| `test_phase1.py::test_dataset_help_prints`, `test_datamodel_help_prints`; `test_phase2.py::test_report_help_prints`; `test_phase5.py::test_help_text_returns_the_string`, `test_help_still_prints_the_same_text` | Assert that `help()` prints some text containing a few method names. Nothing breaks for a user if the cheat sheet is reworded. | Remove, or keep one smoke test. |
-| `test_phase1.py::test_dataset_repr_html`, `test_datamodel_repr_html`; `test_phase2.py::test_report_repr_html_is_iframe` | Pin the notebook display markup. | Remove. **Keep** `test_dataset_repr_html_escapes` and `test_dataset_repr_html_caps_preview`: one is an HTML-injection guard, the other stops a huge frame freezing a notebook. |
-| `test_phase2.py` checks of `os.path.getsize(path) > 1000` | "The file isn't tiny" says little. | Replace with an assertion about the content, or remove. |
-| `test_docs_site.py::test_regenerating_produces_no_diff` | Forces the generated docs HTML to be committed and rebuilt by hand after every docs edit. | Build the docs site during deploy instead, then remove the committed HTML and this test. |
+| Test | Why it went |
+| --- | --- |
+| The size cap in `test_presentation_js.py::TestAssetHygiene` | Capped `tracebi.js` at a byte size. See [[#Why is there a KB limit?]] The test now only checks the asset exists; `test_no_eval`, `test_no_innerhtml` and `test_public_api_defined` stay. |
+| The size assertion in `test_engine_assets.py::test_parquet_wasm_is_gzipped` | Asserted the WebAssembly file was "substantial". The gzip check stays. |
+| `test_phase1.py::test_dataset_help_prints`, `test_datamodel_help_prints`; `test_phase2.py::test_report_help_prints`; `test_phase5.py::test_help_text_returns_the_string`, `test_help_still_prints_the_same_text` | Asserted `help()` prints text with a few method names in it. `test_cheat_sheet_kwargs_are_real_parameters` still checks the cheat sheets name real parameters, which is the bug that actually shipped. |
+| `test_phase1.py::test_dataset_repr_html`, `test_datamodel_repr_html`; `test_phase2.py::test_report_repr_html_is_iframe` | Pinned the notebook display markup. `test_dataset_repr_html_escapes` (HTML injection) and `test_dataset_repr_html_caps_preview` (a huge frame can't freeze a notebook) stay. |
+| `os.path.getsize(path) > 1000` / `> 2000` in `test_phase2.py` | "The file isn't tiny" said little. The tests still check the file is written, and the neighbouring tests check its sheets and markup. |
+
+8 tests and 5 size assertions removed.
+
+## Kept after a second look
+
+| Test | Why it stays |
+| --- | --- |
+| `test_journey_fixes.py::test_readme_uses_git_url_install_form`, `test_readme_has_no_bare_pypi_install_line`, `test_missing_uvicorn_message_uses_git_url_form` | These looked like wording tests, but they are a **security guard**. A package named `tracebi` exists on PyPI (0.5.0–0.5.3). If that package isn't ours, a bare `pip install tracebi` installs someone else's code (dependency confusion). If it is ours, the tests go when 0.6 is published and the README switches to `pip install tracebi`. Confirm ownership before removing them. |
+| `test_docs_site.py::test_regenerating_produces_no_diff` | The site deploys with no build step (`site/README.md`), so the generated HTML has to be committed, and this test is what keeps it current. Remove it only after the deploy runs `python site/build_docs.py` itself. |
 
 ## Keep, even though they look presentational
 
@@ -64,7 +71,7 @@ that, the bundled ECharts is 620 KB and `tracebi.js` is 70 KB, under a tenth
 of the file. If file size matters, measure the **built report**,
 and report it in the build output rather than failing a test.
 
-**Recommendation:** remove the test. If size ever becomes a real complaint, add
+**Done:** the test is removed. If size ever becomes a real complaint, add
 a line to `tracebi report build` output ("report.html: 862 KB") and let people
 decide.
 

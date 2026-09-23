@@ -149,7 +149,6 @@ class TestExcelRenderer:
             path = os.path.join(tmp, "report.xlsx")
             ExcelRenderer().render(report=sample_report, output_path=path)
             assert os.path.exists(path)
-            assert os.path.getsize(path) > 1000
 
     def test_manifest_saved(self, sample_report):
         with tempfile.TemporaryDirectory() as tmp:
@@ -177,7 +176,7 @@ class TestExcelRenderer:
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "pie.xlsx")
             ExcelRenderer().render(report=report, output_path=path)
-            assert os.path.getsize(path) > 1000
+            assert os.path.exists(path)
 
     def test_excel_has_sheets(self, sample_report):
         import openpyxl
@@ -222,7 +221,6 @@ class TestHTMLRenderer:
             path = os.path.join(tmp, "report.html")
             HTMLRenderer().render(report=sample_report, output_path=path)
             assert os.path.exists(path)
-            assert os.path.getsize(path) > 2000
 
     def test_html_is_valid(self, sample_report):
         with tempfile.TemporaryDirectory() as tmp:
@@ -582,22 +580,6 @@ class TestGovernedChartFileIntegrity:
         result = verify_file(tampered, manifest.to_dict())
         assert result["verdict"] == FILE_ALTERED
         assert result["ok"] is False
-
-
-class TestReportNotebookIntegration:
-
-    def test_report_repr_html_is_iframe(self, sample_report):
-        html = sample_report._repr_html_()
-        assert html.strip().startswith("<iframe srcdoc=")
-        # Report content is embedded (entity-escaped)
-        assert "Test Report" in html
-
-    def test_report_help_prints(self, capsys):
-        Report("R").help()
-        out = capsys.readouterr().out
-        assert ".table(" in out
-        assert ".metrics(" in out
-        assert ".row(" in out
 
 
 class TestSectionValidationAtConstruction:

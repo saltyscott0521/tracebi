@@ -51,17 +51,22 @@ when the demo instance is live.
 
 ## Status
 
-The **framework-first marketing page** (ratified 2026-08-26 — see the North Star
-positioning). It leads with the framework — *"Reports as code — to keep agents
-in line"* — treats the dual-author model (built for agents, controlled by
-humans) as a top pillar, walks the three-phase workflow and a stepped user loop,
-foregrounds the semantic layer, and demotes the receipt to one property of the
-output. Grow the copy and
-add pages (pricing, docs) as the product firms up.
+The **ask / build / schedule page** (2026-09-23, following
+`docs/strategy/vision-and-positioning.md`). It leads with the three ways to use
+TraceBi — ask a question, build a one-off analysis, schedule a recurring
+report — all from one set of approved definitions, then covers the agent and
+human roles, scheduling, the three-phase workflow, the semantic layer,
+guardrails, styling, the output and its receipt, and open source vs the planned
+Cloud.
 
-Identity: **follows the product theme** — the web UI + report system, so a
-visitor lands in a coherent world. **IBM Plex Sans + IBM Plex Mono**; the cool
-blue-grey ground (`#eef2f8`), navy ink, the TraceBi blue (`#2e74b5`) as the
-accent and deep navy for solid buttons; green/amber/red reserved for the verdict
-badges only; the three-phase "layers" motif. It follows the visitor's system
-theme and offers a toggle. Links: "Try the demo" → `/app`; GitHub → the repo.
+`assets/` holds the hero screenshot and the Open Graph image; `sample/` holds a
+built copy of the reference project's `portfolio_showcase` report and its
+manifest, linked as "Download a sample report". Both are copied into the
+Vercel output by `vercel-build.sh`. Rebuild the sample when the showcase
+changes (`tracebi report build portfolio_showcase` in
+`examples/portfolio_project/`, then copy the `.html` and its
+`.html.manifest.json`, with `output_path` set to the bare file name).
+
+Numbers on the page (row counts, figure counts, file sizes, verify output) are
+copied from real runs of the reference project. Re-check them when the
+reference project changes.
