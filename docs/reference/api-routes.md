@@ -42,6 +42,7 @@ graph. It computes but persists nothing, which is why `viewer` may call it.
 | `POST` | `/api/reports/{name}/runs` | analyst |
 | `GET` | `/api/reports/{name}/runs` | viewer |
 | `GET` | `/api/reports/{name}/runs/{run_id}` | viewer |
+| `GET` | `/api/reports/{name}/built` | viewer |
 | `GET` | `/api/reports/{name}/download?format=xlsx\|html` | analyst |
 | `GET` | `/api/reports/{name}/lineage` | viewer |
 | `GET` | `/api/reports/{name}/mermaid` | viewer |
@@ -61,8 +62,15 @@ same work in the background and returns a `run_id` to poll.
 > **There is one renderer.** A registered report with no package is refused with
 > `422` naming the fix, never served through a weaker path. See [[report]].
 
-The `html` download is that same artifact. `xlsx` goes through the Excel
-renderer, which derives no [[number-formats|formats]].
+`/built` is what the Reports page opens: the **last build**, from
+`output/<name>.html` or, on a read-only disk, the copy the server keeps in
+memory. A report never built on this server is built once on first open and
+kept. Opening never re-queries after that; fresh data comes from `/run`,
+`/runs` (Rebuild) or a schedule.
+
+The `html` download is that last build, the file the reader is looking at.
+`xlsx` goes through the Excel renderer, which derives no
+[[number-formats|formats]], and runs the report to do so.
 
 ## Report specs
 

@@ -434,9 +434,43 @@ class TestEndpoint:
         res = client.get("/api/reports/built_demo/built")
         assert res.status_code == 200, res.text
         assert "saved" in res.json()["html"]
-        other = _register_template_package(str(pkg), "unbuilt_demo")
-        assert other["status"] == "registered"
-        assert client.get("/api/reports/unbuilt_demo/built").status_code == 404
+
+    def test_last_build_is_kept_when_the_disk_is_read_only(self, tmp_path, monkeypatch):
+        """A never-built report builds once on first open; after that, opening
+        and downloading serve that build and never render again — even on a
+        read-only disk (a serverless deploy), where it lives in memory."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        import tracebi.model_registry as model_registry
+        from tracebi.reports.template_package import TemplatePackage
+        from tracebi.web.api.routers import reports as reports_router
+        from tracebi.web.discovery import _register_template_package
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(reports_router, "_writable_output_html", lambda name: None)
+        monkeypatch.setattr(reports_router, "_ARTIFACT_TTL_S", 0.0)
+        monkeypatch.setattr(reports_router, "_LAST_BUILD", {})
+        monkeypatch.setattr(reports_router, "_ARTIFACT_CACHE", {})
+        renders = []
+        real_render = TemplatePackage.render
+        monkeypatch.setattr(TemplatePackage, "render",
+                            lambda self, *a, **k: renders.append(1) or real_render(self, *a, **k))
+        model_registry.register(_model())
+        pkg = _package(tmp_path, selection={"model": "selection_model", "filters": {}})
+        assert _register_template_package(str(pkg), "ro_demo")["status"] == "registered"
+        app = FastAPI()
+        app.include_router(reports_router.router, prefix="/api")
+        client = TestClient(app)
+
+        first = client.get("/api/reports/ro_demo/built")
+        assert first.status_code == 200, first.text
+        assert first.json()["retained"] is False
+        second = client.get("/api/reports/ro_demo/built").json()
+        download = client.get("/api/reports/ro_demo/download?format=html")
+        assert len(renders) == 1
+        assert second["manifest"]["rendered_at"] == first.json()["manifest"]["rendered_at"]
+        assert download.text == first.json()["html"]
 
 
 class TestNewGrain:

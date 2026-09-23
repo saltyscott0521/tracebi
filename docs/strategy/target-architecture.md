@@ -1,6 +1,6 @@
 # Architecture
 
-**Git holds every definition, report and schedule. One engine does all the
+**Files the customer owns hold every definition, report and schedule. One engine does all the
 computing, in the CLI, the server and the agent gateway. Queries run in the
 customer's warehouse. The server adds state, identity and scheduling, and
 never a second way to compute a number.**
@@ -13,12 +13,12 @@ in [[report-architecture-v2]] and [[production-plan]].
 ## The picture
 
 ```
-┌──────────────────────── Customer git repo (source of truth) ────────────────────────┐
+┌──────── Customer's report library: folders, share or source control (source of truth) ────┐
 │ models/        the definitions: facts, dimensions, measures                         │
 │ reports/<name>/  report.json (bindings, schedule, recipients) + template.html        │
 │ transforms/    optional pandas for teams without a warehouse pipeline                │
 └───────────▲──────────────────────────────────────────────────────────▲───────────────┘
-            │ agent opens PRs (GitHub App)                              │ pull on merge
+            │ agent writes drafts                                       │ read on publish
 ┌───────────┴──────────────┐                     ┌───────────────────────┴────────────────┐
 │ AGENT GATEWAY (MCP)      │                     │ TRACEBI SERVER                          │
 │ get_context  query_model │                     │ API + web app: Desk, Reports, Ask,      │
@@ -51,17 +51,20 @@ in [[report-architecture-v2]] and [[production-plan]].
 | **Server** | API, web app, auth, roles | ✅ FastAPI + React | Add scheduler workers, requests, review, admin. |
 | **Scheduler + workers** | Run reports on schedule | ✅ `tracebi schedule serve` (one process) | Move into the server as workers. State in Postgres. |
 | **State store** | Runs, schedules, requests, users, audit | Partial: SQLite/Postgres for pipeline runs, a JSONL run log | Postgres for everything multi-process. SQLite for local only. |
-| **Git integration** | Agent PRs, publish on merge | ❌ | GitHub App first, GitLab later. |
+| **Report library** | Browse folders, permissions, drafts, publish with approval, version history | ❌ | Folders and permissions first; a source-control adapter (git on any host) after. See [[report-library]]. |
 | **Delivery** | Email, chat, links | ✅ SMTP email, Slack ping | Slack/Teams files, links, webhooks. |
 
 ## Decisions
 
-### 1. Git is the source of truth
-Every definition, report, schedule and recipient list is a file in the
-customer's repo. The server reads `main`. Changes, from people or agents,
-arrive as pull requests. **Why:** reviewable, versioned, portable, and
+### 1. Files are the source of truth; source control is optional
+Every definition, report, schedule and recipient list is a file in a folder
+the customer owns: on the server, a network share, or a source control
+checkout. Published changes, from people or agents, are approved before they
+go live, through TraceBi's own publish step or, where a team uses one, their
+source control's review. **Why:** reviewable, versioned, portable, and
 agent-friendly. It's the line between TraceBi and GUI BI tools. **Cost:**
-teams without git need a hosted repo; Cloud can provide one per workspace.
+TraceBi keeps its own version history for folders without source control.
+See [[report-library]].
 
 ### 2. Queries run in the warehouse
 Today `DataModel.query` loads the fact table into the Python process and

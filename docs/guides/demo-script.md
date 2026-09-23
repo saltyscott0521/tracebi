@@ -24,11 +24,11 @@ tracebi serve                           # → http://127.0.0.1:8000
 
 Then, in the browser:
 
-1. **Build the two reports you will show**, so they open instantly on the day.
-   Go to **Report** → `portfolio_dashboard` → **Run Report**. Do the same for
-   `portfolio_showcase`.
+1. **Open the two reports you will show**, so they open instantly on the day.
+   Go to **Report** → `portfolio_dashboard`, then `portfolio_showcase`. A
+   report that has never been built is built on first open and kept.
 2. **Make the "edited" copy for beat 3.** On `portfolio_dashboard`, click
-   **↓ HTML (with receipt)**. That download also saves the matching pair in
+   **↓ HTML (with receipt)**. The build also saved the matching pair in
    `examples/portfolio_project/output/`:
    `portfolio_dashboard.html` and `portfolio_dashboard.html.manifest.json`.
    Copy both into a folder on your desktop called `demo/`. Then make a second

@@ -601,7 +601,8 @@ POST /api/reports/{name}/run                         → HTML + lineage manifest
 POST /api/reports/{name}/runs                        → start background run; returns run_id (202)
 GET  /api/reports/{name}/runs                        → recent background runs (no payloads)
 GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
-GET  /api/reports/{name}/download?format=xlsx|html   → rendered file attachment
+GET  /api/reports/{name}/built                       → the last build (disk, else memory; built once if never)
+GET  /api/reports/{name}/download?format=xlsx|html   → html: the last build; xlsx: rendered
 GET  /api/reports/{name}/lineage                     → React Flow graph per section
 GET  /api/reports/{name}/mermaid
 GET  /api/reports/{name}/source                      → the spec or package files that define it

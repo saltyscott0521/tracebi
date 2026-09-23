@@ -259,9 +259,11 @@ pip install -e ".[all]"               # everything
 ### Docker / deployment
 
 The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
-Python app) and a `docker-compose.yml` that mounts `./output` and
-`./scheduled` from the host so your rendered receipts survive container
-restarts; the pipeline DB lives in the Postgres `pgdata` volume.
+Python app) and a `docker-compose.yml` that mounts the project's `output/` and
+`scheduled/` folders from the host, so report builds and their receipts are
+ordinary files you can browse and back up, and survive container restarts. The
+app runs as uid 10001; a one-shot `output-perms` service makes the output
+folder writable by it. The pipeline DB lives in the Postgres `pgdata` volume.
 
 ```bash
 # Local: web UI on http://localhost:8000

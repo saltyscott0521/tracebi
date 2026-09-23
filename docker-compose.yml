@@ -84,12 +84,26 @@ services:
       - "from tracebi.web.demo_app.pipeline import seed_and_run; seed_and_run()"
     restart: "no"
 
+  output-perms:
+    build: .
+    # One-shot: the host folder for report builds is usually owned by root
+    # (or created by Docker as root), and the app runs as uid 10001. Without
+    # this, no build can be saved and every visit to a report rebuilds it.
+    image: tracebi:local
+    user: "0:0"
+    volumes:
+      - ./examples/portfolio_project/output:/out
+    command: ["chown", "-R", "10001:10001", "/out"]
+    restart: "no"
+
   app:
     build: .
     image: tracebi:local
     container_name: tracebi
     restart: unless-stopped
     depends_on:
+      output-perms:
+        condition: service_completed_successfully
       # Wait for the data to exist rather than racing it — otherwise the first
       # page load can land on empty tables.
       seed:
@@ -111,11 +125,11 @@ services:
       TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
       PORT: "8000"
     volumes:
-      # The image serves examples/portfolio_project (see Dockerfile WORKDIR);
-      # bind the host copies of its writable/editable dirs so rendered
-      # receipts land on the host and request scripts hot-edit.
+      # Report builds and their receipts land in a folder on the host, where
+      # they can be browsed, backed up or shared. The app runs as uid 10001,
+      # so output-perms (below) makes the folder writable by it first.
       - ./examples/portfolio_project/output:/app/examples/portfolio_project/output
-      - ./examples/portfolio_project/requests:/app/examples/portfolio_project/requests
+      # Scheduled scripts are read from the host so they can be edited live.
       - ./examples/portfolio_project/scheduled:/app/examples/portfolio_project/scheduled
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]

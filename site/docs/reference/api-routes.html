@@ -184,6 +184,11 @@ graph. It computes but persists nothing, which is why <code>viewer</code> may ca
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/reports/{name}/built</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/reports/{name}/download?format=xlsx\|html</code></td>
 <td>analyst</td>
 </tr>
@@ -217,8 +222,14 @@ same work in the background and returns a <code>run_id</code> to poll.</p>
 <p><strong>There is one renderer.</strong> A registered report with no package is refused with
 <code>422</code> naming the fix, never served through a weaker path. See <a href="../concepts/report.html">Report — phase ③</a>.</p>
 </blockquote>
-<p>The <code>html</code> download is that same artifact. <code>xlsx</code> goes through the Excel
-renderer, which derives no <a href="../reference/number-formats.html">formats</a>.</p>
+<p><code>/built</code> is what the Reports page opens: the <strong>last build</strong>, from
+<code>output/&lt;name&gt;.html</code> or, on a read-only disk, the copy the server keeps in
+memory. A report never built on this server is built once on first open and
+kept. Opening never re-queries after that; fresh data comes from <code>/run</code>,
+<code>/runs</code> (Rebuild) or a schedule.</p>
+<p>The <code>html</code> download is that last build, the file the reader is looking at.
+<code>xlsx</code> goes through the Excel renderer, which derives no
+<a href="../reference/number-formats.html">formats</a>, and runs the report to do so.</p>
 <h2 id="report-specs">Report specs</h2>
 <table>
 <thead>

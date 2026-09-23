@@ -6,13 +6,65 @@ them. Nothing is Cloud-only except running it for you.**
 
 ---
 
+## The principle: one product, settings not editions
+
+TraceBi has to suit a five-person startup with no infrastructure team and a
+bank with a security review. It does that as **one product whose enterprise
+features are switched on by settings**, never a separate edition. A small shop
+should be running in an afternoon with nothing extra to set up; a large
+company adds its sign-in, network shares and controls to the same install.
+
+| | Small shop / startup | Growing team | Enterprise |
+| --- | --- | --- | --- |
+| **Runs on** | One server or one container (Railway, Fly, a single VM, a spare office machine) | The same container, plus a managed Postgres | Kubernetes (Helm) or their standard VM build, inside their network |
+| **State** | SQLite, a file on disk | Postgres | Postgres, backed up by their team |
+| **Reports** | A local folder | A folder or git | Network shares and source control, with folder permissions ([[report-library]]) |
+| **Sign-in** | Built-in accounts, or "Sign in with Google/Microsoft" | The same, with roles | Their SSO: proxy header today, OIDC/SAML later; groups mapped to folders |
+| **Schedules** | Run inside the web server | A separate worker | Several workers |
+| **Email** | Any SMTP account | The same | Their mail relay |
+| **Backups** | Copy one folder | Postgres backups | Their standard |
+| **Also asks for** | Nothing | Nothing | No calls to the internet, pinned image versions, audit log export, a security overview |
+
+**Rules that keep both ends working:**
+
+1. **The default install needs nothing extra.** No Postgres, Kubernetes, git
+   or SSO: SQLite and a folder, one command.
+2. **Every enterprise need is a setting on the same image.** If a need
+   requires a fork or a special build, the design is wrong.
+3. **Nothing calls home.** No telemetry or licence checks unless the customer
+   opts in. It costs a startup nothing and is an easy yes for a security team.
+4. **Moving up a tier is a configuration change, not a migration project:**
+   SQLite to Postgres, one folder to several mounts, built-in accounts to SSO.
+
+**Where we are:**
+
+| Need | For | Status |
+| --- | --- | --- |
+| One Docker image; docker-compose with Postgres; Railway and Vercel configs | All | ✅ |
+| Proxy-header sign-in (for an SSO proxy), viewer/analyst/admin roles | Growing, enterprise | ✅ |
+| The Postgres lock that makes several workers safe | Growing, enterprise | ✅ |
+| SMTP email delivery | All | ✅ |
+| **Several named accounts without an identity provider** (today Basic auth is one shared username and password), or "Sign in with Google/Microsoft" | Small shops | ❌ Next |
+| **Schedules inside the web server**, so one process does everything on one box (today `tracebi schedule serve` is a separate process) | Small shops | ❌ Next |
+| **A one-page "run it on one server" guide**: Docker, a folder, SMTP, done | Small shops | ❌ Next |
+| OIDC/SAML sign-in and group mapping | Enterprise | ❌ |
+| Folder permissions | Growing, enterprise | ❌ See [[report-library]] |
+| Helm chart; audit log export; a security overview document | Enterprise | ❌ |
+| SOC 2 | Cloud | ❌ |
+
+The small-shop gaps come first: they are cheaper, and small teams are where
+early adoption comes from. The enterprise items follow the report library's
+order of work.
+
+---
+
 ## The four tiers
 
 | Tier | For | What runs | Who operates it | Available |
 | --- | --- | --- | --- | --- |
 | **Local** | Builders trying it, solo analysts | `pip install tracebi`, `tracebi serve`, DuckDB or a database connection, SQLite state | The user | Now (from git). PyPI in Q1. |
-| **Self-hosted** | Teams with an engineer and a cloud account | One Docker image (web + workers) + Postgres + a git checkout | The customer | Q1 (image), Q2 (workers + Postgres state) |
-| **TraceBi Cloud** | Teams without ops capacity | Managed deployment per customer; connects to their warehouse and GitHub | Us | Private beta Q3, GA Q4 |
+| **Self-hosted** | Teams with an engineer and a cloud account | One Docker image (web + workers) + Postgres + a report library (a folder, a network share or a source control checkout) | The customer | Q1 (image), Q2 (workers + Postgres state) |
+| **TraceBi Cloud** | Teams without ops capacity | Managed deployment per customer; connects to their warehouse, and to their source control if they use one | Us | Private beta Q3, GA Q4 |
 | **Customer VPC** | Regulated or security-strict buyers | Cloud's management, with workers in the customer's network | Shared | When a paying customer requires it |
 
 ## Self-hosted: the reference deployment
@@ -31,7 +83,8 @@ them. Nothing is Cloud-only except running it for you.**
       ┌──────▼─────┐  ┌─────▼──────────────┐
       │ Postgres   │  │ customer warehouse │ read-only
       └────────────┘  └────────────────────┘
-      + a git checkout of the project, synced on merge (webhook or poll)
+      + the report library: a folder, a network share, or a source control
+        checkout synced on publish (webhook or poll)
 ```
 
 **Packaging:**
@@ -56,8 +109,8 @@ platform. The customer connects:
 
 1. **Their warehouse**, with read-only credentials stored in the platform's
    secret store.
-2. **Their GitHub repo**, through the TraceBi GitHub App. Or we host a repo
-   for teams without one.
+2. **Their source control, if they use one** (git on any host first). Teams
+   without one get a hosted library with TraceBi's own version history.
 3. **Their identity provider** (Q4). Before that, email sign-in.
 
 **What Cloud stores:** run history, receipts, delivered artifacts (for the
