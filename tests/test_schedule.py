@@ -230,6 +230,174 @@ class TestRefresh:
         assert not (scheduled / "sent.json").exists()
 
 
+def _enter(proj: Path, monkeypatch) -> None:
+    """The build loads ``models/`` and the warehouse from the working directory."""
+    monkeypatch.chdir(proj)
+
+
+def _scheduled(proj: Path) -> dict:
+    schedules, errors = sched.discover_schedules(proj / "reports")
+    assert errors == []
+    assert len(schedules) == 1
+    return schedules[0]
+
+
+class TestFailurePaths:
+    """A failed run is a row in the log with a readable error, and nothing
+    goes out that should not. These call ``run_schedule`` in-process: the
+    CLI tests above spawn a child, and a child is invisible to coverage."""
+
+    def test_a_broken_build_is_recorded_and_not_sent(self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        sent = []
+        monkeypatch.setattr(
+            "tracebi._delivery.send_report",
+            lambda *a, **k: sent.append(a) or ["nobody"],
+        )
+        rj = scheduled / "reports" / "sample_dashboard" / "report.json"
+        decl = json.loads(rj.read_text())
+        binding = next(iter(decl["data"]))
+        decl["data"][binding]["query"]["measures"] = ["not_a_measure"]
+        rj.write_text(json.dumps(decl))
+
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == []
+        assert rec["status"] == sched.FAILED
+        assert rec["recipients"] == []
+        assert "not_a_measure" in rec["error"]
+        assert _runs(scheduled) == [rec]
+
+    def test_a_failed_refresh_is_recorded_in_process(self, scheduled, monkeypatch):
+        sent = []
+        monkeypatch.setattr(
+            "tracebi._delivery.send_report",
+            lambda *a, **k: sent.append(a) or ["nobody"],
+        )
+        block = _scheduled(scheduled)
+        block["refresh"] = {"transforms": ["no_such_transform"], "pipelines": []}
+        rec = sched.run_schedule(
+            block, reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == []
+        assert rec["status"] == sched.FAILED
+        assert "refresh transform 'no_such_transform' failed" in rec["error"]
+        assert rec["refresh"][0]["ok"] is False
+        assert not (scheduled / "output" / "sample_dashboard.html").exists()
+
+    def test_smtp_failure_is_recorded_and_not_delivered(self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+
+        def _boom(*args, **kwargs):
+            raise RuntimeError("smtp refused the message")
+
+        monkeypatch.setattr("tracebi._delivery.send_report", _boom)
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.FAILED
+        assert rec["recipients"] == []
+        assert rec["error"] == "RuntimeError: smtp refused the message"
+        assert _runs(scheduled)[-1]["error"] == rec["error"]
+
+    def test_a_schedule_cannot_force_a_bad_receipt(self, scheduled, monkeypatch):
+        """``tracebi report send --force`` can send a failing receipt. A
+        schedule block cannot: ``force`` is not a field, so the package is
+        skipped, and a receipt that does not verify is refused with nothing
+        sent."""
+        rj = scheduled / "reports" / "sample_dashboard" / "report.json"
+        decl = json.loads(rj.read_text())
+        decl["schedule"]["force"] = True
+        rj.write_text(json.dumps(decl))
+        schedules, errors = sched.discover_schedules(scheduled / "reports")
+        assert schedules == []
+        assert errors[0]["report"] == "sample_dashboard"
+        assert "unknown schedule field" in errors[0]["error"]
+        assert "force" in errors[0]["error"]
+
+        decl["schedule"].pop("force")
+        rj.write_text(json.dumps(decl))
+        _enter(scheduled, monkeypatch)
+        sent = []
+        monkeypatch.setattr(
+            "tracebi._delivery.send_report",
+            lambda *a, **k: sent.append(a) or ["nobody"],
+        )
+        monkeypatch.setattr(
+            "tracebi.verify.verify_manifest",
+            lambda *a, **k: {
+                "verdict": "unexplained",
+                "verdict_detail": "stub: did not reproduce",
+                "exit_code": 1, "ok": False,
+            },
+        )
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == []
+        assert rec["status"] == sched.REFUSED
+        assert rec["error"] == "stub: did not reproduce"
+        assert rec["recipients"] == []
+
+    def test_make_job_records_the_scheduler_actor(self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        job = sched.make_job(scheduled / "reports", scheduled / "output")
+        block = _scheduled(scheduled)
+        block["to"] = []
+        rec = job(block)
+        assert rec["status"] == sched.BUILT
+        assert rec["actor"] == "scheduler"
+        assert rec["recipients"] == []
+
+
+def test_last_runs_skips_a_broken_line(tmp_path):
+    log = tmp_path / sched.RUN_LOG
+    log.write_text('not json\n{"report": "weekly", "status": "failed"}\n',
+                   encoding="utf-8")
+    last = sched.last_runs(tmp_path)["weekly"]
+    assert last["status"] == "failed"
+    assert "last: failed" in sched.describe_schedule(
+        {"report": "weekly", "cron": "0 9 * * MON", "to": [], "timezone": None},
+        last,
+    )
+    assert sched.last_runs(tmp_path / "missing") == {}
+
+
+def test_discover_on_a_missing_directory_is_empty(tmp_path):
+    assert sched.discover_schedules(tmp_path / "nope") == ([], [])
+
+
+def test_an_empty_timezone_is_refused():
+    with pytest.raises(ValueError, match="IANA"):
+        sched.parse_schedule_block(
+            {"cron": "0 9 * * MON", "timezone": ""}, path="r")
+
+
+def test_in_server_logs_a_skipped_package_and_starts_nothing(
+        tmp_path, monkeypatch, caplog):
+    import logging
+
+    pkg = tmp_path / "reports" / "weekly"
+    pkg.mkdir(parents=True)
+    (pkg / "template.html").write_text("<p></p>", encoding="utf-8")
+    (pkg / "report.json").write_text('{"schedule": {"cron": "nope"}}',
+                                     encoding="utf-8")
+    monkeypatch.setenv("TRACEBI_SCHEDULES_IN_SERVER", "1")
+    monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(tmp_path / "reports"))
+    caplog.set_level(logging.INFO, logger="tracebi.schedule")
+    assert sched.start_server_scheduler() is None
+    assert "skipped weekly" in caplog.text
+    assert "no schedules" in caplog.text
+
+
 def test_a_failed_run_is_recorded_not_raised(tmp_path):
     rec = sched.run_schedule({"report": "missing", **SCHEDULE},
                              reports_dir=tmp_path / "reports",
