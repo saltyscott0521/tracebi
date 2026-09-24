@@ -81,10 +81,9 @@ The analyst's laptop runs the package; a shared server runs the image.
 2. **Publish the package to PyPI.** Blocked on confirming who owns the
    `tracebi` name there (versions 0.5.0–0.5.3 exist); until then the README
    installs from git and tests guard against the bare `pip install tracebi`.
-3. **A client compose file.** Today's `docker-compose.yml` is the demo stack
-   with seeded sample data. A client needs one that points at their own
-   project folder (the report library), their state database and their
-   warehouse, with no demo seeding.
+3. **A client compose file.** `deploy/compose.yml` mounts the client's own
+   project (`TRACEBI_PROJECT_DIR`) and does not seed the demo. Postgres is a
+   `--profile postgres` extra. The root `docker-compose.yml` stays the demo stack.
 
 ---
 
@@ -122,7 +121,7 @@ The analyst's laptop runs the package; a shared server runs the image.
 | Artifact | Status | Target |
 | --- | --- | --- |
 | `Dockerfile` (UI + Python) | ✅ exists | Published to GHCR on each version tag. Still to add: a `worker` entry point. |
-| `docker-compose.yml` | ✅ exists (the demo stack, with Postgres) | A separate client compose file for the customer's own project; add a worker service. |
+| `docker-compose.yml` | ✅ exists (the demo stack, with Postgres) | Client file is `deploy/compose.yml`. Still to add: a worker service. |
 | Railway, Vercel + Supabase configs | ✅ exist | Keep Railway as the one-click path. Vercel suits the read-only demo only (no workers). |
 | Helm chart | ❌ | Q2: web, worker, Postgres (external or bundled), secrets, ingress. |
 | Terraform module | ❌ | When the first customer asks. |

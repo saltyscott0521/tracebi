@@ -1,0 +1,12 @@
+{
+  "report": "weighted_spread",
+  "figures": [
+    "value"
+  ],
+  "measures": [
+    "wtd_spread_bps"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

@@ -44,6 +44,13 @@ class SQLConnector(BaseConnector):
     def describe(self) -> dict:
         return {**super().describe(), "url": self._redacted_url()}
 
+    def list_tables(self) -> list[str]:
+        """Table names from the dialect inspector. Not a scan."""
+        if self._engine is None:
+            self.connect()
+        from sqlalchemy import inspect
+        return [str(name) for name in inspect(self._engine).get_table_names()]
+
     def column_schema(self, source: str) -> Optional[list[dict[str, str]]]:
         """Column names and types from the dialect's inspector. Not a scan.
 

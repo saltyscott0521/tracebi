@@ -1,0 +1,19 @@
+{
+  "report": "top_issuers",
+  "figures": [
+    "chart"
+  ],
+  "chart_types": [
+    "bar"
+  ],
+  "measures": [
+    "fair_value"
+  ],
+  "dimensions": [
+    "dim_issuer.issuer"
+  ],
+  "limit": 5,
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

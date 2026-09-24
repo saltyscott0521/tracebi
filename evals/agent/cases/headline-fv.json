@@ -1,0 +1,12 @@
+{
+  "report": "headline_fv",
+  "figures": [
+    "value"
+  ],
+  "measures": [
+    "fair_value"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

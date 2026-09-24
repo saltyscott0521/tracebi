@@ -174,6 +174,18 @@ tracebi serve [--host 127.0.0.1] [--port 8000] [--reload]
 Serves the project's web UI. Refuses with an actionable message if there is no
 project in the current directory, or if `uvicorn` is not installed.
 
+### `tracebi warehouse tables`
+
+```bash
+tracebi warehouse tables [--connector NAME] [--table T] [--json]
+```
+
+Column names and types of a sunk table, from connector metadata. No row scan.
+Connectors come from the models in `models/`, plus `data/warehouse.duckdb`
+when that file exists. Omit `--table` to list tables. A connector that raises
+is reported in place (`error`: exception type plus the first message line);
+the others still list. The same lookup is the MCP tool `describe_table`.
+
 ### `tracebi session`
 
 ```bash
@@ -278,12 +290,15 @@ that lesson in full.
 ### `tracebi mcp`
 
 ```bash
-tracebi mcp [--transport {stdio,http}] [--port 8765] [--insecure]
+tracebi mcp [--transport {stdio,http}] [--host 127.0.0.1] [--port 8765] [--insecure]
 ```
 
 Serves the agent gateway over MCP. **The http transport refuses to start until
 an auth decision is made** — set `TRACEBI_MCP_TOKEN`, or pass `--insecure`
-deliberately.
+deliberately. `--host` defaults to `127.0.0.1`. A non-loopback host with
+`--insecure` and no token refuses to start unless `--allow-insecure-bind` is
+also passed: anyone who can reach the port gets full query access. Inside a
+container, bind `0.0.0.0` and set the token.
 
 ---
 

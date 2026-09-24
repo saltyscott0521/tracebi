@@ -1,0 +1,16 @@
+{
+  "report": "issuer_table",
+  "figures": [
+    "table"
+  ],
+  "measures": [
+    "fair_value",
+    "positions"
+  ],
+  "dimensions": [
+    "dim_issuer.issuer"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

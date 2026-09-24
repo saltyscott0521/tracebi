@@ -1,0 +1,18 @@
+{
+  "report": "mark_by_fund",
+  "figures": [
+    "chart"
+  ],
+  "chart_types": [
+    "bar"
+  ],
+  "measures": [
+    "mark"
+  ],
+  "dimensions": [
+    "dim_fund.fund"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

@@ -216,6 +216,51 @@ def test_models_listing_includes_the_fixture(gateway_model):
     assert info["name"] == "gw_demo"
 
 
+def test_list_models_reports_a_file_that_failed_to_load(tmp_path, monkeypatch):
+    """One good model stays listed; the broken file is under skipped."""
+    import sys
+
+    models = tmp_path / "models"
+    models.mkdir()
+    (models / "good_model.py").write_text(
+        "from tracebi import DataModel\nmodel = DataModel('good_model')\n",
+        encoding="utf-8",
+    )
+    (models / "broken_model.py").write_text("model = nope\n", encoding="utf-8")
+    monkeypatch.setenv("TRACEBI_MODELS_DIR", str(models))
+
+    reg = model_registry._registry
+    saved_default = reg._default
+    try:
+        listing = gateway_models()
+        assert "good_model" in listing["models"]
+        assert "broken_model" not in listing["models"]
+        broken = next(
+            item for item in listing["skipped"]
+            if item["file"] == "models/broken_model.py"
+        )
+        assert broken["error"].startswith("NameError:")
+        assert "\n" not in broken["error"]
+        described = gateway_model_info("broken_model")
+        assert described["error"] == broken["error"]
+        assert "not found" not in described["error"]
+    finally:
+        for stem in ("good_model", "broken_model"):
+            reg._models.pop(stem, None)
+            reg._paths.pop(stem, None)
+            reg._mtime_ns.pop(stem, None)
+            for key, origin in list(reg._origin.items()):
+                if origin == stem or key == stem:
+                    reg._models.pop(key, None)
+                    reg._origin.pop(key, None)
+            sys.modules.pop(f"tracebi_model_{stem}", None)
+        reg._default = saved_default
+
+
+def test_models_listing_has_no_skipped_files_when_nothing_failed(gateway_model):
+    assert gateway_models()["skipped"] == []
+
+
 def test_models_listing_collapses_aliases(gateway_model, monkeypatch):
     """stem + .name index the same object; the listing shows one model."""
     import tracebi.mcp_server as gw
@@ -495,9 +540,10 @@ def test_build_server_registers_the_tools(gateway_model):
     # joined it — the publish step for the package lane, so an MCP-driving
     # agent can finish the loop it iterates in the workbench. fetch_artifact
     # then delivers the rendered bytes a remote agent cannot otherwise reach
-    # (eleven tools).
+    # (twelve tools).
     assert names == {
-        "get_context", "list_models", "describe_model", "query_model",
+        "get_context", "list_models", "describe_model", "describe_table",
+        "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
         "verify_manifest", "workbench_state", "build_report", "fetch_artifact",
     }
@@ -525,7 +571,8 @@ class TestMcp2Features:
     def test_read_tools_are_annotated_read_only(self, gateway_model):
         _server, tools = self._tools()
         read_only = {
-            "get_context", "list_models", "describe_model", "query_model",
+            "get_context", "list_models", "describe_model", "describe_table",
+            "query_model",
             "validate_report_spec", "list_reports", "verify_manifest",
             "fetch_artifact",
         }

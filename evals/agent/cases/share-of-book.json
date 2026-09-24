@@ -1,0 +1,18 @@
+{
+  "report": "share_of_book",
+  "figures": [
+    "chart"
+  ],
+  "chart_types": [
+    "bar"
+  ],
+  "measures": [
+    "fv_share"
+  ],
+  "dimensions": [
+    "dim_issuer.sector"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

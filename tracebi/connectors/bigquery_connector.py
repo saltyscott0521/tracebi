@@ -13,7 +13,7 @@ class BigQueryConnector(BaseConnector):
     """
     Load tables from Google BigQuery.
 
-    Requires: pip install google-cloud-bigquery db-dtypes
+    Requires: pip install 'tracebi[bigquery]'
 
     Usage:
         connector = BigQueryConnector(
@@ -53,8 +53,8 @@ class BigQueryConnector(BaseConnector):
             from google.cloud import bigquery
         except ImportError:
             raise ImportError(
-                "google-cloud-bigquery is required for BigQueryConnector.\n"
-                "Install with: pip install google-cloud-bigquery db-dtypes"
+                "google-cloud-bigquery and db-dtypes are required for BigQueryConnector.\n"
+                "Install with: pip install 'tracebi[bigquery]'"
             )
         self._client = bigquery.Client(
             project=self.project,

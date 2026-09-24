@@ -1,0 +1,15 @@
+{
+  "report": "sector_filter",
+  "figures": [
+    "value"
+  ],
+  "measures": [
+    "fair_value"
+  ],
+  "filters": [
+    "dim_issuer.sector"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

@@ -753,10 +753,13 @@ process.stdout.write(JSON.stringify(out));
         assert out["btn_text"] == "Receipt"
         assert out["closed_on_load"] is True
         assert out["head_text"] == "portfolio_book"
-        # Figure row: id · kind · binding, fingerprint 12 chars + full title.
+        # First line names the binding. The id, kind and full fingerprint
+        # sit in the details disclosure.
+        assert "Holdings · table" in out["a_text"]
         for piece in ("fig-a", "table", "holdings"):
             assert piece in out["a_text"]
-        assert out["a_fp_text"] == "f" * 12
+        assert "Details" in out["a_text"]
+        assert out["a_fp_text"] == "f" * 64
         assert out["a_fp_title"] == "f" * 64
         # The unverified row carries the existing badge tone, untouched.
         assert out["b_badge_class"] == "tb-badge tb-badge--unverified"
@@ -775,6 +778,134 @@ process.stdout.write(JSON.stringify(out));
         # The button toggles the drawer open and closed again.
         assert out["open_after_click"] is True
         assert out["closed_after_second"] is True
+        _assert_rows_avoid_honesty_words(out["drawer_text"])
+
+    def test_value_row_reads_the_rendered_figure(self):
+        out = _run_dom(_VALUE_ROW_SCRIPT)
+        assert out["title"] == "Fair value · $285.9M"
+        assert out["from"] == "Fair value, by Sector, Sector is Software"
+        assert out["table_title"] == "Fair value by sector · table, 6 rows"
+        assert out["table_from"] == "Fair value, by Sector"
+        assert out["fp_text"] == "a" * 64
+        assert out["fp_in_details"] is True
+        assert "kpi-fv" in out["details_text"]
+        assert "kpis" in out["details_text"]
+        assert "kpi-fv" not in out["title"]
+        _assert_rows_avoid_honesty_words(out["rows_text"])
+
+
+_VALUE_ROW_SCRIPT = """
+var FP = new Array(65).join('a');
+var kpi = el('div', {
+  id: 'kpi-fv', 'data-tb-figure': 'value', 'data-tb-binding': 'kpis',
+  'data-tb-cell': 'fair_value'
+});
+var lab = el('span', { 'class': 'tb-kpi-label' }, kpi);
+lab.textContent = 'Fair value';
+var val = el('span', { 'class': 'tb-kpi-value' }, kpi);
+val.textContent = '$285.9M';
+var table = el('table', {
+  id: 'tbl-sector', 'data-tb-figure': 'table',
+  'data-tb-binding': 'fair_value_by_sector'
+});
+var tbody = el('tbody', {}, table);
+for (var i = 0; i < 6; i++) el('tr', {}, tbody);
+var rc = el('script', { id: 'tracebi-receipt', type: 'application/json' });
+rc.textContent = JSON.stringify({
+  report: 'book',
+  figures: [
+    { id: 'kpi-fv', kind: 'value', binding: 'kpis', cell: 'fair_value',
+      fingerprint: FP,
+      query: { measures: ['fair_value'], dimensions: ['dim_issuer.sector'],
+               filters: { 'dim_issuer.sector': 'Software' } } },
+    { id: 'tbl-sector', kind: 'table', binding: 'fair_value_by_sector',
+      fingerprint: FP }
+  ],
+  bindings: {
+    fair_value_by_sector: {
+      query: { measures: ['fair_value'], dimensions: ['dim_issuer.sector'] }
+    }
+  }
+});
+loadRuntime();
+var drawer = BODY.querySelector('.tb-receipt-drawer');
+var rows = drawer.querySelectorAll('.tb-receipt-row');
+var valueRow = null, tableRow = null, i, text;
+for (i = 0; i < rows.length; i++) {
+  text = allText(rows[i]);
+  if (text.indexOf('kpi-fv') !== -1) valueRow = rows[i];
+  if (text.indexOf('tbl-sector') !== -1) tableRow = rows[i];
+}
+var details = valueRow.querySelector('.tb-receipt-details');
+var out = {
+  title: valueRow.querySelector('.tb-receipt-title').textContent,
+  from: valueRow.querySelector('.tb-receipt-from').textContent,
+  table_title: tableRow.querySelector('.tb-receipt-title').textContent,
+  table_from: tableRow.querySelector('.tb-receipt-from').textContent,
+  fp_text: details.querySelector('.tb-receipt-fp').textContent,
+  fp_in_details: details.querySelector('.tb-receipt-fp') !== null,
+  details_text: allText(details),
+  rows_text: allText(drawer)
+};
+process.stdout.write(JSON.stringify(out));
+"""
+
+
+def _assert_rows_avoid_honesty_words(text: str) -> None:
+    """Provenance display. Only ``tracebi verify`` may say a number reproduces."""
+    import re
+    assert not re.search(r"\b(verified|reproduces|correct)\b", text, re.I)
+
+
+def assert_built_receipt_rows(html: str) -> None:
+    """A built page's value row reads ``<Label> · <formatted value>``.
+
+    The formatted value is the one the build already wrote into the figure.
+    The fingerprint stays in the details disclosure.
+    """
+    import re
+    block = re.search(
+        r'<script[^>]*id="tracebi-receipt"[^>]*>(.*?)</script>', html, re.S)
+    assert block, "built page has no receipt"
+    receipt = json.loads(block.group(1))
+    fig = next(f for f in receipt["figures"] if f["id"] == "kpi-fv")
+    tag = re.search(r'<[^>]*id="kpi-fv"[^>]*>', html)
+    assert tag, "built page has no kpi-fv figure"
+    cell = re.search(r'data-tb-cell="([^"]+)"', tag.group(0))
+    assert cell, "kpi-fv names no column"
+    value = re.search(
+        r'id="kpi-fv"[^>]*>.*?<span class="tb-kpi-value">([^<]*)</span>',
+        html, re.S)
+    assert value and value.group(1).strip(), "kpi-fv has no rendered value"
+    shown = value.group(1).strip()
+    label = cell.group(1).replace("_", " ")
+    label = label[0].upper() + label[1:]
+    out = _run_dom(
+        "var kpi = el('div', { id: 'kpi-fv', 'data-tb-figure': 'value',"
+        " 'data-tb-binding': 'kpis', 'data-tb-cell': "
+        + json.dumps(cell.group(1)) + " });\n"
+        "var val = el('span', { 'class': 'tb-kpi-value' }, kpi);\n"
+        "val.textContent = " + json.dumps(shown) + ";\n"
+        "var rc = el('script', { id: 'tracebi-receipt',"
+        " type: 'application/json' });\n"
+        "rc.textContent = " + json.dumps(json.dumps(
+            {"report": receipt.get("report"), "figures": [fig]})) + ";\n"
+        "loadRuntime();\n"
+        "var row = BODY.querySelector('.tb-receipt-row');\n"
+        "var details = row.querySelector('.tb-receipt-details');\n"
+        "process.stdout.write(JSON.stringify({\n"
+        "  title: row.querySelector('.tb-receipt-title').textContent,\n"
+        "  fp: details.querySelector('.tb-receipt-fp').textContent,\n"
+        "  details_text: allText(details),\n"
+        "  row_text: allText(row)\n"
+        "}));\n"
+    )
+    assert out["title"] == f"{label} · {shown}"
+    assert out["fp"] == fig["fingerprint"]
+    assert fig["id"] in out["details_text"]
+    assert fig["binding"] in out["details_text"]
+    assert fig["fingerprint"] not in out["title"]
+    _assert_rows_avoid_honesty_words(out["row_text"])
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")

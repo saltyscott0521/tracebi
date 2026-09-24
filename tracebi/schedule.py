@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional, Union
@@ -274,6 +275,76 @@ def _refresh(refresh: dict, record: dict) -> bool:
                                f"built or sent: " + " | ".join(tail))
             return False
     return True
+
+
+def make_job(reports_dir: Union[str, Path], output_dir: Union[str, Path],
+             models_dir: Union[str, Path, None] = None):
+    """The job ``tracebi schedule serve`` and the web server both run.
+
+    APScheduler calls it on a worker thread, which does not inherit the
+    caller's :class:`~contextvars.ContextVar`, so the actor is set inside.
+    """
+    def job(schedule: dict) -> dict:
+        from tracebi.audit import actor
+        with actor("scheduler", role="cli"):
+            return run_schedule(schedule, reports_dir=reports_dir,
+                                output_dir=output_dir, models_dir=models_dir)
+    return job
+
+
+def start_server_scheduler():
+    """Start in-server schedules when ``TRACEBI_SCHEDULES_IN_SERVER=1``.
+
+    Returns the running scheduler, or ``None`` when the switch is off or
+    the reports directory has no schedule blocks. A missing APScheduler
+    raises ``ImportError`` naming ``tracebi[pipeline]`` — startup must not
+    continue as if the schedules were running.
+    """
+    import logging
+    import os
+
+    if os.environ.get("TRACEBI_SCHEDULES_IN_SERVER") != "1":
+        return None
+    log = logging.getLogger("tracebi.schedule")
+    reports_dir = os.environ.get("TRACEBI_REPORTS_DIR", "reports")
+    # Same default as `tracebi schedule serve`. TRACEBI_OUTPUT_ROOT is the
+    # MCP gateway's confinement root, not where schedule runs are recorded.
+    output_dir = "output"
+    models_dir = os.environ.get("TRACEBI_MODELS_DIR", "models")
+    schedules, errors = discover_schedules(reports_dir)
+    for err in errors:
+        log.warning("skipped %s: %s", err["report"], err["error"])
+    if not schedules:
+        log.info("TRACEBI_SCHEDULES_IN_SERVER is on; no schedules in %s",
+                 reports_dir)
+        return None
+    log.warning(
+        "In-server schedules assume one process. With several workers, "
+        "each process would send the email.")
+    scheduler = build_scheduler(
+        schedules, make_job(reports_dir, output_dir, models_dir),
+        blocking=False)
+    for s in schedules:
+        log.info("%s", describe_schedule(s))
+    scheduler.start()
+    return scheduler
+
+
+@asynccontextmanager
+async def server_lifespan(app):
+    """Start in-server schedules with the process and stop them on shutdown.
+
+    The web app passes this to ``FastAPI(lifespan=...)``. Tests use the same
+    function on a tiny app so they do not import ``tracebi.web.api.main``
+    (that import binds the routers to the global registry).
+    """
+    scheduler = start_server_scheduler()
+    app.state.scheduler = scheduler
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
 
 
 def build_scheduler(schedules: list[dict], job: Callable[[dict], object],

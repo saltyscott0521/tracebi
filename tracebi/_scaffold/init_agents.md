@@ -178,7 +178,13 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    + figure: the sketch is exploration, the figure is the claim. The
    Warehouse panel lists tables, row counts, column profiles, and
    sink-contract status as transforms land; the Models panel shows the
-   star schema taking shape as you edit `models/`. Pins read via the MCP
+   star schema taking shape as you edit `models/`. Column names of a sunk
+   table come from `tracebi warehouse tables --table T` (or the MCP
+   `describe_table` tool) — connector metadata, no row scan. A connector
+   that raises is reported in place; the others still list. Use it before you
+   write a model or an ad-hoc measure. A model that failed to
+   load is listed under `skipped` with its error; fix the file and call
+   again (models reload when the file changes). Pins read via the MCP
    `workbench_state` tool called with no `report`. All dev-state; no
    receipts exist before the model boundary, and `show()` is a no-op the
    moment the server is down. When a session shaped the pipeline, save it:
