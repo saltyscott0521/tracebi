@@ -6,14 +6,19 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
-### Changed — the receipt drawer names each figure in words
+### Changed — list_models names a model file that failed to load
 
-- Each row's first line is the figure in words and the value shown on the
-  page (`Fair value · $285.9M`), or the binding with its kind and row count
-  for a table or chart. A quieter line names the measure and, when the
-  receipt recorded them, the dimensions and filters. The fingerprint, figure
-  id and binding name sit behind Details. The drawer still does not say a
-  number was verified.
+- `list_models` returns `skipped`: each file that did not load, with the
+  exception type and message. `describe_model` on that name returns the
+  same error. Fix the file and call again.
+
+### Added — an agent eval set for first-build success
+
+- `evals/agent/` holds 12 report requests and `score.py`, which checks a
+  project copy and prints the first-build success rate. It does not call a
+  model. Prose numbers use the framework's own numeric-literal gate. The
+  one unanswerable request names where to write a refusal and does not say
+  what the model is missing.
 
 ### Added — startup logs the auth posture
 
@@ -28,6 +33,11 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 - `pip install -e ".[dev]"` installs `tzdata`, so `tests/test_parquet_embed.py`
   can use `US/Eastern` on a slim image that has no system time-zone database.
+
+### Changed — warehouse connector install hints name the extras
+
+- A missing Snowflake or BigQuery driver raises `ImportError` telling you
+  `pip install 'tracebi[snowflake]'` or `pip install 'tracebi[bigquery]'`.
 
 ### Added — a compose file for a client's own project
 
