@@ -71,8 +71,9 @@
   <main class="doc">
 <h1 id="run-tracebi-on-one-server">Run TraceBi on one server</h1>
 <p><strong>One VM, one folder, one container.</strong> The app, the schedules, and the
-email all run in that container. You do not need Kubernetes, and you do
-not need git.</p>
+email all run in that container. You do not need Kubernetes. Git is
+optional for the project folder. The server still needs a copy of this
+repository, because <code>deploy/compose.yml</code> builds from its <code>Dockerfile</code>.</p>
 <hr>
 <h2 id="what-you-need">What you need</h2>
 <ul>
@@ -86,11 +87,18 @@ not need git.</p>
 <p>On your own machine, create a project (or use one you already have):</p>
 <pre><code class="language-bash">tracebi init my-project
 </code></pre>
-<p>Copy that folder onto the server, or clone it. Source control is
-optional. The folder is the application: <code>models/</code>, <code>reports/</code>, and
+<p>Copy that folder onto the server, or clone it. Git is optional for this
+folder. The folder is the application: <code>models/</code>, <code>reports/</code>, and
 <code>data/</code>.</p>
 <h2 id="start-it">Start it</h2>
-<p>From this repository, on the server:</p>
+<p>The server needs a copy of this repository. <code>deploy/compose.yml</code> builds
+from <code>..</code>, the repository's <code>Dockerfile</code>. Clone it:</p>
+<pre><code class="language-bash">git clone https://github.com/saltyscott0521/tracebi
+</code></pre>
+<p>Or download the source archive from a
+<a href="https://github.com/saltyscott0521/tracebi/releases">GitHub release</a> and
+unpack it.</p>
+<p>From that copy, on the server:</p>
 <pre><code class="language-bash">cp deploy/.env.example deploy/.env
 </code></pre>
 <p>In <code>deploy/.env</code>, set <code>TRACEBI_PROJECT_DIR</code> to the project folder from
@@ -137,8 +145,10 @@ is fine on a machine that is not reachable from anywhere else.</p>
 <h2 id="with-coolify">With Coolify</h2>
 <p>Create a Docker Compose resource. Point it at this repository, or at
 the image <code>ghcr.io/saltyscott0521/tracebi</code>. Set the same variables from
-<code>deploy/.env</code> in Coolify's environment screen. Mount the project folder
-as a persistent volume at <code>/project</code>.</p>
+<code>deploy/.env</code> in Coolify's environment screen. Bind-mount a folder on
+the host (Coolify's directory mount, a host path) at <code>/project</code>. The
+compose file's <code>output-perms</code> service mounts <code>output/</code> and <code>data/</code> from
+that same folder. A backup is still a copy of that folder.</p>
 <p>Give the resource a domain in Coolify if you have one. TLS ends at
 Coolify. This page does not name a host, an address, or a password.</p>
 <h2 id="backups">Backups</h2>
@@ -151,10 +161,10 @@ Postgres profile, also copy <code>TRACEBI_PGDATA_DIR</code>.</p>
 </code></pre>
 <p>You want <code>"status": "ok"</code>. The container's own health check calls the
 same path.</p>
-<p><code>GET /api/status</code>, when the version you deployed includes it, is the
-longer page: output folder, files that failed to load, whether SMTP is
-set, whether schedules are on, and the sign-in posture. It is not a
-substitute for <code>/api/health</code>, which stays the cheap check.</p>
+<p><code>GET /api/status</code> is available. It is the longer page: output folder,
+files that failed to load, whether SMTP is set, whether schedules are
+on, and the sign-in posture. It is not a substitute for <code>/api/health</code>,
+which stays the cheap check.</p>
 <p>Then open the app in a browser and open the report.</p>
   </main>
 </div>
