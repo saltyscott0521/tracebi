@@ -253,6 +253,7 @@ pip install -e ".[pipeline]"          # scheduling + DB write-back
 pip install -e ".[lineage]"           # lineage diagrams
 pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Explore + report figures)
 pip install -e ".[web]"               # FastAPI + uvicorn web UI
+pip install -e ".[e2e]"               # Playwright, for the browser smoke test
 pip install -e ".[all]"               # everything
 ```
 
