@@ -1489,6 +1489,17 @@ class TestPipelineRunEndpoint:
         assert r.status_code == 404
 
 
+class TestHealthVersion:
+    def test_health_returns_the_package_version(self):
+        # Import the app here, not above TestPipelineRunEndpoint: that test
+        # rebinds the registry before the pipelines router is first imported.
+        import tracebi
+        from fastapi.testclient import TestClient
+        from tracebi.web.api.main import app
+
+        body = TestClient(app).get("/api/health").json()
+        assert body["status"] == "ok"
+        assert body["version"] == tracebi.__version__
 
 
 # ── Dev-mode reload endpoint ──────────────────────────────────────────────

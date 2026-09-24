@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 
+import { useHealth } from '../api'
 import CommandPalette from './CommandPalette'
 
 const ICONS = {
@@ -150,6 +151,8 @@ function NavSection({ label, items, onNavigate }) {
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false)
+  const { data: health, isSuccess: healthOk } = useHealth()
+  const version = healthOk && typeof health?.version === 'string' ? health.version : ''
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem('tracebi-theme') === 'dark' } catch { return false }
   })
@@ -302,7 +305,9 @@ export default function Layout({ children }) {
               display: 'inline-block', width: 6, height: 6,
               borderRadius: '50%', background: '#22c55e', flexShrink: 0,
             }} />
-            <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v0.5.2</span>
+            {version ? (
+              <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v{version}</span>
+            ) : null}
             <button
               onClick={() => setDark(d => !d)}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}

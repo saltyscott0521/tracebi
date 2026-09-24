@@ -6,6 +6,12 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the footer shows the installed version
+
+- `GET /api/health` returns `{"status": "ok", "version": "<installed version>"}`.
+  The sidebar footer reads that field. The hard-coded `v0.5.2` is gone; while
+  the request is loading or has failed, the footer shows no version.
+
 ### Added — the workbench shows the analysis behind a report
 
 - **Side by side.** `/__workbench` now shows the live report preview beside

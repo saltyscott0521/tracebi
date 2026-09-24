@@ -71,6 +71,9 @@ export const useVerifyFile = () =>
 export const tableCsvUrl = (model, table) =>
   `${BASE}/models/${encodeURIComponent(model)}/tables/${encodeURIComponent(table)}/export.csv`
 
+export const useHealth = () =>
+  useQuery({ queryKey: ['health'], queryFn: () => get('/health') })
+
 export const useConnectors = () =>
   useQuery({ queryKey: ['connectors'], queryFn: () => get('/connectors') })
 

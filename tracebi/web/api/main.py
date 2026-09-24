@@ -106,7 +106,9 @@ if os.environ.get("TRACEBI_DEV_MODE") == "1":
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    # Resolved once at startup (FastAPI's app.version). Probes call this
+    # constantly, so don't re-read package metadata on each request.
+    return {"status": "ok", "version": app.version}
 
 
 @app.get("/api/discovery")
