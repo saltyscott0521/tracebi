@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional, Union
@@ -327,6 +328,23 @@ def start_server_scheduler():
         log.info("%s", describe_schedule(s))
     scheduler.start()
     return scheduler
+
+
+@asynccontextmanager
+async def server_lifespan(app):
+    """Start in-server schedules with the process and stop them on shutdown.
+
+    The web app passes this to ``FastAPI(lifespan=...)``. Tests use the same
+    function on a tiny app so they do not import ``tracebi.web.api.main``
+    (that import binds the routers to the global registry).
+    """
+    scheduler = start_server_scheduler()
+    app.state.scheduler = scheduler
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
 
 
 def build_scheduler(schedules: list[dict], job: Callable[[dict], object],

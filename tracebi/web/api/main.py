@@ -34,7 +34,6 @@ Environment switches:
 import importlib
 import os
 import sys
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,19 +47,7 @@ from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
 from tracebi.web.api.csrf import allowed_origins as _allowed_origins
 
 from tracebi._version import get_version as _tracebi_version
-
-
-@asynccontextmanager
-async def _lifespan(app: FastAPI):
-    """Run report schedules in this process when the switch is on."""
-    from tracebi.schedule import start_server_scheduler
-    scheduler = start_server_scheduler()
-    app.state.scheduler = scheduler
-    try:
-        yield
-    finally:
-        if scheduler is not None:
-            scheduler.shutdown(wait=False)
+from tracebi.schedule import server_lifespan
 
 
 app = FastAPI(
@@ -68,7 +55,7 @@ app = FastAPI(
     description=("The trust layer for AI-generated analytics: a code-first BI "
                  "framework where every number has a receipt."),
     version=_tracebi_version(),
-    lifespan=_lifespan,
+    lifespan=server_lifespan,
 )
 
 app.add_middleware(
