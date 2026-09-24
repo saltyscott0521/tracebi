@@ -512,6 +512,10 @@ def collect_state(package_dir: str, models: dict) -> dict:
     for f in figs:
         if f.binding:
             used_by.setdefault(f.binding, []).append(f.id)
+        # A table's totals row reads its own one-row binding.
+        totals = f.attrs.get("data-tb-totals")
+        if totals:
+            used_by.setdefault(totals, []).append(f.id)
 
     by_name = {sd.name: sd for sd in inputs}
     bindings_state = []

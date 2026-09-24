@@ -304,6 +304,17 @@ class TestCollectState:
         # "12.5" and "2024" sit in prose; the 42 inside fig-est is claimed.
         assert state["lint"]["numeric_literals_outside_figures"] == 2
 
+    def test_a_totals_binding_is_not_unused(self, wb_model, tmp_path, monkeypatch):
+        # A binding read only by a table's totals row (data-tb-totals) is used.
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", str(tmp_path / "wb"))
+        pkg = _pkg(tmp_path)
+        tpl = (pkg / "template.html").read_text().replace(
+            'data-tb-binding="by_region" ',
+            'data-tb-binding="by_region" data-tb-totals="spare" ')
+        (pkg / "template.html").write_text(tpl)
+        state = collect_state(str(pkg), {"wb_model": wb_model})
+        assert state["unused_bindings"] == []
+
     def test_code_panel_is_read_back_verbatim(self, state, tmp_path):
         assert '"kpi"' in state["code"]["report.json"]
         assert "def build" in state["code"]["report.py"]
