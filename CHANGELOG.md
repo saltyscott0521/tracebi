@@ -6,6 +6,15 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — startup logs the auth posture
+
+- When the web server decides how authentication is configured, it logs one
+  line on the `tracebi.auth` logger: the mode, the role source, and whether
+  enforcement is on. With no authentication configured the line always says
+  enforcement is off — even when a role map is set — and it still names that
+  role source. A `TRACEBI_AUTH_ROLE_MAP` entry with no `:`, no user name, or
+  an unknown role is warned and dropped; who gets which role is unchanged.
+
 ### Added — a compose file for a client's own project
 
 - `deploy/compose.yml` runs the GHCR image (or a local build of the Dockerfile)
