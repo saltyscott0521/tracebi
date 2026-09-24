@@ -1,0 +1,12 @@
+{
+  "report": "unrealized",
+  "figures": [
+    "value"
+  ],
+  "measures": [
+    "unrealized"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}
