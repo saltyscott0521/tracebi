@@ -7,8 +7,10 @@
  *   • Fonts. Inter (text) and Fraunces (display), both SIL Open Font
  *     License 1.1, loaded from assets/fonts/. The build inlines them as
  *     data: URIs, so the file still works offline and makes no web request.
- *   • A gradient hero with artwork. assets/contours.svg is inlined the same
- *     way and layered over the gradient.
+ *   • A gradient hero with artwork — the report's ONE decorative moment.
+ *     assets/contours.svg is inlined and layered over the gradient. Nothing
+ *     else on the page decorates: no gradient rules, glows or hover lifts
+ *     (see `tracebi knowledge design-cut-the-chrome`).
  *   • Token overrides. Changing --tb-* variables restyles every framework
  *     component (cards, tables, tabs, KPI tiles) and the chart ink at once.
  *
@@ -66,7 +68,7 @@ body {
 .sc-hero {
   /* Full-bleed band inside the centred page column. */
   margin: 0 calc(50% - 50vw);
-  padding: 72px calc(50vw - 50% + 16px) 104px;
+  padding: 40px calc(50vw - 50% + 16px) 84px;
   color: #fff;
   background:
     url(assets/contours.svg) center / cover no-repeat,
@@ -85,22 +87,14 @@ body {
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, .06);
-  backdrop-filter: blur(4px);
-}
-.sc-eyebrow::before {
-  content: "";
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #5eead4;
-  box-shadow: 0 0 0 4px rgba(94, 234, 212, .2);
 }
 .sc-hero h1 {
   font-family: var(--display);
   font-weight: 600;
-  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-size: clamp(1.9rem, 3.6vw, 2.8rem);
   letter-spacing: -.02em;
   line-height: 1.05;
-  margin: 20px 0 14px;
+  margin: 16px 0 10px;
   color: #fff;
 }
 .sc-hero h1 em { font-style: normal; color: #9fb4ff; }
@@ -115,24 +109,22 @@ body {
 
 /* ── KPI tiles overlap the hero's lower edge ──────────────────────────── */
 
-.sc-kpis { margin-top: -64px; position: relative; }
+.sc-kpis { margin-top: -56px; position: relative; }
 .sc-kpis .tb-kpi {
   border: 0;
   overflow: hidden;
   box-shadow: var(--tb-shadow);
 }
-.sc-kpis .tb-kpi::before {
-  /* a thin gradient rule across the top of each tile */
-  content: "";
-  position: absolute; inset: 0 0 auto 0; height: 3px;
-  background: linear-gradient(90deg, #3b5bdb, #0f9d8a);
-}
 .sc-kpis .tb-kpi-value {
+  display: block;
   font-family: var(--display);
   font-weight: 600;
   font-size: 2.3em;
   letter-spacing: -.01em;
 }
+/* The KPI's context line: the comparison that makes the number judgeable. */
+.sc-kpi-sub { display: block; margin-top: 2px; font-size: .82em; color: var(--tb-muted); }
+.sc-kpi-sub [data-tb-figure] { font-weight: 600; color: var(--tb-ink); }
 
 /* ── Tabs as pills ────────────────────────────────────────────────────── */
 
@@ -160,18 +152,12 @@ body {
 
 /* ── Cards ────────────────────────────────────────────────────────────── */
 
-.tb-card { border-color: transparent; transition: box-shadow .2s ease, transform .2s ease; }
-.tb-card:hover { box-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 16px 32px -16px rgba(16, 24, 40, .28); }
+.tb-card { border-color: transparent; }
 .tb-card > h2:first-child {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: .95em;
-}
-.tb-card > h2:first-child::before {
-  content: "";
-  width: 8px; height: 8px; border-radius: 2px;
-  background: linear-gradient(135deg, #3b5bdb, #0f9d8a);
 }
 .tb-card h2 button[data-tb-download] { margin-left: auto; }
 
@@ -187,12 +173,11 @@ body {
   margin-top: 48px;
   padding: 24px 28px;
   border-radius: var(--tb-radius);
-  background: linear-gradient(135deg, #0a1330, #1b2f7a);
-  color: rgba(255, 255, 255, .78);
+  border: 1px solid var(--tb-rule);
+  color: var(--tb-muted);
   font-size: .85em;
 }
-.sc-footer h2 { font-family: var(--display); color: #fff; font-size: 1.1rem; margin: 0 0 8px; }
+.sc-footer h2 { font-family: var(--display); color: var(--tb-ink); font-size: 1.1rem; margin: 0 0 8px; }
 .sc-footer ul { margin: 8px 0 0; padding-left: 18px; }
-.sc-footer code { color: #c7d2fe; }
 
 .tb-receipt-btn { font-weight: 600; color: var(--tb-accent); }

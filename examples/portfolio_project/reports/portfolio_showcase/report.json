@@ -15,6 +15,17 @@
         "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"]
       }
     },
+    "top_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value", "fv_share"],
+        "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"], "limit": 1
+      }
+    },
+    "gain": {
+      "model": "portfolio_model",
+      "query": { "fact": "fact_holdings", "measures": ["unrealized"] }
+    },
     "by_fund": {
       "model": "portfolio_model",
       "query": {

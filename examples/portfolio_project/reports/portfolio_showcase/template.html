@@ -11,9 +11,9 @@
                              "libs": ["echarts"], which inlines Apache ECharts.
   report.py                  The escape hatch: python-derived data, which the
                              receipt marks as not query-reproducible.
-  style.css                  The custom theme: fonts, gradient hero, pill
-                             tabs, token overrides.
-  script.js                  Chart restyling (gradients, smoothing) through
+  style.css                  The custom theme: fonts, one gradient hero,
+                             pill tabs, token overrides.
+  script.js                  Small chart restyling through
                              tracebi.configureChart. It restyles only.
   assets/                    Fonts (Inter, Fraunces; SIL Open Font License)
                              and hero artwork, inlined at build.
@@ -28,32 +28,46 @@
 
   <header class="sc-hero">
     <span class="sc-eyebrow">Direct lending · Portfolio showcase</span>
-    <h1>The book at a glance, <em>every number traceable.</em></h1>
+    <!-- The title states the finding, and its numbers are live figures.
+         top_sector is a one-row query (largest first, limit 1); the share is
+         computed over the whole book before the limit applies. -->
+    <h1><span data-tb-figure="value" data-tb-binding="top_sector"
+              data-tb-cell="dim_issuer.sector" id="val-top-sector"></span>
+      is the largest sector, <em><span data-tb-figure="value"
+              data-tb-binding="top_sector" data-tb-cell="fv_share"
+              data-tb-format="percent" id="val-top-share"></span>
+      of the book.</em></h1>
     <p class="sc-lede">Three funds, cleaned from a Schedule of Investments and
-      modelled as a star schema. Every figure below is a live query with a
-      fingerprint, including this one: total fair value is
+      modelled as a star schema, holding
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="compact"
-            id="val-fv-inline">—</span>.
-      Open the <strong>Receipt</strong> drawer to see each figure's
-      fingerprint and the sink-contract status.</p>
+            id="val-fv-inline"></span> at fair value. Every number on this
+      page is a live query with a fingerprint; open the
+      <strong>Receipt</strong> drawer to see them.</p>
   </header>
 
   <div class="tb-grid sc-kpis">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-         data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">
+    <!-- Each KPI carries its context. The book has one as-of date, so the
+         comparison is against cost, not a prior period: a governed measure
+         (unrealized = fair value - cost), never a number typed in. -->
+    <div class="tb-kpi">
       <span class="tb-kpi-label">Fair value</span>
-      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv"></span>
+      <span class="sc-kpi-sub"><span data-tb-figure="value"
+            data-tb-binding="gain" data-tb-cell="unrealized"
+            data-tb-format="compact" id="kpi-gain"></span> vs cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="positions" data-tb-format="comma" id="kpi-pos">
       <span class="tb-kpi-label">Positions</span>
       <span class="tb-kpi-value"></span>
     </div>
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-         data-tb-cell="mark" data-tb-format="percent" id="kpi-mark">
-      <span class="tb-kpi-label">Avg mark</span>
-      <span class="tb-kpi-value"></span>
+    <div class="tb-kpi">
+      <span class="tb-kpi-label">Mark (fair value ÷ cost)</span>
+      <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="mark" data-tb-format="percent" id="kpi-mark"></span>
+      <span class="sc-kpi-sub">fair value per dollar of cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-unverified
          data-tb-note="analyst estimate" id="kpi-est">
@@ -92,7 +106,7 @@
                  id="tbl-top"></table>
         </div>
         <div class="tb-card">
-          <h2>Concentration (python-derived)</h2>
+          <h2>Cumulative share, largest sector first (python-derived)</h2>
           <div data-tb-figure="chart" data-tb-binding="concentration"
                data-tb-type="line" data-tb-x="dim_issuer.sector"
                data-tb-y="cum_share" data-tb-value-format="percent"
@@ -111,12 +125,12 @@
           computes it (the mark total is a ratio of totals); it steps aside
           while a filter or search is on.</p>
         <p>
+          <!-- Search first: finding a row by name is the common task. -->
+          <input data-tb-search data-tb-binding="holdings_detail"
+                 aria-label="Search issuers" placeholder="Search issuers…">
           Sector:
           <select data-tb-filter data-tb-binding="holdings_detail"
                   data-tb-column="dim_issuer.sector"></select>
-          Search issuer:
-          <input data-tb-search data-tb-binding="holdings_detail"
-                 placeholder="type to filter…">
           <button data-tb-download data-tb-binding="holdings_detail"
                   data-tb-label="Download CSV"></button>
         </p>

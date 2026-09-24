@@ -11,9 +11,9 @@
                              "libs": ["echarts"], which inlines Apache ECharts.
   report.py                  The escape hatch: python-derived data, which the
                              receipt marks as not query-reproducible.
-  style.css                  The custom theme: fonts, gradient hero, pill
-                             tabs, token overrides.
-  script.js                  Chart restyling (gradients, smoothing) through
+  style.css                  The custom theme: fonts, one gradient hero,
+                             pill tabs, token overrides.
+  script.js                  Small chart restyling through
                              tracebi.configureChart. It restyles only.
   assets/                    Fonts (Inter, Fraunces; SIL Open Font License)
                              and hero artwork, inlined at build.
@@ -476,10 +476,20 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
   padding: var(--tb-space-1) 0;
   border-bottom: 1px solid var(--tb-rule);
 }
+.tb-receipt-title { color: var(--tb-ink); }
+.tb-receipt-from {
+  color: var(--tb-muted);
+  font-size: 0.92em;
+  margin-top: 2px;
+}
+.tb-receipt-details { margin-top: var(--tb-space-1); }
+.tb-receipt-details summary { cursor: pointer; }
+.tb-receipt-meta,
 .tb-receipt-fp {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  margin-left: var(--tb-space-2);
+  word-break: break-all;
 }
+.tb-receipt-fp { display: block; }
 /* Layout only — the badge keeps its own recorded tone. */
 .tb-receipt-drawer .tb-badge {
   position: static;
@@ -520,6 +530,9 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
   .tb-tab-bar { display: none; }
   .tb-tab-bar ~ [data-tb-tab] { display: block !important; }
 
+  /* A closed disclosure would hide the fingerprint on paper. */
+  .tb-receipt-details > * { display: block !important; }
+
   /* The receipt IS the point of the document. Un-pin the drawer from its
      fixed overlay into a static appendix so the fingerprints, contract status
      and git SHA that back the numbers print with them, not screen-only. */
@@ -554,8 +567,10 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
  *   • Fonts. Inter (text) and Fraunces (display), both SIL Open Font
  *     License 1.1, loaded from assets/fonts/. The build inlines them as
  *     data: URIs, so the file still works offline and makes no web request.
- *   • A gradient hero with artwork. assets/contours.svg is inlined the same
- *     way and layered over the gradient.
+ *   • A gradient hero with artwork — the report's ONE decorative moment.
+ *     assets/contours.svg is inlined and layered over the gradient. Nothing
+ *     else on the page decorates: no gradient rules, glows or hover lifts
+ *     (see `tracebi knowledge design-cut-the-chrome`).
  *   • Token overrides. Changing --tb-* variables restyles every framework
  *     component (cards, tables, tabs, KPI tiles) and the chart ink at once.
  *
@@ -613,7 +628,7 @@ body {
 .sc-hero {
   /* Full-bleed band inside the centred page column. */
   margin: 0 calc(50% - 50vw);
-  padding: 72px calc(50vw - 50% + 16px) 104px;
+  padding: 40px calc(50vw - 50% + 16px) 84px;
   color: #fff;
   background:
     url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNDQwIDQ4MCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQgc2xpY2UiPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIxLjIiPjxwYXRoIGQ9Ik0wIDQwLjAgUTAgNDAuMCAyMCA0NC4wIFE0MCA0OC4wIDYwIDUxLjUgUTgwIDU0LjkgMTAwIDU3LjMgUTEyMCA1OS43IDE0MCA2MC43IFExNjAgNjEuOCAxODAgNjEuNiBRMjAwIDYxLjMgMjIwIDYwLjEgUTI0MCA1OC45IDI2MCA1Ny4wIFEyODAgNTUuMiAzMDAgNTMuMyBRMzIwIDUxLjQgMzQwIDUwLjAgUTM2MCA0OC41IDM4MCA0Ny44IFE0MDAgNDcuMSA0MjAgNDcuMiBRNDQwIDQ3LjMgNDYwIDQ4LjAgUTQ4MCA0OC44IDUwMCA0OS45IFE1MjAgNTAuOSA1NDAgNTEuOCBRNTYwIDUyLjcgNTgwIDUyLjkgUTYwMCA1My4yIDYyMCA1Mi40IFE2NDAgNTEuNiA2NjAgNDkuNiBRNjgwIDQ3LjcgNzAwIDQ0LjcgUTcyMCA0MS43IDc0MCAzOC4xIFE3NjAgMzQuNCA3ODAgMzAuNiBRODAwIDI2LjcgODIwIDIzLjMgUTg0MCAyMC4wIDg2MCAxNy42IFE4ODAgMTUuMiA5MDAgMTQuMSBROTIwIDEzLjAgOTQwIDEzLjQgUTk2MCAxMy44IDk4MCAxNS40IFExMDAwIDE3LjEgMTAyMCAxOS42IFExMDQwIDIyLjIgMTA2MCAyNS4xIFExMDgwIDI4LjAgMTEwMCAzMC43IFExMTIwIDMzLjQgMTE0MCAzNS40IFExMTYwIDM3LjUgMTE4MCAzOC42IFExMjAwIDM5LjggMTIyMCA0MC4wIFExMjQwIDQwLjMgMTI2MCAzOS45IFExMjgwIDM5LjUgMTMwMCAzOC44IFExMzIwIDM4LjEgMTM0MCAzNy42IFExMzYwIDM3LjIgMTM4MCAzNy40IFExNDAwIDM3LjYgMTQyMCAzOC43IiBzdHJva2Utb3BhY2l0eT0iMC4wODUiLz48cGF0aCBkPSJNMCA4My4wIFEwIDgzLjAgMjAgODYuMiBRNDAgODkuMyA2MCA5MS4xIFE4MCA5My4wIDEwMCA5My40IFExMjAgOTMuOCAxNDAgOTIuOSBRMTYwIDkyLjAgMTgwIDkwLjMgUTIwMCA4OC41IDIyMCA4Ni40IFEyNDAgODQuMiAyNjAgODIuMiBRMjgwIDgwLjIgMzAwIDc4LjggUTMyMCA3Ny4zIDM0MCA3Ni42IFEzNjAgNzUuOSAzODAgNzYuMCBRNDAwIDc2LjAgNDIwIDc2LjQgUTQ0MCA3Ni45IDQ2MCA3Ny4zIFE0ODAgNzcuOCA1MDAgNzcuOCBRNTIwIDc3LjcgNTQwIDc2LjkgUTU2MCA3Ni4wIDU4MCA3NC4wIFE2MDAgNzIuMSA2MjAgNjkuMSBRNjQwIDY2LjEgNjYwIDYyLjMgUTY4MCA1OC41IDcwMCA1NC40IFE3MjAgNTAuMyA3NDAgNDYuNSBRNzYwIDQyLjcgNzgwIDM5LjggUTgwMCAzNi45IDgyMCAzNS4zIFE4NDAgMzMuNyA4NjAgMzMuNiBRODgwIDMzLjYgOTAwIDM1LjAgUTkyMCAzNi40IDk0MCAzOS4wIFE5NjAgNDEuNiA5ODAgNDQuOSBRMTAwMCA0OC4xIDEwMjAgNTEuNSBRMTA0MCA1NC44IDEwNjAgNTcuNyBRMTA4MCA2MC42IDExMDAgNjIuNyBRMTEyMCA2NC44IDExNDAgNjYuMCBRMTE2MCA2Ny4yIDExODAgNjcuNSBRMTIwMCA2Ny45IDEyMjAgNjcuOCBRMTI0MCA2Ny43IDEyNjAgNjcuNSBRMTI4MCA2Ny40IDEzMDAgNjcuNyBRMTMyMCA2Ny45IDEzNDAgNjguOSBRMTM2MCA3MC4wIDEzODAgNzEuOSBRMTQwMCA3My44IDE0MjAgNzYuNCIgc3Ryb2tlLW9wYWNpdHk9IjAuMTEyIi8+PHBhdGggZD0iTTAgMTIyLjMgUTAgMTIyLjMgMjAgMTIzLjEgUTQwIDEyNC4wIDYwIDEyMy40IFE4MCAxMjIuOCAxMDAgMTIxLjEgUTEyMCAxMTkuNCAxNDAgMTE3LjAgUTE2MCAxMTQuNyAxODAgMTEyLjIgUTIwMCAxMDkuNyAyMjAgMTA3LjYgUTI0MCAxMDUuNSAyNjAgMTA0LjAgUTI4MCAxMDIuNiAzMDAgMTAxLjkgUTMyMCAxMDEuMiAzNDAgMTAxLjEgUTM2MCAxMDEuMCAzODAgMTAxLjEgUTQwMCAxMDEuMiA0MjAgMTAxLjEgUTQ0MCAxMDEuMCA0NjAgMTAwLjIgUTQ4MCA5OS40IDUwMCA5Ny43IFE1MjAgOTYuMCA1NDAgOTMuMiBRNTYwIDkwLjQgNTgwIDg2LjggUTYwMCA4My4yIDYyMCA3OS4yIFE2NDAgNzUuMiA2NjAgNzEuMiBRNjgwIDY3LjMgNzAwIDY0LjIgUTcyMCA2MS4wIDc0MCA1OS4wIFE3NjAgNTcuMSA3ODAgNTYuNyBRODAwIDU2LjMgODIwIDU3LjUgUTg0MCA1OC42IDg2MCA2MS4yIFE4ODAgNjMuNyA5MDAgNjcuMiBROTIwIDcwLjcgOTQwIDc0LjUgUTk2MCA3OC4zIDk4MCA4MS44IFExMDAwIDg1LjQgMTAyMCA4OC4zIFExMDQwIDkxLjIgMTA2MCA5My4xIFExMDgwIDk1LjAgMTEwMCA5Ni4wIFExMTIwIDk3LjAgMTE0MCA5Ny4zIFExMTYwIDk3LjYgMTE4MCA5Ny42IFExMjAwIDk3LjcgMTIyMCA5Ny44IFExMjQwIDk4LjAgMTI2MCA5OC43IFExMjgwIDk5LjQgMTMwMCAxMDAuOSBRMTMyMCAxMDIuNCAxMzQwIDEwNC43IFExMzYwIDEwNi45IDEzODAgMTA5LjcgUTE0MDAgMTEyLjUgMTQyMCAxMTUuMyIgc3Ryb2tlLW9wYWNpdHk9IjAuMTE5Ii8+PHBhdGggZD0iTTAgMTQ5LjggUTAgMTQ5LjggMjAgMTQ4LjEgUTQwIDE0Ni41IDYwIDE0My45IFE4MCAxNDEuNCAxMDAgMTM4LjYgUTEyMCAxMzUuOCAxNDAgMTMzLjEgUTE2MCAxMzAuNSAxODAgMTI4LjUgUTIwMCAxMjYuNSAyMjAgMTI1LjMgUTI0MCAxMjQuMiAyNjAgMTIzLjcgUTI4MCAxMjMuMyAzMDAgMTIzLjMgUTMyMCAxMjMuMyAzNDAgMTIzLjMgUTM2MCAxMjMuMyAzODAgMTIzLjAgUTQwMCAxMjIuNiA0MjAgMTIxLjQgUTQ0MCAxMjAuMiA0NjAgMTE4LjEgUTQ4MCAxMTUuOSA1MDAgMTEyLjkgUTUyMCAxMDkuOSA1NDAgMTA2LjIgUTU2MCAxMDIuNiA1ODAgOTguOSBRNjAwIDk1LjIgNjIwIDkyLjAgUTY0MCA4OC44IDY2MCA4Ni43IFE2ODAgODQuNSA3MDAgODMuOSBRNzIwIDgzLjIgNzQwIDg0LjAgUTc2MCA4NC45IDc4MCA4Ny4zIFE4MDAgODkuNiA4MjAgOTMuMSBRODQwIDk2LjUgODYwIDEwMC40IFE4ODAgMTA0LjQgOTAwIDEwOC4zIFE5MjAgMTEyLjIgOTQwIDExNS41IFE5NjAgMTE4LjggOTgwIDEyMS4yIFExMDAwIDEyMy41IDEwMjAgMTI0LjkgUTEwNDAgMTI2LjIgMTA2MCAxMjYuNiBRMTA4MCAxMjcuMSAxMTAwIDEyNy4wIFExMTIwIDEyNi45IDExNDAgMTI2LjcgUTExNjAgMTI2LjUgMTE4MCAxMjYuNyBRMTIwMCAxMjYuOSAxMjIwIDEyNy43IFExMjQwIDEyOC42IDEyNjAgMTMwLjIgUTEyODAgMTMxLjggMTMwMCAxMzQuMCBRMTMyMCAxMzYuMyAxMzQwIDEzOC43IFExMzYwIDE0MS4yIDEzODAgMTQzLjQgUTE0MDAgMTQ1LjcgMTQyMCAxNDcuMSIgc3Ryb2tlLW9wYWNpdHk9IjAuMTAwIi8+PHBhdGggZD0iTTAgMTY1LjAgUTAgMTY1LjAgMjAgMTYyLjAgUTQwIDE1OS4wIDYwIDE1Ni4xIFE4MCAxNTMuMiAxMDAgMTUwLjkgUTEyMCAxNDguNiAxNDAgMTQ3LjIgUTE2MCAxNDUuNyAxODAgMTQ1LjEgUTIwMCAxNDQuNiAyMjAgMTQ0LjcgUTI0MCAxNDQuOCAyNjAgMTQ1LjIgUTI4MCAxNDUuNyAzMDAgMTQ1LjkgUTMyMCAxNDYuMiAzNDAgMTQ1LjggUTM2MCAxNDUuNCAzODAgMTQ0LjIgUTQwMCAxNDMuMCA0MjAgMTQwLjggUTQ0MCAxMzguNiA0NjAgMTM1LjcgUTQ4MCAxMzIuNyA1MDAgMTI5LjUgUTUyMCAxMjYuMyA1NDAgMTIzLjIgUTU2MCAxMjAuMiA1ODAgMTE4LjAgUTYwMCAxMTUuNyA2MjAgMTE0LjggUTY0MCAxMTMuOCA2NjAgMTE0LjIgUTY4MCAxMTQuNyA3MDAgMTE2LjcgUTcyMCAxMTguNiA3NDAgMTIxLjcgUTc2MCAxMjQuOCA3ODAgMTI4LjYgUTgwMCAxMzIuNCA4MjAgMTM2LjMgUTg0MCAxNDAuMiA4NjAgMTQzLjUgUTg4MCAxNDYuOSA5MDAgMTQ5LjQgUTkyMCAxNTEuOSA5NDAgMTUzLjMgUTk2MCAxNTQuNyA5ODAgMTU1LjAgUTEwMDAgMTU1LjMgMTAyMCAxNTQuOSBRMTA0MCAxNTQuNSAxMDYwIDE1My44IFExMDgwIDE1My4xIDExMDAgMTUyLjYgUTExMjAgMTUyLjEgMTE0MCAxNTIuMSBRMTE2MCAxNTIuMSAxMTgwIDE1My4wIFExMjAwIDE1My44IDEyMjAgMTU1LjQgUTEyNDAgMTU2LjkgMTI2MCAxNTkuMCBRMTI4MCAxNjEuMSAxMzAwIDE2My4yIFExMzIwIDE2NS4zIDEzNDAgMTY2LjkgUTEzNjAgMTY4LjUgMTM4MCAxNjkuMSBRMTQwMCAxNjkuNyAxNDIwIDE2OS4wIiBzdHJva2Utb3BhY2l0eT0iMC4wNzAiLz48cGF0aCBkPSJNMCAxNzUuNSBRMCAxNzUuNSAyMCAxNzMuMSBRNDAgMTcwLjYgNjAgMTY5LjAgUTgwIDE2Ny41IDEwMCAxNjYuOSBRMTIwIDE2Ni4zIDE0MCAxNjYuNiBRMTYwIDE2Ni45IDE4MCAxNjcuNyBRMjAwIDE2OC42IDIyMCAxNjkuNSBRMjQwIDE3MC40IDI2MCAxNzAuOSBRMjgwIDE3MS40IDMwMCAxNzEuMiBRMzIwIDE3MC45IDM0MCAxNjkuNiBRMzYwIDE2OC40IDM4MCAxNjYuMyBRNDAwIDE2NC4xIDQyMCAxNjEuNSBRNDQwIDE1OC44IDQ2MCAxNTYuMCBRNDgwIDE1My4yIDUwMCAxNTAuOSBRNTIwIDE0OC42IDU0MCAxNDcuMyBRNTYwIDE0Ni4wIDU4MCAxNDYuMCBRNjAwIDE0Ni4wIDYyMCAxNDcuNCBRNjQwIDE0OC44IDY2MCAxNTEuMyBRNjgwIDE1My45IDcwMCAxNTcuMyBRNzIwIDE2MC43IDc0MCAxNjQuMyBRNzYwIDE2Ny45IDc4MCAxNzEuMiBRODAwIDE3NC40IDgyMCAxNzYuOSBRODQwIDE3OS4zIDg2MCAxODAuNiBRODgwIDE4Mi4wIDkwMCAxODIuMiBROTIwIDE4Mi4zIDk0MCAxODEuNiBROTYwIDE4MC45IDk4MCAxNzkuNyBRMTAwMCAxNzguNSAxMDIwIDE3Ny4zIFExMDQwIDE3Ni4xIDEwNjAgMTc1LjMgUTEwODAgMTc0LjYgMTEwMCAxNzQuNiBRMTEyMCAxNzQuNiAxMTQwIDE3NS42IFExMTYwIDE3Ni41IDExODAgMTc4LjEgUTEyMDAgMTc5LjcgMTIyMCAxODEuNyBRMTI0MCAxODMuNyAxMjYwIDE4NS41IFExMjgwIDE4Ny4zIDEzMDAgMTg4LjQgUTEzMjAgMTg5LjUgMTM0MCAxODkuNSBRMTM2MCAxODkuNiAxMzgwIDE4OC4zIFExNDAwIDE4Ny4wIDE0MjAgMTg0LjUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1MSIvPjxwYXRoIGQ9Ik0wIDE5MC44IFEwIDE5MC44IDIwIDE5MC4xIFE0MCAxODkuNCA2MCAxODkuNyBRODAgMTkwLjAgMTAwIDE5MS4xIFExMjAgMTkyLjEgMTQwIDE5My41IFExNjAgMTk0LjkgMTgwIDE5Ni4wIFEyMDAgMTk3LjIgMjIwIDE5Ny43IFEyNDAgMTk4LjIgMjYwIDE5Ny44IFEyODAgMTk3LjQgMzAwIDE5Ni4wIFEzMjAgMTk0LjYgMzQwIDE5Mi40IFEzNjAgMTkwLjIgMzgwIDE4Ny43IFE0MDAgMTg1LjIgNDIwIDE4Mi45IFE0NDAgMTgwLjUgNDYwIDE3OC45IFE0ODAgMTc3LjMgNTAwIDE3Ni43IFE1MjAgMTc2LjIgNTQwIDE3Ny4wIFE1NjAgMTc3LjggNTgwIDE3OS45IFE2MDAgMTgxLjkgNjIwIDE4NC44IFE2NDAgMTg3LjcgNjYwIDE5MS4xIFE2ODAgMTk0LjQgNzAwIDE5Ny42IFE3MjAgMjAwLjcgNzQwIDIwMy4yIFE3NjAgMjA1LjYgNzgwIDIwNy4wIFE4MDAgMjA4LjQgODIwIDIwOC42IFE4NDAgMjA4LjkgODYwIDIwOC4wIFE4ODAgMjA3LjIgOTAwIDIwNS43IFE5MjAgMjA0LjIgOTQwIDIwMi42IFE5NjAgMjAwLjkgOTgwIDE5OS41IFExMDAwIDE5OC4yIDEwMjAgMTk3LjYgUTEwNDAgMTk2LjkgMTA2MCAxOTcuMiBRMTA4MCAxOTcuNSAxMTAwIDE5OC43IFExMTIwIDE5OS45IDExNDAgMjAxLjcgUTExNjAgMjAzLjUgMTE4MCAyMDUuNCBRMTIwMCAyMDcuMyAxMjIwIDIwOC44IFExMjQwIDIxMC40IDEyNjAgMjExLjAgUTEyODAgMjExLjcgMTMwMCAyMTEuMiBRMTMyMCAyMTAuNyAxMzQwIDIwOC45IFExMzYwIDIwNy4yIDEzODAgMjA0LjUgUTE0MDAgMjAxLjcgMTQyMCAxOTguNCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDU4Ii8+PHBhdGggZD0iTTAgMjEzLjkgUTAgMjEzLjkgMjAgMjE0LjggUTQwIDIxNS43IDYwIDIxNy4xIFE4MCAyMTguNSAxMDAgMjE5LjkgUTEyMCAyMjEuNCAxNDAgMjIyLjQgUTE2MCAyMjMuNCAxODAgMjIzLjUgUTIwMCAyMjMuNiAyMjAgMjIyLjggUTI0MCAyMjIuMCAyNjAgMjIwLjMgUTI4MCAyMTguNSAzMDAgMjE2LjMgUTMyMCAyMTQuMCAzNDAgMjExLjcgUTM2MCAyMDkuMyAzODAgMjA3LjUgUTQwMCAyMDUuNiA0MjAgMjA0LjcgUTQ0MCAyMDMuOCA0NjAgMjA0LjIgUTQ4MCAyMDQuNSA1MDAgMjA2LjEgUTUyMCAyMDcuNyA1NDAgMjEwLjMgUTU2MCAyMTMuMCA1ODAgMjE2LjIgUTYwMCAyMTkuNCA2MjAgMjIyLjcgUTY0MCAyMjUuOSA2NjAgMjI4LjYgUTY4MCAyMzEuNCA3MDAgMjMzLjEgUTcyMCAyMzQuOSA3NDAgMjM1LjUgUTc2MCAyMzYuMCA3ODAgMjM1LjUgUTgwMCAyMzQuOSA4MjAgMjMzLjUgUTg0MCAyMzIuMCA4NjAgMjMwLjIgUTg4MCAyMjguNCA5MDAgMjI2LjcgUTkyMCAyMjQuOSA5NDAgMjIzLjggUTk2MCAyMjIuNyA5ODAgMjIyLjQgUTEwMDAgMjIyLjIgMTAyMCAyMjIuOSBRMTA0MCAyMjMuNiAxMDYwIDIyNS4xIFExMDgwIDIyNi41IDExMDAgMjI4LjQgUTExMjAgMjMwLjIgMTE0MCAyMzEuOSBRMTE2MCAyMzMuNSAxMTgwIDIzNC42IFExMjAwIDIzNS42IDEyMjAgMjM1LjYgUTEyNDAgMjM1LjYgMTI2MCAyMzQuNCBRMTI4MCAyMzMuMiAxMzAwIDIzMC45IFExMzIwIDIyOC42IDEzNDAgMjI1LjUgUTEzNjAgMjIyLjUgMTM4MCAyMTkuMSBRMTQwMCAyMTUuOCAxNDIwIDIxMi45IiBzdHJva2Utb3BhY2l0eT0iMC4wODYiLz48cGF0aCBkPSJNMCAyNDAuNiBRMCAyNDAuNiAyMCAyNDIuMCBRNDAgMjQzLjMgNjAgMjQ0LjQgUTgwIDI0NS41IDEwMCAyNDYuMCBRMTIwIDI0Ni41IDE0MCAyNDYuMSBRMTYwIDI0NS43IDE4MCAyNDQuMyBRMjAwIDI0My4wIDIyMCAyNDEuMCBRMjQwIDIzOS4xIDI2MCAyMzYuOSBRMjgwIDIzNC43IDMwMCAyMzIuOCBRMzIwIDIzMC45IDM0MCAyMjkuOCBRMzYwIDIyOC43IDM4MCAyMjguOCBRNDAwIDIyOC45IDQyMCAyMzAuMyBRNDQwIDIzMS43IDQ2MCAyMzQuMyBRNDgwIDIzNi44IDUwMCAyNDAuMiBRNTIwIDI0My41IDU0MCAyNDcuMSBRNTYwIDI1MC43IDU4MCAyNTQuMCBRNjAwIDI1Ny4zIDYyMCAyNTkuNyBRNjQwIDI2Mi4yIDY2MCAyNjMuNCBRNjgwIDI2NC43IDcwMCAyNjQuNyBRNzIwIDI2NC43IDc0MCAyNjMuNyBRNzYwIDI2Mi42IDc4MCAyNjAuOSBRODAwIDI1OS4yIDgyMCAyNTcuMyBRODQwIDI1NS41IDg2MCAyNTMuOSBRODgwIDI1Mi40IDkwMCAyNTEuNyBROTIwIDI1MC45IDk0MCAyNTEuMCBROTYwIDI1MS4xIDk4MCAyNTIuMSBRMTAwMCAyNTMuMCAxMDIwIDI1NC41IFExMDQwIDI1NS45IDEwNjAgMjU3LjQgUTEwODAgMjU4LjkgMTEwMCAyNjAuMCBRMTEyMCAyNjEuMCAxMTQwIDI2MS4yIFExMTYwIDI2MS4zIDExODAgMjYwLjMgUTEyMDAgMjU5LjMgMTIyMCAyNTcuMSBRMTI0MCAyNTUuMCAxMjYwIDI1MS45IFExMjgwIDI0OC45IDEzMDAgMjQ1LjQgUTEzMjAgMjQxLjkgMTM0MCAyMzguNiBRMTM2MCAyMzUuMiAxMzgwIDIzMi42IFExNDAwIDIyOS45IDE0MjAgMjI4LjQiIHN0cm9rZS1vcGFjaXR5PSIwLjExMyIvPjxwYXRoIGQ9Ik0wIDI2NS40IFEwIDI2NS40IDIwIDI2Ni4wIFE0MCAyNjYuNyA2MCAyNjYuNiBRODAgMjY2LjYgMTAwIDI2NS43IFExMjAgMjY0LjggMTQwIDI2My4zIFExNjAgMjYxLjcgMTgwIDI1OS44IFEyMDAgMjU3LjkgMjIwIDI1Ni4yIFEyNDAgMjU0LjUgMjYwIDI1My40IFEyODAgMjUyLjQgMzAwIDI1Mi41IFEzMjAgMjUyLjUgMzQwIDI1My45IFEzNjAgMjU1LjMgMzgwIDI1Ny45IFE0MDAgMjYwLjYgNDIwIDI2NC4yIFE0NDAgMjY3LjggNDYwIDI3MS45IFE0ODAgMjc2LjAgNTAwIDI3OS45IFE1MjAgMjgzLjkgNTQwIDI4Ny4xIFE1NjAgMjkwLjQgNTgwIDI5Mi41IFE2MDAgMjk0LjYgNjIwIDI5NS40IFE2NDAgMjk2LjIgNjYwIDI5NS43IFE2ODAgMjk1LjIgNzAwIDI5My44IFE3MjAgMjkyLjMgNzQwIDI5MC40IFE3NjAgMjg4LjYgNzgwIDI4Ni43IFE4MDAgMjg0LjkgODIwIDI4My41IFE4NDAgMjgyLjIgODYwIDI4MS42IFE4ODAgMjgxLjAgOTAwIDI4MS4zIFE5MjAgMjgxLjUgOTQwIDI4Mi4zIFE5NjAgMjgzLjIgOTgwIDI4NC4yIFExMDAwIDI4NS4zIDEwMjAgMjg2LjAgUTEwNDAgMjg2LjggMTA2MCAyODYuOCBRMTA4MCAyODYuOCAxMTAwIDI4NS44IFExMTIwIDI4NC43IDExNDAgMjgyLjUgUTExNjAgMjgwLjQgMTE4MCAyNzcuMiBRMTIwMCAyNzQuMCAxMjIwIDI3MC4yIFExMjQwIDI2Ni41IDEyNjAgMjYyLjcgUTEyODAgMjU4LjkgMTMwMCAyNTUuNyBRMTMyMCAyNTIuNSAxMzQwIDI1MC40IFExMzYwIDI0OC4yIDEzODAgMjQ3LjUgUTE0MDAgMjQ2LjcgMTQyMCAyNDcuNCIgc3Ryb2tlLW9wYWNpdHk9IjAuMTE5Ii8+PHBhdGggZD0iTTAgMjg3LjEgUTAgMjg3LjEgMjAgMjg2LjcgUTQwIDI4Ni40IDYwIDI4NS4zIFE4MCAyODQuMyAxMDAgMjgyLjkgUTEyMCAyODEuNSAxNDAgMjgwLjEgUTE2MCAyNzguNiAxODAgMjc3LjggUTIwMCAyNzYuOSAyMjAgMjc3LjAgUTI0MCAyNzcuMSAyNjAgMjc4LjUgUTI4MCAyNzkuOSAzMDAgMjgyLjYgUTMyMCAyODUuMyAzNDAgMjg5LjEgUTM2MCAyOTIuOSAzODAgMjk3LjQgUTQwMCAzMDEuOSA0MjAgMzA2LjQgUTQ0MCAzMTAuOSA0NjAgMzE0LjkgUTQ4MCAzMTguOCA1MDAgMzIxLjcgUTUyMCAzMjQuNiA1NDAgMzI2LjEgUTU2MCAzMjcuNiA1ODAgMzI3LjcgUTYwMCAzMjcuOCA2MjAgMzI2LjcgUTY0MCAzMjUuNiA2NjAgMzIzLjcgUTY4MCAzMjEuOCA3MDAgMzE5LjYgUTcyMCAzMTcuNCA3NDAgMzE1LjUgUTc2MCAzMTMuNSA3ODAgMzEyLjIgUTgwMCAzMTAuOSA4MjAgMzEwLjMgUTg0MCAzMDkuOCA4NjAgMzA5LjkgUTg4MCAzMTAuMCA5MDAgMzEwLjQgUTkyMCAzMTAuOSA5NDAgMzExLjMgUTk2MCAzMTEuNiA5ODAgMzExLjUgUTEwMDAgMzExLjMgMTAyMCAzMTAuMiBRMTA0MCAzMDkuMSAxMDYwIDMwNi45IFExMDgwIDMwNC43IDExMDAgMzAxLjUgUTExMjAgMjk4LjMgMTE0MCAyOTQuNCBRMTE2MCAyOTAuNSAxMTgwIDI4Ni40IFExMjAwIDI4Mi4zIDEyMjAgMjc4LjcgUTEyNDAgMjc1LjEgMTI2MCAyNzIuNCBRMTI4MCAyNjkuOCAxMzAwIDI2OC41IFExMzIwIDI2Ny4zIDEzNDAgMjY3LjYgUTEzNjAgMjY3LjggMTM4MCAyNjkuNiBRMTQwMCAyNzEuMyAxNDIwIDI3NC4xIiBzdHJva2Utb3BhY2l0eT0iMC4wOTkiLz48cGF0aCBkPSJNMCAzMDkuMyBRMCAzMDkuMyAyMCAzMDguNCBRNDAgMzA3LjUgNjAgMzA2LjQgUTgwIDMwNS40IDEwMCAzMDQuNiBRMTIwIDMwMy45IDE0MCAzMDQuMCBRMTYwIDMwNC4wIDE4MCAzMDUuMyBRMjAwIDMwNi41IDIyMCAzMDkuMCBRMjQwIDMxMS42IDI2MCAzMTUuMyBRMjgwIDMxOS4wIDMwMCAzMjMuNSBRMzIwIDMyOC4wIDM0MCAzMzIuNyBRMzYwIDMzNy41IDM4MCAzNDEuOCBRNDAwIDM0Ni4yIDQyMCAzNDkuNiBRNDQwIDM1My4wIDQ2MCAzNTUuMSBRNDgwIDM1Ny4xIDUwMCAzNTcuNiBRNTIwIDM1OC4xIDU0MCAzNTcuMyBRNTYwIDM1Ni40IDU4MCAzNTQuNCBRNjAwIDM1Mi41IDYyMCAzNTAuMCBRNjQwIDM0Ny42IDY2MCAzNDUuMSBRNjgwIDM0Mi42IDcwMCAzNDAuNiBRNzIwIDMzOC42IDc0MCAzMzcuMyBRNzYwIDMzNi4wIDc4MCAzMzUuNCBRODAwIDMzNC44IDgyMCAzMzQuOCBRODQwIDMzNC44IDg2MCAzMzQuOCBRODgwIDMzNC45IDkwMCAzMzQuNyBROTIwIDMzNC41IDk0MCAzMzMuNSBROTYwIDMzMi42IDk4MCAzMzAuNiBRMTAwMCAzMjguNyAxMDIwIDMyNS43IFExMDQwIDMyMi43IDEwNjAgMzE5LjAgUTEwODAgMzE1LjMgMTEwMCAzMTEuMyBRMTEyMCAzMDcuMiAxMTQwIDMwMy40IFExMTYwIDI5OS42IDExODAgMjk2LjcgUTEyMDAgMjkzLjggMTIyMCAyOTIuMiBRMTI0MCAyOTAuNiAxMjYwIDI5MC41IFExMjgwIDI5MC41IDEzMDAgMjkyLjAgUTEzMjAgMjkzLjYgMTM0MCAyOTYuNCBRMTM2MCAyOTkuMiAxMzgwIDMwMi44IFExNDAwIDMwNi40IDE0MjAgMzEwLjIiIHN0cm9rZS1vcGFjaXR5PSIwLjA2OSIvPjxwYXRoIGQ9Ik0wIDMzNS4yIFEwIDMzNS4yIDIwIDMzNC41IFE0MCAzMzMuOCA2MCAzMzMuNiBRODAgMzMzLjUgMTAwIDMzNC4zIFExMjAgMzM1LjEgMTQwIDMzNy4xIFExNjAgMzM5LjEgMTgwIDM0Mi4yIFEyMDAgMzQ1LjQgMjIwIDM0OS41IFEyNDAgMzUzLjYgMjYwIDM1OC4yIFEyODAgMzYyLjcgMzAwIDM2Ny4wIFEzMjAgMzcxLjQgMzQwIDM3NC45IFEzNjAgMzc4LjUgMzgwIDM4MC44IFE0MDAgMzgzLjEgNDIwIDM4My45IFE0NDAgMzg0LjcgNDYwIDM4NC4wIFE0ODAgMzgzLjMgNTAwIDM4MS4zIFE1MjAgMzc5LjQgNTQwIDM3Ni44IFE1NjAgMzc0LjEgNTgwIDM3MS4zIFE2MDAgMzY4LjQgNjIwIDM2NS45IFE2NDAgMzYzLjMgNjYwIDM2MS41IFE2ODAgMzU5LjYgNzAwIDM1OC42IFE3MjAgMzU3LjYgNzQwIDM1Ny4yIFE3NjAgMzU2LjkgNzgwIDM1Ni45IFE4MDAgMzU3LjAgODIwIDM1Ny4wIFE4NDAgMzU3LjAgODYwIDM1Ni41IFE4ODAgMzU1LjkgOTAwIDM1NC42IFE5MjAgMzUzLjIgOTQwIDM1MC45IFE5NjAgMzQ4LjYgOTgwIDM0NS40IFExMDAwIDM0Mi4yIDEwMjAgMzM4LjYgUTEwNDAgMzM0LjkgMTA2MCAzMzEuMyBRMTA4MCAzMjcuNyAxMTAwIDMyNC43IFExMTIwIDMyMS43IDExNDAgMzE5LjkgUTExNjAgMzE4LjAgMTE4MCAzMTcuNyBRMTIwMCAzMTcuNCAxMjIwIDMxOC42IFExMjQwIDMxOS45IDEyNjAgMzIyLjUgUTEyODAgMzI1LjEgMTMwMCAzMjguNyBRMTMyMCAzMzIuNCAxMzQwIDMzNi40IFExMzYwIDM0MC40IDEzODAgMzQ0LjIgUTE0MDAgMzQ4LjAgMTQyMCAzNTEuMiIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUxIi8+PHBhdGggZD0iTTAgMzY0LjQgUTAgMzY0LjQgMjAgMzY0LjUgUTQwIDM2NC42IDYwIDM2NS44IFE4MCAzNjcuMCAxMDAgMzY5LjMgUTEyMCAzNzEuNiAxNDAgMzc0LjkgUTE2MCAzNzguMiAxODAgMzgyLjIgUTIwMCAzODYuMSAyMjAgMzkwLjEgUTI0MCAzOTQuMSAyNjAgMzk3LjUgUTI4MCA0MDAuOSAzMDAgNDAzLjMgUTMyMCA0MDUuNyAzNDAgNDA2LjYgUTM2MCA0MDcuNiAzODAgNDA3LjEgUTQwMCA0MDYuNSA0MjAgNDA0LjcgUTQ0MCA0MDIuOSA0NjAgNDAwLjIgUTQ4MCAzOTcuNSA1MDAgMzk0LjUgUTUyMCAzOTEuNSA1NDAgMzg4LjcgUTU2MCAzODUuOSA1ODAgMzgzLjcgUTYwMCAzODEuNiA2MjAgMzgwLjMgUTY0MCAzNzkuMCA2NjAgMzc4LjcgUTY4MCAzNzguMyA3MDAgMzc4LjUgUTcyMCAzNzguNyA3NDAgMzc5LjIgUTc2MCAzNzkuNiA3ODAgMzc5LjggUTgwMCAzNzkuOSA4MjAgMzc5LjQgUTg0MCAzNzguOSA4NjAgMzc3LjUgUTg4MCAzNzYuMCA5MDAgMzczLjcgUTkyMCAzNzEuNCA5NDAgMzY4LjQgUTk2MCAzNjUuNCA5ODAgMzYyLjEgUTEwMDAgMzU4LjkgMTAyMCAzNTYuMCBRMTA0MCAzNTMuMiAxMDYwIDM1MS4yIFExMDgwIDM0OS4yIDExMDAgMzQ4LjYgUTExMjAgMzQ3LjkgMTE0MCAzNDguNyBRMTE2MCAzNDkuNSAxMTgwIDM1MS44IFExMjAwIDM1NC4wIDEyMjAgMzU3LjMgUTEyNDAgMzYwLjYgMTI2MCAzNjQuNSBRMTI4MCAzNjguNCAxMzAwIDM3Mi4yIFExMzIwIDM3Ni4wIDEzNDAgMzc5LjIgUTEzNjAgMzgyLjQgMTM4MCAzODQuNyBRMTQwMCAzODYuOSAxNDIwIDM4OC4xIiBzdHJva2Utb3BhY2l0eT0iMC4wNTgiLz48cGF0aCBkPSJNMCAzOTQuNyBRMCAzOTQuNyAyMCAzOTYuMCBRNDAgMzk3LjMgNjAgMzk5LjcgUTgwIDQwMi4xIDEwMCA0MDUuMiBRMTIwIDQwOC40IDE0MCA0MTEuOCBRMTYwIDQxNS4zIDE4MCA0MTguNSBRMjAwIDQyMS43IDIyMCA0MjQuMCBRMjQwIDQyNi40IDI2MCA0MjcuNiBRMjgwIDQyOC43IDMwMCA0MjguNCBRMzIwIDQyOC4yIDM0MCA0MjYuNiBRMzYwIDQyNS4wIDM4MCA0MjIuNSBRNDAwIDQxOS45IDQyMCA0MTYuOSBRNDQwIDQxMy45IDQ2MCA0MTEuMCBRNDgwIDQwOC4xIDUwMCA0MDUuOSBRNTIwIDQwMy42IDU0MCA0MDIuMiBRNTYwIDQwMC44IDU4MCA0MDAuNSBRNjAwIDQwMC4xIDYyMCA0MDAuNSBRNjQwIDQwMS4wIDY2MCA0MDEuOSBRNjgwIDQwMi44IDcwMCA0MDMuNyBRNzIwIDQwNC42IDc0MCA0MDUuMCBRNzYwIDQwNS40IDc4MCA0MDQuOSBRODAwIDQwNC40IDgyMCA0MDMuMCBRODQwIDQwMS42IDg2MCAzOTkuMyBRODgwIDM5Ny4xIDkwMCAzOTQuNCBROTIwIDM5MS42IDk0MCAzODguOSBROTYwIDM4Ni4yIDk4MCAzODQuMSBRMTAwMCAzODIuMCAxMDIwIDM4MS4wIFExMDQwIDM3OS45IDEwNjAgMzgwLjIgUTEwODAgMzgwLjUgMTEwMCAzODIuMiBRMTEyMCAzODMuOSAxMTQwIDM4Ni43IFExMTYwIDM4OS41IDExODAgMzkzLjAgUTEyMDAgMzk2LjQgMTIyMCA0MDAuMCBRMTI0MCA0MDMuNiAxMjYwIDQwNi43IFExMjgwIDQwOS44IDEzMDAgNDEyLjAgUTEzMjAgNDE0LjMgMTM0MCA0MTUuMyBRMTM2MCA0MTYuNCAxMzgwIDQxNi4zIFExNDAwIDQxNi4zIDE0MjAgNDE1LjQiIHN0cm9rZS1vcGFjaXR5PSIwLjA4NiIvPjxwYXRoIGQ9Ik0wIDQyNi4xIFEwIDQyNi4xIDIwIDQyOC41IFE0MCA0MzEuMCA2MCA0MzQuMCBRODAgNDM2LjkgMTAwIDQzOS45IFExMjAgNDQyLjkgMTQwIDQ0NS4zIFExNjAgNDQ3LjcgMTgwIDQ0OS4xIFEyMDAgNDUwLjUgMjIwIDQ1MC42IFEyNDAgNDUwLjcgMjYwIDQ0OS41IFEyODAgNDQ4LjMgMzAwIDQ0Ni4wIFEzMjAgNDQzLjcgMzQwIDQ0MC44IFEzNjAgNDM3LjkgMzgwIDQzNS4wIFE0MDAgNDMyLjEgNDIwIDQyOS43IFE0NDAgNDI3LjIgNDYwIDQyNS43IFE0ODAgNDI0LjIgNTAwIDQyMy43IFE1MjAgNDIzLjIgNTQwIDQyMy43IFE1NjAgNDI0LjIgNTgwIDQyNS40IFE2MDAgNDI2LjYgNjIwIDQyNy45IFE2NDAgNDI5LjMgNjYwIDQzMC40IFE2ODAgNDMxLjQgNzAwIDQzMS44IFE3MjAgNDMyLjEgNzQwIDQzMS41IFE3NjAgNDMwLjkgNzgwIDQyOS4zIFE4MDAgNDI3LjggODIwIDQyNS41IFE4NDAgNDIzLjIgODYwIDQyMC43IFE4ODAgNDE4LjIgOTAwIDQxNi4wIFE5MjAgNDEzLjggOTQwIDQxMi4zIFE5NjAgNDEwLjkgOTgwIDQxMC43IFExMDAwIDQxMC41IDEwMjAgNDExLjYgUTEwNDAgNDEyLjYgMTA2MCA0MTQuOSBRMTA4MCA0MTcuMSAxMTAwIDQyMC4yIFExMTIwIDQyMy4zIDExNDAgNDI2LjYgUTExNjAgNDMwLjAgMTE4MCA0MzMuMCBRMTIwMCA0MzYuMSAxMjIwIDQzOC4zIFExMjQwIDQ0MC42IDEyNjAgNDQxLjcgUTEyODAgNDQyLjggMTMwMCA0NDIuOCBRMTMyMCA0NDIuOCAxMzQwIDQ0MS44IFExMzYwIDQ0MC43IDEzODAgNDM5LjEgUTE0MDAgNDM3LjYgMTQyMCA0MzUuOSIgc3Ryb2tlLW9wYWNpdHk9IjAuMTEzIi8+PHBhdGggZD0iTTAgNDYwLjkgUTAgNDYwLjkgMjAgNDYzLjggUTQwIDQ2Ni42IDYwIDQ2OS4yIFE4MCA0NzEuNyAxMDAgNDczLjQgUTEyMCA0NzUuMSAxNDAgNDc1LjYgUTE2MCA0NzYuMSAxODAgNDc1LjMgUTIwMCA0NzQuNCAyMjAgNDcyLjQgUTI0MCA0NzAuNCAyNjAgNDY3LjYgUTI4MCA0NjQuOSAzMDAgNDYxLjggUTMyMCA0NTguOCAzNDAgNDU2LjEgUTM2MCA0NTMuMyAzODAgNDUxLjQgUTQwMCA0NDkuNCA0MjAgNDQ4LjUgUTQ0MCA0NDcuNyA0NjAgNDQ3LjggUTQ4MCA0NDguMCA1MDAgNDQ5LjEgUTUyMCA0NTAuMSA1NDAgNDUxLjYgUTU2MCA0NTMuMCA1ODAgNDU0LjQgUTYwMCA0NTUuOCA2MjAgNDU2LjYgUTY0MCA0NTcuNSA2NjAgNDU3LjQgUTY4MCA0NTcuNCA3MDAgNDU2LjMgUTcyMCA0NTUuMyA3NDAgNDUzLjUgUTc2MCA0NTEuNiA3ODAgNDQ5LjMgUTgwMCA0NDcuMCA4MjAgNDQ0LjcgUTg0MCA0NDIuNCA4NjAgNDQwLjggUTg4MCA0MzkuMSA5MDAgNDM4LjUgUTkyMCA0MzcuOCA5NDAgNDM4LjQgUTk2MCA0MzkuMCA5ODAgNDQwLjkgUTEwMDAgNDQyLjcgMTAyMCA0NDUuNiBRMTA0MCA0NDguNCAxMDYwIDQ1MS42IFExMDgwIDQ1NC45IDExMDAgNDU4LjEgUTExMjAgNDYxLjMgMTE0MCA0NjMuOSBRMTE2MCA0NjYuNCAxMTgwIDQ2Ny45IFExMjAwIDQ2OS41IDEyMjAgNDY5LjggUTEyNDAgNDcwLjEgMTI2MCA0NjkuMyBRMTI4MCA0NjguNSAxMzAwIDQ2Ny4wIFExMzIwIDQ2NS40IDEzNDAgNDYzLjUgUTEzNjAgNDYxLjcgMTM4MCA0NjAuMCBRMTQwMCA0NTguNCAxNDIwIDQ1Ny40IiBzdHJva2Utb3BhY2l0eT0iMC4xMTkiLz48cGF0aCBkPSJNMCA0OTkuMCBRMCA0OTkuMCAyMCA1MDEuMCBRNDAgNTAzLjAgNjAgNTAzLjkgUTgwIDUwNC43IDEwMCA1MDQuMiBRMTIwIDUwMy43IDE0MCA1MDEuOSBRMTYwIDUwMC4xIDE4MCA0OTcuMyBRMjAwIDQ5NC41IDIyMCA0OTEuMSBRMjQwIDQ4Ny44IDI2MCA0ODQuNiBRMjgwIDQ4MS40IDMwMCA0NzguNyBRMzIwIDQ3Ni4xIDM0MCA0NzQuNSBRMzYwIDQ3Mi44IDM4MCA0NzIuMyBRNDAwIDQ3MS44IDQyMCA0NzIuMiBRNDQwIDQ3Mi43IDQ2MCA0NzMuOSBRNDgwIDQ3NS4wIDUwMCA0NzYuMyBRNTIwIDQ3Ny43IDU0MCA0NzguNyBRNTYwIDQ3OS43IDU4MCA0ODAuMCBRNjAwIDQ4MC4zIDYyMCA0NzkuNyBRNjQwIDQ3OS4xIDY2MCA0NzcuNiBRNjgwIDQ3Ni4xIDcwMCA0NzQuMSBRNzIwIDQ3Mi4xIDc0MCA0NjkuOSBRNzYwIDQ2Ny43IDc4MCA0NjYuMCBRODAwIDQ2NC4zIDgyMCA0NjMuNCBRODQwIDQ2Mi42IDg2MCA0NjMuMCBRODgwIDQ2My4zIDkwMCA0NjUuMCBROTIwIDQ2Ni43IDk0MCA0NjkuNSBROTYwIDQ3Mi4zIDk4MCA0NzUuNyBRMTAwMCA0NzkuMiAxMDIwIDQ4Mi44IFExMDQwIDQ4Ni40IDEwNjAgNDg5LjUgUTEwODAgNDkyLjcgMTEwMCA0OTQuOSBRMTEyMCA0OTcuMSAxMTQwIDQ5OC4xIFExMTYwIDQ5OS4xIDExODAgNDk4LjggUTEyMDAgNDk4LjYgMTIyMCA0OTcuNCBRMTI0MCA0OTYuMSAxMjYwIDQ5NC4zIFExMjgwIDQ5Mi41IDEzMDAgNDkwLjcgUTEzMjAgNDg4LjkgMTM0MCA0ODcuNSBRMTM2MCA0ODYuMSAxMzgwIDQ4NS41IFExNDAwIDQ4NC44IDE0MjAgNDg1LjEiIHN0cm9rZS1vcGFjaXR5PSIwLjA5OSIvPjwvZz48L3N2Zz4K") center / cover no-repeat,
@@ -632,22 +647,14 @@ body {
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: 999px;
-  background: rgba(255, 255, 255, .06);
-  backdrop-filter: blur(4px);
-}
-.sc-eyebrow::before {
-  content: "";
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #5eead4;
-  box-shadow: 0 0 0 4px rgba(94, 234, 212, .2);
 }
 .sc-hero h1 {
   font-family: var(--display);
   font-weight: 600;
-  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-size: clamp(1.9rem, 3.6vw, 2.8rem);
   letter-spacing: -.02em;
   line-height: 1.05;
-  margin: 20px 0 14px;
+  margin: 16px 0 10px;
   color: #fff;
 }
 .sc-hero h1 em { font-style: normal; color: #9fb4ff; }
@@ -662,24 +669,22 @@ body {
 
 /* ── KPI tiles overlap the hero's lower edge ──────────────────────────── */
 
-.sc-kpis { margin-top: -64px; position: relative; }
+.sc-kpis { margin-top: -56px; position: relative; }
 .sc-kpis .tb-kpi {
   border: 0;
   overflow: hidden;
   box-shadow: var(--tb-shadow);
 }
-.sc-kpis .tb-kpi::before {
-  /* a thin gradient rule across the top of each tile */
-  content: "";
-  position: absolute; inset: 0 0 auto 0; height: 3px;
-  background: linear-gradient(90deg, #3b5bdb, #0f9d8a);
-}
 .sc-kpis .tb-kpi-value {
+  display: block;
   font-family: var(--display);
   font-weight: 600;
   font-size: 2.3em;
   letter-spacing: -.01em;
 }
+/* The KPI's context line: the comparison that makes the number judgeable. */
+.sc-kpi-sub { display: block; margin-top: 2px; font-size: .82em; color: var(--tb-muted); }
+.sc-kpi-sub [data-tb-figure] { font-weight: 600; color: var(--tb-ink); }
 
 /* ── Tabs as pills ────────────────────────────────────────────────────── */
 
@@ -707,18 +712,12 @@ body {
 
 /* ── Cards ────────────────────────────────────────────────────────────── */
 
-.tb-card { border-color: transparent; transition: box-shadow .2s ease, transform .2s ease; }
-.tb-card:hover { box-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 16px 32px -16px rgba(16, 24, 40, .28); }
+.tb-card { border-color: transparent; }
 .tb-card > h2:first-child {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: .95em;
-}
-.tb-card > h2:first-child::before {
-  content: "";
-  width: 8px; height: 8px; border-radius: 2px;
-  background: linear-gradient(135deg, #3b5bdb, #0f9d8a);
 }
 .tb-card h2 button[data-tb-download] { margin-left: auto; }
 
@@ -734,13 +733,12 @@ body {
   margin-top: 48px;
   padding: 24px 28px;
   border-radius: var(--tb-radius);
-  background: linear-gradient(135deg, #0a1330, #1b2f7a);
-  color: rgba(255, 255, 255, .78);
+  border: 1px solid var(--tb-rule);
+  color: var(--tb-muted);
   font-size: .85em;
 }
-.sc-footer h2 { font-family: var(--display); color: #fff; font-size: 1.1rem; margin: 0 0 8px; }
+.sc-footer h2 { font-family: var(--display); color: var(--tb-ink); font-size: 1.1rem; margin: 0 0 8px; }
 .sc-footer ul { margin: 8px 0 0; padding-left: 18px; }
-.sc-footer code { color: #c7d2fe; }
 
 .tb-receipt-btn { font-weight: 600; color: var(--tb-accent); }
 
@@ -751,32 +749,46 @@ body {
 
   <header class="sc-hero">
     <span class="sc-eyebrow">Direct lending · Portfolio showcase</span>
-    <h1>The book at a glance, <em>every number traceable.</em></h1>
+    <!-- The title states the finding, and its numbers are live figures.
+         top_sector is a one-row query (largest first, limit 1); the share is
+         computed over the whole book before the limit applies. -->
+    <h1><span data-tb-figure="value" data-tb-binding="top_sector"
+              data-tb-cell="dim_issuer.sector" id="val-top-sector">Consumer</span>
+      is the largest sector, <em><span data-tb-figure="value"
+              data-tb-binding="top_sector" data-tb-cell="fv_share"
+              data-tb-format="percent" id="val-top-share">26.3%</span>
+      of the book.</em></h1>
     <p class="sc-lede">Three funds, cleaned from a Schedule of Investments and
-      modelled as a star schema. Every figure below is a live query with a
-      fingerprint, including this one: total fair value is
+      modelled as a star schema, holding
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="compact"
-            id="val-fv-inline">285.9M</span>.
-      Open the <strong>Receipt</strong> drawer to see each figure's
-      fingerprint and the sink-contract status.</p>
+            id="val-fv-inline">285.9M</span> at fair value. Every number on this
+      page is a live query with a fingerprint; open the
+      <strong>Receipt</strong> drawer to see them.</p>
   </header>
 
   <div class="tb-grid sc-kpis">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-         data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">
+    <!-- Each KPI carries its context. The book has one as-of date, so the
+         comparison is against cost, not a prior period: a governed measure
+         (unrealized = fair value - cost), never a number typed in. -->
+    <div class="tb-kpi">
       <span class="tb-kpi-label">Fair value</span>
-      <span class="tb-kpi-value">285.9M</span>
+      <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">285.9M</span>
+      <span class="sc-kpi-sub"><span data-tb-figure="value"
+            data-tb-binding="gain" data-tb-cell="unrealized"
+            data-tb-format="compact" id="kpi-gain">-6.3M</span> vs cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="positions" data-tb-format="comma" id="kpi-pos">
       <span class="tb-kpi-label">Positions</span>
       <span class="tb-kpi-value">25</span>
     </div>
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-         data-tb-cell="mark" data-tb-format="percent" id="kpi-mark">
-      <span class="tb-kpi-label">Avg mark</span>
-      <span class="tb-kpi-value">97.9%</span>
+    <div class="tb-kpi">
+      <span class="tb-kpi-label">Mark (fair value ÷ cost)</span>
+      <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="mark" data-tb-format="percent" id="kpi-mark">97.9%</span>
+      <span class="sc-kpi-sub">fair value per dollar of cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-unverified
          data-tb-note="analyst estimate" id="kpi-est">
@@ -815,7 +827,7 @@ body {
                  id="tbl-top"><thead><tr><th>Issuer</th><th class="tb-num">Fair value</th><th class="tb-num">Cost basis</th><th class="tb-num">Mark (FV / cost)</th></tr></thead><tbody data-tb-hydrate><tr><td>Beta Widgets Inc</td><td class="tb-num">$35,736,396</td><td class="tb-num">$35,582,296</td><td class="tb-num">100.4%</td></tr><tr><td>Gamma Software Group, LLC</td><td class="tb-num">$34,166,064</td><td class="tb-num">$36,184,598</td><td class="tb-num">94.4%</td></tr><tr><td>Theta Retail Brands, LLC</td><td class="tb-num">$31,893,679</td><td class="tb-num">$34,937,672</td><td class="tb-num">91.3%</td></tr><tr><td>Omega Media Group, LLC</td><td class="tb-num">$31,339,595</td><td class="tb-num">$30,081,640</td><td class="tb-num">104.2%</td></tr><tr><td>Delta Systems Ltd</td><td class="tb-num">$25,838,794</td><td class="tb-num">$25,711,016</td><td class="tb-num">100.5%</td></tr><tr><td>Mu Financial Services, LLC</td><td class="tb-num">$23,206,263</td><td class="tb-num">$22,494,139</td><td class="tb-num">103.2%</td></tr><tr><td>Zeta Diagnostics Corporation</td><td class="tb-num">$23,201,837</td><td class="tb-num">$24,973,232</td><td class="tb-num">92.9%</td></tr><tr><td>Epsilon Health Partners, LLC</td><td class="tb-num">$19,231,974</td><td class="tb-num">$19,926,402</td><td class="tb-num">96.5%</td></tr></tbody></table>
         </div>
         <div class="tb-card">
-          <h2>Concentration (python-derived)</h2>
+          <h2>Cumulative share, largest sector first (python-derived)</h2>
           <div data-tb-figure="chart" data-tb-binding="concentration"
                data-tb-type="line" data-tb-x="dim_issuer.sector"
                data-tb-y="cum_share" data-tb-value-format="percent"
@@ -830,20 +842,23 @@ body {
         <p class="tb-note">Filter and search subset which stamped rows
           display — they never compute new numbers. The table scrolls past
           the first page of rows; the CSV button exports the stamped bytes
-          verbatim.</p>
+          verbatim. The totals row is its own one-row query, so the model
+          computes it (the mark total is a ratio of totals); it steps aside
+          while a filter or search is on.</p>
         <p>
+          <!-- Search first: finding a row by name is the common task. -->
+          <input data-tb-search data-tb-binding="holdings_detail"
+                 aria-label="Search issuers" placeholder="Search issuers…">
           Sector:
           <select data-tb-filter data-tb-binding="holdings_detail"
                   data-tb-column="dim_issuer.sector"></select>
-          Search issuer:
-          <input data-tb-search data-tb-binding="holdings_detail"
-                 placeholder="type to filter…">
           <button data-tb-download data-tb-binding="holdings_detail"
                   data-tb-label="Download CSV"></button>
         </p>
         <table data-tb-figure="table" data-tb-binding="holdings_detail"
                data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
-               class="tb-table--striped" id="tbl-detail"><thead><tr><th>Issuer</th><th>Sector</th><th class="tb-num">Fair value</th><th class="tb-num">Cost basis</th><th class="tb-num">Mark</th></tr></thead><tbody data-tb-hydrate><tr><td>Beta Widgets Inc</td><td>Industrials</td><td class="tb-num">$35,736,396</td><td class="tb-num">$35,582,296</td><td class="tb-num">100.4%</td></tr><tr><td>Gamma Software Group, LLC</td><td>Software</td><td class="tb-num">$34,166,064</td><td class="tb-num">$36,184,598</td><td class="tb-num">94.4%</td></tr><tr><td>Theta Retail Brands, LLC</td><td>Consumer</td><td class="tb-num">$31,893,679</td><td class="tb-num">$34,937,672</td><td class="tb-num">91.3%</td></tr><tr><td>Omega Media Group, LLC</td><td>Consumer</td><td class="tb-num">$31,339,595</td><td class="tb-num">$30,081,640</td><td class="tb-num">104.2%</td></tr><tr><td>Delta Systems Ltd</td><td>Software</td><td class="tb-num">$25,838,794</td><td class="tb-num">$25,711,016</td><td class="tb-num">100.5%</td></tr><tr><td>Mu Financial Services, LLC</td><td>Financials</td><td class="tb-num">$23,206,263</td><td class="tb-num">$22,494,139</td><td class="tb-num">103.2%</td></tr><tr><td>Zeta Diagnostics Corporation</td><td>Healthcare</td><td class="tb-num">$23,201,837</td><td class="tb-num">$24,973,232</td><td class="tb-num">92.9%</td></tr><tr><td>Epsilon Health Partners, LLC</td><td>Healthcare</td><td class="tb-num">$19,231,974</td><td class="tb-num">$19,926,402</td><td class="tb-num">96.5%</td></tr><tr><td>Sigma Logistics Holdings, LLC</td><td>Industrials</td><td class="tb-num">$16,256,620</td><td class="tb-num">$16,537,298</td><td class="tb-num">98.3%</td></tr><tr><td>Acme Industrial Holdings, LLC</td><td>Industrials</td><td class="tb-num">$16,038,309</td><td class="tb-num">$15,891,790</td><td class="tb-num">100.9%</td></tr><tr><td>Iota Foods Company</td><td>Consumer</td><td class="tb-num">$11,996,473</td><td class="tb-num">$12,542,477</td><td class="tb-num">95.6%</td></tr><tr><td>Kappa Energy Holdings, LLC</td><td>Energy</td><td class="tb-num">$9,960,782</td><td class="tb-num">$10,319,641</td><td class="tb-num">96.5%</td></tr><tr><td>Lambda Pipeline Co</td><td>Energy</td><td class="tb-num">$7,037,659</td><td class="tb-num">$6,994,980</td><td class="tb-num">100.6%</td></tr></tbody></table>
+               data-tb-totals="holdings_total"
+               class="tb-table--striped" id="tbl-detail"><thead><tr><th>Issuer</th><th>Sector</th><th class="tb-num">Fair value</th><th class="tb-num">Cost basis</th><th class="tb-num">Mark</th></tr></thead><tbody data-tb-hydrate><tr><td>Beta Widgets Inc</td><td>Industrials</td><td class="tb-num">$35,736,396</td><td class="tb-num">$35,582,296</td><td class="tb-num">100.4%</td></tr><tr><td>Gamma Software Group, LLC</td><td>Software</td><td class="tb-num">$34,166,064</td><td class="tb-num">$36,184,598</td><td class="tb-num">94.4%</td></tr><tr><td>Theta Retail Brands, LLC</td><td>Consumer</td><td class="tb-num">$31,893,679</td><td class="tb-num">$34,937,672</td><td class="tb-num">91.3%</td></tr><tr><td>Omega Media Group, LLC</td><td>Consumer</td><td class="tb-num">$31,339,595</td><td class="tb-num">$30,081,640</td><td class="tb-num">104.2%</td></tr><tr><td>Delta Systems Ltd</td><td>Software</td><td class="tb-num">$25,838,794</td><td class="tb-num">$25,711,016</td><td class="tb-num">100.5%</td></tr><tr><td>Mu Financial Services, LLC</td><td>Financials</td><td class="tb-num">$23,206,263</td><td class="tb-num">$22,494,139</td><td class="tb-num">103.2%</td></tr><tr><td>Zeta Diagnostics Corporation</td><td>Healthcare</td><td class="tb-num">$23,201,837</td><td class="tb-num">$24,973,232</td><td class="tb-num">92.9%</td></tr><tr><td>Epsilon Health Partners, LLC</td><td>Healthcare</td><td class="tb-num">$19,231,974</td><td class="tb-num">$19,926,402</td><td class="tb-num">96.5%</td></tr><tr><td>Sigma Logistics Holdings, LLC</td><td>Industrials</td><td class="tb-num">$16,256,620</td><td class="tb-num">$16,537,298</td><td class="tb-num">98.3%</td></tr><tr><td>Acme Industrial Holdings, LLC</td><td>Industrials</td><td class="tb-num">$16,038,309</td><td class="tb-num">$15,891,790</td><td class="tb-num">100.9%</td></tr><tr><td>Iota Foods Company</td><td>Consumer</td><td class="tb-num">$11,996,473</td><td class="tb-num">$12,542,477</td><td class="tb-num">95.6%</td></tr><tr><td>Kappa Energy Holdings, LLC</td><td>Energy</td><td class="tb-num">$9,960,782</td><td class="tb-num">$10,319,641</td><td class="tb-num">96.5%</td></tr><tr><td>Lambda Pipeline Co</td><td>Energy</td><td class="tb-num">$7,037,659</td><td class="tb-num">$6,994,980</td><td class="tb-num">100.6%</td></tr></tbody><tfoot><tr class="tb-total"><td>Total</td><td></td><td class="tb-num">$285,904,445</td><td class="tb-num">$292,177,181</td><td class="tb-num">97.9%</td></tr></tfoot></table>
       </div>
     </section>
 
@@ -852,7 +867,7 @@ body {
         <h2>Methodology</h2>
         <p class="tb-note">Author's note: marks are administrator-reported;
           no independent valuation was performed.</p>
-      <div class="tb-methodology"><p class="tb-note">the transform 'holdings' states: issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator&#x27;s spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted</p><p class="tb-note">&middot; rows(fact_holdings): a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank</p><p class="tb-note">measure 'fair_value': Total fair value</p><p class="tb-note">measure 'positions': Position count</p><p class="tb-note">measure 'mark': Fair value / cost</p><p class="tb-note">measure 'cost_basis': Total cost basis</p></div></section>
+      <div class="tb-methodology"><p class="tb-note">the transform 'holdings' states: issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator&#x27;s spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted</p><p class="tb-note">&middot; rows(fact_holdings): a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank</p><p class="tb-note">measure 'fair_value': Total fair value</p><p class="tb-note">measure 'positions': Position count</p><p class="tb-note">measure 'mark': Fair value / cost</p><p class="tb-note">measure 'fv_share': Fair value as % of total</p><p class="tb-note">measure 'unrealized': Unrealized gain / loss</p><p class="tb-note">measure 'cost_basis': Total cost basis</p></div></section>
     </section>
   </div>
 
@@ -1791,8 +1806,47 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
   /* Rebuild a hydrated table's body from *rows*. Labels and formats were
    * derived ONCE from the full stamped rows, so a filtered subset can never
    * flip a column's presentation between control states. */
+  /* data-tb-totals names a one-row binding the model computed (the table's
+   * query with no dimensions): its values fill a <tfoot> row. Nothing is
+   * summed here — a ratio's total is the model's ratio of totals. */
+  function totalsRow(el, cols, numeric, formats) {
+    var name = attr(el, "data-tb-totals");
+    if (!name) return null;
+    var old = el.querySelector("tfoot");
+    if (old) el.removeChild(old);           /* the server-rendered copy */
+    var block = readBlock(name);
+    if (!block || block.rows.length !== 1) return null;
+    var row = block.rows[0];
+    if (!el.querySelector("tbody")) el.appendChild(document.createElement("tbody"));
+    var tfoot = document.createElement("tfoot");
+    var tr = document.createElement("tr");
+    tr.className = "tb-total";
+    cols.forEach(function (col, i) {
+      var td = document.createElement("td");
+      if (block.cols.indexOf(col) !== -1) {
+        td.className = "tb-num";
+        var n = toNum(row[col]), text = row[col] === undefined ? "" : row[col];
+        var fmt = formats[col] || deriveFormat(block.rows, col);
+        if (n !== null && fmt) {
+          var formatted = applyNamedFormat(n, fmt);
+          if (formatted !== null) text = formatted;
+        }
+        td.textContent = text;
+      } else if (i === 0 && !numeric[col]) {
+        td.textContent = "Total";
+      }
+      tr.appendChild(td);
+    });
+    tfoot.appendChild(tr);
+    el.appendChild(tfoot);
+    return tfoot;
+  }
+
   function renderBody(entry, rows) {
     var el = entry.el;
+    /* A grand total under a filtered view would not add up to the rows
+     * shown, so the totals row steps aside while a filter or search is on. */
+    if (entry.tfoot) entry.tfoot.hidden = rows.length !== entry.rowCount;
     var tbody = el.querySelector("tbody");
     if (!tbody) {
       tbody = document.createElement("tbody");
@@ -1845,6 +1899,19 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
     return out;
   }
 
+  /* {binding: {column: format}} for measures the model declares a format
+   * on — a presentation block, not part of the fingerprinted data. */
+  var _declaredFormats = null;
+  function declaredFormats() {
+    if (_declaredFormats) return _declaredFormats;
+    _declaredFormats = {};
+    try {
+      var el = document.getElementById("tracebi-formats");
+      if (el) _declaredFormats = JSON.parse(el.textContent) || {};
+    } catch (e) { /* defensive */ }
+    return _declaredFormats;
+  }
+
   function hydrateTables() {
     figureEls("table").forEach(function (el) {
       try {
@@ -1875,11 +1942,14 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
          * and format; a format applies only to a numeric column. */
         var labels = columnMap(attr(el, "data-tb-labels"));
         var ownFormats = columnMap(attr(el, "data-tb-formats"));
+        /* Then a format the model declares on the measure (tracebi-formats,
+         * written at build), then the shape guess. */
+        var declared = declaredFormats()[binding] || {};
         var numeric = {}, formats = {};
         cols.forEach(function (col) {
           numeric[col] = isNumericColumn(rows, col);
           formats[col] = numeric[col]
-            ? (ownFormats[col] || deriveFormat(rows, col)) : null;
+            ? (ownFormats[col] || declared[col] || deriveFormat(rows, col)) : null;
         });
 
         /* Build via createElement/textContent only — data never becomes
@@ -1899,6 +1969,7 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
         var entry = { el: el, binding: binding, cols: cols,
                       numeric: numeric, formats: formats,
                       rowCount: rows.length };
+        entry.tfoot = totalsRow(el, cols, numeric, formats);
         _tables.push(entry);
         renderBody(entry, filteredRows(binding));
       } catch (e) { /* defensive */ }
@@ -2050,6 +2121,16 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
         if (s.label && s.label.overflow == null) {
           s.label.overflow = "break";
           s.label.width = 110;
+        }
+        /* In a narrow container, outside labels run off the edge: name the
+         * slices in a legend below instead (hover still shows each value). */
+        if (width && width < 560) {
+          s.label = { show: false };
+          s.labelLine = { show: false };
+          s.center = ["50%", "44%"];
+          option.legend = option.legend || {
+            show: true, bottom: 0, icon: "circle", itemWidth: 10, itemHeight: 10
+          };
         }
       }
     });
@@ -2682,30 +2763,149 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
     return div;
   }
 
-  function receiptFigureRow(drawer, fig) {
+  /* The page element this figure record names, if the build placed one. */
+  function receiptPageEl(fig) {
+    if (!fig || !fig.id || typeof document === "undefined") return null;
+    var el = document.getElementById(fig.id);
+    return (el && el.getAttribute) ? el : null;
+  }
+
+  /* Rows on the page, or the stamped block when the figure has no table. */
+  function receiptRowCount(el, binding) {
+    if (el && el.tagName === "TABLE") {
+      var body = el.querySelector("tbody");
+      if (body) {
+        var n = 0, i, row;
+        for (i = 0; i < body.children.length; i++) {
+          row = body.children[i];
+          if ((" " + (row.className || "") + " ").indexOf(" tb-empty ") !== -1) {
+            continue;
+          }
+          n++;
+        }
+        return n;
+      }
+    }
+    var block = binding ? readBlock(binding) : null;
+    if (block && block.rows) return block.rows.length;
+    return null;
+  }
+
+  function receiptQuery(receipt, fig) {
+    if (fig.query && typeof fig.query === "object") return fig.query;
+    var bindings = receipt && receipt.bindings;
+    var rec = (bindings && fig.binding) ? bindings[fig.binding] : null;
+    if (!rec || typeof rec !== "object") return null;
+    return (rec.query && typeof rec.query === "object") ? rec.query : rec;
+  }
+
+  function humanList(items) {
+    if (!items || !items.length) return "";
+    var out = [], i;
+    for (i = 0; i < items.length; i++) out.push(humanise(String(items[i])));
+    return out.join(", ");
+  }
+
+  function filterPhrase(filters) {
+    if (!filters || typeof filters !== "object") return "";
+    var parts = [], k, v, op, bits;
+    for (k in filters) {
+      if (!Object.prototype.hasOwnProperty.call(filters, k)) continue;
+      v = filters[k];
+      if (v && typeof v === "object") {
+        bits = [];
+        for (op in v) {
+          if (Object.prototype.hasOwnProperty.call(v, op)) {
+            bits.push(op + " " + v[op]);
+          }
+        }
+        parts.push(humanise(k) + " " + bits.join(" "));
+      } else {
+        parts.push(humanise(k) + " is " + v);
+      }
+    }
+    return parts.join(", ");
+  }
+
+  function receiptFigureRow(drawer, fig, receipt) {
     if (!fig || !fig.id) return;
+    var page = receiptPageEl(fig);
+    var kind = fig.kind || (page ? attr(page, "data-tb-figure") : null);
+    var binding = fig.binding || (page ? attr(page, "data-tb-binding") : null);
+    var cell = fig.cell || (page ? attr(page, "data-tb-cell") : null);
+    if (!cell && page && kind === "chart") {
+      var y = attr(page, "data-tb-y");
+      if (y) cell = splitList(y)[0];
+    }
+
     var row = document.createElement("div");
     row.className = "tb-receipt-row";
-    var label = document.createElement("span");
-    var text = String(fig.id);
-    if (fig.kind) text += " · " + fig.kind;
-    if (!fig.unverified && fig.binding) text += " · " + fig.binding;
-    label.textContent = text;
-    row.appendChild(label);
+    var title = document.createElement("div");
+    title.className = "tb-receipt-title";
+    var headline;
+    if (kind === "value") {
+      var labelEl = page ? page.querySelector(".tb-kpi-label") : null;
+      var pageLabel = labelEl ? trim(labelEl.textContent || "") : "";
+      /* A column uses the same words as the page's headings. A literal
+       * figure has no column, so the label already printed on it is the
+       * name. */
+      var label = cell ? humanise(cell)
+        : (pageLabel || (binding ? humanise(binding) : humanise(fig.id)));
+      var shownEl = page ? (page.querySelector(".tb-kpi-value") || page) : null;
+      var shown = shownEl ? trim(shownEl.textContent || "") : "";
+      headline = shown ? (label + " · " + shown) : label;
+    } else if (kind === "table" || kind === "chart") {
+      headline = (binding ? humanise(binding) : humanise(fig.id)) + " · " + kind;
+      var count = receiptRowCount(page, binding);
+      if (count !== null) {
+        headline += ", " + count + (count === 1 ? " row" : " rows");
+      }
+    } else {
+      headline = binding ? humanise(binding) : humanise(fig.id);
+      if (kind) headline += " · " + kind;
+    }
+    title.textContent = headline;
     if (fig.unverified) {
       /* The recorded status in its existing tone — display, not judgment. */
       var badge = document.createElement("span");
       badge.className = "tb-badge tb-badge--unverified";
       badge.textContent = "unverified";
-      row.appendChild(badge);
+      title.appendChild(badge);
     }
+    row.appendChild(title);
+
+    var query = receiptQuery(receipt, fig);
+    var measures = (query && query.measures && query.measures.length)
+      ? query.measures : (cell ? [cell] : []);
+    var dims = (query && query.dimensions) || [];
+    var from = humanList(measures);
+    if (dims.length) from += (from ? ", by " : "by ") + humanList(dims);
+    var filters = filterPhrase(query && query.filters);
+    if (filters) from += (from ? ", " : "") + filters;
+    if (from) {
+      var quiet = document.createElement("div");
+      quiet.className = "tb-receipt-from";
+      quiet.textContent = from;
+      row.appendChild(quiet);
+    }
+
+    var details = document.createElement("details");
+    details.className = "tb-receipt-details";
+    var summary = document.createElement("summary");
+    summary.textContent = "Details";
+    details.appendChild(summary);
+    var meta = String(fig.id);
+    if (kind) meta += " · " + kind;
+    if (binding) meta += " · " + binding;
+    receiptLine(details, meta, "tb-receipt-meta");
     if (fig.fingerprint) {
       var fp = document.createElement("span");
       fp.className = "tb-receipt-fp";
-      fp.textContent = String(fig.fingerprint).slice(0, 12);
+      fp.textContent = String(fig.fingerprint);
       fp.title = String(fig.fingerprint);
-      row.appendChild(fp);
+      details.appendChild(fp);
     }
+    row.appendChild(details);
     drawer.appendChild(row);
   }
 
@@ -2726,7 +2926,7 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
 
     var figures = receipt.figures || [], i;
     for (i = 0; i < figures.length; i++) {
-      try { receiptFigureRow(drawer, figures[i]); } catch (e) { /* defensive */ }
+      try { receiptFigureRow(drawer, figures[i], receipt); } catch (e) { /* defensive */ }
     }
 
     var contracts = receipt.transform_contracts, table, rec, status;
@@ -2928,15 +3128,19 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
 </script>
 <script id="tracebi-data-kpis" type="application/json">{"name": "kpis", "columns": "['fair_value', 'positions', 'cost_basis', 'mark']", "dtypes": "['float64', 'int64', 'float64', 'float64']", "csv": "fair_value,positions,cost_basis,mark\n285904445.21,25,292177180.59999996,0.9785310564736144\n"}</script>
 <script id="tracebi-data-by_sector" type="application/json">{"name": "by_sector", "columns": "['dim_issuer.sector', 'fair_value']", "dtypes": "['object', 'float64']", "csv": "dim_issuer.sector,fair_value\nConsumer,75229746.56\nIndustrials,68031325.21000001\nSoftware,60004857.70999999\nHealthcare,42433810.57\nFinancials,23206263.49\nEnergy,16998441.67\n"}</script>
+<script id="tracebi-data-top_sector" type="application/json">{"name": "top_sector", "columns": "['dim_issuer.sector', 'fair_value', 'fv_share']", "dtypes": "['object', 'float64', 'float64']", "csv": "dim_issuer.sector,fair_value,fv_share\nConsumer,75229746.56,0.26312898529696843\n"}</script>
+<script id="tracebi-data-gain" type="application/json">{"name": "gain", "columns": "['unrealized']", "dtypes": "['float64']", "csv": "unrealized\n-6272735.390000008\n"}</script>
 <script id="tracebi-data-by_fund" type="application/json">{"name": "by_fund", "columns": "['dim_fund.fund', 'fair_value']", "dtypes": "['object', 'float64']", "csv": "dim_fund.fund,fair_value\nCedar Credit Partners,119535118.07999998\nMeridian Direct Lending,88607874.83\nHarbor Point BDC,77761452.30000001\n"}</script>
 <script id="tracebi-data-holdings_detail" type="application/json">{"name": "holdings_detail", "columns": "['dim_issuer.issuer', 'dim_issuer.sector', 'fair_value', 'cost_basis', 'mark']", "dtypes": "['object', 'object', 'float64', 'float64', 'float64']", "csv": "dim_issuer.issuer,dim_issuer.sector,fair_value,cost_basis,mark\nBeta Widgets Inc,Industrials,35736396.18,35582296.03,1.0043308096214498\n\"Gamma Software Group, LLC\",Software,34166063.769999996,36184597.85,0.9442156552805241\n\"Theta Retail Brands, LLC\",Consumer,31893679.020000003,34937672.45,0.9128736055798703\n\"Omega Media Group, LLC\",Consumer,31339594.54,30081639.720000003,1.0418180269330077\nDelta Systems Ltd,Software,25838793.939999998,25711016.470000003,1.0049697556745407\n\"Mu Financial Services, LLC\",Financials,23206263.49,22494138.83,1.0316582317456962\nZeta Diagnostics Corporation,Healthcare,23201836.92,24973231.92,0.9290682517315124\n\"Epsilon Health Partners, LLC\",Healthcare,19231973.65,19926401.76,0.9651503508579261\n\"Sigma Logistics Holdings, LLC\",Industrials,16256620.1,16537297.57,0.9830276096313842\n\"Acme Industrial Holdings, LLC\",Industrials,16038308.93,15891789.84,1.0092197978626176\nIota Foods Company,Consumer,11996473.0,12542477.2,0.956467594774659\n\"Kappa Energy Holdings, LLC\",Energy,9960782.43,10319641.3,0.9652256450037657\nLambda Pipeline Co,Energy,7037659.24,6994979.66,1.0061014587710753\n"}</script>
+<script id="tracebi-data-holdings_total" type="application/json">{"name": "holdings_total", "columns": "['fair_value', 'cost_basis', 'mark']", "dtypes": "['float64', 'float64', 'float64']", "csv": "fair_value,cost_basis,mark\n285904445.21,292177180.59999996,0.9785310564736144\n"}</script>
 <script id="tracebi-data-top_issuers" type="application/json">{"name": "top_issuers", "columns": "['dim_issuer.issuer', 'fair_value', 'cost_basis', 'mark']", "dtypes": "['object', 'float64', 'float64', 'float64']", "csv": "dim_issuer.issuer,fair_value,cost_basis,mark\nBeta Widgets Inc,35736396.18,35582296.03,1.0043308096214498\n\"Gamma Software Group, LLC\",34166063.769999996,36184597.85,0.9442156552805241\n\"Theta Retail Brands, LLC\",31893679.020000003,34937672.45,0.9128736055798703\n\"Omega Media Group, LLC\",31339594.54,30081639.720000003,1.0418180269330077\nDelta Systems Ltd,25838793.939999998,25711016.470000003,1.0049697556745407\n\"Mu Financial Services, LLC\",23206263.49,22494138.83,1.0316582317456962\nZeta Diagnostics Corporation,23201836.92,24973231.92,0.9290682517315124\n\"Epsilon Health Partners, LLC\",19231973.65,19926401.76,0.9651503508579261\n"}</script>
 <script id="tracebi-data-concentration" type="application/json">{"name": "concentration", "columns": "['dim_issuer.sector', 'cum_share']", "dtypes": "['object', 'float64']", "csv": "dim_issuer.sector,cum_share\nConsumer,0.2631\nIndustrials,0.5011\nSoftware,0.711\nHealthcare,0.8594\nFinancials,0.9405\nEnergy,1.0\n"}</script>
-<script id="tb-semantic-contract-portfolio_model" type="application/json">{"model": "portfolio_model", "facts": [{"name": "fact_holdings", "table": "fact_holdings", "measures": ["cost", "fair_value", "par", "spread_bps"], "foreign_keys": {"dim_fund": "fund_id", "dim_issuer": "issuer_id"}}], "dimensions": [{"name": "dim_fund", "table": "dim_fund", "key": "fund_id", "attributes": ["fund"]}, {"name": "dim_issuer", "table": "dim_issuer", "key": "issuer_id", "attributes": ["issuer", "sector"]}], "measures": [{"agg": "sum", "column": "cost", "description": "Total cost basis", "format": "currency0", "kind": "simple", "name": "cost_basis"}, {"agg": "sum", "column": "fair_value", "description": "Total fair value", "format": "currency0", "kind": "simple", "name": "fair_value"}, {"description": "Fair value / cost", "format": "percent", "kind": "ratio", "name": "mark", "ratio": ["fair_value", "cost_basis"]}, {"agg": "count", "column": "holding_id", "description": "Position count", "kind": "simple", "name": "positions"}], "tables": [{"name": "dim_fund", "connector": "warehouse", "source": "dim_fund"}, {"name": "dim_issuer", "connector": "warehouse", "source": "dim_issuer"}, {"name": "fact_holdings", "connector": "warehouse", "source": "fact_holdings"}]}</script>
-<script id="tracebi-receipt" type="application/json">{"report": "Portfolio Showcase", "rendered_at": "2026-09-23T02:06:31.833741+00:00", "git_sha": "822b1b303f96acfb1e5b988e5e6667b34d13e76d", "figures": [{"id": "val-fv-inline", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-fv", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-pos", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-mark", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-est", "kind": "value", "unverified": true}, {"id": "chart-sector", "kind": "chart", "binding": "by_sector", "fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928", "model": "portfolio_model"}, {"id": "fig-chart_fund", "kind": "chart", "binding": "by_fund", "fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4", "model": "portfolio_model"}, {"id": "tbl-top", "kind": "table", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-conc", "kind": "chart", "binding": "concentration", "fingerprint": "af9296404e9ca276e4beb71a93bc4deb12e6271d82c0456d3db3f89558326e2d"}, {"id": "tbl-detail", "kind": "table", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}], "transform_contracts": {"dim_fund": "satisfied", "dim_issuer": "satisfied", "fact_holdings": "satisfied"}, "semantic_contract_models": ["portfolio_model"], "methodology": true}</script>
+<script id="tb-semantic-contract-portfolio_model" type="application/json">{"model": "portfolio_model", "facts": [{"name": "fact_holdings", "table": "fact_holdings", "measures": ["cost", "fair_value", "par", "spread_bps"], "foreign_keys": {"dim_fund": "fund_id", "dim_issuer": "issuer_id"}}], "dimensions": [{"name": "dim_fund", "table": "dim_fund", "key": "fund_id", "attributes": ["fund"]}, {"name": "dim_issuer", "table": "dim_issuer", "key": "issuer_id", "attributes": ["issuer", "sector"]}], "measures": [{"agg": "sum", "column": "cost", "description": "Total cost basis", "format": "currency0", "kind": "simple", "name": "cost_basis"}, {"agg": "sum", "column": "fair_value", "description": "Total fair value", "format": "currency0", "kind": "simple", "name": "fair_value"}, {"description": "Fair value as % of total", "format": "percent", "kind": "share", "name": "fv_share"}, {"description": "Fair value / cost", "format": "percent", "kind": "ratio", "name": "mark", "ratio": ["fair_value", "cost_basis"]}, {"agg": "count", "column": "holding_id", "description": "Position count", "kind": "simple", "name": "positions"}, {"agg": "sum", "description": "Unrealized gain / loss", "expr": "fair_value - cost", "format": "currency0", "kind": "expression", "name": "unrealized"}], "tables": [{"name": "dim_fund", "connector": "warehouse", "source": "dim_fund"}, {"name": "dim_issuer", "connector": "warehouse", "source": "dim_issuer"}, {"name": "fact_holdings", "connector": "warehouse", "source": "fact_holdings"}]}</script>
+<script id="tracebi-receipt" type="application/json">{"report": "Portfolio Showcase", "rendered_at": "2026-09-24T18:25:36.675190+00:00", "git_sha": "2645a1018c5df282efa696fddc30fefc03a1e407", "figures": [{"id": "val-top-sector", "kind": "value", "binding": "top_sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-top-share", "kind": "value", "binding": "top_sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-fv-inline", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-fv", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-gain", "kind": "value", "binding": "gain", "fingerprint": "80f1f2b286509fca72fe4494389fe3f8b1852251563c7e3f1e6a5d79c367cbbb", "model": "portfolio_model"}, {"id": "kpi-pos", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-mark", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-est", "kind": "value", "unverified": true}, {"id": "chart-sector", "kind": "chart", "binding": "by_sector", "fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928", "model": "portfolio_model"}, {"id": "fig-chart_fund", "kind": "chart", "binding": "by_fund", "fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4", "model": "portfolio_model"}, {"id": "tbl-top", "kind": "table", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-conc", "kind": "chart", "binding": "concentration", "fingerprint": "af9296404e9ca276e4beb71a93bc4deb12e6271d82c0456d3db3f89558326e2d"}, {"id": "tbl-detail", "kind": "table", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}], "transform_contracts": {"dim_fund": "satisfied", "dim_issuer": "satisfied", "fact_holdings": "satisfied"}, "semantic_contract_models": ["portfolio_model"], "methodology": true}</script>
+<script id="tracebi-formats" type="application/json">{"kpis": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "by_sector": {"fair_value": "currency0"}, "top_sector": {"fair_value": "currency0", "fv_share": "percent"}, "gain": {"unrealized": "currency0"}, "by_fund": {"fair_value": "currency0"}, "holdings_detail": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "holdings_total": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "top_issuers": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}}</script>
 <script id="tracebi-selection" type="application/json">{"report": "portfolio_showcase", "model": "portfolio_model", "filters": {}}</script>
-<script id="tracebi-grain" type="application/json">{"facts": {"fact_holdings": {"rows": [{"dim_issuer.sector": "Consumer", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Iota Foods Company", "fair_value": 11996473.0, "holding_id": 23, "cost": 12542477.2}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Theta Retail Brands, LLC", "fair_value": 18756354.35, "holding_id": 20, "cost": 20323891.99}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Omega Media Group, LLC", "fair_value": 12484472.23, "holding_id": 18, "cost": 12071718.46}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Theta Retail Brands, LLC", "fair_value": 13137324.67, "holding_id": 9, "cost": 14613780.46}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Omega Media Group, LLC", "fair_value": 18855122.31, "holding_id": 13, "cost": 18009921.26}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Kappa Energy Holdings, LLC", "fair_value": 717703.12, "holding_id": 24, "cost": 715212.06}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Lambda Pipeline Co", "fair_value": 3279012.0, "holding_id": 25, "cost": 3255252.59}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Kappa Energy Holdings, LLC", "fair_value": 9243079.31, "holding_id": 5, "cost": 9604429.24}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Lambda Pipeline Co", "fair_value": 3758647.24, "holding_id": 7, "cost": 3739727.07}, {"dim_issuer.sector": "Financials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Mu Financial Services, LLC", "fair_value": 23206263.49, "holding_id": 3, "cost": 22494138.83}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Epsilon Health Partners, LLC", "fair_value": 19231973.65, "holding_id": 1, "cost": 19926401.76}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Zeta Diagnostics Corporation", "fair_value": 6545393.0, "holding_id": 8, "cost": 7091560.0}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Zeta Diagnostics Corporation", "fair_value": 16656443.92, "holding_id": 10, "cost": 17881671.92}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 8357072.41, "holding_id": 17, "cost": 8311862.67}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 20087926.55, "holding_id": 12, "cost": 19520406.44}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Sigma Logistics Holdings, LLC", "fair_value": 8114795.85, "holding_id": 19, "cost": 8401514.88}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 2858657.41, "holding_id": 15, "cost": 2970828.24}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 9838721.63, "holding_id": 14, "cost": 10201420.59}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Sigma Logistics Holdings, LLC", "fair_value": 8141824.25, "holding_id": 2, "cost": 8135782.69}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 4822579.11, "holding_id": 21, "cost": 4609098.93}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 5809748.0, "holding_id": 16, "cost": 5860469.0}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Delta Systems Ltd", "fair_value": 19582802.49, "holding_id": 6, "cost": 18790498.26}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Gamma Software Group, LLC", "fair_value": 12690016.66, "holding_id": 11, "cost": 13415372.58}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Gamma Software Group, LLC", "fair_value": 21476047.11, "holding_id": 4, "cost": 22769225.27}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Delta Systems Ltd", "fair_value": 6255991.45, "holding_id": 22, "cost": 6920518.21}]}}, "bindings": {"kpis": {"offline": true, "fact": "fact_holdings", "dimensions": [], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "positions", "source": "holding_id", "func": "count"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [], "limit": null, "binding_filters": {}}, "by_sector": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.sector"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}], "ratios": [], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "by_fund": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_fund.fund"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}], "ratios": [], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "holdings_detail": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "top_issuers": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.issuer"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [{"column": "fair_value", "desc": true}], "limit": 8, "binding_filters": {}}}}</script>
-<script id="tracebi-figures" type="application/json">{"badges": false, "figures": [{"id": "val-fv-inline", "provenance": "verified"}, {"id": "kpi-fv", "provenance": "verified"}, {"id": "kpi-pos", "provenance": "verified"}, {"id": "kpi-mark", "provenance": "verified"}, {"id": "kpi-est", "provenance": "unverified", "note": "analyst estimate"}, {"id": "chart-sector", "provenance": "verified"}, {"id": "fig-chart_fund", "provenance": "verified"}, {"id": "tbl-top", "provenance": "verified"}, {"id": "chart-conc", "provenance": "derived"}, {"id": "tbl-detail", "provenance": "verified"}]}</script>
+<script id="tracebi-grain" type="application/json">{"facts": {"fact_holdings": {"rows": [{"dim_issuer.sector": "Consumer", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Iota Foods Company", "fair_value": 11996473.0, "holding_id": 23, "cost": 12542477.2}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Theta Retail Brands, LLC", "fair_value": 18756354.35, "holding_id": 20, "cost": 20323891.99}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Omega Media Group, LLC", "fair_value": 12484472.23, "holding_id": 18, "cost": 12071718.46}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Theta Retail Brands, LLC", "fair_value": 13137324.67, "holding_id": 9, "cost": 14613780.46}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Omega Media Group, LLC", "fair_value": 18855122.31, "holding_id": 13, "cost": 18009921.26}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Kappa Energy Holdings, LLC", "fair_value": 717703.12, "holding_id": 24, "cost": 715212.06}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Lambda Pipeline Co", "fair_value": 3279012.0, "holding_id": 25, "cost": 3255252.59}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Kappa Energy Holdings, LLC", "fair_value": 9243079.31, "holding_id": 5, "cost": 9604429.24}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Lambda Pipeline Co", "fair_value": 3758647.24, "holding_id": 7, "cost": 3739727.07}, {"dim_issuer.sector": "Financials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Mu Financial Services, LLC", "fair_value": 23206263.49, "holding_id": 3, "cost": 22494138.83}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Epsilon Health Partners, LLC", "fair_value": 19231973.65, "holding_id": 1, "cost": 19926401.76}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Zeta Diagnostics Corporation", "fair_value": 6545393.0, "holding_id": 8, "cost": 7091560.0}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Zeta Diagnostics Corporation", "fair_value": 16656443.92, "holding_id": 10, "cost": 17881671.92}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 8357072.41, "holding_id": 17, "cost": 8311862.67}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 20087926.55, "holding_id": 12, "cost": 19520406.44}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Sigma Logistics Holdings, LLC", "fair_value": 8114795.85, "holding_id": 19, "cost": 8401514.88}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 2858657.41, "holding_id": 15, "cost": 2970828.24}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 9838721.63, "holding_id": 14, "cost": 10201420.59}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Sigma Logistics Holdings, LLC", "fair_value": 8141824.25, "holding_id": 2, "cost": 8135782.69}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 4822579.11, "holding_id": 21, "cost": 4609098.93}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 5809748.0, "holding_id": 16, "cost": 5860469.0}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Delta Systems Ltd", "fair_value": 19582802.49, "holding_id": 6, "cost": 18790498.26}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Gamma Software Group, LLC", "fair_value": 12690016.66, "holding_id": 11, "cost": 13415372.58}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Gamma Software Group, LLC", "fair_value": 21476047.11, "holding_id": 4, "cost": 22769225.27}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Delta Systems Ltd", "fair_value": 6255991.45, "holding_id": 22, "cost": 6920518.21}]}}, "bindings": {"kpis": {"offline": true, "fact": "fact_holdings", "dimensions": [], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "positions", "source": "holding_id", "func": "count"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [], "limit": null, "binding_filters": {}}, "by_sector": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.sector"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}], "ratios": [], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "top_sector": {"offline": false, "reason": "share", "fact": "fact_holdings"}, "gain": {"offline": false, "reason": "expression", "fact": "fact_holdings"}, "by_fund": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_fund.fund"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}], "ratios": [], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "holdings_detail": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "holdings_total": {"offline": true, "fact": "fact_holdings", "dimensions": [], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [], "limit": null, "binding_filters": {}}, "top_issuers": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.issuer"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [{"column": "fair_value", "desc": true}], "limit": 8, "binding_filters": {}}}}</script>
+<script id="tracebi-figures" type="application/json">{"badges": false, "figures": [{"id": "val-top-sector", "provenance": "verified"}, {"id": "val-top-share", "provenance": "verified"}, {"id": "val-fv-inline", "provenance": "verified"}, {"id": "kpi-fv", "provenance": "verified"}, {"id": "kpi-gain", "provenance": "verified"}, {"id": "kpi-pos", "provenance": "verified"}, {"id": "kpi-mark", "provenance": "verified"}, {"id": "kpi-est", "provenance": "unverified", "note": "analyst estimate"}, {"id": "chart-sector", "provenance": "verified"}, {"id": "fig-chart_fund", "provenance": "verified"}, {"id": "tbl-top", "provenance": "verified"}, {"id": "chart-conc", "provenance": "derived"}, {"id": "tbl-detail", "provenance": "verified"}]}</script>
 <!-- script.js: this report's own script -->
 <script>
 // ─────────────────────────────────────────────────────────────────────────
@@ -2944,42 +3148,32 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
 //
 // tracebi.configureChart(id, patch) deep-merges a patch into the ECharts
 // option the runtime built for that figure. It can restyle anything
-// (colours, gradients, smoothing, labels) but never re-source: every
-// series keeps the data read from the embedded, fingerprinted binding.
+// (colours, labels, spacing) but never re-source: every series keeps the
+// data read from the embedded, fingerprinted binding.
+//
+// What it is used for here is deliberately small. Gradient bars and a
+// smoothed, filled cumulative line used to live in this file; they were
+// decoration, and smoothing a cumulative across categories draws values that
+// do not exist (`tracebi knowledge design-honest-axes`). Restyle to clarify,
+// never to decorate.
 //
 // Library: Apache ECharts (Apache-2.0), inlined because report.json lists
-// "libs": ["echarts"]. Gradients use ECharts' plain-object form, so no
-// ECharts API is called directly.
+// "libs": ["echarts"].
 // ─────────────────────────────────────────────────────────────────────────
 (function () {
   var tb = window.tracebi;
 
-  function vertical(top, bottom) {
-    return {
-      type: "linear", x: 0, y: 0, x2: 0, y2: 1,
-      colorStops: [{ offset: 0, color: top }, { offset: 1, color: bottom }],
-    };
-  }
-
-  // Bars: an indigo gradient, lighter at the top.
-  tb.configureChart("chart-sector", {
-    series: [{ itemStyle: { color: vertical("#5c7cfa", "#3b5bdb") } }],
-  });
-
-  // Doughnut: this report's palette, with a rounded, gapped ring.
+  // Fund mix: this report's palette, in the same order as everywhere else
+  // on the page, so each fund keeps its colour.
   tb.configureChart("fig-chart_fund", {
     color: ["#3b5bdb", "#0f9d8a", "#f08c00"],
-    series: [{ itemStyle: { borderRadius: 6, borderColor: "#fff", borderWidth: 3 } }],
+    series: [{ itemStyle: { borderColor: "#fff", borderWidth: 2 } }],
   });
 
-  // Cumulative line: smoothed, teal, with a fading area beneath it.
+  // Cumulative share: straight segments between the points it actually has,
+  // with the points shown — each is one sector added.
   tb.configureChart("chart-conc", {
-    series: [{
-      smooth: true,
-      lineStyle: { width: 3, color: "#0f9d8a" },
-      itemStyle: { color: "#0f9d8a" },
-      areaStyle: { color: vertical("rgba(15,157,138,.28)", "rgba(15,157,138,0)") },
-    }],
+    series: [{ smooth: false, showSymbol: true, lineStyle: { width: 2 } }],
   });
 })();
 
