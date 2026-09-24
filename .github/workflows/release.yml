@@ -207,14 +207,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.wheel.outputs.version }}
           NOTES_MODE: ${{ steps.notes.outputs.mode }}
+          PRERELEASE: ${{ needs.wheel.outputs.prerelease }}
         run: |
           mapfile -t files < <(find dist -type f \( -name '*.whl' -o -name '*.tar.gz' -o -name '*.cdx.json' \))
+          # A dev or pre tag (anything other than X.Y.Z) must not become the
+          # release GitHub marks Latest. "false" is set, so test equality.
+          if [ "$PRERELEASE" = "true" ]; then
+            pre=(--prerelease)
+          else
+            pre=()
+          fi
           if [ "$NOTES_MODE" = "file" ]; then
             gh release create "$GITHUB_REF_NAME" "${files[@]}" \
-              --title "TraceBi ${VERSION}" --notes-file release-notes.md
+              --title "TraceBi ${VERSION}" --notes-file release-notes.md "${pre[@]}"
           else
             gh release create "$GITHUB_REF_NAME" "${files[@]}" \
-              --title "TraceBi ${VERSION}" --generate-notes
+              --title "TraceBi ${VERSION}" --generate-notes "${pre[@]}"
           fi
 
   pypi:

@@ -2785,6 +2785,9 @@ class TestWheelPackagingDeclaration:
         assert "dry_run:" in live
         assert "default: true" in live
         assert live.count("packages: write") == 1
+        # A prerelease tag must not publish a GitHub release marked Latest.
+        # The flag has to be in the live workflow, not only a comment.
+        assert "--prerelease" in live
 
 
 class TestLegacyAppModuleSpelling:
