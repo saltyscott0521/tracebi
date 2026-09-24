@@ -345,7 +345,7 @@ Every tool returns **structured output** (a typed `outputSchema` and
 arrive machine-typed. The read tools carry a `readOnlyHint` **annotation** — the
 "read-and-compute only" promise, visible in the protocol before you call.
 
-### Resources and a prompt
+### Resources and prompts
 
 The gateway also exposes reference material as MCP **resources** — pull them
 into context rather than guessing:
@@ -355,8 +355,20 @@ into context rather than guessing:
   a spec instead of guessing the grammar.
 - `tracebi://models/{name}` — one model's full schema as a document.
 
-And a **prompt**, `author_report(question)`, that expands into the whole loop
-below for a given question — the fastest way to start correctly.
+And three **prompts**, the fastest way to start correctly:
+
+- `author_report(question)` — the whole loop for a question: context, query,
+  a `reports/<name>/` package from the binding stubs, `build_report`,
+  `verify_manifest`. Without file access it falls back to a spec and
+  `render_report_spec`.
+- `answer_question(question, model="")` — `get_context`, then `query_model`;
+  answer in plain words with each number beside its fingerprint and measure.
+  Never estimate; say so when the model can't answer; no report unless asked.
+- `address_pins(report)` — read `workbench_state`, act on each open pin in
+  order, `build_report`, then `resolve_pin` each with a one-line note.
+
+The server's own instructions lead with the package lane (`build_report`)
+and name the spec lane (`render_report_spec`) as the simpler alternative.
 
 ### The canonical loop
 

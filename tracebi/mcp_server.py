@@ -1286,21 +1286,23 @@ def build_server(token: Optional[str] = None):
             "TraceBi semantic gateway. Call get_context first (start with "
             "brief=true — the token-lean tier, about half the payload) — it "
             "returns the vocabulary (models, facts, dimensions, measures, "
-            "report sections) and nothing outside it will validate. Query "
-            "with query_model; every response is stamped with the resolved "
-            "query, lineage and a fingerprint of the full result — cite the "
-            "fingerprint when you quote a number. Author reports as specs: "
-            "validate_report_spec to check without executing, "
-            "render_report_spec to produce the governed HTML artifact and "
-            "its manifest. The loop is closed: verify_manifest re-runs a "
-            "manifest's recorded queries and classifies every section as "
-            "reproduces, source drift, or unexplained — a receipt you "
-            "rendered is a receipt you (or anyone later) can check. Every "
-            "tool returns structured output; the read tools are annotated "
-            "read-only. Resources carry reference material: tracebi://guide "
-            "(how to author), tracebi://spec-schema (the ReportSpec JSON "
-            "Schema), tracebi://models/{name} (a model's schema). The "
-            "author_report prompt walks the whole loop for a question."
+            "the data-tb-* figure grammar) and nothing outside it will "
+            "validate. Query with query_model; every response is stamped "
+            "with the resolved query and a fingerprint of the full result — "
+            "cite the fingerprint when you quote a number, and paste the "
+            "result's binding stub into report.json instead of transcribing "
+            "numbers. A report is a package, reports/<name>/: report.json "
+            "names the bindings, template.html claims them with "
+            "data-tb-figure + data-tb-binding. build_report publishes it "
+            "(self-contained HTML + manifest); verify_manifest re-runs the "
+            "manifest's queries, and only 'reproduces' means the numbers "
+            "matched. Under tracebi dev, read workbench_state first — the "
+            "person's pins come before anything else — and resolve_pin each "
+            "one you act on. Without file access, or for a fixed layout, a "
+            "JSON ReportSpec is the simpler lane: validate_report_spec, then "
+            "render_report_spec. Resources: tracebi://guide (how to author), "
+            "tracebi://spec-schema, tracebi://models/{name}. Prompts: "
+            "author_report, answer_question, address_pins."
         ),
     )
 
@@ -1497,31 +1499,89 @@ def build_server(token: Optional[str] = None):
     def _model_resource(name: str) -> str:
         return json.dumps(_get_model(name).info(), indent=2, default=str)
 
-    # Prompt — the authoring SOP as one executable template.
+    # Prompts — the authoring SOP and its two neighbours as executable
+    # templates.
     @server.prompt(
         name="author_report", title="Author a governed report",
-        description="Walk the full loop — context, query, spec, validate, render, verify — for a question.",
+        description="Walk the full loop — context, query, package, build, verify — for a question.",
     )
     def _author_report_prompt(question: str) -> str:
         return (
             f"Author a governed TraceBi report that answers: {question}\n\n"
             "Follow the loop, and do not skip a step:\n"
             "1. Call get_context (start with brief=true; add the model= you'll "
-            "use) to learn the exact facts, dimensions and named measures. "
-            "Nothing outside that vocabulary will validate.\n"
+            "use) to learn the exact facts, dimensions, named measures and "
+            "the data-tb-* figure grammar. Nothing outside that vocabulary "
+            "will validate.\n"
             "2. Use query_model to explore the numbers. Every result is "
-            "stamped — keep the fingerprints for anything you cite.\n"
-            "3. Read tracebi://spec-schema, then write a ReportSpec whose "
-            "sections query the model (not hard-coded numbers).\n"
-            "4. validate_report_spec until it returns ok:true — fix each "
-            "path-scoped error, and heed the warnings: a filter or column it "
-            "cannot pre-verify will fail at render if it is wrong (render then "
-            "returns a clean {ok:false} naming the actual columns — act on it).\n"
-            "5. render_report_spec to produce the HTML artifact and its "
-            "manifest.\n"
-            "6. verify_manifest on that manifest and report the verdict. "
+            "stamped — keep the fingerprints for anything you cite — and "
+            "carries a binding stub.\n"
+            "3. Write the package reports/<name>/: paste each binding stub "
+            "you need into report.json, and in template.html give every "
+            "number an element with data-tb-figure + data-tb-binding (or "
+            "mark it data-tb-unverified). Never type a number a query "
+            "produced.\n"
+            "4. build_report to publish the self-contained HTML and its "
+            "manifest. It refuses a figure whose claim does not match its "
+            "binding — fix the claim and build again.\n"
+            "5. verify_manifest on that manifest and report the verdict. "
             "Only 'reproduces' means the numbers were re-run and matched; say "
-            "so honestly if anything is unverifiable."
+            "so honestly if anything is unverifiable.\n\n"
+            "Without file access, author a JSON ReportSpec instead (read "
+            "tracebi://spec-schema), validate_report_spec until ok:true — "
+            "heed its warnings too — then render_report_spec, then step 5."
+        )
+
+    @server.prompt(
+        name="answer_question", title="Answer a question from the model",
+        description="Answer in plain words, each number beside its fingerprint and measure; never estimate.",
+    )
+    def _answer_question_prompt(question: str, model: str = "") -> str:
+        ctx = f"get_context (brief=true, model={model!r})" if model else \
+            "get_context (brief=true)"
+        return (
+            f"Answer this question from the TraceBi model: {question}\n\n"
+            f"1. Call {ctx} to learn which facts, dimensions and named "
+            "measures exist.\n"
+            "2. Call query_model with the measures and dimensions that answer "
+            "it. Prefer a declared measure over an ad-hoc one.\n"
+            "3. Answer in plain words. Quote each number beside its "
+            "fingerprint and the measure it came from, for example "
+            "\"revenue (measure: revenue) was 1,250 — fingerprint 3f9a…\".\n\n"
+            "Rules:\n"
+            "- Never estimate. Every number you state comes from a "
+            "query_model result in this conversation.\n"
+            "- If the model cannot answer — no measure or dimension fits — "
+            "say so plainly and name what is missing. Do not approximate "
+            "from a nearby measure.\n"
+            "- Do not build a report unless you are asked to."
+        )
+
+    @server.prompt(
+        name="address_pins", title="Act on the person's workbench pins",
+        description="Read workbench_state, act on each open pin in order, rebuild, then resolve each pin.",
+    )
+    def _address_pins_prompt(report: str) -> str:
+        return (
+            f"Act on the open workbench pins for the report {report!r}.\n\n"
+            f"1. Call workbench_state(report={report!r}). Its pins are the "
+            "person's requests, oldest first; they come before any other "
+            "change.\n"
+            "2. Act on each open pin in order by editing the package "
+            f"reports/{report}/:\n"
+            "   - kind \"promote\" (Keep this): the request field names the "
+            "exhibit and the code behind it. Re-express it as a report.json "
+            "binding plus a figure in template.html when the model can, "
+            "else compute it in report.py (marked python-derived).\n"
+            "   - kind \"message\": the person's note — treat it as an "
+            "instruction.\n"
+            "   - a pin on a figure: its note says what to change about that "
+            "figure.\n"
+            f"3. build_report(report={report!r}). If it refuses, fix the "
+            "package and build again.\n"
+            "4. resolve_pin each pin you acted on, with a one-line note of "
+            "what you did. If you could not act on one, leave it open and "
+            "say why."
         )
 
     return server

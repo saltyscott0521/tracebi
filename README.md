@@ -575,8 +575,8 @@ re-runs every query recorded in a manifest and classifies the outcome
 (reproduces, source drift, model changed, unexplained), so an agent can check
 its own receipt before a human sees the number.
 
-The full playbook — the two planes, the L0–L3 assurance ladder, all **11
-tools** plus the `author_report` prompt, and the canonical
+The full playbook — the two planes, the L0–L3 assurance ladder, all **13
+tools**, the `author_report` / `answer_question` / `address_pins` prompts, and the canonical
 discover → explore → author → validate → render → verify → cite loop — is in
 [AGENTS.md](AGENTS.md).
 
@@ -803,7 +803,7 @@ tracebi/                        ← the framework repo
 │   ├── pipeline/               PipelineRunner (APScheduler + DB)
 │   ├── lineage/                LineageDiagram
 │   ├── mcp_server.py           Agent gateway — 13 MCP tools (typed output, read-only
-│                               annotations) + resources + the author_report prompt
+│                               annotations) + resources + 3 prompts
 │   └── web/
 │       ├── api/                FastAPI app, routers, registry
 │       ├── demo_app/           Bundled demo app — self-contained (its own models/ + reports/)
