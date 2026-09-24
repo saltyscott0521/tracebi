@@ -27,6 +27,7 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 """
 
 import hmac
+import ipaddress
 import json
 import os
 import re
@@ -1257,8 +1258,18 @@ def build_server(token: Optional[str] = None):
     return server
 
 
+def _is_loopback(host: str) -> bool:
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 def serve(transport: str = "stdio", port: int = 8765,
-          insecure: bool = False) -> None:
+          host: str = "127.0.0.1", insecure: bool = False,
+          allow_insecure_bind: bool = False) -> None:
     """
     Build the server and run it until interrupted.
 
@@ -1273,6 +1284,16 @@ def serve(transport: str = "stdio", port: int = 8765,
         token = os.environ.get("TRACEBI_MCP_TOKEN", "").strip()
         if not token and not insecure:
             raise GatewayAuthError(_HTTP_AUTH_REFUSAL)
+        # A warning is how an open gateway ships in a container log nobody
+        # reads. Refuse, and require an explicit second flag.
+        if (insecure and not token and not _is_loopback(host)
+                and not allow_insecure_bind):
+            raise GatewayAuthError(
+                "Refusing to bind an unauthenticated MCP gateway on a "
+                f"non-loopback host ({host}). Anyone who can reach the port "
+                "gets full query access. Set TRACEBI_MCP_TOKEN, bind "
+                "127.0.0.1, or pass --allow-insecure-bind to do this on purpose."
+            )
         auth_mode = (
             "bearer (TRACEBI_MCP_TOKEN)" if token else "none (--insecure)"
         )
@@ -1282,11 +1303,11 @@ def serve(transport: str = "stdio", port: int = 8765,
         # stderr: on stdio the protocol owns stdout, so operator-facing
         # posture lines go to stderr on every transport for consistency.
         print(
-            f"[tracebi] mcp gateway: transport=http auth={auth_mode} "
+            f"[tracebi] mcp gateway: transport=http host={host} auth={auth_mode} "
             f"actor={_mcp_actor()}",
             file=sys.stderr,
         )
-        server.run(transport="streamable-http", port=port)
+        server.run(transport="streamable-http", host=host, port=port)
     else:
         server = build_server()
         server.run(transport="stdio")
