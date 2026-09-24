@@ -80,6 +80,7 @@ reported but does not fail the command — the report already went out.
 | --- | --- |
 | `TRACEBI_MCP_TOKEN` | bearer token for `tracebi mcp --transport http` |
 | `TRACEBI_MCP_ACTOR` | audit attribution for gateway work (default `agent`) |
+| `TRACEBI_MCP_LOG` | `1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl`: tool, ok or error, duration, actor, argument **names**. Never argument values or results. Off by default; local only. Read it with `tracebi agent log`. |
 
 The http transport **refuses to start** until you either set the token or pass
 `--insecure` deliberately.

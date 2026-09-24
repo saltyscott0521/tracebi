@@ -2179,6 +2179,28 @@ def _print_schedule_run(rec: dict) -> None:
 
 # ── Workbench sessions: export / clear ──────────────────────────────────────
 
+def cmd_agent(args: argparse.Namespace) -> int:
+    """Summarize the gateway call log (``TRACEBI_MCP_LOG=1``)."""
+    from tracebi import _gateway_log
+
+    try:
+        since = _gateway_log.parse_since(args.since) if args.since else None
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    if not os.path.isfile(_gateway_log.LOG_PATH):
+        print(f"No gateway log at {_gateway_log.LOG_PATH}. Set TRACEBI_MCP_LOG=1 "
+              "before starting `tracebi mcp` to record one.", file=sys.stderr)
+        return 1
+    summary = _gateway_log.summarize(
+        _gateway_log.read_lines(_gateway_log.LOG_PATH, since))
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        print(_gateway_log.format_summary(summary))
+    return 0
+
+
 def cmd_session(args: argparse.Namespace) -> int:
     """
     Save or reset a workbench session feed.
@@ -2562,6 +2584,21 @@ def build_parser() -> argparse.ArgumentParser:
              "explicit -o extension (.md/.html) also selects the format.",
     )
     p_session.set_defaults(func=cmd_session)
+
+    p_agent = sub.add_parser(
+        "agent",
+        help="`agent log` summarizes the opt-in gateway call log "
+             "(.tracebi/gateway_log.jsonl, written when TRACEBI_MCP_LOG=1): "
+             "calls and error rate per tool, the top ten errors, and the "
+             "first-build success rate.",
+    )
+    p_agent.add_argument("action", choices=["log"])
+    p_agent.add_argument(
+        "--since", metavar="AGE",
+        help="Only calls newer than AGE, like 7d, 12h or 30m.")
+    p_agent.add_argument(
+        "--json", action="store_true", help="Print the summary as JSON.")
+    p_agent.set_defaults(func=cmd_agent)
 
     p_migrate = sub.add_parser(
         "migrate",

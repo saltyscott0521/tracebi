@@ -258,6 +258,10 @@ reported but does not fail the command — the report already went out.</p>
 <td><code>TRACEBI_MCP_ACTOR</code></td>
 <td>audit attribution for gateway work (default <code>agent</code>)</td>
 </tr>
+<tr>
+<td><code>TRACEBI_MCP_LOG</code></td>
+<td><code>1</code> appends one line per gateway tool call to <code>.tracebi/gateway_log.jsonl</code>: tool, ok or error, duration, actor, argument <strong>names</strong>. Never argument values or results. Off by default; local only. Read it with <code>tracebi agent log</code>.</td>
+</tr>
 </tbody>
 </table>
 <p>The http transport <strong>refuses to start</strong> until you either set the token or pass

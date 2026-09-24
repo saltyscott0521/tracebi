@@ -36,6 +36,7 @@ import sys
 from pathlib import Path
 from typing import Any, Optional, TypedDict
 
+from tracebi import _gateway_log
 from tracebi.audit import actor
 
 #: Rows returned in a query response. The fingerprint always covers the
@@ -1306,10 +1307,18 @@ def build_server(token: Optional[str] = None):
         ),
     )
 
+    # Every tool registers through here, so the opt-in call log
+    # (TRACEBI_MCP_LOG=1) wraps them all in one place.
+    def _tool(**kwargs):
+        def register(fn):
+            return server.tool(**kwargs)(
+                _gateway_log.logged(kwargs["name"], fn, _mcp_actor))
+        return register
+
     # Tools. structured_output=True advertises each return's JSON Schema and
     # hands the agent structuredContent, not JSON-in-text — the stamp and the
     # verdict arrive machine-typed.
-    server.tool(
+    _tool(
         name="get_context", title="Semantic contract", annotations=_READ,
         structured_output=True,
         description=(
@@ -1321,7 +1330,7 @@ def build_server(token: Optional[str] = None):
             "only when you need a section it omits."
         ),
     )(gateway_context)
-    server.tool(
+    _tool(
         name="list_models", title="List models", annotations=_READ,
         structured_output=True,
         description=(
@@ -1331,7 +1340,7 @@ def build_server(token: Optional[str] = None):
             "changes)."
         ),
     )(gateway_models)
-    server.tool(
+    _tool(
         name="describe_table", title="Describe a warehouse table",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
@@ -1345,7 +1354,7 @@ def build_server(token: Optional[str] = None):
             "names from errors."
         ),
     )(gateway_describe_table)
-    server.tool(
+    _tool(
         name="describe_model", title="Describe a model", annotations=_READ,
         structured_output=True,
         description=(
@@ -1354,7 +1363,7 @@ def build_server(token: Optional[str] = None):
             "instead of not found."
         ),
     )(gateway_model_info)
-    server.tool(
+    _tool(
         name="query_model", title="Run a stamped query",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
@@ -1379,7 +1388,7 @@ def build_server(token: Optional[str] = None):
             "re-verify) for lighter responses."
         ),
     )(gateway_query)
-    server.tool(
+    _tool(
         name="validate_report_spec", title="Validate a report spec",
         annotations=_READ, structured_output=True,
         description=(
@@ -1388,7 +1397,7 @@ def build_server(token: Optional[str] = None):
             "sections[0].data.query.fact — fix and retry."
         ),
     )(gateway_validate_spec)
-    server.tool(
+    _tool(
         name="render_report_spec", title="Render a report (writes an artifact)",
         annotations=_RENDER, structured_output=True,
         description=(
@@ -1397,12 +1406,12 @@ def build_server(token: Optional[str] = None):
             "Refuses invalid specs."
         ),
     )(gateway_render_spec)
-    server.tool(
+    _tool(
         name="list_reports", title="List reports", annotations=_READ,
         structured_output=True,
         description="Reports the project exposes, with registration status per file.",
     )(gateway_reports)
-    server.tool(
+    _tool(
         name="workbench_state", title="Workbench state", annotations=_READ_WAREHOUSE,
         structured_output=True,
         description=(
@@ -1416,7 +1425,7 @@ def build_server(token: Optional[str] = None):
             "summaries, models, packages, and the discovery feed and pins."
         ),
     )(gateway_workbench_state)
-    server.tool(
+    _tool(
         name="resolve_pin", title="Resolve a workbench pin (writes pins.json)",
         annotations=_WRITE_PINS, structured_output=True,
         description=(
@@ -1428,7 +1437,7 @@ def build_server(token: Optional[str] = None):
             "lists open pins only."
         ),
     )(gateway_resolve_pin)
-    server.tool(
+    _tool(
         name="build_report", title="Build an artifact package (writes the artifact)",
         annotations=_RENDER, structured_output=True,
         description=(
@@ -1443,7 +1452,7 @@ def build_server(token: Optional[str] = None):
             "manifest are the checkable artifact (see spreadsheet_note)."
         ),
     )(gateway_build_report)
-    server.tool(
+    _tool(
         name="fetch_artifact", title="Fetch a rendered artifact",
         annotations=_READ, structured_output=True,
         description=(
@@ -1457,7 +1466,7 @@ def build_server(token: Optional[str] = None):
             "artifact directory. Every other suffix is refused."
         ),
     )(gateway_fetch_artifact)
-    server.tool(
+    _tool(
         name="verify_manifest", title="Verify a receipt",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
