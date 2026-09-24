@@ -58,6 +58,35 @@ order of work.
 
 ---
 
+## How clients get TraceBi
+
+Two artifacts carry everything; the rest are ways of running them.
+
+| Channel | For | What they get | Status |
+| --- | --- | --- | --- |
+| **Python package** (`pip install tracebi`) | Analysts and builders on their own machine, and their agents (Claude Code, Cursor) | The engine, the CLI, the MCP gateway, and `tracebi serve` for a local web app | Works from git. Not on PyPI yet |
+| **Docker image** | Any team running TraceBi on a server for others: a startup on one VM, an enterprise inside its network | The package plus the web app, run with `docker compose` (Helm later) | A `Dockerfile` exists; clients must build it themselves. No image is published |
+| **One-click hosts** (Railway, Render, Fly) | Small teams that don't want to manage a server | The Docker image, deployed from a button | A Railway config exists; no button yet |
+| **TraceBi Cloud** | Teams that want no infrastructure | Hosted for them | Planned |
+
+The analyst's laptop runs the package; a shared server runs the image.
+
+**To make these real for a client:**
+
+1. **Publish the Docker image** to a public registry (GHCR is simplest) from
+   the existing release workflow, so a client runs
+   `docker pull ghcr.io/<owner>/tracebi:<version>` instead of cloning and
+   building.
+2. **Publish the package to PyPI.** Blocked on confirming who owns the
+   `tracebi` name there (versions 0.5.0–0.5.3 exist); until then the README
+   installs from git and tests guard against the bare `pip install tracebi`.
+3. **A client compose file.** Today's `docker-compose.yml` is the demo stack
+   with seeded sample data. A client needs one that points at their own
+   project folder (the report library), their state database and their
+   warehouse, with no demo seeding.
+
+---
+
 ## The four tiers
 
 | Tier | For | What runs | Who operates it | Available |
@@ -92,7 +121,7 @@ order of work.
 | Artifact | Status | Target |
 | --- | --- | --- |
 | `Dockerfile` (UI + Python) | ✅ exists | Publish to GHCR on every release. Add a `worker` entry point. |
-| `docker-compose.yml` | ✅ exists | Add Postgres and a worker service. |
+| `docker-compose.yml` | ✅ exists (the demo stack, with Postgres) | A separate client compose file for the customer's own project; add a worker service. |
 | Railway, Vercel + Supabase configs | ✅ exist | Keep Railway as the one-click path. Vercel suits the read-only demo only (no workers). |
 | Helm chart | ❌ | Q2: web, worker, Postgres (external or bundled), secrets, ingress. |
 | Terraform module | ❌ | When the first customer asks. |
