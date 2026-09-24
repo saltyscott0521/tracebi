@@ -114,14 +114,20 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 else None,
             )
 
+            def fail_on_browser_errors() -> None:
+                assert not errors, "\n".join(errors)
+
             page.goto(base + "/")
             page.get_by_role("heading", name="Desk").wait_for()
+            fail_on_browser_errors()
 
             page.goto(base + "/reports")
+            fail_on_browser_errors()
             page.get_by_text(_REPORT, exact=True).click()
             try:
                 page.locator("iframe").wait_for()
             except Exception as exc:
+                fail_on_browser_errors()
                 raise AssertionError(page.inner_text("body")[:4000]) from exc
             page.wait_for_function(
                 """(title) => {
