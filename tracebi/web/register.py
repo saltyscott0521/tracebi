@@ -93,7 +93,7 @@ class _Register:
             DeprecationWarning,
             stacklevel=2,
         )
-        return _registry().scheduled(name, cron=cron, description=description)
+        return _registry()._scheduled(name, cron, description)
 
     def add_report(
         self,

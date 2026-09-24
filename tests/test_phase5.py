@@ -1353,10 +1353,12 @@ class TestRegistryExtras:
         from tracebi.web.api.registry import Registry
         r = Registry()
 
-        with pytest.warns(DeprecationWarning, match="never ran anything"):
+        with pytest.warns(DeprecationWarning, match="never ran anything") as caught:
             @r.scheduled("weekly", cron="0 9 * * MON", description="weekly KPIs")
             def fac():
                 return "report"
+        assert len(caught) == 1
+        assert "registry.scheduled" in str(caught[0].message)
 
         reports = [x["name"] for x in r.list_reports()]
         scheduled = r.list_scheduled()
@@ -1419,10 +1421,12 @@ class TestRegistryExtras:
         from tracebi.web import register
         from tracebi.web.api.registry import registry
 
-        with pytest.warns(DeprecationWarning, match="never ran anything"):
+        with pytest.warns(DeprecationWarning, match="never ran anything") as caught:
             @register.scheduled("nightly", cron="0 2 * * *", description="nightly")
             def fac():
                 return "report"
+        assert len(caught) == 1
+        assert "register.scheduled" in str(caught[0].message)
 
         scheduled_names = [x["name"] for x in registry.list_scheduled()]
         assert "nightly" in scheduled_names

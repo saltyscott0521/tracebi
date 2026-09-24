@@ -246,6 +246,15 @@ class Registry:
             DeprecationWarning,
             stacklevel=2,
         )
+        return self._scheduled(name, cron, description)
+
+    def _scheduled(self, name: str, cron: str, description: str = ""):
+        """Register the factory and cron string without warning.
+
+        ``scheduled`` warns, then calls this. The notebook facade warns
+        once and calls this too, so ``@register.scheduled`` does not warn
+        a second time.
+        """
 
         def decorator(fn: Callable) -> Callable:
             self.add_report(name, fn, description)
