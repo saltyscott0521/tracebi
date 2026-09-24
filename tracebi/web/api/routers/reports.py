@@ -47,13 +47,23 @@ _ARTIFACT_CACHE: dict = {}
 _ARTIFACT_TTL_S = 5.0
 
 
+def _output_dir() -> str:
+    """Where a web render keeps ``output/<name>.html``.
+
+    One function so tests can send builds somewhere other than the repo
+    without patching ``os.getcwd`` (other code still resolves the project
+    from the working directory).
+    """
+    return os.path.join(os.getcwd(), "output")
+
+
 def _writable_output_html(name: str):
     """``output/<name>.html`` when that directory can be written, else None.
 
     Same names ``tracebi report build`` uses. A probe file distinguishes
     "the disk refused" from a later render error, which must still raise.
     """
-    out_dir = os.path.join(os.getcwd(), "output")
+    out_dir = _output_dir()
     probe = os.path.join(out_dir, ".tracebi-write-probe")
     try:
         os.makedirs(out_dir, exist_ok=True)
@@ -293,7 +303,7 @@ def _last_build(name: str) -> dict:
     Fresh data comes from a schedule or Rebuild.
     """
     _package_or_404(name)
-    path = os.path.join(os.getcwd(), "output", f"{_safe_filename(name)}.html")
+    path = os.path.join(_output_dir(), f"{_safe_filename(name)}.html")
     manifest_path = path + ".manifest.json"
     if os.path.isfile(path) and os.path.isfile(manifest_path):
         with open(path, encoding="utf-8") as fh:
