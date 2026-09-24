@@ -53,18 +53,28 @@ def test_route_returns_version_and_the_six_checks(tmp_path, monkeypatch):
 
 
 def test_output_writable_flips(tmp_path, monkeypatch):
+    # PermissionError, not chmod: as root a mode of 0o500 still allows the
+    # write, so the check would stay ok in a container or a cloud sandbox.
     monkeypatch.chdir(tmp_path)
     assert _by_name(collect_checks())["output_writable"]["ok"] is True
 
-    out = tmp_path / "output"
-    out.chmod(0o500)
-    try:
-        check = _by_name(collect_checks())["output_writable"]
-        assert check["ok"] is False
-        assert "cannot write" in check["detail"]
-    finally:
-        out.chmod(0o700)
+    import tracebi.web.api.routers.status as status
 
+    real_makedirs = status.os.makedirs
+
+    def refuse_output(path, *args, **kwargs):
+        if os.path.abspath(path) == os.path.abspath(
+                os.path.join(os.getcwd(), "output")):
+            raise PermissionError(13, "Permission denied")
+        return real_makedirs(path, *args, **kwargs)
+
+    monkeypatch.setattr(status.os, "makedirs", refuse_output)
+    check = _by_name(collect_checks())["output_writable"]
+    assert check["ok"] is False
+    assert "cannot write" in check["detail"]
+
+    monkeypatch.undo()
+    monkeypatch.chdir(tmp_path)
     assert _by_name(collect_checks())["output_writable"]["ok"] is True
 
 
