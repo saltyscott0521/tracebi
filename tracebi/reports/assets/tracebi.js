@@ -1600,30 +1600,149 @@
     return div;
   }
 
-  function receiptFigureRow(drawer, fig) {
+  /* The page element this figure record names, if the build placed one. */
+  function receiptPageEl(fig) {
+    if (!fig || !fig.id || typeof document === "undefined") return null;
+    var el = document.getElementById(fig.id);
+    return (el && el.getAttribute) ? el : null;
+  }
+
+  /* Rows on the page, or the stamped block when the figure has no table. */
+  function receiptRowCount(el, binding) {
+    if (el && el.tagName === "TABLE") {
+      var body = el.querySelector("tbody");
+      if (body) {
+        var n = 0, i, row;
+        for (i = 0; i < body.children.length; i++) {
+          row = body.children[i];
+          if ((" " + (row.className || "") + " ").indexOf(" tb-empty ") !== -1) {
+            continue;
+          }
+          n++;
+        }
+        return n;
+      }
+    }
+    var block = binding ? readBlock(binding) : null;
+    if (block && block.rows) return block.rows.length;
+    return null;
+  }
+
+  function receiptQuery(receipt, fig) {
+    if (fig.query && typeof fig.query === "object") return fig.query;
+    var bindings = receipt && receipt.bindings;
+    var rec = (bindings && fig.binding) ? bindings[fig.binding] : null;
+    if (!rec || typeof rec !== "object") return null;
+    return (rec.query && typeof rec.query === "object") ? rec.query : rec;
+  }
+
+  function humanList(items) {
+    if (!items || !items.length) return "";
+    var out = [], i;
+    for (i = 0; i < items.length; i++) out.push(humanise(String(items[i])));
+    return out.join(", ");
+  }
+
+  function filterPhrase(filters) {
+    if (!filters || typeof filters !== "object") return "";
+    var parts = [], k, v, op, bits;
+    for (k in filters) {
+      if (!Object.prototype.hasOwnProperty.call(filters, k)) continue;
+      v = filters[k];
+      if (v && typeof v === "object") {
+        bits = [];
+        for (op in v) {
+          if (Object.prototype.hasOwnProperty.call(v, op)) {
+            bits.push(op + " " + v[op]);
+          }
+        }
+        parts.push(humanise(k) + " " + bits.join(" "));
+      } else {
+        parts.push(humanise(k) + " is " + v);
+      }
+    }
+    return parts.join(", ");
+  }
+
+  function receiptFigureRow(drawer, fig, receipt) {
     if (!fig || !fig.id) return;
+    var page = receiptPageEl(fig);
+    var kind = fig.kind || (page ? attr(page, "data-tb-figure") : null);
+    var binding = fig.binding || (page ? attr(page, "data-tb-binding") : null);
+    var cell = fig.cell || (page ? attr(page, "data-tb-cell") : null);
+    if (!cell && page && kind === "chart") {
+      var y = attr(page, "data-tb-y");
+      if (y) cell = splitList(y)[0];
+    }
+
     var row = document.createElement("div");
     row.className = "tb-receipt-row";
-    var label = document.createElement("span");
-    var text = String(fig.id);
-    if (fig.kind) text += " · " + fig.kind;
-    if (!fig.unverified && fig.binding) text += " · " + fig.binding;
-    label.textContent = text;
-    row.appendChild(label);
+    var title = document.createElement("div");
+    title.className = "tb-receipt-title";
+    var headline;
+    if (kind === "value") {
+      var labelEl = page ? page.querySelector(".tb-kpi-label") : null;
+      var pageLabel = labelEl ? trim(labelEl.textContent || "") : "";
+      /* A column uses the same words as the page's headings. A literal
+       * figure has no column, so the label already printed on it is the
+       * name. */
+      var label = cell ? humanise(cell)
+        : (pageLabel || (binding ? humanise(binding) : humanise(fig.id)));
+      var shownEl = page ? (page.querySelector(".tb-kpi-value") || page) : null;
+      var shown = shownEl ? trim(shownEl.textContent || "") : "";
+      headline = shown ? (label + " · " + shown) : label;
+    } else if (kind === "table" || kind === "chart") {
+      headline = (binding ? humanise(binding) : humanise(fig.id)) + " · " + kind;
+      var count = receiptRowCount(page, binding);
+      if (count !== null) {
+        headline += ", " + count + (count === 1 ? " row" : " rows");
+      }
+    } else {
+      headline = binding ? humanise(binding) : humanise(fig.id);
+      if (kind) headline += " · " + kind;
+    }
+    title.textContent = headline;
     if (fig.unverified) {
       /* The recorded status in its existing tone — display, not judgment. */
       var badge = document.createElement("span");
       badge.className = "tb-badge tb-badge--unverified";
       badge.textContent = "unverified";
-      row.appendChild(badge);
+      title.appendChild(badge);
     }
+    row.appendChild(title);
+
+    var query = receiptQuery(receipt, fig);
+    var measures = (query && query.measures && query.measures.length)
+      ? query.measures : (cell ? [cell] : []);
+    var dims = (query && query.dimensions) || [];
+    var from = humanList(measures);
+    if (dims.length) from += (from ? ", by " : "by ") + humanList(dims);
+    var filters = filterPhrase(query && query.filters);
+    if (filters) from += (from ? ", " : "") + filters;
+    if (from) {
+      var quiet = document.createElement("div");
+      quiet.className = "tb-receipt-from";
+      quiet.textContent = from;
+      row.appendChild(quiet);
+    }
+
+    var details = document.createElement("details");
+    details.className = "tb-receipt-details";
+    var summary = document.createElement("summary");
+    summary.textContent = "Details";
+    details.appendChild(summary);
+    var meta = String(fig.id);
+    if (kind) meta += " · " + kind;
+    if (binding) meta += " · " + binding;
+    receiptLine(details, meta, "tb-receipt-meta");
     if (fig.fingerprint) {
       var fp = document.createElement("span");
       fp.className = "tb-receipt-fp";
-      fp.textContent = String(fig.fingerprint).slice(0, 12);
+      fp.textContent = String(fig.fingerprint);
       fp.title = String(fig.fingerprint);
-      row.appendChild(fp);
+      details.appendChild(fp);
     }
+    row.appendChild(details);
     drawer.appendChild(row);
   }
 
@@ -1644,7 +1763,7 @@
 
     var figures = receipt.figures || [], i;
     for (i = 0; i < figures.length; i++) {
-      try { receiptFigureRow(drawer, figures[i]); } catch (e) { /* defensive */ }
+      try { receiptFigureRow(drawer, figures[i], receipt); } catch (e) { /* defensive */ }
     }
 
     var contracts = receipt.transform_contracts, table, rec, status;

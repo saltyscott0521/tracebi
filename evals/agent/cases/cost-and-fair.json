@@ -1,0 +1,16 @@
+{
+  "report": "cost_and_fair",
+  "figures": [
+    "table"
+  ],
+  "measures": [
+    "fair_value",
+    "cost_basis"
+  ],
+  "dimensions": [
+    "dim_issuer.sector"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}

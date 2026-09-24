@@ -26,6 +26,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Fails instead of running scripts/collect_changes.py. This job has
+      # contents: read, so it cannot commit the fold. Collecting only on the
+      # runner would put notes in the wheel that main does not have, and the
+      # next tag would insert the same fragments again.
+      - name: Changelog fragments are already collected
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          frags = [
+              p for p in Path("changes").glob("*.md")
+              if p.name.partition("-")[0].isdigit()
+          ]
+          if frags:
+              raise SystemExit(
+                  "Run scripts/collect_changes.py and commit before tagging:\n"
+                  + "\n".join(str(p) for p in sorted(frags))
+              )
+          PY
+
       - name: Set up Node
         uses: actions/setup-node@v7
         with:

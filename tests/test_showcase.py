@@ -55,6 +55,8 @@ class TestShowcase:
 
         html = (proj / "output" / "portfolio_showcase.html").read_text(
             encoding="utf-8")
+        from tests.test_presentation_js import assert_built_receipt_rows
+        assert_built_receipt_rows(html)
         # Controls, layout, and trust affordances all present on the page.
         for marker in ("data-tb-filter", "data-tb-search", "data-tb-download",
                        "tb-tabs", "tb-cols-2", 'id="tracebi-receipt"',

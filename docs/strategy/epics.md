@@ -466,9 +466,9 @@ working unattended. These rules keep that safe.
 3. **One issue, one branch, one draft pull request.** An agent never merges,
    never pushes to `main`, and never works on two issues in one branch.
 4. **Every pull request shows its checks:** `pytest tests/` and
-   `ruff check .` pass, the issue's "done when" is demonstrated, and the
-   CHANGELOG has an entry for anything a user would notice
-   (`.github/pull_request_template.md`).
+   `ruff check .` pass, the issue's "done when" is demonstrated, and a
+   `changes/` fragment records anything a user would notice (do not edit
+   `CHANGELOG.md`; `.github/pull_request_template.md`).
 5. **Coding agents follow `CLAUDE.md`.** `AGENTS.md` is the guide for agents
    that *use* TraceBi to build reports. `.cursor/rules/develop-tracebi.mdc`
    says so, so a Cursor agent doesn't mistake one for the other.
