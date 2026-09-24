@@ -1,9 +1,15 @@
 """Score an agent's first-build attempt. Does not call an LLM.
 
-    python evals/agent/score.py <project-dir>
+    python evals/agent/score.py <project-dir> [--gateway-log DIR]
 
 Looks in the project copy for the report each case names, then checks the
 package. Prints one row per case and the first-build success rate.
+
+``--gateway-log DIR`` reads one gateway call log per case
+(``DIR/<case-id>.jsonl``, written with ``TRACEBI_MCP_LOG=1``) and adds, per
+case, the tool calls, the errors hit, and whether ``build_report``
+succeeded on its first call; the summary ends with the top three errors
+across all cases.
 Exit 0 when every case passes, 1 when any fails, 2 when the scorer itself
 cannot run.
 """
@@ -16,6 +22,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from collections import Counter
+
+from tracebi import _gateway_log
 from tracebi.reports.figures import FigureError, lint_numeric_literals, strip_stage
 
 _CASES = Path(__file__).resolve().parent / "cases"
@@ -176,35 +185,94 @@ def score_all(project: Path, cases_dir: Path = _CASES) -> list[tuple[str, bool, 
     return rows
 
 
-def format_table(rows: list[tuple[str, bool, str]]) -> str:
+def gateway_stats(log_dir: Path, case_id: str) -> dict | None:
+    """One case's gateway log: calls, errors hit, first build_report ok.
+
+    ``None`` when the case has no log. ``first_build`` is ``None`` when the
+    agent never called ``build_report``.
+    """
+    path = log_dir / f"{case_id}.jsonl"
+    if not path.is_file():
+        return None
+    lines = _gateway_log.read_lines(str(path))
+    builds = [ln for ln in lines if ln.get("tool") == "build_report"]
+    return {
+        "calls": len(lines),
+        "errors": [
+            (ln.get("tool") or "?", f"{ln.get('error_type')}: {ln.get('error')}")
+            for ln in lines if ln.get("ok") is False
+        ],
+        "first_build": builds[0].get("ok") is True if builds else None,
+    }
+
+
+def format_table(rows: list[tuple[str, bool, str]],
+                 gateway: dict[str, dict | None] | None = None) -> str:
     name_w = max(len("case"), *(len(r[0]) for r in rows))
-    lines = [f"{'case':<{name_w}}  result  first failing check"]
+    head = f"{'case':<{name_w}}  result  "
+    if gateway is not None:
+        head += "calls  errors  first build  "
+    lines = [head + "first failing check"]
     passed = 0
     for case_id, ok, reason in rows:
         if ok:
             passed += 1
         result = "pass" if ok else "fail"
-        lines.append(f"{case_id:<{name_w}}  {result:<6}  {reason}")
+        line = f"{case_id:<{name_w}}  {result:<6}  "
+        if gateway is not None:
+            stats = gateway.get(case_id)
+            if stats is None:
+                line += f"{'-':>5}  {'-':>6}  {'no log':<11}  "
+            else:
+                first = {True: "yes", False: "no", None: "not called"}[stats["first_build"]]
+                line += f"{stats['calls']:>5}  {len(stats['errors']):>6}  {first:<11}  "
+        lines.append(line + reason)
     rate = 100.0 * passed / len(rows)
     lines.append(f"first-build success: {passed}/{len(rows)} ({rate:.0f}%)")
+    if gateway is not None:
+        hit = [(case_id, s["errors"]) for case_id, s in gateway.items()
+               if s and s["errors"]]
+        if hit:
+            lines.append("")
+            lines.append("errors by case:")
+            for case_id, errors in hit:
+                for tool, message in errors:
+                    lines.append(f"  {case_id}  {tool}  {message}")
+        top = Counter(e for _, errors in hit for e in errors).most_common(3)
+        lines.append("")
+        lines.append("top errors across all cases:")
+        if not top:
+            lines.append("  none")
+        for (tool, message), count in top:
+            lines.append(f"  {count:>4}  {tool}  {message}")
     return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args:
-        print("usage: python evals/agent/score.py <project-dir> [--cases DIR]",
+        print("usage: python evals/agent/score.py <project-dir> [--cases DIR] "
+              "[--gateway-log DIR]",
               file=sys.stderr)
         return 2
     project = Path(args[0]).resolve()
     cases_dir = _CASES
     if "--cases" in args:
         cases_dir = Path(args[args.index("--cases") + 1]).resolve()
+    log_dir = None
+    if "--gateway-log" in args:
+        log_dir = Path(args[args.index("--gateway-log") + 1]).resolve()
+        if not log_dir.is_dir():
+            print(f"gateway log directory not found: {log_dir}", file=sys.stderr)
+            return 2
     if not project.is_dir():
         print(f"project not found: {project}", file=sys.stderr)
         return 2
     rows = score_all(project, cases_dir)
-    print(format_table(rows))
+    gateway = None
+    if log_dir is not None:
+        gateway = {case_id: gateway_stats(log_dir, case_id) for case_id, _, _ in rows}
+    print(format_table(rows, gateway))
     return 0 if all(ok for _, ok, _ in rows) else 1
 
 

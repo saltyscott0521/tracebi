@@ -103,3 +103,58 @@ def test_refusal_may_mention_a_year_or_a_quarter(tmp_path):
     assert score_case(project, "borrower-geography", case) == (
         False, "built a report instead of refusing",
     )
+
+
+def test_gateway_log_adds_calls_errors_and_the_top_three(tmp_path, capsys):
+    from evals.agent.score import main
+
+    project = tmp_path / "proj"
+    for name in ("refuse_a", "refuse_b"):
+        report = project / "reports" / name
+        report.mkdir(parents=True)
+        (report / "REFUSAL.md").write_text(
+            "The model cannot answer this.\n", encoding="utf-8")
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    for case_id in ("a", "b", "c"):
+        (cases / f"{case_id}.md").write_text("A request.\n", encoding="utf-8")
+        (cases / f"{case_id}.json").write_text(json.dumps({
+            "report": f"refuse_{case_id}", "expect": "refusal",
+        }), encoding="utf-8")
+
+    def line(tool, ok, error=None, **extra):
+        out = {"at": "2099-01-01T00:00:00+00:00", "session": "s", "tool": tool,
+               "ok": ok, "ms": 1.0, "actor": "mcp:agent", "arguments": [],
+               **extra}
+        if error:
+            out.update(error_type="refused", error=error)
+        return json.dumps(out)
+
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "a.jsonl").write_text("\n".join([
+        line("get_context", True),
+        line("query_model", False, "unknown measure 'rev'"),
+        line("query_model", False, "unknown measure 'rev'"),
+        line("build_report", False, "figure claim mismatch"),
+        line("build_report", True),
+    ]) + "\n", encoding="utf-8")
+    (logs / "b.jsonl").write_text("\n".join([
+        line("query_model", False, "unknown measure 'rev'"),
+        line("describe_table", False, "unknown table 'x'"),
+        line("query_model", True),
+    ]) + "\n", encoding="utf-8")
+
+    code = main([str(project), "--cases", str(cases), "--gateway-log", str(logs)])
+    out = capsys.readouterr().out
+    assert code == 1  # case c has no refusal file
+    rows = {ln.split()[0]: ln for ln in out.splitlines()[1:4]}
+    assert rows["a"].split()[1:5] == ["pass", "5", "3", "no"]
+    assert rows["b"].split()[1:4] == ["pass", "3", "2"]
+    assert "not called" in rows["b"]
+    assert "no log" in rows["c"]
+    assert "a  build_report  refused: figure claim mismatch" in out
+    top = out.split("top errors across all cases:")[1].strip().splitlines()
+    assert len(top) == 3
+    assert top[0].split() == ["3", "query_model", "refused:", "unknown",
+                              "measure", "'rev'"]
