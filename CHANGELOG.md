@@ -6,6 +6,12 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — list_models names a model file that failed to load
+
+- `list_models` returns `skipped`: each file that did not load, with the
+  exception type and message. `describe_model` on that name returns the
+  same error. Fix the file and call again.
+
 ### Added — startup logs the auth posture
 
 - When the web server decides how authentication is configured, it logs one
