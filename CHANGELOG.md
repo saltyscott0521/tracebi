@@ -6,6 +6,11 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — tzdata in the dev extra
+
+- `pip install -e ".[dev]"` installs `tzdata`, so `tests/test_parquet_embed.py`
+  can use `US/Eastern` on a slim image that has no system time-zone database.
+
 ### Added — a compose file for a client's own project
 
 - `deploy/compose.yml` runs the GHCR image (or a local build of the Dockerfile)

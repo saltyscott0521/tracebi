@@ -136,6 +136,9 @@ dev = [
     # NOT a typo for httpx: starlette >=1.x TestClient prefers `import httpx2`
     # (the Pydantic-maintained httpx successor) and falls back to httpx.
     "httpx2",
+    # tests/test_parquet_embed.py uses US/Eastern. Slim images have no
+    # system tzdata, so collection fails unless the package ships the database.
+    "tzdata",
 ]
 
 [project.scripts]
