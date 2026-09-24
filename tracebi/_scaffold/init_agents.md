@@ -173,6 +173,14 @@ differs by client: `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code,
 `--http` form is not offered for Claude Desktop (add the URL as a custom
 connector under Settings → Connectors).
 
+The gateway also ships three prompts: `author_report(question)` walks the
+package loop (query, bindings, `build_report`, `verify_manifest`);
+`answer_question(question, model="")` answers in plain words with each
+number beside its fingerprint and measure, never estimates, and builds no
+report unless asked; `address_pins(report)` reads `workbench_state`, acts
+on each open pin in order, rebuilds, then `resolve_pin`s each with a
+one-line note.
+
 ### The dev iteration, step by step
 
 0. **Discovery comes first — and it has a live surface.** Before any report

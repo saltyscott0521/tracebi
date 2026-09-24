@@ -701,6 +701,46 @@ class TestMcp2Features:
         got = anyio.run(render)
         text = got.messages[0].content.text
         assert "revenue by region?" in text
-        for step in ("get_context", "query_model", "validate_report_spec",
-                     "render_report_spec", "verify_manifest"):
+        for step in ("get_context", "query_model", "build_report",
+                     "validate_report_spec", "render_report_spec",
+                     "verify_manifest"):
             assert step in text, f"the SOP prompt should name {step}"
+        # The package lane leads; the spec lane is the fallback.
+        assert text.index("build_report") < text.index("render_report_spec")
+
+    def test_instructions_lead_with_the_package_lane(self, gateway_model):
+        server, _ = self._tools()
+        text = server.instructions
+        assert text.index("build_report") < text.index("render_report_spec")
+        for name in ("workbench_state", "resolve_pin", "verify_manifest",
+                     "answer_question", "address_pins"):
+            assert name in text
+
+    def test_answer_question_and_address_pins_render(self, gateway_model):
+        pytest.importorskip("mcp")
+        import anyio
+        server, _ = self._tools()
+
+        prompts = {p.name for p in anyio.run(server.list_prompts)}
+        assert {"author_report", "answer_question", "address_pins"} <= prompts
+
+        async def render(name, args):
+            got = await server.get_prompt(name, args)
+            return got.messages[0].content.text
+
+        answer = anyio.run(render, "answer_question",
+                           {"question": "revenue by region?", "model": "gw_demo"})
+        assert "revenue by region?" in answer
+        assert "'gw_demo'" in answer
+        assert "Never estimate" in answer
+        assert "fingerprint" in answer
+        assert "Do not build a report unless" in answer
+        no_model = anyio.run(render, "answer_question", {"question": "q?"})
+        assert "model=" not in no_model
+
+        pins = anyio.run(render, "address_pins", {"report": "weekly"})
+        for step in ("workbench_state", "build_report", "resolve_pin",
+                     "reports/weekly/"):
+            assert step in pins
+        assert pins.index("workbench_state") < pins.index("build_report") \
+            < pins.index("resolve_pin")
