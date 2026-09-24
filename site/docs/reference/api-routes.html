@@ -93,6 +93,12 @@ registry; nothing is app-specific.</p>
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/status</code></td>
+<td>viewer</td>
+<td><code>{"version", "checks": [{"name", "ok", "detail"}]}</code> — output writable, discovery failures, models loaded, SMTP configured, in-server schedules, auth posture</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/schema</code></td>
 <td>viewer</td>
 <td>the machine-readable vocabulary (same source as <code>tracebi context</code>)</td>
@@ -108,6 +114,11 @@ registry; nothing is app-specific.</p>
 <p><code>/api/discovery</code> is the first place to look when something you wrote doesn't
 appear: auto-discovery is convention-based and quiet, and this is where the
 silence gets a reason.</p>
+<p><code>/api/status</code> is the operator page: one check per thing that is usually
+wrong. <code>email_configured.detail</code> is the SMTP variable names and whether each
+is set. It never includes a URL, host, user, or password.
+<code>schedules_in_server.detail</code> is <code>{"on", "count"}</code>. <code>auth.detail</code> is the
+posture line.</p>
 <h2 id="models">Models</h2>
 <table>
 <thead>

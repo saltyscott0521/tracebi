@@ -584,6 +584,7 @@ Add a file under `tracebi/web/api/routers/`, include it in `tracebi/web/api/main
 
 ```
 GET  /api/health
+GET  /api/status                                     → version plus what's wrong with this install
 GET  /api/schema                                     → machine-readable vocabulary (generated)
 GET  /api/discovery                                  → per-file registered/skipped/failed + reason
 GET  /api/spec/schema                                → JSON Schema for a report spec
