@@ -198,9 +198,11 @@ it comes first. A pin with `"kind": "promote"` is the human pressing **Keep
 this** on an exhibit: its `request` field (a `→ keep:` line in `report
 status`) says which exhibit, the code that produced it, and what to do —
 re-express it as a model binding + figure when the model can, else in
-`report.py` (python-derived) — then remove the pin. A `"kind": "message"`
+`report.py` (python-derived) — then resolve the pin with a one-line note
+(`tracebi report pins <name> --resolve <id> --note "..."`, or MCP
+`resolve_pin`). A `"kind": "message"`
 pin (a `→ message:` line) is the human leaving a note in the timeline's note box:
-treat it as an instruction, then remove the pin. The workbench never
+treat it as an instruction, then resolve the pin with a one-line note. The workbench never
 edits the report; you do. `tracebi report snapshot <name>` shares a draft (exploration
 kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
@@ -312,7 +314,7 @@ The http transport requires `TRACEBI_MCP_TOKEN` (send
 `Authorization: Bearer <token>`) — it refuses to start without it unless
 `--insecure` is passed explicitly.
 
-Twelve tools (`tracebi/mcp_server.py`):
+Thirteen tools (`tracebi/mcp_server.py`):
 
 | Tool | Purpose |
 |---|---|
@@ -324,7 +326,8 @@ Twelve tools (`tracebi/mcp_server.py`):
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
-| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit |
+| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit. Open pins only; `resolved_count` is how many have been resolved |
+| `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
 | `build_report` | The **publish step for the package lane**: build `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` in that same output directory. The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact |
 | `fetch_artifact` | Read back an artifact a render or build tool wrote, given the path it returned. HTML and JSON come back as text. An `.xlsx` from `build_report(..., format="xlsx")` comes back base64-encoded (`encoding="base64"`) with the spreadsheet media type. Every other suffix stays refused |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |

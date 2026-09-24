@@ -802,7 +802,7 @@ tracebi/                        ← the framework repo
 │   ├── reports/                Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
 │   ├── pipeline/               PipelineRunner (APScheduler + DB)
 │   ├── lineage/                LineageDiagram
-│   ├── mcp_server.py           Agent gateway — 11 MCP tools (typed output, read-only
+│   ├── mcp_server.py           Agent gateway — 13 MCP tools (typed output, read-only
 │                               annotations) + resources + the author_report prompt
 │   └── web/
 │       ├── api/                FastAPI app, routers, registry

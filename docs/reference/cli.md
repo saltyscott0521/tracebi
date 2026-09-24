@@ -97,6 +97,18 @@ edits. Prints a per-figure line (`✓` verified, `·` derived or unverified,
 
 **Exits 1** if any binding errors. Packages only.
 
+### `tracebi report pins`
+
+```bash
+tracebi report pins <name>
+tracebi report pins <name> --resolve <id> [--note "what changed"]
+```
+
+Lists open workbench pins (id, kind, note). `--resolve` moves one into the
+resolved list in that session's `pins.json`, keeping it with a timestamp,
+the current actor, and the note. An unknown id is an error. Open pins are
+what `tracebi report status` and `workbench_state` show.
+
 ### `tracebi verify`
 
 ```bash

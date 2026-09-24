@@ -134,6 +134,14 @@ hand-authored one — one report form.</p>
 edits. Prints a per-figure line (<code>✓</code> verified, <code>·</code> derived or unverified,
 <code>✗</code> otherwise), then unused and failing bindings.</p>
 <p><strong>Exits 1</strong> if any binding errors. Packages only.</p>
+<h3 id="tracebi-report-pins"><code>tracebi report pins</code></h3>
+<pre><code class="language-bash">tracebi report pins &lt;name&gt;
+tracebi report pins &lt;name&gt; --resolve &lt;id&gt; [--note &quot;what changed&quot;]
+</code></pre>
+<p>Lists open workbench pins (id, kind, note). <code>--resolve</code> moves one into the
+resolved list in that session's <code>pins.json</code>, keeping it with a timestamp,
+the current actor, and the note. An unknown id is an error. Open pins are
+what <code>tracebi report status</code> and <code>workbench_state</code> show.</p>
 <h3 id="tracebi-verify"><code>tracebi verify</code></h3>
 <pre><code class="language-bash">tracebi verify &lt;manifest.json&gt; [--strict] [--contracts]
 tracebi verify --file &lt;report.html&gt; [--manifest PATH] [--strict]

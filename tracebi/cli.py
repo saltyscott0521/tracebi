@@ -1670,6 +1670,32 @@ def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
     )
 
 
+def _report_pins(name: str, resolve: Optional[str], note: str) -> int:
+    """List open pins, or move one into the resolved list.
+
+    Same workbench directory ``collect_state`` reads: ``TRACEBI_WORKBENCH_DIR``
+    when set, otherwise ``.tracebi/workbench/<name>``. Writes only ``pins.json``.
+    """
+    from tracebi.workbench import read_pins, resolve_pin, workbench_dir
+
+    wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(os.getcwd(), name)
+    if resolve:
+        try:
+            moved = resolve_pin(wb, resolve, note=note)
+        except ValueError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        print(f"resolved {moved.get('id')}")
+        return 0
+    pins = read_pins(wb)
+    if not pins:
+        print("no open pins")
+        return 0
+    for p in pins:
+        print(f"{p.get('id')}\t{p.get('kind') or 'pin'}\t{p.get('note') or ''}")
+    return 0
+
+
 def _report_status(kind: str, path: Path, as_json: bool = False) -> int:
     """The earned state of an artifact, from the one workbench state builder.
 
@@ -1877,6 +1903,9 @@ def cmd_report(args: argparse.Namespace) -> int:
               "(one or more addresses, comma-separated)", file=sys.stderr)
         return 1
 
+    if args.action == "pins":
+        return _report_pins(args.name, getattr(args, "resolve", None),
+                            getattr(args, "note", None) or "")
     if args.action == "status":
         return _report_status(kind, path, as_json=getattr(args, "json", False))
     if args.action == "snapshot":
@@ -2337,7 +2366,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_report.add_argument("action",
                           choices=["build", "preview", "snapshot", "status",
-                                   "send"])
+                                   "pins", "send"])
     p_report.add_argument("name", help="Report name (package dir or spec stem).")
     p_report.add_argument(
         "--to",
@@ -2362,6 +2391,16 @@ def build_parser() -> argparse.ArgumentParser:
              "a red flag travels WITH the report, never silently.",
     )
     p_report.add_argument("--output", help="Output .html path (default: output/<name>.html).")
+    p_report.add_argument(
+        "--resolve",
+        metavar="ID",
+        help="With `pins`: move that open pin into the resolved list, "
+             "keeping it with a timestamp, the current actor, and --note.",
+    )
+    p_report.add_argument(
+        "--note",
+        help="With `pins --resolve`: the one-line note of what was done.",
+    )
     p_report.add_argument(
         "--json", action="store_true",
         help="With `status`: print the full workbench state as JSON (what "
