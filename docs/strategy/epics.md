@@ -338,8 +338,10 @@ so the agent surface improves from real use. Issue #111.
 - [ ] The gateway's `instructions` and prompts teach the package lane. Today
       they teach JSON specs, while `AGENTS.md` teaches packages. Add
       `answer_question` and `address_pins` prompts.
-- [ ] `tracebi init` writes `.mcp.json` and `.cursor/mcp.json`;
-      `tracebi mcp config` prints the snippet for other clients.
+- [x] `tracebi init` writes `.mcp.json` and `.cursor/mcp.json`;
+      `tracebi mcp config` prints the snippet for other clients. A second
+      init without `--force` leaves an edited file alone. `--http` prints
+      `Bearer ${TRACEBI_MCP_TOKEN}`, never a token value.
 - [ ] An opt-in gateway call log (tool, ok or error, argument *names* only,
       never values) and `tracebi agent log` to summarize it.
 - [ ] Run the eval set (#100) through the gateway, and report the top errors

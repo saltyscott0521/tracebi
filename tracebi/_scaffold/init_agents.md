@@ -160,7 +160,15 @@ tracebi report build <name>                 # render → output/<name>.html + ma
 tracebi verify output/<name>.html.manifest.json --contracts
 tracebi schedule run <name>                 # a report.json "schedule" block: build → verify → email
 tracebi serve                               # browse at http://127.0.0.1:8000
+tracebi mcp config --client cursor          # snippet for another MCP client
 ```
+
+`tracebi init` already wrote `.mcp.json` (Claude Code) and `.cursor/mcp.json`
+(Cursor). Both run `tracebi mcp` over stdio from this folder, so your
+agent's TraceBi tools are already wired. `tracebi mcp config --client
+claude-code|cursor|claude-desktop` prints the snippet for another client.
+`--http URL` prints the streamable-HTTP form; the Authorization header is
+the placeholder `Bearer ${TRACEBI_MCP_TOKEN}`, never a real token.
 
 ### The dev iteration, step by step
 

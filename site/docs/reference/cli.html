@@ -285,6 +285,21 @@ deliberately. <code>--host</code> defaults to <code>127.0.0.1</code>. A non-loop
 <code>--insecure</code> and no token refuses to start unless <code>--allow-insecure-bind</code> is
 also passed: anyone who can reach the port gets full query access. Inside a
 container, bind <code>0.0.0.0</code> and set the token.</p>
+<h3 id="tracebi-mcp-config"><code>tracebi mcp config</code></h3>
+<pre><code class="language-bash">tracebi mcp config --client claude-code|cursor|claude-desktop [--http URL]
+</code></pre>
+<p>Prints the MCP client snippet as JSON and does not start the server.
+<code>tracebi init</code> already writes <code>.mcp.json</code> (Claude Code) and
+<code>.cursor/mcp.json</code> (Cursor): both run <code>tracebi mcp</code> over stdio from the
+project folder. This command is for another client, or for a remote gateway.</p>
+<ul>
+<li><code>--client claude-desktop</code> uses an absolute path to the <code>tracebi</code>
+  executable (<code>shutil.which("tracebi")</code>, or <code>sys.executable -m tracebi.cli</code>
+  when it is not on <code>PATH</code>).</li>
+<li><code>--http URL</code> prints the streamable-HTTP form (<code>type: http</code>, that URL).
+  The <code>Authorization</code> header is the placeholder
+  <code>Bearer ${TRACEBI_MCP_TOKEN}</code>. The command never prints a token value.</li>
+</ul>
 <hr>
 <h2 id="pipelines">Pipelines</h2>
 <h3 id="tracebi-run-pipeline"><code>tracebi run-pipeline</code></h3>
