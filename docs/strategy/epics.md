@@ -33,7 +33,7 @@ team          │                      │   │    folders            │   │
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
 FRAMEWORK     │ E8 Agent surface:    │   │ E9 The report         │   │ E10 Warehouse-scale    │
 the engine    │    no blind spots    │──▶│    explains itself    │──▶│     engine             │
-              │                      │   │                       │   │                        │
+              │ E14 Agents end to end│   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
 WORKFLOWS     │                      │   │ E11 Schedules you can │   │ E12 Workbench in the   │
@@ -327,6 +327,35 @@ a report right the first time.
 error, read a warehouse table's columns, and export Excel; and the eval
 script prints a first-build success rate for a run.
 
+#### E14 · Agents work with TraceBi end to end — M/L · Now → Next
+
+**Goal:** an agent connected over MCP is told one consistent story, can close
+every loop it's asked to close, and leaves a record of where it struggled,
+so the agent surface improves from real use. Issue #111.
+
+- [ ] Resolve a pin from the CLI and over MCP. Agents are told to "remove the
+      pin" but have no command to do it.
+- [ ] The gateway's `instructions` and prompts teach the package lane. Today
+      they teach JSON specs, while `AGENTS.md` teaches packages. Add
+      `answer_question` and `address_pins` prompts.
+- [ ] `tracebi init` writes `.mcp.json` and `.cursor/mcp.json`;
+      `tracebi mcp config` prints the snippet for other clients.
+- [ ] An opt-in gateway call log (tool, ok or error, argument *names* only,
+      never values) and `tracebi agent log` to summarize it.
+- [ ] Run the eval set (#100) through the gateway, and report the top errors
+      agents hit.
+- [ ] Needs a decision first: draft-writing tools for remote agents (after
+      E7), OAuth for claude.ai connectors, and a rendered snapshot so an
+      agent can see the page it built.
+
+**Done when:** an MCP-only agent in a fresh `tracebi init` project is told
+the package lane, builds a report, resolves its pins and leaves a call log;
+and the eval set run through the gateway prints a first-build success rate
+and the top three errors.
+
+**The loop this closes:** agents use the gateway → the call log and the eval
+set show where they stumble → those become issues → agents fix the gateway.
+
 #### E9 · The report explains itself — M · Next
 
 **Goal:** the file that travels makes sense to a reader who has never heard
@@ -443,8 +472,12 @@ working unattended. These rules keep that safe.
 5. **Coding agents follow `CLAUDE.md`.** `AGENTS.md` is the guide for agents
    that *use* TraceBi to build reports. `.cursor/rules/develop-tracebi.mdc`
    says so, so a Cursor agent doesn't mistake one for the other.
-6. **A person merges.** In the morning: read each pull request, check CI,
-   merge, and label the next issues `agent-ready`.
+6. **Claude reviews, a person merges.** An hourly review pass checks every
+   agent pull request against its issue and `CLAUDE.md`. It approves
+   (label `claude-approved`) or requests specific fixes (label
+   `changes-requested`, starting "@cursor"). After three rounds a pull
+   request is labeled `needs-human`. Review findings outside a pull
+   request's scope become new issues. A person merges.
 7. **Issues that touch the same files run one after another,** not in
    parallel, or they'll conflict.
 

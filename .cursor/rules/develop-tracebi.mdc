@@ -33,3 +33,7 @@ You are changing the TraceBi framework, not building a report with it.
 6. If the issue needs a decision it doesn't make, stop and comment on the
    issue with the question and your proposal. Don't guess.
 7. Don't let tests leave files in the repo's `output/` directory.
+8. When a review on your pull request asks for changes, make exactly those
+   changes on the same branch, push, and reply on the pull request with what
+   you changed, item by item. Don't widen the change. If you disagree with an
+   item, say why in the reply instead of skipping it silently.
