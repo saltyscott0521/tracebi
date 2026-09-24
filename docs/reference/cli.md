@@ -182,8 +182,9 @@ tracebi warehouse tables [--connector NAME] [--table T] [--json]
 
 Column names and types of a sunk table, from connector metadata. No row scan.
 Connectors come from the models in `models/`, plus `data/warehouse.duckdb`
-when that file exists. Omit `--table` to list tables. The same lookup is the
-MCP tool `describe_table`.
+when that file exists. Omit `--table` to list tables. A connector that raises
+is reported in place (`error`: exception type plus the first message line);
+the others still list. The same lookup is the MCP tool `describe_table`.
 
 ### `tracebi session`
 

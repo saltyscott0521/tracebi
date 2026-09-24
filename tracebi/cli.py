@@ -911,23 +911,23 @@ def cmd_list_models(args: argparse.Namespace) -> int:
 def _print_warehouse(result: dict) -> None:
     if not result.get("ok", True):
         print(result.get("error", "failed"), file=sys.stderr)
-        return
-    if "connectors" in result:
-        for entry in result["connectors"]:
-            print(entry["name"])
-            tables = entry.get("tables")
-            if tables is None:
-                print("  (cannot list tables)")
-            elif not tables:
-                print("  (no tables)")
-            else:
-                for name in tables:
-                    print(f"  {name}")
-        return
     for match in result.get("columns") or []:
         print(f"{match['connector']}.{match['table']}")
         for col in match.get("columns") or []:
             print(f"  {col['name']}  {col['dtype']}")
+    for entry in result.get("connectors") or []:
+        print(entry["name"])
+        if "error" in entry:
+            print(f"  {entry['error']}")
+            continue
+        tables = entry.get("tables")
+        if tables is None:
+            print("  (cannot list tables)")
+        elif not tables:
+            print("  (no tables)")
+        else:
+            for name in tables:
+                print(f"  {name}")
 
 
 def cmd_warehouse(args: argparse.Namespace) -> int:

@@ -103,3 +103,64 @@ def test_cli_text_lists_the_table(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "warehouse" in out
     assert "orders" in out
+
+
+def test_one_connector_error_does_not_hide_the_others(tmp_path, monkeypatch, capsys):
+    """A connector that raises is reported in place. The rest still list."""
+    good_path = tmp_path / "good.duckdb"
+    con = duckdb.connect(str(good_path))
+    con.execute("CREATE TABLE orders (id INTEGER, name VARCHAR)")
+    con.close()
+    good = DuckDBConnector("good", database=str(good_path))
+    # Missing file: list_tables() raises before any catalog read. It is
+    # first so a raise would hide ``good`` if the loop did not continue.
+    bad = DuckDBConnector("missing", database=str(tmp_path / "absent.duckdb"))
+
+    class _SchemaDown(DuckDBConnector):
+        def list_tables(self):
+            return ["orders"]
+
+        def column_schema(self, source):
+            raise RuntimeError("inspector failed\nsecond line")
+
+    schema_down = _SchemaDown("schema_down", database=str(good_path))
+    monkeypatch.setattr(
+        "tracebi.mcp_server._warehouse_connectors",
+        lambda: [bad, schema_down, good],
+    )
+
+    listed = gateway_describe_table()
+    assert listed["ok"] is True
+    by_name = {c["name"]: c for c in listed["connectors"]}
+    assert by_name["good"]["type"] == "DuckDBConnector"
+    assert by_name["good"]["tables"] == ["orders"]
+    assert "error" not in by_name["good"]
+    assert set(by_name["missing"]) == {"name", "type", "error"}
+    assert by_name["missing"]["type"] == "DuckDBConnector"
+    assert by_name["missing"]["error"].startswith("FileNotFoundError: ")
+    assert "absent.duckdb" in by_name["missing"]["error"]
+    assert "\n" not in by_name["missing"]["error"]
+
+    described = gateway_describe_table(table="orders")
+    assert described["ok"] is True
+    match = described["columns"][0]
+    assert match["connector"] == "good"
+    assert match["table"] == "orders"
+    columns = {c["name"]: c["dtype"] for c in match["columns"]}
+    assert columns["id"].upper().startswith("INTEGER")
+    assert "VARCHAR" in columns["name"].upper()
+    failed = {c["name"]: c for c in described["connectors"]}
+    assert failed["missing"]["error"].startswith("FileNotFoundError: ")
+    assert failed["schema_down"]["error"] == "RuntimeError: inspector failed"
+    assert set(failed["schema_down"]) == {"name", "type", "error"}
+
+    assert main(["warehouse", "tables", "--json"]) == 0
+    cli = json.loads(capsys.readouterr().out)
+    cli_by = {c["name"]: c for c in cli["connectors"]}
+    assert cli_by["good"]["tables"] == ["orders"]
+    assert cli_by["missing"]["error"] == by_name["missing"]["error"]
+
+    assert main(["warehouse", "tables"]) == 0
+    text = capsys.readouterr().out
+    assert "orders" in text
+    assert "FileNotFoundError:" in text

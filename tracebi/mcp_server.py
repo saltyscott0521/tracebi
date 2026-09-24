@@ -586,11 +586,24 @@ def _warehouse_connectors() -> list:
     return found
 
 
+def _connector_error(connector, exc: BaseException) -> dict:
+    """One connector's failure, in the listing shape. Not a traceback."""
+    return {
+        "name": connector.name,
+        "type": type(connector).__name__,
+        "error": _one_line_error(exc),
+    }
+
+
 def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTableResult:
     """Column names and types from connector metadata. Never returns rows.
 
     With no *table*, list each connector's tables. With *table*, describe
     that table's columns. *connector* limits both to one connector name.
+
+    A connector that raises is reported in place (``name``, ``type``,
+    ``error`` — exception type plus the first message line) and the others
+    still list. One unreachable warehouse does not fail the call.
     """
     connectors = _warehouse_connectors()
     if connector:
@@ -600,20 +613,34 @@ def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTabl
     if not table:
         listed = []
         for c in connectors:
+            try:
+                tables = c.list_tables()
+            except Exception as exc:  # noqa: BLE001 — one warehouse must not hide the rest
+                listed.append(_connector_error(c, exc))
+                continue
             listed.append({
                 "name": c.name,
                 "type": type(c).__name__,
-                "tables": c.list_tables(),
+                "tables": tables,
             })
         return {"ok": True, "connectors": listed}
     matches = []
+    failed = []
     for c in connectors:
-        names = c.list_tables()
+        try:
+            names = c.list_tables()
+        except Exception as exc:  # noqa: BLE001 — one warehouse must not hide the rest
+            failed.append(_connector_error(c, exc))
+            continue
         # None means this connector cannot list a catalog. Do not probe
         # column_schema: a miss there raises, and a hit would still be a guess.
         if names is None or table not in names:
             continue
-        schema = c.column_schema(table)
+        try:
+            schema = c.column_schema(table)
+        except Exception as exc:  # noqa: BLE001 — one warehouse must not hide the rest
+            failed.append(_connector_error(c, exc))
+            continue
         if schema is None:
             continue
         matches.append({
@@ -622,8 +649,17 @@ def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTabl
             "columns": schema,
         })
     if not matches:
-        return {"ok": False, "error": f"Table '{table}' not found."}
-    return {"ok": True, "columns": matches}
+        out: DescribeTableResult = {
+            "ok": False,
+            "error": f"Table '{table}' not found.",
+        }
+        if failed:
+            out["connectors"] = failed
+        return out
+    out = {"ok": True, "columns": matches}
+    if failed:
+        out["connectors"] = failed
+    return out
 
 
 def gateway_models() -> ModelsResult:
@@ -1187,8 +1223,11 @@ def build_server(token: Optional[str] = None):
             "Column names and types of a warehouse table, from connector "
             "metadata. Pass table to describe one table; omit it to list "
             "tables. connector limits the lookup to one connector name. "
-            "Never returns rows. Use this before writing a model or an "
-            "ad-hoc measure, instead of learning column names from errors."
+            "Never returns rows. A connector that raises is reported in "
+            "place (name, type, error: exception type plus the first "
+            "message line); the others still list. Use this before writing "
+            "a model or an ad-hoc measure, instead of learning column "
+            "names from errors."
         ),
     )(gateway_describe_table)
     server.tool(
