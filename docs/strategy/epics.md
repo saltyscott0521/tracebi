@@ -97,7 +97,7 @@ That's most of step 1 of [[production-plan]], plus its step 2.
 | No Docker image is published. Every server builds from a checkout. | `docs/strategy/deployment.md` |
 | A git install ships the API with no web UI. The built UI is gitignored and only the release workflow builds it. | [[ROADMAP]] item 5 |
 | The app shows the wrong version: the footer is hard-coded `v0.5.2`; the package is `0.6.0.dev0`. | `web/ui/src/components/Layout.jsx:305` |
-| The only compose file is the demo stack with seeded data. A client has nothing to point at their own project. | `docker-compose.yml` |
+| The demo compose still seeds sample data. A client stack is `deploy/compose.yml`. | `docker-compose.yml`, `deploy/compose.yml` |
 | No "run it on one server" guide, even though that's how this project runs today (Hetzner + Coolify). | `docs/guides/` |
 | No path onto a client's own data: no connection setup, no model drafted from warehouse tables, no `init --template`. | `tracebi init --help` |
 | Messaging disagrees with the strategy. The CLI help and the `init` README lead with "the trust layer for AI-generated analytics"; [[vision-and-positioning]] makes receipts a supporting feature and leads with ask / build / schedule. | `tracebi --help`, the scaffolded `README.md` |
