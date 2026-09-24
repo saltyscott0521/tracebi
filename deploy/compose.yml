@@ -53,7 +53,4 @@ services:
     # From the project, point the runner at this service:
     # PipelineRunner(db_url="postgresql+psycopg://tracebi:<password>@postgres:5432/tracebi")
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
+      - ${TRACEBI_PGDATA_DIR:-./pgdata}:/var/lib/postgresql/data
