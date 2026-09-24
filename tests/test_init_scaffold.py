@@ -8,6 +8,7 @@ shared registry state with the rest of the suite.
 """
 
 import compileall
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -53,6 +54,76 @@ class TestInitScaffold:
             "the sample chart must opt into the vendored ECharts or it is blank"
         assert not (proj / "reports" / "sample_dashboard.json").exists(), \
             "the scaffold must not teach the legacy spec lane"
+
+    def test_init_wires_the_gateway(self, tmp_path):
+        proj = tmp_path / "proj"
+        assert cli.main(["init", str(proj)]) == 0
+        expected = {
+            "mcpServers": {
+                "tracebi": {"command": "tracebi", "args": ["mcp"]},
+            },
+        }
+        for rel in (".mcp.json", Path(".cursor") / "mcp.json"):
+            assert json.loads((proj / rel).read_text()) == expected
+        readme = (proj / "README.md").read_text()
+        assert "tracebi mcp config --client" in readme
+        (proj / ".mcp.json").write_text('{"edited": true}\n', encoding="utf-8")
+        assert cli.main(["init", str(proj)]) == 1
+        assert (proj / ".mcp.json").read_text() == '{"edited": true}\n'
+
+    def test_mcp_config_prints_json_and_never_a_token(self, monkeypatch, capsys):
+        monkeypatch.setenv("TRACEBI_MCP_TOKEN", "super-secret-token-xyz")
+        assert cli.main(["mcp", "config", "--client", "cursor"]) == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["mcpServers"]["tracebi"] == {
+            "command": "tracebi", "args": ["mcp"],
+        }
+        assert "super-secret-token-xyz" not in out
+
+        assert cli.main([
+            "mcp", "config", "--client", "claude-code",
+            "--http", "http://127.0.0.1:8765/mcp",
+        ]) == 0
+        http_out = capsys.readouterr().out
+        http = json.loads(http_out)
+        server = http["mcpServers"]["tracebi"]
+        assert server["type"] == "http"
+        assert server["url"] == "http://127.0.0.1:8765/mcp"
+        assert server["headers"]["Authorization"] == "Bearer ${TRACEBI_MCP_TOKEN}"
+        assert "super-secret-token-xyz" not in http_out
+        assert "command" not in server
+
+        assert cli.main([
+            "mcp", "config", "--client", "cursor",
+            "--http", "http://127.0.0.1:8765/mcp",
+        ]) == 0
+        cursor_out = capsys.readouterr().out
+        cursor = json.loads(cursor_out)
+        assert cursor["mcpServers"]["tracebi"]["headers"]["Authorization"] == (
+            "Bearer ${env:TRACEBI_MCP_TOKEN}"
+        )
+        assert "super-secret-token-xyz" not in cursor_out
+
+        assert cli.main(["mcp", "config", "--client", "claude-desktop"]) == 0
+        desktop = json.loads(capsys.readouterr().out)
+        command = desktop["mcpServers"]["tracebi"]["command"]
+        assert Path(command).is_absolute()
+
+        assert cli.main([
+            "mcp", "config", "--client", "claude-desktop",
+            "--http", "http://127.0.0.1:8765/mcp",
+        ]) == 1
+        refused = capsys.readouterr()
+        assert refused.out == ""
+        assert "{" not in refused.err
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(refused.err)
+        assert refused.err.strip() == (
+            "Add the URL as a custom connector in Claude Desktop "
+            "(Settings → Connectors)."
+        )
+        assert "super-secret-token-xyz" not in refused.err
 
     def test_existing_scheduled_dir_still_starts(self, tmp_path):
         proj = tmp_path / "proj"

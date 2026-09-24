@@ -300,6 +300,28 @@ deliberately. `--host` defaults to `127.0.0.1`. A non-loopback host with
 also passed: anyone who can reach the port gets full query access. Inside a
 container, bind `0.0.0.0` and set the token.
 
+### `tracebi mcp config`
+
+```bash
+tracebi mcp config --client claude-code|cursor|claude-desktop [--http URL]
+```
+
+Prints the MCP client snippet as JSON and does not start the server.
+`tracebi init` already writes `.mcp.json` (Claude Code) and
+`.cursor/mcp.json` (Cursor): both run `tracebi mcp` over stdio from the
+project folder. This command is for another client, or for a remote gateway.
+
+- `--client claude-desktop` uses an absolute path to the `tracebi`
+  executable (`shutil.which("tracebi")`, or `sys.executable -m tracebi.cli`
+  when it is not on `PATH`). The `--http` form is not offered for Claude
+  Desktop: add the URL as a custom connector under Settings → Connectors.
+  That combination exits 1 and prints no JSON.
+- `--http URL` prints the streamable-HTTP form (`type: http`, that URL)
+  for Claude Code and Cursor. The `Authorization` placeholder differs by
+  client: `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code,
+  `Bearer ${env:TRACEBI_MCP_TOKEN}` for Cursor. The command never prints
+  a token value.
+
 ---
 
 ## Pipelines

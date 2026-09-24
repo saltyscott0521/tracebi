@@ -305,7 +305,15 @@ governed data, ungoverned presentation.
 
 Start it with `tracebi mcp` (stdio, local agent) or
 `tracebi mcp --transport http --port 8765` (remote). Needs
-`pip install 'tracebi[mcp]'`. Register with Claude Code:
+`pip install 'tracebi[mcp]'`. `tracebi init` writes `.mcp.json` (Claude
+Code) and `.cursor/mcp.json` (Cursor), both running `tracebi mcp` over
+stdio from the project folder. `tracebi mcp config --client claude-code|cursor|claude-desktop`
+prints the snippet for another client; `--http URL` prints the
+streamable-HTTP form. The Authorization placeholder differs by client:
+`Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code, `Bearer ${env:TRACEBI_MCP_TOKEN}`
+for Cursor — a placeholder, never a token. The `--http` form is not offered
+for Claude Desktop (add the URL as a custom connector under Settings →
+Connectors). Register by hand with Claude Code:
 `claude mcp add tracebi -- tracebi mcp`. Work is attributed as
 `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`).
 The http transport requires `TRACEBI_MCP_TOKEN` (send

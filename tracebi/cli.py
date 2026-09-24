@@ -27,6 +27,7 @@ import json
 import os
 import re
 import runpy
+import shutil
 import sys
 from datetime import date
 from importlib.resources import files
@@ -297,6 +298,14 @@ _INIT_SAMPLE_REPORT_JSON = _scaffold_text("init_sample_report.json")
 
 _INIT_SAMPLE_TEMPLATE_HTML = _scaffold_text("init_sample_template.html")
 
+# Claude Code and Cursor both read this shape. The command is `tracebi` on
+# PATH, run from the project folder — not an absolute path, so the file
+# stays the same on every machine.
+_INIT_MCP_JSON = json.dumps(
+    {"mcpServers": {"tracebi": {"command": "tracebi", "args": ["mcp"]}}},
+    indent=2,
+) + "\n"
+
 def _init_project_readme(project: str) -> str:
     return f"""\
 # {project}
@@ -403,6 +412,10 @@ a model, render, verify — read-and-compute only). An agent and an analyst
 author against the same model and produce the same receipts. **`AGENTS.md`
 in this project orients an AI agent working here** — point a fresh session at
 it (most coding agents read it automatically).
+
+Your agent's TraceBi tools are already wired (`.mcp.json` for Claude Code,
+`.cursor/mcp.json` for Cursor — both run `tracebi mcp` over stdio). Run
+`tracebi mcp config --client ...` for other clients.
 """
 
 
@@ -443,6 +456,8 @@ def cmd_init(args: argparse.Namespace) -> int:
             _INIT_SAMPLE_REPORT_JSON,
         target / "reports" / "sample_dashboard" / "template.html":
             _INIT_SAMPLE_TEMPLATE_HTML,
+        target / ".mcp.json": _INIT_MCP_JSON,
+        target / ".cursor" / "mcp.json": _INIT_MCP_JSON,
     }
     # Keep the still-empty discovery directories in git so the layout
     # survives a clone.
@@ -1088,6 +1103,52 @@ def cmd_list_pipelines(args: argparse.Namespace) -> int:
     return 0
 
 
+_MCP_CLIENTS = ("claude-code", "cursor", "claude-desktop")
+# Placeholders, never values. A printed snippet must not echo
+# TRACEBI_MCP_TOKEN even when the variable is set in this process.
+# Claude Code's .mcp.json interpolates ${NAME}; Cursor's mcp.json
+# interpolates ${env:NAME}.
+_MCP_HTTP_AUTH = {
+    "claude-code": "Bearer ${TRACEBI_MCP_TOKEN}",
+    "cursor": "Bearer ${env:TRACEBI_MCP_TOKEN}",
+}
+_CLAUDE_DESKTOP_HTTP_REFUSAL = (
+    "Add the URL as a custom connector in Claude Desktop "
+    "(Settings → Connectors)."
+)
+
+
+def _claude_desktop_stdio() -> dict:
+    """Claude Desktop needs an absolute executable. ``which`` first; if
+    ``tracebi`` is not on PATH, ``sys.executable -m tracebi.cli``."""
+    found = shutil.which("tracebi")
+    if found:
+        return {"command": str(Path(found).resolve()), "args": ["mcp"]}
+    return {"command": sys.executable, "args": ["-m", "tracebi.cli", "mcp"]}
+
+
+def mcp_client_config(client: str, http_url: Optional[str] = None) -> dict:
+    """The snippet ``tracebi mcp config`` prints. stdio for a local agent;
+    ``http_url`` is the streamable-HTTP form, with a header placeholder.
+
+    Claude Desktop's config file only starts local stdio servers, so a
+    remote URL is refused (see ``cmd_mcp``).
+    """
+    if http_url:
+        if client not in _MCP_HTTP_AUTH:
+            raise ValueError(_CLAUDE_DESKTOP_HTTP_REFUSAL)
+        server: dict = {
+            "type": "http",
+            "url": http_url,
+            "headers": {"Authorization": _MCP_HTTP_AUTH[client]},
+        }
+    elif client == "claude-desktop":
+        server = _claude_desktop_stdio()
+    else:
+        server = {"command": "tracebi", "args": ["mcp"]}
+    return {"mcpServers": {"tracebi": server}}
+
+
 def cmd_mcp(args: argparse.Namespace) -> int:
     """
     Serve the agent gateway over the Model Context Protocol.
@@ -1098,7 +1159,26 @@ def cmd_mcp(args: argparse.Namespace) -> int:
 
     The http transport refuses to start until an auth decision is made:
     set TRACEBI_MCP_TOKEN (bearer auth) or pass --insecure explicitly.
+
+    ``tracebi mcp config`` prints a client snippet and does not serve.
     """
+    if getattr(args, "mcp_action", None) == "config":
+        if args.client not in _MCP_CLIENTS:
+            print(
+                "tracebi mcp config needs --client "
+                "claude-code|cursor|claude-desktop",
+                file=sys.stderr,
+            )
+            return 1
+        if args.http and args.client == "claude-desktop":
+            print(_CLAUDE_DESKTOP_HTTP_REFUSAL, file=sys.stderr)
+            return 1
+        print(json.dumps(mcp_client_config(args.client, args.http), indent=2))
+        return 0
+    if args.client or args.http:
+        print("--client and --http belong to `tracebi mcp config`",
+              file=sys.stderr)
+        return 1
     from tracebi.mcp_server import GatewayAuthError, serve
 
     try:
@@ -2478,7 +2558,24 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_mcp = sub.add_parser(
         "mcp",
-        help="Serve the agent gateway over the Model Context Protocol.",
+        help="Serve the agent gateway over the Model Context Protocol. "
+             "`mcp config` prints a client snippet instead of serving.",
+    )
+    p_mcp.add_argument(
+        "mcp_action", nargs="?", choices=("config",),
+        help="config — print the MCP client snippet and exit.",
+    )
+    p_mcp.add_argument(
+        "--client", choices=_MCP_CLIENTS,
+        help="With `mcp config`: claude-code, cursor, or claude-desktop.",
+    )
+    p_mcp.add_argument(
+        "--http", metavar="URL",
+        help="With `mcp config`: streamable-HTTP snippet for URL "
+             "(claude-code or cursor). The Authorization header is a "
+             "placeholder — ${TRACEBI_MCP_TOKEN} for Claude Code, "
+             "${env:TRACEBI_MCP_TOKEN} for Cursor — never a token value. "
+             "Refused for claude-desktop.",
     )
     p_mcp.add_argument(
         "--transport", choices=("stdio", "http"), default="stdio",
