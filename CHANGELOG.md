@@ -6,6 +6,14 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — report schedules can run inside the web server
+
+- `TRACEBI_SCHEDULES_IN_SERVER=1` starts each package's `schedule` block
+  when the server starts, with the same job as `tracebi schedule serve`,
+  and stops it on shutdown. Off by default. It assumes one process: several
+  workers would each send the email. A missing APScheduler fails startup
+  with `pip install 'tracebi[pipeline]'`.
+
 ### Changed — list_models names a model file that failed to load
 
 - `list_models` returns `skipped`: each file that did not load, with the
