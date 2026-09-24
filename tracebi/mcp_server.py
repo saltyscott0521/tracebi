@@ -92,33 +92,85 @@ def _models_dir() -> Path:
     return Path(os.environ.get("TRACEBI_MODELS_DIR", "models"))
 
 
-def _load_models() -> dict:
-    """Every project model, keyed both by ``model.name`` and file stem."""
+class _LoadedModels(dict):
+    """Models keyed by name, plus the files that failed to load.
+
+    A dict so every caller that already treats the return as a mapping
+    keeps working. ``skipped`` is what ``list_models`` shows an agent.
+    """
+
+    def __init__(self, models: dict, skipped: list):
+        super().__init__(models)
+        self.skipped = skipped
+
+
+def _one_line_error(exc: BaseException) -> str:
+    """Exception type plus the first line of its message. Not a traceback."""
+    message = str(exc).splitlines()[0] if str(exc) else ""
+    line = f"{type(exc).__name__}: {message}"
+    return line.rstrip(": ") if not message else line
+
+
+def _model_file(directory: Path, stem: str) -> str:
+    return f"{directory.name}/{stem}.py"
+
+
+def _load_models() -> _LoadedModels:
+    """Every project model, keyed both by ``model.name`` and file stem.
+
+    A file that fails to load is not dropped. It is recorded under
+    ``skipped`` as ``{"file", "error"}`` — one line, exception type plus
+    message — so the others still load and the agent can see what it broke.
+    """
     from tracebi import model_registry
 
     models: dict = {}
+    skipped: list = []
+    seen: set[str] = set()
     d = _models_dir()
     if d.is_dir():
         for stem in model_registry.auto_discover(str(d)):
+            seen.add(stem)
             try:
                 m = model_registry.get_model(stem)
-            except Exception:  # noqa: BLE001 — a broken file shouldn't hide the others
+            except Exception as exc:  # noqa: BLE001 — a broken file shouldn't hide the others
+                skipped.append({
+                    "file": _model_file(d, stem),
+                    "error": _one_line_error(exc),
+                })
                 continue
             models[m.name] = m
             models.setdefault(stem, m)
     # Explicitly registered models (tests, notebooks) participate too.
     for name in model_registry.list_models():
-        if name not in models:
-            try:
-                models[name] = model_registry.get_model(name)
-            except Exception:  # noqa: BLE001
-                continue
-    return models
+        if name in models or name in seen:
+            continue
+        try:
+            models[name] = model_registry.get_model(name)
+        except Exception as exc:  # noqa: BLE001
+            path = model_registry.model_path(name)
+            skipped.append({
+                "file": _model_file(Path(path).parent, Path(path).stem) if path else name,
+                "error": _one_line_error(exc),
+            })
+    return _LoadedModels(models, skipped)
+
+
+def _skipped_error(models, name: str) -> Optional[str]:
+    """The load error for *name*, if that file failed and is not loaded."""
+    for item in getattr(models, "skipped", ()):
+        file = item.get("file", "")
+        if name == file or name == Path(file).stem:
+            return item.get("error")
+    return None
 
 
 def _get_model(name: str):
     models = _load_models()
     if name not in models:
+        failed = _skipped_error(models, name)
+        if failed:
+            raise KeyError(failed)
         raise KeyError(
             f"Model '{name}' not found. Available: {sorted(set(models))}"
         )
@@ -355,9 +407,11 @@ class ContextResult(TypedDict, total=False):
 
 class ModelsResult(TypedDict, total=False):
     models: dict[str, Any]
+    skipped: list[dict[str, str]]
 
 
 class ModelInfoResult(TypedDict, total=False):
+    error: str
     name: str
     tables: Any
     relationships: Any
@@ -491,8 +545,9 @@ def gateway_models() -> ModelsResult:
     twice its size, so aliases are collapsed to one entry with every name
     that resolves to it.
     """
+    loaded = _load_models()
     by_id: dict[int, tuple[Any, list[str]]] = {}
-    for name, m in _load_models().items():
+    for name, m in loaded.items():
         by_id.setdefault(id(m), (m, []))[1].append(name)
 
     out = {}
@@ -515,11 +570,18 @@ def gateway_models() -> ModelsResult:
                 for mm in (info.get("measures") or [])
             ],
         }
-    return {"models": out}
+    return {"models": out, "skipped": list(getattr(loaded, "skipped", []))}
 
 
 def gateway_model_info(model: str) -> ModelInfoResult:
-    """One model's full schema — tables, relationships, facts, dimensions, measures."""
+    """One model's full schema — tables, relationships, facts, dimensions, measures.
+
+    A file that failed to load returns that error instead of "not found".
+    """
+    loaded = _load_models()
+    failed = _skipped_error(loaded, model)
+    if failed and model not in loaded:
+        return {"error": failed}
     return _get_model(model).info()
 
 
@@ -1021,12 +1083,21 @@ def build_server(token: Optional[str] = None):
     server.tool(
         name="list_models", title="List models", annotations=_READ,
         structured_output=True,
-        description="Models this project exposes, with facts, dimensions and measures.",
+        description=(
+            "Models this project exposes, with facts, dimensions and measures. "
+            "A model that failed to load is listed under skipped with its "
+            "error; fix the file and call again (models reload when the file "
+            "changes)."
+        ),
     )(gateway_models)
     server.tool(
         name="describe_model", title="Describe a model", annotations=_READ,
         structured_output=True,
-        description="One model's full schema: tables, relationships, facts, dimensions, named measures.",
+        description=(
+            "One model's full schema: tables, relationships, facts, dimensions, "
+            "named measures. A name that failed to load returns that error "
+            "instead of not found."
+        ),
     )(gateway_model_info)
     server.tool(
         name="query_model", title="Run a stamped query",
