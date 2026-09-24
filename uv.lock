@@ -3502,6 +3502,7 @@ dev = [
     { name = "ruff" },
     { name = "sqlalchemy" },
     { name = "starlette" },
+    { name = "tzdata" },
     { name = "uvicorn" },
 ]
 duckdb = [
@@ -3617,6 +3618,7 @@ requires-dist = [
     { name = "starlette", marker = "extra == 'all'", specifier = ">=0.27" },
     { name = "starlette", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "starlette", marker = "extra == 'web'", specifier = ">=0.27" },
+    { name = "tzdata", marker = "extra == 'dev'" },
     { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.23" },
     { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.23" },
