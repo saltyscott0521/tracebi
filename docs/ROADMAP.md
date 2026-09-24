@@ -1,5 +1,7 @@
 # TraceBi end-to-end: what to build next
 
+> **2026-09-24:** The live plan is now [[epics]] (`docs/strategy/epics.md`). Where this file and that one disagree on order, the epics win.
+
 > **2026-09-21:** The production sequence for the agent-report product —
 > desk, authoring loop, relational selection through `DataModel`, then
 > offline slicing after parity — is `docs/architecture/production-plan.md`.

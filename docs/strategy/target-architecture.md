@@ -124,13 +124,14 @@ deployments too costly to operate.
 
 ## Technical debt to clear first
 
-These block the plan and are cheaper to fix now:
+These block the plan and are cheaper to fix now. Items 1, 4 and 5 are in
+[[epics]] E4 and E1; item 2 is E5.
 
 1. **`registry.scheduled()` is unread.** Remove it or route it to the new
    runner, so there's one way to schedule.
 2. **Run history is split** between pipeline tables and `schedule_runs.jsonl`.
    Unify them in the state store.
-3. **The web download re-renders.** A download and its receipt must come from
-   one render (see [[product-readiness-audit]] P1-1).
+3. ~~**The web download re-renders.**~~ Done: the HTML download is the last
+   build, the same bytes its receipt describes.
 4. **Version shown in the UI is hard-coded.** Serve it from the API.
 5. **Tests write to the repo's `output/`.** Point them at temporary folders.
