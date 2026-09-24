@@ -521,7 +521,6 @@ function TrustChip({ kind }) {
 }
 
 export default function Reports() {
-  throw new Error("deliberate: Reports page broken for ui-smoke")
   const { data, isLoading } = useReports()
   const [query, setQuery] = useState('')
   // Selection lives in the URL (?r=name), so the Home trust ledger can
