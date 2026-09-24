@@ -6,6 +6,11 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — an agent eval set for first-build success
+
+- `evals/agent/` holds 12 report requests and `score.py`, which checks a
+  project copy and prints the first-build success rate. It does not call a model.
+
 ### Added — startup logs the auth posture
 
 - When the web server decides how authentication is configured, it logs one

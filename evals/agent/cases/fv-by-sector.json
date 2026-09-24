@@ -1,0 +1,20 @@
+{
+  "report": "fv_by_sector",
+  "figures": [
+    "chart",
+    "value"
+  ],
+  "chart_types": [
+    "bar"
+  ],
+  "measures": [
+    "fair_value"
+  ],
+  "dimensions": [
+    "dim_issuer.sector"
+  ],
+  "limit": 5,
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}
