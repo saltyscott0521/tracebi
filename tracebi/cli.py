@@ -366,7 +366,6 @@ tracebi verify --file output/sample_dashboard.html   # FILE INTACT, or names wha
 ├── models/           Phase ② — each .py exposes `model` (a DataModel)
 ├── reports/          Phase ③ — ReportSpec .json, packages, and factories
 ├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
-├── scheduled/        Reports on a cron schedule
 ├── data/             The warehouse (gitignored)
 ├── output/           Rendered reports; *.manifest.json receipts stay tracked
 └── .env.example      Copy to `.env` and fill in credentials
@@ -429,7 +428,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     # No requests/ — the exploration story is the artifact's own:
     # `tracebi dev` + exploration blocks that die at build (architecture v2 §7).
     for d in ("inputs", "transforms", "models", "pipelines", "reports",
-              "scheduled", "data", "output"):
+              "data", "output"):
         (target / d).mkdir(parents=True, exist_ok=True)
 
     files = {
@@ -447,8 +446,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     }
     # Keep the still-empty discovery directories in git so the layout
     # survives a clone.
-    for d in ("pipelines", "scheduled"):
-        files[target / d / ".gitkeep"] = ""
+    files[target / "pipelines" / ".gitkeep"] = ""
 
     for path, content in files.items():
         if path.exists() and not args.force:

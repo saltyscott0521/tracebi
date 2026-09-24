@@ -275,7 +275,7 @@ docker compose up --build
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for `runner` variable files |
 | `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `<name>/` artifact packages, `.json` `ReportSpec`s (phase ③), and `@register.report()` factories; all served on the Reports page |
 | `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for ad-hoc request scripts — deprecated lane, removed in 0.8 |
-| `TRACEBI_SCHEDULED_DIR` | `scheduled` | Folder scanned for `@register.scheduled()` factories |
+| `TRACEBI_SCHEDULED_DIR` | `scheduled` | **Deprecated.** Still scanned if the folder exists. `@register.scheduled()` never ran anything; use a `"schedule"` block in `report.json` |
 | `TRACEBI_DEV_MODE` | unset | `1` mounts `POST /api/_dev/reload` |
 | `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | unset | HTTP Basic auth |
 | `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` | unset | Proxy-header auth |

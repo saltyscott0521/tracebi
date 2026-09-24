@@ -1353,9 +1353,12 @@ class TestRegistryExtras:
         from tracebi.web.api.registry import Registry
         r = Registry()
 
-        @r.scheduled("weekly", cron="0 9 * * MON", description="weekly KPIs")
-        def fac():
-            return "report"
+        with pytest.warns(DeprecationWarning, match="never ran anything") as caught:
+            @r.scheduled("weekly", cron="0 9 * * MON", description="weekly KPIs")
+            def fac():
+                return "report"
+        assert len(caught) == 1
+        assert "registry.scheduled" in str(caught[0].message)
 
         reports = [x["name"] for x in r.list_reports()]
         scheduled = r.list_scheduled()
@@ -1418,9 +1421,12 @@ class TestRegistryExtras:
         from tracebi.web import register
         from tracebi.web.api.registry import registry
 
-        @register.scheduled("nightly", cron="0 2 * * *", description="nightly")
-        def fac():
-            return "report"
+        with pytest.warns(DeprecationWarning, match="never ran anything") as caught:
+            @register.scheduled("nightly", cron="0 2 * * *", description="nightly")
+            def fac():
+                return "report"
+        assert len(caught) == 1
+        assert "register.scheduled" in str(caught[0].message)
 
         scheduled_names = [x["name"] for x in registry.list_scheduled()]
         assert "nightly" in scheduled_names
@@ -2082,9 +2088,9 @@ class TestConsumerProjectPath:
         # M5 flip ledger: requests/ is the deprecated lane — init no longer
         # hands it to new projects (the server still discovers one if a
         # pre-existing project has it).
-        for d in ("models", "pipelines", "reports", "scheduled",
-                  "data", "output"):
+        for d in ("models", "pipelines", "reports", "data", "output"):
             assert (target / d).is_dir(), f"init must create {d}/"
+        assert not (target / "scheduled").exists()
 
     def test_discovery_dirs_survive_a_clone(self, tmp_path):
         """Empty directories vanish in git without a keepfile. models/ and
@@ -2094,7 +2100,7 @@ class TestConsumerProjectPath:
 
         target = tmp_path / "proj"
         main(["init", str(target)])
-        for d in ("models", "pipelines", "reports", "scheduled"):
+        for d in ("models", "pipelines", "reports"):
             assert any((target / d).iterdir()), f"{d}/ would vanish in a clone"
 
     def test_init_does_not_write_dead_config(self, tmp_path):
