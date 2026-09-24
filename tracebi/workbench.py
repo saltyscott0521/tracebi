@@ -435,17 +435,85 @@ def read_exhibits(wb_dir: str, cap: int = EXHIBIT_CAP) -> list[dict]:
 # ── Pins — the one portal→chat gesture ──────────────────────────────────────
 
 
-def read_pins(wb_dir: str) -> list[dict]:
-    """``pins.json`` as a list of ``{id, note, at_seq}`` (empty when absent)."""
+def _load_pins(wb_dir: str) -> tuple[list[dict], list[dict]]:
+    """Open pins and the resolved list.
+
+    A bare list is open pins only (the file written before resolution
+    existed). The object form is ``{"open": [...], "resolved": [...]}``.
+    """
     path = os.path.join(wb_dir, PINS_FILE)
     if not os.path.isfile(path):
-        return []
+        return [], []
     try:
         with open(path, encoding="utf-8") as f:
-            pins = json.load(f)
+            data = json.load(f)
     except (ValueError, OSError):
-        return []
-    return pins if isinstance(pins, list) else []
+        return [], []
+    if isinstance(data, list):
+        return [p for p in data if isinstance(p, dict)], []
+    if isinstance(data, dict):
+        open_pins = data.get("open")
+        resolved = data.get("resolved")
+        return (
+            [p for p in open_pins if isinstance(p, dict)]
+            if isinstance(open_pins, list) else [],
+            [p for p in resolved if isinstance(p, dict)]
+            if isinstance(resolved, list) else [],
+        )
+    return [], []
+
+
+def read_pins(wb_dir: str) -> list[dict]:
+    """Open pins as ``{id, note, at_seq}`` (empty when absent).
+
+    Resolved pins are not in this list.
+    """
+    return _load_pins(wb_dir)[0]
+
+
+def read_resolved(wb_dir: str) -> list[dict]:
+    """Pins moved out of the open list. Empty when the file is a bare list."""
+    return _load_pins(wb_dir)[1]
+
+
+def _save_pins(wb_dir: str, open_pins: list[dict], resolved: list[dict]) -> None:
+    os.makedirs(wb_dir, exist_ok=True)
+    # A bare list when nothing is resolved, so older readers of open pins
+    # keep working. The object form appears once a pin has been resolved.
+    payload: object = (
+        {"open": open_pins, "resolved": resolved} if resolved else open_pins
+    )
+    with open(os.path.join(wb_dir, PINS_FILE), "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+
+def resolve_pin(wb_dir: str, pin_id: str, note: str = "", by: str = "") -> dict:
+    """Move one open pin into the resolved list in the same file.
+
+    The pin is kept, with ``resolved_at``, ``resolved_by`` (``by`` when
+    given, otherwise the current ``tracebi.audit`` actor when one is set)
+    and ``resolved_note`` (the agent's note). Nothing is deleted. An
+    unknown id raises ``ValueError``.
+    """
+    open_pins, resolved = _load_pins(wb_dir)
+    match = next((p for p in open_pins if p.get("id") == pin_id), None)
+    if match is None:
+        raise ValueError(f"unknown pin id {pin_id!r}")
+    if not by:
+        from tracebi.audit import get_actor
+        by = get_actor()[0] or ""
+    moved = {
+        **match,
+        "resolved_at": datetime.now().isoformat(timespec="seconds"),
+        "resolved_by": by,
+        "resolved_note": note,
+    }
+    _save_pins(
+        wb_dir,
+        [p for p in open_pins if p.get("id") != pin_id],
+        resolved + [moved],
+    )
+    return moved
 
 
 def promote_request(report: Optional[str], pin: dict, exhibits: list[dict]) -> str:
@@ -467,7 +535,8 @@ def promote_request(report: Optional[str], pin: dict, exhibits: list[dict]) -> s
         "If the model can express it, add a binding to report.json (a model "
         "query) and a figure in template.html, so it gets a receipt. If it "
         "can't, compute it in report.py, where it is marked python-derived. "
-        "Then run `tracebi report status` and remove this pin.")
+        "Then resolve the pin with a one-line note "
+        "(`tracebi report pins <name> --resolve <id> --note ...`).")
     if pin.get("note"):
         lines.append(f"Author's note: {pin['note']}")
     return " ".join(lines)
@@ -489,9 +558,8 @@ def _pins_view(pins: list[dict], report: Optional[str], exhibits: list[dict]) ->
 
 
 def write_pins(wb_dir: str, pins: list[dict]) -> None:
-    os.makedirs(wb_dir, exist_ok=True)
-    with open(os.path.join(wb_dir, PINS_FILE), "w", encoding="utf-8") as f:
-        json.dump(pins, f, indent=2)
+    """Replace the open list. Pins already resolved stay in the file."""
+    _save_pins(wb_dir, pins, read_resolved(wb_dir))
 
 
 # ── JSON-safe previews ──────────────────────────────────────────────────────
@@ -638,6 +706,7 @@ def collect_state(package_dir: str, models: dict) -> dict:
     wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
         os.getcwd(), os.path.basename(os.path.normpath(str(package_dir))))
     pins = read_pins(wb)
+    resolved_pins = read_resolved(wb)
     pinned_ids = {p.get("id") for p in pins}
     output_names = {sd.name for sd in outputs}
     resolved = {sd.name for sd in inputs} | output_names
@@ -712,6 +781,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
         },
         "exhibits": exhibits,
         "pins": _pins_view(pins, pkg.name, exhibits),
+        "resolved": resolved_pins,
+        "resolved_count": len(resolved_pins),
         "code": {
             "report.json": _read_optional(os.path.join(pkg.directory,
                                                        "report.json")),
@@ -765,6 +836,7 @@ def collect_discovery_state(project_root: str, models: dict) -> dict:
     wb = discovery_dir(project_root)
     exhibits = _feed(wb)
     model_entries, loaded = _discovery_models(project_root, models)
+    resolved = read_resolved(wb)
     return {
         "mode": "discovery",
         "name": DISCOVERY_NAME,
@@ -773,6 +845,8 @@ def collect_discovery_state(project_root: str, models: dict) -> dict:
         "packages": _discovery_packages(project_root),
         "exhibits": exhibits,
         "pins": _pins_view(read_pins(wb), None, exhibits),
+        "resolved": resolved,
+        "resolved_count": len(resolved),
     }
 
 

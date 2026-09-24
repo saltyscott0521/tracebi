@@ -326,7 +326,9 @@ front of a person should carry a receipt. This gateway is how you produce one.
    at render if it is wrong — render returns a clean `{ok:false}` to act on.)
 4. **workbench_state** — while iterating under `tracebi dev`, read this
    before every editing pass: the human steers by PINNING figures in the
-   portal with notes, and pins come first.
+   portal with notes, and pins come first. After you act on a pin, call
+   **resolve_pin** with a one-line note. It moves that pin into the
+   resolved list in pins.json and writes nothing else.
 5. **build_report** — the publish step: builds the package to a
    self-contained HTML + manifest, validating every figure claim. Writes
    only its own artifact and receipt. `format="xlsx"` also writes
@@ -349,9 +351,9 @@ front of a person should carry a receipt. This gateway is how you produce one.
   compute it in the query itself (and promote it to a declared measure later).
 - **Contract plane (this gateway):** you *use* the semantic contract; you do
   not change it here. The gateway is read-and-compute only — it never writes
-  the warehouse. The two render tools (`render_report_spec`, `build_report`)
-  write only their own artifact and receipt; the read tools are annotated
-  read-only so a client can see it.
+  the warehouse. `render_report_spec` and `build_report` write only their
+  own artifact and receipt. `resolve_pin` writes only the workbench's
+  pins.json. The read tools are annotated read-only so a client can see it.
 
 ## The rules
 - Never quote a number without its fingerprint.
@@ -492,6 +494,14 @@ class ReportsResult(TypedDict, total=False):
     reports: Any
 
 
+class ResolvePinResult(TypedDict, total=False):
+    ok: bool
+    pin_id: str
+    resolved_note: str
+    resolved_by: str
+    errors: list[str]
+
+
 class WorkbenchStateResult(TypedDict, total=False):
     # Package shape (report given) and discovery shape (no report) share
     # this one result type — total=False keeps both valid.
@@ -504,6 +514,8 @@ class WorkbenchStateResult(TypedDict, total=False):
     lint: Any
     exhibits: Any
     pins: Any
+    resolved: Any
+    resolved_count: int
     code: Any
     warehouse: Any
     models: Any
@@ -1044,6 +1056,45 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
         return collect_state(str(pkg_dir), _load_models())
 
 
+def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinResult:
+    """Move one open pin into the resolved list.
+
+    Writes only the workbench's ``pins.json`` — never the report and never
+    the warehouse. ``resolved_by`` is the current audit actor (the MCP
+    actor, inside this call). An unknown id is an error, not a delete.
+    """
+    from tracebi.workbench import DISCOVERY_NAME, resolve_pin, workbench_dir
+
+    if not pin_id:
+        return {"ok": False, "errors": ["missing pin id"]}
+    if not report or report == DISCOVERY_NAME:
+        name = DISCOVERY_NAME
+    else:
+        name_err = _report_name_error(report)
+        if name_err:
+            return {"ok": False, "errors": [name_err]}
+        reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+        pkg_dir = reports_dir / report
+        if not (pkg_dir / "report.json").is_file():
+            return {"ok": False, "errors": [
+                f"no artifact package at {pkg_dir} — resolve_pin applies to "
+                f"reports/<name>/ packages"
+            ]}
+        name = report
+    wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(os.getcwd(), name)
+    try:
+        with actor(_mcp_actor()):
+            moved = resolve_pin(wb, pin_id, note=note)
+    except ValueError as exc:
+        return {"ok": False, "errors": [str(exc)]}
+    return {
+        "ok": True,
+        "pin_id": pin_id,
+        "resolved_note": moved.get("resolved_note") or "",
+        "resolved_by": moved.get("resolved_by") or "",
+    }
+
+
 def gateway_build_report(
     report: str, output_dir: str = "output", format: str = "html",
 ) -> BuildReportResult:
@@ -1202,11 +1253,14 @@ def build_server(token: Optional[str] = None):
                             openWorldHint=False)
     _READ_WAREHOUSE = ToolAnnotations(readOnlyHint=True, idempotentHint=True,
                                       openWorldHint=True)
-    # render is the one tool that writes — but only its own artifact + receipt,
-    # never source data, so destructiveHint is false. Re-rendering the same
-    # spec reproduces the same output, so it is idempotent.
+    # render is the one tool that writes an artifact — but only its own
+    # artifact + receipt, never source data, so destructiveHint is false.
+    # Re-rendering the same spec reproduces the same output, so it is
+    # idempotent. resolve_pin is the other write: pins.json only.
     _RENDER = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
                               idempotentHint=True, openWorldHint=True)
+    _WRITE_PINS = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                                  idempotentHint=False, openWorldHint=False)
 
     auth_kwargs: dict[str, Any] = {}
     if token is not None:
@@ -1360,6 +1414,18 @@ def build_server(token: Optional[str] = None):
             "summaries, models, packages, and the discovery feed and pins."
         ),
     )(gateway_workbench_state)
+    server.tool(
+        name="resolve_pin", title="Resolve a workbench pin (writes pins.json)",
+        annotations=_WRITE_PINS, structured_output=True,
+        description=(
+            "Move one open pin into the resolved list in the workbench's "
+            "pins.json. The pin is kept, with resolved_at, resolved_by "
+            "(the current actor) and the note. Nothing is deleted, and "
+            "nothing but pins.json is written — not the report, not the "
+            "warehouse. An unknown id is an error. workbench_state then "
+            "lists open pins only."
+        ),
+    )(gateway_resolve_pin)
     server.tool(
         name="build_report", title="Build an artifact package (writes the artifact)",
         annotations=_RENDER, structured_output=True,

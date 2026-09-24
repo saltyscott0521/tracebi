@@ -208,7 +208,8 @@ class _PackageTarget:
                              "unverified": 0, "unbound_errors": 0},
                 "bindings": [], "unused_bindings": [],
                 "lint": {"numeric_literals_outside_figures": 0},
-                "exhibits": [], "pins": [], "code": {},
+                "exhibits": [], "pins": [], "resolved": [],
+                "resolved_count": 0, "code": {},
             }
 
 
@@ -259,6 +260,7 @@ class _DiscoveryTarget:
                 "warehouse": {"path": "", "exists": False, "tables": [],
                               "contracts": None},
                 "models": [], "packages": [], "exhibits": [], "pins": [],
+                "resolved": [], "resolved_count": 0,
             }
 
 
@@ -886,7 +888,8 @@ __ECHARTS__
     var sc = scroller();
     var atBottom = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
     host.textContent = "";
-    if (!state.exhibits.length && !state.pins.length) {
+    var resolved = state.resolved || [];
+    if (!state.exhibits.length && !state.pins.length && !resolved.length) {
       host.appendChild(el("p", "wb-meta", "Nothing yet. Code that calls "
           + "tracebi.workbench.show(df, note=...) — a transform, report.py, "
           + "or a script your agent runs — lands here as a notebook cell, "
@@ -918,11 +921,19 @@ __ECHARTS__
         items.push({order: (p.at_seq || 0) + 0.5, pin: p});
       }
     });
+    resolved.forEach(function (p) {
+      items.push({order: (p.at_seq || 0) + 0.5, done: p});
+    });
     items.sort(function (a, b) { return a.order - b.order; });
     var lastStep = null;
     items.forEach(function (it) {
       if (it.pin) {
         if (feedStep === "all") host.appendChild(myMessage(it.pin));
+        return;
+      }
+      if (it.done) {
+        if (feedStep === "all") host.appendChild(el("div", "wb-marker",
+            "done · " + (it.done.resolved_note || "")));
         return;
       }
       var ex = it.ex;

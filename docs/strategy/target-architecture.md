@@ -47,7 +47,7 @@ in [[report-architecture-v2]] and [[production-plan]].
 | --- | --- | --- | --- |
 | **Engine** | Models, queries, report build, validation, receipts | ✅ `tracebi` package | Add a query compiler (below). |
 | **CLI** | Author, build, verify, schedule, serve | ✅ ~20 commands | Add refresh and retries to `schedule`. Add `init --template`. |
-| **Agent gateway** | MCP tools for agents | ✅ 12 tools, bearer auth on HTTP | Add request, run and status tools. Per-agent identity. |
+| **Agent gateway** | MCP tools for agents | ✅ 13 tools, bearer auth on HTTP | Add request, run and status tools. Per-agent identity. |
 | **Server** | API, web app, auth, roles | ✅ FastAPI + React | Add scheduler workers, requests, review, admin. |
 | **Scheduler + workers** | Run reports on schedule | ✅ `tracebi schedule serve` (one process) | Move into the server as workers. State in Postgres. |
 | **State store** | Runs, schedules, requests, users, audit | Partial: SQLite/Postgres for pipeline runs, a JSONL run log | Postgres for everything multi-process. SQLite for local only. |

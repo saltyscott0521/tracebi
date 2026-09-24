@@ -598,12 +598,13 @@ def test_build_server_registers_the_tools(gateway_model):
     # joined it — the publish step for the package lane, so an MCP-driving
     # agent can finish the loop it iterates in the workbench. fetch_artifact
     # then delivers the rendered bytes a remote agent cannot otherwise reach
-    # (twelve tools).
+    # (thirteen tools).
     assert names == {
         "get_context", "list_models", "describe_model", "describe_table",
         "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
-        "verify_manifest", "workbench_state", "build_report", "fetch_artifact",
+        "verify_manifest", "workbench_state", "resolve_pin", "build_report",
+        "fetch_artifact",
     }
 
 
@@ -643,6 +644,12 @@ class TestMcp2Features:
         render = tools["render_report_spec"].annotations.model_dump(by_alias=True)
         assert render.get("readOnlyHint") is False
         assert render.get("destructiveHint") is False
+        # resolve_pin writes pins.json only — a write, like build_report.
+        pin = tools["resolve_pin"].annotations.model_dump(by_alias=True)
+        built = tools["build_report"].annotations.model_dump(by_alias=True)
+        assert pin.get("readOnlyHint") is False
+        assert built.get("readOnlyHint") is False
+        assert pin.get("destructiveHint") is False
 
     def test_query_tool_emits_structured_content(self, gateway_model):
         pytest.importorskip("mcp")

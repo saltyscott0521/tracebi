@@ -868,6 +868,15 @@ def describe(brief: bool = False) -> dict:
             "when": "Before writing a model or an ad-hoc measure, so column "
                     "names come from the catalog instead of from an error.",
         },
+        "pins": {
+            "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",
+            "mcp": "resolve_pin(report, pin_id, note='')",
+            "what": "Lists open pins. --resolve moves one into the resolved "
+                    "list in pins.json (resolved_at, resolved_by, the agent's "
+                    "note). Nothing is deleted. Writes only pins.json. "
+                    "workbench_state then shows open pins only, plus "
+                    "resolved_count.",
+        },
         "spreadsheet": {
             "mcp": "build_report(report, output_dir='output', format='xlsx')",
             "fetch": "fetch_artifact(xlsx_path) — encoding is base64, "
