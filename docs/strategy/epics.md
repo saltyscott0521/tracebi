@@ -173,7 +173,7 @@ schedules, in under 30 minutes.
       opt-in setting, which the client compose file turns on, so an existing
       server never starts sending email on its own. `tracebi schedule serve`
       stays for separate workers.
-- [ ] A status check that says what's wrong: output folder not writable,
+- [x] A status check that says what's wrong: output folder not writable,
       files that failed discovery, SMTP not set.
 - [ ] A one-page guide, "Run TraceBi on one server", written from the real
       Hetzner + Coolify setup, with a plain Docker path beside it. Backups are

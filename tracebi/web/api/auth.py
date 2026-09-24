@@ -386,6 +386,20 @@ def _log_posture(mode: str, authz: _Authorizer) -> None:
     _logger.info(_posture_text(mode, authz))
 
 
+def posture_line() -> str:
+    """The startup posture line, read again without installing middleware.
+
+    Same words ``_log_posture`` writes. No password, token, or header value.
+    """
+    if os.environ.get("TRACEBI_AUTH_PROXY_HEADER"):
+        mode, trust = "proxy", True
+    elif os.environ.get("TRACEBI_AUTH_USER") and os.environ.get("TRACEBI_AUTH_PASS"):
+        mode, trust = "basic", False
+    else:
+        mode, trust = "off", False
+    return _posture_text(mode, _Authorizer(trust_role_header=trust))
+
+
 def install_if_configured(app) -> Optional[str]:
     """
     Install the appropriate auth middleware on *app* based on env vars.
