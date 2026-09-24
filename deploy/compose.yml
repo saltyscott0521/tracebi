@@ -1,0 +1,56 @@
+# A client's own project, not the demo stack. No seeding.
+#
+#   cp deploy/.env.example deploy/.env
+#   docker compose -f deploy/compose.yml up -d
+#
+# Postgres is optional: docker compose -f deploy/compose.yml --profile postgres up -d
+
+services:
+  output-perms:
+    image: ghcr.io/saltyscott0521/tracebi:${TRACEBI_VERSION:-latest}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    user: "0:0"
+    volumes:
+      - ${TRACEBI_PROJECT_DIR:-./project}/output:/out
+      - ${TRACEBI_PROJECT_DIR:-./project}/data:/data
+    command: ["chown", "-R", "10001:10001", "/out", "/data"]
+    restart: "no"
+
+  tracebi:
+    image: ghcr.io/saltyscott0521/tracebi:${TRACEBI_VERSION:-latest}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    working_dir: /project
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${TRACEBI_PROJECT_DIR:-./project}:/project
+    depends_on:
+      output-perms:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tracebi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracebi}
+      POSTGRES_DB: tracebi
+    # From the project, point the runner at this service:
+    # PipelineRunner(db_url="postgresql+psycopg://tracebi:<password>@postgres:5432/tracebi")
+    volumes:
+      - ${TRACEBI_PGDATA_DIR:-./pgdata}:/var/lib/postgresql/data
