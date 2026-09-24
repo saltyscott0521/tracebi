@@ -264,6 +264,15 @@ for _env, _default in (
     _dir = os.environ.get(_env, _default)
     if os.path.isdir(_dir):
         from tracebi.web.discovery import auto_discover as _auto_discover
+        if _env == "TRACEBI_SCHEDULED_DIR" and any(
+                name.endswith((".py", ".ipynb"))
+                for name in os.listdir(_dir) if not name.startswith(".")):
+            print(
+                f"[tracebi] {_dir} is deprecated and never ran these "
+                f"reports. Put a \"schedule\" block in report.json. "
+                f"See `tracebi schedule --help`.",
+                file=sys.stderr,
+            )
         _discovered = _auto_discover(_dir)
         if _discovered:
             print(f"[tracebi] auto-discovered {len(_discovered)} module(s) "
