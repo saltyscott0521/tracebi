@@ -329,14 +329,51 @@ body { max-width: 1100px; }
 .wb-chart { height: 260px; margin-top: var(--tb-space-2); }
 .wb-table-wrap { max-height: 320px; overflow: auto; }
 select { font: inherit; font-size: 0.85em; }
+/* Side by side: the report preview beside the workbench (package mode). */
+body.wb-split-on { max-width: none; margin: 0; padding: 0; }
+#wb-split { display: block; }
+body.wb-split-on #wb-split { display: grid; height: 100vh;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 1fr); }
+#wb-preview { display: none; width: 100%; height: 100%; border: 0;
+              border-right: 1px solid var(--tb-rule); background: #fff; }
+body.wb-split-on #wb-preview { display: block; }
+body.wb-split-on #wb-panel { overflow: auto; padding: 16px 20px; }
+@media (max-width: 1000px) {
+  body.wb-split-on #wb-split { display: block; height: auto; }
+  body.wb-split-on #wb-preview { height: 70vh; border-right: 0;
+                                 border-bottom: 1px solid var(--tb-rule); }
+}
+.wb-selected { border-color: #2a78d6; box-shadow: 0 0 0 2px rgba(42,120,214,.15); }
+.wb-chip { font-size: 0.75em; padding: 1px 7px; border-radius: 999px;
+           border: 1px solid var(--tb-rule); background: #f6f7f9; }
+.wb-chip--changed { background: #fdf3d7; border-color: #ecd393; }
+.wb-chip--new { background: #e6f1fb; border-color: #b9d6f2; }
+.wb-request { border-left: 3px solid #2a78d6; }
+.wb-code { font-size: 0.8em; background: #f6f7f9; padding: 8px;
+           border-radius: var(--tb-radius); overflow: auto; }
 </style>
 </head>
 <body>
+<div id="wb-split">
+<iframe id="wb-preview" title="report preview"></iframe>
+<div id="wb-panel">
 <h1 id="wb-title">workbench</h1>
 <p class="wb-meta">Dev-state only — nothing on this page exists in builds or
 manifests, and no receipts are minted here.
-<a id="wb-preview-link" href="/">← report preview</a></p>
+<a id="wb-preview-link" href="/">← report preview</a>
+<button id="wb-layout" class="wb-btn" type="button" hidden>full width</button></p>
 <div id="wb-error"></div>
+<section id="wb-sec-requests" hidden>
+<h2>For your agent</h2>
+<p class="wb-meta">Exhibits you asked to keep. Your agent sees these in
+<code>tracebi report status</code> and the <code>workbench_state</code> tool;
+or copy the request into your chat.</p>
+<div id="wb-requests"></div>
+</section>
+<section id="wb-sec-selected" hidden>
+<h2>Selected figure</h2>
+<div id="wb-selected"></div>
+</section>
 <section id="wb-sec-figures">
 <h2>Figures</h2>
 <div id="wb-coverage"></div>
@@ -370,6 +407,8 @@ manifests, and no receipts are minted here.
 <h2>Lint</h2>
 <div id="wb-lint"></div>
 </section>
+</div>
+</div>
 <script>
 __ECHARTS__
 </script>
@@ -433,7 +472,14 @@ __ECHARTS__
               labels[provenance] || provenance);
   }
 
-  function smallTable(columns, rows, cap, sortable) {
+  function smallTable(columns, rows, cap, sortable, display) {
+    /* display (optional) holds each row as the report would write it; the
+       raw values stay for sorting. */
+    if (display && display.length) {
+      rows = rows.map(function (r, i) {
+        return display[i] ? Object.assign({}, r, {__shown: display[i]}) : r;
+      });
+    }
     var wrap = el("div", "wb-table-wrap");
     var t = el("table", "tb-table tb-table--compact");
     var thead = el("thead");
@@ -449,8 +495,9 @@ __ECHARTS__
         var tr2 = el("tr");
         columns.forEach(function (c) {
           var v = r[c];
+          var shown = r.__shown && r.__shown[c] !== undefined ? r.__shown[c] : v;
           tr2.appendChild(el("td", typeof v === "number" ? "tb-num" : null,
-                             v === null || v === undefined ? "" : v));
+                             shown === null || shown === undefined ? "" : shown));
         });
         tbody.appendChild(tr2);
       });
@@ -654,7 +701,7 @@ __ECHARTS__
       card.appendChild(el("p", "wb-meta", b.columns.map(function (c) {
         return c + ": " + b.dtypes[c];
       }).join("  ·  ")));
-      card.appendChild(smallTable(b.columns, b.preview, 25));
+      card.appendChild(smallTable(b.columns, b.preview, 25, false, b.display));
       card.appendChild(quickChart(b));
       host.appendChild(card);
     });
@@ -669,7 +716,8 @@ __ECHARTS__
           + (ex.shape[0] > (ex.rows || []).length
              ? " (first " + (ex.rows || []).length + " shown)" : "")));
     }
-    card.appendChild(smallTable(ex.columns || [], ex.rows || [], 10, true));
+    card.appendChild(smallTable(ex.columns || [], ex.rows || [], 10, true,
+                                ex.display));
     var prof = profileToggle(ex.profile);
     if (prof) card.appendChild(prof);
   }
@@ -703,6 +751,48 @@ __ECHARTS__
   /* Feed order: a log reads newest-first; a notebook reads top-down. The
      toggle is presentation only — seq order is the truth either way. */
   var feedChronological = false;
+  /* Which workflow step the feed shows: all, or transform/model/report/... */
+  var feedStep = "all";
+
+  function keepBtn(state, ex) {
+    /* "Keep this": a request for the agent to promote this exhibit into a
+       figure. The workbench never edits the report itself. */
+    var pid = "keep-" + ex.seq;
+    var kept = state.pins.some(function (p) { return p.id === pid; });
+    if (kept) {
+      return button("kept · undo", "wb-btn--pinned", function () {
+        post("/__workbench/unpin", {id: pid});
+      });
+    }
+    return button("keep this", null, function () {
+      var note = window.prompt(
+        "What should this become? (optional — e.g. 'bar chart under the KPIs')",
+        "");
+      if (note === null) return;
+      post("/__workbench/pin",
+           {id: pid, kind: "promote", exhibit: ex.seq, note: note});
+    });
+  }
+
+  function exhibitOrigin(card, ex) {
+    var o = ex.origin || {};
+    if (!o.file) return;
+    var row = el("div", "wb-row");
+    row.appendChild(el("span", "wb-meta", o.file + ":" + o.line));
+    if (o.code) {
+      var pre = el("pre", "wb-code", o.code);
+      pre.style.display = "none";
+      var b = button("code", null, function () {
+        var open = pre.style.display !== "none";
+        pre.style.display = open ? "none" : "block";
+      });
+      row.appendChild(b);
+      card.appendChild(row);
+      card.appendChild(pre);
+      return;
+    }
+    card.appendChild(row);
+  }
 
   function renderFeed(state) {
     var host = document.getElementById("wb-feed");
@@ -713,22 +803,50 @@ __ECHARTS__
           + "binding updates land here"));
       return;
     }
-    host.appendChild(button(
+    var controls = el("div", "wb-row");
+    controls.appendChild(button(
       feedChronological ? "newest first" : "read as document", null,
       function () { feedChronological = !feedChronological; renderFeed(state); }
     ));
-    var exhibits = state.exhibits.slice();
+    /* One chip per workflow step present, so a long session reads by stage. */
+    var steps = ["all"];
+    state.exhibits.forEach(function (ex) {
+      var st = ex.step || "script";
+      if (ex.kind !== "auto" && steps.indexOf(st) === -1) steps.push(st);
+    });
+    if (steps.length > 2) {
+      steps.forEach(function (st) {
+        controls.appendChild(button(st, st === feedStep ? "wb-btn--pinned" : null,
+          function () { feedStep = st; renderFeed(state); }));
+      });
+    }
+    host.appendChild(controls);
+    var exhibits = state.exhibits.filter(function (ex) {
+      return feedStep === "all" || (ex.step || "script") === feedStep;
+    });
     if (feedChronological) exhibits.reverse();
     exhibits.forEach(function (ex) {
       var card = el("div", "wb-card");
       var head = el("div", "wb-row");
       head.appendChild(el("span", "wb-meta",
           "#" + ex.seq + (ex.at ? " · " + ex.at : "") + " · " + ex.kind));
+      if (ex.step && ex.kind !== "auto") {
+        head.appendChild(el("span", "wb-chip", ex.step));
+      }
+      if (ex.change) {
+        head.appendChild(el("span", "wb-chip wb-chip--" + ex.change,
+            {new: "new", changed: "changed since last run",
+             same: "unchanged"}[ex.change] || ex.change));
+      }
       var pid = "exhibit-" + ex.seq;
       head.appendChild(pinBtn(pid, state.pins.some(function (p) {
         return p.id === pid;
       })));
+      if (ex.kind === "frame" || ex.kind === "chart") {
+        head.appendChild(keepBtn(state, ex));
+      }
       card.appendChild(head);
+      exhibitOrigin(card, ex);
       if (ex.kind === "frame") {
         exhibitFrame(card, ex);
       } else if (ex.kind === "chart") {
@@ -759,6 +877,101 @@ __ECHARTS__
       }
       host.appendChild(card);
     });
+  }
+
+  function renderRequests(state) {
+    var sec = document.getElementById("wb-sec-requests");
+    var host = document.getElementById("wb-requests");
+    host.textContent = "";
+    var reqs = state.pins.filter(function (p) { return p.kind === "promote"; });
+    sec.hidden = !reqs.length;
+    reqs.forEach(function (p) {
+      var card = el("div", "wb-card wb-request");
+      card.appendChild(el("p", null, p.request));
+      var row = el("div", "wb-row");
+      row.appendChild(copyBtn("copy request", p.request));
+      row.appendChild(button("remove", null, function () {
+        post("/__workbench/unpin", {id: p.id});
+      }));
+      card.appendChild(row);
+      host.appendChild(card);
+    });
+  }
+
+  /* ── Side by side: click a figure in the preview to inspect it. ── */
+  var selectedId = null;
+  var lastState = null;
+
+  function renderSelected(state) {
+    var sec = document.getElementById("wb-sec-selected");
+    var host = document.getElementById("wb-selected");
+    host.textContent = "";
+    var f = selectedId && state.figures.filter(function (x) {
+      return x.id === selectedId;
+    })[0];
+    sec.hidden = !f;
+    if (!f) return;
+    var card = el("div", "wb-card wb-selected");
+    var head = el("div", "wb-row");
+    head.appendChild(badge(f.unbound ? "error" : f.provenance));
+    head.appendChild(el("code", null, f.id));
+    head.appendChild(el("span", "wb-meta", f.kind
+        + (f.binding ? " · " + f.binding : "")));
+    head.appendChild(copyBtn("copy address", REPORT + "#fig:" + f.id));
+    head.appendChild(button("close", null, function () {
+      selectedId = null; highlight(); renderSelected(state);
+    }));
+    card.appendChild(head);
+    var b = state.bindings.filter(function (x) { return x.name === f.binding; })[0];
+    if (b && b.error === undefined) {
+      card.appendChild(el("p", "wb-meta", b.rows + " rows · fingerprint "
+          + b.fingerprint));
+      card.appendChild(smallTable(b.columns, b.preview, 25, true, b.display));
+    } else if (b && b.error !== undefined) {
+      card.appendChild(el("pre", "wb-error", b.error));
+    } else if (!f.binding) {
+      card.appendChild(el("p", "wb-meta",
+          "no binding — this figure is marked unverified"));
+    }
+    var related = state.exhibits.filter(function (ex) {
+      return ex.name && (ex.name === f.binding || ex.name === f.id);
+    });
+    if (related.length) {
+      card.appendChild(el("p", "wb-meta", "exhibits named " + (f.binding || f.id)
+          + ": " + related.map(function (ex) { return "#" + ex.seq; }).join(", ")));
+    }
+    host.appendChild(card);
+  }
+
+  function highlight() {
+    var frame = document.getElementById("wb-preview");
+    var doc = frame && frame.contentDocument;
+    if (!doc) return;
+    Array.prototype.forEach.call(doc.querySelectorAll("[data-tb-figure]"),
+      function (node) {
+        node.style.outline = node.id && node.id === selectedId
+          ? "2px solid #2a78d6" : "";
+        node.style.outlineOffset = "3px";
+      });
+  }
+
+  function wirePreview() {
+    var frame = document.getElementById("wb-preview");
+    var doc = frame.contentDocument;
+    if (!doc) return;
+    Array.prototype.forEach.call(doc.querySelectorAll("[data-tb-figure]"),
+      function (node) {
+        if (!node.id) return;
+        node.style.cursor = "pointer";
+        node.title = "Inspect " + node.id + " in the workbench";
+        node.addEventListener("click", function () {
+          selectedId = node.id;
+          highlight();
+          if (lastState) renderSelected(lastState);
+          document.getElementById("wb-panel").scrollTop = 0;
+        });
+      });
+    highlight();
   }
 
   function renderCode(state) {
@@ -900,6 +1113,18 @@ __ECHARTS__
       document.getElementById("wb-sec-" + id).hidden = !discovery;
     });
     document.getElementById("wb-preview-link").hidden = discovery;
+    var frame = document.getElementById("wb-preview");
+    var layoutBtn = document.getElementById("wb-layout");
+    layoutBtn.hidden = discovery;
+    if (!discovery && !frame.getAttribute("src")) {
+      frame.addEventListener("load", wirePreview);
+      frame.setAttribute("src", "/");
+      document.body.classList.add("wb-split-on");
+      layoutBtn.addEventListener("click", function () {
+        var on = document.body.classList.toggle("wb-split-on");
+        layoutBtn.textContent = on ? "full width" : "side by side";
+      });
+    }
   }
 
   function render(state) {
@@ -917,9 +1142,13 @@ __ECHARTS__
       renderWarehouse(state);
       renderModels(state);
       renderPackages(state);
+      renderRequests(state);
       renderFeed(state);
       return;
     }
+    lastState = state;
+    renderRequests(state);
+    renderSelected(state);
     renderFigures(state);
     renderData(state);
     renderFeed(state);
@@ -956,6 +1185,8 @@ def _workbench_page(name: str) -> str:
     # artifact this page carried no CSP. Add one, relaxing connect-src to 'self'
     # for the /__workbench/state.json poll (as the served exploration page does).
     csp = CSP.replace("connect-src 'none'", "connect-src 'self'")
+    # The side-by-side view frames the live preview, served by this server.
+    csp = csp.replace("default-src 'none';", "default-src 'none'; frame-src 'self';")
     csp_meta = f'<meta http-equiv="Content-Security-Policy" content="{csp}">'
     return (_WORKBENCH_PAGE
             .replace("__CSP__", csp_meta)
@@ -1096,9 +1327,15 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
                 pins = [p for p in _wb.read_pins(t.wb_dir)
                         if p.get("id") != pin_id]
                 if self.path == "/__workbench/pin":
-                    pins.append({"id": pin_id,
-                                 "note": payload.get("note") or "",
-                                 "at_seq": _wb.last_seq(t.wb_dir)})
+                    pin = {"id": pin_id,
+                           "note": payload.get("note") or "",
+                           "at_seq": _wb.last_seq(t.wb_dir)}
+                    # "Keep this" on an exhibit: a request for the agent to
+                    # promote it into a figure (see workbench.promote_request).
+                    if payload.get("kind") == "promote":
+                        pin["kind"] = "promote"
+                        pin["exhibit"] = payload.get("exhibit")
+                    pins.append(pin)
                 _wb.write_pins(t.wb_dir, pins)
             self._send(json.dumps({"ok": True, "pins": pins}).encode(),
                        "application/json")

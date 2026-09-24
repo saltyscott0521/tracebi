@@ -6,6 +6,27 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — the workbench shows the analysis behind a report
+
+- **Side by side.** `/__workbench` now shows the live report preview beside
+  the workbench. Click a figure in the preview to see its query result and
+  the exhibits named after it; "full width" switches back.
+- **A timeline of intermediate analysis.** Each `tracebi.workbench.show()`
+  exhibit records the file and line that produced it (with the code), the
+  workflow step (transform, model, pipeline, report or script, from its
+  folder), and whether a re-run changed it (`new` / `changed` /
+  `unchanged`, for named exhibits). The feed filters by step.
+- **Keep this.** A button on a frame or chart exhibit asks your agent to
+  promote it into a figure. It becomes a pin with `"kind": "promote"` and a
+  plain-language `request`, shown under "For your agent", in
+  `tracebi report status` (`→ keep:` lines) and in the MCP
+  `workbench_state` tool. The workbench never edits the report itself.
+- **Numbers read like the report.** Query results and exhibit tables in the
+  workbench use the report's formats (a measure's declared format, else the
+  derived one) instead of raw floats. The raw values stay in the state for
+  sorting and for agents.
+- **Fixed:** a table's `data-tb-totals` binding no longer shows as unused.
+
 ### Fixed — opening a report no longer asks you to run it
 
 - **The last build is kept.** On a read-only disk (a serverless deploy such

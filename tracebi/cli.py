@@ -1669,6 +1669,9 @@ def _report_status(kind: str, path: Path, as_json: bool = False) -> int:
     unused = state.get("unused_bindings") or []
     if unused:
         print(f"  ! unused binding(s): {', '.join(unused)}")
+    for p in state.get("pins", []):
+        if p.get("kind") == "promote":
+            print(f"  → keep: {p.get('request')}")
     errs = [b for b in state.get("bindings", []) if b.get("error")]
     for b in errs:
         print(f"  ✗ binding '{b['name']}' failed: {b['error']}", file=sys.stderr)

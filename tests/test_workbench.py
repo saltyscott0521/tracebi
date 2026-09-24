@@ -113,7 +113,8 @@ class TestShow:
         assert frame["rows"][1]["fv"] is None          # NaN is JSON-safe null
         # Under pytest sys.argv[0] is a real file, so `source` (the
         # producing script — TestExhibitSource) is present; set it aside.
-        note = {k: v for k, v in note.items() if k != "source"}
+        note = {k: v for k, v in note.items()
+                if k not in ("source", "origin", "step")}
         assert note == {"seq": 2, "at": note["at"], "kind": "note",
                         "text": "## working note"}
         # Newest first, and the pin anchor tracks the newest seq.
@@ -834,3 +835,69 @@ def test_dev_server_rejects_dns_rebinding_hosts():
     for bad in ["evil.example.com", "evil.example.com:8000", "attacker.test",
                 "192.168.1.5:8000", "0.0.0.0:8000"]:
         assert not _host_is_local(bad), f"{bad!r} should be refused"
+
+
+class TestTimelineAndKeep:
+    """The feed says where each exhibit came from and whether a re-run moved
+    it; "Keep this" hands the agent a request instead of editing the report."""
+
+    def test_exhibit_records_its_code_and_step(self, tmp_path, monkeypatch):
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        monkeypatch.chdir(tmp_path)
+        script = tmp_path / "transforms" / "probe.py"
+        script.parent.mkdir()
+        script.write_text(
+            "import pandas as pd\n"
+            "from tracebi.workbench import show\n"
+            "df = pd.DataFrame({'a': [1, 2]})\n"
+            "show(df, name='probe')\n")
+        exec(compile(script.read_text(), str(script), "exec"), {})
+        [ex] = read_exhibits(wb)
+        assert ex["step"] == "transform"
+        assert ex["origin"]["file"] == os.path.join("transforms", "probe.py")
+        assert ex["origin"]["line"] == 4
+        assert "show(df, name='probe')" in ex["origin"]["code"]
+
+    def test_reruns_are_marked_new_same_or_changed(self, tmp_path, monkeypatch):
+        from tracebi.workbench import _feed
+
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show(pd.DataFrame({"v": [1.0]}), name="check")
+        show(pd.DataFrame({"v": [1.0]}), name="check")
+        show(pd.DataFrame({"v": [2.0]}), name="check")
+        changes = [e["change"] for e in sorted(_feed(wb), key=lambda e: e["seq"])]
+        assert changes == ["new", "same", "changed"]
+
+    def test_keep_this_pin_carries_a_request_for_the_agent(
+            self, wb_model, tmp_path, monkeypatch):
+        from tracebi.workbench import write_pins
+
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        show(pd.DataFrame({"region": ["NE"], "revenue": [1.0]}),
+             name="by_region_check")
+        write_pins(wb, [{"id": "keep-1", "kind": "promote", "exhibit": 1,
+                         "note": "bar chart under the KPI"}])
+        state = collect_state(str(_pkg(tmp_path)), {"wb_model": wb_model})
+        [pin] = state["pins"]
+        request = pin["request"]
+        assert "exhibit #1 'by_region_check'" in request
+        assert "report.json" in request and "report.py" in request
+        assert "bar chart under the KPI" in request
+
+    def test_binding_previews_carry_display_text(self, wb_model, tmp_path, monkeypatch):
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", str(tmp_path / "wb"))
+        state = collect_state(str(_pkg(tmp_path)), {"wb_model": wb_model})
+        kpi = next(b for b in state["bindings"] if b["name"] == "kpi")
+        assert kpi["preview"] == [{"total": 350.0}]      # raw stays raw
+        assert kpi["display"] == [{"total": "350"}]      # as the report writes it
+
+
+def test_workbench_page_frames_the_preview():
+    from tracebi._dev_server import _workbench_page
+
+    page = _workbench_page("demo")
+    assert 'id="wb-preview"' in page
+    assert "frame-src 'self'" in page
