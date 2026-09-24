@@ -1,1 +1,1 @@
-A map of fair value by borrower headquarters country. If the model has no geography, say so. Do not invent a number.
+A map of fair value by borrower headquarters country. If you can't build it from the model, explain why in `reports/borrower_geography/REFUSAL.md` instead.

@@ -16,14 +16,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from tracebi.reports.figures import FigureError, lint_numeric_literals, strip_stage
+
 _CASES = Path(__file__).resolve().parent / "cases"
-_FIGURE_RE = re.compile(
-    r"<(div|span|table|section|p|h[1-6]|td|th)\b[^>]*\bdata-tb-figure="
-    r"(['\"])[^'\"]+\2[^>]*>.*?</\1>",
-    re.I | re.S,
-)
-_TAG_RE = re.compile(r"<[^>]+>")
-_MUSTACHE_RE = re.compile(r"\{\{.*?\}\}", re.S)
 _REFUSAL_RE = re.compile(
     r"cannot|can't|does not|doesn't|not in the model|no such|unable",
     re.I,
@@ -72,10 +67,18 @@ def _dimensions(doc: dict) -> set[str]:
     return found
 
 
-def _text_outside_figures(template: str) -> str:
-    stripped = _FIGURE_RE.sub(" ", template)
-    stripped = _MUSTACHE_RE.sub(" ", stripped)
-    return _TAG_RE.sub(" ", stripped)
+def _numeric_literals_outside_figures(template: str) -> int:
+    """The build's prose gate, so the scorer can name that failure itself.
+
+    Exploration is stripped first, as ``template_package`` does before
+    ``lint_numeric_literals``. Markup the tokenizer cannot trust counts as
+    zero here; the build step names that failure.
+    """
+    try:
+        page = strip_stage(template, "exploration")
+        return lint_numeric_literals(page)
+    except FigureError:
+        return 0
 
 
 def _tracebi(*args: str, cwd: Path) -> subprocess.CompletedProcess:
@@ -92,8 +95,6 @@ def _check_refusal(project: Path, case: dict, report: str) -> str | None:
     text = answer.read_text(encoding="utf-8")
     if not _REFUSAL_RE.search(text):
         return "refusal does not say the model cannot answer"
-    if re.search(r"\d", text):
-        return "refusal invents a number"
     if (project / "reports" / report / "report.json").is_file():
         return "built a report instead of refusing"
     return None
@@ -131,7 +132,7 @@ def _check_package(project: Path, case: dict, report: str) -> str | None:
     for banned in case.get("forbid") or []:
         if banned in blob:
             return f"forbidden {banned}"
-    if case.get("no_numeric_literals", True) and re.search(r"\d", _text_outside_figures(template)):
+    if case.get("no_numeric_literals", True) and _numeric_literals_outside_figures(template):
         return "numeric literal outside a figure"
     if case.get("build", True):
         built = _tracebi("report", "build", report, cwd=project)

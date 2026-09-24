@@ -24,11 +24,14 @@ python evals/agent/score.py /tmp/tracebi-eval
 The table is the result. `pass` means that case built, `verify --strict`
 reproduced, and the package matched the checks in the JSON (figure kinds,
 measures, dimensions, top-N `limit`, filters, no `data-tb-unverified`, no
-numeric literals in the template outside a figure). The first-build success
-rate is the last line.
+numeric literals in the template outside a figure — the same prose gate as
+`tracebi report build`, after exploration blocks are stripped). The
+first-build success rate is the last line.
 
 `borrower-geography` cannot be answered from `portfolio_model` (there is no
-geography). The pass condition is a `reports/borrower_geography/REFUSAL.md`
-that says so and contains no number, and no `report.json`.
+geography). The request does not say that. It names
+`reports/borrower_geography/REFUSAL.md` as where to explain why, if the
+report cannot be built. The pass condition is that file saying the model
+cannot answer, and no `report.json`.
 
 Exit status is 1 when any case fails. That is the score, not a broken scorer.
