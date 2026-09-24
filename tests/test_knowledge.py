@@ -71,6 +71,34 @@ def test_skill_points_at_the_knowledge_base():
         assert get_lesson(slug) is not None, f"skill names missing lesson '{slug}'"
 
 
+_DESIGNER = _SKILL.parents[1] / "tracebi-designer" / "SKILL.md"
+_REPO = _SKILL.parents[2]
+
+
+def test_every_design_lesson_reaches_the_designer_skill_and_both_guides():
+    """The design lessons share the analyst curriculum's delivery, so the same
+    rot applies: a design lesson no skill or guide names is one no agent
+    reads. Every `design-` lesson must be named in the designer skill and in
+    the repo AGENTS.md, and the skill must name no lesson that doesn't exist.
+    The scaffolded guide must at least point at the curriculum."""
+    design = {ls.slug for ls in list_lessons() if ls.slug.startswith("design-")}
+    assert len(design) >= 5, "the design curriculum is missing"
+
+    skill = _DESIGNER.read_text(encoding="utf-8")
+    assert "tracebi knowledge" in skill, "designer skill does not reference the lessons"
+    named = set(re.findall(r"\bdesign-[a-z-]+[a-z]", skill))
+    assert design <= named, f"designer skill omits {sorted(design - named)}"
+    assert named <= design, f"designer skill names missing lessons {sorted(named - design)}"
+
+    agents = (_REPO / "AGENTS.md").read_text(encoding="utf-8")
+    missing = sorted(s for s in design if s not in agents)
+    assert not missing, f"AGENTS.md does not name {missing}"
+
+    from tracebi.cli import _INIT_AGENTS_MD
+    assert "tracebi knowledge design-" in _INIT_AGENTS_MD, (
+        "the scaffolded AGENTS.md never points at the design lessons")
+
+
 def test_reference_model_obeys_the_weighted_mean_lesson():
     """The 'would the agent do the analysis RIGHT' rot-guard the map asked for.
     A measure declared agg='mean' but described 'weighted' is the exact silent-

@@ -598,9 +598,11 @@ def _analyst_knowledge() -> dict:
 
     return {
         "what": "Good-practice lessons for doing the analysis RIGHT, not just "
-                "producing a number. Reach for the one whose 'when' matches the "
-                "decision you are making.",
-        "fetch": "tracebi knowledge <slug>  (or the tracebi-analyst skill)",
+                "producing a number — and, in the 'design-' lessons, for a report "
+                "page a reader understands at a glance. Reach for the one whose "
+                "'when' matches the decision you are making.",
+        "fetch": "tracebi knowledge <slug>  (or the tracebi-analyst / "
+                 "tracebi-designer skills)",
         "lessons": index(),
     }
 

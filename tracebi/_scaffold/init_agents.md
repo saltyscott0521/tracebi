@@ -285,6 +285,11 @@ you tell a human a report is done.
    choosing a measure or grain: a rate is a ratio of totals not a mean of
    ratios, a "weighted" average needs a weight, pick the grain first. Doing the
    analysis *right* is the job; these catch the confident-but-wrong number.
+   The `design-` lessons do the same for the page: before calling a report
+   done, run `tracebi knowledge design-cut-the-chrome` and
+   `tracebi knowledge design-lead-with-the-answer` — one question per page, the
+   title states the finding, three to five KPIs with comparisons, no decorative
+   color or emoji.
 4. Read `README.md` for the run commands.
 
 ## The honest boundary — do not overclaim

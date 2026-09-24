@@ -268,6 +268,20 @@ same discipline as the **`tracebi-analyst`** skill. Silent-wrong output — a
 confident, well-formatted, wrong number — is this project's cardinal sin; the
 knowledge base exists to help you catch it before a reader does.
 
+**The same knowledge base covers report design.** The lessons whose slugs start
+`design-` are for the page, not the number: **design-lead-with-the-answer** (one
+question per page; the title states the finding), **design-kpis-with-context**
+(three to five KPIs, each with a governed comparison), **design-choose-the-chart**,
+**design-color-with-meaning**, **design-format-for-reading**,
+**design-fewer-columns** (about five columns, `data-tb-search` first),
+**design-plan-every-state**, **design-cut-the-chrome** (the telltale marks of
+a generated report), **design-show-the-difference** (chart the variance, not two
+lines to subtract), **design-honest-axes**, **design-layout-by-importance**,
+**design-consistency-over-variety** and **design-accessible-by-default**. Reach for them whenever you write `template.html` or
+`style.css`; skill-aware agents get the same review as the
+**`tracebi-designer`** skill. Presentation never changes a number — restyle
+freely, never re-source.
+
 ## The two planes rule
 
 **Change the contract in git. Use the contract over MCP.**
