@@ -196,6 +196,14 @@ class _Authorizer:
                     f"unknown role {role!r}.",
                     stacklevel=2,
                 )
+                continue
+            # A valid role with nobody to give it to is still a dropped
+            # entry. Name it, the same as the other drops.
+            warnings.warn(
+                f"TRACEBI_AUTH_ROLE_MAP entry {entry!r} was dropped: "
+                f"no user name.",
+                stacklevel=2,
+            )
         return out
 
     def role_for(self, request: Request, user: Optional[str]) -> str:
@@ -358,7 +366,15 @@ def _posture_text(mode: str, authz: _Authorizer) -> str:
         source = f"default role {authz.default_role}"
     else:
         source = "none"
-    if authz.enabled:
+    if mode == "off":
+        # install_if_configured installs no middleware in this mode, so a
+        # role map or header cannot be enforced. Naming the source above
+        # still shows the operator that it is set and being ignored.
+        enforcement = (
+            "enforcement is off: no authentication configured, "
+            "every request is admin"
+        )
+    elif authz.enabled:
         enforcement = "enforcement on"
     else:
         enforcement = "enforcement is off: every principal is admin"

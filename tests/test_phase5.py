@@ -2971,11 +2971,12 @@ class TestAuthorization:
             warnings.simplefilter("always")
             authz = self._authorizer(
                 monkeypatch,
-                TRACEBI_AUTH_ROLE_MAP="alice:admin,bob:superuser,carol",
+                TRACEBI_AUTH_ROLE_MAP="alice:admin,bob:superuser,carol,:admin",
             )
         messages = [str(w.message) for w in caught]
         assert any("bob:superuser" in m for m in messages)
         assert any("carol" in m and "no ':'" in m for m in messages)
+        assert any(":admin" in m and "no user name" in m for m in messages)
         assert authz.role_map == {"alice": "admin"}
         assert authz.role_for(self._request(), "alice") == "admin"
 
@@ -2994,6 +2995,31 @@ class TestAuthorization:
         assert len(posture) == 1
         assert "enforcement is off" in posture[0]
         assert "role source: none" in posture[0]
+
+    def test_role_map_without_auth_logs_that_enforcement_is_off(
+        self, monkeypatch, caplog
+    ):
+        # A role map with no authentication mode installs no middleware.
+        # The posture line must not claim that map is enforced.
+        import logging
+        from fastapi import FastAPI
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_PROXY_HEADER", "TRACEBI_AUTH_ROLE_HEADER",
+                  "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_ROLE_MAP", "alice:admin")
+        with caplog.at_level(logging.INFO, logger="tracebi.auth"):
+            assert install_if_configured(FastAPI()) is None
+        posture = [r.getMessage() for r in caplog.records if r.name == "tracebi.auth"]
+        assert len(posture) == 1
+        assert (
+            "enforcement is off: no authentication configured, "
+            "every request is admin"
+        ) in posture[0]
+        assert "role source: role map (1 users)" in posture[0]
+        assert "enforcement on" not in posture[0]
 
     def test_denial_names_the_role_and_what_was_needed(self, monkeypatch):
         authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
