@@ -13,7 +13,7 @@ class SnowflakeConnector(BaseConnector):
     """
     Load tables from Snowflake.
 
-    Requires: pip install snowflake-connector-python
+    Requires: pip install 'tracebi[snowflake]'
 
     Usage:
         connector = SnowflakeConnector(
@@ -66,7 +66,7 @@ class SnowflakeConnector(BaseConnector):
         except ImportError:
             raise ImportError(
                 "snowflake-connector-python is required for SnowflakeConnector.\n"
-                "Install with: pip install snowflake-connector-python"
+                "Install with: pip install 'tracebi[snowflake]'"
             )
         self._conn = snowflake.connector.connect(
             account=self.account,

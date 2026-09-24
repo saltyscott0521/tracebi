@@ -27,8 +27,9 @@ You are changing the TraceBi framework, not building a report with it.
    state, and again before you push. Run `ruff check .` too.
 3. Write the test for the issue's "done when" first when you can, then make
    it pass.
-4. Add a CHANGELOG entry under `[Unreleased]` for anything a user would
-   notice.
+4. Add `changes/<issue-number>-<short-name>.md` for anything a user would
+   notice. Do not edit `CHANGELOG.md`. `scripts/collect_changes.py` folds
+   the fragments in when a release is cut.
 5. Fill in the pull request template. Link the issue with `Closes #<n>`.
 6. If the issue needs a decision it doesn't make, stop and comment on the
    issue with the question and your proposal. Don't guess.

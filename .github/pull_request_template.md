@@ -14,5 +14,5 @@ Closes #
 
 - [ ] Follows `CLAUDE.md` (invariants, surgical changes, no new deps outside `pyproject.toml`)
 - [ ] If the authoring surface changed: `tracebi/capabilities.py`, `AGENTS.md` and `tracebi/_scaffold/init_agents.md` are updated
-- [ ] CHANGELOG entry under `[Unreleased]`, if a user would notice
+- [ ] A `changes/<issue-number>-<short-name>.md` fragment, if a user would notice (do not edit `CHANGELOG.md`)
 - [ ] No stray files in `output/` or `data/`
