@@ -73,6 +73,9 @@ medallion = ["networkx>=3.0"]
 pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
 web       = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.1.6", "python-multipart>=0.0.6"]
 mcp       = ["mcp>=2.0"]  # the agent gateway — `tracebi mcp`
+# Browser smoke only. A normal `pytest tests/` skips tests/test_ui_smoke.py
+# unless TRACEBI_E2E=1, so dev does not pull Chromium.
+e2e       = ["playwright>=1.40"]
 
 # Convenience bundles
 analyst = [
