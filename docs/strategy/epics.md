@@ -169,11 +169,12 @@ schedules, in under 30 minutes.
 - [ ] A client compose file (`deploy/compose.yml`): the published image, a
       bind-mounted project folder (the library), SQLite state by default,
       Postgres as an optional profile, SMTP settings, no demo seeding.
-- [ ] Schedules run inside the web server when there's one process (a
-      setting, on by default with SQLite). `tracebi schedule serve` stays for
-      separate workers.
-- [ ] A health check that says what's wrong: output folder not writable,
-      warehouse unreachable, SMTP not set.
+- [ ] Schedules run inside the web server when there's one process. It's an
+      opt-in setting, which the client compose file turns on, so an existing
+      server never starts sending email on its own. `tracebi schedule serve`
+      stays for separate workers.
+- [ ] A status check that says what's wrong: output folder not writable,
+      files that failed discovery, SMTP not set.
 - [ ] A one-page guide, "Run TraceBi on one server", written from the real
       Hetzner + Coolify setup, with a plain Docker path beside it. Backups are
       "copy this folder".
@@ -332,9 +333,11 @@ script prints a first-build success rate for a run.
 of TraceBi ([[product-readiness-audit]] "Make the reader's experience the
 product").
 
-- [ ] The receipt drawer in plain words. A row reads "Fair value · $285.9M ·
-      re-runs to the same number", with the fingerprint behind a disclosure.
-      Today it reads `kpi-fv · value · kpis ea55a070ee46` (P1-5).
+- [ ] The receipt drawer in plain words. A row reads "Fair value · $285.9M",
+      then what it was computed from (the measure and its cut), with the
+      fingerprint behind a disclosure. Today it reads
+      `kpi-fv · value · kpis ea55a070ee46` (P1-5). The drawer shows provenance;
+      it must not claim a number reproduces, which only `verify` can say.
 - [ ] An "About this report" footer on by default: who built it, when, from
       which definitions, and what the receipt proves and doesn't, in the
       locked language. It builds on the existing `methodology` block.
