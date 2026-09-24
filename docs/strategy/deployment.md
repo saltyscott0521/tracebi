@@ -45,8 +45,8 @@ company adds its sign-in, network shares and controls to the same install.
 | The Postgres lock that makes several workers safe | Growing, enterprise | ✅ |
 | SMTP email delivery | All | ✅ |
 | **Several named accounts without an identity provider** (today Basic auth is one shared username and password), or "Sign in with Google/Microsoft" | Small shops | ❌ Next |
-| **Schedules inside the web server**, so one process does everything on one box (today `tracebi schedule serve` is a separate process) | Small shops | ❌ Next |
-| **A one-page "run it on one server" guide**: Docker, a folder, SMTP, done | Small shops | ❌ Next |
+| **Schedules inside the web server** (`TRACEBI_SCHEDULES_IN_SERVER=1`; `tracebi schedule serve` stays available for a separate worker) | Small shops | ✅ |
+| **A one-page "run it on one server" guide**: Docker, a folder, SMTP, done | Small shops | ✅ [[one-server]] |
 | OIDC/SAML sign-in and group mapping | Enterprise | ❌ |
 | Folder permissions | Growing, enterprise | ❌ See [[report-library]] |
 | Helm chart; audit log export; a security overview document | Enterprise | ❌ |
