@@ -5,7 +5,11 @@ WORKDIR /src/web/ui
 COPY web/ui/package*.json ./
 RUN npm ci
 COPY web/ui/ ./
-RUN npm run build
+# Where the UI is mounted. "/" everywhere by default; the hosted demo sets
+# UI_BASE=/app/ because tracebi.com serves it under /app (the router basename
+# follows BASE_URL, so one build flag is the whole difference).
+ARG UI_BASE=/
+RUN npm run build -- --base=${UI_BASE}
 
 FROM python:3.11-slim
 # A non-root runtime user: the server must not run as root.
