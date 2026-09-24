@@ -65,7 +65,7 @@ Two artifacts carry everything; the rest are ways of running them.
 | Channel | For | What they get | Status |
 | --- | --- | --- | --- |
 | **Python package** (`pip install tracebi`) | Analysts and builders on their own machine, and their agents (Claude Code, Cursor) | The engine, the CLI, the MCP gateway, and `tracebi serve` for a local web app | Works from git. Not on PyPI yet |
-| **Docker image** | Any team running TraceBi on a server for others: a startup on one VM, an enterprise inside its network | The package plus the web app, run with `docker compose` (Helm later) | A `Dockerfile` exists; clients must build it themselves. No image is published |
+| **Docker image** | Any team running TraceBi on a server for others: a startup on one VM, an enterprise inside its network | The package plus the web app, run with `docker compose` (Helm later) | Published to GHCR on each version tag as `ghcr.io/<owner>/tracebi:<version>`, plus `latest` when the tag is not a prerelease |
 | **One-click hosts** (Railway, Render, Fly) | Small teams that don't want to manage a server | The Docker image, deployed from a button | A Railway config exists; no button yet |
 | **TraceBi Cloud** | Teams that want no infrastructure | Hosted for them | Planned |
 
@@ -73,10 +73,11 @@ The analyst's laptop runs the package; a shared server runs the image.
 
 **To make these real for a client:**
 
-1. **Publish the Docker image** to a public registry (GHCR is simplest) from
-   the existing release workflow, so a client runs
+1. **Docker image on GHCR.** Each version tag publishes
+   `ghcr.io/<owner>/tracebi:<version>` from `.github/workflows/release.yml`
+   (`latest` as well, when the version is not a prerelease). A client runs
    `docker pull ghcr.io/<owner>/tracebi:<version>` instead of cloning and
-   building.
+   building. A dry run from the Actions tab builds the image and pushes nothing.
 2. **Publish the package to PyPI.** Blocked on confirming who owns the
    `tracebi` name there (versions 0.5.0–0.5.3 exist); until then the README
    installs from git and tests guard against the bare `pip install tracebi`.
@@ -120,7 +121,7 @@ The analyst's laptop runs the package; a shared server runs the image.
 
 | Artifact | Status | Target |
 | --- | --- | --- |
-| `Dockerfile` (UI + Python) | ✅ exists | Publish to GHCR on every release. Add a `worker` entry point. |
+| `Dockerfile` (UI + Python) | ✅ exists | Published to GHCR on each version tag. Still to add: a `worker` entry point. |
 | `docker-compose.yml` | ✅ exists (the demo stack, with Postgres) | A separate client compose file for the customer's own project; add a worker service. |
 | Railway, Vercel + Supabase configs | ✅ exist | Keep Railway as the one-click path. Vercel suits the read-only demo only (no workers). |
 | Helm chart | ❌ | Q2: web, worker, Postgres (external or bundled), secrets, ingress. |
