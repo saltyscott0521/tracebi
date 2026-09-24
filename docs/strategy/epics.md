@@ -97,7 +97,7 @@ That's most of step 1 of [[production-plan]], plus its step 2.
 | No image is in GHCR yet. Every server still builds from a checkout until the first version tag. | `git tag` is empty |
 | A git install ships the API with no web UI. The built UI is gitignored and only the release workflow builds it. | [[ROADMAP]] item 5 |
 | The app shows the wrong version: the footer is hard-coded `v0.5.2`; the package is `0.6.0.dev0`. | `web/ui/src/components/Layout.jsx:305` |
-| The only compose file is the demo stack with seeded data. A client has nothing to point at their own project. | `docker-compose.yml` |
+| The demo compose still seeds sample data. A client stack is `deploy/compose.yml`. | `docker-compose.yml`, `deploy/compose.yml` |
 | No "run it on one server" guide, even though that's how this project runs today (Hetzner + Coolify). | `docs/guides/` |
 | No path onto a client's own data: no connection setup, no model drafted from warehouse tables, no `init --template`. | `tracebi init --help` |
 | Messaging disagrees with the strategy. The CLI help and the `init` README lead with "the trust layer for AI-generated analytics"; [[vision-and-positioning]] makes receipts a supporting feature and leads with ask / build / schedule. | `tracebi --help`, the scaffolded `README.md` |
@@ -173,7 +173,7 @@ schedules, in under 30 minutes.
       opt-in setting, which the client compose file turns on, so an existing
       server never starts sending email on its own. `tracebi schedule serve`
       stays for separate workers.
-- [ ] A status check that says what's wrong: output folder not writable,
+- [x] A status check that says what's wrong: output folder not writable,
       files that failed discovery, SMTP not set.
 - [ ] A one-page guide, "Run TraceBi on one server", written from the real
       Hetzner + Coolify setup, with a plain Docker path beside it. Backups are
@@ -308,10 +308,10 @@ a report right the first time.
 - [ ] `list_models` over MCP names models that failed to load, with the error.
       Today `_load_models` skips a broken model file silently, so the agent
       thinks the model doesn't exist.
-- [ ] A `describe_table` MCP tool and `tracebi warehouse tables`: columns and
+- [x] A `describe_table` MCP tool and `tracebi warehouse tables`: columns and
       types of warehouse tables from connector metadata (`column_schema`, no
       scan), so an agent drafting a model never invents a column.
-- [ ] A `--host` flag for `tracebi mcp --transport http` (default
+- [x] A `--host` flag for `tracebi mcp --transport http` (default
       `127.0.0.1`), so a server install can bind where its proxy expects.
 - [ ] Excel output over the gateway: `build_report` can return the `.xlsx`
       the library already renders ([[ROADMAP]] item 8).
@@ -466,9 +466,9 @@ working unattended. These rules keep that safe.
 3. **One issue, one branch, one draft pull request.** An agent never merges,
    never pushes to `main`, and never works on two issues in one branch.
 4. **Every pull request shows its checks:** `pytest tests/` and
-   `ruff check .` pass, the issue's "done when" is demonstrated, and the
-   CHANGELOG has an entry for anything a user would notice
-   (`.github/pull_request_template.md`).
+   `ruff check .` pass, the issue's "done when" is demonstrated, and a
+   `changes/` fragment records anything a user would notice (do not edit
+   `CHANGELOG.md`; `.github/pull_request_template.md`).
 5. **Coding agents follow `CLAUDE.md`.** `AGENTS.md` is the guide for agents
    that *use* TraceBi to build reports. `.cursor/rules/develop-tracebi.mdc`
    says so, so a Cursor agent doesn't mistake one for the other.

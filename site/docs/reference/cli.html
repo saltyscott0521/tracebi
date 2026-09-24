@@ -202,6 +202,14 @@ it serves a directory of rendered reports unauthenticated.</p>
 </code></pre>
 <p>Serves the project's web UI. Refuses with an actionable message if there is no
 project in the current directory, or if <code>uvicorn</code> is not installed.</p>
+<h3 id="tracebi-warehouse-tables"><code>tracebi warehouse tables</code></h3>
+<pre><code class="language-bash">tracebi warehouse tables [--connector NAME] [--table T] [--json]
+</code></pre>
+<p>Column names and types of a sunk table, from connector metadata. No row scan.
+Connectors come from the models in <code>models/</code>, plus <code>data/warehouse.duckdb</code>
+when that file exists. Omit <code>--table</code> to list tables. A connector that raises
+is reported in place (<code>error</code>: exception type plus the first message line);
+the others still list. The same lookup is the MCP tool <code>describe_table</code>.</p>
 <h3 id="tracebi-session"><code>tracebi session</code></h3>
 <pre><code class="language-bash">tracebi session export [name] [-o PATH] [--format {html,md}] [--title T]
 tracebi session clear  [name]
@@ -269,11 +277,14 @@ drift. This is what an agent reads first.</p>
 <p>Analyst good-practice lessons. No argument lists the curriculum; a slug prints
 that lesson in full.</p>
 <h3 id="tracebi-mcp"><code>tracebi mcp</code></h3>
-<pre><code class="language-bash">tracebi mcp [--transport {stdio,http}] [--port 8765] [--insecure]
+<pre><code class="language-bash">tracebi mcp [--transport {stdio,http}] [--host 127.0.0.1] [--port 8765] [--insecure]
 </code></pre>
 <p>Serves the agent gateway over MCP. <strong>The http transport refuses to start until
 an auth decision is made</strong> — set <code>TRACEBI_MCP_TOKEN</code>, or pass <code>--insecure</code>
-deliberately.</p>
+deliberately. <code>--host</code> defaults to <code>127.0.0.1</code>. A non-loopback host with
+<code>--insecure</code> and no token refuses to start unless <code>--allow-insecure-bind</code> is
+also passed: anyone who can reach the port gets full query access. Inside a
+container, bind <code>0.0.0.0</code> and set the token.</p>
 <hr>
 <h2 id="pipelines">Pipelines</h2>
 <h3 id="tracebi-run-pipeline"><code>tracebi run-pipeline</code></h3>

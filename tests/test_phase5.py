@@ -1353,9 +1353,12 @@ class TestRegistryExtras:
         from tracebi.web.api.registry import Registry
         r = Registry()
 
-        @r.scheduled("weekly", cron="0 9 * * MON", description="weekly KPIs")
-        def fac():
-            return "report"
+        with pytest.warns(DeprecationWarning, match="never ran anything") as caught:
+            @r.scheduled("weekly", cron="0 9 * * MON", description="weekly KPIs")
+            def fac():
+                return "report"
+        assert len(caught) == 1
+        assert "registry.scheduled" in str(caught[0].message)
 
         reports = [x["name"] for x in r.list_reports()]
         scheduled = r.list_scheduled()
@@ -1418,9 +1421,12 @@ class TestRegistryExtras:
         from tracebi.web import register
         from tracebi.web.api.registry import registry
 
-        @register.scheduled("nightly", cron="0 2 * * *", description="nightly")
-        def fac():
-            return "report"
+        with pytest.warns(DeprecationWarning, match="never ran anything") as caught:
+            @register.scheduled("nightly", cron="0 2 * * *", description="nightly")
+            def fac():
+                return "report"
+        assert len(caught) == 1
+        assert "register.scheduled" in str(caught[0].message)
 
         scheduled_names = [x["name"] for x in registry.list_scheduled()]
         assert "nightly" in scheduled_names
@@ -2082,9 +2088,9 @@ class TestConsumerProjectPath:
         # M5 flip ledger: requests/ is the deprecated lane — init no longer
         # hands it to new projects (the server still discovers one if a
         # pre-existing project has it).
-        for d in ("models", "pipelines", "reports", "scheduled",
-                  "data", "output"):
+        for d in ("models", "pipelines", "reports", "data", "output"):
             assert (target / d).is_dir(), f"init must create {d}/"
+        assert not (target / "scheduled").exists()
 
     def test_discovery_dirs_survive_a_clone(self, tmp_path):
         """Empty directories vanish in git without a keepfile. models/ and
@@ -2094,7 +2100,7 @@ class TestConsumerProjectPath:
 
         target = tmp_path / "proj"
         main(["init", str(target)])
-        for d in ("models", "pipelines", "reports", "scheduled"):
+        for d in ("models", "pipelines", "reports"):
             assert any((target / d).iterdir()), f"{d}/ would vanish in a clone"
 
     def test_init_does_not_write_dead_config(self, tmp_path):
@@ -2971,6 +2977,62 @@ class TestAuthorization:
             TRACEBI_AUTH_ROLE_MAP="alice:admin,garbage,bob:wizard, carol:analyst ",
         )
         assert authz.role_map == {"alice": "admin", "carol": "analyst"}
+
+    def test_bad_role_map_entries_warn_and_alice_stays_admin(self, monkeypatch):
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            authz = self._authorizer(
+                monkeypatch,
+                TRACEBI_AUTH_ROLE_MAP="alice:admin,bob:superuser,carol,:admin",
+            )
+        messages = [str(w.message) for w in caught]
+        assert any("bob:superuser" in m for m in messages)
+        assert any("carol" in m and "no ':'" in m for m in messages)
+        assert any(":admin" in m and "no user name" in m for m in messages)
+        assert authz.role_map == {"alice": "admin"}
+        assert authz.role_for(self._request(), "alice") == "admin"
+
+    def test_no_role_source_logs_that_enforcement_is_off(self, monkeypatch, caplog):
+        import logging
+        from fastapi import FastAPI
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_PROXY_HEADER", "TRACEBI_AUTH_ROLE_HEADER",
+                  "TRACEBI_AUTH_ROLE_MAP", "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        with caplog.at_level(logging.INFO, logger="tracebi.auth"):
+            assert install_if_configured(FastAPI()) is None
+        posture = [r.getMessage() for r in caplog.records if r.name == "tracebi.auth"]
+        assert len(posture) == 1
+        assert "enforcement is off" in posture[0]
+        assert "role source: none" in posture[0]
+
+    def test_role_map_without_auth_logs_that_enforcement_is_off(
+        self, monkeypatch, caplog
+    ):
+        # A role map with no authentication mode installs no middleware.
+        # The posture line must not claim that map is enforced.
+        import logging
+        from fastapi import FastAPI
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_PROXY_HEADER", "TRACEBI_AUTH_ROLE_HEADER",
+                  "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        monkeypatch.setenv("TRACEBI_AUTH_ROLE_MAP", "alice:admin")
+        with caplog.at_level(logging.INFO, logger="tracebi.auth"):
+            assert install_if_configured(FastAPI()) is None
+        posture = [r.getMessage() for r in caplog.records if r.name == "tracebi.auth"]
+        assert len(posture) == 1
+        assert (
+            "enforcement is off: no authentication configured, "
+            "every request is admin"
+        ) in posture[0]
+        assert "role source: role map (1 users)" in posture[0]
+        assert "enforcement on" not in posture[0]
 
     def test_denial_names_the_role_and_what_was_needed(self, monkeypatch):
         authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")

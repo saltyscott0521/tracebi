@@ -26,6 +26,9 @@ Environment switches:
     TRACEBI_DEV_MODE=1          — mount /_dev/reload
     TRACEBI_AUTH_USER / _PASS   — enable HTTP Basic auth
     TRACEBI_AUTH_PROXY_HEADER   — enable proxy header-trust auth
+    TRACEBI_SCHEDULES_IN_SERVER=1
+                            — run report.json schedules in this process
+                              (off by default; one process only)
 """
 
 import importlib
@@ -38,18 +41,23 @@ from fastapi.staticfiles import StaticFiles
 
 from tracebi.web.api.errors import error_detail
 
-from tracebi.web.api.routers import connectors, models, reports, pipelines, docs, verify, desk
+from tracebi.web.api.routers import (
+    connectors, models, reports, pipelines, docs, verify, desk, status,
+)
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
 from tracebi.web.api.csrf import allowed_origins as _allowed_origins
 
 from tracebi._version import get_version as _tracebi_version
+from tracebi.schedule import server_lifespan
+
 
 app = FastAPI(
     title="TraceBi API",
     description=("The trust layer for AI-generated analytics: a code-first BI "
                  "framework where every number has a receipt."),
     version=_tracebi_version(),
+    lifespan=server_lifespan,
 )
 
 app.add_middleware(
@@ -96,6 +104,7 @@ app.include_router(reports.router,    prefix="/api")
 app.include_router(pipelines.router,  prefix="/api")
 app.include_router(docs.router,       prefix="/api")
 app.include_router(verify.router,     prefix="/api")
+app.include_router(status.router,     prefix="/api")
 
 # Dev-mode reload endpoint — opt-in via TRACEBI_DEV_MODE=1.
 if os.environ.get("TRACEBI_DEV_MODE") == "1":
@@ -264,6 +273,15 @@ for _env, _default in (
     _dir = os.environ.get(_env, _default)
     if os.path.isdir(_dir):
         from tracebi.web.discovery import auto_discover as _auto_discover
+        if _env == "TRACEBI_SCHEDULED_DIR" and any(
+                name.endswith((".py", ".ipynb"))
+                for name in os.listdir(_dir) if not name.startswith(".")):
+            print(
+                f"[tracebi] {_dir} is deprecated and never ran these "
+                f"reports. Put a \"schedule\" block in report.json. "
+                f"See `tracebi schedule --help`.",
+                file=sys.stderr,
+            )
         _discovered = _auto_discover(_dir)
         if _discovered:
             print(f"[tracebi] auto-discovered {len(_discovered)} module(s) "

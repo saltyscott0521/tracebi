@@ -27,6 +27,7 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 """
 
 import hmac
+import ipaddress
 import json
 import os
 import re
@@ -92,33 +93,85 @@ def _models_dir() -> Path:
     return Path(os.environ.get("TRACEBI_MODELS_DIR", "models"))
 
 
-def _load_models() -> dict:
-    """Every project model, keyed both by ``model.name`` and file stem."""
+class _LoadedModels(dict):
+    """Models keyed by name, plus the files that failed to load.
+
+    A dict so every caller that already treats the return as a mapping
+    keeps working. ``skipped`` is what ``list_models`` shows an agent.
+    """
+
+    def __init__(self, models: dict, skipped: list):
+        super().__init__(models)
+        self.skipped = skipped
+
+
+def _one_line_error(exc: BaseException) -> str:
+    """Exception type plus the first line of its message. Not a traceback."""
+    message = str(exc).splitlines()[0] if str(exc) else ""
+    line = f"{type(exc).__name__}: {message}"
+    return line.rstrip(": ") if not message else line
+
+
+def _model_file(directory: Path, stem: str) -> str:
+    return f"{directory.name}/{stem}.py"
+
+
+def _load_models() -> _LoadedModels:
+    """Every project model, keyed both by ``model.name`` and file stem.
+
+    A file that fails to load is not dropped. It is recorded under
+    ``skipped`` as ``{"file", "error"}`` — one line, exception type plus
+    message — so the others still load and the agent can see what it broke.
+    """
     from tracebi import model_registry
 
     models: dict = {}
+    skipped: list = []
+    seen: set[str] = set()
     d = _models_dir()
     if d.is_dir():
         for stem in model_registry.auto_discover(str(d)):
+            seen.add(stem)
             try:
                 m = model_registry.get_model(stem)
-            except Exception:  # noqa: BLE001 — a broken file shouldn't hide the others
+            except Exception as exc:  # noqa: BLE001 — a broken file shouldn't hide the others
+                skipped.append({
+                    "file": _model_file(d, stem),
+                    "error": _one_line_error(exc),
+                })
                 continue
             models[m.name] = m
             models.setdefault(stem, m)
     # Explicitly registered models (tests, notebooks) participate too.
     for name in model_registry.list_models():
-        if name not in models:
-            try:
-                models[name] = model_registry.get_model(name)
-            except Exception:  # noqa: BLE001
-                continue
-    return models
+        if name in models or name in seen:
+            continue
+        try:
+            models[name] = model_registry.get_model(name)
+        except Exception as exc:  # noqa: BLE001
+            path = model_registry.model_path(name)
+            skipped.append({
+                "file": _model_file(Path(path).parent, Path(path).stem) if path else name,
+                "error": _one_line_error(exc),
+            })
+    return _LoadedModels(models, skipped)
+
+
+def _skipped_error(models, name: str) -> Optional[str]:
+    """The load error for *name*, if that file failed and is not loaded."""
+    for item in getattr(models, "skipped", ()):
+        file = item.get("file", "")
+        if name == file or name == Path(file).stem:
+            return item.get("error")
+    return None
 
 
 def _get_model(name: str):
     models = _load_models()
     if name not in models:
+        failed = _skipped_error(models, name)
+        if failed:
+            raise KeyError(failed)
         raise KeyError(
             f"Model '{name}' not found. Available: {sorted(set(models))}"
         )
@@ -355,9 +408,18 @@ class ContextResult(TypedDict, total=False):
 
 class ModelsResult(TypedDict, total=False):
     models: dict[str, Any]
+    skipped: list[dict[str, str]]
+
+
+class DescribeTableResult(TypedDict, total=False):
+    ok: bool
+    error: str
+    connectors: list[dict[str, Any]]
+    columns: list[dict[str, Any]]
 
 
 class ModelInfoResult(TypedDict, total=False):
+    error: str
     name: str
     tables: Any
     relationships: Any
@@ -482,6 +544,124 @@ def gateway_context(model: Optional[str] = None,
     return payload
 
 
+def _connector_key(connector) -> tuple:
+    described = connector.describe()
+    kind = described.get("type")
+    if kind == "DuckDBConnector":
+        db = described.get("database") or ""
+        if isinstance(db, str) and db and db != ":memory:":
+            return ("duckdb", os.path.abspath(db))
+        return ("duckdb-memory", id(connector))
+    if kind == "SQLConnector":
+        return ("sql", described.get("url") or id(connector))
+    return (kind, getattr(connector, "name", ""), id(connector))
+
+
+def _warehouse_connectors() -> list:
+    """Connectors declared on loaded models, plus ``data/warehouse.duckdb``
+    when that file exists and no model already points at it."""
+    found: list = []
+    seen: set[tuple] = set()
+    seen_models: set[int] = set()
+    for model in _load_models().values():
+        if id(model) in seen_models:
+            continue
+        seen_models.add(id(model))
+        try:
+            declared = model.connectors()
+        except Exception:  # noqa: BLE001 — a broken model is already in skipped
+            continue
+        for connector in declared:
+            key = _connector_key(connector)
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append(connector)
+    default = Path("data") / "warehouse.duckdb"
+    if default.is_file():
+        key = ("duckdb", str(default.resolve()))
+        if key not in seen:
+            from tracebi.connectors.duckdb_connector import DuckDBConnector
+            found.append(DuckDBConnector("warehouse", database=str(default)))
+    return found
+
+
+def _connector_error(connector, exc: BaseException) -> dict:
+    """One connector's failure, in the listing shape. Not a traceback."""
+    return {
+        "name": connector.name,
+        "type": type(connector).__name__,
+        "error": _one_line_error(exc),
+    }
+
+
+def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTableResult:
+    """Column names and types from connector metadata. Never returns rows.
+
+    With no *table*, list each connector's tables. With *table*, describe
+    that table's columns. *connector* limits both to one connector name.
+
+    A connector that raises is reported in place (``name``, ``type``,
+    ``error`` — exception type plus the first message line) and the others
+    still list. One unreachable warehouse does not fail the call.
+    """
+    connectors = _warehouse_connectors()
+    if connector:
+        connectors = [c for c in connectors if c.name == connector]
+        if not connectors:
+            return {"ok": False, "error": f"Connector '{connector}' not found."}
+    if not table:
+        listed = []
+        for c in connectors:
+            try:
+                tables = c.list_tables()
+            except Exception as exc:  # noqa: BLE001 — one warehouse must not hide the rest
+                listed.append(_connector_error(c, exc))
+                continue
+            listed.append({
+                "name": c.name,
+                "type": type(c).__name__,
+                "tables": tables,
+            })
+        return {"ok": True, "connectors": listed}
+    matches = []
+    failed = []
+    for c in connectors:
+        try:
+            names = c.list_tables()
+        except Exception as exc:  # noqa: BLE001 — one warehouse must not hide the rest
+            failed.append(_connector_error(c, exc))
+            continue
+        # None means this connector cannot list a catalog. Do not probe
+        # column_schema: a miss there raises, and a hit would still be a guess.
+        if names is None or table not in names:
+            continue
+        try:
+            schema = c.column_schema(table)
+        except Exception as exc:  # noqa: BLE001 — one warehouse must not hide the rest
+            failed.append(_connector_error(c, exc))
+            continue
+        if schema is None:
+            continue
+        matches.append({
+            "connector": c.name,
+            "table": table,
+            "columns": schema,
+        })
+    if not matches:
+        out: DescribeTableResult = {
+            "ok": False,
+            "error": f"Table '{table}' not found.",
+        }
+        if failed:
+            out["connectors"] = failed
+        return out
+    out = {"ok": True, "columns": matches}
+    if failed:
+        out["connectors"] = failed
+    return out
+
+
 def gateway_models() -> ModelsResult:
     """
     Models this project exposes, with table/fact/dimension counts.
@@ -491,8 +671,9 @@ def gateway_models() -> ModelsResult:
     twice its size, so aliases are collapsed to one entry with every name
     that resolves to it.
     """
+    loaded = _load_models()
     by_id: dict[int, tuple[Any, list[str]]] = {}
-    for name, m in _load_models().items():
+    for name, m in loaded.items():
         by_id.setdefault(id(m), (m, []))[1].append(name)
 
     out = {}
@@ -515,11 +696,18 @@ def gateway_models() -> ModelsResult:
                 for mm in (info.get("measures") or [])
             ],
         }
-    return {"models": out}
+    return {"models": out, "skipped": list(getattr(loaded, "skipped", []))}
 
 
 def gateway_model_info(model: str) -> ModelInfoResult:
-    """One model's full schema — tables, relationships, facts, dimensions, measures."""
+    """One model's full schema — tables, relationships, facts, dimensions, measures.
+
+    A file that failed to load returns that error instead of "not found".
+    """
+    loaded = _load_models()
+    failed = _skipped_error(loaded, model)
+    if failed and model not in loaded:
+        return {"error": failed}
     return _get_model(model).info()
 
 
@@ -1021,12 +1209,35 @@ def build_server(token: Optional[str] = None):
     server.tool(
         name="list_models", title="List models", annotations=_READ,
         structured_output=True,
-        description="Models this project exposes, with facts, dimensions and measures.",
+        description=(
+            "Models this project exposes, with facts, dimensions and measures. "
+            "A model that failed to load is listed under skipped with its "
+            "error; fix the file and call again (models reload when the file "
+            "changes)."
+        ),
     )(gateway_models)
+    server.tool(
+        name="describe_table", title="Describe a warehouse table",
+        annotations=_READ_WAREHOUSE, structured_output=True,
+        description=(
+            "Column names and types of a warehouse table, from connector "
+            "metadata. Pass table to describe one table; omit it to list "
+            "tables. connector limits the lookup to one connector name. "
+            "Never returns rows. A connector that raises is reported in "
+            "place (name, type, error: exception type plus the first "
+            "message line); the others still list. Use this before writing "
+            "a model or an ad-hoc measure, instead of learning column "
+            "names from errors."
+        ),
+    )(gateway_describe_table)
     server.tool(
         name="describe_model", title="Describe a model", annotations=_READ,
         structured_output=True,
-        description="One model's full schema: tables, relationships, facts, dimensions, named measures.",
+        description=(
+            "One model's full schema: tables, relationships, facts, dimensions, "
+            "named measures. A name that failed to load returns that error "
+            "instead of not found."
+        ),
     )(gateway_model_info)
     server.tool(
         name="query_model", title="Run a stamped query",
@@ -1186,8 +1397,18 @@ def build_server(token: Optional[str] = None):
     return server
 
 
+def _is_loopback(host: str) -> bool:
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 def serve(transport: str = "stdio", port: int = 8765,
-          insecure: bool = False) -> None:
+          host: str = "127.0.0.1", insecure: bool = False,
+          allow_insecure_bind: bool = False) -> None:
     """
     Build the server and run it until interrupted.
 
@@ -1202,6 +1423,16 @@ def serve(transport: str = "stdio", port: int = 8765,
         token = os.environ.get("TRACEBI_MCP_TOKEN", "").strip()
         if not token and not insecure:
             raise GatewayAuthError(_HTTP_AUTH_REFUSAL)
+        # A warning is how an open gateway ships in a container log nobody
+        # reads. Refuse, and require an explicit second flag.
+        if (insecure and not token and not _is_loopback(host)
+                and not allow_insecure_bind):
+            raise GatewayAuthError(
+                "Refusing to bind an unauthenticated MCP gateway on a "
+                f"non-loopback host ({host}). Anyone who can reach the port "
+                "gets full query access. Set TRACEBI_MCP_TOKEN, bind "
+                "127.0.0.1, or pass --allow-insecure-bind to do this on purpose."
+            )
         auth_mode = (
             "bearer (TRACEBI_MCP_TOKEN)" if token else "none (--insecure)"
         )
@@ -1211,11 +1442,11 @@ def serve(transport: str = "stdio", port: int = 8765,
         # stderr: on stdio the protocol owns stdout, so operator-facing
         # posture lines go to stderr on every transport for consistency.
         print(
-            f"[tracebi] mcp gateway: transport=http auth={auth_mode} "
+            f"[tracebi] mcp gateway: transport=http host={host} auth={auth_mode} "
             f"actor={_mcp_actor()}",
             file=sys.stderr,
         )
-        server.run(transport="streamable-http", port=port)
+        server.run(transport="streamable-http", host=host, port=port)
     else:
         server = build_server()
         server.run(transport="stdio")

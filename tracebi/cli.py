@@ -366,7 +366,6 @@ tracebi verify --file output/sample_dashboard.html   # FILE INTACT, or names wha
 ├── models/           Phase ② — each .py exposes `model` (a DataModel)
 ├── reports/          Phase ③ — ReportSpec .json, packages, and factories
 ├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
-├── scheduled/        Reports on a cron schedule
 ├── data/             The warehouse (gitignored)
 ├── output/           Rendered reports; *.manifest.json receipts stay tracked
 └── .env.example      Copy to `.env` and fill in credentials
@@ -429,7 +428,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     # No requests/ — the exploration story is the artifact's own:
     # `tracebi dev` + exploration blocks that die at build (architecture v2 §7).
     for d in ("inputs", "transforms", "models", "pipelines", "reports",
-              "scheduled", "data", "output"):
+              "data", "output"):
         (target / d).mkdir(parents=True, exist_ok=True)
 
     files = {
@@ -447,8 +446,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     }
     # Keep the still-empty discovery directories in git so the layout
     # survives a clone.
-    for d in ("pipelines", "scheduled"):
-        files[target / d / ".gitkeep"] = ""
+    files[target / "pipelines" / ".gitkeep"] = ""
 
     for path, content in files.items():
         if path.exists() and not args.force:
@@ -910,6 +908,43 @@ def cmd_list_models(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_warehouse(result: dict) -> None:
+    if not result.get("ok", True):
+        print(result.get("error", "failed"), file=sys.stderr)
+    for match in result.get("columns") or []:
+        print(f"{match['connector']}.{match['table']}")
+        for col in match.get("columns") or []:
+            print(f"  {col['name']}  {col['dtype']}")
+    for entry in result.get("connectors") or []:
+        print(entry["name"])
+        if "error" in entry:
+            print(f"  {entry['error']}")
+            continue
+        tables = entry.get("tables")
+        if tables is None:
+            print("  (cannot list tables)")
+        elif not tables:
+            print("  (no tables)")
+        else:
+            for name in tables:
+                print(f"  {name}")
+
+
+def cmd_warehouse(args: argparse.Namespace) -> int:
+    from tracebi.mcp_server import gateway_describe_table
+
+    result = gateway_describe_table(
+        table=args.table or "",
+        connector=args.connector or "",
+    )
+    if args.json:
+        json.dump(result, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+    else:
+        _print_warehouse(result)
+    return 0 if result.get("ok", True) else 1
+
+
 def cmd_new_pipeline(args: argparse.Namespace) -> int:
     pipelines_dir: Path = args.pipelines_dir
     pipelines_dir.mkdir(parents=True, exist_ok=True)
@@ -1067,8 +1102,9 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     from tracebi.mcp_server import GatewayAuthError, serve
 
     try:
-        serve(transport=args.transport, port=args.port,
-              insecure=args.insecure)
+        serve(transport=args.transport, port=args.port, host=args.host,
+              insecure=args.insecure,
+              allow_insecure_bind=args.allow_insecure_bind)
     except (ImportError, GatewayAuthError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -1997,15 +2033,11 @@ def cmd_schedule(args: argparse.Namespace) -> int:
         print(f"No scheduled reports in {reports_dir}/ — nothing to serve.",
               file=sys.stderr)
         return 1
-    from tracebi.audit import actor
+
+    run = sched.make_job(reports_dir, output_dir, args.models_dir)
 
     def job(s: dict) -> None:
-        # Jobs run on APScheduler's worker threads, which do not inherit
-        # this thread's ContextVar, so attribute each run where it runs.
-        with actor("scheduler", role="cli"):
-            _print_schedule_run(sched.run_schedule(
-                s, reports_dir=reports_dir, output_dir=output_dir,
-                models_dir=args.models_dir))
+        _print_schedule_run(run(s))
 
     try:
         scheduler = sched.build_scheduler(schedules, job, blocking=True)
@@ -2231,6 +2263,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_list_models = sub.add_parser("list-models", help="List model definition files.")
     p_list_models.set_defaults(func=cmd_list_models)
 
+    p_warehouse = sub.add_parser(
+        "warehouse",
+        help="List warehouse tables, or one table's columns, from metadata.",
+    )
+    wh = p_warehouse.add_subparsers(dest="warehouse_cmd", required=True)
+    p_wh_tables = wh.add_parser(
+        "tables",
+        help="List tables, or describe one table's columns and types.",
+    )
+    p_wh_tables.add_argument(
+        "--connector", default="",
+        help="Limit to this connector name.",
+    )
+    p_wh_tables.add_argument(
+        "--table", default="",
+        help="Describe this table's columns instead of listing tables.",
+    )
+    p_wh_tables.add_argument(
+        "--json", action="store_true",
+        help="Print the structured result as JSON.",
+    )
+    p_wh_tables.set_defaults(func=cmd_warehouse)
+
     p_new_pipeline = sub.add_parser("new-pipeline", help="Scaffold a new pipeline definition.")
     p_new_pipeline.add_argument("title", help='Free-form title, e.g. "Sales Pipeline".')
     p_new_pipeline.add_argument("--force", action="store_true", help="Overwrite if exists.")
@@ -2430,6 +2485,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="stdio for a local agent (default); http for a remote one.",
     )
     p_mcp.add_argument(
+        "--host", default="127.0.0.1",
+        help="Address for --transport http (default 127.0.0.1). "
+             "Use 0.0.0.0 inside a container. A non-loopback host with "
+             "--insecure also needs --allow-insecure-bind.",
+    )
+    p_mcp.add_argument(
         "--port", type=int, default=8765,
         help="Port for --transport http (default 8765).",
     )
@@ -2437,6 +2498,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--insecure", action="store_true",
         help="Serve --transport http without authentication. Deliberate "
              "opt-out: without it, http requires TRACEBI_MCP_TOKEN.",
+    )
+    p_mcp.add_argument(
+        "--allow-insecure-bind", action="store_true",
+        help="Allow --insecure on a non-loopback --host. Anyone who can "
+             "reach the port gets full query access.",
     )
     p_mcp.set_defaults(func=cmd_mcp)
 

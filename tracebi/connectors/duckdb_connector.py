@@ -68,6 +68,16 @@ class DuckDBConnector(BaseConnector):
             out["directory"] = self.directory
         return out
 
+    def list_tables(self) -> list[str]:
+        """Table names from ``information_schema``. No row scan."""
+        if self._conn is None:
+            self.connect()
+        rows = self._conn.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'main' ORDER BY table_name"
+        ).fetchall()
+        return [str(r[0]) for r in rows]
+
     def column_schema(self, source: str) -> list[dict[str, str]]:
         """Column names and types via ``DESCRIBE``. No rows are returned."""
         if self._conn is None:

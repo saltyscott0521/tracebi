@@ -79,8 +79,21 @@ class _Register:
         cron: str,
         description: str = "",
     ) -> Callable:
-        """Decorator: register a report factory tagged with a cron schedule."""
-        return _registry().scheduled(name, cron=cron, description=description)
+        """Decorator: register a report factory tagged with a cron schedule.
+
+        Deprecated. The cron string is never read. Put a ``"schedule"``
+        block in the package's ``report.json`` and use ``tracebi schedule``.
+        The report is still registered.
+        """
+        import warnings
+        warnings.warn(
+            "register.scheduled never ran anything. Put a \"schedule\" "
+            "block in the package's report.json and use `tracebi schedule`. "
+            "See `tracebi schedule --help`.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _registry()._scheduled(name, cron, description)
 
     def add_report(
         self,

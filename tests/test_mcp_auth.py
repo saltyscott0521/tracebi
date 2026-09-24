@@ -75,10 +75,13 @@ def test_http_with_insecure_is_allowed(monkeypatch, stub_build_server, capsys):
     stub, calls = stub_build_server
     serve(transport="http", port=9999, insecure=True)
     assert calls["tokens"] == [None], "insecure mode must not invent a token"
-    assert stub.run_calls == [{"transport": "streamable-http", "port": 9999}]
+    assert stub.run_calls == [{
+        "transport": "streamable-http", "host": "127.0.0.1", "port": 9999,
+    }]
     # The operator must be able to see the posture they just chose.
     log = capsys.readouterr().err
     assert "transport=http" in log
+    assert "host=127.0.0.1" in log
     assert "auth=none (--insecure)" in log
     assert "actor=mcp:agent" in log
 
@@ -89,8 +92,11 @@ def test_http_with_token_serves_with_bearer_auth(monkeypatch,
     stub, calls = stub_build_server
     serve(transport="http", insecure=False)
     assert calls["tokens"] == ["s3cret"]
-    assert stub.run_calls == [{"transport": "streamable-http", "port": 8765}]
+    assert stub.run_calls == [{
+        "transport": "streamable-http", "host": "127.0.0.1", "port": 8765,
+    }]
     log = capsys.readouterr().err
+    assert "host=127.0.0.1" in log
     assert "auth=bearer (TRACEBI_MCP_TOKEN)" in log
     assert "actor=mcp:agent" in log
 
@@ -103,6 +109,56 @@ def test_stdio_needs_no_token_and_stays_silent(monkeypatch,
     assert calls["tokens"] == [None]
     assert stub.run_calls == [{"transport": "stdio"}]
     assert capsys.readouterr().err == "", "stdio transport is unchanged"
+
+
+def test_http_passes_a_non_loopback_host_when_authenticated(
+        monkeypatch, stub_build_server, capsys):
+    monkeypatch.setenv("TRACEBI_MCP_TOKEN", "s3cret")
+    stub, _calls = stub_build_server
+    serve(transport="http", host="0.0.0.0", port=8765)
+    assert stub.run_calls == [{
+        "transport": "streamable-http", "host": "0.0.0.0", "port": 8765,
+    }]
+    assert "host=0.0.0.0" in capsys.readouterr().err
+
+
+def test_insecure_non_loopback_refuses(monkeypatch, stub_build_server):
+    monkeypatch.delenv("TRACEBI_MCP_TOKEN", raising=False)
+    stub, _calls = stub_build_server
+    with pytest.raises(GatewayAuthError) as excinfo:
+        serve(transport="http", host="0.0.0.0", insecure=True)
+    assert stub.run_calls == []
+    message = str(excinfo.value)
+    assert "non-loopback" in message
+    assert "--allow-insecure-bind" in message
+
+
+def test_insecure_non_loopback_allowed_with_explicit_flag(
+        monkeypatch, stub_build_server):
+    monkeypatch.delenv("TRACEBI_MCP_TOKEN", raising=False)
+    stub, _calls = stub_build_server
+    serve(transport="http", host="0.0.0.0", insecure=True,
+          allow_insecure_bind=True)
+    assert stub.run_calls == [{
+        "transport": "streamable-http", "host": "0.0.0.0", "port": 8765,
+    }]
+
+
+def test_cli_passes_host(monkeypatch):
+    from tracebi.cli import main
+
+    seen = {}
+
+    def fake_serve(**kwargs):
+        seen.update(kwargs)
+
+    monkeypatch.setattr("tracebi.mcp_server.serve", fake_serve)
+    rc = main(["mcp", "--transport", "http", "--host", "0.0.0.0",
+               "--port", "9000"])
+    assert rc == 0
+    assert seen["host"] == "0.0.0.0"
+    assert seen["port"] == 9000
+    assert seen["transport"] == "http"
 
 
 def test_cli_refusal_is_printed_and_exits_nonzero(monkeypatch, capsys):

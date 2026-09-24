@@ -33,8 +33,10 @@ class TestInitScaffold:
         # M5 flip ledger: init no longer scaffolds requests/ — the
         # deprecated lane is not handed to new projects.
         for d in ("inputs", "transforms", "models", "reports",
-                  "pipelines", "scheduled", "data", "output"):
+                  "pipelines", "data", "output"):
             assert (proj / d).is_dir(), f"missing {d}/"
+        assert not (proj / "scheduled").exists(), \
+            "init must not scaffold the deprecated scheduled/ lane"
         assert not (proj / "requests").exists(), \
             "init must not scaffold the deprecated requests/ lane"
         assert (proj / "inputs" / "orders.csv").is_file()
@@ -51,6 +53,30 @@ class TestInitScaffold:
             "the sample chart must opt into the vendored ECharts or it is blank"
         assert not (proj / "reports" / "sample_dashboard.json").exists(), \
             "the scaffold must not teach the legacy spec lane"
+
+    def test_existing_scheduled_dir_still_starts(self, tmp_path):
+        proj = tmp_path / "proj"
+        (proj / "scheduled").mkdir(parents=True)
+        (proj / "scheduled" / "old.py").write_text("VALUE = 1\n", encoding="utf-8")
+        for name in ("reports", "models", "pipelines"):
+            (proj / name).mkdir()
+        code = (
+            "import os\n"
+            f"os.chdir({str(proj)!r})\n"
+            "os.environ['TRACEBI_APP'] = ''\n"
+            "os.environ['TRACEBI_SCHEDULED_DIR'] = 'scheduled'\n"
+            "os.environ['TRACEBI_REPORTS_DIR'] = 'reports'\n"
+            "os.environ['TRACEBI_MODELS_DIR'] = 'models'\n"
+            "os.environ['TRACEBI_PIPELINES_DIR'] = 'pipelines'\n"
+            "from tracebi.web.api.main import app\n"
+            "print('STARTED', app.title)\n"
+        )
+        out = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True,
+            cwd=str(proj))
+        assert out.returncode == 0, out.stderr
+        assert "STARTED" in out.stdout
+        assert "deprecated" in out.stderr
 
     def test_init_scaffolds_an_agent_guide(self, tmp_path):
         """A fresh agent landing in the project must find orientation there —

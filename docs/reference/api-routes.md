@@ -13,12 +13,19 @@ Roles in the table are the minimum required when authorization is enabled — se
 | Method | Path | Role | Returns |
 | --- | --- | --- | --- |
 | `GET` | `/api/health` | — | liveness: `{"status": "ok", "version": "<installed version>"}` |
+| `GET` | `/api/status` | viewer | `{"version", "checks": [{"name", "ok", "detail"}]}` — output writable, discovery failures, models loaded, SMTP configured, in-server schedules, auth posture |
 | `GET` | `/api/schema` | viewer | the machine-readable vocabulary (same source as `tracebi context`) |
 | `GET` | `/api/discovery` | viewer | per-file registered / skipped / failed, **with the reason** |
 
 `/api/discovery` is the first place to look when something you wrote doesn't
 appear: auto-discovery is convention-based and quiet, and this is where the
 silence gets a reason.
+
+`/api/status` is the operator page: one check per thing that is usually
+wrong. `email_configured.detail` is the SMTP variable names and whether each
+is set. It never includes a URL, host, user, or password.
+`schedules_in_server.detail` is `{"on", "count"}`. `auth.detail` is the
+posture line.
 
 ## Models
 

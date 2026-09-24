@@ -239,6 +239,79 @@ def test_a_failed_run_is_recorded_not_raised(tmp_path):
     assert sched.last_runs(tmp_path / "output")["missing"]["status"] == sched.FAILED
 
 
+def _weekly_package(root: Path) -> None:
+    pkg = root / "reports" / "weekly"
+    pkg.mkdir(parents=True)
+    (pkg / "template.html").write_text(
+        "<!DOCTYPE html><html><body><p>weekly</p></body></html>",
+        encoding="utf-8")
+    (pkg / "report.json").write_text(json.dumps({
+        "name": "weekly",
+        "data": {"totals": {"model": "m", "query": {
+            "fact": "f", "measures": ["n"]}}},
+        "schedule": {"cron": "0 9 * * MON", "to": ["a@example.com"]},
+    }), encoding="utf-8")
+
+
+def _schedule_app():
+    """The real schedule lifespan on a tiny app.
+
+    Importing ``tracebi.web.api.main`` binds the routers to the global
+    registry and breaks ``test_phase5.py`` when this file runs first.
+    """
+    from fastapi import FastAPI
+
+    return FastAPI(lifespan=sched.server_lifespan)
+
+
+def test_in_server_schedules_start_with_the_switch(tmp_path, monkeypatch, caplog):
+    """Startup registers the package's job. It does not wait for cron."""
+    import inspect
+    import logging
+
+    from fastapi.testclient import TestClient
+
+    _weekly_package(tmp_path)
+    monkeypatch.setenv("TRACEBI_SCHEDULES_IN_SERVER", "1")
+    monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(tmp_path / "reports"))
+    # The MCP confinement root must not move the schedule log.
+    monkeypatch.setenv("TRACEBI_OUTPUT_ROOT", str(tmp_path / "not-the-schedule-log"))
+    app = _schedule_app()
+
+    caplog.set_level(logging.INFO, logger="tracebi.schedule")
+    with TestClient(app):
+        scheduler = app.state.scheduler
+        assert scheduler.running
+        [job] = scheduler.get_jobs()
+        assert job.id == "weekly"
+        assert inspect.getclosurevars(job.func).nonlocals["output_dir"] == "output"
+    assert scheduler.running is False
+    text = caplog.text
+    assert "weekly" in text
+    assert "one process" in text
+
+
+def test_in_server_schedules_stay_off_by_default(monkeypatch):
+    monkeypatch.delenv("TRACEBI_SCHEDULES_IN_SERVER", raising=False)
+    assert sched.start_server_scheduler() is None
+
+
+def test_in_server_schedules_need_apscheduler(tmp_path, monkeypatch):
+    import sys
+
+    _weekly_package(tmp_path)
+    monkeypatch.setenv("TRACEBI_SCHEDULES_IN_SERVER", "1")
+    monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(tmp_path / "reports"))
+    for name in ("apscheduler", "apscheduler.schedulers",
+                 "apscheduler.schedulers.background",
+                 "apscheduler.schedulers.blocking",
+                 "apscheduler.triggers", "apscheduler.triggers.cron"):
+        monkeypatch.setitem(sys.modules, name, None)
+
+    with pytest.raises(ImportError, match=r"tracebi\[pipeline\]"):
+        sched.start_server_scheduler()
+
+
 def test_scheduler_fires_in_the_declared_timezone():
     pytest.importorskip("apscheduler")
     scheduler = sched.build_scheduler(

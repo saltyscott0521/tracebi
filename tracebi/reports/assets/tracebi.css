@@ -441,10 +441,20 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
   padding: var(--tb-space-1) 0;
   border-bottom: 1px solid var(--tb-rule);
 }
+.tb-receipt-title { color: var(--tb-ink); }
+.tb-receipt-from {
+  color: var(--tb-muted);
+  font-size: 0.92em;
+  margin-top: 2px;
+}
+.tb-receipt-details { margin-top: var(--tb-space-1); }
+.tb-receipt-details summary { cursor: pointer; }
+.tb-receipt-meta,
 .tb-receipt-fp {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  margin-left: var(--tb-space-2);
+  word-break: break-all;
 }
+.tb-receipt-fp { display: block; }
 /* Layout only — the badge keeps its own recorded tone. */
 .tb-receipt-drawer .tb-badge {
   position: static;
@@ -484,6 +494,9 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
      content, and the stated methodology often lives behind an inactive tab. */
   .tb-tab-bar { display: none; }
   .tb-tab-bar ~ [data-tb-tab] { display: block !important; }
+
+  /* A closed disclosure would hide the fingerprint on paper. */
+  .tb-receipt-details > * { display: block !important; }
 
   /* The receipt IS the point of the document. Un-pin the drawer from its
      fixed overlay into a static appendix so the fingerprints, contract status

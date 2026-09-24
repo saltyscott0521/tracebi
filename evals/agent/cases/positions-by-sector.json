@@ -1,0 +1,18 @@
+{
+  "report": "positions_by_sector",
+  "figures": [
+    "chart"
+  ],
+  "chart_types": [
+    "bar"
+  ],
+  "measures": [
+    "positions"
+  ],
+  "dimensions": [
+    "dim_issuer.sector"
+  ],
+  "forbid": [
+    "data-tb-unverified"
+  ]
+}
