@@ -253,6 +253,7 @@ pip install -e ".[pipeline]"          # scheduling + DB write-back
 pip install -e ".[lineage]"           # lineage diagrams
 pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Explore + report figures)
 pip install -e ".[web]"               # FastAPI + uvicorn web UI
+pip install -e ".[e2e]"               # Playwright, for the browser smoke test
 pip install -e ".[all]"               # everything
 ```
 
@@ -588,16 +589,18 @@ claude mcp add tracebi -- tracebi mcp
 # Remote agent: the HTTP transport requires a token —
 # every client must send "Authorization: Bearer $TRACEBI_MCP_TOKEN".
 export TRACEBI_MCP_TOKEN=$(openssl rand -hex 32)
-tracebi mcp --transport http --port 8765
+tracebi mcp --transport http --host 0.0.0.0 --port 8765
 
 # Without a token the server refuses to start; serving an
-# unauthenticated gateway is an explicit opt-out:
+# unauthenticated gateway is an explicit opt-out, and only on loopback
+# unless --allow-insecure-bind is also passed:
 tracebi mcp --transport http --port 8765 --insecure
 ```
 
-The HTTP transport binds `127.0.0.1` and enables DNS-rebinding protection,
-so a genuinely remote agent should reach it through a reverse proxy (TLS
-termination there; the bearer token still applies end to end).
+The HTTP transport binds `127.0.0.1` unless `--host` says otherwise, and
+enables DNS-rebinding protection on loopback. A container that should be
+reachable uses `--host 0.0.0.0` with `TRACEBI_MCP_TOKEN`. `--insecure` on a
+non-loopback host refuses to start unless `--allow-insecure-bind` is passed.
 
 Read-and-compute only: queries, validation, rendering, and verification.
 Pipeline execution (which writes to the warehouse) is deliberately not exposed.

@@ -289,12 +289,15 @@ that lesson in full.
 ### `tracebi mcp`
 
 ```bash
-tracebi mcp [--transport {stdio,http}] [--port 8765] [--insecure]
+tracebi mcp [--transport {stdio,http}] [--host 127.0.0.1] [--port 8765] [--insecure]
 ```
 
 Serves the agent gateway over MCP. **The http transport refuses to start until
 an auth decision is made** — set `TRACEBI_MCP_TOKEN`, or pass `--insecure`
-deliberately.
+deliberately. `--host` defaults to `127.0.0.1`. A non-loopback host with
+`--insecure` and no token refuses to start unless `--allow-insecure-bind` is
+also passed: anyone who can reach the port gets full query access. Inside a
+container, bind `0.0.0.0` and set the token.
 
 ---
 
