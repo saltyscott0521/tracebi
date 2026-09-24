@@ -22,8 +22,12 @@ model.add_measure("fv_prior",  offset=("fair_value", "month", 1))
 model.add_measure("fv_growth", growth=("fair_value", "month", 1), format="percent")
 ```
 
-  Bind both in the card — the value, and "+6.2% vs last month" beneath it — so
-  the change carries the same receipt as the value. Against a target, bind the
+  Bind both in the card — the value, and "+6.2% vs last month" beneath it in a
+  `.tb-kpi-context` line — so the change carries the same receipt as the value.
+  Put `data-tb-direction="up-good"` (or `"down-good"` for costs and defaults) on
+  the bound change. The runtime then draws an arrow and colors the change good
+  or bad from its sign, while the text stays the number. The arrow means the
+  reader never has to rely on color alone. Against a target, bind the
   target too; never type it in.
 - **Put the unit and the period in the label**: "Fair value · end of Aug", not
   "Fair Value". A KPI whose period is ambiguous gets misquoted.

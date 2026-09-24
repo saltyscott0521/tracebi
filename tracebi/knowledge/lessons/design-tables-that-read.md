@@ -33,6 +33,15 @@ so you don't undo it.
 - **Long tables scroll inside themselves**: `data-tb-rows` caps the visible
   rows, the header sticks, and `data-tb-search` goes above it. The download
   button still exports every stamped row.
+- **Let the reader re-sort; draw magnitude when it matters.** `data-tb-sort`
+  turns the headers into sort buttons (ascending, descending, back to the
+  query's order), so reordering never means a second binding. The query's
+  `order_by` stays the default the page opens with. `data-tb-bars="fair_value"`
+  draws a quiet bar behind each value in that column, so the biggest positions
+  stand out without a separate chart. The bars start at zero, and zero moves to
+  the middle when the column has negatives. On a wide table,
+  `class="tb-table--freeze"` keeps the first column in view while the rest
+  scrolls sideways.
 - **Never merge cells or put two values in one cell.** A screen reader and the
   CSV download both need one value per cell.
 

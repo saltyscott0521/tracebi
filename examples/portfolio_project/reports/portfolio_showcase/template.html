@@ -56,7 +56,8 @@
             data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv"></span>
       <span class="tb-kpi-context"><span data-tb-figure="value"
             data-tb-binding="gain" data-tb-cell="unrealized"
-            data-tb-format="compact" id="kpi-gain"></span> vs cost</span>
+            data-tb-format="compact" data-tb-direction="up-good"
+            id="kpi-gain"></span> vs cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="positions" data-tb-format="comma" id="kpi-pos">
@@ -103,6 +104,7 @@
           <table data-tb-figure="table" data-tb-binding="top_issuers"
                  data-tb-labels="mark=Mark (FV / cost)"
                  data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
+                 data-tb-bars="fair_value"
                  id="tbl-top"></table>
         </div>
         <div class="tb-card">
@@ -123,21 +125,23 @@
           the first page of rows; the CSV button exports the stamped bytes
           verbatim. The totals row is its own one-row query, so the model
           computes it (the mark total is a ratio of totals); it steps aside
-          while a filter or search is on.</p>
+          while a filter or search is on. Click a header to sort; sorting
+          reorders the stamped rows and computes nothing.</p>
         <p>
           <!-- Search first: finding a row by name is the common task. -->
           <input data-tb-search data-tb-binding="holdings_detail"
                  aria-label="Search issuers" placeholder="Search issuers…">
-          Sector:
-          <select data-tb-filter data-tb-binding="holdings_detail"
-                  data-tb-column="dim_issuer.sector"></select>
+          <label>Sector
+            <select data-tb-filter data-tb-binding="holdings_detail"
+                    data-tb-column="dim_issuer.sector"></select></label>
           <button data-tb-download data-tb-binding="holdings_detail"
                   data-tb-label="Download CSV"></button>
         </p>
         <table data-tb-figure="table" data-tb-binding="holdings_detail"
                data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
                data-tb-totals="holdings_total"
-               class="tb-table--striped" id="tbl-detail"></table>
+               data-tb-sort
+               class="tb-table--striped tb-table--freeze" id="tbl-detail"></table>
       </div>
     </section>
 

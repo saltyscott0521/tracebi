@@ -81,7 +81,11 @@ tables and design tokens — translated into what TraceBi can and cannot do.
 `.tb-cols-2` / `.tb-cols-3` / `.tb-card` (layout), `.tb-kpi` with
 `.tb-kpi-label`, `.tb-kpi-value` and `.tb-kpi-context` (the comparison line),
 `.tb-note` (captions), `.tb-callout`, `.tb-good` / `.tb-bad` (direction, always
-with a sign or word), and `tb-table--striped` / `tb-table--compact`. Numbers
+with a sign or word), and `tb-table--striped` / `tb-table--compact` /
+`tb-table--freeze`. Three reader aids reorder or decorate stamped values and
+compute nothing: `data-tb-sort` (click-to-sort headers), `data-tb-bars`
+(in-cell magnitude bars) and `data-tb-direction` (an up/down, good/bad mark on
+a bound change). Numbers
 already right-align in tabular figures, focus is already visible, and a value
 figure with no `data-tb-format` already takes the model's declared format, then
 a readable default. A report's `style.css` should be short. If it is long, it is

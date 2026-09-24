@@ -207,7 +207,9 @@ def _presentation() -> dict:
             "numbers bound as value figures)",
             ".tb-kpi (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context — the "
             "comparison line under the number)",
-            ".tb-table (variants: .tb-table--striped, .tb-table--compact)",
+            ".tb-table (variants: .tb-table--striped, .tb-table--compact, "
+            ".tb-table--freeze — the first column stays put while a wide "
+            "table scrolls sideways)",
             ".tb-callout", ".tb-note",
             ".tb-good / .tb-bad (direction tones; pair with a sign or word, "
             "never color alone)",
@@ -254,6 +256,23 @@ def _presentation() -> dict:
                               "a ratio's total is a ratio of totals. Hidden "
                               "while a filter or search is on. A spec's "
                               "table 'totals' compiles to this",
+            "data-tb-sort": "table figures (no value needed): headers become "
+                            "buttons the reader clicks to sort ascending, "
+                            "descending, then back to the query's order. It "
+                            "reorders stamped rows and computes nothing; the "
+                            "query's order_by stays the default",
+            "data-tb-bars": "table figures: \"col, col2\" — a quiet bar "
+                            "behind each named numeric cell, proportional to "
+                            "the stamped value (zero at the left edge, or in "
+                            "the middle when the column has negatives; scaled "
+                            "over all rows, so a filter never rescales). A "
+                            "non-numeric or missing column fails the build",
+            "data-tb-direction": "value figures: up-good | down-good — marks "
+                                 "a change figure up / down / flat (an arrow) "
+                                 "and good or bad (--tb-good / --tb-bad) from "
+                                 "the stamped value's sign. The text stays the "
+                                 "formatted number; use it on a bound "
+                                 "comparison, e.g. a growth measure",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
             "data-tb-methodology": "one per page, on any container element; "

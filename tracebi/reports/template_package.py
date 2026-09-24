@@ -950,6 +950,13 @@ class TemplatePackage:
                     f"declared in report.json or produced by report.py."
                     f"{_hint(f.binding)} Available: {sorted(frames)}."
                 )
+            direction = f.attrs.get("data-tb-direction")
+            if direction is not None and (
+                    f.kind != "value" or direction not in ("up-good", "down-good")):
+                raise FigureError(
+                    f"{where}: data-tb-direction goes on a value figure and is "
+                    f"'up-good' (a rise is good) or 'down-good' (a fall is "
+                    f"good); got '{direction}' on a {f.kind} figure.")
             if f.kind == "value":
                 df = frames[f.binding]
                 if len(df) != 1:
@@ -1011,6 +1018,20 @@ class TemplatePackage:
                                 f"{where}: data-tb-formats gives '{col}' the "
                                 f"format '{val}'. Use one of "
                                 f"{list(TABLE_FORMATS)}.")
+                bars = f.attrs.get("data-tb-bars")
+                if bars:
+                    tdf = frames[f.binding]
+                    numeric = {str(c) for c in
+                               tdf.select_dtypes(include="number").columns}
+                    for col in (c.strip() for c in bars.split(",")):
+                        if col not in numeric:
+                            close = difflib.get_close_matches(col, sorted(numeric), n=1)
+                            hint = f" Did you mean '{close[0]}'?" if close else ""
+                            raise FigureError(
+                                f"{where}: data-tb-bars names '{col}', which is "
+                                f"not a numeric column of binding "
+                                f"'{f.binding}'.{hint} Numeric columns: "
+                                f"{sorted(numeric)}.")
 
     def _semantic_slice(self, model_name: str, model) -> dict:
         """The model contract AS EXERCISED by this package's bindings.

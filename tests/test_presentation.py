@@ -497,3 +497,53 @@ class TestDeclaredFormats:
         assert 'id="g">1,234.50</span>' in html        # shape guess: two decimals
         assert 'id="c">$3,001</span>' in html       # the measure's declared format
         assert 'id="d">3,001.15</span>' in html     # the author's format wins
+
+
+class TestReaderAidsFailLoudly:
+    """data-tb-bars and data-tb-direction are checked at build: a typo'd
+    column or direction fails with the fix, never renders as nothing."""
+
+    def _build(self, tmp_path, body):
+        df = pd.DataFrame({"region": ["NE", "SE"], "gain": [10.0, -5.0]})
+        m = DataModel("aids")
+        m.add_connector(MemoryConnector("a", tables={"t": df}))
+        m.add_table("t", connector="a", source="t")
+        m.add_dimension("dim_r", table_name="t", key_col="region",
+                        attributes=["region"])
+        m.add_fact("f", table_name="t", measures=["gain"], foreign_keys={})
+        m.add_measure("gain", column="gain", agg="sum")
+        m.connect()
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({"name": "p", "data": {
+            "by": {"model": "aids", "query": {"fact": "f", "measures": ["gain"],
+                                              "dimensions": ["dim_r.region"]}},
+            "k": {"model": "aids", "query": {"fact": "f", "measures": ["gain"]}}}}))
+        (pkg / "template.html").write_text(
+            f"<html><head><title>p</title></head><body>{body}</body></html>")
+        out = tmp_path / "o.html"
+        TemplatePackage(str(pkg)).render({"aids": m}, str(out))
+        return out.read_text(encoding="utf-8")
+
+    def test_valid_aids_build(self, tmp_path):
+        html = self._build(tmp_path,
+            '<table data-tb-figure="table" data-tb-binding="by" id="t" '
+            'data-tb-sort data-tb-bars="gain"></table>'
+            '<span data-tb-figure="value" data-tb-binding="k" data-tb-cell="gain" '
+            'data-tb-direction="up-good" id="v"></span>')
+        assert 'data-tb-bars="gain"' in html
+
+    @pytest.mark.parametrize("body, match", [
+        ('<table data-tb-figure="table" data-tb-binding="by" id="t" '
+         'data-tb-bars="gian"></table>', "Did you mean 'gain'"),
+        ('<table data-tb-figure="table" data-tb-binding="by" id="t" '
+         'data-tb-bars="dim_r.region"></table>', "not a numeric column"),
+        ('<span data-tb-figure="value" data-tb-binding="k" data-tb-cell="gain" '
+         'data-tb-direction="up" id="v"></span>', "up-good"),
+        ('<table data-tb-figure="table" data-tb-binding="by" id="t" '
+         'data-tb-direction="up-good"></table>', "on a table figure"),
+    ])
+    def test_bad_aids_fail_the_build(self, tmp_path, body, match):
+        from tracebi.reports.figures import FigureError
+        with pytest.raises(FigureError, match=match):
+            self._build(tmp_path, body)

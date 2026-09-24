@@ -113,6 +113,17 @@ img, svg { max-width: 100%; }
 .tb-good { color: var(--tb-good); }
 .tb-bad { color: var(--tb-bad); }
 
+/* data-tb-direction: the runtime marks a change figure up / down / flat from
+ * the stamped value's sign. The arrow is drawn here, so the figure's text —
+ * what the receipt reads — is exactly the formatted number. */
+.tb-up::before, .tb-down::before {
+  font-size: 0.75em;
+  margin-right: 0.25em;
+  vertical-align: 0.1em;
+}
+.tb-up::before { content: "\25B2"; }   /* ▲ */
+.tb-down::before { content: "\25BC"; } /* ▼ */
+
 /* ── 3. Layout ─────────────────────────────────────────────────────────── */
 
 .tb-page { max-width: 1100px; margin: 0 auto; }
@@ -184,7 +195,8 @@ img, svg { max-width: 100%; }
   color: var(--tb-muted);
   font-variant-numeric: tabular-nums;
 }
-.tb-kpi-context [data-tb-figure] { font-weight: 600; color: var(--tb-ink); }
+.tb-kpi-context [data-tb-figure] { font-weight: 600; }
+.tb-kpi-context [data-tb-figure]:not(.tb-good):not(.tb-bad) { color: var(--tb-ink); }
 
 /* ── 5. Tables ─────────────────────────────────────────────────────────── */
 
@@ -239,6 +251,50 @@ img, svg { max-width: 100%; }
   border-top: 2px solid var(--tb-ink);
   border-bottom: 0;
   font-weight: 700;
+}
+
+/* data-tb-sort: headers become buttons; aria-sort states the order. */
+.tb-sort {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.tb-sort:hover { color: var(--tb-ink); }
+th[aria-sort="ascending"] .tb-sort::after { content: " \2191"; }  /* ↑ */
+th[aria-sort="descending"] .tb-sort::after { content: " \2193"; } /* ↓ */
+th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
+
+/* data-tb-bars: a quiet bar behind the number, proportional to it. The
+ * number stays on top and stays the thing you read. */
+.tb-bar-cell { position: relative; isolation: isolate; }
+.tb-bar {
+  position: absolute;
+  top: calc(50% - 0.7em);         /* one line tall, even in a wrapped row */
+  height: 1.4em;
+  z-index: -1;                    /* under the number, above the row */
+  background: rgba(31, 99, 184, 0.16);
+  background: color-mix(in srgb, var(--tb-accent) 16%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.tb-bar--neg {
+  background: rgba(180, 35, 24, 0.16);
+  background: color-mix(in srgb, var(--tb-bad) 16%, transparent);
+}
+
+/* Variant: freeze — the first column stays put while a wide table scrolls
+ * sideways, so every row keeps its name. */
+.tb-table--freeze th:first-child, .tb-table--freeze td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--tb-bg);
+  z-index: 1;
 }
 
 /* Variant: striped — even body rows tinted (field-notes finding #13). */
@@ -518,6 +574,12 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
 
   /* Badges and exploration treatments must survive on paper. */
   .tb-badge, [data-tb-stage="exploration"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Bars and direction arrows carry meaning — they print. */
+  .tb-bar, .tb-good, .tb-bad {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

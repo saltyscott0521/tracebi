@@ -1242,3 +1242,79 @@ process.stdout.write(JSON.stringify({ cells: cells, hidden: before,
     def test_totals_row_steps_aside_while_a_filter_is_on(self):
         # A grand total under a filtered view would not match the rows shown.
         assert _run_dom(self._TOTALS)["filtered"] is True
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestSortBarsDirection:
+    """Table and KPI polish borrowed from data-grid libraries — each one
+    reorders or decorates stamped values and never computes a number."""
+
+    _SORT = """
+dataBlock('b', 'region,revenue\\nUS,100\\nEU,300\\nAPAC,\\nLATAM,200\\n');
+dataBlock('t', 'revenue\\n600\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b',
+                        'data-tb-sort': '', 'data-tb-totals': 't' });
+loadRuntime();
+function order() {
+  return tbl.querySelector('tbody').children.map(function (tr) {
+    return tr.children[0].textContent; });
+}
+var th = tbl.querySelectorAll('thead th')[1], btn = th.querySelector('.tb-sort');
+var out = { query: order() };
+btn._fire('click'); out.asc = order(); out.ariaAsc = th.getAttribute('aria-sort');
+btn._fire('click'); out.desc = order();
+btn._fire('click'); out.back = order(); out.ariaBack = th.getAttribute('aria-sort');
+out.totalsHidden = tbl.querySelector('tfoot').hidden;
+process.stdout.write(JSON.stringify(out));
+"""
+
+    def test_header_click_cycles_asc_desc_and_back_to_the_query_order(self):
+        out = _run_dom(self._SORT)
+        assert out["query"] == ["US", "EU", "APAC", "LATAM"]
+        assert out["asc"] == ["US", "LATAM", "EU", "APAC"]   # blanks last
+        assert out["desc"] == ["EU", "LATAM", "US", "APAC"]  # blanks last both ways
+        assert out["back"] == out["query"]
+        assert out["ariaAsc"] == "ascending" and out["ariaBack"] == "none"
+
+    def test_sorting_keeps_the_totals_row(self):
+        # All rows are still shown, so the model's total still describes them.
+        assert _run_dom(self._SORT)["totalsHidden"] is False
+
+    def test_bars_scale_from_zero_and_center_zero_when_negative(self):
+        out = _run_dom("""
+dataBlock('b', 'name,pos,gain\\nA,50,-25\\nB,100,50\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b',
+                        'data-tb-bars': 'pos, gain, name' });
+loadRuntime();
+var rows = tbl.querySelector('tbody').children;
+function bar(r, c) {
+  var b = rows[r].children[c].querySelector('.tb-bar');
+  return b ? [b.style.left, b.style.width, b.className] : null;
+}
+process.stdout.write(JSON.stringify({
+  pos: [bar(0, 1), bar(1, 1)], gain: [bar(0, 2), bar(1, 2)], name: bar(0, 0),
+  text: rows[0].children[2].textContent }));
+""")
+        assert out["pos"] == [["0%", "50%", "tb-bar"], ["0%", "100%", "tb-bar"]]
+        # a column with negatives puts zero in the middle; each side is honest
+        assert out["gain"] == [["25%", "25%", "tb-bar tb-bar--neg"],
+                               ["50%", "50%", "tb-bar"]]
+        assert out["name"] is None             # text columns never get a bar
+        assert out["text"] == "-25"            # the number itself is untouched
+
+    def test_direction_marks_sign_and_meaning_without_changing_text(self):
+        out = _run_dom("""
+dataBlock('k', 'gain,cost_change,flat\\n-6.3,-2,0\\n');
+function v(cell, dir) {
+  return el('span', { 'data-tb-figure': 'value', 'data-tb-binding': 'k',
+                      'data-tb-cell': cell, 'data-tb-direction': dir });
+}
+var a = v('gain', 'up-good'), b = v('cost_change', 'down-good'), c = v('flat', 'up-good');
+loadRuntime();
+process.stdout.write(JSON.stringify([[a.className, a.textContent],
+                                     [b.className, b.textContent],
+                                     [c.className, c.textContent]]));
+""")
+        assert out == [["tb-down tb-bad", "-6.30"],
+                       ["tb-down tb-good", "-2"],
+                       ["tb-flat", "0"]]

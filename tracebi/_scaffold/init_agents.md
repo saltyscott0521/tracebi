@@ -69,6 +69,11 @@ whose figures each name a binding from `report.json`:
   column (`data-tb-formats="revenue=currency; share=percent"`), and
   `data-tb-totals="<binding>"` adds a totals row from a one-row binding (the
   same query with no dimensions — the model computes each total).
+  `data-tb-sort` makes a table's headers click-to-sort, `data-tb-bars="col"`
+  draws a proportional bar behind a numeric column, and
+  `data-tb-direction="up-good"` (or `"down-good"`) marks a bound change on a
+  value figure up or down, good or bad. They reorder or decorate stamped
+  values; they never compute one.
 - **Give every figure an `id`** — ids are how humans redirect you
   ("fix `tbl-seniority`").
 - **Or let the framework build the figure.** Declare it in `report.json`

@@ -93,7 +93,14 @@ optionally `data-tb-color`/`data-tb-value-format`; tables optionally
 and number formats per column, e.g. `data-tb-formats="fair_value=currency0;
 mark=percent"`, and `data-tb-totals="<one-row binding>"` for a totals row:
 declare the same query with no dimensions, so the model computes each total
-and never the browser). A figure with no binding carries `data-tb-unverified` —
+and never the browser). Three reader aids decorate or reorder stamped values
+and compute nothing: `data-tb-sort` on a table makes its headers click-to-sort
+(ascending, descending, back to the query's order); `data-tb-bars="col, col2"`
+draws a proportional bar behind each named numeric cell (zero at the left, or
+centered when the column has negatives); and `data-tb-direction="up-good"` or
+`"down-good"` on a value figure marks a bound change up or down, good or bad,
+from its sign. Add `tb-table--freeze` to keep a wide table's first column in
+view. A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
 `presentation` block.

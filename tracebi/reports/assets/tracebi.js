@@ -622,6 +622,24 @@
            deriveFormat(rows, cell);
   }
 
+  /* data-tb-direction="up-good" | "down-good": mark a change figure with its
+   * direction (tb-up / tb-down / tb-flat, drawn as an arrow) and whether that
+   * direction is good or bad for the reader. Read from the stamped value's
+   * sign — the text itself is never altered. */
+  function markDirection(el, target, raw) {
+    var want = attr(el, "data-tb-direction");
+    if (want !== "up-good" && want !== "down-good") return;
+    var n = toNum(raw);
+    if (n === null) return;
+    ["tb-up", "tb-down", "tb-flat", "tb-good", "tb-bad"].forEach(function (c) {
+      removeClass(target, c);
+    });
+    addClass(target, n > 0 ? "tb-up" : (n < 0 ? "tb-down" : "tb-flat"));
+    if (n !== 0) {
+      addClass(target, (n > 0) === (want === "up-good") ? "tb-good" : "tb-bad");
+    }
+  }
+
   function hydrateValues() {
     figureEls("value").forEach(function (el) {
       try {
@@ -646,6 +664,7 @@
         }
         var target = el.querySelector(".tb-kpi-value") || el;
         target.textContent = text;
+        markDirection(el, target, raw);
       } catch (e) { /* defensive: leave the author's content */ }
     });
   }
@@ -689,6 +708,86 @@
     return tfoot;
   }
 
+  /* data-tb-sort: the reader reorders the rows a table DISPLAYS by clicking a
+   * header — ascending, descending, then back to the query's own order.
+   * Reordering computes nothing: every cell is the stamped value, and the
+   * totals row still describes all of them. Ties keep the query order. */
+  function sortedRows(entry, rows) {
+    var s = entry.sort;
+    if (!s || !s.dir) return rows;
+    var col = s.col, num = entry.numeric[col], sign = s.dir === "asc" ? 1 : -1;
+    return rows.map(function (r, i) { return { r: r, i: i }; })
+      .sort(function (a, b) {
+        var x = a.r[col], y = b.r[col], c;
+        var xe = x === undefined || x === null || x === "";
+        var ye = y === undefined || y === null || y === "";
+        if (xe || ye) c = xe === ye ? 0 : (xe ? 1 : -1); /* blanks last, both ways */
+        else if (num) c = sign * (toNum(x) - toNum(y));
+        else c = sign * String(x).localeCompare(String(y));
+        return c || a.i - b.i;
+      })
+      .map(function (w) { return w.r; });
+  }
+
+  function hydrateSort(entry) {
+    var el = entry.el;
+    if (el.getAttribute("data-tb-sort") === null) return;
+    var ths = el.querySelectorAll("thead th");
+    entry.cols.forEach(function (col, i) {
+      var th = ths[i];
+      if (!th) return;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tb-sort";
+      while (th.firstChild) btn.appendChild(th.firstChild);
+      th.appendChild(btn);
+      th.setAttribute("aria-sort", "none");
+      btn.addEventListener("click", function () {
+        var cur = entry.sort && entry.sort.col === col ? entry.sort.dir : null;
+        var next = cur === null ? "asc" : (cur === "asc" ? "desc" : null);
+        entry.sort = next ? { col: col, dir: next } : null;
+        Array.prototype.forEach.call(ths, function (h) {
+          h.setAttribute("aria-sort", "none");
+        });
+        if (next) th.setAttribute("aria-sort", next === "asc" ? "ascending" : "descending");
+        renderBody(entry, filteredRows(entry.binding));
+      });
+    });
+  }
+
+  /* data-tb-bars: a bar behind each cell of the named numeric columns,
+   * proportional to the stamped value. Zero is the left edge; a column with
+   * negatives gets its zero in the middle so neither side is exaggerated.
+   * The scale comes from ALL stamped rows, so a filter never rescales. */
+  function barScales(el, rows, cols, numeric) {
+    var want = attr(el, "data-tb-bars"), out = {};
+    if (!want) return out;
+    splitList(want).forEach(function (col) {
+      if (cols.indexOf(col) === -1 || !numeric[col]) return;
+      var max = 0, neg = false;
+      columnValues(rows, col).forEach(function (v) {
+        var n = toNum(v);
+        if (n === null) return;
+        if (Math.abs(n) > max) max = Math.abs(n);
+        if (n < 0) neg = true;
+      });
+      if (max > 0) out[col] = { max: max, neg: neg };
+    });
+    return out;
+  }
+
+  function paintBar(td, n, scale) {
+    var bar = document.createElement("span");
+    bar.className = "tb-bar" + (n < 0 ? " tb-bar--neg" : "");
+    bar.setAttribute("aria-hidden", "true");
+    var span = (scale.neg ? 50 : 100) * Math.abs(n) / scale.max;
+    var zero = scale.neg ? 50 : 0;
+    bar.style.left = (n < 0 ? zero - span : zero) + "%";
+    bar.style.width = span + "%";
+    addClass(td, "tb-bar-cell");
+    td.insertBefore(bar, td.firstChild);
+  }
+
   function renderBody(entry, rows) {
     var el = entry.el;
     /* A grand total under a filtered view would not add up to the rows
@@ -713,20 +812,24 @@
       tbody.appendChild(etr);
       return;
     }
-    rows.forEach(function (r) {
+    sortedRows(entry, rows).forEach(function (r) {
       var tr = document.createElement("tr");
       entry.cols.forEach(function (col) {
         var td = document.createElement("td");
         var raw = r[col], text = (raw === undefined) ? "" : raw;
+        var n = null;
         if (entry.numeric[col]) {
           td.className = "tb-num";
-          var n = toNum(raw);
+          n = toNum(raw);
           if (n !== null && entry.formats[col]) {
             var formatted = applyNamedFormat(n, entry.formats[col]);
             if (formatted !== null) text = formatted;
           }
         }
         td.textContent = text;
+        if (n !== null && entry.bars && entry.bars[col]) {
+          paintBar(td, n, entry.bars[col]);
+        }
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
@@ -815,8 +918,10 @@
         }
         var entry = { el: el, binding: binding, cols: cols,
                       numeric: numeric, formats: formats,
-                      rowCount: rows.length };
+                      rowCount: rows.length, sort: null,
+                      bars: barScales(el, rows, cols, numeric) };
         entry.tfoot = totalsRow(el, cols, numeric, formats);
+        hydrateSort(entry);
         _tables.push(entry);
         renderBody(entry, filteredRows(binding));
       } catch (e) { /* defensive */ }
@@ -1206,6 +1311,7 @@
         }
         var target = el.querySelector(".tb-kpi-value") || el;
         target.textContent = text;
+        markDirection(el, target, raw);
       } catch (e) { /* defensive */ }
     });
   }

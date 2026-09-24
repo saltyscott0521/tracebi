@@ -20,6 +20,22 @@
   also give the KPI a context line, and put the search and filter controls
   inside real `<label>`s, with search first.
 
+- Three reader aids for report pages, drawn from data-grid and dashboard
+  component libraries (TanStack Table, shadcn/ui's data table, Tremor). Each
+  one reorders or decorates stamped values and never computes a number:
+  - `data-tb-sort` on a table: the headers become sort buttons. Clicking
+    cycles ascending, descending, then back to the query's order. Blanks sort
+    last, and `aria-sort` states the current order.
+  - `data-tb-bars="col"` on a table: an in-cell bar proportional to each
+    value. It starts at zero; a column with negatives centres zero. The scale
+    covers every stamped row, so filtering never rescales it.
+  - `data-tb-direction="up-good|down-good"` on a value figure: an up or down
+    arrow, colored good or bad, taken from the value's sign. The figure's text
+    is unchanged.
+  - A `tb-table--freeze` class keeps the first column in view.
+  - A bad column or direction fails the build, and names the fix.
+  - The showcase demonstrates all of them.
+
 ### Changed
 
 - A value figure with no `data-tb-format` is now formatted the way a table
