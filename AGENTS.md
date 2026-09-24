@@ -392,7 +392,10 @@ and name the spec lane (`render_report_spec`) as the simpler alternative.
 1. **Discover** — `get_context`, then `list_models` / `describe_model`.
 2. **Explore** — `query_model` to probe the data before deciding what to write.
 3. **Author** — write a ReportSpec using only vocabulary the gateway showed you.
-4. **Validate** — `validate_report_spec`; fix pathed errors until clean.
+4. **Validate** — `validate_report_spec`; fix pathed errors until clean. Then
+   fix the `design —` warnings too (unsorted bars, more than five KPIs, a
+   wide table with no `columns`, an oversized pie): they never block, and each
+   names the `design-` lesson that explains the fix.
 5. **Render** — `render_report_spec`; keep the manifest with the HTML.
 6. **Verify** — `verify_manifest` on the manifest you just produced; any
    verdict but `reproduces` needs explaining before a human sees the number —

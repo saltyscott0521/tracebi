@@ -74,6 +74,7 @@
     {
       "type": "table",
       "title": "Holdings by issuer",
+      "columns": ["dim_issuer.issuer", "dim_issuer.sector", "fair_value", "unrealized", "mark"],
       "column_labels": {
         "dim_issuer.issuer": "Issuer",
         "dim_issuer.sector": "Sector",

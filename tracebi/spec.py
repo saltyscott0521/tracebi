@@ -31,6 +31,7 @@ says so rather than pretending.
 from __future__ import annotations
 
 import dataclasses
+import re
 from typing import Any, Callable, Optional
 
 from tracebi.model.data_model import QuerySpec
@@ -246,6 +247,104 @@ def section_from_dict(
     return cls(**kwargs)
 
 
+# ── Design warnings ─────────────────────────────────────────────────────────
+# A spec is the lane where an agent does not write the page, so the design
+# guidance has to travel inside the checker rather than in lessons it may not
+# read. These are WARNINGS, never errors: each names a pattern the design
+# lessons call out and the lesson to read, and none blocks a valid spec.
+# Structural only — they read the spec, not the data.
+
+_EMOJI = re.compile("[\U0001F300-\U0001FAFF☀-➿]")
+_MAX_KPIS = 5
+_MAX_TABLE_COLUMNS = 6
+_MAX_PIE_PARTS = 5
+_MAX_LINE_SERIES = 5
+_MAX_PALETTE = 6
+
+
+def _lesson(slug: str) -> str:
+    return f" (tracebi knowledge {slug})"
+
+
+def _query(raw: dict) -> dict:
+    data = raw.get("data")
+    q = data.get("query") if isinstance(data, dict) else None
+    return q if isinstance(q, dict) else {}
+
+
+def design_warnings(name: str, sections: list) -> list[str]:
+    """Design problems a spec can be checked for without loading data.
+
+    Returned as ``"<path>: design — <problem> (tracebi knowledge <slug>)"``
+    strings, ready to append to ``validate()``'s warnings.
+    """
+    out: list[str] = []
+
+    def emoji(text, where):
+        if isinstance(text, str) and _EMOJI.search(text):
+            out.append(f"{where}: design — emoji in a title or text reads as "
+                       f"generated; let the heading do the work"
+                       + _lesson("design-cut-the-chrome"))
+
+    emoji(name, "name")
+
+    def walk(items, path):
+        for i, raw in enumerate(items):
+            if not isinstance(raw, dict):
+                continue
+            where = f"{path}[{i}]"
+            stype = raw.get("type")
+            emoji(raw.get("title"), f"{where}.title")
+            if stype == SectionType.TEXT.value:
+                emoji(raw.get("content"), f"{where}.content")
+            if stype == SectionType.ROW.value:
+                walk(raw.get("sections") or [], f"{where}.sections")
+                continue
+            q = _query(raw)
+
+            if stype == SectionType.CHART.value:
+                kind = str(raw.get("chart_type") or "bar").lower()
+                y = raw.get("y")
+                series = len(y) if isinstance(y, list) else (1 if y else 0)
+                if kind in ("bar", "barh") and q.get("dimensions") and not q.get("order_by"):
+                    out.append(f"{where}: design — the bars are unsorted; add "
+                               f"\"order_by\" to the query (e.g. largest first) so "
+                               f"the ranking is visible" + _lesson("design-choose-the-chart"))
+                if kind == "pie":
+                    limit = q.get("limit")
+                    if not (isinstance(limit, int) and limit <= _MAX_PIE_PARTS):
+                        out.append(f"{where}: design — a pie reads only with "
+                                   f"{_MAX_PIE_PARTS} parts or fewer; limit the query "
+                                   f"or use sorted bars" + _lesson("design-choose-the-chart"))
+                if kind == "line" and series > _MAX_LINE_SERIES:
+                    out.append(f"{where}: design — {series} lines on one chart; "
+                               f"show the few that matter, or small multiples"
+                               + _lesson("design-choose-the-chart"))
+                palette = raw.get("palette")
+                if isinstance(palette, list) and len(palette) > _MAX_PALETTE:
+                    out.append(f"{where}.palette: design — {len(palette)} colors "
+                               f"can't all be told apart, least of all by colorblind "
+                               f"readers; label series or use fewer"
+                               + _lesson("design-accessible-by-default"))
+
+            if stype == SectionType.METRICS.value:
+                n = len(raw.get("metrics") or [])
+                if n > _MAX_KPIS:
+                    out.append(f"{where}: design — {n} KPI cards; keep three to "
+                               f"five that answer the page's question, each with a "
+                               f"comparison" + _lesson("design-kpis-with-context"))
+
+            if stype == SectionType.TABLE.value and not raw.get("columns"):
+                n = len(q.get("dimensions") or []) + len(q.get("measures") or [])
+                if n > _MAX_TABLE_COLUMNS:
+                    out.append(f"{where}: design — {n} columns with no \"columns\" "
+                               f"list; show the five or so the reader needs, in "
+                               f"reading order" + _lesson("design-fewer-columns"))
+
+    walk(sections, "sections")
+    return out
+
+
 @dataclasses.dataclass(frozen=True)
 class ReportSpec:
     """
@@ -429,6 +528,7 @@ class ReportSpec:
         check(list(self.sections), "sections")
         if not self.sections:
             warnings.append("sections: the report has no sections")
+        warnings.extend(design_warnings(self.name, list(self.sections)))
 
         return {"ok": not errors, "errors": errors, "warnings": warnings}
 

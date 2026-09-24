@@ -1394,7 +1394,10 @@ def build_server(token: Optional[str] = None):
         description=(
             "Check a report spec (JSON) against the project's models without "
             "loading any data. Errors carry a path like "
-            "sections[0].data.query.fact — fix and retry."
+            "sections[0].data.query.fact — fix and retry. Warnings marked "
+            "'design —' flag layout mistakes (unsorted bars, too many KPIs or "
+            "columns, oversized pies) and name the lesson to read; they never "
+            "block, but fix them before calling the report done."
         ),
     )(gateway_validate_spec)
     _tool(
