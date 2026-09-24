@@ -415,8 +415,8 @@ or copy one into your chat.</p>
 <div id="wb-feed"></div>
 <form id="wb-composer" class="wb-composer">
 <textarea id="wb-message" rows="2"
-  placeholder="Write to your agent — e.g. 'split this by fund' or 'why did Software drop?'"></textarea>
-<button type="submit" class="wb-btn">Send</button>
+  placeholder="Leave a note for your agent — it reads notes on its next pass, not live. e.g. 'split this by fund'"></textarea>
+<button type="submit" class="wb-btn">Leave note</button>
 </form>
 </section>
 <section id="wb-sec-selected" data-tab="figures" data-mode="package" hidden>
