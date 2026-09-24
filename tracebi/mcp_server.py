@@ -410,6 +410,13 @@ class ModelsResult(TypedDict, total=False):
     skipped: list[dict[str, str]]
 
 
+class DescribeTableResult(TypedDict, total=False):
+    ok: bool
+    error: str
+    connectors: list[dict[str, Any]]
+    columns: list[dict[str, Any]]
+
+
 class ModelInfoResult(TypedDict, total=False):
     error: str
     name: str
@@ -534,6 +541,88 @@ def gateway_context(model: Optional[str] = None,
     if model:
         payload["model"] = _get_model(model).info()
     return payload
+
+
+def _connector_key(connector) -> tuple:
+    described = connector.describe()
+    kind = described.get("type")
+    if kind == "DuckDBConnector":
+        db = described.get("database") or ""
+        if isinstance(db, str) and db and db != ":memory:":
+            return ("duckdb", os.path.abspath(db))
+        return ("duckdb-memory", id(connector))
+    if kind == "SQLConnector":
+        return ("sql", described.get("url") or id(connector))
+    return (kind, getattr(connector, "name", ""), id(connector))
+
+
+def _warehouse_connectors() -> list:
+    """Connectors declared on loaded models, plus ``data/warehouse.duckdb``
+    when that file exists and no model already points at it."""
+    found: list = []
+    seen: set[tuple] = set()
+    seen_models: set[int] = set()
+    for model in _load_models().values():
+        if id(model) in seen_models:
+            continue
+        seen_models.add(id(model))
+        try:
+            declared = model.connectors()
+        except Exception:  # noqa: BLE001 — a broken model is already in skipped
+            continue
+        for connector in declared:
+            key = _connector_key(connector)
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append(connector)
+    default = Path("data") / "warehouse.duckdb"
+    if default.is_file():
+        key = ("duckdb", str(default.resolve()))
+        if key not in seen:
+            from tracebi.connectors.duckdb_connector import DuckDBConnector
+            found.append(DuckDBConnector("warehouse", database=str(default)))
+    return found
+
+
+def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTableResult:
+    """Column names and types from connector metadata. Never returns rows.
+
+    With no *table*, list each connector's tables. With *table*, describe
+    that table's columns. *connector* limits both to one connector name.
+    """
+    connectors = _warehouse_connectors()
+    if connector:
+        connectors = [c for c in connectors if c.name == connector]
+        if not connectors:
+            return {"ok": False, "error": f"Connector '{connector}' not found."}
+    if not table:
+        listed = []
+        for c in connectors:
+            listed.append({
+                "name": c.name,
+                "type": type(c).__name__,
+                "tables": c.list_tables(),
+            })
+        return {"ok": True, "connectors": listed}
+    matches = []
+    for c in connectors:
+        names = c.list_tables()
+        # None means this connector cannot list a catalog. Do not probe
+        # column_schema: a miss there raises, and a hit would still be a guess.
+        if names is None or table not in names:
+            continue
+        schema = c.column_schema(table)
+        if schema is None:
+            continue
+        matches.append({
+            "connector": c.name,
+            "table": table,
+            "columns": schema,
+        })
+    if not matches:
+        return {"ok": False, "error": f"Table '{table}' not found."}
+    return {"ok": True, "columns": matches}
 
 
 def gateway_models() -> ModelsResult:
@@ -1090,6 +1179,17 @@ def build_server(token: Optional[str] = None):
             "changes)."
         ),
     )(gateway_models)
+    server.tool(
+        name="describe_table", title="Describe a warehouse table",
+        annotations=_READ_WAREHOUSE, structured_output=True,
+        description=(
+            "Column names and types of a warehouse table, from connector "
+            "metadata. Pass table to describe one table; omit it to list "
+            "tables. connector limits the lookup to one connector name. "
+            "Never returns rows. Use this before writing a model or an "
+            "ad-hoc measure, instead of learning column names from errors."
+        ),
+    )(gateway_describe_table)
     server.tool(
         name="describe_model", title="Describe a model", annotations=_READ,
         structured_output=True,

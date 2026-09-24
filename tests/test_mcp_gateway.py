@@ -540,9 +540,10 @@ def test_build_server_registers_the_tools(gateway_model):
     # joined it — the publish step for the package lane, so an MCP-driving
     # agent can finish the loop it iterates in the workbench. fetch_artifact
     # then delivers the rendered bytes a remote agent cannot otherwise reach
-    # (eleven tools).
+    # (twelve tools).
     assert names == {
-        "get_context", "list_models", "describe_model", "query_model",
+        "get_context", "list_models", "describe_model", "describe_table",
+        "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
         "verify_manifest", "workbench_state", "build_report", "fetch_artifact",
     }
@@ -570,7 +571,8 @@ class TestMcp2Features:
     def test_read_tools_are_annotated_read_only(self, gateway_model):
         _server, tools = self._tools()
         read_only = {
-            "get_context", "list_models", "describe_model", "query_model",
+            "get_context", "list_models", "describe_model", "describe_table",
+            "query_model",
             "validate_report_spec", "list_reports", "verify_manifest",
             "fetch_artifact",
         }

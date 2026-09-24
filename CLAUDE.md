@@ -181,7 +181,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   schedule.py          # report.json "schedule" block: build → verify → email → record
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 11 tools + the author_report prompt
+  mcp_server.py        # agent gateway over MCP — 12 tools + the author_report prompt
   workbench.py         # the live authoring surface (tracebi dev / report status)
   _dev_server.py       # dev preview server (loopback) for `tracebi dev`
   _delivery.py         # `tracebi report send` — SMTP / Slack delivery of a built artifact

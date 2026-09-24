@@ -857,6 +857,15 @@ def describe(brief: bool = False) -> dict:
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
         "schedule": _schedule(),
+        "warehouse": {
+            "what": "Column names and types of a sunk table, from connector "
+                    "metadata. Never a row scan, and never a substitute for "
+                    "the model.",
+            "cli": "tracebi warehouse tables [--connector NAME] [--table T] [--json]",
+            "mcp": "describe_table(table='', connector='')",
+            "when": "Before writing a model or an ad-hoc measure, so column "
+                    "names come from the catalog instead of from an error.",
+        },
         "analyst_knowledge": _analyst_knowledge(),
     }
     if not brief:

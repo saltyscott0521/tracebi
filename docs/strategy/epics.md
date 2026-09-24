@@ -308,7 +308,7 @@ a report right the first time.
 - [ ] `list_models` over MCP names models that failed to load, with the error.
       Today `_load_models` skips a broken model file silently, so the agent
       thinks the model doesn't exist.
-- [ ] A `describe_table` MCP tool and `tracebi warehouse tables`: columns and
+- [x] A `describe_table` MCP tool and `tracebi warehouse tables`: columns and
       types of warehouse tables from connector metadata (`column_schema`, no
       scan), so an agent drafting a model never invents a column.
 - [ ] A `--host` flag for `tracebi mcp --transport http` (default

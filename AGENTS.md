@@ -312,12 +312,13 @@ The http transport requires `TRACEBI_MCP_TOKEN` (send
 `Authorization: Bearer <token>`) — it refuses to start without it unless
 `--insecure` is passed explicitly.
 
-Ten tools (`tracebi/mcp_server.py`):
+Twelve tools (`tracebi/mcp_server.py`):
 
 | Tool | Purpose |
 |---|---|
 | `get_context` | Full vocabulary: section/chart types, DataSet verbs, measure kinds, filter operators; `model=<name>` adds that model's schema. **Call first.** |
 | `list_models` | Project models with tables, facts, dimensions, measures. A model that failed to load is listed under `skipped` with its error; fix the file and call again (models reload when the file changes). |
+| `describe_table` | Column names and types of a warehouse table, from connector metadata (`table`, optional `connector`). Omit `table` to list tables. Never returns rows. Learn column names here before writing a model or an ad-hoc measure. The CLI is `tracebi warehouse tables`. |
 | `describe_model` | One model's full schema |
 | `query_model` | Star-schema query → stamped result. `measures` is declared measure names (ratios included) or `{column: agg}` (`sum, count, mean, min, max, nunique`); dimensions are `dim_name.attribute`; `filters` take equality, lists (IN), or operator dicts (`gte`, `between`, `contains`, …) and are **WHERE** — applied before aggregation, so a filter on a measure changes the group totals; `having` is **HAVING** — same spellings on aggregated result columns (measures, ratios), so `having={'revenue':{'gte':250}}` keeps groups whose *total* clears 250 with totals intact; `order_by` (`{column, desc}` or `'-col'`) + `limit` express "top N" (limit **requires** order_by); `preview_rows` caps transport only |
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
@@ -325,6 +326,7 @@ Ten tools (`tracebi/mcp_server.py`):
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
 | `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit |
 | `build_report` | The **publish step for the package lane**: build `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt |
+| `fetch_artifact` | Read back the HTML or manifest bytes a render or build tool wrote, given the path it returned |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 
 Every tool returns **structured output** (a typed `outputSchema` and
