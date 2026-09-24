@@ -1,5 +1,7 @@
 # Product readiness audit, 2026-09-22
 
+> **2026-09-24:** The live plan is now [[epics]] (`docs/strategy/epics.md`). Where this file and that one disagree on order, the epics win.
+
 **Verdict: the engine is ready and the product isn't yet. TraceBi has a real,
 tested, honest core that no close competitor ships: per-figure receipts, a
 `verify` that re-runs them, and an offline tamper check. What's missing is

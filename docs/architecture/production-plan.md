@@ -1,5 +1,7 @@
 # Production plan — agent reports with a relational selection
 
+> **2026-09-24:** The live plan is now [[epics]] (`docs/strategy/epics.md`). Where this file and that one disagree on order, the epics win.
+
 **Status: plan (2026-09-21).** The sequence from the receipt kernel that
 already ships to a product an agent can author and a person can filter.
 This plan does not replace [[report-architecture-v2]] or [[MANIFESTO]].

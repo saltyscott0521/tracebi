@@ -70,11 +70,13 @@ vocabulary, so they describe what the code actually accepts.
 
 Where the product is going and how it's built to get there.
 
+- [[epics]] — the live plan: what to build next, in order, and why
 - [[vision-and-positioning]] — the bet, the positioning, the principles
 - [[users-and-jobs]] — the six user types and their journeys
 - [[product-strategy]] — the repeatable-report loop, BI parity, templates
 - [[target-architecture]] — components and the decisions behind them
 - [[deployment]] — local, self-hosted, Cloud, customer VPC
+- [[report-library]] — folders, permissions, drafts and publishing
 
 ## Architecture
 
