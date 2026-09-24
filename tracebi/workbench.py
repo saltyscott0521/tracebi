@@ -179,6 +179,12 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None,
         else:
             entry = {"kind": "note", "text": repr(obj), "note": note}
         entry["source"] = _script_source()
+        origin = _caller_origin(sys._getframe(1))
+        if origin:
+            entry["origin"] = origin
+        entry["step"] = _step_of((origin or {}).get("file") or entry["source"])
+        if entry["kind"] in ("frame", "chart"):
+            entry["digest"] = _digest(entry)
         _append_exhibit(wb, entry)
     except Exception as exc:  # noqa: BLE001 — by contract, show() never raises
         print(f"[tracebi workbench] exhibit dropped: "
@@ -208,6 +214,118 @@ def _script_source() -> Optional[str]:
         return rel
     except Exception:  # noqa: BLE001 — provenance must never drop an exhibit
         return None
+
+
+def _caller_origin(frame) -> Optional[dict]:
+    """Where show() was called from: file (cwd-relative when inside it),
+    line, and the few source lines leading up to the call — so an exhibit in
+    the feed says which code produced it. Never raises."""
+    try:
+        import linecache
+
+        path = frame.f_code.co_filename
+        line = frame.f_lineno
+        origin = {"file": path, "line": line}
+        if os.path.isfile(path):
+            try:
+                rel = os.path.relpath(path, os.getcwd())
+                if not rel.startswith(os.pardir):
+                    origin["file"] = rel
+            except ValueError:
+                pass
+            if not path.endswith(".ipynb"):     # exec'd cells: lines won't match
+                lines = [linecache.getline(path, n).rstrip("\n")
+                         for n in range(max(1, line - 3), line + 1)]
+                origin["code"] = "\n".join(lines).strip("\n")
+        return origin
+    except Exception:  # noqa: BLE001 — provenance must never drop an exhibit
+        return None
+
+
+#: The workflow step an exhibit belongs to, from the folder its code lives in.
+_STEP_FOLDERS = (("transforms", "transform"), ("models", "model"),
+                 ("pipelines", "pipeline"), ("reports", "report"))
+
+
+def _step_of(path: Optional[str]) -> str:
+    """``transform`` / ``model`` / ``pipeline`` / ``report`` from the
+    producing file's folder, else ``script``."""
+    if not path:
+        return "script"
+    parts = os.path.normpath(path).split(os.sep)
+    for folder, step in _STEP_FOLDERS:
+        if folder in parts:
+            return step
+    return "script"
+
+
+def _digest(entry: dict) -> str:
+    """A short fingerprint of what an exhibit showed (columns, shape, rows),
+    so the feed can say whether a re-run changed it. Presentation only."""
+    import hashlib
+
+    body = json.dumps([entry.get("columns"), entry.get("shape"),
+                       entry.get("rows")], sort_keys=True, default=str)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:12]
+
+
+def mark_changes(exhibits: list[dict]) -> list[dict]:
+    """Label each named frame/chart exhibit ``new``, ``changed`` or ``same``
+    against the previous exhibit with that name — did a re-run move it?
+    Takes and returns the feed newest-first."""
+    last: dict = {}
+    marked = {}
+    for ex in sorted(exhibits, key=lambda e: e.get("seq", 0)):
+        name, digest = ex.get("name"), ex.get("digest")
+        if name and digest:
+            prev = last.get(name)
+            marked[ex.get("seq")] = ("new" if prev is None
+                                     else "same" if prev == digest else "changed")
+            last[name] = digest
+    return [{**ex, "change": marked[ex.get("seq")]} if ex.get("seq") in marked
+            else ex for ex in exhibits]
+
+
+def _display_rows(df, rows: list[dict], declared: Optional[dict] = None) -> list[dict]:
+    """Each row of *rows* as the report would write it: the model's declared
+    format, else the shape-derived one — the same formatter the built page
+    uses. A parallel list; the raw rows stay as they are (for sorting, and
+    for agents reading the state)."""
+    try:
+        from tracebi.reports.derive import derive_number_formats
+        from tracebi.reports.template_package import _ssr_cell, _ssr_format
+
+        formats = derive_number_formats(df)
+        numeric = {str(c) for c in df.select_dtypes(include="number").columns}
+        formats.update({c: f for c, f in (declared or {}).items() if c in numeric})
+        out = []
+        for r in rows:
+            shown = {}
+            for c, v in r.items():
+                fmt = formats.get(c) if c in numeric else None
+                shown[c] = _ssr_format(v, fmt) if (fmt and v is not None) else _ssr_cell(v)
+            out.append(shown)
+        return out
+    except Exception:  # noqa: BLE001 — the page falls back to raw values
+        return []
+
+
+def _feed(wb_dir: str) -> list[dict]:
+    """The exhibit feed as the workbench shows it: markdown rendered, re-runs
+    marked, and table excerpts carrying display text."""
+    import pandas as pd
+
+    feed = mark_changes(render_note_markdown(read_exhibits(wb_dir)))
+    out = []
+    for ex in feed:
+        if ex.get("kind") in ("frame", "chart") and ex.get("rows"):
+            try:
+                df = pd.DataFrame(ex["rows"], columns=ex.get("columns"))
+                ex = {**ex, "display": _display_rows(df, ex["rows"])}
+            except Exception:  # noqa: BLE001
+                pass
+        out.append(ex)
+    return out
 
 
 def _chart_recipe(chart, x, y, columns: list):
@@ -328,6 +446,46 @@ def read_pins(wb_dir: str) -> list[dict]:
     except (ValueError, OSError):
         return []
     return pins if isinstance(pins, list) else []
+
+
+def promote_request(report: Optional[str], pin: dict, exhibits: list[dict]) -> str:
+    """The hand-off for a "Keep this" pin: a plain-language request an agent
+    can act on, naming the exhibit, the code that produced it, and the one
+    honest way to promote it. The workbench never edits the report itself."""
+    seq = pin.get("exhibit")
+    ex = next((e for e in exhibits if e.get("seq") == seq), {})
+    what = f"workbench exhibit #{seq}" + (f" '{ex['name']}'" if ex.get("name") else "")
+    where = f"report '{report}'" if report else "the report it belongs in"
+    lines = [f"Keep {what} as a figure in {where}."]
+    origin = ex.get("origin") or {}
+    if origin.get("file"):
+        lines.append(f"It was produced by {origin['file']}:{origin.get('line')}.")
+    if ex.get("columns"):
+        shape = ex.get("shape") or ["?", "?"]
+        lines.append(f"Columns: {', '.join(ex['columns'])} ({shape[0]} rows).")
+    lines.append(
+        "If the model can express it, add a binding to report.json (a model "
+        "query) and a figure in template.html, so it gets a receipt. If it "
+        "can't, compute it in report.py, where it is marked python-derived. "
+        "Then run `tracebi report status` and remove this pin.")
+    if pin.get("note"):
+        lines.append(f"Author's note: {pin['note']}")
+    return " ".join(lines)
+
+
+def _pins_view(pins: list[dict], report: Optional[str], exhibits: list[dict]) -> list[dict]:
+    """Pins as the workbench shows them: a promote pin carries its request,
+    and a message typed in the timeline carries the author's words."""
+    out = []
+    for p in pins:
+        if p.get("kind") == "promote":
+            p = {**p, "request": promote_request(report, p, exhibits)}
+        elif p.get("kind") == "message":
+            p = {**p, "request": ("The author wrote in the workbench"
+                                  + (f" for report '{report}'" if report else "")
+                                  + f": {p.get('note', '')}")}
+        out.append(p)
+    return out
 
 
 def write_pins(wb_dir: str, pins: list[dict]) -> None:
@@ -512,8 +670,17 @@ def collect_state(package_dir: str, models: dict) -> dict:
     for f in figs:
         if f.binding:
             used_by.setdefault(f.binding, []).append(f.id)
+        # A table's totals row reads its own one-row binding.
+        totals = f.attrs.get("data-tb-totals")
+        if totals:
+            used_by.setdefault(totals, []).append(f.id)
 
     by_name = {sd.name: sd for sd in inputs}
+    try:
+        declared = pkg._declared_column_formats(
+            models or {}, {sd.name: sd.dataset for sd in inputs})
+    except Exception:  # noqa: BLE001 — formats are presentation only
+        declared = {}
     bindings_state = []
     for bname in pkg.bindings:
         if bname in errors:
@@ -521,7 +688,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
                                    "error": errors[bname],
                                    "used_by": used_by.get(bname, [])})
         else:
-            bindings_state.append(_binding_state(by_name[bname], "query", used_by))
+            bindings_state.append(_binding_state(by_name[bname], "query", used_by,
+                                                 declared.get(bname)))
     for sd in outputs:
         bindings_state.append(_binding_state(sd, "python", used_by))
     if REPORT_PY in errors:
@@ -531,6 +699,7 @@ def collect_state(package_dir: str, models: dict) -> dict:
     unused = [b["name"] for b in bindings_state
               if not b["used_by"] and b["name"] != REPORT_PY]
 
+    exhibits = _feed(wb)
     state = {
         "name": pkg.name,
         "figures": figures_state,
@@ -541,8 +710,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
             "numeric_literals_outside_figures":
                 lint_numeric_literals(page) if page is not None else 0,
         },
-        "exhibits": render_note_markdown(read_exhibits(wb)),
-        "pins": pins,
+        "exhibits": exhibits,
+        "pins": _pins_view(pins, pkg.name, exhibits),
         "code": {
             "report.json": _read_optional(os.path.join(pkg.directory,
                                                        "report.json")),
@@ -555,8 +724,10 @@ def collect_state(package_dir: str, models: dict) -> dict:
     return state
 
 
-def _binding_state(sd, source: str, used_by: dict) -> dict:
+def _binding_state(sd, source: str, used_by: dict,
+                   declared: Optional[dict] = None) -> dict:
     df = sd.dataset.to_pandas()
+    preview = _json_safe_records(df, 25)
     return {
         "name": sd.name,
         "source": source,
@@ -564,7 +735,8 @@ def _binding_state(sd, source: str, used_by: dict) -> dict:
         "columns": [str(c) for c in df.columns],
         "dtypes": {str(c): str(t) for c, t in df.dtypes.items()},
         "fingerprint": sd.fingerprint[:12],
-        "preview": _json_safe_records(df, 25),
+        "preview": preview,
+        "display": _display_rows(df, preview, declared),
         "used_by": used_by.get(sd.name, []),
     }
 
@@ -591,6 +763,7 @@ def collect_discovery_state(project_root: str, models: dict) -> dict:
     only; nothing is written except the on-demand workbench directory.
     """
     wb = discovery_dir(project_root)
+    exhibits = _feed(wb)
     model_entries, loaded = _discovery_models(project_root, models)
     return {
         "mode": "discovery",
@@ -598,8 +771,8 @@ def collect_discovery_state(project_root: str, models: dict) -> dict:
         "warehouse": _discovery_warehouse(project_root, loaded),
         "models": model_entries,
         "packages": _discovery_packages(project_root),
-        "exhibits": render_note_markdown(read_exhibits(wb)),
-        "pins": read_pins(wb),
+        "exhibits": exhibits,
+        "pins": _pins_view(read_pins(wb), None, exhibits),
     }
 
 

@@ -201,6 +201,13 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    in the workbench with a note ("make this top 8 sectors only"). Read them
    with `tracebi report status <name>` (pins print with 📌) or the MCP
    `workbench_state` tool. Address pins first; they are the human pointing.
+   A `"kind": "promote"` pin (a `→ keep:` line) is the human pressing
+   **Keep this** on an exhibit: its `request` says which exhibit, the code
+   that produced it, and how to promote it — a model binding + figure when
+   the model can express it, else `report.py` (python-derived). A
+   `"kind": "message"` pin (a `→ message:` line) is the human typing in
+   the timeline's chat box — an instruction for you. The workbench never
+   edits the report; you do.
 4. **Share a draft with `tracebi report snapshot <name>`.** One HTML with
    the exploration blocks KEPT and a review banner; it carries no manifest
    and `verify` refuses it by name — a draft can never impersonate a

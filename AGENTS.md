@@ -194,7 +194,14 @@ in a background shell (or let the human keep it open; the portal is their
 view). Then edit and save; the watcher re-renders. Before every editing
 pass, read the pins (`tracebi report status <name>` — 📌 lines — or MCP
 `workbench_state`): a pin is the human pointing at a figure with a note, and
-it comes first. `tracebi report snapshot <name>` shares a draft (exploration
+it comes first. A pin with `"kind": "promote"` is the human pressing **Keep
+this** on an exhibit: its `request` field (a `→ keep:` line in `report
+status`) says which exhibit, the code that produced it, and what to do —
+re-express it as a model binding + figure when the model can, else in
+`report.py` (python-derived) — then remove the pin. A `"kind": "message"`
+pin (a `→ message:` line) is the human typing in the timeline's chat box:
+treat it as an instruction, then remove the pin. The workbench never
+edits the report; you do. `tracebi report snapshot <name>` shares a draft (exploration
 kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
