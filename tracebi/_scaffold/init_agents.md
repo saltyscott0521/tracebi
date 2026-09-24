@@ -224,7 +224,11 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    embedded bindings, and writes the receipt. `output/<name>.html` (+ its
    `.manifest.json`) is the deliverable to hand over or commit — and the
    package is already served live on the Reports page of `tracebi serve`;
-   there is no separate publish step.
+   there is no separate publish step. The gateway's
+   `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
+   same output directory. The spreadsheet carries no receipt and is not
+   verifiable; the HTML and manifest are the checkable artifact.
+   `fetch_artifact` returns that workbook base64-encoded.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:

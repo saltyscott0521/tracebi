@@ -153,7 +153,7 @@ What a 90-day fund-ops pilot and a real unattended agent need once the thesis ho
 
 ### 8. Excel output over the gateway
 
-- **What:** Let `render_report_spec` (and the CLI spec path) target `ExcelRenderer`, which already exists in the library; the gateway renders HTML-only via `TemplatePackage` today — there is no `ExcelRenderer` path over the gateway.
+- **Done:** `build_report(..., format="xlsx")` writes `<name>.xlsx` beside the HTML and manifest, through `ExcelRenderer` (`save_manifest=False`, the web download path). The result says the spreadsheet carries no receipt and is not verifiable; the HTML and manifest stay the checkable artifact. `fetch_artifact` returns the workbook base64-encoded. `render_report_spec` stays HTML: a spec's checkable form is the artifact package, and the issue that closed this item asked for `build_report`.
 - **Why:** The fund-ops audit is blunt: "fund ops lives in Excel." This is the highest-leverage/lowest-cost design-partner ask on the list because the renderer is already built. (Deprioritize PDF: there is no standalone `PDFRenderer`, though the `[pdf]` extras key is live — it powers `HTMLRenderer.render_pdf()`.)
 - **Effort:** S
 
