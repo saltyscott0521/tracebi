@@ -313,8 +313,10 @@ a report right the first time.
       scan), so an agent drafting a model never invents a column.
 - [x] A `--host` flag for `tracebi mcp --transport http` (default
       `127.0.0.1`), so a server install can bind where its proxy expects.
-- [ ] Excel output over the gateway: `build_report` can return the `.xlsx`
-      the library already renders ([[ROADMAP]] item 8).
+- [x] Excel output over the gateway: `build_report` can return the `.xlsx`
+      the library already renders ([[ROADMAP]] item 8). `format="xlsx"`
+      writes the workbook beside the HTML; the spreadsheet carries no
+      receipt. `fetch_artifact` returns it base64-encoded.
 - [ ] An agent eval set: 10–20 written requests against the reference
       project ("fair value by sector as a bar chart, top 5 only"), each with
       automatic checks (builds, no lint errors, `verify` reproduces). A script

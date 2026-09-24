@@ -868,6 +868,16 @@ def describe(brief: bool = False) -> dict:
             "when": "Before writing a model or an ad-hoc measure, so column "
                     "names come from the catalog instead of from an error.",
         },
+        "spreadsheet": {
+            "mcp": "build_report(report, output_dir='output', format='xlsx')",
+            "fetch": "fetch_artifact(xlsx_path) — encoding is base64, "
+                     "content_type is the spreadsheet media type. "
+                     "Every other suffix stays refused.",
+            "note": "The spreadsheet carries no receipt and is not "
+                    "verifiable. format='xlsx' still writes the HTML and "
+                    "manifest beside the workbook; those are the checkable "
+                    "artifact. The result's spreadsheet_note says so.",
+        },
         "analyst_knowledge": _analyst_knowledge(),
     }
     if not brief:

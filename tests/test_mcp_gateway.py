@@ -429,6 +429,64 @@ class TestBuildReport:
         assert (tmp_path / "out" / "gwpkg.html.manifest.json").is_file()
         assert out["figures"] and out["figures"][0]["id"] == "fig-kpi"
         assert out["embedded_fingerprints"]
+        assert "xlsx_path" not in out
+
+    def test_xlsx_writes_the_tables_and_fetch_returns_them(
+            self, gateway_model, tmp_path, monkeypatch):
+        """format=xlsx writes a workbook of the report's tables beside the
+        HTML receipt. fetch_artifact returns that workbook base64-encoded.
+        A path outside the output root is still refused."""
+        import base64
+
+        from openpyxl import load_workbook
+
+        from tracebi.mcp_server import gateway_build_report, gateway_fetch_artifact
+
+        self._package(tmp_path, monkeypatch, gateway_model)
+        out_dir = tmp_path / "out"
+        out = gateway_build_report(
+            "gwpkg", output_dir=str(out_dir), format="xlsx")
+        assert out["ok"], out.get("errors")
+        xlsx = out_dir / "gwpkg.xlsx"
+        assert out["xlsx_path"] == str(xlsx)
+        assert xlsx.is_file()
+        assert not (out_dir / "gwpkg.xlsx.manifest.json").exists()
+        assert (out_dir / "gwpkg.html").is_file()
+        assert (out_dir / "gwpkg.html.manifest.json").is_file()
+        note = out["spreadsheet_note"]
+        assert "no receipt" in note and "not verifiable" in note
+        assert "output_path" in note and "manifest_path" in note
+
+        book = load_workbook(xlsx)
+        cells = [
+            c.value for row in book["Report"].iter_rows() for c in row
+            if c.value is not None
+        ]
+        assert "kpi" in cells
+        assert "total_revenue" in cells
+        assert 900 in cells or 900.0 in cells
+
+        monkeypatch.chdir(tmp_path)
+        fetched = gateway_fetch_artifact(str(xlsx))
+        assert fetched["ok"], fetched.get("errors")
+        assert fetched["encoding"] == "base64"
+        assert fetched["content_type"] == (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        assert base64.b64decode(fetched["content"]) == xlsx.read_bytes()
+        assert fetched["bytes"] == xlsx.stat().st_size
+
+        monkeypatch.setenv("TRACEBI_OUTPUT_ROOT", str(out_dir))
+        escaped = gateway_build_report(
+            "gwpkg", output_dir=str(tmp_path / "elsewhere"), format="xlsx")
+        assert not escaped["ok"]
+        assert "TRACEBI_OUTPUT_ROOT" in escaped["errors"][0]
+        assert not (tmp_path / "elsewhere" / "gwpkg.xlsx").exists()
+        outside = tmp_path / "elsewhere" / "gwpkg.xlsx"
+        outside.parent.mkdir()
+        outside.write_bytes(b"PK\x03\x04not-a-real-book")
+        refused = gateway_fetch_artifact(str(outside))
+        assert not refused["ok"]
 
     def test_refuses_a_path_shaped_name(self, gateway_model, tmp_path,
                                         monkeypatch):

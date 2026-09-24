@@ -26,6 +26,7 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 ``tracebi mcp --transport http --port 8765`` (for a remote one).
 """
 
+import base64
 import hmac
 import ipaddress
 import json
@@ -242,6 +243,17 @@ def _confined_output_dir(output_dir: str) -> "tuple[Optional[Path], Optional[str
 #: scale docs describe (a few MB), small enough that an accidental huge file
 #: does not blow the MCP response — over it, the agent reads the path directly.
 _FETCH_MAX_BYTES = 16 * 1024 * 1024
+_XLSX_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+# fetch_artifact returns text for these; .xlsx is base64 because a workbook
+# is not text. Every other suffix stays refused.
+_FETCH_TEXT_TYPES = {".html": "text/html", ".json": "application/json"}
+_XLSX_NOTE = (
+    "The spreadsheet carries no receipt and is not verifiable. "
+    "The checkable artifact is the HTML at output_path and its manifest "
+    "at manifest_path."
+)
 
 
 def _confined_read_path(path: str) -> "tuple[Optional[Path], Optional[str]]":
@@ -317,10 +329,13 @@ front of a person should carry a receipt. This gateway is how you produce one.
    portal with notes, and pins come first.
 5. **build_report** — the publish step: builds the package to a
    self-contained HTML + manifest, validating every figure claim. Writes
-   only its own artifact and receipt.
+   only its own artifact and receipt. `format="xlsx"` also writes
+   `<name>.xlsx` beside them. The spreadsheet carries no receipt and is
+   not verifiable; the HTML and manifest are the checkable artifact.
 6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
-   Pass the returned `html_path` (to deliver the report) or `manifest_path`
-   (to hand to verify) here to read the actual content back.
+   Pass the returned `html_path` or `manifest_path` (to hand to verify),
+   or the `xlsx_path` from a `format="xlsx"` build. HTML and JSON come
+   back as text; an `.xlsx` comes back base64-encoded with its media type.
 7. **verify_manifest** — re-runs the recorded queries and classifies each
    section. Only `reproduces` means a number was re-run and matched; a
    manifest with nothing to check is not a pass.
@@ -470,6 +485,7 @@ class FetchArtifactResult(TypedDict, total=False):
     content_type: str
     bytes: int
     content: str
+    encoding: str
 
 
 class ReportsResult(TypedDict, total=False):
@@ -504,6 +520,8 @@ class BuildReportResult(TypedDict, total=False):
     figures: Any
     embedded_fingerprints: list[str]
     transform_contracts: Any
+    xlsx_path: str
+    spreadsheet_note: str
     errors: list[str]
 
 
@@ -1026,7 +1044,9 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
         return collect_state(str(pkg_dir), _load_models())
 
 
-def gateway_build_report(report: str, output_dir: str = "output") -> BuildReportResult:
+def gateway_build_report(
+    report: str, output_dir: str = "output", format: str = "html",
+) -> BuildReportResult:
     """
     Build an artifact package to one self-contained ``.html`` + manifest —
     the gateway's PUBLISH step for the package lane.
@@ -1039,9 +1059,19 @@ def gateway_build_report(report: str, output_dir: str = "output") -> BuildReport
     never source data. The dev loop itself (``tracebi dev``, snapshots,
     pins) stays on the CLI, where the human's portal lives; this tool is
     how an MCP-driving agent finishes.
+
+    ``format="xlsx"`` also writes ``<name>.xlsx`` in the same confined
+    directory, via the library's :class:`ExcelRenderer` (the web download
+    path, ``save_manifest=False``). A spreadsheet cannot carry a receipt:
+    the result says so and points at the HTML and manifest, which remain
+    the checkable artifact.
     """
     from tracebi.reports.template_package import TemplatePackage
 
+    if format not in ("html", "xlsx"):
+        return {"ok": False, "errors": [
+            f"format must be 'html' or 'xlsx', not {format!r}"
+        ]}
     # The name is a directory under reports/ — never a path.
     name_err = _report_name_error(report)
     if name_err:
@@ -1060,14 +1090,23 @@ def gateway_build_report(report: str, output_dir: str = "output") -> BuildReport
         return {"ok": False, "errors": [out_err]}
     out_dir.mkdir(parents=True, exist_ok=True)
     output = out_dir / f"{report}.html"
+    xlsx = out_dir / f"{report}.xlsx"
     try:
         with actor(_mcp_actor()):
-            manifest = TemplatePackage(str(pkg_dir)).render(
-                _load_models(), str(output))
+            package = TemplatePackage(str(pkg_dir))
+            models = _load_models()
+            manifest = package.render(models, str(output))
+            if format == "xlsx":
+                # The carrier Report holds one table per binding — the same
+                # object the web Excel download renders. A second resolve:
+                # render() does not hand the carrier back.
+                from tracebi.reports.excel_renderer import ExcelRenderer
+                carrier, _stamped = package.build(models)
+                ExcelRenderer().render(carrier, str(xlsx), save_manifest=False)
     except Exception as exc:  # noqa: BLE001 — a refused build is a result
         return {"ok": False, "errors": [f"{type(exc).__name__}: {exc}"]}
     m = manifest.to_dict()
-    return {
+    result: BuildReportResult = {
         "ok": True,
         "report": report,
         "output_path": str(output),
@@ -1078,39 +1117,59 @@ def gateway_build_report(report: str, output_dir: str = "output") -> BuildReport
         ],
         "transform_contracts": m.get("transform_contracts") or {},
     }
+    if format == "xlsx":
+        result["xlsx_path"] = str(xlsx)
+        result["spreadsheet_note"] = _XLSX_NOTE
+    return result
 
 
 def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
-    """Read back a rendered artifact (or its manifest) as text.
+    """Read back a rendered artifact (or its manifest).
 
     ``render_report_spec`` and ``build_report`` return a server-side PATH; a
     remote agent driving the gateway over MCP needs the BYTES to deliver the
     report or hand the manifest to ``verify_manifest``. Pass the ``html_path``
-    or ``manifest_path`` a render/build tool returned. Read-only and hard
+    or ``manifest_path`` a render/build tool returned, or the ``xlsx_path``
+    from ``build_report(..., format="xlsx")``. Read-only and hard
     path-guarded: the file must sit under the working directory (or
     ``$TRACEBI_OUTPUT_ROOT``), never inside the installed package, and be one of
-    the ``.html`` / ``.json`` artifacts those tools write — never arbitrary
-    server files. Over ``_FETCH_MAX_BYTES`` it refuses and names the path.
+    the ``.html`` / ``.json`` / ``.xlsx`` artifacts those tools write — never
+    arbitrary server files. HTML and JSON come back as text. A workbook is
+    not text, so ``.xlsx`` comes back base64-encoded (``encoding="base64"``)
+    with its spreadsheet media type. Over ``_FETCH_MAX_BYTES`` it refuses
+    and names the path.
     """
     resolved, err = _confined_read_path(path)
     if err:
         return {"ok": False, "errors": [err]}
-    if resolved.suffix.lower() not in (".html", ".json"):
+    suffix = resolved.suffix.lower()
+    if suffix not in _FETCH_TEXT_TYPES and suffix != ".xlsx":
         return {"ok": False, "errors": [
-            f"fetch_artifact reads only rendered .html and .json artifacts, "
-            f"not {resolved.suffix!r}"]}
+            "fetch_artifact reads only rendered .html, .json, and .xlsx "
+            f"artifacts, not {suffix!r}"]}
     size = resolved.stat().st_size
     if size > _FETCH_MAX_BYTES:
         return {"ok": False, "errors": [
             f"artifact is {size} bytes, over the {_FETCH_MAX_BYTES}-byte fetch "
             f"cap; read it from {path!r} on the server directly"]}
     try:
-        content = resolved.read_text(encoding="utf-8")
+        if suffix == ".xlsx":
+            content = base64.b64encode(resolved.read_bytes()).decode("ascii")
+            encoding = "base64"
+            ctype = _XLSX_MEDIA_TYPE
+        else:
+            content = resolved.read_text(encoding="utf-8")
+            encoding = ""
+            ctype = _FETCH_TEXT_TYPES[suffix]
     except (OSError, UnicodeDecodeError) as exc:
         return {"ok": False, "errors": [f"could not read {path!r}: {exc}"]}
-    ctype = "text/html" if resolved.suffix.lower() == ".html" else "application/json"
-    return {"ok": True, "path": path, "content_type": ctype,
-            "bytes": size, "content": content}
+    result: FetchArtifactResult = {
+        "ok": True, "path": path, "content_type": ctype,
+        "bytes": size, "content": content,
+    }
+    if encoding:
+        result["encoding"] = encoding
+    return result
 
 
 # ── MCP registration ───────────────────────────────────────────────────────
@@ -1310,7 +1369,10 @@ def build_server(token: Optional[str] = None):
             "exploration blocks, validates every figure claim against the "
             "embedded bindings, and returns the figure records, embedded "
             "fingerprints, and the transform_contracts join. Writes only "
-            "its own artifact and receipt."
+            "its own artifact and receipt. format='xlsx' also writes "
+            "<name>.xlsx in the same output directory. The spreadsheet "
+            "carries no receipt and is not verifiable; the HTML and "
+            "manifest are the checkable artifact (see spreadsheet_note)."
         ),
     )(gateway_build_report)
     server.tool(
@@ -1318,11 +1380,13 @@ def build_server(token: Optional[str] = None):
         annotations=_READ, structured_output=True,
         description=(
             "Read back the bytes of an artifact a render/build tool wrote — "
-            "pass the html_path or manifest_path it returned. The render tools "
-            "return a server-side path; this delivers the actual content so a "
-            "remote agent can send the report or hand the manifest to "
-            "verify_manifest. Read-only, guarded to the artifact directory, "
-            ".html/.json only."
+            "pass the html_path, manifest_path, or xlsx_path it returned. "
+            "The render tools return a server-side path; this delivers the "
+            "actual content so a remote agent can send the report or hand "
+            "the manifest to verify_manifest. HTML and JSON come back as "
+            "text. An .xlsx comes back base64-encoded (encoding='base64') "
+            "with its spreadsheet media type. Read-only, guarded to the "
+            "artifact directory. Every other suffix is refused."
         ),
     )(gateway_fetch_artifact)
     server.tool(
