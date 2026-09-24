@@ -306,7 +306,9 @@ def start_server_scheduler():
         return None
     log = logging.getLogger("tracebi.schedule")
     reports_dir = os.environ.get("TRACEBI_REPORTS_DIR", "reports")
-    output_dir = os.environ.get("TRACEBI_OUTPUT_ROOT", "output")
+    # Same default as `tracebi schedule serve`. TRACEBI_OUTPUT_ROOT is the
+    # MCP gateway's confinement root, not where schedule runs are recorded.
+    output_dir = "output"
     models_dir = os.environ.get("TRACEBI_MODELS_DIR", "models")
     schedules, errors = discover_schedules(reports_dir)
     for err in errors:

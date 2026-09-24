@@ -255,6 +255,7 @@ def _weekly_package(root: Path) -> None:
 
 def test_in_server_schedules_start_with_the_switch(tmp_path, monkeypatch, caplog):
     """Startup registers the package's job. It does not wait for cron."""
+    import inspect
     import logging
 
     from fastapi.testclient import TestClient
@@ -262,14 +263,17 @@ def test_in_server_schedules_start_with_the_switch(tmp_path, monkeypatch, caplog
     _weekly_package(tmp_path)
     monkeypatch.setenv("TRACEBI_SCHEDULES_IN_SERVER", "1")
     monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(tmp_path / "reports"))
-    monkeypatch.setenv("TRACEBI_OUTPUT_ROOT", str(tmp_path / "output"))
+    # The MCP confinement root must not move the schedule log.
+    monkeypatch.setenv("TRACEBI_OUTPUT_ROOT", str(tmp_path / "not-the-schedule-log"))
     from tracebi.web.api.main import app
 
     caplog.set_level(logging.INFO, logger="tracebi.schedule")
     with TestClient(app) as client:
         scheduler = app.state.scheduler
         assert scheduler.running
-        assert [job.id for job in scheduler.get_jobs()] == ["weekly"]
+        [job] = scheduler.get_jobs()
+        assert job.id == "weekly"
+        assert inspect.getclosurevars(job.func).nonlocals["output_dir"] == "output"
         assert client.get("/api/health").status_code == 200
     assert scheduler.running is False
     text = caplog.text
