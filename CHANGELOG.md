@@ -6,6 +6,11 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — warehouse connector install hints name the extras
+
+- A missing Snowflake or BigQuery driver raises `ImportError` telling you
+  `pip install 'tracebi[snowflake]'` or `pip install 'tracebi[bigquery]'`.
+
 ### Added — a compose file for a client's own project
 
 - `deploy/compose.yml` runs the GHCR image (or a local build of the Dockerfile)
