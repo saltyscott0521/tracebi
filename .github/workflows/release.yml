@@ -1,4 +1,4 @@
-name: Build release wheel (no publish)
+name: Release
 
 # Builds the one artifact a user can install and get a working `tracebi serve`
 # from: a wheel with tracebi/web/ui/dist inside it. The repo tree cannot
@@ -6,13 +6,19 @@ name: Build release wheel (no publish)
 # `pip install "tracebi @ git+..."` builds from sources that have none. This
 # job runs npm first (vite writes into the package).
 #
-# There is DELIBERATELY NO PUBLISH STEP: no PyPI upload, no credentials, no
-# secrets of any kind. Publishing is the maintainer's decision — download the
-# artifact from the run and upload it by hand. For the same reason this never
-# runs on push to main; only on demand or on a tag.
+# A v* tag whose name (without the v) matches pyproject.toml publishes a GHCR
+# image and a GitHub release. PyPI stays off unless the repository variable
+# PUBLISH_PYPI is the string true. workflow_dispatch is a dry run by default:
+# it builds the wheel, sdist, SBOM and image, and pushes nothing. This never
+# runs on a push to a branch.
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build the wheel, sdist, SBOM and image, and push nothing
+        type: boolean
+        default: true
   push:
     tags: ["v*"]
 
@@ -21,8 +27,15 @@ permissions:
 
 jobs:
   wheel:
-    name: wheel with the built UI (artifact only — nothing is published)
+    name: wheel with the built UI
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      # Tag pushes publish. A dispatched run publishes only when dry_run is
+      # turned off and the selected ref is a tag. inputs.dry_run is null on a
+      # tag push, and null != true.
+      publish: ${{ github.ref_type == 'tag' && inputs.dry_run != true }}
     steps:
       - uses: actions/checkout@v7
 
@@ -45,6 +58,27 @@ jobs:
               )
           PY
 
+      - name: Require the tag to match pyproject.toml
+        id: version
+        run: |
+          python3 - <<'PY'
+          import os, re, tomllib
+          from pathlib import Path
+          version = tomllib.load(Path("pyproject.toml").open("rb"))["project"]["version"]
+          prerelease = "false" if re.fullmatch(r"\d+\.\d+\.\d+", version) else "true"
+          if os.environ["GITHUB_REF_TYPE"] == "tag":
+              tag = os.environ["GITHUB_REF_NAME"].removeprefix("v")
+              if tag != version:
+                  raise SystemExit(
+                      f"Tag v{tag} does not match pyproject.toml version {version}. "
+                      "Change the tag or the version in pyproject.toml."
+                  )
+          out = Path(os.environ["GITHUB_OUTPUT"])
+          with out.open("a") as fh:
+              fh.write(f"version={version}\nprerelease={prerelease}\n")
+          print(f"version {version} (prerelease={prerelease})")
+          PY
+
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
@@ -63,7 +97,7 @@ jobs:
 
       # --wheel, not a full build: `python -m build` builds the wheel *from the
       # sdist*, and the sdist has no tracebi/web/ui/dist — the bundle would be dropped
-      # on the way through.
+      # on the way through. The sdist is built on its own, afterwards.
       - name: Build the wheel
         run: |
           pip install build
@@ -85,6 +119,9 @@ jobs:
           print(f"{whl} ships the web app and the built UI, and nothing top-level named web/")
           PY
 
+      - name: Build the sdist
+        run: python -m build --sdist
+
       # A CycloneDX SBOM of the resolved dependency tree, shipped beside the
       # wheel so a security review has the software bill of materials the
       # audit called out as missing.
@@ -97,6 +134,137 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: tracebi-wheel
-          path: |
-            dist/*.whl
-            dist/tracebi.cdx.json
+          path: dist/
+
+  docker:
+    name: GHCR image
+    needs: wheel
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Lowercase image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=${{ needs.wheel.outputs.version }}
+            type=raw,value=latest,enable=${{ needs.wheel.outputs.prerelease == 'false' }}
+
+      - name: Log in to GHCR
+        if: needs.wheel.outputs.publish == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: ${{ needs.wheel.outputs.publish == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Provenance attaches an attestation and needs id-token. This job
+          # only has packages: write.
+          provenance: false
+          sbom: false
+
+  release:
+    name: GitHub release
+    needs: [wheel, docker]
+    if: needs.wheel.outputs.publish == 'true' && needs.docker.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download the distributions
+        uses: actions/download-artifact@v7
+        with:
+          name: tracebi-wheel
+          path: dist
+
+      - name: Release notes from the changelog
+        id: notes
+        env:
+          VERSION: ${{ needs.wheel.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          version = os.environ["VERSION"]
+          text = Path("CHANGELOG.md").read_text()
+          match = re.search(rf"^## \[{re.escape(version)}\].*$", text, re.M)
+          mode = Path(os.environ["GITHUB_OUTPUT"])
+          if match is None:
+              with mode.open("a") as fh:
+                  fh.write("mode=generate\n")
+              raise SystemExit(0)
+          rest = text[match.start():]
+          nxt = re.search(r"\n## ", rest[1:])
+          body = rest[: nxt.start() + 1] if nxt else rest
+          Path("release-notes.md").write_text(body.strip() + "\n")
+          with mode.open("a") as fh:
+              fh.write("mode=file\n")
+          PY
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.wheel.outputs.version }}
+          NOTES_MODE: ${{ steps.notes.outputs.mode }}
+          PRERELEASE: ${{ needs.wheel.outputs.prerelease }}
+        run: |
+          mapfile -t files < <(find dist -type f \( -name '*.whl' -o -name '*.tar.gz' -o -name '*.cdx.json' \))
+          # A dev or pre tag (anything other than X.Y.Z) must not become the
+          # release GitHub marks Latest. "false" is set, so test equality.
+          if [ "$PRERELEASE" = "true" ]; then
+            pre=(--prerelease)
+          else
+            pre=()
+          fi
+          if [ "$NOTES_MODE" = "file" ]; then
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+              --title "TraceBi ${VERSION}" --notes-file release-notes.md "${pre[@]}"
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+              --title "TraceBi ${VERSION}" --generate-notes "${pre[@]}"
+          fi
+
+  pypi:
+    name: PyPI (off unless PUBLISH_PYPI is true)
+    needs: wheel
+    if: vars.PUBLISH_PYPI == 'true' && needs.wheel.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      actions: read
+    steps:
+      - name: Download the distributions
+        uses: actions/download-artifact@v7
+        with:
+          name: tracebi-wheel
+          path: dist
+
+      - name: Keep only the wheel and sdist
+        run: |
+          mkdir -p publish
+          find dist -type f \( -name '*.whl' -o -name '*.tar.gz' \) -exec cp {} publish/ \;
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: publish

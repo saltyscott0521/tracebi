@@ -93,8 +93,8 @@ That's most of step 1 of [[production-plan]], plus its step 2.
 
 | Finding | Evidence |
 | --- | --- |
-| No release has ever been cut. No git tags; the release workflow builds a wheel and publishes nothing. | `git tag` is empty; `.github/workflows/release.yml` says "no publish" |
-| No Docker image is published. Every server builds from a checkout. | `docs/strategy/deployment.md` |
+| No release has ever been cut. No git tags, so nothing has been published yet. A `v*` tag that matches `pyproject.toml` publishes the GHCR image and a GitHub release. | `git tag` is empty; `.github/workflows/release.yml` |
+| No image is in GHCR yet. Every server still builds from a checkout until the first version tag. | `git tag` is empty |
 | A git install ships the API with no web UI. The built UI is gitignored and only the release workflow builds it. | [[ROADMAP]] item 5 |
 | The app shows the wrong version: the footer is hard-coded `v0.5.2`; the package is `0.6.0.dev0`. | `web/ui/src/components/Layout.jsx:305` |
 | The demo compose still seeds sample data. A client stack is `deploy/compose.yml`. | `docker-compose.yml`, `deploy/compose.yml` |

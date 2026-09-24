@@ -2768,7 +2768,7 @@ class TestWheelPackagingDeclaration:
         assert not re.search(r"^exclude\s*=.*web/ui/(src|package-lock)",
                              self._wheel_target(), re.M)
 
-    def test_release_workflow_builds_the_ui_first_and_publishes_nothing(self):
+    def test_release_workflow_builds_the_ui_first_and_gates_publish(self):
         import pathlib
         wf = (pathlib.Path(__file__).resolve().parents[1]
               / ".github" / "workflows" / "release.yml").read_text()
@@ -2778,15 +2778,22 @@ class TestWheelPackagingDeclaration:
         assert wf.index("npm run build") < wf.index("python -m build")
         assert "tracebi/web/ui/dist/index.html" in wf
 
-        # Publishing is the maintainer's decision, not this workflow's.
-        # (Comments stripped — they say *why* there is no publish step.)
+        # Comments stripped. No repository secrets, no twine, and it never
+        # fires on a push to a branch. PyPI is present but cannot run unless
+        # the repository variable is exactly true.
         live = "\n".join(ln for ln in wf.splitlines()
                          if not ln.strip().startswith("#")).lower()
         assert "secrets." not in live
-        assert "pypi" not in live
         assert "twine" not in live
-        # ...and it never fires on a push to a branch.
         assert "branches" not in live
+        assert "vars.publish_pypi == 'true'" in live
+        assert "pypa/gh-action-pypi-publish" in live
+        assert "dry_run:" in live
+        assert "default: true" in live
+        assert live.count("packages: write") == 1
+        # A prerelease tag must not publish a GitHub release marked Latest.
+        # The flag has to be in the live workflow, not only a comment.
+        assert "--prerelease" in live
 
 
 class TestLegacyAppModuleSpelling:
