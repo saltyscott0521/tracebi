@@ -1995,15 +1995,11 @@ def cmd_schedule(args: argparse.Namespace) -> int:
         print(f"No scheduled reports in {reports_dir}/ — nothing to serve.",
               file=sys.stderr)
         return 1
-    from tracebi.audit import actor
+
+    run = sched.make_job(reports_dir, output_dir, args.models_dir)
 
     def job(s: dict) -> None:
-        # Jobs run on APScheduler's worker threads, which do not inherit
-        # this thread's ContextVar, so attribute each run where it runs.
-        with actor("scheduler", role="cli"):
-            _print_schedule_run(sched.run_schedule(
-                s, reports_dir=reports_dir, output_dir=output_dir,
-                models_dir=args.models_dir))
+        _print_schedule_run(run(s))
 
     try:
         scheduler = sched.build_scheduler(schedules, job, blocking=True)

@@ -29,6 +29,7 @@ equivalent where it matters.
 | --- | --- |
 | `TRACEBI_APP` | app module to import at startup. Default: none. `tracebi serve` sets it to empty so the bundled demo is never dragged into your project — set it yourself to opt in. |
 | `TRACEBI_DEV_MODE` | enables `POST /api/_dev/reload`, **and** allows tracebacks in API error payloads |
+| `TRACEBI_SCHEDULES_IN_SERVER` | `1` runs each report package's `schedule` block inside the web server (the same job as `tracebi schedule serve`). Off by default. Assumes **one process**: several workers would each send the email. |
 | `TRACEBI_DEBUG` | `run-transform` re-raises a `ContractViolation` with the full traceback instead of the clean message |
 
 > **`TRACEBI_DEV_MODE` is security-relevant.** Without it, API error responses

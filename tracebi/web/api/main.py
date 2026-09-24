@@ -26,6 +26,9 @@ Environment switches:
     TRACEBI_DEV_MODE=1          — mount /_dev/reload
     TRACEBI_AUTH_USER / _PASS   — enable HTTP Basic auth
     TRACEBI_AUTH_PROXY_HEADER   — enable proxy header-trust auth
+    TRACEBI_SCHEDULES_IN_SERVER=1
+                            — run report.json schedules in this process
+                              (off by default; one process only)
 """
 
 import importlib
@@ -44,12 +47,15 @@ from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
 from tracebi.web.api.csrf import allowed_origins as _allowed_origins
 
 from tracebi._version import get_version as _tracebi_version
+from tracebi.schedule import server_lifespan
+
 
 app = FastAPI(
     title="TraceBi API",
     description=("The trust layer for AI-generated analytics: a code-first BI "
                  "framework where every number has a receipt."),
     version=_tracebi_version(),
+    lifespan=server_lifespan,
 )
 
 app.add_middleware(
