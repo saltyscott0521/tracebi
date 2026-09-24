@@ -49,6 +49,7 @@ Task-shaped walkthroughs.
 - [[analyst-guide]] — the longer analyst walkthrough
 - [[notebook-guide]] — working in notebooks
 - [[web-customization]] — theming the served web UI
+- [[one-server]] — one VM, Docker or Coolify, a folder, SMTP, a schedule
 - [[deploy-vercel-supabase]] — hosting
 
 ## Reference

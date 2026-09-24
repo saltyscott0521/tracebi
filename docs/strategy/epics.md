@@ -175,7 +175,7 @@ schedules, in under 30 minutes.
       stays for separate workers.
 - [x] A status check that says what's wrong: output folder not writable,
       files that failed discovery, SMTP not set.
-- [ ] A one-page guide, "Run TraceBi on one server", written from the real
+- [x] A one-page guide, "Run TraceBi on one server", written from the real
       Hetzner + Coolify setup, with a plain Docker path beside it. Backups are
       "copy this folder".
 - [ ] Startup logs the resolved auth posture (who gets what role) in one line.
