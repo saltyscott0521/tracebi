@@ -1,0 +1,35 @@
+---
+description: You are developing the TraceBi framework itself. Read CLAUDE.md first.
+alwaysApply: true
+---
+
+# Developing TraceBi
+
+You are changing the TraceBi framework, not building a report with it.
+
+- **`CLAUDE.md` is your rulebook.** Read it in full before you change code: the
+  invariants, anti-patterns, the discoverability definition of done, and the
+  commands.
+- **`AGENTS.md` is for agents that use TraceBi** to build reports in a
+  project. Follow it only when your change touches the authoring surface
+  (the `data-tb-*` grammar, `report.json`, the MCP tools). Then update
+  `tracebi/capabilities.py`, `AGENTS.md` and `tracebi/_scaffold/init_agents.md`
+  in the same change; `tests/test_agent_guides.py` enforces it.
+- **The live plan is `docs/strategy/epics.md`.** GitHub issues labeled
+  `agent-ready` are the work. Do only what your issue asks.
+
+## Working an issue
+
+1. One issue, one branch (`agent/<issue-number>-<short-name>`), one draft pull
+   request. Never push to `main`, never merge, never force-push someone
+   else's branch.
+2. Run `pytest tests/` before you change anything, so you know the starting
+   state, and again before you push. Run `ruff check .` too.
+3. Write the test for the issue's "done when" first when you can, then make
+   it pass.
+4. Add a CHANGELOG entry under `[Unreleased]` for anything a user would
+   notice.
+5. Fill in the pull request template. Link the issue with `Closes #<n>`.
+6. If the issue needs a decision it doesn't make, stop and comment on the
+   issue with the question and your proposal. Don't guess.
+7. Don't let tests leave files in the repo's `output/` directory.

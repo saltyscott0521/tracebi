@@ -7,10 +7,12 @@ repo. The other plans ([[ROADMAP]], [[production-plan]],
 and history. Where they disagree with this file on order, this file wins.
 
 **In one line:** the engine is ready and most of the production plan's first
-step has shipped. What's missing is almost all *around* the engine: a
-repeatable way to get TraceBi onto a client's server, a way onto a client's
-own data, and the team features (folders, people, run history) a shared
-server needs.
+step has shipped. The biggest gaps are *around* the engine: a repeatable way
+to get TraceBi onto a client's server, a way onto a client's own data, and
+the team features (folders, people, run history) a shared server needs. The
+engine itself needs three things next: an agent surface with no blind spots,
+a report file that explains itself to a reader, and queries that run in the
+warehouse once the data outgrows memory.
 
 ---
 
@@ -29,9 +31,14 @@ run it for a  │    (the quick fixes) │──▶│ E6 Report library:    │
 team          │                      │   │    folders            │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-WORKFLOWS     │                      │   │ E8 Schedules you can  │   │ E9 Workbench in the    │
-the three     │                      │   │    leave alone        │   │    web app             │
-paths         │                      │   │                       │   │ E10 Ask anywhere       │
+FRAMEWORK     │ E8 Agent surface:    │   │ E9 The report         │   │ E10 Warehouse-scale    │
+the engine    │    no blind spots    │──▶│    explains itself    │──▶│     engine             │
+              │                      │   │                       │   │                        │
+              └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
+              ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
+WORKFLOWS     │                      │   │ E11 Schedules you can │   │ E12 Workbench in the   │
+the three     │                      │   │     leave alone       │   │     web app            │
+paths         │                      │   │                       │   │ E13 Ask anywhere       │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
 ```
 
@@ -46,7 +53,11 @@ paths         │                      │   │                       │   │
 3. **Ask waits.** It is the strategy's headline path, but it isn't needed
    right away. The model it answers from, and the reports it grows into, come
    first.
-4. **Finish a path end to end before starting the next.** Carried over from
+4. **Agents first in the engine.** Agents write most reports, so a blind
+   spot in what they can see (a missing column list, a model that failed to
+   load and silently vanished) costs more than anything else in the engine.
+   E8 also adds the measurement: an eval set that scores first-build success.
+5. **Finish a path end to end before starting the next.** Carried over from
    [[product-strategy]]: a half-built path is worth less than a narrow,
    complete one.
 
@@ -182,6 +193,9 @@ builder's own database, not only the sample data.
 - [ ] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
       schema from table metadata (the column metadata `info()` already reads),
       for the builder or their agent to edit and approve. No data scanned.
+- [ ] `tracebi import dbt <path>`: reads a dbt project's `manifest.json` and
+      drafts a model over the marts ([[target-architecture]] decision 3), so a
+      team with clean tables skips phase ① entirely.
 - [ ] `tracebi init --template <name>`: start with **SaaS metrics** and **sales
       pipeline**, each a model plus two reports over sample data, which an
       agent then points at real tables.
@@ -283,9 +297,78 @@ approval.
 in My work; an approver with Publish on the folder approves it in the app;
 it goes live; and the history shows both people.
 
+### Framework
+
+#### E8 · Agent surface: no blind spots — S/M · Now
+
+**Goal:** an agent never has to guess, and we can measure how often it gets
+a report right the first time.
+
+- [ ] `list_models` over MCP names models that failed to load, with the error.
+      Today `_load_models` skips a broken model file silently, so the agent
+      thinks the model doesn't exist.
+- [ ] A `describe_table` MCP tool and `tracebi warehouse tables`: columns and
+      types of warehouse tables from connector metadata (`column_schema`, no
+      scan), so an agent drafting a model never invents a column.
+- [ ] A `--host` flag for `tracebi mcp --transport http` (default
+      `127.0.0.1`), so a server install can bind where its proxy expects.
+- [ ] Excel output over the gateway: `build_report` can return the `.xlsx`
+      the library already renders ([[ROADMAP]] item 8).
+- [ ] An agent eval set: 10–20 written requests against the reference
+      project ("fair value by sector as a bar chart, top 5 only"), each with
+      automatic checks (builds, no lint errors, `verify` reproduces). A script
+      scores a finished attempt. [[product-strategy]]'s bar is over 80% first-build
+      success on template requests; today it isn't measured.
+- [ ] Every item follows the discoverability rule: `capabilities.py`,
+      `AGENTS.md` and `tracebi/_scaffold/init_agents.md` in the same change.
+
+**Done when:** an agent with only the gateway can list a broken model's
+error, read a warehouse table's columns, and export Excel; and the eval
+script prints a first-build success rate for a run.
+
+#### E9 · The report explains itself — M · Next
+
+**Goal:** the file that travels makes sense to a reader who has never heard
+of TraceBi ([[product-readiness-audit]] "Make the reader's experience the
+product").
+
+- [ ] The receipt drawer in plain words. A row reads "Fair value · $285.9M ·
+      re-runs to the same number", with the fingerprint behind a disclosure.
+      Today it reads `kpi-fv · value · kpis ea55a070ee46` (P1-5).
+- [ ] An "About this report" footer on by default: who built it, when, from
+      which definitions, and what the receipt proves and doesn't, in the
+      locked language. It builds on the existing `methodology` block.
+- [ ] Download as PDF, tested. `HTMLRenderer.render_pdf()` exists but has
+      never run in CI; the Docker image needs its system libraries.
+- [ ] Large tables stay fast: a virtualized table mode for big bindings
+      ([[large-detail-artifacts]], [[ROADMAP]] 11c first half).
+
+**Done when:** someone outside the team opens a built report, finds the
+receipt, and can say in their own words what it proves; and the PDF
+download works from the app.
+
+#### E10 · Warehouse-scale engine — L · Later
+
+**Goal:** a model query runs as one SQL statement in the warehouse, not by
+loading the fact table into Python ([[target-architecture]] decision 2).
+
+- [ ] A query compiler: a model query becomes one SQL statement (joins,
+      filters, measures, window measures) in the warehouse's dialect.
+      DuckDB first, as the reference.
+- [ ] The parity rule: on a pinned corpus, the compiled result matches the
+      in-process result exactly, or the fingerprints fork. A warehouse is
+      marked supported only when its corpus passes.
+- [ ] Postgres, then Snowflake and BigQuery.
+- [ ] A per-run query cache, so a report that asks the same thing twice pays
+      once.
+
+**Start when:** the first client dataset doesn't fit comfortably in memory,
+or a typical report build passes 60 seconds. Until then the in-process path
+is correct and fast enough.
+
 ### Workflows
 
-#### E8 · Schedules you can leave alone — M · Next
+#### E11 · Schedules you can leave alone — M · Next
 
 **Goal:** the Schedule path's Run, Deliver and Monitor steps are finished end
 to end ([[product-strategy]]).
@@ -304,7 +387,7 @@ to end ([[product-strategy]]).
 alert instead of an empty report, and a transient failure retries and
 succeeds without anyone doing anything.
 
-#### E9 · Workbench in the web app — L · Later
+#### E12 · Workbench in the web app — L · Later
 
 **Goal:** an analyst on the shared server gets `tracebi dev`'s workbench
 without a laptop install, and the note box becomes a real way to reach an
@@ -314,13 +397,11 @@ agent.
       and Figures & data, served by the web app instead of the dev server.
 - [ ] Notes and "Keep this" requests land on the draft and reach the agent
       working on it, through `workbench_state` on the HTTP gateway.
-- [ ] Excel output over the gateway (the renderer already exists;
-      [[ROADMAP]] item 8).
 
 **Done when:** from the browser only, an analyst leaves a note on a draft,
 their agent picks it up over MCP, and the preview updates.
 
-#### E10 · Ask anywhere — M · Later
+#### E13 · Ask anywhere — M · Later
 
 **Goal:** the Ask path, when it's time: a question answered from the model,
 not only on reports that opted in.
@@ -339,12 +420,38 @@ model, and keeping it creates a draft for review.
 
 ---
 
+## How the work runs
+
+Much of this plan will be built by coding agents (Cursor, Claude Code)
+working unattended. These rules keep that safe.
+
+1. **Every epic is a GitHub issue labeled `epic`.** Its smaller pieces are
+   sub-issues.
+2. **Only issues labeled `agent-ready` are for unattended agents.** Each
+   one names the files it touches, what to do, and how to know it's done.
+   `needs-design` means a person decides something first; an agent may
+   comment a proposal but doesn't build it.
+3. **One issue, one branch, one draft pull request.** An agent never merges,
+   never pushes to `main`, and never works on two issues in one branch.
+4. **Every pull request shows its checks:** `pytest tests/` and
+   `ruff check .` pass, the issue's "done when" is demonstrated, and the
+   CHANGELOG has an entry for anything a user would notice
+   (`.github/pull_request_template.md`).
+5. **Coding agents follow `CLAUDE.md`.** `AGENTS.md` is the guide for agents
+   that *use* TraceBi to build reports. `.cursor/rules/develop-tracebi.mdc`
+   says so, so a Cursor agent doesn't mistake one for the other.
+6. **A person merges.** In the morning: read each pull request, check CI,
+   merge, and label the next issues `agent-ready`.
+7. **Issues that touch the same files run one after another,** not in
+   parallel, or they'll conflict.
+
+---
+
 ## Not in this plan, on purpose
 
 | Not now | Why |
 | --- | --- |
 | PyPI release | Held until development settles. E1 wires it so it's a switch. |
-| Warehouse query pushdown ([[ROADMAP]] 15) | Needed at warehouse scale. The first clients will fit in memory; revisit with the first large dataset. |
 | Signing receipts, retention archive, auditor view | The institutional (paid) tier. It needs E5 and E7 first. |
 | Offline slicing in the browser ([[production-plan]] step 4) | Waits for parity, as that plan says. |
 | Helm, Terraform, SOC 2 | When a customer asks. |
