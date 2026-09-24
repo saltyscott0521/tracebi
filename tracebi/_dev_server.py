@@ -34,6 +34,7 @@ import sys
 import threading
 import traceback
 import webbrowser
+from datetime import datetime
 from pathlib import Path
 
 
@@ -350,7 +351,41 @@ body.wb-split-on #wb-panel { overflow: auto; padding: 16px 20px; }
 .wb-chip--new { background: #e6f1fb; border-color: #b9d6f2; }
 .wb-request { border-left: 3px solid #2a78d6; }
 .wb-code { font-size: 0.8em; background: #f6f7f9; padding: 8px;
-           border-radius: var(--tb-radius); overflow: auto; }
+           border-radius: var(--tb-radius); overflow: auto; margin: 4px 0 0; }
+/* Tabs: a section shows only on its tab, and only in its mode. */
+.wb-off { display: none !important; }
+.wb-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--tb-rule);
+           margin: 12px 0 8px; position: sticky; top: 0; z-index: 2;
+           background: var(--tb-page, #fff); }
+.wb-tabs button { font: inherit; font-size: 0.9em; font-weight: 600;
+                  border: 0; background: none; padding: 8px 12px;
+                  cursor: pointer; color: var(--tb-muted);
+                  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.wb-tabs button.wb-on { color: var(--tb-ink); border-bottom-color: #2a78d6; }
+/* The timeline reads like a notebook: In (the code) then Out (what it
+   showed), oldest at the top, newest at the bottom — and your messages
+   sit in the same stream, like a chat. */
+.wb-cell { margin: 14px 0; }
+.wb-cell-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wb-in { font-family: ui-monospace, Menlo, monospace; font-size: 0.75em;
+         color: #2a78d6; min-width: 3.2em; }
+.wb-out { border-left: 3px solid var(--tb-rule); padding: 2px 0 2px 12px;
+          margin-top: 6px; }
+.wb-divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 6px;
+              font-size: 0.72em; font-weight: 700; letter-spacing: .08em;
+              text-transform: uppercase; color: var(--tb-muted); }
+.wb-divider::after { content: ""; flex: 1; height: 1px; background: var(--tb-rule); }
+.wb-marker { text-align: center; color: var(--tb-muted); font-size: 0.78em;
+             margin: 8px 0; }
+.wb-me { margin: 12px 0 12px auto; max-width: 80%; background: #e6f1fb;
+         border-radius: 12px 12px 2px 12px; padding: 8px 12px; }
+.wb-me .wb-meta { display: block; font-size: 0.75em; }
+.wb-composer { position: sticky; bottom: 0; display: flex; gap: 8px;
+               padding: 10px 0; background: var(--tb-page, #fff);
+               border-top: 1px solid var(--tb-rule); }
+.wb-composer textarea { flex: 1; font: inherit; font-size: 0.9em; resize: vertical;
+                        border: 1px solid var(--tb-rule);
+                        border-radius: var(--tb-radius); padding: 6px 8px; }
 </style>
 </head>
 <body>
@@ -363,47 +398,57 @@ manifests, and no receipts are minted here.
 <a id="wb-preview-link" href="/">← report preview</a>
 <button id="wb-layout" class="wb-btn" type="button" hidden>full width</button></p>
 <div id="wb-error"></div>
-<section id="wb-sec-requests" hidden>
+<nav id="wb-tabs" class="wb-tabs">
+<button type="button" data-tab="timeline">Timeline</button>
+<button type="button" data-tab="figures" data-mode="package">Figures &amp; data</button>
+<button type="button" data-tab="project" data-mode="discovery">Project</button>
+<button type="button" data-tab="code" data-mode="package">Code</button>
+</nav>
+<section id="wb-sec-requests" data-tab="timeline" hidden>
 <h2>For your agent</h2>
-<p class="wb-meta">Exhibits you asked to keep. Your agent sees these in
-<code>tracebi report status</code> and the <code>workbench_state</code> tool;
-or copy the request into your chat.</p>
+<p class="wb-meta">What you asked for here. Your agent sees these in
+<code>tracebi report status</code> and the <code>workbench_state</code> tool,
+or copy one into your chat.</p>
 <div id="wb-requests"></div>
 </section>
-<section id="wb-sec-selected" hidden>
+<section id="wb-sec-feed" data-tab="timeline">
+<div id="wb-feed"></div>
+<form id="wb-composer" class="wb-composer">
+<textarea id="wb-message" rows="2"
+  placeholder="Write to your agent — e.g. 'split this by fund' or 'why did Software drop?'"></textarea>
+<button type="submit" class="wb-btn">Send</button>
+</form>
+</section>
+<section id="wb-sec-selected" data-tab="figures" data-mode="package" hidden>
 <h2>Selected figure</h2>
 <div id="wb-selected"></div>
 </section>
-<section id="wb-sec-figures">
+<section id="wb-sec-figures" data-tab="figures" data-mode="package">
 <h2>Figures</h2>
 <div id="wb-coverage"></div>
 <div id="wb-figures"></div>
 </section>
-<section id="wb-sec-data">
+<section id="wb-sec-data" data-tab="figures" data-mode="package">
 <h2>Data</h2>
 <div id="wb-data"></div>
 </section>
-<section id="wb-sec-warehouse" hidden>
+<section id="wb-sec-warehouse" data-tab="project" data-mode="discovery">
 <h2>Warehouse</h2>
 <div id="wb-warehouse"></div>
 </section>
-<section id="wb-sec-models" hidden>
+<section id="wb-sec-models" data-tab="project" data-mode="discovery">
 <h2>Models</h2>
 <div id="wb-models"></div>
 </section>
-<section id="wb-sec-packages" hidden>
+<section id="wb-sec-packages" data-tab="project" data-mode="discovery">
 <h2>Packages</h2>
 <div id="wb-packages"></div>
 </section>
-<section id="wb-sec-feed">
-<h2>Feed</h2>
-<div id="wb-feed"></div>
-</section>
-<section id="wb-sec-code">
+<section id="wb-sec-code" data-tab="code" data-mode="package">
 <h2>Code</h2>
 <div id="wb-code"></div>
 </section>
-<section id="wb-sec-lint">
+<section id="wb-sec-lint" data-tab="code" data-mode="package">
 <h2>Lint</h2>
 <div id="wb-lint"></div>
 </section>
@@ -748,10 +793,6 @@ __ECHARTS__
     if (prof) card.appendChild(prof);
   }
 
-  /* Feed order: a log reads newest-first; a notebook reads top-down. The
-     toggle is presentation only — seq order is the truth either way. */
-  var feedChronological = false;
-  /* Which workflow step the feed shows: all, or transform/model/report/... */
   var feedStep = "all";
 
   function keepBtn(state, ex) {
@@ -774,40 +815,84 @@ __ECHARTS__
     });
   }
 
-  function exhibitOrigin(card, ex) {
+  function scroller() {
+    return document.body.classList.contains("wb-split-on")
+      ? document.getElementById("wb-panel") : document.scrollingElement;
+  }
+
+  var STEP_LABELS = {transform: "Transform", model: "Model",
+                     pipeline: "Pipeline", report: "Report", script: "Script"};
+
+  function exhibitCell(state, ex) {
+    /* A notebook cell: In [n] is the code that ran show(), Out [n] is what
+       it showed. */
+    var cell = el("div", "wb-cell");
+    var head = el("div", "wb-cell-head");
+    head.appendChild(el("span", "wb-in", "In [" + ex.seq + "]"));
     var o = ex.origin || {};
-    if (!o.file) return;
-    var row = el("div", "wb-row");
-    row.appendChild(el("span", "wb-meta", o.file + ":" + o.line));
-    if (o.code) {
-      var pre = el("pre", "wb-code", o.code);
-      pre.style.display = "none";
-      var b = button("code", null, function () {
-        var open = pre.style.display !== "none";
-        pre.style.display = open ? "none" : "block";
-      });
-      row.appendChild(b);
-      card.appendChild(row);
-      card.appendChild(pre);
-      return;
+    if (o.file) head.appendChild(el("span", "wb-meta", o.file + ":" + o.line));
+    if (ex.change) {
+      head.appendChild(el("span", "wb-chip wb-chip--" + ex.change,
+          {new: "new", changed: "changed since last run",
+           same: "unchanged"}[ex.change] || ex.change));
     }
-    card.appendChild(row);
+    var pid = "exhibit-" + ex.seq;
+    head.appendChild(pinBtn(pid, state.pins.some(function (p) {
+      return p.id === pid;
+    })));
+    if (ex.kind === "frame" || ex.kind === "chart") {
+      head.appendChild(keepBtn(state, ex));
+    }
+    cell.appendChild(head);
+    if (o.code) cell.appendChild(el("pre", "wb-code", o.code));
+    var out = el("div", "wb-out");
+    out.appendChild(el("span", "wb-in", "Out [" + ex.seq + "]"));
+    if (ex.kind === "chart") exhibitChart(out, ex);
+    else exhibitFrame(out, ex);
+    cell.appendChild(out);
+    return cell;
+  }
+
+  function noteCell(ex) {
+    var cell = el("div", "wb-cell");
+    if (ex.html) {
+      /* The ONE innerHTML exception on this page: ex.html is produced
+         server-side by the escaped-first markdown subset
+         (render_note_markdown), so a note reads like a notebook cell
+         while content can never smuggle live markup. */
+      var md = el("div", "wb-md");
+      md.innerHTML = ex.html;
+      cell.appendChild(md);
+    } else {
+      var text = ex.text || "";
+      cell.appendChild(el(text.indexOf("\\n") !== -1 ? "pre" : "p", null, text));
+    }
+    if (ex.note) cell.appendChild(el("p", "wb-meta", ex.note));
+    return cell;
+  }
+
+  function myMessage(p) {
+    var bubble = el("div", "wb-me");
+    bubble.appendChild(el("span", "wb-meta", "You"
+        + (p.at ? " · " + p.at.replace("T", " ") : "")
+        + (p.kind === "promote" ? " · keep #" + p.exhibit : "")));
+    bubble.appendChild(el("span", null, p.kind === "promote"
+        ? (p.note || "Keep this as a figure.") : p.note));
+    return bubble;
   }
 
   function renderFeed(state) {
     var host = document.getElementById("wb-feed");
+    var sc = scroller();
+    var atBottom = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 80;
     host.textContent = "";
-    if (!state.exhibits.length) {
-      host.appendChild(el("p", "wb-meta", "nothing shown yet — call "
-          + "tracebi.workbench.show(...) from report.py, or save to see "
-          + "binding updates land here"));
+    if (!state.exhibits.length && !state.pins.length) {
+      host.appendChild(el("p", "wb-meta", "Nothing yet. Code that calls "
+          + "tracebi.workbench.show(df, note=...) — a transform, report.py, "
+          + "or a script your agent runs — lands here as a notebook cell, "
+          + "newest at the bottom. Write below to talk to your agent."));
       return;
     }
-    var controls = el("div", "wb-row");
-    controls.appendChild(button(
-      feedChronological ? "newest first" : "read as document", null,
-      function () { feedChronological = !feedChronological; renderFeed(state); }
-    ));
     /* One chip per workflow step present, so a long session reads by stage. */
     var steps = ["all"];
     state.exhibits.forEach(function (ex) {
@@ -815,75 +900,64 @@ __ECHARTS__
       if (ex.kind !== "auto" && steps.indexOf(st) === -1) steps.push(st);
     });
     if (steps.length > 2) {
+      var chips = el("div", "wb-row");
       steps.forEach(function (st) {
-        controls.appendChild(button(st, st === feedStep ? "wb-btn--pinned" : null,
+        chips.appendChild(button(STEP_LABELS[st] || st,
+          st === feedStep ? "wb-btn--pinned" : null,
           function () { feedStep = st; renderFeed(state); }));
       });
+      host.appendChild(chips);
     }
-    host.appendChild(controls);
-    var exhibits = state.exhibits.filter(function (ex) {
-      return feedStep === "all" || (ex.step || "script") === feedStep;
+    /* Oldest first. Your messages and keeps sit after the exhibit that was
+       newest when you wrote them (at_seq). */
+    var items = state.exhibits.map(function (ex) {
+      return {order: ex.seq, ex: ex};
     });
-    if (feedChronological) exhibits.reverse();
-    exhibits.forEach(function (ex) {
-      var card = el("div", "wb-card");
-      var head = el("div", "wb-row");
-      head.appendChild(el("span", "wb-meta",
-          "#" + ex.seq + (ex.at ? " · " + ex.at : "") + " · " + ex.kind));
-      if (ex.step && ex.kind !== "auto") {
-        head.appendChild(el("span", "wb-chip", ex.step));
+    state.pins.forEach(function (p) {
+      if (p.kind === "message" || p.kind === "promote") {
+        items.push({order: (p.at_seq || 0) + 0.5, pin: p});
       }
-      if (ex.change) {
-        head.appendChild(el("span", "wb-chip wb-chip--" + ex.change,
-            {new: "new", changed: "changed since last run",
-             same: "unchanged"}[ex.change] || ex.change));
+    });
+    items.sort(function (a, b) { return a.order - b.order; });
+    var lastStep = null;
+    items.forEach(function (it) {
+      if (it.pin) {
+        if (feedStep === "all") host.appendChild(myMessage(it.pin));
+        return;
       }
-      var pid = "exhibit-" + ex.seq;
-      head.appendChild(pinBtn(pid, state.pins.some(function (p) {
-        return p.id === pid;
-      })));
+      var ex = it.ex;
+      var st = ex.step || "script";
+      if (feedStep !== "all" && st !== feedStep) return;
+      if (ex.kind === "auto") {
+        host.appendChild(el("div", "wb-marker", ex.text));
+        return;
+      }
+      var where = (ex.origin && ex.origin.file) || ex.source || "";
+      var key = st + "|" + where;
+      if (key !== lastStep) {
+        host.appendChild(el("div", "wb-divider",
+            (STEP_LABELS[st] || st) + (where ? " · " + where : "")));
+        lastStep = key;
+      }
       if (ex.kind === "frame" || ex.kind === "chart") {
-        head.appendChild(keepBtn(state, ex));
-      }
-      card.appendChild(head);
-      exhibitOrigin(card, ex);
-      if (ex.kind === "frame") {
-        exhibitFrame(card, ex);
-      } else if (ex.kind === "chart") {
-        exhibitChart(card, ex);
+        host.appendChild(exhibitCell(state, ex));
       } else if (ex.kind === "binding") {
-        card.appendChild(el("p", null, "binding: " + ex.name));
-        if (ex.note) card.appendChild(el("p", "wb-meta", ex.note));
-      } else if (ex.kind === "auto") {
-        card.appendChild(el("p", "wb-meta", ex.text));
+        host.appendChild(el("div", "wb-marker", "binding: " + ex.name
+            + (ex.note ? " — " + ex.note : "")));
       } else {
-        if (ex.html) {
-          /* The ONE innerHTML exception on this page: ex.html is produced
-             server-side by the escaped-first markdown subset
-             (render_note_markdown), so a note reads like a notebook cell
-             while content can never smuggle live markup. */
-          var md = el("div", "wb-md");
-          md.innerHTML = ex.html;
-          card.appendChild(md);
-        } else {
-          var text = ex.text || "";
-          if (text.indexOf("\\n") !== -1) {
-            card.appendChild(el("pre", null, text));
-          } else {
-            card.appendChild(el("p", null, text));
-          }
-        }
-        if (ex.note) card.appendChild(el("p", "wb-meta", ex.note));
+        host.appendChild(noteCell(ex));
       }
-      host.appendChild(card);
     });
+    if (atBottom && activeTab === "timeline") sc.scrollTop = sc.scrollHeight;
   }
 
   function renderRequests(state) {
     var sec = document.getElementById("wb-sec-requests");
     var host = document.getElementById("wb-requests");
     host.textContent = "";
-    var reqs = state.pins.filter(function (p) { return p.kind === "promote"; });
+    var reqs = state.pins.filter(function (p) {
+      return p.kind === "promote" || p.kind === "message";
+    });
     sec.hidden = !reqs.length;
     reqs.forEach(function (p) {
       var card = el("div", "wb-card wb-request");
@@ -968,6 +1042,7 @@ __ECHARTS__
           selectedId = node.id;
           highlight();
           if (lastState) renderSelected(lastState);
+          showTab("figures");
           document.getElementById("wb-panel").scrollTop = 0;
         });
       });
@@ -1105,13 +1180,54 @@ __ECHARTS__
     });
   }
 
+  var activeTab = "timeline";
+  var mode = "package";
+
+  function applyTabs() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#wb-tabs button"), function (b) {
+        b.classList.toggle("wb-off", !!b.dataset.mode && b.dataset.mode !== mode);
+        b.classList.toggle("wb-on", b.dataset.tab === activeTab);
+      });
+    Array.prototype.forEach.call(
+      document.querySelectorAll("section[data-tab]"), function (sec) {
+        sec.classList.toggle("wb-off", sec.dataset.tab !== activeTab
+            || (!!sec.dataset.mode && sec.dataset.mode !== mode));
+      });
+  }
+
+  function showTab(tab) {
+    activeTab = tab;
+    applyTabs();
+    if (tab === "timeline") {
+      var sc = scroller();
+      sc.scrollTop = sc.scrollHeight;
+    }
+  }
+
+  Array.prototype.forEach.call(
+    document.querySelectorAll("#wb-tabs button"), function (b) {
+      b.addEventListener("click", function () { showTab(b.dataset.tab); });
+    });
+
+  document.getElementById("wb-composer").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var box = document.getElementById("wb-message");
+    var text = box.value.trim();
+    if (!text) return;
+    box.value = "";
+    post("/__workbench/pin", {id: "msg-" + Date.now(), kind: "message",
+                              note: text});
+  });
+  document.getElementById("wb-message").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      document.getElementById("wb-composer").requestSubmit();
+    }
+  });
+
   function setMode(discovery) {
-    ["figures", "data", "code", "lint"].forEach(function (id) {
-      document.getElementById("wb-sec-" + id).hidden = discovery;
-    });
-    ["warehouse", "models", "packages"].forEach(function (id) {
-      document.getElementById("wb-sec-" + id).hidden = !discovery;
-    });
+    mode = discovery ? "discovery" : "package";
+    applyTabs();
     document.getElementById("wb-preview-link").hidden = discovery;
     var frame = document.getElementById("wb-preview");
     var layoutBtn = document.getElementById("wb-layout");
@@ -1335,6 +1451,11 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
                     if payload.get("kind") == "promote":
                         pin["kind"] = "promote"
                         pin["exhibit"] = payload.get("exhibit")
+                    # A message typed in the timeline: the author talking to
+                    # the agent, placed after the newest exhibit.
+                    elif payload.get("kind") == "message":
+                        pin["kind"] = "message"
+                        pin["at"] = datetime.now().isoformat(timespec="seconds")
                     pins.append(pin)
                 _wb.write_pins(t.wb_dir, pins)
             self._send(json.dumps({"ok": True, "pins": pins}).encode(),

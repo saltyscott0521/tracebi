@@ -11,6 +11,13 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 - **Side by side.** `/__workbench` now shows the live report preview beside
   the workbench. Click a figure in the preview to see its query result and
   the exhibits named after it; "full width" switches back.
+- **A notebook-style timeline.** The workbench has three tabs: Timeline,
+  Figures & data, and Code. The Timeline reads like a notebook: each exhibit
+  is an "In [n]" cell (the file, line and code that produced it) followed by
+  an "Out [n]" cell (the table or chart), with a divider at each new step.
+  A chat box at the bottom sends the author's message to the agent as a pin
+  with `"kind": "message"` (`→ message:` in `tracebi report status`); the
+  message and every "Keep this" appear in the timeline where they were said.
 - **A timeline of intermediate analysis.** Each `tracebi.workbench.show()`
   exhibit records the file and line that produced it (with the code), the
   workflow step (transform, model, pipeline, report or script, from its

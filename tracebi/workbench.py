@@ -474,9 +474,18 @@ def promote_request(report: Optional[str], pin: dict, exhibits: list[dict]) -> s
 
 
 def _pins_view(pins: list[dict], report: Optional[str], exhibits: list[dict]) -> list[dict]:
-    """Pins as the workbench shows them: a promote pin carries its request."""
-    return [{**p, "request": promote_request(report, p, exhibits)}
-            if p.get("kind") == "promote" else p for p in pins]
+    """Pins as the workbench shows them: a promote pin carries its request,
+    and a message typed in the timeline carries the author's words."""
+    out = []
+    for p in pins:
+        if p.get("kind") == "promote":
+            p = {**p, "request": promote_request(report, p, exhibits)}
+        elif p.get("kind") == "message":
+            p = {**p, "request": ("The author wrote in the workbench"
+                                  + (f" for report '{report}'" if report else "")
+                                  + f": {p.get('note', '')}")}
+        out.append(p)
+    return out
 
 
 def write_pins(wb_dir: str, pins: list[dict]) -> None:

@@ -887,6 +887,17 @@ class TestTimelineAndKeep:
         assert "report.json" in request and "report.py" in request
         assert "bar chart under the KPI" in request
 
+    def test_a_timeline_message_reaches_the_agent(self, wb_model, tmp_path, monkeypatch):
+        from tracebi.workbench import write_pins
+
+        wb = str(tmp_path / "wb")
+        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
+        write_pins(wb, [{"id": "msg-1", "kind": "message",
+                         "note": "split revenue by quarter"}])
+        state = collect_state(str(_pkg(tmp_path)), {"wb_model": wb_model})
+        [pin] = state["pins"]
+        assert pin["request"].endswith(": split revenue by quarter")
+
     def test_binding_previews_carry_display_text(self, wb_model, tmp_path, monkeypatch):
         monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", str(tmp_path / "wb"))
         state = collect_state(str(_pkg(tmp_path)), {"wb_model": wb_model})
@@ -901,3 +912,4 @@ def test_workbench_page_frames_the_preview():
     page = _workbench_page("demo")
     assert 'id="wb-preview"' in page
     assert "frame-src 'self'" in page
+    assert 'id="wb-tabs"' in page and 'id="wb-composer"' in page
