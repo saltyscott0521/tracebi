@@ -318,6 +318,9 @@ for Claude Desktop (add the URL as a custom connector under Settings →
 Connectors). Register by hand with Claude Code:
 `claude mcp add tracebi -- tracebi mcp`. Work is attributed as
 `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`).
+With `TRACEBI_MCP_LOG=1` the gateway also keeps a local call log
+(`.tracebi/gateway_log.jsonl`: tool, ok or error, duration, argument names —
+never values); `tracebi agent log` summarizes it.
 The http transport requires `TRACEBI_MCP_TOKEN` (send
 `Authorization: Bearer <token>`) — it refuses to start without it unless
 `--insecure` is passed explicitly.

@@ -313,6 +313,19 @@ project folder. This command is for another client, or for a remote gateway.</p>
   <code>Bearer ${env:TRACEBI_MCP_TOKEN}</code> for Cursor. The command never prints
   a token value.</li>
 </ul>
+<h3 id="tracebi-agent-log"><code>tracebi agent log</code></h3>
+<pre><code class="language-bash">tracebi agent log [--since 7d] [--json]
+</code></pre>
+<p>Summarizes the gateway call log, <code>.tracebi/gateway_log.jsonl</code>. The gateway
+writes it only when <code>TRACEBI_MCP_LOG=1</code> is set: one line per tool call with
+the tool, ok or error, the duration, the actor, and the <strong>names</strong> of the
+arguments passed. Argument values, results and tokens are never written,
+and an error line has any argument value it echoes masked as <code>&lt;value&gt;</code>.
+Nothing leaves the machine.</p>
+<p>The summary shows calls and the error rate per tool, the ten most common
+errors with counts, and the first-build success rate: <code>build_report</code> calls
+that succeeded on a report's first attempt in a gateway session. <code>--since</code>
+takes a number and <code>d</code>, <code>h</code> or <code>m</code>.</p>
 <hr>
 <h2 id="pipelines">Pipelines</h2>
 <h3 id="tracebi-run-pipeline"><code>tracebi run-pipeline</code></h3>
