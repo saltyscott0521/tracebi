@@ -908,6 +908,43 @@ def cmd_list_models(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_warehouse(result: dict) -> None:
+    if not result.get("ok", True):
+        print(result.get("error", "failed"), file=sys.stderr)
+    for match in result.get("columns") or []:
+        print(f"{match['connector']}.{match['table']}")
+        for col in match.get("columns") or []:
+            print(f"  {col['name']}  {col['dtype']}")
+    for entry in result.get("connectors") or []:
+        print(entry["name"])
+        if "error" in entry:
+            print(f"  {entry['error']}")
+            continue
+        tables = entry.get("tables")
+        if tables is None:
+            print("  (cannot list tables)")
+        elif not tables:
+            print("  (no tables)")
+        else:
+            for name in tables:
+                print(f"  {name}")
+
+
+def cmd_warehouse(args: argparse.Namespace) -> int:
+    from tracebi.mcp_server import gateway_describe_table
+
+    result = gateway_describe_table(
+        table=args.table or "",
+        connector=args.connector or "",
+    )
+    if args.json:
+        json.dump(result, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+    else:
+        _print_warehouse(result)
+    return 0 if result.get("ok", True) else 1
+
+
 def cmd_new_pipeline(args: argparse.Namespace) -> int:
     pipelines_dir: Path = args.pipelines_dir
     pipelines_dir.mkdir(parents=True, exist_ok=True)
@@ -2225,6 +2262,29 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_list_models = sub.add_parser("list-models", help="List model definition files.")
     p_list_models.set_defaults(func=cmd_list_models)
+
+    p_warehouse = sub.add_parser(
+        "warehouse",
+        help="List warehouse tables, or one table's columns, from metadata.",
+    )
+    wh = p_warehouse.add_subparsers(dest="warehouse_cmd", required=True)
+    p_wh_tables = wh.add_parser(
+        "tables",
+        help="List tables, or describe one table's columns and types.",
+    )
+    p_wh_tables.add_argument(
+        "--connector", default="",
+        help="Limit to this connector name.",
+    )
+    p_wh_tables.add_argument(
+        "--table", default="",
+        help="Describe this table's columns instead of listing tables.",
+    )
+    p_wh_tables.add_argument(
+        "--json", action="store_true",
+        help="Print the structured result as JSON.",
+    )
+    p_wh_tables.set_defaults(func=cmd_warehouse)
 
     p_new_pipeline = sub.add_parser("new-pipeline", help="Scaffold a new pipeline definition.")
     p_new_pipeline.add_argument("title", help='Free-form title, e.g. "Sales Pipeline".')

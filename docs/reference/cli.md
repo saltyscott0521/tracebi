@@ -174,6 +174,18 @@ tracebi serve [--host 127.0.0.1] [--port 8000] [--reload]
 Serves the project's web UI. Refuses with an actionable message if there is no
 project in the current directory, or if `uvicorn` is not installed.
 
+### `tracebi warehouse tables`
+
+```bash
+tracebi warehouse tables [--connector NAME] [--table T] [--json]
+```
+
+Column names and types of a sunk table, from connector metadata. No row scan.
+Connectors come from the models in `models/`, plus `data/warehouse.duckdb`
+when that file exists. Omit `--table` to list tables. A connector that raises
+is reported in place (`error`: exception type plus the first message line);
+the others still list. The same lookup is the MCP tool `describe_table`.
+
 ### `tracebi session`
 
 ```bash
