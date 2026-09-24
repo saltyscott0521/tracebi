@@ -12,7 +12,7 @@ Roles in the table are the minimum required when authorization is enabled — se
 
 | Method | Path | Role | Returns |
 | --- | --- | --- | --- |
-| `GET` | `/api/health` | — | liveness |
+| `GET` | `/api/health` | — | liveness: `{"status": "ok", "version": "<installed version>"}` |
 | `GET` | `/api/schema` | viewer | the machine-readable vocabulary (same source as `tracebi context`) |
 | `GET` | `/api/discovery` | viewer | per-file registered / skipped / failed, **with the reason** |
 
