@@ -309,8 +309,11 @@ Start it with `tracebi mcp` (stdio, local agent) or
 Code) and `.cursor/mcp.json` (Cursor), both running `tracebi mcp` over
 stdio from the project folder. `tracebi mcp config --client claude-code|cursor|claude-desktop`
 prints the snippet for another client; `--http URL` prints the
-streamable-HTTP form with `Authorization: Bearer ${TRACEBI_MCP_TOKEN}` —
-a placeholder, never a token. Register by hand with Claude Code:
+streamable-HTTP form. The Authorization placeholder differs by client:
+`Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code, `Bearer ${env:TRACEBI_MCP_TOKEN}`
+for Cursor — a placeholder, never a token. The `--http` form is not offered
+for Claude Desktop (add the URL as a custom connector under Settings →
+Connectors). Register by hand with Claude Code:
 `claude mcp add tracebi -- tracebi mcp`. Work is attributed as
 `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`).
 The http transport requires `TRACEBI_MCP_TOKEN` (send

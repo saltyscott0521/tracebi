@@ -313,10 +313,14 @@ project folder. This command is for another client, or for a remote gateway.
 
 - `--client claude-desktop` uses an absolute path to the `tracebi`
   executable (`shutil.which("tracebi")`, or `sys.executable -m tracebi.cli`
-  when it is not on `PATH`).
-- `--http URL` prints the streamable-HTTP form (`type: http`, that URL).
-  The `Authorization` header is the placeholder
-  `Bearer ${TRACEBI_MCP_TOKEN}`. The command never prints a token value.
+  when it is not on `PATH`). The `--http` form is not offered for Claude
+  Desktop: add the URL as a custom connector under Settings → Connectors.
+  That combination exits 1 and prints no JSON.
+- `--http URL` prints the streamable-HTTP form (`type: http`, that URL)
+  for Claude Code and Cursor. The `Authorization` placeholder differs by
+  client: `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code,
+  `Bearer ${env:TRACEBI_MCP_TOKEN}` for Cursor. The command never prints
+  a token value.
 
 ---
 

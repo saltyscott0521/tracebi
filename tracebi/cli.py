@@ -1104,9 +1104,18 @@ def cmd_list_pipelines(args: argparse.Namespace) -> int:
 
 
 _MCP_CLIENTS = ("claude-code", "cursor", "claude-desktop")
-# The placeholder, never a value. A printed snippet must not echo
+# Placeholders, never values. A printed snippet must not echo
 # TRACEBI_MCP_TOKEN even when the variable is set in this process.
-_MCP_AUTH_HEADER = "Bearer ${TRACEBI_MCP_TOKEN}"
+# Claude Code's .mcp.json interpolates ${NAME}; Cursor's mcp.json
+# interpolates ${env:NAME}.
+_MCP_HTTP_AUTH = {
+    "claude-code": "Bearer ${TRACEBI_MCP_TOKEN}",
+    "cursor": "Bearer ${env:TRACEBI_MCP_TOKEN}",
+}
+_CLAUDE_DESKTOP_HTTP_REFUSAL = (
+    "Add the URL as a custom connector in Claude Desktop "
+    "(Settings → Connectors)."
+)
 
 
 def _claude_desktop_stdio() -> dict:
@@ -1120,12 +1129,18 @@ def _claude_desktop_stdio() -> dict:
 
 def mcp_client_config(client: str, http_url: Optional[str] = None) -> dict:
     """The snippet ``tracebi mcp config`` prints. stdio for a local agent;
-    ``http_url`` is the streamable-HTTP form, with a header placeholder."""
+    ``http_url`` is the streamable-HTTP form, with a header placeholder.
+
+    Claude Desktop's config file only starts local stdio servers, so a
+    remote URL is refused (see ``cmd_mcp``).
+    """
     if http_url:
+        if client not in _MCP_HTTP_AUTH:
+            raise ValueError(_CLAUDE_DESKTOP_HTTP_REFUSAL)
         server: dict = {
             "type": "http",
             "url": http_url,
-            "headers": {"Authorization": _MCP_AUTH_HEADER},
+            "headers": {"Authorization": _MCP_HTTP_AUTH[client]},
         }
     elif client == "claude-desktop":
         server = _claude_desktop_stdio()
@@ -1154,6 +1169,9 @@ def cmd_mcp(args: argparse.Namespace) -> int:
                 "claude-code|cursor|claude-desktop",
                 file=sys.stderr,
             )
+            return 1
+        if args.http and args.client == "claude-desktop":
+            print(_CLAUDE_DESKTOP_HTTP_REFUSAL, file=sys.stderr)
             return 1
         print(json.dumps(mcp_client_config(args.client, args.http), indent=2))
         return 0
@@ -2553,9 +2571,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_mcp.add_argument(
         "--http", metavar="URL",
-        help="With `mcp config`: streamable-HTTP snippet for URL. "
-             "The Authorization header is the placeholder "
-             "Bearer ${TRACEBI_MCP_TOKEN}, never a token value.",
+        help="With `mcp config`: streamable-HTTP snippet for URL "
+             "(claude-code or cursor). The Authorization header is a "
+             "placeholder — ${TRACEBI_MCP_TOKEN} for Claude Code, "
+             "${env:TRACEBI_MCP_TOKEN} for Cursor — never a token value. "
+             "Refused for claude-desktop.",
     )
     p_mcp.add_argument(
         "--transport", choices=("stdio", "http"), default="stdio",

@@ -94,10 +94,36 @@ class TestInitScaffold:
         assert "super-secret-token-xyz" not in http_out
         assert "command" not in server
 
+        assert cli.main([
+            "mcp", "config", "--client", "cursor",
+            "--http", "http://127.0.0.1:8765/mcp",
+        ]) == 0
+        cursor_out = capsys.readouterr().out
+        cursor = json.loads(cursor_out)
+        assert cursor["mcpServers"]["tracebi"]["headers"]["Authorization"] == (
+            "Bearer ${env:TRACEBI_MCP_TOKEN}"
+        )
+        assert "super-secret-token-xyz" not in cursor_out
+
         assert cli.main(["mcp", "config", "--client", "claude-desktop"]) == 0
         desktop = json.loads(capsys.readouterr().out)
         command = desktop["mcpServers"]["tracebi"]["command"]
         assert Path(command).is_absolute()
+
+        assert cli.main([
+            "mcp", "config", "--client", "claude-desktop",
+            "--http", "http://127.0.0.1:8765/mcp",
+        ]) == 1
+        refused = capsys.readouterr()
+        assert refused.out == ""
+        assert "{" not in refused.err
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(refused.err)
+        assert refused.err.strip() == (
+            "Add the URL as a custom connector in Claude Desktop "
+            "(Settings → Connectors)."
+        )
+        assert "super-secret-token-xyz" not in refused.err
 
     def test_existing_scheduled_dir_still_starts(self, tmp_path):
         proj = tmp_path / "proj"

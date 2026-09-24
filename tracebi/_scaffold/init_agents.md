@@ -167,8 +167,11 @@ tracebi mcp config --client cursor          # snippet for another MCP client
 (Cursor). Both run `tracebi mcp` over stdio from this folder, so your
 agent's TraceBi tools are already wired. `tracebi mcp config --client
 claude-code|cursor|claude-desktop` prints the snippet for another client.
-`--http URL` prints the streamable-HTTP form; the Authorization header is
-the placeholder `Bearer ${TRACEBI_MCP_TOKEN}`, never a real token.
+`--http URL` prints the streamable-HTTP form. The Authorization placeholder
+differs by client: `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code,
+`Bearer ${env:TRACEBI_MCP_TOKEN}` for Cursor — never a real token. The
+`--http` form is not offered for Claude Desktop (add the URL as a custom
+connector under Settings → Connectors).
 
 ### The dev iteration, step by step
 
