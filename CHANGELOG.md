@@ -15,9 +15,11 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   Figures & data, and Code. The Timeline reads like a notebook: each exhibit
   is an "In [n]" cell (the file, line and code that produced it) followed by
   an "Out [n]" cell (the table or chart), with a divider at each new step.
-  A chat box at the bottom sends the author's message to the agent as a pin
-  with `"kind": "message"` (`→ message:` in `tracebi report status`); the
-  message and every "Keep this" appear in the timeline where they were said.
+  A note box at the bottom leaves a note for the agent as a pin with
+  `"kind": "message"` (`→ message:` in `tracebi report status`). It is not a
+  live chat: the agent reads notes on its next pass, so while you are in
+  Claude Code, talk there. The note and every "Keep this" appear in the
+  timeline where they were left.
 - **A timeline of intermediate analysis.** Each `tracebi.workbench.show()`
   exhibit records the file and line that produced it (with the code), the
   workflow step (transform, model, pipeline, report or script, from its

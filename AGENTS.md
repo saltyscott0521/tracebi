@@ -199,7 +199,7 @@ this** on an exhibit: its `request` field (a `→ keep:` line in `report
 status`) says which exhibit, the code that produced it, and what to do —
 re-express it as a model binding + figure when the model can, else in
 `report.py` (python-derived) — then remove the pin. A `"kind": "message"`
-pin (a `→ message:` line) is the human typing in the timeline's chat box:
+pin (a `→ message:` line) is the human leaving a note in the timeline's note box:
 treat it as an instruction, then remove the pin. The workbench never
 edits the report; you do. `tracebi report snapshot <name>` shares a draft (exploration
 kept, review banner, no manifest — `verify` refuses it by name). Publishing

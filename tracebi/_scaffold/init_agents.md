@@ -206,7 +206,7 @@ tracebi serve                               # browse at http://127.0.0.1:8000
    that produced it, and how to promote it — a model binding + figure when
    the model can express it, else `report.py` (python-derived). A
    `"kind": "message"` pin (a `→ message:` line) is the human typing in
-   the timeline's chat box — an instruction for you. The workbench never
+   the timeline's note box — an instruction for you. The workbench never
    edits the report; you do.
 4. **Share a draft with `tracebi report snapshot <name>`.** One HTML with
    the exploration blocks KEPT and a review banner; it carries no manifest
