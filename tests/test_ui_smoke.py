@@ -115,6 +115,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             )
 
             def fail_on_browser_errors() -> None:
+                # pageerror is delivered just after goto returns.
+                page.wait_for_timeout(200)
                 assert not errors, "\n".join(errors)
 
             page.goto(base + "/")
