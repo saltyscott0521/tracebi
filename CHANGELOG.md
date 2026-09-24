@@ -6,6 +6,12 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — a compose file for a client's own project
+
+- `deploy/compose.yml` runs the GHCR image (or a local build of the Dockerfile)
+  with the client's project mounted and no demo seeding. Postgres is
+  `--profile postgres`. See `deploy/README.md`.
+
 ### Changed — the footer shows the installed version
 
 - `GET /api/health` returns `{"status": "ok", "version": "<installed version>"}`.
