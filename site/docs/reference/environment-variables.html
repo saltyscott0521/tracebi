@@ -108,7 +108,7 @@ equivalent where it matters.</p>
 <tr>
 <td><code>TRACEBI_SCHEDULED_DIR</code></td>
 <td><code>scheduled</code></td>
-<td>discovery</td>
+<td>discovery. <strong>Deprecated.</strong> The folder is still imported if it exists, and a script in it logs one deprecation line. It never ran reports. Use a <code>"schedule"</code> block in <code>report.json</code> (<code>tracebi schedule</code>).</td>
 </tr>
 <tr>
 <td><code>TRACEBI_WORKBENCH_DIR</code></td>
@@ -273,7 +273,7 @@ are <strong>yours to read</strong>, not framework-read variables.</p>
 <p>A handful of variables are read by the code but absent from <code>.env.example</code>:
 <code>TRACEBI_DEBUG</code>, <code>TRACEBI_DEV_MODE</code>, <code>TRACEBI_AUTH_REALM</code>, <code>TRACEBI_DOCS_DIR</code>,
 and the demo app's <code>TRACEBI_DEMO_DB_URL</code> / <code>TRACEBI_DEMO_DB_DIR</code>.
-<code>TRACEBI_SCHEDULED_DIR</code> is documented only in a module docstring.</p>
+<code>TRACEBI_SCHEDULED_DIR</code> is deprecated (see the table above).</p>
 <p>Conversely <code>TRACEBI_WAREHOUSE_URL</code> appears in <code>.env.example</code> and <strong>no code reads
 it</strong> — it is a leftover.</p>
 <h2 id="related">Related</h2>

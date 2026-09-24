@@ -17,10 +17,8 @@ Notebook usage::
     # Reports are PACKAGES (reports/<name>/ or a <name>.json spec) and are
     # registered for you by discovery. ``register.report`` remains the
     # underlying seam it uses; a factory with no package cannot be served.
-
-    @register.scheduled("daily_kpis", cron="0 7 * * *")
-    def daily_kpis():
-        return Report(...)
+    # A recurring report declares a ``"schedule"`` block in ``report.json``
+    # and runs with ``tracebi schedule``.
 
     register.auto_discover("reports/")
 

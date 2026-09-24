@@ -127,8 +127,9 @@ deployments too costly to operate.
 These block the plan and are cheaper to fix now. Items 1, 4 and 5 are in
 [[epics]] E4 and E1; item 2 is E5.
 
-1. **`registry.scheduled()` is unread.** Remove it or route it to the new
-   runner, so there's one way to schedule.
+1. ~~**`registry.scheduled()` is unread.**~~ Done: the decorator warns and
+   still registers the report. Schedules live in a package's `report.json`
+   `"schedule"` block (`tracebi schedule`).
 2. **Run history is split** between pipeline tables and `schedule_runs.jsonl`.
    Unify them in the state store.
 3. ~~**The web download re-renders.**~~ Done: the HTML download is the last

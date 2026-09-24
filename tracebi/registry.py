@@ -231,16 +231,31 @@ class Registry:
         description: str = "",
     ):
         """
-        Decorator: register a report factory and also mark it for
-        scheduled execution. The PipelineRunner (or any external scheduler)
-        can read ``list_scheduled()`` to wire up cron jobs.
+        Decorator: register a report factory and record a cron string.
 
-        Usage::
-
-            @registry.scheduled("weekly_sales", cron="0 9 * * MON")
-            def weekly_sales():
-                return Report(...)
+        Deprecated. Nothing reads the cron string, so the decorator never
+        ran a report. Put a ``"schedule"`` block in the package's
+        ``report.json`` and use ``tracebi schedule``. The report is still
+        registered, exactly as before.
         """
+        import warnings
+        warnings.warn(
+            "registry.scheduled never ran anything. Put a \"schedule\" "
+            "block in the package's report.json and use `tracebi schedule`. "
+            "See `tracebi schedule --help`.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._scheduled(name, cron, description)
+
+    def _scheduled(self, name: str, cron: str, description: str = ""):
+        """Register the factory and cron string without warning.
+
+        ``scheduled`` warns, then calls this. The notebook facade warns
+        once and calls this too, so ``@register.scheduled`` does not warn
+        a second time.
+        """
+
         def decorator(fn: Callable) -> Callable:
             self.add_report(name, fn, description)
             with self._lock:

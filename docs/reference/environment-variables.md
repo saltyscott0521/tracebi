@@ -18,7 +18,7 @@ equivalent where it matters.
 | `TRACEBI_MODELS_DIR` | `models` | `validate`, `new-model`, `verify`, discovery |
 | `TRACEBI_REPORTS_DIR` | `reports` | `new-report`, `report`, discovery |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | `run-pipeline`, discovery |
-| `TRACEBI_SCHEDULED_DIR` | `scheduled` | discovery |
+| `TRACEBI_SCHEDULED_DIR` | `scheduled` | discovery. **Deprecated.** The folder is still imported if it exists, and a script in it logs one deprecation line. It never ran reports. Use a `"schedule"` block in `report.json` (`tracebi schedule`). |
 | `TRACEBI_WORKBENCH_DIR` | `.tracebi/workbench` | `dev`, `session` |
 | `TRACEBI_OUTPUT_ROOT` | `output` | build outputs |
 | `TRACEBI_DOCS_DIR` | — | the served docs browser |
@@ -103,7 +103,7 @@ are **yours to read**, not framework-read variables.
 A handful of variables are read by the code but absent from `.env.example`:
 `TRACEBI_DEBUG`, `TRACEBI_DEV_MODE`, `TRACEBI_AUTH_REALM`, `TRACEBI_DOCS_DIR`,
 and the demo app's `TRACEBI_DEMO_DB_URL` / `TRACEBI_DEMO_DB_DIR`.
-`TRACEBI_SCHEDULED_DIR` is documented only in a module docstring.
+`TRACEBI_SCHEDULED_DIR` is deprecated (see the table above).
 
 Conversely `TRACEBI_WAREHOUSE_URL` appears in `.env.example` and **no code reads
 it** — it is a leftover.
