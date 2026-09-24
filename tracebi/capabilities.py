@@ -518,7 +518,10 @@ def _conventions() -> dict:
                 "must_define": "model",
                 "type": "DataModel",
                 "note": "Also loadable without a server: "
-                        "tracebi.model_registry.get_model(name)",
+                        "tracebi.model_registry.get_model(name). "
+                        "A model that failed to load is listed under skipped "
+                        "with its error; fix the file and call again (models "
+                        "reload when the file changes).",
             },
             {
                 "path": "pipelines/",
