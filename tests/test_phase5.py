@@ -2965,6 +2965,36 @@ class TestAuthorization:
         )
         assert authz.role_map == {"alice": "admin", "carol": "analyst"}
 
+    def test_bad_role_map_entries_warn_and_alice_stays_admin(self, monkeypatch):
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            authz = self._authorizer(
+                monkeypatch,
+                TRACEBI_AUTH_ROLE_MAP="alice:admin,bob:superuser,carol",
+            )
+        messages = [str(w.message) for w in caught]
+        assert any("bob:superuser" in m for m in messages)
+        assert any("carol" in m and "no ':'" in m for m in messages)
+        assert authz.role_map == {"alice": "admin"}
+        assert authz.role_for(self._request(), "alice") == "admin"
+
+    def test_no_role_source_logs_that_enforcement_is_off(self, monkeypatch, caplog):
+        import logging
+        from fastapi import FastAPI
+        from tracebi.web.api.auth import install_if_configured
+
+        for k in ("TRACEBI_AUTH_USER", "TRACEBI_AUTH_PASS",
+                  "TRACEBI_AUTH_PROXY_HEADER", "TRACEBI_AUTH_ROLE_HEADER",
+                  "TRACEBI_AUTH_ROLE_MAP", "TRACEBI_AUTH_DEFAULT_ROLE"):
+            monkeypatch.delenv(k, raising=False)
+        with caplog.at_level(logging.INFO, logger="tracebi.auth"):
+            assert install_if_configured(FastAPI()) is None
+        posture = [r.getMessage() for r in caplog.records if r.name == "tracebi.auth"]
+        assert len(posture) == 1
+        assert "enforcement is off" in posture[0]
+        assert "role source: none" in posture[0]
+
     def test_denial_names_the_role_and_what_was_needed(self, monkeypatch):
         authz = self._authorizer(monkeypatch, TRACEBI_AUTH_ROLE_HEADER="X-Groups")
         req = self._request("/api/pipelines/p/layers/l/run", "POST",

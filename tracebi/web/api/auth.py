@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import base64
 import ipaddress
+import logging
 import os
 import secrets
 from typing import Optional
@@ -35,6 +36,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from tracebi.audit import actor as audit_actor
+
+_logger = logging.getLogger("tracebi.auth")
 
 
 _PROTECTED_PREFIXES = ("/api/", "/dashboards/")
@@ -170,14 +173,29 @@ class _Authorizer:
     @staticmethod
     def _parse_map(raw: str) -> dict:
         """Parse ``alice:admin,bob:analyst`` into a dict, ignoring blanks."""
+        import warnings
         out = {}
         for pair in raw.split(","):
+            entry = pair.strip()
+            if not entry:
+                continue
             if ":" not in pair:
+                warnings.warn(
+                    f"TRACEBI_AUTH_ROLE_MAP entry {entry!r} was dropped: no ':'.",
+                    stacklevel=2,
+                )
                 continue
             user, _, role = pair.partition(":")
             user, role = user.strip(), role.strip()
             if user and role in _ROLE_RANK:
                 out[user] = role
+                continue
+            if role not in _ROLE_RANK:
+                warnings.warn(
+                    f"TRACEBI_AUTH_ROLE_MAP entry {entry!r} was dropped: "
+                    f"unknown role {role!r}.",
+                    stacklevel=2,
+                )
         return out
 
     def role_for(self, request: Request, user: Optional[str]) -> str:
@@ -232,6 +250,7 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         # No upstream proxy here, so a role header on the request is written
         # by the caller themselves.
         self._authz = _Authorizer(trust_role_header=False)
+        _log_posture("basic", self._authz)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -292,6 +311,7 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
         # The upstream proxy is the identity source, so it is also the role
         # source — it must replace any client-supplied role header.
         self._authz = _Authorizer(trust_role_header=True)
+        _log_posture("proxy", self._authz)
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -326,6 +346,28 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
         except ValueError:
             return False
         return any(addr in net for net in self._trusted_networks)
+
+
+def _posture_text(mode: str, authz: _Authorizer) -> str:
+    """One line an operator can read. Never includes a password or token."""
+    if authz.role_map:
+        source = f"role map ({len(authz.role_map)} users)"
+    elif authz.role_header and authz.trust_role_header:
+        source = f"role header {authz.role_header}"
+    elif authz.explicit_default_role and authz.enabled:
+        source = f"default role {authz.default_role}"
+    else:
+        source = "none"
+    if authz.enabled:
+        enforcement = "enforcement on"
+    else:
+        enforcement = "enforcement is off: every principal is admin"
+    label = {"off": "off", "basic": "Basic", "proxy": "proxy"}[mode]
+    return f"auth posture: {label}; role source: {source}; {enforcement}"
+
+
+def _log_posture(mode: str, authz: _Authorizer) -> None:
+    _logger.info(_posture_text(mode, authz))
 
 
 def install_if_configured(app) -> Optional[str]:
@@ -397,4 +439,5 @@ def install_if_configured(app) -> Optional[str]:
             stacklevel=2,
         )
 
+    _log_posture("off", _Authorizer(trust_role_header=False))
     return None

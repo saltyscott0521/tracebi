@@ -6,6 +6,13 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — startup logs the auth posture
+
+- When the web server decides how authentication is configured, it logs one
+  line on the `tracebi.auth` logger: the mode, the role source, and whether
+  enforcement is on. A `TRACEBI_AUTH_ROLE_MAP` entry with no `:` or an
+  unknown role is warned and dropped; who gets which role is unchanged.
+
 ### Changed — the footer shows the installed version
 
 - `GET /api/health` returns `{"status": "ok", "version": "<installed version>"}`.
