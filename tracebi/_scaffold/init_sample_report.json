@@ -8,6 +8,16 @@
       "model": "sample_model",
       "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }
     },
+    "top_region": {
+      "model": "sample_model",
+      "query": {
+        "fact": "fact_orders",
+        "measures": ["revenue"],
+        "dimensions": ["dim_region.region"],
+        "order_by": ["-revenue"],
+        "limit": 1
+      }
+    },
     "by_region": {
       "model": "sample_model",
       "query": {

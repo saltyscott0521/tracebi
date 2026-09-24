@@ -68,6 +68,15 @@ Built with TraceBi 0.6.0.dev0. Everything below is inlined: no script, style, fo
   --tb-space-3: 16px;
   --tb-space-4: 32px;
   --tb-radius: 10px;
+  /* Table density in one token: rows read at this padding everywhere; the
+   * --compact variant tightens it. Change density here, not per table. */
+  --tb-cell-pad: 10px 12px;
+
+  /* Direction words, not decoration: .tb-good / .tb-bad tint a figure whose
+   * sign the reader must judge. Both clear 4.5:1 on --tb-bg and --tb-page;
+   * pair them with a sign or a word, never color alone. */
+  --tb-good: #1e6b34;
+  --tb-bad: #b42318;
 
   /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). A
    * colour-blind-checked order: keep it fixed, never cycle past eight. */
@@ -100,6 +109,7 @@ body {
 
 h1, h2, h3, h4 {
   line-height: 1.25;
+  text-wrap: balance;
   margin: var(--tb-space-4) 0 var(--tb-space-2);
   letter-spacing: -0.01em;
 }
@@ -111,7 +121,7 @@ h3 { font-size: 1em; font-weight: 600; }
 h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
      text-transform: uppercase; letter-spacing: 0.06em; }
 
-p { margin: var(--tb-space-2) 0 var(--tb-space-3); }
+p { margin: var(--tb-space-2) 0 var(--tb-space-3); max-width: 75ch; }
 a { color: var(--tb-accent); }
 hr { border: 0; border-top: 1px solid var(--tb-rule);
      margin: var(--tb-space-4) 0; }
@@ -119,6 +129,24 @@ code, pre { font-size: 0.9em; }
 pre { overflow-x: auto; padding: var(--tb-space-2);
       background: var(--tb-surface); border-radius: var(--tb-radius); }
 img, svg { max-width: 100%; }
+
+/* Keyboard focus is always visible — controls, tabs, the receipt button. */
+:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+
+/* The lede: the page's answer in one sentence, directly under the title,
+ * with its numbers bound as value figures. Larger and darker than a note —
+ * it is the finding, not a caption. */
+.tb-lede {
+  font-size: 1.2em;
+  line-height: 1.45;
+  color: var(--tb-ink);
+  max-width: 60ch;
+  margin: 0 0 var(--tb-space-4);
+}
+.tb-lede [data-tb-figure="value"] { font-weight: 700; }
+
+.tb-good { color: var(--tb-good); }
+.tb-bad { color: var(--tb-bad); }
 
 /* ── 3. Layout ─────────────────────────────────────────────────────────── */
 
@@ -181,7 +209,17 @@ img, svg { max-width: 100%; }
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
+
+/* The comparison under the number — "+4.1% vs last month", "of total".
+ * A KPI without one is a number, not a signal. */
+.tb-kpi-context {
+  font-size: 0.85em;
+  color: var(--tb-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tb-kpi-context [data-tb-figure] { font-weight: 600; color: var(--tb-ink); }
 
 /* ── 5. Tables ─────────────────────────────────────────────────────────── */
 
@@ -194,7 +232,7 @@ img, svg { max-width: 100%; }
 
 .tb-table th, [data-tb-figure="table"] th,
 .tb-table td, [data-tb-figure="table"] td {
-  padding: 10px 12px;
+  padding: var(--tb-cell-pad);
   text-align: left;
   border-bottom: 1px solid var(--tb-rule);
 }
@@ -226,7 +264,10 @@ img, svg { max-width: 100%; }
 /* Numeric cells right-align; runtime tags them, authors may too. Matched at
  * the table rule's specificity, or its text-align: left would win. */
 .tb-num,
-.tb-table .tb-num, [data-tb-figure="table"] .tb-num { text-align: right; }
+.tb-table .tb-num, [data-tb-figure="table"] .tb-num {
+  text-align: right;
+  white-space: nowrap;  /* a number never breaks across lines */
+}
 
 /* Totals row */
 .tb-total td, tr.tb-total th {
@@ -239,10 +280,8 @@ img, svg { max-width: 100%; }
 .tb-table--striped tbody tr:nth-child(even) { background: var(--tb-surface); }
 
 /* Variant: compact — tighter padding, smaller type. */
-.tb-table--compact th, .tb-table--compact td {
-  padding: var(--tb-space-1) var(--tb-space-2);
-  font-size: 0.85em;
-}
+.tb-table--compact { --tb-cell-pad: var(--tb-space-1) var(--tb-space-2); }
+.tb-table--compact th, .tb-table--compact td { font-size: 0.85em; }
 
 /* ── 6. Charts ─────────────────────────────────────────────────────────── */
 
@@ -496,6 +535,11 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
   margin-left: var(--tb-space-2);
 }
 
+/* Motion is never required to read the page. */
+@media (prefers-reduced-motion: reduce) {
+  .tb-receipt-drawer { transition: none; }
+}
+
 /* ── 14. Print — honesty survives printing ─────────────────────────────── */
 
 @media print {
@@ -682,10 +726,6 @@ body {
   font-size: 2.3em;
   letter-spacing: -.01em;
 }
-/* The KPI's context line: the comparison that makes the number judgeable. */
-.sc-kpi-sub { display: block; margin-top: 2px; font-size: .82em; color: var(--tb-muted); }
-.sc-kpi-sub [data-tb-figure] { font-weight: 600; color: var(--tb-ink); }
-
 /* ── Tabs as pills ────────────────────────────────────────────────────── */
 
 .tb-tab-bar {
@@ -775,7 +815,7 @@ body {
       <span class="tb-kpi-label">Fair value</span>
       <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">285.9M</span>
-      <span class="sc-kpi-sub"><span data-tb-figure="value"
+      <span class="tb-kpi-context"><span data-tb-figure="value"
             data-tb-binding="gain" data-tb-cell="unrealized"
             data-tb-format="compact" id="kpi-gain">-6.3M</span> vs cost</span>
     </div>
@@ -788,7 +828,7 @@ body {
       <span class="tb-kpi-label">Mark (fair value ÷ cost)</span>
       <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="mark" data-tb-format="percent" id="kpi-mark">97.9%</span>
-      <span class="sc-kpi-sub">fair value per dollar of cost</span>
+      <span class="tb-kpi-context">fair value per dollar of cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-unverified
          data-tb-note="analyst estimate" id="kpi-est">
@@ -1775,6 +1815,16 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
     return Array.prototype.slice.call(document.querySelectorAll(sel));
   }
 
+  /* A value figure's format takes a table column's precedence: the author's
+   * data-tb-format, then one the model declares on the measure, then the
+   * shape guess — so an unformatted KPI reads 4,846.10, never 4846.1. */
+  function valueFormat(el, rows, cell) {
+    var name = attr(el, "data-tb-format");
+    if (name || !isNumericColumn(rows, cell)) return name;
+    return (declaredFormats()[attr(el, "data-tb-binding")] || {})[cell] ||
+           deriveFormat(rows, cell);
+  }
+
   function hydrateValues() {
     figureEls("value").forEach(function (el) {
       try {
@@ -1789,7 +1839,7 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
         var raw = row[cell];
         if (raw === undefined || raw === "") return;
         var text = raw;
-        var name = attr(el, "data-tb-format");
+        var name = valueFormat(el, block.rows, cell);
         if (name) {
           var n = toNum(raw);
           if (n !== null) {
@@ -2349,7 +2399,7 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
         var raw = row[cell];
         if (raw === undefined || raw === null || raw === "") return;
         var text = raw;
-        var name = attr(el, "data-tb-format");
+        var name = valueFormat(el, rows, cell);
         if (name) {
           var n = toNum(raw);
           if (n !== null) {
@@ -3136,7 +3186,7 @@ var tracebiSelectionEval = function (rows, plan, selectionFilters) {
 <script id="tracebi-data-top_issuers" type="application/json">{"name": "top_issuers", "columns": "['dim_issuer.issuer', 'fair_value', 'cost_basis', 'mark']", "dtypes": "['object', 'float64', 'float64', 'float64']", "csv": "dim_issuer.issuer,fair_value,cost_basis,mark\nBeta Widgets Inc,35736396.18,35582296.03,1.0043308096214498\n\"Gamma Software Group, LLC\",34166063.769999996,36184597.85,0.9442156552805241\n\"Theta Retail Brands, LLC\",31893679.020000003,34937672.45,0.9128736055798703\n\"Omega Media Group, LLC\",31339594.54,30081639.720000003,1.0418180269330077\nDelta Systems Ltd,25838793.939999998,25711016.470000003,1.0049697556745407\n\"Mu Financial Services, LLC\",23206263.49,22494138.83,1.0316582317456962\nZeta Diagnostics Corporation,23201836.92,24973231.92,0.9290682517315124\n\"Epsilon Health Partners, LLC\",19231973.65,19926401.76,0.9651503508579261\n"}</script>
 <script id="tracebi-data-concentration" type="application/json">{"name": "concentration", "columns": "['dim_issuer.sector', 'cum_share']", "dtypes": "['object', 'float64']", "csv": "dim_issuer.sector,cum_share\nConsumer,0.2631\nIndustrials,0.5011\nSoftware,0.711\nHealthcare,0.8594\nFinancials,0.9405\nEnergy,1.0\n"}</script>
 <script id="tb-semantic-contract-portfolio_model" type="application/json">{"model": "portfolio_model", "facts": [{"name": "fact_holdings", "table": "fact_holdings", "measures": ["cost", "fair_value", "par", "spread_bps"], "foreign_keys": {"dim_fund": "fund_id", "dim_issuer": "issuer_id"}}], "dimensions": [{"name": "dim_fund", "table": "dim_fund", "key": "fund_id", "attributes": ["fund"]}, {"name": "dim_issuer", "table": "dim_issuer", "key": "issuer_id", "attributes": ["issuer", "sector"]}], "measures": [{"agg": "sum", "column": "cost", "description": "Total cost basis", "format": "currency0", "kind": "simple", "name": "cost_basis"}, {"agg": "sum", "column": "fair_value", "description": "Total fair value", "format": "currency0", "kind": "simple", "name": "fair_value"}, {"description": "Fair value as % of total", "format": "percent", "kind": "share", "name": "fv_share"}, {"description": "Fair value / cost", "format": "percent", "kind": "ratio", "name": "mark", "ratio": ["fair_value", "cost_basis"]}, {"agg": "count", "column": "holding_id", "description": "Position count", "kind": "simple", "name": "positions"}, {"agg": "sum", "description": "Unrealized gain / loss", "expr": "fair_value - cost", "format": "currency0", "kind": "expression", "name": "unrealized"}], "tables": [{"name": "dim_fund", "connector": "warehouse", "source": "dim_fund"}, {"name": "dim_issuer", "connector": "warehouse", "source": "dim_issuer"}, {"name": "fact_holdings", "connector": "warehouse", "source": "fact_holdings"}]}</script>
-<script id="tracebi-receipt" type="application/json">{"report": "Portfolio Showcase", "rendered_at": "2026-09-24T18:25:36.675190+00:00", "git_sha": "2645a1018c5df282efa696fddc30fefc03a1e407", "figures": [{"id": "val-top-sector", "kind": "value", "binding": "top_sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-top-share", "kind": "value", "binding": "top_sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-fv-inline", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-fv", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-gain", "kind": "value", "binding": "gain", "fingerprint": "80f1f2b286509fca72fe4494389fe3f8b1852251563c7e3f1e6a5d79c367cbbb", "model": "portfolio_model"}, {"id": "kpi-pos", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-mark", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-est", "kind": "value", "unverified": true}, {"id": "chart-sector", "kind": "chart", "binding": "by_sector", "fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928", "model": "portfolio_model"}, {"id": "fig-chart_fund", "kind": "chart", "binding": "by_fund", "fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4", "model": "portfolio_model"}, {"id": "tbl-top", "kind": "table", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-conc", "kind": "chart", "binding": "concentration", "fingerprint": "af9296404e9ca276e4beb71a93bc4deb12e6271d82c0456d3db3f89558326e2d"}, {"id": "tbl-detail", "kind": "table", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}], "transform_contracts": {"dim_fund": "satisfied", "dim_issuer": "satisfied", "fact_holdings": "satisfied"}, "semantic_contract_models": ["portfolio_model"], "methodology": true}</script>
+<script id="tracebi-receipt" type="application/json">{"report": "Portfolio Showcase", "rendered_at": "2026-09-24T18:50:48.197868+00:00", "git_sha": "830fc5884c8e358be9e0f4f13d6e97b627b53cc7", "figures": [{"id": "val-top-sector", "kind": "value", "binding": "top_sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-top-share", "kind": "value", "binding": "top_sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-fv-inline", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-fv", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-gain", "kind": "value", "binding": "gain", "fingerprint": "80f1f2b286509fca72fe4494389fe3f8b1852251563c7e3f1e6a5d79c367cbbb", "model": "portfolio_model"}, {"id": "kpi-pos", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-mark", "kind": "value", "binding": "kpis", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-est", "kind": "value", "unverified": true}, {"id": "chart-sector", "kind": "chart", "binding": "by_sector", "fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928", "model": "portfolio_model"}, {"id": "fig-chart_fund", "kind": "chart", "binding": "by_fund", "fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4", "model": "portfolio_model"}, {"id": "tbl-top", "kind": "table", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-conc", "kind": "chart", "binding": "concentration", "fingerprint": "af9296404e9ca276e4beb71a93bc4deb12e6271d82c0456d3db3f89558326e2d"}, {"id": "tbl-detail", "kind": "table", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}], "transform_contracts": {"dim_fund": "satisfied", "dim_issuer": "satisfied", "fact_holdings": "satisfied"}, "semantic_contract_models": ["portfolio_model"], "methodology": true}</script>
 <script id="tracebi-formats" type="application/json">{"kpis": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "by_sector": {"fair_value": "currency0"}, "top_sector": {"fair_value": "currency0", "fv_share": "percent"}, "gain": {"unrealized": "currency0"}, "by_fund": {"fair_value": "currency0"}, "holdings_detail": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "holdings_total": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "top_issuers": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}}</script>
 <script id="tracebi-selection" type="application/json">{"report": "portfolio_showcase", "model": "portfolio_model", "filters": {}}</script>
 <script id="tracebi-grain" type="application/json">{"facts": {"fact_holdings": {"rows": [{"dim_issuer.sector": "Consumer", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Iota Foods Company", "fair_value": 11996473.0, "holding_id": 23, "cost": 12542477.2}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Theta Retail Brands, LLC", "fair_value": 18756354.35, "holding_id": 20, "cost": 20323891.99}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Omega Media Group, LLC", "fair_value": 12484472.23, "holding_id": 18, "cost": 12071718.46}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Theta Retail Brands, LLC", "fair_value": 13137324.67, "holding_id": 9, "cost": 14613780.46}, {"dim_issuer.sector": "Consumer", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Omega Media Group, LLC", "fair_value": 18855122.31, "holding_id": 13, "cost": 18009921.26}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Kappa Energy Holdings, LLC", "fair_value": 717703.12, "holding_id": 24, "cost": 715212.06}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Lambda Pipeline Co", "fair_value": 3279012.0, "holding_id": 25, "cost": 3255252.59}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Kappa Energy Holdings, LLC", "fair_value": 9243079.31, "holding_id": 5, "cost": 9604429.24}, {"dim_issuer.sector": "Energy", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Lambda Pipeline Co", "fair_value": 3758647.24, "holding_id": 7, "cost": 3739727.07}, {"dim_issuer.sector": "Financials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Mu Financial Services, LLC", "fair_value": 23206263.49, "holding_id": 3, "cost": 22494138.83}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Epsilon Health Partners, LLC", "fair_value": 19231973.65, "holding_id": 1, "cost": 19926401.76}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Zeta Diagnostics Corporation", "fair_value": 6545393.0, "holding_id": 8, "cost": 7091560.0}, {"dim_issuer.sector": "Healthcare", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Zeta Diagnostics Corporation", "fair_value": 16656443.92, "holding_id": 10, "cost": 17881671.92}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 8357072.41, "holding_id": 17, "cost": 8311862.67}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 20087926.55, "holding_id": 12, "cost": 19520406.44}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Sigma Logistics Holdings, LLC", "fair_value": 8114795.85, "holding_id": 19, "cost": 8401514.88}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 2858657.41, "holding_id": 15, "cost": 2970828.24}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 9838721.63, "holding_id": 14, "cost": 10201420.59}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Sigma Logistics Holdings, LLC", "fair_value": 8141824.25, "holding_id": 2, "cost": 8135782.69}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Acme Industrial Holdings, LLC", "fair_value": 4822579.11, "holding_id": 21, "cost": 4609098.93}, {"dim_issuer.sector": "Industrials", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Beta Widgets Inc", "fair_value": 5809748.0, "holding_id": 16, "cost": 5860469.0}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Delta Systems Ltd", "fair_value": 19582802.49, "holding_id": 6, "cost": 18790498.26}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Cedar Credit Partners", "dim_issuer.issuer": "Gamma Software Group, LLC", "fair_value": 12690016.66, "holding_id": 11, "cost": 13415372.58}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Harbor Point BDC", "dim_issuer.issuer": "Gamma Software Group, LLC", "fair_value": 21476047.11, "holding_id": 4, "cost": 22769225.27}, {"dim_issuer.sector": "Software", "dim_fund.fund": "Meridian Direct Lending", "dim_issuer.issuer": "Delta Systems Ltd", "fair_value": 6255991.45, "holding_id": 22, "cost": 6920518.21}]}}, "bindings": {"kpis": {"offline": true, "fact": "fact_holdings", "dimensions": [], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "positions", "source": "holding_id", "func": "count"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [], "limit": null, "binding_filters": {}}, "by_sector": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.sector"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}], "ratios": [], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "top_sector": {"offline": false, "reason": "share", "fact": "fact_holdings"}, "gain": {"offline": false, "reason": "expression", "fact": "fact_holdings"}, "by_fund": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_fund.fund"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}], "ratios": [], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "holdings_detail": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [{"column": "fair_value", "desc": true}], "limit": null, "binding_filters": {}}, "holdings_total": {"offline": true, "fact": "fact_holdings", "dimensions": [], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [], "limit": null, "binding_filters": {}}, "top_issuers": {"offline": true, "fact": "fact_holdings", "dimensions": ["dim_issuer.issuer"], "aggs": [{"name": "fair_value", "source": "fair_value", "func": "sum"}, {"name": "cost_basis", "source": "cost", "func": "sum"}], "ratios": [{"name": "mark", "num": "fair_value", "den": "cost_basis"}], "order_by": [{"column": "fair_value", "desc": true}], "limit": 8, "binding_filters": {}}}}</script>

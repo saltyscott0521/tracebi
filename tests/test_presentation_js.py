@@ -1182,6 +1182,24 @@ process.stdout.write(JSON.stringify({
 """)
         assert out["rows"] == [["US", "$1,000"], ["EU", "$2,001"]]
 
+    def test_an_unformatted_value_figure_takes_the_table_precedence(self):
+        # Same order as a table column (and the server render): the author's
+        # format, then the declared measure format, then the shape guess.
+        out = _run_dom("""
+dataBlock('k', 'gain,cost,label\\n1234.5,3001.15,West\\n');
+var f = el('script', { id: 'tracebi-formats', type: 'application/json' });
+f.textContent = JSON.stringify({ k: { cost: 'currency0' } });
+var g = el('span', { 'data-tb-figure': 'value', 'data-tb-binding': 'k', 'data-tb-cell': 'gain' });
+var c = el('span', { 'data-tb-figure': 'value', 'data-tb-binding': 'k', 'data-tb-cell': 'cost' });
+var d = el('span', { 'data-tb-figure': 'value', 'data-tb-binding': 'k', 'data-tb-cell': 'cost',
+                     'data-tb-format': 'decimal' });
+var t = el('span', { 'data-tb-figure': 'value', 'data-tb-binding': 'k', 'data-tb-cell': 'label' });
+loadRuntime();
+process.stdout.write(JSON.stringify([g.textContent, c.textContent,
+                                     d.textContent, t.textContent]));
+""")
+        assert out == ["1,234.50", "$3,001", "3,001.15", "West"]
+
     def test_a_narrow_pie_names_slices_in_a_legend_and_keeps_its_data(self):
         out = _run_dom("""
 dataBlock('b', 'asset_class,aum\\nfixed income,2726364\\nmoney market,1688904\\n');

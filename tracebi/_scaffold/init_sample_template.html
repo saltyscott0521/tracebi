@@ -4,6 +4,15 @@
 <body>
 <main class="tb-page">
   <h1>Orders — Sample Dashboard</h1>
+  <!-- Lead with the answer: one sentence, its numbers bound, under the title. -->
+  <p class="tb-lede">
+    <span data-tb-figure="value" data-tb-binding="top_region"
+          data-tb-cell="dim_region.region" id="val-top-region">—</span>
+    led every region with
+    <span data-tb-figure="value" data-tb-binding="top_region"
+          data-tb-cell="revenue" data-tb-format="currency0"
+          id="val-top-revenue">—</span>
+    in revenue.</p>
   <p class="tb-note">Cleaned from <code>inputs/orders.csv</code> by the
     phase-① transform. Every number on this page is a live, fingerprinted
     query — including the one in this sentence: total revenue across all
@@ -17,6 +26,7 @@
          data-tb-cell="revenue" data-tb-format="currency0" id="kpi-revenue">
       <span class="tb-kpi-label">Revenue</span>
       <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">all regions, all order dates</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="orders" data-tb-format="comma" id="kpi-orders">
@@ -43,12 +53,12 @@
       they never compute new numbers. The CSV button exports the stamped
       bytes verbatim; tables scroll past the first page of rows.</p>
     <p>
-      Region:
-      <select data-tb-filter data-tb-binding="region_detail"
-              data-tb-column="dim_region.region"></select>
-      Search:
-      <input data-tb-search data-tb-binding="region_detail"
-             placeholder="type to filter…">
+      <label>Search
+        <input data-tb-search data-tb-binding="region_detail"
+               placeholder="type to filter…"></label>
+      <label>Region
+        <select data-tb-filter data-tb-binding="region_detail"
+                data-tb-column="dim_region.region"></select></label>
       <button data-tb-download data-tb-binding="region_detail"
               data-tb-label="Download CSV"></button>
     </p>

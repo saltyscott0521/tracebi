@@ -464,3 +464,36 @@ class TestDeclaredFormats:
         block = re.search(
             r'<script id="tracebi-formats" type="application/json">(.*?)</script>', html)
         assert block and json.loads(block.group(1))["t"]["cost"] == "currency0"
+
+    def test_an_unformatted_value_figure_takes_the_table_precedence(self, tmp_path):
+        """A KPI with no data-tb-format reads like a table cell would: the
+        model's declared format, else the shape guess — never raw float noise."""
+        df = pd.DataFrame({"region": ["NE", "SE"], "gain": [1000.25, 234.25],
+                           "cost": [1000.4, 2000.75]})
+        m = DataModel("val_fmt")
+        m.add_connector(MemoryConnector("vf", tables={"t": df}))
+        m.add_table("t", connector="vf", source="t")
+        m.add_fact("f", table_name="t", measures=["gain", "cost"], foreign_keys={})
+        m.add_measure("gain", column="gain", agg="sum")
+        m.add_measure("cost", column="cost", agg="sum", format="currency0")
+        m.connect()
+
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({"name": "p", "data": {"k": {
+            "model": "val_fmt",
+            "query": {"fact": "f", "measures": ["gain", "cost"]}}}}))
+        (pkg / "template.html").write_text(
+            '<html><head><title>p</title></head><body>'
+            '<span data-tb-figure="value" data-tb-binding="k" data-tb-cell="gain" id="g"></span>'
+            '<span data-tb-figure="value" data-tb-binding="k" data-tb-cell="cost" id="c"></span>'
+            '<span data-tb-figure="value" data-tb-binding="k" data-tb-cell="cost" '
+            'data-tb-format="decimal" id="d"></span>'
+            '</body></html>')
+        out = tmp_path / "o.html"
+        TemplatePackage(str(pkg)).render({"val_fmt": m}, str(out))
+        html = out.read_text(encoding="utf-8")
+
+        assert 'id="g">1,234.50</span>' in html        # shape guess: two decimals
+        assert 'id="c">$3,001</span>' in html       # the measure's declared format
+        assert 'id="d">3,001.15</span>' in html     # the author's format wins

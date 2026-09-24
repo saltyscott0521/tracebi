@@ -197,13 +197,20 @@ def _presentation() -> dict:
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
             "--tb-rule", "--tb-radius", "--tb-space-1..4",
+            "--tb-good / --tb-bad (direction tones)",
+            "--tb-cell-pad (table density)",
             "--tb-chart-1..8 (the chart palette)",
         ],
         "components": [
             ".tb-page", ".tb-grid", ".tb-card",
-            ".tb-kpi (.tb-kpi-label / .tb-kpi-value)",
+            ".tb-lede (the page's answer sentence under the title, its "
+            "numbers bound as value figures)",
+            ".tb-kpi (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context — the "
+            "comparison line under the number)",
             ".tb-table (variants: .tb-table--striped, .tb-table--compact)",
             ".tb-callout", ".tb-note",
+            ".tb-good / .tb-bad (direction tones; pair with a sign or word, "
+            "never color alone)",
             ".tb-badge (--verified / --derived / --unverified — provenance "
             "chooses the class; a stylesheet can restyle, never re-color "
             "honesty). The green badge reads 'reproducible' (a re-runnable "
@@ -221,7 +228,10 @@ def _presentation() -> dict:
                             "hydrator fills a .tb-kpi-value child when one "
                             "exists, else the element itself",
             "data-tb-format": "value figures: compact | comma | currency | "
-                              "currency0 | percent | decimal",
+                              "currency0 | percent | decimal. Omitted, a "
+                              "numeric cell takes the model's declared "
+                              "format, then a readable shape default "
+                              "(4,846.10) — as a table column does",
             "data-tb-type / data-tb-x / data-tb-y / data-tb-color": "chart wiring",
             "data-tb-value-format": "chart labels, axes, and tooltips — every "
                                     "chart type: compact | comma | currency | "

@@ -122,10 +122,6 @@ body {
   font-size: 2.3em;
   letter-spacing: -.01em;
 }
-/* The KPI's context line: the comparison that makes the number judgeable. */
-.sc-kpi-sub { display: block; margin-top: 2px; font-size: .82em; color: var(--tb-muted); }
-.sc-kpi-sub [data-tb-figure] { font-weight: 600; color: var(--tb-ink); }
-
 /* ── Tabs as pills ────────────────────────────────────────────────────── */
 
 .tb-tab-bar {

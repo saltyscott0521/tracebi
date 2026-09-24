@@ -289,7 +289,9 @@ you tell a human a report is done.
    done, run `tracebi knowledge design-cut-the-chrome` and
    `tracebi knowledge design-lead-with-the-answer` — one question per page, the
    title states the finding, three to five KPIs with comparisons, no decorative
-   color or emoji.
+   color or emoji. Start from the shipped classes before writing CSS: `.tb-lede`
+   for the answer sentence under the title, `.tb-kpi-context` for a KPI's
+   comparison line (`tracebi knowledge design-theme-with-tokens` for the rest).
 4. Read `README.md` for the run commands.
 
 ## The honest boundary — do not overclaim

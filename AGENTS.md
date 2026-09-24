@@ -277,7 +277,17 @@ question per page; the title states the finding), **design-kpis-with-context**
 **design-plan-every-state**, **design-cut-the-chrome** (the telltale marks of
 a generated report), **design-show-the-difference** (chart the variance, not two
 lines to subtract), **design-honest-axes**, **design-layout-by-importance**,
-**design-consistency-over-variety** and **design-accessible-by-default**. Reach for them whenever you write `template.html` or
+**design-consistency-over-variety**, **design-accessible-by-default**,
+**design-hierarchy-and-emphasis** (one loud element per view),
+**design-grid-and-spacing** (the layout classes and the `--tb-space-*` scale),
+**design-tables-that-read**, **design-words-on-the-page** (titles state
+findings, labels carry units, controls get a `<label>`) and
+**design-theme-with-tokens** (restyle through `--tb-*` tokens in
+`reports/_theme.css`, never a fork). The shipped stylesheet already bakes much
+of this in — `.tb-lede` for the answer sentence under the title,
+`.tb-kpi-context` for a KPI's comparison line, `.tb-good` / `.tb-bad`, visible
+focus, right-aligned tabular numbers — and a value figure with no
+`data-tb-format` is formatted like a table column. Reach for them whenever you write `template.html` or
 `style.css`; skill-aware agents get the same review as the
 **`tracebi-designer`** skill. Presentation never changes a number — restyle
 freely, never re-source.

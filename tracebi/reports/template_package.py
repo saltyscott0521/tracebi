@@ -730,7 +730,8 @@ class TemplatePackage:
             if ds is None:
                 continue
             if fig.kind == "value":
-                text = self._ssr_value(ds, fig)
+                text = self._ssr_value(
+                    ds, fig, (declared_formats or {}).get(fig.binding))
                 if text is not None:
                     content[fig.id] = _html.escape(text)
             elif fig.kind == "table":
@@ -802,9 +803,11 @@ class TemplatePackage:
             'class="tb-chart-fallback tb-chart', 1)
 
     @staticmethod
-    def _ssr_value(ds, fig):
+    def _ssr_value(ds, fig, declared=None):
         """The formatted first-row cell for a value figure, or None to leave
-        the author placeholder (an empty cell — matching the runtime)."""
+        the author placeholder (an empty cell — matching the runtime). With no
+        ``data-tb-format``, a numeric cell takes a table column's precedence:
+        the model's declared format, then the shape guess (hydrateValues)."""
         df = ds.to_pandas()
         if df.empty:
             return None
@@ -818,7 +821,12 @@ class TemplatePackage:
         raw = df[cell].iloc[0]
         if raw is None or raw == "" or (isinstance(raw, float) and pd.isna(raw)):
             return None
-        return _ssr_format(raw, fig.attrs.get("data-tb-format") or "")
+        name = fig.attrs.get("data-tb-format")
+        if not name and cell in df.select_dtypes(include="number").columns:
+            from tracebi.reports.derive import derive_number_formats
+            name = ((declared or {}).get(cell)
+                    or derive_number_formats(df).get(cell))
+        return _ssr_format(raw, name or "")
 
     @staticmethod
     def _ssr_table(ds, fig, declared=None, totals_ds=None):

@@ -1567,17 +1567,22 @@ def _humanise_label(ref: str) -> str:
 
 
 def _report_json_text(title: str, model: str, query: dict) -> str:
-    """Two teaching bindings from the derived query: ``totals`` (measures only,
+    """Teaching bindings from the derived query: ``totals`` (measures only,
     one row — for KPI cards and bound prose) and, when the model has a
-    dimension, ``breakdown`` (measures by that dimension, sorted — for a chart
-    and a filterable table). The generated template references both, so the
-    scaffold demonstrates the whole figure grammar rather than a bare table."""
+    dimension, ``top`` (the leading member, one row — for the answer-first
+    lede) and ``breakdown`` (measures by that dimension, sorted — for a chart
+    and a filterable table). The generated template references all of them,
+    so the scaffold demonstrates the whole figure grammar rather than a bare
+    table."""
     fact = query["fact"]
     measures = query["measures"]
     dims = query.get("dimensions")
     data = {"totals": {"model": model,
                        "query": {"fact": fact, "measures": measures}}}
     if dims:
+        data["top"] = {"model": model, "query": {
+            "fact": fact, "measures": measures[:1], "dimensions": dims,
+            "order_by": ["-" + measures[0]], "limit": 1}}
         data["breakdown"] = {"model": model, "query": {
             "fact": fact, "measures": measures, "dimensions": dims,
             "order_by": ["-" + measures[0]]}}
@@ -1613,6 +1618,19 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> st
         "<body>",
         '<main class="tb-page">',
         f"  <h1>{esc(title)}</h1>",
+    ]
+    if dim_ref:
+        # Lead with the answer: one sentence, numbers bound, under the title.
+        parts += [
+            '  <p class="tb-lede">',
+            '    <span data-tb-figure="value" data-tb-binding="top"',
+            f'          data-tb-cell="{esc(dim_ref)}" id="val-top">—</span>',
+            f"    leads on {esc(m_label.lower())} with",
+            '    <span data-tb-figure="value" data-tb-binding="top"',
+            f'          data-tb-cell="{esc(measure)}" id="val-top-{esc(measure)}">—</span>.',
+            "    Rewrite this sentence as the page's finding.</p>",
+        ]
+    parts += [
         '  <p class="tb-note">Every number on this page is a live, fingerprinted',
         f"    query — including this one: {esc(m_label)} totals",
         f'    <span data-tb-figure="value" data-tb-binding="totals"',
@@ -1625,6 +1643,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> st
         f'         data-tb-cell="{esc(measure)}" id="kpi-{esc(measure)}">',
         f'      <span class="tb-kpi-label">{esc(m_label)}</span>',
         '      <span class="tb-kpi-value"></span>',
+        '      <span class="tb-kpi-context">state the period and comparison</span>',
         "    </div>",
         "  </div>",
     ]
@@ -1646,12 +1665,12 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> st
             "      display — they never compute new numbers. The CSV button",
             "      exports the stamped bytes verbatim.</p>",
             "    <p>",
-            f"      {esc(d_label)}:",
-            f'      <select data-tb-filter data-tb-binding="breakdown"',
-            f'              data-tb-column="{esc(dim_ref)}"></select>',
-            '      Search:',
-            '      <input data-tb-search data-tb-binding="breakdown"',
-            '             placeholder="type to filter…">',
+            "      <label>Search",
+            '        <input data-tb-search data-tb-binding="breakdown"',
+            '               placeholder="type to filter…"></label>',
+            f"      <label>{esc(d_label)}",
+            f'        <select data-tb-filter data-tb-binding="breakdown"',
+            f'                data-tb-column="{esc(dim_ref)}"></select></label>',
             '      <button data-tb-download data-tb-binding="breakdown"',
             '              data-tb-label="Download CSV"></button>',
             "    </p>",

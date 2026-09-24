@@ -612,6 +612,16 @@
     return Array.prototype.slice.call(document.querySelectorAll(sel));
   }
 
+  /* A value figure's format takes a table column's precedence: the author's
+   * data-tb-format, then one the model declares on the measure, then the
+   * shape guess — so an unformatted KPI reads 4,846.10, never 4846.1. */
+  function valueFormat(el, rows, cell) {
+    var name = attr(el, "data-tb-format");
+    if (name || !isNumericColumn(rows, cell)) return name;
+    return (declaredFormats()[attr(el, "data-tb-binding")] || {})[cell] ||
+           deriveFormat(rows, cell);
+  }
+
   function hydrateValues() {
     figureEls("value").forEach(function (el) {
       try {
@@ -626,7 +636,7 @@
         var raw = row[cell];
         if (raw === undefined || raw === "") return;
         var text = raw;
-        var name = attr(el, "data-tb-format");
+        var name = valueFormat(el, block.rows, cell);
         if (name) {
           var n = toNum(raw);
           if (n !== null) {
@@ -1186,7 +1196,7 @@
         var raw = row[cell];
         if (raw === undefined || raw === null || raw === "") return;
         var text = raw;
-        var name = attr(el, "data-tb-format");
+        var name = valueFormat(el, rows, cell);
         if (name) {
           var n = toNum(raw);
           if (n !== null) {

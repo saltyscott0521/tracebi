@@ -58,10 +58,34 @@ memory.
   keeps one color and one format; one notation for actual / plan / prior.
 - **design-accessible-by-default** — contrast, colorblind-safe series (the
   default palette is safe for two, not eight), never color alone.
+- **design-hierarchy-and-emphasis** — one loud element per view; size and
+  weight before color; uniform neighbors so the one difference reads.
+- **design-grid-and-spacing** — the layout classes, one set of proportions,
+  spacing from the `--tb-space-*` scale; close means related.
+- **design-tables-that-read** — the first column identifies the row, numbers
+  right-aligned in one format, a model-computed total, density as one token.
+- **design-words-on-the-page** — titles state findings, labels carry unit and
+  period, captions add what the chart can't, controls get a `<label>`.
+- **design-theme-with-tokens** — restyle through `--tb-*` tokens in
+  `reports/_theme.css`; dark grounds swap tokens; the receipt is never themed.
 
 These draw on the established field — Stephen Few's dashboard pitfalls, Tufte's
-graphical integrity, the IBCS reporting standard, WCAG contrast — translated
-into what TraceBi can and cannot do.
+graphical integrity, the IBCS reporting standard, WCAG contrast, the Urban
+Institute's chart style guide, and common UI patterns for hierarchy, grids,
+tables and design tokens — translated into what TraceBi can and cannot do.
+
+## Start from what the stylesheet already gives you
+
+`tracebi.css` ships the defaults, so use its classes before writing CSS:
+`.tb-lede` (the answer sentence under the title, numbers bound), `.tb-grid` /
+`.tb-cols-2` / `.tb-cols-3` / `.tb-card` (layout), `.tb-kpi` with
+`.tb-kpi-label`, `.tb-kpi-value` and `.tb-kpi-context` (the comparison line),
+`.tb-note` (captions), `.tb-callout`, `.tb-good` / `.tb-bad` (direction, always
+with a sign or word), and `tb-table--striped` / `tb-table--compact`. Numbers
+already right-align in tabular figures, focus is already visible, and a value
+figure with no `data-tb-format` already takes the model's declared format, then
+a readable default. A report's `style.css` should be short. If it is long, it is
+probably re-implementing these.
 
 ## The review pass (run it on every report page, yours included)
 

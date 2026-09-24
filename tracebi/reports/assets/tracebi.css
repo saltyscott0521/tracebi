@@ -33,6 +33,15 @@
   --tb-space-3: 16px;
   --tb-space-4: 32px;
   --tb-radius: 10px;
+  /* Table density in one token: rows read at this padding everywhere; the
+   * --compact variant tightens it. Change density here, not per table. */
+  --tb-cell-pad: 10px 12px;
+
+  /* Direction words, not decoration: .tb-good / .tb-bad tint a figure whose
+   * sign the reader must judge. Both clear 4.5:1 on --tb-bg and --tb-page;
+   * pair them with a sign or a word, never color alone. */
+  --tb-good: #1e6b34;
+  --tb-bad: #b42318;
 
   /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). A
    * colour-blind-checked order: keep it fixed, never cycle past eight. */
@@ -65,6 +74,7 @@ body {
 
 h1, h2, h3, h4 {
   line-height: 1.25;
+  text-wrap: balance;
   margin: var(--tb-space-4) 0 var(--tb-space-2);
   letter-spacing: -0.01em;
 }
@@ -76,7 +86,7 @@ h3 { font-size: 1em; font-weight: 600; }
 h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
      text-transform: uppercase; letter-spacing: 0.06em; }
 
-p { margin: var(--tb-space-2) 0 var(--tb-space-3); }
+p { margin: var(--tb-space-2) 0 var(--tb-space-3); max-width: 75ch; }
 a { color: var(--tb-accent); }
 hr { border: 0; border-top: 1px solid var(--tb-rule);
      margin: var(--tb-space-4) 0; }
@@ -84,6 +94,24 @@ code, pre { font-size: 0.9em; }
 pre { overflow-x: auto; padding: var(--tb-space-2);
       background: var(--tb-surface); border-radius: var(--tb-radius); }
 img, svg { max-width: 100%; }
+
+/* Keyboard focus is always visible — controls, tabs, the receipt button. */
+:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+
+/* The lede: the page's answer in one sentence, directly under the title,
+ * with its numbers bound as value figures. Larger and darker than a note —
+ * it is the finding, not a caption. */
+.tb-lede {
+  font-size: 1.2em;
+  line-height: 1.45;
+  color: var(--tb-ink);
+  max-width: 60ch;
+  margin: 0 0 var(--tb-space-4);
+}
+.tb-lede [data-tb-figure="value"] { font-weight: 700; }
+
+.tb-good { color: var(--tb-good); }
+.tb-bad { color: var(--tb-bad); }
 
 /* ── 3. Layout ─────────────────────────────────────────────────────────── */
 
@@ -146,7 +174,17 @@ img, svg { max-width: 100%; }
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
+
+/* The comparison under the number — "+4.1% vs last month", "of total".
+ * A KPI without one is a number, not a signal. */
+.tb-kpi-context {
+  font-size: 0.85em;
+  color: var(--tb-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tb-kpi-context [data-tb-figure] { font-weight: 600; color: var(--tb-ink); }
 
 /* ── 5. Tables ─────────────────────────────────────────────────────────── */
 
@@ -159,7 +197,7 @@ img, svg { max-width: 100%; }
 
 .tb-table th, [data-tb-figure="table"] th,
 .tb-table td, [data-tb-figure="table"] td {
-  padding: 10px 12px;
+  padding: var(--tb-cell-pad);
   text-align: left;
   border-bottom: 1px solid var(--tb-rule);
 }
@@ -191,7 +229,10 @@ img, svg { max-width: 100%; }
 /* Numeric cells right-align; runtime tags them, authors may too. Matched at
  * the table rule's specificity, or its text-align: left would win. */
 .tb-num,
-.tb-table .tb-num, [data-tb-figure="table"] .tb-num { text-align: right; }
+.tb-table .tb-num, [data-tb-figure="table"] .tb-num {
+  text-align: right;
+  white-space: nowrap;  /* a number never breaks across lines */
+}
 
 /* Totals row */
 .tb-total td, tr.tb-total th {
@@ -204,10 +245,8 @@ img, svg { max-width: 100%; }
 .tb-table--striped tbody tr:nth-child(even) { background: var(--tb-surface); }
 
 /* Variant: compact — tighter padding, smaller type. */
-.tb-table--compact th, .tb-table--compact td {
-  padding: var(--tb-space-1) var(--tb-space-2);
-  font-size: 0.85em;
-}
+.tb-table--compact { --tb-cell-pad: var(--tb-space-1) var(--tb-space-2); }
+.tb-table--compact th, .tb-table--compact td { font-size: 0.85em; }
 
 /* ── 6. Charts ─────────────────────────────────────────────────────────── */
 
@@ -459,6 +498,11 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
 .tb-receipt-drawer .tb-badge {
   position: static;
   margin-left: var(--tb-space-2);
+}
+
+/* Motion is never required to read the page. */
+@media (prefers-reduced-motion: reduce) {
+  .tb-receipt-drawer { transition: none; }
 }
 
 /* ── 14. Print — honesty survives printing ─────────────────────────────── */
