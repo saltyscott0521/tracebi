@@ -1065,8 +1065,9 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     from tracebi.mcp_server import GatewayAuthError, serve
 
     try:
-        serve(transport=args.transport, port=args.port,
-              insecure=args.insecure)
+        serve(transport=args.transport, port=args.port, host=args.host,
+              insecure=args.insecure,
+              allow_insecure_bind=args.allow_insecure_bind)
     except (ImportError, GatewayAuthError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -2424,6 +2425,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="stdio for a local agent (default); http for a remote one.",
     )
     p_mcp.add_argument(
+        "--host", default="127.0.0.1",
+        help="Address for --transport http (default 127.0.0.1). "
+             "Use 0.0.0.0 inside a container. A non-loopback host with "
+             "--insecure also needs --allow-insecure-bind.",
+    )
+    p_mcp.add_argument(
         "--port", type=int, default=8765,
         help="Port for --transport http (default 8765).",
     )
@@ -2431,6 +2438,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--insecure", action="store_true",
         help="Serve --transport http without authentication. Deliberate "
              "opt-out: without it, http requires TRACEBI_MCP_TOKEN.",
+    )
+    p_mcp.add_argument(
+        "--allow-insecure-bind", action="store_true",
+        help="Allow --insecure on a non-loopback --host. Anyone who can "
+             "reach the port gets full query access.",
     )
     p_mcp.set_defaults(func=cmd_mcp)
 

@@ -311,7 +311,7 @@ a report right the first time.
 - [ ] A `describe_table` MCP tool and `tracebi warehouse tables`: columns and
       types of warehouse tables from connector metadata (`column_schema`, no
       scan), so an agent drafting a model never invents a column.
-- [ ] A `--host` flag for `tracebi mcp --transport http` (default
+- [x] A `--host` flag for `tracebi mcp --transport http` (default
       `127.0.0.1`), so a server install can bind where its proxy expects.
 - [ ] Excel output over the gateway: `build_report` can return the `.xlsx`
       the library already renders ([[ROADMAP]] item 8).

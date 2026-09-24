@@ -269,11 +269,14 @@ drift. This is what an agent reads first.</p>
 <p>Analyst good-practice lessons. No argument lists the curriculum; a slug prints
 that lesson in full.</p>
 <h3 id="tracebi-mcp"><code>tracebi mcp</code></h3>
-<pre><code class="language-bash">tracebi mcp [--transport {stdio,http}] [--port 8765] [--insecure]
+<pre><code class="language-bash">tracebi mcp [--transport {stdio,http}] [--host 127.0.0.1] [--port 8765] [--insecure]
 </code></pre>
 <p>Serves the agent gateway over MCP. <strong>The http transport refuses to start until
 an auth decision is made</strong> — set <code>TRACEBI_MCP_TOKEN</code>, or pass <code>--insecure</code>
-deliberately.</p>
+deliberately. <code>--host</code> defaults to <code>127.0.0.1</code>. A non-loopback host with
+<code>--insecure</code> and no token refuses to start unless <code>--allow-insecure-bind</code> is
+also passed: anyone who can reach the port gets full query access. Inside a
+container, bind <code>0.0.0.0</code> and set the token.</p>
 <hr>
 <h2 id="pipelines">Pipelines</h2>
 <h3 id="tracebi-run-pipeline"><code>tracebi run-pipeline</code></h3>
