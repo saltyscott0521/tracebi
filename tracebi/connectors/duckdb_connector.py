@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import decimal
 import os
+import threading
 from typing import Any, Optional
 
 import pandas as pd
@@ -58,6 +59,11 @@ class DuckDBConnector(BaseConnector):
         self.directory = directory
         self._conn = None
         self._views: dict[str, pd.DataFrame] = {}
+        # One DuckDB connection is not safe to use from several threads at
+        # once: a second execute() can consume the first one's result, which
+        # then comes back as None. The web server runs requests on a thread
+        # pool, so every use of the shared connection goes through this lock.
+        self._lock = threading.RLock()
 
     def supports_pushdown(self) -> bool:
         return True
@@ -70,20 +76,22 @@ class DuckDBConnector(BaseConnector):
 
     def list_tables(self) -> list[str]:
         """Table names from ``information_schema``. No row scan."""
-        if self._conn is None:
-            self.connect()
-        rows = self._conn.execute(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'main' ORDER BY table_name"
-        ).fetchall()
+        with self._lock:
+            if self._conn is None:
+                self.connect()
+            rows = self._conn.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'main' ORDER BY table_name"
+            ).fetchall()
         return [str(r[0]) for r in rows]
 
     def column_schema(self, source: str) -> list[dict[str, str]]:
         """Column names and types via ``DESCRIBE``. No rows are returned."""
-        if self._conn is None:
-            self.connect()
         ref = self._resolve_source(source)
-        rows = self._conn.execute(f"DESCRIBE SELECT * FROM {ref}").fetchall()
+        with self._lock:
+            if self._conn is None:
+                self.connect()
+            rows = self._conn.execute(f"DESCRIBE SELECT * FROM {ref}").fetchall()
         return [{"name": str(r[0]), "dtype": str(r[1])} for r in rows]
 
     @staticmethod
@@ -106,6 +114,10 @@ class DuckDBConnector(BaseConnector):
         return "lock" in msg or "different configuration" in msg
 
     def connect(self) -> None:
+        with self._lock:
+            self._connect()
+
+    def _connect(self) -> None:
         duckdb = self._duckdb()
         if self._conn is not None:
             return
@@ -154,17 +166,19 @@ class DuckDBConnector(BaseConnector):
                 "disconnect() would discard an in-memory database's tables; "
                 "it is only meaningful for file-backed connectors."
             )
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None
+        with self._lock:
+            if self._conn is not None:
+                self._conn.close()
+                self._conn = None
 
     def register_df(self, name: str, df: pd.DataFrame) -> "DuckDBConnector":
         """Register a pandas DataFrame as a DuckDB view named *name*."""
-        if self._conn is None:
-            self.connect()
-        self._conn.register(name, df)
-        # Remembered so the view survives write()'s release/reopen cycle.
-        self._views[name] = df
+        with self._lock:
+            if self._conn is None:
+                self.connect()
+            self._conn.register(name, df)
+            # Remembered so the view survives write()'s release/reopen cycle.
+            self._views[name] = df
         return self
 
     def _resolve_source(self, source: str) -> str:
@@ -194,9 +208,6 @@ class DuckDBConnector(BaseConnector):
         filter: Optional[dict[str, Any]] = None,
         columns: Optional[list[str]] = None,
     ) -> pd.DataFrame:
-        if self._conn is None:
-            self.connect()
-
         from_clause = self._resolve_source(source)
         select_cols = ", ".join(f'"{c}"' for c in columns) if columns else "*"
         query = f"SELECT {select_cols} FROM {from_clause}"
@@ -207,7 +218,10 @@ class DuckDBConnector(BaseConnector):
                 clauses.append(f'"{col}" = ?')
                 params.append(val)
             query += " WHERE " + " AND ".join(clauses)
-        return self._conn.execute(query, params).df()
+        with self._lock:
+            if self._conn is None:
+                self.connect()
+            return self._conn.execute(query, params).df()
 
     def write(
         self,
@@ -228,6 +242,10 @@ class DuckDBConnector(BaseConnector):
         Appending a Decimal column into an existing table whose column is
         not ``DECIMAL(38,12)`` raises rather than silently coercing.
         """
+        with self._lock:
+            self._write(df, table, if_exists)
+
+    def _write(self, df: pd.DataFrame, table: str, if_exists: str) -> None:
         if self.database == ":memory:":
             if self._conn is None:
                 self.connect()

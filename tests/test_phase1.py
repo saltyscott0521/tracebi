@@ -797,6 +797,21 @@ class TestDuckDBReadOnlyCoexistence:
         with pytest.raises(duckdb.Error):
             conn.connection.execute('CREATE TABLE "nope" (i INTEGER)')
 
+    def test_one_instance_loads_from_many_threads(self, warehouse):
+        """The web server runs requests on a thread pool, all sharing one
+        connector. Unguarded, a second execute() on the shared connection
+        consumed the first one's result and load() returned None — which
+        surfaced as correct receipts reading "not reproduced"."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        conn = DuckDBConnector("dd", database=warehouse)
+        expected = len(conn.load("sales"))
+        with ThreadPoolExecutor(8) as pool:
+            lengths = list(pool.map(
+                lambda i: len(conn.load("sales", filter=None if i % 2 else {})),
+                range(200)))
+        assert lengths == [expected] * 200
+
     def test_two_instances_load_concurrently(self, warehouse):
         a = DuckDBConnector("a", database=warehouse)
         b = DuckDBConnector("b", database=warehouse)

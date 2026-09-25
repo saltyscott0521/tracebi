@@ -498,15 +498,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* ── Home-page layout helpers ────────────────────────── */
 .home-thesis    { font-size: 28px; }
-/* auto-fit, not repeat(4, …): four fixed 1fr tracks don't fit beside the
-   sidebar at iPad-portrait / narrow-desktop widths (769–900px) and overflow.
-   auto-fit reflows the stat cards to 3 (then the ≤768 rule pins 2). */
-.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
-/* minmax(0,1fr) — not plain 1fr — so the wide left column shrinks to the
-   track instead of forcing the grid (and the page) wider than the viewport. */
-.home-main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
-.home-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; }
-.home-hero-cta  { display: flex; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* ── Responsive ─────────────────────────────────────── */
 .split-layout {
@@ -537,18 +528,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
   /* Mobile close button inside the sidebar nav */
   .nav-close-btn { display: flex !important; }
-
-  /* Home page responsive grids */
-  .grid-4        { grid-template-columns: 1fr 1fr; gap: 12px; }
-  /* minmax(0,1fr), not 1fr: a single 1fr track is minmax(auto,1fr) and will
-     NOT shrink below its content's min-content, so the ledger's nowrap report
-     descriptions force the column (and the page) wider than a phone/iPad — the
-     desktop grid already uses minmax(0,1fr) for the same reason. */
-  .home-main-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  /* Hero stacks: text over CTAs. */
-  .home-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .home-hero-cta  { flex-direction: row; flex-wrap: wrap; }
-  .home-hero-cta > a { flex: 0 1 auto; }
 }
 @media (max-width: 480px) {
   .grid-3 { grid-template-columns: 1fr; }

@@ -128,6 +128,13 @@ def test_a_reproducing_artifact_is_what_desk_opens(tmp_path):
     assert body["open"]["report"] == "kept"
     assert body["open"]["verdict"] == "reproduces"
     assert [row["report"] for row in body["verdicts"]] == ["note"]
+    # Builds lists only reports with an HTML file, each with its time and
+    # verdict, so the desk can say when a report was built and whether its
+    # receipt still reproduces.
+    builds = {b["report"]: b for b in body["builds"]}
+    assert set(builds) == {"kept"}
+    assert builds["kept"]["verdict"] == "reproduces"
+    assert builds["kept"]["built_at"].endswith("+00:00")
 
 
 def test_desk_endpoint_reads_the_project(tmp_path, monkeypatch):

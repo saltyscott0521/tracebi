@@ -16,12 +16,14 @@ def review(project_root: str, models: Optional[Mapping[str, Any]] = None) -> dic
     """The review list for *project_root*.
 
     ``open`` is the newest built artifact whose verdict is ``reproduces``,
-    so Desk can open that file. The other lists are what still needs a
-    person. ``models`` is what ``verify_manifest`` re-runs against; a
-    missing model becomes an ``error`` verdict rather than an empty desk.
+    so Desk can open that file. ``builds`` is every built report on disk
+    with its build time and verdict, newest first. The other lists are
+    what still needs a person. ``models`` is what ``verify_manifest``
+    re-runs against; a missing model becomes an ``error`` verdict rather
+    than an empty desk.
     """
     root = os.path.abspath(project_root)
-    opened, verdicts = _verdicts(root, models or {})
+    opened, verdicts, builds = _verdicts(root, models or {})
     warehouse = os.path.join(root, "data", "warehouse.duckdb")
     return {
         "pins": _pins(root),
@@ -30,6 +32,7 @@ def review(project_root: str, models: Optional[Mapping[str, Any]] = None) -> dic
         "sinks": _sinks(warehouse),
         "warehouse": os.path.isfile(warehouse),
         "open": opened,
+        "builds": builds,
     }
 
 
@@ -89,13 +92,27 @@ def _drafts(root: str) -> list[dict]:
     return drafts
 
 
-def _verdicts(root: str, models: Mapping[str, Any]) -> tuple[Optional[dict], list[dict]]:
+def _built_at(path: str) -> Optional[str]:
+    """ISO-8601 UTC modification time of *path*, or None when unreadable."""
+    from datetime import datetime, timezone
+
+    try:
+        return datetime.fromtimestamp(
+            os.path.getmtime(path), tz=timezone.utc).isoformat(timespec="seconds")
+    except OSError:
+        return None
+
+
+def _verdicts(
+    root: str, models: Mapping[str, Any],
+) -> tuple[Optional[dict], list[dict], list[dict]]:
     from tracebi.verify import verify_manifest
 
     output = os.path.join(root, "output")
     if not os.path.isdir(output):
-        return None, []
+        return None, [], []
     waiting: list[dict] = []
+    builds: list[dict] = []
     opened: Optional[dict] = None
     opened_mtime = -1.0
     suffix = ".html.manifest.json"
@@ -122,6 +139,12 @@ def _verdicts(root: str, models: Mapping[str, Any]) -> tuple[Optional[dict], lis
             "detail": detail,
             "path": _rel(root, path),
         }
+        if os.path.isfile(html_path):
+            builds.append({
+                "report": report,
+                "verdict": verdict,
+                "built_at": _built_at(html_path),
+            })
         if verdict == "reproduces":
             if os.path.isfile(html_path):
                 try:
@@ -138,7 +161,8 @@ def _verdicts(root: str, models: Mapping[str, Any]) -> tuple[Optional[dict], lis
                     }
             continue
         waiting.append(row)
-    return opened, waiting
+    builds.sort(key=lambda b: b["built_at"] or "", reverse=True)
+    return opened, waiting, builds
 
 
 def _sinks(warehouse: str) -> list[dict]:
