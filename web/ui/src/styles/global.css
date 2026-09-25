@@ -661,8 +661,8 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 }
 
 /* ── Motion & illustration ──────────────────────────────────────────────
-   Motion here always shows something happening: a receipt printed and
-   stamped, a file re-hashed, data moving between phases. Everything below
+   Motion here always shows something happening: a report assembling, a
+   file re-hashed, data moving between phases. Everything below
    is switched off by prefers-reduced-motion at the end of this section. */
 :root {
   --ease-out:    cubic-bezier(.22, 1, .36, 1);
@@ -695,46 +695,43 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   100% { opacity: 0; transform: translate(10px, 11px); }
 }
 
-/* The receipt printer (components/Art.jsx ReceiptArt). */
-.rc { display: block; margin: 0 auto; overflow: visible; }
-.rc-line, .rc-bar, .rc-stamp { transform-box: fill-box; }
-.rc-line { transform-origin: left; }
-.rc-line-r { transform-origin: right; }
-.rc-bar { transform-origin: bottom; }
-.rc-stamp { transform-origin: center; }
-.rc-done .rc-paper { animation: rc-feed .9s var(--ease-out) both .15s; }
-.rc-done .rc-line  { animation: rc-draw .38s var(--ease-out) both; animation-delay: calc(.75s + var(--i) * .11s); }
-.rc-done .rc-bar   { animation: rc-grow .45s var(--ease-spring) both; animation-delay: calc(1.15s + var(--i) * .07s); }
-.rc-done .rc-stamp { animation: rc-stamp .5s var(--ease-spring) both 1.75s; }
-.rc-done .rc-check { stroke-dasharray: 22; animation: rc-tick .35s var(--ease-out) both 2.15s; }
-.rc-done .rc-float { animation: rc-float 6s ease-in-out infinite 2.6s; }
-.rc-print .rc-paper { animation: rc-feed-loop 2.4s var(--ease-out) infinite; }
-.rc-print .rc-line  { animation: rc-draw-loop 2.4s var(--ease-out) infinite; animation-delay: calc(var(--i) * .08s); }
-.rc-print .rc-bar   { animation: rc-grow-loop 2.4s var(--ease-spring) infinite; animation-delay: calc(var(--i) * .06s); }
-.rc-print .rc-led   { animation: rc-led .6s step-end infinite; }
-@keyframes rc-feed  { from { transform: translateY(-100px); } }
-@keyframes rc-draw  { from { transform: scaleX(0); } }
-@keyframes rc-grow  { from { transform: scaleY(0); } }
-@keyframes rc-stamp {
-  from { opacity: 0; transform: scale(1.9) rotate(-28deg); }
-  to   { opacity: 1; transform: scale(1) rotate(-8deg); }
-}
-@keyframes rc-tick  { from { stroke-dashoffset: 22; } to { stroke-dashoffset: 0; } }
-@keyframes rc-float { 50% { transform: translateY(-3px); } }
-@keyframes rc-feed-loop {
-  0%   { transform: translateY(-100px); opacity: 1; }
-  45%, 82% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(0); opacity: 0; }
-}
-@keyframes rc-draw-loop { 0%, 30% { transform: scaleX(0); } 55%, 100% { transform: scaleX(1); } }
-@keyframes rc-grow-loop { 0%, 38% { transform: scaleY(0); } 62%, 100% { transform: scaleY(1); } }
-@keyframes rc-led { 50% { opacity: .2; } }
+/* A report assembling itself (components/Art.jsx ReportArt): the numbers,
+   bars, trend line and donut build in. mode "build" loops it. */
+.ra { display: block; margin: 0 auto; overflow: visible; }
+.ra-kpi, .ra-bar, .ra-dot { transform-box: fill-box; }
+.ra-kpi { transform-origin: left; }
+.ra-bar { transform-origin: bottom; }
+.ra-dot { transform-origin: center; }
+.ra-trend { stroke-dasharray: 100; }
+.ra-donut { stroke-dasharray: 72 100; }
+.ra-done .ra-kpi   { animation: ra-grow-x .5s var(--ease-out) both; animation-delay: calc(.15s + var(--i) * .12s); }
+.ra-done .ra-bar   { animation: ra-grow-y .55s var(--ease-spring) both; animation-delay: calc(.5s + var(--i) * .07s); }
+.ra-done .ra-trend { animation: ra-draw .8s var(--ease-io) both 1s; }
+.ra-done .ra-dot   { animation: ra-pop .4s var(--ease-spring) both 1.75s; }
+.ra-done .ra-donut { animation: ra-sweep 1s var(--ease-out) both .7s; }
+.ra-done .ra-float { animation: ra-float 6s ease-in-out infinite 2.4s; }
+.ra-build .ra-kpi   { animation: ra-grow-x-loop 2.6s var(--ease-out) infinite; animation-delay: calc(var(--i) * .1s); }
+.ra-build .ra-bar   { animation: ra-grow-y-loop 2.6s var(--ease-spring) infinite; animation-delay: calc(var(--i) * .06s); }
+.ra-build .ra-trend { animation: ra-draw-loop 2.6s var(--ease-io) infinite; }
+.ra-build .ra-dot   { animation: ra-pop-loop 2.6s var(--ease-spring) infinite; }
+.ra-build .ra-donut { animation: ra-sweep-loop 2.6s var(--ease-out) infinite; }
+@keyframes ra-grow-x { from { transform: scaleX(0); } }
+@keyframes ra-grow-y { from { transform: scaleY(0); } }
+@keyframes ra-draw   { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes ra-sweep  { from { stroke-dashoffset: 72; } to { stroke-dashoffset: 0; } }
+@keyframes ra-pop    { from { transform: scale(0); } }
+@keyframes ra-float  { 50% { transform: translateY(-3px); } }
+@keyframes ra-grow-x-loop { 0%, 10% { transform: scaleX(0); } 35%, 85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+@keyframes ra-grow-y-loop { 0%, 18% { transform: scaleY(0); } 42%, 85% { transform: scaleY(1); } 100% { transform: scaleY(0); } }
+@keyframes ra-draw-loop   { 0%, 35% { stroke-dashoffset: 100; } 60%, 88% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 100; } }
+@keyframes ra-sweep-loop  { 0%, 20% { stroke-dashoffset: 72; } 50%, 85% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 72; } }
+@keyframes ra-pop-loop    { 0%, 58% { transform: scale(0); } 66%, 86% { transform: scale(1); } 100% { transform: scale(0); } }
 
-/* Verify: the file and its receipt, linked (PairArt). */
+/* Verify: the report file and its manifest, linked (PairArt). */
 .pair { display: block; margin: 0 auto 10px; overflow: visible; }
 .pair-link   { animation: dash-march 1.1s linear infinite; }
 .pair-packet { animation: pair-travel 2.2s var(--ease-io) infinite; }
-.pair-doc    { animation: rc-float 5s ease-in-out infinite; }
+.pair-doc    { animation: ra-float 5s ease-in-out infinite; }
 .pair-doc-2  { animation-delay: -2.5s; }
 @keyframes dash-march  { to { stroke-dashoffset: -16; } }
 @keyframes pair-travel {
@@ -752,10 +749,10 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* Verify: the verdict lands like a stamp; an altered file shudders. */
 .verdict-stamp { animation: stamp-in .5s var(--ease-spring) both; }
-.verdict-stamp path { stroke-dasharray: 32; animation: rc-tick-long .4s .3s var(--ease-out) both; }
+.verdict-stamp path { stroke-dasharray: 32; animation: tick-draw .4s .3s var(--ease-out) both; }
 .verdict-shake { animation: stamp-in .5s var(--ease-spring) both, shake .5s .5s ease-in-out; }
 @keyframes stamp-in { from { opacity: 0; transform: scale(1.8) rotate(-20deg); } }
-@keyframes rc-tick-long { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
+@keyframes tick-draw { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
 @keyframes shake {
   20%, 60% { transform: translateX(-4px) rotate(-2deg); }
   40%, 80% { transform: translateX(4px) rotate(2deg); }

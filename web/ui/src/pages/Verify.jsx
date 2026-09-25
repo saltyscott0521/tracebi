@@ -37,7 +37,7 @@ const VERDICT = {
   file_nothing_embedded: { label: 'NOTHING EMBEDDED', tone: 'mut',
     line: 'This file carries no embedded data, so there was nothing to check.' },
   refused_snapshot: { label: 'REFUSED', tone: 'mut',
-    line: 'This is a review snapshot, not a published report — snapshots carry no receipt and cannot be verified.' },
+    line: 'This is a review snapshot, not a published report — snapshots carry no manifest and cannot be verified.' },
 }
 
 const TONE = {
@@ -158,7 +158,7 @@ export default function Verify() {
     <>
       <PageTitle>Verify a file</PageTitle>
       <PageSub>
-        Drop a report <code>.html</code> and its <code>.manifest.json</code> receipt.
+        Drop a report <code>.html</code> and its <code>.manifest.json</code>.
         It re-hashes the data embedded in the file against the manifest — no model,
         no warehouse, no account. The files are checked by this TraceBi server,
         which keeps nothing.
@@ -177,7 +177,7 @@ export default function Verify() {
         }}
       >
         <PairArt />
-        <div style={{ fontWeight: 600, fontSize: 16 }}>Drop a report and its receipt</div>
+        <div style={{ fontWeight: 600, fontSize: 16 }}>Drop a report and its manifest</div>
         <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>
           or <span style={{ color: 'var(--accent-text)', textDecoration: 'underline' }}>choose files</span> —
           the <code>.html</code> and its <code>.manifest.json</code>

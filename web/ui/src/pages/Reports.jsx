@@ -9,7 +9,7 @@ import {
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
-import { ReceiptArt } from '../components/Art'
+import { ReportArt } from '../components/Art'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
@@ -78,7 +78,7 @@ function ReportReceipt({ manifest }) {
     }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Badge variant={v2 ? 'green' : 'gray'} style={{ textTransform: 'none' }}>
-          {v2 ? '🧾 Verifiable artifact' : `manifest v${manifest.schema_version ?? '?'}`}
+          {v2 ? 'Verifiable' : `manifest v${manifest.schema_version ?? '?'}`}
         </Badge>
         {p.total > 0 && (
           <>
@@ -94,9 +94,8 @@ function ReportReceipt({ manifest }) {
         ))}
       </div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
-        The <strong>HTML</strong> download carries this receipt — every figure’s data is embedded and
-        fingerprinted, so it re-checks offline with <code>tracebi verify --file</code>. Excel is a plain
-        spreadsheet with no receipt.
+        The <strong>HTML</strong> download is one file that can be checked offline with{' '}
+        <code>tracebi verify --file</code>. Excel is a plain spreadsheet.
       </div>
     </div>
   )
@@ -313,13 +312,12 @@ function ReportDetail({ report }) {
   if (!report) return (
     <Card>
       <div className="fade-in" style={{ padding: '28px 12px 20px', textAlign: 'center' }}>
-        <ReceiptArt mode="done" size={210} />
+        <ReportArt mode="done" size={230} />
         <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginTop: 14 }}>
-          Every report comes with a receipt
+          Pick a report
         </div>
         <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, maxWidth: '40ch', marginInline: 'auto', lineHeight: 1.55 }}>
-          Select one from the list to open its last build, and the receipt that
-          re-checks every number in it.
+          Select one from the list to open its last build.
         </div>
       </div>
     </Card>
@@ -343,7 +341,7 @@ function ReportDetail({ report }) {
 
       {!shown && !running && built.isLoading && (
         <div className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--muted)', fontSize: 13 }}>
-          <ReceiptArt mode="print" size={86} /> Opening the last build…
+          <ReportArt mode="build" size={96} /> Opening the last build…
         </div>
       )}
       {!shown && !running && !built.isLoading && (
@@ -357,9 +355,9 @@ function ReportDetail({ report }) {
       )}
       {running && (
         <div className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--muted)', fontSize: 13 }}>
-          <ReceiptArt mode="print" size={86} />
-          <span>Rebuilding: re-running every query and printing a new receipt. You can keep
-          browsing; a toast will confirm when it finishes.</span>
+          <ReportArt mode="build" size={96} />
+          <span>Rebuilding: re-running every query. You can keep browsing; a toast will
+          confirm when it finishes.</span>
         </div>
       )}
 
@@ -386,19 +384,19 @@ function ReportDetail({ report }) {
               href={reportDownloadUrl(report.name, 'html')}
               download
               className="dl-link"
-              title="The self-contained artifact with the embedded receipt"
+              title="One self-contained file, checkable offline with tracebi verify --file"
               style={{
                 background: 'var(--blue)', color: '#fff', borderColor: 'var(--blue)',
                 fontWeight: 600,
               }}
             >
-              ↓ HTML (with receipt)
+              ↓ HTML
             </a>
             <a
               href={reportDownloadUrl(report.name, 'xlsx')}
               download
               className="dl-link"
-              title="A plain spreadsheet — no receipt, not verifiable"
+              title="A plain spreadsheet; it can't be checked the way the HTML file can"
             >
               ↓ Excel
             </a>

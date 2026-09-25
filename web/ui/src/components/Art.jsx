@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 
 // Illustrations drawn in SVG and animated with CSS (see "Motion &
 // illustration" in global.css). Each one shows something TraceBi actually
-// does: a receipt printed and stamped, a file scanned against its receipt,
-// the report and its receipt belonging together. Colors come from theme
+// does: a report assembling, a file checked against its manifest, the report
+// and its manifest belonging together. Colors come from theme
 // tokens so they hold in light and dark, and everything stops under
 // prefers-reduced-motion.
 
@@ -24,70 +24,49 @@ export function BrandMark() {
   )
 }
 
-// ── The receipt printer ─────────────────────────────────────────────────────
-// mode="done": the slip feeds out, its figures draw in, the stamp lands, then
-//   it rests with a slow float. The Reports page's empty state.
-// mode="print": the slip feeds and figures draw on a loop — a build or an
-//   open in progress. No stamp: nothing has been checked yet.
+// ── A report assembling itself ─────────────────────────────────────────────
+// mode="done": the numbers, bars, trend line and donut build in once, then the
+//   card rests with a slow float. The Reports page's empty state.
+// mode="build": the same build on a loop, while a report opens or rebuilds.
 
-const TEETH = 8
-function slipPath() {
-  // A slip 88 wide from x=56, 96 tall, with a torn (zigzag) bottom edge.
-  const left = 56, right = 144, bottom = 132, w = (right - left) / TEETH
-  let d = `M${left} 30 H${right} V${bottom}`
-  for (let i = 0; i < TEETH; i++) {
-    const x = right - w * (i + 0.5)
-    d += ` L${x.toFixed(1)} ${bottom + 5} L${(right - w * (i + 1)).toFixed(1)} ${bottom}`
-  }
-  return d + ' Z'
-}
-const SLIP = slipPath()
+const BARS = [22, 34, 28, 46, 38, 54]
+const TREND = 'M30 112 L46 106 L62 108 L78 96 L94 100 L110 86 L124 80'
 
-export function ReceiptArt({ mode = 'done', size = 200 }) {
-  const bars = [16, 26, 20, 34, 28]
+export function ReportArt({ mode = 'done', size = 220 }) {
   return (
-    <svg className={`rc rc-${mode}`} width={size} height={size * 0.85}
-         viewBox="0 0 200 170" fill="none" role="img"
-         aria-label={mode === 'print' ? 'A receipt printing' : 'A printed receipt with a stamp'}>
-      <defs>
-        <clipPath id={`rc-clip-${mode}`}><rect x="0" y="37" width="200" height="140" /></clipPath>
-      </defs>
-      <g className="rc-float">
-        <g clipPath={`url(#rc-clip-${mode})`}>
-          <g className="rc-paper">
-            <path d={SLIP} fill="var(--surface)" stroke="var(--border-hl)" strokeWidth="1.2" />
-            <rect className="rc-line" style={{ '--i': 0 }} x="66" y="46" width="34" height="5" rx="2.5" fill="var(--accent-text)" />
-            {[0, 1, 2].map(r => (
-              <g key={r}>
-                <rect className="rc-line" style={{ '--i': r + 1 }} x="66" y={60 + r * 10} width="30" height="3.5" rx="1.75" fill="var(--muted)" opacity=".55" />
-                <rect className="rc-line rc-line-r" style={{ '--i': r + 1 }} x={116 - r * 4} y={60 + r * 10} width={18 + r * 4} height="3.5" rx="1.75" fill="var(--text-2)" />
-              </g>
-            ))}
-            <line x1="66" y1="94" x2="134" y2="94" stroke="var(--border)" strokeDasharray="2 3" />
-            {bars.map((h, i) => (
-              <rect key={i} className="rc-bar" style={{ '--i': i }}
-                    x={68 + i * 10} y={126 - h} width="6" height={h} rx="1.5"
-                    fill="var(--accent-text)" opacity={0.35 + i * 0.1} />
-            ))}
+    <svg className={`ra ra-${mode}`} width={size} height={size * 0.73}
+         viewBox="0 0 220 160" fill="none" role="img"
+         aria-label={mode === 'build' ? 'A report being built' : 'A report'}>
+      <g className="ra-float">
+        <rect x="10" y="10" width="200" height="140" rx="10" fill="var(--surface)" stroke="var(--border-hl)" strokeWidth="1.2" />
+        {[22, 30, 38].map(cx => <circle key={cx} cx={cx} cy="22" r="2.4" fill="var(--border-hl)" />)}
+        <rect x="50" y="19.5" width="54" height="5" rx="2.5" fill="var(--muted)" opacity=".4" />
+        {[20, 83, 146].map((x, i) => (
+          <g key={x}>
+            <rect x={x} y="34" width="54" height="24" rx="5" fill="var(--surface-2)" stroke="var(--border)" />
+            <rect x={x + 6} y="40" width="20" height="3" rx="1.5" fill="var(--muted)" opacity=".5" />
+            <rect className="ra-kpi" style={{ '--i': i }} x={x + 6} y="47" width={[30, 24, 36][i]} height="6" rx="3" fill="var(--accent-text)" />
           </g>
-        </g>
-        <rect x="30" y="8" width="140" height="32" rx="10" fill="var(--card)" stroke="var(--border-hl)" strokeWidth="1.2" />
-        <rect x="46" y="32" width="108" height="5" rx="2.5" fill="var(--text)" opacity=".75" />
-        <circle className="rc-led" cx="152" cy="20" r="3" fill="var(--green)" />
-        {mode === 'done' && (
-          <g className="rc-stamp">
-            <circle cx="132" cy="108" r="17" fill="var(--green-lt)" stroke="var(--green-text)" strokeWidth="2" />
-            <circle cx="132" cy="108" r="13" stroke="var(--green-text)" strokeWidth=".8" strokeDasharray="1.5 2" />
-            <path className="rc-check" d="M125 108.5l4.5 4.5 8.5-9.5" stroke="var(--green-text)"
-                  strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          </g>
-        )}
+        ))}
+        <rect x="20" y="66" width="110" height="74" rx="5" fill="var(--surface-2)" stroke="var(--border)" />
+        {BARS.map((h, i) => (
+          <rect key={i} className="ra-bar" style={{ '--i': i }}
+                x={29 + i * 16} y={132 - h} width="9" height={h} rx="2"
+                fill="var(--accent-text)" opacity={0.3 + i * 0.1} />
+        ))}
+        <path className="ra-trend" d={TREND} pathLength="100" stroke="#38bdf8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle className="ra-dot" cx="124" cy="80" r="3" fill="#38bdf8" />
+        <rect x="138" y="66" width="62" height="74" rx="5" fill="var(--surface-2)" stroke="var(--border)" />
+        <circle cx="169" cy="100" r="18" stroke="var(--border)" strokeWidth="7" />
+        <circle className="ra-donut" cx="169" cy="100" r="18" pathLength="100" stroke="var(--accent-text)" strokeWidth="7"
+                strokeLinecap="round" transform="rotate(-90 169 100)" />
+        <rect x="152" y="126" width="34" height="3" rx="1.5" fill="var(--muted)" opacity=".5" />
       </g>
     </svg>
   )
 }
 
-// ── A file and its receipt, belonging together ──────────────────────────────
+// ── A report file and its manifest, belonging together ──────────────────────
 // The Verify drop zone: two documents joined by a line that data runs along.
 
 export function PairArt() {
@@ -103,7 +82,7 @@ export function PairArt() {
       <circle className="pair-packet" cx="78" cy="48" r="3" fill="var(--accent-text)" />
       <g className="pair-doc pair-doc-2">
         <path d="M152 10h48a4 4 0 014 4v70l-6-4-6 4-6-4-6 4-6-4-6 4-6-4-6 4-6-4V14a4 4 0 014-4z" fill="var(--surface)" stroke="var(--border-hl)" strokeWidth="1.3" />
-        <text x="176" y="34" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--accent-text)" fontFamily="IBM Plex Mono, monospace">receipt</text>
+        <text x="176" y="34" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--accent-text)" fontFamily="IBM Plex Mono, monospace">manifest</text>
         {[44, 52, 60].map((y) => (
           <g key={y}>
             <rect x="158" y={y} width="20" height="3" rx="1.5" fill="var(--muted)" opacity=".5" />
@@ -115,7 +94,7 @@ export function PairArt() {
   )
 }
 
-// ── The scan: a beam re-hashing the file, the fingerprint ticking over ──────
+// ── The scan: a beam re-hashing the file, the fingerprint ticking over ─────
 
 const HEX = '0123456789abcdef'
 function randomHex(n) {
@@ -132,7 +111,7 @@ export function ScanArt() {
     return () => clearInterval(id)
   }, [])
   return (
-    <div className="scan" role="status" aria-label="Re-hashing the file against its receipt">
+    <div className="scan" role="status" aria-label="Re-hashing the file against its manifest">
       <svg width="120" height="120" viewBox="0 0 120 120" fill="none" aria-hidden="true">
         <defs>
           <linearGradient id="scan-beam" x1="0" y1="0" x2="0" y2="1">

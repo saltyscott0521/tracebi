@@ -17,9 +17,9 @@ const VERDICT = {
                           detail: 'The data changed since it was built. Rebuild to refresh it.' },
   not_reproduced:       { label: "Doesn't reproduce", variant: 'red',
                           detail: 'Re-running its queries gave different numbers, for a reason not yet known.' },
-  nothing_to_verify:    { label: 'Empty receipt',     variant: 'amber',
-                          detail: 'The receipt records no numbers to check.' },
-  refused_newer_schema: { label: 'Newer receipt',     variant: 'amber',
+  nothing_to_verify:    { label: 'Nothing to check',  variant: 'amber',
+                          detail: 'Its last build recorded no numbers to check.' },
+  refused_newer_schema: { label: 'Newer build',       variant: 'amber',
                           detail: 'Built by a newer TraceBi than this server runs.' },
   error:                { label: 'Check failed',      variant: 'red' },
 }
@@ -63,7 +63,7 @@ export function attentionItems(desk, pipelines) {
     const v = verdictOf(row.verdict)
     items.push({
       key: `verdict-${row.report}`, kind: v.label, variant: v.variant,
-      title: row.report, detail: v.detail || row.detail || 'Its receipt needs a look.',
+      title: row.report, detail: v.detail || row.detail || 'Its last build needs a look.',
       href: reportHref(row.report),
     })
   }
