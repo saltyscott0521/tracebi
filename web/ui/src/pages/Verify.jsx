@@ -4,6 +4,7 @@ import { useVerifyFile } from '../api'
 import {
   PageTitle, PageSub, Card, Btn, Spinner, ErrorDetail, useToast,
 } from '../components/Shared'
+import { PairArt, ScanArt } from '../components/Art'
 
 // The offline file check, in the browser: pick a report .html and its
 // .manifest.json receipt; the server rehashes the embedded data against the
@@ -68,7 +69,7 @@ function Result({ result }) {
         display: 'flex', alignItems: 'center', gap: 14, padding: '20px 22px',
         borderBottom: '1px solid var(--border)', background: tone.wash,
       }}>
-        <div style={{
+        <div className={v.tone === 'bad' ? 'verdict-stamp verdict-shake' : 'verdict-stamp'} style={{
           width: 40, height: 40, borderRadius: 9, flex: 'none',
           border: `2px solid ${tone.color}`, color: tone.color,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -122,6 +123,7 @@ export default function Verify() {
   const [files, setFiles] = useState({ html: null, manifest: null })
   const [dragging, setDragging] = useState(false)
   const [result, setResult] = useState(null)
+  const [checks, setChecks] = useState(0)
   const inputRef = useRef(null)
   const toast = useToast()
   const { mutate, isPending, error, reset } = useVerifyFile()
@@ -142,7 +144,7 @@ export default function Verify() {
     try {
       const [html, manifestText] = await Promise.all([read(files.html), read(files.manifest)])
       mutate({ html, manifest: manifestText }, {
-        onSuccess: (data) => setResult(data),
+        onSuccess: (data) => { setResult(data); setChecks(n => n + 1) },
         onError: (err) => toast(`Verification failed: ${err.message}`, 'error'),
       })
     } catch {
@@ -158,7 +160,8 @@ export default function Verify() {
       <PageSub>
         Drop a report <code>.html</code> and its <code>.manifest.json</code> receipt.
         It re-hashes the data embedded in the file against the manifest — no model,
-        no warehouse, no account. The data never leaves this machine.
+        no warehouse, no account. The files are checked by this TraceBi server,
+        which keeps nothing.
       </PageSub>
 
       <div
@@ -173,11 +176,7 @@ export default function Verify() {
           transition: 'border-color .15s, background .15s', maxWidth: 640,
         }}
       >
-        <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
-             style={{ color: 'var(--muted)', marginBottom: 10 }}>
-          <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"
-                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <PairArt />
         <div style={{ fontWeight: 600, fontSize: 16 }}>Drop a report and its receipt</div>
         <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>
           or <span style={{ color: 'var(--accent-text)', textDecoration: 'underline' }}>choose files</span> —
@@ -200,8 +199,10 @@ export default function Verify() {
         </div>
       )}
 
+      {isPending && <ScanArt />}
       {error && <div style={{ marginTop: 16 }}><ErrorDetail error={error} /></div>}
-      {result && <Result result={result} />}
+      {/* keyed per check, so the verdict stamp lands again every time */}
+      {result && <Result key={checks} result={result} />}
     </>
   )
 }

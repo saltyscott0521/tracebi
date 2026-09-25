@@ -9,6 +9,7 @@ import {
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
+import { ReceiptArt } from '../components/Art'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
@@ -309,7 +310,20 @@ function ReportDetail({ report }) {
     })
   }, [report?.name, fetchLineage, toast])
 
-  if (!report) return <Card><Empty message="Select a report from the list to open its last build." /></Card>
+  if (!report) return (
+    <Card>
+      <div className="fade-in" style={{ padding: '28px 12px 20px', textAlign: 'center' }}>
+        <ReceiptArt mode="done" size={210} />
+        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginTop: 14 }}>
+          Every report comes with a receipt
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, maxWidth: '40ch', marginInline: 'auto', lineHeight: 1.55 }}>
+          Select one from the list to open its last build, and the receipt that
+          re-checks every number in it.
+        </div>
+      </div>
+    </Card>
+  )
 
   return (
     <Card>
@@ -328,8 +342,8 @@ function ReportDetail({ report }) {
       {runErr && <ErrorDetail error={runErr} />}
 
       {!shown && !running && built.isLoading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
-          <Spinner /> Opening the last build…
+        <div className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--muted)', fontSize: 13 }}>
+          <ReceiptArt mode="print" size={86} /> Opening the last build…
         </div>
       )}
       {!shown && !running && !built.isLoading && (
@@ -342,8 +356,10 @@ function ReportDetail({ report }) {
         <div style={{ marginTop: 18 }}><ReportSource name={report.name} /></div>
       )}
       {running && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
-          <Spinner /> Rebuilding… you can keep browsing; a toast will confirm when it finishes.
+        <div className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--muted)', fontSize: 13 }}>
+          <ReceiptArt mode="print" size={86} />
+          <span>Rebuilding: re-running every query and printing a new receipt. You can keep
+          browsing; a toast will confirm when it finishes.</span>
         </div>
       )}
 
@@ -538,7 +554,8 @@ function FolderHeading({ folder, count, open, onToggle }) {
       background: 'var(--surface)', color: 'var(--text-2)', cursor: 'pointer',
       font: 'inherit', fontSize: 12, fontWeight: 600, textAlign: 'left',
     }}>
-      <span aria-hidden="true" style={{ width: 10, color: 'var(--muted)' }}>{open ? '▾' : '▸'}</span>
+      <span aria-hidden="true" className={`folder-caret${open ? ' open' : ''}`}
+            style={{ width: 10, color: 'var(--muted)' }}>▸</span>
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'var(--muted)', flexShrink: 0 }}>
         <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
       </svg>
@@ -601,9 +618,9 @@ export default function Reports() {
                           <FolderHeading folder={folder} count={items.length}
                                          open={open} onToggle={() => toggle(folder)} />
                         )}
-                        {open && items.map(r => (
+                        {open && items.map((r, i) => (
+                          <div key={r.name} className="rise" style={{ '--i': i }}>
                           <ListItem
-                            key={r.name}
                             selected={selected === r.name}
                             onClick={() => select(r.name)}
                             name={r.name.slice(r.name.lastIndexOf('/') + 1)}
@@ -615,6 +632,7 @@ export default function Reports() {
                               </span>
                             }
                           />
+                          </div>
                         ))}
                       </div>
                     )

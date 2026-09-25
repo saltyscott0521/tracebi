@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 
 import { useHealth } from '../api'
 import CommandPalette from './CommandPalette'
+import { BrandMark } from './Art'
 
 const ICONS = {
   connectors: (
@@ -226,18 +227,7 @@ export default function Layout({ children }) {
         {/* Brand */}
         <div style={{ padding: '22px 20px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 6,
-              background: '#091a55',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <path d="M6.6 4.5 H4.6 V15.5 H6.6 M13.4 4.5 H15.4 V15.5 H13.4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                <rect x="8.1" y="9.6" width="1.7" height="4.4" rx=".4" fill="white" />
-                <rect x="11" y="7.2" width="1.7" height="6.8" rx=".4" fill="white" />
-              </svg>
-            </div>
+            <BrandMark />
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                 TraceBi

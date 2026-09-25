@@ -659,3 +659,135 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .workflow-detail-grid { grid-template-columns: 1fr; gap: 12px; }
   .workflow-run-grid    { grid-template-columns: 1fr; gap: 12px; }
 }
+
+/* ── Motion & illustration ──────────────────────────────────────────────
+   Motion here always shows something happening: a receipt printed and
+   stamped, a file re-hashed, data moving between phases. Everything below
+   is switched off by prefers-reduced-motion at the end of this section. */
+:root {
+  --ease-out:    cubic-bezier(.22, 1, .36, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --ease-io:     cubic-bezier(.65, 0, .35, 1);
+}
+
+/* Entrance: lists and cards rise in, staggered by --i. */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+.rise { animation: rise .42s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 12) * 35ms); }
+
+/* The brand mark: brackets draw, bars rise, a trace dot runs across. */
+.bm {
+  width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+  background: #091a55; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(125,211,252,.18), 0 4px 14px rgba(56,189,248,.18);
+}
+.bm svg { width: 16px; height: 16px; overflow: visible; }
+.bm-bracket { stroke-dasharray: 32; animation: bm-draw .5s var(--ease-out) both; }
+.bm-bar { transform-box: fill-box; transform-origin: bottom; animation: bm-grow .55s var(--ease-spring) both; }
+.bm-bar-1 { animation-delay: .25s; }
+.bm-bar-2 { animation-delay: .38s; }
+.bm-dot { opacity: 0; animation: bm-trace 1.1s .6s var(--ease-io) both; }
+@keyframes bm-draw  { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
+@keyframes bm-grow  { from { transform: scaleY(0); } }
+@keyframes bm-trace {
+  0%   { opacity: 0; transform: translate(0, 0); }
+  15%  { opacity: 1; }
+  80%  { opacity: 1; transform: translate(10px, 0); }
+  100% { opacity: 0; transform: translate(10px, 11px); }
+}
+
+/* The receipt printer (components/Art.jsx ReceiptArt). */
+.rc { display: block; margin: 0 auto; overflow: visible; }
+.rc-line, .rc-bar, .rc-stamp { transform-box: fill-box; }
+.rc-line { transform-origin: left; }
+.rc-line-r { transform-origin: right; }
+.rc-bar { transform-origin: bottom; }
+.rc-stamp { transform-origin: center; }
+.rc-done .rc-paper { animation: rc-feed .9s var(--ease-out) both .15s; }
+.rc-done .rc-line  { animation: rc-draw .38s var(--ease-out) both; animation-delay: calc(.75s + var(--i) * .11s); }
+.rc-done .rc-bar   { animation: rc-grow .45s var(--ease-spring) both; animation-delay: calc(1.15s + var(--i) * .07s); }
+.rc-done .rc-stamp { animation: rc-stamp .5s var(--ease-spring) both 1.75s; }
+.rc-done .rc-check { stroke-dasharray: 22; animation: rc-tick .35s var(--ease-out) both 2.15s; }
+.rc-done .rc-float { animation: rc-float 6s ease-in-out infinite 2.6s; }
+.rc-print .rc-paper { animation: rc-feed-loop 2.4s var(--ease-out) infinite; }
+.rc-print .rc-line  { animation: rc-draw-loop 2.4s var(--ease-out) infinite; animation-delay: calc(var(--i) * .08s); }
+.rc-print .rc-bar   { animation: rc-grow-loop 2.4s var(--ease-spring) infinite; animation-delay: calc(var(--i) * .06s); }
+.rc-print .rc-led   { animation: rc-led .6s step-end infinite; }
+@keyframes rc-feed  { from { transform: translateY(-100px); } }
+@keyframes rc-draw  { from { transform: scaleX(0); } }
+@keyframes rc-grow  { from { transform: scaleY(0); } }
+@keyframes rc-stamp {
+  from { opacity: 0; transform: scale(1.9) rotate(-28deg); }
+  to   { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+@keyframes rc-tick  { from { stroke-dashoffset: 22; } to { stroke-dashoffset: 0; } }
+@keyframes rc-float { 50% { transform: translateY(-3px); } }
+@keyframes rc-feed-loop {
+  0%   { transform: translateY(-100px); opacity: 1; }
+  45%, 82% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0; }
+}
+@keyframes rc-draw-loop { 0%, 30% { transform: scaleX(0); } 55%, 100% { transform: scaleX(1); } }
+@keyframes rc-grow-loop { 0%, 38% { transform: scaleY(0); } 62%, 100% { transform: scaleY(1); } }
+@keyframes rc-led { 50% { opacity: .2; } }
+
+/* Verify: the file and its receipt, linked (PairArt). */
+.pair { display: block; margin: 0 auto 10px; overflow: visible; }
+.pair-link   { animation: dash-march 1.1s linear infinite; }
+.pair-packet { animation: pair-travel 2.2s var(--ease-io) infinite; }
+.pair-doc    { animation: rc-float 5s ease-in-out infinite; }
+.pair-doc-2  { animation-delay: -2.5s; }
+@keyframes dash-march  { to { stroke-dashoffset: -16; } }
+@keyframes pair-travel {
+  0%   { transform: translateX(0); opacity: 0; }
+  15%, 85% { opacity: 1; }
+  100% { transform: translateX(64px); opacity: 0; }
+}
+
+/* Verify: the scan beam and the ticking fingerprint (ScanArt). */
+.scan { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 0 4px; }
+.scan-beam { animation: scan-sweep 1.3s var(--ease-io) infinite alternate; }
+.scan-hex { font-size: 11px; color: var(--muted); letter-spacing: .02em; }
+.scan-hex span { opacity: .45; }
+@keyframes scan-sweep { from { transform: translateY(0); } to { transform: translateY(92px); } }
+
+/* Verify: the verdict lands like a stamp; an altered file shudders. */
+.verdict-stamp { animation: stamp-in .5s var(--ease-spring) both; }
+.verdict-stamp path { stroke-dasharray: 32; animation: rc-tick-long .4s .3s var(--ease-out) both; }
+.verdict-shake { animation: stamp-in .5s var(--ease-spring) both, shake .5s .5s ease-in-out; }
+@keyframes stamp-in { from { opacity: 0; transform: scale(1.8) rotate(-20deg); } }
+@keyframes rc-tick-long { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
+@keyframes shake {
+  20%, 60% { transform: translateX(-4px) rotate(-2deg); }
+  40%, 80% { transform: translateX(4px) rotate(2deg); }
+}
+
+/* The workflow diagram: data packets travel the arrows; freeze points
+   shimmer like frost; the phases rise in turn. */
+.wf-packet { animation: wf-travel 2.4s var(--ease-io) infinite; animation-delay: calc(var(--i, 0) * .4s); }
+@keyframes wf-travel {
+  0%   { transform: translateX(0); opacity: 0; }
+  12%, 80% { opacity: 1; }
+  100% { transform: translateX(13px); opacity: 0; }
+}
+.wf-freeze { position: relative; overflow: hidden; }
+.wf-freeze::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(125,211,252,.28) 50%, transparent 65%);
+  transform: translateX(-120%); animation: frost 4.5s ease-in-out infinite;
+}
+@keyframes frost { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+.wf-wrap > .wf-phase { animation: rise .5s var(--ease-out) both; animation-delay: calc(var(--i, 0) * .12s); }
+
+/* Folders on the Reports page: the caret turns, the reports rise in. */
+.folder-caret { display: inline-block; transition: transform .2s var(--ease-out); }
+.folder-caret.open { transform: rotate(90deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

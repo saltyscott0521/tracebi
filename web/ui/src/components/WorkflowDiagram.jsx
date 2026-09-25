@@ -36,20 +36,24 @@ const HANDOFFS = [
   { label: 'the model', sub: 'the semantic contract' },
 ]
 
-function Arrow() {
+// Each arrow carries a data packet along it, staggered by position (i), so
+// the eye reads the diagram left to right the way the data moves.
+function Arrow({ i = 0 }) {
   return (
     <svg className="wf-arrow" viewBox="0 0 24 24" width="22" height="22" fill="none"
       stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M4 12h15" />
       <path d="M13 6l7 6-7 6" />
+      <circle className="wf-packet" style={{ '--i': i }} cx="4" cy="12" r="2.4"
+              fill="var(--accent-text)" stroke="none" />
     </svg>
   )
 }
 
-function Handoff({ label, sub }) {
+function Handoff({ label, sub, i }) {
   return (
     <div className="wf-handoff">
-      <Arrow />
+      <Arrow i={i} />
       <div className="wf-freeze" title="frozen between phases">
         <div className="wf-freeze-label">
           <svg viewBox="0 0 20 20" width="12" height="12" fill="currentColor" aria-hidden="true">
@@ -59,14 +63,14 @@ function Handoff({ label, sub }) {
         </div>
         <div className="wf-freeze-sub">{sub}</div>
       </div>
-      <Arrow />
+      <Arrow i={i + 1} />
     </div>
   )
 }
 
 function Phase({ n, tag, title, color, body, cadence }) {
   return (
-    <div className="wf-phase card-hover" style={{ '--wf': color }}>
+    <div className="wf-phase card-hover" style={{ '--wf': color, '--i': Number(n) - 1 }}>
       <div className="wf-phase-head">
         <span className="wf-num">{n}</span>
         <code className="wf-tag">{tag}</code>
@@ -85,13 +89,13 @@ export default function WorkflowDiagram() {
         <span>inputs/</span>
         <small>raw pulls · API · CSV · SQL</small>
       </div>
-      <Arrow />
+      <Arrow i={0} />
       <Phase {...PHASES[0]} />
-      <Handoff {...HANDOFFS[0]} />
+      <Handoff {...HANDOFFS[0]} i={1} />
       <Phase {...PHASES[1]} />
-      <Handoff {...HANDOFFS[1]} />
+      <Handoff {...HANDOFFS[1]} i={3} />
       <Phase {...PHASES[2]} />
-      <Arrow />
+      <Arrow i={5} />
       <div className="wf-endcap wf-served">
         <span>served</span>
         <small>Reports page · HTML artifact + receipt</small>
