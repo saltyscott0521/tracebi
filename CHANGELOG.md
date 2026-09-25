@@ -6,6 +6,353 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-25
+
+### Added — a version tag publishes the image and a GitHub release
+
+- A `v*` tag that matches `pyproject.toml` publishes
+  `ghcr.io/<owner>/tracebi:<version>` (and `latest` when the version is not a
+  prerelease) and a GitHub release carrying the wheel, sdist and SBOM. PyPI
+  stays off unless the `PUBLISH_PYPI` repository variable is `true`. The
+  Actions tab dry run builds all of that and pushes nothing.
+
+### Changed — the receipt drawer names each figure in words
+
+- Each row's first line is the figure in words and the value shown on the
+  page (`Fair value · $285.9M`), or the binding with its kind and row count
+  for a table or chart. A quieter line names the measure and, when the
+  receipt recorded them, the dimensions and filters. The fingerprint, figure
+  id and binding name sit behind Details. The drawer still does not say a
+  number was verified.
+
+### Added — report schedules can run inside the web server
+
+- `TRACEBI_SCHEDULES_IN_SERVER=1` starts each package's `schedule` block
+  when the server starts, with the same job as `tracebi schedule serve`,
+  and stops it on shutdown. Off by default. It assumes one process: several
+  workers would each send the email. A missing APScheduler fails startup
+  with `pip install 'tracebi[pipeline]'`.
+
+### Added — `GET /api/status`
+
+- `GET /api/status` reports whether the output folder is writable, which
+  files and models failed to load, whether the SMTP variables are set
+  (names and booleans only), whether in-server schedules are on and how
+  many there are, and the auth posture line.
+
+### Added — a one-server guide
+
+- `docs/guides/one-server.md` is the path from a VM with Docker to a
+  project served from `deploy/compose.yml`, with an in-server schedule
+  and SMTP. Coolify is the same compose file and the same variables.
+
+### Deprecated — registry.scheduled() never ran reports
+
+- `@registry.scheduled` and `@register.scheduled` warn and still register
+  the report. `tracebi init` no longer creates `scheduled/`. An existing
+  `scheduled/` folder is still imported, and a script in it logs one
+  deprecation line. Schedules belong in a package's `report.json`
+  `"schedule"` block (`tracebi schedule`).
+
+### Added — a browser smoke of the real app
+
+- Optional extra `e2e` (`playwright`). CI job `ui-smoke` builds the UI and
+  opens the Desk, `portfolio_showcase`, its Source tab, and the HTML download.
+  `pytest tests/` skips `tests/test_ui_smoke.py` unless `TRACEBI_E2E=1`.
+
+### Added — warehouse table columns from metadata
+
+- `tracebi warehouse tables` and the MCP tool `describe_table` list a
+  warehouse's tables and one table's column names and types. Both read
+  connector metadata and do not scan rows. A connector that raises is
+  reported in place (`error`: exception type plus the first message
+  line); the others still list.
+
+### Added — `tracebi mcp` can bind a host
+
+- `tracebi mcp --transport http --host` defaults to `127.0.0.1` and is
+  passed to the server. `--insecure` on a non-loopback host refuses to
+  start unless `--allow-insecure-bind` is also passed.
+
+### Added — Excel over the gateway
+
+- `build_report(..., format="xlsx")` writes `<name>.xlsx` beside the HTML
+  and manifest. The spreadsheet carries no receipt and is not verifiable;
+  the result says so and points at the HTML and manifest.
+- `fetch_artifact` returns that workbook base64-encoded, with the
+  spreadsheet media type. Every other suffix stays refused.
+
+### Added — Resolve a workbench pin
+
+- `tracebi report pins <name>` lists open pins. `--resolve <id> --note "..."`
+  moves one into the resolved list in `pins.json` (kept, with a timestamp,
+  the actor, and the note). An unknown id is an error.
+- The MCP tool `resolve_pin` does the same and writes only `pins.json`.
+  `workbench_state` shows open pins only, plus how many are resolved.
+- The workbench timeline shows a resolved pin as a quiet "done · <note>" line.
+
+### Changed — the gateway teaches the package lane
+
+- The MCP server's instructions and the `author_report` prompt now lead
+  with the package lane: paste `query_model`'s binding stub into
+  `report.json`, claim it in `template.html`, `build_report`, then
+  `verify_manifest`. The JSON spec lane (`render_report_spec`) is named as
+  the simpler alternative, and the path without file access.
+- New prompt `answer_question(question, model="")`: answer from the model
+  in plain words, each number beside its fingerprint and measure. It never
+  estimates and builds no report unless asked.
+- New prompt `address_pins(report)`: act on each open workbench pin in
+  order, rebuild, then `resolve_pin` each with a one-line note.
+
+### Added — MCP client config from init
+
+- `tracebi init` writes `.mcp.json` (Claude Code) and `.cursor/mcp.json`
+  (Cursor). Both run `tracebi mcp` over stdio. A second init without
+  `--force` does not overwrite them.
+- `tracebi mcp config --client claude-code|cursor|claude-desktop` prints
+  that client's snippet. `--http URL` prints the streamable-HTTP form.
+  The Authorization placeholder differs by client:
+  `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code,
+  `Bearer ${env:TRACEBI_MCP_TOKEN}` for Cursor, never a token value.
+  The `--http` form is not offered for Claude Desktop (add the URL as a
+  custom connector under Settings → Connectors). Claude Desktop's stdio
+  snippet uses an absolute path to `tracebi`.
+
+### Added — an opt-in gateway call log
+
+- `TRACEBI_MCP_LOG=1` makes the MCP gateway append one line per tool call
+  to `.tracebi/gateway_log.jsonl`: the tool, ok or error, the duration, the
+  actor, and the names of the arguments passed. Argument values, results
+  and tokens are never written; an argument value an error message echoes
+  is masked. Off by default, and nothing leaves the machine.
+- `tracebi agent log [--since 7d] [--json]` summarizes it: calls and error
+  rate per tool, the top ten errors, and the first-build success rate.
+
+### Added — the agent eval set runs through the gateway
+
+- `evals/agent/README.md` has a gateway-only mode: one fresh agent session
+  per case with the TraceBi MCP tools and file editing but no shell, the
+  call log on, and each case's log saved as `<case-id>.jsonl`.
+- `python evals/agent/score.py <project> --gateway-log <dir>` adds, per
+  case, the tool calls, the errors hit, and whether `build_report`
+  succeeded on its first call, and ends with the top three errors across
+  all cases.
+
+### Changed — changelog entries are fragments
+
+- A pull request adds `changes/<issue-number>-<short-name>.md` instead of
+  editing `CHANGELOG.md`. `scripts/collect_changes.py` folds those files
+  under `[Unreleased]` in issue-number order and deletes them. A release
+  build refuses to run while any fragment is still uncollected.
+
+### Added — motion and illustrations in the web app
+
+- The web app has motion and illustrations, each one showing something
+  TraceBi does:
+  - The sidebar logo draws itself on load: brackets, rising bars, and a trace
+    dot running across. It replays on hover.
+  - **A report assembling itself**, drawn in SVG: the numbers, bars, trend
+    line and donut build in. It is the Reports page's empty state, and a
+    looping version replaces the spinner while a report opens or rebuilds.
+  - **Verify:** the drop zone shows a report and its manifest linked, with data
+    running between them. A scan beam and a ticking fingerprint play while
+    the file is checked. The verdict lands like a stamp, and an altered file
+    shudders. The stamp replays on every check.
+  - **The workflow diagram:** data packets travel the arrows left to right,
+    the freeze points shimmer like frost, and the phases rise in turn.
+  - Report lists rise in with a stagger, and folder carets turn.
+- A global `prefers-reduced-motion` switch turns all of it off. The app had
+  none before.
+
+### Fixed — the Verify page no longer claims files stay on your machine
+
+- The Verify page said "The data never leaves this machine". The check runs
+  on the TraceBi server, so on a hosted server the file is uploaded. It now
+  says the files are checked by this server, which keeps nothing, and that
+  is what the endpoint does.
+
+### Changed — the app says "receipt" much less
+
+- The app says "receipt" much less. The Reports page reads "Pick a report" and
+  the download button is **↓ HTML**. The "🧾 Verifiable artifact" badge is now
+  **Verifiable**, and the attention labels and the workflow diagram drop the
+  word. The Verify page calls the second file what it is, the
+  `.manifest.json`.
+
+### Added — design policies baked into the shipped stylesheet and scaffolds
+
+- Five more `design-` lessons: hierarchy and emphasis, grid and spacing, tables
+  that read, words on the page, and theming with tokens. Now 18 in total, all
+  named in the `tracebi-designer` skill and both agent guides. Drawn from the
+  Urban Institute's chart style guide and common UI patterns for hierarchy,
+  grids, tables and design tokens, restated in TraceBi's terms.
+- `tracebi.css` now sets these defaults for every report:
+  - `.tb-lede`, for the page's answer sentence under the title.
+  - `.tb-kpi-context`, for a KPI's comparison line.
+  - `.tb-good` / `.tb-bad`, with `--tb-good` / `--tb-bad` tokens (both clear
+    4.5:1 contrast).
+  - A `--tb-cell-pad` table-density token.
+  - Visible keyboard focus.
+  - Balanced headings and a 75-character line length.
+  - Tabular KPI digits, and numbers that never wrap.
+  - The receipt drawer's slide-in stops under `prefers-reduced-motion`.
+- The pages from `tracebi init` and `tracebi new-report` open with an
+  answer-first lede bound to a new one-row `top_region` / `top` binding. They
+  also give the KPI a context line, and put the search and filter controls
+  inside real `<label>`s, with search first.
+
+- Three reader aids for report pages, drawn from data-grid and dashboard
+  component libraries (TanStack Table, shadcn/ui's data table, Tremor). Each
+  one reorders or decorates stamped values and never computes a number:
+  - `data-tb-sort` on a table: the headers become sort buttons. Clicking
+    cycles ascending, descending, then back to the query's order. Blanks sort
+    last, and `aria-sort` states the current order.
+  - `data-tb-bars="col"` on a table: an in-cell bar proportional to each
+    value. It starts at zero; a column with negatives centres zero. The scale
+    covers every stamped row, so filtering never rescales it.
+  - `data-tb-direction="up-good|down-good"` on a value figure: an up or down
+    arrow, colored good or bad, taken from the value's sign. The figure's text
+    is unchanged.
+  - A `tb-table--freeze` class keeps the first column in view.
+  - A bad column or direction fails the build, and names the fix.
+  - The showcase demonstrates all of them.
+
+### Changed — unformatted value figures read like table columns
+
+- A value figure with no `data-tb-format` is now formatted the way a table
+  column is: the model's declared format first, then the shape default. So an
+  unformatted KPI reads `4,846.10`, not `4846.1`. The server render and the
+  browser runtime share this rule. Presentation only; no fingerprint moves.
+
+### Added — report-design lessons and the `tracebi-designer` skill
+
+- Thirteen `design-` lessons in the knowledge base, delivered the same way as the
+  analyst lessons (`tracebi knowledge`, `tracebi context`, MCP): lead with the
+  answer, KPIs with context, choose the chart for the question, color with
+  meaning, format for reading, fewer columns with search first, plan every
+  state, cut the chrome, show the difference, honest axes, layout by
+  importance, consistency over variety, and accessible by default — grounded
+  in Stephen Few's dashboard pitfalls, Tufte's graphical integrity, the IBCS
+  standard and WCAG contrast, and checked against what TraceBi actually does.
+- `skills/tracebi-designer/SKILL.md`, the design counterpart to
+  `tracebi-analyst`: an eight-step review pass for any report page, and the rule
+  that presentation never changes a number.
+- Spec validation checks design. `ReportSpec.validate()` (so `tracebi spec
+  validate`, the MCP `validate_report_spec` tool and `POST /api/spec/validate`)
+  now warns, with a path and the lesson to read, on unsorted bar charts, pies
+  not limited to five parts, more than five lines on a chart, more than five
+  KPI cards, tables wider than six columns with no `columns` list, palettes
+  over six colors, and emoji in titles or text. Warnings only — a valid spec
+  is never refused for design. The reference `portfolio_dashboard.json` now
+  names its table's five columns, the one check it tripped.
+- The showcase report is rebuilt through the new review: a headline that
+  states the finding, KPIs with context, and the decorative chrome removed.
+
+### Changed — the Desk folds into Reports
+
+- The Desk page is gone; the app opens on **Reports**. The one thing only the
+  Desk did moved there: a **Needs attention** strip at the top of Reports
+  lists open review notes, receipts that no longer reproduce, failed data
+  refreshes, and data checks that are stale or missing. The strip only appears
+  when something needs a person. `/` redirects to `/reports`, so old links
+  still work.
+- Each report in the Reports list now shows its last build time and whether
+  its receipt still reproduces. This replaces the "verifiable" chip, which was
+  green on every report and so told the reader nothing.
+- `GET /api/desk` adds `builds`: every built report on disk, with its build
+  time and receipt verdict, newest first.
+- Long report descriptions in the Reports list are capped at two lines, and no
+  longer push the status chips out of view.
+
+### Fixed — correct reports read "not reproduced" under concurrent requests
+
+- Correct reports could read "not reproduced" when several requests checked
+  receipts at once. A DuckDB connector shared one connection across the web
+  server's threads, and a second query could consume the first one's result,
+  so a load returned nothing. The connector now runs one query at a time.
+
+### Fixed — the mobile menu stopped short of the bottom
+
+- On a phone, the menu could stop partway down the screen with the page showing
+  underneath. The cause was a page wider than the phone: the mobile grid rules
+  used plain `1fr` columns, which won't shrink below a wide table's minimum
+  width. The Contract page with a table preview open measured 498px on a 375px
+  screen, so iOS zoomed the page out and the menu no longer reached the bottom.
+  - Every mobile grid now uses `minmax(0, 1fr)`.
+  - The Ask page's builder-and-results grid, which had no phone layout at all,
+    now stacks.
+  - The menu is pinned to the top and bottom of the screen instead of
+    `min-height: 100vh`, and scrolls itself if needed.
+  - The page behind the open menu no longer scrolls.
+
+  Every page now measures exactly the phone's width.
+
+### Added — reports can live in folders
+
+- **Reports can live in folders** (epic E6, step 1). Any subfolder of
+  `reports/` that isn't itself a report package is a folder, as deep as you
+  like, and a report inside one is named by its path, e.g.
+  `finance/weekly_summary`. Two folders can each hold a report of the same
+  name. The path is the name everywhere:
+  - `tracebi report build finance/weekly_summary` writes
+    `output/finance/weekly_summary.html`;
+  - `tracebi new-report "Finance/Weekly summary"` scaffolds straight into a
+    folder;
+  - the web API, the agent gateway, schedules, the workbench and the attention
+    checks all use it;
+  - the Reports page groups reports under collapsible folder headings.
+
+  Top-level reports keep their plain names, so nothing that exists today
+  moves. Code modules (`.py`, `.ipynb`) in `reports/` still load only from the
+  top level.
+- `tracebi/report_paths.py`: the one check for a report name. It accepts
+  `finance/weekly` and refuses anything that could leave `reports/` or
+  `output/` (`..`, absolute paths, backslashes, hidden or `_` segments). The
+  gateway's name guard now uses it, and refuses `../` as before.
+- The reference project and the demo app now use folders:
+  - `fund_books/`: `portfolio_book`, `portfolio_overview`
+  - `risk/`: `portfolio_concentration`
+  - `showcase/`: `portfolio_showcase`
+  - `wealth/`: `aum_by_branch`, `aum_by_region`
+  - `sales/`: `medallion_revenue`
+
+  `portfolio_dashboard.json` stays at the top level as the "start here"
+  example. The reference project's README now matches its reports.
+
+### Fixed — specs in folders, receipts in subfolders, download names
+
+- A JSON spec inside a folder failed to register, because its compiled
+  package's temporary directory was named with the `/` in the report's path.
+- The `.gitignore` rule that keeps build receipts under version control
+  (`!output/*.manifest.json`) only matched the top of `output/`, so receipts
+  for reports in folders would have gone untracked. It is now `output/**` with
+  subfolders and `*.manifest.json` re-included, in the repo, the reference
+  project and the `tracebi init` template.
+- A downloaded report is named after the report alone
+  (`portfolio_showcase.html`), not its folder path.
+
+### Added — `tracebi update` and the in-app update badge
+
+- **`tracebi update`.** It checks for a newer published release and says what
+  changed. It also prints the one command that updates this install:
+  - **pip:** the release wheel, which has the web UI built in;
+  - **Docker:** `docker compose pull` / `up -d`, run on the host;
+  - **git checkout:** check out the tag and reinstall.
+
+  A pip install can run the command there after asking (`--yes` skips the
+  question); `--check` never runs it.
+- **An "available" badge in the web app.** It sits next to the version in the
+  sidebar when a newer release is out, with the update command in its tooltip.
+  `/api/status` carries the same `update` block. It answers from a cached
+  check and refreshes in the background, so no request waits on GitHub.
+- **The check itself** is one anonymous GET to GitHub's releases API, cached
+  for a day, retried at most every ten minutes when offline, and nothing about
+  the install is sent. `TRACEBI_UPDATE_CHECK=0` turns it off;
+  `TRACEBI_UPDATE_URL` points it at a mirror. The Docker image sets
+  `TRACEBI_IN_DOCKER`.
+- `docs/guides/updating.md`: where releases come from, and the update for each
+  kind of install.
+
 ### Changed — list_models names a model file that failed to load
 
 - `list_models` returns `skipped`: each file that did not load, with the
