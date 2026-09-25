@@ -309,7 +309,7 @@ export default function Explore() {
           message="No facts defined on this model. Tag tables with model.add_fact() / model.add_dimension() to enable Explore."
         />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) 1fr', gap: 20, alignItems: 'start' }}>
+        <div className="explore-grid">
           {/* ── Builder ── */}
           <Card>
             <CardTitle>Query Builder</CardTitle>

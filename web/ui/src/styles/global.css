@@ -498,6 +498,13 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 
 /* ── Responsive ─────────────────────────────────────── */
+/* Ask: the query builder beside its results; stacked on a phone. */
+.explore-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
 .split-layout {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -509,10 +516,15 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
 
 @media (max-width: 768px) {
-  .split-layout { grid-template-columns: 1fr; }
-  .grid-2       { grid-template-columns: 1fr; }
-  .grid-3       { grid-template-columns: 1fr 1fr; }
-  .concept-grid { grid-template-columns: 1fr; }
+  /* minmax(0,1fr), never plain 1fr: a 1fr track will not shrink below its
+     content's min-content width, so one wide table (even inside its own
+     overflow-x wrapper) pushed the whole page wider than the phone. iOS then
+     zoomed the page out, and the fixed sidebar stopped short of the bottom. */
+  .split-layout { grid-template-columns: minmax(0, 1fr); }
+  .grid-2       { grid-template-columns: minmax(0, 1fr); }
+  .grid-3       { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .concept-grid { grid-template-columns: minmax(0, 1fr); }
+  .explore-grid { grid-template-columns: minmax(0, 1fr); }
 
   /* Shrink page headings on small screens (layout-main is the content area) */
   .layout-main h1 { font-size: 20px !important; }
@@ -528,7 +540,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .nav-close-btn { display: flex !important; }
 }
 @media (max-width: 480px) {
-  .grid-3 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: minmax(0, 1fr); }
   table { min-width: 360px; }
 }
 

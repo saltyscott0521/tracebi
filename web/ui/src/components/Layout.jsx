@@ -159,6 +159,12 @@ export default function Layout({ children }) {
 
   const close = () => setOpen(false)
 
+  // While the mobile menu is open, the page behind it stays put.
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <CommandPalette />
@@ -200,12 +206,16 @@ export default function Layout({ children }) {
       )}
 
       {/* Sidebar */}
+      {/* Pinned top AND bottom, not min-height: 100vh — on a phone, 100vh is
+          not the visible screen (browser bars, zoom), and the drawer stopped
+          short. It scrolls itself if the links outgrow a short screen. */}
       <nav style={{
-        width: 'var(--nav-w)', minHeight: '100vh',
+        width: 'var(--nav-w)',
         background: 'var(--sidebar-bg)',
         borderRight: '1px solid var(--sidebar-border)',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
-        position: 'fixed', top: 0, left: 0, zIndex: 300,
+        position: 'fixed', top: 0, bottom: 0, left: 0, zIndex: 300,
+        overflowY: 'auto', overscrollBehavior: 'contain',
       }} className={`app-nav${open ? ' nav-open' : ''}`}>
 
         <button
