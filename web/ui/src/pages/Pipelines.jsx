@@ -229,7 +229,7 @@ function PipelineCard({ pipeline, layers }) {
         <div className="fade-in">
           <PipelineDag layers={layers} onRun={handleRunLayer} running={isPending || isRunningAll} />
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
-            Live medallion flow — Landing → Manipulation → Final. Status updates every 10 s; run any layer from its node.
+            Each step runs after the one it depends on. Status updates every 10 s; run any step from its node.
           </p>
         </div>
       )}
@@ -316,7 +316,7 @@ export default function Pipelines() {
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''} registered — Landing → Manipulation → Final layers. Run history auto-refreshes every 10 s.`
+          : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}. Run history refreshes every 10 s.`
         }
       </PageSub>
 
