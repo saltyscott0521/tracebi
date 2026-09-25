@@ -119,8 +119,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 page.wait_for_timeout(200)
                 assert not errors, "\n".join(errors)
 
+            # The app opens on Reports (the old Desk page was folded into it).
             page.goto(base + "/")
-            page.get_by_role("heading", name="Desk").wait_for()
+            page.get_by_role("heading", name="Reports", exact=True).wait_for()
+            assert page.url.rstrip("/").endswith("/reports"), page.url
             fail_on_browser_errors()
 
             page.goto(base + "/reports")

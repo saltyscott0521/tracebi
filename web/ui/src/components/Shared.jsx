@@ -453,9 +453,14 @@ export function ListItem({ selected, onClick, name, sub, right }) {
         transition: 'background var(--t)',
       }}
     >
-      <div>
-        <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)' }}>{name}</div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{sub}</div>}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)', overflowWrap: 'anywhere' }}>{name}</div>
+        {sub && (
+          <div title={typeof sub === 'string' ? sub : undefined} style={{
+            fontSize: 11, color: 'var(--muted)', marginTop: 2,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>{sub}</div>
+        )}
       </div>
       {right && <div style={{ marginLeft: 8, flexShrink: 0 }}>{right}</div>}
     </div>

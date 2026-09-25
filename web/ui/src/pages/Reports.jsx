@@ -5,9 +5,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
-  useReportSource, fetchBuiltReport, reportDownloadUrl,
+  useReportSource, fetchBuiltReport, reportDownloadUrl, useDesk, usePipelines,
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
+import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
@@ -273,7 +274,10 @@ function ReportDetail({ report }) {
     : startErr
 
   useEffect(() => {
-    if (run?.status === 'succeeded') toast('Report ran successfully', 'success')
+    if (run?.status === 'succeeded') {
+      toast('Report ran successfully', 'success')
+      qc.invalidateQueries({ queryKey: ['desk'] })   // new build time + receipt check
+    }
     if (run?.status === 'failed') toast(`Run failed: ${run.error?.message || 'unknown error'}`, 'error')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.status])
@@ -496,34 +500,28 @@ function ReportSource({ name }) {
   )
 }
 
-// The at-rest trust signal, from the reports API's `kind` field: an artifact
-// report renders a self-contained, fingerprinted, verifiable page; a carrier
-// (code-factory) report is rendered but not a byte-verifiable artifact.
-function TrustChip({ kind }) {
-  const verifiable = kind === 'artifact'
+// The last build's receipt, re-checked by GET /api/desk. Nothing is shown
+// for a report with no build on disk: an unchecked report makes no claim.
+function ReceiptChip({ build }) {
+  if (!build) return null
+  const v = verdictOf(build.verdict)
   return (
-    <span
-      title={verifiable
-        ? 'Renders a verifiable artifact — re-checkable offline with verify --file'
-        : 'A code-factory report — rendered, but not a byte-verifiable artifact'}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        fontSize: 10, fontWeight: 700, letterSpacing: 0.2,
-        padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap',
-        background: verifiable ? 'var(--green-lt)' : 'var(--surface-2)',
-        color: verifiable ? 'var(--green-text)' : 'var(--muted)',
-        border: `1px solid ${verifiable ? 'var(--green-br)' : 'var(--border)'}`,
-      }}
-    >
-      {verifiable ? '✓ verifiable' : 'python-derived'}
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+      <Badge variant={v.variant} style={{ textTransform: 'none', fontSize: 10 }}>{v.label}</Badge>
+      <span style={{ fontSize: 10.5, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        built {when(build.built_at) || '—'}
+      </span>
     </span>
   )
 }
 
 export default function Reports() {
   const { data, isLoading } = useReports()
+  const { data: desk } = useDesk()
+  const { data: pipelines } = usePipelines()
   const [query, setQuery] = useState('')
-  // Selection lives in the URL (?r=name), so the Home trust ledger can
+  const builds = Object.fromEntries((desk?.builds || []).map(b => [b.report, b]))
+  // Selection lives in the URL (?r=name), so an attention item can
   // deep-link straight to a report and the link is shareable.
   const [searchParams, setSearchParams] = useSearchParams()
   const selected = searchParams.get('r')
@@ -540,11 +538,13 @@ export default function Reports() {
     <>
       <PageTitle>Reports</PageTitle>
       <PageSub>
-        {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''} registered. Select one to open its last build. Rebuild is the second action.`}
+        {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''}. Select one to open its last build. Rebuild is the second action.`}
       </PageSub>
 
+      <AttentionStrip items={attentionItems(desk, pipelines)} />
+
       {!isLoading && reports.length === 0 ? (
-        <Empty message="No reports registered. Add one with @registry.report() in your app module." />
+        <Empty message="No reports yet. Scaffold one with tracebi new-report, or see Get Started." />
       ) : (
         <SplitLayout
           left={
@@ -563,7 +563,7 @@ export default function Reports() {
                       right={
                         <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                           <FormChip form={r.form} />
-                          <TrustChip kind={r.kind} />
+                          <ReceiptChip build={builds[r.name]} />
                         </span>
                       }
                     />

@@ -496,8 +496,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   background: var(--flow-bg);
 }
 
-/* ── Home-page layout helpers ────────────────────────── */
-.home-thesis    { font-size: 28px; }
 
 /* ── Responsive ─────────────────────────────────────── */
 .split-layout {

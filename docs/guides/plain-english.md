@@ -99,7 +99,7 @@ This matters, and TraceBi is deliberately strict about it.
 | **Measure** | A defined calculation, such as "total fair value" or "average spread". |
 | **Sink** / **warehouse** | The clean tables produced by step 1, stored in one file. |
 | **Contract satisfied / no contract** | Whether the cleaned tables passed their declared checks, or have no checks declared. |
-| **Desk** | The app's home page: what needs a person's attention right now. |
+| **Needs attention** | The strip at the top of the Reports page: anything a person should look at right now, such as a receipt that no longer matches. It only appears when there is something. |
 | **Draft / exploration** | A report still being worked on. It contains scratch work that is removed before publishing. |
 | **Agent** | An AI assistant that builds reports using the same rules as a person. |
 

@@ -1,20 +1,18 @@
 ### Changed
 
-- The Desk page now answers two questions: does anything need you, and what
-  state is each report in? It shows:
-  - a one-line status;
-  - **Needs attention**: open review notes, receipts that no longer reproduce,
-    failed data refreshes, and data checks that are stale or missing;
-  - **Reports**: when each one was last built and whether its receipt still
-    reproduces;
-  - **Recent data refreshes**.
-
-  The workflow diagram, count cards, "How the receipt works", quick start and
-  connector list are gone from the Desk; each already has its own page. An
-  empty project gets one pointer to Get Started instead. Reports that contain
-  working-notes blocks are no longer flagged as drafts needing attention.
+- The Desk page is gone; the app opens on **Reports**. The one thing only the
+  Desk did moved there: a **Needs attention** strip at the top of Reports
+  lists open review notes, receipts that no longer reproduce, failed data
+  refreshes, and data checks that are stale or missing. The strip only appears
+  when something needs a person. `/` redirects to `/reports`, so old links
+  still work.
+- Each report in the Reports list now shows its last build time and whether
+  its receipt still reproduces. This replaces the "verifiable" chip, which was
+  green on every report and so told the reader nothing.
 - `GET /api/desk` adds `builds`: every built report on disk, with its build
   time and receipt verdict, newest first.
+- Long report descriptions in the Reports list are capped at two lines, and no
+  longer push the status chips out of view.
 
 ### Fixed
 

@@ -5,11 +5,6 @@ import { useHealth } from '../api'
 import CommandPalette from './CommandPalette'
 
 const ICONS = {
-  home: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-    </svg>
-  ),
   connectors: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
@@ -59,7 +54,6 @@ const ICONS = {
 // nav peer — it lives as a quiet footer action so the chrome reads as product
 // surfaces, not a trust marketing strip.
 const NAV_PRIMARY = [
-  { path: '/',        label: 'Desk',     icon: 'home' },
   { path: '/reports', label: 'Report',   icon: 'reports' },
   { path: '/models',  label: 'Contract', icon: 'models' },
 ]

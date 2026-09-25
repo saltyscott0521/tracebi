@@ -40,9 +40,8 @@ Then, in the browser:
    `295904445.21`. Save. Open `edited.html` in the browser and check the
    headline now reads **$295,904,445**, $10 million more than the real
    report.
-4. Close every other tab. Start the demo on the **Report** page, not the Desk
-   page. The Desk lists the demo's draft reports under "Needs a person," and
-   that reads as unfinished to a newcomer.
+4. Close every other tab. The app opens on the **Report** page, which is where
+   the demo starts.
 
 ## The script
 

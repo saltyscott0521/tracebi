@@ -4,7 +4,6 @@ import { useModels, useReports, usePipelines } from '../api'
 
 // Static page destinations — always available, even before data loads.
 const PAGES = [
-  { label: 'Desk',            path: '/',                kind: 'page' },
   { label: 'Getting Started', path: '/getting-started', kind: 'page' },
   { label: 'Connectors',      path: '/connectors',      kind: 'page' },
   { label: 'Contract',        path: '/models',          kind: 'page' },
