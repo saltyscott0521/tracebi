@@ -54,14 +54,14 @@ const ICONS = {
 // nav peer — it lives as a quiet footer action so the chrome reads as product
 // surfaces, not a trust marketing strip.
 const NAV_PRIMARY = [
-  { path: '/reports', label: 'Report',   icon: 'reports' },
-  { path: '/models',  label: 'Contract', icon: 'models' },
+  { path: '/reports',    label: 'Report',     icon: 'reports' },
+  { path: '/models',     label: 'Contract',   icon: 'models' },
+  { path: '/connectors', label: 'Connectors', icon: 'connectors' },
 ]
 
 const NAV_SECONDARY = [
   { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
   { path: '/getting-started', label: 'Get Started', icon: 'guide' },
-  { path: '/connectors',      label: 'Connectors',  icon: 'connectors' },
   { path: '/explore',         label: 'Ask',         icon: 'explore' },
   { path: '/pipelines',       label: 'Refresh',     icon: 'pipelines' },
   { path: '/handbook',        label: 'Docs',        icon: 'docs' },
