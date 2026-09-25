@@ -101,7 +101,7 @@ That's most of step 1 of [[production-plan]], plus its step 2.
 | No "run it on one server" guide, even though that's how this project runs today (Hetzner + Coolify). | `docs/guides/` |
 | No path onto a client's own data: no connection setup, no model drafted from warehouse tables, no `init --template`. | `tracebi init --help` |
 | Messaging disagrees with the strategy. The CLI help and the `init` README lead with "the trust layer for AI-generated analytics"; [[vision-and-positioning]] makes receipts a supporting feature and leads with ask / build / schedule. | `tracebi --help`, the scaffolded `README.md` |
-| `site/README.md` still points "Try the demo" at `demo.tracebi.com`, which didn't resolve at the last check. | `site/README.md:48`, `UX_FEEDBACK.md` |
+| `site/README.md` still points "Try the demo" at `demo.tracebi.com`, which didn't resolve at the last check. | `site/README.md:48`, `evals/ux-feedback-2026-09-06.md` |
 
 **Platform**
 
@@ -124,7 +124,7 @@ That's most of step 1 of [[production-plan]], plus its step 2.
 | The React app has no tests and no lint; CI only checks that it builds. | `.github/workflows/ci.yml` |
 | Tests write receipts into the repo's `output/`, so every contributor sees stray files after a run. | [[product-readiness-audit]] P2-1, still open |
 | `tzdata` isn't a dev dependency, so one test file fails on slim Linux images. | P2-4, still open |
-| Eight overlapping plan documents, with no single marker saying which one is current. | `docs/strategy/`, `docs/architecture/`, `docs/ROADMAP.md`, `NOTES.md` |
+| Eight overlapping plan documents, with no single marker saying which one is current. | `docs/strategy/`, `docs/architecture/`, `docs/ROADMAP.md` (now in `docs/strategy/archive/`), `NOTES.md` |
 
 **What's strong** (keep it that way): the engine, receipts and `verify`; the
 agent surface (MCP, context, guides enforced by tests); the honesty

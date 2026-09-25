@@ -38,10 +38,17 @@ not being one.
 ```
 
 - `data-tb-cell` — the column to read, from row 0
-- `data-tb-format` — see [[number-formats]]
+- `data-tb-format` — see [[number-formats]]. Leave it off and a numeric cell
+  takes the model's declared format, then a readable default, the same way a
+  table column does.
+- `data-tb-direction` — `up-good` or `down-good`, for a figure that shows a
+  change. The runtime draws ▲ or ▼ from the value's sign and colors it with
+  `--tb-good` or `--tb-bad` depending on whether that direction is good. The
+  text stays the formatted number. Anything else fails the build.
 
 The runtime fills a `.tb-kpi-value` child when one exists, otherwise the
-element itself.
+element itself. The `binding` must return one row; a value figure over a
+multi-row binding fails the build.
 
 ### Chart figures
 
@@ -54,7 +61,8 @@ Requires `"libs": ["echarts"]` in [[report-json]].
 ### Table figures
 
 `data-tb-columns` — a column allowlist and order. Classes
-`tb-table--striped` / `tb-table--compact` restyle it.
+`tb-table--striped` / `tb-table--compact` restyle it, and `tb-table--freeze`
+keeps the first column in view while a wide table scrolls sideways.
 
 `data-tb-labels` and `data-tb-formats` — header text and number format per
 column, written as `col=value` pairs separated by `;` (so a label may contain
@@ -71,6 +79,29 @@ Formats: `compact`, `comma`, `currency`, `currency0`, `percent`, `decimal`.
 A column that isn't in the binding, or an unknown format, fails the build
 and names the fix.
 
+`data-tb-totals="<binding>"` — a totals row, filled from a one-row binding:
+the same query with no dimensions. The model computes each total, so a ratio's
+total is the ratio of the totals, never a sum of ratios. The row steps aside
+while a filter or search is on, because a grand total would no longer match
+the rows shown.
+
+`data-tb-sort` (no value) — the headers become buttons. Clicking one sorts
+ascending, then descending, then back to the query's own order. Blanks sort
+last, and `aria-sort` tells screen readers the current order. Sorting only
+reorders stamped rows; the totals row stays.
+
+`data-tb-bars="col, col2"` — a quiet bar behind each value in the named numeric
+columns, proportional to the value. Zero is the left edge; when a column holds
+negative values, zero moves to the middle so neither side is exaggerated. The
+scale covers every stamped row, so filtering never rescales it. A column that
+isn't numeric fails the build.
+
+```html
+<table data-tb-figure="table" data-tb-binding="holdings"
+       data-tb-totals="holdings_total" data-tb-sort
+       data-tb-bars="fair_value" class="tb-table--freeze"></table>
+```
+
 ---
 
 ## Bind prose numbers
@@ -85,7 +116,7 @@ The single highest-value habit in this file:
 ```
 
 Narrative prose is where hard-coded numbers hide. Here the honest path costs
-one attribute, and each bound span becomes a verified figure in the receipt.
+one attribute, and each bound span gets its own entry in the receipt.
 
 ## Interactivity
 

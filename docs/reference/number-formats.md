@@ -38,6 +38,11 @@ Preference order, first match wins:
 Columns named like `year`, `id`, or `*_key` get **no** format: a separator
 would render 2024 as `2,024`.
 
+This applies to table columns and to value figures alike. A KPI or a number
+bound in a sentence with no `data-tb-format` reads `4,846.10` rather than
+`4846.1`, and the server-rendered page and the browser use the same rule, so the
+number doesn't change when the page finishes loading.
+
 ## The percent guard
 
 The `_pct` name hint is unit-aware, and it is the only rung that is.

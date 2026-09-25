@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -98,6 +95,65 @@ above it.</p>
 materialized, the page re-renders in milliseconds with no pandas in the loop.</p>
 <p>→ <a href="../concepts/report.html">Report — phase ③</a></p>
 <hr>
+<h2 id="where-each-phase-lives">Where each phase lives</h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Folder</th>
+<th>What you write</th>
+<th>How the server finds it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>⓪ Input</td>
+<td><code>inputs/</code></td>
+<td>a raw pull: a CSV, an API export, a SQL dump</td>
+<td>it doesn't; you put it there</td>
+</tr>
+<tr>
+<td>① Transform</td>
+<td><code>transforms/</code></td>
+<td>pandas (a <code>.py</code> or <code>.ipynb</code>) that writes DuckDB tables</td>
+<td>it doesn't; you run it with <code>tracebi run-transform</code></td>
+</tr>
+<tr>
+<td>② Model</td>
+<td><code>models/</code></td>
+<td>a <code>DataModel</code> in a variable named <code>model</code></td>
+<td>listed on the Models page</td>
+</tr>
+<tr>
+<td>③ Report</td>
+<td><code>reports/</code></td>
+<td>a package (<code>report.json</code> + <code>template.html</code>), or a JSON spec that compiles into one</td>
+<td>listed on the Reports page</td>
+</tr>
+</tbody>
+</table>
+<p>The warehouse is one file, <code>data/warehouse.duckdb</code>: phase ① writes it and phase
+② reads it, so the two can run in separate processes. <code>output/</code> holds what
+<code>tracebi report build</code> renders. Both folders are gitignored except the
+<code>*.manifest.json</code> receipts inside them, which stay tracked as the audit trail
+behind every rendered number.</p>
+<h2 id="try-it-on-the-reference-project">Try it on the reference project</h2>
+<pre><code class="language-bash">cd examples/portfolio_project
+python run_workflow.py          # ① build the warehouse, ③ render the report once
+tracebi serve                   # browse it: Reports → portfolio_dashboard
+</code></pre>
+<p>The first run generates a deliberately messy Schedule of Investments into
+<code>inputs/</code>, so phase ① has real work to do: prose position descriptions to parse
+into issuers, trailing position counters to strip, sectors spelled six ways,
+money stored as strings.</p>
+<h2 id="exploring-before-a-report-exists">Exploring before a report exists</h2>
+<p><code>tracebi dev</code> with no report name opens the <strong>discovery workbench</strong>. Any script
+run while it's open can call <code>tracebi.workbench.show(df, note=...)</code> to post an
+excerpt; the warehouse panel lists tables and their contract status as they
+land, and the models panel shows the star schema taking shape.
+<code>tracebi session export</code> saves the session to <code>explorations/</code> as a committed
+record (<code>--format md</code> for a version that reads well in a git review). It is
+marked as exploration and carries no receipt, and <code>verify</code> refuses it by name.</p>
 <h2 id="why-the-split">Why the split</h2>
 <p>The slow, unconstrained analysis (①) and the fast, iterated reporting (③)
 never block each other, because the model (②) is a frozen contract between
@@ -120,7 +176,7 @@ closed, declarative checks its tables must satisfy before the data counts.</p>
 <ul>
 <li><a href="../concepts/freeze-points.html">Freeze points</a> — the handoff between phases</li>
 <li><a href="../guides/quickstart.html">Quickstart</a> — run all three in about five minutes</li>
-<li><strong>WORKFLOW</strong> — the same model, stated normatively</li>
+<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — the checks a transform's tables must pass</li>
 </ul>
   </main>
 </div>

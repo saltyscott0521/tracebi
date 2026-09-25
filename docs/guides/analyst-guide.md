@@ -14,7 +14,7 @@ runnable.
 **Who this is for:** analysts writing against an existing TraceBi project (a
 warehouse and `DataModel` someone has already wired up, or one you build with
 the workflow below). If you're setting up connectors from scratch, the
-[README](../README.md) Quick Start and [WORKFLOW.md](../WORKFLOW.md) are the
+[README](../README.md) Quick Start and [[the-three-phase-workflow]] are the
 starting points. If your "analyst" is an AI agent, the playbook is
 [AGENTS.md](../AGENTS.md) — the two planes, the assurance ladder, and the
 MCP gateway tools — with step-by-step SOPs in [docs/agents/](agents/);
@@ -26,7 +26,7 @@ agents work through the gateway against the same models this guide uses.
 
 The primary analyst path is three project-root folders, each with its own
 cadence, decoupled by **freeze points** — a materialized artifact handed from
-one phase to the next. [WORKFLOW.md](../WORKFLOW.md) is the full account; the
+one phase to the next. [[the-three-phase-workflow]] is the full account; the
 shape:
 
 ```

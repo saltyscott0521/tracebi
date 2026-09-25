@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -125,6 +122,10 @@ as <strong>1,705,495.22</strong>.</p>
 </ol>
 <p>Columns named like <code>year</code>, <code>id</code>, or <code>*_key</code> get <strong>no</strong> format: a separator
 would render 2024 as <code>2,024</code>.</p>
+<p>This applies to table columns and to value figures alike. A KPI or a number
+bound in a sentence with no <code>data-tb-format</code> reads <code>4,846.10</code> rather than
+<code>4846.1</code>, and the server-rendered page and the browser use the same rule, so the
+number doesn't change when the page finishes loading.</p>
 <h2 id="the-percent-guard">The percent guard</h2>
 <p>The <code>_pct</code> name hint is unit-aware, and it is the only rung that is.</p>
 <p>Both conventions exist in real data — a declared ratio measure holds <code>0.069</code>,

@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -84,16 +81,54 @@ form a machine can re-run, what the tables you just wrote must be true of.</p>
 <pre><code class="language-python">from tracebi.contracts import contract
 
 with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
-    c.rows(&quot;fact_holdings&quot;, min=1)
-    c.unique(&quot;dim_issuer&quot;, &quot;issuer_id&quot;)
-    c.not_null(&quot;fact_holdings&quot;, &quot;fair_value&quot;)
-    c.foreign_key(&quot;fact_holdings&quot;, &quot;issuer_id&quot;, &quot;dim_issuer&quot;, &quot;issuer_id&quot;)
-    c.values(&quot;dim_issuer&quot;, &quot;sector&quot;, allowed=[&quot;Tech&quot;, &quot;Energy&quot;, &quot;Financials&quot;])
-    c.reconcile(&quot;fact_holdings&quot;, &quot;fair_value&quot;, equals=1_705_495.22, tolerance=0.01)
+    c.rows(&quot;fact_holdings&quot;, at_least=10)
+    c.unique(&quot;dim_issuer&quot;, [&quot;issuer_id&quot;])
+    c.not_null(&quot;fact_holdings&quot;, [&quot;fund_id&quot;, &quot;issuer_id&quot;, &quot;fair_value&quot;])
+    c.foreign_key(&quot;fact_holdings&quot;, &quot;issuer_id&quot;,
+                  refers_to=(&quot;dim_issuer&quot;, &quot;issuer_id&quot;))
+    c.values(&quot;dim_issuer&quot;, &quot;sector&quot;, within=[&quot;Software&quot;, &quot;Energy&quot;, &quot;Consumer&quot;])
+    c.reconcile(&quot;fact_holdings&quot;, &quot;fair_value&quot;,
+                against=(&quot;raw_holdings&quot;, &quot;fair_value&quot;), by=&quot;position_id&quot;)
 </code></pre>
-<p>The vocabulary is <strong>closed</strong> — <code>rows</code>, <code>unique</code>, <code>not_null</code>, <code>foreign_key</code>,
-<code>values</code>, <code>reconcile</code>. No callables, for the same reason <a href="../reference/measures.html">Measures</a> rejects
-them: a check that cannot be serialized cannot be re-run by someone else.</p>
+<p>The vocabulary is <strong>closed</strong>. Every check also takes an optional <code>note=</code>, which
+the report's methodology appendix shows beside it:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Signature</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>row count</td>
+<td><code>c.rows(table, at_least=…, at_most=…, exactly=…)</code></td>
+</tr>
+<tr>
+<td>unique key</td>
+<td><code>c.unique(table, columns=[…])</code></td>
+</tr>
+<tr>
+<td>no NULLs</td>
+<td><code>c.not_null(table, columns=[…])</code></td>
+</tr>
+<tr>
+<td>foreign key</td>
+<td><code>c.foreign_key(table, column, refers_to=(dim_table, dim_col))</code></td>
+</tr>
+<tr>
+<td>value domain</td>
+<td><code>c.values(table, column, within=[…])</code></td>
+</tr>
+<tr>
+<td>reconciliation</td>
+<td><code>c.reconcile(table, column, against=(other_table, other_col), by=key_col, tolerance=0.0)</code></td>
+</tr>
+</tbody>
+</table>
+<p>No callables, for the same reason <a href="../reference/measures.html">Measures</a> rejects them: a check that cannot
+be serialized cannot be re-run by someone else. The reference declaration is
+<code>examples/portfolio_project/transforms/holdings_transform.py</code>.</p>
 <p>The checks run as read-only SQL against the tables you just sank.</p>
 <h2 id="what-happens">What happens</h2>
 <ul>

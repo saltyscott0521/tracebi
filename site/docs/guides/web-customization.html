@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -89,7 +86,7 @@ swappable onto your data.</p>
 </code></pre>
 <h2 id="the-three-phase-workflow-this-serves">The three-phase workflow this serves</h2>
 <p>The server front-ends the analyst workflow described in
-<a href="../WORKFLOW.md">WORKFLOW.md</a>: phase ① <code>transforms/</code> writes clean star-schema
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>: phase ① <code>transforms/</code> writes clean star-schema
 tables into a DuckDB warehouse, phase ② <code>models/</code> declares a thin <code>DataModel</code>
 over that warehouse, and phase ③ <code>reports/</code> holds artifact packages
 (<code>reports/&lt;name&gt;/</code>) and <code>ReportSpec</code> JSON files pointed at the model.

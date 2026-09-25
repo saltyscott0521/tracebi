@@ -15,8 +15,51 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
 | Phase 5 | ✅ Done | Web UI (FastAPI + React, medallion-aware demo) |
 | Phase 6 | ✅ Done | DuckDB engine, push-down filters, layer rename, CLI, auto-discovery, auth, docker-compose |
-| Docs | ✅ Current | Reconciled 2026-08-19 to the current product: artifact-package phase ③, the removed `requests/` lane (0.8), the 11-tool + `author_report`-prompt gateway, and the trust-layer identity. Volatile counts now say "run `pytest tests/`" rather than a frozen number. |
+| Docs | ✅ Current | Reconciled 2026-08-19, then inventoried and tidied 2026-09-24 (see the entry below). The gateway is 13 tools + 3 prompts. Volatile counts say "run `pytest tests/`" rather than a frozen number. |
 | Phase 7 | ✅ Done | Correctness sweep, open-core seam, capability surface, ReportSpec, SVG charts, theme layer |
+
+---
+
+## 2026-09-24 — Off Vercel, design policy in the stylesheet, docs tidied
+
+**Hosting.** tracebi.com (site) and tracebi.com/app (the demo) moved from Vercel
+to one Hetzner box running Coolify, behind the Cloudflare tunnel. The site's
+nginx proxies `/app/` and `/api/` to the demo under an internal-only host name.
+Because the demo therefore sees that internal Host, its CSRF guard needs
+`TRACEBI_ALLOWED_ORIGINS=https://tracebi.com,https://www.tracebi.com`; without
+it every POST from the browser (Rebuild included) is refused as cross-site.
+The Vercel files (`vercel.json`, `vercel-build.sh`, `api/`, the Vercel guide)
+stay as a rollback until the Vercel project is deleted, then go together.
+
+**Design policy lives in three layers, strongest first.**
+1. *Defaults in `tracebi.css` and the runtime*: what every report gets with no
+   author effort (tabular right-aligned numbers, visible focus, readable line
+   length, `.tb-lede` / `.tb-kpi-context`, direction tones). A value figure
+   with no format now takes a table column's precedence (declared measure
+   format, then the shape default), identically in the server render and the
+   browser.
+2. *Build-time and validate-time checks*: `spec validate` warns with the lesson
+   to read; bad `data-tb-bars` / `data-tb-direction` fail the build.
+3. *Lessons and the `tracebi-designer` skill*: the judgment the first two can't
+   encode. 18 `design-` lessons, enforced into both guides by
+   `tests/test_knowledge.py`.
+Reason: an agent composing at volume doesn't read guidance it isn't made to
+read, so a policy that can be a default should be one.
+
+**Reader aids, and the rule they follow.** Sortable headers, in-cell bars and
+up/down marks (from TanStack Table, shadcn/ui and Tremor) were added under the
+existing interactivity law: they reorder or decorate stamped values and never
+compute one. Sorting keeps the totals row because every row is still shown;
+bars scale over all stamped rows so a filter never rescales them; a direction
+mark changes a class, never the text the receipt reads. Pagination, column
+pickers and gauges were left out on purpose.
+
+**Docs.** The plans the epics replaced (ROADMAP, production-plan,
+next-level-plan, product-readiness-audit) and the stale `overview.html` moved
+to `docs/strategy/archive/`, so `docs/architecture/` holds only architecture.
+`WORKFLOW.md` was folded into `docs/concepts/the-three-phase-workflow.md` and
+left as a pointer. The sink-contracts concept page had wrong call signatures
+for every check; fixed against `tracebi/contracts.py`.
 
 ---
 
@@ -607,7 +650,7 @@ pool, so the next poll hits a different process), and local SQLite.
 
 - **`docs/overview.html`** — 38 KB, stale. Documents the removed Dash layer
   and Jinja2 templates that did not exist until this session. Rewrite or
-  delete.
+  delete. *(2026-09-24: moved to `docs/strategy/archive/`.)*
 - **`tracebi.yaml`** — removed. It was scaffolded by `init` and parsed by no
   code, inviting users to configure a connector that would never be read.
   Restorable as a real project manifest if wanted.

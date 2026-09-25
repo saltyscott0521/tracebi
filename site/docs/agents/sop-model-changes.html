@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -73,7 +70,7 @@
 <p><strong>Audience:</strong> an engineer-agent (or a human doing the same job) editing the
 <strong>definition plane</strong> — the <code>models/*.py</code> files that declare what numbers mean
 in this project.</p>
-<p><strong>Where this sits in the three-phase workflow (see <code>WORKFLOW.md</code>).</strong> This is
+<p><strong>Where this sits in the three-phase workflow (see <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>).</strong> This is
 <strong>phase ② — MODEL</strong>, the freeze point between the unconstrained phase-① transform
 (<code>transforms/*.py</code>, ordinary pandas that sinks the warehouse) and the fast
 phase-③ report (<code>reports/*.json</code>) that queries the model by name. The
@@ -263,8 +260,9 @@ baseline) and <strong>after</strong>. A passing suite is the minimum bar.</p>
   sections' fingerprints must stay byte-identical. Drift where something
   moved, stability where nothing did — that is your review signal.</li>
 <li><strong>Renaming or removing</strong> a measure is a breaking contract change: grep
-  <code>reports/</code>, <code>requests/</code>, and <code>examples/</code> for references and run
-  <code>tracebi spec validate</code> on any spec that names it.</li>
+  <code>reports/</code> and <code>examples/</code> for references, run <code>tracebi spec validate</code> on
+  any spec that names it, and <code>tracebi report build</code> each package that binds
+  it (a binding to a missing measure fails the build).</li>
 </ul>
 <p>Useful while working:</p>
 <pre><code class="language-bash">tracebi context --model &lt;name&gt;     # see the vocabulary as an agent sees it

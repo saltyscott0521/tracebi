@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -102,12 +99,20 @@ by hand.</p>
 <td>the type family</td>
 </tr>
 <tr>
-<td><code>--tb-ink</code> / <code>--tb-bg</code> / <code>--tb-muted</code></td>
-<td>text and ground</td>
+<td><code>--tb-ink</code> / <code>--tb-muted</code></td>
+<td>text</td>
+</tr>
+<tr>
+<td><code>--tb-page</code> / <code>--tb-bg</code> / <code>--tb-surface</code></td>
+<td>the page, cards and tables, raised tints</td>
 </tr>
 <tr>
 <td><code>--tb-accent</code></td>
 <td>the accent</td>
+</tr>
+<tr>
+<td><code>--tb-good</code> / <code>--tb-bad</code></td>
+<td>direction: better and worse</td>
 </tr>
 <tr>
 <td><code>--tb-rule</code></td>
@@ -116,6 +121,10 @@ by hand.</p>
 <tr>
 <td><code>--tb-radius</code>, <code>--tb-space-1..4</code></td>
 <td>shape and rhythm</td>
+</tr>
+<tr>
+<td><code>--tb-cell-pad</code></td>
+<td>table density, in one place</td>
 </tr>
 <tr>
 <td><code>--tb-chart-1..8</code></td>
@@ -127,14 +136,62 @@ by hand.</p>
 needs: charts follow it automatically.</p>
 <h2 id="components">Components</h2>
 <pre><code>.tb-page   .tb-grid   .tb-card
-.tb-kpi  (.tb-kpi-label / .tb-kpi-value)
-.tb-table  (.tb-table--striped / .tb-table--compact)
+.tb-lede                     the answer sentence under the title
+.tb-kpi  (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context)
+.tb-table  (.tb-table--striped / .tb-table--compact / .tb-table--freeze)
 .tb-callout   .tb-note   .tb-badge
+.tb-good / .tb-bad           direction tones; pair with a sign or a word
 .tb-cols-2 / .tb-cols-3      responsive, collapse under 720px
 .tb-tabs                     with data-tb-tab sections
 </code></pre>
 <p>Use them or ignore them — <a href="../reference/template-html.html">template.html</a> is your page, and
 nothing requires these classes.</p>
+<p>A typical top of page, built only from these:</p>
+<pre><code class="language-html">&lt;h1&gt;Fund book, end of August&lt;/h1&gt;
+&lt;p class=&quot;tb-lede&quot;&gt;
+  &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_issuer.sector&quot; id=&quot;top-sector&quot;&gt;—&lt;/span&gt;
+  is the largest sector, at
+  &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;fv_share&quot; data-tb-format=&quot;percent&quot; id=&quot;top-share&quot;&gt;—&lt;/span&gt;
+  of the book.&lt;/p&gt;
+
+&lt;div class=&quot;tb-grid&quot;&gt;
+  &lt;div class=&quot;tb-kpi&quot; data-tb-figure=&quot;value&quot; data-tb-binding=&quot;kpis&quot;
+       data-tb-cell=&quot;fair_value&quot; data-tb-format=&quot;compact&quot; id=&quot;kpi-fv&quot;&gt;
+    &lt;span class=&quot;tb-kpi-label&quot;&gt;Fair value&lt;/span&gt;
+    &lt;span class=&quot;tb-kpi-value&quot;&gt;&lt;/span&gt;
+    &lt;span class=&quot;tb-kpi-context&quot;&gt;
+      &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;kpis&quot; data-tb-cell=&quot;fv_growth&quot;
+            data-tb-format=&quot;percent&quot; data-tb-direction=&quot;up-good&quot; id=&quot;kpi-fv-growth&quot;&gt;&lt;/span&gt;
+      vs last month&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</code></pre>
+<p>The <code>data-tb-*</code> attributes are covered in <a href="../reference/template-html.html">template.html — the figure grammar</a>. Here <code>fv_share</code> is
+a <code>share=</code> measure and <code>fv_growth</code> a <code>growth=</code> measure (<a href="../reference/measures.html">Measures</a>), so the
+comparison is a governed number with its own receipt. <code>data-tb-direction</code> draws
+the ▲/▼ and picks <code>--tb-good</code> or <code>--tb-bad</code> from that number's sign.</p>
+<h2 id="what-you-get-without-writing-css">What you get without writing CSS</h2>
+<ul>
+<li>Numbers right-align in table columns, in tabular digits, and never wrap.</li>
+<li>A value figure with no <code>data-tb-format</code> gets the model's declared format, or
+  a readable default (<a href="../reference/number-formats.html">Number formats</a>).</li>
+<li>Keyboard focus is always visible, headings wrap evenly, and running text
+  stops at a readable line length.</li>
+<li>An empty table or chart says "no data" instead of showing a blank.</li>
+<li>Printing keeps the receipt, the badges and every tab's content.</li>
+<li>The receipt drawer doesn't animate for people who've turned motion off.</li>
+</ul>
+<h2 id="design-guidance">Design guidance</h2>
+<p>The framework ships design lessons next to its analysis lessons. List them with
+<code>tracebi knowledge</code> (the design ones start <code>design-</code>) and read one with
+<code>tracebi knowledge design-lead-with-the-answer</code>. They cover leading with the
+answer, KPIs with context, choosing the chart, color, number formats, tables,
+layout and spacing, hierarchy, the words on the page, theming with tokens,
+empty states and accessibility. Agents that load skills get the same review as
+the <code>tracebi-designer</code> skill.</p>
+<p><code>tracebi spec validate</code> also warns about common design problems in a JSON spec,
+such as unsorted bar charts or more than five KPI cards, and names the lesson
+that explains the fix.</p>
 <h2 id="the-one-rule">The one rule</h2>
 <p><strong>Presentation never changes a number.</strong></p>
 <p>A stylesheet may restyle a <code>.tb-badge</code>; it may never re-colour honesty.
@@ -153,7 +210,9 @@ there and rows on a small report. <code>ready(fn)</code> behaves identically on 
 <p>Two things that belong in the query, not in JS:</p>
 <ul>
 <li><strong>Sorting and slicing</strong> — <code>order_by</code> + <code>limit</code> (<a href="../reference/queries.html">Queries</a>). Sorting in JS
-  moves the ordering out of the receipt.</li>
+  moves the ordering out of the receipt. If readers should re-sort a table,
+  add <code>data-tb-sort</code> to it: the query's order stays the default, and the
+  reader's clicks only reorder the stamped rows.</li>
 <li><strong>Aggregation</strong> — never. Client-side aggregation mints numbers nobody can
   re-run; a filtered KPI needs its own binding.</li>
 </ul>
@@ -184,8 +243,8 @@ file, any other type, or a path outside <code>assets/</code> fails the load with
 named. Keep images small: every byte ships inside the report. Check a font's
 licence allows embedding (SIL OFL fonts do; ship the licence text alongside).</p>
 <p><code>examples/portfolio_project/reports/portfolio_showcase/</code> shows it all: two
-typefaces, a gradient hero with inlined artwork, pill tabs, and chart gradients
-through <code>tracebi.configureChart</code>.</p>
+typefaces, a hero with inlined artwork, pill tabs, in-cell bars, sortable
+columns, and chart styling through <code>tracebi.configureChart</code>.</p>
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup</li>

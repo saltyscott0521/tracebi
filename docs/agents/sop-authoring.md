@@ -6,7 +6,7 @@ governing principle: **you never touch the warehouse — you speak the semantic
 contract, every answer you receive is stamped, and every number you show a
 human carries its receipt.**
 
-**Where this sits in the three-phase workflow (see `WORKFLOW.md`).** This is
+**Where this sits in the three-phase workflow (see [[the-three-phase-workflow]]).** This is
 **phase ③ — REPORT**, authoring over the model boundary. You are handed two
 freeze points: a warehouse phase ① already sank (`data/warehouse.duckdb`)
 and a model phase ② already declared over it (`models/*.py`, e.g.
@@ -20,18 +20,27 @@ you need is wrong or absent below the model, this SOP cannot fix it; escalate to
 the engineer SOP (a model change) or, if the raw data was never sunk, to a
 phase-① transform change.
 
-The gateway exposes eight tools:
+The gateway exposes thirteen tools (`tracebi mcp`; the MCP `tools/list` call is
+the source of truth if this table drifts):
 
 | Tool | Purpose |
 |---|---|
-| `get_context` | The semantic contract: full vocabulary, optionally plus one model's schema |
+| `get_context` | The semantic contract: full vocabulary, optionally plus one model's schema. Pass `brief` for the token-lean version |
 | `list_models` | Models this project exposes, with facts/dimensions/measures |
 | `describe_model` | One model's full schema |
+| `describe_table` | Columns and types of a raw warehouse table, for before a model exists |
 | `query_model` | Run a star-schema query; returns rows **plus a stamp** |
-| `validate_report_spec` | Check a spec against the models without loading a row |
+| `validate_report_spec` | Check a spec against the models without loading a row; also returns `design —` warnings |
 | `render_report_spec` | Validate, build and render a spec to HTML + manifest |
+| `build_report` | Build a report package under `reports/` to one HTML file + manifest |
+| `fetch_artifact` | Read back a built HTML or manifest, so a remote agent can deliver it |
 | `list_reports` | Reports the project already exposes |
-| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify each section (`reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`) — the built-in replay for step 6 at L2/L3 |
+| `workbench_state` | What the live `tracebi dev` workbench shows, including a reviewer's pins |
+| `resolve_pin` | Mark a reviewer's pin as addressed, with a note |
+| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify each figure (`reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`) — the built-in replay for step 6 at L2/L3 |
+
+It also offers three prompts that run this procedure for you: `author_report`,
+`answer_question` and `address_pins`.
 
 Where you stand on the assurance ladder:
 
@@ -39,7 +48,7 @@ Where you stand on the assurance ladder:
 |---|---|---|
 | L0 | Raw SQL, raw HTML | Nothing — **never operate here** |
 | L1 | Query via gateway, render your own HTML | Every number traceable |
-| L2 | Emit a ReportSpec; TraceBi renders | Artifact reproducible |
+| L2 | Emit a report package or a ReportSpec; TraceBi builds it | Artifact reproducible |
 | L3 | L2 + signed manifest + re-verification | Attestable (future) |
 
 Default to **L2**. Drop to L1 only when the six section types genuinely

@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a class="on" href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -70,8 +67,8 @@
   </details>
   <main class="doc">
 <h1 id="large-detail-artifacts-data-heavy-offline-still-verifiable">Large-detail artifacts — data-heavy, offline, still verifiable</h1>
-<p><strong>Status:</strong> BUILT on <code>feat/artifact-parquet-embed</code> (not yet merged). The design below is the
-plan as agreed; §11 records where the implementation deliberately diverged after two
+<p><strong>Status:</strong> shipped (built on <code>feat/artifact-parquet-embed</code>, merged to <code>main</code> in
+August 2026). The design below is the plan as agreed; §11 records where the implementation deliberately diverged after two
 adversarial reviews. Supersedes the "just add a size guard" stopgap and the
 DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).</p>
 <p><strong>One-line:</strong> let a single self-contained artifact embed up to ~500MB-of-JSON-equivalent

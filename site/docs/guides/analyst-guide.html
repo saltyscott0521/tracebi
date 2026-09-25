@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -84,7 +81,7 @@ migrates with <code>tracebi migrate spec reports/&lt;name&gt;.json</code>.</p>
 <p><strong>Who this is for:</strong> analysts writing against an existing TraceBi project (a
 warehouse and <code>DataModel</code> someone has already wired up, or one you build with
 the workflow below). If you're setting up connectors from scratch, the
-<a href="../README.md">README</a> Quick Start and <a href="../WORKFLOW.md">WORKFLOW.md</a> are the
+<a href="../README.md">README</a> Quick Start and <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> are the
 starting points. If your "analyst" is an AI agent, the playbook is
 <a href="../AGENTS.md">AGENTS.md</a> — the two planes, the assurance ladder, and the
 MCP gateway tools — with step-by-step SOPs in <a href="agents/">docs/agents/</a>;
@@ -93,7 +90,7 @@ agents work through the gateway against the same models this guide uses.</p>
 <h2 id="the-three-phase-workflow">The three-phase workflow</h2>
 <p>The primary analyst path is three project-root folders, each with its own
 cadence, decoupled by <strong>freeze points</strong> — a materialized artifact handed from
-one phase to the next. <a href="../WORKFLOW.md">WORKFLOW.md</a> is the full account; the
+one phase to the next. <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> is the full account; the
 shape:</p>
 <pre><code>①  TRANSFORM    transforms/       ordinary, unconstrained pandas
      read a messy source → parse, clean, key, dedupe → WRITE star-schema tables

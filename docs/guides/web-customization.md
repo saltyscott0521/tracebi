@@ -26,7 +26,7 @@ your app module ──populates──▶ registry ◀──reads── API route
 ## The three-phase workflow this serves
 
 The server front-ends the analyst workflow described in
-[WORKFLOW.md](../WORKFLOW.md): phase ① `transforms/` writes clean star-schema
+[[the-three-phase-workflow]]: phase ① `transforms/` writes clean star-schema
 tables into a DuckDB warehouse, phase ② `models/` declares a thin `DataModel`
 over that warehouse, and phase ③ `reports/` holds artifact packages
 (`reports/<name>/`) and `ReportSpec` JSON files pointed at the model.

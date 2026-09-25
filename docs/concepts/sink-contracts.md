@@ -22,17 +22,31 @@ After the writes, in the same transform:
 from tracebi.contracts import contract
 
 with contract("holdings", warehouse=WAREHOUSE) as c:
-    c.rows("fact_holdings", min=1)
-    c.unique("dim_issuer", "issuer_id")
-    c.not_null("fact_holdings", "fair_value")
-    c.foreign_key("fact_holdings", "issuer_id", "dim_issuer", "issuer_id")
-    c.values("dim_issuer", "sector", allowed=["Tech", "Energy", "Financials"])
-    c.reconcile("fact_holdings", "fair_value", equals=1_705_495.22, tolerance=0.01)
+    c.rows("fact_holdings", at_least=10)
+    c.unique("dim_issuer", ["issuer_id"])
+    c.not_null("fact_holdings", ["fund_id", "issuer_id", "fair_value"])
+    c.foreign_key("fact_holdings", "issuer_id",
+                  refers_to=("dim_issuer", "issuer_id"))
+    c.values("dim_issuer", "sector", within=["Software", "Energy", "Consumer"])
+    c.reconcile("fact_holdings", "fair_value",
+                against=("raw_holdings", "fair_value"), by="position_id")
 ```
 
-The vocabulary is **closed** — `rows`, `unique`, `not_null`, `foreign_key`,
-`values`, `reconcile`. No callables, for the same reason [[measures]] rejects
-them: a check that cannot be serialized cannot be re-run by someone else.
+The vocabulary is **closed**. Every check also takes an optional `note=`, which
+the report's methodology appendix shows beside it:
+
+| Check | Signature |
+|---|---|
+| row count | `c.rows(table, at_least=…, at_most=…, exactly=…)` |
+| unique key | `c.unique(table, columns=[…])` |
+| no NULLs | `c.not_null(table, columns=[…])` |
+| foreign key | `c.foreign_key(table, column, refers_to=(dim_table, dim_col))` |
+| value domain | `c.values(table, column, within=[…])` |
+| reconciliation | `c.reconcile(table, column, against=(other_table, other_col), by=key_col, tolerance=0.0)` |
+
+No callables, for the same reason [[measures]] rejects them: a check that cannot
+be serialized cannot be re-run by someone else. The reference declaration is
+`examples/portfolio_project/transforms/holdings_transform.py`.
 
 The checks run as read-only SQL against the tables you just sank.
 

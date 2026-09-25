@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -75,7 +72,7 @@ TraceBi's MCP gateway (<code>tracebi mcp</code>). Follow the steps in order. The
 governing principle: <strong>you never touch the warehouse — you speak the semantic
 contract, every answer you receive is stamped, and every number you show a
 human carries its receipt.</strong></p>
-<p><strong>Where this sits in the three-phase workflow (see <code>WORKFLOW.md</code>).</strong> This is
+<p><strong>Where this sits in the three-phase workflow (see <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>).</strong> This is
 <strong>phase ③ — REPORT</strong>, authoring over the model boundary. You are handed two
 freeze points: a warehouse phase ① already sank (<code>data/warehouse.duckdb</code>)
 and a model phase ② already declared over it (<code>models/*.py</code>, e.g.
@@ -88,7 +85,8 @@ unconstrained pandas trusted as reviewed code, not by fingerprint.</strong> If a
 you need is wrong or absent below the model, this SOP cannot fix it; escalate to
 the engineer SOP (a model change) or, if the raw data was never sunk, to a
 phase-① transform change.</p>
-<p>The gateway exposes eight tools:</p>
+<p>The gateway exposes thirteen tools (<code>tracebi mcp</code>; the MCP <code>tools/list</code> call is
+the source of truth if this table drifts):</p>
 <table>
 <thead>
 <tr>
@@ -99,7 +97,7 @@ phase-① transform change.</p>
 <tbody>
 <tr>
 <td><code>get_context</code></td>
-<td>The semantic contract: full vocabulary, optionally plus one model's schema</td>
+<td>The semantic contract: full vocabulary, optionally plus one model's schema. Pass <code>brief</code> for the token-lean version</td>
 </tr>
 <tr>
 <td><code>list_models</code></td>
@@ -110,27 +108,49 @@ phase-① transform change.</p>
 <td>One model's full schema</td>
 </tr>
 <tr>
+<td><code>describe_table</code></td>
+<td>Columns and types of a raw warehouse table, for before a model exists</td>
+</tr>
+<tr>
 <td><code>query_model</code></td>
 <td>Run a star-schema query; returns rows <strong>plus a stamp</strong></td>
 </tr>
 <tr>
 <td><code>validate_report_spec</code></td>
-<td>Check a spec against the models without loading a row</td>
+<td>Check a spec against the models without loading a row; also returns <code>design —</code> warnings</td>
 </tr>
 <tr>
 <td><code>render_report_spec</code></td>
 <td>Validate, build and render a spec to HTML + manifest</td>
 </tr>
 <tr>
+<td><code>build_report</code></td>
+<td>Build a report package under <code>reports/</code> to one HTML file + manifest</td>
+</tr>
+<tr>
+<td><code>fetch_artifact</code></td>
+<td>Read back a built HTML or manifest, so a remote agent can deliver it</td>
+</tr>
+<tr>
 <td><code>list_reports</code></td>
 <td>Reports the project already exposes</td>
 </tr>
 <tr>
+<td><code>workbench_state</code></td>
+<td>What the live <code>tracebi dev</code> workbench shows, including a reviewer's pins</td>
+</tr>
+<tr>
+<td><code>resolve_pin</code></td>
+<td>Mark a reviewer's pin as addressed, with a note</td>
+</tr>
+<tr>
 <td><code>verify_manifest</code></td>
-<td>Re-run every recorded query in a rendered manifest and classify each section (<code>reproduces</code> / <code>source_drift</code> / <code>model_changed</code> / <code>unexplained</code> / <code>unverifiable</code>) — the built-in replay for step 6 at L2/L3</td>
+<td>Re-run every recorded query in a rendered manifest and classify each figure (<code>reproduces</code> / <code>source_drift</code> / <code>model_changed</code> / <code>unexplained</code> / <code>unverifiable</code>) — the built-in replay for step 6 at L2/L3</td>
 </tr>
 </tbody>
 </table>
+<p>It also offers three prompts that run this procedure for you: <code>author_report</code>,
+<code>answer_question</code> and <code>address_pins</code>.</p>
 <p>Where you stand on the assurance ladder:</p>
 <table>
 <thead>
@@ -153,7 +173,7 @@ phase-① transform change.</p>
 </tr>
 <tr>
 <td>L2</td>
-<td>Emit a ReportSpec; TraceBi renders</td>
+<td>Emit a report package or a ReportSpec; TraceBi builds it</td>
 <td>Artifact reproducible</td>
 </tr>
 <tr>

@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -164,20 +161,20 @@ vocabulary, so they describe what the code actually accepts.</p>
 <ul>
 <li><strong>epics</strong> — the live plan: what to build next, in order, and why</li>
 <li><strong>vision-and-positioning</strong> — the bet, the positioning, the principles</li>
-<li><strong>users-and-jobs</strong> — the six user types and their journeys</li>
+<li><strong>users-and-jobs</strong> — the seven user types and their journeys</li>
 <li><strong>product-strategy</strong> — the repeatable-report loop, BI parity, templates</li>
 <li><strong>target-architecture</strong> — components and the decisions behind them</li>
 <li><strong>deployment</strong> — local, self-hosted, Cloud, customer VPC</li>
 <li><strong>report-library</strong> — folders, permissions, drafts and publishing</li>
 </ul>
+<p>Earlier plans the epics replaced are kept in <code>strategy/archive/</code> for their
+reasoning: <strong>ROADMAP</strong>, <strong>production-plan</strong>, <strong>next-level-plan</strong> and
+<strong>product-readiness-audit</strong>.</p>
 <h2 id="architecture">Architecture</h2>
 <p>Deep design documents. Written for someone changing the framework, not using it.</p>
 <ul>
 <li><a href="architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a> — the current report artifact design</li>
-<li><a href="architecture/production-plan.html">Production plan — agent reports with a relational selection</a> — how the agent-report product gets to production</li>
-<li><a href="architecture/next-level-plan.html">Next-level plan: agents build the BI</a> — the product direction: agents build repeatable reports that replace recurring BI</li>
 <li><a href="architecture/test-suite-review.html">Test suite review, 2026-09-22</a> — what the tests should cover, what was removed, and why</li>
-<li><a href="architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a> — product fit, findings, and the checklist to a sellable product</li>
 <li><a href="architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a> — how big datasets ship inside one HTML file</li>
 <li><a href="architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a> — the three separate front ends and why</li>
 <li><a href="architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a> — superseded; kept for its kernel sections</li>
@@ -192,7 +189,6 @@ vocabulary, so they describe what the code actually accepts.</p>
 <p>Short, stable, opinionated documents that define the project.</p>
 <ul>
 <li><strong>MANIFESTO</strong> — what TraceBi is and what it refuses to build</li>
-<li><strong>WORKFLOW</strong> — the three-phase workflow, stated normatively</li>
 <li><strong>AGENTS</strong> — the brief an agent reads before authoring</li>
 <li><strong>CLAUDE</strong> — behavioural guidelines for AI assistants in this repo</li>
 </ul>

@@ -202,7 +202,7 @@ One canon, used everywhere — code, docs, UI, agent context:
 | **`verifiable: false`** | The escape hatch's permanent mark; never green |
 | **Workbench** / **Discovery** | The live authoring surface (`tracebi dev` / `report status`): figures, coverage, per-binding cards, human pins. With no report named, discovery mode is the same surface over phases ① and ② |
 | **Session record** | `tracebi session export` — the committed lab-notebook of a discovery session; no manifest is written, ever |
-| **Interactivity subsets, never computes** | Controls (`data-tb-filter` / `data-tb-search`) subset which stamped rows a figure displays; they never compute a new number, so a value figure never reacts and a filtered KPI needs its own binding |
+| **Interactivity subsets, never computes** | Controls (`data-tb-filter` / `data-tb-search`) subset which stamped rows a figure displays; they never compute a new number, so a value figure never reacts and a filtered KPI needs its own binding. Reader aids (`data-tb-sort`, `data-tb-bars`, `data-tb-direction`) follow the same rule: they reorder or decorate stamped values and never compute one |
 | **Assurance ladder** | L0 nothing → L1 receipts → L2 reproducibility → L3 signed attestation (L3: not yet) |
 | **Migrate** | `tracebi migrate spec` compiles a JSON spec into the artifact package — the section enum ends as compile vocabulary; the artifact directory shadows the same-named spec |
 

@@ -4,7 +4,7 @@
 **definition plane** — the `models/*.py` files that declare what numbers mean
 in this project.
 
-**Where this sits in the three-phase workflow (see `WORKFLOW.md`).** This is
+**Where this sits in the three-phase workflow (see [[the-three-phase-workflow]]).** This is
 **phase ② — MODEL**, the freeze point between the unconstrained phase-① transform
 (`transforms/*.py`, ordinary pandas that sinks the warehouse) and the fast
 phase-③ report (`reports/*.json`) that queries the model by name. The
@@ -171,8 +171,9 @@ baseline) and **after**. A passing suite is the minimum bar.
   sections' fingerprints must stay byte-identical. Drift where something
   moved, stability where nothing did — that is your review signal.
 - **Renaming or removing** a measure is a breaking contract change: grep
-  `reports/`, `requests/`, and `examples/` for references and run
-  `tracebi spec validate` on any spec that names it.
+  `reports/` and `examples/` for references, run `tracebi spec validate` on
+  any spec that names it, and `tracebi report build` each package that binds
+  it (a binding to a missing measure fails the build).
 
 Useful while working:
 

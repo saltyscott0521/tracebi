@@ -10,7 +10,7 @@ development flow; this guide covers what's different in a notebook.
 
 ## Where the notebook fits the workflow
 
-TraceBi's spine is the three-phase workflow in [WORKFLOW.md](../WORKFLOW.md):
+TraceBi's spine is the three-phase workflow in [[the-three-phase-workflow]]:
 phase ① `transforms/` writes clean star-schema tables into a DuckDB warehouse,
 phase ② `models/` declares a thin `DataModel` over it, and phase ③ `reports/`
 is an artifact package (or a JSON `ReportSpec`) served on the Reports page.

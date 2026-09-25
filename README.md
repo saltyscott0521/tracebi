@@ -88,7 +88,7 @@ The reference implementation ships in the repo at `examples/portfolio_project/`
 `run_workflow.py` driver):
 `transforms/holdings_transform.py`, `models/portfolio_model.py`,
 `reports/portfolio_dashboard.json`, driven by `run_workflow.py`. Full
-walkthrough: **[WORKFLOW.md](WORKFLOW.md)**.
+walkthrough: **[the three-phase workflow](docs/concepts/the-three-phase-workflow.md)**.
 
 Everything below hangs off this spine: the framework gives you the connectors
 and lineage-tracked `DataSet` for phase 1, the `DataModel` for phase 2, the
@@ -203,7 +203,7 @@ backlinks and the graph view, or just read it on GitHub.
 | Get running in five minutes | [docs/guides/quickstart.md](docs/guides/quickstart.md) |
 | Author a report end to end | [docs/guides/your-first-report.md](docs/guides/your-first-report.md) |
 | Look up a command, key, or measure kind | [docs/index.md](docs/index.md#reference) |
-| Understand the three-phase workflow (transform → model → report) | [WORKFLOW.md](WORKFLOW.md) — the spine, with the reference implementation |
+| Understand the three-phase workflow (transform → model → report) | [the three-phase workflow](docs/concepts/the-three-phase-workflow.md) — the spine, with the reference implementation |
 | Follow the full analyst flow start-to-finish | [docs/guides/analyst-guide.md](docs/guides/analyst-guide.md) — scaffold → transform → report → publish |
 | Work in a notebook with rich previews | [docs/guides/notebook-guide.md](docs/guides/notebook-guide.md) + `examples/analyst_quickstart.py` |
 | Write a one-off report or query | `tracebi new-report "My Report"` then `tracebi dev my_report` — explore inside the artifact (exploration blocks die at build) |
@@ -818,10 +818,10 @@ tracebi/                        ← the framework repo
 │   │   ├── transforms/         ① pandas → sink star tables to DuckDB
 │   │   ├── models/             ② the star-schema contract (portfolio_model.py)
 │   │   ├── reports/            ③ spec + artifact packages + escape hatch
-│   │   └── run_workflow.py     drives ①→③ (see WORKFLOW.md)
+│   │   └── run_workflow.py     drives ①→③ (see docs/concepts/)
 │   ├── seeds/                  Medallion demo DB seeding + Supabase companions
 │   └── phase*.py               Small runnable feature demos
-├── docs/                       Guides, ROADMAP, report-generator architecture
+├── docs/                       Concepts, guides, reference, architecture, strategy (an Obsidian vault)
 ├── MANIFESTO.md                What TraceBi is, and what it refuses to build
 └── NOTES.md                    Design decisions and architecture reference
 ```

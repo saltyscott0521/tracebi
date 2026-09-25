@@ -47,6 +47,44 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 
 ---
 
+## Where each phase lives
+
+| Stage | Folder | What you write | How the server finds it |
+|---|---|---|---|
+| ⓪ Input | `inputs/` | a raw pull: a CSV, an API export, a SQL dump | it doesn't; you put it there |
+| ① Transform | `transforms/` | pandas (a `.py` or `.ipynb`) that writes DuckDB tables | it doesn't; you run it with `tracebi run-transform` |
+| ② Model | `models/` | a `DataModel` in a variable named `model` | listed on the Models page |
+| ③ Report | `reports/` | a package (`report.json` + `template.html`), or a JSON spec that compiles into one | listed on the Reports page |
+
+The warehouse is one file, `data/warehouse.duckdb`: phase ① writes it and phase
+② reads it, so the two can run in separate processes. `output/` holds what
+`tracebi report build` renders. Both folders are gitignored except the
+`*.manifest.json` receipts inside them, which stay tracked as the audit trail
+behind every rendered number.
+
+## Try it on the reference project
+
+```bash
+cd examples/portfolio_project
+python run_workflow.py          # ① build the warehouse, ③ render the report once
+tracebi serve                   # browse it: Reports → portfolio_dashboard
+```
+
+The first run generates a deliberately messy Schedule of Investments into
+`inputs/`, so phase ① has real work to do: prose position descriptions to parse
+into issuers, trailing position counters to strip, sectors spelled six ways,
+money stored as strings.
+
+## Exploring before a report exists
+
+`tracebi dev` with no report name opens the **discovery workbench**. Any script
+run while it's open can call `tracebi.workbench.show(df, note=...)` to post an
+excerpt; the warehouse panel lists tables and their contract status as they
+land, and the models panel shows the star schema taking shape.
+`tracebi session export` saves the session to `explorations/` as a committed
+record (`--format md` for a version that reads well in a git review). It is
+marked as exploration and carries no receipt, and `verify` refuses it by name.
+
 ## Why the split
 
 The slow, unconstrained analysis (①) and the fast, iterated reporting (③)
@@ -77,4 +115,4 @@ See [[receipts]] for exactly what this does and does not prove.
 
 - [[freeze-points]] — the handoff between phases
 - [[quickstart]] — run all three in about five minutes
-- [[WORKFLOW]] — the same model, stated normatively
+- [[sink-contracts]] — the checks a transform's tables must pass

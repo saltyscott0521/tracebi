@@ -1,7 +1,7 @@
 # tracebi.com — the marketing site
 
 The public product/explanation page for TraceBi. This is **surface #1** of the
-three in [docs/frontend-surfaces.md](../docs/frontend-surfaces.md): the pitch,
+three in [docs/architecture/frontend-surfaces.md](../docs/architecture/frontend-surfaces.md): the pitch,
 docs, and pricing, whose primary call to action branches into the live demo app.
 
 **It is a separate front-end from the distributed app UI** (`web/ui/`). It is a

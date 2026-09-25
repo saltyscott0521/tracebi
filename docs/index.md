@@ -73,21 +73,22 @@ Where the product is going and how it's built to get there.
 
 - [[epics]] — the live plan: what to build next, in order, and why
 - [[vision-and-positioning]] — the bet, the positioning, the principles
-- [[users-and-jobs]] — the six user types and their journeys
+- [[users-and-jobs]] — the seven user types and their journeys
 - [[product-strategy]] — the repeatable-report loop, BI parity, templates
 - [[target-architecture]] — components and the decisions behind them
 - [[deployment]] — local, self-hosted, Cloud, customer VPC
 - [[report-library]] — folders, permissions, drafts and publishing
+
+Earlier plans the epics replaced are kept in `strategy/archive/` for their
+reasoning: [[ROADMAP]], [[production-plan]], [[next-level-plan]] and
+[[product-readiness-audit]].
 
 ## Architecture
 
 Deep design documents. Written for someone changing the framework, not using it.
 
 - [[report-architecture-v2]] — the current report artifact design
-- [[production-plan]] — how the agent-report product gets to production
-- [[next-level-plan]] — the product direction: agents build repeatable reports that replace recurring BI
 - [[test-suite-review]] — what the tests should cover, what was removed, and why
-- [[product-readiness-audit]] — product fit, findings, and the checklist to a sellable product
 - [[large-detail-artifacts]] — how big datasets ship inside one HTML file
 - [[frontend-surfaces]] — the three separate front ends and why
 - [[report-generator-architecture]] — superseded; kept for its kernel sections
@@ -103,7 +104,6 @@ Deep design documents. Written for someone changing the framework, not using it.
 Short, stable, opinionated documents that define the project.
 
 - [[MANIFESTO]] — what TraceBi is and what it refuses to build
-- [[WORKFLOW]] — the three-phase workflow, stated normatively
 - [[AGENTS]] — the brief an agent reads before authoring
 - [[CLAUDE]] — behavioural guidelines for AI assistants in this repo
 

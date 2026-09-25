@@ -1,6 +1,6 @@
 # AGENTS.md — Working with TraceBi as an AI Agent
 
-Read this before touching a TraceBi project. Deeper references: `WORKFLOW.md`
+Read this before touching a TraceBi project. Deeper references: `docs/concepts/the-three-phase-workflow.md`
 (the three-phase workflow, end to end), `CLAUDE.md` (codebase rules), `NOTES.md`
 (design decisions), `examples/agent_gateway/` (a complete recorded agent
 session), `docs/agents/pitfalls.md` (bugs already hit here, and the rule that
@@ -24,7 +24,7 @@ materialized artifact handed across the boundary:
 Reference implementation, end to end, at `examples/portfolio_project/`:
 `transforms/holdings_transform.py` → `models/portfolio_model.py` →
 `reports/portfolio_dashboard.json`, wired by `run_workflow.py`.
-`WORKFLOW.md` is the full tour; read it first.
+`docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
 
 The split earns its keep at the freeze points: the slow, unconstrained analysis
 (①) and the fast, iterated reporting (③) never block each other, because the

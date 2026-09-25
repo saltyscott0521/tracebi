@@ -639,7 +639,7 @@ Don't add these unless asked.
 | Goal | Start here |
 |---|---|
 | Understand the whole framework | `README.md` |
-| Understand the three-phase workflow | `WORKFLOW.md` + `examples/portfolio_project/` |
+| Understand the three-phase workflow | `docs/concepts/the-three-phase-workflow.md` + `examples/portfolio_project/` |
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.py` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_dashboard.json` |

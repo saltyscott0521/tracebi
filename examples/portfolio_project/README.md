@@ -55,4 +55,4 @@ The report forms in `reports/` span the authoring lanes:
   controls, layouts, and trust affordance the artifact offers, on the reference
   data.
 
-The full tour of the workflow lives at the repo root: `WORKFLOW.md`.
+The full tour of the workflow lives in `docs/concepts/the-three-phase-workflow.md` at the repo root.

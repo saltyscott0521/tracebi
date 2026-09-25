@@ -57,9 +57,6 @@
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/next-level-plan.html">Next-level plan: agents build the BI</a>
-<a href="../architecture/product-readiness-audit.html">Product readiness audit, 2026-09-22</a>
-<a href="../architecture/production-plan.html">Production plan — agent reports with a relational selection</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -76,7 +73,7 @@ notebook becomes a phase-① transform once the analysis settles.</p>
 development flow; this guide covers what's different in a notebook.</p>
 <hr>
 <h2 id="where-the-notebook-fits-the-workflow">Where the notebook fits the workflow</h2>
-<p>TraceBi's spine is the three-phase workflow in <a href="../WORKFLOW.md">WORKFLOW.md</a>:
+<p>TraceBi's spine is the three-phase workflow in <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:
 phase ① <code>transforms/</code> writes clean star-schema tables into a DuckDB warehouse,
 phase ② <code>models/</code> declares a thin <code>DataModel</code> over it, and phase ③ <code>reports/</code>
 is an artifact package (or a JSON <code>ReportSpec</code>) served on the Reports page.</p>

@@ -1,7 +1,7 @@
 # Large-detail artifacts — data-heavy, offline, still verifiable
 
-**Status:** BUILT on `feat/artifact-parquet-embed` (not yet merged). The design below is the
-plan as agreed; §11 records where the implementation deliberately diverged after two
+**Status:** shipped (built on `feat/artifact-parquet-embed`, merged to `main` in
+August 2026). The design below is the plan as agreed; §11 records where the implementation deliberately diverged after two
 adversarial reviews. Supersedes the "just add a size guard" stopgap and the
 DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).
 
