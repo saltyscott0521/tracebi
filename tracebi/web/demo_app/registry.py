@@ -45,6 +45,32 @@ for _conn in (*sales_model.connectors(), *wealth_model.connectors()):
 
 registry.add_pipeline("sales", runner)
 
+# AltsVault: a live, real-data pipeline (pull → transform → build) whose model
+# reads the warehouse it sinks. See altsvault/__init__.py.
+from tracebi.web.demo_app.altsvault import WAREHOUSE as _AV_WAREHOUSE  # noqa: E402
+from tracebi.web.demo_app.altsvault.model import model as altsvault_model  # noqa: E402
+from tracebi.web.demo_app.altsvault.pipeline import runner as altsvault_runner  # noqa: E402
+
+model_registry.register(altsvault_model)
+registry.add_model(altsvault_model)
+registry.add_pipeline("altsvault", altsvault_runner)
+
+
+def _bootstrap_altsvault() -> None:
+    """First start with an API key and no warehouse yet: run the pipeline once,
+    in the background, so the report exists before anyone presses Run."""
+    try:
+        altsvault_runner.run("build", refresh=True)
+    except Exception as exc:  # noqa: BLE001 — the Refresh page shows the failed run
+        print(f"[tracebi] altsvault bootstrap did not finish: {exc}")
+
+
+if os.environ.get("ALTSVAULT_API_KEY") and not os.path.exists(_AV_WAREHOUSE):
+    import threading
+
+    threading.Thread(target=_bootstrap_altsvault, name="altsvault-bootstrap",
+                     daemon=True).start()
+
 # ── Reports (auto-discovered) ─────────────────────────────────────────────────
 # Each .py file in reports/ that is not prefixed with _ is imported.
 # The @register.report(...) decorator in each file fires on import,

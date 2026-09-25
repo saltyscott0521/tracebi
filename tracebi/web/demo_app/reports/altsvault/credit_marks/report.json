@@ -1,0 +1,247 @@
+{
+  "name": "AltsVault \u2014 BDC Credit Marks",
+  "author": "tracebi demo",
+  "description": "Where BDC credit marks sit and where stress concentrates, pulled live from the AltsVault API. Every figure is a live query against the altsvault_credit_marks model.",
+  "libs": [
+    "echarts"
+  ],
+  "data": {
+    "universe": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_fund_marks",
+        "measures": [
+          "funds",
+          "book_fv",
+          "marked_fv",
+          "marked_coverage",
+          "stress_share",
+          "fv_below_stress",
+          "fv_below_deep"
+        ]
+      }
+    },
+    "debt_book": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_position_marks",
+        "measures": [
+          "fair_value",
+          "mark",
+          "median_mark",
+          "positions"
+        ],
+        "filters": {
+          "dim_position_class.position_class": "DEBT_PROXY"
+        }
+      }
+    },
+    "debt_vs_equity": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_position_marks",
+        "dimensions": [
+          "dim_position_class.position_class"
+        ],
+        "measures": [
+          "fair_value",
+          "cost_basis",
+          "mark",
+          "median_mark",
+          "positions",
+          "fv_share"
+        ],
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          }
+        ]
+      }
+    },
+    "by_band": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_position_marks",
+        "dimensions": [
+          "dim_mark_band.mark_band"
+        ],
+        "measures": [
+          "fair_value",
+          "positions",
+          "fv_share",
+          "mark"
+        ],
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          }
+        ]
+      }
+    },
+    "by_seniority": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_position_marks",
+        "dimensions": [
+          "dim_seniority.seniority"
+        ],
+        "measures": [
+          "fair_value",
+          "mark",
+          "median_mark",
+          "positions"
+        ],
+        "filters": {
+          "dim_position_class.position_class": "DEBT_PROXY"
+        },
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          }
+        ]
+      }
+    },
+    "top_stressed": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_position_marks",
+        "dimensions": [
+          "dim_issuer.display_name",
+          "dim_issuer.industry"
+        ],
+        "measures": [
+          "fair_value",
+          "fv_rank",
+          "fv_share",
+          "fv_cumshare",
+          "mark",
+          "funds_holding"
+        ],
+        "filters": {
+          "dim_mark_band.mark_band": [
+            "STRESS",
+            "DEEP_STRESS"
+          ]
+        },
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          }
+        ],
+        "limit": 12
+      }
+    },
+    "by_structure": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_fund_marks",
+        "dimensions": [
+          "dim_fund.structure"
+        ],
+        "measures": [
+          "funds",
+          "book_fv",
+          "stress_share",
+          "marked_coverage"
+        ],
+        "order_by": [
+          {
+            "column": "book_fv",
+            "desc": true
+          }
+        ]
+      }
+    },
+    "by_crowding": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_fund_marks",
+        "dimensions": [
+          "dim_fund.crowding_band"
+        ],
+        "measures": [
+          "funds",
+          "book_fv",
+          "stress_share"
+        ],
+        "order_by": [
+          {
+            "column": "book_fv",
+            "desc": true
+          }
+        ]
+      }
+    },
+    "staleness": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_fund_marks",
+        "dimensions": [
+          "dim_period.as_of_quarter"
+        ],
+        "measures": [
+          "funds",
+          "book_fv"
+        ],
+        "order_by": [
+          {
+            "column": "dim_period.as_of_quarter",
+            "desc": false
+          }
+        ]
+      }
+    },
+    "fund_detail": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_position_marks",
+        "dimensions": [
+          "dim_fund.fund_name",
+          "dim_fund.structure",
+          "dim_fund.recon_status"
+        ],
+        "measures": [
+          "fair_value",
+          "mark",
+          "median_mark",
+          "positions",
+          "issuers"
+        ],
+        "filters": {
+          "dim_position_class.position_class": "DEBT_PROXY"
+        },
+        "having": {
+          "fair_value": {
+            "gte": 1000000000
+          }
+        },
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          }
+        ],
+        "limit": 40
+      }
+    },
+    "zero_coverage": {
+      "model": "altsvault_credit_marks",
+      "query": {
+        "fact": "fact_fund_marks",
+        "measures": [
+          "funds",
+          "book_fv"
+        ],
+        "filters": {
+          "marked_fv": {
+            "is_null": true
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>AltsVault — BDC Credit Marks</title></head>
+<body>
+<main class="tb-page">
+
+  <h1>BDC Credit Marks</h1>
+  <p class="tb-note">
+    Pulled live from the AltsVault API, covering
+    <span data-tb-figure="value" data-tb-binding="universe" data-tb-cell="funds"
+          data-tb-format="comma" id="val-funds-inline">—</span> business development
+    companies carrying
+    <span data-tb-figure="value" data-tb-binding="universe" data-tb-cell="book_fv"
+          data-tb-format="compact" id="val-bookfv-inline">—</span> of book fair value.
+    Every number on this page, including the two in this sentence, is a live query
+    against the <code>altsvault_credit_marks</code> model.
+  </p>
+
+  <div class="tb-grid">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="universe"
+         data-tb-cell="funds" data-tb-format="comma" id="kpi-funds">
+      <span class="tb-kpi-label">Funds</span><span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="universe"
+         data-tb-cell="book_fv" data-tb-format="compact" id="kpi-book-fv">
+      <span class="tb-kpi-label">Book fair value</span><span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="debt_book"
+         data-tb-cell="mark" data-tb-format="percent" id="kpi-debt-mark">
+      <span class="tb-kpi-label">Debt-book mark</span><span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="universe"
+         data-tb-cell="marked_coverage" data-tb-format="percent" id="kpi-coverage">
+      <span class="tb-kpi-label">Marked coverage</span><span class="tb-kpi-value"></span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="universe"
+         data-tb-cell="stress_share" data-tb-format="percent" id="kpi-stress">
+      <span class="tb-kpi-label">Below stress band</span><span class="tb-kpi-value"></span>
+    </div>
+  </div>
+
+  <div class="tb-card">
+    <h2>The headline: marks belong to the debt book</h2>
+    <p class="tb-note">
+      Splitting the portfolio by instrument class is not cosmetic — it is what makes
+      a mark meaningful. The debt book marks at
+      <span data-tb-figure="value" data-tb-binding="debt_book" data-tb-cell="mark"
+            data-tb-format="percent" id="val-debt-mark">—</span> of cost across
+      <span data-tb-figure="value" data-tb-binding="debt_book" data-tb-cell="positions"
+            data-tb-format="comma" id="val-debt-positions">—</span> positions. The
+      equity and warrant book appears to mark far above cost, but that is an artifact
+      of nominal cost bases: a warrant booked at a token cost and now carried at millions
+      reports a mark in the thousands of times cost. Those positions inflate any ratio
+      they sit in, which is why
+      every mark statistic below is taken on the debt book.
+    </p>
+    <table data-tb-figure="table" data-tb-binding="debt_vs_equity"
+           class="tb-table--striped" id="tbl-debt-equity"></table>
+  </div>
+
+  <div class="tb-cols-2">
+    <div class="tb-card">
+      <h2>Where fair value sits by mark band</h2>
+      <div data-tb-figure="chart" data-tb-binding="by_band" data-tb-type="bar"
+           data-tb-x="dim_mark_band.mark_band" data-tb-y="fair_value"
+           data-tb-value-format="compact" id="chart-by-band"></div>
+      <p class="tb-note">
+        <code>UNCOMPUTABLE</code> is not a stress category — it is the
+        <span data-tb-figure="value" data-tb-binding="universe" data-tb-cell="marked_coverage"
+              data-tb-format="percent" id="val-coverage-inline">—</span> coverage gap
+        seen from the other side: positions with no usable cost basis, where a mark
+        cannot be computed at all rather than being computed as bad. At the extreme,
+        <span data-tb-figure="value" data-tb-binding="zero_coverage" data-tb-cell="funds"
+              data-tb-format="comma" id="val-zerocov-funds">&mdash;</span> funds carrying
+        <span data-tb-figure="value" data-tb-binding="zero_coverage" data-tb-cell="book_fv"
+              data-tb-format="compact" id="val-zerocov-fv">&mdash;</span> report no
+        computable mark on any position.
+      </p>
+    </div>
+    <div class="tb-card">
+      <h2>Mark band detail</h2>
+      <table data-tb-figure="table" data-tb-binding="by_band" id="tbl-by-band"></table>
+    </div>
+  </div>
+
+  <div class="tb-card">
+    <h2>Debt book by seniority</h2>
+    <p class="tb-note">
+      Median and ratio-of-totals side by side. The median is the typical position; the
+      mark is the dollar-weighted whole. Where they diverge, size and quality are
+      pulling in different directions — second lien is the clearest case.
+    </p>
+    <table data-tb-figure="table" data-tb-binding="by_seniority" id="tbl-seniority"></table>
+  </div>
+
+  <div class="tb-card">
+    <h2>Where the stress concentrates</h2>
+    <p class="tb-note">
+      Issuers carried below the stress band, ranked by fair value.
+      Rank, share, and cumulative share are governed measures computed at query time,
+      not sorted or sliced in JavaScript.
+    </p>
+    <p>
+      Search: <input data-tb-search data-tb-binding="top_stressed"
+                     placeholder="issuer or industry…">
+      <button data-tb-download data-tb-binding="top_stressed"
+              data-tb-label="Download CSV"></button>
+    </p>
+    <table data-tb-figure="table" data-tb-binding="top_stressed"
+           class="tb-table--striped" id="tbl-top-stressed"></table>
+  </div>
+
+  <div class="tb-cols-2">
+    <div class="tb-card">
+      <h2>Stress by fund structure</h2>
+      <div data-tb-figure="chart" data-tb-binding="by_structure" data-tb-type="bar"
+           data-tb-x="dim_fund.structure" data-tb-y="stress_share"
+           data-tb-value-format="percent" id="chart-by-structure"></div>
+    </div>
+    <div class="tb-card">
+      <h2>Stress by portfolio crowding</h2>
+      <div data-tb-figure="chart" data-tb-binding="by_crowding" data-tb-type="bar"
+           data-tb-x="dim_fund.crowding_band" data-tb-y="stress_share"
+           data-tb-value-format="percent" id="chart-by-crowding"></div>
+      <p class="tb-note">Crowding is the share of a fund's issuers also held by peers.</p>
+    </div>
+  </div>
+
+  <div class="tb-card">
+    <h2>How current is this universe?</h2>
+    <p class="tb-note">
+      <strong>Read this as a distribution, not a trend.</strong> Each fund appears
+      exactly once, at its own reporting date, so this chart shows how many funds
+      report as of each quarter — it is not book value moving over time. The model
+      deliberately declares no semi-additive time measure for that reason.
+    </p>
+    <div data-tb-figure="chart" data-tb-binding="staleness" data-tb-type="bar"
+         data-tb-x="dim_period.as_of_quarter" data-tb-y="funds"
+         data-tb-value-format="comma" id="chart-staleness"></div>
+  </div>
+
+  <div class="tb-card">
+    <h2>Fund detail — debt books over $1B</h2>
+    <p class="tb-note">
+      Debt book only, filtered with <code>having</code> on the aggregate so group totals stay intact. Fair value here reconciles exactly to each fund’s book value.
+    </p>
+    <p>
+      Structure: <select data-tb-filter data-tb-binding="fund_detail"
+                         data-tb-column="dim_fund.structure"></select>
+      Reconciled: <select data-tb-filter data-tb-binding="fund_detail"
+                          data-tb-column="dim_fund.recon_status"></select>
+      Search: <input data-tb-search data-tb-binding="fund_detail" placeholder="fund name…">
+      <button data-tb-download data-tb-binding="fund_detail" data-tb-label="Download CSV"></button>
+    </p>
+    <table data-tb-figure="table" data-tb-binding="fund_detail"
+           class="tb-table--compact" data-tb-rows="15" id="tbl-fund-detail"></table>
+  </div>
+
+  <section class="tb-card" data-tb-methodology>
+    <h2>How these numbers were made</h2>
+    <p class="tb-note">
+      Phase ① is ordinary pandas and is <em>not</em> machine-checked. What is checked
+      is the sink: the declared contract checks ran as read-only SQL when the tables
+      landed, including an exact reconciliation of every position's fair value to its
+      fund's book value. The claim is "the sink satisfied its contract" — never "the
+      transform was verified". What the pipeline states about itself follows.
+    </p>
+  </section>
+
+</main>
+</body></html>
