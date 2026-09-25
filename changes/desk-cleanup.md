@@ -1,4 +1,4 @@
-### Changed
+### Changed — the Desk folds into Reports
 
 - The Desk page is gone; the app opens on **Reports**. The one thing only the
   Desk did moved there: a **Needs attention** strip at the top of Reports
@@ -14,7 +14,7 @@
 - Long report descriptions in the Reports list are capped at two lines, and no
   longer push the status chips out of view.
 
-### Fixed
+### Fixed — correct reports read "not reproduced" under concurrent requests
 
 - Correct reports could read "not reproduced" when several requests checked
   receipts at once. A DuckDB connector shared one connection across the web

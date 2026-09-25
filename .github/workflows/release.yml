@@ -49,7 +49,7 @@ jobs:
           from pathlib import Path
           frags = [
               p for p in Path("changes").glob("*.md")
-              if p.name.partition("-")[0].isdigit()
+              if p.name != "README.md"
           ]
           if frags:
               raise SystemExit(

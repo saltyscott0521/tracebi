@@ -1,4 +1,4 @@
-### Added
+### Added — reports can live in folders
 
 - **Reports can live in folders** (epic E6, step 1). Any subfolder of
   `reports/` that isn't itself a report package is a folder, as deep as you
@@ -30,7 +30,7 @@
   `portfolio_dashboard.json` stays at the top level as the "start here"
   example. The reference project's README now matches its reports.
 
-### Fixed
+### Fixed — specs in folders, receipts in subfolders, download names
 
 - A JSON spec inside a folder failed to register, because its compiled
   package's temporary directory was named with the `/` in the report's path.

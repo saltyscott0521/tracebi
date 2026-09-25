@@ -1,4 +1,4 @@
-### Added
+### Added — `tracebi update` and the in-app update badge
 
 - **`tracebi update`.** It checks for a newer published release and says what
   changed. It also prints the one command that updates this install:

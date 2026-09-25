@@ -1,4 +1,4 @@
-### Fixed
+### Fixed — the mobile menu stopped short of the bottom
 
 - On a phone, the menu could stop partway down the screen with the page showing
   underneath. The cause was a page wider than the phone: the mobile grid rules

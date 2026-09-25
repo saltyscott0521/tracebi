@@ -1,4 +1,4 @@
-### Added
+### Added — motion and illustrations in the web app
 
 - The web app has motion and illustrations, each one showing something
   TraceBi does:
@@ -17,14 +17,14 @@
 - A global `prefers-reduced-motion` switch turns all of it off. The app had
   none before.
 
-### Fixed
+### Fixed — the Verify page no longer claims files stay on your machine
 
 - The Verify page said "The data never leaves this machine". The check runs
   on the TraceBi server, so on a hosted server the file is uploaded. It now
   says the files are checked by this server, which keeps nothing, and that
   is what the endpoint does.
 
-### Changed
+### Changed — the app says "receipt" much less
 
 - The app says "receipt" much less. The Reports page reads "Pick a report" and
   the download button is **↓ HTML**. The "🧾 Verifiable artifact" badge is now

@@ -36,7 +36,7 @@
   - A bad column or direction fails the build, and names the fix.
   - The showcase demonstrates all of them.
 
-### Changed
+### Changed — unformatted value figures read like table columns
 
 - A value figure with no `data-tb-format` is now formatted the way a table
   column is: the model's declared format first, then the shape default. So an

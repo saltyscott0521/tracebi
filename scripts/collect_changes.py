@@ -14,13 +14,18 @@ from pathlib import Path
 def _fragments(changes: Path) -> list[Path]:
     if not changes.is_dir():
         return []
-    found = []
+    # Numbered fragments (<issue>-<name>.md) first, in issue order; then the
+    # ones with no issue, by name. Every fragment is folded: an unnumbered one
+    # used to be skipped silently, and its change left out of the release.
+    numbered, named = [], []
     for path in changes.glob("*.md"):
+        if path.name == "README.md":
+            continue
         issue, _, _ = path.name.partition("-")
-        if issue.isdigit():
-            found.append(path)
-    found.sort(key=lambda path: int(path.name.partition("-")[0]))
-    return found
+        (numbered if issue.isdigit() else named).append(path)
+    numbered.sort(key=lambda path: int(path.name.partition("-")[0]))
+    named.sort(key=lambda path: path.name)
+    return numbered + named
 
 
 def collect(root: Path) -> list[Path]:
