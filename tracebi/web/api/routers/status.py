@@ -101,4 +101,11 @@ def collect_checks() -> list[dict]:
 
 @router.get("/status")
 def status(request: Request) -> dict:
-    return {"version": request.app.version, "checks": collect_checks()}
+    from tracebi import _updates
+
+    # From the cached release check only; a stale cache refreshes in the
+    # background, so this never waits on GitHub.
+    update = _updates.status(wait=False)
+    update.pop("notes", None)
+    return {"version": request.app.version, "checks": collect_checks(),
+            "update": update}

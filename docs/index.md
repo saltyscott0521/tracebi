@@ -50,6 +50,7 @@ Task-shaped walkthroughs.
 - [[notebook-guide]] — working in notebooks
 - [[web-customization]] — theming the served web UI
 - [[one-server]] — one VM, Docker or Coolify, a folder, SMTP, a schedule
+- [[updating]] — `tracebi update`: what's new, and the command for your install
 - [[deploy-vercel-supabase]] — hosting
 
 ## Reference

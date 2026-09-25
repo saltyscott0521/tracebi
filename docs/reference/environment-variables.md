@@ -85,6 +85,16 @@ reported but does not fail the command — the report already went out.
 The http transport **refuses to start** until you either set the token or pass
 `--insecure` deliberately.
 
+## Updates
+
+How an install learns about a newer TraceBi ([[updating]]).
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `TRACEBI_UPDATE_CHECK` | on | `0` turns off the release check in `tracebi update` and the web app's "available" notice. Nothing else changes. |
+| `TRACEBI_UPDATE_URL` | GitHub's `releases/latest` for this repo | Where to check: any URL that answers like GitHub's releases API, e.g. an internal mirror. |
+| `TRACEBI_IN_DOCKER` | set in the image | Marks a container install, so the update command pulls a new image instead of upgrading in place. |
+
 ## Connector URLs
 
 The framework never reads a connector URL implicitly. Construct connectors in

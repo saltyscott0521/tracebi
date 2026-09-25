@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 
-import { useHealth } from '../api'
+import { useHealth, useAppStatus } from '../api'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -148,6 +148,8 @@ export default function Layout({ children }) {
   const [open, setOpen] = useState(false)
   const { data: health, isSuccess: healthOk } = useHealth()
   const version = healthOk && typeof health?.version === 'string' ? health.version : ''
+  const { data: appStatus } = useAppStatus()
+  const update = appStatus?.update?.available ? appStatus.update : null
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem('tracebi-theme') === 'dark' } catch { return false }
   })
@@ -302,6 +304,17 @@ export default function Layout({ children }) {
             {version ? (
               <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v{version}</span>
             ) : null}
+            {update && (
+              <a href={update.url || '#'} target="_blank" rel="noreferrer"
+                 title={`TraceBi ${update.latest} is available. To update this ${update.kind} install:\n${update.command}\n\n(or run: tracebi update)`}
+                 style={{
+                   fontSize: 10.5, fontWeight: 600, color: '#7dd3fc', textDecoration: 'none',
+                   border: '1px solid rgba(125,211,252,.35)', borderRadius: 999,
+                   padding: '1px 7px', whiteSpace: 'nowrap',
+                 }}>
+                v{update.latest} available
+              </a>
+            )}
             <button
               onClick={() => setDark(d => !d)}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}

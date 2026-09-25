@@ -75,6 +75,17 @@ See [[template-html]].
 
 ## Building and checking
 
+### `tracebi update`
+
+```bash
+tracebi update [--check] [--yes]
+```
+
+Says whether a newer TraceBi is published, what changed, and the command that
+updates this install (pip, Docker or a git checkout). A pip install can run it
+here after asking; `--yes` skips the question and `--check` never runs it.
+See [[updating]].
+
 ### `tracebi report build`
 
 ```bash

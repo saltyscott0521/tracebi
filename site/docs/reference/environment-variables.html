@@ -43,6 +43,7 @@
 <a href="../guides/styling-a-report.html">Styling a report</a>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
 <a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
 <a href="../guides/your-first-report.html">Your first report</a>
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
@@ -263,6 +264,34 @@ reported but does not fail the command — the report already went out.</p>
 </table>
 <p>The http transport <strong>refuses to start</strong> until you either set the token or pass
 <code>--insecure</code> deliberately.</p>
+<h2 id="updates">Updates</h2>
+<p>How an install learns about a newer TraceBi (<a href="../guides/updating.html">Updating TraceBi</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_UPDATE_CHECK</code></td>
+<td>on</td>
+<td><code>0</code> turns off the release check in <code>tracebi update</code> and the web app's "available" notice. Nothing else changes.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_UPDATE_URL</code></td>
+<td>GitHub's <code>releases/latest</code> for this repo</td>
+<td>Where to check: any URL that answers like GitHub's releases API, e.g. an internal mirror.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_IN_DOCKER</code></td>
+<td>set in the image</td>
+<td>Marks a container install, so the update command pulls a new image instead of upgrading in place.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="connector-urls">Connector URLs</h2>
 <p>The framework never reads a connector URL implicitly. Construct connectors in
 your own code and pass credential-bearing URLs explicitly:</p>

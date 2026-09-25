@@ -63,6 +63,10 @@ The image name is `ghcr.io/saltyscott0521/tracebi`. Set `TRACEBI_VERSION`
 in `deploy/.env` when you want a pinned tag. If that image is not on the
 machine, Compose builds it from the `Dockerfile` in this repository.
 
+To move to a newer release, see [[updating]]: `tracebi update --check` inside
+the container prints the exact `docker compose pull` / `up -d` lines to run on
+the host.
+
 ## Turn on schedules and email
 
 In `deploy/.env`:

@@ -659,6 +659,66 @@ def _web_app_importable() -> bool:
         return False
 
 
+def cmd_update(args: argparse.Namespace) -> int:
+    """Is there a newer TraceBi, and how does this install get it?
+
+    Asks GitHub for the latest release (tracebi/_updates.py), prints what's
+    new and the one command that updates *this* install. A pip install can
+    run it here (asked first, or --yes); a Docker or git-checkout install
+    prints it, since those update from outside the process.
+    """
+    from tracebi import _updates
+
+    if not _updates.enabled():
+        print("Update checks are off (TRACEBI_UPDATE_CHECK=0).")
+        return 0
+    st = _updates.status(force=True)
+    print(f"installed: TraceBi {st['current']} ({st['kind']} install)")
+    if st["latest"] is None:
+        print("latest:    unknown — no published release could be reached "
+              "(offline, or none published yet).")
+        return 0
+    if not st["available"]:
+        print(f"latest:    {st['latest']} — you're up to date.")
+        return 0
+    print(f"latest:    {st['latest']}  {st['url'] or ''}".rstrip())
+    notes = [ln for ln in (st.get("notes") or "").splitlines() if ln.strip()]
+    if notes:
+        print("\nWhat's new:")
+        for ln in notes[:15]:
+            print(f"  {ln}")
+        if len(notes) > 15:
+            print(f"  … the rest: {st['url']}")
+    print(f"\nTo update:\n  {st['command']}")
+    if args.check or st["kind"] != "pip":
+        if st["kind"] == "docker":
+            print("\nRun it on the host, where deploy/compose.yml lives; a "
+                  "container can't replace itself.")
+        _update_afterwards()
+        return 0
+    if not args.yes:
+        try:
+            answer = input("\nRun it now? [y/N] ").strip().lower()
+        except EOFError:
+            answer = ""
+        if answer not in ("y", "yes"):
+            return 0
+    import shlex
+    import subprocess
+    target = shlex.split(st["command"])[-1]
+    rc = subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade", target])
+    if rc == 0:
+        print(f"\nUpdated to TraceBi {st['latest']}.")
+        _update_afterwards()
+    return rc
+
+
+def _update_afterwards() -> None:
+    print("\nAfterwards: restart `tracebi serve` (or the container), then run "
+          "`tracebi verify output/<report>.html.manifest.json` to confirm your "
+          "reports still reproduce on the new version.")
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     """
     Serve the current project's web UI.
@@ -2388,6 +2448,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--reload", action="store_true",
                          help="Restart on file changes (development).")
     p_serve.set_defaults(func=cmd_serve)
+
+    p_update = sub.add_parser(
+        "update",
+        help="Check for a newer TraceBi and show (or run) the command that "
+             "updates this install.",
+    )
+    p_update.add_argument("--check", action="store_true",
+                          help="Only report; never run the update.")
+    p_update.add_argument("--yes", "-y", action="store_true",
+                          help="Run the update without asking (pip installs).")
+    p_update.set_defaults(func=cmd_update)
 
     p_dev = sub.add_parser(
         "dev",

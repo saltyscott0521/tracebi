@@ -43,6 +43,7 @@
 <a href="../guides/styling-a-report.html">Styling a report</a>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
 <a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
 <a href="../guides/your-first-report.html">Your first report</a>
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
@@ -118,6 +119,13 @@ prose, a KPI, a chart, and a filter/search/download table.
 See <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
 <hr>
 <h2 id="building-and-checking">Building and checking</h2>
+<h3 id="tracebi-update"><code>tracebi update</code></h3>
+<pre><code class="language-bash">tracebi update [--check] [--yes]
+</code></pre>
+<p>Says whether a newer TraceBi is published, what changed, and the command that
+updates this install (pip, Docker or a git checkout). A pip install can run it
+here after asking; <code>--yes</code> skips the question and <code>--check</code> never runs it.
+See <a href="../guides/updating.html">Updating TraceBi</a>.</p>
 <h3 id="tracebi-report-build"><code>tracebi report build</code></h3>
 <pre><code class="language-bash">tracebi report build &lt;name&gt; [--output PATH] [--badges] [--reports-dir DIR]
 </code></pre>

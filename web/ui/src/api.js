@@ -79,6 +79,16 @@ export const tableCsvUrl = (model, table) =>
 export const useHealth = () =>
   useQuery({ queryKey: ['health'], queryFn: () => get('/health') })
 
+// Install status, including whether a newer TraceBi is published. The server
+// answers from a cached check (refreshed in the background), so poll gently
+// until it has an answer, then rarely.
+export const useAppStatus = () =>
+  useQuery({
+    queryKey: ['status'],
+    queryFn: () => get('/status'),
+    refetchInterval: (q) => (q.state.data?.update?.latest ? 30 * 60 * 1000 : 60 * 1000),
+  })
+
 export const useConnectors = () =>
   useQuery({ queryKey: ['connectors'], queryFn: () => get('/connectors') })
 

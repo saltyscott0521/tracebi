@@ -12,6 +12,11 @@ from pathlib import Path
 
 import pytest
 
+# No test reaches GitHub for a release check (tracebi/_updates.py). Set at
+# import so subprocesses inherit it; tests/test_updates.py turns it back on
+# against a fake release feed.
+os.environ["TRACEBI_UPDATE_CHECK"] = "0"
+
 
 @pytest.fixture(autouse=True)
 def _report_builds_leave_the_repo(monkeypatch, tmp_path):
