@@ -59,12 +59,12 @@ const NAV_PRIMARY = [
   { path: '/models',     label: 'Contract',   icon: 'models' },
   { path: '/connectors', label: 'Connectors', icon: 'connectors' },
   { path: '/pipelines',  label: 'Refresh',    icon: 'pipelines' },
+  { path: '/explore',    label: 'Ask',        icon: 'explore' },
 ]
 
 const NAV_SECONDARY = [
   { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
   { path: '/getting-started', label: 'Get Started', icon: 'guide' },
-  { path: '/explore',         label: 'Ask',         icon: 'explore' },
   { path: '/handbook',        label: 'Docs',        icon: 'docs' },
 ]
 
