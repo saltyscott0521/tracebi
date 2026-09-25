@@ -181,7 +181,7 @@ file, any other type, or a path outside `assets/` fails the load with the file
 named. Keep images small: every byte ships inside the report. Check a font's
 licence allows embedding (SIL OFL fonts do; ship the licence text alongside).
 
-`examples/portfolio_project/reports/portfolio_showcase/` shows it all: two
+`examples/portfolio_project/reports/showcase/portfolio_showcase/` shows it all: two
 typefaces, a hero with inlined artwork, pill tabs, in-cell bars, sortable
 columns, and chart styling through `tracebi.configureChart`.
 

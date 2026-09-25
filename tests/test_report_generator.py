@@ -1053,24 +1053,24 @@ class TestReportCLI:
 
 class TestShippedExample:
     def test_portfolio_book_package_loads_structurally(self):
-        """The committed examples/portfolio_project/reports/portfolio_book/ is a well-formed package: it
+        """The committed examples/portfolio_project/reports/fund_books/portfolio_book/ is a well-formed package: it
         loads (structural validation only, no warehouse) with its two bindings
         against portfolio_model."""
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
-                               "reports", "portfolio_book")
+                               "reports", "fund_books", "portfolio_book")
         pkg = TemplatePackage(pkg_dir)
         assert set(pkg.bindings) == {"by_sector", "top_issuers"}
         assert all(ref.model == "portfolio_model" for ref in pkg.bindings.values())
 
     def test_portfolio_concentration_is_governed_and_loads_structurally(self):
-        """The committed examples/portfolio_project/reports/portfolio_concentration/
+        """The committed examples/portfolio_project/reports/risk/portfolio_concentration/
         is now FULLY GOVERNED — rank/share/running window measures, not a
         report.py escape hatch. It loads structurally (no warehouse), its single
         `concentration` binding queries the model, and there is no report.py."""
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
-                               "reports", "portfolio_concentration")
+                               "reports", "risk", "portfolio_concentration")
         pkg = TemplatePackage(pkg_dir)
         assert set(pkg.bindings) == {"concentration"}
         assert pkg.bindings["concentration"].model == "portfolio_model"
@@ -1284,7 +1284,7 @@ class TestPerBindingVerifiability:
         in-memory stand-in for portfolio_model (no warehouse)."""
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
-                               "reports", "portfolio_concentration")
+                               "reports", "risk", "portfolio_concentration")
 
         holdings = pd.DataFrame({
             "holding_id": [1, 2, 3],

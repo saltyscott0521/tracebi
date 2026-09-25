@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "report_name": "Portfolio Concentration",
-  "rendered_at": "2026-08-24T02:25:57.849875+00:00",
+  "rendered_at": "2026-09-25T02:38:47.945300+00:00",
   "rendered_by": "risk",
   "format": "html",
-  "output_path": "/Users/andrewscott/Documents/Claude/tracebi/examples/portfolio_project/output/portfolio_concentration.html",
-  "git_sha": "ff460251bcecaec8f8717bd25f0a7756ee5beb85",
+  "output_path": "/Users/andrewscott/Documents/Claude/tracebi/examples/portfolio_project/output/risk/portfolio_concentration.html",
+  "git_sha": "3d154adc39d2151b715d316f2fb7e5d7b1613ac4",
   "parameters": {},
   "sections": [
     {
@@ -26,7 +26,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-08-24T02:25:57.816859+00:00",
+          "timestamp": "2026-09-25T02:38:47.912114+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -47,7 +47,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-08-24T02:25:57.817429+00:00",
+          "timestamp": "2026-09-25T02:38:47.913369+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -65,7 +65,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-24T02:25:57.824205+00:00",
+          "timestamp": "2026-09-25T02:38:47.920973+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -79,7 +79,7 @@
           "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-24T02:25:57.827159+00:00",
+          "timestamp": "2026-09-25T02:38:47.923993+00:00",
           "metadata": {
             "shares": {
               "fv_share": "fair_value"
@@ -91,14 +91,15 @@
           "description": "Window measure(s): fv_rank = rank(fair_value desc), fv_cum_share = running(fv_share desc)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-24T02:25:57.829244+00:00",
+          "timestamp": "2026-09-25T02:38:47.925448+00:00",
           "metadata": {
             "ranks": {
               "fv_rank": "fair_value"
             },
             "runnings": {
               "fv_cum_share": "fv_share"
-            }
+            },
+            "partitions": {}
           }
         },
         {
@@ -106,7 +107,7 @@
           "description": "Ordered by fv_rank, dim_issuer.issuer, dim_issuer.sector, fair_value, fv_share, fv_cum_share",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-24T02:25:57.829695+00:00",
+          "timestamp": "2026-09-25T02:38:47.925899+00:00",
           "metadata": {
             "order_by": [
               {
@@ -142,7 +143,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-08-24T02:25:57.829700+00:00",
+          "timestamp": "2026-09-25T02:38:47.925904+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.3",
@@ -252,12 +253,28 @@
     }
   ],
   "stage": "final",
-  "figures": [],
+  "figures": [
+    {
+      "id": "fig-share_chart",
+      "kind": "chart",
+      "binding": "concentration"
+    },
+    {
+      "id": "fig-curve_chart",
+      "kind": "chart",
+      "binding": "concentration"
+    },
+    {
+      "id": "fig-ranking",
+      "kind": "table",
+      "binding": "concentration"
+    }
+  ],
   "transform_contracts": {
     "dim_issuer": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-08-24T02:25:57.299269+00:00",
+      "checked_at": "2026-09-24T18:50:39.506831+00:00",
       "checks": 2,
       "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"
@@ -265,7 +282,7 @@
     "fact_holdings": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-08-24T02:25:57.299269+00:00",
+      "checked_at": "2026-09-24T18:50:39.506831+00:00",
       "checks": 4,
       "fingerprint": "0b87d0716db4399a88eead932cbf219555d2ab7f180bb14af35db6d083a163f8",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"

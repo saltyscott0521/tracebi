@@ -29,7 +29,7 @@ def _copy_project(tmp_path: Path) -> Path:
 def test_scorer_passes_portfolio_book_and_fails_a_literal(tmp_path):
     project = _copy_project(tmp_path)
     broken = project / "reports" / "broken_book"
-    shutil.copytree(project / "reports" / "portfolio_book", broken)
+    shutil.copytree(project / "reports" / "fund_books" / "portfolio_book", broken)
     template = broken / "template.html"
     template.write_text(
         template.read_text(encoding="utf-8").replace(
@@ -44,7 +44,7 @@ def test_scorer_passes_portfolio_book_and_fails_a_literal(tmp_path):
         "A report of fair value by sector.\n", encoding="utf-8",
     )
     (cases / "book.json").write_text(json.dumps({
-        "report": "portfolio_book",
+        "report": "fund_books/portfolio_book",
         "figures": ["custom"],
         "measures": ["fair_value"],
         "dimensions": ["dim_issuer.sector"],

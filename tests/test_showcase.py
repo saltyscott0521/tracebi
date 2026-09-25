@@ -1,7 +1,7 @@
 """
 The showcase must never rot.
 
-``examples/portfolio_project/reports/portfolio_showcase`` is the maintained
+``examples/portfolio_project/reports/showcase/portfolio_showcase`` is the maintained
 kitchen-sink demo — every figure kind, control, layout, and trust
 affordance on the reference data. This test rebuilds it hermetically (a
 tmp copy of the reference project, transform run fresh) and holds it to
@@ -50,10 +50,10 @@ class TestShowcase:
     def test_builds_verifies_and_carries_every_affordance(
             self, showcase_project):
         proj = showcase_project
-        out = _run(["report", "build", "portfolio_showcase"], proj)
+        out = _run(["report", "build", "showcase/portfolio_showcase"], proj)
         assert out.returncode == 0, out.stdout + out.stderr
 
-        html = (proj / "output" / "portfolio_showcase.html").read_text(
+        html = (proj / "output" / "showcase" / "portfolio_showcase.html").read_text(
             encoding="utf-8")
         from tests.test_presentation_js import assert_built_receipt_rows
         assert_built_receipt_rows(html)
@@ -70,7 +70,7 @@ class TestShowcase:
         assert "Working notes" not in html, "exploration must die at build"
 
         manifest = json.loads(
-            (proj / "output" / "portfolio_showcase.html.manifest.json")
+            (proj / "output" / "showcase" / "portfolio_showcase.html.manifest.json")
             .read_text(encoding="utf-8"))
         # The full trust surface rides the receipt.
         assert manifest["schema_version"] == 2
@@ -85,13 +85,13 @@ class TestShowcase:
         # honest unverified figure and a python-derived one — the demo
         # demos honesty, not just green).
         out = _run(["verify",
-                    "output/portfolio_showcase.html.manifest.json",
+                    "output/showcase/portfolio_showcase.html.manifest.json",
                     "--contracts"], proj)
         assert out.returncode == 0, out.stdout + out.stderr
         assert "REPRODUCES" in out.stdout
 
         # and the offline file check.
-        out = _run(["verify", "--file", "output/portfolio_showcase.html"],
+        out = _run(["verify", "--file", "output/showcase/portfolio_showcase.html"],
                    proj)
         assert out.returncode == 0, out.stdout + out.stderr
 
@@ -113,7 +113,7 @@ class TestShowcase:
             registry.auto_discover(str(proj / "models"))
             model = registry.get("portfolio_model")
             package = TemplatePackage(
-                str(proj / "reports" / "portfolio_showcase"))
+                str(proj / "reports" / "showcase" / "portfolio_showcase"))
             models = {"portfolio_model": model}
             base = evaluate_selection(package, models, {})
             control = next(

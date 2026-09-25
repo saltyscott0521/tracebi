@@ -66,6 +66,13 @@ def project(tmp_path, monkeypatch, model):
     _package(tmp_path, "ops/weekly_summary", "Ops weekly", "West")
     _package(tmp_path, "top_level", "Top level", "East")
     (tmp_path / "reports" / "finance" / "notes.txt").write_text("not a report")
+    # A JSON spec in a folder, too (specs compile to a package at discovery).
+    (tmp_path / "reports" / "finance" / "by_region.json").write_text(json.dumps({
+        "name": "Finance by region", "sections": [{
+            "type": "table", "title": "Revenue by region",
+            "data": {"model": "folder_model", "query": {
+                "fact": "fact_orders", "measures": ["revenue"],
+                "dimensions": ["dim_region.region"]}}}]}), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(cli, "_load_project_models", lambda: {model.name: model})
     monkeypatch.setattr(model_registry, "list_models", lambda: [model.name])
@@ -79,9 +86,12 @@ def test_discovery_names_reports_by_their_path(project):
 
     discovery.clear_discovery_report()
     found = discovery.auto_discover(str(project / "reports"))
-    assert {"finance/weekly_summary", "ops/weekly_summary", "top_level"} <= set(found)
-    listed = {r["name"] for r in registry.list_reports()}
-    assert {"finance/weekly_summary", "ops/weekly_summary", "top_level"} <= listed
+    expected = {"finance/weekly_summary", "ops/weekly_summary", "top_level",
+                "finance/by_region"}
+    failed = [o for o in discovery.discovery_report() if o["status"] == "failed"]
+    assert not failed, failed
+    assert expected <= set(found)
+    assert expected <= {r["name"] for r in registry.list_reports()}
 
 
 def test_same_named_reports_build_to_separate_files(project):
@@ -123,6 +133,8 @@ def test_the_web_api_opens_a_report_in_a_folder(project):
     source = client.get("/api/reports/ops/weekly_summary/source").json()
     assert any(f["path"].endswith("ops/weekly_summary/report.json")
                for f in source["files"])
+    spec = client.get("/api/reports/finance/by_region/built")
+    assert spec.status_code == 200 and "Finance by region" in spec.json()["html"]
     assert client.get("/api/reports/finance/nope/built").status_code == 404
 
 

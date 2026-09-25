@@ -117,7 +117,7 @@ never sees the transform above it. Reference impl:
 live query against the model. Because the model is materialized, the page
 re-renders in milliseconds with no pandas in the loop — editing the report
 never re-runs phase ①. Reference impls:
-<a href="../examples/portfolio_project/reports/portfolio_book/">reports/portfolio_book/</a> (package) and
+<a href="../examples/portfolio_project/reports/fund_books/portfolio_book/">reports/fund_books/portfolio_book/</a> (package) and
 <a href="../examples/portfolio_project/reports/portfolio_dashboard.json">reports/portfolio_dashboard.json</a> (spec).</p>
 <pre><code class="language-bash">cd examples/portfolio_project   # the reference project ships in the repo
 python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once

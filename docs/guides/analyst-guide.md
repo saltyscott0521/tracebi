@@ -58,7 +58,7 @@ never sees the transform above it. Reference impl:
 live query against the model. Because the model is materialized, the page
 re-renders in milliseconds with no pandas in the loop — editing the report
 never re-runs phase ①. Reference impls:
-[reports/portfolio_book/](../examples/portfolio_project/reports/portfolio_book/) (package) and
+[reports/fund_books/portfolio_book/](../examples/portfolio_project/reports/fund_books/portfolio_book/) (package) and
 [reports/portfolio_dashboard.json](../examples/portfolio_project/reports/portfolio_dashboard.json) (spec).
 
 ```bash

@@ -131,7 +131,7 @@ placed — or placed twice — fails the build. Hand-written figures still work
 everywhere; this is sugar, not a replacement.
 
 **Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
-(`examples/portfolio_project/reports/portfolio_showcase/`) uses it for two
+(`examples/portfolio_project/reports/showcase/portfolio_showcase/`) uses it for two
 typefaces and its hero artwork.
 
 Three rules that keep pages honest:
@@ -188,7 +188,7 @@ Three rules that keep pages honest:
   button); the manifest remains the receipt of record. Methodology ships
   via ONE `<section data-tb-methodology>` — the build appends the
   pipeline's stated methodology after your own prose.
-  `examples/portfolio_project/reports/portfolio_showcase/` is the
+  `examples/portfolio_project/reports/showcase/portfolio_showcase/` is the
   maintained kitchen-sink demo of all of it.
 - **Explore inside the artifact.** Blocks marked
   `data-tb-stage="exploration"` render under `tracebi dev` and are deleted

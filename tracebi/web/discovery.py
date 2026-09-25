@@ -107,7 +107,9 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
             theme_css=_sibling(getattr(spec, "theme", "") or ""),
             script_js=_sibling(getattr(spec, "script", "") or ""),
         )
-        pkg_dir = tempfile.mkdtemp(prefix=f"tracebi-spec-{stem}-")
+        # A spec in a folder is named "finance/weekly"; a "/" in a temp
+        # directory's prefix would point inside a folder that doesn't exist.
+        pkg_dir = tempfile.mkdtemp(prefix=f"tracebi-spec-{stem.replace('/', '--')}-")
         for fname, content in compiled.files.items():
             with open(os.path.join(pkg_dir, fname), "w", encoding="utf-8") as fh:
                 fh.write(content)

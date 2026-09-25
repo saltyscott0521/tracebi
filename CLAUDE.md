@@ -203,8 +203,9 @@ examples/
     transforms/        #   ① unconstrained pandas → sink star tables (holdings_transform.py)
     models/            #   ② the star-schema contract (portfolio_model.py)
     reports/           #   ③ every report form: spec (portfolio_dashboard.json),
-                       #     template packages (portfolio_book/, portfolio_showcase/),
-                       #     escape hatch (portfolio_concentration/)
+                       #     folders of packages: fund_books/ (portfolio_book,
+                       #     portfolio_overview), risk/ (portfolio_concentration),
+                       #     showcase/ (portfolio_showcase)
     run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
   seeds/               # Medallion demo DB seeding + Supabase deploy companions
   phase*.py            # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
@@ -480,7 +481,7 @@ authoring-surface feature must land with all three, in the same change:
 (1) the generated vocabulary documents it (`tracebi/capabilities.py` — the
 `tracebi context` / MCP `get_context` payload); (2) the scaffold or the
 showcase demonstrates it (`_INIT_SAMPLE_TEMPLATE_HTML` in `cli.py`, or
-`examples/portfolio_project/reports/portfolio_showcase/`); (3) both agent
+`examples/portfolio_project/reports/showcase/portfolio_showcase/`); (3) both agent
 guides name it (`AGENTS.md` and `_INIT_AGENTS_MD` in `cli.py`).
 `tests/test_agent_guides.py` enforces (1)↔(3) mechanically — every
 `data-tb-*` attribute in the vocabulary must be named in both guides, the
@@ -643,8 +644,8 @@ Don't add these unless asked.
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.py` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_dashboard.json` |
-| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
-| See every artifact feature at once | `examples/portfolio_project/reports/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
+| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/fund_books/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
+| See every artifact feature at once | `examples/portfolio_project/reports/showcase/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
 | Understand architecture decisions | `NOTES.md` |
 | Avoid bugs already hit in this repo | `docs/agents/pitfalls.md` |
 | Decide whether a test is worth writing | `docs/architecture/test-suite-review.md` |

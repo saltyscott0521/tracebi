@@ -25,7 +25,8 @@ pytestmark = pytest.mark.skipif(
 
 _REPO = Path(__file__).resolve().parents[1]
 _PROJECT = _REPO / "examples" / "portfolio_project"
-_REPORT = "portfolio_showcase"
+_REPORT = "showcase/portfolio_showcase"   # its path: it lives in a folder
+_LABEL = "portfolio_showcase"            # what the list shows under the folder
 _TITLE = "Portfolio Showcase"
 
 
@@ -127,7 +128,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             page.goto(base + "/reports")
             fail_on_browser_errors()
-            page.get_by_text(_REPORT, exact=True).click()
+            page.get_by_text(_LABEL, exact=True).click()
             try:
                 page.locator("iframe").wait_for()
             except Exception as exc:

@@ -66,7 +66,7 @@ model = (
     .add_measure("mark", ratio=("fair_value", "cost_basis"),
                  description="Fair value / cost", format="percent")
     # Concentration window measures — rank, % of total, and cumulative %. These
-    # used to live in reports/portfolio_concentration/report.py (ungoverned,
+    # used to live in reports/risk/portfolio_concentration/report.py (ungoverned,
     # verifiable:false); as governed measures every number is query-reproducible
     # and `verify` reads green. See `tracebi knowledge rank-and-cumulative`.
     .add_measure("fv_rank", rank="fair_value",

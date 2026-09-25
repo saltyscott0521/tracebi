@@ -417,7 +417,7 @@ def download_report(name: str, format: str = "xlsx"):
         raise HTTPException(
             status_code=400, detail=f"Unsupported format '{format}'. Use xlsx or html."
         )
-    fname = _safe_filename(name.replace("/", "_"))   # a download is one file
+    fname = _safe_filename(name.rsplit("/", 1)[-1])  # the report's own name, no folders
 
     # The HTML download is the last build — the file the reader is looking
     # at, the same bytes ``verify --file`` checks — never a fresh render.

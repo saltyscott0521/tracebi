@@ -63,9 +63,9 @@ Cloud.
 built copy of the reference project's `portfolio_showcase` report and its
 manifest, linked as "Download a sample report". Both are copied into the
 Vercel output by `vercel-build.sh`. Rebuild the sample when the showcase
-changes (`tracebi report build portfolio_showcase` in
-`examples/portfolio_project/`, then copy the `.html` and its
-`.html.manifest.json`, with `output_path` set to the bare file name).
+changes (`tracebi report build showcase/portfolio_showcase` in
+`examples/portfolio_project/`, then copy `output/showcase/portfolio_showcase.html`
+and its `.html.manifest.json`, with `output_path` set to the bare file name).
 
 Numbers on the page (row counts, figure counts, file sizes, verify output) are
 copied from real runs of the reference project. Re-check them when the
