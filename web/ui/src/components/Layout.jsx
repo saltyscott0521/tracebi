@@ -58,13 +58,13 @@ const NAV_PRIMARY = [
   { path: '/reports',    label: 'Report',     icon: 'reports' },
   { path: '/models',     label: 'Contract',   icon: 'models' },
   { path: '/connectors', label: 'Connectors', icon: 'connectors' },
+  { path: '/pipelines',  label: 'Refresh',    icon: 'pipelines' },
 ]
 
 const NAV_SECONDARY = [
   { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
   { path: '/getting-started', label: 'Get Started', icon: 'guide' },
   { path: '/explore',         label: 'Ask',         icon: 'explore' },
-  { path: '/pipelines',       label: 'Refresh',     icon: 'pipelines' },
   { path: '/handbook',        label: 'Docs',        icon: 'docs' },
 ]
 
