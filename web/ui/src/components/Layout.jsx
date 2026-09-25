@@ -59,7 +59,7 @@ const NAV_PRIMARY = [
   { path: '/models',     label: 'Contract',   icon: 'models' },
   { path: '/connectors', label: 'Connectors', icon: 'connectors' },
   { path: '/pipelines',  label: 'Refresh',    icon: 'pipelines' },
-  { path: '/explore',    label: 'Ask',        icon: 'explore' },
+  { path: '/explore',    label: 'Explore',    icon: 'explore' },
 ]
 
 const NAV_SECONDARY = [
