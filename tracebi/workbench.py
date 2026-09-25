@@ -701,10 +701,11 @@ def collect_state(package_dir: str, models: dict) -> dict:
             render_error = f"{type(exc).__name__}: {exc}"
 
     # ── Figures: provenance (figures_config rules) + coverage ───────────────
-    # Keyed by the DIRECTORY name, not the declaration's "name" — the
-    # directory is the stable address the dev server and discovery share.
+    # Keyed by the DIRECTORY path below reports/ ("finance/weekly"), not the
+    # declaration's "name": the address the dev server and discovery share.
+    from tracebi.report_paths import report_name_for_dir
     wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
-        os.getcwd(), os.path.basename(os.path.normpath(str(package_dir))))
+        os.getcwd(), report_name_for_dir(str(package_dir)))
     pins = read_pins(wb)
     resolved_pins = read_resolved(wb)
     pinned_ids = {p.get("id") for p in pins}
@@ -1047,15 +1048,31 @@ def _contracts_summary(warehouse: str) -> Optional[dict]:
 
 
 def _discovery_packages(project_root: str) -> list[str]:
-    """Package directory names under reports/ — a dir counts even before its
-    files exist, so a package-in-progress is visible."""
+    """Package names under reports/, folders included (``finance/weekly``).
+
+    A directory with ``report.json`` or ``template.html`` is a package. One
+    with neither and no subdirectories still counts, so a package-in-progress
+    is visible; one with subdirectories is a folder, and is walked.
+    """
     reports = os.path.join(
         project_root, os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-    try:
-        return sorted(
-            entry for entry in os.listdir(reports)
-            if os.path.isdir(os.path.join(reports, entry))
-            and not entry.startswith(".")
-        )
-    except OSError:
-        return []
+    found: list[str] = []
+
+    def walk(directory: str, prefix: str) -> None:
+        try:
+            entries = sorted(os.listdir(directory))
+        except OSError:
+            return
+        for entry in entries:
+            full = os.path.join(directory, entry)
+            if entry.startswith((".", "_")) or not os.path.isdir(full):
+                continue
+            inside = os.listdir(full)
+            if "report.json" in inside or "template.html" in inside or not any(
+                    os.path.isdir(os.path.join(full, e)) for e in inside):
+                found.append(prefix + entry)
+            else:
+                walk(full, f"{prefix}{entry}/")
+
+    walk(reports, "")
+    return found

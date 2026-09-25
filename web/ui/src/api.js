@@ -10,6 +10,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 // Trailing slashes are trimmed so both forms work.
 const BASE = (import.meta.env?.VITE_API_BASE || '/api').replace(/\/+$/, '')
 
+// A report in a folder is named by its path ("finance/weekly"). Encode each
+// part but keep the slashes: an encoded slash (%2F) is refused by some
+// proxies, and the API's routes take the path as-is.
+export const reportPath = (name) => name.split('/').map(encodeURIComponent).join('/')
+
 // API errors carry a structured `detail` ({ message, exception_type, traceback })
 // for 500s from report/pipeline runs; fall back to plain text otherwise.
 async function toError(r) {
@@ -59,7 +64,7 @@ async function postJson(path, body) {
 }
 
 export const reportDownloadUrl = (name, format) =>
-  `${BASE}/reports/${encodeURIComponent(name)}/download?format=${format}`
+  `${BASE}/reports/${reportPath(name)}/download?format=${format}`
 
 // Offline file check: rehash a report .html's embedded data against its
 // manifest receipt (no model needed). The verdict lives in the response body.
@@ -109,7 +114,7 @@ export const useDesk = () =>
   useQuery({ queryKey: ['desk'], queryFn: () => get('/desk') })
 
 export const fetchBuiltReport = (name) =>
-  getOrNull(`/reports/${encodeURIComponent(name)}/built`)
+  getOrNull(`/reports/${reportPath(name)}/built`)
 
 export const useBuiltReport = (name) =>
   useQuery({
@@ -122,12 +127,12 @@ export const useBuiltReport = (name) =>
 // Background report runs: start returns a run_id; the status query polls
 // every 1.2s while the run is in flight, then stops on its own.
 export const useStartReportRun = () =>
-  useMutation({ mutationFn: (name) => post(`/reports/${encodeURIComponent(name)}/runs`) })
+  useMutation({ mutationFn: (name) => post(`/reports/${reportPath(name)}/runs`) })
 
 export const useReportRun = (name, runId) =>
   useQuery({
     queryKey: ['report-run', name, runId],
-    queryFn: () => get(`/reports/${encodeURIComponent(name)}/runs/${runId}`),
+    queryFn: () => get(`/reports/${reportPath(name)}/runs/${runId}`),
     enabled: !!(name && runId),
     refetchInterval: (query) => (query.state.data?.status === 'running' ? 1200 : false),
     // Keep polling even when the tab is backgrounded — the run is on the
@@ -138,7 +143,7 @@ export const useReportRun = (name, runId) =>
 export const useReportRunHistory = (name) =>
   useQuery({
     queryKey: ['report-runs', name],
-    queryFn: () => get(`/reports/${encodeURIComponent(name)}/runs?limit=5`),
+    queryFn: () => get(`/reports/${reportPath(name)}/runs?limit=5`),
     enabled: !!name,
   })
 
@@ -146,25 +151,25 @@ export const useReportRunHistory = (name) =>
 export const useReportSource = (name, enabled) =>
   useQuery({
     queryKey: ['report-source', name],
-    queryFn: () => get(`/reports/${encodeURIComponent(name)}/source`),
+    queryFn: () => get(`/reports/${reportPath(name)}/source`),
     enabled: !!(name && enabled),
   })
 
 export const useReportLineage = () =>
-  useMutation({ mutationFn: (name) => get(`/reports/${name}/lineage`) })
+  useMutation({ mutationFn: (name) => get(`/reports/${reportPath(name)}/lineage`) })
 
 // Ask is a client of the selection endpoint: a cut, not a private query path.
 export const useReportSelection = () =>
   useMutation({
     mutationFn: ({ name, filters, question }) =>
-      postJson(`/reports/${encodeURIComponent(name)}/selection`,
+      postJson(`/reports/${reportPath(name)}/selection`,
         question ? { question } : { filters: filters || {} }),
   })
 
 export const useKeepSelection = () =>
   useMutation({
     mutationFn: ({ name, filters }) =>
-      postJson(`/reports/${encodeURIComponent(name)}/selection/keep`, { filters }),
+      postJson(`/reports/${reportPath(name)}/selection/keep`, { filters }),
   })
 
 export const usePipelines = () =>

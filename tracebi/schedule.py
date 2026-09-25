@@ -123,7 +123,8 @@ def discover_schedules(reports_dir: Union[str, Path]) -> tuple[list[dict], list[
     """Every scheduled package under *reports_dir*.
 
     Returns ``(schedules, errors)``. Each schedule is the normalized block
-    plus ``"report"`` (the package directory name). A package that fails to
+    plus ``"report"`` (the package's path below *reports_dir*, e.g.
+    ``finance/weekly``). A package that fails to
     load is an error entry ``{"report", "error"}``, not an exception — one
     broken package must not stop the others from running. Specs
     (``reports/<name>.json``) are not scheduled; migrate them to a package
@@ -136,18 +137,31 @@ def discover_schedules(reports_dir: Union[str, Path]) -> tuple[list[dict], list[
     errors: list[dict] = []
     if not reports_dir.is_dir():
         return schedules, errors
-    for pkg in sorted(p for p in reports_dir.iterdir() if p.is_dir()):
-        if pkg.name.startswith("_") or not (pkg / "report.json").is_file():
-            continue
+    for pkg in _package_dirs(reports_dir):
+        name = pkg.relative_to(reports_dir).as_posix()   # "finance/weekly"
         try:
             package = TemplatePackage(str(pkg))
         except Exception as exc:  # noqa: BLE001 — report it, keep going
-            errors.append({"report": pkg.name,
+            errors.append({"report": name,
                            "error": f"{type(exc).__name__}: {exc}"})
             continue
         if package.schedule is not None:
-            schedules.append({"report": pkg.name, **package.schedule})
+            schedules.append({"report": name, **package.schedule})
     return schedules, errors
+
+
+def _package_dirs(directory: Path) -> list[Path]:
+    """Package directories below *directory*, in folders too: a directory
+    with ``report.json`` is a package; any other is a folder to walk."""
+    found: list[Path] = []
+    for sub in sorted(p for p in directory.iterdir() if p.is_dir()):
+        if sub.name.startswith(("_", ".")):
+            continue
+        if (sub / "report.json").is_file():
+            found.append(sub)
+        else:
+            found.extend(_package_dirs(sub))
+    return found
 
 
 def _now() -> str:

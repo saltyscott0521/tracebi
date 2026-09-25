@@ -1724,7 +1724,11 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     build <name>``.
     """
     reports_dir: Path = args.reports_dir
-    slug = _slugify(args.title)
+    # "finance/Weekly summary" puts the report in a folder: every part before
+    # the last is a folder, and the last part is the report's title.
+    *folders, title = [p.strip() for p in args.title.split("/")]
+    slug = "/".join([_slugify(p) for p in folders if p] + [_slugify(title)])
+    args.title = title or args.title
     pkg_dir = reports_dir / slug
     if pkg_dir.exists() and not args.force:
         print(f"refusing to overwrite existing {pkg_dir}; pass --force to replace",
@@ -1757,6 +1761,11 @@ def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
     spec. Returns ``("package"|"spec", path)`` or raises ``FileNotFoundError``
     listing where it looked. All report forms live in one ``reports/`` folder.
     """
+    from tracebi.report_paths import report_name_error
+
+    err = report_name_error(name)
+    if err:
+        raise FileNotFoundError(err)
     pkg_dir = reports_dir / name
     if (pkg_dir / "report.json").is_file() and (pkg_dir / "template.html").is_file():
         return "package", pkg_dir
@@ -2473,7 +2482,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Scaffold a freeform report package (reports/<name>/): report.json "
              "bindings + a template.html that teaches the data-tb-* figure grammar.",
     )
-    p_new_report.add_argument("title", help='Free-form title, e.g. "Portfolio Book".')
+    p_new_report.add_argument(
+        "title", help='Free-form title, e.g. "Portfolio Book". Put it in a folder '
+                      'with a path: "Finance/Month end/Close pack" creates '
+                      'reports/finance/month_end/close_pack/.')
     p_new_report.add_argument("--force", action="store_true", help="Overwrite if exists.")
     p_new_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
                               help="Directory holding report packages (default: ./reports).")

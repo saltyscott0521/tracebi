@@ -44,16 +44,19 @@ def _rel(root: str, path: str) -> str:
 
 
 def _pins(root: str) -> list[dict]:
-    from tracebi.workbench import read_pins
+    from tracebi.workbench import PINS_FILE, read_pins
 
     base = os.path.join(root, ".tracebi", "workbench")
     if not os.path.isdir(base):
         return []
     found: list[dict] = []
-    for name in sorted(os.listdir(base)):
-        directory = os.path.join(base, name)
-        if not os.path.isdir(directory):
+    # A report in a folder keeps its workbench at .tracebi/workbench/<folder>/<name>,
+    # so walk down to every directory that holds a pins file.
+    for directory, dirs, files in sorted(os.walk(base)):
+        dirs.sort()
+        if PINS_FILE not in files:
             continue
+        name = os.path.relpath(directory, base).replace(os.sep, "/")
         for pin in read_pins(directory):
             if not isinstance(pin, dict):
                 continue
@@ -73,10 +76,12 @@ def _drafts(root: str) -> list[dict]:
     if not os.path.isdir(reports):
         return []
     drafts: list[dict] = []
-    for entry in sorted(os.listdir(reports)):
-        template = os.path.join(reports, entry, "template.html")
-        if not os.path.isfile(template):
+    for directory, dirs, files in sorted(os.walk(reports)):
+        dirs[:] = sorted(d for d in dirs if not d.startswith((".", "_")))
+        if "template.html" not in files or directory == reports:
             continue
+        entry = os.path.relpath(directory, reports).replace(os.sep, "/")
+        template = os.path.join(directory, "template.html")
         try:
             text = open(template, encoding="utf-8").read()
         except OSError:
@@ -116,9 +121,11 @@ def _verdicts(
     opened: Optional[dict] = None
     opened_mtime = -1.0
     suffix = ".html.manifest.json"
-    for name in sorted(os.listdir(output)):
-        if not name.endswith(suffix):
-            continue
+    # output/finance/weekly.html belongs to the report "finance/weekly".
+    manifests = sorted(
+        os.path.relpath(os.path.join(d, n), output).replace(os.sep, "/")
+        for d, _, names in os.walk(output) for n in names if n.endswith(suffix))
+    for name in manifests:
         path = os.path.join(output, name)
         report = name[: -len(suffix)]
         html_path = os.path.join(output, report + ".html")

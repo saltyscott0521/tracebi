@@ -190,17 +190,17 @@ def _slug(name: str) -> str:
 
 
 def _report_name_error(report: str) -> Optional[str]:
-    """``None`` if ``report`` is a safe package name, else an error message.
+    """``None`` if ``report`` is a safe report name, else an error message.
 
-    The name indexes ``reports/<name>/`` and must never be a path: reject path
-    separators, an absolute path, and a leading dot so ``reports_dir / report``
-    can never escape the reports directory (``/etc/x`` resolves to an absolute
-    path; ``../../etc`` traverses out). Applied by every tool that turns a
-    caller-supplied name into a filesystem path.
+    The name indexes ``reports/<name>/``. A report in a folder is named by its
+    path (``finance/weekly``); anything that could escape the reports
+    directory (``/etc/x``, ``../../etc``, a backslash, a dot segment) is
+    refused. Applied by every tool that turns a caller-supplied name into a
+    filesystem path.
     """
-    if os.sep in report or "/" in report or report.startswith("."):
-        return f"invalid report name {report!r}: pass the package name, not a path"
-    return None
+    from tracebi.report_paths import report_name_error
+
+    return report_name_error(report)
 
 
 def _confined_output_dir(output_dir: str) -> "tuple[Optional[Path], Optional[str]]":
@@ -1124,7 +1124,8 @@ def gateway_build_report(
         return {"ok": False, "errors": [
             f"format must be 'html' or 'xlsx', not {format!r}"
         ]}
-    # The name is a directory under reports/ — never a path.
+    # The name is a directory under reports/ (a folder path at most), and
+    # can never climb out of it.
     name_err = _report_name_error(report)
     if name_err:
         return {"ok": False, "errors": [name_err]}
@@ -1141,8 +1142,9 @@ def gateway_build_report(
     if out_err:
         return {"ok": False, "errors": [out_err]}
     out_dir.mkdir(parents=True, exist_ok=True)
-    output = out_dir / f"{report}.html"
+    output = out_dir / f"{report}.html"          # keeps the report's folders
     xlsx = out_dir / f"{report}.xlsx"
+    output.parent.mkdir(parents=True, exist_ok=True)
     try:
         with actor(_mcp_actor()):
             package = TemplatePackage(str(pkg_dir))

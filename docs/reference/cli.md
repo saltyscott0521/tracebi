@@ -57,6 +57,12 @@ tracebi new-pipeline  "Sales ETL"     [--force]
 Each scaffolds one file (or, for `new-report`, a package directory) with the
 title slugified: `"Portfolio Book"` → `portfolio_book`.
 
+`new-report` can put the report in a folder: `"Finance/Month end/Close pack"`
+creates `reports/finance/month_end/close_pack/`. A report in a folder is named
+by that path everywhere after: `tracebi report build finance/month_end/close_pack`,
+`output/finance/month_end/close_pack.html`, and the Reports page, which groups
+reports by folder. Two folders can each hold a report of the same name.
+
 All refuse to overwrite without `--force`.
 
 `new-report` deliberately writes **no** `script.js` or `style.css` — the

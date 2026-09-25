@@ -259,11 +259,16 @@ one and polls it on the other, and a schedule tick fires exactly once.
 **Goal:** steps 1–2 of [[report-library]]. Reports live in folders people can
 browse, and a report is addressed by its path.
 
-- [ ] Discovery scans `reports/` recursively; a report's identity is its path
+- [x] Discovery scans `reports/` recursively; a report's identity is its path
       (`finance/month_end/close_pack`). The name stays as a display label.
-- [ ] Built outputs are stored per report path, not in one flat `output/`.
+      (2026-09-24: CLI, web API, gateway, schedules, the workbench and the
+      Desk checks all take the path; `tracebi/report_paths.py` is the one
+      name guard.)
+- [x] Built outputs are stored per report path, not in one flat `output/`.
 - [ ] A read-only Library page: folders, each report's type, owner, last
-      change, schedule, last run and past builds.
+      change, schedule, last run and past builds. *(Started: the Reports page
+      groups reports by folder with type, last build and receipt status.
+      Owner, last change, schedule and past builds are still to come.)*
 - [ ] Mounts in configuration: several folders (a local path, a network share)
       as top-level library folders.
 - [ ] Every read of a report (open, download, Source, MCP tools, schedules)

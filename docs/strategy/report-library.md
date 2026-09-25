@@ -159,11 +159,11 @@ are where that rule belongs.
 
 These cost little today and are expensive to retrofit:
 
-- **Address a report by its path, not only its name.** Two folders can each
-  hold a `weekly_summary`. The registry is keyed by name today.
+- **Address a report by its path, not only its name.** ✅ Two folders can
+  each hold a `weekly_summary`; the registry is keyed by `finance/weekly_summary`.
 - **Route every read of a report through one place** that could check
   permissions, including the Source view ✅, downloads, MCP tools and schedules.
-- **Store built outputs per report path**, not in one flat `output/` folder.
+- **Store built outputs per report path**, not in one flat `output/` folder. ✅
 - **Assume nothing about git** outside a source-control adapter.
 - **Record who did it** on every publish, build and schedule change. The audit
   attribution already exists for runs ✅.

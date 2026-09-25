@@ -901,8 +901,10 @@ class TestPackageDiscovery:
         outcomes = {o["file"]: o for o in discovery.discovery_report()
                     if o.get("file")}
         assert outcomes["regions"]["status"] == "registered"
+        # A subdirectory that isn't a package is a folder: scanned, and it
+        # registers nothing itself.
         assert outcomes["not_a_package"]["status"] == "skipped"
-        assert "subdirectories are not scanned" in outcomes["not_a_package"]["reason"]
+        assert "a folder" in outcomes["not_a_package"]["reason"]
 
     def test_factory_resolves_model_at_call_time(self, tmp_path, model, monkeypatch):
         """Discovery registers the package before the model exists; the factory

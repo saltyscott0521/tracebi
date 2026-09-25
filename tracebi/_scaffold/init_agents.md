@@ -158,7 +158,7 @@ tracebi run-transform <name>                # ① clean + sink + contract —
                                             #   fresh (python transforms/<name>.py
                                             #   works too for .py)
 tracebi new-model "<Name>"                  # ② scaffold a model; edit it
-tracebi new-report "<Name>"                 # ③ scaffold reports/<name>/
+tracebi new-report "<Name>"                 # ③ scaffold reports/<name>/ ("Finance/<Name>" → a folder)
 tracebi dev <name>                          # the live loop (see below)
 tracebi report status <name>                # earned state in the terminal (📌 pins)
 tracebi report build <name>                 # render → output/<name>.html + manifest

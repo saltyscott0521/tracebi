@@ -18,6 +18,15 @@ def _safe_filename(name: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in "._- ") or "report"
 
 
+def _output_html(name: str) -> str:
+    """``output/<name>.html``, keeping a foldered report's folders
+    (``finance/weekly`` → ``output/finance/weekly.html``), each part made
+    safe for a filename."""
+    from tracebi.report_paths import output_html
+    return output_html(_output_dir(),
+                       "/".join(_safe_filename(p) for p in name.split("/")))
+
+
 def _run_report_or_502(name: str):
     if name not in {r["name"] for r in registry.list_reports()}:
         raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
@@ -63,7 +72,8 @@ def _writable_output_html(name: str):
     Same names ``tracebi report build`` uses. A probe file distinguishes
     "the disk refused" from a later render error, which must still raise.
     """
-    out_dir = _output_dir()
+    path = _output_html(name)
+    out_dir = os.path.dirname(path)
     probe = os.path.join(out_dir, ".tracebi-write-probe")
     try:
         os.makedirs(out_dir, exist_ok=True)
@@ -72,7 +82,7 @@ def _writable_output_html(name: str):
         os.unlink(probe)
     except OSError:
         return None
-    return os.path.join(out_dir, f"{_safe_filename(name)}.html")
+    return path
 
 
 def _artifact_payload(name: str):
@@ -192,7 +202,7 @@ def _package_or_404(name: str):
     return pkg_dir
 
 
-@router.post("/{name}/selection")
+@router.post("/{name:path}/selection")
 def report_selection(name: str, payload: dict):
     """Recompute an opted-in report under a selection.
 
@@ -254,7 +264,7 @@ def report_selection(name: str, payload: dict):
         )
 
 
-@router.post("/{name}/selection/keep")
+@router.post("/{name:path}/selection/keep")
 def keep_report_selection(name: str, payload: dict):
     """Write the cut into the package, rebuild, and verify.
 
@@ -303,7 +313,7 @@ def _last_build(name: str) -> dict:
     Fresh data comes from a schedule or Rebuild.
     """
     _package_or_404(name)
-    path = os.path.join(_output_dir(), f"{_safe_filename(name)}.html")
+    path = _output_html(name)
     manifest_path = path + ".manifest.json"
     if os.path.isfile(path) and os.path.isfile(manifest_path):
         with open(path, encoding="utf-8") as fh:
@@ -329,7 +339,7 @@ def _last_build(name: str) -> dict:
         ) from None
 
 
-@router.get("/{name}/built")
+@router.get("/{name:path}/built")
 def built_report(name: str):
     """The last build: on disk, in memory, or built once if there is none.
 
@@ -338,7 +348,7 @@ def built_report(name: str):
     return _last_build(name)
 
 
-@router.post("/{name}/run")
+@router.post("/{name:path}/run")
 def run_report(name: str):
     """
     Run a registered report and return the rendered HTML + manifest.
@@ -360,7 +370,7 @@ def _render_report_payload(name: str) -> dict:
     return _artifact_payload_or_refuse(name)
 
 
-@router.post("/{name}/runs", status_code=202)
+@router.post("/{name:path}/runs", status_code=202)
 def start_report_run(name: str):
     """
     Start a report run in the background.
@@ -379,13 +389,13 @@ def start_report_run(name: str):
     }
 
 
-@router.get("/{name}/runs")
+@router.get("/{name:path}/runs")
 def report_run_history(name: str, limit: int = 10):
     """Recent background runs for this report, newest first (no payloads)."""
     return run_store.list_for("report", name, limit)
 
 
-@router.get("/{name}/runs/{run_id}")
+@router.get("/{name:path}/runs/{run_id}")
 def report_run_status(name: str, run_id: str):
     """Status + result of one background run."""
     record = run_store.get(run_id)
@@ -396,7 +406,7 @@ def report_run_status(name: str, run_id: str):
     return record
 
 
-@router.get("/{name}/download")
+@router.get("/{name:path}/download")
 def download_report(name: str, format: str = "xlsx"):
     """
     Run a report and download the rendered file.
@@ -407,7 +417,7 @@ def download_report(name: str, format: str = "xlsx"):
         raise HTTPException(
             status_code=400, detail=f"Unsupported format '{format}'. Use xlsx or html."
         )
-    fname = _safe_filename(name)
+    fname = _safe_filename(name.replace("/", "_"))   # a download is one file
 
     # The HTML download is the last build — the file the reader is looking
     # at, the same bytes ``verify --file`` checks — never a fresh render.
@@ -465,7 +475,7 @@ def _source_file(path: str, reports_dir: str) -> dict:
     }
 
 
-@router.get("/{name}/source")
+@router.get("/{name:path}/source")
 def report_source(name: str):
     """The files that define a report: the spec, or the package's files.
 
@@ -507,7 +517,7 @@ def report_source(name: str):
     return {"form": src["form"], "files": files, "other_files": other, "hint": hint}
 
 
-@router.get("/{name}/mermaid")
+@router.get("/{name:path}/mermaid")
 def report_mermaid(name: str):
     """Return a Mermaid flowchart string for the report's combined lineage."""
     report = _run_report_or_502(name)
@@ -521,7 +531,7 @@ def report_mermaid(name: str):
     return {"mermaid": mermaid}
 
 
-@router.get("/{name}/lineage")
+@router.get("/{name:path}/lineage")
 def report_lineage(name: str):
     """
     Run a report and return its full data lineage as a React Flow graph.

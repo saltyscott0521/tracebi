@@ -515,6 +515,39 @@ function ReceiptChip({ build }) {
   )
 }
 
+// Reports in folders are named by their path ("finance/weekly"). The list
+// groups them under their folder; top-level reports come first, unheaded.
+function groupByFolder(reports) {
+  const groups = new Map()
+  for (const r of reports) {
+    const i = r.name.lastIndexOf('/')
+    const folder = i === -1 ? '' : r.name.slice(0, i)
+    if (!groups.has(folder)) groups.set(folder, [])
+    groups.get(folder).push(r)
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)))
+    .map(([folder, items]) => ({ folder, items }))
+}
+
+function FolderHeading({ folder, count, open, onToggle }) {
+  return (
+    <button type="button" onClick={onToggle} aria-expanded={open} style={{
+      display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+      padding: '8px 16px', border: 0, borderBottom: '1px solid var(--border)',
+      background: 'var(--surface)', color: 'var(--text-2)', cursor: 'pointer',
+      font: 'inherit', fontSize: 12, fontWeight: 600, textAlign: 'left',
+    }}>
+      <span aria-hidden="true" style={{ width: 10, color: 'var(--muted)' }}>{open ? '▾' : '▸'}</span>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'var(--muted)', flexShrink: 0 }}>
+        <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+      </svg>
+      <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{folder.split('/').join(' / ')}</span>
+      <span style={{ color: 'var(--muted)', fontWeight: 400, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+    </button>
+  )
+}
+
 export default function Reports() {
   const { data, isLoading } = useReports()
   const { data: desk } = useDesk()
@@ -533,6 +566,12 @@ export default function Reports() {
     (r.description || '').toLowerCase().includes(query.toLowerCase())
   )
   const current = reports.find(r => r.name === selected)
+  const [closed, setClosed] = useState(() => new Set())
+  const toggle = (folder) => setClosed(prev => {
+    const next = new Set(prev)
+    next.has(folder) ? next.delete(folder) : next.add(folder)
+    return next
+  })
 
   return (
     <>
@@ -553,21 +592,33 @@ export default function Reports() {
                 <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" />
                 {filtered.length === 0
                   ? <Empty message="No matches." />
-                  : filtered.map(r => (
-                    <ListItem
-                      key={r.name}
-                      selected={selected === r.name}
-                      onClick={() => select(r.name)}
-                      name={r.name}
-                      sub={r.description}
-                      right={
-                        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          <FormChip form={r.form} />
-                          <ReceiptChip build={builds[r.name]} />
-                        </span>
-                      }
-                    />
-                  ))
+                  : groupByFolder(filtered).map(({ folder, items }) => {
+                    // A search always shows its matches, even in a closed folder.
+                    const open = !folder || query || !closed.has(folder)
+                    return (
+                      <div key={folder || '(top)'}>
+                        {folder && (
+                          <FolderHeading folder={folder} count={items.length}
+                                         open={open} onToggle={() => toggle(folder)} />
+                        )}
+                        {open && items.map(r => (
+                          <ListItem
+                            key={r.name}
+                            selected={selected === r.name}
+                            onClick={() => select(r.name)}
+                            name={r.name.slice(r.name.lastIndexOf('/') + 1)}
+                            sub={r.description}
+                            right={
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                <FormChip form={r.form} />
+                                <ReceiptChip build={builds[r.name]} />
+                              </span>
+                            }
+                          />
+                        ))}
+                      </div>
+                    )
+                  })
                 }
               </>
             )

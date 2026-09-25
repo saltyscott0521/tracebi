@@ -572,7 +572,12 @@ def _conventions() -> dict:
         ],
         "rules": [
             "Files starting with '_' are skipped (that is why _template.py is ignored).",
-            "Only .py and .ipynb are loaded; subdirectories are not scanned.",
+            "models/ and pipelines/ load only .py (and .ipynb) at the top level. "
+            "reports/ is scanned recursively: a subdirectory that is not a "
+            "package is a folder, and a report inside it is named by its path "
+            "(`finance/weekly_summary`) everywhere — `tracebi report build "
+            "finance/weekly_summary`, output/finance/weekly_summary.html, the "
+            "web URL. Code modules in reports/ load only from the top level.",
             "Registration happens as an import side effect, so module scope must "
             "be safe to execute at server startup.",
             "A file that raises on import is skipped with a warning, not an error — "

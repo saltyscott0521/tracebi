@@ -567,10 +567,15 @@ def test_workbench_state_refuses_a_path_shaped_name(tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(gw, "_load_models", lambda: {})
-    for payload in ["/etc/passwd", "../../etc/x", "../secrets", ".ssh/config"]:
+    for payload in ["/etc/passwd", "../../etc/x", "../secrets", ".ssh/config",
+                    "finance/../../x", "finance\\..\\x"]:
         out = gateway_workbench_state(report=payload)
         assert "errors" in out, f"{payload!r} was not refused: {out!r}"
-        assert "not a path" in out["errors"][0]
+        assert "invalid report name" in out["errors"][0]
+    # A report in a folder is named by its path, and that is not refused: it
+    # reaches the package lookup (and finds nothing here).
+    out = gateway_workbench_state(report="finance/weekly")
+    assert "invalid report name" not in " ".join(out.get("errors") or [])
 
 
 def test_workbench_state_with_a_name_stays_package_scoped(tmp_path, monkeypatch):

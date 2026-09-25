@@ -130,8 +130,10 @@ class _PackageTarget:
     def __init__(self, directory: Path) -> None:
         from tracebi.workbench import workbench_dir
 
+        from tracebi.report_paths import report_name_for_dir
+
         self.directory = Path(directory)
-        self.name = self.directory.name
+        self.name = report_name_for_dir(str(self.directory))
         self.label = self.name
         self.wb_dir = workbench_dir(os.getcwd(), self.name)
         # Per-binding fingerprints from the previous build: an auto-entry is

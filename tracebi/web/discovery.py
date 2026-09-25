@@ -3,11 +3,15 @@ Folder-based auto-discovery for request and scheduled scripts.
 
 Two entry points:
 
-* :func:`auto_discover` — import every ``*.py`` and ``*.ipynb`` file in a
-  directory (non-recursive, skips ``_*``).  Decorators inside
-  (``@registry.report``, ``@registry.scheduled``) fire as a side effect of
-  import. Notebook code cells are concatenated into a script first; line
-  magics and shell escapes are silently dropped.
+* :func:`auto_discover` — register every report in a directory: ``*.json``
+  specs and ``<name>/`` packages, in that directory and in any folder below
+  it, plus import every top-level ``*.py`` / ``*.ipynb`` file (skips
+  ``_*``). A report in a folder is addressed by its path, e.g.
+  ``finance/weekly_summary``, so two folders can each hold one of the same
+  name. Decorators inside imported modules (``@registry.report``,
+  ``@registry.scheduled``) fire as a side effect of import. Notebook code
+  cells are concatenated into a script first; line magics and shell escapes
+  are silently dropped.
 
 * :func:`reload_modules` — re-import the modules previously discovered
   via :func:`auto_discover`. Used by the optional dev-mode reload endpoint
@@ -204,8 +208,14 @@ def auto_discover(
     strict: bool = False,
 ) -> list[str]:
     """
-    Import every ``*.py`` / ``*.ipynb`` file in *path* (non-recursive,
-    skips ``_*``).
+    Register every report under *path* and import its top-level ``*.py`` /
+    ``*.ipynb`` files (skips ``_*`` and hidden entries).
+
+    A subdirectory holding ``report.json`` + ``template.html`` is a report
+    package. Any other subdirectory is a folder: it is scanned the same way,
+    and what it holds is registered under ``<folder>/<name>``. Code modules
+    load only from the top level, where the app module convention expects
+    them.
 
     Args:
         path:    Directory to scan. Relative paths are resolved against the
@@ -231,6 +241,13 @@ def auto_discover(
         return []
 
 
+    return _scan(path, "", package, strict)
+
+
+def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[str]:
+    """One directory of :func:`auto_discover`. *prefix* is the folder path
+    below the reports root (``""`` at the top, ``"finance/"`` one level down),
+    and becomes the front of every report name registered here."""
     discovered: list[str] = []
     entries = sorted(os.listdir(path))
     # The shadowing rule (architecture v2 §7): an artifact package directory
@@ -252,6 +269,8 @@ def auto_discover(
             _outcomes.append({**record, "status": "skipped",
                               "reason": "name starts with '_'"})
             continue
+        if entry.startswith("."):
+            continue                      # .git, .ipynb_checkpoints, .DS_Store
         is_py = entry.endswith(".py")
         is_nb = entry.endswith(".ipynb")
         is_spec = entry.endswith(".json")
@@ -273,7 +292,7 @@ def auto_discover(
             # importing anything, which is the point: a spec is a bounded
             # document that can be checked before it runs, where a .py file
             # is arbitrary code that has already run by the time you see it.
-            outcome = _register_spec_file(full, stem=entry[: -len(".json")])
+            outcome = _register_spec_file(full, stem=prefix + entry[: -len(".json")])
             _outcomes.append({**record, **outcome})
             if outcome["status"] == "registered":
                 discovered.append(outcome["module"])
@@ -288,13 +307,23 @@ def auto_discover(
                 # A freeform report package: report.json + template.html in a
                 # subdirectory. Registered like a spec file; other
                 # subdirectories are still skipped below.
-                outcome = _register_template_package(full, stem=entry)
+                outcome = _register_template_package(full, stem=prefix + entry)
                 _outcomes.append({**record, **outcome})
                 if outcome["status"] == "registered":
                     discovered.append(outcome["module"])
             else:
+                # A folder of reports. It registers nothing itself; its
+                # contents are registered under "<folder>/<name>".
                 _outcomes.append({**record, "status": "skipped",
-                                  "reason": "subdirectories are not scanned"})
+                                  "reason": f"a folder: reports inside are "
+                                            f"named '{prefix}{entry}/<name>'"})
+                discovered.extend(_scan(full, f"{prefix}{entry}/", package, strict))
+            continue
+
+        if prefix:
+            _outcomes.append({**record, "status": "skipped",
+                              "reason": "code modules load only from the top "
+                                        "of the reports folder"})
             continue
 
         stem = entry[: -len(".ipynb") if is_nb else -3]

@@ -299,7 +299,10 @@ class TemplatePackage:
         self.directory = directory
         # Registry key is the directory name. ``name`` below may be a display
         # title; the selection endpoint is addressed by this id.
-        self.package_id = os.path.basename(os.path.normpath(directory))
+        from tracebi.report_paths import report_name_for_dir
+        # "finance/weekly" for a package in a folder: the name pins, the
+        # workbench and the web API all address it by.
+        self.package_id = report_name_for_dir(directory)
         self.name = self.package_id
 
         report_json_path = os.path.join(directory, REPORT_JSON)
