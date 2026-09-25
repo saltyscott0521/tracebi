@@ -52,6 +52,10 @@ How depends on how TraceBi was installed; `tracebi update` detects which.
 | **Docker** ([[one-server]]) | `TRACEBI_VERSION=<version> docker compose -f deploy/compose.yml pull`, then `… up -d` | prints it; run it on the host |
 | **a git checkout** (`pip install -e .`) | `git fetch --tags && git checkout v<version> && pip install -e .`, then rebuild the UI | prints it |
 
+If you installed with extras (`tracebi[web,analyst]`), name them again when
+you upgrade so any new dependencies they gained come too:
+`pip install --upgrade "tracebi[web,analyst] @ <the release wheel>"`.
+
 Pinning `TRACEBI_VERSION` in `deploy/.env` keeps a server on a known version
 until you choose to move it; leaving it at `latest` means every `pull` takes
 the newest full release.

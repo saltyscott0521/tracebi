@@ -128,6 +128,9 @@ point it at an internal mirror with <code>TRACEBI_UPDATE_URL</code>
 </tr>
 </tbody>
 </table>
+<p>If you installed with extras (<code>tracebi[web,analyst]</code>), name them again when
+you upgrade so any new dependencies they gained come too:
+<code>pip install --upgrade "tracebi[web,analyst] @ &lt;the release wheel&gt;"</code>.</p>
 <p>Pinning <code>TRACEBI_VERSION</code> in <code>deploy/.env</code> keeps a server on a known version
 until you choose to move it; leaving it at <code>latest</code> means every <code>pull</code> takes
 the newest full release.</p>
