@@ -566,3 +566,19 @@ def report_lineage(name: str):
         "combined_graph": _lineage_to_graph(all_nodes),
         "sections": section_lineages,
     }
+
+
+# ── Share link ──────────────────────────────────────────────────────────────
+# ``/r/<name>`` is the report itself as a full page: the last build, the same
+# bytes the HTML download carries, served inline so a phone's browser runs the
+# charts and calculators. It sits outside /api so the link reads like a page.
+# Access follows the server's auth like every other GET: open on a server with
+# no auth configured (a public demo), a viewer login otherwise. The page's own
+# CSP has connect-src 'none', so its scripts cannot call this API.
+
+share_router = APIRouter(tags=["reports"])
+
+
+@share_router.get("/r/{name:path}", response_class=HTMLResponse)
+def share_report(name: str):
+    return HTMLResponse(_last_build(name.strip("/"))["html"])

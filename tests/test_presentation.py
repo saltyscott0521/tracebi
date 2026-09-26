@@ -343,6 +343,10 @@ class TestServerSideRender:
         # a real picture of the chart (tagged so the runtime removes it), no JS
         assert "tb-chart-fallback" in inner and "<svg" in inner
         assert "<rect" in inner                        # bars are drawn
+        # it reads like the live chart: no raw column name as an axis title,
+        # and each mark names its palette slot so the page theme colours it
+        assert "tb-axis-label" not in inner
+        assert 'data-tb-slot="1"' in inner
 
     def test_chart_ssr_leaves_the_embedded_data_intact(self, tmp_path):
         from tracebi.verify import verify_file, FILE_INTACT

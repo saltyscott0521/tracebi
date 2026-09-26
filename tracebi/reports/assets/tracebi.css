@@ -312,6 +312,28 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
   position: relative; /* anchors a .tb-badge in the corner */
 }
 
+/* The no-JS picture: a static SVG built at render time, shown where scripts
+ * never run (a phone's file preview, an email client). The runtime removes it
+ * before drawing, so these rules only ever style that picture. It keeps its
+ * own shape instead of the live chart's fixed height, and takes the page's
+ * chart palette unless the figure names its own, as the live chart does. */
+[data-tb-figure="chart"]:has(> .tb-chart-fallback) { min-height: 0; height: auto; }
+.tb-chart-fallback text { fill: var(--tb-muted); font-size: 16px; }
+.tb-chart-fallback .tb-legend { fill: var(--tb-ink); }
+.tb-chart-fallback .tb-grid { stroke: var(--tb-rule); }
+.tb-chart-fallback .tb-point { r: 2.5px; }
+.tb-chart-fallback [data-tb-slot="1"] { --tb-slot: var(--tb-chart-1); }
+.tb-chart-fallback [data-tb-slot="2"] { --tb-slot: var(--tb-chart-2); }
+.tb-chart-fallback [data-tb-slot="3"] { --tb-slot: var(--tb-chart-3); }
+.tb-chart-fallback [data-tb-slot="4"] { --tb-slot: var(--tb-chart-4); }
+.tb-chart-fallback [data-tb-slot="5"] { --tb-slot: var(--tb-chart-5); }
+.tb-chart-fallback [data-tb-slot="6"] { --tb-slot: var(--tb-chart-6); }
+.tb-chart-fallback [data-tb-slot="7"] { --tb-slot: var(--tb-chart-7); }
+.tb-chart-fallback [data-tb-slot="8"] { --tb-slot: var(--tb-chart-8); }
+[data-tb-figure]:not([data-tb-palette]) > .tb-chart-fallback .tb-line { stroke: var(--tb-slot); }
+[data-tb-figure]:not([data-tb-palette]) > .tb-chart-fallback
+  :is(.tb-area, .tb-point, .tb-bar, .tb-legend-swatch) { fill: var(--tb-slot); }
+
 /* ── 7. Callouts and notes ─────────────────────────────────────────────── */
 
 .tb-callout {

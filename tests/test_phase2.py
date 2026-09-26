@@ -1134,6 +1134,19 @@ class TestChartSpecSvg:
         for cls in ("tb-chart", "tb-grid", "tb-tick", "tb-bar"):
             assert cls in svg
 
+    def test_a_long_line_labels_every_few_years_not_all(self):
+        """Fifty-odd year labels drawn side by side overlap into a smear."""
+        import re
+        from tracebi.reports.chart import ChartSpec
+
+        ds = DataSet(pd.DataFrame({"year": list(range(1971, 2024)),
+                                   "v": list(range(53))}), name="y")
+        svg = ChartSpec.from_section(
+            ChartSection(dataset=ds, chart_type="line", x="year", y=["v"])
+        ).to_svg()
+        years = re.findall(r'class="tb-cat"[^>]*>(\d+)<', svg)
+        assert years[0] == "1971" and 8 <= len(years) <= 18
+
     def test_axis_ticks_are_round_numbers(self):
         from tracebi.reports.chart import ChartSpec
 

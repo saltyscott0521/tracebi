@@ -608,6 +608,7 @@ GET  /api/reports/{name}/download?format=xlsx|html   → html: the last build; x
 GET  /api/reports/{name}/lineage                     → React Flow graph per section
 GET  /api/reports/{name}/mermaid
 GET  /api/reports/{name}/source                      → the spec or package files that define it
+GET  /r/{name}                                       → share link: the last build as a full page (auth like any GET)
 GET  /api/pipelines
 POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run

@@ -925,6 +925,22 @@ class TestBasicAuth:
         assert r.status_code == 401
         assert r.headers["www-authenticate"].startswith("Basic")
 
+    def test_share_links_need_a_login_too(self):
+        """/r/ sits outside /api, but a client install's login still guards it."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from tracebi.web.api.auth import BasicAuthMiddleware
+        app = FastAPI()
+        app.add_middleware(BasicAuthMiddleware, username="u", password="p")
+
+        @app.get("/r/{name}")
+        def page(name: str):
+            return {"ok": True}
+
+        client = TestClient(app)
+        assert client.get("/r/x").status_code == 401
+        assert client.get("/r/x", auth=("u", "p")).status_code == 200
+
     def test_accepts_valid_credentials(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
@@ -1131,6 +1147,23 @@ class TestAnalystEndpoints:
             assert r.status_code == 200, r.text
             assert "attachment" in r.headers["content-disposition"]
             assert "data-tb-figure" in r.text
+        finally:
+            cleanup()
+
+    def test_share_link_serves_the_last_build_as_a_page(self, tmp_path):
+        """/r/<name> is the same bytes as the HTML download, shown inline so a
+        phone's browser runs the charts instead of saving a file."""
+        from tracebi.web.api.routers import reports as reports_router
+        client, cleanup = _client_with_package(tmp_path, "t_report")
+        client.app.include_router(reports_router.share_router)
+        try:
+            page = client.get("/r/t_report")
+            assert page.status_code == 200, page.text
+            assert page.headers["content-type"].startswith("text/html")
+            assert "content-disposition" not in page.headers
+            download = client.get("/api/reports/t_report/download?format=html")
+            assert page.text == download.text
+            assert client.get("/r/no_such_report").status_code == 404
         finally:
             cleanup()
 

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
-  useReportSource, fetchBuiltReport, reportDownloadUrl, useDesk, usePipelines,
+  useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, usePipelines,
 } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
@@ -251,6 +251,32 @@ function AskCut({ reportName, frameRef, onPackageChange }) {
   )
 }
 
+// Full screen opens the share link; Share hands it to the phone's share sheet,
+// or copies it where there is none.
+function ShareLink({ name }) {
+  const url = reportShareUrl(name)
+  const [copied, setCopied] = useState(false)
+  const share = async () => {
+    try {
+      if (navigator.share) { await navigator.share({ url }); return }
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* the reader closed the share sheet */ }
+  }
+  return (
+    <>
+      <a href={url} target="_blank" rel="noopener" className="dl-link"
+         title="The report as its own full page, for this link's viewers">
+        ⤢ Full screen
+      </a>
+      <Btn onClick={share} variant="outline" size="sm">
+        {copied ? '✓ Link copied' : '🔗 Share'}
+      </Btn>
+    </>
+  )
+}
+
 function ReportDetail({ report }) {
   const [tab, setTab] = useState('Output')
   const [runId, setRunId] = useState(null)
@@ -380,6 +406,7 @@ function ReportDetail({ report }) {
               </Btn>
             )}
             <span style={{ flex: 1 }} />
+            <ShareLink name={report.name} />
             <a
               href={reportDownloadUrl(report.name, 'html')}
               download
