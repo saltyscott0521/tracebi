@@ -27,6 +27,8 @@
       </p>
       <p class="mp-lede mp-lede--strong">Lower rates, far higher prices. Which era was harder?
         The answer is how much of a typical household's income the payment took.</p>
+      <p class="mp-hero-sources">Sources: Freddie Mac · U.S. Census Bureau · HUD ·
+        <a href="#sources">details</a></p>
     </div>
 
     <figure class="mp-scene" aria-hidden="true">
@@ -144,7 +146,8 @@
     </div>
     <p class="mp-note">A payment here is principal and interest on the median
       home with a fifth down, over thirty years, at that year's average rate.
-      Taxes and insurance are left out.</p>
+      Taxes and insurance are left out. Rate: Freddie Mac. Price: Census and
+      HUD. Income: Census. See <a href="#sources">sources</a>.</p>
   </section>
 
   <!-- ── Every year ───────────────────────────────────────────────────── -->
@@ -156,6 +159,7 @@
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="mortgage_rate"
              id="chart-rate" class="mp-chart"></div>
+        <p class="mp-source">Source: <a href="https://fred.stlouisfed.org/series/MORTGAGE30US" target="_blank" rel="noopener">Freddie Mac, Primary Mortgage Market Survey</a>, annual average of the weekly survey.</p>
       </div>
       <div class="tb-card mp-chart-card">
         <h3>Median home price and median household income</h3>
@@ -163,18 +167,24 @@
              data-tb-x="dim_year.year" data-tb-y="median_price,median_income"
              data-tb-value-format="compact" id="chart-price-income"
              class="mp-chart"></div>
+        <p class="mp-source">Sources: <a href="https://fred.stlouisfed.org/series/MSPUS" target="_blank" rel="noopener">U.S. Census Bureau and HUD, median sales price of houses sold</a> (annual average of the quarterly series);
+          <a href="https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-income-households.html" target="_blank" rel="noopener">U.S. Census Bureau, median household income (CPS ASEC, table H-8)</a>. Current dollars.</p>
       </div>
       <div class="tb-card mp-chart-card">
         <h3>Monthly payment on the median home</h3>
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="monthly_payment"
              data-tb-value-format="compact" id="chart-payment" class="mp-chart"></div>
+        <p class="mp-source">Computed from the Freddie Mac rate and the Census and
+          HUD median price: principal and interest, a fifth down, thirty years.</p>
       </div>
       <div class="tb-card mp-chart-card">
         <h3>A year of payments as a share of median income</h3>
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="payment_share"
              data-tb-value-format="percent" id="chart-share" class="mp-chart"></div>
+        <p class="mp-source">Computed: twelve monthly payments divided by the
+          Census median household income for that year.</p>
       </div>
     </div>
   </section>
@@ -245,17 +255,39 @@
              data-tb-bars="payment_share"
              data-tb-rows="15" data-tb-sort
              class="tb-table--striped" id="tbl-history"></table>
+      <p class="mp-source">Sources: Freddie Mac (rate), Census and HUD (price),
+        Census (income). Payment and shares are computed. See <a href="#sources">sources</a>.</p>
       <p class="mp-download"><button type="button" data-tb-download="history">Download the series as CSV</button></p>
     </div>
+  </section>
+
+  <section class="mp-section mp-sources" id="sources">
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg>Sources</h2>
+    <ul class="mp-source-list">
+      <li><strong>Mortgage rate.</strong> <a href="https://fred.stlouisfed.org/series/MORTGAGE30US" target="_blank" rel="noopener">Freddie Mac, Primary Mortgage Market Survey</a>: the thirty-year fixed-rate
+        average, weekly, averaged to each calendar year. Retrieved through
+        <a href="https://fred.stlouisfed.org/" target="_blank" rel="noopener">FRED</a>,
+        Federal Reserve Bank of St. Louis.</li>
+      <li><strong>Median home price.</strong> <a href="https://fred.stlouisfed.org/series/MSPUS" target="_blank" rel="noopener">U.S. Census Bureau and HUD, median sales price of houses sold</a>: quarterly, averaged to
+        each calendar year. Retrieved through FRED.</li>
+      <li><strong>Median household income.</strong> <a href="https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-income-households.html" target="_blank" rel="noopener">U.S. Census Bureau, median household income (CPS ASEC, table H-8)</a>, current dollars.
+        Later years are also on FRED as
+        <a href="https://fred.stlouisfed.org/series/MEHOINUSA646N" target="_blank" rel="noopener">median household income in the United States</a>.</li>
+      <li><strong>Computed here.</strong> Monthly payment, share of income and
+        price-to-income are worked out from the three series above in
+        <code>transforms/affordability_transform.py</code>.</li>
+    </ul>
+    <p class="mp-caveat">The series in this report is a snapshot typed in from
+      the published tables, not a live pull. Refresh it from the sources with
+      <code>python inputs/fetch_housing.py</code> before citing a figure. See
+      <code>inputs/housing_sources.md</code>.</p>
   </section>
 
   <section class="mp-section mp-method" data-tb-methodology>
     <h2 class="mp-h2">How these numbers were made</h2>
     <p>Rates are Freddie Mac's weekly survey averaged over each year. Prices
       are the Census and HUD median sales price of houses sold. Income is the
-      Census median household income, in the dollars of its own year. See
-      <code>inputs/housing_sources.md</code>, and refresh the series with
-      <code>python inputs/fetch_housing.py</code> before citing it.</p>
+      Census median household income, in the dollars of its own year.</p>
   </section>
 </main>
 </body>

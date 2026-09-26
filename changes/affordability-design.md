@@ -5,3 +5,7 @@
   with the latest value and the peak labeled, ledger-style scenarios, and
   in-cell bars in the table. Motion stops for readers who ask for reduced
   motion.
+- Every chart, the headline cards and the table name their sources
+  (Freddie Mac, the Census Bureau and HUD, via FRED), with links, and a
+  Sources section says the committed series is a snapshot to refresh
+  before citing.
