@@ -12,7 +12,7 @@
   median) instead of the Census median of houses sold, which is mostly new
   construction. Income comes straight from Census table H-5; nothing is
   typed in by hand.
-- A new section compares the worst year of the eighties (the 1981 rate
-  peak) with the latest year. The calculator adds closing costs, property
+- The comparison is now the worst year of the eighties (the 1981 rate
+  peak) against the latest full year, in place of 1985 against 2023. The calculator adds closing costs, property
   tax and insurance. A "What this leaves out" list names the limits:
   national medians, flat tax and insurance rates, no projection.
