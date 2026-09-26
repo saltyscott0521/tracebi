@@ -144,6 +144,10 @@ equivalent where it matters.</p>
 <td>enables <code>POST /api/_dev/reload</code>, <strong>and</strong> allows tracebacks in API error payloads</td>
 </tr>
 <tr>
+<td><code>TRACEBI_DISCOVERY_INTERVAL</code></td>
+<td>Seconds between live-discovery scans. A running server picks up report packages, specs and model files added to (or removed from) <code>reports/</code> and <code>models/</code> without a restart. Default <code>5</code>; <code>0</code> turns it off, so new reports need a restart. Python report modules are still found only at startup.</td>
+</tr>
+<tr>
 <td><code>TRACEBI_SCHEDULES_IN_SERVER</code></td>
 <td><code>1</code> runs each report package's <code>schedule</code> block inside the web server (the same job as <code>tracebi schedule serve</code>). Off by default. Assumes <strong>one process</strong>: several workers would each send the email.</td>
 </tr>

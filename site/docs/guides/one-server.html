@@ -113,6 +113,12 @@ machine, Compose builds it from the <code>Dockerfile</code> in this repository.<
 <p>To move to a newer release, see <a href="../guides/updating.html">Updating TraceBi</a>: <code>tracebi update --check</code> inside
 the container prints the exact <code>docker compose pull</code> / <code>up -d</code> lines to run on
 the host.</p>
+<h2 id="add-or-change-a-report-while-it-runs">Add or change a report while it runs</h2>
+<p>Copy a report folder into the project's <code>reports/</code>, or a model file into
+<code>models/</code>. The running server picks it up within a few seconds, with no
+restart: it rescans every <code>TRACEBI_DISCOVERY_INTERVAL</code> seconds (default
+5). Deleting a report folder takes it off the Reports page the same way.
+Edits to an existing report show on its next view.</p>
 <h2 id="turn-on-schedules-and-email">Turn on schedules and email</h2>
 <p>In <code>deploy/.env</code>:</p>
 <pre><code class="language-bash">TRACEBI_SCHEDULES_IN_SERVER=1

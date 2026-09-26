@@ -151,6 +151,16 @@ class Registry:
             }
         return self
 
+    def remove_report(self, name: str) -> bool:
+        """Forget a report. True when it was registered.
+
+        Used by live discovery when a report's package or spec is deleted
+        from disk, so the Reports page stops listing a report that can no
+        longer be built.
+        """
+        with self._lock:
+            return self._report_factories.pop(name, None) is not None
+
     def report(self, name: str, description: str = ""):
         """Decorator for report factory functions."""
         def decorator(fn: Callable) -> Callable:
