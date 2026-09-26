@@ -21,6 +21,39 @@ tracebi.ready(function () {
              { type: "bar", stack: "one", itemStyle: { opacity: 0.8 } }]
   });
 
+  /* The three trends: a line over a soft fill, the peak marked and the
+   * latest value written at the end — both points already on the chart. */
+  var rows = tracebi.data("history");
+  function peakIndex(col) {
+    var best = -Infinity, at = -1;
+    rows.forEach(function (r, i) { var v = Number(r[col]); if (v > best) { best = v; at = i; } });
+    return at;
+  }
+  function trend(id, col, name, hex, label) {
+    var peak = peakIndex(col);
+    tracebi.configureChart(id, {
+      grid: { left: 8, right: 56, top: 28, bottom: 8, containLabel: true },
+      tooltip: { trigger: "axis", valueFormatter: label },
+      xAxis: { boundaryGap: false, axisLine: { lineStyle: { color: "#cfc8b6" } } },
+      yAxis: axes.yAxis,
+      series: [{
+        type: "line", name: name, color: hex, showSymbol: true, symbol: "circle",
+        symbolSize: function (_v, p) { return p.dataIndex === peak ? 8 : 0; },
+        itemStyle: { color: "#fff", borderColor: hex, borderWidth: 2.5 },
+        lineStyle: { width: 2.5, color: hex },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: hex + "55" }, { offset: 1, color: hex + "05" }] } },
+        label: { show: true, position: "top", color: INK, fontWeight: 600,
+          formatter: function (p) { return p.dataIndex === peak ? "peak " + label(p.value) : ""; } },
+        endLabel: { show: true, color: INK, fontWeight: 600,
+          formatter: function (p) { return label(p.value); } }
+      }]
+    });
+  }
+  trend("chart-rate", "mortgage_rate", "Rate", SLATE, function (v) { return Number(v).toFixed(2) + "%"; });
+  trend("chart-pti", "price_to_income", "Price ÷ income", GOLD, function (v) { return Number(v).toFixed(1) + "×"; });
+  trend("chart-share", "payment_share", "Share of income", GREEN, pct);
+
   /* One line per buyer: the runtime splits the series by purchase year. */
   tracebi.configureChart("chart-paths", {
     grid: { left: 8, right: 24, top: 40, bottom: 8, containLabel: true },

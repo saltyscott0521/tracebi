@@ -182,6 +182,23 @@
         ],
         "limit": 1
       }
+    },
+    "history": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": [
+          "mortgage_rate",
+          "price_to_income",
+          "payment_share"
+        ],
+        "dimensions": [
+          "dim_year.year"
+        ],
+        "order_by": [
+          "dim_year.year"
+        ]
+      }
     }
   }
 }

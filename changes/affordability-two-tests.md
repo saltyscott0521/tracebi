@@ -24,5 +24,6 @@
   projected on the chart and cards. A box under it lets the reader change
   those assumptions; it starts from the same ones, so it matches the chart.
 - Simpler page: the one number, then why (the worst of the eighties against
-  today, and each buyer's payment path). The rate and price charts, the
-  tables and the two year-pickers are gone.
+  today, and each buyer's payment path), then three trends every year: the
+  mortgage rate, price to income, and a year of full payments as a share of
+  income. The tables and the two year-pickers are gone.
