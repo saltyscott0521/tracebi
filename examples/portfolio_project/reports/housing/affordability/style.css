@@ -1,9 +1,186 @@
+/* Then vs Now — a money theme: banknote green, gold, a cool slate for the
+ * rate. The chart palette passed the dataviz validator (lightness, chroma,
+ * colour-blind separation, contrast) on the light surface. */
+:root {
+  --mp-green-9: #0f3d2a;
+  --mp-green-7: #1c6b45;
+  --mp-green: #1f7a4d;
+  --mp-green-1: #e8f3ec;
+  --mp-gold: #b8860b;
+  --mp-gold-2: #f3d27a;
+  --mp-gold-1: #fbf3dc;
+  --mp-slate: #2b6f9e;
+  --mp-paper: #fbf8f1;
+
+  --tb-page: var(--mp-paper);
+  --tb-accent: var(--mp-green);
+  --tb-surface-accent: var(--mp-green-1);
+  --tb-chart-1: #1f7a4d;
+  --tb-chart-2: #b8860b;
+  --tb-chart-3: #2b6f9e;
+  --tb-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% -10%, rgba(243, 210, 122, .18), transparent 40%),
+    radial-gradient(circle at 110% 30%, rgba(31, 122, 77, .08), transparent 45%),
+    var(--mp-paper);
+}
+
+.mp { padding: 20px 16px 40px; }
+.mp-section { margin-top: 36px; }
+.mp-h2 {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 20px; letter-spacing: -.01em; color: var(--mp-green-9);
+  margin: 0 0 14px;
+}
+.mp-icon {
+  width: 22px; height: 22px; flex: none;
+  fill: none; stroke: var(--mp-gold); stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.mp-intro, .mp-note { color: var(--tb-muted); max-width: 70ch; }
+.mp-note { font-size: 13px; margin-top: 10px; }
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.mp-hero {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; align-items: center;
+  padding: 28px 28px 20px;
+  border-radius: 18px;
+  color: #f4efe2;
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 2px, transparent 2px 9px),
+    linear-gradient(135deg, var(--mp-green-9), var(--mp-green-7) 70%, #2c8a5a);
+  box-shadow: 0 10px 30px rgba(15, 61, 42, .25);
+}
+.mp-hero::after {
+  /* a gold rule along the bottom edge, like a banknote border */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+  background: linear-gradient(90deg, transparent, var(--mp-gold-2), var(--mp-gold), transparent);
+}
+.mp-eyebrow {
+  text-transform: uppercase; letter-spacing: .14em; font-size: 11px;
+  color: var(--mp-gold-2); margin: 0 0 6px; font-weight: 600;
+}
+.mp-hero h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.1; margin: 0 0 12px; color: #fff; }
+.mp-lede { font-size: 15px; line-height: 1.6; margin: 0 0 10px; color: #dfe9e2; }
+.mp-lede--strong { color: #fff; font-weight: 500; }
+.mp-hero [data-tb-figure] {
+  color: var(--mp-gold-2); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+
+.mp-scene { position: relative; margin: 0; }
+.mp-scene-art { width: 100%; height: auto; display: block; border-radius: 12px; }
+.mp-scene-art { background: linear-gradient(#194f37, #0f3d2a); }
+.mp-tag {
+  position: absolute; display: flex; flex-direction: column; align-items: center;
+  padding: 4px 10px 5px; border-radius: 8px;
+  background: #fffaf0; color: var(--mp-green-9);
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  font-size: 11px; line-height: 1.2;
+  animation: mp-tag-in .8s ease-out both;
+}
+.mp-tag::before {
+  /* the hole of a price tag */
+  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--mp-gold); margin-bottom: 2px;
+}
+.mp-tag [data-tb-figure] { color: inherit; }
+.mp-tag strong { font-size: 14px; color: var(--mp-green); }
+.mp-tag--then { left: 12%; top: 30%; animation-delay: .3s; }
+.mp-tag--now { right: 8%; top: 8%; animation-delay: .6s; }
+
+/* motion: coins rise and settle, smoke drifts, windows glow */
+.mp-coin { animation: mp-coin 3.2s ease-in-out infinite; transform-box: fill-box; }
+.mp-coin--2 { animation-delay: .25s; }
+.mp-coin--3 { animation-delay: .5s; }
+.mp-coin--4 { animation-delay: .75s; }
+.mp-smoke circle { animation: mp-smoke 4s ease-in-out infinite; transform-box: fill-box; }
+.mp-smoke circle:nth-child(2) { animation-delay: 1s; }
+.mp-smoke circle:nth-child(3) { animation-delay: 2s; }
+.mp-window { animation: mp-glow 5s ease-in-out infinite; }
+.mp-window--late { animation-delay: 2.5s; }
+.mp-sun { animation: mp-sun 8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+@keyframes mp-coin { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes mp-smoke { 0% { transform: translateY(4px); opacity: 0; } 30% { opacity: .5; } 100% { transform: translateY(-14px); opacity: 0; } }
+@keyframes mp-glow { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@keyframes mp-sun { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes mp-tag-in { from { opacity: 0; transform: translateY(-10px) rotate(-6deg); } to { opacity: 1; transform: none; } }
+@keyframes mp-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-coin, .mp-smoke circle, .mp-window, .mp-sun, .mp-tag, .mp-kpi { animation: none !important; }
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
 .mp-kpis { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-.mp-chart { height: 280px; }
-.mp-note { color: var(--tb-muted); font-size: 13px; }
-.mp-scenario h3 { margin-top: 0; }
+.mp-kpi {
+  position: relative; overflow: hidden;
+  border-top: 3px solid var(--mp-gold);
+  background: linear-gradient(180deg, #fff, #fffdf7);
+  animation: mp-rise .6s ease-out both;
+}
+.mp-kpi:nth-child(2) { animation-delay: .08s; }
+.mp-kpi:nth-child(3) { animation-delay: .16s; }
+.mp-kpi:nth-child(4) { animation-delay: .24s; }
+.mp-kpi .tb-kpi-value { color: var(--mp-green-9); }
+.mp-kpi .tb-kpi-label { padding-right: 42px; }
+.mp-kpi-icon {
+  position: absolute; right: 12px; top: 12px;
+  width: 34px; height: 34px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--mp-gold-1);
+}
+.mp-kpi-icon svg {
+  width: 20px; height: 20px; fill: none; stroke: var(--mp-gold);
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.mp-kpi--alert { border-top-color: #b5523b; }
+.mp-kpi--alert .mp-kpi-icon { background: #fbe9e4; }
+.mp-kpi--alert .mp-kpi-icon svg { stroke: #b5523b; }
+
+.mp-chart-card h3 { font-size: 14px; color: var(--mp-green-9); margin: 0 0 6px; }
+.mp-chart { height: 290px; }
+
+/* ── The ledgers (scenarios) ──────────────────────────────────────────── */
+.mp-scenario {
+  border-style: solid; border-width: 1px 1px 1px 5px;
+  background:
+    repeating-linear-gradient(transparent 0 31px, rgba(31,122,77,.07) 31px 32px),
+    #fffdf6;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, .06);
+}
+.mp-scenario--then { border-color: #e7dcc2 #e7dcc2 #e7dcc2 var(--mp-gold); }
+.mp-scenario--now { border-color: #d3e6da #d3e6da #d3e6da var(--mp-green); }
+.mp-scenario h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--mp-green-9); }
 .mp-scenario label { display: grid; grid-template-columns: 11em 1fr; gap: 8px; align-items: center; }
-.mp-scenario output { font-size: 18px; }
-@media (max-width: 560px) {
+.mp-scenario input, .mp-scenario select { font-variant-numeric: tabular-nums; }
+.mp-scenario input:focus, .mp-scenario select:focus {
+  outline: 2px solid var(--mp-gold-2); border-color: var(--mp-gold);
+}
+.mp-results {
+  margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--mp-green-9), var(--mp-green-7));
+  color: #dfe9e2;
+}
+.mp-results p { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0; }
+.mp-results output { font-size: 20px; color: var(--mp-gold-2); }
+
+.mp-download { margin: 10px 0 0; }
+.mp-download button {
+  font: inherit; font-size: 13px; cursor: pointer;
+  padding: 6px 12px; border-radius: 8px;
+  border: 1px solid var(--mp-green); color: var(--mp-green); background: #fff;
+}
+.mp-download button:hover { background: var(--mp-green-1); }
+.mp .tb-bar { background: linear-gradient(90deg, rgba(243,210,122,.55), rgba(31,122,77,.28)); }
+
+.mp-method { color: var(--tb-muted); font-size: 14px; }
+
+@media (max-width: 760px) {
+  .mp-hero { grid-template-columns: 1fr; padding: 22px 18px 16px; }
   .mp-scenario label { grid-template-columns: 1fr; }
 }

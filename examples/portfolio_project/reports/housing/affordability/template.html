@@ -6,51 +6,132 @@
   <title>{{ title }}</title>
 </head>
 <body>
-<main class="tb-page">
-  <header>
-    <h1>What a median home cost to finance, then and now</h1>
-    <p class="lede">
-      In <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="dim_year.year" id="then-year"></span>
-      the average thirty-year mortgage rate was
-      <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="mortgage_rate" id="then-rate"></span>%
-      and the median home sold for
-      <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="median_price" id="then-price"></span>.
-      In <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="dim_year.year" id="now-year"></span>
-      the rate averaged
-      <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="mortgage_rate" id="now-rate"></span>%
-      and the median home sold for
-      <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="median_price" id="now-price"></span>.
-      Lower rates, far higher prices: which era was harder? The answer is in
-      how much of a typical household's income the payment took.
-    </p>
+<main class="tb-page mp">
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+  <header class="mp-hero">
+    <div class="mp-hero-copy">
+      <p class="mp-eyebrow">Housing affordability · then vs now</p>
+      <h1>What a median home cost to finance</h1>
+      <p class="mp-lede">
+        In <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="dim_year.year" id="then-year"></span>
+        the average thirty-year mortgage rate was
+        <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="mortgage_rate" id="then-rate"></span>%
+        and the median home sold for
+        <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="median_price" id="then-price"></span>.
+        In <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="dim_year.year" id="now-year"></span>
+        the rate averaged
+        <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="mortgage_rate" id="now-rate"></span>%
+        and the median home sold for
+        <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="median_price" id="now-price"></span>.
+      </p>
+      <p class="mp-lede mp-lede--strong">Lower rates, far higher prices. Which era was harder?
+        The answer is how much of a typical household's income the payment took.</p>
+    </div>
+
+    <figure class="mp-scene" aria-hidden="true">
+      <svg viewBox="0 0 420 260" class="mp-scene-art" role="presentation">
+        <defs>
+          <linearGradient id="mp-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1c6b45"/>
+            <stop offset="1" stop-color="#0f3d2a"/>
+          </linearGradient>
+          <linearGradient id="mp-gold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f3d27a"/>
+            <stop offset="1" stop-color="#b8860b"/>
+          </linearGradient>
+          <linearGradient id="mp-wall" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fffaf0"/>
+            <stop offset="1" stop-color="#efe4cc"/>
+          </linearGradient>
+          <linearGradient id="mp-wall2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f7f3ea"/>
+            <stop offset="1" stop-color="#ddd3bd"/>
+          </linearGradient>
+        </defs>
+        <circle cx="352" cy="46" r="22" fill="url(#mp-gold)" class="mp-sun"/>
+        <g class="mp-hills">
+          <path d="M0 210 Q90 170 190 200 T420 190 V260 H0 Z" fill="#2c8a5a" opacity=".55"/>
+          <path d="M0 225 Q120 200 240 222 T420 214 V260 H0 Z" fill="#23744b"/>
+        </g>
+
+        <!-- then: a modest cottage -->
+        <g class="mp-house mp-house--then" transform="translate(58 132)">
+          <rect x="44" y="0" width="10" height="26" fill="#8a5a3b"/>
+          <g class="mp-smoke">
+            <circle cx="49" cy="-8" r="5" fill="#fff" opacity=".5"/>
+            <circle cx="54" cy="-18" r="6" fill="#fff" opacity=".35"/>
+            <circle cx="47" cy="-30" r="7" fill="#fff" opacity=".2"/>
+          </g>
+          <path d="M-6 38 L40 4 L86 38 Z" fill="#b5523b"/>
+          <rect x="4" y="36" width="72" height="54" rx="2" fill="url(#mp-wall)"/>
+          <rect x="33" y="58" width="16" height="32" rx="2" fill="#7a4a2e"/>
+          <rect x="12" y="48" width="14" height="14" rx="2" fill="#f3d27a" class="mp-window"/>
+          <rect x="56" y="48" width="14" height="14" rx="2" fill="#f3d27a" class="mp-window mp-window--late"/>
+        </g>
+
+        <!-- now: a bigger house -->
+        <g class="mp-house mp-house--now" transform="translate(206 88)">
+          <path d="M-8 60 L78 6 L164 60 Z" fill="#35505e"/>
+          <rect x="4" y="58" width="148" height="76" rx="3" fill="url(#mp-wall2)"/>
+          <rect x="64" y="92" width="24" height="42" rx="3" fill="#35505e"/>
+          <circle cx="83" cy="114" r="2" fill="#f3d27a"/>
+          <rect x="16" y="72" width="30" height="22" rx="2" fill="#f3d27a" class="mp-window"/>
+          <rect x="108" y="72" width="30" height="22" rx="2" fill="#f3d27a" class="mp-window mp-window--late"/>
+          <rect x="16" y="104" width="30" height="18" rx="2" fill="#cfe4f2"/>
+          <rect x="108" y="104" width="30" height="18" rx="2" fill="#cfe4f2"/>
+        </g>
+
+        <!-- coins rising between the two -->
+        <g class="mp-coins" transform="translate(172 176)">
+          <ellipse class="mp-coin mp-coin--1" cx="0" cy="0" rx="11" ry="4" fill="url(#mp-gold)" stroke="#8a6508" stroke-width="1"/>
+          <ellipse class="mp-coin mp-coin--2" cx="0" cy="-8" rx="11" ry="4" fill="url(#mp-gold)" stroke="#8a6508" stroke-width="1"/>
+          <ellipse class="mp-coin mp-coin--3" cx="0" cy="-16" rx="11" ry="4" fill="url(#mp-gold)" stroke="#8a6508" stroke-width="1"/>
+          <ellipse class="mp-coin mp-coin--4" cx="0" cy="-24" rx="11" ry="4" fill="url(#mp-gold)" stroke="#8a6508" stroke-width="1"/>
+        </g>
+      </svg>
+      <!-- The price tags are receipted figures, placed over the drawing. -->
+      <div class="mp-tag mp-tag--then">
+        <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="dim_year.year" id="tag-then-year"></span>
+        <strong data-tb-figure="value" data-tb-binding="then" data-tb-cell="median_price" id="tag-then-price"></strong>
+      </div>
+      <div class="mp-tag mp-tag--now">
+        <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="dim_year.year" id="tag-now-year"></span>
+        <strong data-tb-figure="value" data-tb-binding="now" data-tb-cell="median_price" id="tag-now-price"></strong>
+      </div>
+    </figure>
   </header>
 
-  <section>
-    <h2>The payment, as a share of income</h2>
+  <!-- ── Headline cards ───────────────────────────────────────────────── -->
+  <section class="mp-section">
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>The payment, as a share of income</h2>
     <div class="tb-grid mp-kpis">
-      <div class="tb-kpi">
-        <span class="tb-kpi-label">Then: monthly payment</span>
+      <div class="tb-kpi mp-kpi">
+        <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg></span>
+        <span class="tb-kpi-label">Then · monthly payment</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="then"
               data-tb-cell="monthly_payment" id="kpi-then-payment"></span>
         <span class="tb-kpi-context"><span data-tb-figure="value" data-tb-binding="then"
               data-tb-cell="payment_share" id="kpi-then-share"></span> of median income</span>
       </div>
-      <div class="tb-kpi">
-        <span class="tb-kpi-label">Now: monthly payment</span>
+      <div class="tb-kpi mp-kpi">
+        <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v10M9.5 9.5c0-1 1-1.5 2.5-1.5s2.5.6 2.5 1.8c0 2.7-5 1.5-5 4.4 0 1.1 1 1.8 2.5 1.8s2.5-.6 2.5-1.6"/></svg></span>
+        <span class="tb-kpi-label">Now · monthly payment</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="now"
               data-tb-cell="monthly_payment" id="kpi-now-payment"></span>
         <span class="tb-kpi-context"><span data-tb-figure="value" data-tb-binding="now"
               data-tb-cell="payment_share" id="kpi-now-share"></span> of median income</span>
       </div>
-      <div class="tb-kpi">
+      <div class="tb-kpi mp-kpi">
+        <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0zM8 21h8"/></svg></span>
         <span class="tb-kpi-label">Home price ÷ income</span>
         <span class="tb-kpi-value"><span data-tb-figure="value" data-tb-binding="then"
-              data-tb-cell="price_to_income" id="kpi-then-pti"></span>× then,
-          <span data-tb-figure="value" data-tb-binding="now"
-              data-tb-cell="price_to_income" id="kpi-now-pti"></span>× now</span>
+              data-tb-cell="price_to_income" id="kpi-then-pti"></span>× → <span data-tb-figure="value" data-tb-binding="now"
+              data-tb-cell="price_to_income" id="kpi-now-pti"></span>×</span>
         <span class="tb-kpi-context">years of median income to buy the median home</span>
       </div>
-      <div class="tb-kpi">
+      <div class="tb-kpi mp-kpi mp-kpi--alert">
+        <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg></span>
         <span class="tb-kpi-label">Hardest year in the series</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="hardest"
               data-tb-cell="dim_year.year" id="kpi-hardest-year"></span>
@@ -66,29 +147,30 @@
       Taxes and insurance are left out.</p>
   </section>
 
-  <section>
-    <h2>Every year in the series</h2>
+  <!-- ── Every year ───────────────────────────────────────────────────── -->
+  <section class="mp-section">
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l4-5 4 3 6-8"/></svg>Every year in the series</h2>
     <div class="tb-cols-2">
-      <div>
+      <div class="tb-card mp-chart-card">
         <h3>Thirty-year mortgage rate, annual average (%)</h3>
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="mortgage_rate"
              id="chart-rate" class="mp-chart"></div>
       </div>
-      <div>
+      <div class="tb-card mp-chart-card">
         <h3>Median home price and median household income</h3>
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="median_price,median_income"
              data-tb-value-format="compact" id="chart-price-income"
              class="mp-chart"></div>
       </div>
-      <div>
+      <div class="tb-card mp-chart-card">
         <h3>Monthly payment on the median home</h3>
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="monthly_payment"
              data-tb-value-format="compact" id="chart-payment" class="mp-chart"></div>
       </div>
-      <div>
+      <div class="tb-card mp-chart-card">
         <h3>A year of payments as a share of median income</h3>
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="payment_share"
@@ -97,15 +179,16 @@
     </div>
   </section>
 
-  <section>
-    <h2>Compare any two years, or your own numbers</h2>
-    <p>Pick a year to load its average rate, median price and median income,
-      then change anything: the rate you actually got, a bigger down payment,
-      a shorter term. Annual averages are lower than the peaks people remember,
-      so type in the rate you remember and see what it does.</p>
-    <div class="tb-cols-2">
-      <form data-tb-scenario="then" id="scenario-then" class="mp-scenario">
-        <h3>Then</h3>
+  <!-- ── The reader's what-if ─────────────────────────────────────────── -->
+  <section class="mp-section">
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h3M13 12h3M8 16h3M13 16h3"/></svg>Compare any two years, or your own numbers</h2>
+    <p class="mp-intro">Pick a year to load its average rate, median price and
+      median income, then change anything: the rate you actually got, a bigger
+      down payment, a shorter term. Annual averages are lower than the peaks
+      people remember, so type in the rate you remember and see what it does.</p>
+    <div class="tb-cols-2 mp-ledgers">
+      <form data-tb-scenario="then" id="scenario-then" class="mp-scenario mp-scenario--then">
+        <h3><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Then</h3>
         <label>Year <select data-tb-preset="history" data-tb-key="dim_year.year"
                 data-tb-default="1985"
                 data-tb-fill="rate=mortgage_rate, price=median_price, income=median_income"></select></label>
@@ -114,18 +197,20 @@
         <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
         <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
         <label>Term (years) <input data-tb-input="years" type="number" value="30" min="1"></label>
-        <p>Monthly payment:
-          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))"
-                  data-tb-format="currency" id="calc-then-payment"></output></p>
-        <p>Share of income:
-          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income"
-                  data-tb-format="percent" id="calc-then-share"></output></p>
-        <p>Interest over the loan:
-          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)"
-                  data-tb-format="currency0" id="calc-then-interest"></output></p>
+        <div class="mp-results">
+          <p><span>Monthly payment</span>
+            <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))"
+                    data-tb-format="currency" id="calc-then-payment"></output></p>
+          <p><span>Share of income</span>
+            <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income"
+                    data-tb-format="percent" id="calc-then-share"></output></p>
+          <p><span>Interest over the loan</span>
+            <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)"
+                    data-tb-format="currency0" id="calc-then-interest"></output></p>
+        </div>
       </form>
-      <form data-tb-scenario="now" id="scenario-now" class="mp-scenario">
-        <h3>Now</h3>
+      <form data-tb-scenario="now" id="scenario-now" class="mp-scenario mp-scenario--now">
+        <h3><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12 12 4l10 8M4 10v10h16V10M9 20v-6h6v6"/></svg>Now</h3>
         <label>Year <select data-tb-preset="history" data-tb-key="dim_year.year"
                 data-tb-default="2023"
                 data-tb-fill="rate=mortgage_rate, price=median_price, income=median_income"></select></label>
@@ -134,32 +219,38 @@
         <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
         <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
         <label>Term (years) <input data-tb-input="years" type="number" value="30" min="1"></label>
-        <p>Monthly payment:
-          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))"
-                  data-tb-format="currency" id="calc-now-payment"></output></p>
-        <p>Share of income:
-          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income"
-                  data-tb-format="percent" id="calc-now-share"></output></p>
-        <p>Interest over the loan:
-          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)"
-                  data-tb-format="currency0" id="calc-now-interest"></output></p>
+        <div class="mp-results">
+          <p><span>Monthly payment</span>
+            <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))"
+                    data-tb-format="currency" id="calc-now-payment"></output></p>
+          <p><span>Share of income</span>
+            <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income"
+                    data-tb-format="percent" id="calc-now-share"></output></p>
+          <p><span>Interest over the loan</span>
+            <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)"
+                    data-tb-format="currency0" id="calc-now-interest"></output></p>
+        </div>
       </form>
     </div>
   </section>
 
-  <section>
-    <h2>The series, year by year</h2>
-    <table data-tb-figure="table" data-tb-binding="history"
-           data-tb-columns="dim_year.year, mortgage_rate, median_price, median_income, monthly_payment, payment_share, price_to_income"
-           data-tb-labels="dim_year.year=Year; mortgage_rate=Rate (%); price_to_income=Price ÷ income"
-           data-tb-formats="mortgage_rate=decimal; median_price=currency0; median_income=currency0; monthly_payment=currency0; payment_share=percent; price_to_income=decimal"
-           data-tb-rows="15" data-tb-sort
-           class="tb-table--striped" id="tbl-history"></table>
-    <p><button type="button" data-tb-download="history">Download the series as CSV</button></p>
+  <!-- ── The table ────────────────────────────────────────────────────── -->
+  <section class="mp-section">
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/></svg>The series, year by year</h2>
+    <div class="tb-card">
+      <table data-tb-figure="table" data-tb-binding="history"
+             data-tb-columns="dim_year.year, mortgage_rate, median_price, median_income, monthly_payment, payment_share, price_to_income"
+             data-tb-labels="dim_year.year=Year; mortgage_rate=Rate (%); price_to_income=Price ÷ income"
+             data-tb-formats="mortgage_rate=decimal; median_price=currency0; median_income=currency0; monthly_payment=currency0; payment_share=percent; price_to_income=decimal"
+             data-tb-bars="payment_share"
+             data-tb-rows="15" data-tb-sort
+             class="tb-table--striped" id="tbl-history"></table>
+      <p class="mp-download"><button type="button" data-tb-download="history">Download the series as CSV</button></p>
+    </div>
   </section>
 
-  <section data-tb-methodology>
-    <h2>How these numbers were made</h2>
+  <section class="mp-section mp-method" data-tb-methodology>
+    <h2 class="mp-h2">How these numbers were made</h2>
     <p>Rates are Freddie Mac's weekly survey averaged over each year. Prices
       are the Census and HUD median sales price of houses sold. Income is the
       Census median household income, in the dollars of its own year. See
