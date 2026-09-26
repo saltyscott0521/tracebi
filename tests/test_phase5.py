@@ -2459,17 +2459,17 @@ class TestDiscoveryDiagnostics:
         assert "no_such_module_at_all" in capsys.readouterr().err
 
 
-class TestServerlessDeployContract:
+class TestSlimInstallContract:
     """
-    The Vercel function runs with a trimmed dependency set and no bundled
-    demo app. These pin that contract: a dependency creeping back into the
-    import path would break the deploy at build time, far from the cause.
+    The web API runs without the heavy optional dependencies and with no
+    bundled demo app. These pin that: a dependency creeping back into the
+    import path would break a slim install far from the cause.
     """
 
     def test_api_imports_without_the_heavy_optional_deps(self):
         """
-        matplotlib, networkx and apscheduler are excluded from
-        api/requirements.txt to stay under Vercel's 250 MB function limit.
+        matplotlib, networkx and apscheduler are optional; the API must serve
+        without them.
         """
         import subprocess
         import sys
@@ -2502,7 +2502,7 @@ class TestServerlessDeployContract:
         """
         Dropping matplotlib is only safe because HTML charts render as inline
         SVG (ChartSpec.to_svg, no matplotlib) and Excel charts are
-        openpyxl-native. If either regressed, the trimmed deploy would render
+        openpyxl-native. If either regressed, a slim install would render
         broken reports.
         """
         import subprocess
@@ -2535,48 +2535,6 @@ class TestServerlessDeployContract:
                              capture_output=True, text=True)
         assert out.returncode == 0, out.stderr
         assert "ok" in out.stdout
-
-    def test_function_requirements_exclude_the_heavy_deps(self):
-        import pathlib
-
-        req = (pathlib.Path(__file__).resolve().parents[1]
-               / "api" / "requirements.txt").read_text()
-        active = [ln.strip() for ln in req.splitlines()
-                  if ln.strip() and not ln.strip().startswith("#")]
-        joined = " ".join(active).lower()
-        for heavy in ("matplotlib", "networkx", "apscheduler"):
-            assert heavy not in joined, (
-                f"{heavy} in api/requirements.txt would push the function "
-                f"toward Vercel's 250 MB limit"
-            )
-        assert any(p.startswith("pandas") for p in active)
-        assert any(p.startswith("fastapi") for p in active)
-
-    def test_vercel_config_routes_api_and_spa(self):
-        import json
-        import pathlib
-
-        root = pathlib.Path(__file__).resolve().parents[1]
-        cfg = json.loads((root / "vercel.json").read_text())
-        # One deploy, two surfaces: the marketing site at / and the demo app
-        # under /app. vercel-build.sh assembles .vercel_out; the two must agree
-        # or the deploy serves the wrong thing (or nothing).
-        assert cfg["outputDirectory"] == ".vercel_out"
-        build = (root / "vercel-build.sh").read_text()
-        assert ".vercel_out" in build          # what vercel.json publishes
-        assert "site/index.html" in build       # marketing at /
-        assert "--base=/app/" in build          # the app is mounted under /app
-        assert "tracebi/web/ui/dist" in build   # copied from vite's build.outDir
-
-        sources = [r["source"] for r in cfg["rewrites"]]
-        assert any("api" in s for s in sources)
-        # The SPA fallback lives under /app (→ /app/index.html), so the
-        # marketing page at / is untouched and /api is never swallowed.
-        spa = next(r for r in cfg["rewrites"]
-                   if r["destination"] == "/app/index.html")
-        assert spa["source"].startswith("/app")
-        assert all("api" not in r["source"] or r["destination"] == "/api/index.py"
-                   for r in cfg["rewrites"])
 
     def test_ui_api_base_is_configurable(self):
         """

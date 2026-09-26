@@ -53,8 +53,8 @@ _customers_raw = customers_df.rename(columns={"tier": "segment"})
 # between requests, which is what lets execution move out of the web process.
 #
 # Without it we fall back to SQLite. That path used to be hardcoded to the
-# repo's data/ directory, which is why the Vercel entry point had to skip this
-# whole app module: a serverless deployment mounts its code read-only, so the
+# repo's data/ directory, so a deployment that mounts its code read-only (the
+# old serverless entry point had to skip this whole app module) saw the
 # makedirs/to_sql raised at import and took the demo's reports and connectors
 # down with it. TRACEBI_DEMO_DB_DIR places it explicitly; otherwise fall back
 # to the system temp dir when the checkout is not writable.

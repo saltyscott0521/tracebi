@@ -37,7 +37,6 @@
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a class="on" href="../guides/one-server.html">Run TraceBi on one server</a>
 <a href="../guides/styling-a-report.html">Styling a report</a>
@@ -114,8 +113,8 @@ machine, Compose builds it from the <code>Dockerfile</code> in this repository.<
 the container prints the exact <code>docker compose pull</code> / <code>up -d</code> lines to run on
 the host.</p>
 <h2 id="add-or-change-a-report-while-it-runs">Add or change a report while it runs</h2>
-<p>Copy a report folder into the project's <code>reports/</code>, or a model file into
-<code>models/</code>. The running server picks it up within a few seconds, with no
+<p>Copy a report folder into the project's <code>reports/</code>, a model file into
+<code>models/</code>, or a pipeline file into <code>pipelines/</code>. The running server picks it up within a few seconds, with no
 restart: it rescans every <code>TRACEBI_DISCOVERY_INTERVAL</code> seconds (default
 5). Deleting a report folder takes it off the Reports page the same way.
 Edits to an existing report show on its next view.</p>

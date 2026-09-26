@@ -14,8 +14,8 @@
 #
 # That separation is the point. Without a database there is nowhere for an
 # execution plane to have written, so the demo falls back to seeding itself
-# inside the web process at import — which is what the Vercel deployment does
-# and what this stack exists to demonstrate the alternative to.
+# inside the web process at import — which is what this stack exists to
+# demonstrate the alternative to.
 #
 # Quick start:
 #

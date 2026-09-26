@@ -69,8 +69,8 @@ the host.
 
 ## Add or change a report while it runs
 
-Copy a report folder into the project's `reports/`, or a model file into
-`models/`. The running server picks it up within a few seconds, with no
+Copy a report folder into the project's `reports/`, a model file into
+`models/`, or a pipeline file into `pipelines/`. The running server picks it up within a few seconds, with no
 restart: it rescans every `TRACEBI_DISCOVERY_INTERVAL` seconds (default
 5). Deleting a report folder takes it off the Reports page the same way.
 Edits to an existing report show on its next view.

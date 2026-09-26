@@ -37,8 +37,9 @@ _live_reports: dict[str, str] = {}
 # A source that failed to register, with the file times it failed at, so a
 # broken package is retried when its files change, not on every scan.
 _failed_sources: dict[str, tuple] = {}
-# Model files live discovery has already put in the web registry.
+# Model and pipeline files live discovery has already put in the web registry.
 _live_models: set[str] = set()
+_live_pipelines: set[str] = set()
 
 
 # Per-file outcome of every discovery attempt, in order. Discovery is
@@ -343,6 +344,8 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
         stem = entry[: -len(".ipynb") if is_nb else -3]
         mod_name = f"{package}.{stem}" if package else f"tracebi_request_{stem}"
         record["module"] = mod_name
+        from tracebi.registry import registry as _registry
+        before = {r["name"] for r in _registry.list_reports()}
 
         try:
             if is_nb:
@@ -374,14 +377,32 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
 
         discovered.append(mod_name)
         _discovered[mod_name] = full
-        _outcomes.append({**record, "status": "registered", "reason": None})
+        # A code module still loads (its side effects are its own), but a
+        # report it registers with no package behind it cannot render: the
+        # web layer refuses it. Say so here, where the author looks, rather
+        # than on the first click.
+        orphans = sorted(
+            r["name"] for r in _registry.list_reports()
+            if r["name"] not in before and not _registry.report_package_dir(r["name"]))
+        warning = None
+        if orphans:
+            warning = (
+                f"registers {', '.join(repr(n) for n in orphans)} with no report "
+                f"package, so {'it' if len(orphans) == 1 else 'they'} will not "
+                f"render. Make each a package: tracebi new-report \"<name>\". "
+                f"Code modules also load only at startup; packages and specs "
+                f"are picked up while the server runs.")
+            print(f"[tracebi] {full}: {warning}", file=sys.stderr)
+        _outcomes.append({**record, "status": "registered", "reason": None,
+                          **({"warning": warning} if warning else {})})
     return discovered
 
 
 # ── Live discovery ──────────────────────────────────────────────────────────
 #
-# A running server picks up report packages, specs and model files added to
-# (or removed from) the project without a restart. A background thread calls
+# A running server picks up report packages, specs, model files and
+# pipeline files added to (or reports removed from) the project without a
+# restart. A background thread calls
 # rescan() every TRACEBI_DISCOVERY_INTERVAL seconds; route handlers never
 # touch the registry. Python report modules stay startup-only: re-importing
 # code on a timer would re-run its side effects.
@@ -464,12 +485,38 @@ def register_models(models_dir: str) -> list[str]:
     return added
 
 
-def rescan(reports_dir: str, models_dir: Optional[str] = None) -> dict:
+def register_pipelines(pipelines_dir: str) -> list[str]:
+    """Record new ``pipelines/*.py`` files and put each runner in the web
+    registry. Returns the names added this call; a file that fails to load
+    is left out and retried on the next call."""
+    from tracebi import pipeline_registry
+    from tracebi.registry import registry
+
+    added: list[str] = []
+    if not os.path.isdir(pipelines_dir):
+        return added
+    for stem in pipeline_registry.auto_discover(pipelines_dir):
+        if stem in _live_pipelines:
+            continue
+        try:
+            runner = pipeline_registry.get_runner(stem)
+        except Exception as exc:  # noqa: BLE001 — one broken pipeline must not stop the rest
+            print(f"[tracebi] pipeline '{stem}' failed to load: {exc}", file=sys.stderr)
+            continue
+        if stem not in registry.list_pipeline_names():
+            registry.add_pipeline(stem, runner)
+        _live_pipelines.add(stem)
+        added.append(stem)
+    return added
+
+
+def rescan(reports_dir: str, models_dir: Optional[str] = None,
+           pipelines_dir: Optional[str] = None) -> dict:
     """Bring the registry in line with the project on disk.
 
     Registers report packages and specs that appeared since the last scan,
     forgets ones whose source is gone, and adds new model files. Returns
-    ``{"added": [...], "removed": [...], "failed": [...], "models": [...]}``.
+    ``{"added", "removed", "failed", "models", "pipelines"}`` lists.
     """
     from tracebi.registry import registry
 
@@ -499,11 +546,13 @@ def rescan(reports_dir: str, models_dir: Optional[str] = None) -> dict:
         _outcomes[:] = [o for o in _outcomes if o.get("module") != name]
         removed.append(name)
     models = register_models(models_dir) if models_dir else []
-    return {"added": added, "removed": removed, "failed": failed, "models": models}
+    pipelines = register_pipelines(pipelines_dir) if pipelines_dir else []
+    return {"added": added, "removed": removed, "failed": failed,
+            "models": models, "pipelines": pipelines}
 
 
 def start_watcher(reports_dir: str, models_dir: Optional[str],
-                  interval: float):
+                  interval: float, pipelines_dir: Optional[str] = None):
     """Run :func:`rescan` every *interval* seconds on a daemon thread.
 
     Returns a ``threading.Event``; set it to stop the thread.
@@ -515,12 +564,13 @@ def start_watcher(reports_dir: str, models_dir: Optional[str],
     def loop() -> None:
         while not stop.wait(interval):
             try:
-                changes = rescan(reports_dir, models_dir)
+                changes = rescan(reports_dir, models_dir, pipelines_dir)
             except Exception as exc:  # noqa: BLE001 — the watcher must outlive one bad scan
                 print(f"[tracebi] live discovery scan failed: {exc}", file=sys.stderr)
                 continue
             for key, verb in (("added", "found"), ("removed", "removed"),
-                              ("models", "found model")):
+                              ("models", "found model"),
+                              ("pipelines", "found pipeline")):
                 for name in changes[key]:
                     print(f"[tracebi] live discovery: {verb} {name}", file=sys.stderr)
 

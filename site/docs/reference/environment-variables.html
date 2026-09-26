@@ -37,7 +37,6 @@
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
 <a href="../guides/styling-a-report.html">Styling a report</a>
@@ -145,7 +144,7 @@ equivalent where it matters.</p>
 </tr>
 <tr>
 <td><code>TRACEBI_DISCOVERY_INTERVAL</code></td>
-<td>Seconds between live-discovery scans. A running server picks up report packages, specs and model files added to (or removed from) <code>reports/</code> and <code>models/</code> without a restart. Default <code>5</code>; <code>0</code> turns it off, so new reports need a restart. Python report modules are still found only at startup.</td>
+<td>Seconds between live-discovery scans. A running server picks up report packages, specs, model files and pipeline files added to <code>reports/</code>, <code>models/</code> and <code>pipelines/</code> (and drops deleted reports) without a restart. Default <code>5</code>; <code>0</code> turns it off, so new reports need a restart. Python report modules are still found only at startup.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SCHEDULES_IN_SERVER</code></td>
@@ -314,7 +313,7 @@ it</strong> — it is a leftover.</p>
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="../reference/cli.html">CLI reference</a> — the flags that override these</li>
-<li><a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a> — hosting configuration</li>
+<li><a href="../guides/one-server.html">Run TraceBi on one server</a> — hosting on one server</li>
 </ul>
   </main>
 </div>

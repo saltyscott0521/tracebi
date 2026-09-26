@@ -59,7 +59,7 @@ def test_a_package_added_after_startup_is_registered(reports):
 
     # Nothing new: a second scan changes nothing.
     assert discovery.rescan(str(reports)) == {
-        "added": [], "removed": [], "failed": [], "models": []}
+        "added": [], "removed": [], "failed": [], "models": [], "pipelines": []}
 
 
 def test_a_deleted_package_is_forgotten(reports):
@@ -133,3 +133,36 @@ def test_a_new_model_file_is_registered(tmp_path, monkeypatch):
         assert discovery.register_models(str(models)) == []
     finally:
         discovery._live_models.discard("live_model_x")
+
+
+def test_a_new_pipeline_file_is_registered(tmp_path):
+    pipes = tmp_path / "pipelines"
+    pipes.mkdir()
+    (pipes / "live_pipe_x.py").write_text(
+        "from tracebi.pipeline import PipelineRunner\n"
+        f"runner = PipelineRunner(db_url='sqlite:///{tmp_path / 'runs.db'}')\n")
+    try:
+        changes = discovery.rescan(str(tmp_path / "no_reports"), None, str(pipes))
+        assert changes["pipelines"] == ["live_pipe_x"]
+        assert "live_pipe_x" in registry.list_pipeline_names()
+        assert discovery.register_pipelines(str(pipes)) == []
+    finally:
+        discovery._live_pipelines.discard("live_pipe_x")
+
+
+def test_a_code_module_that_registers_a_packageless_report_is_flagged(tmp_path, capsys):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "old_style.py").write_text(
+        "from tracebi.registry import registry\n"
+        "registry.add_report('old_style_live', lambda: None)\n")
+    try:
+        discovery.auto_discover(str(reports))
+        entry = next(o for o in discovery.discovery_report()
+                     if o.get("file") == "old_style.py")
+        assert entry["status"] == "registered"
+        assert "'old_style_live' with no report package" in entry["warning"]
+        assert "tracebi new-report" in entry["warning"]
+        assert "old_style_live" in capsys.readouterr().err
+    finally:
+        registry.remove_report("old_style_live")
