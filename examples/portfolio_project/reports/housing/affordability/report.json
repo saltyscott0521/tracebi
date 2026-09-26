@@ -23,9 +23,10 @@
         "dimensions": [
           "dim_year.year"
         ],
-        "filters": {
-          "dim_year.year": 1981
-        }
+        "order_by": [
+          "-mortgage_rate"
+        ],
+        "limit": 1
       }
     },
     "latest": {
@@ -64,7 +65,7 @@
         ],
         "filters": {
           "dim_cohort.purchase_year": 1981,
-          "dim_held.years_owned": 10
+          "dim_held.years_owned": 9
         }
       }
     },
@@ -122,8 +123,25 @@
           "dim_cohort.basis"
         ],
         "filters": {
-          "dim_cohort.purchase_year": 1981
-        }
+          "dim_cohort.purchase_year": {
+            "in": [
+              1980,
+              1981,
+              1982,
+              1983,
+              1984,
+              1985,
+              1986,
+              1987,
+              1988,
+              1989
+            ]
+          }
+        },
+        "order_by": [
+          "-housing_share"
+        ],
+        "limit": 1
       }
     },
     "ten_worst": {
@@ -151,7 +169,8 @@
       "query": {
         "fact": "fact_ten_year",
         "measures": [
-          "housing_share"
+          "housing_share",
+          "years_measured"
         ],
         "dimensions": [
           "dim_cohort.purchase_year",

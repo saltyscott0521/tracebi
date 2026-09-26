@@ -57,7 +57,7 @@ model = (
               foreign_keys={"dim_year": "year_id", "dim_cohort": "cohort_id",
                             "dim_held": "held_id"})
     .add_fact("fact_ten_year", table_name="fact_ten_year",
-              measures=["outlay", "median_income", "rate_at_purchase",
+              measures=["outlay", "median_income", "years_measured", "rate_at_purchase",
                         "price_at_purchase", "income_at_purchase", "assumed_rate",
                         "growth_pct"],
               foreign_keys={"dim_cohort": "cohort_id"})
@@ -124,6 +124,9 @@ model = (
                  description="Cash to close plus every payment, as a share of "
                              "the household income earned over the same years",
                  format="percent")
+    .add_measure("years_measured", column="years_measured", agg="min",
+                 description="How many of a buyer's ten years are in the data; "
+                             "the rest are projected")
     # What the projection box on the report starts from (fact_ten_year).
     .add_measure("rate_at_purchase", column="rate_at_purchase", agg="mean",
                  description="Rate at purchase", format="decimal", allow_rate_agg=True)

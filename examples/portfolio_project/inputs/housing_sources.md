@@ -7,7 +7,7 @@ the publishers; nothing is typed in by hand.
 | Column | Series | Publisher |
 | --- | --- | --- |
 | `mortgage_rate` | 30-year fixed-rate average, annual mean of the weekly survey, percent | Freddie Mac PMMS (FRED `MORTGAGE30US`) |
-| `existing_price` | Existing-home price level: the FHFA all-transactions repeat-sales index scaled to NAR's median existing-home price over the latest twelve months | FHFA (FRED `USSTHPI`) + NAR (FRED `HOSMEDUSM052N`) |
+| `existing_price` | Existing-home price level: the FHFA all-transactions repeat-sales index scaled to NAR's median existing-home price over its latest year or so | FHFA (FRED `USSTHPI`) + NAR (FRED `HOSMEDUSM052N`) |
 | `new_home_price` | Median sales price of houses sold — mostly new construction | Census/HUD (FRED `MSPUS`) |
 | `median_income` | Median household income, current dollars | Census CPS ASEC table H-5 (all races) |
 | `earner_income` | Median usual weekly earnings of full-time wage and salary workers × 52 | BLS (FRED `LEU0252881500A`) |
@@ -21,8 +21,10 @@ the last refresh.
   bigger and pricier than the stock most people buy, and the mix has shifted.
   FRED carries NAR's existing-home median for the latest thirteen months only,
   so the price level comes from a repeat-sales index (the same homes over
-  time) anchored to NAR. It lands within a few percent of NAR's own published
-  annual medians — an estimate, and the report says so.
+  time) anchored to NAR. It is an estimate: close to NAR's published annual
+  medians in some years, several percent off in others. That uncertainty is
+  bigger than the gap between the eighties peak and today on the ten-year
+  share, and the report says so.
 - **One earner as well as the household.** Far more households have two
   earners than in the early eighties, so the household median flatters the
   present. The per-earner share shows the other side.

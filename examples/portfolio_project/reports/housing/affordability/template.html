@@ -17,17 +17,18 @@
         In <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="then-year"></span>
         the thirty-year rate averaged
         <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="mortgage_rate" id="then-rate"></span>%,
-        the highest in the series, and the median existing home cost
+        the highest in the series, and the median existing home cost about
         <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="existing_price" id="then-price"></span>.
         In <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year" id="now-year"></span>,
         the latest full year, the rate averaged
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="mortgage_rate" id="now-rate"></span>%
-        and the home cost
+        and the home cost about
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="existing_price" id="now-price"></span>.
       </p>
       <p class="mp-lede mp-lede--strong">Add it all up — the cash to get in and
-        ten years of payments — and today's buyer is on track to give up a
-        bigger share of their income than the worst of the eighties.</p>
+        ten years of payments — and the worst of the eighties and today come out
+        about even. Which is worse depends on whether rates fall enough for
+        today's buyer to refinance.</p>
       <p class="mp-hero-sources">Sources: Freddie Mac · FHFA · NAR · U.S. Census Bureau · BLS ·
         <a href="#sources">details</a></p>
     </div>
@@ -109,8 +110,8 @@
   <section class="mp-section">
     <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>The one number</h2>
     <p class="mp-intro">The cash to close plus every payment over the first ten
-      years — property tax, insurance, any refinance — as a share of everything
-      the household earned in those ten years.</p>
+      years — property tax, insurance, any refinance — as a share of what the
+      median household earned in those ten years.</p>
     <div class="tb-grid mp-kpis mp-kpis--three">
       <div class="tb-kpi mp-kpi">
         <span class="tb-kpi-label">Worst of the eighties</span>
@@ -125,7 +126,7 @@
       <div class="tb-kpi mp-kpi mp-kpi--alert">
         <span class="tb-kpi-label">Today's buyer</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="housing_share" id="ten-today"></span>
-        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="ten-today-year"></span> · <strong>projected</strong></span>
+        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="ten-today-year"></span> · <strong>projected</strong> · years measured so far: <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="years_measured" id="ten-today-measured"></span> of ten</span>
       </div>
     </div>
     <div class="tb-card mp-chart-card mp-chart-card--wide">
@@ -135,8 +136,16 @@
            data-tb-color="dim_cohort.basis"
            data-tb-value-format="percent" id="chart-ten-year" class="mp-chart mp-chart--tall"></div>
       <p class="mp-source">Measured: all ten years are in the data. Projected:
-        the years not yet lived assume rates stay at the latest year's average
-        and income and home values grow at income's pace over the last decade.</p>
+        the years not yet lived assume the rate stays at
+        <span data-tb-figure="value" data-tb-binding="projection" data-tb-cell="assumed_rate" id="assumed-rate"></span>%
+        with no refinance, and income and home values grow
+        <span data-tb-figure="value" data-tb-binding="projection" data-tb-cell="growth_pct" id="assumed-growth"></span>%
+        a year, income's pace over the last decade.</p>
+      <p class="mp-source"><strong>How close is close?</strong> The eighties
+        peak and today sit within a couple of points. One refinance about a point
+        lower closes the gap. So could the price series: the one used here is an
+        estimate, and against other measures it can run several percent high or
+        low in a given year, enough to reverse the order. Read them as a tie.</p>
     </div>
     <details class="mp-assume">
       <summary>Today's number is a projection. Change the assumptions</summary>
@@ -153,7 +162,7 @@
         <label>Home values grow (% a year) <input data-tb-input="home_growth" type="number" step="0.5" min="0"></label>
         <details class="mp-more">
           <summary>The purchase itself</summary>
-          <label>Rate at purchase (%) <input data-tb-input="rate" type="number" step="0.01" min="0"></label>
+          <label>Rate at purchase (%) <input data-tb-input="rate" type="number" step="0.01" min="0.01"></label>
           <label>Home price ($) <input data-tb-input="price" type="number" step="1000" min="0"></label>
           <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
           <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
@@ -163,10 +172,10 @@
         </details>
         <div class="mp-results">
           <p class="mp-result-big"><span>Projected share of ten years' income</span>
-            <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * ((1 + home_growth / 100) ^ 10 - 1) / max(home_growth / 100, 0.0001)) / (income * ((1 + income_growth / 100) ^ 10 - 1) / max(income_growth / 100, 0.0001))"
+            <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * (1 + (1 + home_growth / 100) + (1 + home_growth / 100) ^ 2 + (1 + home_growth / 100) ^ 3 + (1 + home_growth / 100) ^ 4 + (1 + home_growth / 100) ^ 5 + (1 + home_growth / 100) ^ 6 + (1 + home_growth / 100) ^ 7 + (1 + home_growth / 100) ^ 8 + (1 + home_growth / 100) ^ 9)) / (income * (1 + (1 + income_growth / 100) + (1 + income_growth / 100) ^ 2 + (1 + income_growth / 100) ^ 3 + (1 + income_growth / 100) ^ 4 + (1 + income_growth / 100) ^ 5 + (1 + income_growth / 100) ^ 6 + (1 + income_growth / 100) ^ 7 + (1 + income_growth / 100) ^ 8 + (1 + income_growth / 100) ^ 9))"
                     data-tb-format="percent" id="calc-today-share"></output></p>
           <p><span>Ten years of housing cost</span>
-            <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * ((1 + home_growth / 100) ^ 10 - 1) / max(home_growth / 100, 0.0001))"
+            <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * (1 + (1 + home_growth / 100) + (1 + home_growth / 100) ^ 2 + (1 + home_growth / 100) ^ 3 + (1 + home_growth / 100) ^ 4 + (1 + home_growth / 100) ^ 5 + (1 + home_growth / 100) ^ 6 + (1 + home_growth / 100) ^ 7 + (1 + home_growth / 100) ^ 8 + (1 + home_growth / 100) ^ 9))"
                     data-tb-format="currency0" id="calc-today-total"></output></p>
         </div>
       </form>
@@ -218,8 +227,8 @@
       </div>
       <div class="tb-kpi mp-kpi">
         <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg></span>
-        <span class="tb-kpi-label">Ten years later</span>
-        <span class="mp-vs-hint">what the payment took of household income ten years after buying</span>
+        <span class="tb-kpi-label">In year ten</span>
+        <span class="mp-vs-hint">what the payment took of household income in the tenth year owned</span>
         <div class="mp-vs-row">
           <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="pk-later-year"></span> buyer</span>
           <strong data-tb-figure="value" data-tb-binding="peak_later" data-tb-cell="payment_share" id="pk-later"></strong>
@@ -231,9 +240,10 @@
       </div>
     </div>
     <p class="mp-note">The eighties buyer paid more each month; today's buyer
-      pays far more to get in. The eighties burden was the rate, and rates fell:
-      those buyers refinanced and their payments shrank. Today's burden is the
-      price, and a price does not refinance.</p>
+      pays far more to get in. The eighties burden was mostly the rate, and rates
+      fell: those buyers refinanced and their payments shrank. Today's burden is
+      mostly the price. The rate could still fall and help; the projection
+      assumes it won't.</p>
     <div class="tb-card mp-chart-card mp-chart-card--wide">
       <h3>What each buyer's payment took, year by year after buying</h3>
       <div data-tb-figure="chart" data-tb-binding="paths" data-tb-type="line"
@@ -267,7 +277,7 @@
           existing home outright.</p>
       </div>
       <div class="tb-card mp-chart-card">
-        <h3>A year of payments, share of income</h3>
+        <h3>First-year payment, share of income</h3>
         <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
              data-tb-x="dim_year.year" data-tb-y="payment_share"
              data-tb-value-format="percent" id="chart-share" class="mp-chart"></div>
@@ -281,7 +291,7 @@
     <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg>Sources</h2>
     <ul class="mp-source-list">
       <li><strong>Mortgage rate.</strong> <a href="https://fred.stlouisfed.org/series/MORTGAGE30US" target="_blank" rel="noopener">Freddie Mac, Primary Mortgage Market Survey</a>: thirty-year fixed, weekly, averaged to each year.</li>
-      <li><strong>Existing-home price.</strong> The <a href="https://fred.stlouisfed.org/series/USSTHPI" target="_blank" rel="noopener">FHFA all-transactions house price index</a>, a repeat-sales index that follows the same homes over time, turned into dollars by scaling it to the <a href="https://fred.stlouisfed.org/series/HOSMEDUSM052N" target="_blank" rel="noopener">National Association of Realtors' median existing-home price</a> over the latest twelve months. An estimate: it lands within a few percent of NAR's own published annual medians.</li>
+      <li><strong>Existing-home price.</strong> The <a href="https://fred.stlouisfed.org/series/USSTHPI" target="_blank" rel="noopener">FHFA all-transactions house price index</a>, a repeat-sales index that follows the same homes over time, turned into dollars by scaling it to the <a href="https://fred.stlouisfed.org/series/HOSMEDUSM052N" target="_blank" rel="noopener">National Association of Realtors' median existing-home price</a> over its latest year or so. An estimate: it tracks NAR's published annual medians closely in some years and runs several percent off in others, because the two measure different things (the same homes over time, against whatever sold that year).</li>
       <li><strong>New-home price, for contrast.</strong> <a href="https://fred.stlouisfed.org/series/MSPUS" target="_blank" rel="noopener">U.S. Census Bureau and HUD, median sales price of houses sold</a>, mostly new construction.</li>
       <li><strong>Household income.</strong> <a href="https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-income-households.html" target="_blank" rel="noopener">U.S. Census Bureau, median household income (CPS ASEC, table H-5)</a>, current dollars.</li>
       <li><strong>One earner's pay.</strong> <a href="https://fred.stlouisfed.org/series/LEU0252881500A" target="_blank" rel="noopener">BLS, median usual weekly earnings of full-time wage and salary workers</a>, times fifty-two.</li>
@@ -294,8 +304,9 @@
       <li><strong>Local taxes and insurance.</strong> Both are one national rate
         for every year, so no era gets a friendlier assumption. Real bills vary a
         lot by place; set yours in the calculator.</li>
-      <li><strong>Refinancing costs</strong> and mortgage insurance on a smaller
-        down payment are left out.</li>
+      <li><strong>Refinancing costs</strong> are left out, which slightly flatters
+        buyers who refinanced, the eighties buyer included. Mortgage insurance on
+        a smaller down payment is left out too.</li>
       <li><strong>The future.</strong> Any buyer whose ten years run past the
         data gets projected years, on one stated assumption, and is marked
         projected everywhere. The projection is a what-if, not a forecast.</li>

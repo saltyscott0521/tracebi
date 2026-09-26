@@ -198,7 +198,7 @@ def run() -> dict:
         "affordability", warehouse=WAREHOUSE,
         note="one row per year from inputs/housing_history.csv: Freddie Mac "
              "30-year average rate; existing-home price = FHFA repeat-sales index "
-             "scaled to NAR's latest twelve months of medians; Census/HUD median "
+             "scaled to NAR's latest year or so of medians; Census/HUD median "
              "price of houses sold (mostly new) for contrast; Census median "
              "household income; BLS median full-time weekly earnings x 52. "
              "Payment = principal and interest (20% down, 30 years, that year's "

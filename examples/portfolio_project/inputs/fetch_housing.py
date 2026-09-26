@@ -9,7 +9,7 @@ One row per complete calendar year, 1979 on, current dollars:
                       survey (FRED ``MORTGAGE30US``).
 * ``existing_price``  An existing-home price level: the FHFA all-transactions
                       repeat-sales index (FRED ``USSTHPI``, quarterly, 1975 on),
-                      scaled so its latest twelve months average the same as
+                      scaled so its latest year or so averages the same as
                       NAR's median existing-home sales price over those months
                       (FRED ``HOSMEDUSM052N``, which FRED carries for the last
                       thirteen months only). Repeat sales track the same houses
@@ -65,7 +65,8 @@ def _annual(series: pd.Series, *, whole_years: bool = True) -> pd.Series:
     means = grouped.mean()
     if whole_years:
         per_year = grouped.size()
-        means = means[per_year >= per_year.max() * 0.9]
+        # 0.97, not 1: a weekly series has 52 or 53 weeks a year.
+        means = means[per_year >= per_year.max() * 0.97]
     return means
 
 
@@ -90,11 +91,15 @@ def _household_income() -> pd.Series:
 
 def _existing_price(hpi: pd.Series, nar: pd.Series) -> tuple[pd.Series, str]:
     """Scale the repeat-sales index to NAR's latest twelve months of medians."""
-    last12 = nar.sort_index().iloc[-12:]
+    # Only NAR months the (quarterly) index already covers, so no month is
+    # paired with a forward-filled quarter.
+    covered = hpi.index.max() + pd.offsets.QuarterEnd(0)
+    last12 = nar.sort_index()[lambda s: s.index <= covered].iloc[-12:]
     monthly_hpi = hpi.resample("MS").ffill().reindex(last12.index, method="ffill")
     scale = last12.mean() / monthly_hpi.mean()
     note = (f"existing_price = FHFA USSTHPI x {scale:.4f}: NAR HOSMEDUSM052N "
-            f"averaged ${last12.mean():,.0f} over {last12.index[0]:%b %Y}-"
+            f"averaged ${last12.mean():,.0f} over the {len(last12)} months "
+            f"{last12.index[0]:%b %Y}-"
             f"{last12.index[-1]:%b %Y}; the index averaged {monthly_hpi.mean():.2f}.")
     return _annual(hpi) * scale, note
 
