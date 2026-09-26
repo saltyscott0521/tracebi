@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -251,11 +252,13 @@ function AskCut({ reportName, frameRef, onPackageChange }) {
   )
 }
 
-// Full screen opens the share link; Share hands it to the phone's share sheet,
-// or copies it where there is none.
-function ShareLink({ name }) {
+// Full screen lays the report over the app, with a close button (and Escape)
+// to come back; Share hands the link to the phone's share sheet, or copies it
+// where there is none.
+function ShareLink({ name, html }) {
   const url = reportShareUrl(name)
   const [copied, setCopied] = useState(false)
+  const [full, setFull] = useState(false)
   const share = async () => {
     try {
       if (navigator.share) { await navigator.share({ url }); return }
@@ -266,18 +269,45 @@ function ShareLink({ name }) {
   }
   return (
     <>
-      <a href={url} target="_blank" rel="noopener" className="dl-link"
-         title="The report as its own full page, for this link's viewers">
-        ⤢ Full screen
-      </a>
+      <Btn onClick={() => setFull(true)} variant="outline" size="sm">⤢ Full screen</Btn>
       <Btn onClick={share} variant="outline" size="sm">
         {copied ? '✓ Link copied' : '🔗 Share'}
       </Btn>
+      {full && <FullScreen name={name} html={html} onClose={() => setFull(false)} />}
     </>
   )
 }
 
-function ReportDetail({ report }) {
+function FullScreen({ name, html, onClose }) {
+  const closeRef = useRef(null)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+  // At the document root: an animated ancestor (transform) would otherwise
+  // make position:fixed relative to the report panel, not the screen.
+  return createPortal(
+    <div className="fullscreen" role="dialog" aria-modal="true" aria-label={`${name}, full screen`}>
+      <div className="fullscreen-bar">
+        <span className="fullscreen-title">{name}</span>
+        <button ref={closeRef} type="button" className="fullscreen-close" onClick={onClose}>
+          ✕ Close
+        </button>
+      </div>
+      {/* The report's own document scrolls inside the frame. */}
+      <iframe srcDoc={html} title={name} className="fullscreen-frame" />
+    </div>,
+    document.body,
+  )
+}
+
+function ReportDetail({ report, onBack }) {
   const [tab, setTab] = useState('Output')
   const [runId, setRunId] = useState(null)
   const [disk, setDisk] = useState(null)
@@ -349,8 +379,13 @@ function ReportDetail({ report }) {
     </Card>
   )
 
+  const parts = report.name.split('/')
   return (
     <Card>
+      <nav className="crumbs mobile-only" aria-label="Breadcrumb">
+        <button type="button" onClick={onBack}>‹ Reports</button>
+        {parts.slice(0, -1).map(p => <span key={p}> / {p}</span>)}
+      </nav>
       <CardTitle>
         {report.name}
         <FormChip form={report.form} style={{ marginLeft: 8, verticalAlign: 'middle' }} />
@@ -406,7 +441,7 @@ function ReportDetail({ report }) {
               </Btn>
             )}
             <span style={{ flex: 1 }} />
-            <ShareLink name={report.name} />
+            <ShareLink name={report.name} html={shown.html} />
             <a
               href={reportDownloadUrl(report.name, 'html')}
               download
@@ -600,7 +635,11 @@ export default function Reports() {
   // deep-link straight to a report and the link is shareable.
   const [searchParams, setSearchParams] = useSearchParams()
   const selected = searchParams.get('r')
-  const select = (name) => setSearchParams(name ? { r: name } : {}, { replace: true })
+  // A history entry per pick, so a phone's back gesture returns to the list.
+  const select = (name) => {
+    setSearchParams(name ? { r: name } : {})
+    window.scrollTo(0, 0)
+  }
 
   const reports = data || []
   const filtered = reports.filter(r =>
@@ -616,7 +655,7 @@ export default function Reports() {
   })
 
   return (
-    <>
+    <div className={current ? 'reports-page reports-page--detail' : 'reports-page'}>
       <PageTitle>Reports</PageTitle>
       <PageSub>
         {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''}. Select one to open its last build. Rebuild is the second action.`}
@@ -628,6 +667,7 @@ export default function Reports() {
         <Empty message="No reports yet. Scaffold one with tracebi new-report, or see Get Started." />
       ) : (
         <SplitLayout
+          detail={!!current}
           left={
             isLoading ? <SkeletonList /> : (
               <>
@@ -666,9 +706,9 @@ export default function Reports() {
               </>
             )
           }
-          right={isLoading ? <SkeletonCard /> : <ReportDetail key={current?.name} report={current} />}
+          right={isLoading ? <SkeletonCard /> : <ReportDetail key={current?.name} report={current} onBack={() => select(null)} />}
         />
       )}
-    </>
+    </div>
   )
 }

@@ -355,6 +355,12 @@ if os.path.isfile(os.path.join(_ui_dist, "index.html")):
             try:
                 return await super().get_response(path, scope)
             except _StarletteHTTPException as exc:
+                # A missing hashed asset (a deploy swapped the bundle) is a
+                # 404 no cache keeps: index.html at 200 under a .js URL got
+                # cached by the CDN and blanked the app. Page routes fall back.
+                if exc.status_code == 404 and path.startswith("assets/"):
+                    raise _StarletteHTTPException(
+                        404, headers={"Cache-Control": "no-store"}) from None
                 if exc.status_code == 404:
                     return await super().get_response("index.html", scope)
                 raise

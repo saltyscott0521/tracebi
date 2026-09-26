@@ -422,9 +422,14 @@ export function Tabs({ tabs, active, onChange }) {
   )
 }
 
-export function SplitLayout({ left, right }) {
+// Pass `detail` (true/false) to make the panes two screens on a phone: the
+// list, or the right pane sliding in. Without it they stack. Side by side
+// above phone width either way.
+export function SplitLayout({ left, right, detail }) {
+  const cls = detail === undefined ? 'split-layout'
+    : `split-layout split-layout--screens${detail ? ' split-layout--detail' : ''}`
   return (
-    <div className="split-layout">
+    <div className={cls}>
       <div className="surface" style={{
         background: 'var(--card)',
         backdropFilter: 'blur(8px)',
@@ -434,7 +439,7 @@ export function SplitLayout({ left, right }) {
       }}>
         {left}
       </div>
-      <div>{right}</div>
+      <div className="split-detail">{right}</div>
     </div>
   )
 }

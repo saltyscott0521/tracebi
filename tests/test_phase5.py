@@ -2633,6 +2633,8 @@ class TestHomepageNeverSilently404s:
             "shouty = c.get('/', headers={'accept': 'TEXT/HTML'})\n"
             "head = c.head('/', headers={'accept': 'text/html'})\n"
             "health = c.get('/api/health')\n"
+            "asset = c.get('/assets/index-gone.js')\n"
+            "deep = c.get('/reports', headers={'accept': 'text/html'})\n"
             "print('RESULT' + json.dumps({\n"
             "    'html_status': html.status_code, 'html_body': html.text,\n"
             "    'html_type': html.headers.get('content-type', ''),\n"
@@ -2641,6 +2643,9 @@ class TestHomepageNeverSilently404s:
             "    'shouty_type': shouty.headers.get('content-type', ''),\n"
             "    'head_status': head.status_code,\n"
             "    'health_status': health.status_code,\n"
+            "    'asset_status': asset.status_code, 'asset_body': asset.text,\n"
+            "    'asset_cache': asset.headers.get('cache-control', ''),\n"
+            "    'deep_status': deep.status_code, 'deep_body': deep.text,\n"
             "}))\n"
         )
         out = subprocess.run([sys.executable, "-c", code],
@@ -2716,6 +2721,21 @@ class TestHomepageNeverSilently404s:
         assert "REAL-SPA-BUNDLE" in r["html_body"]
         assert "npm run build" not in r["html_body"]
         assert "npm run build" not in r["stderr"]
+
+    def test_a_missing_asset_is_a_404_not_the_index(self):
+        # A deploy swaps the bundle's hashed filenames; a browser holding the
+        # old index can ask for a script the new build doesn't have (or the
+        # new index can reach the CDN before the new container). Answering
+        # that with index.html at 200 let Cloudflare cache HTML under a .js
+        # URL for hours — a blank app for everyone. Page routes still fall
+        # back to the index; missing assets are a 404 no cache keeps.
+        r = self._serve_root(dist="index")
+
+        assert r["asset_status"] == 404
+        assert "REAL-SPA-BUNDLE" not in r["asset_body"]
+        assert "no-store" in r["asset_cache"]
+        assert r["deep_status"] == 200
+        assert "REAL-SPA-BUNDLE" in r["deep_body"]
 
 
 # ── Packaging: the wheel is the only artifact that can serve the UI ──────────
