@@ -40,7 +40,7 @@ from tracebi.audit import actor as audit_actor
 _logger = logging.getLogger("tracebi.auth")
 
 
-_PROTECTED_PREFIXES = ("/api/", "/dashboards/")
+_PROTECTED_PREFIXES = ("/api/", "/dashboards/", "/r/")
 _EXEMPT_PATHS = ("/api/health",)
 
 

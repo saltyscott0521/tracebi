@@ -66,6 +66,10 @@ async function postJson(path, body) {
 export const reportDownloadUrl = (name, format) =>
   `${BASE}/reports/${reportPath(name)}/download?format=${format}`
 
+// The share link: the last build as a full page at /r/<name>, outside /api.
+export const reportShareUrl = (name) =>
+  `${window.location.origin}/r/${reportPath(name)}`
+
 // Offline file check: rehash a report .html's embedded data against its
 // manifest receipt (no model needed). The verdict lives in the response body.
 export const useVerifyFile = () =>

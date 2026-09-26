@@ -130,6 +130,7 @@ app.include_router(connectors.router, prefix="/api")
 app.include_router(desk.router,       prefix="/api")
 app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")
+app.include_router(reports.share_router)                # /r/<name>: the share link
 app.include_router(pipelines.router,  prefix="/api")
 app.include_router(docs.router,       prefix="/api")
 app.include_router(verify.router,     prefix="/api")
