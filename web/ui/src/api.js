@@ -67,8 +67,10 @@ export const reportDownloadUrl = (name, format) =>
   `${BASE}/reports/${reportPath(name)}/download?format=${format}`
 
 // The share link: the last build as a full page at /r/<name>, outside /api.
+// Under the UI's base path, so it resolves where the UI is mounted under a
+// prefix (tracebi.com serves the app at /app/ and strips it before the server).
 export const reportShareUrl = (name) =>
-  `${window.location.origin}/r/${reportPath(name)}`
+  `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/+$/, '')}/r/${reportPath(name)}`
 
 // Offline file check: rehash a report .html's embedded data against its
 // manifest receipt (no model needed). The verdict lives in the response body.
