@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Where the API lives. Defaults to a same-origin /api, which is what the
 // bundled dev server and the container image serve. Set VITE_API_BASE at
-// build time to point the UI at an API on another origin — e.g. a Vercel
-// deployment whose functions live under /api, or an external host:
+// build time to point the UI at an API on another origin, such as an
+// external host:
 //
 //   VITE_API_BASE=https://tracebi-api.example.com/api  npm run build
 //

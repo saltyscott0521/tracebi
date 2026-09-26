@@ -31,11 +31,8 @@ demo app**: a hosted instance of the distributed app UI, seeded with the
 reference project, so a visitor can click through real models, run a report,
 and verify a file without installing anything.
 
-The demo instance is exactly the app UI running the
-[Vercel + Supabase](deploy-vercel-supabase.md) deploy — which is honestly a
-**demo topology** (rendered receipts don't persist on a read-only serverless
-FS; see that doc). That is the right role for it: a try-it surface, not a
-production claim.
+The demo instance is exactly the app UI running the Docker image on one
+server (see [[one-server]]): a try-it surface, not a production claim.
 
 ```
 tracebi.com  ──"Try the demo"──▶  demo.tracebi.com   (the app UI, seeded)

@@ -29,7 +29,8 @@ Because the demo therefore sees that internal Host, its CSRF guard needs
 `TRACEBI_ALLOWED_ORIGINS=https://tracebi.com,https://www.tracebi.com`; without
 it every POST from the browser (Rebuild included) is refused as cross-site.
 The Vercel files (`vercel.json`, `vercel-build.sh`, `api/`, the Vercel guide)
-stay as a rollback until the Vercel project is deleted, then go together.
+stayed as a rollback until the Vercel project was paused; they were removed
+together on 2026-09-26.
 
 **Design policy lives in three layers, strongest first.**
 1. *Defaults in `tracebi.css` and the runtime*: what every report gets with no

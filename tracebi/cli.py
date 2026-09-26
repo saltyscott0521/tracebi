@@ -840,6 +840,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
             problems.append(
                 f"✗ {entry['directory']}/{entry['file']}: {entry['reason']}"
             )
+        elif entry.get("warning"):
+            warnings.append(
+                f"! {entry['directory']}/{entry['file']}: {entry['warning']}"
+            )
     n_registered = sum(1 for e in discovery_report() if e["status"] == "registered")
     if n_registered:
         ok.append(f"✓ {n_registered} artifact module(s) imported cleanly")

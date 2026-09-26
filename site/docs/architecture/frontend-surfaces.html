@@ -37,7 +37,6 @@
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/deploy-vercel-supabase.html">Deploying TraceBi on Vercel with Supabase</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
 <a href="../guides/styling-a-report.html">Styling a report</a>
@@ -122,11 +121,8 @@ the docs, and pricing — and its primary call to action <strong>branches into a
 demo app</strong>: a hosted instance of the distributed app UI, seeded with the
 reference project, so a visitor can click through real models, run a report,
 and verify a file without installing anything.</p>
-<p>The demo instance is exactly the app UI running the
-<a href="deploy-vercel-supabase.md">Vercel + Supabase</a> deploy — which is honestly a
-<strong>demo topology</strong> (rendered receipts don't persist on a read-only serverless
-FS; see that doc). That is the right role for it: a try-it surface, not a
-production claim.</p>
+<p>The demo instance is exactly the app UI running the Docker image on one
+server (see <a href="../guides/one-server.html">Run TraceBi on one server</a>): a try-it surface, not a production claim.</p>
 <pre><code>tracebi.com  ──&quot;Try the demo&quot;──▶  demo.tracebi.com   (the app UI, seeded)
  (marketing, its own project)      (a hosted instance of tracebi/web/ui/dist)
                                             │

@@ -174,7 +174,7 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   default is no app module.
     run.py             # Dev server (uvicorn wrapper) — python -m tracebi.web.run
     ui/dist/           # Built React bundle, written here by `cd web/ui && npm run build`
-                       # (gitignored; Docker, Vercel and the release workflow build it. A
+                       # (gitignored; Docker and the release workflow build it. A
                        # wheel built from a tree without it ships no UI — / says so.)
   cli.py               # tracebi init / new-model / new-transform / new-report / dev / report
                        #   / schedule / verify / migrate / serve / mcp / session (see `tracebi --help`)
@@ -214,8 +214,6 @@ MANIFESTO.md           # What TraceBi is, the vocabulary canon, and what it refu
 .github/workflows/     # CI — pytest matrix + ruff lint
 Dockerfile             # Multi-stage build (React UI + Python app)
 docker-compose.yml     # Single-container getting-started story
-vercel.json            # Vercel: UI build + /api rewrite to the Python function
-api/                   # Vercel serverless entry (index.py) + trimmed requirements
 pyproject.toml         # Single source of truth for deps, build, and pytest config
 CHANGELOG.md           # Keep-a-changelog format
 LICENSE                # MIT
@@ -247,7 +245,6 @@ TRACEBI_DEV_MODE=1 python -m tracebi.web.run           # Enables POST /api/_dev/
 # Multiple workers requires Postgres — see the note below.
 uvicorn tracebi.web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 docker compose up --build                      # Or the docker-compose path
-vercel --prod                                  # Vercel + Supabase (see docs/guides/deploy-vercel-supabase.md)
 
 # Database
 python examples/seeds/seed_db.py               # Create + seed data/tracebi.db
@@ -447,7 +444,7 @@ Every transform method must return a new `DataSet`. Never mutate `.df` or `.line
 Lineage is non-optional. If your new transform skips the lineage step, the audit chain breaks silently. Look at existing methods in `tracebi/model/dataset.py` for the pattern. `LineageNode` is frozen — pass all fields (including `metadata`) at construction; you cannot edit a node afterwards, by design.
 
 **3. Registry is populated by discovery, read at request time.**
-`tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, and reports in your app module (e.g. `tracebi/web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler. The one writer after startup is **live discovery** (`tracebi/web/discovery.py` `rescan` / `start_watcher`): a background thread started in the app lifespan that registers report packages, specs and model files added while the server runs, and forgets deleted ones, every `TRACEBI_DISCOVERY_INTERVAL` seconds. Python report modules stay startup-only (re-importing code on a timer re-runs its side effects).
+`tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, and reports in your app module (e.g. `tracebi/web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler. The one writer after startup is **live discovery** (`tracebi/web/discovery.py` `rescan` / `start_watcher`): a background thread started in the app lifespan that registers report packages, specs, model files and pipeline files added while the server runs, and forgets deleted reports, every `TRACEBI_DISCOVERY_INTERVAL` seconds. Python report modules in `reports/` stay startup-only (re-importing code on a timer re-runs its side effects); one that registers a report with no package is flagged in `/api/discovery` and `tracebi validate`, because it cannot render.
 
 `tracebi/web/api/registry.py` is a backward-compatible re-export of the same object. **Do not repoint the routers at `tracebi.registry` directly** — `tests/test_phase5.py::TestPipelineRunEndpoint::test_run_all_layers` isolates state by rebinding `tracebi.web.api.registry.registry` before the router under test is first imported, and routers bind at import time, so changing the import path silently breaks that isolation. If you ever do repoint them, convert that test in the same change — and check it fails when you break the rebind, because a suite that passes because isolation became a no-op looks exactly like a suite that passes.
 
@@ -455,7 +452,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/` and `models/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
 
 ---
 

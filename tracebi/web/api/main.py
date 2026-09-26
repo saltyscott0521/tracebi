@@ -57,7 +57,8 @@ from tracebi.schedule import server_lifespan
 @asynccontextmanager
 async def _lifespan(app):
     """In-server schedules, plus live discovery: a thread that picks up
-    report packages, specs and model files added while the server runs.
+    report packages, specs, model files and pipeline files added while the
+    server runs.
     TRACEBI_DISCOVERY_INTERVAL sets the seconds between scans (default 5;
     0 turns it off)."""
     from tracebi.web.discovery import start_watcher
@@ -70,7 +71,8 @@ async def _lifespan(app):
     if interval > 0:
         stop = start_watcher(os.environ.get("TRACEBI_REPORTS_DIR", "reports"),
                              os.environ.get("TRACEBI_MODELS_DIR", "models"),
-                             interval)
+                             interval,
+                             os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
     try:
         async with server_lifespan(app):
             yield
@@ -326,17 +328,9 @@ if os.path.isdir(_models_dir):
 # Pipelines discovery — each pipelines/<name>.py exposes a `runner` variable.
 _pipelines_dir = os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines")
 if os.path.isdir(_pipelines_dir):
-    from tracebi import pipeline_registry as _pipe_reg
-    _disc_pipes = _pipe_reg.auto_discover(_pipelines_dir)
-    for _pname in _disc_pipes:
-        try:
-            _pr = _pipe_reg.get_runner(_pname)
-            from tracebi.web.api.registry import registry as _registry_ref
-            if _pname not in _registry_ref.list_pipeline_names():
-                _registry_ref.add_pipeline(_pname, _pr)
-        except Exception as _exc:
-            import warnings
-            warnings.warn(f"[tracebi] pipeline '{_pname}' failed to load: {_exc}")
+    # The same registration live discovery repeats while the server runs.
+    from tracebi.web.discovery import register_pipelines as _register_pipelines
+    _disc_pipes = _register_pipelines(_pipelines_dir)
     if _disc_pipes:
         print(f"[tracebi] auto-discovered {len(_disc_pipes)} pipeline(s) from {_pipelines_dir}")
 

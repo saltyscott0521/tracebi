@@ -40,7 +40,7 @@ company adds its sign-in, network shares and controls to the same install.
 
 | Need | For | Status |
 | --- | --- | --- |
-| One Docker image; docker-compose with Postgres; Railway and Vercel configs | All | ✅ |
+| One Docker image; docker-compose with Postgres; a Railway config | All | ✅ |
 | Proxy-header sign-in (for an SSO proxy), viewer/analyst/admin roles | Growing, enterprise | ✅ |
 | The Postgres lock that makes several workers safe | Growing, enterprise | ✅ |
 | SMTP email delivery | All | ✅ |
@@ -122,7 +122,7 @@ The analyst's laptop runs the package; a shared server runs the image.
 | --- | --- | --- |
 | `Dockerfile` (UI + Python) | ✅ exists | Published to GHCR on each version tag. Still to add: a `worker` entry point. |
 | `docker-compose.yml` | ✅ exists (the demo stack, with Postgres) | Client file is `deploy/compose.yml`. Still to add: a worker service. |
-| Railway, Vercel + Supabase configs | ✅ exist | Keep Railway as the one-click path. Vercel suits the read-only demo only (no workers). |
+| Railway config | ✅ exists | Keep Railway as the one-click path. (The Vercel config was removed on 2026-09-26: the demo runs on one Hetzner server.) |
 | Helm chart | ❌ | Q2: web, worker, Postgres (external or bundled), secrets, ingress. |
 | Terraform module | ❌ | When the first customer asks. |
 

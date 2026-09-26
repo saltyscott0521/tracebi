@@ -21,8 +21,8 @@ const queryClient = new QueryClient({
 })
 
 // Mount point. The default build serves at "/" (local dev, the wheel, Docker);
-// the Vercel build passes --base=/app/ so the demo app sits under /app behind
-// the marketing page. Deriving the router basename from BASE_URL keeps a single
+// a build with --base=/app/ puts the app under /app, behind a marketing page
+// at /. Deriving the router basename from BASE_URL keeps a single
 // codebase working at either mount with no per-environment branching.
 const basename = import.meta.env.BASE_URL.replace(/\/+$/, '') || undefined
 
