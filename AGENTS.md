@@ -168,7 +168,7 @@ Three rules that keep pages honest:
   it as computed from the reader's inputs, and the manifest records only
   its declaration with `verifiable: false`. Use it for a rate the reader
   remembers, never for a number a query could produce. The build checks
-  every formula and preset. See `examples/mortgage_project`.
+  every formula and preset. See `examples/portfolio_project/reports/housing/affordability/`.
 - **Interactivity subsets, never computes.** The premium objects —
   `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
   (`data-tb-rows`, default 10), tabs (`data-tb-tab`), `.tb-cols-2/3`

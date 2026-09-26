@@ -16,11 +16,11 @@ build machine had no network access. Treat it as close, not exact. On a
 machine that can reach FRED, run:
 
 ```bash
-python inputs/fetch_data.py
+python inputs/fetch_housing.py
 ```
 
 That rewrites `housing_history.csv` from the official series (rate, price,
-and income from 1984 on). Then rerun the transform. The FRED income series
+and income from 1984 on). Then rerun `python transforms/affordability_transform.py`. The FRED income series
 starts in 1984, so the script keeps the snapshot's earlier income years and
 says so as it runs.
 

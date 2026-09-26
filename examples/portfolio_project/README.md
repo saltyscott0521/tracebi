@@ -17,6 +17,7 @@ it is the worked version of that scaffold with real cleaning to do.
                reports/fund_books/portfolio_overview/      default-component runtime package
                reports/risk/portfolio_concentration/       governed window measures
                reports/showcase/portfolio_showcase/        kitchen-sink demo, every figure kind
+               reports/housing/affordability/              public data + a reader what-if
 ```
 
 ## Run it
@@ -54,6 +55,16 @@ into folders the way a team would. A report in a folder is named by its path:
 - `risk/portfolio_concentration/` — rank, share of total and running share as
   governed window measures. It was once a `report.py` escape hatch and no
   longer needs to be.
+- `housing/affordability/` — a second domain on public data: mortgage
+  rates, median home prices and median household income every year since
+  1971 (`inputs/housing_history.csv`, sunk by
+  `transforms/affordability_transform.py` to its own `data/housing.duckdb`,
+  modelled by `models/housing_model.py`). Line charts of every year, and a
+  then-vs-now **scenario** (`data-tb-scenario`) where the reader picks two
+  years or types their own rate, price and down payment. The scenario is
+  computed in the browser and labeled as not part of the receipt. The
+  committed CSV is a snapshot; `python inputs/fetch_housing.py` refreshes it
+  from FRED (see `inputs/housing_sources.md`).
 - `showcase/portfolio_showcase/` — the maintained kitchen-sink demo: every
   figure kind, controls, layouts, and trust affordance the artifact offers,
   including a `report.py` escape hatch whose output stamps `verifiable: false`

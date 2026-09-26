@@ -412,7 +412,7 @@ def _presentation() -> dict:
                             "data-tb-preset)",
             "data-tb-default": "the key value a preset starts on (see "
                                "data-tb-preset)",
-            "example": "examples/mortgage_project/reports/affordability/",
+            "example": "examples/portfolio_project/reports/housing/affordability/",
         },
         "assets": {
             "rule": "Fonts and images live in the package's assets/ folder. "

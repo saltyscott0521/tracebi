@@ -17,15 +17,15 @@ from tracebi import DataModel
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+WAREHOUSE = os.path.join(ROOT, "data", "housing.duckdb")
 
-connector = DuckDBConnector("warehouse", database=WAREHOUSE)
+connector = DuckDBConnector("housing_warehouse", database=WAREHOUSE)
 
 model = (
     DataModel("housing_model")
     .add_connector(connector)
-    .add_table("fact_housing", connector="warehouse", source="fact_housing")
-    .add_table("dim_year", connector="warehouse", source="dim_year")
+    .add_table("fact_housing", connector="housing_warehouse", source="fact_housing")
+    .add_table("dim_year", connector="housing_warehouse", source="dim_year")
     .add_dimension("dim_year", table_name="dim_year", key_col="year_id",
                    attributes=["year", "decade"])
     .add_fact("fact_housing", table_name="fact_housing",

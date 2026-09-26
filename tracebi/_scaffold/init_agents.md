@@ -103,7 +103,7 @@ whose figures each name a binding from `report.json`:
   it as computed from the reader's inputs, and the manifest records only
   its declaration with `verifiable: false`. Use it for a rate the reader
   remembers, never for a number a query could produce. The build checks
-  every formula and preset. See `examples/mortgage_project`.
+  every formula and preset. See `examples/portfolio_project/reports/housing/affordability/`.
 - Interactivity: `data-tb-filter` dropdowns + `data-tb-search` inputs subset
   WHICH stamped rows a binding's tables/charts display — they never compute
   new numbers (client-side aggregation would mint numbers; value figures

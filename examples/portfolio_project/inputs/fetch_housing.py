@@ -1,7 +1,7 @@
 """
 Refresh inputs/housing_history.csv from the official series on FRED.
 
-    python inputs/fetch_data.py
+    python inputs/fetch_housing.py
 
 Pulls the 30-year mortgage rate (MORTGAGE30US, weekly), the median sales
 price of houses sold (MSPUS, quarterly) and median household income

@@ -8,7 +8,7 @@
   scenario is never a figure: the runtime labels it as computed from the
   reader's inputs and not part of the receipt, and the manifest records its
   declaration under `scenarios` with `verifiable: false`.
-- `examples/mortgage_project`: mortgage rates, median home prices and
+- `reports/housing/affordability` in the reference project (and so the demo): mortgage rates, median home prices and
   median household income every year since 1971, the payment they add up
   to, line charts, and a then-vs-now scenario.
 

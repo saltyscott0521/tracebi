@@ -27,7 +27,9 @@ from tracebi.contracts import contract
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RAW = os.path.join(ROOT, "inputs", "housing_history.csv")
-WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+# Its own warehouse file: the housing tables stay out of the portfolio
+# warehouse and its contract.
+WAREHOUSE = os.path.join(ROOT, "data", "housing.duckdb")
 
 DOWN_PAYMENT = 0.20
 TERM_YEARS = 30
@@ -61,7 +63,7 @@ def run() -> dict:
         columns={"year": "year_id"})
 
     os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
-    wh = DuckDBConnector("warehouse", database=WAREHOUSE)
+    wh = DuckDBConnector("housing_warehouse", database=WAREHOUSE)
     wh.write(dim_year, "dim_year")
     wh.write(fact, "fact_housing")
 
