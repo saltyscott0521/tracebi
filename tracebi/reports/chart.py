@@ -341,6 +341,12 @@ class ChartSpec:
         pal = self.palette or DEFAULT_PALETTE
         return pal[i % len(pal)]
 
+    @staticmethod
+    def _slot(i: int) -> str:
+        """Which palette slot a series mark takes, so a page stylesheet can
+        recolour it from its own chart palette (the no-JS fallback does)."""
+        return f' data-tb-slot="{i % 8 + 1}"'
+
     def _wrap(self, body: str) -> str:
         title = ""
         if self.title:
@@ -358,7 +364,7 @@ class ChartSpec:
             f'text-anchor="middle">no data</text>'
         )
 
-    def _axes(self, ticks, lo, hi, labels, *, horizontal=False) -> str:
+    def _axes(self, ticks, lo, hi, labels, *, horizontal=False, series_x=False) -> str:
         """Grid lines, tick labels, and axis titles."""
         pw = _W - _M["left"] - _M["right"]
         ph = _H - _M["top"] - _M["bottom"]
@@ -384,8 +390,14 @@ class ChartSpec:
 
         # Category labels along the other axis.
         n = max(len(labels), 1)
-        # Thin them out when they would collide.
+        # Thin them out when they would collide. A line's x is a sequence
+        # (years, months), where every few labels read fine, so there each
+        # label also gets room for its text (about 9 units a character):
+        # fifty-odd years show every fourth one. Bars keep every name.
         stride = max(1, n // 18)
+        if series_x:
+            longest = min(max((len(label) for label in labels), default=1), 18)
+            stride = max(stride, math.ceil((longest * 9 + 12) / (pw / n)))
         for i, label in enumerate(labels):
             if i % stride:
                 continue
@@ -424,10 +436,10 @@ class ChartSpec:
         for i, name in enumerate(self.series):
             parts.append(
                 f'<rect class="tb-legend-swatch" x="{x}" y="6" width="10" height="10" '
-                f'fill="{self._colour(i)}"/>'
+                f'fill="{self._colour(i)}"{self._slot(i)}/>'
                 f'<text class="tb-legend" x="{x + 15}" y="15">{self._esc(name)}</text>'
             )
-            x += 22 + 7 * len(name)
+            x += 24 + 9 * len(name)
         return "".join(parts)
 
     # ── Chart types ────────────────────────────────────────────
@@ -453,7 +465,7 @@ class ChartSpec:
                 bars.append(
                     f'<rect class="tb-bar" x="{x:.1f}" y="{top:.1f}" '
                     f'width="{bw:.1f}" height="{max(height, 0.5):.1f}" '
-                    f'fill="{self._colour(si)}"><title>'
+                    f'fill="{self._colour(si)}"{self._slot(si)}><title>'
                     f'{self._esc(labels[i])}: {self._esc(self._fmt(v))}</title></rect>'
                 )
                 if self.show_values:
@@ -485,7 +497,7 @@ class ChartSpec:
                 bars.append(
                     f'<rect class="tb-bar" x="{left:.1f}" y="{y:.1f}" '
                     f'width="{max(width, 0.5):.1f}" height="{bh:.1f}" '
-                    f'fill="{self._colour(si)}"><title>'
+                    f'fill="{self._colour(si)}"{self._slot(si)}><title>'
                     f'{self._esc(labels[i])}: {self._esc(self._fmt(v))}</title></rect>'
                 )
                 if self.show_values:
@@ -549,16 +561,17 @@ class ChartSpec:
                         f'L{run[0][0]:.1f},{base:.1f} Z'
                         for run in runs
                     )
-                    + '"/>'
+                    + f'"{self._slot(si)}/>'
                 )
             out.append(
                 f'<path class="tb-line" d="{path}" fill="none" '
-                f'stroke="{colour}" stroke-width="2.5" stroke-linejoin="round"/>'
+                f'stroke="{colour}" stroke-width="2.5" stroke-linejoin="round"'
+                f'{self._slot(si)}/>'
             )
             for (i, v), (x, y) in zip(pairs, pts):
                 out.append(
                     f'<circle class="tb-point" cx="{x:.1f}" cy="{y:.1f}" r="3.5" '
-                    f'fill="{colour}"><title>{self._esc(labels[i])}: '
+                    f'fill="{colour}"{self._slot(si)}><title>{self._esc(labels[i])}: '
                     f'{self._esc(self._fmt(v))}</title></circle>'
                 )
                 if self.show_values:
@@ -567,7 +580,8 @@ class ChartSpec:
                         f'text-anchor="middle">'
                         f'{self._esc(self._fmt(v, compact=True))}</text>'
                     )
-        return self._axes(ticks, lo, hi, labels) + self._legend() + "".join(out)
+        return (self._axes(ticks, lo, hi, labels, series_x=True)
+                + self._legend() + "".join(out))
 
     def _scatter(self) -> str:
         pw = _W - _M["left"] - _M["right"]

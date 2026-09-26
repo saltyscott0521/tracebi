@@ -788,8 +788,10 @@ class TemplatePackage:
         format is not threaded into to_svg) — the JS replaces it, so this is a
         no-JS cosmetic only.
         """
+        import dataclasses
         import types
         from tracebi.reports.chart import ChartSpec
+        from tracebi.reports.derive import humanise
         a = fig.attrs
         x, y = a.get("data-tb-x"), a.get("data-tb-y")
         if not x or not y:
@@ -808,6 +810,16 @@ class TemplatePackage:
         # so they propagate. Only the SVG rendering is guarded: a rendering
         # quirk drops the no-JS fallback but never fails an otherwise-valid page.
         spec = ChartSpec.from_section(shim)
+        # Read like the live chart: no axis titles, and plain series names
+        # (``median_price`` → ``Median price``) unless they are group values.
+        names = {} if shim.color else {s: humanise(s) for s in spec.series}
+        if len(set(names.values())) < len(names) or shim.x in names.values():
+            names = {}
+        spec = dataclasses.replace(
+            spec, xlabel="", ylabel="",
+            series=tuple(names.get(s, s) for s in spec.series),
+            rows=tuple({names.get(k, k): v for k, v in r.items()}
+                       for r in spec.rows))
         try:
             svg = spec.to_svg()
         except Exception:  # noqa: BLE001 — a rendering quirk: hydrate as before
