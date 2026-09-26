@@ -166,3 +166,22 @@ def test_a_code_module_that_registers_a_packageless_report_is_flagged(tmp_path, 
         assert "old_style_live" in capsys.readouterr().err
     finally:
         registry.remove_report("old_style_live")
+
+
+def test_reports_from_another_folder_are_not_forgotten(tmp_path):
+    """An app module's own reports/ (TRACEBI_APP=tracebi.web.demo_app) is
+    discovered at startup but never rescanned; the watcher must not read
+    those as deleted and drop them a few seconds after boot."""
+    app_reports = tmp_path / "app_reports"
+    app_reports.mkdir()
+    _package(app_reports, "app_live")
+    project = tmp_path / "reports"
+    project.mkdir()
+    try:
+        discovery.auto_discover(str(app_reports))
+        assert "app_live" in _names()
+        assert discovery.rescan(str(project))["removed"] == []
+        assert "app_live" in _names()
+    finally:
+        registry.remove_report("app_live")
+        discovery._live_reports.pop("app_live", None)
