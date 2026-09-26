@@ -17,7 +17,12 @@
   tax and insurance. A "What this leaves out" list names the limits:
   national medians, flat tax and insurance rates, no projection.
 - One number up top: each buyer's cash to close plus ten years of payments,
-  as a share of the income earned over those ten years — a receipted figure
-  for every buyer with ten real years (1979–2016). Today's buyer appears
-  only as a labeled projection whose assumptions (refinance rate, income and
-  home-value growth) the reader sets; it is never a figure.
+  as a share of the income earned over those ten years, for every buyer
+  since 1979. Buyers whose ten years run past the data get the missing years
+  projected on one stated assumption (rates hold at the latest average;
+  income and home values grow at income's last-decade pace) and are marked
+  projected on the chart and cards. A box under it lets the reader change
+  those assumptions; it starts from the same ones, so it matches the chart.
+- Simpler page: the one number, then why (the worst of the eighties against
+  today, and each buyer's payment path). The rate and price charts, the
+  tables and the two year-pickers are gone.

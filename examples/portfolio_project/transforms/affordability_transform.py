@@ -23,7 +23,10 @@
 # later year whose average rate is at least a full point below the rate they
 # hold; refinancing costs are left out. A buyer's ten-year share adds the cash
 # to close to the first ten years of payments, over the first ten years of
-# median household income.
+# median household income. For a buyer whose ten years run past the data, the
+# missing years are PROJECTED — the rate stays at the last year's average, and
+# income and home values grow at median income's pace over the last decade —
+# and the buyer is marked `basis = projected`.
 #
 #     python transforms/affordability_transform.py
 #
@@ -101,6 +104,46 @@ def cohort_path(df: pd.DataFrame, buy_year: int) -> list[dict]:
 
 
 # %%
+def with_projection(df: pd.DataFrame) -> tuple[pd.DataFrame, float]:
+    """The series, extended PATH_YEARS past its last year by one assumption:
+    the rate stays at the last year's average, and income and home values
+    grow at median income's pace over the last ten years (so price-to-income
+    holds still). Returns the extended frame and that growth, in percent."""
+    last = df.iloc[-1]
+    decade_ago = df.set_index("year").at[int(last["year"]) - 10, "median_income"]
+    growth_pct = round(((last["median_income"] / decade_ago) ** 0.1 - 1) * 100, 2)
+    g = 1 + growth_pct / 100
+    ahead = pd.DataFrame([{
+        "year": int(last["year"]) + k,
+        "mortgage_rate": last["mortgage_rate"],
+        "existing_price": last["existing_price"] * g ** k,
+        "median_income": last["median_income"] * g ** k,
+    } for k in range(1, PATH_YEARS)])
+    return pd.concat([df[ahead.columns], ahead], ignore_index=True), growth_pct
+
+
+def ten_year(extended: pd.DataFrame, buy_year: int, last_year: int,
+             growth_pct: float) -> dict:
+    """One buyer's first ten years: cash to close plus every payment, and the
+    income earned over the same years. Years past the data are projected."""
+    years = [r for r in cohort_path(extended, buy_year) if r["held_id"] < PATH_YEARS]
+    first = extended.set_index("year").loc[buy_year]
+    return {
+        "cohort_id": buy_year,
+        "outlay": round(sum(r["outlay"] for r in years), 2),
+        "median_income": round(sum(r["median_income"] for r in years), 2),
+        "years_measured": min(PATH_YEARS, last_year - buy_year + 1),
+        # What the reader's projection box starts from: the purchase, and
+        # the same assumption the projected years above were built on.
+        "rate_at_purchase": float(first["mortgage_rate"]),
+        "price_at_purchase": float(first["existing_price"]),
+        "income_at_purchase": float(first["median_income"]),
+        "assumed_rate": float(extended["mortgage_rate"].iloc[-1]),
+        "growth_pct": growth_pct,
+    }
+
+
+# %%
 def run() -> dict:
     raw = pd.read_csv(RAW)
     df = raw.sort_values("year").drop_duplicates("year").reset_index(drop=True)
@@ -127,11 +170,18 @@ def run() -> dict:
                "annual_pi", "entry_cost"]].rename(columns={"year": "year_id"})
 
     path = pd.DataFrame([row for year in df["year"] for row in cohort_path(df, int(year))])
-    # years_followed: how many years after purchase the data reaches, so a
-    # ten-year figure only ever counts buyers with ten real years.
-    dim_cohort = (path.groupby("cohort_id", as_index=False)["held_id"].max()
-                  .rename(columns={"held_id": "years_followed"}))
-    dim_cohort.insert(1, "purchase_year", dim_cohort["cohort_id"])
+    last_year = int(df["year"].max())
+    extended, growth_pct = with_projection(df)
+    tens = pd.DataFrame([ten_year(extended, int(y), last_year, growth_pct)
+                         for y in df["year"]])
+    # basis: whether a buyer's ten years are all in the data, or partly
+    # projected. Every figure built on a projected year says so.
+    dim_cohort = pd.DataFrame({
+        "cohort_id": tens["cohort_id"],
+        "purchase_year": tens["cohort_id"],
+        "basis": ["measured" if n == PATH_YEARS else "projected"
+                  for n in tens["years_measured"]],
+    })
     dim_held = pd.DataFrame({"held_id": range(PATH_YEARS + 1),
                              "years_owned": range(PATH_YEARS + 1)})
 
@@ -142,6 +192,7 @@ def run() -> dict:
     wh.write(dim_cohort, "dim_cohort")
     wh.write(dim_held, "dim_held")
     wh.write(path, "fact_cohort_path")
+    wh.write(tens, "fact_ten_year")
 
     with contract(
         "affordability", warehouse=WAREHOUSE,
@@ -153,7 +204,9 @@ def run() -> dict:
              "Payment = principal and interest (20% down, 30 years, that year's "
              "rate) + property tax 1.1% + insurance 0.35% of value a year. "
              "Entry cost = 20% down + 3% closing. Cohort paths refinance at a "
-             "one-point drop, for up to ten years.",
+             "one-point drop, for up to ten years. Ten-year shares past the "
+             "last year are projected: rate held at the last year's average, "
+             "income and home values growing at income's last-decade pace.",
     ) as c:
         c.rows("fact_housing", at_least=40,
                note="the series starts in 1979; fewer rows means a truncated pull")
@@ -170,9 +223,13 @@ def run() -> dict:
                       refers_to=("dim_cohort", "cohort_id"))
         c.foreign_key("fact_cohort_path", "held_id",
                       refers_to=("dim_held", "held_id"))
+        c.not_null("fact_ten_year", ["cohort_id", "outlay", "median_income"])
+        c.foreign_key("fact_ten_year", "cohort_id",
+                      refers_to=("dim_cohort", "cohort_id"))
+        c.values("dim_cohort", "basis", within=["measured", "projected"])
 
     return {"years": len(fact), "first": int(df["year"].min()),
-            "last": int(df["year"].max()), "path_rows": len(path)}
+            "last": last_year, "path_rows": len(path), "growth_pct": growth_pct}
 
 
 # %%

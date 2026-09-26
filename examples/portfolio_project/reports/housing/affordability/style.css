@@ -234,3 +234,10 @@ body {
 .mp-more summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--mp-green-9); }
 .mp-more label { margin-top: 8px; }
 .mp-result-big output { font-size: 26px; font-weight: 700; }
+
+.mp-assume { margin-top: 16px; }
+.mp-assume > summary {
+  cursor: pointer; font-weight: 600; color: var(--mp-green-9);
+  padding: 10px 14px; border: 1px dashed #d3e6da; border-radius: 8px;
+}
+.mp-assume[open] > summary { margin-bottom: 12px; }

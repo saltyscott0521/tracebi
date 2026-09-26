@@ -1,66 +1,11 @@
 {
   "name": "Then vs Now: Buying the Median Home",
   "author": "tracebi reference",
-  "description": "Getting in and carrying the payment on the median existing home, every year since 1979: the worst year of the eighties against today, what each year's buyer paid ten years on, and a scenario to try your own numbers.",
+  "description": "What buying the median home took of a household's income over ten years \u2014 the cash to get in plus every payment \u2014 for every buyer since 1979, today's projected, with the worst of the eighties set against today.",
   "libs": [
     "echarts"
   ],
   "data": {
-    "history": {
-      "model": "housing_model",
-      "query": {
-        "fact": "fact_housing",
-        "measures": [
-          "mortgage_rate",
-          "existing_price",
-          "new_home_price",
-          "median_income",
-          "earner_income",
-          "entry_cost",
-          "payment",
-          "entry_share",
-          "payment_share",
-          "earner_share",
-          "pi_share",
-          "price_to_income"
-        ],
-        "dimensions": [
-          "dim_year.year"
-        ],
-        "order_by": [
-          "dim_year.year"
-        ]
-      }
-    },
-    "compare": {
-      "model": "housing_model",
-      "query": {
-        "fact": "fact_housing",
-        "measures": [
-          "mortgage_rate",
-          "existing_price",
-          "price_to_income",
-          "entry_share",
-          "payment_share",
-          "earner_share",
-          "pi_share"
-        ],
-        "dimensions": [
-          "dim_year.year"
-        ],
-        "filters": {
-          "dim_year.year": {
-            "in": [
-              1981,
-              2025
-            ]
-          }
-        },
-        "order_by": [
-          "dim_year.year"
-        ]
-      }
-    },
     "peak": {
       "model": "housing_model",
       "query": {
@@ -149,58 +94,17 @@
         ]
       }
     },
-    "hardest_carry": {
-      "model": "housing_model",
-      "query": {
-        "fact": "fact_housing",
-        "measures": [
-          "payment_share",
-          "mortgage_rate"
-        ],
-        "dimensions": [
-          "dim_year.year"
-        ],
-        "order_by": [
-          "-payment_share"
-        ],
-        "limit": 1
-      }
-    },
-    "hardest_entry": {
-      "model": "housing_model",
-      "query": {
-        "fact": "fact_housing",
-        "measures": [
-          "entry_share",
-          "price_to_income"
-        ],
-        "dimensions": [
-          "dim_year.year"
-        ],
-        "order_by": [
-          "-entry_share"
-        ],
-        "limit": 1
-      }
-    },
     "ten_year": {
       "model": "housing_model",
       "query": {
-        "fact": "fact_cohort_path",
+        "fact": "fact_ten_year",
         "measures": [
           "housing_share"
         ],
         "dimensions": [
-          "dim_cohort.purchase_year"
+          "dim_cohort.purchase_year",
+          "dim_cohort.basis"
         ],
-        "filters": {
-          "dim_held.years_owned": {
-            "lte": 9
-          },
-          "dim_cohort.years_followed": {
-            "gte": 9
-          }
-        },
         "order_by": [
           "dim_cohort.purchase_year"
         ]
@@ -209,20 +113,15 @@
     "ten_peak": {
       "model": "housing_model",
       "query": {
-        "fact": "fact_cohort_path",
+        "fact": "fact_ten_year",
         "measures": [
           "housing_share"
         ],
         "dimensions": [
-          "dim_cohort.purchase_year"
+          "dim_cohort.purchase_year",
+          "dim_cohort.basis"
         ],
         "filters": {
-          "dim_held.years_owned": {
-            "lte": 9
-          },
-          "dim_cohort.years_followed": {
-            "gte": 9
-          },
           "dim_cohort.purchase_year": 1981
         }
       }
@@ -230,20 +129,16 @@
     "ten_worst": {
       "model": "housing_model",
       "query": {
-        "fact": "fact_cohort_path",
+        "fact": "fact_ten_year",
         "measures": [
           "housing_share"
         ],
         "dimensions": [
-          "dim_cohort.purchase_year"
+          "dim_cohort.purchase_year",
+          "dim_cohort.basis"
         ],
         "filters": {
-          "dim_held.years_owned": {
-            "lte": 9
-          },
-          "dim_cohort.years_followed": {
-            "gte": 9
-          }
+          "dim_cohort.basis": "measured"
         },
         "order_by": [
           "-housing_share"
@@ -251,26 +146,39 @@
         "limit": 1
       }
     },
-    "ten_best": {
+    "ten_today": {
       "model": "housing_model",
       "query": {
-        "fact": "fact_cohort_path",
+        "fact": "fact_ten_year",
         "measures": [
           "housing_share"
         ],
         "dimensions": [
+          "dim_cohort.purchase_year",
+          "dim_cohort.basis"
+        ],
+        "order_by": [
+          "-dim_cohort.purchase_year"
+        ],
+        "limit": 1
+      }
+    },
+    "projection": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_ten_year",
+        "measures": [
+          "rate_at_purchase",
+          "price_at_purchase",
+          "income_at_purchase",
+          "assumed_rate",
+          "growth_pct"
+        ],
+        "dimensions": [
           "dim_cohort.purchase_year"
         ],
-        "filters": {
-          "dim_held.years_owned": {
-            "lte": 9
-          },
-          "dim_cohort.years_followed": {
-            "gte": 9
-          }
-        },
         "order_by": [
-          "housing_share"
+          "-dim_cohort.purchase_year"
         ],
         "limit": 1
       }

@@ -25,9 +25,9 @@
         and the home cost
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="existing_price" id="now-price"></span>.
       </p>
-      <p class="mp-lede mp-lede--strong">Affordability is two tests: can you get in,
-        and can you keep paying. High rates make the second one hard for a while.
-        High prices make both hard, and they stay.</p>
+      <p class="mp-lede mp-lede--strong">Add it all up — the cash to get in and
+        ten years of payments — and today's buyer is on track to give up a
+        bigger share of their income than the worst of the eighties.</p>
       <p class="mp-hero-sources">Sources: Freddie Mac · FHFA · NAR · U.S. Census Bureau · BLS ·
         <a href="#sources">details</a></p>
     </div>
@@ -105,77 +105,77 @@
     </figure>
   </header>
 
-  <!-- ── One number ───────────────────────────────────────────────────── -->
+  <!-- ── The one number ───────────────────────────────────────────────── -->
   <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>One number: what buying took of ten years' income</h2>
-    <p class="mp-intro">Add the cash to close to every payment over the first
-      ten years, including property tax and insurance and any refinance, and
-      divide by everything the household earned over the same ten years. That
-      one share counts getting in, carrying it, falling rates and rising pay
-      together.</p>
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>The one number</h2>
+    <p class="mp-intro">The cash to close plus every payment over the first ten
+      years — property tax, insurance, any refinance — as a share of everything
+      the household earned in those ten years.</p>
     <div class="tb-grid mp-kpis mp-kpis--three">
       <div class="tb-kpi mp-kpi">
-        <span class="tb-kpi-label">The worst of the eighties</span>
+        <span class="tb-kpi-label">Worst of the eighties</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_peak" data-tb-cell="housing_share" id="ten-peak"></span>
-        <span class="tb-kpi-context">a buyer in <span data-tb-figure="value" data-tb-binding="ten_peak" data-tb-cell="dim_cohort.purchase_year" id="ten-peak-year"></span>, over their first ten years</span>
-      </div>
-      <div class="tb-kpi mp-kpi mp-kpi--alert">
-        <span class="tb-kpi-label">The worst on record</span>
-        <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="housing_share" id="ten-worst"></span>
-        <span class="tb-kpi-context">a buyer in <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="dim_cohort.purchase_year" id="ten-worst-year"></span></span>
+        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_peak" data-tb-cell="dim_cohort.purchase_year" id="ten-peak-year"></span> · measured</span>
       </div>
       <div class="tb-kpi mp-kpi">
-        <span class="tb-kpi-label">The easiest</span>
-        <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_best" data-tb-cell="housing_share" id="ten-best"></span>
-        <span class="tb-kpi-context">a buyer in <span data-tb-figure="value" data-tb-binding="ten_best" data-tb-cell="dim_cohort.purchase_year" id="ten-best-year"></span></span>
+        <span class="tb-kpi-label">Worst measured</span>
+        <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="housing_share" id="ten-worst"></span>
+        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="dim_cohort.purchase_year" id="ten-worst-year"></span> · measured</span>
+      </div>
+      <div class="tb-kpi mp-kpi mp-kpi--alert">
+        <span class="tb-kpi-label">Today's buyer</span>
+        <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="housing_share" id="ten-today"></span>
+        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="ten-today-year"></span> · <strong>projected</strong></span>
       </div>
     </div>
     <div class="tb-card mp-chart-card mp-chart-card--wide">
-      <h3>Ten years of housing cost as a share of ten years' income, by the year bought</h3>
+      <h3>Ten years of housing cost as a share of ten years' income, by year bought</h3>
       <div data-tb-figure="chart" data-tb-binding="ten_year" data-tb-type="bar"
            data-tb-x="dim_cohort.purchase_year" data-tb-y="housing_share"
-           data-tb-value-format="percent" id="chart-ten-year" class="mp-chart"></div>
-      <p class="mp-source">Only buyers with ten real years of data. Later buyers
-        are not on this chart, because their ten years have not happened.</p>
+           data-tb-color="dim_cohort.basis"
+           data-tb-value-format="percent" id="chart-ten-year" class="mp-chart mp-chart--tall"></div>
+      <p class="mp-source">Measured: all ten years are in the data. Projected:
+        the years not yet lived assume rates stay at the latest year's average
+        and income and home values grow at income's pace over the last decade.</p>
     </div>
-
-    <form data-tb-scenario="today" id="scenario-today" class="mp-scenario mp-scenario--now mp-projection">
-      <h3><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12 12 4l10 8M4 10v10h16V10M9 20v-6h6v6"/></svg>Today's buyer: a projection, not a measurement</h3>
-      <p class="mp-projection-note">Today's buyer has not lived their ten years,
-        so their number depends on what happens next. These are your
-        assumptions, not data. The rate a refinance could reach matters most:
-        leave it at today's rate for no refinance.</p>
-      <label>Year bought <select data-tb-preset="history" data-tb-key="dim_year.year"
-              data-tb-default="2025"
-              data-tb-fill="rate=mortgage_rate, price=existing_price, income=median_income, future=mortgage_rate"></select></label>
-      <label>Rate refinanced to (%) <input data-tb-input="future" type="number" step="0.1" min="0"></label>
-      <label>Refinance after (years) <input data-tb-input="refi_year" type="number" value="2" min="0" max="10" step="1"></label>
-      <label>Income grows (% a year) <input data-tb-input="income_growth" type="number" value="4.5" step="0.5" min="0"></label>
-      <label>Home values grow (% a year) <input data-tb-input="home_growth" type="number" value="4.5" step="0.5" min="0"></label>
-      <details class="mp-more">
-        <summary>The purchase itself</summary>
-        <label>Rate at purchase (%) <input data-tb-input="rate" type="number" step="0.01" min="0"></label>
-        <label>Home price ($) <input data-tb-input="price" type="number" step="1000" min="0"></label>
-        <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
-        <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
-        <label>Closing costs (%) <input data-tb-input="closing" type="number" value="3" step="0.5" min="0"></label>
-        <label>Property tax (% a year) <input data-tb-input="tax" type="number" value="1.1" step="0.1" min="0"></label>
-        <label>Insurance (% a year) <input data-tb-input="insurance" type="number" value="0.35" step="0.05" min="0"></label>
-      </details>
-      <div class="mp-results">
-        <p class="mp-result-big"><span>Projected share of ten years' income</span>
-          <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * ((1 + home_growth / 100) ^ 10 - 1) / max(home_growth / 100, 0.0001)) / (income * ((1 + income_growth / 100) ^ 10 - 1) / max(income_growth / 100, 0.0001))"
-                  data-tb-format="percent" id="calc-today-share"></output></p>
-        <p><span>Ten years of housing cost</span>
-          <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * ((1 + home_growth / 100) ^ 10 - 1) / max(home_growth / 100, 0.0001))"
-                  data-tb-format="currency0" id="calc-today-total"></output></p>
-      </div>
-    </form>
+    <details class="mp-assume">
+      <summary>Today's number is a projection. Change the assumptions</summary>
+      <form data-tb-scenario="today" id="scenario-today" class="mp-scenario mp-scenario--now mp-projection">
+        <p class="mp-projection-note">It starts from the same assumption as the
+          chart: rates stay put, and income and home values keep growing at
+          income's pace over the last decade. Change them. The rate a refinance
+          could reach matters most; leave it at today's rate for no refinance.</p>
+        <label>Year bought <select data-tb-preset="projection" data-tb-key="dim_cohort.purchase_year"
+                data-tb-fill="rate=rate_at_purchase, price=price_at_purchase, income=income_at_purchase, future=assumed_rate, income_growth=growth_pct, home_growth=growth_pct"></select></label>
+        <label>Rate refinanced to (%) <input data-tb-input="future" type="number" step="0.1" min="0"></label>
+        <label>Refinance after (years) <input data-tb-input="refi_year" type="number" value="2" min="0" max="10" step="1"></label>
+        <label>Income grows (% a year) <input data-tb-input="income_growth" type="number" step="0.5" min="0"></label>
+        <label>Home values grow (% a year) <input data-tb-input="home_growth" type="number" step="0.5" min="0"></label>
+        <details class="mp-more">
+          <summary>The purchase itself</summary>
+          <label>Rate at purchase (%) <input data-tb-input="rate" type="number" step="0.01" min="0"></label>
+          <label>Home price ($) <input data-tb-input="price" type="number" step="1000" min="0"></label>
+          <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
+          <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
+          <label>Closing costs (%) <input data-tb-input="closing" type="number" value="3" step="0.5" min="0"></label>
+          <label>Property tax (% a year) <input data-tb-input="tax" type="number" value="1.1" step="0.1" min="0"></label>
+          <label>Insurance (% a year) <input data-tb-input="insurance" type="number" value="0.35" step="0.05" min="0"></label>
+        </details>
+        <div class="mp-results">
+          <p class="mp-result-big"><span>Projected share of ten years' income</span>
+            <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * ((1 + home_growth / 100) ^ 10 - 1) / max(home_growth / 100, 0.0001)) / (income * ((1 + income_growth / 100) ^ 10 - 1) / max(income_growth / 100, 0.0001))"
+                    data-tb-format="percent" id="calc-today-share"></output></p>
+          <p><span>Ten years of housing cost</span>
+            <output data-tb-calc="(price * (down + closing) / 100 + 12 * (pmt(rate / 1200, 360, price * (1 - down / 100)) * refi_year + pmt(min(rate, future) / 1200, 360 - 12 * refi_year, (price * (1 - down / 100) * (1 + rate / 1200) ^ (12 * refi_year) - pmt(rate / 1200, 360, price * (1 - down / 100)) * ((1 + rate / 1200) ^ (12 * refi_year) - 1) / (rate / 1200))) * (10 - refi_year)) + price * (tax + insurance) / 100 * ((1 + home_growth / 100) ^ 10 - 1) / max(home_growth / 100, 0.0001))"
+                    data-tb-format="currency0" id="calc-today-total"></output></p>
+        </div>
+      </form>
+    </details>
   </section>
 
-  <!-- ── The worst of the eighties vs today ───────────────────────────── -->
+  <!-- ── Why ──────────────────────────────────────────────────────────── -->
   <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Four tests, side by side</h2>
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Why: the worst of the eighties vs today</h2>
     <div class="tb-grid mp-kpis">
       <div class="tb-kpi mp-kpi mp-vs" data-mp-vs>
         <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>
@@ -230,42 +230,10 @@
         </div>
       </div>
     </div>
-    <div class="mp-conclusion">
-      <h3>What it adds up to</h3>
-      <p><strong>On the one number, today's buyer is on track to match or pass
-        the worst of the eighties.</strong> Unless rates fall enough to
-        refinance, the projection lands above every buyer on record. With a
-        refinance about a point lower, it lands level with the eighties peak.</p>
-      <p><strong>The rate peak was harder to carry.</strong> The payment took a
-        far bigger share of income, on a household or on one paycheck, and
-        nothing since has come close.</p>
-      <p><strong>Getting in is harder today.</strong> The cash to close has
-        grown faster than income, from well under a year's pay to more than a
-        year's.</p>
-      <p><strong>The eighties burden was the rate, and rates fall.</strong>
-        Those buyers refinanced as rates came down, and rising incomes did the
-        rest: within a decade the payment took a fraction of what it did at the
-        start. Today the burden is the price. A lower rate would help, but the
-        loan balance stays large, and so far rates have not fallen enough to
-        refinance.</p>
-      <p>Taken together: the worst of the eighties was the harder year to
-        make the payments, today is the harder year to get in, and today's
-        burden is the one that lasts.</p>
-    </div>
-  </section>
-
-  <!-- ── Every year ───────────────────────────────────────────────────── -->
-  <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l4-5 4 3 6-8"/></svg>Both tests, every year</h2>
-    <div class="tb-card mp-chart-card mp-chart-card--wide">
-      <h3>Share of a year's income it took</h3>
-      <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
-           data-tb-x="dim_year.year" data-tb-y="entry_share,payment_share,earner_share"
-           data-tb-value-format="percent" id="chart-two-tests" class="mp-chart mp-chart--tall"></div>
-      <p class="mp-source">Getting in: cash to close over household income. Carrying
-        it: a year of full payments over household income, and over one full-time
-        earner's pay. Every year shown, so no single year sets the story.</p>
-    </div>
+    <p class="mp-note">The eighties buyer paid more each month; today's buyer
+      pays far more to get in. The eighties burden was the rate, and rates fell:
+      those buyers refinanced and their payments shrank. Today's burden is the
+      price, and a price does not refinance.</p>
     <div class="tb-card mp-chart-card mp-chart-card--wide">
       <h3>What each buyer's payment took, year by year after buying</h3>
       <div data-tb-figure="chart" data-tb-binding="paths" data-tb-type="line"
@@ -276,122 +244,6 @@
         in any year whose average rate is a full point below the rate they hold.
         Property tax and insurance grow with the home's value; income is that
         later year's median. The most recent buyer's line stops where the data does.</p>
-    </div>
-    <div class="tb-cols-2">
-      <div class="tb-card mp-chart-card">
-        <h3>Thirty-year mortgage rate, annual average (%)</h3>
-        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
-             data-tb-x="dim_year.year" data-tb-y="mortgage_rate"
-             data-tb-palette="#2b6f9e" id="chart-rate" class="mp-chart"></div>
-        <p class="mp-source">Source: <a href="https://fred.stlouisfed.org/series/MORTGAGE30US" target="_blank" rel="noopener">Freddie Mac, Primary Mortgage Market Survey</a>.</p>
-      </div>
-      <div class="tb-card mp-chart-card">
-        <h3>Home prices and income</h3>
-        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
-             data-tb-x="dim_year.year" data-tb-y="existing_price,new_home_price,median_income,earner_income"
-             data-tb-value-format="compact" id="chart-price-income"
-             class="mp-chart"></div>
-        <p class="mp-source">Existing homes (what most people buy) against the
-          Census median of houses sold, which is mostly new homes and runs higher.
-          Income per household and per full-time earner.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Side by side ─────────────────────────────────────────────────── -->
-  <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M10 5v14"/></svg>Every measure, side by side</h2>
-    <div class="tb-card">
-      <table data-tb-figure="table" data-tb-binding="compare"
-             data-tb-columns="dim_year.year, mortgage_rate, existing_price, price_to_income, entry_share, payment_share, earner_share, pi_share"
-             data-tb-labels="dim_year.year=Year; mortgage_rate=Rate (%); existing_price=Home price; price_to_income=Price ÷ income; entry_share=Getting in; payment_share=Full payment; earner_share=One earner; pi_share=Loan payment only"
-             data-tb-formats="mortgage_rate=decimal; existing_price=currency0; price_to_income=decimal; entry_share=percent; payment_share=percent; earner_share=percent; pi_share=percent"
-             data-tb-bars="entry_share, payment_share, earner_share"
-             class="tb-table--striped" id="tbl-compare"></table>
-      <p class="mp-source">"Loan payment only" is principal and interest with no
-        tax or insurance: the narrow measure that makes today look easier than it is.</p>
-    </div>
-  </section>
-
-  <!-- ── The reader's what-if ─────────────────────────────────────────── -->
-  <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h3M13 12h3M8 16h3M13 16h3"/></svg>Try your own numbers</h2>
-    <p class="mp-intro">Pick a year to load its average rate, median existing-home
-      price and median income, then change anything: a local price, your own
-      income, your area's property tax. Annual averages sit below each year's
-      peak and above its low, so a single remembered rate is one point in a range.</p>
-    <div class="tb-cols-2 mp-ledgers">
-      <form data-tb-scenario="then" id="scenario-then" class="mp-scenario mp-scenario--then">
-        <h3><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Then</h3>
-        <label>Year <select data-tb-preset="history" data-tb-key="dim_year.year"
-                data-tb-default="1981"
-                data-tb-fill="rate=mortgage_rate, price=existing_price, income=median_income"></select></label>
-        <label>Rate (%) <input data-tb-input="rate" type="number" step="0.01" min="0"></label>
-        <label>Home price ($) <input data-tb-input="price" type="number" step="1000" min="0"></label>
-        <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
-        <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
-        <label>Closing costs (%) <input data-tb-input="closing" type="number" value="3" step="0.5" min="0"></label>
-        <label>Property tax (% a year) <input data-tb-input="tax" type="number" value="1.1" step="0.1" min="0"></label>
-        <label>Insurance (% a year) <input data-tb-input="insurance" type="number" value="0.35" step="0.05" min="0"></label>
-        <label>Term (years) <input data-tb-input="years" type="number" value="30" min="1"></label>
-        <div class="mp-results">
-          <p><span>Cash to get in</span>
-            <output data-tb-calc="price * (down + closing) / 100"
-                    data-tb-format="currency0" id="calc-then-entry"></output></p>
-          <p><span>… as a share of a year's income</span>
-            <output data-tb-calc="price * (down + closing) / 100 / income"
-                    data-tb-format="percent" id="calc-then-entry-share"></output></p>
-          <p><span>Full monthly payment</span>
-            <output data-tb-calc="(pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) + price * (tax + insurance) / 100 / 12)"
-                    data-tb-format="currency0" id="calc-then-payment"></output></p>
-          <p><span>… as a share of income</span>
-            <output data-tb-calc="(pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) + price * (tax + insurance) / 100 / 12) * 12 / income"
-                    data-tb-format="percent" id="calc-then-share"></output></p>
-        </div>
-      </form>
-      <form data-tb-scenario="now" id="scenario-now" class="mp-scenario mp-scenario--now">
-        <h3><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12 12 4l10 8M4 10v10h16V10M9 20v-6h6v6"/></svg>Now</h3>
-        <label>Year <select data-tb-preset="history" data-tb-key="dim_year.year"
-                data-tb-default="2025"
-                data-tb-fill="rate=mortgage_rate, price=existing_price, income=median_income"></select></label>
-        <label>Rate (%) <input data-tb-input="rate" type="number" step="0.01" min="0"></label>
-        <label>Home price ($) <input data-tb-input="price" type="number" step="1000" min="0"></label>
-        <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
-        <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
-        <label>Closing costs (%) <input data-tb-input="closing" type="number" value="3" step="0.5" min="0"></label>
-        <label>Property tax (% a year) <input data-tb-input="tax" type="number" value="1.1" step="0.1" min="0"></label>
-        <label>Insurance (% a year) <input data-tb-input="insurance" type="number" value="0.35" step="0.05" min="0"></label>
-        <label>Term (years) <input data-tb-input="years" type="number" value="30" min="1"></label>
-        <div class="mp-results">
-          <p><span>Cash to get in</span>
-            <output data-tb-calc="price * (down + closing) / 100"
-                    data-tb-format="currency0" id="calc-now-entry"></output></p>
-          <p><span>… as a share of a year's income</span>
-            <output data-tb-calc="price * (down + closing) / 100 / income"
-                    data-tb-format="percent" id="calc-now-entry-share"></output></p>
-          <p><span>Full monthly payment</span>
-            <output data-tb-calc="(pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) + price * (tax + insurance) / 100 / 12)"
-                    data-tb-format="currency0" id="calc-now-payment"></output></p>
-          <p><span>… as a share of income</span>
-            <output data-tb-calc="(pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) + price * (tax + insurance) / 100 / 12) * 12 / income"
-                    data-tb-format="percent" id="calc-now-share"></output></p>
-        </div>
-      </form>
-    </div>
-  </section>
-
-  <!-- ── The table ────────────────────────────────────────────────────── -->
-  <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/></svg>The series, year by year</h2>
-    <div class="tb-card">
-      <table data-tb-figure="table" data-tb-binding="history"
-             data-tb-columns="dim_year.year, mortgage_rate, existing_price, median_income, entry_cost, payment, entry_share, payment_share, earner_share"
-             data-tb-labels="dim_year.year=Year; mortgage_rate=Rate (%); existing_price=Home price; median_income=Household income; entry_cost=Cash to get in; payment=Monthly payment; entry_share=Getting in; payment_share=Full payment; earner_share=One earner"
-             data-tb-formats="mortgage_rate=decimal; existing_price=currency0; median_income=currency0; entry_cost=currency0; payment=currency0; entry_share=percent; payment_share=percent; earner_share=percent"
-             data-tb-bars="payment_share"
-             data-tb-rows="15" data-tb-sort
-             class="tb-table--striped" id="tbl-history"></table>
-      <p class="mp-download"><button type="button" data-tb-download="history">Download the series as CSV</button></p>
     </div>
   </section>
 
@@ -414,8 +266,9 @@
         lot by place; set yours in the calculator.</li>
       <li><strong>Refinancing costs</strong> and mortgage insurance on a smaller
         down payment are left out.</li>
-      <li><strong>The future.</strong> Today's buyer's path stops at the latest
-        year. It is not projected.</li>
+      <li><strong>The future.</strong> Any buyer whose ten years run past the
+        data gets projected years, on one stated assumption, and is marked
+        projected everywhere. The projection is a what-if, not a forecast.</li>
     </ul>
     <p class="mp-caveat">Refresh the data from the publishers with
       <code>python inputs/fetch_housing.py</code> before citing a figure. See
@@ -430,7 +283,9 @@
       at the same national rates every year. Buyers are then followed for up to
       a decade: they refinance when rates fall a full point, their taxes grow
       with the home's value, and each year's payment is measured against that
-      year's median income. The work is in
+      year's median income. Years past the data are projected: the rate stays
+      at the latest year's average, and income and home values grow at
+      income's pace over the last decade. The work is in
       <code>transforms/affordability_transform.py</code>.</p>
   </section>
 </main>

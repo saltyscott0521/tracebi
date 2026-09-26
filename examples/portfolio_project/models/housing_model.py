@@ -10,6 +10,9 @@ Two facts over one year dimension:
   that year's buyer was paying, after any refinance, against that later
   year's income. ``dim_cohort.purchase_year`` is the purchase year and
   ``dim_held.years_owned`` how long they had owned it.
+* ``fact_ten_year`` — one row per buyer: cash to close plus ten years of
+  payments, and ten years of income. ``dim_cohort.basis`` is ``projected``
+  when any of those years lies past the data.
 
 Across several years the plain measures are simple means; every share is a
 ratio of totals, so a multi-year share is never a mean of shares.
@@ -35,13 +38,14 @@ model = (
     .add_connector(connector)
     .add_table("fact_housing", connector="housing_warehouse", source="fact_housing")
     .add_table("fact_cohort_path", connector="housing_warehouse", source="fact_cohort_path")
+    .add_table("fact_ten_year", connector="housing_warehouse", source="fact_ten_year")
     .add_table("dim_year", connector="housing_warehouse", source="dim_year")
     .add_table("dim_cohort", connector="housing_warehouse", source="dim_cohort")
     .add_table("dim_held", connector="housing_warehouse", source="dim_held")
     .add_dimension("dim_year", table_name="dim_year", key_col="year_id",
                    attributes=["year", "decade"])
     .add_dimension("dim_cohort", table_name="dim_cohort", key_col="cohort_id",
-                   attributes=["purchase_year", "years_followed"])
+                   attributes=["purchase_year", "basis"])
     .add_dimension("dim_held", table_name="dim_held", key_col="held_id",
                    attributes=["years_owned"])
     .add_fact("fact_housing", table_name="fact_housing",
@@ -52,6 +56,11 @@ model = (
               measures=["annual_payment", "outlay", "median_income", "rate_held"],
               foreign_keys={"dim_year": "year_id", "dim_cohort": "cohort_id",
                             "dim_held": "held_id"})
+    .add_fact("fact_ten_year", table_name="fact_ten_year",
+              measures=["outlay", "median_income", "rate_at_purchase",
+                        "price_at_purchase", "income_at_purchase", "assumed_rate",
+                        "growth_pct"],
+              foreign_keys={"dim_cohort": "cohort_id"})
     # One row per year, so per year this is that year's published average.
     # Across years it is a plain mean of annual averages: there is no loan
     # volume here to weight by. Hence allow_rate_agg.
@@ -106,16 +115,29 @@ model = (
     # On fact_cohort_path the same payment_share reads a buyer's payment in a
     # later year against THAT year's income, so rising incomes and refinances
     # both show.
-    # The one number: cash to close plus every payment, over the income
-    # earned in the same years. Query it with dim_held.years_owned <= 9 and
-    # dim_cohort.years_followed >= 9 for the first ten years of buyers who
-    # have had ten.
+    # The one number: cash to close plus ten years of payments, over the
+    # income earned in those ten years. On fact_ten_year, one row per buyer;
+    # dim_cohort.basis says whether any of the ten years is projected.
     .add_measure("outlay_total", column="outlay", agg="sum",
                  description="Cash to close plus payments, summed")
     .add_measure("housing_share", ratio=("outlay_total", "income_total"),
                  description="Cash to close plus every payment, as a share of "
                              "the household income earned over the same years",
                  format="percent")
+    # What the projection box on the report starts from (fact_ten_year).
+    .add_measure("rate_at_purchase", column="rate_at_purchase", agg="mean",
+                 description="Rate at purchase", format="decimal", allow_rate_agg=True)
+    .add_measure("price_at_purchase", column="price_at_purchase", agg="mean",
+                 description="Existing-home price at purchase", format="currency0")
+    .add_measure("income_at_purchase", column="income_at_purchase", agg="mean",
+                 description="Median household income at purchase", format="currency0")
+    .add_measure("assumed_rate", column="assumed_rate", agg="mean",
+                 description="Rate assumed for projected years: the last year's "
+                             "average", format="decimal", allow_rate_agg=True)
+    .add_measure("growth_pct", column="growth_pct", agg="mean",
+                 description="Yearly income and home-value growth assumed for "
+                             "projected years: income's last-decade pace, in "
+                             "percent", format="decimal", allow_rate_agg=True)
     .add_measure("rate_held", column="rate_held", agg="mean",
                  description="The rate the buyer holds that year, after any "
                              "refinance", format="decimal", allow_rate_agg=True)

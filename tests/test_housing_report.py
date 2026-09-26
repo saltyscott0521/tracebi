@@ -26,13 +26,12 @@ def test_housing_report_builds_and_verifies(tmp_path):
 
     manifest_path = next((project / "output").rglob("*.manifest.json"))
     manifest = json.loads(manifest_path.read_text())
-    assert [s["name"] for s in manifest["scenarios"]] == ["today", "then", "now"]
+    assert [s["name"] for s in manifest["scenarios"]] == ["today"]
     assert all(s["verifiable"] is False for s in manifest["scenarios"])
     ids = {f["id"] for f in manifest["figures"]}
-    assert {"chart-two-tests", "chart-paths", "chart-rate", "chart-price-income",
+    assert {"chart-ten-year", "ten-peak", "ten-worst", "ten-today", "chart-paths",
             "pk-pay-then", "pk-pay-now", "pk-earner-then", "pk-earner-now",
-            "pk-entry-then", "pk-entry-now", "pk-later", "tbl-compare",
-            "chart-ten-year", "ten-peak", "ten-worst", "ten-best"} <= ids
+            "pk-entry-then", "pk-entry-now", "pk-later"} <= ids
     assert not any(i.startswith("calc-") for i in ids), \
         "a scenario output must never be recorded as a figure"
 
