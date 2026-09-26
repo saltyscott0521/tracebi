@@ -250,7 +250,8 @@
 
   /* id/key/year columns address a row rather than measure one — no format. */
   function isIdentity(column) {
-    var name = String(column).toLowerCase();
+    /* the last dotted part: dim_date.year is a year, like derive.py */
+    var name = String(column).toLowerCase().split(".").pop();
     if (name === "id" || name === "key" || name === "year") return true;
     return /(_id|_key|_year)$/.test(name);
   }
@@ -1939,6 +1940,180 @@
     }
   }
 
+  /* ── Scenarios — the one place the page computes ───────────────────────
+   * A data-tb-scenario block holds data-tb-input fields, optional
+   * data-tb-preset pickers that fill inputs from a STAMPED row, and
+   * data-tb-calc outputs evaluated here from the reader's own inputs. A
+   * scenario is never a figure and never in the receipt; the runtime labels
+   * every one so a computed number is never read as a receipted one. The
+   * formula grammar mirrors tracebi/reports/scenario.py exactly (numbers,
+   * input names, + - * / ^, unary minus, parentheses, pmt/min/max/round/abs)
+   * and is parsed here by hand: no eval, so the strict CSP holds. */
+  var _FUNCS = { pmt: [3, 3], min: [1, 99], max: [1, 99], round: [1, 2], abs: [1, 1] };
+
+  function scenarioTokens(src) {
+    var re = /\s*(?:(\d+(?:\.\d*)?|\.\d+)|([A-Za-z_][A-Za-z0-9_]*)|([-+*\/^(),]))/g;
+    var out = [], m, pos = 0, text = src.replace(/\s+$/, "");
+    while (pos < text.length) {
+      re.lastIndex = pos;
+      m = re.exec(text);
+      if (!m || m.index !== pos || re.lastIndex === pos) throw new Error("bad formula");
+      out.push(m[1] !== undefined ? { k: "num", v: Number(m[1]) }
+        : m[2] !== undefined ? { k: "name", v: m[2] } : { k: "op", v: m[3] });
+      pos = re.lastIndex;
+    }
+    return out;
+  }
+
+  function pmt(rate, periods, principal) {
+    if (!(periods > 0)) return NaN;
+    if (rate === 0) return principal / periods;
+    return principal * rate / (1 - Math.pow(1 + rate, -periods));
+  }
+
+  /* Parse and evaluate in one pass over the token list. */
+  function evalFormula(src, values) {
+    var toks = scenarioTokens(src), i = 0;
+    function peek() { return toks[i] || { k: null, v: null }; }
+    function take(v) {
+      var t = peek();
+      if (t.k === null || (v !== undefined && t.v !== v)) throw new Error("bad formula");
+      i++;
+      return t;
+    }
+    function expr() {
+      var a = term();
+      while (peek().v === "+" || peek().v === "-") {
+        a = take().v === "+" ? a + term() : a - term();
+      }
+      return a;
+    }
+    function term() {
+      var a = unary(), b;
+      while (peek().v === "*" || peek().v === "/") {
+        if (take().v === "*") { a = a * unary(); }
+        else { b = unary(); a = b === 0 ? NaN : a / b; }
+      }
+      return a;
+    }
+    function unary() {
+      if (peek().v === "-" && peek().k === "op") { take(); return -unary(); }
+      var base = atom();
+      if (peek().v === "^") { take(); return Math.pow(base, unary()); }
+      return base;
+    }
+    function atom() {
+      var t = peek(), args, spec, f;
+      if (t.k === "num") { take(); return t.v; }
+      if (t.k === "name") {
+        take();
+        if (peek().v !== "(") {
+          if (!Object.prototype.hasOwnProperty.call(values, t.v)) throw new Error("unknown input");
+          return values[t.v];
+        }
+        spec = _FUNCS[t.v];
+        if (!spec) throw new Error("unknown function");
+        take("(");
+        args = [expr()];
+        while (peek().v === ",") { take(); args.push(expr()); }
+        take(")");
+        if (args.length < spec[0] || args.length > spec[1]) throw new Error("arity");
+        f = t.v;
+        if (f === "pmt") return pmt(args[0], args[1], args[2]);
+        if (f === "min") return Math.min.apply(null, args);
+        if (f === "max") return Math.max.apply(null, args);
+        if (f === "abs") return Math.abs(args[0]);
+        var factor = Math.pow(10, args.length > 1 ? Math.floor(args[1]) : 0);
+        return Math.floor(args[0] * factor + 0.5) / factor;
+      }
+      if (t.v === "(") { take(); var v = expr(); take(")"); return v; }
+      throw new Error("bad formula");
+    }
+    var result = expr();
+    if (i !== toks.length) throw new Error("bad formula");
+    return result;
+  }
+
+  function hydrateScenarios() {
+    var blocks = document.querySelectorAll("[data-tb-scenario]");
+    Array.prototype.forEach.call(blocks, function (box) {
+      try {
+        addClass(box, "tb-scenario");
+        if (!box.querySelector(".tb-scenario-label")) {
+          var label = document.createElement("div");
+          label.className = "tb-scenario-label";
+          label.textContent = "Scenario · computed in your browser from these inputs · not part of the receipt";
+          box.insertBefore(label, box.firstChild);
+        }
+        var inputs = box.querySelectorAll("[data-tb-input]");
+        var calcs = box.querySelectorAll("[data-tb-calc]");
+        var recompute = function () {
+          var values = {}, ok = true;
+          Array.prototype.forEach.call(inputs, function (el) {
+            var n = toNum(el.value);
+            if (n === null) ok = false;
+            values[el.getAttribute("data-tb-input")] = n;
+          });
+          Array.prototype.forEach.call(calcs, function (el) {
+            var out = "—";
+            if (ok) {
+              try {
+                var v = evalFormula(el.getAttribute("data-tb-calc"), values);
+                if (isFinite(v)) {
+                  var f = attr(el, "data-tb-format");
+                  out = f ? applyNamedFormat(v, f) : null;
+                  if (out === null) out = fixedGrouped(v, 2);
+                }
+              } catch (e) { out = "—"; }
+            }
+            el.textContent = out;
+          });
+        };
+        Array.prototype.forEach.call(box.querySelectorAll("[data-tb-preset]"), function (sel) {
+          var block = readBlock(attr(sel, "data-tb-preset"));
+          var key = attr(sel, "data-tb-key");
+          if (!block || !key) return;
+          var fill = {};
+          splitList(attr(sel, "data-tb-fill") || "").forEach(function (pair) {
+            var p = pair.split("=");
+            if (p.length === 2) fill[trim(p[0])] = trim(p[1]);
+          });
+          if (sel.tagName === "SELECT" && !sel.options.length) {
+            block.rows.forEach(function (r) {
+              var o = document.createElement("option");
+              o.value = r[key];
+              o.textContent = r[key];
+              sel.appendChild(o);
+            });
+          }
+          var apply = function () {
+            var row = null;
+            block.rows.forEach(function (r) { if (String(r[key]) === String(sel.value)) row = r; });
+            if (!row) return;
+            Array.prototype.forEach.call(inputs, function (el) {
+              var col = fill[el.getAttribute("data-tb-input")];
+              /* The stamped value, written plainly: "84300.0" reads as 84300. */
+              if (col && row[col] !== undefined) {
+                var n = toNum(row[col]);
+                el.value = n === null ? row[col] : String(n);
+              }
+            });
+            recompute();
+          };
+          var dflt = attr(sel, "data-tb-default");
+          if (dflt !== null) sel.value = dflt;
+          sel.addEventListener("change", apply);
+          apply();
+        });
+        Array.prototype.forEach.call(inputs, function (el) {
+          el.addEventListener("input", recompute);
+          el.addEventListener("change", recompute);
+        });
+        recompute();
+      } catch (e) { /* defensive */ }
+    });
+  }
+
   function hydrate() {
     try { hydrateValues(); } catch (e) {}
     try { hydrateTables(); } catch (e) {}
@@ -1954,6 +2129,7 @@
     try { hydrateControls(); } catch (e) {}
     try { hydrateDownloads(); } catch (e) {}
     try { hydrateReceipt(); } catch (e) {}
+    try { hydrateScenarios(); } catch (e) {}
   }
 
   /* ── Parquet data blocks ───────────────────────────────────────────────
@@ -2073,7 +2249,10 @@
     ready: ready,
     fmt: fmt,
     configureChart: configureChart,
-    setSelection: setSelection
+    setSelection: setSelection,
+    /* The scenario evaluator, exposed so tests and authors can check a
+     * formula gives what they expect. It computes from the values passed. */
+    evaluate: evalFormula
   };
 })(typeof window !== "undefined" ? window
    : typeof globalThis !== "undefined" ? globalThis : this);

@@ -375,6 +375,45 @@ def _presentation() -> dict:
                                 "receipt-preserving export, saved as "
                                 "<B>.csv",
         },
+        "scenarios": {
+            "rule": "The one place a page computes: a what-if from the "
+                    "READER's own inputs, evaluated in the browser. A "
+                    "scenario is never a figure, never in the receipt, and "
+                    "the runtime labels every one 'computed in your browser "
+                    "… not part of the receipt'. The manifest records its "
+                    "declaration (inputs, formulas, presets) with "
+                    "verifiable: false, never a value. Use it for 'what if "
+                    "the rate were 7.8%', never for a number a query "
+                    "could produce.",
+            "data-tb-scenario": "<form data-tb-scenario=\"NAME\">…</form> — "
+                                "holds the inputs, presets and outputs. Never "
+                                "inside a figure, never holds a figure, never "
+                                "nested; names are unique on the page",
+            "data-tb-input": "<input data-tb-input=\"rate\" type=\"number\" "
+                             "[value=\"…\"]> — a named input the formulas "
+                             "read (a plain identifier)",
+            "data-tb-calc": "<output data-tb-calc=\"pmt(rate / 1200, years * "
+                            "12, price * (1 - down / 100))\" "
+                            "[data-tb-format=\"currency\"]> — a closed "
+                            "formula: numbers, input names, + - * / ^, "
+                            "parentheses, pmt(rate, periods, principal), "
+                            "min, max, round(x[, digits]), abs. No eval; "
+                            "checked at build (unknown names and functions "
+                            "fail it)",
+            "data-tb-preset": "<select data-tb-preset=\"BINDING\" "
+                              "data-tb-key=\"COLUMN\" data-tb-fill=\"input="
+                              "column, …\" [data-tb-default=\"VALUE\"]> — "
+                              "options are the binding's key values; picking "
+                              "one fills the inputs from that STAMPED row. "
+                              "The build checks the binding, key and "
+                              "columns exist",
+            "data-tb-key": "the preset's key column (see data-tb-preset)",
+            "data-tb-fill": "input=column pairs a preset fills (see "
+                            "data-tb-preset)",
+            "data-tb-default": "the key value a preset starts on (see "
+                               "data-tb-preset)",
+            "example": "examples/mortgage_project/reports/affordability/",
+        },
         "assets": {
             "rule": "Fonts and images live in the package's assets/ folder. "
                     "url(assets/…) in style.css and src=\"assets/…\" in "

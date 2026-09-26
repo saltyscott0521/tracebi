@@ -1,0 +1,48 @@
+{
+  "name": "Then vs Now: Financing the Median Home",
+  "author": "tracebi reference",
+  "description": "Mortgage rates, median home prices and median household income every year since the seventies, the monthly payment they add up to, and a scenario to compare any two eras with your own numbers.",
+  "libs": ["echarts"],
+  "data": {
+    "history": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": ["mortgage_rate", "median_price", "median_income",
+                     "monthly_payment", "payment_share", "price_to_income"],
+        "dimensions": ["dim_year.year"],
+        "order_by": ["dim_year.year"]
+      }
+    },
+    "then": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": ["mortgage_rate", "median_price", "median_income",
+                     "monthly_payment", "payment_share", "price_to_income"],
+        "dimensions": ["dim_year.year"],
+        "filters": {"dim_year.year": 1985}
+      }
+    },
+    "now": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": ["mortgage_rate", "median_price", "median_income",
+                     "monthly_payment", "payment_share", "price_to_income"],
+        "dimensions": ["dim_year.year"],
+        "filters": {"dim_year.year": 2023}
+      }
+    },
+    "hardest": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": ["payment_share", "mortgage_rate"],
+        "dimensions": ["dim_year.year"],
+        "order_by": ["-payment_share"],
+        "limit": 1
+      }
+    }
+  }
+}

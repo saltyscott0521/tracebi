@@ -158,6 +158,17 @@ Three rules that keep pages honest:
   (`payload_sha256`), and `verify --file` checks both offline — the Parquet
   check needs no extra dependency at all. Only BUILDING the Parquet form
   needs PyArrow (`pip install 'tracebi[reports]'`).
+- **Scenarios are the one place a page computes.** A
+  `data-tb-scenario` block lets the reader ask "what if": `data-tb-input`
+  fields, a `data-tb-preset` picker (`data-tb-key`, `data-tb-fill`,
+  `data-tb-default`) that fills them from a stamped row, and
+  `data-tb-calc` outputs with a closed formula (`+ - * / ^`, `pmt`, `min`,
+  `max`, `round`, `abs`) evaluated in the browser. It is never a figure,
+  never inside or around one, and never in the receipt: the runtime labels
+  it as computed from the reader's inputs, and the manifest records only
+  its declaration with `verifiable: false`. Use it for a rate the reader
+  remembers, never for a number a query could produce. The build checks
+  every formula and preset. See `examples/mortgage_project`.
 - **Interactivity subsets, never computes.** The premium objects —
   `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
   (`data-tb-rows`, default 10), tabs (`data-tb-tab`), `.tb-cols-2/3`

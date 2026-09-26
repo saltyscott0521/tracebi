@@ -65,8 +65,13 @@ def _is_fraction_shaped(series) -> bool:
 
 
 def _is_identity(column) -> bool:
-    """True for id/key/year columns, which are addressing, not quantities."""
-    name = str(column).lower()
+    """True for id/key/year columns, which are addressing, not quantities.
+
+    Judged on the last dotted part, so a query column like ``dim_date.year``
+    is a year too — the attribute name, not the dimension prefix, says what
+    the values are.
+    """
+    name = str(column).lower().rsplit(".", 1)[-1]
     return name in _IDENTITY_NAMES or name.endswith(_IDENTITY_SUFFIXES)
 
 

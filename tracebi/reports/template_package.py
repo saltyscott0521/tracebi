@@ -570,6 +570,16 @@ class TemplatePackage:
             )
         figs = extract_figures(page)
         self._validate_figures(figs, inputs, outputs)
+        # Scenarios: the reader's what-if, computed in the browser. Checked
+        # here so a typo'd formula or a preset naming a missing column fails
+        # the build instead of showing a blank on the page.
+        from tracebi.reports.figures import extract_scenarios
+        from tracebi.reports import scenario as _scenario
+        scenarios = extract_scenarios(page)
+        columns = {sd.name: [str(c) for c in sd.dataset.to_pandas().columns]
+                   for sd in (inputs + outputs)}
+        for sc in scenarios:
+            _scenario.validate(sc, columns)
         # Exploration is already stripped. A numeral left in the prose is a
         # number the build would ship with no figure claim.
         outside = lint_numeric_literals(page)
@@ -623,6 +633,8 @@ class TemplatePackage:
                                    else ARTIFACT_MANIFEST_SCHEMA_VERSION)
         manifest.stage = "final"
         manifest.figures = [_figure_record(f) for f in figs]
+        if scenarios:
+            manifest.scenarios = [_scenario.manifest_record(sc) for sc in scenarios]
 
         # The phase-① join (v2 §2.6): per warehouse table this render loaded,
         # did the sink satisfy a declared contract? A separate claim beside

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+</head>
+<body>
+<main class="tb-page">
+  <header>
+    <h1>What a median home cost to finance, then and now</h1>
+    <p class="lede">
+      In <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="dim_year.year" id="then-year"></span>
+      the average thirty-year mortgage rate was
+      <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="mortgage_rate" id="then-rate"></span>%
+      and the median home sold for
+      <span data-tb-figure="value" data-tb-binding="then" data-tb-cell="median_price" id="then-price"></span>.
+      In <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="dim_year.year" id="now-year"></span>
+      the rate averaged
+      <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="mortgage_rate" id="now-rate"></span>%
+      and the median home sold for
+      <span data-tb-figure="value" data-tb-binding="now" data-tb-cell="median_price" id="now-price"></span>.
+      Lower rates, far higher prices: which era was harder? The answer is in
+      how much of a typical household's income the payment took.
+    </p>
+  </header>
+
+  <section>
+    <h2>The payment, as a share of income</h2>
+    <div class="tb-grid mp-kpis">
+      <div class="tb-kpi">
+        <span class="tb-kpi-label">Then: monthly payment</span>
+        <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="then"
+              data-tb-cell="monthly_payment" id="kpi-then-payment"></span>
+        <span class="tb-kpi-context"><span data-tb-figure="value" data-tb-binding="then"
+              data-tb-cell="payment_share" id="kpi-then-share"></span> of median income</span>
+      </div>
+      <div class="tb-kpi">
+        <span class="tb-kpi-label">Now: monthly payment</span>
+        <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="now"
+              data-tb-cell="monthly_payment" id="kpi-now-payment"></span>
+        <span class="tb-kpi-context"><span data-tb-figure="value" data-tb-binding="now"
+              data-tb-cell="payment_share" id="kpi-now-share"></span> of median income</span>
+      </div>
+      <div class="tb-kpi">
+        <span class="tb-kpi-label">Home price ÷ income</span>
+        <span class="tb-kpi-value"><span data-tb-figure="value" data-tb-binding="then"
+              data-tb-cell="price_to_income" id="kpi-then-pti"></span>× then,
+          <span data-tb-figure="value" data-tb-binding="now"
+              data-tb-cell="price_to_income" id="kpi-now-pti"></span>× now</span>
+        <span class="tb-kpi-context">years of median income to buy the median home</span>
+      </div>
+      <div class="tb-kpi">
+        <span class="tb-kpi-label">Hardest year in the series</span>
+        <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="hardest"
+              data-tb-cell="dim_year.year" id="kpi-hardest-year"></span>
+        <span class="tb-kpi-context">payments took <span data-tb-figure="value"
+              data-tb-binding="hardest" data-tb-cell="payment_share"
+              id="kpi-hardest-share"></span> of income at
+          <span data-tb-figure="value" data-tb-binding="hardest"
+              data-tb-cell="mortgage_rate" id="kpi-hardest-rate"></span>%</span>
+      </div>
+    </div>
+    <p class="mp-note">A payment here is principal and interest on the median
+      home with a fifth down, over thirty years, at that year's average rate.
+      Taxes and insurance are left out.</p>
+  </section>
+
+  <section>
+    <h2>Every year in the series</h2>
+    <div class="tb-cols-2">
+      <div>
+        <h3>Thirty-year mortgage rate, annual average (%)</h3>
+        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
+             data-tb-x="dim_year.year" data-tb-y="mortgage_rate"
+             id="chart-rate" class="mp-chart"></div>
+      </div>
+      <div>
+        <h3>Median home price and median household income</h3>
+        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
+             data-tb-x="dim_year.year" data-tb-y="median_price,median_income"
+             data-tb-value-format="compact" id="chart-price-income"
+             class="mp-chart"></div>
+      </div>
+      <div>
+        <h3>Monthly payment on the median home</h3>
+        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
+             data-tb-x="dim_year.year" data-tb-y="monthly_payment"
+             data-tb-value-format="compact" id="chart-payment" class="mp-chart"></div>
+      </div>
+      <div>
+        <h3>A year of payments as a share of median income</h3>
+        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
+             data-tb-x="dim_year.year" data-tb-y="payment_share"
+             data-tb-value-format="percent" id="chart-share" class="mp-chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Compare any two years, or your own numbers</h2>
+    <p>Pick a year to load its average rate, median price and median income,
+      then change anything: the rate you actually got, a bigger down payment,
+      a shorter term. Annual averages are lower than the peaks people remember,
+      so type in the rate you remember and see what it does.</p>
+    <div class="tb-cols-2">
+      <form data-tb-scenario="then" id="scenario-then" class="mp-scenario">
+        <h3>Then</h3>
+        <label>Year <select data-tb-preset="history" data-tb-key="dim_year.year"
+                data-tb-default="1985"
+                data-tb-fill="rate=mortgage_rate, price=median_price, income=median_income"></select></label>
+        <label>Rate (%) <input data-tb-input="rate" type="number" step="0.01" min="0"></label>
+        <label>Home price ($) <input data-tb-input="price" type="number" step="1000" min="0"></label>
+        <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
+        <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
+        <label>Term (years) <input data-tb-input="years" type="number" value="30" min="1"></label>
+        <p>Monthly payment:
+          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))"
+                  data-tb-format="currency" id="calc-then-payment"></output></p>
+        <p>Share of income:
+          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income"
+                  data-tb-format="percent" id="calc-then-share"></output></p>
+        <p>Interest over the loan:
+          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)"
+                  data-tb-format="currency0" id="calc-then-interest"></output></p>
+      </form>
+      <form data-tb-scenario="now" id="scenario-now" class="mp-scenario">
+        <h3>Now</h3>
+        <label>Year <select data-tb-preset="history" data-tb-key="dim_year.year"
+                data-tb-default="2023"
+                data-tb-fill="rate=mortgage_rate, price=median_price, income=median_income"></select></label>
+        <label>Rate (%) <input data-tb-input="rate" type="number" step="0.01" min="0"></label>
+        <label>Home price ($) <input data-tb-input="price" type="number" step="1000" min="0"></label>
+        <label>Household income ($) <input data-tb-input="income" type="number" step="1000" min="0"></label>
+        <label>Down payment (%) <input data-tb-input="down" type="number" value="20" min="0" max="100"></label>
+        <label>Term (years) <input data-tb-input="years" type="number" value="30" min="1"></label>
+        <p>Monthly payment:
+          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))"
+                  data-tb-format="currency" id="calc-now-payment"></output></p>
+        <p>Share of income:
+          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income"
+                  data-tb-format="percent" id="calc-now-share"></output></p>
+        <p>Interest over the loan:
+          <output data-tb-calc="pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)"
+                  data-tb-format="currency0" id="calc-now-interest"></output></p>
+      </form>
+    </div>
+  </section>
+
+  <section>
+    <h2>The series, year by year</h2>
+    <table data-tb-figure="table" data-tb-binding="history"
+           data-tb-columns="dim_year.year, mortgage_rate, median_price, median_income, monthly_payment, payment_share, price_to_income"
+           data-tb-labels="dim_year.year=Year; mortgage_rate=Rate (%); price_to_income=Price ÷ income"
+           data-tb-formats="mortgage_rate=decimal; median_price=currency0; median_income=currency0; monthly_payment=currency0; payment_share=percent; price_to_income=decimal"
+           data-tb-rows="15" data-tb-sort
+           class="tb-table--striped" id="tbl-history"></table>
+    <p><button type="button" data-tb-download="history">Download the series as CSV</button></p>
+  </section>
+
+  <section data-tb-methodology>
+    <h2>How these numbers were made</h2>
+    <p>Rates are Freddie Mac's weekly survey averaged over each year. Prices
+      are the Census and HUD median sales price of houses sold. Income is the
+      Census median household income, in the dollars of its own year. See
+      <code>inputs/SOURCES.md</code>, and refresh the series with
+      <code>python inputs/fetch_data.py</code> before citing it.</p>
+  </section>
+</main>
+</body>
+</html>
