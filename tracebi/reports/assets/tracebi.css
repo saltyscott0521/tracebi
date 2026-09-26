@@ -378,6 +378,33 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
  * directly (tables) — positions the badge at the figure's own corner. */
 .tb-badge-anchor { position: relative; }
 
+/* Scenarios — the reader's what-if, computed in the browser. Visibly apart
+ * from the stamped figures: a dashed frame and the runtime's label, so a
+ * computed number is never read as a receipted one. */
+.tb-scenario {
+  border: 1px dashed var(--tb-accent);
+  border-radius: var(--tb-radius);
+  background: var(--tb-surface-accent);
+  padding: var(--tb-space-3);
+}
+.tb-scenario-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tb-muted);
+  margin-bottom: var(--tb-space-2);
+}
+.tb-scenario label { display: block; margin: var(--tb-space-1) 0; }
+.tb-scenario input, .tb-scenario select {
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid var(--tb-rule);
+  border-radius: 6px;
+  background: var(--tb-bg);
+  max-width: 100%;
+}
+.tb-scenario [data-tb-calc] { font-weight: 600; font-variant-numeric: tabular-nums; }
+
 /* ── 9. Exploration blocks — unmistakably working notes ────────────────── */
 
 [data-tb-stage="exploration"] {

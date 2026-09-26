@@ -6,6 +6,7 @@ over.
 
     ⓪  INPUT        inputs/holdings.csv                (a raw pull; API export / CSV / SQL)
     ①  TRANSFORM    transforms/holdings_transform.py   → data/warehouse.duckdb
+                    transforms/affordability_transform.py → data/housing.duckdb
     ②  MODEL        models/portfolio_model.py          (a star schema over the sink)
     ③  REPORT       reports/portfolio_dashboard.json    → data/portfolio_dashboard.html
 
@@ -49,6 +50,12 @@ def main() -> None:
     summary = transform.run()
     for k, v in summary.items():
         print(f"    {k:20} {v}")
+
+    # The housing sample (reports/housing/affordability) has its own input
+    # and warehouse: public annual series, sunk to data/housing.duckdb.
+    print("① housing transform → sink")
+    housing = _load(os.path.join(ROOT, "transforms", "affordability_transform.py"))
+    print(f"    {housing.run()}")
 
     # Phase ② + ③ — build the model, render the dashboard offline.
     os.environ.setdefault("TRACEBI_MODELS_DIR", os.path.join(ROOT, "models"))

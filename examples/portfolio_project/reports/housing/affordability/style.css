@@ -1,0 +1,9 @@
+.mp-kpis { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.mp-chart { height: 280px; }
+.mp-note { color: var(--tb-muted); font-size: 13px; }
+.mp-scenario h3 { margin-top: 0; }
+.mp-scenario label { display: grid; grid-template-columns: 11em 1fr; gap: 8px; align-items: center; }
+.mp-scenario output { font-size: 18px; }
+@media (max-width: 560px) {
+  .mp-scenario label { grid-template-columns: 1fr; }
+}

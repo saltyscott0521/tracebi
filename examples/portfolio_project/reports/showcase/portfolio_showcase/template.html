@@ -143,6 +143,19 @@
                data-tb-sort
                class="tb-table--striped tb-table--freeze" id="tbl-detail"></table>
       </div>
+      <!-- A scenario: the one place the page computes, from the reader's
+           own inputs. Never a figure; the runtime labels it and the
+           manifest records only its declaration. -->
+      <form class="tb-card" data-tb-scenario="markdown" id="scenario-markdown">
+        <h2>What if a sector were marked down?</h2>
+        <label>Sector <select data-tb-preset="by_sector" data-tb-key="dim_issuer.sector"
+                data-tb-fill="fv=fair_value"></select></label>
+        <label>Fair value <input data-tb-input="fv" type="number" step="1000"></label>
+        <label>Markdown (%) <input data-tb-input="cut" type="number" value="10" step="1"></label>
+        <p>Fair value after the markdown:
+          <output data-tb-calc="fv * (1 - cut / 100)" data-tb-format="currency0"
+                  id="calc-markdown"></output></p>
+      </form>
     </section>
 
     <section data-tb-tab="Methodology">

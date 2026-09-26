@@ -596,6 +596,12 @@ class ReportManifest:
     #: when the numbers were produced, never a live claim. None (omitted)
     #: on v1 renders.
     semantic_contract: Optional[dict] = None
+    #: The page's scenarios (``data-tb-scenario``): each one's inputs,
+    #: formulas and presets — the declaration, never a value, with
+    #: ``verifiable: false``. A scenario is computed from the reader's own
+    #: inputs in the browser, so no receipt can reproduce it; recording it
+    #: says the page computes there, and where. None (omitted) otherwise.
+    scenarios: Optional[list] = None
 
     def to_dict(self) -> dict:
         d = {
@@ -623,6 +629,8 @@ class ReportManifest:
             d["methodology"] = self.methodology
         if self.semantic_contract is not None:
             d["semantic_contract"] = self.semantic_contract
+        if self.scenarios is not None:
+            d["scenarios"] = self.scenarios
         return d
 
     def to_json(self, indent: int = 2) -> str:

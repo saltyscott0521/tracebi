@@ -93,6 +93,17 @@ whose figures each name a binding from `report.json`:
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the
   group totals. To keep only groups whose *total* clears a threshold, use
   `having` (HAVING): `"having": {"revenue": {"gte": 250}}`.
+- **Scenarios are the one place a page computes.** A
+  `data-tb-scenario` block lets the reader ask "what if": `data-tb-input`
+  fields, a `data-tb-preset` picker (`data-tb-key`, `data-tb-fill`,
+  `data-tb-default`) that fills them from a stamped row, and
+  `data-tb-calc` outputs with a closed formula (`+ - * / ^`, `pmt`, `min`,
+  `max`, `round`, `abs`) evaluated in the browser. It is never a figure,
+  never inside or around one, and never in the receipt: the runtime labels
+  it as computed from the reader's inputs, and the manifest records only
+  its declaration with `verifiable: false`. Use it for a rate the reader
+  remembers, never for a number a query could produce. The build checks
+  every formula and preset. See `examples/portfolio_project/reports/housing/affordability/`.
 - Interactivity: `data-tb-filter` dropdowns + `data-tb-search` inputs subset
   WHICH stamped rows a binding's tables/charts display — they never compute
   new numbers (client-side aggregation would mint numbers; value figures
