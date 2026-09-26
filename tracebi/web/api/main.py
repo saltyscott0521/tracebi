@@ -48,8 +48,35 @@ from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
 from tracebi.web.api.csrf import allowed_origins as _allowed_origins
 
+from contextlib import asynccontextmanager
+
 from tracebi._version import get_version as _tracebi_version
 from tracebi.schedule import server_lifespan
+
+
+@asynccontextmanager
+async def _lifespan(app):
+    """In-server schedules, plus live discovery: a thread that picks up
+    report packages, specs and model files added while the server runs.
+    TRACEBI_DISCOVERY_INTERVAL sets the seconds between scans (default 5;
+    0 turns it off)."""
+    from tracebi.web.discovery import start_watcher
+
+    try:
+        interval = float(os.environ.get("TRACEBI_DISCOVERY_INTERVAL", "5"))
+    except ValueError:
+        interval = 5.0
+    stop = None
+    if interval > 0:
+        stop = start_watcher(os.environ.get("TRACEBI_REPORTS_DIR", "reports"),
+                             os.environ.get("TRACEBI_MODELS_DIR", "models"),
+                             interval)
+    try:
+        async with server_lifespan(app):
+            yield
+    finally:
+        if stop is not None:
+            stop.set()
 
 
 app = FastAPI(
@@ -57,7 +84,7 @@ app = FastAPI(
     description=("The trust layer for AI-generated analytics: a code-first BI "
                  "framework where every number has a receipt."),
     version=_tracebi_version(),
-    lifespan=server_lifespan,
+    lifespan=_lifespan,
 )
 
 app.add_middleware(
@@ -290,17 +317,9 @@ for _env, _default in (
 # Models discovery — each models/<name>.py exposes a `model` variable.
 _models_dir = os.environ.get("TRACEBI_MODELS_DIR", "models")
 if os.path.isdir(_models_dir):
-    from tracebi import model_registry as _model_reg
-    _disc_models = _model_reg.auto_discover(_models_dir)
-    for _mname in _disc_models:
-        try:
-            _m = _model_reg.get_model(_mname)
-            from tracebi.web.api.registry import registry as _registry_ref
-            if _mname not in [t["name"] for t in _registry_ref.list_models()]:
-                _registry_ref.add_model(_m)
-        except Exception as _exc:
-            import warnings
-            warnings.warn(f"[tracebi] model '{_mname}' failed to load: {_exc}")
+    # The same registration live discovery repeats while the server runs.
+    from tracebi.web.discovery import register_models as _register_models
+    _disc_models = _register_models(_models_dir)
     if _disc_models:
         print(f"[tracebi] auto-discovered {len(_disc_models)} model(s) from {_models_dir}")
 

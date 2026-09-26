@@ -30,6 +30,16 @@ from typing import Optional
 # Track everything we've imported so we can reload it later.
 _discovered: dict[str, str] = {}  # module_name -> file path
 
+# Reports discovery registered from a package directory or a spec file:
+# report name -> that source path. Live discovery (:func:`rescan`) compares
+# this with what is on disk now.
+_live_reports: dict[str, str] = {}
+# A source that failed to register, with the file times it failed at, so a
+# broken package is retried when its files change, not on every scan.
+_failed_sources: dict[str, tuple] = {}
+# Model files live discovery has already put in the web registry.
+_live_models: set[str] = set()
+
 
 # Per-file outcome of every discovery attempt, in order. Discovery is
 # convention-based and quiet by nature: a file in the wrong place, or one
@@ -298,6 +308,7 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
             _outcomes.append({**record, **outcome})
             if outcome["status"] == "registered":
                 discovered.append(outcome["module"])
+                _live_reports[outcome["module"]] = full
             continue
 
         if not (is_py or is_nb):
@@ -313,6 +324,7 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
                 _outcomes.append({**record, **outcome})
                 if outcome["status"] == "registered":
                     discovered.append(outcome["module"])
+                    _live_reports[outcome["module"]] = full
             else:
                 # A folder of reports. It registers nothing itself; its
                 # contents are registered under "<folder>/<name>".
@@ -364,6 +376,156 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
         _discovered[mod_name] = full
         _outcomes.append({**record, "status": "registered", "reason": None})
     return discovered
+
+
+# ── Live discovery ──────────────────────────────────────────────────────────
+#
+# A running server picks up report packages, specs and model files added to
+# (or removed from) the project without a restart. A background thread calls
+# rescan() every TRACEBI_DISCOVERY_INTERVAL seconds; route handlers never
+# touch the registry. Python report modules stay startup-only: re-importing
+# code on a timer would re-run its side effects.
+
+
+def _is_package(path: str) -> bool:
+    return (os.path.isfile(os.path.join(path, "report.json"))
+            and os.path.isfile(os.path.join(path, "template.html")))
+
+
+def _report_sources(path: str, prefix: str = "") -> dict[str, str]:
+    """Every package and spec under *path*, by report name, with the same
+    naming, folder and shadowing rules as :func:`auto_discover`."""
+    found: dict[str, str] = {}
+    try:
+        entries = sorted(os.listdir(path))
+    except OSError:
+        return found
+    for entry in entries:
+        if entry.startswith(("_", ".")):
+            continue
+        full = os.path.join(path, entry)
+        if os.path.isdir(full):
+            if _is_package(full):
+                found[prefix + entry] = full
+            else:
+                found.update(_report_sources(full, f"{prefix}{entry}/"))
+        elif entry.endswith(".json"):
+            stem = entry[: -len(".json")]
+            if not _is_package(os.path.join(path, stem)):
+                found[prefix + stem] = full
+    return found
+
+
+def _file_times(source: str) -> tuple:
+    names = (["report.json", "template.html"] if os.path.isdir(source) else [""])
+    out = []
+    for name in names:
+        try:
+            out.append(os.stat(os.path.join(source, name) if name else source)
+                       .st_mtime_ns)
+        except OSError:
+            out.append(None)
+    return tuple(out)
+
+
+def _record(name: str, source: str, outcome: dict) -> None:
+    """Replace this report's earlier outcome, so the report stays one line
+    per file however many scans have run."""
+    _outcomes[:] = [o for o in _outcomes if o.get("module") != name]
+    _outcomes.append({"directory": os.path.dirname(source),
+                      "file": os.path.basename(source), **outcome})
+
+
+def register_models(models_dir: str) -> list[str]:
+    """Record new ``models/*.py`` files and put each in the web registry.
+
+    Returns the stems added this call. A model that fails to load is left
+    out and retried on the next call; the model registry reloads a file
+    whose contents change on its next use.
+    """
+    from tracebi import model_registry
+    from tracebi.registry import registry
+
+    added: list[str] = []
+    if not os.path.isdir(models_dir):
+        return added
+    for stem in model_registry.auto_discover(models_dir):
+        if stem in _live_models:
+            continue
+        try:
+            model = model_registry.get_model(stem)
+        except Exception as exc:  # noqa: BLE001 — one broken model must not stop the rest
+            print(f"[tracebi] model '{stem}' failed to load: {exc}", file=sys.stderr)
+            continue
+        if getattr(model, "name", stem) not in [m["name"] for m in registry.list_models()]:
+            registry.add_model(model)
+        _live_models.add(stem)
+        added.append(stem)
+    return added
+
+
+def rescan(reports_dir: str, models_dir: Optional[str] = None) -> dict:
+    """Bring the registry in line with the project on disk.
+
+    Registers report packages and specs that appeared since the last scan,
+    forgets ones whose source is gone, and adds new model files. Returns
+    ``{"added": [...], "removed": [...], "failed": [...], "models": [...]}``.
+    """
+    from tracebi.registry import registry
+
+    found = _report_sources(reports_dir) if os.path.isdir(reports_dir) else {}
+    added, removed, failed = [], [], []
+    for name, source in found.items():
+        if _live_reports.get(name) == source:
+            continue
+        times = _file_times(source)
+        if _failed_sources.get(name) == (source, times):
+            continue                      # still broken the same way
+        if os.path.isdir(source):
+            outcome = _register_template_package(source, stem=name)
+        else:
+            outcome = _register_spec_file(source, stem=name)
+        _record(name, source, outcome)
+        if outcome["status"] == "registered":
+            _live_reports[name] = source
+            _failed_sources.pop(name, None)
+            added.append(name)
+        else:
+            _failed_sources[name] = (source, times)
+            failed.append(name)
+    for name in [n for n in _live_reports if n not in found]:
+        registry.remove_report(name)
+        del _live_reports[name]
+        _outcomes[:] = [o for o in _outcomes if o.get("module") != name]
+        removed.append(name)
+    models = register_models(models_dir) if models_dir else []
+    return {"added": added, "removed": removed, "failed": failed, "models": models}
+
+
+def start_watcher(reports_dir: str, models_dir: Optional[str],
+                  interval: float):
+    """Run :func:`rescan` every *interval* seconds on a daemon thread.
+
+    Returns a ``threading.Event``; set it to stop the thread.
+    """
+    import threading
+
+    stop = threading.Event()
+
+    def loop() -> None:
+        while not stop.wait(interval):
+            try:
+                changes = rescan(reports_dir, models_dir)
+            except Exception as exc:  # noqa: BLE001 — the watcher must outlive one bad scan
+                print(f"[tracebi] live discovery scan failed: {exc}", file=sys.stderr)
+                continue
+            for key, verb in (("added", "found"), ("removed", "removed"),
+                              ("models", "found model")):
+                for name in changes[key]:
+                    print(f"[tracebi] live discovery: {verb} {name}", file=sys.stderr)
+
+    threading.Thread(target=loop, name="tracebi-discovery", daemon=True).start()
+    return stop
 
 
 def reload_modules() -> list[str]:
