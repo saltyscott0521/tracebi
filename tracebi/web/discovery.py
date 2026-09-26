@@ -540,7 +540,12 @@ def rescan(reports_dir: str, models_dir: Optional[str] = None,
         else:
             _failed_sources[name] = (source, times)
             failed.append(name)
-    for name in [n for n in _live_reports if n not in found]:
+    # Only a report that came from THIS folder can be gone from it: an app
+    # module's own reports/ (TRACEBI_APP) is discovered at startup and never
+    # rescanned, so its reports are absent from `found` without being deleted.
+    root = os.path.join(os.path.abspath(reports_dir), "")
+    for name in [n for n, src in _live_reports.items()
+                 if n not in found and os.path.abspath(src).startswith(root)]:
         registry.remove_report(name)
         del _live_reports[name]
         _outcomes[:] = [o for o in _outcomes if o.get("module") != name]

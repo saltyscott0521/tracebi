@@ -1,0 +1,1276 @@
+{
+  "schema_version": 2,
+  "report_name": "Then vs Now: Financing the Median Home",
+  "rendered_at": "2026-09-26T01:56:49.925781+00:00",
+  "rendered_by": "tracebi reference",
+  "format": "html",
+  "output_path": "/home/user/tracebi/examples/portfolio_project/output/housing/affordability.html",
+  "git_sha": "b9036573cef23ed3494844a20d59a533feb9d008",
+  "parameters": {},
+  "sections": [
+    {
+      "section_type": "table",
+      "title": "history",
+      "id": "history",
+      "dataset_name": "fact_housing_result",
+      "dataset_shape": [
+        53,
+        10
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_housing' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_housing",
+          "timestamp": "2026-09-26T01:56:49.710985+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_housing",
+              "fingerprint": "51fbe3df2b6877200e59c0b0fb6838116f80e2579000f9c2f0ec6624d042e07d",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): annual_payment_total = annual_payment, income_total = median_income, price_total = median_price",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.712360+00:00",
+          "metadata": {
+            "derived": {
+              "annual_payment_total": "annual_payment",
+              "income_total": "median_income",
+              "price_total": "median_price"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_year' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_year",
+          "timestamp": "2026-09-26T01:56:49.717540+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_year",
+              "fingerprint": "429ab416fbd2cb876cb5076d1c71953897a7547c5ad409312159893c786af739",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_housing' \u2192 dim 'dim_year' on year_id = year_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.734586+00:00",
+          "metadata": {
+            "fact": "fact_housing",
+            "dimension": "dim_year",
+            "fact_key": "year_id",
+            "dim_key": "year_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): payment_share = annual_payment_total / income_total, price_to_income = price_total / income_total",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.743094+00:00",
+          "metadata": {
+            "ratios": {
+              "payment_share": [
+                "annual_payment_total",
+                "income_total"
+              ],
+              "price_to_income": [
+                "price_total",
+                "income_total"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by dim_year.year, mortgage_rate, median_price, median_income, monthly_payment, annual_payment_total, income_total, price_total, payment_share, price_to_income",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.745183+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "dim_year.year",
+                "desc": false
+              },
+              {
+                "column": "mortgage_rate",
+                "desc": false
+              },
+              {
+                "column": "median_price",
+                "desc": false
+              },
+              {
+                "column": "median_income",
+                "desc": false
+              },
+              {
+                "column": "monthly_payment",
+                "desc": false
+              },
+              {
+                "column": "annual_payment_total",
+                "desc": false
+              },
+              {
+                "column": "income_total",
+                "desc": false
+              },
+              {
+                "column": "price_total",
+                "desc": false
+              },
+              {
+                "column": "payment_share",
+                "desc": false
+              },
+              {
+                "column": "price_to_income",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.745200+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.5",
+            "fingerprint_algo": 2,
+            "rows_out": 53,
+            "measures": {
+              "mortgage_rate": "mean",
+              "median_price": "mean",
+              "median_income": "mean",
+              "monthly_payment": "mean",
+              "annual_payment_total": "sum",
+              "income_total": "sum",
+              "price_total": "sum"
+            },
+            "model": "housing_model",
+            "query_spec": {
+              "fact": "fact_housing",
+              "measures": [
+                "mortgage_rate",
+                "median_price",
+                "median_income",
+                "monthly_payment",
+                "payment_share",
+                "price_to_income"
+              ],
+              "dimensions": [
+                "dim_year.year"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "dim_year.year",
+                  "desc": false
+                },
+                {
+                  "column": "mortgage_rate",
+                  "desc": false
+                },
+                {
+                  "column": "median_price",
+                  "desc": false
+                },
+                {
+                  "column": "median_income",
+                  "desc": false
+                },
+                {
+                  "column": "monthly_payment",
+                  "desc": false
+                },
+                {
+                  "column": "annual_payment_total",
+                  "desc": false
+                },
+                {
+                  "column": "income_total",
+                  "desc": false
+                },
+                {
+                  "column": "price_total",
+                  "desc": false
+                },
+                {
+                  "column": "payment_share",
+                  "desc": false
+                },
+                {
+                  "column": "price_to_income",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "c109a79a6b378b1733135b228633176a1c9cbb6f49fe896dd78ec163877fb4a0",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "then",
+      "id": "then",
+      "dataset_name": "fact_housing_result",
+      "dataset_shape": [
+        1,
+        10
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_housing' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_housing",
+          "timestamp": "2026-09-26T01:56:49.749192+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_housing",
+              "fingerprint": "51fbe3df2b6877200e59c0b0fb6838116f80e2579000f9c2f0ec6624d042e07d",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): annual_payment_total = annual_payment, income_total = median_income, price_total = median_price",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.750422+00:00",
+          "metadata": {
+            "derived": {
+              "annual_payment_total": "annual_payment",
+              "income_total": "median_income",
+              "price_total": "median_price"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_year' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_year",
+          "timestamp": "2026-09-26T01:56:49.753244+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_year",
+              "fingerprint": "429ab416fbd2cb876cb5076d1c71953897a7547c5ad409312159893c786af739",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "filter",
+          "description": "Filter: dim_year.year eq 1985",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.753669+00:00",
+          "metadata": {
+            "target": "dim_year.year",
+            "operator": "eq",
+            "value": 1985,
+            "on": "dimension",
+            "pushed_down": false
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_housing' \u2192 dim 'dim_year' on year_id = year_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.767453+00:00",
+          "metadata": {
+            "fact": "fact_housing",
+            "dimension": "dim_year",
+            "fact_key": "year_id",
+            "dim_key": "year_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): payment_share = annual_payment_total / income_total, price_to_income = price_total / income_total",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.774583+00:00",
+          "metadata": {
+            "ratios": {
+              "payment_share": [
+                "annual_payment_total",
+                "income_total"
+              ],
+              "price_to_income": [
+                "price_total",
+                "income_total"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.774605+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.5",
+            "fingerprint_algo": 2,
+            "rows_out": 1,
+            "measures": {
+              "mortgage_rate": "mean",
+              "median_price": "mean",
+              "median_income": "mean",
+              "monthly_payment": "mean",
+              "annual_payment_total": "sum",
+              "income_total": "sum",
+              "price_total": "sum"
+            },
+            "model": "housing_model",
+            "query_spec": {
+              "fact": "fact_housing",
+              "measures": [
+                "mortgage_rate",
+                "median_price",
+                "median_income",
+                "monthly_payment",
+                "payment_share",
+                "price_to_income"
+              ],
+              "dimensions": [
+                "dim_year.year"
+              ],
+              "filters": {
+                "dim_year.year": 1985
+              },
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "bffe10869febb13fca3faa82bb42e08561b8e67b2b43a92bb9ef4088a2bd1668",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "now",
+      "id": "now",
+      "dataset_name": "fact_housing_result",
+      "dataset_shape": [
+        1,
+        10
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_housing' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_housing",
+          "timestamp": "2026-09-26T01:56:49.777591+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_housing",
+              "fingerprint": "51fbe3df2b6877200e59c0b0fb6838116f80e2579000f9c2f0ec6624d042e07d",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): annual_payment_total = annual_payment, income_total = median_income, price_total = median_price",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.778658+00:00",
+          "metadata": {
+            "derived": {
+              "annual_payment_total": "annual_payment",
+              "income_total": "median_income",
+              "price_total": "median_price"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_year' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_year",
+          "timestamp": "2026-09-26T01:56:49.781347+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_year",
+              "fingerprint": "429ab416fbd2cb876cb5076d1c71953897a7547c5ad409312159893c786af739",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "filter",
+          "description": "Filter: dim_year.year eq 2023",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.781744+00:00",
+          "metadata": {
+            "target": "dim_year.year",
+            "operator": "eq",
+            "value": 2023,
+            "on": "dimension",
+            "pushed_down": false
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_housing' \u2192 dim 'dim_year' on year_id = year_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.795196+00:00",
+          "metadata": {
+            "fact": "fact_housing",
+            "dimension": "dim_year",
+            "fact_key": "year_id",
+            "dim_key": "year_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): payment_share = annual_payment_total / income_total, price_to_income = price_total / income_total",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.802463+00:00",
+          "metadata": {
+            "ratios": {
+              "payment_share": [
+                "annual_payment_total",
+                "income_total"
+              ],
+              "price_to_income": [
+                "price_total",
+                "income_total"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.802483+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.5",
+            "fingerprint_algo": 2,
+            "rows_out": 1,
+            "measures": {
+              "mortgage_rate": "mean",
+              "median_price": "mean",
+              "median_income": "mean",
+              "monthly_payment": "mean",
+              "annual_payment_total": "sum",
+              "income_total": "sum",
+              "price_total": "sum"
+            },
+            "model": "housing_model",
+            "query_spec": {
+              "fact": "fact_housing",
+              "measures": [
+                "mortgage_rate",
+                "median_price",
+                "median_income",
+                "monthly_payment",
+                "payment_share",
+                "price_to_income"
+              ],
+              "dimensions": [
+                "dim_year.year"
+              ],
+              "filters": {
+                "dim_year.year": 2023
+              },
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "7bb0b2a3ee054d2172a1f39a119221091812d7b2def8823faa80cc38f9138091",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "hardest",
+      "id": "hardest",
+      "dataset_name": "fact_housing_result",
+      "dataset_shape": [
+        1,
+        5
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_housing' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_housing",
+          "timestamp": "2026-09-26T01:56:49.805348+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_housing",
+              "fingerprint": "51fbe3df2b6877200e59c0b0fb6838116f80e2579000f9c2f0ec6624d042e07d",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): annual_payment_total = annual_payment, income_total = median_income",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.806123+00:00",
+          "metadata": {
+            "derived": {
+              "annual_payment_total": "annual_payment",
+              "income_total": "median_income"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_year' from connector 'housing_warehouse'",
+          "connector": {
+            "connector_name": "housing_warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_year",
+          "timestamp": "2026-09-26T01:56:49.808448+00:00",
+          "metadata": {
+            "rows_loaded": 53,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_year",
+              "fingerprint": "429ab416fbd2cb876cb5076d1c71953897a7547c5ad409312159893c786af739",
+              "rows": 53
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_housing' \u2192 dim 'dim_year' on year_id = year_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.822591+00:00",
+          "metadata": {
+            "fact": "fact_housing",
+            "dimension": "dim_year",
+            "fact_key": "year_id",
+            "dim_key": "year_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): payment_share = annual_payment_total / income_total",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.829406+00:00",
+          "metadata": {
+            "ratios": {
+              "payment_share": [
+                "annual_payment_total",
+                "income_total"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by payment_share desc, dim_year.year, annual_payment_total, income_total, mortgage_rate, limit 1",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.831169+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "payment_share",
+                "desc": true
+              },
+              {
+                "column": "dim_year.year",
+                "desc": false
+              },
+              {
+                "column": "annual_payment_total",
+                "desc": false
+              },
+              {
+                "column": "income_total",
+                "desc": false
+              },
+              {
+                "column": "mortgage_rate",
+                "desc": false
+              }
+            ],
+            "limit": 1
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-09-26T01:56:49.831186+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.5",
+            "fingerprint_algo": 2,
+            "rows_out": 1,
+            "measures": {
+              "annual_payment_total": "sum",
+              "income_total": "sum",
+              "mortgage_rate": "mean"
+            },
+            "model": "housing_model",
+            "query_spec": {
+              "fact": "fact_housing",
+              "measures": [
+                "payment_share",
+                "mortgage_rate"
+              ],
+              "dimensions": [
+                "dim_year.year"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "payment_share",
+                  "desc": true
+                },
+                {
+                  "column": "dim_year.year",
+                  "desc": false
+                },
+                {
+                  "column": "annual_payment_total",
+                  "desc": false
+                },
+                {
+                  "column": "income_total",
+                  "desc": false
+                },
+                {
+                  "column": "mortgage_rate",
+                  "desc": false
+                }
+              ],
+              "limit": 1
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "5d8e11eb302852a1621c0782c9ea8da0877cdd819935903e010c590f4f843131",
+      "columns": null,
+      "max_rows": null
+    }
+  ],
+  "embedded_data": [
+    {
+      "name": "history",
+      "embedded_sha256": "c109a79a6b378b1733135b228633176a1c9cbb6f49fe896dd78ec163877fb4a0",
+      "query_spec": {
+        "fact": "fact_housing",
+        "measures": [
+          "mortgage_rate",
+          "median_price",
+          "median_income",
+          "monthly_payment",
+          "payment_share",
+          "price_to_income"
+        ],
+        "dimensions": [
+          "dim_year.year"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "dim_year.year",
+            "desc": false
+          },
+          {
+            "column": "mortgage_rate",
+            "desc": false
+          },
+          {
+            "column": "median_price",
+            "desc": false
+          },
+          {
+            "column": "median_income",
+            "desc": false
+          },
+          {
+            "column": "monthly_payment",
+            "desc": false
+          },
+          {
+            "column": "annual_payment_total",
+            "desc": false
+          },
+          {
+            "column": "income_total",
+            "desc": false
+          },
+          {
+            "column": "price_total",
+            "desc": false
+          },
+          {
+            "column": "payment_share",
+            "desc": false
+          },
+          {
+            "column": "price_to_income",
+            "desc": false
+          }
+        ]
+      },
+      "model": "housing_model"
+    },
+    {
+      "name": "then",
+      "embedded_sha256": "bffe10869febb13fca3faa82bb42e08561b8e67b2b43a92bb9ef4088a2bd1668",
+      "query_spec": {
+        "fact": "fact_housing",
+        "measures": [
+          "mortgage_rate",
+          "median_price",
+          "median_income",
+          "monthly_payment",
+          "payment_share",
+          "price_to_income"
+        ],
+        "dimensions": [
+          "dim_year.year"
+        ],
+        "filters": {
+          "dim_year.year": 1985
+        },
+        "aggregate": true,
+        "allow_fanout": false
+      },
+      "model": "housing_model"
+    },
+    {
+      "name": "now",
+      "embedded_sha256": "7bb0b2a3ee054d2172a1f39a119221091812d7b2def8823faa80cc38f9138091",
+      "query_spec": {
+        "fact": "fact_housing",
+        "measures": [
+          "mortgage_rate",
+          "median_price",
+          "median_income",
+          "monthly_payment",
+          "payment_share",
+          "price_to_income"
+        ],
+        "dimensions": [
+          "dim_year.year"
+        ],
+        "filters": {
+          "dim_year.year": 2023
+        },
+        "aggregate": true,
+        "allow_fanout": false
+      },
+      "model": "housing_model"
+    },
+    {
+      "name": "hardest",
+      "embedded_sha256": "5d8e11eb302852a1621c0782c9ea8da0877cdd819935903e010c590f4f843131",
+      "query_spec": {
+        "fact": "fact_housing",
+        "measures": [
+          "payment_share",
+          "mortgage_rate"
+        ],
+        "dimensions": [
+          "dim_year.year"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "payment_share",
+            "desc": true
+          },
+          {
+            "column": "dim_year.year",
+            "desc": false
+          },
+          {
+            "column": "annual_payment_total",
+            "desc": false
+          },
+          {
+            "column": "income_total",
+            "desc": false
+          },
+          {
+            "column": "mortgage_rate",
+            "desc": false
+          }
+        ],
+        "limit": 1
+      },
+      "model": "housing_model"
+    }
+  ],
+  "stage": "final",
+  "figures": [
+    {
+      "id": "then-year",
+      "kind": "value",
+      "binding": "then",
+      "cell": "dim_year.year"
+    },
+    {
+      "id": "then-rate",
+      "kind": "value",
+      "binding": "then",
+      "cell": "mortgage_rate"
+    },
+    {
+      "id": "then-price",
+      "kind": "value",
+      "binding": "then",
+      "cell": "median_price"
+    },
+    {
+      "id": "now-year",
+      "kind": "value",
+      "binding": "now",
+      "cell": "dim_year.year"
+    },
+    {
+      "id": "now-rate",
+      "kind": "value",
+      "binding": "now",
+      "cell": "mortgage_rate"
+    },
+    {
+      "id": "now-price",
+      "kind": "value",
+      "binding": "now",
+      "cell": "median_price"
+    },
+    {
+      "id": "tag-then-year",
+      "kind": "value",
+      "binding": "then",
+      "cell": "dim_year.year"
+    },
+    {
+      "id": "tag-then-price",
+      "kind": "value",
+      "binding": "then",
+      "cell": "median_price"
+    },
+    {
+      "id": "tag-now-year",
+      "kind": "value",
+      "binding": "now",
+      "cell": "dim_year.year"
+    },
+    {
+      "id": "tag-now-price",
+      "kind": "value",
+      "binding": "now",
+      "cell": "median_price"
+    },
+    {
+      "id": "kpi-then-payment",
+      "kind": "value",
+      "binding": "then",
+      "cell": "monthly_payment"
+    },
+    {
+      "id": "kpi-then-share",
+      "kind": "value",
+      "binding": "then",
+      "cell": "payment_share"
+    },
+    {
+      "id": "kpi-now-payment",
+      "kind": "value",
+      "binding": "now",
+      "cell": "monthly_payment"
+    },
+    {
+      "id": "kpi-now-share",
+      "kind": "value",
+      "binding": "now",
+      "cell": "payment_share"
+    },
+    {
+      "id": "kpi-then-pti",
+      "kind": "value",
+      "binding": "then",
+      "cell": "price_to_income"
+    },
+    {
+      "id": "kpi-now-pti",
+      "kind": "value",
+      "binding": "now",
+      "cell": "price_to_income"
+    },
+    {
+      "id": "kpi-hardest-year",
+      "kind": "value",
+      "binding": "hardest",
+      "cell": "dim_year.year"
+    },
+    {
+      "id": "kpi-hardest-share",
+      "kind": "value",
+      "binding": "hardest",
+      "cell": "payment_share"
+    },
+    {
+      "id": "kpi-hardest-rate",
+      "kind": "value",
+      "binding": "hardest",
+      "cell": "mortgage_rate"
+    },
+    {
+      "id": "chart-rate",
+      "kind": "chart",
+      "binding": "history"
+    },
+    {
+      "id": "chart-price-income",
+      "kind": "chart",
+      "binding": "history"
+    },
+    {
+      "id": "chart-payment",
+      "kind": "chart",
+      "binding": "history"
+    },
+    {
+      "id": "chart-share",
+      "kind": "chart",
+      "binding": "history"
+    },
+    {
+      "id": "tbl-history",
+      "kind": "table",
+      "binding": "history"
+    }
+  ],
+  "transform_contracts": {
+    "dim_year": {
+      "status": "satisfied",
+      "transform": "affordability",
+      "checked_at": "2026-09-26T01:20:23.059062+00:00",
+      "checks": 2,
+      "fingerprint": "429ab416fbd2cb876cb5076d1c71953897a7547c5ad409312159893c786af739",
+      "note": "one row per year from inputs/housing_history.csv (Freddie Mac 30-year average rate, Census/HUD median sales price, Census median household income, current dollars); monthly payment is principal and interest on the median price with 20% down over 30 years at that year's average rate \u2014 no taxes, insurance or PMI"
+    },
+    "fact_housing": {
+      "status": "satisfied",
+      "transform": "affordability",
+      "checked_at": "2026-09-26T01:20:23.059062+00:00",
+      "checks": 3,
+      "fingerprint": "51fbe3df2b6877200e59c0b0fb6838116f80e2579000f9c2f0ec6624d042e07d",
+      "note": "one row per year from inputs/housing_history.csv (Freddie Mac 30-year average rate, Census/HUD median sales price, Census median household income, current dollars); monthly payment is principal and interest on the median price with 20% down over 30 years at that year's average rate \u2014 no taxes, insurance or PMI"
+    }
+  },
+  "methodology": {
+    "transform_notes": {
+      "dim_year": "one row per year from inputs/housing_history.csv (Freddie Mac 30-year average rate, Census/HUD median sales price, Census median household income, current dollars); monthly payment is principal and interest on the median price with 20% down over 30 years at that year's average rate \u2014 no taxes, insurance or PMI",
+      "fact_housing": "one row per year from inputs/housing_history.csv (Freddie Mac 30-year average rate, Census/HUD median sales price, Census median household income, current dollars); monthly payment is principal and interest on the median price with 20% down over 30 years at that year's average rate \u2014 no taxes, insurance or PMI"
+    },
+    "check_notes": [
+      {
+        "transform": "affordability",
+        "check": "rows",
+        "table": "fact_housing",
+        "note": "the series starts in 1971; fewer rows means a truncated pull"
+      }
+    ],
+    "measure_notes": {
+      "mortgage_rate": "30-year fixed rate, annual average, in percent",
+      "median_price": "Median sales price of houses sold",
+      "median_income": "Median household income",
+      "monthly_payment": "Monthly principal and interest on the median home: 20% down, 30 years, that year's average rate",
+      "payment_share": "A year of payments as a share of median household income",
+      "price_to_income": "Median price as a multiple of median household income"
+    }
+  },
+  "semantic_contract": {
+    "housing_model": {
+      "slice": {
+        "model": "housing_model",
+        "facts": [
+          {
+            "name": "fact_housing",
+            "table": "fact_housing",
+            "measures": [
+              "annual_payment",
+              "median_income",
+              "median_price",
+              "monthly_payment",
+              "mortgage_rate"
+            ],
+            "foreign_keys": {
+              "dim_year": "year_id"
+            }
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "dim_year",
+            "table": "dim_year",
+            "key": "year_id",
+            "attributes": [
+              "decade",
+              "year"
+            ]
+          }
+        ],
+        "measures": [
+          {
+            "agg": "mean",
+            "column": "median_income",
+            "description": "Median household income",
+            "format": "currency0",
+            "kind": "simple",
+            "name": "median_income"
+          },
+          {
+            "agg": "mean",
+            "column": "median_price",
+            "description": "Median sales price of houses sold",
+            "format": "currency0",
+            "kind": "simple",
+            "name": "median_price"
+          },
+          {
+            "agg": "mean",
+            "column": "monthly_payment",
+            "description": "Monthly principal and interest on the median home: 20% down, 30 years, that year's average rate",
+            "format": "currency0",
+            "kind": "simple",
+            "name": "monthly_payment"
+          },
+          {
+            "agg": "mean",
+            "column": "mortgage_rate",
+            "description": "30-year fixed rate, annual average, in percent",
+            "format": "decimal",
+            "kind": "simple",
+            "name": "mortgage_rate"
+          },
+          {
+            "description": "A year of payments as a share of median household income",
+            "format": "percent",
+            "kind": "ratio",
+            "name": "payment_share",
+            "ratio": [
+              "annual_payment_total",
+              "income_total"
+            ]
+          },
+          {
+            "description": "Median price as a multiple of median household income",
+            "format": "decimal",
+            "kind": "ratio",
+            "name": "price_to_income",
+            "ratio": [
+              "price_total",
+              "income_total"
+            ]
+          }
+        ],
+        "tables": [
+          {
+            "name": "dim_year",
+            "connector": "housing_warehouse",
+            "source": "dim_year"
+          },
+          {
+            "name": "fact_housing",
+            "connector": "housing_warehouse",
+            "source": "fact_housing"
+          }
+        ]
+      },
+      "sha256": "6557c13ba55823e02b26ba3c81722ce713c3bb158ece57b340447f3c4d1d276e"
+    }
+  },
+  "scenarios": [
+    {
+      "name": "then",
+      "inputs": [
+        "rate",
+        "price",
+        "income",
+        "down",
+        "years"
+      ],
+      "calcs": [
+        {
+          "id": "calc-then-payment",
+          "formula": "pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))",
+          "format": "currency"
+        },
+        {
+          "id": "calc-then-share",
+          "formula": "pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income",
+          "format": "percent"
+        },
+        {
+          "id": "calc-then-interest",
+          "formula": "pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)",
+          "format": "currency0"
+        }
+      ],
+      "presets": [
+        {
+          "binding": "history",
+          "key": "dim_year.year",
+          "fill": {
+            "rate": "mortgage_rate",
+            "price": "median_price",
+            "income": "median_income"
+          },
+          "default": "1985"
+        }
+      ],
+      "verifiable": false
+    },
+    {
+      "name": "now",
+      "inputs": [
+        "rate",
+        "price",
+        "income",
+        "down",
+        "years"
+      ],
+      "calcs": [
+        {
+          "id": "calc-now-payment",
+          "formula": "pmt(rate / 100 / 12, years * 12, price * (1 - down / 100))",
+          "format": "currency"
+        },
+        {
+          "id": "calc-now-share",
+          "formula": "pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * 12 / income",
+          "format": "percent"
+        },
+        {
+          "id": "calc-now-interest",
+          "formula": "pmt(rate / 100 / 12, years * 12, price * (1 - down / 100)) * years * 12 - price * (1 - down / 100)",
+          "format": "currency0"
+        }
+      ],
+      "presets": [
+        {
+          "binding": "history",
+          "key": "dim_year.year",
+          "fill": {
+            "rate": "mortgage_rate",
+            "price": "median_price",
+            "income": "median_income"
+          },
+          "default": "2023"
+        }
+      ],
+      "verifiable": false
+    }
+  ]
+}

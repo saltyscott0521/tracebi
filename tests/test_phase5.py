@@ -2651,6 +2651,49 @@ class TestHomepageNeverSilently404s:
         result["stderr"] = out.stderr
         return result
 
+    def test_a_redeploy_never_leaves_a_blank_page(self, tmp_path):
+        """After a deploy, a phone still holding the old page asks for the
+        old hashed script. Answering with index.html (200 text/html) made the
+        browser refuse the script and render nothing. A missing file is a
+        404; index.html is no-cache; hashed assets are kept."""
+        import json
+        import subprocess
+        import sys
+
+        dist = tmp_path / "dist"
+        (dist / "assets").mkdir(parents=True)
+        (dist / "index.html").write_text("<html>SPA</html>")
+        (dist / "assets" / "index-NEW.js").write_text("1")
+        code = (
+            "import json, os\n"
+            "os.environ['TRACEBI_APP'] = ''\n"
+            "from fastapi import FastAPI\n"
+            "from fastapi.testclient import TestClient\n"
+            "from tracebi.web.api.main import _SPAFiles\n"
+            "app = FastAPI()\n"
+            f"app.mount('/', _SPAFiles(directory={str(dist)!r}, html=True))\n"
+            "c = TestClient(app)\n"
+            "out = {}\n"
+            "for p in ('/', '/reports/housing', '/assets/index-NEW.js',\n"
+            "          '/assets/index-OLD.js'):\n"
+            "    r = c.get(p)\n"
+            "    out[p] = [r.status_code, r.headers.get('content-type', ''),\n"
+            "              r.headers.get('cache-control', '')]\n"
+            "print('RESULT' + json.dumps(out))\n"
+        )
+        env = {k: v for k, v in os.environ.items()}
+        env["TRACEBI_DISCOVERY_INTERVAL"] = "0"
+        out = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                             text=True, cwd=str(tmp_path), env=env)
+        assert out.returncode == 0, out.stderr
+        line = next(ln for ln in out.stdout.splitlines() if ln.startswith("RESULT"))
+        r = json.loads(line[len("RESULT"):])
+        assert r["/"][0] == 200 and r["/"][2] == "no-cache"
+        assert r["/reports/housing"][0] == 200 and r["/reports/housing"][2] == "no-cache"
+        assert r["/assets/index-NEW.js"][0] == 200
+        assert "immutable" in r["/assets/index-NEW.js"][2]
+        assert r["/assets/index-OLD.js"][0] == 404
+
     def test_without_a_bundle_the_homepage_explains_itself(self):
         r = self._serve_root(dist="absent")
 

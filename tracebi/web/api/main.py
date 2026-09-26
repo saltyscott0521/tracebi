@@ -347,18 +347,33 @@ _ui_dist = os.path.join(os.path.dirname(__file__), "..", "ui", "dist")
 # before it writes (vite's emptyOutDir), so a build that fails leaves the
 # directory there and nothing in it. Mounting that serves the bare 404 this
 # branch exists to prevent.
-if os.path.isfile(os.path.join(_ui_dist, "index.html")):
-    from starlette.exceptions import HTTPException as _StarletteHTTPException
+class _SPAFiles(StaticFiles):
+    """The built UI. A page route the bundle does not know as a file
+    (``/reports``) gets index.html so the client router takes it; a missing
+    FILE (``/assets/index-OLDHASH.js``) is a real 404. Answering that with
+    index.html as 200 text/html left a browser still holding the previous
+    deploy's page with a script it refuses to run: a blank screen.
 
-    class _SPAFiles(StaticFiles):
-        async def get_response(self, path: str, scope):
-            try:
-                return await super().get_response(path, scope)
-            except _StarletteHTTPException as exc:
-                if exc.status_code == 404:
-                    return await super().get_response("index.html", scope)
+    index.html is ``no-cache`` so a redeploy is picked up on the next visit;
+    ``assets/`` names carry a content hash, so they can be kept for a year.
+    """
+
+    async def get_response(self, path: str, scope):
+        from starlette.exceptions import HTTPException as _StarletteHTTPException
+        try:
+            response = await super().get_response(path, scope)
+        except _StarletteHTTPException as exc:
+            if exc.status_code != 404 or os.path.splitext(path)[1]:
                 raise
+            response = await super().get_response("index.html", scope)
+        if path.startswith("assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif str(getattr(response, "path", "")).endswith("index.html"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
+
+if os.path.isfile(os.path.join(_ui_dist, "index.html")):
     app.mount("/", _SPAFiles(directory=_ui_dist, html=True), name="ui")
 else:
     # tracebi/web/ui/dist is gitignored, so a fresh clone has no bundle. Without this
