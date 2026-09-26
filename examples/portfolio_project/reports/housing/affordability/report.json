@@ -118,7 +118,7 @@
           "dim_year.year"
         ],
         "filters": {
-          "dim_cohort.bought": 1981,
+          "dim_cohort.purchase_year": 1981,
           "dim_held.years_owned": 10
         }
       }
@@ -132,10 +132,10 @@
         ],
         "dimensions": [
           "dim_held.years_owned",
-          "dim_cohort.bought"
+          "dim_cohort.purchase_year"
         ],
         "filters": {
-          "dim_cohort.bought": {
+          "dim_cohort.purchase_year": {
             "in": [
               1981,
               2006,
@@ -144,7 +144,7 @@
           }
         },
         "order_by": [
-          "dim_cohort.bought",
+          "dim_cohort.purchase_year",
           "dim_held.years_owned"
         ]
       }
@@ -179,6 +179,98 @@
         ],
         "order_by": [
           "-entry_share"
+        ],
+        "limit": 1
+      }
+    },
+    "ten_year": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_cohort_path",
+        "measures": [
+          "housing_share"
+        ],
+        "dimensions": [
+          "dim_cohort.purchase_year"
+        ],
+        "filters": {
+          "dim_held.years_owned": {
+            "lte": 9
+          },
+          "dim_cohort.years_followed": {
+            "gte": 9
+          }
+        },
+        "order_by": [
+          "dim_cohort.purchase_year"
+        ]
+      }
+    },
+    "ten_peak": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_cohort_path",
+        "measures": [
+          "housing_share"
+        ],
+        "dimensions": [
+          "dim_cohort.purchase_year"
+        ],
+        "filters": {
+          "dim_held.years_owned": {
+            "lte": 9
+          },
+          "dim_cohort.years_followed": {
+            "gte": 9
+          },
+          "dim_cohort.purchase_year": 1981
+        }
+      }
+    },
+    "ten_worst": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_cohort_path",
+        "measures": [
+          "housing_share"
+        ],
+        "dimensions": [
+          "dim_cohort.purchase_year"
+        ],
+        "filters": {
+          "dim_held.years_owned": {
+            "lte": 9
+          },
+          "dim_cohort.years_followed": {
+            "gte": 9
+          }
+        },
+        "order_by": [
+          "-housing_share"
+        ],
+        "limit": 1
+      }
+    },
+    "ten_best": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_cohort_path",
+        "measures": [
+          "housing_share"
+        ],
+        "dimensions": [
+          "dim_cohort.purchase_year"
+        ],
+        "filters": {
+          "dim_held.years_owned": {
+            "lte": 9
+          },
+          "dim_cohort.years_followed": {
+            "gte": 9
+          }
+        },
+        "order_by": [
+          "housing_share"
         ],
         "limit": 1
       }

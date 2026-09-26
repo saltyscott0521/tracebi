@@ -8,7 +8,7 @@ Two facts over one year dimension:
   (``payment``: principal, interest, property tax, insurance).
 * ``fact_cohort_path`` — one row per buyer per year owned (up to ten): what
   that year's buyer was paying, after any refinance, against that later
-  year's income. ``dim_cohort.bought`` is the purchase year and
+  year's income. ``dim_cohort.purchase_year`` is the purchase year and
   ``dim_held.years_owned`` how long they had owned it.
 
 Across several years the plain measures are simple means; every share is a
@@ -41,7 +41,7 @@ model = (
     .add_dimension("dim_year", table_name="dim_year", key_col="year_id",
                    attributes=["year", "decade"])
     .add_dimension("dim_cohort", table_name="dim_cohort", key_col="cohort_id",
-                   attributes=["bought"])
+                   attributes=["purchase_year", "years_followed"])
     .add_dimension("dim_held", table_name="dim_held", key_col="held_id",
                    attributes=["years_owned"])
     .add_fact("fact_housing", table_name="fact_housing",
@@ -49,7 +49,7 @@ model = (
                         "median_income", "earner_income", "payment", "entry_cost"],
               foreign_keys={"dim_year": "year_id"})
     .add_fact("fact_cohort_path", table_name="fact_cohort_path",
-              measures=["annual_payment", "median_income", "rate_held"],
+              measures=["annual_payment", "outlay", "median_income", "rate_held"],
               foreign_keys={"dim_year": "year_id", "dim_cohort": "cohort_id",
                             "dim_held": "held_id"})
     # One row per year, so per year this is that year's published average.
@@ -106,6 +106,16 @@ model = (
     # On fact_cohort_path the same payment_share reads a buyer's payment in a
     # later year against THAT year's income, so rising incomes and refinances
     # both show.
+    # The one number: cash to close plus every payment, over the income
+    # earned in the same years. Query it with dim_held.years_owned <= 9 and
+    # dim_cohort.years_followed >= 9 for the first ten years of buyers who
+    # have had ten.
+    .add_measure("outlay_total", column="outlay", agg="sum",
+                 description="Cash to close plus payments, summed")
+    .add_measure("housing_share", ratio=("outlay_total", "income_total"),
+                 description="Cash to close plus every payment, as a share of "
+                             "the household income earned over the same years",
+                 format="percent")
     .add_measure("rate_held", column="rate_held", agg="mean",
                  description="The rate the buyer holds that year, after any "
                              "refinance", format="decimal", allow_rate_agg=True)

@@ -16,3 +16,8 @@
   peak) against the latest full year, in place of 1985 against 2023. The calculator adds closing costs, property
   tax and insurance. A "What this leaves out" list names the limits:
   national medians, flat tax and insurance rates, no projection.
+- One number up top: each buyer's cash to close plus ten years of payments,
+  as a share of the income earned over those ten years — a receipted figure
+  for every buyer with ten real years (1979–2016). Today's buyer appears
+  only as a labeled projection whose assumptions (refinance rate, income and
+  home-value growth) the reader sets; it is never a figure.

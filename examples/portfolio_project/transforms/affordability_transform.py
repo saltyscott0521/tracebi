@@ -21,7 +21,9 @@
 # the same in every year, so no era is flattered by a different assumption.
 # A buyer refinances the remaining balance, over the remaining term, in any
 # later year whose average rate is at least a full point below the rate they
-# hold; refinancing costs are left out.
+# hold; refinancing costs are left out. A buyer's ten-year share adds the cash
+# to close to the first ten years of payments, over the first ten years of
+# median household income.
 #
 #     python transforms/affordability_transform.py
 #
@@ -89,6 +91,10 @@ def cohort_path(df: pd.DataFrame, buy_year: int) -> list[dict]:
             "rate_held": round(float(rate), 2), "balance": round(float(balance), 2),
             "payment": round(float(payment), 2),
             "annual_payment": round(float(payment) * 12, 2),
+            # What housing took out of pocket that year: the payments, plus
+            # the cash to close in the year of purchase.
+            "outlay": round(float(payment) * 12 + (
+                price * (DOWN_PAYMENT + CLOSING_COSTS) if year == buy_year else 0), 2),
             "median_income": int(by_year.at[year, "median_income"]),
         })
     return rows
@@ -121,7 +127,11 @@ def run() -> dict:
                "annual_pi", "entry_cost"]].rename(columns={"year": "year_id"})
 
     path = pd.DataFrame([row for year in df["year"] for row in cohort_path(df, int(year))])
-    dim_cohort = pd.DataFrame({"cohort_id": df["year"], "bought": df["year"]})
+    # years_followed: how many years after purchase the data reaches, so a
+    # ten-year figure only ever counts buyers with ten real years.
+    dim_cohort = (path.groupby("cohort_id", as_index=False)["held_id"].max()
+                  .rename(columns={"held_id": "years_followed"}))
+    dim_cohort.insert(1, "purchase_year", dim_cohort["cohort_id"])
     dim_held = pd.DataFrame({"held_id": range(PATH_YEARS + 1),
                              "years_owned": range(PATH_YEARS + 1)})
 
@@ -152,7 +162,7 @@ def run() -> dict:
         c.not_null("fact_housing", ["year_id", "mortgage_rate", "existing_price",
                                     "median_income", "earner_income", "payment",
                                     "entry_cost"])
-        c.not_null("fact_cohort_path", ["cohort_id", "year_id", "annual_payment",
+        c.not_null("fact_cohort_path", ["cohort_id", "year_id", "annual_payment", "outlay",
                                         "median_income"])
         c.foreign_key("fact_housing", "year_id", refers_to=("dim_year", "year_id"))
         c.foreign_key("fact_cohort_path", "year_id", refers_to=("dim_year", "year_id"))

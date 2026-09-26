@@ -225,3 +225,12 @@ body {
 .mp-chart-card--wide { margin-bottom: 20px; }
 .mp-chart--tall { height: 340px; }
 @media print { .mp-harder { background: none; outline: 1px solid #9a3b26; } }
+
+/* The one number: three cards, the projection set apart as a projection. */
+.mp-kpis--three { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.mp-projection { margin-top: 20px; border-style: dashed; }
+.mp-projection-note { font-size: 13px; color: var(--tb-muted, #6b6b5e); max-width: 70ch; margin: 0 0 12px; }
+.mp-more { margin: 8px 0; }
+.mp-more summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--mp-green-9); }
+.mp-more label { margin-top: 8px; }
+.mp-result-big output { font-size: 26px; font-weight: 700; }
