@@ -29,8 +29,10 @@ def test_housing_report_builds_and_verifies(tmp_path):
     assert [s["name"] for s in manifest["scenarios"]] == ["then", "now"]
     assert all(s["verifiable"] is False for s in manifest["scenarios"])
     ids = {f["id"] for f in manifest["figures"]}
-    assert {"chart-rate", "chart-price-income", "chart-payment",
-            "chart-share", "kpi-then-share", "kpi-now-share"} <= ids
+    assert {"chart-two-tests", "chart-paths", "chart-rate", "chart-price-income",
+            "vs-entry-then", "vs-entry-now", "vs-pay-then", "vs-pay-now",
+            "vs-later-then", "vs-later-now", "pk-pay-then", "pk-later",
+            "tbl-compare"} <= ids
     assert not any(i.startswith("calc-") for i in ids), \
         "a scenario output must never be recorded as a figure"
 

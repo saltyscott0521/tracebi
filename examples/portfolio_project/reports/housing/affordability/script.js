@@ -66,11 +66,42 @@ tracebi.ready(function () {
     });
   }
 
+  chart("chart-two-tests", [
+    line("Getting in (cash to close)", GOLD, pct, "entry_share"),
+    line("Full payment, per household", GREEN, pct, "payment_share"),
+    line("Full payment, one earner", SLATE, pct)
+  ], pct, true);
   chart("chart-rate", [line("Rate", SLATE, rate, "mortgage_rate")], rate);
   chart("chart-price-income", [
-    line("Median home price", GREEN, money),
-    line("Median household income", GOLD, money)
+    line("Existing home", GREEN, money),
+    line("Houses sold (mostly new)", "#8fae9b", money),
+    line("Household income", GOLD, money),
+    line("One earner", "#c9a44c", money)
   ], money, true);
-  chart("chart-payment", [line("Monthly payment", GREEN, money)], money);
-  chart("chart-share", [line("Share of income", GREEN, pct, "payment_share")], pct);
+  /* One line per buyer: the runtime splits the series by purchase year; this
+   * only restyles the axes and tooltip. */
+  tracebi.configureChart("chart-paths", {
+    grid: { left: 8, right: 24, top: 40, bottom: 8, containLabel: true },
+    legend: { top: 0, left: 0, textStyle: { color: INK } },
+    tooltip: { trigger: "axis", valueFormatter: pct },
+    color: ["#b5523b", GOLD, SLATE, GREEN],
+    xAxis: { name: "years owned", nameLocation: "middle", nameGap: 26,
+             boundaryGap: false, axisLine: { lineStyle: { color: "#cfc8b6" } } },
+    yAxis: { splitLine: { lineStyle: { color: "#ece6d6", type: "dashed" } } }
+  });
+
+  /* The verdict on each side-by-side card: mark the row whose stamped share
+   * is larger as the harder one. A comparison of two numbers already on the
+   * page — it never computes a new one. */
+  function stamped(el) {
+    var row = tracebi.data(el.getAttribute("data-tb-binding"))[0];
+    return row ? Number(row[el.getAttribute("data-tb-cell")]) : NaN;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-mp-vs]"), function (card) {
+    var a = card.querySelector('[data-tb-vs="a"] strong');
+    var b = card.querySelector('[data-tb-vs="b"] strong');
+    var va = stamped(a), vb = stamped(b);
+    if (!isFinite(va) || !isFinite(vb) || va === vb) return;
+    (va > vb ? a : b).parentNode.classList.add("mp-harder");
+  });
 });

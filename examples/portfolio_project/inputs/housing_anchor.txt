@@ -1,0 +1,1 @@
+existing_price = FHFA USSTHPI x 584.2313: NAR HOSMEDUSM052N averaged $416,783 over Sep 2025-Aug 2026; the index averaged 713.39.

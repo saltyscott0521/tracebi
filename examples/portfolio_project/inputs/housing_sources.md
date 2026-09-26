@@ -1,36 +1,39 @@
 # Where `housing_history.csv` comes from
 
-One row per year, 1971 through 2023, in current (not inflation-adjusted)
-dollars.
+One row per year, 1979 through the latest complete year, in current (not
+inflation-adjusted) dollars. `python inputs/fetch_housing.py` rebuilds it from
+the publishers; nothing is typed in by hand.
 
 | Column | Series | Publisher |
 | --- | --- | --- |
-| `mortgage_rate` | 30-year fixed-rate mortgage average, annual mean of the weekly survey, in percent | Freddie Mac Primary Mortgage Market Survey (FRED `MORTGAGE30US`) |
-| `median_price` | Median sales price of houses sold, annual mean of the quarterly series | U.S. Census Bureau and HUD (FRED `MSPUS`) |
-| `median_income` | Median household income, current dollars | U.S. Census Bureau, CPS ASEC table H-8 (FRED `MEHOINUSA646N` from 1984) |
+| `mortgage_rate` | 30-year fixed-rate average, annual mean of the weekly survey, percent | Freddie Mac PMMS (FRED `MORTGAGE30US`) |
+| `existing_price` | Existing-home price level: the FHFA all-transactions repeat-sales index scaled to NAR's median existing-home price over the latest twelve months | FHFA (FRED `USSTHPI`) + NAR (FRED `HOSMEDUSM052N`) |
+| `new_home_price` | Median sales price of houses sold — mostly new construction | Census/HUD (FRED `MSPUS`) |
+| `median_income` | Median household income, current dollars | Census CPS ASEC table H-5 (all races) |
+| `earner_income` | Median usual weekly earnings of full-time wage and salary workers × 52 | BLS (FRED `LEU0252881500A`) |
 
-## The committed file is a snapshot. Refresh it before you cite it
+`housing_anchor.txt` records the scale that turned the index into dollars on
+the last refresh.
 
-The committed CSV was typed in from the published annual tables while the
-build machine had no network access. Treat it as close, not exact. On a
-machine that can reach FRED, run:
+## Why these series
 
-```bash
-python inputs/fetch_housing.py
-```
+- **Existing homes, not `MSPUS`.** `MSPUS` is mostly new houses, which are
+  bigger and pricier than the stock most people buy, and the mix has shifted.
+  FRED carries NAR's existing-home median for the latest thirteen months only,
+  so the price level comes from a repeat-sales index (the same homes over
+  time) anchored to NAR. It lands within a few percent of NAR's own published
+  annual medians — an estimate, and the report says so.
+- **One earner as well as the household.** Far more households have two
+  earners than in the early eighties, so the household median flatters the
+  present. The per-earner share shows the other side.
+- **Starts in 1979** because the per-earner series does; that still includes
+  the 1981 rate peak.
 
-That rewrites `housing_history.csv` from the official series (rate, price,
-and income from 1984 on). Then rerun `python transforms/affordability_transform.py`. The FRED income series
-starts in 1984, so the script keeps the snapshot's earlier income years and
-says so as it runs.
+## What the transform assumes
 
-Two things to know when comparing eras:
-
-- **Annual averages differ from the numbers people remember.** Rates peaked
-  well above the 1985 annual average, and in 2023 they peaked in October,
-  above that year's average. The report plots the averages. The scenario
-  lets you type in any rate you remember.
-- **`median_price` is for new and existing houses sold as tracked by
-  Census/HUD (`MSPUS`), which runs higher than existing-home medians from
-  the National Association of Realtors.** Pick one series and keep it. The
-  comparison is only fair within a series.
+20% down (so no mortgage insurance), closing costs 3% of price, a 30-year
+fixed loan at the year's average rate, property tax 1.1% and insurance 0.35%
+of the home's value a year — the same in every year. Each year's buyer is
+followed for up to ten years, refinancing the remaining balance when a later
+year's average rate is a full point lower; refinancing costs are left out.
+The figures are national medians and hide metro differences.

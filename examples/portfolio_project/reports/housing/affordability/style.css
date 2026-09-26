@@ -200,3 +200,28 @@ body {
   background: var(--mp-gold-1); border-left: 4px solid var(--mp-gold);
   font-size: 13px;
 }
+
+/* Side-by-side cards: two rows, the harder one marked. */
+.mp-vs-hint { font-size: 12px; color: var(--tb-muted, #6b6b5e); line-height: 1.4; margin: 2px 0 8px; }
+.mp-vs-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 6px 8px; border-radius: 6px;
+}
+.mp-vs-row strong { font-size: 22px; font-variant-numeric: tabular-nums; color: var(--mp-green-9); }
+.mp-vs-year { font-size: 13px; white-space: nowrap; color: var(--tb-muted, #6b6b5e); }
+.mp-harder { background: #fbe9e4; }
+.mp-harder strong { color: #9a3b26; }
+.mp-harder .mp-vs-year::after {
+  content: "harder"; margin-left: 8px; font-size: 11px; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase; color: #9a3b26;
+}
+.mp-vs-row--unknown strong { font-size: 14px; font-weight: 500; color: var(--tb-muted, #6b6b5e); }
+.mp-conclusion {
+  margin-top: 18px; padding: 18px 20px; border-radius: 10px;
+  background: #f3f7f1; border: 1px solid #d3e6da;
+}
+.mp-conclusion h3 { margin: 0 0 8px; color: var(--mp-green-9); }
+.mp-conclusion p { margin: 6px 0; max-width: 70ch; }
+.mp-chart-card--wide { margin-bottom: 20px; }
+.mp-chart--tall { height: 340px; }
+@media print { .mp-harder { background: none; outline: 1px solid #9a3b26; } }
