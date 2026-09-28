@@ -99,6 +99,30 @@ def test_every_design_lesson_reaches_the_designer_skill_and_both_guides():
         "the scaffolded AGENTS.md never points at the design lessons")
 
 
+def test_every_measure_kind_and_aggregation_is_in_the_vocabulary():
+    """A feature the vocabulary doesn't publish effectively doesn't exist for
+    an agent. Derived from the code, so a new measure kind or aggregation
+    that isn't documented fails here instead of per-feature look-alikes."""
+    import inspect
+
+    from tracebi.capabilities import describe
+    from tracebi.model.data_model import _AGG_FUNCS, DataModel
+
+    sm = describe()["semantic_model"]
+    published = {k["kind"] for k in sm["measure_kinds"]}
+    renamed = {"column": "simple", "expr": "expression"}
+    params = inspect.signature(DataModel.add_measure).parameters
+    kinds = {renamed.get(p, p) for p in params
+             if p in ("column", "expr", "ratio", "share", "rank", "running",
+                      "period_end", "offset", "growth", "to_date")}
+    assert len(kinds) == 10, "a measure kind was added: list it above"
+    assert kinds <= published, f"undocumented measure kinds: {kinds - published}"
+    assert set(_AGG_FUNCS) <= set(sm["aggregations"])
+    assert any("percentile" in a for a in sm["aggregations"])
+    assert "add_value_bins" in sm["value_bins"]["declare"]
+    assert "or" in str(sm["filter_forms"])
+
+
 def test_reference_model_obeys_the_weighted_mean_lesson():
     """The 'would the agent do the analysis RIGHT' rot-guard the map asked for.
     A measure declared agg='mean' but described 'weighted' is the exact silent-
@@ -316,20 +340,6 @@ class TestDistributionAggregations:
         assert 11 <= row["median_pnl"] <= 12   # the honest centre
         assert row["stddev_pnl"] > 100      # the spread flags the skew
 
-    def test_distribution_aggs_are_deterministic(self):
-        m = self._model()
-        assert self._run(m).equals(self._run(m))
-
-    def test_median_and_stddev_are_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        aggs = describe()["semantic_model"]["aggregations"]
-        assert "median" in aggs and "stddev" in aggs
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        assert get_lesson("summarize-a-distribution") is not None
-        slugs = {ls["slug"] for ls in index()}
-        assert "summarize-a-distribution" in slugs
-
     def test_median_of_a_rate_is_not_refused(self):
         # The rate guard targets ADDITIVE aggs (sum/mean); a median or stddev of
         # a rate is a legitimate summary and must stay allowed.
@@ -374,12 +384,6 @@ class TestPercentiles:
         assert adhoc["p95"].iloc[0] == np.percentile(vals, 95)
         assert adhoc["p99"].iloc[0] == np.percentile(vals, 99)
 
-    def test_percentiles_are_deterministic(self):
-        m = self._model()
-        a = m.query(fact="fact", measures=["p90_mark"])
-        b = m.query(fact="fact", measures=["p90_mark"])
-        assert a.fingerprint() == b.fingerprint()
-
     def test_out_of_range_percentile_is_refused(self):
         import pytest
         from tracebi import DataModel
@@ -391,19 +395,6 @@ class TestPercentiles:
         from tracebi import DataModel
         with pytest.raises(ValueError, match="unsupported aggregation"):
             DataModel("t").add_measure("bad", column="x", agg="pinky")
-
-    def test_percentiles_are_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        aggs = describe()["semantic_model"]["aggregations"]
-        assert any("percentile" in str(a) for a in aggs)
-        note = describe()["semantic_model"]["aggregations_note"]
-        assert "p50" in note and "tail" in note
-
-    def test_the_lesson_teaches_percentiles(self):
-        lesson = get_lesson("summarize-a-distribution")
-        assert lesson is not None
-        assert "p90" in lesson.body and 'agg="p99"' in lesson.body
-
 
 # ── Share-of-total: a report.py computation pulled into the governed lane ──────
 
@@ -439,31 +430,11 @@ class TestShareMeasure:
         assert df.loc["East", "revenue_share"] == 0.3
         assert round(df["revenue_share"].sum(), 6) == 1.0
 
-    def test_share_is_deterministic_and_a_known_result_column(self):
-        m = self._model()
-        assert self._run(m).fingerprint() == self._run(m).fingerprint()
-        from tracebi.model.data_model import QuerySpec
-        cols = m.spec_result_columns(QuerySpec.from_dict(
-            {"fact": "f", "measures": ["revenue", "revenue_share"],
-             "dimensions": ["dim_region.region"]}))
-        assert "revenue_share" in cols
-
     def test_share_takes_no_agg(self):
         import pytest
         from tracebi import DataModel
         with pytest.raises(ValueError, match="take no agg"):
             DataModel("t").add_measure("s", share="revenue", agg="sum")
-
-    def test_share_is_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
-        assert "share" in kinds
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "share-of-total" in slugs
-        assert get_lesson("share-of-total") is not None
-
 
 class TestRankAndRunning:
     def _model(self):
@@ -512,17 +483,6 @@ class TestRankAndRunning:
         for kw in ({"rank": "revenue"}, {"running": "revenue"}):
             with pytest.raises(ValueError, match="take no agg"):
                 DataModel("t").add_measure("w", agg="sum", **kw)
-
-    def test_rank_and_running_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
-        assert {"rank", "running"} <= kinds
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "rank-and-cumulative" in slugs
-        assert get_lesson("rank-and-cumulative") is not None
-
 
 class TestPerGroupTopN:
     """A partitioned rank restarts per group; with a having on it, that is
@@ -608,11 +568,6 @@ class TestPerGroupTopN:
         assert "partition_by" in kinds["rank"]["args"]
         assert "top-n-per-group" in kinds["rank"]["note"].lower()
 
-    def test_the_lesson_teaches_top_n_per_group(self):
-        body = get_lesson("rank-and-cumulative").body
-        assert "partition_by" in body and "top 3 per sector" in body.lower()
-
-
 class TestTimeGrain:
     def _model(self):
         import pandas as pd
@@ -643,10 +598,6 @@ class TestTimeGrain:
         df = self._by_month(self._model()).to_pandas()
         assert df["revenue"].tolist() == [300.0, 300.0, 400.0]   # Jan/Feb/Mar
 
-    def test_time_grain_is_deterministic(self):
-        m = self._model()
-        assert self._by_month(m).fingerprint() == self._by_month(m).fingerprint()
-
     def test_bad_grain_is_refused(self):
         import pytest
         m = self._model()
@@ -658,12 +609,6 @@ class TestTimeGrain:
         dim = next(d for d in info["dimensions"] if d["name"] == "dim_date")
         assert dim["derived"]["order_month"] == {
             "kind": "date_trunc", "of": "order_date", "grain": "month"}
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "group-by-time" in slugs
-        assert get_lesson("group-by-time") is not None
-
 
 class TestValueBins:
     """Value bins: group by a BAND of a numeric dimension column — a governed
@@ -717,14 +662,6 @@ class TestValueBins:
         assert got["subprime"] == 30.0     # 10 + 20
         assert got["prime"] == 120.0       # 30 + 40 + 50 (720,830,700)
 
-    def test_bins_are_deterministic(self):
-        m = self._model()
-        a = m.query(fact="fact", measures=["total"],
-                    dimensions=["dim_customer.score_band"])
-        b = m.query(fact="fact", measures=["total"],
-                    dimensions=["dim_customer.score_band"])
-        assert a.fingerprint() == b.fingerprint()
-
     def test_edges_must_be_increasing_and_nonempty(self):
         import pytest
         from tracebi import DataModel, MemoryConnector
@@ -747,17 +684,6 @@ class TestValueBins:
         band = dim["derived"]["score_band"]
         assert band["kind"] == "bin" and band["of"] == "score"
         assert band["bands"] == ["< 600", "600–700", "700–800", "≥ 800"]
-
-    def test_bins_are_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        vb = describe()["semantic_model"]["value_bins"]
-        assert "add_value_bins" in vb["declare"]
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "group-by-band" in slugs
-        assert get_lesson("group-by-band") is not None
-
 
 class TestSemiAdditive:
     """period_end (semi-additive) measures: sum a stock across dimensions but
@@ -821,12 +747,6 @@ class TestSemiAdditive:
         df = self._q(self._model(), filters={"dim_fund.fund": "Alpha"})
         assert df["aum"].iloc[0] == 180.0
 
-    def test_period_end_is_deterministic(self):
-        m = self._model()
-        a = m.query(fact="fact", measures=["aum"], dimensions=["dim_fund.fund"])
-        b = m.query(fact="fact", measures=["aum"], dimensions=["dim_fund.fund"])
-        assert a.fingerprint() == b.fingerprint()
-
     def test_a_ratio_can_reference_a_period_end_measure(self):
         m = self._model()
         m.add_measure("cost_basis", column="balance", agg="sum",
@@ -858,17 +778,6 @@ class TestSemiAdditive:
         with pytest.raises(ValueError, match="aggregate=False"):
             m.execute(QuerySpec.from_dict(
                 {"fact": "fact", "measures": ["aum"], "aggregate": False}))
-
-    def test_period_end_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
-        assert "period_end" in kinds
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "semi-additive" in slugs
-        assert get_lesson("semi-additive") is not None
-
 
 class TestStockSumGuard:
     """Summing a stock-named measure double-counts across snapshots — refused
@@ -970,13 +879,6 @@ class TestBooleanOrFilters:
                                     {"and": [{"dim.sector": "Tech"},
                                              {"dim.rating": "BBB"}]}]}) == 3
 
-    def test_or_is_deterministic(self):
-        m = self._model()
-        f = {"or": [{"dim.rating": "AAA"}, {"amt": {"gte": 40}}]}
-        a = m.query(fact="fact", measures=["n"], dimensions=["dim.sector"], filters=f)
-        b = m.query(fact="fact", measures=["n"], dimensions=["dim.sector"], filters=f)
-        assert a.fingerprint() == b.fingerprint()
-
     def test_malformed_or_groups_are_refused(self):
         import pytest
         m = self._model()
@@ -998,17 +900,6 @@ class TestBooleanOrFilters:
             "fact": "fact", "measures": ["n"],
             "filters": {"or": [{"dim.sector": "Tech"}, {"dim.nope": "x"}]}}))
         assert any("nope" in e[1] for e in errs)
-
-    def test_or_is_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        forms = str(describe()["semantic_model"]["filter_forms"])
-        assert "'or'" in forms or '"or"' in forms
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "boolean-or-filters" in slugs
-        assert get_lesson("boolean-or-filters") is not None
-
 
 class TestPeriodOverPeriod:
     """offset/growth measures: year-over-year and friends as governed measures
@@ -1075,14 +966,6 @@ class TestPeriodOverPeriod:
                      order_by=["-dim_date.month"], limit=1).to_pandas()
         assert df["rev_yoy"].iloc[0] == (2500.0 - 1300.0) / 1300.0   # 2024-03
 
-    def test_pop_is_deterministic(self):
-        m = self._model()
-        a = m.query(fact="fact", measures=["revenue", "rev_yoy"],
-                    dimensions=["dim_date.month"])
-        b = m.query(fact="fact", measures=["revenue", "rev_yoy"],
-                    dimensions=["dim_date.month"])
-        assert a.fingerprint() == b.fingerprint()
-
     def test_needs_a_time_grain_in_the_query(self):
         import pytest
         m = self._model()
@@ -1105,17 +988,6 @@ class TestPeriodOverPeriod:
             DataModel("t").add_measure("x", offset=("revenue", "fortnight", 1))
         with pytest.raises(ValueError, match="positive integer"):
             DataModel("t").add_measure("x", growth=("revenue", "year", 0))
-
-    def test_pop_kinds_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
-        assert {"offset", "growth"} <= kinds
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "period-over-period" in slugs
-        assert get_lesson("period-over-period") is not None
-
 
 class TestToDate:
     """to_date measures: YTD/QTD as governed cumulatives that reset on a period
@@ -1164,14 +1036,6 @@ class TestToDate:
         assert df.loc["2023-03", "rev_qtd"] == 300.0    # end of Q1
         assert df.loc["2023-04", "rev_qtd"] == 100.0    # start of Q2
 
-    def test_to_date_is_deterministic(self):
-        m = self._model()
-        a = m.query(fact="fact", measures=["revenue", "rev_ytd"],
-                    dimensions=["dim_date.month"])
-        b = m.query(fact="fact", measures=["revenue", "rev_ytd"],
-                    dimensions=["dim_date.month"])
-        assert a.fingerprint() == b.fingerprint()
-
     def test_reset_period_must_be_coarser_than_the_grain(self):
         import pytest
         m = self._model()
@@ -1199,13 +1063,3 @@ class TestToDate:
         from tracebi import DataModel
         with pytest.raises(ValueError, match="not.*supported|period"):
             DataModel("t").add_measure("x", to_date=("revenue", "fortnight"))
-
-    def test_to_date_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        kinds = {k["kind"] for k in describe()["semantic_model"]["measure_kinds"]}
-        assert "to_date" in kinds
-
-    def test_the_lesson_exists_and_is_delivered(self):
-        slugs = {ls["slug"] for ls in index()}
-        assert "year-to-date" in slugs
-        assert get_lesson("year-to-date") is not None

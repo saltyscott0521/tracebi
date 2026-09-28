@@ -35,9 +35,6 @@ class TestParseScheduleBlock:
                        "to": ["a@x.com", "b@x.com"],
                        "refresh": {"transforms": [], "pipelines": []}}
 
-    def test_recipients_are_optional(self):
-        assert sched.parse_schedule_block({"cron": "0 9 * * *"}, path="r")["to"] == []
-
     @pytest.mark.parametrize("raw, fragment", [
         ("0 9 * * MON", "must be an object"),
         ({"cron": "0 9 * *"}, "five-field cron"),
@@ -114,9 +111,6 @@ class TestDiscovery:
         assert schedules == [{"report": "sample_dashboard", **SCHEDULE,
                               "refresh": {"transforms": [], "pipelines": []}}]
 
-    def test_unscheduled_project_has_none(self, project):
-        assert sched.discover_schedules(project / "reports") == ([], [])
-
     def test_broken_block_is_an_error_entry_not_a_crash(self, scheduled):
         rj = scheduled / "reports" / "sample_dashboard" / "report.json"
         decl = json.loads(rj.read_text())
@@ -129,34 +123,6 @@ class TestDiscovery:
 
 
 class TestScheduleRun:
-    def test_list_names_the_schedule(self, scheduled):
-        out = _run(["schedule", "list"], scheduled)
-        assert out.returncode == 0, out.stderr
-        assert "sample_dashboard" in out.stdout
-        assert "America/New_York" in out.stdout
-        assert "cfo@example.com" in out.stdout
-
-    def test_no_send_builds_and_records(self, scheduled):
-        out = _run(["schedule", "run", "sample_dashboard", "--no-send"],
-                   scheduled, _STUB_SEND)
-        assert out.returncode == 0, out.stderr
-        assert not (scheduled / "sent.json").exists()
-        assert (scheduled / "output" / "sample_dashboard.html").is_file()
-        [rec] = _runs(scheduled)
-        assert rec["status"] == sched.BUILT
-        assert rec["verdict"] == "reproduces"
-        assert rec["actor_role"] == "cli"
-
-    def test_run_delivers_to_the_declared_recipients(self, scheduled):
-        out = _run(["schedule", "run", "sample_dashboard"],
-                   scheduled, _STUB_SEND)
-        assert out.returncode == 0, out.stderr
-        sent = json.loads((scheduled / "sent.json").read_text())
-        assert sent["to"] == ["cfo@example.com"]
-        [rec] = _runs(scheduled)
-        assert rec["status"] == sched.DELIVERED
-        assert rec["recipients"] == ["cfo@example.com"]
-
     def test_a_receipt_that_does_not_verify_is_refused_and_not_sent(self, scheduled):
         out = _run(["schedule", "run", "sample_dashboard"],
                    scheduled, _STUB_SEND + _FAIL_VERIFY)
@@ -170,13 +136,6 @@ class TestScheduleRun:
         out = _run(["schedule", "run", "sample_dashboard"], project)
         assert out.returncode == 1
         assert "no schedule block" in out.stderr
-
-    def test_last_run_shows_in_list(self, scheduled):
-        _run(["schedule", "run", "sample_dashboard", "--no-send"], scheduled)
-        out = _run(["schedule", "list", "--json"], scheduled)
-        [entry] = json.loads(out.stdout)
-        assert entry["last_run"]["status"] == sched.BUILT
-
 
 def _kpi_orders(proj: Path) -> int:
     import csv as _csv
@@ -369,10 +328,6 @@ def test_last_runs_skips_a_broken_line(tmp_path):
         last,
     )
     assert sched.last_runs(tmp_path / "missing") == {}
-
-
-def test_discover_on_a_missing_directory_is_empty(tmp_path):
-    assert sched.discover_schedules(tmp_path / "nope") == ([], [])
 
 
 def test_an_empty_timezone_is_refused():

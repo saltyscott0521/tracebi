@@ -75,9 +75,58 @@ and report it in the build output rather than failing a test.
 a line to `tracebi report build` output ("report.html: 862 KB") and let people
 decide.
 
+## End-to-end first, 2026-09-28
+
+The first two passes removed tests that pinned *presentation*. This one went
+after *volume*: the suite had grown the way generated suites do — hundreds of
+tiny tests (a third were four lines or fewer), look-alikes that differ only in
+the input, asserts on private fields, and "it didn't raise" or "the text
+appears" checks — while only a handful of tests used the product the way a
+person does.
+
+**Added: seven journeys in `tests/e2e/`**, each driving the real entry points
+in-process (so coverage sees them) against a project on disk:
+
+| Journey | What it walks |
+| --- | --- |
+| analyst | `init` → `run-transform` → `validate` → `report build` → `verify --strict --contracts` → `verify --file`; then a number edited in the file, and the warehouse changing under the report |
+| reference project | both transforms, then every report in `examples/portfolio_project` builds, reproduces and is intact; the showcase's affordances; a control recomputing on the model; the housing scenario never receipted |
+| web | the app over a live-discovered project: status, report list, run, background run, built page, share link, HTML/XLSX download, source, lineage, model browser, an Explore query and its error |
+| agent | the MCP tools: context → models → a stamped query → validate (wrong, then right) → render → verify → build → fetch; the path guards |
+| schedule | a `schedule` block → `schedule run` builds, verifies, emails (only smtplib faked) and records; no mail server says what to set |
+| pipeline | `new-pipeline`, filled in, run from the CLI and the Refresh API, history read back |
+| author | `tracebi dev` on a spare port: preview, workbench state, a pin left and resolved from the CLI; status; the review snapshot verify refuses |
+
+**Removed: 247 tests net** (1,524 test functions → 1,277 unit tests plus 21
+end-to-end tests; 1,602 collected cases → 1,381) — the journeys' duplicates (`test_showcase.py` and
+`test_housing_report.py` went whole), look-alikes, private-field and repr
+checks, weak assertions, and restated defaults. Look-alike vocabulary and
+"lesson exists" tests for nine analytics features became one test that
+derives the measure kinds and aggregations from the code.
+
+**Coverage went up, 85% → 86%** (11,029 → 11,242 lines), because the journeys
+reach code no unit test did. What the old suite covered and the new one
+doesn't is deliberate: `__repr__`, `describe()` and `print_lineage()` (notebook
+print helpers), and the legacy renderer's colour scale and cell styling —
+presentation, per the rule above.
+
+**It found two real bugs.** The dev server's file watcher never stopped when
+the server did (its stop event was never set); a test that ran after it in the
+same process saw the old watcher open the new project's warehouse. And
+`TestPipelineRunEndpoint` only isolated itself if the router hadn't been
+imported yet — the no-op-isolation trap CLAUDE.md describes; it now swaps the
+router's own binding.
+
 ## The rule for new tests
 
 Before adding a test, answer: *what bug would this catch?* If the answer is
-"someone changed a colour, a size, or a sentence", don't add it. See
+"someone changed a colour, a size, or a sentence", don't add it.
+
+Prefer a step in a journey (`tests/e2e/`) over a new unit test. Write a unit
+test when a journey can't pin the thing precisely: query semantics,
+Python/JavaScript formatting parity, fingerprints and verify verdicts,
+contracts, security, the honesty rules. Never a look-alike (parametrize, or
+pick the one case that matters), never an assert on a private field, never
+"it didn't raise" or "the string appears" on its own. See
 [[pitfalls]] for the bugs that did happen, and the checks that would have
 caught them.

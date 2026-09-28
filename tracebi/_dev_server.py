@@ -1366,6 +1366,7 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
     lock = threading.Lock()
     wb_cache: dict = {}
     wb_page = _workbench_page(t.label) if t.workbench else ""
+    stop = threading.Event()   # set when the server stops, so the watcher ends with it
 
     def watch():
         # Discovery liveness: the heartbeat is what lets a script's show()
@@ -1374,7 +1375,6 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
         if t.discovery:
             _wb.heartbeat(t.wb_dir)
         last_sig = _scan_signature(t.watch_paths())
-        stop = threading.Event()
         while not stop.wait(poll_interval):
             if t.discovery:
                 _wb.heartbeat(t.wb_dir)
@@ -1503,5 +1503,6 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
     except KeyboardInterrupt:
         print("\n  Dev server stopped.")
     finally:
+        stop.set()
         server.server_close()
     return 0

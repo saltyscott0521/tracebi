@@ -55,7 +55,7 @@ When your changes create orphans:
 
 The test: every changed line should trace directly to the user's request.
 
-TraceBi-specific: the test files are phase-scoped (`test_phase1.py`, `test_phase2.py`, `test_phase25.py`, `test_phase4.py`, `test_phase5.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies.
+TraceBi-specific: the test files are phase-scoped (`test_phase1.py`, `test_phase2.py`, `test_phase25.py`, `test_phase4.py`, `test_phase5.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies. End-to-end journeys live in `tests/e2e/` (their own `conftest.py` gives each journey a fresh project and registries) — see the testing rule below.
 
 ---
 
@@ -76,6 +76,16 @@ For multi-step tasks, state a brief plan:
 ```
 
 Run `pytest tests/` before and after any change. A passing suite is the minimum bar.
+
+**Prefer end-to-end tests.** A new feature first gets a step in the journey
+that uses it (`tests/e2e/`: the analyst, reference-project, web, agent,
+schedule, pipeline and author journeys drive the real CLI, web app and MCP
+tools in-process, so coverage sees them). Add a unit test only for what a
+journey can't pin precisely: query semantics, number-formatting parity,
+fingerprints and verify verdicts, contracts, security, the honesty rules.
+Don't add look-alikes, tests of private fields, "it didn't raise" or
+"the string appears" checks. Before adding any test, answer *what bug would
+this catch?* — `docs/architecture/test-suite-review.md`.
 
 ---
 
@@ -195,7 +205,8 @@ web/
                        # directory named `web` in the wheel collided with the unrelated
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
-tests/                 # pytest suite (run `pytest tests/` for the current count), one file per area
+tests/                 # pytest suite (run `pytest tests/` for the current count), one file per area;
+                       #   tests/e2e/ holds the end-to-end journeys (preferred for new coverage)
 examples/
   portfolio_project/   # THE reference working project — a complete three-phase project
                        #   with the same shape `tracebi init` scaffolds:
@@ -446,7 +457,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 **3. Registry is populated by discovery, read at request time.**
 `tracebi/registry.py` holds the singleton (`from tracebi.registry import registry`). It lives in the library, not the web layer — the FastAPI app is one consumer, but so are the CLI, request scripts, and notebooks. Register all connectors, models, and reports in your app module (e.g. `tracebi/web/demo_app/`) during import. Never mutate the registry inside a FastAPI route handler. The one writer after startup is **live discovery** (`tracebi/web/discovery.py` `rescan` / `start_watcher`): a background thread started in the app lifespan that registers report packages, specs, model files and pipeline files added while the server runs, and forgets deleted reports, every `TRACEBI_DISCOVERY_INTERVAL` seconds. Python report modules in `reports/` stay startup-only (re-importing code on a timer re-runs its side effects); one that registers a report with no package is flagged in `/api/discovery` and `tracebi validate`, because it cannot render.
 
-`tracebi/web/api/registry.py` is a backward-compatible re-export of the same object. **Do not repoint the routers at `tracebi.registry` directly** — `tests/test_phase5.py::TestPipelineRunEndpoint::test_run_all_layers` isolates state by rebinding `tracebi.web.api.registry.registry` before the router under test is first imported, and routers bind at import time, so changing the import path silently breaks that isolation. If you ever do repoint them, convert that test in the same change — and check it fails when you break the rebind, because a suite that passes because isolation became a no-op looks exactly like a suite that passes.
+`tracebi/web/api/registry.py` is a backward-compatible re-export of the same object. Routers bind the registry at import time. `tests/test_phase5.py::TestPipelineRunEndpoint::test_run_all_layers` isolates state by swapping the pipelines router's own `registry` binding, so it holds whatever the import order (the web journeys import the app first). It used to rebind `tracebi.web.api.registry.registry` before the router's first import, which silently became a no-op once anything imported the app earlier. If you repoint the routers, keep that swap pointed at the binding the router actually reads — and check the test fails when you remove the swap, because a suite that passes because isolation became a no-op looks exactly like a suite that passes.
 
 **4. Optional dependencies must fail loudly.**
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.

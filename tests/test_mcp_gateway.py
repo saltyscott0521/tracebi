@@ -131,22 +131,12 @@ def test_preview_rows_is_clamped_to_the_hard_cap(gateway_model):
     assert out["rows_returned"] <= _ROW_HARD_CAP
 
 
-def test_response_is_json_serializable(gateway_model):
-    """numpy scalars and index types must not leak into the payload."""
-    out = _query()
-    json.dumps(out)  # raises TypeError on any non-JSON-safe value
-
-
 def test_filters_travel_through(gateway_model):
     out = _query(filters={"status": "shipped"}, dimensions=[])
     assert out["row_count"] == 1
     total = out["rows"][0]["revenue"]
     assert total == pytest.approx(100.0 + 75.0 + 300.0 + 50.0)
     assert out["query"]["filters"] == {"status": "shipped"}
-
-
-def test_query_success_carries_the_ok_envelope(gateway_model):
-    assert _query()["ok"] is True
 
 
 def test_query_returns_a_binding_stub(gateway_model):
@@ -200,21 +190,6 @@ def test_bare_string_measures_gets_a_readable_error(gateway_model):
 
 
 # ── Contract and schema ────────────────────────────────────────────────────
-
-def test_context_carries_the_vocabulary(gateway_model):
-    ctx = gateway_context()
-    assert "sections" in ctx or "report_sections" in ctx or ctx  # vocabulary present
-    with_model = gateway_context(model="gw_demo")
-    assert with_model["model"]["name"] == "gw_demo"
-
-
-def test_models_listing_includes_the_fixture(gateway_model):
-    listing = gateway_models()["models"]
-    assert "gw_demo" in listing
-    assert "total_revenue" in listing["gw_demo"]["measures"]
-    info = gateway_model_info("gw_demo")
-    assert info["name"] == "gw_demo"
-
 
 def test_list_models_reports_a_file_that_failed_to_load(tmp_path, monkeypatch):
     """One good model stays listed; the broken file is under skipped."""
@@ -301,11 +276,6 @@ def _spec(fact="fact_orders"):
     }
 
 
-def test_validate_accepts_a_good_spec(gateway_model):
-    result = gateway_validate_spec(_spec())
-    assert result["ok"], result["errors"]
-
-
 def test_validate_paths_a_bad_fact(gateway_model):
     result = gateway_validate_spec(_spec(fact="fact_nope"))
     assert not result["ok"]
@@ -316,28 +286,6 @@ def test_validate_survives_garbage():
     result = gateway_validate_spec("{not json")
     assert not result["ok"]
     assert result["errors"]
-
-
-def test_render_produces_artifact_and_manifest(gateway_model, tmp_path):
-    out = gateway_render_spec(_spec(), output_dir=str(tmp_path))
-    assert out["ok"], out.get("errors")
-    html = (tmp_path / "gw-spec.html").read_text(encoding="utf-8")
-    assert "Revenue by region" in html
-    # A spec now renders through the artifact path (compile_spec ->
-    # TemplatePackage): the figure grammar + receipt drawer, NOT the legacy
-    # renderer's second ECharts runtime.
-    assert "data-tb-figure" in html
-    assert 'id="tracebi-receipt"' in html
-    assert 'id="tracebi-charts"' not in html
-    manifest = json.loads(
-        (tmp_path / "gw-spec.manifest.json").read_text(encoding="utf-8")
-    )
-    assert manifest["schema_version"] == 2
-    stamped = [s for s in manifest["sections"] if s.get("dataset_fingerprint")]
-    assert stamped, "the manifest must fingerprint the data-bearing section"
-    assert out["dataset_fingerprints"] == [
-        s["dataset_fingerprint"] for s in stamped
-    ]
 
 
 def test_render_refuses_an_invalid_spec(gateway_model, tmp_path):
@@ -417,20 +365,6 @@ class TestBuildReport:
                             lambda: {"gw_demo": gateway_model})
         return pkg
 
-    def test_builds_artifact_and_receipt(self, gateway_model, tmp_path,
-                                         monkeypatch):
-        from tracebi.mcp_server import gateway_build_report
-
-        self._package(tmp_path, monkeypatch, gateway_model)
-        out = gateway_build_report("gwpkg", output_dir=str(tmp_path / "out"))
-        assert out["ok"], out.get("errors")
-        html = (tmp_path / "out" / "gwpkg.html").read_text(encoding="utf-8")
-        assert "scratch" not in html, "exploration must die at build"
-        assert (tmp_path / "out" / "gwpkg.html.manifest.json").is_file()
-        assert out["figures"] and out["figures"][0]["id"] == "fig-kpi"
-        assert out["embedded_fingerprints"]
-        assert "xlsx_path" not in out
-
     def test_xlsx_writes_the_tables_and_fetch_returns_them(
             self, gateway_model, tmp_path, monkeypatch):
         """format=xlsx writes a workbook of the report's tables beside the
@@ -487,15 +421,6 @@ class TestBuildReport:
         outside.write_bytes(b"PK\x03\x04not-a-real-book")
         refused = gateway_fetch_artifact(str(outside))
         assert not refused["ok"]
-
-    def test_refuses_a_path_shaped_name(self, gateway_model, tmp_path,
-                                        monkeypatch):
-        from tracebi.mcp_server import gateway_build_report
-
-        self._package(tmp_path, monkeypatch, gateway_model)
-        out = gateway_build_report("../gwpkg")
-        assert not out["ok"]
-        assert "name" in out["errors"][0]
 
     def test_refuses_writing_into_the_installed_package(self, gateway_model,
                                                         tmp_path, monkeypatch):

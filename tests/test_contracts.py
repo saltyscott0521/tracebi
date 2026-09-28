@@ -112,10 +112,6 @@ class TestFingerprintDrift:
         assert rows["fact_orders"]["current"] is None
         assert rows["fact_orders"]["matches"] is False
 
-    def test_no_certificate_yields_no_rows(self, warehouse):
-        assert check_fingerprints(warehouse) == []
-
-
 class TestChecks:
     def test_a_satisfied_contract_passes_and_writes_the_record(self, warehouse):
         _good_contract(warehouse)
@@ -241,9 +237,6 @@ class TestRecord:
             c.unique("dim_region", ["region_id"])
         data = read_contracts(warehouse)
         assert set(data["transforms"]) == {"orders", "regions"}
-
-    def test_certificate_sits_beside_the_warehouse(self, warehouse):
-        assert contracts_path(warehouse).endswith("warehouse.contracts.json")
 
     def test_record_is_plain_json(self, warehouse):
         _good_contract(warehouse)

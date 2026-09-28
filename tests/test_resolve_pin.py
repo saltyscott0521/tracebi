@@ -30,37 +30,6 @@ def _pin(tmp_path, pin_id="fig-kpi", note="the headline"):
     return wb
 
 
-def test_cli_resolve_moves_the_pin_and_workbench_hides_it(
-        tmp_path, monkeypatch, capsys):
-    import tracebi.mcp_server as gw
-    from tracebi.mcp_server import gateway_workbench_state
-
-    _package(tmp_path, monkeypatch)
-    _pin(tmp_path)
-    monkeypatch.setattr(gw, "_load_models", lambda: {})
-
-    assert main(["report", "pins", "demo"]) == 0
-    assert "fig-kpi" in capsys.readouterr().out
-
-    assert main(["report", "pins", "demo", "--resolve", "fig-kpi",
-                 "--note", "split by fund"]) == 0
-    capsys.readouterr()
-
-    wb = tmp_path / ".tracebi" / "workbench" / "demo"
-    assert read_pins(str(wb)) == []
-    resolved = read_resolved(str(wb))
-    assert len(resolved) == 1
-    assert resolved[0]["id"] == "fig-kpi"
-    assert resolved[0]["resolved_note"] == "split by fund"
-    assert resolved[0]["note"] == "the headline"
-    assert resolved[0]["resolved_at"]
-
-    state = gateway_workbench_state("demo")
-    assert [p.get("id") for p in state["pins"]] == []
-    assert state["resolved_count"] == 1
-    assert state["resolved"][0]["resolved_note"] == "split by fund"
-
-
 def test_mcp_resolve_moves_the_pin(tmp_path, monkeypatch):
     import tracebi.mcp_server as gw
     from tracebi.mcp_server import gateway_resolve_pin, gateway_workbench_state
@@ -116,12 +85,6 @@ def test_write_pins_keeps_resolved(tmp_path):
     write_pins(wb, read_pins(wb) + [{"id": "c", "note": "3", "at_seq": 2}])
     assert [p["id"] for p in read_pins(wb)] == ["b", "c"]
     assert [p["id"] for p in read_resolved(wb)] == ["a"]
-
-
-def test_timeline_renders_a_resolved_pin_as_done():
-    from tracebi._dev_server import _WORKBENCH_PAGE
-
-    assert 'done · ' in _WORKBENCH_PAGE
 
 
 def test_guides_say_resolve_the_pin():

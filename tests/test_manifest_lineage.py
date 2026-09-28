@@ -94,89 +94,13 @@ class TestCustomSectionManifest:
         assert "dataset_lineage" not in d
         assert "dataset_fingerprint" not in d
 
-    def test_custom_section_dataset_none(self):
-        section = MapSection(title="Empty Map", dataset=None)
-        d = section.to_manifest_dict()
-        assert "dataset_name" not in d
-        assert "dataset_fingerprint" not in d
-
-
 # ─────────────────────────────────────────────
 # Built-in sections: regression pins
 # ─────────────────────────────────────────────
 
-class TestBuiltinManifestUnchanged:
-
-    def test_table_section_manifest_keys_unchanged(self):
-        ds = make_ds("sales")
-        section = TableSection(
-            title="Sales", dataset=ds, id="t1",
-            columns=["region", "revenue"], max_rows=5,
-        )
-        d = section.to_manifest_dict()
-        assert list(d.keys()) == [
-            "section_type", "title", "id",
-            "dataset_name", "dataset_shape",
-            "dataset_lineage", "dataset_fingerprint",
-            "columns", "max_rows",
-        ]
-        assert d["section_type"] == "table"
-        assert d["title"] == "Sales"
-        assert d["id"] == "t1"
-        assert d["dataset_name"] == "sales"
-        assert d["dataset_shape"] == [3, 3]
-        assert d["dataset_lineage"] == ds.lineage_to_dict()
-        assert d["dataset_fingerprint"] == ds.fingerprint()
-        assert d["columns"] == ["region", "revenue"]
-        assert d["max_rows"] == 5
-
-    def test_chart_section_manifest_keys_unchanged(self):
-        ds = make_ds("sales")
-        section = ChartSection(
-            title="Chart", dataset=ds, chart_type="bar",
-            x="region", y="revenue",
-        )
-        d = section.to_manifest_dict()
-        assert list(d.keys()) == [
-            "section_type", "title",
-            "dataset_name", "dataset_shape",
-            "dataset_lineage", "dataset_fingerprint",
-            "chart_type", "x", "y", "color", "xlabel", "ylabel",
-            "figsize", "style", "palette", "show_values",
-        ]
-        assert d["section_type"] == "chart"
-        assert d["dataset_name"] == "sales"
-        assert d["dataset_shape"] == [3, 3]
-        assert d["dataset_lineage"] == ds.lineage_to_dict()
-        assert d["dataset_fingerprint"] == ds.fingerprint()
-        assert d["chart_type"] == "bar"
-        assert d["x"] == "region"
-        assert d["y"] == ["revenue"]
-
-    def test_table_without_dataset_omits_dataset_keys(self):
-        d = TableSection(title="Empty").to_manifest_dict()
-        assert "dataset_name" not in d
-        assert d["columns"] is None
-        assert d["max_rows"] is None
-
-
 # ─────────────────────────────────────────────
 # describe() with custom string section types
 # ─────────────────────────────────────────────
-
-class TestDescribeCustomSections:
-
-    def test_describe_does_not_raise(self, capsys):
-        report = (
-            Report("Mixed Report")
-            .add(TableSection(title="Table", dataset=make_ds("sales")))
-            .add(MapSection(title="Map", dataset=make_ds("points")))
-        )
-        report.describe()
-        out = capsys.readouterr().out
-        assert "[TABLE]" in out
-        assert "[MAP]" in out
-
 
 # ─────────────────────────────────────────────
 # Review-pass fixes (adversarial findings)
@@ -429,13 +353,6 @@ class TestContainerSectionsCannotForfeitLineage:
     def test_non_section_payload_in_a_sections_attribute_is_ignored(self):
         d = TabsSection(title="odd", panes=["a label", 3, None]).to_manifest_dict()
         assert "sections" not in d
-
-    def test_leaf_and_row_manifest_shape_unchanged(self):
-        ds = make_ds("sales")
-        assert "sections" not in TableSection(dataset=ds).to_manifest_dict()
-        row = RowSection(sections=[TableSection(dataset=ds)]).to_manifest_dict()
-        assert list(row.keys()) == ["section_type", "title", "sections"]
-        assert row["sections"][0]["dataset_fingerprint"] == ds.fingerprint()
 
     def test_a_manifest_failure_leaves_no_unauditable_artifact(self, tmp_path):
         """The receipt is built before the artifact: an artifact on disk that

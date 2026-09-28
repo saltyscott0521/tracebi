@@ -41,9 +41,6 @@ COMPACT_VALUES = [
 
 
 class TestAssetHygiene:
-    def test_asset_exists(self):
-        assert os.path.isfile(ASSET), f"runtime asset missing at {ASSET}"
-
     def test_no_eval(self):
         with open(ASSET, encoding="utf-8") as f:
             src = f.read()
@@ -54,15 +51,6 @@ class TestAssetHygiene:
         with open(ASSET, encoding="utf-8") as f:
             src = f.read()
         assert src.count("innerHTML") == 0
-
-    def test_public_api_defined(self):
-        with open(ASSET, encoding="utf-8") as f:
-            src = f.read()
-        # The one global, with the three public entry points.
-        assert "root.tracebi" in src
-        for member in ("data: data", "fmt: fmt", "configureChart: configureChart"):
-            assert member in src, f"public API member missing: {member}"
-
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestFmtParity:
@@ -236,12 +224,6 @@ class TestChartValueFormat:
             plan, self.PIE_ROWS, "[opt.tooltip.valueFormatter(1234.5)]")
         assert out == ["$1,234.50"]
 
-    def test_cartesian_without_value_format_has_no_tooltip_formatter(self):
-        plan = {"type": "bar", "x": "region", "y": ["mv"], "palette": []}
-        out = self._probe(
-            plan, self.PIE_ROWS, "[typeof opt.tooltip.valueFormatter]")
-        assert out == ["undefined"]
-
     def test_scatter_axes_and_tooltip_use_value_format(self):
         plan = {"type": "scatter", "x": "mv", "y": ["mv"],
                 "valueFormat": "compact", "palette": []}
@@ -253,16 +235,6 @@ class TestChartValueFormat:
             " opt.tooltip.valueFormatter(550696024575)]",
         )
         assert out == [expected, expected, expected]
-
-    def test_scatter_without_value_format_unchanged(self):
-        plan = {"type": "scatter", "x": "mv", "y": ["mv"], "palette": []}
-        out = self._probe(
-            plan, self.PIE_ROWS,
-            "[typeof opt.xAxis.axisLabel, typeof opt.yAxis.axisLabel,"
-            " typeof opt.tooltip.valueFormatter]",
-        )
-        assert out == ["undefined", "undefined", "undefined"]
-
 
 # ── The control-grammar harness ──────────────────────────────────────────
 # A DOM stub covering exactly the element surface the interactive runtime
