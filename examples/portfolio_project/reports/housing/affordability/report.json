@@ -111,59 +111,6 @@
         ]
       }
     },
-    "ten_peak": {
-      "model": "housing_model",
-      "query": {
-        "fact": "fact_ten_year",
-        "measures": [
-          "housing_share"
-        ],
-        "dimensions": [
-          "dim_cohort.purchase_year",
-          "dim_cohort.basis"
-        ],
-        "filters": {
-          "dim_cohort.purchase_year": {
-            "in": [
-              1980,
-              1981,
-              1982,
-              1983,
-              1984,
-              1985,
-              1986,
-              1987,
-              1988,
-              1989
-            ]
-          }
-        },
-        "order_by": [
-          "-housing_share"
-        ],
-        "limit": 1
-      }
-    },
-    "ten_worst": {
-      "model": "housing_model",
-      "query": {
-        "fact": "fact_ten_year",
-        "measures": [
-          "housing_share"
-        ],
-        "dimensions": [
-          "dim_cohort.purchase_year",
-          "dim_cohort.basis"
-        ],
-        "filters": {
-          "dim_cohort.basis": "measured"
-        },
-        "order_by": [
-          "-housing_share"
-        ],
-        "limit": 1
-      }
-    },
     "ten_today": {
       "model": "housing_model",
       "query": {
@@ -217,6 +164,46 @@
         "order_by": [
           "dim_year.year"
         ]
+      }
+    },
+    "ten_best": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_ten_year",
+        "measures": [
+          "housing_share"
+        ],
+        "dimensions": [
+          "dim_cohort.purchase_year",
+          "dim_cohort.basis"
+        ],
+        "filters": {
+          "dim_cohort.basis": "measured"
+        },
+        "order_by": [
+          "housing_share"
+        ],
+        "limit": 1
+      }
+    },
+    "ten_worst": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_ten_year",
+        "measures": [
+          "housing_share"
+        ],
+        "dimensions": [
+          "dim_cohort.purchase_year",
+          "dim_cohort.basis"
+        ],
+        "filters": {
+          "dim_cohort.basis": "measured"
+        },
+        "order_by": [
+          "-housing_share"
+        ],
+        "limit": 1
       }
     }
   }

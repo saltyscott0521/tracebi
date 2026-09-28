@@ -1,0 +1,52 @@
+# Median sales price of existing homes, United States, annual, current dollars.
+# Source: NATIONAL ASSOCIATION OF REALTORS, as reprinted by HUD in U.S. Housing
+# Market Conditions: 3rd Quarter 2006, Historical Data Table 9 (1968-2005), and
+# 4th Quarter 2012, Exhibit 9 (1970-2012); the two editions agree on every shared year.
+# https://www.huduser.gov/periodicals/ushmc/fall06/USHMC_Q306.pdf
+# https://www.huduser.gov/portal/periodicals/ushmc/winter12/USHMC_4q12.pdf
+year,nar_median
+1968,20100
+1969,21800
+1970,23000
+1971,24800
+1972,26700
+1973,28900
+1974,32000
+1975,35300
+1976,38100
+1977,42900
+1978,48700
+1979,55700
+1980,62200
+1981,66400
+1982,67800
+1983,70300
+1984,72400
+1985,75500
+1986,80300
+1987,85600
+1988,89300
+1989,94000
+1990,96400
+1991,101400
+1992,104000
+1993,107200
+1994,111300
+1995,114600
+1996,119900
+1997,126000
+1998,132800
+1999,138000
+2000,143600
+2001,153100
+2002,165000
+2003,178800
+2004,195400
+2005,219600
+2006,221900
+2007,219000
+2008,198100
+2009,172500
+2010,172900
+2011,166100
+2012,176600

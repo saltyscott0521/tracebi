@@ -7,7 +7,7 @@ the publishers; nothing is typed in by hand.
 | Column | Series | Publisher |
 | --- | --- | --- |
 | `mortgage_rate` | 30-year fixed-rate average, annual mean of the weekly survey, percent | Freddie Mac PMMS (FRED `MORTGAGE30US`) |
-| `existing_price` | Existing-home price level: the FHFA all-transactions repeat-sales index scaled to NAR's median existing-home price over its latest year or so | FHFA (FRED `USSTHPI`) + NAR (FRED `HOSMEDUSM052N`) |
+| `existing_price` | NAR's median existing-home price: NAR's own annual figures through 2012 (`nar_existing_median_1968_2012.csv`, as reprinted by HUD); after that the FHFA repeat-sales index, pinned to NAR at both ends (2012, and NAR's latest months) | NAR via HUD *U.S. Housing Market Conditions*; FHFA (FRED `USSTHPI`); NAR (FRED `HOSMEDUSM052N`) |
 | `new_home_price` | Median sales price of houses sold — mostly new construction | Census/HUD (FRED `MSPUS`) |
 | `median_income` | Median household income, current dollars | Census CPS ASEC table H-5 (all races) |
 | `earner_income` | Median usual weekly earnings of full-time wage and salary workers × 52 | BLS (FRED `LEU0252881500A`) |
@@ -19,12 +19,14 @@ the last refresh.
 
 - **Existing homes, not `MSPUS`.** `MSPUS` is mostly new houses, which are
   bigger and pricier than the stock most people buy, and the mix has shifted.
-  FRED carries NAR's existing-home median for the latest thirteen months only,
-  so the price level comes from a repeat-sales index (the same homes over
-  time) anchored to NAR. It is an estimate: close to NAR's published annual
-  medians in some years, several percent off in others. That uncertainty is
-  bigger than the gap between the eighties peak and today on the ten-year
-  share, and the report says so.
+  Through 2012 the price is NAR's own annual median, as HUD reprinted it in
+  *U.S. Housing Market Conditions* (3Q2006 Table 9 and 4Q2012 Exhibit 9 — the
+  two editions agree on every shared year). NAR does not publish its annual
+  history freely after that, and FRED carries only its latest thirteen months,
+  so 2013 on is an estimate: the FHFA repeat-sales index, pinned to NAR at
+  both ends. An earlier version scaled the index to NAR's latest months only;
+  checked against NAR's published figures it ran 6% low in 1981 and 9% high
+  in 2010, which is why the published history now leads.
 - **One earner as well as the household.** Far more households have two
   earners than in the early eighties, so the household median flatters the
   present. The per-earner share shows the other side.

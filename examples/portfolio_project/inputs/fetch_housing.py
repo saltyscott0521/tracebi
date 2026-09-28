@@ -7,13 +7,13 @@ One row per complete calendar year, 1979 on, current dollars:
 
 * ``mortgage_rate``   Freddie Mac 30-year fixed, annual mean of the weekly
                       survey (FRED ``MORTGAGE30US``).
-* ``existing_price``  An existing-home price level: the FHFA all-transactions
-                      repeat-sales index (FRED ``USSTHPI``, quarterly, 1975 on),
-                      scaled so its latest year or so averages the same as
-                      NAR's median existing-home sales price over those months
-                      (FRED ``HOSMEDUSM052N``, which FRED carries for the last
-                      thirteen months only). Repeat sales track the same houses
-                      over time, so the mix of what sold doesn't move it.
+* ``existing_price``  NAR's median existing-home sales price. Through 2012,
+                      NAR's own annual medians as HUD reprinted them
+                      (``nar_existing_median_1968_2012.csv``). After 2012 NAR
+                      does not freely publish its annual history, so the FHFA
+                      all-transactions repeat-sales index (FRED ``USSTHPI``)
+                      fills the years in, pinned to NAR at both ends: its 2012
+                      median and its latest months (FRED ``HOSMEDUSM052N``).
 * ``new_home_price``  Census/HUD median sales price of houses sold (FRED
                       ``MSPUS``) — mostly NEW houses, kept to show the gap.
 * ``median_income``   Census median household income, current dollars
@@ -38,6 +38,8 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 CSV = os.path.join(HERE, "housing_history.csv")
 ANCHOR = os.path.join(HERE, "housing_anchor.txt")
+NAR_HISTORY_NAME = "nar_existing_median_1968_2012.csv"
+NAR_HISTORY = os.path.join(HERE, NAR_HISTORY_NAME)
 FIRST_YEAR = 1979            # the per-earner series starts here
 
 _FRED = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={}"
@@ -90,18 +92,41 @@ def _household_income() -> pd.Series:
 
 
 def _existing_price(hpi: pd.Series, nar: pd.Series) -> tuple[pd.Series, str]:
-    """Scale the repeat-sales index to NAR's latest twelve months of medians."""
+    """NAR's median existing-home price, every year.
+
+    Through 2012 it is NAR's own annual median (``nar_existing_median_1968_2012.csv``,
+    as HUD reprinted it). After that NAR's annual history is not freely
+    published, so the FHFA repeat-sales index fills the years in, pinned to
+    NAR at both ends: its 2012 annual median, and its latest months on FRED.
+    The pin drifts in a straight line between the two, so neither end is off.
+    """
+    official = pd.read_csv(NAR_HISTORY, comment="#", index_col="year")["nar_median"]
+    last_official = int(official.index.max())
+    annual_hpi = _annual(hpi)
+    start = official[last_official] / annual_hpi[last_official]
+
     # Only NAR months the (quarterly) index already covers, so no month is
     # paired with a forward-filled quarter.
     covered = hpi.index.max() + pd.offsets.QuarterEnd(0)
-    last12 = nar.sort_index()[lambda s: s.index <= covered].iloc[-12:]
-    monthly_hpi = hpi.resample("MS").ffill().reindex(last12.index, method="ffill")
-    scale = last12.mean() / monthly_hpi.mean()
-    note = (f"existing_price = FHFA USSTHPI x {scale:.4f}: NAR HOSMEDUSM052N "
-            f"averaged ${last12.mean():,.0f} over the {len(last12)} months "
-            f"{last12.index[0]:%b %Y}-"
-            f"{last12.index[-1]:%b %Y}; the index averaged {monthly_hpi.mean():.2f}.")
-    return _annual(hpi) * scale, note
+    recent = nar.sort_index()[lambda s: s.index <= covered].iloc[-12:]
+    monthly_hpi = hpi.resample("MS").ffill().reindex(recent.index, method="ffill")
+    end = recent.mean() / monthly_hpi.mean()
+    end_at = recent.index[0].year + (recent.index[0].month - 1) / 12 + len(recent) / 24
+
+    filled = {}
+    for year in annual_hpi.index:
+        if year <= last_official:
+            continue
+        mid = year + 0.5
+        w = min(1.0, (mid - (last_official + 0.5)) / (end_at - (last_official + 0.5)))
+        filled[year] = annual_hpi[year] * (start + (end - start) * w)
+    price = pd.concat([official.astype(float), pd.Series(filled)]).sort_index()
+    note = (f"existing_price: NAR annual medians through {last_official} "
+            f"({NAR_HISTORY_NAME}); after that FHFA USSTHPI x a scale moving "
+            f"from {start:.2f} (NAR {last_official} / index) to {end:.2f} (NAR "
+            f"HOSMEDUSM052N ${recent.mean():,.0f} over {recent.index[0]:%b %Y}-"
+            f"{recent.index[-1]:%b %Y} / index).")
+    return price, note
 
 
 def main() -> None:

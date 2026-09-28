@@ -29,7 +29,7 @@ def test_housing_report_builds_and_verifies(tmp_path):
     assert [s["name"] for s in manifest["scenarios"]] == ["today"]
     assert all(s["verifiable"] is False for s in manifest["scenarios"])
     ids = {f["id"] for f in manifest["figures"]}
-    assert {"chart-ten-year", "ten-peak", "ten-worst", "ten-today", "chart-paths",
+    assert {"chart-ten-year", "ten-worst", "ten-best", "ten-today", "chart-paths",
             "pk-pay-then", "pk-pay-now", "pk-earner-then", "pk-earner-now",
             "pk-entry-then", "pk-entry-now", "pk-later",
             "chart-rate", "chart-pti", "chart-share"} <= ids
