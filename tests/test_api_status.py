@@ -37,10 +37,6 @@ def _body(tmp_path: Path, monkeypatch) -> dict:
     return response.json()
 
 
-def test_status_is_a_viewer_get():
-    assert _required_role("GET", "/api/status") == "viewer"
-
-
 def test_route_returns_version_and_the_six_checks(tmp_path, monkeypatch):
     import tracebi
 

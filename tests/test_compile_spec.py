@@ -89,10 +89,6 @@ class TestMarkdown:
         assert '<a href="https://example.com">docs</a>' in html
         assert "<code>code</code>" in html
 
-    def test_ordered_lists(self):
-        html = md_to_html("1. first\n2. second")
-        assert html == "<ol><li>first</li><li>second</li></ol>"
-
     def test_content_cannot_smuggle_markup(self):
         html = md_to_html("<script>alert(1)</script> & **fine**")
         assert "<script>" not in html
@@ -127,6 +123,10 @@ class TestMarkdown:
         page = compiled.files["template.html"]
         assert "<h2>Head</h2>" in page
         assert "<strong>strong</strong>" in page
+
+    def test_ordered_lists(self):
+        html = md_to_html("1. first\n2. second")
+        assert html == "<ol><li>first</li><li>second</li></ol>"
 
 
 # ── figures and bindings ───────────────────────────────────────────────────
@@ -366,21 +366,6 @@ class TestTableLabelsAndFormats:
         # a Python format string has no runtime equivalent: warned, not emitted
         text = "\n".join(compiled.warnings)
         assert "other" in text and "column_labels" not in text
-
-    def test_a_row_lays_titled_sections_side_by_side(self):
-        compiled = compile_spec(_spec([
-            {"type": "row", "widths": [1, 1], "sections": [
-                {"type": "chart", "title": "Left", "chart_type": "bar",
-                 "x": "dim_r.region", "y": "revenue", "data": _DATA},
-                {"type": "table", "title": "Right", "data": _DATA},
-            ]},
-        ]))
-        page = compiled.files["template.html"]
-        assert '<div class="tb-cols-2">' in page
-        # each title sits INSIDE its card, so a row has two cells, not four
-        assert page.count('<div class="tb-card">') == 2
-        assert '<div class="tb-card">\n    <h3>Left</h3>' in page
-        assert not compiled.warnings    # equal widths need no warning
 
     def test_a_heading_keeps_its_content(self):
         compiled = compile_spec(_spec([

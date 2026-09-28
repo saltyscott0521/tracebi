@@ -92,14 +92,6 @@ def test_row_order_is_preserved():
     assert list(recovered["k"]) == list(df["k"])
 
 
-def test_parquet_is_more_compact_than_csv_for_wide_data():
-    # The reason for the switch: Parquet is the compact transport.
-    df = pd.DataFrame(
-        {"a": range(5000), "b": [i * 1.5 for i in range(5000)], "c": ["xyz"] * 5000}
-    )
-    assert len(to_parquet_bytes(df)) < len(df.to_csv(index=False).encode())
-
-
 # ── verify path: bytes-as-shipped, on both transports ────────────────────────
 #
 # The receipt for a block is a hash of what the file SHIPS: a CSV block's

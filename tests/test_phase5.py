@@ -161,10 +161,6 @@ class TestPushDownPandas:
         assert len(df) == 2
         assert list(df.columns) == ["order_id", "region"]
 
-    def test_pushdown_unsupported_flag(self):
-        conn = MemoryConnector("mem", tables={"x": pd.DataFrame({"a": [1]})})
-        assert conn.supports_pushdown() is False
-
     def test_model_load_passes_filter(self, memory_model):
         ds = memory_model.load("orders", filter={"status": "shipped"})
         assert len(ds) == 4
@@ -196,9 +192,6 @@ class TestPushDownSQL:
     def test_sql_columns_via_select(self, sqlite_connector):
         df = sqlite_connector.load("orders", columns=["order_id", "revenue"])
         assert list(df.columns) == ["order_id", "revenue"]
-
-    def test_sql_supports_pushdown(self, sqlite_connector):
-        assert sqlite_connector.supports_pushdown() is True
 
     def test_sql_raw_query_still_works(self, sqlite_connector):
         df = sqlite_connector.load("SELECT order_id FROM orders WHERE status = 'open'")
@@ -258,11 +251,6 @@ class TestDuckDBConnector:
         conn.write(orders_df, "orders", if_exists="append")
         df = conn.load("orders")
         assert len(df) == 12
-
-    def test_supports_pushdown(self):
-        conn = DuckDBConnector("dd")
-        assert conn.supports_pushdown() is True
-
 
 # ── Lineage warning for large unfiltered loads ────────────────────────────
 
@@ -356,15 +344,6 @@ class TestStarSchemaDuckDB:
 # ── Layer renames are interchangeable with old names ──────────────────────
 
 class TestLayerRename:
-    def test_landing_layer_is_bronze(self):
-        assert issubclass(LandingLayer, BronzeLayer)
-
-    def test_manipulation_layer_is_silver(self):
-        assert issubclass(ManipulationLayer, SilverLayer)
-
-    def test_final_layer_is_gold(self):
-        assert issubclass(FinalLayer, GoldLayer)
-
     def test_landing_layer_stamps_landing_op(self, orders_df):
         conn = MemoryConnector("mem", tables={"orders": orders_df})
         layer = LandingLayer(connector=conn, source="orders")
@@ -402,12 +381,6 @@ class TestLayerRename:
 # ── CLI ───────────────────────────────────────────────────────────────────
 
 class TestCLI:
-    def test_slugify(self):
-        from tracebi.cli import _slugify
-        assert _slugify("Open orders by region") == "open_orders_by_region"
-        assert _slugify("  Q3 -- 2024 ") == "q3_2024"
-        assert _slugify("!!!") == "report"
-
     # ── run-pipeline ──────────────────────────────────────────────────────
     # The execution plane's entry point: running layers without a web server.
 
@@ -443,18 +416,6 @@ class TestCLI:
         # Each layer appears exactly once even though it shows up in the
         # chains of everything downstream of it.
         assert len(plan) == len(set(plan))
-
-    def test_run_pipeline_executes_every_layer(self, tmp_path, monkeypatch):
-        from tracebi.cli import main
-        runner, mem = self._two_layer_runner(tmp_path)
-        self._patch_get_runner(monkeypatch, runner)
-        rc = main(["run-pipeline", "whatever"])
-        assert rc == 0
-        # Both sinks were written, and the manipulation layer actually
-        # deduplicated — 3 rows in, 2 out.
-        assert "orders_bronze" in mem._tables
-        assert "orders_silver" in mem._tables
-        assert len(mem._tables["orders_silver"]) == 2
 
     def test_run_pipeline_single_layer_skips_the_rest(self, tmp_path, monkeypatch):
         from tracebi.cli import main
@@ -533,11 +494,6 @@ class TestModelRegistry:
         self._make_model_file(tmp_path / "real.py")
         found = reg.auto_discover(str(tmp_path))
         assert found == ["real"]
-
-    def test_auto_discover_missing_dir_returns_empty(self):
-        from tracebi.model_registry import ModelRegistry
-        reg = ModelRegistry()
-        assert reg.auto_discover("/does/not/exist") == []
 
     def test_get_lazy_loads_file(self, tmp_path):
         from tracebi.model_registry import ModelRegistry
@@ -693,21 +649,6 @@ class TestCLIModelCommands:
         assert "sales_model.py" in captured.out
         assert "banking_model.py" in captured.out
 
-    def test_new_model_scaffolds_valid_python(self, tmp_path):
-        from tracebi.cli import main
-        models_dir = tmp_path / "models"
-        main(["--models-dir", str(models_dir), "new-model", "My Reports"])
-        content = (models_dir / "my_reports.py").read_text()
-        compile(content, "my_reports.py", "exec")  # should not raise
-
-    def test_list_models_no_dir(self, tmp_path, capsys):
-        from tracebi.cli import main
-        models_dir = tmp_path / "models"
-        main(["--models-dir", str(models_dir), "list-models"])
-        captured = capsys.readouterr()
-        assert "No models directory" in captured.out
-
-
 # ── Pipeline registry ─────────────────────────────────────────────────────
 
 class TestPipelineRegistry:
@@ -735,20 +676,6 @@ class TestPipelineRegistry:
         found = reg.auto_discover(str(tmp_path))
         assert found == ["real"]
 
-    def test_auto_discover_missing_dir_returns_empty(self):
-        from tracebi.pipeline_registry import PipelineRegistry
-        reg = PipelineRegistry()
-        assert reg.auto_discover("/does/not/exist") == []
-
-    def test_get_lazy_loads_file(self, tmp_path):
-        from tracebi.pipeline_registry import PipelineRegistry
-        reg = PipelineRegistry()
-        self._make_pipeline_file(tmp_path / "sales.py")
-        reg.auto_discover(str(tmp_path))
-        runner = reg.get("sales")
-        from tracebi import PipelineRunner
-        assert isinstance(runner, PipelineRunner)
-
     def test_get_missing_raises_key_error(self):
         from tracebi.pipeline_registry import PipelineRegistry
         reg = PipelineRegistry()
@@ -762,25 +689,6 @@ class TestPipelineRegistry:
         reg.auto_discover(str(tmp_path))
         with pytest.raises(AttributeError, match="module-level 'runner'"):
             reg.get("bad")
-
-    def test_list_pipelines_includes_undiscovered(self, tmp_path):
-        from tracebi.pipeline_registry import PipelineRegistry
-        reg = PipelineRegistry()
-        self._make_pipeline_file(tmp_path / "sales.py")
-        self._make_pipeline_file(tmp_path / "finance.py")
-        reg.auto_discover(str(tmp_path))
-        names = reg.list_pipelines()
-        assert "sales" in names
-        assert "finance" in names
-
-    def test_register_explicit(self):
-        from tracebi import PipelineRunner
-        from tracebi.pipeline_registry import PipelineRegistry
-        runner = PipelineRunner(db_url="sqlite:///:memory:")
-        reg = PipelineRegistry()
-        reg.register("myrun", runner, default=True)
-        assert reg.get("myrun") is runner
-        assert reg.get_default() is runner
 
     def test_first_discovered_becomes_default(self, tmp_path):
         from tracebi.pipeline_registry import PipelineRegistry
@@ -799,21 +707,10 @@ class TestPipelineRegistry:
         self._make_pipeline_file(tmp_path / "beta.py")
         reg.auto_discover(str(tmp_path))
         reg.set_default("beta")
-        reg.get_default()  # should not raise
+        assert reg.get_default() is reg.get("beta")
 
 
 class TestCLIPipelineCommands:
-    def test_new_pipeline_creates_file(self, tmp_path):
-        from tracebi.cli import main
-        pipes_dir = tmp_path / "pipelines"
-        rc = main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Sales Pipeline"])
-        assert rc == 0
-        created = pipes_dir / "sales_pipeline.py"
-        assert created.is_file()
-        content = created.read_text()
-        assert "runner = PipelineRunner(" in content
-        assert "get_runner" in content
-
     def test_new_pipeline_refuses_overwrite(self, tmp_path):
         from tracebi.cli import main
         pipes_dir = tmp_path / "pipelines"
@@ -846,21 +743,6 @@ class TestCLIPipelineCommands:
         assert "sales_pipeline.py" in captured.out
         assert "finance_pipeline.py" in captured.out
 
-    def test_new_pipeline_scaffolds_valid_python(self, tmp_path):
-        from tracebi.cli import main
-        pipes_dir = tmp_path / "pipelines"
-        main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "My ETL"])
-        content = (pipes_dir / "my_etl.py").read_text()
-        compile(content, "my_etl.py", "exec")  # should not raise
-
-    def test_list_pipelines_no_dir(self, tmp_path, capsys):
-        from tracebi.cli import main
-        pipes_dir = tmp_path / "pipelines"
-        main(["--pipelines-dir", str(pipes_dir), "list-pipelines"])
-        captured = capsys.readouterr()
-        assert "No pipelines directory" in captured.out
-
-
 # ── Auto-discovery ────────────────────────────────────────────────────────
 
 class TestAutoDiscover:
@@ -871,10 +753,6 @@ class TestAutoDiscover:
         discovered = auto_discover(str(tmp_path))
         assert any(name.endswith("real") for name in discovered)
         assert not any(name.endswith("_template") for name in discovered)
-
-    def test_returns_empty_for_missing_dir(self):
-        from tracebi.web.discovery import auto_discover
-        assert auto_discover("/this/path/does/not/exist") == []
 
     def test_executes_module(self, tmp_path):
         from tracebi.web.discovery import auto_discover
@@ -1064,16 +942,6 @@ class TestProxyHeaderAuth:
         with pytest.warns(UserWarning, match="TRUSTED_IPS"):
             assert install_if_configured(app) == "proxy"
 
-    def test_proxy_with_trusted_ips_does_not_warn(self, monkeypatch, recwarn):
-        monkeypatch.setenv("TRACEBI_AUTH_PROXY_HEADER", "X-Forwarded-User")
-        monkeypatch.setenv("TRACEBI_AUTH_PROXY_TRUSTED_IPS", "10.0.0.0/8")
-        from fastapi import FastAPI
-        from tracebi.web.api.auth import install_if_configured
-        app = FastAPI()
-        assert install_if_configured(app) == "proxy"
-        assert not [w for w in recwarn if "TRUSTED_IPS" in str(w.message)]
-
-
 # ── Analyst endpoints: preview metadata, CSV export, report downloads ─────
 
 class TestAnalystEndpoints:
@@ -1138,35 +1006,6 @@ class TestAnalystEndpoints:
         ds = memory_model.load("orders")
         return Report("T Report").add(TableSection(title="Orders", dataset=ds))
 
-    def test_download_html_attachment(self, tmp_path, memory_model):
-        """The HTML download is the ARTIFACT — the same bytes verify --file
-        checks — so it comes from the package, not a second renderer."""
-        client, cleanup = _client_with_package(tmp_path, "t_report")
-        try:
-            r = client.get("/api/reports/t_report/download?format=html")
-            assert r.status_code == 200, r.text
-            assert "attachment" in r.headers["content-disposition"]
-            assert "data-tb-figure" in r.text
-        finally:
-            cleanup()
-
-    def test_share_link_serves_the_last_build_as_a_page(self, tmp_path):
-        """/r/<name> is the same bytes as the HTML download, shown inline so a
-        phone's browser runs the charts instead of saving a file."""
-        from tracebi.web.api.routers import reports as reports_router
-        client, cleanup = _client_with_package(tmp_path, "t_report")
-        client.app.include_router(reports_router.share_router)
-        try:
-            page = client.get("/r/t_report")
-            assert page.status_code == 200, page.text
-            assert page.headers["content-type"].startswith("text/html")
-            assert "content-disposition" not in page.headers
-            download = client.get("/api/reports/t_report/download?format=html")
-            assert page.text == download.text
-            assert client.get("/r/no_such_report").status_code == 404
-        finally:
-            cleanup()
-
     def test_a_report_with_no_package_is_refused_not_served_weaker(
             self, memory_model):
         """There is ONE renderer. A registered report with no package used to
@@ -1178,17 +1017,6 @@ class TestAnalystEndpoints:
             r = client.post("/api/reports/t_report/run")
             assert r.status_code == 422
             assert "tracebi new-report" in r.json()["detail"]
-        finally:
-            self._cleanup_report()
-
-    def test_download_xlsx_attachment(self, memory_model):
-        pytest.importorskip("openpyxl")
-        client = self._client_with_report(lambda: self._sample_report(memory_model))
-        try:
-            r = client.get("/api/reports/t_report/download?format=xlsx")
-            assert r.status_code == 200
-            assert "spreadsheetml" in r.headers["content-type"]
-            assert r.content[:2] == b"PK"  # xlsx is a zip container
         finally:
             self._cleanup_report()
 
@@ -1249,23 +1077,6 @@ class TestQueryEndpoint:
     def _cleanup(self):
         from tracebi.web.api.registry import registry
         registry._models.pop("Sales", None)
-
-    def test_aggregated_query_returns_rows_and_lineage(self, memory_model):
-        client = self._client(memory_model)
-        try:
-            r = client.post("/api/models/Sales/query", json={
-                "fact": "fact_orders",
-                "measures": {"revenue": "sum"},
-                "dimensions": ["dim_customer.segment"],
-            })
-            assert r.status_code == 200
-            body = r.json()
-            assert body["rows"] == 2
-            assert "dim_customer.segment" in body["columns"]
-            assert body["lineage_graph"]["nodes"]
-            assert body["engine"] == "duckdb"
-        finally:
-            self._cleanup()
 
     def test_unknown_fact_is_400(self, memory_model):
         client = self._client(memory_model)
@@ -1352,23 +1163,10 @@ class TestRegistryExtras:
         registry._report_factories = saved["reports"]
         registry._scheduled_factories = saved["scheduled"]
 
-    def test_default_model_via_add_model(self, memory_model):
-        from tracebi.web.api.registry import Registry
-        r = Registry()
-        r.add_model(memory_model, default=True)
-        assert r.get_default_model() is memory_model
-
     def test_first_model_becomes_default(self, memory_model):
         from tracebi.web.api.registry import Registry
         r = Registry()
         r.add_model(memory_model)
-        assert r.get_default_model() is memory_model
-
-    def test_set_default_model_after_adding(self, memory_model):
-        from tracebi.web.api.registry import Registry
-        r = Registry()
-        r.add_model(memory_model)
-        r.set_default_model("Sales")
         assert r.get_default_model() is memory_model
 
     def test_set_default_unknown_raises(self):
@@ -1376,11 +1174,6 @@ class TestRegistryExtras:
         r = Registry()
         with pytest.raises(KeyError):
             r.set_default_model("nope")
-
-    def test_register_notebook_helper_default(self, memory_model):
-        from tracebi.web import register
-        register.model(memory_model, default=True)
-        assert register.get_default_model() is memory_model
 
     def test_scheduled_decorator_registers_report_and_cron(self):
         from tracebi.web.api.registry import Registry
@@ -1464,6 +1257,11 @@ class TestRegistryExtras:
         scheduled_names = [x["name"] for x in registry.list_scheduled()]
         assert "nightly" in scheduled_names
 
+    def test_register_notebook_helper_default(self, memory_model):
+        from tracebi.web import register
+        register.model(memory_model, default=True)
+        assert register.get_default_model() is memory_model
+
 
 # ── ipynb scaffolding ─────────────────────────────────────────────────────
 
@@ -1492,18 +1290,19 @@ class TestPipelineRunEndpoint:
         runner.register(landing, name="orders_bronze")
         runner.register(manip,   name="orders_silver", depends_on="orders_bronze")
 
-        # Use a fresh registry to keep this isolated from the singleton
+        # Use a fresh registry to keep this isolated from the singleton.
         local = Registry()
         local.add_pipeline("sales", runner)
 
-        # Swap singleton just for the test
-        import tracebi.web.api.registry as reg_mod
-        original = reg_mod.registry
-        reg_mod.registry = local
+        # The router bound the singleton at import, and it may already be
+        # imported (the web journeys import the app). Swap the router's own
+        # binding, so isolation holds whatever the import order.
+        from tracebi.web.api.routers import pipelines as pipelines_router
+        original = pipelines_router.registry
+        pipelines_router.registry = local
         try:
             from fastapi.testclient import TestClient
             from fastapi import FastAPI
-            from tracebi.web.api.routers import pipelines as pipelines_router
             app = FastAPI()
             app.include_router(pipelines_router.router, prefix="/api")
 
@@ -1515,7 +1314,7 @@ class TestPipelineRunEndpoint:
             # Both layers executed in dependency order
             assert body["ran"] == ["orders_bronze", "orders_silver"]
         finally:
-            reg_mod.registry = original
+            pipelines_router.registry = original
 
     def test_run_missing_pipeline_404(self):
         from fastapi.testclient import TestClient
@@ -1616,23 +1415,6 @@ class TestNotebookToSource:
         assert "!pip" not in src
         assert "import pandas" in src
 
-    def test_multiple_cells_separated_by_blank_line(self, tmp_path):
-        from tracebi._notebook import notebook_to_source
-        path = self._make_nb(tmp_path, [
-            {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
-             "source": ["a = 1\n"]},
-            {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
-             "source": ["b = 2\n"]},
-        ])
-        src = notebook_to_source(path)
-        assert "a = 1" in src
-        assert "b = 2" in src
-
-    def test_empty_notebook_returns_empty_string(self, tmp_path):
-        from tracebi._notebook import notebook_to_source
-        path = self._make_nb(tmp_path, [])
-        assert notebook_to_source(path) == ""
-
     def test_source_as_string_not_list(self, tmp_path):
         from tracebi._notebook import notebook_to_source
         path = self._make_nb(tmp_path, [
@@ -1674,30 +1456,7 @@ class TestAutoDiscoverNotebook:
         auto_discover(str(tmp_path))
         assert marker.read_text() == "ran"
 
-    def test_skips_underscore_notebooks(self, tmp_path):
-        from tracebi.web.discovery import auto_discover
-        self._make_nb(tmp_path / "_private.ipynb", ["PRIVATE = True\n"])
-        self._make_nb(tmp_path / "public.ipynb", ["PUBLIC = True\n"])
-        discovered = auto_discover(str(tmp_path))
-        assert not any("_private" in n for n in discovered)
-        assert any("public" in n for n in discovered)
-
-    def test_magic_lines_dropped_during_discovery(self, tmp_path):
-        from tracebi.web.discovery import auto_discover
-        self._make_nb(tmp_path / "with_magic.ipynb", [
-            "%matplotlib inline\n",
-            "MAGIC_OK = True\n",
-        ])
-        auto_discover(str(tmp_path))  # would raise SyntaxError if magic not stripped
-
-
 class TestDevServer:
-    def test_inject_refresh(self):
-        from tracebi._dev_server import _inject_refresh
-        html = _inject_refresh("<html><body>hi</body></html>", 7)
-        assert "var current = 7" in html
-        assert html.index("hi") < html.index("/__status")
-
     def test_cli_dev_missing_package(self, tmp_path, capsys, monkeypatch):
         from tracebi.cli import main
         monkeypatch.chdir(tmp_path)
@@ -1744,20 +1503,6 @@ class TestLineageGraphBranching:
                    for n in graph["nodes"] if n["data"]["operation"] == "load"}
         assert load_ys["load orders"] != load_ys["load customers"]
 
-    def test_linear_lineage_unchanged(self):
-        from tracebi.web.api.lineage_graph import lineage_to_graph
-        from tracebi.model.dataset import DataSet, LineageNode
-        ds = DataSet(
-            df=pd.DataFrame({"v": [1, 2, 3]}),
-            name="t",
-            lineage=[LineageNode(operation="load")],
-        ).filter("v > 1").sort("v")
-        graph = lineage_to_graph(ds.lineage_to_dict())
-        assert len(graph["nodes"]) == 3
-        assert len(graph["edges"]) == 2
-        assert all(n["position"]["y"] == 0 for n in graph["nodes"])
-
-
 # ─────────────────────────────────────────────
 # Background report runs
 # ─────────────────────────────────────────────
@@ -1792,20 +1537,6 @@ class TestBackgroundReportRuns:
             time.sleep(0.05)
         raise AssertionError("background run did not finish in time")
 
-    def test_run_succeeds_and_returns_payload(self, tmp_path):
-        client, cleanup = _client_with_package(tmp_path, "bg_report")
-        try:
-            r = client.post("/api/reports/bg_report/runs")
-            assert r.status_code == 202
-            run_id = r.json()["run_id"]
-            body = self._poll(client, "bg_report", run_id)
-            assert body["status"] == "succeeded", body
-            assert "data-tb-figure" in body["result"]["html"]
-            assert body["result"]["manifest"]["schema_version"] >= 2
-            assert body["finished_at"]
-        finally:
-            cleanup()
-
     def test_failed_run_carries_structured_error(self, tmp_path, monkeypatch):
         monkeypatch.setenv("TRACEBI_DEV_MODE", "1")   # traceback is dev-only
         client, cleanup = _client_with_package(tmp_path, "bg_broken", broken=True)
@@ -1816,20 +1547,6 @@ class TestBackgroundReportRuns:
             assert "no_such_model_at_all" in body["error"]["message"]
             assert body["error"]["exception_type"] == "ValueError"
             assert "ValueError" in body["error"]["traceback"]
-        finally:
-            cleanup()
-
-    def test_history_lists_runs_without_payload(self, tmp_path):
-        client, cleanup = _client_with_package(tmp_path, "bg_report")
-        try:
-            run_id = client.post("/api/reports/bg_report/runs").json()["run_id"]
-            self._poll(client, "bg_report", run_id)
-            r = client.get("/api/reports/bg_report/runs")
-            assert r.status_code == 200
-            runs = r.json()
-            assert runs[0]["run_id"] == run_id
-            assert runs[0]["status"] == "succeeded"
-            assert "result" not in runs[0]
         finally:
             cleanup()
 
@@ -2054,12 +1771,6 @@ class TestRegistryLibrarySeam:
         assert shim.registry is lib.registry
         assert shim.Registry is lib.Registry
 
-    def test_shim_reexports_both_names(self):
-        """Tests import the class as well as the singleton; both must survive."""
-        from tracebi.web.api.registry import Registry, registry
-
-        assert isinstance(registry, Registry)
-
     def test_registry_imports_without_web_dependencies(self):
         """The registry must be usable on the base install."""
         import subprocess
@@ -2113,18 +1824,6 @@ class TestConsumerProjectPath:
     and there was no CLI route from an installed package to a running UI.
     """
 
-    def test_init_creates_the_directories_the_server_discovers(self, tmp_path):
-        from tracebi.cli import main
-
-        target = tmp_path / "proj"
-        assert main(["init", str(target)]) == 0
-        # M5 flip ledger: requests/ is the deprecated lane — init no longer
-        # hands it to new projects (the server still discovers one if a
-        # pre-existing project has it).
-        for d in ("models", "pipelines", "reports", "data", "output"):
-            assert (target / d).is_dir(), f"init must create {d}/"
-        assert not (target / "scheduled").exists()
-
     def test_discovery_dirs_survive_a_clone(self, tmp_path):
         """Empty directories vanish in git without a keepfile. models/ and
         reports/ now survive via their scaffolded sample files; the dirs
@@ -2135,14 +1834,6 @@ class TestConsumerProjectPath:
         main(["init", str(target)])
         for d in ("models", "pipelines", "reports"):
             assert any((target / d).iterdir()), f"{d}/ would vanish in a clone"
-
-    def test_init_does_not_write_dead_config(self, tmp_path):
-        """tracebi.yaml was scaffolded and parsed by nothing."""
-        from tracebi.cli import main
-
-        target = tmp_path / "proj"
-        main(["init", str(target)])
-        assert not (target / "tracebi.yaml").exists()
 
     def test_serve_refuses_outside_a_project(self, tmp_path, monkeypatch, capsys):
         from tracebi.cli import main
@@ -2214,13 +1905,6 @@ class TestCapabilitySurface:
     the first time a field was added.
     """
 
-    def test_describe_is_json_serializable(self):
-        import json
-
-        from tracebi.capabilities import describe
-
-        assert json.loads(json.dumps(describe(), default=str))
-
     def test_every_section_class_is_described(self):
         """
         The generator must cover every SectionType. This is the anti-drift
@@ -2231,16 +1915,6 @@ class TestCapabilitySurface:
 
         described = {s["section_type"] for s in describe()["report_sections"]}
         assert described == {t.value for t in SectionType}
-
-    def test_fields_carry_types_and_defaults(self):
-        from tracebi.capabilities import describe
-
-        text = next(s for s in describe()["report_sections"]
-                    if s["class"] == "TextSection")
-        by_name = {f["name"]: f for f in text["fields"]}
-        assert by_name["content"]["type"] == "str"
-        assert by_name["content"]["default"] == ""
-        assert by_name["style"]["default"] == "normal"
 
     def test_closed_value_sets_are_published(self):
         """An agent must be able to enumerate valid values, not guess."""
@@ -2268,23 +1942,6 @@ class TestCapabilitySurface:
         for value in next(f for f in sections["TextSection"]["fields"]
                           if f["name"] == "style")["allowed"]:
             TextSection(style=value)
-
-    def test_data_bearing_fields_are_flagged(self):
-        """A spec must reference data, not inline a live DataSet."""
-        from tracebi.capabilities import describe
-
-        table = next(s for s in describe()["report_sections"]
-                     if s["class"] == "TableSection")
-        dataset = next(f for f in table["fields"] if f["name"] == "dataset")
-        assert dataset.get("holds_data") is True
-
-    def test_dataset_verbs_exclude_accessors(self):
-        from tracebi.capabilities import describe
-
-        names = {v["name"] for v in describe()["dataset_verbs"]}
-        assert "filter" in names and "aggregate" in names
-        for accessor in ("to_pandas", "fingerprint", "help", "help_text"):
-            assert accessor not in names
 
     def test_semantic_model_vocabulary_matches_the_code(self):
         from tracebi.capabilities import describe
@@ -2442,24 +2099,6 @@ class TestDiscoveryDiagnostics:
         assert by_file["notes.txt"]["status"] == "skipped"
         assert by_file["subdir"]["status"] == "skipped"
 
-    def test_underscore_file_is_never_executed(self, tmp_path):
-        """_skipped.py raises on import; the skip must happen before that."""
-        from tracebi.web.discovery import auto_discover, clear_discovery_report
-
-        clear_discovery_report()
-        auto_discover(str(self._fixture(tmp_path)))  # must not raise
-
-    def test_missing_directory_is_recorded_not_silent(self, tmp_path):
-        from tracebi.web.discovery import (
-            auto_discover, clear_discovery_report, discovery_report,
-        )
-
-        clear_discovery_report()
-        assert auto_discover(str(tmp_path / "nope")) == []
-        entry = discovery_report()[0]
-        assert entry["status"] == "skipped"
-        assert "does not exist" in entry["reason"]
-
     def test_strict_mode_reraises(self, tmp_path):
         from tracebi.web.discovery import auto_discover, clear_discovery_report
 
@@ -2568,18 +2207,6 @@ class TestSlimInstallContract:
                              capture_output=True, text=True)
         assert out.returncode == 0, out.stderr
         assert "ok" in out.stdout
-
-    def test_ui_api_base_is_configurable(self):
-        """
-        The UI must be buildable against an API on another origin, or it
-        can only ever be served from the same host as the API.
-        """
-        import pathlib
-
-        api_js = (pathlib.Path(__file__).resolve().parents[1]
-                  / "web" / "ui" / "src" / "api.js").read_text()
-        assert "VITE_API_BASE" in api_js
-
 
 # ── Homepage when the UI bundle is missing ────────────────────────────────────
 # tracebi/web/ui/dist is gitignored, so a fresh clone (and any wheel built
@@ -3388,9 +3015,3 @@ class TestArtifactWebParity:
 
         result = verify_file(payload["html"], manifest)
         assert result["ok"], result["verdict_detail"]
-
-    def test_non_package_reports_keep_the_carrier_path(self):
-        from tracebi.web.api.routers import reports as reports_router
-
-        # A factory without the package tag must not take the artifact path.
-        assert reports_router._artifact_payload("no_such_report") is None

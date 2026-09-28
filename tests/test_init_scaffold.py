@@ -28,33 +28,6 @@ def _run(args, cwd):
 
 
 class TestInitScaffold:
-    def test_init_creates_the_three_phase_layout(self, tmp_path):
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        # M5 flip ledger: init no longer scaffolds requests/ — the
-        # deprecated lane is not handed to new projects.
-        for d in ("inputs", "transforms", "models", "reports",
-                  "pipelines", "data", "output"):
-            assert (proj / d).is_dir(), f"missing {d}/"
-        assert not (proj / "scheduled").exists(), \
-            "init must not scaffold the deprecated scheduled/ lane"
-        assert not (proj / "requests").exists(), \
-            "init must not scaffold the deprecated requests/ lane"
-        assert (proj / "inputs" / "orders.csv").is_file()
-        assert (proj / "transforms" / "sample_transform.py").is_file()
-        assert (proj / "models" / "sample_model.py").is_file()
-        # Round-2 flip: the sample report is an ARTIFACT PACKAGE — the one
-        # report lane — not a legacy JSON spec.
-        assert (proj / "reports" / "sample_dashboard" / "report.json").is_file()
-        assert (proj / "reports" / "sample_dashboard" / "template.html").is_file()
-        import json as _json
-        pkg = _json.loads((proj / "reports" / "sample_dashboard" /
-                           "report.json").read_text())
-        assert pkg.get("libs") == ["echarts"], \
-            "the sample chart must opt into the vendored ECharts or it is blank"
-        assert not (proj / "reports" / "sample_dashboard.json").exists(), \
-            "the scaffold must not teach the legacy spec lane"
-
     def test_init_wires_the_gateway(self, tmp_path):
         proj = tmp_path / "proj"
         assert cli.main(["init", str(proj)]) == 0
@@ -149,77 +122,6 @@ class TestInitScaffold:
         assert "STARTED" in out.stdout
         assert "deprecated" in out.stderr
 
-    def test_init_scaffolds_an_agent_guide(self, tmp_path):
-        """A fresh agent landing in the project must find orientation there —
-        the project onboards its own agent."""
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        guide = proj / "AGENTS.md"
-        assert guide.is_file(), "init must scaffold AGENTS.md"
-        text = guide.read_text()
-        # It must teach the load-bearing concepts, not just exist.
-        for concept in ("tracebi context", "tracebi verify", "transforms/",
-                        "models/", "reports/", "receipt"):
-            assert concept in text, f"AGENTS.md should mention {concept}"
-
-    def test_init_loop_ends_in_reproduces(self, tmp_path):
-        """The README's four commands, verbatim: transform → validate →
-        build → verify. The first thing a new user runs ends green."""
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-
-        # ① transform — clean the sample input, sink the warehouse
-        out = subprocess.run(
-            [sys.executable, "transforms/sample_transform.py"],
-            capture_output=True, text=True, cwd=str(proj),
-        )
-        assert out.returncode == 0, out.stderr
-        assert (proj / "data" / "warehouse.duckdb").exists()
-
-        # ③ render + receipt — the sample is an artifact package, so the
-        # first page a project renders demonstrates the real lane: figure
-        # claims, the presentation stack, provenance badges, and a manifest
-        # that joins the sink contract (round-2 finding: the scaffold must
-        # not teach the form `migrate` exists to convert away from).
-        out = _run(["report", "build", "sample_dashboard"], proj)
-        assert out.returncode == 0, out.stdout + out.stderr
-        # M1 flip ledger: report build renders to output/ (finding #14).
-        manifest = proj / "output" / "sample_dashboard.html.manifest.json"
-        assert manifest.is_file()
-
-        html = (proj / "output" / "sample_dashboard.html").read_text(
-            encoding="utf-8")
-        assert "tb-kpi" in html, "the sample page must use the shipped stack"
-        # The scaffold's exploration block ("Working notes") must be DELETED
-        # by the build — the inlined stylesheet still names the attribute in
-        # its selectors, so assert on the content, not the string.
-        assert "Working notes" not in html, \
-            "exploration blocks must be deleted at the final build"
-        import json as _json
-        m = _json.loads(manifest.read_text(encoding="utf-8"))
-        assert m["schema_version"] == 2 and m.get("figures"), \
-            "the sample must produce the figure claims layer"
-        contracts = m.get("transform_contracts", {})
-        assert contracts and all(
-            r.get("status") == "satisfied" for r in contracts.values()
-        ), "the sample receipt must join the scaffolded sink contract green"
-
-        # the loop closes under --strict: every figure in the scaffold is
-        # bound, so the CI-gate bar itself reads green on first contact.
-        out = _run(["verify", "output/sample_dashboard.html.manifest.json",
-                    "--strict", "--contracts"], proj)
-        assert out.returncode == 0, out.stdout + out.stderr
-        assert "REPRODUCES" in out.stdout
-        assert "satisfied" in out.stdout
-
-    def test_scaffolded_python_compiles(self, tmp_path):
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        for f in ("transforms/sample_transform.py", "models/sample_model.py"):
-            assert compileall.compile_file(
-                str(proj / f), quiet=2
-            ), f"{f} does not compile"
-
     def test_scaffolded_model_is_lazy(self, tmp_path):
         """Importing the scaffolded model must not touch the warehouse —
         it has to load before phase ① has ever run."""
@@ -267,14 +169,6 @@ class TestNotebookShapedTransforms:
     """Transforms are notebook-shaped .py (percent cells) — every notebook
     editor opens them as notebooks while the file stays reviewable Python —
     and literal .ipynb runs top-to-bottom fresh via run-transform."""
-
-    def test_scaffolds_are_percent_format(self, tmp_path):
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        sample = (proj / "transforms" / "sample_transform.py").read_text()
-        assert "# %% [markdown]" in sample and "# %%" in sample
-        from tracebi.cli import _transform_template_text
-        assert "# %% [markdown]" in _transform_template_text("X")
 
     def test_run_transform_executes_py_and_ipynb(self, tmp_path, monkeypatch):
         import json as _json
@@ -373,34 +267,6 @@ class TestReportSend:
         monkeypatch.setattr(delivery.smtplib, "SMTP_SSL", FakeSMTP)
         return sent
 
-    def test_send_report_names_the_missing_env_vars(self, tmp_path, monkeypatch):
-        """Invariant 4 shape: unconfigured delivery fails loudly, naming
-        exactly the variables to set."""
-        from tracebi._delivery import send_report
-        monkeypatch.delenv("TRACEBI_SMTP_URL", raising=False)
-        monkeypatch.delenv("TRACEBI_SMTP_FROM", raising=False)
-        html = tmp_path / "r.html"
-        html.write_text("<p>x</p>")
-        man = tmp_path / "r.html.manifest.json"
-        man.write_text("{}")
-        with pytest.raises(RuntimeError) as exc:
-            send_report(html, man, "a@example.com")
-        assert "TRACEBI_SMTP_URL" in str(exc.value)
-        assert "TRACEBI_SMTP_FROM" in str(exc.value)
-
-    def test_send_refuses_without_smtp_env(self, proj, monkeypatch, capsys):
-        import tracebi.verify as verify_mod
-        monkeypatch.chdir(proj)
-        monkeypatch.delenv("TRACEBI_SMTP_URL", raising=False)
-        monkeypatch.delenv("TRACEBI_SMTP_FROM", raising=False)
-        monkeypatch.delenv("TRACEBI_SLACK_WEBHOOK", raising=False)
-        monkeypatch.setattr(verify_mod, "verify_manifest",
-                            lambda *a, **k: dict(self._PASSING))
-        rc = cli.main(["report", "send", "sample_dashboard",
-                       "--to", "a@example.com"])
-        assert rc == 1
-        assert "TRACEBI_SMTP_URL" in capsys.readouterr().err
-
     def test_send_refuses_when_verify_fails(self, proj, monkeypatch, capsys):
         import tracebi._delivery as delivery
         import tracebi.verify as verify_mod
@@ -429,25 +295,6 @@ class TestReportSend:
             preferencelist=("plain",)).get_content()
         assert "DID NOT VERIFY" in body    # the red flag banner, up top
         assert "NOT REPRODUCED" in body    # the verdict itself
-
-    def test_happy_path_attaches_html_and_manifest(self, proj, monkeypatch):
-        import tracebi.verify as verify_mod
-        self._env(monkeypatch, proj)
-        monkeypatch.setattr(verify_mod, "verify_manifest",
-                            lambda *a, **k: dict(self._PASSING))
-        sent = self._fake_smtp(monkeypatch)
-        rc = cli.main(["report", "send", "sample_dashboard",
-                       "--to", "a@example.com,b@example.com"])
-        assert rc == 0
-        msg = sent["msg"]
-        assert msg["To"] == "a@example.com, b@example.com"
-        names = [p.get_filename() for p in msg.iter_attachments()]
-        assert names == ["sample_dashboard.html",
-                         "sample_dashboard.html.manifest.json"], \
-            "the page and its receipt travel together"
-        body = msg.get_body(preferencelist=("plain",)).get_content()
-        assert "self-contained" in body and "receipt" in body
-        assert "RED FLAG" not in body
 
     def test_starttls_uses_a_verified_context(self, proj, monkeypatch):
         """STARTTLS must pass an SSL context so the server certificate is

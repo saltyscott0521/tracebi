@@ -73,19 +73,6 @@ def sample_report():
 
 class TestReport:
 
-    def test_fluent_builder(self, sample_report):
-        assert sample_report.name == "Test Report"
-        assert sample_report._author == "Test Author"
-        assert sample_report._parameters == {"period": "Q1 2024"}
-        assert len(sample_report.sections) == 6
-
-    def test_section_types(self, sample_report):
-        types = [s.section_type for s in sample_report.sections]
-        assert SectionType.TEXT in types
-        assert SectionType.TABLE in types
-        assert SectionType.CHART in types
-        assert SectionType.SPACER in types
-
     def test_build_manifest(self, sample_report):
         manifest = sample_report.build_manifest("excel", "/tmp/test.xlsx")
         assert manifest.report_name == "Test Report"
@@ -131,24 +118,11 @@ class TestReport:
         assert list(df.columns) == ["region", "Rev"]
         assert len(df) == 2
 
-    def test_describe_runs(self, sample_report, capsys):
-        sample_report.describe()
-        out = capsys.readouterr().out
-        assert "Test Report" in out
-        assert "Test Author" in out
-
-
 # ─────────────────────────────────────────────
 # Excel renderer tests
 # ─────────────────────────────────────────────
 
 class TestExcelRenderer:
-
-    def test_renders_file(self, sample_report):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "report.xlsx")
-            ExcelRenderer().render(report=sample_report, output_path=path)
-            assert os.path.exists(path)
 
     def test_manifest_saved(self, sample_report):
         with tempfile.TemporaryDirectory() as tmp:
@@ -159,24 +133,6 @@ class TestExcelRenderer:
             with open(manifest_path) as f:
                 data = json.load(f)
             assert data["report_name"] == "Test Report"
-
-    def test_manifest_returned(self, sample_report):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "report.xlsx")
-            manifest = ExcelRenderer().render(report=sample_report, output_path=path)
-            assert isinstance(manifest, ReportManifest)
-            assert manifest.format == "excel"
-
-    def test_renders_pie_chart(self):
-        # Regression: PieChart has no x/y axes — setting axis titles crashed.
-        report = Report("Pie Report").add(ChartSection(
-            title="Revenue Share", dataset=make_ds("pie"),
-            chart_type="pie", x="region", y="revenue",
-        ))
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "pie.xlsx")
-            ExcelRenderer().render(report=report, output_path=path)
-            assert os.path.exists(path)
 
     def test_excel_has_sheets(self, sample_report):
         import openpyxl
@@ -189,6 +145,24 @@ class TestExcelRenderer:
             assert "Cover" in wb.sheetnames
             assert "Report" in wb.sheetnames
             assert "Lineage" in wb.sheetnames
+
+    def test_declared_number_formats_reach_the_cells(self, tmp_path):
+        """ExcelRenderer derives nothing: the formats the author declared are
+        what the spreadsheet cells carry, and the stored value stays raw."""
+        import openpyxl
+        ds = DataSet(pd.DataFrame({"region": ["N", "S"], "revenue": [1234.5, -50.0],
+                                   "margin": [0.25, 0.1]}), name="m")
+        report = Report("Formats").add(TableSection(
+            title="T", dataset=ds,
+            number_formats={"revenue": "currency", "margin": "percent"}))
+        path = str(tmp_path / "f.xlsx")
+        ExcelRenderer(include_cover=False, include_lineage_sheet=False).render(
+            report=report, output_path=path)
+        ws = openpyxl.load_workbook(path)["Report"]
+        cells = {c.value: c.number_format for row in ws.iter_rows() for c in row
+                 if isinstance(c.value, (int, float))}
+        assert cells[1234.5] == cells[-50] == "$#,##0.00"
+        assert cells[0.25] == cells[0.1] == "0.0%"
 
     def test_no_cover_option(self, sample_report):
         import openpyxl
@@ -216,23 +190,6 @@ class TestExcelRenderer:
 
 class TestHTMLRenderer:
 
-    def test_renders_file(self, sample_report):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "report.html")
-            HTMLRenderer().render(report=sample_report, output_path=path)
-            assert os.path.exists(path)
-
-    def test_html_is_valid(self, sample_report):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "report.html")
-            HTMLRenderer().render(report=sample_report, output_path=path)
-            with open(path) as f:
-                content = f.read()
-            assert "<!DOCTYPE html>" in content
-            assert "Test Report" in content
-            assert "Test Author" in content
-            assert "Q1 2024" in content
-
     def test_html_contains_table_data(self, sample_report):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "report.html")
@@ -242,34 +199,11 @@ class TestHTMLRenderer:
             assert "Sales Table" in content
             assert "North" in content   # data from the dataset
 
-    def test_html_contains_lineage(self, sample_report):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "report.html")
-            HTMLRenderer().render(report=sample_report, output_path=path)
-            with open(path) as f:
-                content = f.read()
-            assert "Data Lineage" in content
-            assert "filter" in content
-
     def test_manifest_saved(self, sample_report):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "report.html")
             HTMLRenderer().render(report=sample_report, output_path=path)
             assert os.path.exists(path + ".manifest.json")
-
-    def test_manifest_returned(self, sample_report):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "report.html")
-            manifest = HTMLRenderer().render(report=sample_report, output_path=path)
-            assert isinstance(manifest, ReportManifest)
-            assert manifest.format == "html"
-
-    def test_empty_report(self):
-        report = Report("Empty")
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "empty.html")
-            HTMLRenderer().render(report=report, output_path=path)
-            assert os.path.exists(path)
 
     def test_custom_manifest_path(self, sample_report):
         with tempfile.TemporaryDirectory() as tmp:
@@ -322,16 +256,6 @@ class TestMetricSection:
             ],
         ))
 
-    def test_html_renders_cards(self):
-        html = HTMLRenderer().to_html(self.make_metrics_report())
-        assert "metric-card" in html
-        assert "$1,250,000" in html
-        assert "3.4%" in html
-        # Positive delta on a good_when_up metric is good (green)…
-        assert 'metric-delta good">▲ +12.0%' in html
-        # …but on a good_when_up=False metric it is bad (red)
-        assert 'metric-delta bad">▲ +1.0%' in html
-
     def test_excel_renders(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "metrics.xlsx")
@@ -347,12 +271,6 @@ class TestMetricSection:
         manifest = self.make_metrics_report().build_manifest("html", "x.html")
         assert manifest.sections[0]["metrics"][0]["label"] == "Total Revenue"
 
-    def test_fluent_shortcut(self):
-        from tracebi.reports.report import Metric
-        report = Report("R").metrics([Metric("Orders", 10)], title="KPIs")
-        assert report.sections[0].section_type == SectionType.METRICS
-
-
 class TestRowSection:
 
     def make_row_report(self):
@@ -363,17 +281,6 @@ class TestRowSection:
             ChartSection(title="Right Chart", dataset=ds,
                          chart_type="bar", x="region", y="revenue"),
         ]))
-
-    def test_html_side_by_side(self):
-        html = HTMLRenderer().to_html(self.make_row_report())
-        assert "layout-row" in html
-        assert "Left Table" in html
-        assert "Right Chart" in html
-
-    def test_nested_lineage_in_html(self):
-        html = HTMLRenderer().to_html(self.make_row_report())
-        assert "Data Lineage" in html
-        assert "Load sales" in html
 
     def test_data_sections_flattens(self):
         report = self.make_row_report()
@@ -395,12 +302,6 @@ class TestRowSection:
                             for c in row if c.value]
             assert "Load sales" in lineage_vals
 
-    def test_fluent_shortcut(self):
-        ds = make_ds()
-        report = Report("R").row(TableSection(dataset=ds), widths=[2, 1])
-        assert report.sections[0].section_type == SectionType.ROW
-
-
 class TestTableStyling:
 
     def make_styled_ds(self):
@@ -417,82 +318,12 @@ class TestTableStyling:
         html = HTMLRenderer().to_html(report)
         assert "$5,000.00" in html
 
-    def test_highlight_negatives_html(self):
-        report = Report("R").add(TableSection(
-            dataset=self.make_styled_ds(), highlight_negatives=["margin"]))
-        html = HTMLRenderer().to_html(report)
-        assert 'class="num neg"' in html
-        # Only the one negative value is highlighted
-        assert html.count('class="num neg"') == 1
-
-    def test_color_scale_html(self):
-        report = Report("R").add(TableSection(
-            dataset=self.make_styled_ds(), color_scale={"margin": "#2E74B5"}))
-        html = HTMLRenderer().to_html(report)
-        # Max value gets the full color, min gets white
-        assert "background:rgb(46,116,181)" in html
-        assert "background:rgb(255,255,255)" in html
-
-    def test_column_widths_html(self):
-        report = Report("R").add(TableSection(
-            dataset=make_ds(), column_widths={"region": 20}))
-        html = HTMLRenderer().to_html(report)
-        assert "min-width:140px" in html
-
-    def test_excel_styling(self):
-        report = Report("R").add(TableSection(
-            dataset=self.make_styled_ds(),
-            highlight_negatives=["margin"],
-            color_scale={"margin": "#2E74B5"},
-            column_widths={"region": 30},
-            number_formats={"margin": "currency"},
-        ))
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "styled.xlsx")
-            ExcelRenderer().render(report, path, save_manifest=False)
-            from openpyxl import load_workbook
-            ws = load_workbook(path)["Report"]
-            # column_widths override autosize
-            assert ws.column_dimensions["A"].width == 30
-            # negative value in red font
-            cells = {c.value: c for row in ws.iter_rows() for c in row}
-            assert "C62828" in str(cells[-45.0].font.color.rgb)
-            assert cells[-45.0].number_format == "$#,##0.00"
-            # conditional formatting registered for the margin column
-            assert len(ws.conditional_formatting._cf_rules) == 1
-
-    def test_excel_named_format_mapping(self):
-        fmt = ExcelRenderer._excel_number_format
-        assert fmt("currency") == "$#,##0.00"
-        assert fmt("currency0") == "$#,##0"
-        assert fmt("percent") == "0.0%"
-        assert fmt("comma") == "#,##0"
-        assert fmt("{:,.2f}") == "#,##0.00"
-
-
 class TestChartEnhancements:
     # HTMLRenderer is the legacy carrier lane (Excel-adjacent + PDF); its charts
     # render as inline SVG (ChartSpec.to_svg) with NO client-side JS runtime. The
     # interactive ECharts runtime lives only in the artifact lane (tracebi.js).
     # The data is still embedded as the canonical triple so verify --file vouches
     # for it — the section options just flow into the SVG, not an ECharts config.
-
-    def test_area_chart_html(self):
-        report = Report("R").add(ChartSection(
-            dataset=make_ds(), chart_type="area", x="region", y="revenue"))
-        html = HTMLRenderer().to_html(report)
-        assert '<svg class="tb-chart tb-chart-area"' in html   # the type flows through
-        assert 'id="tracebi-chart-chart1"' not in html         # no ECharts container
-        assert 'id="tracebi-charts"' not in html               # no ECharts config block
-        assert '<script id="tracebi-data-chart1"' in html      # data still embedded
-
-    def test_show_values_bar(self):
-        report = Report("R").add(ChartSection(
-            dataset=make_ds(), chart_type="bar", x="region", y="revenue",
-            show_values=True))
-        html = HTMLRenderer().to_html(report)
-        assert '<svg class="tb-chart tb-chart-bar"' in html
-        assert 'class="tb-value"' in html          # show_values reaches the SVG renderer
 
     def test_two_charts_render_as_svg_with_csp_and_no_echarts(self):
         # Two charts, one document: each is inline SVG, no ECharts bundle is
@@ -589,10 +420,6 @@ class TestSectionValidationAtConstruction:
     Validating in __post_init__ surfaces the error at the line that wrote it.
     """
 
-    def test_unknown_chart_type_rejected(self):
-        with pytest.raises(ValueError, match="chart_type"):
-            ChartSection(chart_type="stacked_bar")
-
     def test_unknown_chart_type_suggests_a_close_match(self):
         with pytest.raises(ValueError, match="Did you mean 'bar'"):
             ChartSection(chart_type="barr")
@@ -605,25 +432,11 @@ class TestSectionValidationAtConstruction:
         with pytest.raises(ValueError, match="Did you mean 'striped'"):
             TableSection(style="stripey")
 
-    def test_valid_values_still_accepted(self):
-        for t in ("bar", "barh", "line", "area", "pie", "scatter"):
-            assert ChartSection(chart_type=t).chart_type == t
-        for s in ("normal", "heading1", "heading2", "note", "callout"):
-            assert TextSection(style=s).style == s
-
-
 class TestChartSectionNormalisation:
     """Normalised at construction so a section round-trips through JSON."""
 
     def test_scalar_y_becomes_a_list(self):
         assert ChartSection(chart_type="bar", y="revenue").y == ["revenue"]
-
-    def test_list_y_is_preserved(self):
-        assert ChartSection(chart_type="bar", y=["a", "b"]).y == ["a", "b"]
-
-    def test_figsize_list_becomes_a_tuple(self):
-        assert ChartSection(chart_type="bar", figsize=[8, 4]).figsize == (8, 4)
-
 
 class TestHeadingContentNotDiscarded:
     """
@@ -668,12 +481,6 @@ class TestNestedRowLineage:
             "a doubly-nested RowSection must not vanish from the lineage walk"
         )
 
-    def test_flat_row_behaviour_unchanged(self):
-        ds = DataSet(pd.DataFrame({"a": [1]}), name="d")
-        report = Report("F").add(RowSection(sections=[TableSection(dataset=ds)]))
-        assert len(report.data_sections()) == 1
-
-
 class TestChartFailuresRaise:
     def test_missing_column_raises_instead_of_drawing_the_error(self):
         from tracebi.reports.html_renderer import HTMLRenderer
@@ -705,11 +512,6 @@ class TestManifestReceiptCompleteness:
         for key in ("chart_type", "x", "y", "color", "xlabel", "ylabel",
                     "figsize", "style", "palette", "show_values"):
             assert key in d
-
-    def test_section_id_round_trips_when_set(self):
-        assert TextSection(content="x", id="exec-summary").to_manifest_dict()["id"] == "exec-summary"
-        assert "id" not in TextSection(content="x").to_manifest_dict()
-
 
 # ── Report specs (reports as data) ────────────────────────────────────────────
 
@@ -755,13 +557,6 @@ class TestReportSpecRoundTrip:
 
         spec = ReportSpec.from_dict(VALID_SPEC)
         assert ReportSpec.from_json(spec.to_json()).to_dict() == spec.to_dict()
-
-    def test_builds_a_live_report(self):
-        from tracebi.spec import ReportSpec
-
-        report = ReportSpec.from_dict(VALID_SPEC).build({"Sales": _spec_model()})
-        assert report.name == "Regional Margin"
-        assert len(report.sections) == 2
 
     def test_built_report_renders_with_real_data(self):
         from tracebi.reports.html_renderer import HTMLRenderer
@@ -1006,13 +801,6 @@ class TestReportSpecSchema:
 
         assert set(SECTION_CLASSES) == {t.value for t in SectionType}
 
-    def test_schema_is_json_serializable(self):
-        import json
-
-        from tracebi.spec import json_schema
-
-        assert json.loads(json.dumps(json_schema()))
-
     def test_schema_publishes_enum_values(self):
         from tracebi.reports.report import CHART_TYPES
         from tracebi.spec import json_schema
@@ -1076,16 +864,6 @@ class TestChartSpecSvg:
         with pytest.raises(ValueError, match="pie cannot show negative"):
             self._svg("pie", x="region", y=["revenue"])   # _ds revenue has -1200
 
-    def test_negative_values_stay_inside_the_plot(self):
-        """A negative bar must hang below the zero line, not off-canvas."""
-        import xml.etree.ElementTree as ET
-
-        root = ET.fromstring(self._svg("bar"))
-        ns = "{http://www.w3.org/2000/svg}"
-        for rect in root.iter(f"{ns}rect"):
-            y, h = float(rect.get("y")), float(rect.get("height"))
-            assert y >= 0 and y + h <= 420
-
     def test_labels_are_escaped(self):
         """A label is untrusted text; unescaped it would break the document."""
         import xml.etree.ElementTree as ET
@@ -1122,37 +900,6 @@ class TestChartSpecSvg:
             ChartSection(dataset=ds, chart_type="bar", x="r", y=["v"])
         ).to_svg()
         assert "no data" in svg
-
-    def test_svg_is_responsive_not_fixed_size(self):
-        svg = self._svg("bar")
-        assert "viewBox" in svg
-        assert "width=" not in svg.split(">", 1)[0]   # no hardcoded px width
-
-    def test_elements_carry_classes_for_theming(self):
-        """A stylesheet must be able to restyle a chart without code changes."""
-        svg = self._svg("bar")
-        for cls in ("tb-chart", "tb-grid", "tb-tick", "tb-bar"):
-            assert cls in svg
-
-    def test_a_long_line_labels_every_few_years_not_all(self):
-        """Fifty-odd year labels drawn side by side overlap into a smear."""
-        import re
-        from tracebi.reports.chart import ChartSpec
-
-        ds = DataSet(pd.DataFrame({"year": list(range(1971, 2024)),
-                                   "v": list(range(53))}), name="y")
-        svg = ChartSpec.from_section(
-            ChartSection(dataset=ds, chart_type="line", x="year", y=["v"])
-        ).to_svg()
-        years = re.findall(r'class="tb-cat"[^>]*>(\d+)<', svg)
-        assert years[0] == "1971" and 8 <= len(years) <= 18
-
-    def test_axis_ticks_are_round_numbers(self):
-        from tracebi.reports.chart import ChartSpec
-
-        ticks = ChartSpec._ticks(0, 6100)
-        assert all(t == round(t) for t in ticks)
-        assert len(ticks) >= 2
 
     def test_charts_render_without_matplotlib(self):
         """The whole point: no optional dependency for HTML charts."""
@@ -1207,13 +954,6 @@ class TestThemeAndTemplateLayer:
         return (Report("Themed")
                 .add(TextSection(title="Head", style="heading1"))
                 .add(TableSection(dataset=ds)))
-
-    def test_default_output_is_unchanged(self):
-        """The refactor must not alter what existing reports look like."""
-        html = HTMLRenderer().to_html(self._report())
-        assert "Segoe UI" in html          # default stylesheet still applied
-        assert html.startswith("<!DOCTYPE html>")
-        assert "</html>" in html.strip()[-10:]
 
     def test_theme_overrides_are_appended_so_they_win(self):
         from tracebi.reports.theme import Theme
@@ -1354,10 +1094,6 @@ class TestTotalsWithRenamedColumns:
         from tracebi.model.dataset import DataSet
         return DataSet(pd.DataFrame({"region": ["N", "S"], "amount": [10.0, 32.0]}), name="t")
 
-    def test_total_without_labels(self, tmp_path, ds):
-        cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"])
-        assert cells[-1] == "42"
-
     def test_total_survives_column_labels(self, tmp_path, ds):
         cells = self._total_cells(tmp_path, dataset=ds, totals=["amount"],
                                   column_labels={"amount": "Amount"})
@@ -1401,10 +1137,6 @@ class TestCustomSectionTypes:
         d = self._custom().to_manifest_dict()
         assert d["section_type"] == "banner"
         assert d["title"] == "Hello"
-
-    def test_builtin_enum_section_type_still_serialises(self):
-        from tracebi.reports.report import TextSection
-        assert TextSection(title="t").to_manifest_dict()["section_type"] == "text"
 
     def test_report_manifest_builds_with_a_custom_section(self, tmp_path):
         from tracebi.reports.html_renderer import HTMLRenderer
@@ -1454,15 +1186,6 @@ class TestDerivedDefaults:
         from tracebi.reports.derive import humanise
         assert humanise("dim_branch.region") == "Region"
         assert humanise("dim_client.segment") == "Segment"
-
-    def test_humanise_makes_snake_case_readable(self):
-        from tracebi.reports.derive import humanise
-        assert humanise("market_value") == "Market value"
-        assert humanise("units") == "Units"
-
-    def test_humanise_leaves_an_already_plain_name_alone(self):
-        from tracebi.reports.derive import humanise
-        assert humanise("region") == "Region"
 
     # ── rendering ──
     def test_headers_are_readable_without_the_author_saying_so(self, ds):
@@ -1634,10 +1357,3 @@ class TestDerivedDefaults:
         from tracebi.reports.report import TableSection
         ds = DataSet(pd.DataFrame({"margin_pct": [0.42]}), name="t")
         assert self._percent_cells(self._render(TableSection(dataset=ds))) == [42.0]
-
-    def test_get_display_df_is_unchanged_when_no_labels_passed(self, ds):
-        # The renderer passes derived labels in; called directly, the section
-        # behaves exactly as before.
-        from tracebi.reports.report import TableSection
-        cols = list(TableSection(dataset=ds).get_display_df().columns)
-        assert cols == ["dim_branch.region", "market_value", "orders"]

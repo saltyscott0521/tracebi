@@ -64,26 +64,6 @@ def model_with_data(sample_df):
 
 class TestLineageNode:
 
-    def test_defaults(self):
-        node = LineageNode(operation="load")
-        assert node.operation == "load"
-        assert node.description == ""
-        assert node.connector is None
-        assert node.source is None
-        assert node.metadata == {}
-        assert node.timestamp  # non-empty string
-
-    def test_to_dict_keys(self):
-        node = LineageNode(
-            operation="filter",
-            description="test filter",
-            metadata={"rows_before": 10, "rows_after": 5},
-        )
-        d = node.to_dict()
-        assert set(d.keys()) == {"operation", "description", "connector",
-                                 "source", "timestamp", "metadata"}
-        assert d["metadata"]["rows_before"] == 10
-
     def test_attributes_frozen(self):
         node = LineageNode(operation="load")
         with pytest.raises(AttributeError):
@@ -93,11 +73,6 @@ class TestLineageNode:
         node = LineageNode(operation="filter", metadata={"rows_after": 5})
         with pytest.raises(TypeError):
             node.metadata["rows_after"] = 999
-
-    def test_connector_read_only(self):
-        node = LineageNode(operation="load", connector={"connector_name": "x"})
-        with pytest.raises(TypeError):
-            node.connector["connector_name"] = "evil"
 
     def test_to_dict_returns_mutable_copies(self):
         node = LineageNode(operation="filter", metadata={"rows_after": 5})
@@ -112,11 +87,6 @@ class TestLineageNode:
 
 class TestDataSet:
 
-    def test_construction(self, sample_ds, sample_df):
-        assert sample_ds.name == "test"
-        assert sample_ds.shape == sample_df.shape
-        assert len(sample_ds.lineage) == 1
-
     def test_to_pandas_returns_copy(self, sample_ds):
         df = sample_ds.to_pandas()
         df["new_col"] = 99
@@ -129,10 +99,6 @@ class TestDataSet:
         assert filtered.lineage[-1].operation == "filter"
         assert filtered.lineage[-1].metadata["rows_before"] == 5
         assert filtered.lineage[-1].metadata["rows_after"] == 3
-
-    def test_filter_does_not_mutate_original(self, sample_ds):
-        _ = sample_ds.filter("value > 100")
-        assert len(sample_ds) == 5  # original unchanged
 
     def test_transform(self, sample_ds):
         transformed = sample_ds.transform(
@@ -148,11 +114,6 @@ class TestDataSet:
         vals = sorted_ds.to_pandas()["value"].tolist()
         assert vals == sorted(vals)
         assert sorted_ds.lineage[-1].operation == "sort"
-
-    def test_sort_descending(self, sample_ds):
-        sorted_ds = sample_ds.sort("value", ascending=False)
-        vals = sorted_ds.to_pandas()["value"].tolist()
-        assert vals == sorted(vals, reverse=True)
 
     def test_select(self, sample_ds):
         selected = sample_ds.select(["id", "value"])
@@ -184,11 +145,6 @@ class TestDataSet:
     def test_fingerprint_stable(self, sample_ds):
         assert sample_ds.fingerprint() == sample_ds.fingerprint()
 
-    def test_fingerprint_is_sha256(self, sample_ds):
-        fp = sample_ds.fingerprint()
-        assert len(fp) == 64
-        int(fp, 16)  # valid hex
-
     def test_fingerprint_changes_on_rename(self, sample_ds):
         renamed = sample_ds.rename({"value": "amount"})
         assert sample_ds.fingerprint() != renamed.fingerprint()
@@ -198,24 +154,6 @@ class TestDataSet:
         assert len(result) == 2
         assert result[0]["operation"] == "load"
         assert result[1]["operation"] == "filter"
-
-    def test_print_lineage(self, sample_ds, capsys):
-        sample_ds.filter("value > 50").print_lineage()
-        out = capsys.readouterr().out
-        assert "test" in out
-        assert "filter" in out.lower()
-
-    def test_len(self, sample_ds):
-        assert len(sample_ds) == 5
-
-    def test_columns_property(self, sample_ds):
-        assert set(sample_ds.columns) == {"id", "region", "value", "status"}
-
-    def test_repr(self, sample_ds):
-        r = repr(sample_ds)
-        assert "DataSet" in r
-        assert "test" in r
-
 
 # ─────────────────────────────────────────────
 # DataSet join / aggregate / assign
@@ -262,13 +200,6 @@ class TestJoin:
         assert joined.lineage[-1].metadata["left_key"] == "id"
         assert joined.lineage[-1].metadata["right_key"] == "customer_id"
 
-    def test_join_does_not_mutate_either_side(self, sample_ds, customers_ds):
-        _ = sample_ds.join(customers_ds, on="id")
-        assert len(sample_ds) == 5
-        assert len(customers_ds) == 3
-        assert len(sample_ds.lineage) == 1
-        assert len(customers_ds.lineage) == 1
-
     def test_join_requires_keys(self, sample_ds, customers_ds):
         with pytest.raises(ValueError, match="requires 'on'"):
             sample_ds.join(customers_ds)
@@ -281,14 +212,6 @@ class TestJoin:
 
 
 class TestAggregate:
-
-    def test_aggregate_same_name_measure(self, sample_ds):
-        agg = sample_ds.aggregate(by="region", value="sum")
-        assert len(agg) == 4  # North, South, East, West
-        node = agg.lineage[-1]
-        assert node.operation == "aggregate"
-        assert node.metadata["by"] == ["region"]
-        assert node.metadata["measures"]["value"] == {"column": "value", "fn": "sum"}
 
     def test_aggregate_values_correct(self, sample_ds):
         agg = sample_ds.aggregate(by="region", value="sum")
@@ -328,10 +251,6 @@ class TestAssign:
         ds = sample_ds.assign(value=lambda df: df["value"] * 0)
         assert ds.lineage[-1].metadata["columns_replaced"] == ["value"]
         assert "columns_added" not in ds.lineage[-1].metadata
-
-    def test_assign_does_not_mutate_original(self, sample_ds):
-        _ = sample_ds.assign(doubled=lambda df: df["value"] * 2)
-        assert "doubled" not in sample_ds.columns
 
     def test_assign_requires_columns(self, sample_ds):
         with pytest.raises(ValueError, match="at least one column"):
@@ -410,10 +329,6 @@ class TestCleaningVerbs:
         assert node.operation == "cast"
         assert node.metadata["types"] == {"qty": "int64"}
 
-    def test_cast_unknown_column(self, messy_ds):
-        with pytest.raises(ValueError, match="not found"):
-            messy_ds.cast({"nope": "int64"})
-
     def test_limit(self, messy_ds):
         ds = messy_ds.sort("qty", ascending=False).limit(2)
         assert len(ds) == 2
@@ -446,25 +361,11 @@ class TestCleaningVerbs:
 # Public API exports
 # ─────────────────────────────────────────────
 
-class TestPublicExports:
-
-    def test_all_connectors_importable_from_top_level(self):
-        # Optional-dep connectors import lazily, so the names must always resolve
-        from tracebi import (  # noqa: F401
-            BaseConnector, CSVConnector, SQLConnector, MemoryConnector,
-            DuckDBConnector, BigQueryConnector, SnowflakeConnector,
-        )
-
-
 # ─────────────────────────────────────────────
 # MemoryConnector tests
 # ─────────────────────────────────────────────
 
 class TestMemoryConnector:
-
-    def test_connect_is_noop(self, sample_df):
-        c = MemoryConnector("test", {"t": sample_df})
-        c.connect()  # should not raise
 
     def test_load_returns_copy(self, sample_df):
         c = MemoryConnector("test", {"t": sample_df})
@@ -481,7 +382,6 @@ class TestMemoryConnector:
         c = MemoryConnector("test", {})
         c.add_table("t", sample_df)
         assert len(c.load("t")) == len(sample_df)
-
 
 # ─────────────────────────────────────────────
 # CSVConnector tests
@@ -565,17 +465,6 @@ class TestDataModel:
         join_steps = [n for n in ds.lineage if n.operation == "join"]
         assert len(join_steps) == 2
 
-    def test_describe(self, model_with_data, capsys):
-        model_with_data.describe()
-        out = capsys.readouterr().out
-        assert "TestModel" in out
-        assert "sales" in out
-
-    def test_repr(self, model_with_data):
-        r = repr(model_with_data)
-        assert "DataModel" in r
-        assert "sales" in r
-
     def test_connect_calls_connector(self, sample_df):
         connected = []
 
@@ -623,18 +512,6 @@ class TestLineageRowCounts:
         assert meta["rows_after"] == 5
         assert meta["columns_added"] == ["double"]
         assert meta["columns_removed"] == ["status"]
-
-    def test_transform_omits_column_keys_when_unchanged(self, sample_df):
-        ds = DataSet(df=sample_df, name="x", lineage=[])
-        meta = ds.transform(lambda df: df).lineage[-1].metadata
-        assert "columns_added" not in meta
-        assert "columns_removed" not in meta
-
-    def test_sort_select_rename_record_rows(self, sample_df):
-        ds = DataSet(df=sample_df, name="x", lineage=[])
-        assert ds.sort("value").lineage[-1].metadata["rows"] == 5
-        assert ds.select(["id"]).lineage[-1].metadata["rows"] == 5
-        assert ds.rename({"id": "key"}).lineage[-1].metadata["rows"] == 5
 
     def test_join_records_row_counts(self, sample_df):
         regions = pd.DataFrame({

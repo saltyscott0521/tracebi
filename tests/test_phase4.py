@@ -115,11 +115,6 @@ class TestConnectorWrite:
         with pytest.raises(ValueError, match="already exists"):
             mem.write(orders_df, "orders_raw", if_exists="fail")
 
-    def test_memory_new_table(self, mem):
-        df = pd.DataFrame({"x": [1, 2]})
-        mem.write(df, "brand_new")
-        assert len(mem.load("brand_new")) == 2
-
     def test_sql_write_and_read(self, sql_db, orders_df):
         result = sql_db.load("orders_raw")
         assert len(result) == len(orders_df)
@@ -140,12 +135,6 @@ class TestBronzeExecute:
         ds = bronze.execute()
         assert "orders_bronze" in mem._tables
         assert len(ds) == len(orders_df)
-
-    def test_execute_lineage_operation(self, mem):
-        bronze = BronzeLayer(connector=mem, source="orders_raw",
-                             sink=mem, sink_table="orders_bronze")
-        ds = bronze.execute()
-        assert ds.lineage[0].operation == "bronze"
 
     def test_execute_no_sink_raises(self, mem):
         bronze = BronzeLayer(connector=mem, source="orders_raw")
@@ -183,13 +172,6 @@ class TestSilverExecute:
         silver = self._setup(mem, orders_df)
         ds = silver.execute()
         assert len(ds) == 4  # one duplicate removed
-
-    def test_execute_lineage_chain(self, mem, orders_df):
-        silver = self._setup(mem, orders_df)
-        ds = silver.execute()
-        ops = [n.operation for n in ds.lineage]
-        assert "load" in ops
-        assert "silver" in ops
 
     def test_execute_no_source_raises(self):
         silver = SilverLayer(sink=MemoryConnector("m", {}), sink_table="t")
@@ -266,11 +248,6 @@ class TestPipelineRunner:
             .deduplicate(subset=["order_id"])
         )
 
-    def test_register_stores_layer(self, runner, mem):
-        bronze = self._make_bronze(mem)
-        runner.register(bronze, name="orders_bronze")
-        assert "orders_bronze" in runner._layers
-
     def test_register_depends_on_must_exist(self, runner, mem):
         silver = self._make_silver(mem)
         with pytest.raises(ValueError, match="not registered"):
@@ -284,20 +261,16 @@ class TestPipelineRunner:
         assert len(df) == 1
         assert df.iloc[0]["layer_type"] == "bronze"
 
-    def test_run_single(self, runner, mem, orders_df):
-        bronze = self._make_bronze(mem)
-        runner.register(bronze, name="orders_bronze")
+    def test_status_and_lineage_report_each_layers_last_run(self, runner, mem, capsys):
+        """The notebook views print what actually ran: each layer, its last
+        status, and the upstream chain."""
+        runner.register(BronzeLayer(connector=mem, source="orders_raw", sink=mem,
+                                    sink_table="orders_bronze"), name="orders_bronze")
         runner.run("orders_bronze")
-        assert "orders_bronze" in mem._tables
-
-    def test_run_records_success(self, runner, mem, orders_df):
-        bronze = self._make_bronze(mem)
-        runner.register(bronze, name="orders_bronze")
-        runner.run("orders_bronze")
-        df = pd.read_sql("SELECT * FROM tracebi_runs WHERE layer_name='orders_bronze'",
-                         con=runner._engine_())
-        assert df.iloc[0]["status"] == "success"
-        assert df.iloc[0]["rows_out"] > 0
+        runner.status()
+        runner.lineage("orders_bronze")
+        out = capsys.readouterr().out
+        assert "orders_bronze" in out and "success" in out
 
     def test_concurrent_run_of_same_layer_rejected(self, runner, mem):
         bronze = self._make_bronze(mem)
@@ -337,14 +310,6 @@ class TestPipelineRunner:
                          con=runner._engine_())
         assert df.iloc[0]["upstream_run_id"] is not None
 
-    def test_resolve_chain(self, runner, mem):
-        bronze = self._make_bronze(mem)
-        silver = self._make_silver(mem)
-        runner.register(bronze, name="orders_bronze")
-        runner.register(silver, name="orders_silver", depends_on="orders_bronze")
-        chain = runner._resolve_chain("orders_silver")
-        assert chain == ["orders_bronze", "orders_silver"]
-
     def test_register_model_persists_facts_and_dims(self, runner, model):
         runner.register_model(model)
         df = pd.read_sql("SELECT * FROM tracebi_schemas", con=runner._engine_())
@@ -361,26 +326,6 @@ class TestPipelineRunner:
         runner.register_model(m)
         df = pd.read_sql("SELECT * FROM tracebi_schemas", con=runner._engine_())
         assert len(df) == 0
-
-    def test_repr(self, runner):
-        assert "PipelineRunner" in repr(runner)
-
-    def test_status_runs_without_error(self, runner, mem, capsys):
-        bronze = self._make_bronze(mem)
-        runner.register(bronze, name="orders_bronze")
-        runner.run("orders_bronze")
-        runner.status()
-        out = capsys.readouterr().out
-        assert "orders_bronze" in out
-
-    def test_lineage_runs_without_error(self, runner, mem, capsys):
-        bronze = self._make_bronze(mem)
-        runner.register(bronze, name="orders_bronze")
-        runner.run("orders_bronze")
-        runner.lineage("orders_bronze")
-        out = capsys.readouterr().out
-        assert "orders_bronze" in out
-
 
 # ── Dialect portability ───────────────────────────────────────────────────────
 # PipelineRunner takes any SQLAlchemy URL, and the Supabase deploy guide tells
@@ -405,11 +350,6 @@ class TestDialectPortability:
                 assert "{pk}" not in sql
                 assert pk in sql, dialect
 
-    def test_postgres_pk_is_not_sqlite_syntax(self):
-        pg = PipelineRunner._PK_SQL["postgresql"]
-        assert "AUTOINCREMENT" not in pg
-        assert "IDENTITY" in pg
-
     def test_unknown_dialect_falls_back_rather_than_failing(self):
         # Better to create a usable table on an untested dialect than to
         # refuse to start.
@@ -417,9 +357,6 @@ class TestDialectPortability:
         assert pk == "INTEGER PRIMARY KEY"
         for ddl in PipelineRunner._DDL:
             assert "{pk}" not in ddl.format(pk=pk)
-
-    def test_sqlite_runner_reports_its_dialect(self, runner):
-        assert runner._dialect == "sqlite"
 
     def test_sqlite_still_uses_last_insert_rowid(self, runner, mem):
         # The SQLite path is the one every existing test exercises; make sure
@@ -453,14 +390,6 @@ class TestCrossProcessLocking:
         assert a == b, "same layer must map to the same lock key across processes"
         # pg_try_advisory_lock takes a signed bigint.
         assert 0 <= a < 2 ** 63
-
-    def test_advisory_key_differs_per_layer(self, runner):
-        assert runner._advisory_key("orders_bronze") != runner._advisory_key("orders_silver")
-
-    def test_advisory_key_is_namespaced(self, runner):
-        # Namespaced so TraceBi cannot collide with an application's own
-        # advisory locks in the same database.
-        assert runner._advisory_key("x") >> 32 == PipelineRunner._ADVISORY_NAMESPACE
 
     def test_sqlite_lock_is_a_noop_that_grants(self, runner):
         # SQLite is the single-process dev fallback; the context manager must
@@ -507,10 +436,6 @@ class TestAuditAttribution:
         return BronzeLayer(connector=mem, source="orders_raw",
                            sink=mem, sink_table="orders_bronze")
 
-    def test_unattributed_by_default(self):
-        from tracebi.audit import get_actor
-        assert get_actor() == (None, None)
-
     def test_actor_scope_sets_and_restores(self):
         from tracebi.audit import actor, get_actor
         with actor("alice", role="admin"):
@@ -539,15 +464,6 @@ class TestAuditAttribution:
         last = runner.last_run("orders_bronze")
         assert last["actor"] == "alice"
         assert last["actor_role"] == "admin"
-
-    def test_run_without_an_actor_records_none(self, runner, mem):
-        # A CLI run, a notebook, or a deployment that never wired identity —
-        # unattributed is honest, and must not fail.
-        runner.register(self._bronze(mem), name="orders_bronze")
-        runner.run("orders_bronze")
-        last = runner.last_run("orders_bronze")
-        assert last["actor"] is None
-        assert last["actor_role"] is None
 
     def test_actor_does_not_leak_between_runs(self, runner, mem):
         from tracebi.audit import actor

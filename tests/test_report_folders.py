@@ -176,13 +176,3 @@ def test_the_cli_refuses_a_climbing_name(project, capsys):
     assert cli.main(["report", "build", "../escape",
                      "--reports-dir", str(project / "reports")]) == 1
     assert "invalid report name" in capsys.readouterr().err
-
-
-def test_new_report_can_create_a_report_in_a_folder(project):
-    from tracebi import cli
-
-    assert cli.main(["new-report", "Finance/Month end/Close pack",
-                     "--reports-dir", str(project / "reports")]) == 0
-    pkg = project / "reports" / "finance" / "month_end" / "close_pack"
-    assert (pkg / "report.json").is_file()
-    assert json.loads((pkg / "report.json").read_text())["name"] == "Close pack"

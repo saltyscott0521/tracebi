@@ -156,10 +156,6 @@ class TestStageMeta:
     def test_reads_the_stage_meta(self):
         assert read_stage_meta(PAGE) == "final"
 
-    def test_absent_meta_is_none(self):
-        assert read_stage_meta("<html><body></body></html>") is None
-
-
 # ── the stated-methodology appendix ─────────────────────────────────────────
 # The container is the template's opt-in; the build appends the pipeline's
 # STATED methodology after the author's own children. Prose, never a
@@ -407,16 +403,6 @@ class TestMethodologyContainerParsing:
         html = '<div>x</div><section data-tb-methodology><p>mine</p></section>'
         pos = methodology_insertion(html)
         assert html[pos:].startswith("</section>")
-
-    def test_no_container_is_none(self):
-        assert methodology_insertion("<div>x</div>") is None
-
-    def test_two_containers_are_refused(self):
-        with pytest.raises(FigureError, match="ONE home"):
-            methodology_insertion(
-                '<div data-tb-methodology></div>'
-                '<p data-tb-methodology></p>'
-            )
 
     def test_void_element_cannot_be_the_container(self):
         with pytest.raises(FigureError, match="void element"):

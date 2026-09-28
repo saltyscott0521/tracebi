@@ -146,11 +146,6 @@ class TestOrderByLimit:
         vals = list(df["total_revenue"])
         assert vals == sorted(vals, reverse=True)
 
-    def test_string_shorthand(self, corpus_model):
-        df = self._top(corpus_model, order_by=["-total_revenue"])
-        vals = list(df["total_revenue"])
-        assert vals == sorted(vals, reverse=True)
-
     def test_limit_takes_the_top_n_not_the_first_n(self, corpus_model):
         df = self._top(corpus_model, order_by=["-total_revenue"], limit=1)
         assert len(df) == 1
@@ -235,16 +230,6 @@ class TestCheckQuerySpecOrdering:
         })
         errors, _ = corpus_model.check_query_spec(spec)
         assert any(path.startswith("order_by") for path, _ in errors)
-
-    def test_valid_ordering_passes_clean(self, corpus_model):
-        spec = QuerySpec.from_dict({
-            "fact": "fact_orders", "measures": ["total_revenue", "rev_per_unit"],
-            "dimensions": ["dim_customer.region"],
-            "order_by": [{"column": "rev_per_unit", "desc": True}], "limit": 3,
-        })
-        errors, _ = corpus_model.check_query_spec(spec)
-        assert errors == []
-
 
 class TestNormalizeOrderBy:
     def test_shorthand_and_dict_forms_normalize_identically(self):

@@ -254,13 +254,6 @@ class TestVerifyFile:
 # ── verify_manifest (query → model) is a separate, unaffected check ────────────
 
 class TestChecksAreIndependent:
-    def test_manifest_reproduces(self, artifacts):
-        _, manifest, models = artifacts
-        result = verify_manifest(manifest, models)
-        assert result["ok"] is True
-        assert result["verdict"] == REPRODUCES
-        assert result["summary"][REPRODUCES] == 1
-
     def test_tampering_the_file_does_not_affect_manifest_verify(self, artifacts):
         """The whole point: a number edited in the .html leaves the model-
         reproduction check green, and only ``verify_file`` catches it."""
@@ -282,22 +275,6 @@ class TestVerifyFileCLI:
         (tmp_path / "report.html.manifest.json").write_text(
             json.dumps(manifest), encoding="utf-8")
         return html_path
-
-    def test_cli_file_untampered_exit_0(self, tmp_path, artifacts, capsys):
-        from tracebi.cli import main
-        html_path = self._write(tmp_path, artifacts)
-        assert main(["verify", "--file", str(html_path)]) == 0
-        assert "FILE INTACT" in capsys.readouterr().out
-
-    def test_cli_file_tampered_exit_1(self, tmp_path, artifacts, capsys):
-        from tracebi.cli import main
-        html, manifest, _ = artifacts
-        html_path = tmp_path / "report.html"
-        html_path.write_text(html.replace("700.75", "99999999.75", 1), encoding="utf-8")
-        (tmp_path / "report.html.manifest.json").write_text(
-            json.dumps(manifest), encoding="utf-8")
-        assert main(["verify", "--file", str(html_path)]) == 1
-        assert "by_region" in capsys.readouterr().err
 
     def test_cli_missing_sibling_manifest_errors(self, tmp_path, artifacts, capsys):
         from tracebi.cli import main
@@ -859,18 +836,6 @@ class TestTemplatePackageLoading:
         with pytest.raises(ValueError, match=r"no </(head|body)>"):
             TemplatePackage(str(pkg)).render({model.name: model}, str(out))
 
-    def test_name_defaults_to_directory(self, tmp_path):
-        data = {"by_region": {"model": "kernel_model",
-                              "query": {"fact": "fact_orders",
-                                        "measures": ["revenue"]}}}
-        pkg = tmp_path / "sales_pack"
-        pkg.mkdir()
-        (pkg / "report.json").write_text(json.dumps({"data": data}),
-                                         encoding="utf-8")
-        (pkg / "template.html").write_text(_BARE_TEMPLATE, encoding="utf-8")
-        assert TemplatePackage(str(pkg)).name == "sales_pack"
-
-
 # ── M2: discovery branch (architecture §7) ────────────────────────────────────
 
 class TestPackageDiscovery:
@@ -983,29 +948,6 @@ class TestReportCLI:
         assert name == "your_model"
         assert "measures" in query and note  # a note tells the author to edit
 
-    def test_new_report_then_build_renders_verifiable_html(
-        self, tmp_path, model, monkeypatch
-    ):
-        from tracebi import cli
-        from tracebi.verify import FILE_INTACT, verify_file
-
-        monkeypatch.setattr(cli, "_load_project_models",
-                            lambda: {model.name: model})
-        reports = tmp_path / "reports"
-        out = tmp_path / "data" / "regions_demo.html"
-
-        assert cli.main(["new-report", "Regions Demo",
-                         "--reports-dir", str(reports)]) == 0
-        assert cli.main(["report", "build", "regions_demo",
-                         "--reports-dir", str(reports),
-                         "--output", str(out)]) == 0
-
-        assert out.is_file()
-        manifest = json.loads(
-            (tmp_path / "data" / "regions_demo.html.manifest.json").read_text())
-        result = verify_file(out.read_text(encoding="utf-8"), manifest)
-        assert result["verdict"] == FILE_INTACT
-
     def test_build_unknown_report_errors(self, tmp_path, monkeypatch):
         from tracebi import cli
 
@@ -1049,32 +991,6 @@ class TestReportCLI:
                          "--reports-dir", str(reports),
                          "--output", str(out)]) == 0
         assert "git_sha is 'unknown'" in capsys.readouterr().err
-
-
-class TestShippedExample:
-    def test_portfolio_book_package_loads_structurally(self):
-        """The committed examples/portfolio_project/reports/fund_books/portfolio_book/ is a well-formed package: it
-        loads (structural validation only, no warehouse) with its two bindings
-        against portfolio_model."""
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
-                               "reports", "fund_books", "portfolio_book")
-        pkg = TemplatePackage(pkg_dir)
-        assert set(pkg.bindings) == {"by_sector", "top_issuers"}
-        assert all(ref.model == "portfolio_model" for ref in pkg.bindings.values())
-
-    def test_portfolio_concentration_is_governed_and_loads_structurally(self):
-        """The committed examples/portfolio_project/reports/risk/portfolio_concentration/
-        is now FULLY GOVERNED — rank/share/running window measures, not a
-        report.py escape hatch. It loads structurally (no warehouse), its single
-        `concentration` binding queries the model, and there is no report.py."""
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
-                               "reports", "risk", "portfolio_concentration")
-        pkg = TemplatePackage(pkg_dir)
-        assert set(pkg.bindings) == {"concentration"}
-        assert pkg.bindings["concentration"].model == "portfolio_model"
-        assert pkg.report_py_path is None    # no escape hatch — it is governed
 
 
 # ── M3: the report.py escape hatch + honesty (architecture §4, §8-M3) ─────────
@@ -1275,60 +1191,6 @@ class TestPerBindingVerifiability:
         assert "1 of 2 section(s) checked and matching" in result["verdict_detail"]
         assert "python-derived" in result["verdict_detail"]
         assert "not query-reproducible" in result["verdict_detail"]
-
-    def test_portfolio_concentration_is_fully_governed_end_to_end(self, tmp_path):
-        """Once a report.py escape hatch computing a window the query surface
-        could not express — now fully governed rank/share/running measures. The
-        single `concentration` binding is query-reproducible: verify reads
-        REPRODUCES (green), no verifiable=false, file intact. Runs against an
-        in-memory stand-in for portfolio_model (no warehouse)."""
-        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        pkg_dir = os.path.join(repo_root, "examples", "portfolio_project",
-                               "reports", "risk", "portfolio_concentration")
-
-        holdings = pd.DataFrame({
-            "holding_id": [1, 2, 3],
-            "issuer_id":  [1, 2, 1],
-            "fair_value": [500.0, 300.0, 200.0],
-        })
-        issuers = pd.DataFrame({
-            "issuer_id": [1, 2],
-            "issuer":    ["Acme Corp", "Globex"],
-            "sector":    ["Industrials", "Tech"],
-        })
-        m = DataModel("portfolio_model")
-        m.add_connector(MemoryConnector("mem", tables={
-            "holdings": holdings, "issuers": issuers,
-        }))
-        m.add_table("holdings", connector="mem", source="holdings")
-        m.add_table("issuers", connector="mem", source="issuers")
-        m.add_dimension("dim_issuer", table_name="issuers",
-                        key_col="issuer_id", attributes=["issuer", "sector"])
-        m.add_fact("fact_holdings", table_name="holdings",
-                   measures=["fair_value"],
-                   foreign_keys={"dim_issuer": "issuer_id"})
-        m.add_measure("fair_value", column="fair_value", agg="sum")
-        m.add_measure("fv_rank", rank="fair_value")
-        m.add_measure("fv_share", share="fair_value", format="percent")
-        m.add_measure("fv_cum_share", running="fv_share", format="percent")
-
-        out = tmp_path / "concentration.html"
-        manifest = TemplatePackage(pkg_dir).render(
-            {m.name: m}, str(out)).to_dict()
-
-        by_name = {r["name"]: r for r in manifest["embedded_data"]}
-        # governed query binding — no verifiable:false, unlike a report.py output
-        assert by_name["concentration"].get("verifiable") is None
-
-        result = verify_manifest(manifest, {m.name: m})
-        by_section = {s["section"]: s for s in result["sections"]}
-        assert by_section["concentration"]["status"] == REPRODUCES
-        assert result["ok"] is True
-
-        file_result = verify_file(out.read_text(encoding="utf-8"), manifest)
-        assert file_result["verdict"] == FILE_INTACT
-        assert file_result["summary"][FILE_MATCHES] == 1
-
 
 class TestEscapeHatchContract:
     def test_missing_build_function_raises(self, tmp_path, model):

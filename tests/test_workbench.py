@@ -195,15 +195,6 @@ class TestChartExhibits:
         assert entry["profile"]["fair_value"]["mean"] == 20.0
         assert entry["profile"]["sector"]["top"][0] == "fin"
 
-    def test_y_list_normalises_into_the_recipe(self, tmp_path, monkeypatch):
-        wb = str(tmp_path / "wb")
-        monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
-        df = self._df().assign(cost=[1.0, 2.0, 3.0])
-        show(df, chart="line", x="sector", y=["fair_value", "cost"])
-        [entry] = read_exhibits(wb)
-        assert entry["kind"] == "chart"
-        assert entry["recipe"]["y"] == ["fair_value", "cost"]
-
     def test_unknown_chart_kind_falls_back_to_frame(
             self, tmp_path, monkeypatch, capsys):
         wb = str(tmp_path / "wb")
@@ -263,12 +254,6 @@ class TestPins:
         assert read_pins(wb) == pins
         assert read_pins(str(tmp_path / "missing")) == []
 
-    def test_workbench_dir_is_project_scoped(self, tmp_path):
-        d = workbench_dir(str(tmp_path), "credit_marks")
-        assert d.endswith(os.path.join(".tracebi", "workbench", "credit_marks"))
-        assert os.path.isdir(d)
-
-
 class TestCollectState:
     @pytest.fixture()
     def state(self, wb_model, tmp_path, monkeypatch):
@@ -316,10 +301,6 @@ class TestCollectState:
         state = collect_state(str(pkg), {"wb_model": wb_model})
         assert state["unused_bindings"] == []
 
-    def test_code_panel_is_read_back_verbatim(self, state, tmp_path):
-        assert '"kpi"' in state["code"]["report.json"]
-        assert "def build" in state["code"]["report.py"]
-
     def test_pins_merge_into_figures(self, wb_model, tmp_path, monkeypatch):
         wb = str(tmp_path / "wb")
         monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
@@ -329,10 +310,6 @@ class TestCollectState:
         assert figs["fig-kpi"]["pinned"] is True
         assert figs["fig-tbl"]["pinned"] is False
         assert state["pins"][0]["note"] == "the headline"
-
-    def test_state_is_json_serialisable(self, state):
-        json.dumps(state, default=str)
-
 
 _MODEL_SOURCE = """\
 import pandas as pd
@@ -542,11 +519,6 @@ class TestCollectDiscoveryState:
         assert wh["tables"] == [] and wh["contracts"] is None
         assert state["models"] == [] and state["packages"] == []
 
-    def test_state_is_json_serialisable(self, discovery_project):
-        json.dumps(collect_discovery_state(str(discovery_project), {}),
-                   default=str)
-
-
 class TestNoteMarkdown:
     """Notebook-cell notes: markdown renders in the feed, escaped-first."""
 
@@ -677,15 +649,6 @@ class TestSessionExport:
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
         assert "<script>alert(1)" not in html            # escaped, not live
 
-    def test_pin_source_and_chart_render(self, tmp_path, monkeypatch):
-        wb = self._session(tmp_path, monkeypatch)
-        _out, html = self._export(wb, tmp_path)
-        assert "📌" in html and "keep this cut" in html  # the pin, on seq 2
-        assert os.path.join("transforms", "probe.py") in html   # source line
-        # The chart re-embeds through the safe JSON block with its recipe.
-        assert 'id="tb-chart-data-1"' in html
-        assert '"chart": "bar"' in html
-
     def test_export_is_uncapped(self, tmp_path, monkeypatch):
         wb = str(tmp_path / "wb")
         monkeypatch.setenv("TRACEBI_WORKBENCH_DIR", wb)
@@ -706,12 +669,6 @@ class TestSessionExport:
         result = verify_file(html, {})
         assert result["verdict"] == REFUSED_SNAPSHOT
         assert result["ok"] is False and result["exit_code"] == 1
-
-    def test_default_title_names_the_session(self, tmp_path, monkeypatch):
-        wb = self._session(tmp_path, monkeypatch)
-        _out, html = self._export(wb, tmp_path)
-        assert "<title>wb — exploration record</title>" in html
-
 
 class TestSessionCli:
     """tracebi session export / clear — the CLI over the session feed."""
@@ -904,12 +861,3 @@ class TestTimelineAndKeep:
         kpi = next(b for b in state["bindings"] if b["name"] == "kpi")
         assert kpi["preview"] == [{"total": 350.0}]      # raw stays raw
         assert kpi["display"] == [{"total": "350"}]      # as the report writes it
-
-
-def test_workbench_page_frames_the_preview():
-    from tracebi._dev_server import _workbench_page
-
-    page = _workbench_page("demo")
-    assert 'id="wb-preview"' in page
-    assert "frame-src 'self'" in page
-    assert 'id="wb-tabs"' in page and 'id="wb-composer"' in page

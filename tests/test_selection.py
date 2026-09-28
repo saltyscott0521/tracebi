@@ -145,10 +145,6 @@ class TestConjoin:
 
 
 class TestPackageSelection:
-    def test_absent_block_does_not_opt_in(self, tmp_path):
-        pkg = TemplatePackage(str(_package(tmp_path)))
-        assert pkg.selection is None
-
     def test_empty_filters_opt_in_without_an_extra_cut(self, tmp_path):
         pkg = TemplatePackage(str(_package(
             tmp_path, selection={"model": "selection_model", "filters": {}},

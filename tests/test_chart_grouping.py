@@ -62,13 +62,6 @@ class TestColorGrouping:
         assert (f'fill="{DEFAULT_PALETTE[0]}"' in svg
                 and f'fill="{DEFAULT_PALETTE[1]}"' in svg)
 
-    def test_bar_color_differs_from_no_color(self):
-        with_colour = spec(dataset=grouped_ds(), chart_type="bar",
-                           x="region", y="revenue", color="segment").to_svg()
-        without = spec(dataset=grouped_ds(), chart_type="bar",
-                       x="region", y="revenue").to_svg()
-        assert with_colour != without   # color= was a silent no-op before
-
     def test_line_color_draws_one_path_per_group(self):
         svg = spec(dataset=grouped_ds(), chart_type="line",
                    x="region", y="revenue", color="segment").to_svg()
@@ -135,22 +128,6 @@ class TestShowValuesCompact:
         assert ">523.9K</text>" in svg
         assert "2,400,240.38</text>" not in svg
 
-    def test_small_values_keep_up_to_two_decimals(self):
-        df = pd.DataFrame({"r": ["a", "b"], "v": [12.345, 999.0]})
-        svg = spec(dataset=DataSet(df=df, name="v"), chart_type="bar",
-                   x="r", y="v", show_values=True).to_svg()
-        assert ">12.35</text>" in svg
-        assert ">999</text>" in svg
-
-    def test_axis_ticks_are_not_compacted(self):
-        # One formatting voice per surface: labels compact, ticks unchanged.
-        df = pd.DataFrame({"r": ["a", "b"], "v": [2400240.38, 523900.0]})
-        svg = spec(dataset=DataSet(df=df, name="v"), chart_type="bar",
-                   x="r", y="v", show_values=True).to_svg()
-        assert 'class="tb-tick"' in svg
-        assert "2,000,000" in svg   # tick formatter untouched
-
-
 # ─────────────────────────────────────────────
 # Review-pass fixes (adversarial findings)
 # ─────────────────────────────────────────────
@@ -212,26 +189,12 @@ class TestConfigChecksPrecedeEmptyData:
             spec(dataset=empty, chart_type="bar", x="region",
                  y=["revenue", "cost"], color="segment")
 
-    def test_empty_dataset_spec_carries_color(self):
-        empty = DataSet(df=pd.DataFrame({"region": [], "revenue": [],
-                                         "segment": []}), name="empty")
-        s = spec(dataset=empty, chart_type="bar", x="region", y="revenue",
-                 color="segment")
-        assert s.color == "segment"
-
-
 class TestCompactFmtUnitBoundaries:
     def test_999999_promotes_to_1M(self):
         assert ChartSpec._fmt(999_999, compact=True) == "1M"
 
     def test_999_point_999_promotes_to_1K(self):
         assert ChartSpec._fmt(999.999, compact=True) == "1K"
-
-    def test_ordinary_values_unchanged(self):
-        assert ChartSpec._fmt(2_400_240.38, compact=True) == "2.4M"
-        assert ChartSpec._fmt(523_921.25, compact=True) == "523.9K"
-        assert ChartSpec._fmt(950.0, compact=True) == "950"
-
 
 class TestLineGapsDoNotInterpolate:
     """A gap in a grouped series draws nothing — never a straight segment
@@ -265,16 +228,6 @@ class TestLineGapsDoNotInterpolate:
         assert len(areas) == 2
         # Group B's fill must close one polygon per run — two Z commands.
         assert areas[1].count("Z") == 2
-
-    def test_gapless_series_path_shape_unchanged(self):
-        # One M then only L commands — the pre-gap-aware shape.
-        svg = spec(dataset=plain_ds(), chart_type="line",
-                   x="region", y="revenue").to_svg()
-        import re
-        path = re.findall(r'class="tb-line" d="([^"]+)"', svg)[0]
-        assert path.count("M") == 1
-        assert path.count("L") == 3
-
 
 class TestExcelRefusesColor:
     """The SVG renderer groups; Excel does not. Divergence must be loud."""

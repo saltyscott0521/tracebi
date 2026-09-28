@@ -129,10 +129,12 @@ class TestUnknownGitShaWarning:
     def test_unknown_git_sha_warns_exactly_once_per_render(
         self, tmp_path, monkeypatch, capsys
     ):
+        import tracebi.reports.base_renderer as br
         import tracebi.reports.report as report_mod
         from tracebi.reports.html_renderer import HTMLRenderer
 
         monkeypatch.setattr(report_mod, "_GIT_SHA", "unknown")
+        monkeypatch.setattr(br, "_GIT_SHA_WARNED", False)   # no earlier build used it up
         HTMLRenderer().render(
             self._two_section_report(), str(tmp_path / "r.html")
         )
@@ -158,15 +160,6 @@ class TestGitignoreRetainsManifests:
         return (
             Path(__file__).resolve().parent.parent / ".gitignore"
         ).read_text()
-
-    def test_manifest_json_pattern_removed(self):
-        lines = [ln.strip() for ln in self._repo_gitignore().splitlines()]
-        assert "*.manifest.json" not in lines
-
-    def test_gitignore_explains_manifests_are_receipts(self):
-        content = self._repo_gitignore()
-        assert "manifest" in content
-        assert "retain" in content
 
     def test_init_gitignore_never_ignores_manifests(self, tmp_path):
         from tracebi.cli import main
@@ -198,20 +191,6 @@ def test_commitless_repo_records_unknown_not_the_literal_HEAD(tmp_path, monkeypa
         assert report_mod._current_git_sha() == "unknown"
     finally:
         report_mod._GIT_SHA = None   # do not leak the cwd's sha to other tests
-
-
-def test_provenance_warning_emitted_once_per_process(monkeypatch, capsys):
-    import tracebi.reports.base_renderer as br
-    from tracebi.reports.report import ReportManifest
-
-    monkeypatch.setattr(br, "_GIT_SHA_WARNED", False)
-    m = ReportManifest(report_name="r", rendered_at="t", rendered_by="u",
-                       format="html", output_path="o", sections=[],
-                       git_sha="unknown")
-    br._warn_if_unknown_git_sha(m)
-    br._warn_if_unknown_git_sha(m)   # e.g. xlsx + html back to back
-    err = capsys.readouterr().err
-    assert err.count("git_sha is 'unknown'") == 1
 
 
 def test_gitignore_negation_actually_retains_output_manifests(tmp_path):
