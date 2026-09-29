@@ -23,7 +23,7 @@ materialized artifact handed across the boundary:
 
 Reference implementation, end to end, at `examples/portfolio_project/`:
 `transforms/holdings_transform.py` → `models/portfolio_model.py` →
-`reports/portfolio_dashboard.json`, wired by `run_workflow.py`.
+`reports/portfolio_model/portfolio_dashboard.json`, wired by `run_workflow.py`.
 `docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
 
 The split earns its keep at the freeze points: the slow, unconstrained analysis
@@ -131,7 +131,7 @@ placed — or placed twice — fails the build. Hand-written figures still work
 everywhere; this is sugar, not a replacement.
 
 **Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
-(`examples/portfolio_project/reports/showcase/portfolio_showcase/`) uses it for two
+(`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for two
 typefaces and its hero artwork.
 
 Three rules that keep pages honest:
@@ -168,7 +168,7 @@ Three rules that keep pages honest:
   it as computed from the reader's inputs, and the manifest records only
   its declaration with `verifiable: false`. Use it for a rate the reader
   remembers, never for a number a query could produce. The build checks
-  every formula and preset. See `examples/portfolio_project/reports/housing/affordability/`.
+  every formula and preset. See `examples/portfolio_project/reports/housing_model/affordability/`.
 - **Interactivity subsets, never computes.** The premium objects —
   `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
   (`data-tb-rows`, default 10), tabs (`data-tb-tab`), `.tb-cols-2/3`
@@ -199,7 +199,7 @@ Three rules that keep pages honest:
   button); the manifest remains the receipt of record. Methodology ships
   via ONE `<section data-tb-methodology>` — the build appends the
   pipeline's stated methodology after your own prose.
-  `examples/portfolio_project/reports/showcase/portfolio_showcase/` is the
+  `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` is the
   maintained kitchen-sink demo of all of it.
 - **Explore inside the artifact.** Blocks marked
   `data-tb-stage="exploration"` render under `tracebi dev` and are deleted

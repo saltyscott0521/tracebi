@@ -19,6 +19,7 @@ from tracebi.web.api.registry import registry
 from tracebi import model_registry
 from tracebi.model_registry import get_model
 from tracebi.web.demo_app.pipeline import runner, pipeline_model
+from tracebi.web.demo_app.wealth_pipeline import runner as wealth_runner
 from tracebi.web.discovery import auto_discover
 
 # ── Models (this package's models/, discovered by the package __init__) ───────
@@ -44,6 +45,7 @@ for _conn in (*sales_model.connectors(), *wealth_model.connectors()):
 # ── Pipeline ──────────────────────────────────────────────────────────────────
 
 registry.add_pipeline("sales", runner)
+registry.add_pipeline("wealth", wealth_runner)
 
 # ── Reports (auto-discovered) ─────────────────────────────────────────────────
 # Each .py file in reports/ that is not prefixed with _ is imported.

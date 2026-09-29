@@ -72,3 +72,26 @@ def test_the_refresh_page_runs_a_layer_and_shows_its_history(pipeline, monkeypat
     assert run.status_code == 200, run.text
     history = c.get("/api/pipelines/orders_etl/layers/orders_bronze/history").json()
     assert history["runs"] and history["runs"][0]["status"] == "success"
+
+
+def test_the_build_step_will_not_rebuild_reports_after_a_failed_transform(scaffolded):
+    """`run-pipeline` keeps going after a failure to report them all; the
+    model pipeline's build must not turn that into a green rebuild on stale data."""
+    import shutil
+
+    # The convention: the sample model's report lives in reports/sample_model/.
+    (scaffolded / "reports" / "sample_model").mkdir()
+    shutil.move(str(scaffolded / "reports" / "sample_dashboard"),
+                str(scaffolded / "reports" / "sample_model" / "sample_dashboard"))
+    (scaffolded / "pipelines" / "sample_model.py").write_text(
+        "from tracebi import model_pipeline\n"
+        "runner = model_pipeline('sample_model', transform='sample_transform')\n")
+
+    code, out = run_cli("run-pipeline", "sample_model")
+    assert code == 0, out
+    assert (scaffolded / "output" / "sample_model" / "sample_dashboard.html").is_file()
+
+    (scaffolded / "transforms" / "sample_transform.py").write_text("raise SystemExit('broken')\n")   # a script that exits, not raises
+    code, out = run_cli("run-pipeline", "sample_model")
+    assert code != 0
+    assert "transform" in out and "not rebuilding reports" in out

@@ -105,7 +105,7 @@ def test_every_warning_names_a_lesson_that_exists():
 
 
 @pytest.mark.parametrize("path", [
-    "examples/portfolio_project/reports/portfolio_dashboard.json",
+    "examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json",
 ])
 def test_the_reference_spec_follows_its_own_lessons(path):
     """The spec people copy from must not trip the checks it teaches."""

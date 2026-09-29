@@ -17,12 +17,12 @@ import pytest
 from tests.e2e.conftest import REFERENCE_PROJECT, run_cli
 
 REPORTS = {
-    "portfolio_dashboard": "portfolio_dashboard",
-    "fund_books/portfolio_book": "fund_books/portfolio_book",
-    "fund_books/portfolio_overview": "fund_books/portfolio_overview",
-    "risk/portfolio_concentration": "risk/portfolio_concentration",
-    "showcase/portfolio_showcase": "showcase/portfolio_showcase",
-    "housing/affordability": "housing/affordability",
+    "portfolio_model/portfolio_dashboard": "portfolio_model/portfolio_dashboard",
+    "portfolio_model/portfolio_book": "portfolio_model/portfolio_book",
+    "portfolio_model/portfolio_overview": "portfolio_model/portfolio_overview",
+    "portfolio_model/portfolio_concentration": "portfolio_model/portfolio_concentration",
+    "portfolio_model/portfolio_showcase": "portfolio_model/portfolio_showcase",
+    "housing_model/affordability": "housing_model/affordability",
 }
 
 
@@ -69,8 +69,38 @@ def test_every_report_reproduces_and_its_file_is_intact(built, name):
     assert "FILE INTACT" in out
 
 
+def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(built):
+    """The convention: reports/<model>/ holds a model's reports, and
+    pipelines/<model>.py rebuilds its data and then those reports."""
+    from tracebi.pipeline import model_pipeline
+    from tracebi.pipeline.model_pipeline import reports_of
+
+    models = sorted(p.stem for p in (built / "models").glob("*.py") if not p.stem.startswith("_"))
+    assert models == ["housing_model", "portfolio_model"]
+    for model in models:
+        names = reports_of(model)
+        assert names, f"reports/{model}/ has no reports"
+        assert (built / "pipelines" / f"{model}.py").is_file(), f"{model} has no pipeline"
+        # ...and every report in the reference project sits under a model's folder
+    everything = {name for names in map(reports_of, models) for name in names}
+    assert everything == set(REPORTS), "a report sits outside its model's folder"
+    assert model_pipeline  # exported at the top level for project pipelines
+
+
+@pytest.mark.parametrize("model", ["portfolio_model", "housing_model"])
+def test_a_models_pipeline_rebuilds_its_data_then_its_reports(built, model):
+    from tracebi.pipeline.model_pipeline import reports_of
+
+    code, out = run_cli("run-pipeline", model)
+    assert code == 0, out
+    assert "transform" in out and "build" in out
+    for name in reports_of(model):
+        code, out = run_cli("verify", str(_manifest(built, name)), "--contracts")
+        assert code == 0 and "REPRODUCES" in out, f"{name}: {out}"
+
+
 def test_the_showcase_carries_every_affordance(built):
-    html = (built / "output" / "showcase" / "portfolio_showcase.html").read_text()
+    html = (built / "output" / "portfolio_model" / "portfolio_showcase.html").read_text()
     from tests.test_presentation_js import assert_built_receipt_rows
     assert_built_receipt_rows(html)
     for marker in ("data-tb-filter", "data-tb-search", "data-tb-download",
@@ -84,7 +114,7 @@ def test_the_showcase_carries_every_affordance(built):
         assert marker in html, f"showcase lost its {marker} affordance"
     assert "Working notes" not in html, "exploration must die at build"
 
-    manifest = json.loads(_manifest(built, "showcase/portfolio_showcase").read_text())
+    manifest = json.loads(_manifest(built, "portfolio_model/portfolio_showcase").read_text())
     assert manifest["schema_version"] == 2
     assert len(manifest["figures"]) >= 10
     assert manifest["transform_contracts"] and all(
@@ -106,7 +136,7 @@ def test_a_showcase_control_recomputes_on_the_model(built):
         registry = ModelRegistry()
         registry.auto_discover(str(built / "models"))
         models = {"portfolio_model": registry.get("portfolio_model")}
-        package = TemplatePackage(str(built / "reports" / "showcase" / "portfolio_showcase"))
+        package = TemplatePackage(str(built / "reports" / "portfolio_model" / "portfolio_showcase"))
         base = evaluate_selection(package, models, {})
         control = next(c for c in base["controls"] if c["column"] == "dim_issuer.sector")
         assert len(control["included"]) > 1
@@ -131,7 +161,7 @@ def test_a_showcase_control_recomputes_on_the_model(built):
 
 
 def test_the_housing_scenario_is_recorded_never_receipted(built):
-    manifest = json.loads(_manifest(built, "housing/affordability").read_text())
+    manifest = json.loads(_manifest(built, "housing_model/affordability").read_text())
     assert [s["name"] for s in manifest["scenarios"]] == ["today"]
     assert all(s["verifiable"] is False for s in manifest["scenarios"])
     ids = {f["id"] for f in manifest["figures"]}

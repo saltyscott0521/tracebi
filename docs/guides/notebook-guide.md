@@ -207,4 +207,4 @@ For a governed, receipt-bearing report, prefer the artifact package
 
 Reference files: `examples/portfolio_project/transforms/holdings_transform.py`,
 `examples/portfolio_project/models/portfolio_model.py`, and
-`examples/portfolio_project/reports/portfolio_dashboard.json`.
+`examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json`.

@@ -79,7 +79,7 @@ freeze points: a warehouse phase ① already sank (<code>data/warehouse.duckdb</
 and a model phase ② already declared over it (<code>models/*.py</code>, e.g.
 <code>models/portfolio_model.py</code>). You do not re-run the phase-① pandas and you do not
 see it — the model is the contract you author against, and everything below is
-exactly how <code>reports/portfolio_dashboard.json</code> was written. <strong>The trust
+exactly how <code>reports/portfolio_model/portfolio_dashboard.json</code> was written. <strong>The trust
 machinery in this SOP — stamped queries, validate-before-execute, <code>verify</code> —
 governs from that model boundary onward. It says nothing about phase ①, which is
 unconstrained pandas trusted as reviewed code, not by fingerprint.</strong> If a number

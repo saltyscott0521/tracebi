@@ -46,6 +46,24 @@ model.add_fact("fact_holdings", table_name="fact_holdings",                     
   connector and which table it read, plus a fingerprint of that table, so a
   number can be traced to stored data.
 
+## A model, its reports and its pipeline
+
+Reports are organised **by model**: the folder is the model's name.
+
+```
+models/portfolio_model.py            what the data means
+reports/portfolio_model/…            every report that reads it
+pipelines/portfolio_model.py         rebuild its data, then those reports
+```
+
+One line makes the pipeline: `model_pipeline("portfolio_model",
+transform="holdings_transform")` registers a **transform** step (the phase ①
+script that fills the warehouse) and a **build** step (every report in
+`reports/portfolio_model/`, each with its receipt). It shows on the Refresh
+page and runs with `tracebi run-pipeline portfolio_model`. The build step
+refuses to run after a transform that failed, so a report is never rebuilt on
+data the transform did not refresh.
+
 ## When the data is "not built yet"
 
 A file connector points at a path that exists only after phase ① has run. The
