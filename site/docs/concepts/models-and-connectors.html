@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Updating TraceBi — TraceBi docs</title>
+<title>Models and connectors — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Updating TraceBi">
+<meta name="description" content="Models and connectors">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,7 +29,7 @@
 <a href="../concepts/freeze-points.html">Freeze points</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
-<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a class="on" href="../concepts/models-and-connectors.html">Models and connectors</a>
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -43,7 +43,7 @@
 <a href="../guides/styling-a-report.html">Styling a report</a>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
 <a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a class="on" href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
 <a href="../guides/your-first-report.html">Your first report</a>
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
@@ -67,88 +67,72 @@
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
-<h1 id="updating-tracebi">Updating TraceBi</h1>
-<p><strong>Run <code>tracebi update</code>. It says whether a newer TraceBi is out, what changed,
-and the one command that updates <em>your</em> install. The web app shows the same
-thing as a small "available" badge next to the version in the sidebar.</strong></p>
+<h1 id="models-and-connectors">Models and connectors</h1>
+<p><strong>A model says what the data means. A connector says where the data is. The
+model file holds no data.</strong></p>
 <hr>
-<h2 id="where-updates-come-from">Where updates come from</h2>
-<p>Each TraceBi release is a tagged GitHub release carrying two things:</p>
-<ul>
-<li>a <strong>wheel</strong> with the web app already built in (a plain <code>git+</code> install
-  has no web UI), and</li>
-<li>a <strong>Docker image</strong> at <code>ghcr.io/saltyscott0521/tracebi</code>, tagged with the
-  version and, for full releases, <code>latest</code>.</li>
-</ul>
-<p>Your projects (<code>transforms/</code>, <code>models/</code>, <code>reports/</code>) are yours and are never
-touched by an update. Only the TraceBi package or image changes.</p>
-<h2 id="check">Check</h2>
-<pre><code class="language-bash">tracebi update --check
-</code></pre>
-<pre><code>installed: TraceBi 0.6.0 (pip install)
-latest:    0.7.0  https://github.com/saltyscott0521/tracebi/releases/tag/v0.7.0
-
-What's new:
-  - Reports can live in folders
-  ...
-
-To update:
-  pip install --upgrade &quot;https://github.com/.../tracebi-0.7.0-py3-none-any.whl&quot;
-</code></pre>
-<p>The check is one request to GitHub's public releases API, cached for a day.
-It sends nothing about your install or your data. Offline, it says it couldn't
-reach a release and carries on. Turn it off with <code>TRACEBI_UPDATE_CHECK=0</code>, or
-point it at an internal mirror with <code>TRACEBI_UPDATE_URL</code>
-(<a href="../reference/environment-variables.html">Environment variables</a>).</p>
-<h2 id="update">Update</h2>
-<p>How depends on how TraceBi was installed; <code>tracebi update</code> detects which.</p>
+<h2 id="the-three-things">The three things</h2>
 <table>
 <thead>
 <tr>
-<th>Installed with</th>
-<th>The update</th>
-<th><code>tracebi update</code></th>
+<th></th>
+<th>What it is</th>
+<th>Where it lives</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>pip</strong></td>
-<td><code>pip install --upgrade "&lt;the release wheel&gt;"</code></td>
-<td>asks, then runs it (<code>--yes</code> skips the question)</td>
+<td><strong>Connector</strong></td>
+<td>A handle to a place that stores data: a DuckDB file, a folder of CSVs, a database URL, a cloud warehouse</td>
+<td>Built in the model file (or registered in an app module)</td>
 </tr>
 <tr>
-<td><strong>Docker</strong> (<a href="../guides/one-server.html">Run TraceBi on one server</a>)</td>
-<td><code>TRACEBI_VERSION=&lt;version&gt; docker compose -f deploy/compose.yml pull</code>, then <code>… up -d</code></td>
-<td>prints it; run it on the host</td>
+<td><strong>Table</strong></td>
+<td>A name the model uses, pointing at <em>one source inside one connector</em></td>
+<td><code>add_table("fact_holdings", connector="warehouse", source="fact_holdings")</code></td>
 </tr>
 <tr>
-<td><strong>a git checkout</strong> (<code>pip install -e .</code>)</td>
-<td><code>git fetch --tags &amp;&amp; git checkout v&lt;version&gt; &amp;&amp; pip install -e .</code>, then rebuild the UI</td>
-<td>prints it</td>
+<td><strong>Model</strong></td>
+<td>The tables, which are facts and which are dimensions, how they join, and what every measure means</td>
+<td><code>models/&lt;name&gt;.py</code>: code, a few dozen lines</td>
 </tr>
 </tbody>
 </table>
-<p>If you installed with extras (<code>tracebi[web,analyst]</code>), name them again when
-you upgrade so any new dependencies they gained come too:
-<code>pip install --upgrade "tracebi[web,analyst] @ &lt;the release wheel&gt;"</code>.</p>
-<p>Pinning <code>TRACEBI_VERSION</code> in <code>deploy/.env</code> keeps a server on a known version
-until you choose to move it; leaving it at <code>latest</code> means every <code>pull</code> takes
-the newest full release.</p>
-<h2 id="after-updating">After updating</h2>
-<ol>
-<li>Restart <code>tracebi serve</code>, or the container.</li>
-<li>Check your reports still reproduce on the new version:
-   <code>bash
-   tracebi verify output/&lt;report&gt;.html.manifest.json</code>
-   A changed number shows up here, before anyone reads it.</li>
-<li>Read the release notes' "Changed" section for anything you need to act on.</li>
-</ol>
-<h2 id="related">Related</h2>
+<p>Reading a model file, then, tells you the <em>shape</em> of the data and the <em>name</em> of
+the place it is kept, never the data itself.</p>
+<pre><code class="language-python">model = DataModel(&quot;portfolio_model&quot;)
+model.add_connector(DuckDBConnector(&quot;warehouse&quot;, database=&quot;data/warehouse.duckdb&quot;))   # where
+model.add_table(&quot;fact_holdings&quot;, connector=&quot;warehouse&quot;, source=&quot;fact_holdings&quot;)       # which table, from where
+model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;,                           # what it means
+               foreign_keys={&quot;dim_fund&quot;: &quot;fund_id&quot;}, measures=[&quot;fair_value&quot;])
+</code></pre>
+<h2 id="finding-where-the-data-is">Finding where the data is</h2>
 <ul>
-<li><a href="../guides/one-server.html">Run TraceBi on one server</a> — the Docker setup that pulls the image</li>
-<li><a href="../reference/cli.html">CLI reference</a> — every command</li>
-<li><a href="../reference/environment-variables.html">Environment variables</a> — the update settings</li>
+<li><strong>In the app</strong>, open <strong>Data model</strong>, pick a model: the header says
+  <em>Defined in</em> <code>models/portfolio_model.py</code> and <em>Data in</em>
+  <code>data/warehouse.duckdb</code>, and whether the file is there yet and how big it is.
+  The <strong>Storage</strong> tab lists each connector, what kind of place it is, and
+  exactly which tables it serves. The <strong>Connectors</strong> page is the same list
+  across all models, with the models that use each one.</li>
+<li><strong>In code</strong>, <code>model.info()["connector_details"]</code> gives the same answer, and
+  <code>connector.storage()</code> says where any connector's data lives (never a
+  credential).</li>
 </ul>
+<h2 id="why-it-is-split-this-way">Why it is split this way</h2>
+<ul>
+<li><strong>The model can be reviewed on one screen</strong>, because it holds meaning, not
+  data or plumbing.</li>
+<li><strong>The data can be rebuilt without touching the model.</strong> A <a href="../concepts/transform.html">Transform — phase ①</a>
+  writes the warehouse file; the model keeps reading the same table names.</li>
+<li><strong>A <a href="../concepts/receipts.html">receipt</a> can name its source.</strong> Every query records which
+  connector and which table it read, plus a fingerprint of that table, so a
+  number can be traced to stored data.</li>
+</ul>
+<h2 id="when-the-data-is-not-built-yet">When the data is "not built yet"</h2>
+<p>A file connector points at a path that exists only after phase ① has run. The
+app shows <strong>not built yet</strong> beside the location until the <a href="../concepts/transform.html">Transform — phase ①</a> (or
+the model's pipeline) has written it.</p>
+<p>See also <a href="../concepts/model.html">Model — phase ②</a> and <a href="../concepts/lineage.html">Lineage</a>.</p>
   </main>
 </div>
 <script>

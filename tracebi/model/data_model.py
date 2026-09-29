@@ -3287,6 +3287,12 @@ class DataModel:
         return {
             "name": self.name,
             "connectors": list(self._connectors.keys()),
+            # Where each connector's data lives, so a model file (code) can be
+            # traced to its stored data (a file, folder, database or cloud).
+            "connector_details": [
+                {**c.describe(), "storage": c.storage()}
+                for c in self._connectors.values()
+            ],
             "tables": [self._table_info(t) for t in self._tables.values()],
             "relationships": [
                 {

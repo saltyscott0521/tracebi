@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
+import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
-import { useModels, useModel, useTablePreview, useConnectors, useDesk, tableCsvUrl } from '../api'
+import { useModels, useModel, useTablePreview, useDesk, tableCsvUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Tabs, SplitLayout, ListItem, SearchInput, SkeletonList, SkeletonCard,
@@ -284,32 +286,42 @@ function MeasuresTable({ measures }) {
 
 // ── Model Detail ──────────────────────────────────────────────────────────────
 
-function ModelConnectors({ names }) {
-  const { data, isLoading } = useConnectors()
-  if (isLoading) return (
-    <div style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', fontSize: 13 }}>
-      <Spinner size={14} /> Loading connectors…
-    </div>
-  )
-  if (!names?.length) return <Empty message="This model declares no connector." />
-  const byName = Object.fromEntries((data || []).map(c => [c.name, c]))
+// A model's tables point at connectors; a connector says where the data is.
+// The model file (Python) only declares meaning: which table is a fact, what
+// joins to what, what a measure is. Nothing is stored in it.
+function ModelStorage({ details, tables }) {
+  if (!details.length) return <Empty message="This model declares no connector, so its tables have no data behind them." />
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table>
-        <thead><tr><th>Name</th><th>Type</th><th>Source</th></tr></thead>
-        <tbody>
-          {names.map(n => {
-            const c = byName[n]
-            return (
-              <tr key={n}>
-                <td><code>{n}</code></td>
-                <td style={{ color: 'var(--text-2)' }}>{c?.type || 'on the model'}</td>
-                <td style={{ color: 'var(--muted)' }}>{c?.url || c?.directory || ''}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div>
+      <p style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '72ch' }}>
+        The model file only says what the data <em>means</em>. Each table below reads from a
+        connector, and the connector says where the data is kept.
+      </p>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {details.map(c => {
+          const served = tables.filter(t => t.connector === c.name)
+          return (
+            <div key={c.name} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', background: 'var(--surface)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                <strong style={{ fontSize: 13 }}>{c.name}</strong>
+                <Badge variant="blue">{c.type}</Badge>
+                <Badge variant="gray">{KIND_LABEL[c.storage?.kind] || 'Unknown'}</Badge>
+              </div>
+              <div style={{ marginBottom: 10 }}><StorageLine storage={c.storage} /></div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>
+                Tables it serves ({served.length})
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {served.map(t => (
+                  <Badge key={t.name} variant="gray" title={t.source !== t.name ? `reads ${t.source}` : undefined}>
+                    {t.name}{t.source !== t.name ? ` ← ${t.source}` : ''}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -332,7 +344,8 @@ function ModelDetail({ name }) {
   if (!data) return null
 
   const graph = buildModelGraph(data)
-  const tabs = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Connectors']
+  const storageOf = new Map((data.connector_details || []).map(c => [c.name, c.storage]))
+  const tabs = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Storage']
   // A model with joins opens on its diagram; one with none has nothing to draw.
   const active = tab || (graph.edges.length ? 'Diagram' : 'Tables')
   const grain = (data.dimensions || []).flatMap(d =>
@@ -344,7 +357,10 @@ function ModelDetail({ name }) {
     <Card className="fade-in">
       <CardTitle>{data.name}</CardTitle>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
-        {data.source_file && <div><code>{data.source_file}</code></div>}
+        {data.source_file && <div>Defined in <code>{data.source_file}</code></div>}
+        {(data.connector_details || []).map(c => (
+          <div key={c.name}>Data in <StorageLine storage={c.storage} /></div>
+        ))}
         {grain && <div>Grain: {grain}</div>}
         {desk?.warehouse && sinks.length === 0 && <div>Sink tables are current.</div>}
         {sinks.length > 0 && (
@@ -365,13 +381,16 @@ function ModelDetail({ name }) {
         <div>
           <div style={{ overflowX: 'auto' }}>
             <table>
-              <thead><tr><th>Table</th><th>Connector</th><th>Source</th><th></th></tr></thead>
+              <thead><tr><th>Table</th><th>Stored in</th><th>Source table</th><th></th></tr></thead>
               <tbody>
                 {data.tables.map(t => (
                   <tr key={t.name}>
                     <td><code>{t.name}</code></td>
-                    <td style={{ color: 'var(--text-2)' }}>{t.connector}</td>
-                    <td style={{ color: 'var(--muted)' }}>{t.source}</td>
+                    <td style={{ color: 'var(--text-2)' }}>
+                      {t.connector}
+                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>{storageOf.get(t.connector)?.where}</div>
+                    </td>
+                    <td style={{ color: 'var(--muted)' }}><code>{t.source}</code></td>
                     <td>
                       <button onClick={() => setPreviewTable(previewTable === t.name ? null : t.name)} style={{
                         padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 4,
@@ -425,7 +444,7 @@ function ModelDetail({ name }) {
 
       {active === 'Measures' && <MeasuresTable measures={data.measures || []} />}
 
-      {active === 'Connectors' && <ModelConnectors names={data.connectors} />}
+      {active === 'Storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} />}
 
       {active === 'Diagram' && (
         <div className="fade-in">
@@ -452,7 +471,9 @@ function ModelDetail({ name }) {
 
 export default function Models() {
   const { data, isLoading } = useModels()
-  const [selected, setSelected] = useState(null)
+  const [params, setParams] = useSearchParams()
+  const selected = params.get('m')
+  const setSelected = m => setParams(m ? { m } : {}, { replace: true })
   const [query, setQuery] = useState('')
 
   const models = data || []
@@ -464,7 +485,7 @@ export default function Models() {
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to see its diagram, measures and tables. Connectors are a tab on the model.`
+          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to see its diagram, measures and tables, and on its Storage tab where its data is kept.`
         }
       </PageSub>
 

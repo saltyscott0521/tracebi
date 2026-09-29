@@ -29,6 +29,7 @@
 <a href="../concepts/freeze-points.html">Freeze points</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a class="on" href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -89,7 +90,9 @@ model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;,
 
 model.add_measure(&quot;fair_value&quot;, column=&quot;fair_value&quot;, agg=&quot;sum&quot;)
 </code></pre>
-<p>That is the whole shape: connectors, tables, dimensions, facts, measures.</p>
+<p>That is the whole shape: connectors, tables, dimensions, facts, measures.
+The file declares meaning; the connector says where the data is kept — see
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>.</p>
 <h2 id="why-it-is-only-a-declaration">Why it is only a declaration</h2>
 <p>The model is the second <a href="../concepts/freeze-points.html">freeze point</a> — the <strong>semantic
 contract</strong> between the analysis and the reporting.</p>

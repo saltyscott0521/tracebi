@@ -70,14 +70,34 @@ class Registry:
             self._connectors[connector.name] = connector
         return self
 
-    def get_connector(self, name: str):
+    def _all_connectors(self) -> tuple[dict, dict]:
+        """Every connector the project uses, by name, and which models use each.
+
+        A connector is usually built inside a model file, not registered, so
+        listing only the registry left the Connectors page empty for a project
+        whose data is in plain sight in its models.
+        """
         with self._lock:
-            return self._connectors.get(name)
+            registered = dict(self._connectors)
+            models = list(self._models.values())
+        found, used_by = dict(registered), {}
+        for m in models:
+            for c in m.connectors():
+                found.setdefault(c.name, c)
+                used_by.setdefault(c.name, [])
+                if m.name not in used_by[c.name]:
+                    used_by[c.name].append(m.name)
+        return found, used_by
+
+    def get_connector(self, name: str):
+        return self._all_connectors()[0].get(name)
 
     def list_connectors(self) -> list[dict]:
-        with self._lock:
-            connectors = list(self._connectors.values())
-        return [c.describe() for c in connectors]
+        found, used_by = self._all_connectors()
+        return [
+            {**c.describe(), "storage": c.storage(), "used_by": used_by.get(name, [])}
+            for name, c in found.items()
+        ]
 
     # ── Models ─────────────────────────────────────────────────
 

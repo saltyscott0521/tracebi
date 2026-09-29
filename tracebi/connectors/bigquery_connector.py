@@ -45,6 +45,10 @@ class BigQueryConnector(BaseConnector):
         self.credentials = credentials
         self._client = None
 
+    def storage(self) -> dict:
+        return {"kind": "cloud", "exists": None, "size": None,
+                "where": f"BigQuery {self.project}.{self.dataset}"}
+
     def supports_pushdown(self) -> bool:
         return True
 

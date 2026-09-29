@@ -97,6 +97,14 @@ def test_an_analyst_browses_the_model_and_queries_it(served):
     detail = c.get("/api/models/sample_model").json()
     assert detail["facts"] and detail["dimensions"]
 
+    # A model file is code; the model says where its data is kept, and the
+    # connector list includes connectors that only live inside a model.
+    [conn] = detail["connector_details"]
+    assert conn["storage"]["kind"] == "file" and conn["storage"]["exists"] is True
+    assert conn["storage"]["where"].endswith("warehouse.duckdb")
+    [listed_conn] = c.get("/api/connectors").json()
+    assert listed_conn["name"] == conn["name"] and listed_conn["used_by"] == ["sample_model"]
+
     fact = detail["facts"][0]["name"]
     q = c.post("/api/models/sample_model/query", json={
         "fact": fact, "measures": ["revenue"], "dimensions": ["dim_region.region"]})
