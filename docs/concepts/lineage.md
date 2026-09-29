@@ -36,8 +36,16 @@ for node in ds.lineage:
 
 - **In the receipt.** A figure's manifest entry carries the resolved query and
   the model it ran against — recovered from lineage, not re-derived.
-- **In the web UI.** `GET /api/reports/{name}/lineage` returns a graph;
-  `/mermaid` returns a diagram.
+- **In the web UI.** A report's **Lineage** tab draws where each number came
+  from, left to right: the transform that wrote the tables, the stored tables
+  (and where they live), the model, each query, and the figures on the page.
+  It is read from the last build's [[receipts|receipt]], so it shows what the
+  reader was shown, not a fresh re-run. Select a node to trace it: a figure
+  lights only the tables its own query read. `GET /api/reports/{name}/lineage`
+  returns the same graph; `/mermaid` returns a diagram.
+- **What it does not show.** Lineage starts at the sink: the analysis inside a
+  transform is not traced, only the contract the sink satisfied. A query
+  marked python-derived is shown as such, and never reads as verified.
 - **In `tracebi verify`.** Source fingerprints recorded in lineage are what let
   drift be *diagnosed* — `SOURCE DRIFT` (an input moved) is distinguishable
   from `UNEXPLAINED` (the inputs did not move but the answer did), and that

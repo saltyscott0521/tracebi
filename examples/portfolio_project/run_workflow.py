@@ -8,7 +8,7 @@ over.
     ①  TRANSFORM    transforms/holdings_transform.py   → data/warehouse.duckdb
                     transforms/affordability_transform.py → data/housing.duckdb
     ②  MODEL        models/portfolio_model.py          (a star schema over the sink)
-    ③  REPORT       reports/portfolio_dashboard.json    → data/portfolio_dashboard.html
+    ③  REPORT       reports/portfolio_model/portfolio_dashboard.json    → data/portfolio_dashboard.html
 
 This script does phase ① (build the warehouse) and renders phase ③ once, offline,
 so you can open the HTML directly. To serve the dashboard on the front end:
@@ -51,7 +51,7 @@ def main() -> None:
     for k, v in summary.items():
         print(f"    {k:20} {v}")
 
-    # The housing sample (reports/housing/affordability) has its own input
+    # The housing sample (reports/housing_model/affordability) has its own input
     # and warehouse: public annual series, sunk to data/housing.duckdb.
     print("① housing transform → sink")
     housing = _load(os.path.join(ROOT, "transforms", "affordability_transform.py"))
@@ -68,7 +68,7 @@ def main() -> None:
     print(f"    loaded {sorted(models)}")
 
     print("③ dashboard → html")
-    spec_path = os.path.join(ROOT, "reports", "portfolio_dashboard.json")
+    spec_path = os.path.join(ROOT, "reports", "portfolio_model", "portfolio_dashboard.json")
     spec = ReportSpec.from_dict(json.load(open(spec_path)))
     check = spec.validate(models)
     if not check["ok"]:

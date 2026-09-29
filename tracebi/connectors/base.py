@@ -59,6 +59,30 @@ class BaseConnector(ABC):
         """
         return {"name": self.name, "type": type(self).__name__}
 
+    def storage(self) -> dict:
+        """
+        Where this connector's data physically lives, for people.
+
+        ``{"kind", "where", "exists", "size"}``: *kind* is ``file``,
+        ``directory``, ``database``, ``cloud``, ``memory`` or ``unknown``;
+        *where* is a path (relative to the working directory when inside it)
+        or a redacted URL — never a credential; *exists* says whether the
+        file or folder is there now (``None`` when it cannot be checked
+        without connecting); *size* is a file's bytes. Built from
+        :meth:`describe`, so a connector that describes itself gets this free.
+        """
+        d = self.describe()
+        database = d.get("database")
+        if database and database != ":memory:":
+            return _on_disk("file", str(database))
+        if d.get("directory"):
+            return _on_disk("directory", str(d["directory"]))
+        if d.get("url"):
+            return {"kind": "database", "where": d["url"], "exists": None, "size": None}
+        if database == ":memory:" or "tables" in d:
+            return {"kind": "memory", "where": "in memory, rebuilt every run", "exists": None, "size": None}
+        return {"kind": "unknown", "where": None, "exists": None, "size": None}
+
     def list_tables(self) -> Optional[list[str]]:
         """
         Table names this connector can see, from metadata.
@@ -132,3 +156,19 @@ class BaseConnector(ABC):
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} name={self.name!r}>"
+
+
+def _on_disk(kind: str, path: str) -> dict:
+    """A file or folder: shown relative to the working directory when inside it."""
+    import os
+
+    shown = path
+    try:
+        rel = os.path.relpath(path)
+        if not rel.startswith(".."):
+            shown = rel
+    except ValueError:      # another drive on Windows
+        pass
+    exists = os.path.exists(path)
+    size = os.path.getsize(path) if exists and kind == "file" else None
+    return {"kind": kind, "where": shown, "exists": exists, "size": size}

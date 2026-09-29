@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skipif(
 
 _REPO = Path(__file__).resolve().parents[1]
 _PROJECT = _REPO / "examples" / "portfolio_project"
-_REPORT = "showcase/portfolio_showcase"   # its path: it lives in a folder
+_REPORT = "portfolio_model/portfolio_showcase"   # its path: it lives in a folder
 _LABEL = "portfolio_showcase"            # what the list shows under the folder
 _TITLE = "Portfolio Showcase"
 

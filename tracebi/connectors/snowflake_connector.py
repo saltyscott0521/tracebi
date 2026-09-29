@@ -57,6 +57,10 @@ class SnowflakeConnector(BaseConnector):
         self.schema = schema
         self._conn = None
 
+    def storage(self) -> dict:
+        return {"kind": "cloud", "exists": None, "size": None,
+                "where": f"Snowflake {self.account} · {self.database}.{self.schema} (warehouse {self.warehouse})"}
+
     def supports_pushdown(self) -> bool:
         return True
 

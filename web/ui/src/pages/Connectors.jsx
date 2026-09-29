@@ -1,9 +1,16 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useConnectors } from '../api'
+import { StorageLine, KIND_LABEL } from '../components/Storage'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
 } from '../components/Shared'
+
+const LABEL = { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }
+function Section({ label, children }) {
+  return <div style={{ marginBottom: 14 }}><div style={LABEL}>{label}</div>{children}</div>
+}
 
 function ConnectorDetail({ c }) {
   if (!c) return (
@@ -16,23 +23,16 @@ function ConnectorDetail({ c }) {
       <CardTitle>{c.name}</CardTitle>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         <Badge variant="blue">{c.type}</Badge>
+        {c.storage?.kind && <Badge variant="gray">{KIND_LABEL[c.storage.kind]}</Badge>}
       </div>
-      {c.url && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>
-            Connection URL
-          </div>
-          <code style={{ fontSize: 12 }}>{c.url}</code>
-        </div>
-      )}
-      {c.directory && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>
-            Directory
-          </div>
-          <code style={{ fontSize: 12 }}>{c.directory}</code>
-        </div>
-      )}
+      <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
+      <Section label="Used by">
+        {(c.used_by || []).length === 0
+          ? <span style={{ color: 'var(--muted)', fontSize: 12.5 }}>No model reads from this connector.</span>
+          : (c.used_by || []).map(m => (
+            <Link key={m} to={`/models?m=${encodeURIComponent(m)}`} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
+          ))}
+      </Section>
       {c.tables && c.tables.length > 0 && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
@@ -63,11 +63,11 @@ export default function Connectors() {
     <>
       <PageTitle>Connectors</PageTitle>
       <PageSub>
-        {isLoading ? 'Loading…' : `${connectors.length} connector${connectors.length !== 1 ? 's' : ''} registered.`}
+        {isLoading ? 'Loading…' : `${connectors.length} connector${connectors.length !== 1 ? 's' : ''}: where each model's data is kept. A model file declares meaning; a connector says where the data is.`}
       </PageSub>
 
       {!isLoading && connectors.length === 0 ? (
-        <Empty message="No connectors registered. Add one with registry.add_connector() in your app module." />
+        <Empty message="No connectors yet. A model declares its own (add_connector); one can also be registered in an app module." />
       ) : (
         <SplitLayout
           left={

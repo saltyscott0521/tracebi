@@ -12,12 +12,13 @@ it is the worked version of that scaffold with real cleaning to do.
                           ── freeze: data/warehouse.duckdb ──
 ②  MODEL       models/portfolio_model.py         grain, keys, measures — the contract
                           ── freeze: the model ──
-③  REPORT      reports/portfolio_dashboard.json            every figure a live query
-               reports/fund_books/portfolio_book/          freeform template package
-               reports/fund_books/portfolio_overview/      default-component runtime package
-               reports/risk/portfolio_concentration/       governed window measures
-               reports/showcase/portfolio_showcase/        kitchen-sink demo, every figure kind
-               reports/housing/affordability/              public data + a reader what-if
+③  REPORT      reports/portfolio_model/portfolio_dashboard.json   every figure a live query
+               reports/portfolio_model/portfolio_book/            freeform template package
+               reports/portfolio_model/portfolio_overview/        default-component runtime package
+               reports/portfolio_model/portfolio_concentration/   governed window measures
+               reports/portfolio_model/portfolio_showcase/        kitchen-sink demo, every figure kind
+               reports/housing_model/affordability/               public data, a one-number answer
+               pipelines/<model>.py                               one per model: transform → build
 ```
 
 ## Run it
@@ -26,6 +27,7 @@ it is the worked version of that scaffold with real cleaning to do.
 python run_workflow.py        # ① build the warehouse, ③ render the dashboard once
 tracebi verify data/portfolio_dashboard.html.manifest.json   # every section: REPRODUCES
 tracebi serve                 # browse at http://127.0.0.1:8000 → Reports
+tracebi run-pipeline portfolio_model   # or: a model's pipeline — rebuild its warehouse, then its reports
 ```
 
 `run_workflow.py` generates the messy source into `inputs/` on first run
@@ -39,33 +41,43 @@ recorded in `data/warehouse.contracts.json`. A failed check raises at sink
 time; a green one lets a report say *the sink satisfied its contract* — never
 that the transform was verified.
 
-The report forms in `reports/` span the authoring lanes, and are organised
-into folders the way a team would. A report in a folder is named by its path:
-`tracebi report build fund_books/portfolio_book`.
+Reports are organised **by model**: the folder is the model's name, so a model,
+the reports that read it and its pipeline sit together. A report in a folder is
+named by its path: `tracebi report build portfolio_model/portfolio_book`.
+`tracebi run-pipeline portfolio_model` rebuilds that model's warehouse, then
+every report in its folder.
 
-- `portfolio_dashboard.json` — a governed `ReportSpec` at the top level;
+Under `reports/portfolio_model/`:
+
+- `portfolio_dashboard.json` — a governed `ReportSpec`;
   validate it without running (`tracebi spec validate`), every figure
   reproducible.
-- `fund_books/portfolio_book/` — a freeform template package: your own
+- `portfolio_model/portfolio_book/` — a freeform template package: your own
   HTML/CSS/JS around fingerprinted data, built into one self-contained file
   checkable offline with `tracebi verify --file`.
-- `fund_books/portfolio_overview/` — a default-component package: KPI, chart,
+- `portfolio_model/portfolio_overview/` — a default-component package: KPI, chart,
   and table figures hydrated by the shipped runtime from the stamped bytes, no
   author CSS or JS at all.
-- `risk/portfolio_concentration/` — rank, share of total and running share as
+- `portfolio_model/portfolio_concentration/` — rank, share of total and running share as
   governed window measures. It was once a `report.py` escape hatch and no
   longer needs to be.
-- `housing/affordability/` — a second domain on public data: mortgage
-  rates, median home prices and median household income every year since
-  1971 (`inputs/housing_history.csv`, sunk by
-  `transforms/affordability_transform.py` to its own `data/housing.duckdb`,
-  modelled by `models/housing_model.py`). Line charts of every year, and a
-  then-vs-now **scenario** (`data-tb-scenario`) where the reader picks two
-  years or types their own rate, price and down payment. The scenario is
-  computed in the browser and labeled as not part of the receipt. The
-  committed CSV is a snapshot; `python inputs/fetch_housing.py` refreshes it
-  from FRED (see `inputs/housing_sources.md`).
-- `showcase/portfolio_showcase/` — the maintained kitchen-sink demo: every
+Under `reports/housing_model/`:
+
+- `affordability/` — a second domain on public data: what buying the median
+  home took of ten years of income, for every buyer since 1979 (mortgage rate
+  from Freddie Mac, existing-home price from NAR through HUD and FHFA, income
+  from the Census, one earner's pay from BLS). `inputs/housing_history.csv` is
+  sunk by `transforms/affordability_transform.py` to its own
+  `data/housing.duckdb` and modelled by `models/housing_model.py`. Today's buyer
+  is a labelled **scenario** (`data-tb-scenario`) whose assumptions the reader
+  sets; it is computed in the browser and never part of the receipt.
+  `python inputs/fetch_housing.py` refreshes the snapshot from the publishers
+  (see `inputs/housing_sources.md`); it needs the network, so it is not part of
+  the pipeline.
+
+Back under `portfolio_model/`:
+
+- `portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo: every
   figure kind, controls, layouts, and trust affordance the artifact offers,
   including a `report.py` escape hatch whose output stamps `verifiable: false`
   and never reads green.

@@ -140,7 +140,7 @@ phase to the next):
 3. **REPORT** — `reports/`. A `ReportSpec` (JSON) pointed at the model —
    KPI cards, charts, tables — where every figure is a live query. Because the
    model is materialized, the page re-renders in milliseconds with no pandas in
-   the loop. Reference: `examples/portfolio_project/reports/portfolio_dashboard.json`; served on the
+   the loop. Reference: `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json`; served on the
    Reports page of the web UI. `reports/` also holds template packages and
    `@register.report` factories — every report form lives in the one folder.
 
@@ -213,10 +213,11 @@ examples/
     inputs/            #   ⓪ raw pulls (holdings.csv + generate_raw.py, the demo source)
     transforms/        #   ① unconstrained pandas → sink star tables (holdings_transform.py)
     models/            #   ② the star-schema contract (portfolio_model.py)
-    reports/           #   ③ every report form: spec (portfolio_dashboard.json),
-                       #     folders of packages: fund_books/ (portfolio_book,
-                       #     portfolio_overview), risk/ (portfolio_concentration),
-                       #     showcase/ (portfolio_showcase)
+    reports/           #   ③ organised BY MODEL — the folder is the model's name:
+                       #     portfolio_model/ (portfolio_dashboard.json spec,
+                       #     portfolio_book, portfolio_overview, portfolio_concentration,
+                       #     portfolio_showcase), housing_model/ (affordability)
+    pipelines/         #   one per model: transform → build that model's reports
     run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
   seeds/               # Medallion demo DB seeding + Supabase deploy companions
   phase*.py            # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
@@ -490,7 +491,7 @@ authoring-surface feature must land with all three, in the same change:
 (1) the generated vocabulary documents it (`tracebi/capabilities.py` — the
 `tracebi context` / MCP `get_context` payload); (2) the scaffold or the
 showcase demonstrates it (`_INIT_SAMPLE_TEMPLATE_HTML` in `cli.py`, or
-`examples/portfolio_project/reports/showcase/portfolio_showcase/`); (3) both agent
+`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`); (3) both agent
 guides name it (`AGENTS.md` and `_INIT_AGENTS_MD` in `cli.py`).
 `tests/test_agent_guides.py` enforces (1)↔(3) mechanically — every
 `data-tb-*` attribute in the vocabulary must be named in both guides, the
@@ -560,7 +561,7 @@ removed is the fallback that rendered a factory with no package.
 
 ### New dashboard (phase ③)
 1. Add a `ReportSpec` `.json` under `reports/`, pointed at a model (grain +
-   measures it declares). Model this on the reference project's `reports/portfolio_dashboard.json`.
+   measures it declares). Model this on the reference project's `reports/portfolio_model/portfolio_dashboard.json`.
 2. Every figure is a live query against the model — KPI cards, charts, tables. A
    `metrics` section may carry a `data` query; a card whose `value` names a
    measure reads it live from the one-row result rather than hard-coding it.
@@ -616,7 +617,7 @@ GET  /api/reports/{name}/runs                        → recent background runs 
 GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
 GET  /api/reports/{name}/built                       → the last build (disk, else memory; built once if never)
 GET  /api/reports/{name}/download?format=xlsx|html   → html: the last build; xlsx: rendered
-GET  /api/reports/{name}/lineage                     → React Flow graph per section
+GET  /api/reports/{name}/lineage                     → transform → tables → model → queries → figures flow, from the last build's receipt
 GET  /api/reports/{name}/mermaid
 GET  /api/reports/{name}/source                      → the spec or package files that define it
 GET  /r/{name}                                       → share link: the last build as a full page (auth like any GET)
@@ -653,10 +654,10 @@ Don't add these unless asked.
 | Understand the three-phase workflow | `docs/concepts/the-three-phase-workflow.md` + `examples/portfolio_project/` |
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.py` |
-| Build a dashboard | `examples/portfolio_project/reports/portfolio_dashboard.json` |
-| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/fund_books/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
-| See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing/affordability/` + `tracebi/reports/scenario.py` |
-| See every artifact feature at once | `examples/portfolio_project/reports/showcase/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
+| Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json` |
+| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
+| See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |
+| See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
 | Understand architecture decisions | `NOTES.md` |
 | Avoid bugs already hit in this repo | `docs/agents/pitfalls.md` |
 | Decide whether a test is worth writing | `docs/architecture/test-suite-review.md` |

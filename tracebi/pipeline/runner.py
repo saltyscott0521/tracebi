@@ -46,6 +46,35 @@ class _LayerReg:
     layer_type: str
 
 
+class _StepResult:
+    """What a step hands the runner: rows out (``len``) and rows in (lineage)."""
+
+    def __init__(self, rows_in: int, rows_out: int) -> None:
+        from types import SimpleNamespace
+
+        self._rows_out = rows_out
+        self.lineage = [SimpleNamespace(metadata={"rows_ingested": rows_in})]
+
+    def __len__(self) -> int:
+        return self._rows_out
+
+
+class _StepLayer:
+    """A plain function as a pipeline step; see ``PipelineRunner.register_step``."""
+
+    def __init__(self, fn, label: str) -> None:
+        self._fn = fn
+        self.layer_label = label
+
+    def execute(self) -> _StepResult:
+        out = self._fn()
+        if isinstance(out, tuple):
+            rows_in, rows_out = out
+        else:
+            rows_in = rows_out = int(out or 0)
+        return _StepResult(rows_in, rows_out)
+
+
 class PipelineRunner:
     """
     Orchestrator for medallion pipeline layers.
@@ -287,6 +316,28 @@ class PipelineRunner:
                 "ts":           datetime.now(timezone.utc).isoformat(),
             })
         return self
+
+    def register_step(
+        self,
+        name: str,
+        fn,
+        depends_on: Optional[str] = None,
+        schedule: Optional[str] = None,
+        label: str = "step",
+    ) -> "PipelineRunner":
+        """
+        Register any function as a step, beside (or instead of) the medallion
+        layers: run a transform, pull from an API, build reports.
+
+        ``fn()`` returns the rows it produced, or ``(rows_in, rows_out)``, or
+        ``None``; the run history records those counts. Steps get the same
+        history, locking, dependency order and schedule as a layer::
+
+            runner.register_step("transform", run_transform)
+            runner.register_step("build", build_reports, depends_on="transform")
+        """
+        return self.register(_StepLayer(fn, label), name=name,
+                             schedule=schedule, depends_on=depends_on)
 
     def register_model(self, model) -> "PipelineRunner":
         """

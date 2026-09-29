@@ -68,8 +68,18 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
 
     source = c.get("/api/reports/sample_dashboard/source").json()
     assert source, "the report's source files are served"
+    # Lineage is read from the last build's receipt: transform → tables →
+    # model → queries → figures, each figure under the query it reads.
     lineage = c.get("/api/reports/sample_dashboard/lineage")
     assert lineage.status_code == 200
+    flow = lineage.json()["flow"]
+    kinds = {n["kind"] for n in flow["nodes"]}
+    assert {"transform", "table", "model", "binding", "figures"} <= kinds
+    assert flow["summary"]["figures"] == len(body["manifest"]["figures"])
+    table = next(n for n in flow["nodes"] if n["kind"] == "table")
+    assert table["detail"]["storage"]["where"].endswith("warehouse.duckdb")
+    assert any(e["source"].startswith("binding:") and e["target"].startswith("figures:")
+               for e in flow["edges"])
 
 
 def test_a_background_run_settles_with_a_result(served):
@@ -96,6 +106,14 @@ def test_an_analyst_browses_the_model_and_queries_it(served):
     assert "revenue" in listed["sample_model"]["measures"]
     detail = c.get("/api/models/sample_model").json()
     assert detail["facts"] and detail["dimensions"]
+
+    # A model file is code; the model says where its data is kept, and the
+    # connector list includes connectors that only live inside a model.
+    [conn] = detail["connector_details"]
+    assert conn["storage"]["kind"] == "file" and conn["storage"]["exists"] is True
+    assert conn["storage"]["where"].endswith("warehouse.duckdb")
+    [listed_conn] = c.get("/api/connectors").json()
+    assert listed_conn["name"] == conn["name"] and listed_conn["used_by"] == ["sample_model"]
 
     fact = detail["facts"][0]["name"]
     q = c.post("/api/models/sample_model/query", json={

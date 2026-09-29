@@ -29,6 +29,8 @@ model.add_measure("fair_value", column="fair_value", agg="sum")
 ```
 
 That is the whole shape: connectors, tables, dimensions, facts, measures.
+The file declares meaning; the connector says where the data is kept — see
+[[models-and-connectors]].
 
 ## Why it is only a declaration
 

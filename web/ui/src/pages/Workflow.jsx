@@ -53,7 +53,7 @@ model = (DataModel("portfolio_model")
     n: '3', color: '#0369a1', folder: 'reports/', title: 'Report',
     lead: 'A spec pointed at the model. KPI cards, charts and tables, each a query. Because the model is materialized, the page re-renders in milliseconds — no pandas in the loop.',
     point: 'Edit the JSON to reshape the page. A metrics card whose value names a measure reads it live.',
-    code: `// reports/portfolio_dashboard.json
+    code: `// reports/portfolio_model/portfolio_dashboard.json
 { "type": "chart", "chart_type": "bar",
   "x": "dim_issuer.sector", "y": "fair_value",
   "data": { "model": "portfolio_model",

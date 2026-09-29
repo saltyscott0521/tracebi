@@ -87,7 +87,7 @@ The reference implementation ships in the repo at `examples/portfolio_project/`
 — a complete project with the same shape `tracebi init` scaffolds (plus its own
 `run_workflow.py` driver):
 `transforms/holdings_transform.py`, `models/portfolio_model.py`,
-`reports/portfolio_dashboard.json`, driven by `run_workflow.py`. Full
+`reports/portfolio_model/portfolio_dashboard.json`, driven by `run_workflow.py`. Full
 walkthrough: **[the three-phase workflow](docs/concepts/the-three-phase-workflow.md)**.
 
 Everything below hangs off this spine: the framework gives you the connectors
@@ -342,8 +342,8 @@ tracebi spec schema                                  # JSON Schema for a report 
 tracebi spec validate report.json                    # check a spec without executing it
 tracebi spec render report.json                      # build a spec and render HTML + manifest
 tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (template package scaffold)
-tracebi report build portfolio_dashboard             # render a report (spec or package) → self-contained HTML + manifest
-tracebi report preview portfolio_dashboard           # build and open it in a browser
+tracebi report build portfolio_model/portfolio_dashboard          # render a report (spec or package) → self-contained HTML + manifest
+tracebi report preview portfolio_model/portfolio_dashboard          # build and open it in a browser
 tracebi mcp                                          # agent gateway over MCP (stdio)
 tracebi verify output/report.manifest.json           # re-run recorded queries; classify drift
 tracebi verify --file output/report.html             # offline: does the shipped file's data still match its manifest?

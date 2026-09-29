@@ -7,7 +7,6 @@ from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
 
 from tracebi.web.api.errors import error_detail as _error_detail
-from tracebi.web.api.lineage_graph import lineage_to_graph as _lineage_to_graph
 from tracebi.web.api.registry import registry
 from tracebi.web.api.run_store import run_store
 
@@ -534,37 +533,22 @@ def report_mermaid(name: str):
 @router.get("/{name:path}/lineage")
 def report_lineage(name: str):
     """
-    Run a report and return its full data lineage as a React Flow graph.
-
-    Returns nodes and edges ready to pass directly to <ReactFlow>.
+    A report's lineage as a layered flow — transform → stored tables → model →
+    queries → figures — read from the last build's receipt, so it shows what
+    the reader was shown and never re-runs the report.
     """
-    report = _run_report_or_502(name)
+    from tracebi.reports.lineage_flow import report_flow
 
-    seen_ids: set[int] = set()
-    all_nodes: list[dict] = []
-    section_lineages: list[dict] = []
+    def storage_of(connector_name: str):
+        connector = registry.get_connector(connector_name)
+        return connector.storage() if connector else None
 
-    for section in report.data_sections():
-        ds = getattr(section, "dataset", None)
-        if ds is None:
-            continue
-        nodes_for_section = []
-        for node in ds.lineage:
-            nid = id(node)
-            if nid not in seen_ids:
-                seen_ids.add(nid)
-                all_nodes.append(node.to_dict())
-            nodes_for_section.append(node.to_dict())
-        section_lineages.append({
-            "section_title": section.title,
-            "dataset_name": ds.name,
-            "graph": _lineage_to_graph(nodes_for_section),
-        })
-
+    built = _last_build(name.strip("/"))
+    manifest = built["manifest"]
     return {
         "report": name,
-        "combined_graph": _lineage_to_graph(all_nodes),
-        "sections": section_lineages,
+        "built_at": manifest.get("rendered_at"),
+        "flow": report_flow(manifest, storage_of=storage_of),
     }
 
 

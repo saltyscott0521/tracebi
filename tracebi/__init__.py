@@ -29,6 +29,7 @@ from tracebi.etl.bronze import BronzeLayer, LandingLayer
 from tracebi.etl.silver import SilverLayer, ManipulationLayer
 from tracebi.etl.gold import GoldLayer, FinalLayer
 from tracebi.lineage.diagram import LineageDiagram
+from tracebi.pipeline import model_pipeline
 from tracebi.pipeline.runner import PipelineRunner
 # NB: import the class only. Binding the `registry` singleton here would
 # shadow the `tracebi.registry` submodule, breaking the documented
@@ -64,6 +65,7 @@ __all__ = [
     # Visualisation & orchestration
     "LineageDiagram",
     "PipelineRunner",
+    "model_pipeline",
     # Project registry + registration facade
     # (the singleton is `from tracebi.registry import registry`)
     "Registry",

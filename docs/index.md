@@ -31,6 +31,7 @@ The ideas. Read these once and the rest of the docs make sense.
 - [[the-three-phase-workflow]] — the spine: transform → model → report
 - [[transform]] — phase ①: unconstrained pandas that lands clean tables
 - [[model]] — phase ②: the star-schema contract over those tables
+- [[models-and-connectors]] — a model says what the data means; a connector says where it is
 - [[report]] — phase ③: figures that are live queries, not typed-in numbers
 - [[freeze-points]] — why the three phases don't block each other
 - [[receipts]] — what a receipt proves, and what it deliberately does not

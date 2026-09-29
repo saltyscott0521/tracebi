@@ -1116,6 +1116,18 @@ class DataModel:
         for connector in self._connectors.values():
             connector.connect()
 
+    def disconnect(self) -> None:
+        """Release every connector's open handle (a no-op for those without one).
+
+        A DuckDB warehouse held open read-only by a model cannot also be
+        opened read-write by the transform that rebuilds it, in the same
+        process. Call this before rewriting the data; the next ``load``
+        reconnects by itself.
+        """
+        for connector in self._connectors.values():
+            if hasattr(connector, "disconnect"):
+                connector.disconnect()
+
     # ── Data loading ───────────────────────────────────────────
 
     def load(
@@ -3287,6 +3299,12 @@ class DataModel:
         return {
             "name": self.name,
             "connectors": list(self._connectors.keys()),
+            # Where each connector's data lives, so a model file (code) can be
+            # traced to its stored data (a file, folder, database or cloud).
+            "connector_details": [
+                {**c.describe(), "storage": c.storage()}
+                for c in self._connectors.values()
+            ],
             "tables": [self._table_info(t) for t in self._tables.values()],
             "relationships": [
                 {
