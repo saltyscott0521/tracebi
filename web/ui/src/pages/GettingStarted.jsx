@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useGuides } from '../api'
 import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
+import { CHAIN } from '../components/chainSteps'
 
 const STEPS = [
   {
@@ -19,7 +20,7 @@ tracebi run-transform holdings`,
   },
   {
     n: 3,
-    title: 'Declare the contract',
+    title: 'Declare the data model',
     desc: 'Phase ② is a DataModel in models/: grain, keys, measures. A reviewer reads it without opening the pandas above it.',
     code: `tracebi new-model "Portfolio"`,
   },
@@ -68,11 +69,42 @@ function Guides() {
   )
 }
 
+// How the pieces fit: one picture, in the order the data moves. The sidebar is
+// the same list. What each step is, and where it lives in a project.
+function HowItFits() {
+  return (
+    <div style={{ marginBottom: 36 }}>
+      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>How the pieces fit</div>
+      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '74ch' }}>
+        Data moves left to right, and the sidebar follows it. A <strong>source</strong> keeps the data.
+        A <strong>pipeline</strong> puts it there. The <strong>data model</strong> says what it means.
+        Reports and Explore only ever ask the model, so a model holds no data and a report holds none either.
+      </p>
+      <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
+        {CHAIN.map((s, i) => (
+          <Link key={s.key} to={s.path} style={{
+            textDecoration: 'none', background: 'var(--card)', border: '1px solid var(--border)',
+            borderRadius: 12, padding: '14px 16px', display: 'block', position: 'relative',
+          }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .6, color: '#6d28d9' }}>{i + 1}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', margin: '2px 0 4px' }}>{s.label}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-text)', marginBottom: 4 }}>{s.ask}</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{s.hint}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8, fontFamily: 'Cascadia Code, Fira Code, monospace' }}>{s.folder}</div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function GettingStarted() {
   return (
     <div>
       <PageTitle>Getting started</PageTitle>
       <PageSub>Five steps from install to your first lineage-tracked report.</PageSub>
+
+      <HowItFits />
 
       <Guides />
 
@@ -105,11 +137,8 @@ export default function GettingStarted() {
       }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Link to="/reports" style={LINK_STYLE}>▤ Report</Link>
-          <Link to="/models" style={LINK_STYLE}>⬡ Data model</Link>
+          {CHAIN.map(s => <Link key={s.key} to={s.path} style={LINK_STYLE}>{s.label}</Link>)}
           <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
-          <Link to="/connectors" style={LINK_STYLE}>⇌ Connectors</Link>
-          <Link to="/pipelines" style={LINK_STYLE}>↻ Refresh</Link>
         </div>
       </div>
     </div>

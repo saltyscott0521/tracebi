@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Chain from '../components/Chain'
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -293,10 +294,11 @@ export default function Explore() {
   const measureCols = result ? result.columns.filter(c => c in measures) : []
   const chartDim = result && dimAttrs.length === 1 ? dimAttrs[0] : null
 
-  if (loadingModels) return <><PageTitle>Explore</PageTitle><SkeletonCard /></>
+  if (loadingModels) return <><Chain current="explore" /><PageTitle>Explore</PageTitle><SkeletonCard /></>
 
   return (
     <>
+      <Chain current="explore" />
       <PageTitle>Explore</PageTitle>
       <PageSub>
         Build a star-schema query — pick measures and dimensions, run it, and see

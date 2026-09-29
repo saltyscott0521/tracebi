@@ -138,7 +138,7 @@ your peril):
 
 | Resource | Call | Appears in UI as |
 |---|---|---|
-| Connector | `registry.add_connector(conn)` | **Connectors** page |
+| Connector | `registry.add_connector(conn)` | **Sources** page |
 | Model | `registry.add_model(model, default=False)` | **Models** + **Explore** |
 | Report | `@registry.report("name", description="…")` on a zero-arg factory | **Reports** page |
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |

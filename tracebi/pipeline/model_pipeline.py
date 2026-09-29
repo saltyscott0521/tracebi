@@ -13,7 +13,7 @@ together, and one pipeline runs the whole chain:
   each with its receipt.
 
 Both are ordinary pipeline steps (see ``PipelineRunner.register_step``), so they
-appear on the Refresh page and in ``tracebi run-pipeline`` with run history.
+appear on the Pipelines page and in ``tracebi run-pipeline`` with run history.
 Run from the project root, like every other ``tracebi`` command.
 """
 

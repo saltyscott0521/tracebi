@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Chain from '../components/Chain'
 import { Link } from 'react-router-dom'
 import { useConnectors } from '../api'
 import { StorageLine, KIND_LABEL } from '../components/Storage'
@@ -15,7 +16,7 @@ function Section({ label, children }) {
 function ConnectorDetail({ c }) {
   if (!c) return (
     <Card>
-      <Empty message="Select a connector to view details." />
+      <Empty message="Select a source to see where its data is kept." />
     </Card>
   )
   return (
@@ -61,19 +62,20 @@ export default function Connectors() {
 
   return (
     <>
-      <PageTitle>Connectors</PageTitle>
+      <Chain current="sources" />
+      <PageTitle>Sources</PageTitle>
       <PageSub>
-        {isLoading ? 'Loading…' : `${connectors.length} connector${connectors.length !== 1 ? 's' : ''}: where each model's data is kept. A model file declares meaning; a connector says where the data is.`}
+        {isLoading ? 'Loading…' : `${connectors.length} source${connectors.length !== 1 ? 's' : ''}: where each model's data is kept. A source is a connector: a file, folder or database. A model file declares meaning; the source says where the data is.`}
       </PageSub>
 
       {!isLoading && connectors.length === 0 ? (
-        <Empty message="No connectors yet. A model declares its own (add_connector); one can also be registered in an app module." />
+        <Empty message="No sources yet. A model declares its own connector (add_connector); one can also be registered in an app module." />
       ) : (
         <SplitLayout
           left={
             isLoading ? <SkeletonList /> : (
               <>
-                <SearchInput value={query} onChange={setQuery} placeholder="Search connectors…" />
+                <SearchInput value={query} onChange={setQuery} placeholder="Search sources…" />
                 {filtered.length === 0
                   ? <Empty message="No matches." />
                   : filtered.map(c => (

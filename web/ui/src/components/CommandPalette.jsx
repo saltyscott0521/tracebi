@@ -1,16 +1,15 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
+import { CHAIN } from './chainSteps'
 
 // Static page destinations — always available, even before data loads.
+// The chain in order, then the rest. `sub` carries the question the page answers
+// and its old name, so searching "connectors" or "refresh" still finds it.
 const PAGES = [
-  { label: 'Getting Started', path: '/getting-started', kind: 'page' },
-  { label: 'Connectors',      path: '/connectors',      kind: 'page' },
-  { label: 'Data model',      path: '/models',          kind: 'page' },
-  { label: 'Explore',         path: '/explore',         kind: 'page' },
-  { label: 'Report',          path: '/reports',         kind: 'page' },
+  ...CHAIN.map(s => ({ label: s.label, path: s.path, kind: 'page', sub: [s.ask, s.was && `was ${s.was}`].filter(Boolean).join(' · ') })),
   { label: 'Verify a file',   path: '/verify',          kind: 'page' },
-  { label: 'Refresh',         path: '/pipelines',       kind: 'page' },
+  { label: 'Getting Started', path: '/getting-started', kind: 'page' },
 ]
 
 const KIND_META = {

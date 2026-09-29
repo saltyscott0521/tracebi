@@ -74,7 +74,7 @@ class Registry:
         """Every connector the project uses, by name, and which models use each.
 
         A connector is usually built inside a model file, not registered, so
-        listing only the registry left the Connectors page empty for a project
+        listing only the registry left the Sources page empty for a project
         whose data is in plain sight in its models.
         """
         with self._lock:

@@ -13,6 +13,11 @@ one never blocks the fast one.
 
 ---
 
+> **In the app**, the sidebar follows the same flow: **Sources** (where the data
+> is kept) → **Pipelines** (how it gets there) → **Data model** (what it means) →
+> **Explore** (ask it) → **Reports** (what people read). Reports and Explore
+> only ever ask the model; see [[models-and-connectors]].
+
 ## ① Transform — `transforms/`
 
 Ordinary, unconstrained pandas. Pull the queries, do the real analysis — window

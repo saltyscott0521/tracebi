@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CHAIN } from './chainSteps'
 import { NavLink, Link } from 'react-router-dom'
 
 import { useHealth, useAppStatus } from '../api'
@@ -54,13 +55,9 @@ const ICONS = {
 // Workspace first; learn/docs below. Verify is intentionally not a primary
 // nav peer — it lives as a quiet footer action so the chrome reads as product
 // surfaces, not a trust marketing strip.
-const NAV_PRIMARY = [
-  { path: '/reports',    label: 'Report',     icon: 'reports' },
-  { path: '/models',     label: 'Data model', icon: 'models' },
-  { path: '/connectors', label: 'Connectors', icon: 'connectors' },
-  { path: '/pipelines',  label: 'Refresh',    icon: 'pipelines' },
-  { path: '/explore',    label: 'Explore',    icon: 'explore' },
-]
+// The workspace reads in the order the data moves: where it is kept, how it gets
+// there, what it means, ask it, read it (see chainSteps.js).
+const NAV_PRIMARY = CHAIN.map(({ path, label, icon }) => ({ path, label, icon }))
 
 const NAV_SECONDARY = [
   { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
