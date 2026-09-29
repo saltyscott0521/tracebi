@@ -125,6 +125,12 @@ class Registry:
                 "connectors": info["connectors"],
                 "tables": [t["name"] for t in info["tables"]],
                 "relationships": [r["name"] for r in info["relationships"]],
+                # The star schema's shape, so a list can say "1 fact · 2
+                # dimensions · 9 measures" instead of a relationship count a
+                # facts-and-dimensions model never has.
+                "facts": [f["name"] for f in info["facts"]],
+                "dimensions": [d["name"] for d in info["dimensions"]],
+                "measures": [m["name"] for m in info["measures"]],
             })
         return out
 

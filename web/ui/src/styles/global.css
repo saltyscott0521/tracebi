@@ -489,7 +489,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* ── ERD diagram ─────────────────────────────────────── */
 .erd-wrapper {
-  height: clamp(280px, 55vw, 520px);
+  height: clamp(280px, 55vw, 520px);   /* the Data model diagram sets its own */
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);

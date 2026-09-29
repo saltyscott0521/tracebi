@@ -74,7 +74,7 @@ report, not a different thing.)
 | Phase | Folder | Artifact | Discovered by the server as |
 |---|---|---|---|
 | ① Transform | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
-| ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Models page |
+| ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Data model page |
 | ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report on the Reports page |
 
 ```bash
@@ -644,7 +644,7 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
 - **Models** — table previews with column dtypes and full-table CSV export,
-  plus an interactive ERD of your relationships.
+  plus an interactive ERD of its facts and dimensions.
 - **Reports** — run in the browser (in the background, with run history and
   a toast when done), download the self-contained HTML artifact with its
   embedded receipt (or a plain Excel export), read the at-a-glance receipt,
