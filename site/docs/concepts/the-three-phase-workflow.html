@@ -76,6 +76,12 @@ own cadence, separated by <a href="../concepts/freeze-points.html">freeze points
 <p>Each phase has one job, and the phases are deliberately decoupled so the slow
 one never blocks the fast one.</p>
 <hr>
+<blockquote>
+<p><strong>In the app</strong>, the sidebar follows the same flow: <strong>Sources</strong> (where the data
+is kept) → <strong>Pipelines</strong> (how it gets there) → <strong>Data model</strong> (what it means) →
+<strong>Explore</strong> (ask it) → <strong>Reports</strong> (what people read). Reports and Explore
+only ever ask the model; see <a href="../concepts/models-and-connectors.html">Models and connectors</a>.</p>
+</blockquote>
 <h2 id="1-transform-transforms">① Transform — <code>transforms/</code></h2>
 <p>Ordinary, unconstrained pandas. Pull the queries, do the real analysis — window
 functions, prose parsing, cleaning, dedupe — then <strong>sink</strong> clean star-schema

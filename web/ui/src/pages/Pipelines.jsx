@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import Chain from '../components/Chain'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -312,11 +313,12 @@ export default function Pipelines() {
 
   return (
     <>
+      <Chain current="pipelines" />
       <PageTitle>Pipelines</PageTitle>
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}. Run history refreshes every 10 s.`
+          : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}: each rebuilds a model's data, then the reports that read it. Run history refreshes every 10 s.`
         }
       </PageSub>
 

@@ -1,6 +1,6 @@
 """The pipeline journey: ``tracebi new-pipeline`` scaffolds an empty runner,
 the analyst fills in a landing layer and a cleaning layer (as the scaffold's
-docstring shows), then runs it from the CLI and from the web Refresh page, and
+docstring shows), then runs it from the CLI and from the web Pipelines page, and
 reads the run history back.
 """
 

@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
 
 # The connector points at the file phase ① wrote. Exposed at module scope so the
-# web app can surface it on the Connectors page.
+# web app can surface it on the Sources page.
 connector = DuckDBConnector("warehouse", database=WAREHOUSE)
 
 model = (

@@ -30,7 +30,7 @@ model.add_fact("fact_holdings", table_name="fact_holdings",                     
   *Defined in* `models/portfolio_model.py` and *Data in*
   `data/warehouse.duckdb`, and whether the file is there yet and how big it is.
   The **Storage** tab lists each connector, what kind of place it is, and
-  exactly which tables it serves. The **Connectors** page is the same list
+  exactly which tables it serves. The **Sources** page (a source is a connector) is the same list
   across all models, with the models that use each one.
 - **In code**, `model.info()["connector_details"]` gives the same answer, and
   `connector.storage()` says where any connector's data lives (never a
@@ -59,7 +59,7 @@ pipelines/portfolio_model.py         rebuild its data, then those reports
 One line makes the pipeline: `model_pipeline("portfolio_model",
 transform="holdings_transform")` registers a **transform** step (the phase ①
 script that fills the warehouse) and a **build** step (every report in
-`reports/portfolio_model/`, each with its receipt). It shows on the Refresh
+`reports/portfolio_model/`, each with its receipt). It shows on the Pipelines
 page and runs with `tracebi run-pipeline portfolio_model`. The build step
 refuses to run after a transform that failed, so a report is never rebuilt on
 data the transform did not refresh.

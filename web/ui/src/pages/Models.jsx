@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import Chain from '../components/Chain'
 import { useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -481,6 +482,7 @@ export default function Models() {
 
   return (
     <>
+      <Chain current="models" />
       <PageTitle>Data model</PageTitle>
       <PageSub>
         {isLoading

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import Chain from '../components/Chain'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -641,6 +642,7 @@ export default function Reports() {
 
   return (
     <div className={current ? 'reports-page reports-page--detail' : 'reports-page'}>
+      <Chain current="reports" />
       <PageTitle>Reports</PageTitle>
       <PageSub>
         {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''}. Select one to open its last build. Rebuild is the second action.`}

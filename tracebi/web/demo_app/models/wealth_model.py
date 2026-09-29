@@ -9,7 +9,7 @@ notebooks, scripts, and the web server share one definition::
     model = get_model("wealth_model")
 
 Exposes a module-level ``model`` (the convention the registry looks for) plus
-``connector`` so the web app can surface it on the Connectors page.
+``connector`` so the web app can surface it on the Sources page.
 """
 
 import pandas as pd
