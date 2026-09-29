@@ -56,7 +56,7 @@ const ICONS = {
 // surfaces, not a trust marketing strip.
 const NAV_PRIMARY = [
   { path: '/reports',    label: 'Report',     icon: 'reports' },
-  { path: '/models',     label: 'Contract',   icon: 'models' },
+  { path: '/models',     label: 'Data model', icon: 'models' },
   { path: '/connectors', label: 'Connectors', icon: 'connectors' },
   { path: '/pipelines',  label: 'Refresh',    icon: 'pipelines' },
   { path: '/explore',    label: 'Explore',    icon: 'explore' },

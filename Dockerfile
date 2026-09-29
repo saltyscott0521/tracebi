@@ -15,6 +15,9 @@ FROM python:3.11-slim
 # `tracebi update` tells a container install to pull a new image from the
 # host rather than upgrade in place.
 ENV TRACEBI_IN_DOCKER=1
+# The package is pip-installed into site-packages, so the docs API's
+# "repo root" fallback points nowhere; say where the shipped docs are.
+ENV TRACEBI_DOCS_DIR=/app/docs
 # A non-root runtime user: the server must not run as root.
 RUN useradd --create-home --uid 10001 appuser
 WORKDIR /app

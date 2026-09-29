@@ -35,7 +35,7 @@ tracebi verify output/portfolio.html.manifest.json`,
   {
     n: 5,
     title: 'Open the desk',
-    desc: 'The published file is the thing a person approves. The Reports page opens it; the Contract page reads the model.',
+    desc: 'The published file is the thing a person approves. The Reports page opens it; the Data model page reads the model.',
     code: `python -m tracebi.web.run
 # → http://localhost:8000`,
   },
@@ -106,7 +106,7 @@ export default function GettingStarted() {
         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Link to="/reports" style={LINK_STYLE}>▤ Report</Link>
-          <Link to="/models" style={LINK_STYLE}>⬡ Contract</Link>
+          <Link to="/models" style={LINK_STYLE}>⬡ Data model</Link>
           <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
           <Link to="/connectors" style={LINK_STYLE}>⇌ Connectors</Link>
           <Link to="/pipelines" style={LINK_STYLE}>↻ Refresh</Link>

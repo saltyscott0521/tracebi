@@ -89,8 +89,11 @@ def test_a_background_run_settles_with_a_result(served):
 
 def test_an_analyst_browses_the_model_and_queries_it(served):
     c = served
-    models = [m["name"] for m in c.get("/api/models").json()]
-    assert "sample_model" in models
+    listed = {m["name"]: m for m in c.get("/api/models").json()}
+    assert "sample_model" in listed
+    # The list carries the star schema's shape, not just a relationship count.
+    assert listed["sample_model"]["facts"] and listed["sample_model"]["dimensions"]
+    assert "revenue" in listed["sample_model"]["measures"]
     detail = c.get("/api/models/sample_model").json()
     assert detail["facts"] and detail["dimensions"]
 

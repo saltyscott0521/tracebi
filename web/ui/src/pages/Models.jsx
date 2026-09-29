@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
+import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
 import { useModels, useModel, useTablePreview, useConnectors, useDesk, tableCsvUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
@@ -77,54 +78,32 @@ const ROLE_STYLES = {
   dimension: { header: 'var(--op-landing-bg)',      accent: '#2563eb', label: 'Dimension' },
   fact:      { header: 'var(--op-manipulation-bg)', accent: '#6d28d9', label: 'Fact' },
   bridge:    { header: 'var(--op-transform-bg)',    accent: '#b45309', label: 'Bridge' },
-  isolated:  { header: 'var(--op-default-bg)',      accent: '#64748b', label: 'Table' },
+  table:     { header: 'var(--op-default-bg)',      accent: '#64748b', label: 'Table' },
 }
 
-function getTableKeys(tableName, relationships) {
-  const pks = [...new Set(relationships.filter(r => r.right_table === tableName).map(r => r.right_key))]
-  const fks = [...new Set(relationships.filter(r => r.left_table === tableName).map(r => r.left_key))]
-  return { pks, fks }
+// PK / FK / Σ: a text badge, not an icon, so it reads in any theme and print.
+const FLAG_STYLES = {
+  PK:  { color: 'var(--op-gold-tx)', border: 'var(--op-gold-br)', title: 'Primary key: the dimension\'s join key' },
+  FK:  { color: 'var(--accent-text)', border: 'var(--blue-br)',   title: 'Foreign key: joins to a dimension' },
+  'Σ': { color: '#6d28d9',            border: '#6d28d940',        title: 'A measure column on the fact' },
 }
 
-function getTableRole(tableName, relationships) {
-  const hasPK = relationships.some(r => r.right_table === tableName)
-  const hasFK = relationships.some(r => r.left_table === tableName)
-  if (hasPK && !hasFK) return 'dimension'
-  if (hasFK && !hasPK) return 'fact'
-  if (hasPK && hasFK) return 'bridge'
-  return 'isolated'
-}
-
-function computeLayout(tables, relationships) {
-  const buckets = { dimension: [], fact: [], bridge: [], isolated: [] }
-  tables.forEach(t => buckets[getTableRole(t.name, relationships)].push(t.name))
-
-  const COL_X = { dimension: 0, bridge: 380, fact: 760, isolated: 1140 }
-  const ROW_GAP = 210
-  const positions = {}
-  Object.entries(buckets).forEach(([role, names]) => {
-    names.forEach((name, i) => { positions[name] = { x: COL_X[role], y: i * ROW_GAP } })
-  })
-  return positions
-}
+const MONO = 'Cascadia Code, Fira Code, monospace'
+const HANDLE = { width: 10, height: 10, border: '2px solid #fff' }
 
 function ERDTableNode({ data }) {
-  const rs = ROLE_STYLES[data.role] || ROLE_STYLES.isolated
-  const keyCount = data.pks.length + data.fks.length
+  const rs = ROLE_STYLES[data.role] || ROLE_STYLES.table
   return (
     <div style={{
-      background: 'var(--surface)',
-      border: `1.5px solid ${rs.accent}38`,
-      borderRadius: 10,
-      minWidth: 215,
-      overflow: 'hidden',
-      boxShadow: 'var(--shadow-sm)',
-      fontSize: 12,
+      background: 'var(--surface)', border: `1.5px solid ${rs.accent}38`,
+      borderRadius: 10, width: 300, overflow: 'hidden',
+      boxShadow: data.selected ? `0 0 0 2px ${rs.accent}` : 'var(--shadow-sm)',
+      fontSize: 12, cursor: 'pointer',
     }}>
-      <Handle type="target" position={Position.Left}
-        style={{ background: rs.accent, width: 10, height: 10, border: '2px solid #fff', left: -6 }} />
+      <Handle id="in-l" type="target" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
+      <Handle id="out-l" type="source" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
 
-      <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid ${rs.accent}26` }}>
+      <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid ${rs.accent}26`, height: 62, boxSizing: 'border-box' }}>
         <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text)', letterSpacing: .15, marginBottom: 4 }}>
           {data.label}
         </div>
@@ -134,98 +113,108 @@ function ERDTableNode({ data }) {
             padding: '1px 7px', borderRadius: 20,
             background: 'var(--surface)', color: rs.accent, border: `1px solid ${rs.accent}3a`,
           }}>{rs.label}</span>
-          {data.connector && (
-            <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{data.connector}</span>
-          )}
+          {data.connector && <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{data.connector}</span>}
         </div>
       </div>
 
-      <div style={{ padding: keyCount > 0 ? '6px 0 8px' : '0' }}>
-        {data.pks.map(k => (
-          <div key={k} style={{
-            padding: '3px 14px', display: 'flex', alignItems: 'center', gap: 7,
-            borderLeft: '2px solid var(--op-gold-br)',
-          }}>
-            <span style={{ fontSize: 11, lineHeight: 1 }}>🔑</span>
-            <span style={{ color: 'var(--op-gold-tx)', fontWeight: 500, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 11 }}>{k}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 8.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: .4 }}>PK</span>
-          </div>
-        ))}
-        {data.pks.length > 0 && data.fks.length > 0 && (
-          <div style={{ height: 1, background: 'var(--border)', margin: '4px 14px' }} />
+      <div style={{ padding: '0 0 12px' }}>
+        {data.columns.length === 0 && (
+          <div style={{ padding: '3px 14px', height: 22, color: 'var(--muted)', fontStyle: 'italic', fontSize: 11 }}>columns not available</div>
         )}
-        {data.fks.map(k => (
-          <div key={k} style={{
-            padding: '3px 14px', display: 'flex', alignItems: 'center', gap: 7,
-            borderLeft: `2px solid ${rs.accent}40`,
-          }}>
-            <span style={{ fontSize: 11, color: rs.accent, opacity: .7, lineHeight: 1 }}>⤷</span>
-            <span style={{ color: 'var(--accent-text)', fontWeight: 500, fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 11 }}>{k}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 8.5, color: 'var(--muted)', fontWeight: 700, letterSpacing: .4 }}>FK</span>
+        {data.columns.map(c => {
+          const fs = FLAG_STYLES[c.flag]
+          return (
+            <div key={c.name} style={{ height: 22, boxSizing: 'border-box', padding: '0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span title={fs?.title} style={{
+                width: 22, textAlign: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: .3,
+                color: fs?.color, border: fs ? `1px solid ${fs.border}` : '1px solid transparent',
+                borderRadius: 4, lineHeight: '14px',
+              }}>{c.flag}</span>
+              <span style={{
+                fontFamily: MONO, fontSize: 11, flex: 1, minWidth: 0,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                color: c.flag ? 'var(--text)' : 'var(--text-2)', fontWeight: c.flag ? 600 : 400,
+              }}>{c.name}</span>
+              <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: MONO }}>{(c.dtype || '').toLowerCase()}</span>
+            </div>
+          )
+        })}
+        {data.hidden > 0 && (
+          <div style={{ height: 22, padding: '0 14px 0 44px', display: 'flex', alignItems: 'center', fontSize: 10.5, color: 'var(--muted)' }}>
+            + {data.hidden} more column{data.hidden !== 1 ? 's' : ''}
           </div>
-        ))}
-        {keyCount === 0 && (
-          <div style={{ padding: '6px 14px', color: 'var(--muted)', fontStyle: 'italic', fontSize: 11 }}>no key columns</div>
         )}
       </div>
 
-      <Handle type="source" position={Position.Right}
-        style={{ background: rs.accent, width: 10, height: 10, border: '2px solid #fff', right: -6 }} />
+      <Handle id="in-r" type="target" position={Position.Right} style={{ ...HANDLE, background: rs.accent, right: -6 }} />
+      <Handle id="out-r" type="source" position={Position.Right} style={{ ...HANDLE, background: rs.accent, right: -6 }} />
     </div>
   )
 }
 
 const NODE_TYPES = { erdTable: ERDTableNode }
 
-function ERDDiagram({ tables, relationships }) {
-  const { nodes, edges } = useMemo(() => {
-    const positions = computeLayout(tables, relationships)
-    const nodes = tables.map(t => {
-      const { pks, fks } = getTableKeys(t.name, relationships)
-      return {
-        id: t.name,
-        type: 'erdTable',
-        position: positions[t.name] || { x: 0, y: 0 },
-        data: { label: t.name, connector: t.connector, role: getTableRole(t.name, relationships), pks, fks },
-      }
-    })
-    const edges = relationships.map((r, i) => ({
-      id: `e-${i}`,
-      source: r.left_table,
-      target: r.right_table,
-      type: 'smoothstep',
-      style: { stroke: '#3b82f660', strokeWidth: 1.5 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 12, height: 12 },
-      label: `${r.left_key} → ${r.right_key}`,
-      labelStyle: { fontSize: 9, fill: '#55657a', fontFamily: 'Cascadia Code, Fira Code, monospace' },
-      labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
-    }))
-    return { nodes, edges }
-  }, [tables, relationships])
+function edgeLabel(e) {
+  const keys = e.fromKey === e.toKey ? e.fromKey : `${e.fromKey} → ${e.toKey}`
+  return e.cardinality === 'many-to-one' ? `N : 1  ·  ${keys}` : keys
+}
+
+function ERDDiagram({ data, selected, onSelect }) {
+  const { nodes, edges, height } = useMemo(() => {
+    const g = buildModelGraph(data)
+    const x = Object.fromEntries(g.nodes.map(n => [n.name, n.position.x]))
+    return {
+      height: g.height,
+      nodes: g.nodes.map(n => ({
+        id: n.name, type: 'erdTable', position: n.position,
+        data: { label: n.name, connector: n.connector, role: n.role, columns: n.columns, hidden: n.hidden },
+      })),
+      edges: g.edges.map(e => ({
+        id: e.id, source: e.from, target: e.to, type: 'smoothstep',
+        // Leave on the side that faces the other table, so a join runs straight
+        // across instead of looping round the outside.
+        sourceHandle: x[e.from] > x[e.to] ? 'out-l' : 'out-r',
+        targetHandle: x[e.from] > x[e.to] ? 'in-r' : 'in-l',
+        style: { stroke: '#3b82f680', strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 12, height: 12 },
+        label: edgeLabel(e),
+        labelStyle: { fontSize: 9, fill: '#55657a', fontFamily: MONO },
+        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.92 },
+      })),
+    }
+  }, [data])
+  const shown = useMemo(
+    () => nodes.map(n => ({ ...n, data: { ...n.data, selected: n.id === selected } })),
+    [nodes, selected])
 
   return (
-    <div className="erd-wrapper">
+    // Tall enough to read a stack of facts, capped so the page still scrolls.
+    <div className="erd-wrapper" style={{ height: Math.min(760, Math.max(320, height * 0.8)) }}>
       <ReactFlow
-        nodes={nodes}
+        nodes={shown}
         edges={edges}
         nodeTypes={NODE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.28 }}
+        fitViewOptions={{ padding: 0.12 }}
+        minZoom={0.2}
         proOptions={{ hideAttribution: true }}
         nodesDraggable
         nodesConnectable={false}
         elementsSelectable
+        onNodeClick={(_, n) => onSelect(n.id)}
+        // fitView on the first frame frames a panel that is still animating in
+        // (zero size); frame it again once it has settled.
+        onInit={flow => setTimeout(() => flow.fitView({ padding: 0.12 }), 350)}
       >
         <Background color="var(--flow-dots)" gap={30} size={1} />
-        <Controls style={{
-          background: 'rgba(8,15,32,.9)', border: '1px solid var(--border)',
-          borderRadius: 8,
-        }} />
-        <MiniMap
-          nodeColor={n => ROLE_STYLES[n.data?.role]?.accent || '#64748b'}
-          style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8 }}
-          maskColor="rgba(228,233,240,.6)"
-        />
+        <Controls style={{ background: 'rgba(8,15,32,.9)', border: '1px solid var(--border)', borderRadius: 8 }} />
+        {nodes.length > 10 && (
+          <MiniMap
+            nodeColor={n => ROLE_STYLES[n.data?.role]?.accent || '#64748b'}
+            style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8 }}
+            maskColor="rgba(228,233,240,.6)"
+          />
+        )}
       </ReactFlow>
     </div>
   )
@@ -234,26 +223,61 @@ function ERDDiagram({ tables, relationships }) {
 // ── ERD legend ────────────────────────────────────────────────────────────────
 
 function ERDLegend() {
-  const items = [
-    { role: 'dimension', label: 'Dimension — referenced by others' },
-    { role: 'bridge',    label: 'Bridge — references + is referenced' },
-    { role: 'fact',      label: 'Fact — references others' },
-    { role: 'isolated',  label: 'Isolated — no relationships' },
+  const roles = [
+    { role: 'dimension', label: 'Dimension' },
+    { role: 'fact',      label: 'Fact' },
+    { role: 'bridge',    label: 'Both a fact and a dimension' },
+    { role: 'table',     label: 'Table with no joins' },
+  ]
+  const flags = [
+    ['PK', 'join key on a dimension'], ['FK', 'foreign key on a fact'], ['Σ', 'measure column'],
   ]
   return (
-    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14 }}>
-      {items.map(({ role, label }) => {
-        const rs = ROLE_STYLES[role]
-        return (
-          <span key={role} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)' }}>
-            <span style={{
-              width: 10, height: 10, borderRadius: 3, display: 'inline-block',
-              background: rs.accent, opacity: .8,
-            }} />
-            {label}
-          </span>
-        )
-      })}
+    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+      {roles.map(({ role, label }) => (
+        <span key={role} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)' }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, display: 'inline-block', background: ROLE_STYLES[role].accent, opacity: .8 }} />
+          {label}
+        </span>
+      ))}
+      <span style={{ width: 1, height: 14, background: 'var(--border)' }} />
+      {flags.map(([f, label]) => (
+        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)' }}>
+          <span style={{
+            fontSize: 8.5, fontWeight: 700, padding: '0 4px', borderRadius: 4, lineHeight: '14px',
+            color: FLAG_STYLES[f].color, border: `1px solid ${FLAG_STYLES[f].border}`,
+          }}>{f}</span>
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// ── Measures ──────────────────────────────────────────────────────────────────
+
+// The model's named measures are its semantic contract: every report and
+// query asks for them by name, so they are defined once, here.
+function MeasuresTable({ measures }) {
+  if (!measures.length) return <Empty message="This model declares no named measures." />
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table>
+        <thead><tr><th>Measure</th><th>What it is</th><th>Defined as</th><th>Format</th></tr></thead>
+        <tbody>
+          {measures.map(m => (
+            <tr key={m.name}>
+              <td>
+                <code>{m.name}</code>
+                {m.description && <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{m.description}</div>}
+              </td>
+              <td><Badge variant="gray">{MEASURE_KINDS[m.kind] || m.kind}</Badge></td>
+              <td style={{ fontFamily: MONO, fontSize: 11.5, color: 'var(--text-2)' }}>{measureDefinition(m)}</td>
+              <td style={{ color: 'var(--muted)', fontSize: 12 }}>{m.format || ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -293,7 +317,7 @@ function ModelConnectors({ names }) {
 function ModelDetail({ name }) {
   const { data, isLoading } = useModel(name)
   const { data: desk } = useDesk()
-  const [tab, setTab] = useState('Tables')
+  const [tab, setTab] = useState(null)      // null: the model's own default tab
   const [previewTable, setPreviewTable] = useState(null)
 
   if (!name) return (
@@ -307,11 +331,13 @@ function ModelDetail({ name }) {
   if (isLoading) return <SkeletonCard />
   if (!data) return null
 
-  const tabs = ['Tables', 'Relationships', 'Connectors', ...(data.relationships.length > 0 ? ['ERD'] : [])]
+  const graph = buildModelGraph(data)
+  const tabs = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Connectors']
+  // A model with joins opens on its diagram; one with none has nothing to draw.
+  const active = tab || (graph.edges.length ? 'Diagram' : 'Tables')
   const grain = (data.dimensions || []).flatMap(d =>
     (d.attributes || []).map(attr => `${d.name}.${attr}`)
   ).join(', ')
-  const measureNames = (data.measures || []).map(m => m.name).join(', ')
   const sinks = desk?.sinks || []
 
   return (
@@ -320,7 +346,6 @@ function ModelDetail({ name }) {
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
         {data.source_file && <div><code>{data.source_file}</code></div>}
         {grain && <div>Grain: {grain}</div>}
-        {measureNames && <div>Measures: {measureNames}</div>}
         {desk?.warehouse && sinks.length === 0 && <div>Sink tables are current.</div>}
         {sinks.length > 0 && (
           <div>
@@ -330,15 +355,13 @@ function ModelDetail({ name }) {
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         {data.connectors.map(c => <Badge key={c} variant="blue">{c}</Badge>)}
+        <Badge variant="purple">{summary(data)}</Badge>
         <Badge variant="gray">{data.tables.length} table{data.tables.length !== 1 ? 's' : ''}</Badge>
-        {data.relationships.length > 0 && (
-          <Badge variant="purple">{data.relationships.length} relationship{data.relationships.length !== 1 ? 's' : ''}</Badge>
-        )}
       </div>
 
-      <Tabs tabs={tabs} active={tab} onChange={t => { setTab(t); setPreviewTable(null) }} />
+      <Tabs tabs={tabs} active={active} onChange={t => { setTab(t); setPreviewTable(null) }} />
 
-      {tab === 'Tables' && (
+      {active === 'Tables' && (
         <div>
           <div style={{ overflowX: 'auto' }}>
             <table>
@@ -375,23 +398,23 @@ function ModelDetail({ name }) {
         </div>
       )}
 
-      {tab === 'Relationships' && (
-        data.relationships.length === 0
-          ? <Empty message="No relationships defined on this model." />
+      {active === 'Relationships' && (
+        graph.edges.length === 0
+          ? <Empty message="No joins declared. Give a fact its foreign_keys, or call add_relationship." />
           : (
             <div style={{ overflowX: 'auto' }}>
               <table>
-                <thead><tr><th>Name</th><th>Left</th><th>Right</th><th>Keys</th><th>How</th></tr></thead>
+                <thead><tr><th>From</th><th>To</th><th>Keys</th><th>Shape</th><th>Declared with</th></tr></thead>
                 <tbody>
-                  {data.relationships.map(r => (
-                    <tr key={r.name}>
-                      <td><code>{r.name}</code></td>
-                      <td style={{ color: 'var(--text-2)' }}>{r.left_table}</td>
-                      <td style={{ color: 'var(--text-2)' }}>{r.right_table}</td>
+                  {graph.edges.map(e => (
+                    <tr key={e.id}>
+                      <td><code>{e.from}</code></td>
+                      <td><code>{e.to}</code></td>
                       <td style={{ color: 'var(--muted)', fontSize: 12, fontFamily: 'Cascadia Code, Fira Code, monospace' }}>
-                        {r.left_key} = {r.right_key}
+                        {e.fromKey} = {e.toKey}
                       </td>
-                      <td><Badge variant="gray">{r.how}</Badge></td>
+                      <td><Badge variant="gray">{e.cardinality === 'many-to-one' ? 'many to one' : (e.how || 'join')}</Badge></td>
+                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>{e.declared ? 'add_fact(foreign_keys=…)' : 'add_relationship'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -400,15 +423,25 @@ function ModelDetail({ name }) {
           )
       )}
 
-      {tab === 'Connectors' && <ModelConnectors names={data.connectors} />}
+      {active === 'Measures' && <MeasuresTable measures={data.measures || []} />}
 
-      {tab === 'ERD' && (
+      {active === 'Connectors' && <ModelConnectors names={data.connectors} />}
+
+      {active === 'Diagram' && (
         <div className="fade-in">
           <ERDLegend />
-          <ERDDiagram tables={data.tables} relationships={data.relationships} />
+          <ERDDiagram data={data} selected={previewTable} onSelect={t => setPreviewTable(previewTable === t ? null : t)} />
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
-            Drag nodes to rearrange · scroll to zoom · edges show join keys
+            Click a table to preview its rows · drag to rearrange · scroll to zoom · each join runs from a fact to the dimension it references
           </p>
+          {previewTable && (
+            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+                Preview: <strong style={{ color: 'var(--text)' }}>{previewTable}</strong>
+              </div>
+              <TablePreview modelName={name} tableName={previewTable} />
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -427,11 +460,11 @@ export default function Models() {
 
   return (
     <>
-      <PageTitle>Contract</PageTitle>
+      <PageTitle>Data model</PageTitle>
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to read its grain, measures, and tables. Connectors are a tab on the model.`
+          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to see its diagram, measures and tables. Connectors are a tab on the model.`
         }
       </PageSub>
 
@@ -454,14 +487,14 @@ export default function Models() {
                       selected={selected === m.name}
                       onClick={() => setSelected(m.name)}
                       name={m.name}
-                      sub={`${m.tables.length} tables · ${m.relationships.length} rel`}
+                      sub={m.facts ? `${m.facts.length} fact${m.facts.length !== 1 ? 's' : ''} · ${m.dimensions.length} dim · ${m.measures.length} measures` : `${m.tables.length} tables`}
                     />
                   ))
                 }
               </>
             )
           }
-          right={<ModelDetail name={selected} />}
+          right={<ModelDetail key={selected} name={selected} />}
         />
       )}
     </>
