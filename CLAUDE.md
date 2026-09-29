@@ -617,7 +617,7 @@ GET  /api/reports/{name}/runs                        → recent background runs 
 GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
 GET  /api/reports/{name}/built                       → the last build (disk, else memory; built once if never)
 GET  /api/reports/{name}/download?format=xlsx|html   → html: the last build; xlsx: rendered
-GET  /api/reports/{name}/lineage                     → React Flow graph per section
+GET  /api/reports/{name}/lineage                     → transform → tables → model → queries → figures flow, from the last build's receipt
 GET  /api/reports/{name}/mermaid
 GET  /api/reports/{name}/source                      → the spec or package files that define it
 GET  /r/{name}                                       → share link: the last build as a full page (auth like any GET)

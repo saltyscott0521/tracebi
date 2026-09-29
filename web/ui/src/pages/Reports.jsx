@@ -8,7 +8,7 @@ import {
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
   useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, usePipelines,
 } from '../api'
-import { LineageGraph } from '../components/Lineage'
+import { ReportLineage } from '../components/ReportLineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
 import { ReportArt } from '../components/Art'
 import {
@@ -479,22 +479,7 @@ function ReportDetail({ report, onBack }) {
             </>
           )}
 
-          {tab === 'Lineage' && lineageData && (
-            <div className="fade-in">
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>Combined lineage graph</div>
-                <LineageGraph graph={lineageData.combined_graph} />
-              </div>
-              {lineageData.sections?.map(s => (
-                <div key={s.section_title} style={{ marginTop: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 8 }}>
-                    {s.section_title} · <span style={{ fontWeight: 400 }}>{s.dataset_name}</span>
-                  </div>
-                  <LineageGraph graph={s.graph} />
-                </div>
-              ))}
-            </div>
-          )}
+          {tab === 'Lineage' && lineageData && <ReportLineage flow={lineageData.flow} />}
 
           {tab === 'Source' && <ReportSource name={report.name} />}
 

@@ -123,6 +123,28 @@ def test_the_showcase_carries_every_affordance(built):
     assert manifest["methodology"]["transform_notes"]
 
 
+def test_the_showcase_lineage_traces_each_query_to_only_what_it_used(built):
+    """The receipt's lineage: each query names exactly the tables it read, a
+    python-derived query is called out and never verifiable, and figures with
+    no query behind them are shown apart."""
+    from tracebi.reports.lineage_flow import report_flow
+
+    manifest = json.loads(_manifest(built, "portfolio_model/portfolio_showcase").read_text())
+    flow = report_flow(manifest)
+    node = {n["id"]: n for n in flow["nodes"]}
+
+    assert set(node["binding:top_sector"]["detail"]["tables"]) == {"fact_holdings", "dim_issuer"}
+    assert set(node["binding:by_fund"]["detail"]["tables"]) == {"fact_holdings", "dim_fund"}
+    assert node["binding:concentration"]["status"] == "derived"
+    assert node["binding:concentration"]["detail"]["verifiable"] is False
+    assert "figures:unverified" in node and flow["notes"][-1].startswith("A query marked python-derived")
+    assert node["transform:holdings"]["status"] == "ok"      # the sink satisfied its contract
+    # Every figure is on the graph exactly once.
+    listed = [f["id"] for n in flow["nodes"] if n["kind"] in ("figures", "unverified")
+              for f in n["detail"]["figures"]]
+    assert sorted(listed) == sorted(f["id"] for f in manifest["figures"])
+
+
 def test_a_showcase_control_recomputes_on_the_model(built):
     """Picking a sector re-runs the stamped queries on the model and the cut
     total matches a direct query — interactivity subsets, never computes."""

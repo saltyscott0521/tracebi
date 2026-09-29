@@ -92,8 +92,16 @@ that produced it.</p>
 <ul>
 <li><strong>In the receipt.</strong> A figure's manifest entry carries the resolved query and
   the model it ran against — recovered from lineage, not re-derived.</li>
-<li><strong>In the web UI.</strong> <code>GET /api/reports/{name}/lineage</code> returns a graph;
-  <code>/mermaid</code> returns a diagram.</li>
+<li><strong>In the web UI.</strong> A report's <strong>Lineage</strong> tab draws where each number came
+  from, left to right: the transform that wrote the tables, the stored tables
+  (and where they live), the model, each query, and the figures on the page.
+  It is read from the last build's <a href="../concepts/receipts.html">receipt</a>, so it shows what the
+  reader was shown, not a fresh re-run. Select a node to trace it: a figure
+  lights only the tables its own query read. <code>GET /api/reports/{name}/lineage</code>
+  returns the same graph; <code>/mermaid</code> returns a diagram.</li>
+<li><strong>What it does not show.</strong> Lineage starts at the sink: the analysis inside a
+  transform is not traced, only the contract the sink satisfied. A query
+  marked python-derived is shown as such, and never reads as verified.</li>
 <li><strong>In <code>tracebi verify</code>.</strong> Source fingerprints recorded in lineage are what let
   drift be <em>diagnosed</em> — <code>SOURCE DRIFT</code> (an input moved) is distinguishable
   from <code>UNEXPLAINED</code> (the inputs did not move but the answer did), and that
