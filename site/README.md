@@ -45,9 +45,9 @@ published, and a test asserts the positioning doc never appears.
 Any static host. On Vercel/Netlify, add this as its **own project** with the
 **root directory set to `site/`** (framework: "Other"; no build command;
 output: the directory itself) — separate from the app deploy, at the apex
-domain `tracebi.com`. The "Try the demo" links point at `demo.tracebi.com`
-(the app UI running the Vercel + Supabase demo topology); wire that host up
-when the demo instance is live.
+domain `tracebi.com`. The "Try the demo" links point at
+`https://tracebi.com/app` (nginx proxies `/app` to the demo container; the
+internal hostname is not a public URL).
 
 ## Status
 

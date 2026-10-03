@@ -35,8 +35,8 @@ The demo instance is exactly the app UI running the Docker image on one
 server (see [[one-server]]): a try-it surface, not a production claim.
 
 ```
-tracebi.com  ──"Try the demo"──▶  demo.tracebi.com   (the app UI, seeded)
- (marketing, its own project)      (a hosted instance of tracebi/web/ui/dist)
+tracebi.com  ──"Try the demo"──▶  tracebi.com/app   (the app UI, seeded)
+ (marketing, its own project)      (hosted instance of tracebi/web/ui/dist)
                                             │
                                    a customer installs the wheel and gets
                                    the SAME app UI against THEIR data, at /
@@ -59,10 +59,9 @@ tracebi.com  ──"Try the demo"──▶  demo.tracebi.com   (the app UI, seed
 2. **Share brand, not runtime.** If you want one visual identity, extract a
    tiny `@tracebi/brand` package (tokens, logo, fonts) both import. That keeps
    them *looking* like one product without either *depending* on the other.
-3. **Two deploys, always.** The day tracebi.com ships, keep marketing and the
-   demo app as separate deployments (`tracebi.com` vs. `demo.tracebi.com`).
-   Don't let marketing content — pricing, "about", the pitch — creep into
-   `web/ui/`.
+3. **Two deploys, always.** Keep marketing and the demo app as separate
+   deployments (`tracebi.com` vs. the `/app` demo container). Don't let
+   marketing content — pricing, "about", the pitch — creep into `web/ui/`.
 
 ## Growing the app into a real app (on-thesis)
 
