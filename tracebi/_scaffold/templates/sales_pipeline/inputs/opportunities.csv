@@ -1,0 +1,28 @@
+opportunity_id,name,stage,rep,region,amount,status
+,Dropped row,Prospect,Ava Chen,East,5000,open
+101,Northwind expansion,negotiation,ava chen,east,"$80,000",OPEN
+101,Northwind expansion,negotiation,ava chen,east,"$80,000",OPEN
+102,Brightpath proposal,Proposal,Ava Chen,East,40000,open
+103,Helio qualification,Qualified,Ava Chen,East,25000,open
+104,Lumen intro,Prospect,Ava Chen,East,10000,open
+111,Northwind close,closed-won,Ava Chen,East,50000,WON
+112,Pebble close,Won,Ava Chen,East,30000,won
+113,Quill close,Won,Ava Chen,East,20000,won
+114,Orbit loss,CLOSED LOST,Ava Chen,East,40000,lost
+201,Harbor negotiation,NEGOTIATION,BEN ORTIZ,WEST,"$120,000",open
+202,Summit proposal,Proposal,Ben Ortiz,West,60000,open
+203,Cedar qualification,Qualified,Ben Ortiz,West,15000,open
+204,Maple intro,Prospect,Ben Ortiz,West,8000,open
+211,Harbor close,Won,Ben Ortiz,West,80000,won
+212,Summit close,Won,Ben Ortiz,West,20000,won
+213,Cedar loss,Lost,Ben Ortiz,West,10000,lost
+214,Maple loss,Lost,Ben Ortiz,West,15000,lost
+301,Redwood negotiation,Negotiation,Cara Singh,Central,45000,open
+302,Aspen proposal,proposal,Cara Singh,central,30000,open
+303,Birch qualification,Qualified,Cara Singh,Central,18000,open
+304,Spruce intro,Prospect,Cara Singh,Central,12000,open
+311,Redwood close,Won,Cara Singh,Central,15000,won
+312,Aspen close,Won,Cara Singh,Central,15000,won
+313,Birch close,Won,Cara Singh,Central,10000,won
+314,Spruce close,Won,Cara Singh,Central,10000,won
+315,Pine loss,Lost,Cara Singh,Central,25000,lost

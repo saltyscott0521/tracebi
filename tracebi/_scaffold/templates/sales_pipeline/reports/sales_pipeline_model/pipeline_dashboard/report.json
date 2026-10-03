@@ -1,0 +1,45 @@
+{
+  "name": "Sales Pipeline Dashboard",
+  "author": "tracebi init --template sales-pipeline",
+  "description": "Open pipeline value and win rate, with the stage cut and a region table. Every figure claims a binding on sales_pipeline_model. Win rate is a ratio of totals.",
+  "libs": ["echarts"],
+  "data": {
+    "kpis": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["pipeline_value", "win_rate", "won_value"]
+      }
+    },
+    "top_stage": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["pipeline_value"],
+        "dimensions": ["dim_stage.stage"],
+        "having": {"pipeline_value": {"gt": 0}},
+        "order_by": ["-pipeline_value"],
+        "limit": 1
+      }
+    },
+    "by_stage": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["pipeline_value"],
+        "dimensions": ["dim_stage.stage"],
+        "having": {"pipeline_value": {"gt": 0}},
+        "order_by": ["-pipeline_value"]
+      }
+    },
+    "by_region": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["pipeline_value", "win_rate", "won_value"],
+        "dimensions": ["dim_region.region"],
+        "order_by": ["-pipeline_value"]
+      }
+    }
+  }
+}

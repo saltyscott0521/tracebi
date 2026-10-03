@@ -1,0 +1,43 @@
+{
+  "name": "Sales Rep Scorecard",
+  "author": "tracebi init --template sales-pipeline",
+  "description": "Which rep leads win rate, then open pipeline and win rate by rep and by region. Win rate is won deals over closed deals, a ratio of totals.",
+  "libs": ["echarts"],
+  "data": {
+    "kpis": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["pipeline_value", "win_rate", "won_value"]
+      }
+    },
+    "top_rep": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["win_rate", "pipeline_value", "won_value"],
+        "dimensions": ["dim_rep.rep"],
+        "order_by": ["-win_rate"],
+        "limit": 1
+      }
+    },
+    "by_rep": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["pipeline_value", "won_value", "win_rate", "closed_deals"],
+        "dimensions": ["dim_rep.rep"],
+        "order_by": ["-win_rate"]
+      }
+    },
+    "by_region": {
+      "model": "sales_pipeline_model",
+      "query": {
+        "fact": "fact_opportunity",
+        "measures": ["pipeline_value", "won_value", "win_rate", "closed_deals"],
+        "dimensions": ["dim_region.region"],
+        "order_by": ["-pipeline_value"]
+      }
+    }
+  }
+}

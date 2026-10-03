@@ -774,8 +774,10 @@ def _init_templates() -> dict:
                 "two reports — that an agent re-points at real tables. "
                 "tracebi init with no --template scaffolds the sample "
                 "orders dashboard.",
-        "cli": "tracebi init <project> --template saas-metrics",
-        "aliases": "saas_metrics is accepted for saas-metrics. Any other "
+        "cli": "tracebi init <project> --template saas-metrics | "
+               "tracebi init <project> --template sales-pipeline",
+        "aliases": "saas_metrics is accepted for saas-metrics; "
+                   "sales_pipeline is accepted for sales-pipeline. Any other "
                    "name is refused and the error lists the known templates.",
         "names": known_template_names(),
         "known": template_catalog(),
