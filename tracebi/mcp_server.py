@@ -1150,6 +1150,11 @@ def gateway_build_report(
             package = TemplatePackage(str(pkg_dir))
             models = _load_models()
             manifest = package.render(models, str(output))
+            from tracebi.state import record_report_build
+            record_report_build(
+                report, str(output),
+                manifest_path=str(output) + ".manifest.json",
+            )
             if format == "xlsx":
                 # The carrier Report holds one table per binding — the same
                 # object the web Excel download renders. A second resolve:

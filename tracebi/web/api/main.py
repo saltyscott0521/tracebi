@@ -42,7 +42,7 @@ from fastapi.staticfiles import StaticFiles
 from tracebi.web.api.errors import error_detail
 
 from tracebi.web.api.routers import (
-    connectors, models, reports, pipelines, docs, verify, desk, status,
+    connectors, models, reports, pipelines, docs, verify, desk, status, runs,
 )
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
@@ -137,6 +137,7 @@ app.include_router(pipelines.router,  prefix="/api")
 app.include_router(docs.router,       prefix="/api")
 app.include_router(verify.router,     prefix="/api")
 app.include_router(status.router,     prefix="/api")
+app.include_router(runs.router,       prefix="/api")
 
 # Dev-mode reload endpoint — opt-in via TRACEBI_DEV_MODE=1.
 if os.environ.get("TRACEBI_DEV_MODE") == "1":

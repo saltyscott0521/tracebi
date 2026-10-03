@@ -2538,6 +2538,7 @@ class TestAuthorization:
         from tracebi.web.api.auth import _required_role
         assert _required_role("GET", "/api/models") == "viewer"
         assert _required_role("GET", "/api/reports") == "viewer"
+        assert _required_role("GET", "/api/runs") == "viewer"
 
     def test_executing_report_code_requires_analyst(self):
         from tracebi.web.api.auth import _required_role

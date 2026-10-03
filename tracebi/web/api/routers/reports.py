@@ -154,16 +154,11 @@ def _artifact_payload(name: str):
         **receipt,
     }
     _ARTIFACT_CACHE[name] = {"mtime": mtime, "at": now, "payload": payload}
-    from tracebi.state import record_run
-    record_run(
-        kind="report_build",
-        target=name,
-        status="succeeded",
-        output_path=payload.get("html_path"),
-        detail={
-            "retained": payload.get("retained"),
-            "manifest_path": payload.get("manifest_path"),
-        },
+    from tracebi.state import record_report_build
+    record_report_build(
+        name,
+        payload.get("html_path"),
+        manifest_path=payload.get("manifest_path"),
     )
     return payload
 

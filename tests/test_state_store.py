@@ -81,6 +81,55 @@ def test_memory_runner_records_a_run():
     assert runner.last_run("step")["rows_out"] == 1
 
 
+def test_a_report_build_is_recorded(tmp_path, monkeypatch):
+    pkg = tmp_path / "reports" / "weekly"
+    pkg.mkdir(parents=True)
+    (pkg / "report.json").write_text("{}", encoding="utf-8")
+    (pkg / "template.html").write_text("<p></p>", encoding="utf-8")
+    out = tmp_path / "output" / "weekly.html"
+
+    class _Package:
+        def __init__(self, _path):
+            pass
+
+        def render(self, _models, output, **_k):
+            from pathlib import Path
+            Path(output).parent.mkdir(parents=True, exist_ok=True)
+            Path(output).write_text("<html></html>", encoding="utf-8")
+            return None
+
+    monkeypatch.setattr(
+        "tracebi.reports.template_package.TemplatePackage", _Package)
+    from tracebi.cli import _build_report_target
+    _build_report_target("package", pkg, out, report_name="weekly")
+    rows = list_runs(kind="report_build", target="weekly")
+    assert len(rows) == 1
+    assert rows[0]["status"] == "succeeded"
+    assert rows[0]["output_path"] == str(out)
+    assert rows[0]["verdict"] is None
+    assert rows[0]["detail"]["manifest_path"].endswith(".manifest.json")
+
+
+def test_get_runs_filters_kind_and_target():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from tracebi.web.api.routers import runs as runs_router
+
+    record_run(kind="schedule", target="weekly", status="built",
+               detail={"report": "weekly"})
+    record_run(kind="report_build", target="weekly", status="succeeded")
+    record_run(kind="schedule", target="other", status="failed",
+               detail={"report": "other"})
+    app = FastAPI()
+    app.include_router(runs_router.router, prefix="/api")
+    client = TestClient(app)
+    body = client.get("/api/runs", params={"kind": "schedule", "target": "weekly",
+                                           "limit": 10}).json()
+    assert [row["target"] for row in body] == ["weekly"]
+    assert body[0]["kind"] == "schedule"
+
+
 def test_schedule_import_is_idempotent_and_scoped(tmp_path):
     url = f"sqlite:///{tmp_path / 'sched.db'}"
     out = tmp_path / "output"

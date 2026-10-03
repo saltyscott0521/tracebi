@@ -311,7 +311,7 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
         record["error"] = None
         try:
             if _refresh(schedule.get("refresh") or {}, record):
-                _build_report_target(kind, path, output)
+                _build_report_target(kind, path, output, report_name=name)
                 record["output"] = str(output)
                 built = True
                 break

@@ -277,6 +277,30 @@ def _public(row: dict) -> dict:
     }
 
 
+def record_report_build(
+    target: str,
+    output_path: Optional[str],
+    *,
+    verdict: Optional[str] = None,
+    manifest_path: Optional[str] = None,
+    url: Optional[str] = None,
+) -> int:
+    """A ``tracebi report build`` / ``build_report`` / web render.
+
+    Verdict stays unset until a caller has actually verified the receipt.
+    """
+    detail = {"manifest_path": manifest_path} if manifest_path else None
+    return record_run(
+        kind="report_build",
+        target=target,
+        status="succeeded",
+        output_path=output_path,
+        verdict=verdict,
+        detail=detail,
+        url=url,
+    )
+
+
 def list_runs(
     *,
     kind: Optional[str] = None,
