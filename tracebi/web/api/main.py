@@ -115,14 +115,16 @@ else:
     )
 
 # Report builds are kept in output/ beside the working directory. When the
-# server cannot write there, each build lives only in memory and is lost on
-# restart — worth one loud line, since it looks like "reports keep re-running".
+# server cannot write there, the page goes under the system temp dir and the
+# path is recorded in the run store — worth one loud line, since a wiped
+# temp dir looks like "reports keep re-running".
 if reports._writable_output_html("tracebi-startup-check") is None:
     print(
         f"[tracebi] WARNING: cannot write report builds to "
-        f"{os.path.join(os.getcwd(), 'output')} — builds are kept in memory "
-        f"only and are lost on restart. Make the folder writable by this "
-        f"process (in Docker, see the output-perms service in docker-compose.yml).",
+        f"{os.path.join(os.getcwd(), 'output')} — builds are kept under the "
+        f"system temp directory and the path is recorded in the run store. "
+        f"Make the folder writable by this process (in Docker, see the "
+        f"output-perms service in docker-compose.yml).",
         file=sys.stderr,
     )
 

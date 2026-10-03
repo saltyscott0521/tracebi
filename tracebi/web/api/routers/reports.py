@@ -42,11 +42,6 @@ def list_reports():
     return registry.list_reports()
 
 
-#: The last build of each report, kept in memory as well as on disk, so a
-#: server whose disk is read-only (a serverless deploy) still opens the last
-#: build instead of asking every visitor to run the report again.
-_LAST_BUILD: dict = {}
-
 #: Web renders of artifact-backed reports, cached per name: the full
 #: TemplatePackage render is real work (queries + embedding), and the UI
 #: polls. Keyed on the package files' max mtime plus a short TTL so a
@@ -137,18 +132,20 @@ def _artifact_payload(name: str):
             "manifest_path": retained_path + ".manifest.json",
         }
     else:
-        # A read-only filesystem (the demo topology) still renders. The
-        # response carries the manifest; it says the file was not kept.
-        fd, tmp = tempfile.mkstemp(suffix=".html")
-        os.close(fd)
-        try:
-            manifest = TemplatePackage(pkg_dir).render(
-                models, tmp, save_manifest=False)
-            with open(tmp, encoding="utf-8") as f:
-                html = f.read()
-        finally:
-            os.unlink(tmp)
-        receipt = {"retained": False}
+        # output/ is not writable. Keep the page under the system temp dir
+        # and record that path, so another worker can still open it.
+        root = os.path.join(tempfile.gettempdir(), "tracebi-builds")
+        os.makedirs(root, exist_ok=True)
+        tmp = os.path.join(root, _safe_filename(name.replace("/", "_")) + ".html")
+        manifest = TemplatePackage(pkg_dir).render(
+            models, tmp, save_manifest=True)
+        with open(tmp, encoding="utf-8") as f:
+            html = f.read()
+        receipt = {
+            "retained": False,
+            "html_path": tmp,
+            "manifest_path": tmp + ".manifest.json",
+        }
 
     payload = {
         "name": name,
@@ -157,7 +154,17 @@ def _artifact_payload(name: str):
         **receipt,
     }
     _ARTIFACT_CACHE[name] = {"mtime": mtime, "at": now, "payload": payload}
-    _LAST_BUILD[name] = payload
+    from tracebi.state import record_run
+    record_run(
+        kind="report_build",
+        target=name,
+        status="succeeded",
+        output_path=payload.get("html_path"),
+        detail={
+            "retained": payload.get("retained"),
+            "manifest_path": payload.get("manifest_path"),
+        },
+    )
     return payload
 
 
@@ -303,10 +310,45 @@ def keep_report_selection(name: str, payload: dict):
     return result
 
 
+def _read_build(name: str, path: str, manifest_path: str, *, retained: bool) -> dict:
+    with open(path, encoding="utf-8") as fh:
+        html = fh.read()
+    with open(manifest_path, encoding="utf-8") as fh:
+        manifest = json.load(fh)
+    return {
+        "name": name,
+        "html": html,
+        "manifest": manifest,
+        "retained": retained,
+        "built": True,
+        "html_path": path,
+        "manifest_path": manifest_path,
+    }
+
+
+def _stored_build(name: str):
+    """The newest page-producing run whose file is still on disk."""
+    from tracebi.state import latest_output
+
+    row = latest_output(name)
+    if not row:
+        return None
+    path = row.get("output_path")
+    if not path or not os.path.isfile(path):
+        return None
+    detail = row.get("detail") or {}
+    if not isinstance(detail, dict):
+        detail = {}
+    manifest_path = detail.get("manifest_path") or (path + ".manifest.json")
+    if not os.path.isfile(manifest_path):
+        return None
+    return _read_build(name, path, manifest_path, retained=bool(detail.get("retained")))
+
+
 def _last_build(name: str) -> dict:
     """The last build of *name*: ``output/<name>.html`` on disk, else the
-    copy kept in memory, else — when the report has never been built on
-    this server — one build now, kept for everyone after.
+    path recorded in the run store, else — when the report has never been
+    built — one build now, kept for everyone after.
 
     Opening and downloading read this; they never re-query on their own.
     Fresh data comes from a schedule or Rebuild.
@@ -315,21 +357,10 @@ def _last_build(name: str) -> dict:
     path = _output_html(name)
     manifest_path = path + ".manifest.json"
     if os.path.isfile(path) and os.path.isfile(manifest_path):
-        with open(path, encoding="utf-8") as fh:
-            html = fh.read()
-        with open(manifest_path, encoding="utf-8") as fh:
-            manifest = json.load(fh)
-        return {
-            "name": name,
-            "html": html,
-            "manifest": manifest,
-            "retained": True,
-            "built": True,
-            "html_path": path,
-            "manifest_path": manifest_path,
-        }
-    if name in _LAST_BUILD:
-        return {**_LAST_BUILD[name], "built": True}
+        return _read_build(name, path, manifest_path, retained=True)
+    stored = _stored_build(name)
+    if stored is not None:
+        return stored
     try:
         return {**_artifact_payload_or_refuse(name), "built": True}
     except Exception:  # noqa: BLE001 — a failed first build is a Run away, not a 500
@@ -340,7 +371,7 @@ def _last_build(name: str) -> dict:
 
 @router.get("/{name:path}/built")
 def built_report(name: str):
-    """The last build: on disk, in memory, or built once if there is none.
+    """The last build: on disk, in the run store, or built once if there is none.
 
     Report opens this. Rebuild is a separate action.
     """
@@ -380,7 +411,8 @@ def start_report_run(name: str):
     """
     if name not in {r["name"] for r in registry.list_reports()}:
         raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
-    record = run_store.start("report", name, lambda: _render_report_payload(name))
+    record = run_store.start(
+        "background_run", name, lambda: _render_report_payload(name))
     return {
         "run_id":     record["run_id"],
         "status":     record["status"],
@@ -391,14 +423,14 @@ def start_report_run(name: str):
 @router.get("/{name:path}/runs")
 def report_run_history(name: str, limit: int = 10):
     """Recent background runs for this report, newest first (no payloads)."""
-    return run_store.list_for("report", name, limit)
+    return run_store.list_for("background_run", name, limit)
 
 
 @router.get("/{name:path}/runs/{run_id}")
 def report_run_status(name: str, run_id: str):
     """Status + result of one background run."""
     record = run_store.get(run_id)
-    if record is None or record["kind"] != "report" or record["name"] != name:
+    if record is None or record["kind"] != "background_run" or record["name"] != name:
         raise HTTPException(
             status_code=404, detail=f"Run '{run_id}' not found for report '{name}'"
         )

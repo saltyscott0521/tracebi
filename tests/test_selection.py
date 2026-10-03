@@ -434,7 +434,8 @@ class TestEndpoint:
     def test_last_build_is_kept_when_the_disk_is_read_only(self, tmp_path, monkeypatch):
         """A never-built report builds once on first open; after that, opening
         and downloading serve that build and never render again — even on a
-        read-only disk (a serverless deploy), where it lives in memory."""
+        read-only disk, where the file lives under the system temp dir and
+        the path is recorded in the run store."""
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
@@ -446,7 +447,6 @@ class TestEndpoint:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setattr(reports_router, "_writable_output_html", lambda name: None)
         monkeypatch.setattr(reports_router, "_ARTIFACT_TTL_S", 0.0)
-        monkeypatch.setattr(reports_router, "_LAST_BUILD", {})
         monkeypatch.setattr(reports_router, "_ARTIFACT_CACHE", {})
         renders = []
         real_render = TemplatePackage.render
