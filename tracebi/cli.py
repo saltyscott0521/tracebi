@@ -312,9 +312,9 @@ def _init_project_readme(project: str) -> str:
 
 A TraceBi project. Scaffolded by `tracebi init`.
 
-TraceBi is the trust layer for AI-generated analytics: work moves through
-three phases, and from the model boundary onward every number carries a
-receipt you can re-check.
+Ask it, build it, schedule it. Analysts and agents write every kind of
+report from one set of approved definitions, and the ones worth repeating
+run themselves. Every number carries a receipt you can re-check.
 
 ```
 ⓪  INPUT       inputs/       raw pulls land here (API export · CSV · SQL dump)
@@ -2369,8 +2369,11 @@ def cmd_session(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tracebi",
-        description=("TraceBi — the trust layer for AI-generated analytics: "
-                     "a code-first BI framework where every number has a receipt."),
+        description=(
+            "TraceBi — ask it, build it, schedule it: analysts and agents "
+            "write every kind of report from one set of approved definitions. "
+            "Every number carries a receipt you can re-check."
+        ),
     )
     parser.add_argument(
         "--version",

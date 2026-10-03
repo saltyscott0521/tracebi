@@ -57,6 +57,25 @@ class TestInitReadmeInstallLines:
         # init must only *suggest* git — never run it for the user.
         assert not (project / ".git").exists()
 
+    def test_readme_leads_with_ask_build_schedule(self, tmp_path):
+        readme = (self._init_project(tmp_path) / "README.md").read_text()
+        assert "Ask it, build it, schedule it" in readme
+        # Receipts stay as the supporting trust line, not the headline.
+        lead = readme.split("## Install", 1)[0]
+        assert "trust layer for AI-generated analytics" not in lead
+
+
+class TestCliHelpLead:
+    def test_help_leads_with_ask_build_schedule(self, capsys):
+        from tracebi.cli import main
+
+        with pytest.raises(SystemExit) as exc:
+            main(["--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        assert "ask it, build it, schedule it" in out.lower()
+        assert "TraceBi — the trust layer" not in out
+
 
 # ── tracebi serve: dead end without the web package ───────────────────────
 
