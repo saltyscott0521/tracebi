@@ -53,6 +53,18 @@ run as read-only SQL at sink time, raise on failure, and record a certificate
 exact claim is "the sink satisfied its contract" — never "the transform was
 verified"; nothing machine-checks the pandas above the sink.
 
+## Starter templates
+
+`tracebi context` lists them under `templates`. `tracebi init <project>
+--template saas-metrics` (also `saas_metrics`) scaffolds the SaaS metrics
+starter: `inputs/subscriptions.csv`, `transforms/saas_transform.py`,
+`models/saas_model.py` (ending MRR, logo churn, a signup-cohort cut), and
+two reports — `saas_model/mrr_dashboard` (dashboard) and
+`saas_model/cohort_brief` (tabbed). Unknown template names are refused
+with the known list. On real tables, `tracebi connect` and re-point the
+model. Default `tracebi init` (no flag) scaffolds the sample orders
+dashboard (`transforms/sample_transform.py`).
+
 ## Authoring a report (the artifact package)
 
 `reports/sample_dashboard/` is the working example — a page of ordinary HTML

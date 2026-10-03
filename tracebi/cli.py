@@ -427,6 +427,13 @@ _INIT_AGENTS_MD = _scaffold_text("init_agents.md")
 # ── Commands ────────────────────────────────────────────────────────────────
 
 def cmd_init(args: argparse.Namespace) -> int:
+    template = getattr(args, "template", None)
+    if template:
+        from tracebi.project_templates import init_template_project
+        return init_template_project(
+            Path(args.project), template, force=bool(args.force),
+        )
+
     target = Path(args.project).resolve()
     if target.exists() and any(target.iterdir()):
         if not args.force:
@@ -2569,6 +2576,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_init.add_argument("project", help="Target directory name.")
     p_init.add_argument("--force", action="store_true",
                         help="Overwrite existing files.")
+    p_init.add_argument(
+        "--template",
+        default=None,
+        metavar="NAME",
+        help="Scaffold a named starter instead of the sample dashboard. "
+             "Known: saas-metrics (also saas_metrics). Unknown names are "
+             "refused with the known list.",
+    )
     p_init.set_defaults(func=cmd_init)
 
     p_spec = sub.add_parser(
