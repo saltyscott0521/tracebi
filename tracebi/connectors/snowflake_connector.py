@@ -36,6 +36,7 @@ class SnowflakeConnector(BaseConnector):
         warehouse: Virtual warehouse name.
         database:  Database name.
         schema:    Schema name (default ``PUBLIC``).
+        role:      Optional role. Omitted from the driver call when unset.
     """
 
     def __init__(
@@ -47,6 +48,7 @@ class SnowflakeConnector(BaseConnector):
         warehouse: str,
         database: str,
         schema: str = "PUBLIC",
+        role: Optional[str] = None,
     ) -> None:
         super().__init__(name)
         self.account = account
@@ -55,6 +57,7 @@ class SnowflakeConnector(BaseConnector):
         self.warehouse = warehouse
         self.database = database
         self.schema = schema
+        self.role = role
         self._conn = None
 
     def storage(self) -> dict:
@@ -72,14 +75,17 @@ class SnowflakeConnector(BaseConnector):
                 "snowflake-connector-python is required for SnowflakeConnector.\n"
                 "Install with: pip install 'tracebi[snowflake]'"
             )
-        self._conn = snowflake.connector.connect(
-            account=self.account,
-            user=self.user,
-            password=self.password,
-            warehouse=self.warehouse,
-            database=self.database,
-            schema=self.schema,
-        )
+        kwargs = {
+            "account": self.account,
+            "user": self.user,
+            "password": self.password,
+            "warehouse": self.warehouse,
+            "database": self.database,
+            "schema": self.schema,
+        }
+        if self.role:
+            kwargs["role"] = self.role
+        self._conn = snowflake.connector.connect(**kwargs)
 
     def load(
         self,

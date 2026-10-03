@@ -225,8 +225,9 @@ No auth vars set ⇒ the app is open (fine on localhost, not on a network).
 may do. Three ordered roles, split by side effect: `viewer` (read models,
 reports, lineage; run Explore queries and spec validation — they compute
 but persist nothing), `analyst` (viewer + execute report and request code),
-`admin` (analyst + run pipeline layers, which write to the warehouse, and
-`/api/_dev/reload`). Assign roles per principal with
+`admin` (analyst + run pipeline layers, which write to the warehouse,
+`/api/_dev/reload`, and keeping a selection cut, which writes the published
+`report.json`). Assign roles per principal with
 `TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst` or, **in proxy mode only**,
 from the proxy's group claim with
 `TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups` — your proxy must *replace*

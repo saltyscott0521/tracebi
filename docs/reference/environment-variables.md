@@ -63,7 +63,8 @@ equivalent where it matters.
 > only alongside `TRACEBI_AUTH_ROLE_HEADER`.
 
 Roles: `viewer` (read, and run queries that persist nothing) → `analyst`
-(+ execute reports) → `admin` (+ run pipeline layers, which write).
+(+ execute reports) → `admin` (+ run pipeline layers, which write, and keep
+a selection cut, which writes the published report).
 
 ## Delivery
 

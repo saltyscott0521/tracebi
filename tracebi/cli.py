@@ -6,6 +6,7 @@ Scaffolds and drives a project through the three-phase workflow — TRANSFORM
 
     tracebi init my_project                 # scaffold a new project
     tracebi run-transform <name>            # ① run a transform → sink the warehouse
+    tracebi connect wh --kind duckdb        # point at a warehouse you already have
     tracebi new-model "Sales Model"         # ② scaffold a model over the warehouse
     tracebi report build <name>             # ③ render an artifact package + receipt
     tracebi verify <manifest>               # re-run recorded queries; classify drift
@@ -798,12 +799,22 @@ def cmd_dev(args: argparse.Namespace) -> int:
     # project-level workbench (warehouse, models, packages, exhibit feed) for
     # phases ① and ②.
     from tracebi._dev_server import serve_dev
+    from tracebi.report_paths import open_report
     if args.name is None:
         return serve_dev(None, port=args.port,
                          open_browser=not args.no_browser)
-    pkg_dir = _default_reports_dir() / args.name
-    if (pkg_dir / "report.json").is_file() and \
-            (pkg_dir / "template.html").is_file():
+    reports_dir = _default_reports_dir()
+    opened = open_report(args.name, purpose="view", reports_dir=reports_dir)
+    # A name the guard refuses keeps the historical lookup, so the message
+    # below stays the one this command already prints.
+    if opened.name_error:
+        pkg_dir = reports_dir / args.name
+        ready = ((pkg_dir / "report.json").is_file()
+                 and (pkg_dir / "template.html").is_file())
+    else:
+        pkg_dir = opened.path
+        ready = opened.package_dir is not None and opened.has_template
+    if ready:
         return serve_dev(pkg_dir, port=args.port,
                          open_browser=not args.no_browser)
     print(f"Report package not found: {args.name}. Expected a package at "
@@ -936,7 +947,15 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_connect(args: argparse.Namespace) -> int:
+    from tracebi.connect import connect_command
+    return connect_command(args)
+
+
 def cmd_new_model(args: argparse.Namespace) -> int:
+    if args.from_connection or args.tables:
+        from tracebi.connect import draft_model_command
+        return draft_model_command(args)
     models_dir: Path = args.models_dir
     models_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1663,15 +1682,113 @@ def _report_json_text(title: str, model: str, query: dict) -> str:
     return json.dumps(declaration, indent=2) + "\n"
 
 
-def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> str:
-    """A starter ``template.html`` that TEACHES the figure grammar as a
-    dashboard: an answer sentence, a KPI strip, and — when the model has a
-    dimension — a chart beside a filter/search/download table (``.tb-cols-2``),
-    plus a methodology block and an exploration stage. Generated (not a static
-    file) because ``data-tb-*`` attributes name the model's real measure and
-    dimension. No ``script.js`` or ``style.css``: the runtime (``tracebi.js`` +
-    ``tracebi.css``) draws every figure from the stamped bytes — hand-rolling a
-    CSV parser and a chart is exactly the L0 trap a scaffold must not teach."""
+def _layout_brief_body(measure: str, dim_ref: "str | None", table_binding: str,
+                       esc) -> list[str]:
+    """The ``brief`` recipe below the shared header: one chart card.
+
+    With no dimension to chart, the one card is the totals table — the same
+    fallback the dashboard uses, and still not a ``.tb-cols-2`` row.
+    """
+    if not dim_ref:
+        return [
+            "",
+            '  <div class="tb-card">',
+            "    <h2>Detail</h2>",
+            f'    <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+            '           class="tb-table--striped" id="tbl-detail"></table>',
+            "  </div>",
+        ]
+    d_label = _humanise_label(dim_ref)
+    m_label = _humanise_label(measure)
+    return [
+        "",
+        '  <div class="tb-card">',
+        f"    <h2>{esc(m_label)} by {esc(d_label)}</h2>",
+        f'    <div data-tb-figure="chart" data-tb-binding="breakdown"',
+        f'         data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
+        f'         data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
+        '         id="chart-breakdown"></div>',
+        "  </div>",
+    ]
+
+
+def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
+                        esc) -> list[str]:
+    """The ``tabbed`` recipe: Overview and Detail, one visible at a time."""
+    if not dim_ref:
+        return [
+            "",
+            '  <div class="tb-tabs">',
+            '    <section data-tb-tab="Overview">',
+            '      <p class="tb-note">Add a dimension to the breakdown query',
+            "        and the chart for this page goes here.</p>",
+            "    </section>",
+            '    <section data-tb-tab="Detail">',
+            '      <div class="tb-card">',
+            "        <h2>Detail</h2>",
+            f'        <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+            '               class="tb-table--striped" id="tbl-detail"></table>',
+            "      </div>",
+            "    </section>",
+            "  </div>",
+        ]
+    d_label = _humanise_label(dim_ref)
+    m_label = _humanise_label(measure)
+    return [
+        "",
+        '  <div class="tb-tabs">',
+        '    <section data-tb-tab="Overview">',
+        '      <div class="tb-card">',
+        f"        <h2>{esc(m_label)} by {esc(d_label)}</h2>",
+        f'        <div data-tb-figure="chart" data-tb-binding="breakdown"',
+        f'             data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
+        f'             data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
+        '             id="chart-breakdown"></div>',
+        "      </div>",
+        "    </section>",
+        '    <section data-tb-tab="Detail">',
+        '      <div class="tb-card">',
+        "        <h2>Detail</h2>",
+        '        <p class="tb-note">Filter and search subset which stamped rows',
+        "          display — they never compute new numbers. The CSV button",
+        "          exports the stamped bytes verbatim.</p>",
+        "        <p>",
+        "          <label>Search",
+        '            <input data-tb-search data-tb-binding="breakdown"',
+        '                   placeholder="type to filter…"></label>',
+        f"          <label>{esc(d_label)}",
+        f'            <select data-tb-filter data-tb-binding="breakdown"',
+        f'                    data-tb-column="{esc(dim_ref)}"></select></label>',
+        '          <button data-tb-download data-tb-binding="breakdown"',
+        '                  data-tb-label="Download CSV"></button>',
+        "        </p>",
+        f'        <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+        '               class="tb-table--striped" id="tbl-detail"></table>',
+        "      </div>",
+        "    </section>",
+        "  </div>",
+    ]
+
+
+def _report_template_html(title: str, measure: str, dim_ref: "str | None",
+                          layout: str = "dashboard") -> str:
+    """A starter ``template.html`` for one named page structure.
+
+    ``dashboard`` (the default, and what ``tracebi init`` writes) is an answer
+    sentence, a KPI strip, and — when the model has a dimension — a chart
+    beside a filter/search/download table (``.tb-cols-2``), plus a methodology
+    block and an exploration stage. ``brief`` is that header and one chart
+    card. ``tabbed`` is that header, then Overview and Detail tabs. Generated
+    (not a static file) because ``data-tb-*`` attributes name the model's real
+    measure and dimension. No ``script.js`` or ``style.css``: the runtime
+    (``tracebi.js`` + ``tracebi.css``) draws every figure from the stamped
+    bytes — hand-rolling a CSV parser and a chart is exactly the L0 trap a
+    scaffold must not teach.
+    """
+    if layout not in ("brief", "dashboard", "tabbed"):
+        raise ValueError(
+            f"unknown layout {layout!r}; choose brief, dashboard, or tabbed"
+        )
     esc = _html.escape
     m_label = _humanise_label(measure)
     table_binding = "breakdown" if dim_ref else "totals"
@@ -1713,7 +1830,11 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> st
         "    </div>",
         "  </div>",
     ]
-    if dim_ref:
+    if layout == "brief":
+        parts += _layout_brief_body(measure, dim_ref, table_binding, esc)
+    elif layout == "tabbed":
+        parts += _layout_tabbed_body(measure, dim_ref, table_binding, esc)
+    elif dim_ref:
         d_label = _humanise_label(dim_ref)
         parts += [
             "",
@@ -1812,9 +1933,10 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     (pkg_dir / "report.json").write_text(
         _report_json_text(args.title, model, query), encoding="utf-8")
     (pkg_dir / "template.html").write_text(
-        _report_template_html(args.title, measure, dim_ref), encoding="utf-8")
+        _report_template_html(args.title, measure, dim_ref, args.layout),
+        encoding="utf-8")
 
-    print(f"Created {pkg_dir}/ (report.json, template.html)")
+    print(f"Created {pkg_dir}/ (report.json, template.html), layout {args.layout}")
     if note:
         print(f"  {note}")
     else:
@@ -1823,27 +1945,28 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
+def _resolve_report_target(name: str, reports_dir: Path, *,
+                           purpose: str) -> tuple[str, Path]:
     """Resolve *name* to a package directory or a spec file under ``reports/``.
 
     Looks for a ``reports/<name>/`` package first, then a ``reports/<name>.json``
     spec. Returns ``("package"|"spec", path)`` or raises ``FileNotFoundError``
     listing where it looked. All report forms live in one ``reports/`` folder.
+    *purpose* is the read (``view``, ``build``, ``manage``, ``schedule``) the
+    seam records for the permission check.
     """
-    from tracebi.report_paths import report_name_error
+    from tracebi.report_paths import open_report
 
-    err = report_name_error(name)
-    if err:
-        raise FileNotFoundError(err)
-    pkg_dir = reports_dir / name
-    if (pkg_dir / "report.json").is_file() and (pkg_dir / "template.html").is_file():
-        return "package", pkg_dir
-    spec_path = reports_dir / f"{name}.json"
-    if spec_path.is_file():
-        return "spec", spec_path
+    opened = open_report(name, purpose=purpose, reports_dir=reports_dir)
+    if opened.name_error:
+        raise FileNotFoundError(opened.name_error)
+    if opened.package_dir is not None and opened.has_template:
+        return "package", opened.package_dir
+    if opened.has_spec:
+        return "spec", opened.spec_path
     raise FileNotFoundError(
         f"No report '{name}' found. Looked for a package or spec at:\n  "
-        + "\n  ".join([str(pkg_dir), str(spec_path)])
+        + "\n  ".join([str(opened.path), str(opened.spec_path)])
     )
 
 
@@ -2078,8 +2201,14 @@ def cmd_report(args: argparse.Namespace) -> int:
     travels WITH the report, never silently.
     """
     reports_dir: Path = args.reports_dir
+    if args.action == "status":
+        purpose = "view"
+    elif args.action == "pins":
+        purpose = "manage" if getattr(args, "resolve", None) else "view"
+    else:
+        purpose = "build"
     try:
-        kind, path = _resolve_report_target(args.name, reports_dir)
+        kind, path = _resolve_report_target(args.name, reports_dir, purpose=purpose)
     except FileNotFoundError as exc:
         print(exc, file=sys.stderr)
         return 1
@@ -2508,9 +2637,57 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_validate.set_defaults(func=cmd_validate)
 
-    p_new_model = sub.add_parser("new-model", help="Scaffold a new model definition.")
+    p_connect = sub.add_parser(
+        "connect",
+        help="Connect a warehouse you already have (postgres, snowflake, "
+             "bigquery, duckdb): test it, write the secret to .env, and "
+             "write a connector module.",
+    )
+    p_connect.add_argument("name", help="Connection name, a Python identifier (e.g. wh).")
+    p_connect.add_argument(
+        "--kind", choices=["postgres", "snowflake", "bigquery", "duckdb"],
+        help="Warehouse kind. Prompted when stdin is a terminal.",
+    )
+    p_connect.add_argument("--url", help="Postgres SQLAlchemy URL (postgresql://...).")
+    p_connect.add_argument("--account", help="Snowflake account identifier.")
+    p_connect.add_argument("--user", help="Snowflake user.")
+    p_connect.add_argument("--password", help="Snowflake password. Never printed.")
+    p_connect.add_argument("--warehouse", help="Snowflake warehouse.")
+    p_connect.add_argument("--database", help="Snowflake database, or DuckDB file path.")
+    p_connect.add_argument("--schema", help="Snowflake schema.")
+    p_connect.add_argument("--role", help="Snowflake role. Optional.")
+    p_connect.add_argument("--project", help="BigQuery GCP project id.")
+    p_connect.add_argument("--dataset", help="BigQuery dataset.")
+    p_connect.add_argument(
+        "--credentials",
+        help="Path to a BigQuery service-account JSON file. Optional.",
+    )
+    p_connect.add_argument(
+        "--test", action=argparse.BooleanOptionalAction, default=True,
+        help="Connect and list tables before writing anything (default). "
+             "--no-test writes without connecting.",
+    )
+    p_connect.add_argument(
+        "--force", action="store_true",
+        help="Overwrite an existing .env key or connection module.",
+    )
+    p_connect.set_defaults(func=cmd_connect)
+
+    p_new_model = sub.add_parser(
+        "new-model",
+        help="Scaffold a new model definition, or draft one from a connection.",
+    )
     p_new_model.add_argument("title", help='Free-form title, e.g. "Sales Model".')
     p_new_model.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_model.add_argument(
+        "--from", dest="from_connection", metavar="CONNECTION",
+        help="Draft the model from this `tracebi connect` connection. "
+             "Metadata only; no row scan.",
+    )
+    p_new_model.add_argument(
+        "--tables",
+        help="Comma-separated tables to draft. Required with --from.",
+    )
     p_new_model.set_defaults(func=cmd_new_model)
 
     p_list_models = sub.add_parser("list-models", help="List model definition files.")
@@ -2583,6 +2760,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_new_report.add_argument("--force", action="store_true", help="Overwrite if exists.")
     p_new_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
                               help="Directory holding report packages (default: ./reports).")
+    p_new_report.add_argument(
+        "--layout",
+        choices=["brief", "dashboard", "tabbed"],
+        default="dashboard",
+        help="Page structure. brief: answer sentence, KPIs, one chart. "
+             "dashboard (default): brief, then a chart beside a filterable "
+             "table. tabbed: the same header, then Overview and Detail tabs.",
+    )
     p_new_report.set_defaults(func=cmd_new_report)
 
     p_report = sub.add_parser(
