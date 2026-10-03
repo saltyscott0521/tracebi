@@ -439,7 +439,15 @@ class ContextResult(TypedDict, total=False):
     number_formats: Any
     conventions: Any
     cheat_sheets: Any
-    model: Any  # present only when a model= argument was passed
+    model: Any  # null unless model= was passed
+    presentation: Any
+    transform_contracts: Any
+    schedule: Any
+    warehouse: Any
+    pins: Any
+    spreadsheet: Any
+    analyst_knowledge: Any
+    brief: Any  # the omission note; null when brief=false
 
 
 class ModelsResult(TypedDict, total=False):
@@ -1349,9 +1357,13 @@ def build_server(token: Optional[str] = None):
             "TraceBi's semantic contract: every model, section type, chart "
             "type, DataSet verb, measure kind and filter operator. Pass "
             "model=<name> to include that model's tables, dimensions and "
-            "named measures. Call this first — start with brief=true for the "
-            "token-lean payload (about half the size), and re-call without it "
-            "only when you need a section it omits."
+            "named measures; model is null unless you pass it. Call this "
+            "first — start with brief=true, the tier for authoring a "
+            "package. brief=true includes presentation (the data-tb-* "
+            "figure grammar) and number_formats. It leaves cheat_sheets, "
+            "report_sections, and dataset_verbs null — not requested in "
+            "this tier; call get_context(brief=false) for them. On "
+            "brief=false the brief field itself is null."
         ),
     )(gateway_context)
     _tool(

@@ -691,6 +691,65 @@ class TestMcp2Features:
             < pins.index("resolve_pin")
 
 
+def test_brief_context_returns_the_presentation_grammar(gateway_model):
+    """The function-level payload, both tiers. brief is what agents call
+    first; the figure grammar has to be in it."""
+    from tracebi.mcp_server import gateway_context
+
+    brief = gateway_context(brief=True)
+    attrs = brief["presentation"]["figure_attributes"]
+    assert "data-tb-figure" in attrs
+    assert "data-tb-format" in attrs
+    assert "currency" in brief["number_formats"]
+    assert "cheat_sheets" not in brief
+    assert "report_sections" not in brief
+    assert "dataset_verbs" not in brief
+    assert "model" not in brief
+    assert "omitted" in brief["brief"]
+
+    full = gateway_context(brief=False)
+    assert "cheat_sheets" in full
+    assert "report_sections" in full
+    assert "presentation" in full
+    assert "brief" not in full
+
+    named = gateway_context(brief=True, model="gw_demo")
+    assert named["model"]["name"] == "gw_demo"
+
+
+def test_structured_brief_context_keeps_presentation(gateway_model):
+    """The SDK drops any returned key the output schema does not name, and
+    fills omitted schema keys with null. The grammar must survive that."""
+    pytest.importorskip("mcp")
+    import anyio
+    from tracebi.mcp_server import build_server
+
+    server = build_server()
+
+    async def call(args):
+        result = await server.call_tool("get_context", args)
+        payload = result.model_dump(by_alias=True, exclude_none=True)
+        assert payload.get("isError") is not True
+        return payload["structuredContent"]
+
+    brief = anyio.run(call, {"brief": True})
+    assert "data-tb-figure" in brief["presentation"]["figure_attributes"]
+    assert brief["number_formats"]["currency"]
+    assert brief["cheat_sheets"] is None
+    assert brief["report_sections"] is None
+    assert brief["dataset_verbs"] is None
+    assert brief["model"] is None
+    assert brief["brief"]["omitted"] == [
+        "cheat_sheets", "report_sections", "dataset_verbs",
+    ]
+
+    full = anyio.run(call, {"brief": False})
+    assert full["cheat_sheets"]
+    assert full["presentation"]["figure_attributes"]["data-tb-figure"]
+    assert full["brief"] is None
+    assert full["model"] is None
+
+
 def test_a_schema_checking_client_accepts_every_tool(gateway_model, tmp_path,
                                                      monkeypatch):
     """Drive the real server through a schema-validating MCP client.
