@@ -432,6 +432,20 @@ def _presentation() -> dict:
                     "one section at a time",
             "columns": ".tb-cols-2 / .tb-cols-3 grid classes; responsive "
                        "collapse to one column under 720px",
+            "recipes": {
+                "brief": "One finding: answer sentence (.tb-lede), a few "
+                         "KPIs (.tb-grid / .tb-kpi), one chart in one "
+                         ".tb-card. "
+                         "tracebi new-report \"Name\" --layout brief",
+                "dashboard": "brief, then .tb-cols-2 (a chart beside a "
+                             "filterable table). The default — what "
+                             "tracebi init and new-report write when "
+                             "--layout is omitted. "
+                             "tracebi new-report \"Name\" --layout dashboard",
+                "tabbed": "The same header, then .tb-tabs / data-tb-tab "
+                          "(Overview and Detail). "
+                          "tracebi new-report \"Name\" --layout tabbed",
+            },
         },
         "receipt_drawer": (
             "Every built artifact embeds a tracebi-receipt JSON block — "

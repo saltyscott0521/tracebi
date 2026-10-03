@@ -82,6 +82,58 @@ def test_an_author_previews_pins_and_resolves(dev, scaffolded):
     assert "no open pins" in out, out
 
 
+def test_layout_recipes_scaffold_and_build(scaffolded):
+    """`--layout` writes a named page, and the default stays the dashboard."""
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+
+    code, out = run_cli("new-report", "Mosaic", "--layout", "mosaic")
+    assert code != 0, out
+    assert "mosaic" in out
+    for name in ("brief", "dashboard", "tabbed"):
+        assert name in out
+    assert not (scaffolded / "reports" / "mosaic").exists()
+
+    code, out = run_cli("new-report", "Weekly", "--reports-dir",
+                        str(scaffolded / "plain"))
+    assert code == 0, out
+    code, out = run_cli("new-report", "Weekly", "--layout", "dashboard",
+                        "--reports-dir", str(scaffolded / "dash"))
+    assert code == 0, out
+    plain = scaffolded / "plain" / "weekly"
+    dash = scaffolded / "dash" / "weekly"
+    assert (plain / "template.html").read_bytes() == (dash / "template.html").read_bytes()
+    assert (plain / "report.json").read_bytes() == (dash / "report.json").read_bytes()
+    assert not (dash / "style.css").exists()
+    assert not (dash / "script.js").exists()
+
+    code, out = run_cli("new-report", "Weekly Brief", "--layout", "brief")
+    assert code == 0, out
+    brief = (scaffolded / "reports" / "weekly_brief" / "template.html").read_text()
+    assert "tb-cols-2" not in brief
+    assert "tb-lede" in brief and "tb-grid" in brief and "tb-card" in brief
+    code, out = run_cli("report", "build", "weekly_brief")
+    assert code == 0, out
+
+    code, out = run_cli("new-report", "Weekly", "--layout", "tabbed")
+    assert code == 0, out
+    tabbed = (scaffolded / "reports" / "weekly" / "template.html").read_text()
+    assert "tb-tabs" in tabbed and "data-tb-tab" in tabbed
+    assert 'data-tb-tab="Overview"' in tabbed and 'data-tb-tab="Detail"' in tabbed
+    code, out = run_cli("report", "build", "weekly")
+    assert code == 0, out
+    built = (scaffolded / "output" / "weekly.html").read_text()
+    assert "tb-tabs" in built and "data-tb-tab" in built
+
+    code, out = run_cli("context")
+    assert code == 0, out
+    payload = json.loads(out)
+    recipes = payload["presentation"]["layout"]["recipes"]
+    assert set(recipes) == {"brief", "dashboard", "tabbed"}
+    for name, text in recipes.items():
+        assert f"--layout {name}" in text
+
+
 def test_status_and_the_review_snapshot(scaffolded):
     code, out = run_cli("run-transform", "sample_transform")
     assert code == 0, out

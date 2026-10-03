@@ -103,7 +103,15 @@ from its sign. Add `tb-table--freeze` to keep a wide table's first column in
 view. A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
-`presentation` block.
+`presentation` block, including `presentation.layout` — the page structures
+you pick by name instead of inventing one.
+
+**Pick a structure by name.** `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
+writes that skeleton (omit the flag for `dashboard`, which is also what
+`tracebi init` writes). `brief`: one finding — `.tb-lede`, a few `.tb-kpi`
+cards, one chart in one `.tb-card`. `dashboard`: `brief`, then `.tb-cols-2`
+(a chart beside a filterable table). `tabbed`: the same header, then
+`.tb-tabs` / `data-tb-tab` (Overview and Detail). Ask which one.
 
 **You can also have the framework build the figure for you.** Declare it in
 `report.json` under `figures`, then place it in `template.html` with

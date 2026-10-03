@@ -1522,6 +1522,15 @@ def build_server(token: Optional[str] = None):
     def _author_report_prompt(question: str) -> str:
         return (
             f"Author a governed TraceBi report that answers: {question}\n\n"
+            "Ask which page structure to use instead of designing one. "
+            "The recipes, one line each:\n"
+            "- brief — one finding: an answer sentence, a few KPIs, one "
+            "chart. `tracebi new-report \"<Name>\" --layout brief`\n"
+            "- dashboard — brief, then a chart beside a filterable table. "
+            "The default when --layout is omitted. "
+            "`tracebi new-report \"<Name>\" --layout dashboard`\n"
+            "- tabbed — the same header, then Overview and Detail tabs. "
+            "`tracebi new-report \"<Name>\" --layout tabbed`\n\n"
             "Follow the loop, and do not skip a step:\n"
             "1. Call get_context (start with brief=true; add the model= you'll "
             "use) to learn the exact facts, dimensions, named measures and "

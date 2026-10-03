@@ -1663,15 +1663,113 @@ def _report_json_text(title: str, model: str, query: dict) -> str:
     return json.dumps(declaration, indent=2) + "\n"
 
 
-def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> str:
-    """A starter ``template.html`` that TEACHES the figure grammar as a
-    dashboard: an answer sentence, a KPI strip, and — when the model has a
-    dimension — a chart beside a filter/search/download table (``.tb-cols-2``),
-    plus a methodology block and an exploration stage. Generated (not a static
-    file) because ``data-tb-*`` attributes name the model's real measure and
-    dimension. No ``script.js`` or ``style.css``: the runtime (``tracebi.js`` +
-    ``tracebi.css``) draws every figure from the stamped bytes — hand-rolling a
-    CSV parser and a chart is exactly the L0 trap a scaffold must not teach."""
+def _layout_brief_body(measure: str, dim_ref: "str | None", table_binding: str,
+                       esc) -> list[str]:
+    """The ``brief`` recipe below the shared header: one chart card.
+
+    With no dimension to chart, the one card is the totals table — the same
+    fallback the dashboard uses, and still not a ``.tb-cols-2`` row.
+    """
+    if not dim_ref:
+        return [
+            "",
+            '  <div class="tb-card">',
+            "    <h2>Detail</h2>",
+            f'    <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+            '           class="tb-table--striped" id="tbl-detail"></table>',
+            "  </div>",
+        ]
+    d_label = _humanise_label(dim_ref)
+    m_label = _humanise_label(measure)
+    return [
+        "",
+        '  <div class="tb-card">',
+        f"    <h2>{esc(m_label)} by {esc(d_label)}</h2>",
+        f'    <div data-tb-figure="chart" data-tb-binding="breakdown"',
+        f'         data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
+        f'         data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
+        '         id="chart-breakdown"></div>',
+        "  </div>",
+    ]
+
+
+def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
+                        esc) -> list[str]:
+    """The ``tabbed`` recipe: Overview and Detail, one visible at a time."""
+    if not dim_ref:
+        return [
+            "",
+            '  <div class="tb-tabs">',
+            '    <section data-tb-tab="Overview">',
+            '      <p class="tb-note">Add a dimension to the breakdown query',
+            "        and the chart for this page goes here.</p>",
+            "    </section>",
+            '    <section data-tb-tab="Detail">',
+            '      <div class="tb-card">',
+            "        <h2>Detail</h2>",
+            f'        <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+            '               class="tb-table--striped" id="tbl-detail"></table>',
+            "      </div>",
+            "    </section>",
+            "  </div>",
+        ]
+    d_label = _humanise_label(dim_ref)
+    m_label = _humanise_label(measure)
+    return [
+        "",
+        '  <div class="tb-tabs">',
+        '    <section data-tb-tab="Overview">',
+        '      <div class="tb-card">',
+        f"        <h2>{esc(m_label)} by {esc(d_label)}</h2>",
+        f'        <div data-tb-figure="chart" data-tb-binding="breakdown"',
+        f'             data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
+        f'             data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
+        '             id="chart-breakdown"></div>',
+        "      </div>",
+        "    </section>",
+        '    <section data-tb-tab="Detail">',
+        '      <div class="tb-card">',
+        "        <h2>Detail</h2>",
+        '        <p class="tb-note">Filter and search subset which stamped rows',
+        "          display — they never compute new numbers. The CSV button",
+        "          exports the stamped bytes verbatim.</p>",
+        "        <p>",
+        "          <label>Search",
+        '            <input data-tb-search data-tb-binding="breakdown"',
+        '                   placeholder="type to filter…"></label>',
+        f"          <label>{esc(d_label)}",
+        f'            <select data-tb-filter data-tb-binding="breakdown"',
+        f'                    data-tb-column="{esc(dim_ref)}"></select></label>',
+        '          <button data-tb-download data-tb-binding="breakdown"',
+        '                  data-tb-label="Download CSV"></button>',
+        "        </p>",
+        f'        <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+        '               class="tb-table--striped" id="tbl-detail"></table>',
+        "      </div>",
+        "    </section>",
+        "  </div>",
+    ]
+
+
+def _report_template_html(title: str, measure: str, dim_ref: "str | None",
+                          layout: str = "dashboard") -> str:
+    """A starter ``template.html`` for one named page structure.
+
+    ``dashboard`` (the default, and what ``tracebi init`` writes) is an answer
+    sentence, a KPI strip, and — when the model has a dimension — a chart
+    beside a filter/search/download table (``.tb-cols-2``), plus a methodology
+    block and an exploration stage. ``brief`` is that header and one chart
+    card. ``tabbed`` is that header, then Overview and Detail tabs. Generated
+    (not a static file) because ``data-tb-*`` attributes name the model's real
+    measure and dimension. No ``script.js`` or ``style.css``: the runtime
+    (``tracebi.js`` + ``tracebi.css``) draws every figure from the stamped
+    bytes — hand-rolling a CSV parser and a chart is exactly the L0 trap a
+    scaffold must not teach.
+    """
+    if layout not in ("brief", "dashboard", "tabbed"):
+        raise ValueError(
+            f"unknown layout {layout!r}; choose brief, dashboard, or tabbed"
+        )
     esc = _html.escape
     m_label = _humanise_label(measure)
     table_binding = "breakdown" if dim_ref else "totals"
@@ -1713,7 +1811,11 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> st
         "    </div>",
         "  </div>",
     ]
-    if dim_ref:
+    if layout == "brief":
+        parts += _layout_brief_body(measure, dim_ref, table_binding, esc)
+    elif layout == "tabbed":
+        parts += _layout_tabbed_body(measure, dim_ref, table_binding, esc)
+    elif dim_ref:
         d_label = _humanise_label(dim_ref)
         parts += [
             "",
@@ -1812,9 +1914,10 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     (pkg_dir / "report.json").write_text(
         _report_json_text(args.title, model, query), encoding="utf-8")
     (pkg_dir / "template.html").write_text(
-        _report_template_html(args.title, measure, dim_ref), encoding="utf-8")
+        _report_template_html(args.title, measure, dim_ref, args.layout),
+        encoding="utf-8")
 
-    print(f"Created {pkg_dir}/ (report.json, template.html)")
+    print(f"Created {pkg_dir}/ (report.json, template.html), layout {args.layout}")
     if note:
         print(f"  {note}")
     else:
@@ -2572,6 +2675,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_new_report.add_argument("--force", action="store_true", help="Overwrite if exists.")
     p_new_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
                               help="Directory holding report packages (default: ./reports).")
+    p_new_report.add_argument(
+        "--layout",
+        choices=["brief", "dashboard", "tabbed"],
+        default="dashboard",
+        help="Page structure. brief: answer sentence, KPIs, one chart. "
+             "dashboard (default): brief, then a chart beside a filterable "
+             "table. tabbed: the same header, then Overview and Detail tabs.",
+    )
     p_new_report.set_defaults(func=cmd_new_report)
 
     p_report = sub.add_parser(
