@@ -116,14 +116,13 @@ list them as open, which makes the real gaps harder to see.
 | Background runs and the last-build cache live in one process's memory. With `--workers 4`, a poll can land on a worker that never saw the run. | `web/api/run_store.py`, `_LAST_BUILD` |
 | Run history is in three places: pipeline tables, `schedule_runs.jsonl`, and the in-memory run store. | `pipeline/runner.py`, `schedule.py`, `run_store.py` |
 | Library page is only started: Reports groups by folder with type / last build / receipt; owner, schedule, past builds, mounts, and one read function for E7 are still open. | `Reports.jsx`, E6 |
-| **The "Keep this cut" endpoint rewrites `report.json` for any analyst, with no draft or approval step.** Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
+| **The "Keep this cut" endpoint rewrites `report.json` in place, with no draft or approval step.** It requires `admin` until drafts exist. Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
 | One shared Basic-auth login, one shared MCP token, and a self-declared agent name. Nobody's work can be told apart in the audit log. | `web/api/auth.py`, `TRACEBI_MCP_ACTOR` |
 
 **Quality / reader / schedules**
 
 | Finding | Evidence |
 | --- | --- |
-| "About this report" footer, PDF download from the app (WeasyPrint + native libs in the image), and virtualized large tables are still open. | E9 |
 | Schedule retries, owner alerts, Slack/Teams delivery, and bursting are still open. | E11 |
 | E14 decisions not yet made: draft-writing tools for remote agents (after E7), OAuth for claude.ai connectors, rendered snapshot for agents. | #111 |
 
@@ -193,10 +192,11 @@ whose scheduled report arrives by email, timed under 30 minutes.
 **Goal:** the first-report journey in [[users-and-jobs]] works on the
 builder's own database, not only the sample data.
 
-- [ ] `tracebi connect`: asks for a warehouse (Postgres, Snowflake, BigQuery,
+- [x] `tracebi connect`: asks for a warehouse (Postgres, Snowflake, BigQuery,
       DuckDB), tests it, writes the secret to `.env` and a connector to
-      `models/`.
-- [ ] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
+      `models/_connections/` (discovery only loads top-level `models/*.py`
+      that define `model`).
+- [x] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
       schema from table metadata (the column metadata `info()` already reads),
       for the builder or their agent to edit and approve. No data scanned.
 - [ ] `tracebi import dbt <path>`: reads a dbt project's `manifest.json` and
@@ -208,9 +208,10 @@ builder's own database, not only the sample data.
 - [x] The scaffolded README and `tracebi --help` lead with ask / build /
       schedule, per [[vision-and-positioning]]. Receipts become the "why you
       can trust it" line. (#161)
-- [ ] The connection `tracebi connect` writes reads its secret the way the
-      rules already require: the generated model file calls `load_dotenv()`
-      itself, and the framework still never loads `.env` implicitly.
+- [x] The connection `tracebi connect` writes reads its secret the way the
+      rules already require: `models/_connections/<name>.py` calls
+      `load_dotenv()` itself, and the framework still never loads `.env`
+      implicitly.
 
 **Done when:** timed from `pip install` to a scheduled report on a real
 Postgres, under 30 minutes, by someone who didn't write the code.
@@ -298,8 +299,8 @@ approval.
 - [ ] My work (drafts) and publish-with-approval, with TraceBi's own version
       history for folders without source control.
 - [ ] **"Keep this cut" writes a draft and a publish request, not
-      `report.json` in place.** (It writes the file directly today; see the
-      findings.)
+      `report.json` in place.** (It writes the file directly today, and the
+      endpoint requires `admin` until drafts exist; see the findings.)
 - [ ] A sign-in per person on the MCP gateway, so an analyst's agent sees what
       the analyst sees and the audit log names them.
 - [ ] A plain-language review screen: rendered before and after, which
@@ -387,8 +388,9 @@ product").
 - [x] Download as PDF, tested. The PDF is the built report HTML printed by
       headless Chromium (Playwright), so charts render. `HTMLRenderer.render_pdf()`
       (WeasyPrint, no JavaScript) is unchanged. (#87)
-- [ ] Large tables stay fast: a virtualized table mode for big bindings
-      ([[large-detail-artifacts]], [[ROADMAP]] 11c first half).
+- [x] Large tables stay fast: a table past 500 rows renders only the
+      visible window in `tracebi.js` (print and download still use every
+      row; find-in-page does not — `data-tb-search` does). (#87)
 
 **Done when:** someone outside the team opens a built report, finds the
 receipt, and can say in their own words what it proves; and the PDF

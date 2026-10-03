@@ -1290,3 +1290,137 @@ process.stdout.write(JSON.stringify([[a.className, a.textContent],
         assert out == [["tb-down tb-bad", "-6.30"],
                        ["tb-down tb-good", "-2"],
                        ["tb-flat", "0"]]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestTableWindow:
+    """Past 500 rows the runtime paints a window; 500 stays the full tbody.
+
+    The DOM stub has no layout, so the window uses the fallback row height.
+    A real browser covers scroll, print, and bar pixels in test_table_window.
+    """
+
+    _SCRIPT = """
+function csvRows(n) {
+  var s = 'k,v,g\\n';
+  for (var i = 0; i < n; i++) s += 'k' + i + ',' + (i + 1) + ',' + (i === 7 ? 'z' : 'a') + '\\n';
+  return s;
+}
+dataBlock('wide', csvRows(501));
+dataBlock('cap', csvRows(500));
+var wide = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'wide',
+                         'data-tb-sort': '', 'data-tb-bars': 'v' });
+var cap = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'cap',
+                        'data-tb-sort': '' });
+var search = el('input', { 'data-tb-search': '', 'data-tb-binding': 'wide' });
+var filt = el('select', { 'data-tb-filter': '', 'data-tb-binding': 'wide',
+                          'data-tb-column': 'g' });
+loadRuntime();
+function dataRows(tbl) {
+  return tbl.querySelector('tbody').children.filter(function (tr) {
+    return tr.className.indexOf('tb-window-pad') === -1;
+  });
+}
+function barAt(tbl) {
+  var row = dataRows(tbl)[0];
+  var bar = row.children[1].querySelector('.tb-bar');
+  return bar ? bar.style.width : null;
+}
+var box = wide.parentNode;
+var out = {
+  wide: dataRows(wide).length,
+  pad: wide.querySelector('tbody').children.length - dataRows(wide).length,
+  windowClass: wide.className.indexOf('tb-window') !== -1,
+  cap: dataRows(cap).length,
+  capWindow: cap.className.indexOf('tb-window') !== -1,
+  bar: barAt(wide),
+  barGlobal: barAt(wide) === (100 / 501) + '%'
+};
+box.scrollTop = 999999;
+box._fire('scroll');
+var tailRows = dataRows(wide);
+out.tail = tailRows[tailRows.length - 1].children[0].textContent;
+out.tailCount = tailRows.length;
+box.scrollTop = 0;
+box._fire('scroll');
+out.barAfter = barAt(wide);
+var th = wide.querySelectorAll('thead th')[1];
+th.querySelector('.tb-sort')._fire('click');
+th.querySelector('.tb-sort')._fire('click');
+out.sorted = dataRows(wide)[0].children[0].textContent;
+search.value = 'k500';
+search._fire('input');
+out.search = dataRows(wide).map(function (tr) { return tr.children[0].textContent; });
+search.value = '';
+search._fire('input');
+filt.value = 'z';
+filt._fire('change');
+out.filtered = dataRows(wide).map(function (tr) { return tr.children[0].textContent; });
+filt.value = 'All';
+filt._fire('change');
+out.restored = dataRows(wide).length;
+process.stdout.write(JSON.stringify(out));
+"""
+
+    def test_above_500_windows_and_500_renders_every_row(self):
+        out = _run_dom(self._SCRIPT)
+        assert out["wide"] < 80
+        assert out["pad"] >= 1
+        assert out["windowClass"] is True
+        assert out["cap"] == 500
+        assert out["capWindow"] is False
+        # Scale is the column max (501), not the max inside the window.
+        assert out["barGlobal"] is True
+        assert out["barAfter"] == out["bar"]
+        assert out["tail"] == "k500"
+        assert out["tailCount"] < 80
+        assert out["sorted"] == "k500"          # descending: the true max
+        assert out["search"] == ["k500"]
+        assert out["filtered"] == ["k7"]
+        assert out["restored"] < 80
+
+    _SELECTION = """
+dataBlock('b', 'region,mv\\nEast,1\\n');
+var cfg = el('script', { id: 'tracebi-selection', type: 'application/json' });
+cfg.textContent = JSON.stringify({ report: 'demo', model: 'm', filters: {} });
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
+var rows = [];
+for (var i = 0; i < 600; i++) rows.push({ region: 'R' + i, mv: String(i + 1) });
+rows[599].region = 'TAIL';
+var payload = { authored: false, filters: {}, figures: [
+  { binding: 'b', kind: 'table', rows: rows }
+], controls: [] };
+function Thenable(value) { this.value = value; }
+Thenable.prototype.then = function (ok) {
+  var ret = ok(this.value);
+  return (ret && ret.then) ? ret : new Thenable(ret);
+};
+Thenable.prototype.catch = function () { return this; };
+globalThis.fetch = function () {
+  return new Thenable({ ok: true, json: function () { return new Thenable(payload); } });
+};
+loadRuntime();
+function dataRows() {
+  return tbl.querySelector('tbody').children.filter(function (tr) {
+    return tr.className.indexOf('tb-window-pad') === -1;
+  });
+}
+var before = dataRows().length;
+var box = tbl.parentNode;
+box.scrollTop = 999999;
+box._fire('scroll');
+var tail = dataRows();
+process.stdout.write(JSON.stringify({
+  before: before,
+  parent: box.className,
+  tail: tail[tail.length - 1].children[0].textContent,
+  count: tail.length
+}));
+"""
+
+    def test_a_selection_of_more_than_500_rows_is_windowed(self):
+        out = _run_dom(self._SELECTION)
+        assert out["before"] < 80
+        assert out["parent"] == "tb-scroll"
+        assert out["tail"] == "TAIL"
+        assert out["count"] < 80
