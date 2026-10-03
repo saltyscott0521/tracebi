@@ -297,6 +297,24 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
   z-index: 1;
 }
 
+/* Windowed tables (>500 rows): spacers are not data. A fixed row height
+ * keeps the scrollbar honest; text stays in the cell, it just doesn't wrap. */
+.tb-window { border-collapse: separate; border-spacing: 0; }
+.tb-window tbody td { white-space: nowrap; overflow: hidden; }
+/* The generic last-row rule drops the bottom border. The window strides by
+   one measured border box, so the last body row keeps that border too.
+   Spacer rows zero theirs inline. */
+.tb-window tbody tr:last-child td { border-bottom: 1px solid var(--tb-rule); }
+tr.tb-window-pad td {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+}
+.tb-table--freeze tr.tb-window-pad td { position: static; background: transparent; }
+.tb-window.tb-table--striped tbody tr:nth-child(even) { background: none; }
+.tb-window.tb-table--striped tbody tr.tb-stripe { background: var(--tb-surface); }
+
 /* Variant: striped — even body rows tinted (field-notes finding #13). */
 .tb-table--striped tbody tr:nth-child(even) { background: var(--tb-surface); }
 

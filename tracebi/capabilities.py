@@ -265,7 +265,8 @@ def _presentation() -> dict:
                             "behind each named numeric cell, proportional to "
                             "the stamped value (zero at the left edge, or in "
                             "the middle when the column has negatives; scaled "
-                            "over all rows, so a filter never rescales). A "
+                            "over all rows, not the visible window, so a "
+                            "filter or a scroll never rescales). A "
                             "non-numeric or missing column fails the build",
             "data-tb-direction": "value figures: up-good | down-good — marks "
                                  "a change figure up / down / flat (an arrow) "
@@ -366,7 +367,11 @@ def _presentation() -> dict:
                             "wrapped in a .tb-scroll container sized to "
                             "show about that many rows, sticky header; "
                             "data-tb-rows=\"all\" opts out. Presentation "
-                            "only",
+                            "only. Tables past 500 rows render only the "
+                            "visible rows; printing and download still "
+                            "use every row. Find-in-page cannot see rows "
+                            "outside that window — search with "
+                            "data-tb-search",
             "data-tb-download": "<button data-tb-download "
                                 "data-tb-binding=\"B\" "
                                 "[data-tb-label=\"…\"]> — downloads the "
