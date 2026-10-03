@@ -691,7 +691,7 @@ class TestMcp2Features:
                      "reports/weekly/"):
             assert step in pins
         assert pins.index("workbench_state") < pins.index("build_report") \
-            < pins.index("resolve_pin")
+            < pins.index("verify_manifest") < pins.index("resolve_pin")
 
 
 def test_brief_context_returns_the_presentation_grammar(gateway_model):

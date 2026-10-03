@@ -410,7 +410,8 @@ And three **prompts**, the fastest way to start correctly:
   answer in plain words with each number beside its fingerprint and measure.
   Never estimate; say so when the model can't answer; no report unless asked.
 - `address_pins(report)` — read `workbench_state`, act on each open pin in
-  order, `build_report`, then `resolve_pin` each with a one-line note.
+  order, `build_report`, then `verify_manifest(manifest=<manifest_path>)`,
+  then `resolve_pin` each with a one-line note.
 
 The server's own instructions lead with the package lane (`build_report`)
 and name the spec lane (`render_report_spec`) as the simpler alternative.

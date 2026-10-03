@@ -195,8 +195,8 @@ package loop (query, paste each `binding` object under `data.<name>`,
 `answer_question(question, model="")` answers in plain words with each
 number beside its fingerprint and measure, never estimates, and builds no
 report unless asked; `address_pins(report)` reads `workbench_state`, acts
-on each open pin in order, rebuilds, then `resolve_pin`s each with a
-one-line note.
+on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
+`resolve_pin`s each with a one-line note.
 
 ### The dev iteration, step by step
 

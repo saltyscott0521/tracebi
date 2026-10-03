@@ -1625,7 +1625,7 @@ def build_server(token: Optional[str] = None):
 
     @server.prompt(
         name="address_pins", title="Act on the person's workbench pins",
-        description="Read workbench_state, act on each open pin in order, rebuild, then resolve each pin.",
+        description="Read workbench_state, act on each open pin in order, rebuild, verify, then resolve each pin.",
     )
     def _address_pins_prompt(report: str) -> str:
         return (
@@ -1645,7 +1645,11 @@ def build_server(token: Optional[str] = None):
             "figure.\n"
             f"3. build_report(report={report!r}). If it refuses, fix the "
             "package and build again.\n"
-            "4. resolve_pin each pin you acted on, with a one-line note of "
+            "4. verify_manifest(manifest=<the manifest_path build_report "
+            "returned>). Only a reproduces verdict means the numbers were "
+            "re-run and matched. If it does not reproduce, fix the package "
+            "and build again before resolving pins.\n"
+            "5. resolve_pin each pin you acted on, with a one-line note of "
             "what you did. If you could not act on one, leave it open and "
             "say why."
         )
