@@ -443,11 +443,12 @@ process, so the lock that actually matters is the database one:
 
 | Backend | Concurrent layer execution |
 |---|---|
-| **Postgres** | Safe. A `pg_try_advisory_lock` per layer means a second process is refused with a clear error instead of interleaving writes. |
-| **SQLite** | **Single process only.** The cross-process lock is a no-op, so two workers will both execute the same layer, interleave writes to the sink, and leave two "running" rows in the run history. |
+| **Postgres** | Safe. A `pg_try_advisory_lock` per layer, and one per scheduled report, means a second process is refused instead of interleaving writes or sending the same email twice. |
+| **SQLite** | **Single process only.** The cross-process lock is a no-op, so two workers will both execute the same layer and both send a scheduled email. |
 
 SQLite is the development and demo fallback. Anything running more than one
-process needs `PipelineRunner(db_url=<postgres url>)`.
+process needs Postgres: `TRACEBI_STATE_URL` for the shared run store, and
+`PipelineRunner(db_url=<postgres url>)` when a runner keeps its own database.
 
 ---
 
