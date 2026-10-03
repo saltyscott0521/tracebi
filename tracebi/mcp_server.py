@@ -27,6 +27,7 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 """
 
 import base64
+import functools
 import hmac
 import ipaddress
 import json
@@ -397,10 +398,19 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
 # several tools share one dict between a success shape and an
 # ``{ok, errors}`` envelope, and the MCP SDK drops any returned key the schema
 # does not name — so every key a function can return is listed here.
+#
+# Every non-Any field is Optional. The SDK builds one pydantic model from the
+# TypedDict and, for each key the function omitted, dumps null (the default it
+# sets on total=False fields). A schema of ``{"type": "string", "default": null}``
+# does not allow that null, and a schema-checking client rejects the whole
+# result. Optional makes the advertised schema permit null exactly where that
+# conversion emits it. There is no nested model: containers are Any, or
+# list/dict of str whose values the tools actually return as strings (a null
+# inside one of those would still fail, and none of the returns produce one).
 
 
 class ContextResult(TypedDict, total=False):
-    tracebi_version: str
+    tracebi_version: Optional[str]
     semantic_model: Any
     report_sections: Any
     dataset_verbs: Any
@@ -411,20 +421,20 @@ class ContextResult(TypedDict, total=False):
 
 
 class ModelsResult(TypedDict, total=False):
-    models: dict[str, Any]
-    skipped: list[dict[str, str]]
+    models: Optional[dict[str, Any]]
+    skipped: Optional[list[dict[str, str]]]
 
 
 class DescribeTableResult(TypedDict, total=False):
-    ok: bool
-    error: str
-    connectors: list[dict[str, Any]]
-    columns: list[dict[str, Any]]
+    ok: Optional[bool]
+    error: Optional[str]
+    connectors: Optional[list[dict[str, Any]]]
+    columns: Optional[list[dict[str, Any]]]
 
 
 class ModelInfoResult(TypedDict, total=False):
-    error: str
-    name: str
+    error: Optional[str]
+    name: Optional[str]
     tables: Any
     relationships: Any
     facts: Any
@@ -435,46 +445,46 @@ class ModelInfoResult(TypedDict, total=False):
 
 
 class QueryResult(TypedDict, total=False):
-    ok: bool
-    errors: list[str]
-    model: str
-    query: dict[str, Any]
-    columns: list[str]
-    row_count: int
-    rows: list[dict[str, Any]]
-    rows_returned: int
-    truncated: bool
-    fingerprint: str
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    model: Optional[str]
+    query: Optional[dict[str, Any]]
+    columns: Optional[list[str]]
+    row_count: Optional[int]
+    rows: Optional[list[dict[str, Any]]]
+    rows_returned: Optional[int]
+    truncated: Optional[bool]
+    fingerprint: Optional[str]
     lineage: Any
-    actor: str
-    binding: dict[str, Any]
+    actor: Optional[str]
+    binding: Optional[dict[str, Any]]
 
 
 class ValidateResult(TypedDict, total=False):
-    ok: bool
-    errors: list[str]
-    warnings: list[str]
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    warnings: Optional[list[str]]
 
 
 class RenderResult(TypedDict, total=False):
-    ok: bool
-    html_path: str
-    manifest_path: str
-    report_name: str
-    sections: int
-    dataset_fingerprints: list[str]
-    warnings: list[str]
-    errors: list[str]
+    ok: Optional[bool]
+    html_path: Optional[str]
+    manifest_path: Optional[str]
+    report_name: Optional[str]
+    sections: Optional[int]
+    dataset_fingerprints: Optional[list[str]]
+    warnings: Optional[list[str]]
+    errors: Optional[list[str]]
 
 
 class FetchArtifactResult(TypedDict, total=False):
-    ok: bool
-    errors: list[str]
-    path: str
-    content_type: str
-    bytes: int
-    content: str
-    encoding: str
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    path: Optional[str]
+    content_type: Optional[str]
+    bytes: Optional[int]
+    content: Optional[str]
+    encoding: Optional[str]
 
 
 class ReportsResult(TypedDict, total=False):
@@ -482,18 +492,18 @@ class ReportsResult(TypedDict, total=False):
 
 
 class ResolvePinResult(TypedDict, total=False):
-    ok: bool
-    pin_id: str
-    resolved_note: str
-    resolved_by: str
-    errors: list[str]
+    ok: Optional[bool]
+    pin_id: Optional[str]
+    resolved_note: Optional[str]
+    resolved_by: Optional[str]
+    errors: Optional[list[str]]
 
 
 class WorkbenchStateResult(TypedDict, total=False):
     # Package shape (report given) and discovery shape (no report) share
     # this one result type — total=False keeps both valid.
-    mode: str
-    name: str
+    mode: Optional[str]
+    name: Optional[str]
     figures: Any
     coverage: Any
     bindings: Any
@@ -502,39 +512,39 @@ class WorkbenchStateResult(TypedDict, total=False):
     exhibits: Any
     pins: Any
     resolved: Any
-    resolved_count: int
+    resolved_count: Optional[int]
     code: Any
     warehouse: Any
     models: Any
     packages: Any
     error: Any
-    errors: list[str]
+    errors: Optional[list[str]]
 
 
 class BuildReportResult(TypedDict, total=False):
-    ok: bool
-    report: str
-    output_path: str
-    manifest_path: str
+    ok: Optional[bool]
+    report: Optional[str]
+    output_path: Optional[str]
+    manifest_path: Optional[str]
     figures: Any
-    embedded_fingerprints: list[str]
+    embedded_fingerprints: Optional[list[str]]
     transform_contracts: Any
-    xlsx_path: str
-    spreadsheet_note: str
-    errors: list[str]
+    xlsx_path: Optional[str]
+    spreadsheet_note: Optional[str]
+    errors: Optional[list[str]]
 
 
 class VerifyResult(TypedDict, total=False):
-    ok: bool
-    verdict: str
-    verdict_detail: str
-    exit_code: int
-    report_name: str
+    ok: Optional[bool]
+    verdict: Optional[str]
+    verdict_detail: Optional[str]
+    exit_code: Optional[int]
+    report_name: Optional[str]
     schema_version: Any
     python_derived: Any
     sections: Any
     summary: Any
-    errors: list[str]
+    errors: Optional[list[str]]
 
 
 # ── Gateway operations ─────────────────────────────────────────────────────
@@ -1224,6 +1234,7 @@ def build_server(token: Optional[str] = None):
     """
     try:
         from mcp.server.mcpserver import MCPServer
+        from mcp.server.mcpserver.exceptions import ToolError
         from mcp.types import ToolAnnotations
     except ImportError as exc:  # pragma: no cover — exercised by hand
         raise ImportError(
@@ -1292,11 +1303,22 @@ def build_server(token: Optional[str] = None):
     )
 
     # Every tool registers through here, so the opt-in call log
-    # (TRACEBI_MCP_LOG=1) wraps them all in one place.
+    # (TRACEBI_MCP_LOG=1) wraps them all in one place. The log stays inside:
+    # it records the original exception. Outside it, a plain exception becomes
+    # a ToolError whose one-line message reaches the client. On current mcp a
+    # plain exception is masked to "Error executing tool <name>".
     def _tool(**kwargs):
         def register(fn):
-            return server.tool(**kwargs)(
-                _gateway_log.logged(kwargs["name"], fn, _mcp_actor))
+            logged = _gateway_log.logged(kwargs["name"], fn, _mcp_actor)
+
+            @functools.wraps(logged)
+            def visible(*args, **kw):
+                try:
+                    return logged(*args, **kw)
+                except Exception as exc:  # noqa: BLE001 — the client must see why
+                    raise ToolError(_one_line_error(exc)) from exc
+
+            return server.tool(**kwargs)(visible)
         return register
 
     # Tools. structured_output=True advertises each return's JSON Schema and

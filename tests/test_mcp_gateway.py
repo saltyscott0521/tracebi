@@ -681,3 +681,157 @@ class TestMcp2Features:
             assert step in pins
         assert pins.index("workbench_state") < pins.index("build_report") \
             < pins.index("resolve_pin")
+
+
+def test_a_schema_checking_client_accepts_every_tool(gateway_model, tmp_path,
+                                                     monkeypatch):
+    """Drive the real server through a schema-validating MCP client.
+
+    The SDK fills every omitted result field with null and advertises that
+    on the output schema. A client that checks structured content
+    (``ClientSession.call_tool`` → ``validate_tool_result``) rejects a null
+    the schema types as string, number, boolean, or array — and a success
+    looks the same as a failure. Both the success path and the error
+    envelope of every tool must come back as structured content.
+    """
+    pytest.importorskip("mcp")
+    import anyio
+    from mcp.client import Client
+
+    from tracebi.mcp_server import build_server
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("TRACEBI_MODELS_DIR", str(tmp_path / "models"))
+    reports = tmp_path / "reports"
+    pkg = reports / "gwpkg"
+    pkg.mkdir(parents=True)
+    (pkg / "report.json").write_text(json.dumps({
+        "name": "gwpkg",
+        "data": {"kpi": {"model": "gw_demo",
+                         "query": {"fact": "fact_orders",
+                                   "measures": ["total_revenue"]}}},
+    }), encoding="utf-8")
+    (pkg / "template.html").write_text(
+        "<html><head><title>g</title></head><body>"
+        '<div data-tb-figure="value" data-tb-binding="kpi" '
+        'data-tb-cell="total_revenue" id="fig-kpi"></div>'
+        "</body></html>",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(reports))
+    out_dir = tmp_path / "built"
+    server = build_server()
+
+    async def drive():
+        async with Client(server) as client:
+            seen: list[str] = []
+
+            async def call(name, arguments=None):
+                result = await client.call_tool(name, arguments or {})
+                seen.append(name)
+                # A tool that raises is an isError result; the client does
+                # not schema-check those. Every normal result — success or
+                # the {ok, errors} envelope — must carry structured content.
+                if not result.is_error:
+                    assert result.structured_content is not None, name
+                return result
+
+            ctx = await call("get_context", {"brief": True})
+            assert ctx.structured_content.get("tracebi_version")
+
+            listed = await call("list_models")
+            assert "gw_demo" in listed.structured_content["models"]
+
+            described = await call("describe_model", {"model": "gw_demo"})
+            assert described.structured_content.get("name") == "gw_demo"
+
+            unknown = await call("describe_model", {"model": "no_such_model"})
+            if unknown.is_error:
+                text = unknown.content[0].text
+                assert "Invalid structured content" not in text
+                assert "not found" in text
+            else:
+                assert unknown.structured_content is not None
+
+            tables = await call("describe_table")
+            assert tables.structured_content.get("ok") is True
+            one_table = await call("describe_table", {"table": "orders"})
+            assert "ok" in one_table.structured_content
+
+            query = await call("query_model", {
+                "model": "gw_demo",
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "dimensions": ["dim_customer.region"],
+            })
+            assert query.structured_content.get("ok") is True
+            assert query.structured_content.get("fingerprint")
+
+            bad_query = await call("query_model", {
+                "model": "gw_demo",
+                "fact": "fact_orders",
+                "measures": ["no_such_measure"],
+            })
+            assert bad_query.structured_content.get("ok") is False
+
+            valid = await call("validate_report_spec", {"spec": _spec()})
+            assert valid.structured_content.get("ok") is True
+            invalid = await call("validate_report_spec",
+                                 {"spec": _spec(fact="fact_nope")})
+            assert invalid.structured_content.get("ok") is False
+
+            rendered = await call("render_report_spec", {
+                "spec": _spec(), "output_dir": str(out_dir),
+            })
+            assert rendered.structured_content.get("ok") is True
+            refused_spec = await call("render_report_spec", {
+                "spec": _spec(fact="fact_nope"), "output_dir": str(out_dir),
+            })
+            assert refused_spec.structured_content.get("ok") is False
+
+            reports_listing = await call("list_reports")
+            assert "reports" in reports_listing.structured_content
+
+            built = await call("build_report", {
+                "report": "gwpkg", "output_dir": str(out_dir),
+            })
+            assert built.structured_content.get("ok") is True, (
+                built.structured_content)
+            html_path = built.structured_content["output_path"]
+            manifest_path = built.structured_content["manifest_path"]
+
+            missing = await call("build_report", {
+                "report": "missing", "output_dir": str(out_dir),
+            })
+            assert missing.structured_content.get("ok") is False
+
+            fetched = await call("fetch_artifact", {"path": html_path})
+            assert fetched.structured_content.get("ok") is True
+            blocked = await call("fetch_artifact", {"path": "/etc/hosts"})
+            assert blocked.structured_content.get("ok") is False
+
+            verified = await call("verify_manifest", {"manifest": manifest_path})
+            assert verified.structured_content.get("verdict")
+            missing_manifest = await call("verify_manifest", {
+                "manifest": str(tmp_path / "no-such.manifest.json"),
+            })
+            assert missing_manifest.structured_content.get("ok") is False
+
+            discovery = await call("workbench_state")
+            assert discovery.structured_content.get("mode") == "discovery"
+            package_state = await call("workbench_state", {"report": "gwpkg"})
+            assert package_state.structured_content.get("name")
+
+            pin = await call("resolve_pin", {
+                "report": "gwpkg", "pin_id": "no-such-pin",
+            })
+            assert pin.structured_content.get("ok") is False
+
+            assert set(seen) == {
+                "get_context", "list_models", "describe_model", "describe_table",
+                "query_model", "validate_report_spec", "render_report_spec",
+                "list_reports", "verify_manifest", "workbench_state",
+                "resolve_pin", "build_report", "fetch_artifact",
+            }
+
+    anyio.run(drive)
