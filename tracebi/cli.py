@@ -798,12 +798,22 @@ def cmd_dev(args: argparse.Namespace) -> int:
     # project-level workbench (warehouse, models, packages, exhibit feed) for
     # phases ① and ②.
     from tracebi._dev_server import serve_dev
+    from tracebi.report_paths import open_report
     if args.name is None:
         return serve_dev(None, port=args.port,
                          open_browser=not args.no_browser)
-    pkg_dir = _default_reports_dir() / args.name
-    if (pkg_dir / "report.json").is_file() and \
-            (pkg_dir / "template.html").is_file():
+    reports_dir = _default_reports_dir()
+    opened = open_report(args.name, purpose="view", reports_dir=reports_dir)
+    # A name the guard refuses keeps the historical lookup, so the message
+    # below stays the one this command already prints.
+    if opened.name_error:
+        pkg_dir = reports_dir / args.name
+        ready = ((pkg_dir / "report.json").is_file()
+                 and (pkg_dir / "template.html").is_file())
+    else:
+        pkg_dir = opened.path
+        ready = opened.package_dir is not None and opened.has_template
+    if ready:
         return serve_dev(pkg_dir, port=args.port,
                          open_browser=not args.no_browser)
     print(f"Report package not found: {args.name}. Expected a package at "
@@ -1926,27 +1936,28 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     return 0
 
 
-def _resolve_report_target(name: str, reports_dir: Path) -> tuple[str, Path]:
+def _resolve_report_target(name: str, reports_dir: Path, *,
+                           purpose: str) -> tuple[str, Path]:
     """Resolve *name* to a package directory or a spec file under ``reports/``.
 
     Looks for a ``reports/<name>/`` package first, then a ``reports/<name>.json``
     spec. Returns ``("package"|"spec", path)`` or raises ``FileNotFoundError``
     listing where it looked. All report forms live in one ``reports/`` folder.
+    *purpose* is the read (``view``, ``build``, ``manage``, ``schedule``) the
+    seam records for the permission check.
     """
-    from tracebi.report_paths import report_name_error
+    from tracebi.report_paths import open_report
 
-    err = report_name_error(name)
-    if err:
-        raise FileNotFoundError(err)
-    pkg_dir = reports_dir / name
-    if (pkg_dir / "report.json").is_file() and (pkg_dir / "template.html").is_file():
-        return "package", pkg_dir
-    spec_path = reports_dir / f"{name}.json"
-    if spec_path.is_file():
-        return "spec", spec_path
+    opened = open_report(name, purpose=purpose, reports_dir=reports_dir)
+    if opened.name_error:
+        raise FileNotFoundError(opened.name_error)
+    if opened.package_dir is not None and opened.has_template:
+        return "package", opened.package_dir
+    if opened.has_spec:
+        return "spec", opened.spec_path
     raise FileNotFoundError(
         f"No report '{name}' found. Looked for a package or spec at:\n  "
-        + "\n  ".join([str(pkg_dir), str(spec_path)])
+        + "\n  ".join([str(opened.path), str(opened.spec_path)])
     )
 
 
@@ -2172,8 +2183,14 @@ def cmd_report(args: argparse.Namespace) -> int:
     travels WITH the report, never silently.
     """
     reports_dir: Path = args.reports_dir
+    if args.action == "status":
+        purpose = "view"
+    elif args.action == "pins":
+        purpose = "manage" if getattr(args, "resolve", None) else "view"
+    else:
+        purpose = "build"
     try:
-        kind, path = _resolve_report_target(args.name, reports_dir)
+        kind, path = _resolve_report_target(args.name, reports_dir, purpose=purpose)
     except FileNotFoundError as exc:
         print(exc, file=sys.stderr)
         return 1

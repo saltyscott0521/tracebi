@@ -176,3 +176,55 @@ def test_the_cli_refuses_a_climbing_name(project, capsys):
     assert cli.main(["report", "build", "../escape",
                      "--reports-dir", str(project / "reports")]) == 1
     assert "invalid report name" in capsys.readouterr().err
+
+
+def test_every_named_report_read_goes_through_open_report(tmp_path, monkeypatch):
+    """The permission check will live in ``open_report``. A read that never
+    calls it would skip that check, so a patched raise must surface from the
+    web Source route, an MCP tool, a schedule run, and a CLI report command.
+    """
+    import tracebi.report_paths as paths
+
+    class _Denied(Exception):
+        def __init__(self, name, purpose):
+            super().__init__(f"{name}:{purpose}")
+            self.name = name
+            self.purpose = purpose
+
+    def _deny(name, *, purpose, reports_dir=None, registry=None):
+        raise _Denied(name, purpose)
+
+    monkeypatch.setattr(paths, "open_report", _deny)
+    monkeypatch.chdir(tmp_path)
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from tracebi.web.api.routers import reports as reports_router
+
+    app = FastAPI()
+    app.include_router(reports_router.router, prefix="/api")
+    with pytest.raises(_Denied) as web:
+        TestClient(app).get("/api/reports/seam_target/source")
+    assert (web.value.name, web.value.purpose) == ("seam_target", "source")
+
+    from tracebi.mcp_server import gateway_workbench_state
+    with pytest.raises(_Denied) as mcp:
+        gateway_workbench_state("seam_target")
+    assert (mcp.value.name, mcp.value.purpose) == ("seam_target", "view")
+
+    from tracebi.schedule import run_schedule
+    rec = run_schedule(
+        {"report": "seam_target", "cron": "0 9 * * MON", "to": [],
+         "timezone": None},
+        reports_dir=tmp_path / "reports",
+        output_dir=tmp_path / "sched-out",
+    )
+    assert rec["status"] == "failed"
+    assert "seam_target:schedule" in rec["error"]
+
+    from tracebi import cli
+    with pytest.raises(_Denied) as command:
+        cli.main(["report", "status", "seam_target",
+                  "--reports-dir", str(tmp_path / "reports")])
+    assert (command.value.name, command.value.purpose) == ("seam_target", "view")
