@@ -235,7 +235,9 @@ The reviewer approves when and to whom in the same diff as what.
 Add `"refresh": {"transforms": ["<name>"], "pipelines": ["<name>"]}` to
 run those first, so the report shows fresh data; a failed step (including a
 sink contract that refuses the new data) fails the run before anything is
-built or sent. `tracebi schedule run <name>` runs it now (refresh → build →
+built or sent. A failed refresh or build is retried twice, after 1 minute
+and then 5 minutes, unless `"retries"` is an integer from 0 to 5 (0
+disables); a receipt that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
 verify → email → record in `output/schedule_runs.jsonl`); a receipt that
 does not verify is recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.

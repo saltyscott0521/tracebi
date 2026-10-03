@@ -466,8 +466,9 @@ and the default with no flag is still the dashboard row.
 **Goal:** the Schedule path's Run, Deliver and Monitor steps are finished end
 to end ([[product-strategy]]).
 
-- [ ] Retries with backoff for a failed refresh or build, then a recorded
-      failure.
+- [x] Retries with backoff for a failed refresh or build, then a recorded
+      failure. Default two retries (1 minute, then 5 minutes); `"retries"`
+      0–5 overrides. A refused receipt or a send failure is not retried.
 - [ ] Alerts to the report's owner on a failure, empty data, or a receipt
       that didn't reproduce: email first, Slack after.
 - [ ] Slack and Teams delivery of the file itself, not only a ping, plus a

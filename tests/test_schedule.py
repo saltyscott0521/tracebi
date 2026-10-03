@@ -33,7 +33,8 @@ class TestParseScheduleBlock:
             {"cron": "0  9 * *   MON", "to": "a@x.com, b@x.com"}, path="r")
         assert got == {"cron": "0 9 * * MON", "timezone": None,
                        "to": ["a@x.com", "b@x.com"],
-                       "refresh": {"transforms": [], "pipelines": []}}
+                       "refresh": {"transforms": [], "pipelines": []},
+                       "retries": 2}
 
     @pytest.mark.parametrize("raw, fragment", [
         ("0 9 * * MON", "must be an object"),
@@ -43,17 +44,34 @@ class TestParseScheduleBlock:
         ({"cron": "0 9 * * MON", "timezone": "Mars/Olympus"}, "unknown schedule timezone"),
         ({"cron": "0 9 * * MON", "refresh": ["t"]}, "'refresh' must be an object"),
         ({"cron": "0 9 * * MON", "refresh": {"models": ["m"]}}, "'refresh' must be an object"),
+        ({"cron": "0 9 * * MON", "retries": "x"}, "integer from 0 to 5"),
+        ({"cron": "0 9 * * MON", "retries": 9}, "integer from 0 to 5"),
+        ({"cron": "0 9 * * MON", "retries": True}, "integer from 0 to 5"),
     ])
     def test_refuses(self, raw, fragment):
         with pytest.raises(ValueError, match=fragment):
             sched.parse_schedule_block(raw, path="reports/x/report.json")
 
+    def test_retries_accepts_zero_through_five(self):
+        for n in (0, 2, 5):
+            got = sched.parse_schedule_block(
+                {"cron": "0 9 * * MON", "retries": n}, path="r")
+            assert got["retries"] == n
+
 
 # ── a scaffolded project ────────────────────────────────────────────────────
 
+# A failed refresh in a child process retries with real sleeps unless this
+# runs first. Success paths never call it.
+_NO_RETRY_WAIT = """
+import tracebi.schedule as _sched
+_sched._sleep = lambda *_a, **_k: None
+"""
+
+
 def _run(args, cwd, driver: str = ""):
     """`tracebi <args>` in *cwd*; *driver* is Python run first (stubs)."""
-    code = textwrap.dedent(driver) + (
+    code = _NO_RETRY_WAIT + textwrap.dedent(driver) + (
         "\nfrom tracebi import cli\n"
         f"raise SystemExit(cli.main({list(args)!r}))\n")
     return subprocess.run([sys.executable, "-c", code],
@@ -109,7 +127,8 @@ class TestDiscovery:
         schedules, errors = sched.discover_schedules(scheduled / "reports")
         assert errors == []
         assert schedules == [{"report": "sample_dashboard", **SCHEDULE,
-                              "refresh": {"transforms": [], "pipelines": []}}]
+                              "refresh": {"transforms": [], "pipelines": []},
+                              "retries": 2}]
 
     def test_broken_block_is_an_error_entry_not_a_crash(self, scheduled):
         rj = scheduled / "reports" / "sample_dashboard" / "report.json"
@@ -189,6 +208,13 @@ class TestRefresh:
         assert not (scheduled / "sent.json").exists()
 
 
+@pytest.fixture(autouse=True)
+def _no_real_retry_wait(monkeypatch):
+    """Default retries must not call time.sleep. A test that asserts the
+    delays replaces this with its own recorder."""
+    monkeypatch.setattr(sched, "_sleep", lambda *_a, **_k: None)
+
+
 def _enter(proj: Path, monkeypatch) -> None:
     """The build loads ``models/`` and the warehouse from the working directory."""
     monkeypatch.chdir(proj)
@@ -251,7 +277,10 @@ class TestFailurePaths:
     def test_smtp_failure_is_recorded_and_not_delivered(self, scheduled, monkeypatch):
         _enter(scheduled, monkeypatch)
 
+        sent = {"n": 0}
+
         def _boom(*args, **kwargs):
+            sent["n"] += 1
             raise RuntimeError("smtp refused the message")
 
         monkeypatch.setattr("tracebi._delivery.send_report", _boom)
@@ -260,9 +289,11 @@ class TestFailurePaths:
             reports_dir=scheduled / "reports",
             output_dir=scheduled / "output",
         )
+        assert sent["n"] == 1
         assert rec["status"] == sched.FAILED
         assert rec["recipients"] == []
         assert rec["error"] == "RuntimeError: smtp refused the message"
+        assert rec["attempts"] == 1
         assert _runs(scheduled)[-1]["error"] == rec["error"]
 
     def test_a_schedule_cannot_force_a_bad_receipt(self, scheduled, monkeypatch):
@@ -305,6 +336,7 @@ class TestFailurePaths:
         assert rec["status"] == sched.REFUSED
         assert rec["error"] == "stub: did not reproduce"
         assert rec["recipients"] == []
+        assert rec["attempts"] == 1
 
     def test_make_job_records_the_scheduler_actor(self, scheduled, monkeypatch):
         _enter(scheduled, monkeypatch)
@@ -315,6 +347,34 @@ class TestFailurePaths:
         assert rec["status"] == sched.BUILT
         assert rec["actor"] == "scheduler"
         assert rec["recipients"] == []
+
+
+def test_describe_schedule_notes_a_non_default_retry_count():
+    base = {"report": "weekly", "cron": "0 9 * * MON", "to": [], "timezone": None}
+    assert "retries:" not in sched.describe_schedule({**base, "retries": 2})
+    assert "retries: 0" in sched.describe_schedule({**base, "retries": 0})
+
+
+def test_a_retry_past_the_second_waits_five_minutes_again(scheduled, monkeypatch):
+    """The wait is 60s, then 300s, and 300s again for any further retry."""
+    slept = []
+    monkeypatch.setattr(sched, "_sleep", slept.append)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("build exploded")
+
+    monkeypatch.setattr("tracebi.cli._build_report_target", boom)
+    block = _scheduled(scheduled)
+    block["retries"] = 3
+    rec = sched.run_schedule(
+        block, reports_dir=scheduled / "reports",
+        output_dir=scheduled / "output", send=False,
+    )
+    assert rec["status"] == sched.FAILED
+    assert rec["attempts"] == 4
+    assert slept == [60, 300, 300]
+    assert rec["error"] == "RuntimeError: build exploded"
+    assert rec["recipients"] == []
 
 
 def test_last_runs_skips_a_broken_line(tmp_path):
@@ -358,6 +418,7 @@ def test_a_failed_run_is_recorded_not_raised(tmp_path):
                              reports_dir=tmp_path / "reports",
                              output_dir=tmp_path / "output")
     assert rec["status"] == sched.FAILED
+    assert rec["attempts"] == 1
     assert "No report 'missing'" in rec["error"]
     assert sched.last_runs(tmp_path / "output")["missing"]["status"] == sched.FAILED
 

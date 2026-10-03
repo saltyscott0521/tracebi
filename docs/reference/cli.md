@@ -268,7 +268,10 @@ A run is refresh → build → verify → email → record. It reads the `schedu
 block in each package's `report.json` (see
 [[report-json]]). A run is `report send` with
 the recipients taken from the package: a receipt that does not verify is
-recorded `refused` and nothing is sent. Every run appends one line to
+recorded `refused` and nothing is sent. A failed refresh or build is
+retried twice (1 minute, then 5 minutes) before that failure is recorded;
+`"retries"` (0–5) changes how many, and a refused receipt or a send
+failure is not retried. Every run appends one line to
 `output/schedule_runs.jsonl`: `delivered`, `built` (no recipients, or
 `--no-send`), `refused` or `failed`, with the verdict and who ran it.
 
