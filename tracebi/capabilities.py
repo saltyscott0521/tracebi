@@ -179,6 +179,53 @@ def _dataset_verbs() -> list[dict]:
     return out
 
 
+REPORT_JSON_EXAMPLE = {
+    "name": "Sales by region",
+    "libs": ["echarts"],
+    "data": {
+        "kpis": {
+            "model": "sales",
+            "query": {
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+            },
+        },
+        "region": {
+            "model": "sales",
+            "query": {
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "dimensions": ["dim_customer.region"],
+                "order_by": ["-revenue"],
+            },
+        },
+    },
+    "figures": {
+        "total": {
+            "kind": "value",
+            "binding": "kpis",
+            "cell": "revenue",
+            "label": "Revenue",
+            "format": "currency",
+        },
+        "by_region": {
+            "kind": "chart",
+            "binding": "region",
+            "chart_type": "bar",
+            "x": "dim_customer.region",
+            "y": "revenue",
+        },
+    },
+}
+
+REPORT_JSON_LIBS_NOTE = (
+    "libs is optional and defaults to []. Include \"echarts\" when the page "
+    "has a chart: without it the runtime skips every chart and the panel "
+    "stays blank (the no-JS SVG fallback still draws). A page with no chart "
+    "omits libs. Any other name is refused when the package loads."
+)
+
+
 def _presentation() -> dict:
     """
     The presentation system as data (architecture v2 §2.4): the stack, the
@@ -194,6 +241,10 @@ def _presentation() -> dict:
         ],
         "rule": "Later layers win. Override tokens, don't fork the sheet. "
                 "Presentation never changes a number.",
+        "report_json": {
+            "example": REPORT_JSON_EXAMPLE,
+            "libs": REPORT_JSON_LIBS_NOTE,
+        },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
             "--tb-rule", "--tb-radius", "--tb-space-1..4",

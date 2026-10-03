@@ -139,6 +139,55 @@ def test_filters_travel_through(gateway_model):
     assert out["query"]["filters"] == {"status": "shipped"}
 
 
+def test_brief_context_carries_a_report_json_example_that_builds(tmp_path):
+    """A gateway agent sees one complete report.json, and that file builds."""
+    from tracebi.mcp_server import authoring_guide, gateway_context
+    from tracebi.reports.template_package import TemplatePackage
+
+    pres = gateway_context(brief=True)["presentation"]
+    block = pres["report_json"]
+    example = block["example"]
+    assert example["name"] and example["data"] and example["figures"]
+    assert example["libs"] == ["echarts"]
+    assert "echarts" in block["libs"] and "blank" in block["libs"]
+    guide = authoring_guide()
+    assert json.dumps(example, indent=2) in guide
+    assert block["libs"] in guide
+
+    pkg = tmp_path / "sales_by_region"
+    pkg.mkdir()
+    (pkg / "report.json").write_text(json.dumps(example), encoding="utf-8")
+    placed = "\n".join(
+        f'{{{{ figure("{name}") }}}}' for name in example["figures"])
+    (pkg / "template.html").write_text(
+        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<title>t</title></head><body>\n" + placed + "\n</body></html>\n",
+        encoding="utf-8",
+    )
+    orders = pd.DataFrame({
+        "order_id": [1, 2], "customer_id": [1, 2], "revenue": [100.0, 50.0],
+    })
+    customers = pd.DataFrame({
+        "customer_id": [1, 2], "region": ["NE", "SE"],
+    })
+    model = DataModel("sales").add_connector(MemoryConnector("m", tables={
+        "orders": orders, "customers": customers,
+    }))
+    model.add_table("orders", connector="m", source="orders")
+    model.add_table("customers", connector="m", source="customers")
+    model.add_dimension("dim_customer", table_name="customers",
+                        key_col="customer_id", attributes=["region"])
+    model.add_fact("fact_orders", table_name="orders", measures=["revenue"],
+                   foreign_keys={"dim_customer": "customer_id"})
+    model.connect()
+    out = tmp_path / "sales_by_region.html"
+    TemplatePackage(str(pkg)).render({"sales": model}, str(out))
+    html = out.read_text(encoding="utf-8")
+    assert 'data-tb-figure="value"' in html
+    assert 'data-tb-figure="chart"' in html
+    assert (tmp_path / "sales_by_region.html.manifest.json").is_file()
+
+
 def test_query_returns_a_binding_stub(gateway_model):
     out = _query(filters={"status": "shipped"})
     binding = out["binding"]

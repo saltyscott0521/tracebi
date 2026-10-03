@@ -390,13 +390,14 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    number the model hasn't declared? Compute it inline, no model edit:
    `measures={"margin": {"expr": "revenue - cost", "agg": "sum"}}`.
 
-2. Bind — report.json names one query per binding:
-   `{"name": "Sales", "data": {
-      "kpis":   {"model": "sales", "query": {"fact": "fact_orders",
-                 "measures": {"revenue": "sum"}}},
-      "region": {"model": "sales", "query": {"fact": "fact_orders",
-                 "measures": {"revenue": "sum"},
-                 "dimensions": ["dim_customer.region"]}}}}`
+2. Bind — `report.json` is one object. A complete minimal file:
+
+   ```json
+   __REPORT_JSON_EXAMPLE__
+   ```
+
+   __REPORT_JSON_LIBS_NOTE__ Paste each `query_model` result's `binding`
+   object as the value of `data.<name>`.
 
 3. Draw — template.html. Every number claims a binding; the runtime fills the
    `—` placeholder from the stamped bytes, so a hard-coded number is impossible:
@@ -412,6 +413,17 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    as `fetch_artifact(path=...)`. Report the verdict; only `reproduces`
    means re-run and matched.
 """
+
+
+def authoring_guide() -> str:
+    """The ``tracebi://guide`` body, with the package example filled in."""
+    from tracebi.capabilities import REPORT_JSON_EXAMPLE, REPORT_JSON_LIBS_NOTE
+    return (
+        _AUTHORING_GUIDE
+        .replace("__REPORT_JSON_EXAMPLE__",
+                 json.dumps(REPORT_JSON_EXAMPLE, indent=2))
+        .replace("__REPORT_JSON_LIBS_NOTE__", REPORT_JSON_LIBS_NOTE)
+    )
 
 
 # ── Structured output schemas ───────────────────────────────────────────────
@@ -1543,7 +1555,7 @@ def build_server(token: Optional[str] = None):
         "tracebi://guide", name="TraceBi authoring guide",
         mime_type="text/markdown",
         description="How to work with this gateway: the loop, the two planes, the rules.",
-    )(lambda: _AUTHORING_GUIDE)
+    )(authoring_guide)
 
     @server.resource(
         "tracebi://spec-schema", name="ReportSpec JSON Schema",
