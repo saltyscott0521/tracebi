@@ -274,6 +274,8 @@ class MeasureDef:
                 d[key] = val
         if self.ratio:
             d["ratio"] = list(self.ratio)
+        if self.share:
+            d["share"] = self.share
         if self.period_end:
             d["period_end"] = list(self.period_end)
         if self.partition_by:

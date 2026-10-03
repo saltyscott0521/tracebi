@@ -295,7 +295,8 @@ front of a person should carry a receipt. This gateway is how you produce one.
 1. **get_context** — first call. Returns the whole vocabulary: models, facts,
    dimensions, named measures, the `presentation` block (the `data-tb-*`
    figure grammar, tokens, formats) and `transform_contracts`. Nothing
-   outside it validates.
+   outside it validates. A lesson body is the resource
+   `tracebi://knowledge/{slug}` (the index is `analyst_knowledge.lessons`).
 2. **query_model** — ask star-schema questions. Every result is *stamped*: the
    resolved query, the lineage chain, and a SHA-256 fingerprint of the full
    result. Cite the fingerprint with any number you quote. The response's
@@ -385,19 +386,23 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    number the model hasn't declared? Compute it inline, no model edit:
    `measures={"margin": {"expr": "revenue - cost", "agg": "sum"}}`.
 
-2. Bind — report.json names one query per binding:
-   `{"name": "Sales", "data": {
-      "kpis":   {"model": "sales", "query": {"fact": "fact_orders",
-                 "measures": {"revenue": "sum"}}},
-      "region": {"model": "sales", "query": {"fact": "fact_orders",
-                 "measures": {"revenue": "sum"},
-                 "dimensions": ["dim_customer.region"]}}}}`
+2. Bind — `report.json` is one object. A complete minimal file:
+
+   ```json
+   __REPORT_JSON_EXAMPLE__
+   ```
+
+   __REPORT_JSON_LIBS_NOTE__ Paste each `query_model` result's `binding`
+   object as the value of `data.<name>`.
 
 3. Draw — template.html. Every number claims a binding; the runtime fills the
    `—` placeholder from the stamped bytes, so a hard-coded number is impossible:
    `<span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
    data-tb-format="currency0">—</span>` and
    `<table data-tb-figure="table" data-tb-binding="region"></table>`.
+   A value figure needs a one-row binding: its own query with no
+   dimensions (the `kpis` binding above), or `order_by` plus `limit` 1.
+   The cell may be text, such as the top sector's name.
    A number with no query behind it is honest only as `data-tb-unverified` —
    never a value figure with the number typed in.
 
@@ -407,6 +412,17 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    as `fetch_artifact(path=...)`. Report the verdict; only `reproduces`
    means re-run and matched.
 """
+
+
+def authoring_guide() -> str:
+    """The ``tracebi://guide`` body, with the package example filled in."""
+    from tracebi.capabilities import REPORT_JSON_EXAMPLE, REPORT_JSON_LIBS_NOTE
+    return (
+        _AUTHORING_GUIDE
+        .replace("__REPORT_JSON_EXAMPLE__",
+                 json.dumps(REPORT_JSON_EXAMPLE, indent=2))
+        .replace("__REPORT_JSON_LIBS_NOTE__", REPORT_JSON_LIBS_NOTE)
+    )
 
 
 # ── Structured output schemas ───────────────────────────────────────────────
@@ -487,6 +503,7 @@ class QueryResult(TypedDict, total=False):
     lineage: Any
     actor: Optional[str]
     binding: Optional[dict[str, Any]]
+    order_by_note: Optional[str]
 
 
 class ValidateResult(TypedDict, total=False):
@@ -867,7 +884,9 @@ def gateway_query(
         return {"ok": False, "errors": [str(exc)]}
     df = ds.to_pandas()
     # Echo the STAMPED resolved spec (fully resolved ordering included), so
-    # what the agent cites is what replay compares against.
+    # what the agent cites is what replay compares against. The extra
+    # tie-break keys stay in that spec: stripping them would make the
+    # paste-ready binding disagree with the receipt verify re-runs.
     stamped = spec.to_dict()
     for node in ds.lineage_to_dict():
         qs = (node.get("metadata") or {}).get("query_spec")
@@ -892,6 +911,14 @@ def gateway_query(
     # drop it with include_lineage=false and re-query when it needs the chain.
     if include_lineage:
         result["lineage"] = ds.lineage_to_dict()
+    resolved_order = stamped.get("order_by") or []
+    if len(resolved_order) > len(spec.order_by):
+        result["order_by_note"] = (
+            "The gateway appends the remaining result columns, dimension "
+            "columns first, as ascending tie-breakers so the order is "
+            "deterministic. They were not in the order_by you passed. The "
+            "receipt records them so a replay matches; paste binding as-is."
+        )
     return result
 
 
@@ -1354,14 +1381,16 @@ def build_server(token: Optional[str] = None):
             "html_path and manifest_path — pass that manifest_path the same "
             "way. Only 'reproduces' means the numbers matched. Column names "
             "come from describe_table. Lessons are get_context's "
-            "analyst_knowledge.lessons. A file that failed to load is under "
+            "analyst_knowledge.lessons; a lesson body is the "
+            "tracebi://knowledge/{slug} resource. A file that failed to load is under "
             "list_models (skipped) or list_reports. Under "
             "tracebi dev, read workbench_state first — the "
             "person's pins come before anything else — and resolve_pin each "
             "one you act on. Without file access, or for a fixed layout, a "
             "JSON ReportSpec is the simpler lane: validate_report_spec, then "
             "render_report_spec. Resources: tracebi://guide (how to author), "
-            "tracebi://spec-schema, tracebi://models/{name}. Prompts: "
+            "tracebi://spec-schema, tracebi://models/{name}, "
+            "tracebi://knowledge/{slug}. Prompts: "
             "author_report, answer_question, address_pins."
         ),
     )
@@ -1452,7 +1481,11 @@ def build_server(token: Optional[str] = None):
             "'dim_name.attribute' references; filters accept equality, "
             "lists (IN) and operator dicts (gte, between, contains, ...); "
             "order_by ({column, desc} or '-col') sorts the result and "
-            "limit (requires order_by) keeps the top N. preview_rows caps "
+            "limit (requires order_by) keeps the top N. When order_by is "
+            "set, the resolved query and binding also list ascending "
+            "tie-breakers on the remaining result columns (dimensions "
+            "first) so the order is deterministic; order_by_note says so. "
+            "preview_rows caps "
             "only the transport. Returns rows plus a stamp: the resolved "
             "query, lineage chain, and a fingerprint of the full result. "
             "Quote the fingerprint with any number you cite. The "
@@ -1579,7 +1612,7 @@ def build_server(token: Optional[str] = None):
         "tracebi://guide", name="TraceBi authoring guide",
         mime_type="text/markdown",
         description="How to work with this gateway: the loop, the two planes, the rules.",
-    )(lambda: _AUTHORING_GUIDE)
+    )(authoring_guide)
 
     @server.resource(
         "tracebi://spec-schema", name="ReportSpec JSON Schema",
@@ -1597,6 +1630,28 @@ def build_server(token: Optional[str] = None):
     )
     def _model_resource(name: str) -> str:
         return json.dumps(_get_model(name).info(), indent=2, default=str)
+
+    @server.resource(
+        "tracebi://knowledge/{slug}", name="Analyst lesson",
+        mime_type="text/markdown",
+        description=(
+            "One analyst-knowledge lesson body, the same text as "
+            "`tracebi knowledge <slug>`. Slugs are get_context's "
+            "analyst_knowledge.lessons."
+        ),
+    )
+    def _knowledge_resource(slug: str) -> str:
+        from mcp.shared.exceptions import MCPError
+        from mcp.types import INVALID_PARAMS
+        from tracebi.knowledge import get_lesson
+        lesson = get_lesson(slug)
+        if lesson is None:
+            raise MCPError(
+                INVALID_PARAMS,
+                f"No lesson '{slug}'. Lessons are listed in get_context "
+                f"under analyst_knowledge.lessons.",
+            )
+        return f"# {lesson.title}\n\n{lesson.body}\n"
 
     # Prompts — the authoring SOP and its two neighbours as executable
     # templates.

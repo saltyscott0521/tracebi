@@ -60,7 +60,10 @@ whose figures each name a binding from `report.json`:
 
 - `data-tb-figure="value|chart|table|custom"` + `data-tb-binding="<name>"` —
   the claim. Values add `data-tb-cell="<column>"` and optionally
-  `data-tb-format` (`compact`, `currency`, `comma`, `percent`, …). Charts add
+  `data-tb-format` (`compact`, `currency`, `comma`, `percent`, …). A value
+  figure needs a one-row binding: its own query with no dimensions, or
+  `order_by` plus `limit` 1. The cell may be text, such as the top
+  sector's name. Charts add
   `data-tb-type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`),
   `data-tb-x`, `data-tb-y` (comma-list for multi-series), optional
   `data-tb-color` and `data-tb-value-format`. Tables optionally add
@@ -84,12 +87,15 @@ whose figures each name a binding from `report.json`:
   `template.html` with `{{ figure("total") }}`. You keep the whole layout,
   stylesheet and script; the emitted element is byte-identical to what a
   spec would compile, so the grammar above never has to be hand-written.
-  The name becomes the id (`fig-<name>`). Kinds: `value` (needs `cell`),
+  The name becomes the id (`fig-<name>`). Kinds: `value` (needs `cell`
+  and a one-row binding),
   `chart` (`chart_type`/`x`/`y`/`color`/`palette`), `table`
   (`columns`/`style`); a `custom` figure has no framework markup, so draw
   that one yourself. It refuses the silent failures — an undeclared binding
   fails at load, and a figure declared but never placed (or placed twice)
-  fails the build. Hand-written figures still work; this is sugar.
+  fails the build. Hand-written figures still work; this is sugar. `libs`
+  is optional. The build inlines ECharts automatically when the page
+  contains a chart figure.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the
@@ -209,6 +215,10 @@ report unless asked; `address_pins(report)` reads `workbench_state`, acts
 on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
 `resolve_pin`s each with a one-line note.
 
+Resources: `tracebi://guide` (how to author), `tracebi://spec-schema`,
+`tracebi://models/{name}`, and `tracebi://knowledge/{slug}` (one lesson
+body, the same text as `tracebi knowledge <slug>`).
+
 ### The dev iteration, step by step
 
 0. **Discovery comes first — and it has a live surface.** Before any report
@@ -318,7 +328,8 @@ you tell a human a report is done.
    `models/sample_model.py`, `reports/sample_dashboard/`. They are a complete
    working example of the loop, receipt included.
 3. Run `tracebi knowledge` — the analyst good-practice lessons. Read the one
-   whose *when* matches your decision (`tracebi knowledge <slug>`) before
+   whose *when* matches your decision (`tracebi knowledge <slug>`, or over
+   the gateway `tracebi://knowledge/{slug}`) before
    choosing a measure or grain: a rate is a ratio of totals not a mean of
    ratios, a "weighted" average needs a weight, pick the grain first. Doing the
    analysis *right* is the job; these catch the confident-but-wrong number.

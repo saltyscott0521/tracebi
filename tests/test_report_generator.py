@@ -694,6 +694,98 @@ class TestChartLibraries:
         with pytest.raises(ValueError, match="libs"):
             TemplatePackage(str(pkg))
 
+    _CHART_DATA = {
+        "by_region": {
+            "model": "kernel_model",
+            "query": {
+                "fact": "fact_orders",
+                "measures": ["revenue"],
+                "dimensions": ["dim_customer.region"],
+            },
+        },
+    }
+    _CHART_FIGURES = {
+        "by_region": {
+            "kind": "chart", "binding": "by_region", "chart_type": "bar",
+            "x": "dim_customer.region", "y": "revenue",
+        },
+    }
+
+    def _render_chart(self, tmp_path, model, *, libs=None, template=None,
+                      figures=None, dirname="charted"):
+        from tracebi.reports.embed import read_lib
+
+        pkg = _write_package(
+            tmp_path, dirname=dirname, script=None, libs=libs,
+            data=self._CHART_DATA,
+            figures=self._CHART_FIGURES if figures is None else figures,
+            template=template or _doc('{{ figure("by_region") }}'),
+        )
+        out = tmp_path / f"{dirname}.html"
+        manifest = TemplatePackage(str(pkg)).render(
+            {model.name: model}, str(out))
+        return out.read_text(encoding="utf-8"), manifest, read_lib("echarts")
+
+    def test_chart_figure_inlines_echarts_without_libs(self, tmp_path, model):
+        """A chart on the page the reader gets pulls ECharts in. ``libs``
+        is optional, including a chart emitted by ``{{ figure() }}``."""
+        html, manifest, bundle = self._render_chart(tmp_path, model)
+        assert 'data-tb-figure="chart"' in html
+        assert html.count(bundle) == 1
+        assert "window.echarts" in html
+        assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
+
+    def test_hand_written_chart_inlines_echarts_without_libs(
+            self, tmp_path, model):
+        html, _manifest, bundle = self._render_chart(
+            tmp_path, model, dirname="hand", figures={},
+            template=_doc(
+                '<div data-tb-figure="chart" data-tb-binding="by_region" '
+                'data-tb-type="bar" data-tb-x="dim_customer.region" '
+                'data-tb-y="revenue" id="by-region"></div>'),
+        )
+        assert html.count(bundle) == 1
+        assert "window.echarts" in html
+
+    def test_page_without_a_chart_omits_echarts(self, tmp_path, model):
+        from tracebi.reports.embed import read_lib
+
+        pkg = _write_package(tmp_path, dirname="plain")
+        out = tmp_path / "plain.html"
+        TemplatePackage(str(pkg)).render({model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert read_lib("echarts") not in html
+        assert "Apache ECharts" not in html
+
+    def test_explicit_echarts_is_inlined_once(self, tmp_path, model):
+        html, _manifest, bundle = self._render_chart(
+            tmp_path, model, libs=["echarts"], dirname="listed")
+        assert html.count(bundle) == 1
+        assert "window.echarts" in html
+
+    def test_exploration_chart_draws_in_dev_and_not_in_the_final_build(
+            self, tmp_path, model):
+        """A final build decides after exploration is stripped. Dev keeps
+        the block, so a chart that lives only there still draws."""
+        from tracebi.reports.embed import read_lib
+
+        bundle = read_lib("echarts")
+        pkg = _write_package(
+            tmp_path, dirname="explore_chart", script=None,
+            data=self._CHART_DATA, figures=self._CHART_FIGURES,
+            template=_doc(
+                '<div data-tb-stage="exploration">'
+                '{{ figure("by_region") }}</div>'),
+        )
+        package = TemplatePackage(str(pkg))
+        out = tmp_path / "explore_chart.html"
+        package.render({model.name: model}, str(out))
+        final = out.read_text(encoding="utf-8")
+        assert bundle not in final
+        dev, _inputs, _outputs = package.render_exploration(
+            {model.name: model})
+        assert dev.count(bundle) == 1
+
     def test_data_embedded_as_safe_json_with_triple(self, tmp_path, model):
         pkg = _write_package(tmp_path)
         out = tmp_path / "out.html"

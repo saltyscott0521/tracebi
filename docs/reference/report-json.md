@@ -93,9 +93,14 @@ Charting libraries to inline into the self-contained file. Currently only
 "libs": ["echarts"]
 ```
 
-**A package with charts must opt in**, or every chart panel renders
-permanently blank. A data-only report omits it and ships smaller. An unknown
-value is refused at load.
+`libs` is optional. The build inlines ECharts automatically when the page
+contains a chart figure — a hand-written `data-tb-figure="chart"`, a
+`{{ figure("…") }}` chart, or a chart compiled from a spec — and leaves it
+out when the page has no chart figure, so a data-only report stays small.
+A final build decides from the page after exploration blocks are stripped;
+`tracebi dev` and a snapshot include ECharts when that rendered page has a
+chart. Listing `"echarts"` still inlines it once. An unknown value is
+refused at load.
 
 ### `schedule` — object, optional
 

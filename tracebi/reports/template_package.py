@@ -381,9 +381,10 @@ class TemplatePackage:
             STYLE_CSS)
         self.script_js = _read_optional(os.path.join(directory, SCRIPT_JS))
 
-        # Charting libraries to inline into the self-contained file (offline, no
-        # CDN). ``"echarts"`` is the default engine; a package opts in per report
-        # so a data-only report stays small. Unknown libs fail loudly.
+        # Charting libraries the package names. Unknown names fail loudly.
+        # ``echarts`` is also inlined at inject time when the page the reader
+        # gets contains a chart figure and this list omitted it — see
+        # ``_libs_for_page``. A page with no chart figure stays without it.
         libs = declaration.get("libs", [])
         if not isinstance(libs, list) or any(lib not in KNOWN_LIBS for lib in libs):
             raise ValueError(
@@ -794,9 +795,9 @@ class TemplatePackage:
         """A static SVG of the chart, tagged ``.tb-chart-fallback``, so a no-JS
         reader sees a picture of it. The runtime removes the fallback and draws
         the interactive ECharts version over the same (min-height:320px)
-        container. Axis ticks in the fallback are unformatted (data-tb-value-
-        format is not threaded into to_svg) — the JS replaces it, so this is a
-        no-JS cosmetic only.
+        container. Axis ticks and labels use the figure's data-tb-value-format
+        (the same named formats as the runtime; percent multiplies by 100 for
+        display only).
         """
         import dataclasses
         import types
@@ -827,6 +828,7 @@ class TemplatePackage:
             names = {}
         spec = dataclasses.replace(
             spec, xlabel="", ylabel="",
+            value_format=a.get("data-tb-value-format") or "",
             series=tuple(names.get(s, s) for s in spec.series),
             rows=tuple({names.get(k, k): v for k, v in r.items()}
                        for r in spec.rows))
@@ -1350,6 +1352,32 @@ class TemplatePackage:
             return page
         return page.replace("connect-src 'none'", "connect-src 'self'", 1)
 
+    def _libs_for_page(self, page: str) -> list:
+        """Declared ``libs``, plus ECharts when *page* contains a chart figure.
+
+        *page* is the one the reader gets: ``{{ figure() }}`` already
+        expanded, and exploration already stripped on a final build. Dev
+        and snapshot pass the page with exploration kept, so a chart there
+        draws too. An explicit ``echarts`` entry is inlined once.
+        """
+        from tracebi.reports.figures import FigureError, extract_figures
+
+        libs: list[str] = []
+        seen: set[str] = set()
+        for lib in self.libs:
+            if lib not in seen:
+                libs.append(lib)
+                seen.add(lib)
+        if "echarts" in seen:
+            return libs
+        try:
+            has_chart = any(fig.kind == "chart" for fig in extract_figures(page))
+        except FigureError:
+            has_chart = False
+        if has_chart:
+            libs.append("echarts")
+        return libs
+
     def _inject(self, page: str, data_blocks: str, stage: Optional[str] = None,
                 figures_cfg: Optional[dict] = None,
                 extra_blocks_html: str = "") -> str:
@@ -1373,7 +1401,7 @@ class TemplatePackage:
 
         return apply_stack(
             page,
-            libs=self.libs,
+            libs=self._libs_for_page(page),
             # *data_blocks* arrives pre-built (the final build passes its
             # EmbedPlan's blocks so the manifest hashes the SAME bytes; the
             # dev snapshot builds blocks directly — it writes no manifest).

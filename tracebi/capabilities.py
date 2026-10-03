@@ -179,6 +179,53 @@ def _dataset_verbs() -> list[dict]:
     return out
 
 
+REPORT_JSON_EXAMPLE = {
+    "name": "Sales by region",
+    "libs": ["echarts"],
+    "data": {
+        "kpis": {
+            "model": "sales",
+            "query": {
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+            },
+        },
+        "region": {
+            "model": "sales",
+            "query": {
+                "fact": "fact_orders",
+                "measures": {"revenue": "sum"},
+                "dimensions": ["dim_customer.region"],
+                "order_by": ["-revenue"],
+            },
+        },
+    },
+    "figures": {
+        "total": {
+            "kind": "value",
+            "binding": "kpis",
+            "cell": "revenue",
+            "label": "Revenue",
+            "format": "currency",
+        },
+        "by_region": {
+            "kind": "chart",
+            "binding": "region",
+            "chart_type": "bar",
+            "x": "dim_customer.region",
+            "y": "revenue",
+        },
+    },
+}
+
+REPORT_JSON_LIBS_NOTE = (
+    "libs is optional. The build inlines ECharts automatically when the "
+    "page contains a chart figure, and leaves it out when the page has no "
+    "chart figure. Listing \"echarts\" still inlines it once. Any other "
+    "name is refused when the package loads."
+)
+
+
 def _presentation() -> dict:
     """
     The presentation system as data (architecture v2 §2.4): the stack, the
@@ -194,6 +241,10 @@ def _presentation() -> dict:
         ],
         "rule": "Later layers win. Override tokens, don't fork the sheet. "
                 "Presentation never changes a number.",
+        "report_json": {
+            "example": REPORT_JSON_EXAMPLE,
+            "libs": REPORT_JSON_LIBS_NOTE,
+        },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
             "--tb-rule", "--tb-radius", "--tb-space-1..4",
@@ -226,9 +277,14 @@ def _presentation() -> dict:
                               "sentence works, so prose numbers can be live "
                               "figures instead of typed-in text",
             "data-tb-binding": "which stamped binding feeds this element",
-            "data-tb-cell": "value figures: the column to read (row 0). The "
-                            "hydrator fills a .tb-kpi-value child when one "
-                            "exists, else the element itself",
+            "data-tb-cell": "value figures: the column of a one-row "
+                            "binding to read. Give that binding its own "
+                            "query with no dimensions, or order_by plus "
+                            "limit 1; the build refuses any other row "
+                            "count. A text cell, such as the top sector's "
+                            "name, is shown as text. The hydrator fills a "
+                            ".tb-kpi-value child when one exists, else the "
+                            "element itself",
             "data-tb-format": "value figures: compact | comma | currency | "
                               "currency0 | percent | decimal. Omitted, a "
                               "numeric cell takes the model's declared "
@@ -297,7 +353,8 @@ def _presentation() -> dict:
                            "\"binding\": \"totals\", \"cell\": \"revenue\", "
                            "\"label\": \"Revenue\", \"format\": "
                            "\"currency\"}}",
-            "kinds": "value (needs 'cell') | chart (chart_type, x, y, color, "
+            "kinds": "value (needs 'cell' and a one-row binding) | chart "
+                     "(chart_type, x, y, color, "
                      "palette, value_format) | table (columns, style, labels, formats — "
                      "labels/formats are {column: text} objects). A 'custom' figure "
                      "has no framework markup — draw it in script.js and "
@@ -698,8 +755,8 @@ def _analyst_knowledge() -> dict:
     to pull a lesson in full. Present in BOTH tiers, brief included — teaching an
     agent to reach for the right lesson is exactly what the lean loop needs, and
     the index is small. The bodies live in ``tracebi/knowledge/lessons`` and are
-    fetched on demand (``tracebi knowledge <slug>``), so this never bloats the
-    payload."""
+    fetched on demand (``tracebi://knowledge/{slug}``, the same text as
+    ``tracebi knowledge <slug>``), so this never bloats the payload."""
     from tracebi.knowledge import index
 
     return {
@@ -708,9 +765,10 @@ def _analyst_knowledge() -> dict:
                 "page a reader understands at a glance. Reach for the one whose "
                 "'when' matches the decision you are making.",
         "fetch": "The lesson index (slug, title, when) is already in this "
-                 "payload under lessons. There is no separate gateway call "
-                 "for a lesson body. tracebi knowledge <slug>  (or the "
-                 "tracebi-analyst / tracebi-designer skills)",
+                 "payload under lessons. Read a body at "
+                 "tracebi://knowledge/{slug} — the same text as "
+                 "tracebi knowledge <slug> (or the tracebi-analyst / "
+                 "tracebi-designer skills).",
         "lessons": index(),
     }
 

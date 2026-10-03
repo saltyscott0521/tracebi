@@ -348,6 +348,50 @@ class TestServerSideRender:
         assert "tb-axis-label" not in inner
         assert 'data-tb-slot="1"' in inner
 
+    def test_percent_bar_fallback_formats_axis_and_tooltip(self, tmp_path):
+        import re
+        model = DataModel("pct").add_connector(MemoryConnector("m", tables={
+            "orders": pd.DataFrame({"order_id": [1, 2], "customer_id": [1, 2],
+                                    "share": [0.26, 0.10]}),
+            "customers": pd.DataFrame({"customer_id": [1, 2],
+                                       "region": ["NE", "SE"]}),
+        }))
+        model.add_table("orders", connector="m", source="orders")
+        model.add_table("customers", connector="m", source="customers")
+        model.add_dimension("dim_customer", table_name="customers",
+                            key_col="customer_id", attributes=["region"])
+        model.add_fact("fact_orders", table_name="orders", measures=["share"],
+                       foreign_keys={"dim_customer": "customer_id"})
+        model.add_measure("share", column="share", agg="sum", format="percent")
+        model.connect()
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({
+            "name": "P",
+            "data": {"shares": {"model": "pct", "query": {
+                "fact": "fact_orders", "measures": ["share"],
+                "dimensions": ["dim_customer.region"],
+            }}},
+        }), encoding="utf-8")
+        (pkg / "template.html").write_text(
+            "<!doctype html><html><head><title>t</title></head><body>"
+            '<div data-tb-figure="chart" data-tb-binding="shares" '
+            'data-tb-type="bar" data-tb-x="dim_customer.region" '
+            'data-tb-y="share" data-tb-value-format="percent" '
+            'id="fig-share"></div></body></html>',
+            encoding="utf-8",
+        )
+        out = tmp_path / "p.html"
+        TemplatePackage(str(pkg)).render({"pct": model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        svg = re.search(r'class="tb-chart-fallback.*?</svg>', html, re.S)
+        assert svg, "the no-JS fallback must be in the page"
+        picture = svg.group(0)
+        assert "26.0%" in picture
+        assert "0.26" not in picture
+        ticks = re.findall(r'class="tb-tick"[^>]*>([^<]*)', picture)
+        assert ticks and all(t.endswith("%") for t in ticks)
+
     def test_chart_ssr_leaves_the_embedded_data_intact(self, tmp_path):
         from tracebi.verify import verify_file, FILE_INTACT
         html, manifest = self._render_chart(tmp_path)

@@ -106,7 +106,7 @@ trust, resolved once, fingerprinted, and recorded in the receipt.</p>
 </code></pre>
 <p>Note <code>totals</code> has <strong>no dimensions</strong> — it returns one row. A KPI needs a one-row
 binding; a value figure over a multi-row binding is refused.</p>
-<p><code>"libs": ["echarts"]</code> is required for charts, or the panel renders blank.</p>
+<p><code>"libs": ["echarts"]</code> is optional. The build inlines ECharts automatically when the page contains a chart figure.</p>
 <p>→ <a href="../reference/report-json.html">report.json</a> · <a href="../reference/queries.html">Queries</a></p>
 <h2 id="3-declare-the-figures">3. Declare the figures</h2>
 <p>Add a <code>figures</code> block and let the framework build the markup:</p>
@@ -213,8 +213,8 @@ bindings. Exits 1 on any binding error, so CI can gate on it.</p>
 <td>declare a second figure; one id addresses one number</td>
 </tr>
 <tr>
-<td>chart renders blank</td>
-<td>add <code>"libs": ["echarts"]</code></td>
+<td>chart panel stays blank</td>
+<td>the build inlines ECharts when the page has a chart figure; check <code>data-tb-x</code> and <code>data-tb-y</code></td>
 </tr>
 <tr>
 <td><em>limit without order_by is refused</em></td>

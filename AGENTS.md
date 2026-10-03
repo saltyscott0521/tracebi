@@ -113,7 +113,9 @@ view. Tables past 500 rows render only the visible rows; printing and download s
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
 `presentation` block, including `presentation.layout` — the page structures
-you pick by name instead of inventing one.
+you pick by name instead of inventing one. A value figure needs a one-row
+binding: its own query with no dimensions, or `order_by` plus `limit` 1.
+The cell may be text, such as the top sector's name.
 
 **Pick a structure by name.** `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
 writes that skeleton (omit the flag for `dashboard`, which is also what
@@ -143,12 +145,13 @@ not obvious.
 The emitted element is byte-identical to what a spec would compile, so you
 keep the whole layout, stylesheet and script while never hand-writing the
 grammar. The declared name becomes the figure id (`fig-<name>`). Kinds:
-`value` (needs `cell`), `chart` (`chart_type`/`x`/`y`/`color`/`palette`),
+`value` (needs `cell` and a one-row binding), `chart` (`chart_type`/`x`/`y`/`color`/`palette`),
 `table` (`columns`/`style`) — a `custom` figure has no framework markup, so
 draw and mark that one yourself. It refuses the silent failures: a figure
 naming an undeclared binding fails at load, and a figure declared but never
 placed — or placed twice — fails the build. Hand-written figures still work
-everywhere; this is sugar, not a replacement.
+everywhere; this is sugar, not a replacement. `libs` is optional. The build
+inlines ECharts automatically when the page contains a chart figure.
 
 **Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
 (`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for two
@@ -300,8 +303,8 @@ making is one command away:
 - `tracebi knowledge` — list the lessons (each with a *when* to reach for it).
 - `tracebi knowledge <slug>` — read one in full; the same set rides in
   `tracebi context` under `analyst_knowledge`. Over the gateway that index
-  is `get_context`'s `analyst_knowledge.lessons` (there is no separate tool
-  for a lesson body).
+  is `get_context`'s `analyst_knowledge.lessons`, and the body is the
+  `tracebi://knowledge/{slug}` resource (not an extra tool).
 
 The ones you will use constantly: **ratio-of-totals** (a rate is a ratio of
 summed totals, never a mean of per-row ratios — `agg="mean"` on a rate is almost
@@ -427,6 +430,9 @@ into context rather than guessing:
 - `tracebi://spec-schema` — the ReportSpec JSON Schema. Read it before writing
   a spec instead of guessing the grammar.
 - `tracebi://models/{name}` — one model's full schema as a document.
+- `tracebi://knowledge/{slug}` — one lesson body, the same text as
+  `tracebi knowledge <slug>`. Slugs are `get_context`'s
+  `analyst_knowledge.lessons`.
 
 And three **prompts**, the fastest way to start correctly:
 

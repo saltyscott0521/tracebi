@@ -129,7 +129,8 @@ multi-row binding fails the build.</p>
 <p><code>data-tb-type</code> (<code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>),
 <code>data-tb-x</code>, <code>data-tb-y</code> (comma-list for multi-series), <code>data-tb-color</code>,
 and <code>data-tb-value-format</code> for labels, axes and tooltips.</p>
-<p>Requires <code>"libs": ["echarts"]</code> in <a href="../reference/report-json.html">report.json</a>.</p>
+<p>The build inlines ECharts automatically when the page contains a chart
+figure. <code>"libs"</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
 <h3 id="table-figures">Table figures</h3>
 <p><code>data-tb-columns</code> — a column allowlist and order. Classes
 <code>tb-table--striped</code> / <code>tb-table--compact</code> restyle it, and <code>tb-table--freeze</code>
