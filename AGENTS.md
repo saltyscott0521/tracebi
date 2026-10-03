@@ -273,7 +273,9 @@ making is one command away:
 
 - `tracebi knowledge` — list the lessons (each with a *when* to reach for it).
 - `tracebi knowledge <slug>` — read one in full; the same set rides in
-  `tracebi context` under `analyst_knowledge`.
+  `tracebi context` under `analyst_knowledge`. Over the gateway that index
+  is `get_context`'s `analyst_knowledge.lessons` (there is no separate tool
+  for a lesson body).
 
 The ones you will use constantly: **ratio-of-totals** (a rate is a ratio of
 summed totals, never a mean of per-row ratios — `agg="mean"` on a rate is almost

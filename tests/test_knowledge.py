@@ -50,6 +50,12 @@ def test_the_curriculum_is_delivered_in_context_both_tiers():
         assert got == {ls.slug for ls in list_lessons()}, (
             f"context curriculum out of sync with the lessons (brief={brief})")
         assert "tracebi knowledge" in block["fetch"]
+        assert block["fetch"].index("lessons") < block["fetch"].index(
+            "tracebi knowledge")
+        rules = " ".join(payload["conventions"]["rules"])
+        assert rules.index("list_models") < rules.index("tracebi validate")
+        assert "list_reports" in rules
+        assert payload["warehouse"]["when"].startswith("Call describe_table")
 
 
 def test_context_index_matches_the_files():

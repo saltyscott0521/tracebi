@@ -650,6 +650,9 @@ class TestMcp2Features:
         assert "verify_manifest(manifest=...)" in text
         assert "fetch_artifact(path=...)" in text
         assert "output_path" in text
+        assert "describe_table" in text
+        assert "analyst_knowledge.lessons" in text
+        assert "list_models" in text
 
     def test_tool_descriptions_name_the_argument_that_feeds_the_next_call(
             self, gateway_model):
