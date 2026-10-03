@@ -217,7 +217,8 @@ it names a fallback but leaves enforcement off. It switches enforcement on
 only alongside <code>TRACEBI_AUTH_ROLE_HEADER</code>.</p>
 </blockquote>
 <p>Roles: <code>viewer</code> (read, and run queries that persist nothing) → <code>analyst</code>
-(+ execute reports) → <code>admin</code> (+ run pipeline layers, which write).</p>
+(+ execute reports) → <code>admin</code> (+ run pipeline layers, which write, and keep
+a selection cut, which writes the published report).</p>
 <h2 id="delivery">Delivery</h2>
 <table>
 <thead>

@@ -58,7 +58,8 @@ _EXEMPT_PATHS = ("/api/health",)
 #            queries — analytical reads that write nothing.
 #   analyst  viewer, plus executing report and request code.
 #   admin    analyst, plus running pipeline layers, which write to the
-#            warehouse, and dev-mode reload.
+#            warehouse, dev-mode reload, and keeping a selection cut,
+#            which writes the published report.json.
 
 ROLES = ("viewer", "analyst", "admin")
 _ROLE_RANK = {role: i for i, role in enumerate(ROLES)}
@@ -78,6 +79,10 @@ def _required_role(method: str, path: str) -> str:
     if method in ("GET", "HEAD", "OPTIONS"):
         return "viewer"
     if path.startswith("/api/pipelines/") or path.startswith("/api/_dev/"):
+        return "admin"
+    # Keeping a selection cut writes the published report.json. Foldered
+    # report names contain slashes, so match the suffix, not one segment.
+    if path.startswith("/api/reports/") and path.endswith("/selection/keep"):
         return "admin"
     # Explore and spec validation compute but persist nothing, so they sit
     # with the reads rather than behind an execute permission.

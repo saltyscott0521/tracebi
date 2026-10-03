@@ -230,7 +230,7 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
     from tracebi.verify import load_models, verify_manifest
 
     name = schedule["report"]
-    kind, path = _resolve_report_target(name, reports_dir)
+    kind, path = _resolve_report_target(name, reports_dir, purpose="schedule")
     if not _refresh(schedule.get("refresh") or {}, record):
         return                           # status stays FAILED, error says why
     output = output_dir / f"{name}.html"

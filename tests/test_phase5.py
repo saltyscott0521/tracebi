@@ -2550,6 +2550,25 @@ class TestAuthorization:
         assert _required_role("POST", "/api/pipelines/p/layers/l/run") == "admin"
         assert _required_role("POST", "/api/_dev/reload") == "admin"
 
+    def test_keeping_a_selection_cut_requires_admin(self, monkeypatch):
+        # Keep writes the published report.json. Recomputing a selection
+        # persists nothing and stays at analyst. Foldered names contain
+        # slashes, so the path is not a single segment.
+        authz = self._authorizer(
+            monkeypatch, TRACEBI_AUTH_ROLE_MAP="bob:analyst,alice:admin",
+        )
+        assert authz.enabled is True
+        for path in (
+            "/api/reports/weekly/selection/keep",
+            "/api/reports/a/b/selection/keep",
+        ):
+            denied = authz.check(self._request(path, "POST"), "bob")
+            assert denied is not None and denied.status_code == 403
+            assert authz.check(self._request(path, "POST"), "alice") is None
+        assert authz.check(
+            self._request("/api/reports/weekly/selection", "POST"), "bob",
+        ) is None
+
     def test_explore_and_validate_are_reads(self):
         # They compute but persist nothing, so they sit with the reads.
         from tracebi.web.api.auth import _required_role

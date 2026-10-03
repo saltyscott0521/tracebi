@@ -4,3 +4,4 @@
   most gateway replies; now they don't. A field the tool left unset was sent
   as null, and the schema said that field was a string, number, or list, so a
   successful query, build, verify, or workbench read looked like a failure.
+- An expected tool failure now reaches the client as its one-line message, on mcp 2.0 and 2.3 alike; a plain exception was masked to "Error executing tool <name>".
