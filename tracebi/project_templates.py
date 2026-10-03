@@ -17,12 +17,15 @@ from pathlib import Path
 # Public name → bundle directory under ``_scaffold/templates/``.
 _BUNDLES: dict[str, str] = {
     "saas-metrics": "saas_metrics",
+    "sales-pipeline": "sales_pipeline",
 }
 
 # Accepted spellings → public name.
 _ALIASES: dict[str, str] = {
     "saas-metrics": "saas-metrics",
     "saas_metrics": "saas-metrics",
+    "sales-pipeline": "sales-pipeline",
+    "sales_pipeline": "sales-pipeline",
 }
 
 _CATALOG: list[dict] = [
@@ -43,6 +46,26 @@ _CATALOG: list[dict] = [
         "next": (
             "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb, "
             "then re-point models/saas_model.py at your tables."
+        ),
+    },
+    {
+        "name": "sales-pipeline",
+        "aliases": ["sales_pipeline"],
+        "summary": (
+            "Opportunities by stage, rep, and region: open pipeline "
+            "value, and win rate as won deals over closed deals (a ratio "
+            "of totals)."
+        ),
+        "model": "sales_pipeline_model",
+        "reports": [
+            "sales_pipeline_model/pipeline_dashboard",
+            "sales_pipeline_model/rep_scorecard",
+        ],
+        "sample": "inputs/opportunities.csv",
+        "transform": "transforms/sales_pipeline_transform.py",
+        "next": (
+            "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb, "
+            "then re-point models/sales_pipeline_model.py at your tables."
         ),
     },
 ]
@@ -116,7 +139,7 @@ before you have a warehouse.
    `models/_connections/<name>.py`.
 2. Re-point `models/{entry["model"]}.py` at those tables (the connector
    and the `source=` names). Or draft a fresh model with
-   `tracebi new-model "SaaS" --from <name> --tables ...` and edit every
+   `tracebi new-model "<Name>" --from <name> --tables ...` and edit every
    line marked `# DRAFT: review` before a report depends on it.
 
 ## Run the sample loop

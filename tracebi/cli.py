@@ -2581,8 +2581,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="NAME",
         help="Scaffold a named starter instead of the sample dashboard. "
-             "Known: saas-metrics (also saas_metrics). Unknown names are "
-             "refused with the known list.",
+             "Known: saas-metrics (also saas_metrics), sales-pipeline "
+             "(also sales_pipeline). Unknown names are refused with the "
+             "known list.",
     )
     p_init.set_defaults(func=cmd_init)
 

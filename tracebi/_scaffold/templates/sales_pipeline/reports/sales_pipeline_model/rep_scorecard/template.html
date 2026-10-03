@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sales Rep Scorecard</title></head>
+<body>
+<main class="tb-page">
+  <header>
+    <h1>Cara Singh leads win rate</h1>
+    <p class="tb-lede">
+      <span data-tb-figure="value" data-tb-binding="top_rep"
+            data-tb-cell="dim_rep.rep" id="val-top-rep">—</span>
+      leads win rate at
+      <span data-tb-figure="value" data-tb-binding="top_rep"
+            data-tb-cell="win_rate" data-tb-format="percent"
+            id="val-top-rate">—</span>,
+      on
+      <span data-tb-figure="value" data-tb-binding="top_rep"
+            data-tb-cell="won_value" data-tb-format="currency0"
+            id="val-top-won">—</span>
+      won.
+      Open pipeline across the team is
+      <span data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="pipeline_value" data-tb-format="currency0"
+            id="val-pipeline-inline">—</span>.
+    </p>
+    <p class="tb-note">Win rate is won deals divided by closed deals, inside
+      the rep or the region. A rep with a handful of closes does not count
+      the same as one with many: the rate is a ratio of totals, not a mean
+      of per-rep rates. Open deals stay out of it.</p>
+  </header>
+
+  <div class="tb-grid">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="win_rate" data-tb-format="percent" id="kpi-win">
+      <span class="tb-kpi-label">Win rate</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">won deals / closed deals</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="pipeline_value" data-tb-format="currency0"
+         id="kpi-pipeline">
+      <span class="tb-kpi-label">Open pipeline</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">sum of open-stage amounts</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="won_value" data-tb-format="currency0" id="kpi-won">
+      <span class="tb-kpi-label">Won value</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">amount on won deals</span>
+    </div>
+  </div>
+
+  <div class="tb-tabs">
+    <section data-tb-tab="Reps">
+      <div class="tb-card">
+        <h2>Win rate by rep</h2>
+        <div data-tb-figure="chart" data-tb-binding="by_rep"
+             data-tb-type="bar" data-tb-x="dim_rep.rep"
+             data-tb-y="win_rate" data-tb-value-format="percent"
+             id="chart-by-rep"></div>
+      </div>
+      <div class="tb-card">
+        <h2>Rep scorecard</h2>
+        <p>
+          <label>Search
+            <input data-tb-search data-tb-binding="by_rep"
+                   placeholder="type to filter…"></label>
+          <label>Rep
+            <select data-tb-filter data-tb-binding="by_rep"
+                    data-tb-column="dim_rep.rep"></select></label>
+          <button data-tb-download data-tb-binding="by_rep"
+                  data-tb-label="Download CSV"></button>
+        </p>
+        <table data-tb-figure="table" data-tb-binding="by_rep" data-tb-sort
+               data-tb-columns="dim_rep.rep, pipeline_value, won_value, win_rate, closed_deals"
+               data-tb-labels="dim_rep.rep=Rep; pipeline_value=Open pipeline; won_value=Won value; win_rate=Win rate; closed_deals=Closed deals"
+               data-tb-formats="pipeline_value=currency0; won_value=currency0; win_rate=percent; closed_deals=comma"
+               data-tb-bars="pipeline_value"
+               class="tb-table--striped" id="tbl-rep"></table>
+      </div>
+    </section>
+
+    <section data-tb-tab="Regions">
+      <div class="tb-card">
+        <h2>Region scorecard</h2>
+        <p class="tb-note">Each row recomputes win rate inside that region.
+          The team rate on the cards above is not the average of these
+          rows.</p>
+        <p>
+          <button data-tb-download data-tb-binding="by_region"
+                  data-tb-label="Download CSV"></button>
+        </p>
+        <table data-tb-figure="table" data-tb-binding="by_region" data-tb-sort
+               data-tb-columns="dim_region.region, pipeline_value, won_value, win_rate, closed_deals"
+               data-tb-labels="dim_region.region=Region; pipeline_value=Open pipeline; won_value=Won value; win_rate=Win rate; closed_deals=Closed deals"
+               data-tb-formats="pipeline_value=currency0; won_value=currency0; win_rate=percent; closed_deals=comma"
+               data-tb-bars="pipeline_value"
+               class="tb-table--striped" id="tbl-region"></table>
+      </div>
+    </section>
+  </div>
+
+  <section class="tb-card" data-tb-methodology>
+    <h2>How these numbers were made</h2>
+    <p class="tb-note">The build appends the transform's stated methodology
+      below this line. The claim is that the sink satisfied its contract.</p>
+  </section>
+</main>
+</body></html>
