@@ -32,6 +32,15 @@ model (②) is a frozen contract between them. Editing a report never re-runs
 the pandas. As an agent (or analyst) you author each phase in turn: write the
 phase-① transform, declare the phase-② model, author the phase-③ report spec.
 
+## Your own data
+
+Already have tables? `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb`
+tests the warehouse, writes the secret to `.env`, and writes
+`models/_connections/<name>.py` (that file calls `load_dotenv()`; the framework
+never loads `.env`). Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
+drafts a star schema from column metadata only. Edit every line marked
+`# DRAFT: review` before a report depends on it.
+
 ## Where the trust machinery applies — and where it does not
 
 TraceBi is also a **trust layer for AI-generated analytics**: AI made producing

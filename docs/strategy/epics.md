@@ -193,10 +193,11 @@ whose scheduled report arrives by email, timed under 30 minutes.
 **Goal:** the first-report journey in [[users-and-jobs]] works on the
 builder's own database, not only the sample data.
 
-- [ ] `tracebi connect`: asks for a warehouse (Postgres, Snowflake, BigQuery,
+- [x] `tracebi connect`: asks for a warehouse (Postgres, Snowflake, BigQuery,
       DuckDB), tests it, writes the secret to `.env` and a connector to
-      `models/`.
-- [ ] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
+      `models/_connections/` (discovery only loads top-level `models/*.py`
+      that define `model`).
+- [x] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
       schema from table metadata (the column metadata `info()` already reads),
       for the builder or their agent to edit and approve. No data scanned.
 - [ ] `tracebi import dbt <path>`: reads a dbt project's `manifest.json` and
@@ -208,9 +209,10 @@ builder's own database, not only the sample data.
 - [x] The scaffolded README and `tracebi --help` lead with ask / build /
       schedule, per [[vision-and-positioning]]. Receipts become the "why you
       can trust it" line. (#161)
-- [ ] The connection `tracebi connect` writes reads its secret the way the
-      rules already require: the generated model file calls `load_dotenv()`
-      itself, and the framework still never loads `.env` implicitly.
+- [x] The connection `tracebi connect` writes reads its secret the way the
+      rules already require: `models/_connections/<name>.py` calls
+      `load_dotenv()` itself, and the framework still never loads `.env`
+      implicitly.
 
 **Done when:** timed from `pip install` to a scheduled report on a real
 Postgres, under 30 minutes, by someone who didn't write the code.

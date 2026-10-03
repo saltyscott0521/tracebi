@@ -335,6 +335,15 @@ not a lane) and `tracebi migrate spec reports/<name>.json` compiles one into
 an artifact package that shadows it. The `requests/` script lane is
 deprecated and removed in 0.8 — do not create it.
 
+## Your own data
+
+Already have tables? `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb`
+tests the warehouse, writes the secret to `.env`, and writes
+`models/_connections/<name>.py` (that file calls `load_dotenv()`; the framework
+never loads `.env`). Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
+drafts a star schema from column metadata only. Edit every line marked
+`# DRAFT: review` before a report depends on it.
+
 ## Scaffolding commands
 
 `tracebi new-transform "<Name>"` · `tracebi new-model "<Name>"` ·

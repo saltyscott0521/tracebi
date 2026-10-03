@@ -98,9 +98,31 @@ output/</code>, plus a sample transform, model and report package, <code>.gitign
   directory. Without it, an existing file is skipped with a note and the run
   still succeeds.</li>
 </ul>
+<h3 id="tracebi-connect"><code>tracebi connect</code></h3>
+<pre><code class="language-bash">tracebi connect &lt;name&gt; --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force]
+tracebi connect wh --kind postgres --url postgresql://user:pass@host/db
+tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET \
+    --warehouse WH --database DB --schema PUBLIC [--role ROLE]
+tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
+    [--credentials /path/service-account.json]
+tracebi connect wh --kind duckdb --database data/warehouse.duckdb
+</code></pre>
+<p>Tests the warehouse (unless <code>--no-test</code>), then writes the secret to <code>.env</code>
+and a connector module at <code>models/_connections/&lt;name&gt;.py</code>. The module calls
+<code>load_dotenv()</code> and builds the connector from <code>os.environ</code>. TraceBi itself
+never loads <code>.env</code>.</p>
+<p>The secret is written only to <code>.env</code> and is never printed. Other lines in
+<code>.env</code> are left as they are. An existing key, or an existing connection
+file, is refused without <code>--force</code>. Nothing is written when the test fails.</p>
+<p>Missing required flags are prompted when stdin is a terminal (a password via
+<code>getpass</code>); otherwise the command exits 2 and names the flags. <code>--dataset</code>
+is required for BigQuery because the connector takes it with no default.</p>
+<p>Discovery does not load <code>models/_connections/</code>: model discovery reads only
+top-level <code>models/*.py</code>, and a file there must define <code>model</code>.</p>
 <h3 id="tracebi-new-transform-title-new-model-new-report-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-pipeline</code></h3>
 <pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--transforms-dir DIR]
 tracebi new-model     &quot;Sales Model&quot;   [--force]
+tracebi new-model     &quot;Sales&quot; --from wh --tables fact_sales,dim_customer,dim_product
 tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
 </code></pre>
@@ -112,6 +134,14 @@ by that path everywhere after: <code>tracebi report build finance/month_end/clos
 <code>output/finance/month_end/close_pack.html</code>, and the Reports page, which groups
 reports by folder. Two folders can each hold a report of the same name.</p>
 <p>All refuse to overwrite without <code>--force</code>.</p>
+<p><code>new-model --from &lt;connection&gt; --tables a,b,c</code> drafts that file from the
+connection <code>tracebi connect</code> wrote, using column metadata only — no row
+scan. A table named <code>fact_*</code>, or one with numeric non-key columns and
+<code>*_id</code>/<code>*_key</code> columns that match another listed table's key, is drafted as
+a fact; the rest are dimensions. Relationships follow those key names, and
+each numeric non-key column on a fact becomes a <code>sum</code> measure. Every guess
+is marked <code># DRAFT: review</code> for a person or an agent to edit. <code>--tables</code> is
+required with <code>--from</code> (prompted on a terminal, otherwise exit 2).</p>
 <p><code>new-report</code> deliberately writes <strong>no</strong> <code>script.js</code> or <code>style.css</code> — the
 runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser
 and a chart is a trap. Its <code>template.html</code> teaches the grammar instead: bound

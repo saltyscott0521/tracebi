@@ -6,6 +6,7 @@ Scaffolds and drives a project through the three-phase workflow — TRANSFORM
 
     tracebi init my_project                 # scaffold a new project
     tracebi run-transform <name>            # ① run a transform → sink the warehouse
+    tracebi connect wh --kind duckdb        # point at a warehouse you already have
     tracebi new-model "Sales Model"         # ② scaffold a model over the warehouse
     tracebi report build <name>             # ③ render an artifact package + receipt
     tracebi verify <manifest>               # re-run recorded queries; classify drift
@@ -946,7 +947,15 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_connect(args: argparse.Namespace) -> int:
+    from tracebi.connect import connect_command
+    return connect_command(args)
+
+
 def cmd_new_model(args: argparse.Namespace) -> int:
+    if args.from_connection or args.tables:
+        from tracebi.connect import draft_model_command
+        return draft_model_command(args)
     models_dir: Path = args.models_dir
     models_dir.mkdir(parents=True, exist_ok=True)
 
@@ -2617,9 +2626,57 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_validate.set_defaults(func=cmd_validate)
 
-    p_new_model = sub.add_parser("new-model", help="Scaffold a new model definition.")
+    p_connect = sub.add_parser(
+        "connect",
+        help="Connect a warehouse you already have (postgres, snowflake, "
+             "bigquery, duckdb): test it, write the secret to .env, and "
+             "write a connector module.",
+    )
+    p_connect.add_argument("name", help="Connection name, a Python identifier (e.g. wh).")
+    p_connect.add_argument(
+        "--kind", choices=["postgres", "snowflake", "bigquery", "duckdb"],
+        help="Warehouse kind. Prompted when stdin is a terminal.",
+    )
+    p_connect.add_argument("--url", help="Postgres SQLAlchemy URL (postgresql://...).")
+    p_connect.add_argument("--account", help="Snowflake account identifier.")
+    p_connect.add_argument("--user", help="Snowflake user.")
+    p_connect.add_argument("--password", help="Snowflake password. Never printed.")
+    p_connect.add_argument("--warehouse", help="Snowflake warehouse.")
+    p_connect.add_argument("--database", help="Snowflake database, or DuckDB file path.")
+    p_connect.add_argument("--schema", help="Snowflake schema.")
+    p_connect.add_argument("--role", help="Snowflake role. Optional.")
+    p_connect.add_argument("--project", help="BigQuery GCP project id.")
+    p_connect.add_argument("--dataset", help="BigQuery dataset.")
+    p_connect.add_argument(
+        "--credentials",
+        help="Path to a BigQuery service-account JSON file. Optional.",
+    )
+    p_connect.add_argument(
+        "--test", action=argparse.BooleanOptionalAction, default=True,
+        help="Connect and list tables before writing anything (default). "
+             "--no-test writes without connecting.",
+    )
+    p_connect.add_argument(
+        "--force", action="store_true",
+        help="Overwrite an existing .env key or connection module.",
+    )
+    p_connect.set_defaults(func=cmd_connect)
+
+    p_new_model = sub.add_parser(
+        "new-model",
+        help="Scaffold a new model definition, or draft one from a connection.",
+    )
     p_new_model.add_argument("title", help='Free-form title, e.g. "Sales Model".')
     p_new_model.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_model.add_argument(
+        "--from", dest="from_connection", metavar="CONNECTION",
+        help="Draft the model from this `tracebi connect` connection. "
+             "Metadata only; no row scan.",
+    )
+    p_new_model.add_argument(
+        "--tables",
+        help="Comma-separated tables to draft. Required with --from.",
+    )
     p_new_model.set_defaults(func=cmd_new_model)
 
     p_list_models = sub.add_parser("list-models", help="List model definition files.")
