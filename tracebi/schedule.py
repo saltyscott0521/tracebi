@@ -39,6 +39,25 @@ alert and does not email or ping it. An alert that fails to send is
 stored on the run and does not change the run's status. A failed Slack
 ping is ``alert.slack_error`` and leaves a sent email sent.
 
+``burst`` fans that one run out into one build per filter value::
+
+    "burst": {
+      "filter": {"dim_region.region": {"in": ["EMEA", "APAC"]}},
+      "to": {"EMEA": ["emea@example.com"], "APAC": ["apac@example.com"]}
+    }
+
+``filter`` is one dimension key mapped to a list, or to ``{"in": [...]}``.
+Each value is its own build, with that filter applied on every binding
+whose model has the dimension — the same ``query_under_selection`` path a
+kept selection uses. Recipients come from ``burst.to[value]``. A value
+missing there is skipped and recorded; it is not sent to the top-level
+``to``. ``burst`` without a ``to`` object is refused when the package
+loads. Each slice is verified on its own. A refused, empty, or failed
+slice is not sent; the others still are. The run is one parent record
+whose ``slices`` list names each value, status, recipients, and output
+path. If any slice failed, came back empty, or was refused, one owner
+alert names those slices.
+
 When ``TRACEBI_SLACK_BOT_TOKEN`` and ``TRACEBI_SLACK_CHANNEL`` are both
 set, a successful send also uploads the ``.html`` and the
 ``.manifest.json`` to that channel, with a short summary: report name,
@@ -75,6 +94,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -88,10 +108,11 @@ BUILT = "built"           # built and verified; nothing to deliver, or --no-send
 REFUSED = "refused"       # built; the receipt did not verify, nothing sent
 EMPTY = "empty"           # verified, but a figure's binding had no rows; nothing sent
 FAILED = "failed"         # a refresh step failed, or the build, verify or send raised
+SKIPPED = "skipped"       # a burst value with no recipients; not built, not sent
 
 RUN_LOG = "schedule_runs.jsonl"
 
-_ALLOWED_KEYS = {"cron", "timezone", "to", "refresh", "retries", "owner"}
+_ALLOWED_KEYS = {"cron", "timezone", "to", "refresh", "retries", "owner", "burst"}
 _ALERT_STATUSES = {FAILED, REFUSED, EMPTY}
 _REFRESH_KINDS = ("transforms", "pipelines")
 _DEFAULT_RETRIES = 2
@@ -108,8 +129,8 @@ def parse_schedule_block(raw, *, path: str) -> dict:
 
     Returns ``{"cron": str, "timezone": str | None, "to": list[str],
     "refresh": {"transforms": list[str], "pipelines": list[str]},
-    "retries": int, "owner": str | None}``. ``retries`` defaults to 2.
-    ``owner`` defaults to ``None``.
+    "retries": int, "owner": str | None, "burst": dict | None}``.
+    ``retries`` defaults to 2. ``owner`` and ``burst`` default to ``None``.
     Raises ``ValueError`` naming *path* and the fix.
     """
     if not isinstance(raw, dict):
@@ -147,14 +168,7 @@ def parse_schedule_block(raw, *, path: str) -> dict:
                 f"database, `pip install tzdata`)."
             ) from None
 
-    to = raw.get("to", [])
-    if isinstance(to, str):
-        to = [a.strip() for a in to.split(",") if a.strip()]
-    if not isinstance(to, list) or any(
-            not isinstance(a, str) or "@" not in a for a in to):
-        raise ValueError(
-            f"{path}: schedule 'to' must be a list of email addresses."
-        )
+    to = _email_list(raw.get("to", []), path=path, what="'to'")
     refresh = raw.get("refresh", {})
     if not isinstance(refresh, dict) or set(refresh) - set(_REFRESH_KINDS) or any(
             not isinstance(refresh.get(k, []), list)
@@ -177,9 +191,100 @@ def parse_schedule_block(raw, *, path: str) -> dict:
         raise ValueError(
             f"{path}: schedule 'owner' must be one email address."
         )
+    burst = _parse_burst(raw["burst"], path=path) if "burst" in raw else None
     return {"cron": " ".join(cron.split()), "timezone": tz, "to": list(to),
             "refresh": {k: list(refresh.get(k, [])) for k in _REFRESH_KINDS},
-            "retries": retries, "owner": owner}
+            "retries": retries, "owner": owner, "burst": burst}
+
+
+def _email_list(raw, *, path: str, what: str) -> list[str]:
+    if isinstance(raw, str):
+        raw = [a.strip() for a in raw.split(",") if a.strip()]
+    if not isinstance(raw, list) or any(
+            not isinstance(a, str) or "@" not in a for a in raw):
+        raise ValueError(
+            f"{path}: schedule {what} must be a list of email addresses."
+        )
+    return list(raw)
+
+
+def _parse_burst(raw, *, path: str) -> dict:
+    """The ``burst`` object: one dimension filter, and who receives each value."""
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"{path}: schedule 'burst' must be an object with 'filter' and "
+            f"'to', e.g. {{\"filter\": {{\"dim_region.region\": "
+            f"{{\"in\": [\"EMEA\"]}}}}, \"to\": {{\"EMEA\": "
+            f"[\"emea@example.com\"]}}}}."
+        )
+    unknown = set(raw) - {"filter", "to"}
+    if unknown:
+        raise ValueError(
+            f"{path}: unknown burst field(s): {sorted(unknown)}. "
+            f"Allowed: filter, to."
+        )
+    if "to" not in raw:
+        raise ValueError(
+            f"{path}: schedule 'burst' needs a 'to' object mapping each "
+            f"filter value to its recipients. A value missing from 'to' is "
+            f"skipped at run time; omitting 'to' entirely is not."
+        )
+    filt = raw.get("filter")
+    if not isinstance(filt, dict) or len(filt) != 1:
+        raise ValueError(
+            f"{path}: schedule 'burst.filter' must be one dimension key "
+            f"mapped to a list or {{\"in\": [...]}} of values."
+        )
+    key, spec = next(iter(filt.items()))
+    head, dot, attr = str(key).partition(".")
+    if not isinstance(key, str) or not dot or not head or not attr:
+        raise ValueError(
+            f"{path}: schedule 'burst.filter' key must be a dimension "
+            f"reference like \"dim_region.region\"; got {key!r}."
+        )
+    values = _burst_values(spec, path)
+    to_raw = raw["to"]
+    if not isinstance(to_raw, dict):
+        raise ValueError(
+            f"{path}: schedule 'burst.to' must be an object mapping each "
+            f"filter value to a list of email addresses."
+        )
+    extra = sorted(set(to_raw) - set(values))
+    if extra:
+        raise ValueError(
+            f"{path}: schedule 'burst.to' names {extra}, which are not "
+            f"values of burst.filter ({values})."
+        )
+    to = {val: _email_list(addrs, path=path, what=f"'burst.to' for {val!r}")
+          for val, addrs in to_raw.items()}
+    return {"filter": {key: {"in": values}}, "to": to}
+
+
+def _burst_values(spec, path: str) -> list[str]:
+    if isinstance(spec, list):
+        values = list(spec)
+    elif (isinstance(spec, dict) and set(spec) == {"in"}
+          and isinstance(spec.get("in"), list)):
+        values = list(spec["in"])
+    else:
+        raise ValueError(
+            f"{path}: schedule 'burst.filter' must map its dimension to a "
+            f"list of values or {{\"in\": [\"EMEA\", \"APAC\"]}}."
+        )
+    if not values:
+        raise ValueError(
+            f"{path}: schedule 'burst.filter' needs at least one value."
+        )
+    if any(not isinstance(v, str) or not v for v in values):
+        raise ValueError(
+            f"{path}: schedule 'burst.filter' values must be non-empty strings."
+        )
+    if len(values) != len(set(values)):
+        raise ValueError(
+            f"{path}: schedule 'burst.filter' values must be unique; "
+            f"got {values}."
+        )
+    return values
 
 
 def discover_schedules(reports_dir: Union[str, Path]) -> tuple[list[dict], list[dict]]:
@@ -258,6 +363,10 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
     retried. An owner alert, when one is due, is sent after the outcome is
     known and before the record is written. It never raises.
 
+    A schedule with ``burst`` refreshes once, then repeats build → verify →
+    deliver once per filter value. One slice that fails does not stop the
+    others. The record's ``slices`` list is the per-value detail.
+
     Returns the run record (also stored in ``tracebi_runs``). Never raises for
     a failed run — the failure is the record's ``status`` and ``error``, so
     a scheduler loop survives one bad report.
@@ -312,8 +421,10 @@ def _run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
 
 def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
          models_dir, send: bool) -> None:
+    if schedule.get("burst"):
+        _run_burst(schedule, record, reports_dir, output_dir, models_dir, send)
+        return
     from tracebi.cli import _build_report_target, _resolve_report_target
-    from tracebi.verify import load_models, verify_manifest
 
     name = schedule["report"]
     kind, path = _resolve_report_target(name, reports_dir, purpose="schedule")
@@ -339,9 +450,151 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
     if not built:
         record["status"] = FAILED
         return
+    _after_build(record, output, list(schedule.get("to") or []),
+                 models_dir, send, name)
+
+
+def _run_burst(schedule: dict, record: dict, reports_dir: Path,
+               output_dir: Path, models_dir, send: bool) -> None:
+    """Refresh once, then one build → verify → deliver per filter value.
+
+    A value with no recipients in ``burst.to`` is recorded ``skipped`` and
+    is not built. A slice that fails, comes back empty, or does not verify
+    is not sent; later values still run. The parent status is the worst
+    slice status, so one bad slice still alerts the owner.
+    """
+    from tracebi.cli import _build_report_target, _resolve_report_target
+
+    name = schedule["report"]
+    kind, path = _resolve_report_target(name, reports_dir, purpose="schedule")
+    retries = schedule.get("retries", _DEFAULT_RETRIES)
+    refreshed = False
+    for attempt in range(retries + 1):
+        record["attempts"] = attempt + 1
+        record["refresh"] = []
+        record["error"] = None
+        try:
+            if _refresh(schedule.get("refresh") or {}, record):
+                refreshed = True
+                break
+        except Exception as exc:  # noqa: BLE001 — retried, then recorded
+            record["error"] = f"{type(exc).__name__}: {exc}"
+        if attempt < retries:
+            _sleep(_RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)])
+    if not refreshed:
+        record["status"] = FAILED
+        return
+
+    burst = schedule["burst"]
+    key, spec = next(iter(burst["filter"].items()))
+    slices: list[dict] = []
+    used: set[str] = set()
+    for value in spec["in"]:
+        sl: dict = {
+            "value": value, "status": FAILED, "recipients": [],
+            "output": None, "verdict": None, "error": None, "attempts": 1,
+        }
+        recipients = list(burst["to"].get(value) or [])
+        if not recipients:
+            sl["status"] = SKIPPED
+            sl["error"] = (
+                f"no recipients for {value!r} in burst.to; "
+                f"this slice was not built or sent")
+            slices.append(sl)
+            continue
+        output = _slice_output(output_dir, name, _slice_token(value, used))
+        built = False
+        for attempt in range(retries + 1):
+            sl["attempts"] = attempt + 1
+            sl["error"] = None
+            try:
+                _build_report_target(
+                    kind, path, output, report_name=name,
+                    filters={key: value})
+                sl["output"] = str(output)
+                built = True
+                break
+            except Exception as exc:  # noqa: BLE001 — this slice only
+                sl["error"] = f"{type(exc).__name__}: {exc}"
+            if attempt < retries:
+                _sleep(_RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)])
+        record["attempts"] = max(record["attempts"], sl["attempts"])
+        if not built:
+            sl["status"] = FAILED
+            slices.append(sl)
+            continue
+        try:
+            _after_build(sl, output, recipients, models_dir, send,
+                         f"{name} [{value}]")
+        except Exception as exc:  # noqa: BLE001 — one slice must not stop the rest
+            sl["status"] = FAILED
+            sl["error"] = f"{type(exc).__name__}: {exc}"
+            sl["recipients"] = []
+        slices.append(sl)
+    _finish_burst(record, slices)
+
+
+def _slice_token(value: str, used: set[str]) -> str:
+    """A filename piece for one burst value, unique ignoring case."""
+    raw = re.sub(r"[^A-Za-z0-9._-]+", "_", value).strip("._") or "value"
+    token = raw
+    n = 2
+    while token.lower() in used:
+        token = f"{raw}-{n}"
+        n += 1
+    used.add(token.lower())
+    return token
+
+
+def _slice_output(output_dir: Path, report: str, token: str) -> Path:
+    base = output_dir / f"{report}.html"
+    return base.with_name(f"{base.stem}--{token}{base.suffix}")
+
+
+def _burst_status(slices: list[dict]) -> str:
+    """The parent status: the worst slice, ignoring values that were skipped."""
+    statuses = [s["status"] for s in slices]
+    if FAILED in statuses:
+        return FAILED
+    if REFUSED in statuses:
+        return REFUSED
+    if EMPTY in statuses:
+        return EMPTY
+    done = [s for s in statuses if s != SKIPPED]
+    if not done or all(s == BUILT for s in done):
+        return BUILT
+    return DELIVERED
+
+
+def _finish_burst(record: dict, slices: list[dict]) -> None:
+    record["slices"] = slices
+    record["recipients"] = [
+        addr for sl in slices for addr in (sl.get("recipients") or [])]
+    record["status"] = _burst_status(slices)
+    record["output"] = None
+    bad = [sl for sl in slices if sl["status"] in _ALERT_STATUSES]
+    if bad:
+        record["error"] = "; ".join(
+            f"{sl['value']}: {sl.get('error') or sl['status']}" for sl in bad)
+    elif slices and all(sl["status"] == SKIPPED for sl in slices):
+        record["error"] = (
+            "no burst value had recipients in burst.to; nothing was built")
+    else:
+        record["error"] = None
+    verdicts = [sl.get("verdict") for sl in slices if sl.get("verdict")]
+    if verdicts and all(v == verdicts[0] for v in verdicts):
+        record["verdict"] = verdicts[0]
+    elif record["status"] == REFUSED:
+        refused = next(sl for sl in slices if sl["status"] == REFUSED)
+        record["verdict"] = refused.get("verdict")
+
+
+def _after_build(record: dict, output: Path, recipients: list, models_dir,
+                 send: bool, label: str) -> None:
+    """Verify one built artifact, then deliver it or record why not."""
+    from tracebi.verify import load_models, verify_manifest
 
     manifest_path = output.with_name(output.name + ".manifest.json")
-
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     result = verify_manifest(manifest, load_models(models_dir))
     record["verdict"] = result["verdict"]
@@ -357,7 +610,18 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
         record["error"] = "no rows in " + ", ".join(empty)
         return
 
-    to = list(schedule.get("to") or [])
+    _deliver(record, output=output, manifest_path=manifest_path,
+             recipients=list(recipients), result=result, send=send, label=label)
+
+
+def _deliver(record: dict, *, output: Path, manifest_path: Path,
+             recipients: list, result: dict, send: bool, label: str) -> None:
+    """Email *recipients* and, when configured, upload the file to Slack.
+
+    Same rules as a single scheduled run: ``--no-send`` records the intent,
+    a Slack file failure with no email recipients fails the record, and a
+    Slack text-ping failure does not unsend the email.
+    """
     slack = _slack_file_target()
     if not send:
         record["status"] = BUILT
@@ -365,21 +629,21 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
             record["delivery"] = {
                 "slack": {"channel": slack[1], "sent": False, "error": None}}
         return
-    if not to and not slack:
+    if not recipients and not slack:
         record["status"] = BUILT
         return
 
-    if to:
+    if recipients:
         from tracebi._delivery import send_report, slack_notify
-        send_report(output, manifest_path, to, verify_result=result)
-        record["recipients"] = list(to)
+        send_report(output, manifest_path, recipients, verify_result=result)
+        record["recipients"] = list(recipients)
 
         webhook = os.environ.get("TRACEBI_SLACK_WEBHOOK")
         if webhook:
             try:
                 slack_notify(
                     webhook,
-                    f"{name} delivered on schedule · "
+                    f"{label} delivered on schedule · "
                     f"{result['verdict'].upper().replace('_', ' ')}")
             except Exception as exc:  # noqa: BLE001 — the report already went out
                 record["error"] = (
@@ -397,7 +661,7 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
                 "channel": channel, "sent": False,
                 "error": f"{type(exc).__name__}: {exc}",
             }}
-            if not to:
+            if not recipients:
                 record["status"] = FAILED
                 record["error"] = record["delivery"]["slack"]["error"]
                 return
@@ -457,6 +721,16 @@ def _empty_bindings(manifest: dict) -> list[str]:
 
 
 def _what_happened(record: dict) -> str:
+    bad = [s for s in (record.get("slices") or [])
+           if s.get("status") in _ALERT_STATUSES]
+    if bad:
+        parts = []
+        for s in bad:
+            piece = f"{s.get('value')} ({s.get('status')})"
+            if s.get("error"):
+                piece = f"{piece}: {s['error']}"
+            parts.append(piece)
+        return "Slices: " + "; ".join(parts)
     status = record.get("status")
     if status == EMPTY:
         names = ", ".join(record.get("empty_bindings") or [])
@@ -654,6 +928,10 @@ def describe_schedule(s: dict, last: Optional[dict] = None) -> str:
     line = f"{s['report']:<28} {s['cron']:<16} {tz:<18} → {to}"
     if s.get("owner"):
         line += f"   owner: {s['owner']}"
+    burst = s.get("burst")
+    if burst:
+        key, spec = next(iter(burst["filter"].items()))
+        line += f"   burst: {key} × {len(spec['in'])}"
     retries = s.get("retries", _DEFAULT_RETRIES)
     if retries != _DEFAULT_RETRIES:
         line += f"   retries: {retries}"

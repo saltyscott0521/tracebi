@@ -419,12 +419,19 @@ class TemplatePackage:
 
     # ── Build + render ──────────────────────────────────────────────────────
 
-    def build(self, models: dict):
+    def build(self, models: dict, filters: Optional[dict] = None):
         """Resolve every binding and assemble the carrier :class:`Report`.
 
         Returns ``(report, stamped)`` where *stamped* is the list of
         :class:`~tracebi.reports.embed.StampedData`, one per binding, in
         declaration order.
+
+        *filters* is an optional predicate dict in the same spelling as a
+        binding filter. It is conjoined through
+        :func:`~tracebi.reports.selection.query_under_selection` onto every
+        binding whose model has that dimension — the same path a selection
+        uses. A filter that matches no binding model is an error: the page
+        must not ship unfiltered while claiming the cut.
         """
         report = Report(self.name)
         if self.author:
@@ -432,7 +439,21 @@ class TemplatePackage:
         if self.description:
             report.description(self.description)
 
+        def takes(model) -> bool:
+            if not filters:
+                return False
+            names = {d["name"] for d in model.info().get("dimensions") or []}
+            for key in filters:
+                head, dot, attr = str(key).partition(".")
+                if not dot or not attr or head not in names:
+                    return False
+            return True
+
+        if filters or self.selection:
+            from tracebi.reports.selection import query_under_selection
+
         stamped = []
+        applied = 0
         for binding_name, ref in self.bindings.items():
             model = (models or {}).get(ref.model)
             if model is None:
@@ -443,8 +464,10 @@ class TemplatePackage:
                 )
             query = ref.query
             if self.selection and ref.model == self.selection["model"]:
-                from tracebi.reports.selection import query_under_selection
                 query = query_under_selection(ref.query, self.selection["filters"])
+            if takes(model):
+                query = query_under_selection(query, filters)
+                applied += 1
             sd = stamp(model, query, name=binding_name)
             stamped.append(sd)
             # A synthetic carrier: it exists only so the manifest-first receipt
@@ -452,6 +475,12 @@ class TemplatePackage:
             # path. The analyst's template decides what is actually drawn.
             report.add(TableSection(title=binding_name, dataset=sd.dataset,
                                     id=binding_name))
+        if filters and applied == 0:
+            shown = ", ".join(repr(k) for k in filters)
+            raise ValueError(
+                f"Cannot render package '{self.name}': filter {shown} "
+                f"matches no binding model, so it was not applied."
+            )
         return report, stamped
 
     def _build_figure(self, name: str, fig: dict) -> str:
@@ -537,14 +566,18 @@ class TemplatePackage:
         save_manifest: bool = True,
         manifest_path: Optional[str] = None,
         badges: bool = False,
+        filters: Optional[dict] = None,
     ) -> ReportManifest:
         """Render the package to one self-contained ``.html`` (+ manifest).
 
         Manifest first, artifact second — the receipt is built and the embedded
         fingerprints recorded before a byte of the page is written, so a render
         that half-fails cannot leave a page without a receipt.
+
+        *filters* is passed to :meth:`build` and applied the same way a
+        selection filter is.
         """
-        report, inputs = self.build(models)
+        report, inputs = self.build(models, filters=filters)
 
         # Verifiability is carried per binding, never per package
         # (report-architecture-v2 §2.1). Every declared ``data`` binding is

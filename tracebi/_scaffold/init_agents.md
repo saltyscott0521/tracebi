@@ -312,6 +312,15 @@ body, the same text as `tracebi knowledge <slug>`).
 runs and who receives it in `report.json`:
 `"schedule": {"cron": "0 9 * * MON", "timezone": "America/New_York",
 "to": ["cfo@example.com"]}` (`to` optional: without it a run only rebuilds).
+A `burst` block builds one copy per filter value and emails that copy to
+`burst.to[value]`: `"burst": {"filter": {"dim_region.region": {"in":
+["EMEA", "APAC"]}}, "to": {"EMEA": ["emea@example.com"], "APAC":
+["apac@example.com"]}}`. The filter is applied at build through the same
+selection filter path a kept selection uses. A value with no `burst.to`
+entry is skipped and recorded, and is not sent to the top-level `to`. Each
+slice is verified on its own; a refused, empty, or failed slice is not
+sent, and the others still are. One owner alert names every slice that
+failed, came back empty, or was refused.
 The reviewer approves when and to whom in the same diff as what.
 Add `"refresh": {"transforms": ["<name>"], "pipelines": ["<name>"]}` to
 run those first, so the report shows fresh data; a failed step (including a
