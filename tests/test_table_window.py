@@ -165,10 +165,22 @@ def test_five_thousand_rows_window_sort_search_bars_and_print(tmp_path: Path) ->
               scroller.scrollTop = Math.round(4000 * rh);
             }"""
         )
+        # Row 0 also reads 2,500, so that text alone is true before the scroll
+        # handler runs. The label 4000 ("4,000") is only in this window.
         page.wait_for_function(
-            """() => [...document.querySelectorAll(
-                 '#big tbody tr:not(.tb-window-pad) td')]
-               .some(td => td.textContent === '2,500')"""
+            """() => {
+              const rows = [...document.querySelectorAll(
+                '#big tbody tr:not(.tb-window-pad)')];
+              const row = rows.find(tr => {
+                const cells = [...tr.querySelectorAll('td')].map(td => td.textContent);
+                return cells.indexOf('4,000') !== -1 && cells.indexOf('2,500') !== -1;
+              });
+              if (!row) return false;
+              const cell = [...row.querySelectorAll('td')]
+                .find(td => td.textContent === '2,500');
+              const bar = cell && cell.querySelector('.tb-bar');
+              return !!bar && bar.style.width === '50%';
+            }"""
         )
         assert bar_width() == top
         page.evaluate(
@@ -194,7 +206,11 @@ def test_five_thousand_rows_window_sort_search_bars_and_print(tmp_path: Path) ->
               const row = document.querySelector('#big tbody tr:not(.tb-window-pad)');
               if (!row) return false;
               const text = row.textContent;
-              return text.indexOf('2,500') !== -1 && text.indexOf('LAST') === -1;
+              if (text.indexOf('2,500') === -1 || text.indexOf('LAST') !== -1) return false;
+              const cell = [...row.querySelectorAll('td')]
+                .find(td => td.textContent === '2,500');
+              const bar = cell && cell.querySelector('.tb-bar');
+              return !!bar && bar.style.width === '50%';
             }"""
         )
         assert bar_width() == top

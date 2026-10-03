@@ -1005,9 +1005,25 @@
     if (!entry.rowPx) {
       while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
       var probe = dataRow(entry, rows[0], 0, 0);
+      /* A lone row is :last-child, and that rule drops the bottom border, so
+       * the probe would measure a pixel short of every row that follows it.
+       * A thousand rows later the window would show the wrong slice. */
+      var hold = document.createElement("tr");
+      hold.appendChild(document.createElement("td"));
       tbody.appendChild(probe);
-      entry.rowPx = measureRow(probe) || 36;
+      tbody.appendChild(hold);
+      var measured = measureRow(probe) || 36;
+      probe.style.height = measured + "px";
+      var pc = probe.children, pi;
+      for (pi = 0; pi < pc.length; pi++) {
+        pc[pi].style.height = measured + "px";
+        pc[pi].style.boxSizing = "border-box";
+      }
+      /* Table-cell height is a minimum; lock the stride to the border box
+       * the row actually occupies, which is what scroll math divides by. */
+      entry.rowPx = measureRow(probe) || measured;
       tbody.removeChild(probe);
+      tbody.removeChild(hold);
     }
     rh = entry.rowPx;
     box = scrollBox(el);
