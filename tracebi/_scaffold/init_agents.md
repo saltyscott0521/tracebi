@@ -265,7 +265,10 @@ one-line note.
    `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
    same output directory. The spreadsheet carries no receipt and is not
    verifiable; the HTML and manifest are the checkable artifact.
-   `fetch_artifact` returns that workbook base64-encoded.
+   Pass that result's `xlsx_path` as `fetch_artifact(path=...)`; the
+   workbook comes back base64-encoded. `build_report` returns `output_path`
+   and `manifest_path` — pass `manifest_path` as
+   `verify_manifest(manifest=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:

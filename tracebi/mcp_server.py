@@ -336,12 +336,17 @@ front of a person should carry a receipt. This gateway is how you produce one.
    `<name>.xlsx` beside them. The spreadsheet carries no receipt and is
    not verifiable; the HTML and manifest are the checkable artifact.
 6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
-   Pass the returned `html_path` or `manifest_path` (to hand to verify),
-   or the `xlsx_path` from a `format="xlsx"` build. HTML and JSON come
-   back as text; an `.xlsx` comes back base64-encoded with its media type.
-7. **verify_manifest** — re-runs the recorded queries and classifies each
-   section. Only `reproduces` means a number was re-run and matched; a
-   manifest with nothing to check is not a pass.
+   The argument is `path`. `build_report` returns `output_path` (the HTML)
+   and `manifest_path`; `render_report_spec` returns `html_path` and
+   `manifest_path`. Pass one of those as `fetch_artifact(path=...)`. An
+   xlsx build also returns `xlsx_path` — pass that the same way. HTML and
+   JSON come back as text; an `.xlsx` comes back base64-encoded with its
+   media type.
+7. **verify_manifest** — the argument is `manifest`. Pass `build_report`'s
+   `manifest_path` as `verify_manifest(manifest=...)` (or
+   `render_report_spec`'s `manifest_path`). It re-runs the recorded queries
+   and classifies each section. Only `reproduces` means a number was
+   re-run and matched; a manifest with nothing to check is not a pass.
 
 ## The two planes
 - **Definition plane (git):** transforms, models, report specs are authored
@@ -359,9 +364,10 @@ front of a person should carry a receipt. This gateway is how you produce one.
 ## The rules
 - Never quote a number without its fingerprint.
 - Never hard-code a figure a query could produce.
-- Always verify before you claim done: build_report, then verify_manifest on
-  the manifest it wrote, and read the verdict. "Built" is not "verified" — only
-  a `reproduces` verdict earns the word.
+- Always verify before you claim done: `build_report(report=...)`, then
+  pass that result's `manifest_path` as `verify_manifest(manifest=...)`,
+  and read the verdict. "Built" is not "verified" — only a `reproduces`
+  verdict earns the word.
 - If something can't be verified, say so — an honest "unverifiable" beats a
   green badge on unchecked work.
 - The trust machinery covers the model boundary onward (the query and the
@@ -398,8 +404,11 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    A number with no query behind it is honest only as `data-tb-unverified` —
    never a value figure with the number typed in.
 
-4. Publish and check — build_report, then verify_manifest on the manifest it
-   wrote. Report the verdict; only `reproduces` means re-run and matched.
+4. Publish and check — `build_report(report="sales_by_region")` returns
+   `output_path` and `manifest_path`. Pass `manifest_path` as
+   `verify_manifest(manifest=...)`. To read the page, pass `output_path`
+   as `fetch_artifact(path=...)`. Report the verdict; only `reproduces`
+   means re-run and matched.
 """
 
 
@@ -1191,9 +1200,10 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
 
     ``render_report_spec`` and ``build_report`` return a server-side PATH; a
     remote agent driving the gateway over MCP needs the BYTES to deliver the
-    report or hand the manifest to ``verify_manifest``. Pass the ``html_path``
-    or ``manifest_path`` a render/build tool returned, or the ``xlsx_path``
-    from ``build_report(..., format="xlsx")``. Read-only and hard
+    report or hand the manifest to ``verify_manifest``. The argument is
+    ``path``. Pass ``build_report``'s ``output_path`` or ``manifest_path``,
+    ``render_report_spec``'s ``html_path`` or ``manifest_path``, or
+    ``build_report``'s ``xlsx_path``. Read-only and hard
     path-guarded: the file must sit under the working directory (or
     ``$TRACEBI_OUTPUT_ROOT``), never inside the installed package, and be one of
     the ``.html`` / ``.json`` / ``.xlsx`` artifacts those tools write — never
@@ -1305,10 +1315,13 @@ def build_server(token: Optional[str] = None):
             "result's binding stub into report.json instead of transcribing "
             "numbers. A report is a package, reports/<name>/: report.json "
             "names the bindings, template.html claims them with "
-            "data-tb-figure + data-tb-binding. build_report publishes it "
-            "(self-contained HTML + manifest); verify_manifest re-runs the "
-            "manifest's queries, and only 'reproduces' means the numbers "
-            "matched. Under tracebi dev, read workbench_state first — the "
+            "data-tb-figure + data-tb-binding. build_report(report=...) "
+            "publishes it and returns output_path and manifest_path; pass "
+            "manifest_path as verify_manifest(manifest=...) and output_path "
+            "as fetch_artifact(path=...). render_report_spec returns "
+            "html_path and manifest_path — pass that manifest_path the same "
+            "way. Only 'reproduces' means the numbers matched. Under "
+            "tracebi dev, read workbench_state first — the "
             "person's pins come before anything else — and resolve_pin each "
             "one you act on. Without file access, or for a fixed layout, a "
             "JSON ReportSpec is the simpler lane: validate_report_spec, then "
@@ -1456,25 +1469,30 @@ def build_server(token: Optional[str] = None):
         annotations=_RENDER, structured_output=True,
         description=(
             "Build an artifact package (reports/<name>/) to one "
-            "self-contained HTML + its manifest — the publish step. Strips "
-            "exploration blocks, validates every figure claim against the "
-            "embedded bindings, and returns the figure records, embedded "
-            "fingerprints, and the transform_contracts join. Writes only "
-            "its own artifact and receipt. format='xlsx' also writes "
-            "<name>.xlsx in the same output directory. The spreadsheet "
-            "carries no receipt and is not verifiable; the HTML and "
-            "manifest are the checkable artifact (see spreadsheet_note)."
+            "self-contained HTML + its manifest — the publish step. The "
+            "argument is report (the package name). Returns output_path "
+            "(the HTML) and manifest_path. Pass manifest_path as "
+            "verify_manifest(manifest=...) and output_path as "
+            "fetch_artifact(path=...). Strips exploration blocks, validates "
+            "every figure claim against the embedded bindings, and returns "
+            "the figure records, embedded fingerprints, and the "
+            "transform_contracts join. Writes only its own artifact and "
+            "receipt. format='xlsx' also writes <name>.xlsx and returns "
+            "xlsx_path; pass that as fetch_artifact(path=...). The "
+            "spreadsheet carries no receipt and is not verifiable; the HTML "
+            "and manifest are the checkable artifact (see spreadsheet_note)."
         ),
     )(gateway_build_report)
     _tool(
         name="fetch_artifact", title="Fetch a rendered artifact",
         annotations=_READ, structured_output=True,
         description=(
-            "Read back the bytes of an artifact a render/build tool wrote — "
-            "pass the html_path, manifest_path, or xlsx_path it returned. "
-            "The render tools return a server-side path; this delivers the "
+            "Read back the bytes of an artifact a render/build tool wrote. "
+            "The argument is path. Pass build_report's output_path or "
+            "manifest_path, render_report_spec's html_path or "
+            "manifest_path, or build_report's xlsx_path. This delivers the "
             "actual content so a remote agent can send the report or hand "
-            "the manifest to verify_manifest. HTML and JSON come back as "
+            "the manifest to verify_manifest(manifest=...). HTML and JSON come back as "
             "text. An .xlsx comes back base64-encoded (encoding='base64') "
             "with its spreadsheet media type. Read-only, guarded to the "
             "artifact directory. Every other suffix is refused."
@@ -1484,9 +1502,10 @@ def build_server(token: Optional[str] = None):
         name="verify_manifest", title="Verify a receipt",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
-            "Re-run every recorded query in a rendered manifest (a dict, or "
-            "a path to the *.manifest.json render_report_spec wrote) and "
-            "classify each section: reproduces, source_drift (an input "
+            "Re-run every recorded query in a rendered manifest. The "
+            "argument is manifest: a dict, or build_report's manifest_path, "
+            "or render_report_spec's manifest_path. Classifies each "
+            "section: reproduces, source_drift (an input "
             "fingerprint moved), unexplained (result differs but inputs "
             "match), or unverifiable (no recorded query). Closes the loop "
             "on your own receipts. Check the receipt-level verdict, not "
@@ -1544,15 +1563,20 @@ def build_server(token: Optional[str] = None):
             "number an element with data-tb-figure + data-tb-binding (or "
             "mark it data-tb-unverified). Never type a number a query "
             "produced.\n"
-            "4. build_report to publish the self-contained HTML and its "
-            "manifest. It refuses a figure whose claim does not match its "
-            "binding — fix the claim and build again.\n"
-            "5. verify_manifest on that manifest and report the verdict. "
-            "Only 'reproduces' means the numbers were re-run and matched; say "
-            "so honestly if anything is unverifiable.\n\n"
+            "4. build_report(report=<the package name>) to publish the "
+            "self-contained HTML and its manifest. It returns output_path "
+            "and manifest_path. It refuses a figure whose claim does not "
+            "match its binding — fix the claim and build again.\n"
+            "5. verify_manifest(manifest=<the manifest_path from step 4>) "
+            "and report the verdict. Only 'reproduces' means the numbers "
+            "were re-run and matched; say so honestly if anything is "
+            "unverifiable. To read the page, fetch_artifact(path=<the "
+            "output_path from step 4>).\n\n"
             "Without file access, author a JSON ReportSpec instead (read "
             "tracebi://spec-schema), validate_report_spec until ok:true — "
-            "heed its warnings too — then render_report_spec, then step 5."
+            "heed its warnings too — then render_report_spec, which returns "
+            "html_path and manifest_path. Pass that manifest_path as "
+            "verify_manifest(manifest=...)."
         )
 
     @server.prompt(

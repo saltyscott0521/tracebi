@@ -645,6 +645,21 @@ class TestMcp2Features:
         for name in ("workbench_state", "resolve_pin", "verify_manifest",
                      "answer_question", "address_pins"):
             assert name in text
+        assert "verify_manifest(manifest=...)" in text
+        assert "fetch_artifact(path=...)" in text
+        assert "output_path" in text
+
+    def test_tool_descriptions_name_the_argument_that_feeds_the_next_call(
+            self, gateway_model):
+        _server, tools = self._tools()
+        desc = {name: t.description for name, t in tools.items()}
+        assert "argument is report" in desc["build_report"]
+        assert "output_path" in desc["build_report"]
+        assert "verify_manifest(manifest=...)" in desc["build_report"]
+        assert "argument is path" in desc["fetch_artifact"]
+        assert "build_report's output_path" in desc["fetch_artifact"]
+        assert "argument is manifest" in desc["verify_manifest"]
+        assert "build_report's manifest_path" in desc["verify_manifest"]
 
     def test_answer_question_and_address_pins_render(self, gateway_model):
         pytest.importorskip("mcp")

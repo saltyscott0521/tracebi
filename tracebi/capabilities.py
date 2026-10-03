@@ -954,7 +954,8 @@ def describe(brief: bool = False) -> dict:
         },
         "spreadsheet": {
             "mcp": "build_report(report, output_dir='output', format='xlsx')",
-            "fetch": "fetch_artifact(xlsx_path) — encoding is base64, "
+            "fetch": "fetch_artifact(path=<the xlsx_path build_report "
+                     "returned>) — encoding is base64, "
                      "content_type is the spreadsheet media type. "
                      "Every other suffix stays refused.",
             "note": "The spreadsheet carries no receipt and is not "
