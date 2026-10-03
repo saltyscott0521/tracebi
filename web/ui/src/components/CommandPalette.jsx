@@ -8,6 +8,7 @@ import { CHAIN } from './chainSteps'
 // and its old name, so searching "connectors" or "refresh" still finds it.
 const PAGES = [
   ...CHAIN.map(s => ({ label: s.label, path: s.path, kind: 'page', sub: [s.ask, s.was && `was ${s.was}`].filter(Boolean).join(' · ') })),
+  { label: 'Runs',            path: '/runs',           kind: 'page', sub: 'what ran, and whether it reproduced' },
   { label: 'Verify a file',   path: '/verify',          kind: 'page' },
   { label: 'Getting Started', path: '/getting-started', kind: 'page' },
 ]

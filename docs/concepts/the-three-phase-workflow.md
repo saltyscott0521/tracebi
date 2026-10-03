@@ -15,7 +15,9 @@ one never blocks the fast one.
 
 > **In the app**, the sidebar follows the same flow: **Sources** (where the data
 > is kept) → **Pipelines** (how it gets there) → **Data model** (what it means) →
-> **Explore** (ask it) → **Reports** (what people read). Reports and Explore
+> **Explore** (ask it) → **Reports** (what people read). **Runs**, in the
+> sidebar footer beside Verify, lists what ran, when, for whom, and whether
+> it reproduced. Reports and Explore
 > only ever ask the model; see [[models-and-connectors]].
 
 ## ① Transform — `transforms/`
