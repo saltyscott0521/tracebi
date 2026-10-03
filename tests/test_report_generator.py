@@ -406,7 +406,7 @@ _SCRIPT = (
 def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
                    script=_SCRIPT, data=None, name="Regions",
                    dirname="regions", report_py=None, libs=None,
-                   figures=None):
+                   figures=None, title=None):
     """Write a package dir and return its path."""
     if data is None:
         data = {
@@ -422,6 +422,8 @@ def _write_package(tmp_path, *, template=_BARE_TEMPLATE, style=_STYLE,
     pkg = tmp_path / dirname
     pkg.mkdir()
     decl = {"name": name, "author": "t", "data": data}
+    if title is not None:
+        decl["title"] = title
     if libs is not None:
         decl["libs"] = libs
     if figures is not None:
@@ -829,11 +831,44 @@ class TestTemplatePackageLoading:
         # Manifest-first ordering means no page was written on the failed render.
         assert not out.exists()
 
-    def test_template_without_body_fails_loudly(self, tmp_path, model):
-        # A fragment with no </head>/</body>: injection has nowhere to go.
-        pkg = _write_package(tmp_path, template="<div>no doc</div>", style=None)
+    def test_fragment_template_builds_a_complete_document(self, tmp_path, model):
+        # <header> must not be read as <head>. A pure fragment is wrapped,
+        # then the runtime is injected into that document.
+        pkg = _write_package(
+            tmp_path,
+            template="<header><section>Regions</section></header>",
+            style=None, script=None, title="Book Value",
+        )
         out = tmp_path / "out.html"
-        with pytest.raises(ValueError, match=r"no </(head|body)>"):
+        TemplatePackage(str(pkg)).render({model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert html.lower().lstrip().startswith("<!doctype html>")
+        assert "<html>" in html.lower()
+        assert "</head>" in html.lower()
+        assert '<meta charset="utf-8">' in html
+        assert "<title>Book Value</title>" in html
+        assert "<header><section>Regions</section></header>" in html
+        assert "<!-- tracebi.js: the TraceBi runtime -->" in html
+        assert "Content-Security-Policy" in html
+
+    def test_fragment_without_title_uses_the_report_name(self, tmp_path, model):
+        pkg = _write_package(
+            tmp_path, template="<section>Regions</section>",
+            style=None, script=None,
+        )
+        out = tmp_path / "out.html"
+        TemplatePackage(str(pkg)).render({model.name: model}, str(out))
+        html = out.read_text(encoding="utf-8")
+        assert "<title>Regions</title>" in html
+
+    def test_malformed_document_without_head_close_still_fails(self, tmp_path, model):
+        pkg = _write_package(
+            tmp_path,
+            template="<html><body>no head</body></html>",
+            style=None, script=None,
+        )
+        out = tmp_path / "out.html"
+        with pytest.raises(ValueError, match=r"no </head>"):
             TemplatePackage(str(pkg)).render({model.name: model}, str(out))
 
 # ── M2: discovery branch (architecture §7) ────────────────────────────────────

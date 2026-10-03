@@ -35,7 +35,7 @@ from tracebi.model.dataset import DataSet
 from tracebi.reports.base_renderer import BaseRenderer, _warn_if_unknown_git_sha
 from tracebi.reports.embed import (
     EMBED_FORMAT_CSV, csp_meta, data_blocks_html, embedded_record,
-    insert_before, stamp_dataset,
+    insert_before, stamp_dataset, wrap_html_fragment,
 )
 from tracebi.reports.report import (
     Report, ReportManifest, SectionType,
@@ -114,6 +114,7 @@ class HTMLRenderer(BaseRenderer):
         body_extra: str = "",
         template_context: Optional[dict] = None,
         derive_defaults: bool = True,
+        document_title: Optional[str] = None,
     ):
         """
         Args:
@@ -145,6 +146,9 @@ class HTMLRenderer(BaseRenderer):
         # Derived labels and number formats for anything the author left
         # unset. Off restores the previous raw output verbatim.
         self.derive_defaults = derive_defaults
+        # Title for the wrapper around a fragment template. A complete
+        # document keeps the title its own shell already rendered.
+        self.document_title = document_title
         # Keyed by the section-type string so callers can pass either the
         # enum or a plain string, including one the framework doesn't know.
         self.section_renderers = {
@@ -336,6 +340,7 @@ class HTMLRenderer(BaseRenderer):
             context={"report": report, "theme": self.theme,
                      **self.template_context},
         )
+        page = wrap_html_fragment(page, self.document_title or report.name)
         page = insert_before(page, "</head>", csp_meta())
         if bindings:
             # ALWAYS CSV in this lane, never the size-chosen format: the
