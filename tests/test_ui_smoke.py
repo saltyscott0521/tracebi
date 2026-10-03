@@ -162,7 +162,6 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("heading", name="Runs", exact=True).wait_for()
             page.get_by_text(_REPORT).wait_for()
             page.get_by_text("Not verified").first.wait_for()
-            page.screenshot(path="/tmp/runs-page.png", full_page=True)
             fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
