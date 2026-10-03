@@ -189,20 +189,6 @@ def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "report"
 
 
-def _report_name_error(report: str) -> Optional[str]:
-    """``None`` if ``report`` is a safe report name, else an error message.
-
-    The name indexes ``reports/<name>/``. A report in a folder is named by its
-    path (``finance/weekly``); anything that could escape the reports
-    directory (``/etc/x``, ``../../etc``, a backslash, a dot segment) is
-    refused. Applied by every tool that turns a caller-supplied name into a
-    filesystem path.
-    """
-    from tracebi.report_paths import report_name_error
-
-    return report_name_error(report)
-
-
 def _confined_output_dir(output_dir: str) -> "tuple[Optional[Path], Optional[str]]":
     """Resolve ``output_dir`` for an artifact write, refusing dangerous targets.
 
@@ -1043,18 +1029,17 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     # A caller-supplied name must never become a path: without this,
     # report='/etc/x' or '../../x' would escape reports/ and collect_state
     # would read — and execute report.py from — an attacker-chosen directory.
-    name_err = _report_name_error(report)
-    if name_err:
-        return {"errors": [name_err]}
-    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-    pkg_dir = reports_dir / report
-    if not (pkg_dir / "report.json").is_file():
+    from tracebi.report_paths import open_report
+    opened = open_report(report, purpose="view")
+    if opened.name_error:
+        return {"errors": [opened.name_error]}
+    if opened.package_dir is None:
         return {"errors": [
-            f"no artifact package at {pkg_dir} — workbench_state applies to "
+            f"no artifact package at {opened.path} — workbench_state applies to "
             f"reports/<name>/ packages"
         ]}
     with actor(_mcp_actor()):
-        return collect_state(str(pkg_dir), _load_models())
+        return collect_state(str(opened.package_dir), _load_models())
 
 
 def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinResult:
@@ -1071,14 +1056,13 @@ def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinR
     if not report or report == DISCOVERY_NAME:
         name = DISCOVERY_NAME
     else:
-        name_err = _report_name_error(report)
-        if name_err:
-            return {"ok": False, "errors": [name_err]}
-        reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-        pkg_dir = reports_dir / report
-        if not (pkg_dir / "report.json").is_file():
+        from tracebi.report_paths import open_report
+        opened = open_report(report, purpose="manage")
+        if opened.name_error:
+            return {"ok": False, "errors": [opened.name_error]}
+        if opened.package_dir is None:
             return {"ok": False, "errors": [
-                f"no artifact package at {pkg_dir} — resolve_pin applies to "
+                f"no artifact package at {opened.path} — resolve_pin applies to "
                 f"reports/<name>/ packages"
             ]}
         name = report
@@ -1126,15 +1110,13 @@ def gateway_build_report(
         ]}
     # The name is a directory under reports/ (a folder path at most), and
     # can never climb out of it.
-    name_err = _report_name_error(report)
-    if name_err:
-        return {"ok": False, "errors": [name_err]}
-    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-    pkg_dir = reports_dir / report
-    if not ((pkg_dir / "report.json").is_file()
-            and (pkg_dir / "template.html").is_file()):
+    from tracebi.report_paths import open_report
+    opened = open_report(report, purpose="build")
+    if opened.name_error:
+        return {"ok": False, "errors": [opened.name_error]}
+    if not (opened.package_dir is not None and opened.has_template):
         return {"ok": False, "errors": [
-            f"no artifact package at {pkg_dir} — build_report applies to "
+            f"no artifact package at {opened.path} — build_report applies to "
             f"reports/<name>/ packages (a .json spec renders via "
             f"render_report_spec)"
         ]}
@@ -1147,7 +1129,7 @@ def gateway_build_report(
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         with actor(_mcp_actor()):
-            package = TemplatePackage(str(pkg_dir))
+            package = TemplatePackage(str(opened.package_dir))
             models = _load_models()
             manifest = package.render(models, str(output))
             if format == "xlsx":
