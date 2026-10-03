@@ -219,8 +219,12 @@ class TestRefresh:
 @pytest.fixture(autouse=True)
 def _no_real_retry_wait(monkeypatch):
     """Default retries must not call time.sleep. A test that asserts the
-    delays replaces this with its own recorder."""
+    delays replaces this with its own recorder. Slack delivery stays off
+    unless a test sets it — a developer token must not reach the network."""
     monkeypatch.setattr(sched, "_sleep", lambda *_a, **_k: None)
+    monkeypatch.delenv("TRACEBI_SLACK_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TRACEBI_SLACK_CHANNEL", raising=False)
+    monkeypatch.delenv("TRACEBI_SLACK_WEBHOOK", raising=False)
 
 
 def _enter(proj: Path, monkeypatch) -> None:
@@ -865,6 +869,255 @@ def test_in_server_schedules_need_apscheduler(tmp_path, monkeypatch):
 
     with pytest.raises(ImportError, match=r"tracebi\[pipeline\]"):
         sched.start_server_scheduler()
+
+
+class TestSlackFileDelivery:
+    """A configured bot token and channel upload the built files. The
+    webhook ping is a different path. Nothing here calls Slack."""
+
+    def _stub(self, monkeypatch, slack):
+        emailed = []
+        monkeypatch.setattr(
+            "tracebi._delivery.send_report",
+            lambda *a, **k: emailed.append(a) or ["cfo@example.com"],
+        )
+        monkeypatch.setattr("tracebi._delivery.slack_send_report", slack)
+        return emailed
+
+    def _env(self, monkeypatch, channel="C0123"):
+        monkeypatch.setenv("TRACEBI_SLACK_BOT_TOKEN", "xoxb-test")
+        monkeypatch.setenv("TRACEBI_SLACK_CHANNEL", channel)
+
+    def test_uploads_beside_email(self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        posted = []
+
+        def _slack(html, manifest, *, channel, token, verify_result=None):
+            posted.append({
+                "channel": channel, "token": token,
+                "html": Path(html).name, "manifest": Path(manifest).name,
+                "verdict": verify_result["verdict"],
+            })
+            return "posted"
+
+        emailed = self._stub(monkeypatch, _slack)
+        self._env(monkeypatch)
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.DELIVERED
+        assert rec["attempts"] == 1
+        assert rec["recipients"] == ["cfo@example.com"]
+        assert rec["error"] is None
+        assert rec["delivery"] == {
+            "slack": {"channel": "C0123", "sent": True, "error": None}}
+        assert len(emailed) == 1
+        assert posted == [{
+            "channel": "C0123", "token": "xoxb-test",
+            "html": "sample_dashboard.html",
+            "manifest": "sample_dashboard.html.manifest.json",
+            "verdict": "reproduces",
+        }]
+
+    def test_slack_alone_delivers_when_there_is_no_email_list(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        posted = []
+        emailed = self._stub(
+            monkeypatch, lambda *a, **k: posted.append(k["channel"]) or "ok")
+        self._env(monkeypatch)
+        block = _scheduled(scheduled)
+        block["to"] = []
+        rec = sched.run_schedule(
+            block, reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert emailed == []
+        assert posted == ["C0123"]
+        assert rec["status"] == sched.DELIVERED
+        assert rec["recipients"] == []
+        assert rec["delivery"]["slack"]["sent"] is True
+
+    def test_missing_config_does_not_upload(self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        called = []
+        self._stub(monkeypatch, lambda *a, **k: called.append(1))
+        monkeypatch.setenv("TRACEBI_SLACK_BOT_TOKEN", "xoxb-test")
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert called == []
+        assert "delivery" not in rec
+        assert rec["status"] == sched.DELIVERED
+
+    def test_a_failed_upload_is_recorded_and_not_retried(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        calls = {"n": 0}
+
+        def boom(*_a, **_k):
+            calls["n"] += 1
+            raise RuntimeError("slack upload failed")
+
+        self._stub(monkeypatch, boom)
+        self._env(monkeypatch)
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert calls["n"] == 1
+        assert rec["attempts"] == 1
+        assert rec["status"] == sched.DELIVERED
+        assert rec["recipients"] == ["cfo@example.com"]
+        assert rec["error"] is None
+        assert rec["delivery"]["slack"]["sent"] is False
+        assert rec["delivery"]["slack"]["error"] == (
+            "RuntimeError: slack upload failed")
+
+    def test_a_failed_slack_only_upload_is_failed_without_retry(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        calls = {"n": 0}
+
+        def boom(*_a, **_k):
+            calls["n"] += 1
+            raise RuntimeError("slack upload failed")
+
+        self._stub(monkeypatch, boom)
+        self._env(monkeypatch)
+        block = _scheduled(scheduled)
+        block["to"] = []
+        rec = sched.run_schedule(
+            block, reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert calls["n"] == 1
+        assert rec["attempts"] == 1
+        assert rec["status"] == sched.FAILED
+        assert rec["recipients"] == []
+        assert rec["error"] == "RuntimeError: slack upload failed"
+        assert rec["delivery"]["slack"]["error"] == rec["error"]
+
+    def test_no_send_records_intent_and_does_not_call_slack(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        called = []
+        self._stub(monkeypatch, lambda *a, **k: called.append(1))
+        self._env(monkeypatch, channel="#reports")
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+            send=False,
+        )
+        assert called == []
+        assert rec["status"] == sched.BUILT
+        assert rec["recipients"] == []
+        assert rec["delivery"] == {
+            "slack": {"channel": "#reports", "sent": False, "error": None}}
+
+    def test_a_built_page_summary_quotes_figures_the_page_already_shows(
+            self, scheduled, monkeypatch):
+        """The summary's numbers are text the build wrote, not a new format."""
+        import json as _json
+        from urllib.parse import parse_qs
+
+        _enter(scheduled, monkeypatch)
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+            send=False,
+        )
+        assert rec["status"] == sched.BUILT
+        html = scheduled / "output" / "sample_dashboard.html"
+        manifest = html.with_name(html.name + ".manifest.json")
+        page = html.read_text(encoding="utf-8")
+        calls = []
+
+        class _Resp:
+            def __init__(self, raw):
+                self._raw = raw.encode()
+
+            def read(self):
+                return self._raw
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                return False
+
+        def urlopen(req, timeout=None):
+            calls.append(req)
+            url = req.full_url
+            if url.endswith("/files.getUploadURLExternal"):
+                name = parse_qs(req.data.decode())["filename"][0]
+                fid = "Fhtml" if name.endswith(".html") else "Fman"
+                return _Resp(_json.dumps({
+                    "ok": True,
+                    "upload_url": f"https://files.example/upload/{fid}",
+                    "file_id": fid,
+                }))
+            if url.startswith("https://files.example/"):
+                return _Resp("OK")
+            if url.endswith("/files.completeUploadExternal"):
+                return _Resp(_json.dumps({"ok": True, "files": []}))
+            raise AssertionError(url)
+
+        monkeypatch.setattr(
+            "tracebi._delivery.urllib.request.urlopen", urlopen)
+        from tracebi._delivery import slack_send_report
+        text = slack_send_report(
+            html, manifest, channel="C0123", token="xoxb-test",
+            verify_result={
+                "verdict": "reproduces",
+                "verdict_detail": "reproduces — matched",
+                "exit_code": 0,
+            },
+        )
+        assert "Report:" in text
+        assert "Rendered at:" in text
+        assert "Verify: reproduces — matched" in text
+        headlines = [
+            line for line in text.splitlines()
+            if ": " in line and not line.startswith(
+                ("Report:", "Rendered at:", "Verify:"))
+        ]
+        assert 1 <= len(headlines) <= 5
+        for line in headlines:
+            _label, _, value = line.partition(": ")
+            assert value in page
+        uploaded = [c.full_url.rsplit("/", 1)[-1] for c in calls]
+        assert uploaded.count("files.getUploadURLExternal") == 2
+        assert "files.completeUploadExternal" in uploaded
+
+    def test_a_refused_receipt_is_not_uploaded(self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        called = []
+        self._stub(monkeypatch, lambda *a, **k: called.append(1))
+        self._env(monkeypatch)
+        monkeypatch.setattr(
+            "tracebi.verify.verify_manifest",
+            lambda *a, **k: {
+                "verdict": "unexplained",
+                "verdict_detail": "stub: did not reproduce",
+                "exit_code": 1, "ok": False,
+            },
+        )
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert called == []
+        assert rec["status"] == sched.REFUSED
+        assert "delivery" not in rec
 
 
 def test_scheduler_fires_in_the_declared_timezone():

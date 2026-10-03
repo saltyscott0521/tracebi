@@ -242,12 +242,25 @@ a selection cut, which writes the published report).</p>
 </tr>
 <tr>
 <td><code>TRACEBI_SLACK_WEBHOOK</code></td>
-<td>optional ping after a successful <code>report send</code></td>
+<td>optional text ping after a successful <code>report send</code>, and with an owner schedule alert. An incoming webhook cannot upload a file.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_SLACK_BOT_TOKEN</code></td>
+<td>bot token (<code>files:write</code>) for scheduled file delivery. Does nothing unless <code>TRACEBI_SLACK_CHANNEL</code> is set too.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_SLACK_CHANNEL</code></td>
+<td>channel id (<code>C…</code>) or name the scheduled HTML and manifest are uploaded to.</td>
 </tr>
 </tbody>
 </table>
-<p>Both SMTP variables are required by <code>tracebi report send</code>. A Slack failure is
-reported but does not fail the command — the report already went out.</p>
+<p>Both SMTP variables are required by <code>tracebi report send</code>. A webhook ping
+that fails is reported but does not fail the command — the report already
+went out. A scheduled run also uploads the HTML and the manifest when both
+<code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> are set. That upload
+is separate from the webhook. A failed upload is recorded on the run
+(<code>delivery.slack.error</code>) and is not retried. <code>--no-send</code> records the intent
+and does not call Slack.</p>
 <h2 id="agent-gateway">Agent gateway</h2>
 <table>
 <thead>

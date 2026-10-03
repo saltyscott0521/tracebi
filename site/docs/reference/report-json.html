@@ -167,7 +167,7 @@ The build itself ignores it.</p>
 </tr>
 <tr>
 <td><code>to</code></td>
-<td>Optional list of email addresses. Without it, a run rebuilds the artifact and records the run, and sends nothing.</td>
+<td>Optional list of email addresses. Without it, a run sends no email. When <code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> are both set, a successful run still uploads the HTML and the manifest to that channel.</td>
 </tr>
 <tr>
 <td><code>refresh</code></td>

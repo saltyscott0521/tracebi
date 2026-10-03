@@ -272,7 +272,7 @@ built or sent. A failed refresh or build is retried twice, after 1 minute
 and then 5 minutes, unless `"retries"` is an integer from 0 to 5 (0
 disables); a receipt that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
 verify → email → record in `tracebi_runs`, kind `schedule`; an existing `output/schedule_runs.jsonl` is imported once); a receipt that
-does not verify is recorded `refused` and nothing is sent. Optional `"owner"` is one email address: a run recorded `failed`, `refused`, or `empty` emails that address a plain-text alert and does not email the report to `to`. A binding a figure uses that returned zero rows is recorded `empty` and is not sent. `tracebi schedule serve` runs every
+does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set, that successful send also uploads the HTML and the manifest to Slack with the report name, when it rendered, the verify verdict, and up to five headline value figures. A failed upload is recorded on the run and not retried. `--no-send` records the intent and does not call Slack. `TRACEBI_SLACK_WEBHOOK` stays a text ping. Optional `"owner"` is one email address: a run recorded `failed`, `refused`, or `empty` emails that address a plain-text alert and does not email the report to `to`. A binding a figure uses that returned zero rows is recorded `empty` and is not sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
