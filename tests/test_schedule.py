@@ -34,7 +34,7 @@ class TestParseScheduleBlock:
         assert got == {"cron": "0 9 * * MON", "timezone": None,
                        "to": ["a@x.com", "b@x.com"],
                        "refresh": {"transforms": [], "pipelines": []},
-                       "retries": 2}
+                       "retries": 2, "owner": None}
 
     @pytest.mark.parametrize("raw, fragment", [
         ("0 9 * * MON", "must be an object"),
@@ -47,6 +47,9 @@ class TestParseScheduleBlock:
         ({"cron": "0 9 * * MON", "retries": "x"}, "integer from 0 to 5"),
         ({"cron": "0 9 * * MON", "retries": 9}, "integer from 0 to 5"),
         ({"cron": "0 9 * * MON", "retries": True}, "integer from 0 to 5"),
+        ({"cron": "0 9 * * MON", "owner": "not-an-address"}, "one email"),
+        ({"cron": "0 9 * * MON", "owner": ["ops@example.com"]}, "one email"),
+        ({"cron": "0 9 * * MON", "owner": 3}, "one email"),
     ])
     def test_refuses(self, raw, fragment):
         with pytest.raises(ValueError, match=fragment):
@@ -57,6 +60,11 @@ class TestParseScheduleBlock:
             got = sched.parse_schedule_block(
                 {"cron": "0 9 * * MON", "retries": n}, path="r")
             assert got["retries"] == n
+
+    def test_owner_is_one_address(self):
+        got = sched.parse_schedule_block(
+            {"cron": "0 9 * * MON", "owner": "ops@example.com"}, path="r")
+        assert got["owner"] == "ops@example.com"
 
 
 # ── a scaffolded project ────────────────────────────────────────────────────
@@ -128,7 +136,7 @@ class TestDiscovery:
         assert errors == []
         assert schedules == [{"report": "sample_dashboard", **SCHEDULE,
                               "refresh": {"transforms": [], "pipelines": []},
-                              "retries": 2}]
+                              "retries": 2, "owner": None}]
 
     def test_broken_block_is_an_error_entry_not_a_crash(self, scheduled):
         rj = scheduled / "reports" / "sample_dashboard" / "report.json"
@@ -347,12 +355,213 @@ class TestFailurePaths:
         assert rec["status"] == sched.BUILT
         assert rec["actor"] == "scheduler"
         assert rec["recipients"] == []
+        assert "alert" not in rec
+
+
+def _owner(proj: Path, **extra) -> dict:
+    """The project's schedule, with *extra* written into the block."""
+    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    decl = json.loads(rj.read_text())
+    decl["schedule"].update(extra)
+    rj.write_text(json.dumps(decl))
+    return _scheduled(proj)
+
+
+def _break_build(proj: Path) -> None:
+    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    decl = json.loads(rj.read_text())
+    binding = next(iter(decl["data"]))
+    decl["data"][binding]["query"]["measures"] = ["not_a_measure"]
+    rj.write_text(json.dumps(decl))
+
+
+def _empty_region(proj: Path, *names: str) -> None:
+    """A filter no region matches, so a grouped binding returns zero rows."""
+    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    decl = json.loads(rj.read_text())
+    nowhere = {"dim_region.region": "no-such-region"}
+    for name in names:
+        if name not in decl["data"]:
+            decl["data"][name] = {
+                "model": "sample_model",
+                "query": {"fact": "fact_orders", "measures": ["revenue"],
+                          "dimensions": ["dim_region.region"]},
+            }
+        decl["data"][name]["query"]["filters"] = nowhere
+    rj.write_text(json.dumps(decl))
+
+
+class TestOwnerAlerts:
+    """An owner is emailed when a run ends failed, refused, or empty.
+    The report's ``to`` list is not. No owner means no alert."""
+
+    def _capture(self, monkeypatch):
+        alerts = []
+        sent = []
+        monkeypatch.setattr(
+            "tracebi._delivery.send_alert",
+            lambda to, subject, body: alerts.append(
+                {"to": to, "subject": subject, "body": body}),
+        )
+        monkeypatch.setattr(
+            "tracebi._delivery.send_report",
+            lambda *a, **k: sent.append(a) or ["nobody"],
+        )
+        return alerts, sent
+
+    def test_a_failed_build_after_retries_alerts_the_owner(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, sent = self._capture(monkeypatch)
+        _break_build(scheduled)
+        block = _owner(scheduled, owner="ops@example.com")
+        rec = sched.run_schedule(
+            block, reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == []
+        assert rec["status"] == sched.FAILED
+        assert rec["attempts"] == 3
+        assert rec["alert"] == {
+            "to": "ops@example.com", "sent": True, "error": None}
+        [alert] = alerts
+        assert alert["to"] == "ops@example.com"
+        assert alert["subject"] == (
+            "TraceBi: sample_dashboard scheduled run failed")
+        assert "not_a_measure" in alert["body"]
+        assert "Attempts: 3" in alert["body"]
+        assert "output/schedule_runs.jsonl" in alert["body"]
+
+    def test_a_refused_receipt_alerts_the_owner(self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, sent = self._capture(monkeypatch)
+        monkeypatch.setattr(
+            "tracebi.verify.verify_manifest",
+            lambda *a, **k: {
+                "verdict": "unexplained",
+                "verdict_detail": "stub: did not reproduce",
+                "exit_code": 1, "ok": False,
+            },
+        )
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == []
+        assert rec["status"] == sched.REFUSED
+        assert rec["attempts"] == 1
+        assert rec["alert"]["sent"] is True
+        [alert] = alerts
+        assert alert["subject"].endswith("scheduled run refused")
+        assert "unexplained" in alert["body"]
+        assert "stub: did not reproduce" in alert["body"]
+
+    def test_a_success_sends_the_report_and_no_alert(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, sent = self._capture(monkeypatch)
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.DELIVERED
+        assert "alert" not in rec
+        assert alerts == []
+        assert sent and sent[0][2] == ["cfo@example.com"]
+
+    def test_without_an_owner_a_failure_is_unchanged(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, sent = self._capture(monkeypatch)
+        _break_build(scheduled)
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == [] and alerts == []
+        assert rec["status"] == sched.FAILED
+        assert "alert" not in rec
+        assert "empty_bindings" not in rec
+        assert set(rec) == {
+            "report", "started_at", "finished_at", "status", "verdict",
+            "recipients", "output", "error", "actor", "actor_role",
+            "refresh", "attempts",
+        }
+
+    def test_no_send_records_the_alert_and_does_not_email(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, sent = self._capture(monkeypatch)
+        _break_build(scheduled)
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+            send=False,
+        )
+        assert sent == [] and alerts == []
+        assert rec["status"] == sched.FAILED
+        assert rec["alert"] == {
+            "to": "ops@example.com", "sent": False, "error": None}
+
+    def test_an_alert_smtp_failure_is_recorded_and_the_status_stays(
+            self, scheduled, monkeypatch):
+        import smtplib
+
+        _enter(scheduled, monkeypatch)
+        _empty_region(scheduled, "by_region", "spare")
+        monkeypatch.setenv("TRACEBI_SMTP_URL", "smtp://localhost:2525")
+        monkeypatch.setenv("TRACEBI_SMTP_FROM", "reports@example.com")
+
+        class _Down:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def starttls(self, context=None):
+                raise smtplib.SMTPNotSupportedError
+
+            def send_message(self, msg):
+                raise RuntimeError("smtp down")
+
+            def quit(self):
+                pass
+
+        monkeypatch.setattr("tracebi._delivery.smtplib.SMTP", _Down)
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.EMPTY
+        assert rec["empty_bindings"] == ["by_region"]
+        assert "spare" not in rec["empty_bindings"]
+        assert rec["recipients"] == []
+        assert rec["verdict"] == "reproduces"
+        assert rec["alert"]["sent"] is False
+        assert rec["alert"]["to"] == "ops@example.com"
+        assert rec["alert"]["error"] == "RuntimeError: smtp down"
+
+    def test_a_bad_owner_is_rejected_when_the_package_loads(self, scheduled):
+        rj = scheduled / "reports" / "sample_dashboard" / "report.json"
+        decl = json.loads(rj.read_text())
+        decl["schedule"]["owner"] = "not-an-address"
+        rj.write_text(json.dumps(decl))
+        schedules, errors = sched.discover_schedules(scheduled / "reports")
+        assert schedules == []
+        assert errors[0]["report"] == "sample_dashboard"
+        assert "one email" in errors[0]["error"]
 
 
 def test_describe_schedule_notes_a_non_default_retry_count():
     base = {"report": "weekly", "cron": "0 9 * * MON", "to": [], "timezone": None}
     assert "retries:" not in sched.describe_schedule({**base, "retries": 2})
     assert "retries: 0" in sched.describe_schedule({**base, "retries": 0})
+    assert "owner:" not in sched.describe_schedule(base)
+    named = sched.describe_schedule({**base, "owner": "ops@example.com"})
+    assert "owner: ops@example.com" in named
 
 
 def test_a_retry_past_the_second_waits_five_minutes_again(scheduled, monkeypatch):

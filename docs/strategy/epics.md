@@ -124,7 +124,7 @@ list them as open, which makes the real gaps harder to see.
 | Finding | Evidence |
 | --- | --- |
 | "About this report" footer, PDF download from the app (WeasyPrint + native libs in the image), and virtualized large tables are still open. | E9 |
-| Schedule retries, owner alerts, Slack/Teams delivery, and bursting are still open. | E11 |
+| Slack/Teams delivery, Slack owner alerts, and bursting are still open. | E11 |
 | E14 decisions not yet made: draft-writing tools for remote agents (after E7), OAuth for claude.ai connectors, rendered snapshot for agents. | #111 |
 
 **What's strong** (keep it that way): the engine, receipts and `verify`; the
@@ -469,8 +469,8 @@ to end ([[product-strategy]]).
 - [x] Retries with backoff for a failed refresh or build, then a recorded
       failure. Default two retries (1 minute, then 5 minutes); `"retries"`
       0–5 overrides. A refused receipt or a send failure is not retried.
-- [ ] Alerts to the report's owner on a failure, empty data, or a receipt
-      that didn't reproduce: email first, Slack after.
+- [x] Email the report's owner on a failure, empty data, or a receipt
+      that didn't reproduce. Slack alerts come later.
 - [ ] Slack and Teams delivery of the file itself, not only a ping, plus a
       short in-body summary (the headline figures).
 - [ ] Per-recipient versions ("bursting"), using the filter grammar

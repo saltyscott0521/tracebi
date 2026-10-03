@@ -34,6 +34,85 @@ from typing import Optional, Sequence, Union
 from urllib.parse import unquote, urlsplit
 
 
+def _smtp_settings():
+    """``(parsed TRACEBI_SMTP_URL, TRACEBI_SMTP_FROM)``.
+
+    Raises ``RuntimeError`` naming the missing variables, or a URL that is
+    not ``smtp://`` or ``smtps://``.
+    """
+    url = os.environ.get("TRACEBI_SMTP_URL")
+    sender = os.environ.get("TRACEBI_SMTP_FROM")
+    missing = [name for name, value in
+               (("TRACEBI_SMTP_URL", url), ("TRACEBI_SMTP_FROM", sender))
+               if not value]
+    if missing:
+        raise RuntimeError(
+            "report delivery is not configured: set " + " and ".join(missing)
+            + ". TRACEBI_SMTP_URL is smtp://user:pass@host:port (or "
+              "smtps:// for implicit TLS); TRACEBI_SMTP_FROM is the "
+              "From: address."
+        )
+    parsed = urlsplit(url)
+    if parsed.scheme not in ("smtp", "smtps"):
+        raise RuntimeError(
+            f"TRACEBI_SMTP_URL must start with smtp:// or smtps://, "
+            f"got {parsed.scheme or url!r}"
+        )
+    return parsed, sender
+
+
+def _transmit(msg: EmailMessage) -> None:
+    """Send *msg* with the configured SMTP endpoint. Sets From when unset."""
+    parsed, sender = _smtp_settings()
+    if "From" not in msg:
+        msg["From"] = sender
+    host = parsed.hostname or "localhost"
+    port = parsed.port or (465 if parsed.scheme == "smtps" else 25)
+    # Verify the server certificate and hostname. Without an explicit context
+    # smtplib uses an UNVERIFIED one, so a MITM could present any certificate,
+    # terminate TLS, and capture the credentials sent in login().
+    ctx = ssl.create_default_context()
+    if parsed.scheme == "smtps":
+        server = smtplib.SMTP_SSL(host, port, timeout=30, context=ctx)
+    else:
+        server = smtplib.SMTP(host, port, timeout=30)
+    try:
+        if parsed.scheme == "smtp":
+            try:
+                server.starttls(context=ctx)
+            except smtplib.SMTPNotSupportedError:
+                # No STARTTLS. Sending credentials over the cleartext link
+                # would expose them, so refuse when any are set — a truly
+                # local no-auth relay still works.
+                if parsed.username:
+                    raise RuntimeError(
+                        "SMTP server does not support STARTTLS; refusing to "
+                        "send credentials over an unencrypted connection — use "
+                        "an smtps:// URL or a server that offers STARTTLS."
+                    )
+        if parsed.username:
+            server.login(unquote(parsed.username),
+                         unquote(parsed.password or ""))
+        server.send_message(msg)
+    finally:
+        try:
+            server.quit()
+        except Exception:  # noqa: BLE001 — the send already happened or raised
+            pass
+
+
+def send_alert(to: str, subject: str, body: str) -> None:
+    """Email one plain-text alert through the same SMTP settings as
+    :func:`send_report`. *to* is one address."""
+    if not isinstance(to, str) or "@" not in to:
+        raise ValueError(f"send_alert: {to!r} is not an email address")
+    msg = EmailMessage()
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.set_content(body if body.endswith("\n") else body + "\n")
+    _transmit(msg)
+
+
 def _contracts_line(contracts: Optional[dict]) -> str:
     """The transform-contracts one-liner for the body — the phase-① join as
     recorded at build, never a claim this module checked anything."""
@@ -99,25 +178,7 @@ def send_report(html_path: Union[str, Path], manifest_path: Union[str, Path],
     if not to:
         raise ValueError("send_report: no recipients given")
 
-    url = os.environ.get("TRACEBI_SMTP_URL")
-    sender = os.environ.get("TRACEBI_SMTP_FROM")
-    missing = [name for name, value in
-               (("TRACEBI_SMTP_URL", url), ("TRACEBI_SMTP_FROM", sender))
-               if not value]
-    if missing:
-        raise RuntimeError(
-            "report delivery is not configured: set " + " and ".join(missing)
-            + ". TRACEBI_SMTP_URL is smtp://user:pass@host:port (or "
-              "smtps:// for implicit TLS); TRACEBI_SMTP_FROM is the "
-              "From: address."
-        )
-
-    parsed = urlsplit(url)
-    if parsed.scheme not in ("smtp", "smtps"):
-        raise RuntimeError(
-            f"TRACEBI_SMTP_URL must start with smtp:// or smtps://, "
-            f"got {parsed.scheme or url!r}"
-        )
+    _, sender = _smtp_settings()
 
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -138,40 +199,7 @@ def send_report(html_path: Union[str, Path], manifest_path: Union[str, Path],
                        subtype="html", filename=html_path.name)
     msg.add_attachment(manifest_path.read_bytes(), maintype="application",
                        subtype="json", filename=manifest_path.name)
-
-    host = parsed.hostname or "localhost"
-    port = parsed.port or (465 if parsed.scheme == "smtps" else 25)
-    # Verify the server certificate and hostname. Without an explicit context
-    # smtplib uses an UNVERIFIED one, so a MITM could present any certificate,
-    # terminate TLS, and capture the credentials sent in login().
-    ctx = ssl.create_default_context()
-    if parsed.scheme == "smtps":
-        server = smtplib.SMTP_SSL(host, port, timeout=30, context=ctx)
-    else:
-        server = smtplib.SMTP(host, port, timeout=30)
-    try:
-        if parsed.scheme == "smtp":
-            try:
-                server.starttls(context=ctx)
-            except smtplib.SMTPNotSupportedError:
-                # No STARTTLS. Sending credentials over the cleartext link
-                # would expose them, so refuse when any are set — a truly
-                # local no-auth relay still works.
-                if parsed.username:
-                    raise RuntimeError(
-                        "SMTP server does not support STARTTLS; refusing to "
-                        "send credentials over an unencrypted connection — use "
-                        "an smtps:// URL or a server that offers STARTTLS."
-                    )
-        if parsed.username:
-            server.login(unquote(parsed.username),
-                         unquote(parsed.password or ""))
-        server.send_message(msg)
-    finally:
-        try:
-            server.quit()
-        except Exception:  # noqa: BLE001 — the send already happened or raised
-            pass
+    _transmit(msg)
     return to
 
 

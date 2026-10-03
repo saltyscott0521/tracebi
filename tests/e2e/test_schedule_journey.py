@@ -64,6 +64,7 @@ def test_a_scheduled_report_is_built_verified_emailed_and_recorded(scheduled):
     assert record["recipients"] == ["team@example.com"]
     assert record["error"] is None
     assert record["attempts"] == 1
+    assert "alert" not in record
 
 
 def test_sending_without_a_mail_server_says_what_to_set(scheduled, monkeypatch):
@@ -141,6 +142,49 @@ def test_a_receipt_that_does_not_reproduce_is_not_retried(scheduled, monkeypatch
     assert record["status"] == "refused"
     assert record["attempts"] == 1
     assert slept == []
+
+
+def test_an_empty_source_alerts_the_owner_and_sends_nothing(
+        scheduled, monkeypatch):
+    """A figure binding with no rows is recorded empty, not mailed to `to`,
+    and the owner gets an alert that names the binding. A binding no figure
+    uses does not count. Verify still has to pass first."""
+    monkeypatch.setattr("tracebi.schedule._sleep", lambda *_a, **_k: None)
+    decl = scheduled / "reports" / "sample_dashboard" / "report.json"
+    spec = json.loads(decl.read_text())
+    spec["schedule"]["owner"] = "owner@example.com"
+    nowhere = {"dim_region.region": "no-such-region"}
+    spec["data"]["by_region"]["query"]["filters"] = nowhere
+    spec["data"]["spare"] = {
+        "model": "sample_model",
+        "query": {
+            "fact": "fact_orders",
+            "measures": ["revenue"],
+            "dimensions": ["dim_region.region"],
+            "filters": dict(nowhere),
+        },
+    }
+    decl.write_text(json.dumps(spec))
+
+    code, out = run_cli("schedule", "run", "sample_dashboard")
+    assert code == 1, out
+    [msg] = _Outbox.sent
+    assert msg["To"] == "owner@example.com"
+    assert "team@example.com" not in msg["To"]
+    assert msg["Subject"] == "TraceBi: sample_dashboard scheduled run empty"
+    body = msg.get_content()
+    assert "by_region" in body
+    assert "spare" not in body
+    assert "output/schedule_runs.jsonl" in body
+    assert list(msg.iter_attachments()) == []
+
+    [record] = _runs(scheduled)
+    assert record["status"] == "empty"
+    assert record["verdict"] == "reproduces"
+    assert record["empty_bindings"] == ["by_region"]
+    assert record["recipients"] == []
+    assert record["alert"] == {
+        "to": "owner@example.com", "sent": True, "error": None}
 
 
 def test_retries_zero_does_not_retry_a_failed_refresh(scheduled, monkeypatch):

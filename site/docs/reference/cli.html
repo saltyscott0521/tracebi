@@ -267,9 +267,12 @@ the recipients taken from the package: a receipt that does not verify is
 recorded <code>refused</code> and nothing is sent. A failed refresh or build is
 retried twice (1 minute, then 5 minutes) before that failure is recorded;
 <code>"retries"</code> (0–5) changes how many, and a refused receipt or a send
-failure is not retried. Every run appends one line to
+failure is not retried. An optional <code>owner</code> address is emailed a
+plain-text alert when a run ends <code>failed</code>, <code>refused</code>, or <code>empty</code>, and
+that run is not sent to <code>to</code>. Every run appends one line to
 <code>output/schedule_runs.jsonl</code>: <code>delivered</code>, <code>built</code> (no recipients, or
-<code>--no-send</code>), <code>refused</code> or <code>failed</code>, with the verdict and who ran it.</p>
+<code>--no-send</code>), <code>refused</code>, <code>empty</code> (a figure binding returned no rows),
+or <code>failed</code>, with the verdict and who ran it.</p>
 <p><code>serve</code> needs <code>pip install "tracebi[pipeline]"</code> (APScheduler) and reads the
 schedules at startup, so restart it after changing one. To use your own
 scheduler instead, call <code>run</code> from it:</p>
