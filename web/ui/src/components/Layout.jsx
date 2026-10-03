@@ -281,6 +281,19 @@ export default function Layout({ children }) {
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
           <Link
+            to="/runs"
+            onClick={close}
+            style={{
+              fontSize: 12,
+              color: 'rgba(200,220,255,0.48)',
+              textDecoration: 'none',
+              padding: '2px 4px',
+            }}
+            className="nav-footer-link"
+          >
+            Runs
+          </Link>
+          <Link
             to="/verify"
             onClick={close}
             style={{

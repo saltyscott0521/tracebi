@@ -155,6 +155,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             )
             assert downloaded["status"] == 200, _tail(log_path)
             assert _TITLE in downloaded["body"]
+
+            # Opening the report recorded a build. The Runs page shows that
+            # row; a build is not a verify, so the verdict is not green.
+            page.goto(base + "/runs")
+            page.get_by_role("heading", name="Runs", exact=True).wait_for()
+            page.get_by_text(_REPORT).wait_for()
+            page.get_by_text("Not verified").first.wait_for()
+            page.screenshot(path="/tmp/runs-page.png", full_page=True)
+            fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:
