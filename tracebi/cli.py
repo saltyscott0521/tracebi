@@ -1664,14 +1664,14 @@ def _report_json_text(title: str, model: str, query: dict) -> str:
 
 
 def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> str:
-    """A starter ``template.html`` that TEACHES the figure grammar: a bound
-    prose number, a KPI card, and — when the model has a dimension — a chart and
-    a filter/search/download table, plus a methodology block and an exploration
-    stage. Generated (not a static file) because ``data-tb-*`` attributes name
-    the model's real measure and dimension. No ``script.js`` or ``style.css``:
-    the runtime (``tracebi.js`` + ``tracebi.css``) draws every figure from the
-    stamped bytes — hand-rolling a CSV parser and a chart is exactly the L0 trap
-    a scaffold must not teach."""
+    """A starter ``template.html`` that TEACHES the figure grammar as a
+    dashboard: an answer sentence, a KPI strip, and — when the model has a
+    dimension — a chart beside a filter/search/download table (``.tb-cols-2``),
+    plus a methodology block and an exploration stage. Generated (not a static
+    file) because ``data-tb-*`` attributes name the model's real measure and
+    dimension. No ``script.js`` or ``style.css``: the runtime (``tracebi.js`` +
+    ``tracebi.css``) draws every figure from the stamped bytes — hand-rolling a
+    CSV parser and a chart is exactly the L0 trap a scaffold must not teach."""
     esc = _html.escape
     m_label = _humanise_label(measure)
     table_binding = "breakdown" if dim_ref else "totals"
@@ -1681,26 +1681,28 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> st
         f"<head><meta charset=\"utf-8\"><title>{esc(title)}</title></head>",
         "<body>",
         '<main class="tb-page">',
-        f"  <h1>{esc(title)}</h1>",
+        "  <header>",
+        f"    <h1>{esc(title)}</h1>",
     ]
     if dim_ref:
         # Lead with the answer: one sentence, numbers bound, under the title.
         parts += [
-            '  <p class="tb-lede">',
-            '    <span data-tb-figure="value" data-tb-binding="top"',
-            f'          data-tb-cell="{esc(dim_ref)}" id="val-top">—</span>',
-            f"    leads on {esc(m_label.lower())} with",
-            '    <span data-tb-figure="value" data-tb-binding="top"',
-            f'          data-tb-cell="{esc(measure)}" id="val-top-{esc(measure)}">—</span>.',
-            "    Rewrite this sentence as the page's finding.</p>",
+            '    <p class="tb-lede">',
+            '      <span data-tb-figure="value" data-tb-binding="top"',
+            f'            data-tb-cell="{esc(dim_ref)}" id="val-top">—</span>',
+            f"      leads on {esc(m_label.lower())} with",
+            '      <span data-tb-figure="value" data-tb-binding="top"',
+            f'            data-tb-cell="{esc(measure)}" id="val-top-{esc(measure)}">—</span>.',
+            "      Rewrite this sentence as the page's finding.</p>",
         ]
     parts += [
-        '  <p class="tb-note">Every number on this page is a live, fingerprinted',
-        f"    query — including this one: {esc(m_label)} totals",
-        f'    <span data-tb-figure="value" data-tb-binding="totals"',
-        f'          data-tb-cell="{esc(measure)}" id="val-{esc(measure)}">—</span>.',
-        "    Bind prose numbers too; never type one in. Check the file offline",
-        "    with <code>tracebi verify --file</code>.</p>",
+        '    <p class="tb-note">Every number on this page is a live, fingerprinted',
+        f"      query — including this one: {esc(m_label)} totals",
+        f'      <span data-tb-figure="value" data-tb-binding="totals"',
+        f'            data-tb-cell="{esc(measure)}" id="val-{esc(measure)}">—</span>.',
+        "      Bind prose numbers too; never type one in. Check the file offline",
+        "      with <code>tracebi verify --file</code>.</p>",
+        "  </header>",
         "",
         '  <div class="tb-grid">',
         f'    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="totals"',
@@ -1715,31 +1717,34 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None") -> st
         d_label = _humanise_label(dim_ref)
         parts += [
             "",
-            '  <div class="tb-card">',
-            f"    <h2>{esc(m_label)} by {esc(d_label)}</h2>",
-            f'    <div data-tb-figure="chart" data-tb-binding="breakdown"',
-            f'         data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
-            f'         data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
-            '         id="chart-breakdown"></div>',
-            "  </div>",
-            "",
-            '  <div class="tb-card">',
-            "    <h2>Detail</h2>",
-            '    <p class="tb-note">Filter and search subset which stamped rows',
-            "      display — they never compute new numbers. The CSV button",
-            "      exports the stamped bytes verbatim.</p>",
-            "    <p>",
-            "      <label>Search",
-            '        <input data-tb-search data-tb-binding="breakdown"',
-            '               placeholder="type to filter…"></label>',
-            f"      <label>{esc(d_label)}",
-            f'        <select data-tb-filter data-tb-binding="breakdown"',
-            f'                data-tb-column="{esc(dim_ref)}"></select></label>',
-            '      <button data-tb-download data-tb-binding="breakdown"',
-            '              data-tb-label="Download CSV"></button>',
-            "    </p>",
-            f'    <table data-tb-figure="table" data-tb-binding="{table_binding}"',
-            '           class="tb-table--striped" id="tbl-detail"></table>',
+            "  <!-- Chart and the filterable table share one dashboard row.",
+            "       tb-cols-2 stacks to a single column on a narrow screen. -->",
+            '  <div class="tb-cols-2">',
+            '    <div class="tb-card">',
+            f"      <h2>{esc(m_label)} by {esc(d_label)}</h2>",
+            f'      <div data-tb-figure="chart" data-tb-binding="breakdown"',
+            f'           data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
+            f'           data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
+            '           id="chart-breakdown"></div>',
+            "    </div>",
+            '    <div class="tb-card">',
+            "      <h2>Detail</h2>",
+            '      <p class="tb-note">Filter and search subset which stamped rows',
+            "        display — they never compute new numbers. The CSV button",
+            "        exports the stamped bytes verbatim.</p>",
+            "      <p>",
+            "        <label>Search",
+            '          <input data-tb-search data-tb-binding="breakdown"',
+            '                 placeholder="type to filter…"></label>',
+            f"        <label>{esc(d_label)}",
+            f'          <select data-tb-filter data-tb-binding="breakdown"',
+            f'                  data-tb-column="{esc(dim_ref)}"></select></label>',
+            '        <button data-tb-download data-tb-binding="breakdown"',
+            '                data-tb-label="Download CSV"></button>',
+            "      </p>",
+            f'      <table data-tb-figure="table" data-tb-binding="{table_binding}"',
+            '             class="tb-table--striped" id="tbl-detail"></table>',
+            "    </div>",
             "  </div>",
         ]
     else:

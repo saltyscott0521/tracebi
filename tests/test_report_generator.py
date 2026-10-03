@@ -936,7 +936,8 @@ class TestReportCLI:
         template = (pkg / "template.html").read_text()
         for marker in ("data-tb-figure", "data-tb-binding", "data-tb-filter",
                        "data-tb-search", "data-tb-download", "data-tb-stage",
-                       "data-tb-methodology"):
+                       "data-tb-methodology", "tb-lede", "tb-grid", "tb-cols-2",
+                       "tb-kpi-context"):
             assert marker in template, f"scaffold no longer teaches {marker}"
         assert "parseCsv" not in template   # no reimplemented runtime
 

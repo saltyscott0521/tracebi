@@ -3,23 +3,25 @@
 <head><meta charset="utf-8"><title>Sample Dashboard</title></head>
 <body>
 <main class="tb-page">
-  <h1>Orders — Sample Dashboard</h1>
-  <!-- Lead with the answer: one sentence, its numbers bound, under the title. -->
-  <p class="tb-lede">
-    <span data-tb-figure="value" data-tb-binding="top_region"
-          data-tb-cell="dim_region.region" id="val-top-region">—</span>
-    led every region with
-    <span data-tb-figure="value" data-tb-binding="top_region"
-          data-tb-cell="revenue" data-tb-format="currency0"
-          id="val-top-revenue">—</span>
-    in revenue.</p>
-  <p class="tb-note">Cleaned from <code>inputs/orders.csv</code> by the
-    phase-① transform. Every number on this page is a live, fingerprinted
-    query — including the one in this sentence: total revenue across all
-    regions is
-    <span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
-          data-tb-format="currency0" id="val-revenue-inline">—</span>.
-    Prose numbers can be bound too; never type one in.</p>
+  <header>
+    <h1>Orders — Sample Dashboard</h1>
+    <!-- Lead with the answer: one sentence, its numbers bound, under the title. -->
+    <p class="tb-lede">
+      <span data-tb-figure="value" data-tb-binding="top_region"
+            data-tb-cell="dim_region.region" id="val-top-region">—</span>
+      led every region with
+      <span data-tb-figure="value" data-tb-binding="top_region"
+            data-tb-cell="revenue" data-tb-format="currency0"
+            id="val-top-revenue">—</span>
+      in revenue.</p>
+    <p class="tb-note">Cleaned from <code>inputs/orders.csv</code> by the
+      phase-① transform. Every number on this page is a live, fingerprinted
+      query — including the one in this sentence: total revenue across all
+      regions is
+      <span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
+            data-tb-format="currency0" id="val-revenue-inline">—</span>.
+      Prose numbers can be bound too; never type one in.</p>
+  </header>
 
   <div class="tb-grid">
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
@@ -32,41 +34,47 @@
          data-tb-cell="orders" data-tb-format="comma" id="kpi-orders">
       <span class="tb-kpi-label">Orders</span>
       <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">count of orders in the sink</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="units" data-tb-format="comma" id="kpi-units">
       <span class="tb-kpi-label">Units</span>
       <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">units on those orders</span>
     </div>
   </div>
 
-  <div class="tb-card">
-    <h2>Revenue by region</h2>
-    <div data-tb-figure="chart" data-tb-binding="by_region" data-tb-type="bar"
-         data-tb-x="dim_region.region" data-tb-y="revenue"
-         data-tb-value-format="compact" id="chart-by-region"></div>
-  </div>
+  <!-- Dashboard row: chart and the filterable table share the width.
+       tb-cols-2 stacks to one column on a narrow screen. -->
+  <div class="tb-cols-2">
+    <div class="tb-card">
+      <h2>Revenue by region</h2>
+      <div data-tb-figure="chart" data-tb-binding="by_region" data-tb-type="bar"
+           data-tb-x="dim_region.region" data-tb-y="revenue"
+           data-tb-value-format="compact" id="chart-by-region"></div>
+    </div>
 
-  <div class="tb-card">
-    <h2>Region detail</h2>
-    <p class="tb-note">Filter and search subset which stamped rows display —
-      they never compute new numbers. The CSV button exports the stamped
-      bytes verbatim; tables scroll past the first page of rows.</p>
-    <p>
-      <label>Search
-        <input data-tb-search data-tb-binding="region_detail"
-               placeholder="type to filter…"></label>
-      <label>Region
-        <select data-tb-filter data-tb-binding="region_detail"
-                data-tb-column="dim_region.region"></select></label>
-      <button data-tb-download data-tb-binding="region_detail"
-              data-tb-label="Download CSV"></button>
-    </p>
-    <!-- data-tb-labels / data-tb-formats override the derived header and
-         number format for the columns they name ("col=Value; col=Value"). -->
-    <table data-tb-figure="table" data-tb-binding="region_detail"
-           data-tb-formats="revenue=currency"
-           class="tb-table--striped" id="tbl-regions"></table>
+    <div class="tb-card">
+      <h2>Region detail</h2>
+      <p class="tb-note">Filter and search subset which stamped rows display —
+        they never compute new numbers. The CSV button exports the stamped
+        bytes verbatim; tables scroll past the first page of rows.</p>
+      <p>
+        <label>Search
+          <input data-tb-search data-tb-binding="region_detail"
+                 placeholder="type to filter…"></label>
+        <label>Region
+          <select data-tb-filter data-tb-binding="region_detail"
+                  data-tb-column="dim_region.region"></select></label>
+        <button data-tb-download data-tb-binding="region_detail"
+                data-tb-label="Download CSV"></button>
+      </p>
+      <!-- data-tb-labels / data-tb-formats override the derived header and
+           number format for the columns they name ("col=Value; col=Value"). -->
+      <table data-tb-figure="table" data-tb-binding="region_detail"
+             data-tb-formats="revenue=currency"
+             class="tb-table--striped" id="tbl-regions"></table>
+    </div>
   </div>
 
   <section class="tb-card" data-tb-methodology>
