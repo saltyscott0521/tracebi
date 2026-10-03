@@ -197,7 +197,7 @@ builder's own database, not only the sample data.
       DuckDB), tests it, writes the secret to `.env` and a connector to
       `models/_connections/` (discovery only loads top-level `models/*.py`
       that define `model`).
-- [ ] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
+- [x] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
       schema from table metadata (the column metadata `info()` already reads),
       for the builder or their agent to edit and approve. No data scanned.
 - [ ] `tracebi import dbt <path>`: reads a dbt project's `manifest.json` and

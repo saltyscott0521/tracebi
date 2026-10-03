@@ -78,6 +78,7 @@ top-level `models/*.py`, and a file there must define `model`.
 ```bash
 tracebi new-transform "Orders Clean"  [--force] [--transforms-dir DIR]
 tracebi new-model     "Sales Model"   [--force]
+tracebi new-model     "Sales" --from wh --tables fact_sales,dim_customer,dim_product
 tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
 tracebi new-pipeline  "Sales ETL"     [--force]
 ```
@@ -92,6 +93,15 @@ by that path everywhere after: `tracebi report build finance/month_end/close_pac
 reports by folder. Two folders can each hold a report of the same name.
 
 All refuse to overwrite without `--force`.
+
+`new-model --from <connection> --tables a,b,c` drafts that file from the
+connection `tracebi connect` wrote, using column metadata only — no row
+scan. A table named `fact_*`, or one with numeric non-key columns and
+`*_id`/`*_key` columns that match another listed table's key, is drafted as
+a fact; the rest are dimensions. Relationships follow those key names, and
+each numeric non-key column on a fact becomes a `sum` measure. Every guess
+is marked `# DRAFT: review` for a person or an agent to edit. `--tables` is
+required with `--from` (prompted on a terminal, otherwise exit 2).
 
 `new-report` deliberately writes **no** `script.js` or `style.css` — the
 runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser

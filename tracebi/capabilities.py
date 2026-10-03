@@ -952,6 +952,12 @@ def describe(brief: bool = False) -> dict:
             "env": "TRACEBI_<NAME>_URL, TRACEBI_<NAME>_PASSWORD, and the "
                    "other constructor fields, uppercase name. An existing "
                    "key is kept unless --force.",
+            "then": "tracebi new-model \"<Name>\" --from <name> --tables a,b,c "
+                    "drafts a star schema from column metadata only (no row "
+                    "scan). A table named fact_* or with numeric non-key "
+                    "columns and *_id/*_key columns that match another "
+                    "listed table's key is a fact; the rest are dimensions. "
+                    "Edit every line marked # DRAFT: review.",
         },
         "warehouse": {
             "what": "Column names and types of a sunk table, from connector "

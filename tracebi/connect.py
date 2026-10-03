@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -372,3 +373,307 @@ def _bigquery_body(name: str) -> str:
         "    credentials=_credentials(),\n"
         ")\n"
     )
+
+
+# Fact vs dimension, from metadata only: a table is a fact when its name
+# starts with fact_, or when it has a numeric non-key column and a *_id/*_key
+# column that names another listed table's own key. Everything else is a
+# dimension. Own key is <stem>_id or <stem>_key (dim_/fact_ stripped; a
+# trailing s dropped — ponytail: not a real pluralizer, so "status" is tried
+# whole before "statu"), else id, else the only key-shaped column.
+
+
+def draft_model_command(args) -> int:
+    """Draft ``models/<slug>.py`` from ``column_schema`` of the named tables.
+
+    No table scan. Guessed lines are marked ``# DRAFT: review``.
+    """
+    from tracebi.cli import _slugify
+
+    connection = (args.from_connection or "").strip()
+    if not connection:
+        print("missing required flags: --from", file=sys.stderr)
+        return 2
+    if not _NAME.fullmatch(connection):
+        print(
+            f"connection name {connection!r} must be a Python identifier",
+            file=sys.stderr,
+        )
+        return 2
+
+    tables_arg = args.tables
+    if not tables_arg:
+        if sys.stdin.isatty():
+            tables_arg = input("--tables: ").strip()
+        if not tables_arg:
+            print("missing required flags: --tables", file=sys.stderr)
+            return 2
+    tables = []
+    for part in tables_arg.split(","):
+        name = part.strip()
+        if name and name not in tables:
+            tables.append(name)
+    if not tables:
+        print("missing required flags: --tables", file=sys.stderr)
+        return 2
+
+    models_dir: Path = args.models_dir
+    conn_path = connection_path(models_dir, connection)
+    if not conn_path.is_file():
+        print(
+            f"connection {connection!r} not found at {conn_path} — "
+            f"run `tracebi connect {connection}` first",
+            file=sys.stderr,
+        )
+        return 1
+
+    slug = _slugify(args.title)
+    out_path = models_dir / f"{slug}.py"
+    if out_path.exists() and not args.force:
+        print(
+            f"refusing to overwrite existing {out_path}; pass --force to replace",
+            file=sys.stderr,
+        )
+        return 1
+
+    schemas = _read_schemas(conn_path, tables)
+    if schemas is None:
+        return 1
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        _model_source(args.title, slug, connection, _classify(schemas)),
+        encoding="utf-8",
+    )
+    print(f"Created {out_path}")
+    print("  Lines marked # DRAFT: review are guesses — edit and approve them.")
+    print("  Edit the file, then use it with:")
+    print("    from tracebi.model_registry import get_model")
+    print(f'    model = get_model("{slug}")')
+    return 0
+
+
+def _read_schemas(conn_path: Path, tables: list[str]) -> dict | None:
+    import runpy
+
+    try:
+        namespace = runpy.run_path(str(conn_path))
+    except Exception as exc:  # noqa: BLE001 — a broken connection module is the result
+        print(_one_line_error(exc), file=sys.stderr)
+        return None
+    connector = namespace.get("connector")
+    if connector is None:
+        print(f"{conn_path} does not define connector", file=sys.stderr)
+        return None
+    schemas: dict = {}
+    try:
+        for table in tables:
+            try:
+                schema = connector.column_schema(table)
+            except Exception as exc:  # noqa: BLE001 — first driver line, and no model written
+                print(_one_line_error(exc), file=sys.stderr)
+                return None
+            if not schema:
+                print(
+                    f"{table}: this connector cannot describe columns without reading rows",
+                    file=sys.stderr,
+                )
+                return None
+            schemas[table] = schema
+    finally:
+        _release(connector)
+    return schemas
+
+
+def _is_key_column(name: str) -> bool:
+    low = name.lower()
+    return low == "id" or low.endswith("_id") or low.endswith("_key")
+
+
+def _is_numeric(dtype: str) -> bool:
+    head = dtype.split("(", 1)[0].strip().upper()
+    if head.endswith("INT"):
+        return True
+    return head in {
+        "FLOAT", "DOUBLE", "REAL", "DECIMAL", "NUMERIC", "NUMBER",
+        "FLOAT4", "FLOAT8", "FLOAT64", "FLOAT32",
+    } or head.startswith(("DECIMAL", "NUMERIC", "FLOAT"))
+
+
+def _summable(column: str) -> bool:
+    """Sum would be refused for a rate-named or stock-named measure."""
+    from tracebi.model.data_model import _RATE_TOKEN, _STOCK_TOKEN
+
+    low = column.lower()
+    return not (_RATE_TOKEN.search(low) or _STOCK_TOKEN.search(low))
+
+
+def _stem_forms(table: str) -> list[str]:
+    low = table.lower()
+    forms: list[str] = []
+
+    def add(value: str) -> None:
+        if value and value not in forms:
+            forms.append(value)
+
+    add(low)
+    for prefix in ("dim_", "fact_"):
+        if low.startswith(prefix):
+            add(low[len(prefix):])
+            break
+    for form in list(forms):
+        if form.endswith("s") and not form.endswith("ss") and len(form) > 1:
+            add(form[:-1])
+    return forms
+
+
+def _own_key(table: str, columns: list[dict]) -> str | None:
+    by_lower: dict[str, str] = {}
+    for col in columns:
+        by_lower.setdefault(col["name"].lower(), col["name"])
+    for form in _stem_forms(table):
+        for suffix in ("_id", "_key"):
+            hit = by_lower.get(form + suffix)
+            if hit:
+                return hit
+    if "id" in by_lower:
+        return by_lower["id"]
+    keys = [col["name"] for col in columns if _is_key_column(col["name"])]
+    if len(keys) == 1:
+        return keys[0]
+    return None
+
+
+def _dim_name(table: str) -> str:
+    if table.lower().startswith("dim_"):
+        return table
+    return "dim_" + table
+
+
+def _classify(schemas: dict[str, list[dict]]) -> list[dict]:
+    own = {table: _own_key(table, columns) for table, columns in schemas.items()}
+    drafts = []
+    for table, columns in schemas.items():
+        fks = []
+        for col in columns:
+            name = col["name"]
+            if name == own[table] or not _is_key_column(name):
+                continue
+            for other, other_key in own.items():
+                if other == table or not other_key:
+                    continue
+                if other_key.lower() == name.lower():
+                    fks.append((name, other, other_key))
+                    break
+        numeric = [
+            col["name"] for col in columns
+            if _is_numeric(col["dtype"]) and not _is_key_column(col["name"])
+            and col["name"] != own[table]
+        ]
+        fact = table.lower().startswith("fact_") or bool(numeric and fks)
+        drafts.append({
+            "table": table,
+            "columns": columns,
+            "own_key": own[table],
+            "fks": fks,
+            "numeric": numeric,
+            "fact": fact,
+        })
+    return drafts
+
+
+def _model_source(title: str, slug: str, connection: str, drafts: list[dict]) -> str:
+    model_name = title.strip().replace(" ", "") or slug
+    rel = f"_connections/{connection}.py"
+    lines = [
+        '"""',
+        title.strip() or slug,
+        "=" * len(title.strip() or slug),
+        "",
+        f"DataModel drafted by ``tracebi new-model --from {connection}`` on {date.today().isoformat()}.",
+        "",
+        "Lines marked ``# DRAFT: review`` are guesses from column metadata",
+        "(no rows were read). Edit and approve them before a report depends",
+        "on this model.",
+        "",
+        "    from tracebi.model_registry import get_model",
+        f'    model = get_model("{slug}")',
+        '"""',
+        "",
+        "import os",
+        "import runpy",
+        "",
+        "from tracebi import DataModel",
+        "",
+        "_conn = runpy.run_path(os.path.join(",
+        "    os.path.dirname(os.path.abspath(__file__)),",
+        f"    {rel!r}))",
+        'connector = _conn["connector"]',
+        "",
+        "# Importing this file must not query the warehouse. A query connects.",
+        "",
+        f"model = DataModel({model_name!r})",
+        "model.add_connector(connector)",
+    ]
+    for draft in drafts:
+        table = draft["table"]
+        lines.append(
+            f"model.add_table({table!r}, connector={connection!r}, source={table!r})"
+        )
+    dim_of = {
+        draft["table"]: _dim_name(draft["table"])
+        for draft in drafts if not draft["fact"]
+    }
+    for draft in drafts:
+        if draft["fact"]:
+            continue
+        table = draft["table"]
+        key = draft["own_key"] or draft["columns"][0]["name"]
+        attrs = [col["name"] for col in draft["columns"] if col["name"] != key]
+        lines.append("# DRAFT: review")
+        lines.append(
+            f"model.add_dimension({dim_of[table]!r}, table_name={table!r}, "
+            f"key_col={key!r}, attributes={attrs!r})"
+        )
+    for draft in drafts:
+        if not draft["fact"]:
+            continue
+        measures = [col for col in draft["numeric"] if _summable(col)]
+        skipped = [col for col in draft["numeric"] if col not in measures]
+        fks = {
+            dim_of[other]: col
+            for col, other, _right in draft["fks"] if other in dim_of
+        }
+        lines.append("# DRAFT: review")
+        lines.append(
+            f"model.add_fact({draft['table']!r}, table_name={draft['table']!r}, "
+            f"measures={measures!r}, foreign_keys={fks!r})"
+        )
+        for col in skipped:
+            lines.append(
+                f"# DRAFT: review — {col!r} looks like a rate or a stock, so it is not a sum"
+            )
+    used: set[str] = set()
+    for draft in drafts:
+        for col, other, right_key in draft["fks"]:
+            lines.append("# DRAFT: review")
+            rel_name = f"{draft['table']}__{col}"
+            lines.append(
+                "model.add_relationship("
+                f"name={rel_name!r}, "
+                f"left_table={draft['table']!r}, right_table={other!r}, "
+                f"left_key={col!r}, right_key={right_key!r})"
+            )
+        if not draft["fact"]:
+            continue
+        for col in draft["numeric"]:
+            if not _summable(col):
+                continue
+            measure = col if col not in used else f"{draft['table']}_{col}"
+            used.add(measure)
+            lines.append("# DRAFT: review")
+            lines.append(
+                f"model.add_measure({measure!r}, column={col!r}, agg='sum')"
+            )
+    lines.append("")
+    return "\n".join(lines)

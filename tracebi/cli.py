@@ -943,6 +943,9 @@ def cmd_connect(args: argparse.Namespace) -> int:
 
 
 def cmd_new_model(args: argparse.Namespace) -> int:
+    if args.from_connection or args.tables:
+        from tracebi.connect import draft_model_command
+        return draft_model_command(args)
     models_dir: Path = args.models_dir
     models_dir.mkdir(parents=True, exist_ok=True)
 
@@ -2539,9 +2542,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_connect.set_defaults(func=cmd_connect)
 
-    p_new_model = sub.add_parser("new-model", help="Scaffold a new model definition.")
+    p_new_model = sub.add_parser(
+        "new-model",
+        help="Scaffold a new model definition, or draft one from a connection.",
+    )
     p_new_model.add_argument("title", help='Free-form title, e.g. "Sales Model".')
     p_new_model.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_model.add_argument(
+        "--from", dest="from_connection", metavar="CONNECTION",
+        help="Draft the model from this `tracebi connect` connection. "
+             "Metadata only; no row scan.",
+    )
+    p_new_model.add_argument(
+        "--tables",
+        help="Comma-separated tables to draft. Required with --from.",
+    )
     p_new_model.set_defaults(func=cmd_new_model)
 
     p_list_models = sub.add_parser("list-models", help="List model definition files.")

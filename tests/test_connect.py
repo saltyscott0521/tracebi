@@ -171,6 +171,31 @@ def test_connect_module_does_not_import_dotenv():
             assert all(alias.name != "dotenv" for alias in node.names)
 
 
+def test_new_model_from_without_tables_exits_2(tmp_path, monkeypatch, capsys):
+    code = _run(monkeypatch, tmp_path, "new-model", "Sales", "--from", "wh")
+    assert code == 2
+    assert "--tables" in capsys.readouterr().err
+    assert not (tmp_path / "models" / "sales.py").exists()
+
+
+def test_missing_table_writes_no_model(tmp_path, monkeypatch, capsys):
+    import duckdb
+    db = tmp_path / "wh.duckdb"
+    duckdb.connect(str(db)).close()
+    assert _run(
+        monkeypatch, tmp_path,
+        "connect", "wh", "--kind", "duckdb", "--database", str(db), "--no-test",
+    ) == 0
+    capsys.readouterr()
+    code = _run(
+        monkeypatch, tmp_path,
+        "new-model", "Sales", "--from", "wh", "--tables", "no_such",
+    )
+    assert code == 1
+    assert not (tmp_path / "models" / "sales.py").exists()
+    assert (tmp_path / "models" / "_connections" / "wh.py").is_file()
+
+
 def test_help_lists_connect(capsys):
     try:
         main(["--help"])
