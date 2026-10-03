@@ -349,6 +349,28 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
   color: var(--tb-muted);
 }
 
+/* Default About footer (.tb-about) — who / when / definitions / what the
+ * receipt is for. On by default at the end of a built page, or inside the
+ * author's data-tb-methodology container. Never a claim badge. */
+.tb-about {
+  margin-top: var(--tb-space-5);
+  padding-top: var(--tb-space-3);
+  border-top: 1px solid var(--tb-rule);
+  font-size: 0.9em;
+  color: var(--tb-muted);
+}
+.tb-about > h2 {
+  margin: 0 0 var(--tb-space-2);
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--tb-ink);
+}
+.tb-about-meta,
+.tb-about-receipt { margin: var(--tb-space-1) 0; max-width: 40rem; }
+.tb-about-receipt code {
+  font-size: 0.92em;
+}
+
 /* The stated-methodology appendix — build-appended prose the transform and
  * the model STATE about themselves. An appendix, never a claim: muted and
  * small, and no badge class ever styles it. */

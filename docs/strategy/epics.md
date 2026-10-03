@@ -381,9 +381,9 @@ product").
       then what it was computed from (the measure and its cut), with the
       fingerprint behind a disclosure. The drawer shows provenance; it must
       not claim a number reproduces, which only `verify` can say. (#101)
-- [ ] An "About this report" footer on by default: who built it, when, from
+- [x] An "About this report" footer on by default: who built it, when, from
       which definitions, and what the receipt proves and doesn't, in the
-      locked language. It builds on the existing `methodology` block.
+      locked language. It builds on the existing `methodology` block. (#162)
 - [ ] Download as PDF, tested. `HTMLRenderer.render_pdf()` exists; a smoke
       test skips without WeasyPrint + native libs. The Docker image needs
       those libraries, and the app download path needs to be proven in CI.
