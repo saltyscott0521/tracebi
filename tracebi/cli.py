@@ -2089,6 +2089,10 @@ def cmd_report(args: argparse.Namespace) -> int:
         output = (Path(args.output) if args.output
                   else Path.cwd() / "output" / f"{args.name}.snapshot.html")
         return _snapshot_report_target(kind, path, output)
+    pdf = getattr(args, "format", "html") == "pdf"
+    if pdf and args.action != "build":
+        print("--format pdf applies to `tracebi report build`.", file=sys.stderr)
+        return 1
     output = Path(args.output) if args.output else Path.cwd() / "output" / f"{args.name}.html"
     try:
         _build_report_target(kind, path, output,
@@ -2108,6 +2112,17 @@ def cmd_report(args: argparse.Namespace) -> int:
     manifest = output.with_name(output.name + ".manifest.json")
     print(f"Rendered {args.name} ({kind}) → {output}")
     print(f"  manifest → {manifest}")
+
+    if pdf:
+        pdf_path = output.with_suffix(".pdf")
+        try:
+            from tracebi.reports.pdf import print_pdf
+            print_pdf(output, pdf_path)
+        except (ImportError, RuntimeError) as exc:
+            print(f"failed to print '{args.name}' to PDF: {exc}", file=sys.stderr)
+            return 1
+        print(f"  pdf → {pdf_path}")
+        print("  a print of the HTML; it carries no receipt")
 
     if args.action == "send":
         return _report_send(args, output, manifest)
@@ -2607,6 +2622,14 @@ def build_parser() -> argparse.ArgumentParser:
              "a red flag travels WITH the report, never silently.",
     )
     p_report.add_argument("--output", help="Output .html path (default: output/<name>.html).")
+    p_report.add_argument(
+        "--format", choices=["html", "pdf"], default="html",
+        help="With `build`: html (default), or pdf to also write a sibling "
+             ".pdf — a print of the built HTML. The PDF carries no receipt; "
+             "the HTML and manifest stay the checkable artifact. Needs "
+             "pip install 'tracebi[pdf]' and "
+             "python -m playwright install chromium.",
+    )
     p_report.add_argument(
         "--resolve",
         metavar="ID",

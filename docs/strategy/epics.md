@@ -384,9 +384,9 @@ product").
 - [x] An "About this report" footer on by default: who built it, when, from
       which definitions, and what the receipt proves and doesn't, in the
       locked language. It builds on the existing `methodology` block. (#162)
-- [ ] Download as PDF, tested. `HTMLRenderer.render_pdf()` exists; a smoke
-      test skips without WeasyPrint + native libs. The Docker image needs
-      those libraries, and the app download path needs to be proven in CI.
+- [x] Download as PDF, tested. The PDF is the built report HTML printed by
+      headless Chromium (Playwright), so charts render. `HTMLRenderer.render_pdf()`
+      (WeasyPrint, no JavaScript) is unchanged. (#87)
 - [ ] Large tables stay fast: a virtualized table mode for big bindings
       ([[large-detail-artifacts]], [[ROADMAP]] 11c first half).
 

@@ -66,7 +66,9 @@ snowflake = ["snowflake-connector-python>=3.0"]
 # implementation and preserves pandas dtypes exactly, which the receipt depends
 # on (see tracebi/reports/parquet_embed.py).
 reports   = ["openpyxl>=3.1.5", "matplotlib>=3.10.9", "pyarrow>=14.0"]
-pdf       = ["weasyprint>=57"]  # enables HTMLRenderer.render_pdf(); no standalone PDFRenderer yet
+# Playwright prints a built package (charts run). WeasyPrint stays for
+# HTMLRenderer.render_pdf(), which prints the legacy renderer and runs no JS.
+pdf       = ["playwright>=1.40", "weasyprint>=57"]
 lineage   = ["networkx>=3.0", "matplotlib>=3.10.9"]
 medallion = ["networkx>=3.0"]
 pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
@@ -99,6 +101,7 @@ all = [
     "db-dtypes",
     "snowflake-connector-python>=3.0",
     "weasyprint>=57",
+    "playwright>=1.40",
     "networkx>=3.0",
     "apscheduler>=3.10",
     "fastapi>=0.100",

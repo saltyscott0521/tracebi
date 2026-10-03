@@ -226,6 +226,9 @@ kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
 is already served on the Reports page — there is no separate publish step.
+A PDF (`tracebi report build <name> --format pdf`, or
+`build_report(..., format="pdf")`) is a print of that built HTML and carries
+no receipt.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:
@@ -381,8 +384,8 @@ Thirteen tools (`tracebi/mcp_server.py`):
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
 | `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit. Open pins only; `resolved_count` is how many have been resolved |
 | `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
-| `build_report` | The **publish step for the package lane**: build `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` in that same output directory. The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact |
-| `fetch_artifact` | Read back an artifact a render or build tool wrote, given the path it returned. HTML and JSON come back as text. An `.xlsx` from `build_report(..., format="xlsx")` comes back base64-encoded (`encoding="base64"`) with the spreadsheet media type. Every other suffix stays refused |
+| `build_report` | The **publish step for the package lane**: build `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` in that same output directory. The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf`: a print of that built HTML, which carries no receipt; `pdf_note` points at the HTML and manifest |
+| `fetch_artifact` | Read back an artifact a render or build tool wrote, given the path it returned. HTML and JSON come back as text. An `.xlsx` from `build_report(..., format="xlsx")` or a `.pdf` from `format="pdf"` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 
 Every tool returns **structured output** (a typed `outputSchema` and

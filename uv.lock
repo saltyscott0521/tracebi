@@ -3500,6 +3500,7 @@ all = [
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openpyxl" },
+    { name = "playwright" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyarrow" },
     { name = "python-dotenv" },
@@ -3572,6 +3573,7 @@ medallion = [
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 pdf = [
+    { name = "playwright" },
     { name = "weasyprint" },
 ]
 pipeline = [
@@ -3642,7 +3644,9 @@ requires-dist = [
     { name = "openpyxl", marker = "extra == 'dev'", specifier = ">=3.1.5" },
     { name = "openpyxl", marker = "extra == 'reports'", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=1.5" },
+    { name = "playwright", marker = "extra == 'all'", specifier = ">=1.40" },
     { name = "playwright", marker = "extra == 'e2e'", specifier = ">=1.40" },
+    { name = "playwright", marker = "extra == 'pdf'", specifier = ">=1.40" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'all'", specifier = ">=3.1" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.1" },
     { name = "pyarrow", marker = "extra == 'all'", specifier = ">=14.0" },
