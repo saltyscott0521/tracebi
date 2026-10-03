@@ -93,6 +93,37 @@ class TestManifestV2Shape:
         assert by_id["fig-kpi"]["cell"] == "total"
         assert by_id["fig-est"]["unverified"] is True
 
+    def test_section_type_follows_a_single_figure_kind(self, v2_model, tmp_path):
+        body = (
+            '<div data-tb-figure="value" data-tb-binding="kpi" '
+            'data-tb-cell="total" id="fig-kpi"></div>'
+            '<div data-tb-figure="chart" data-tb-binding="by_region" '
+            'data-tb-type="bar" data-tb-x="dim_r.region" data-tb-y="revenue" '
+            'id="fig-chart"></div>'
+        )
+        _html, manifest = _render(tmp_path, v2_model, body=body)
+        stored = {s["id"]: s["section_type"] for s in manifest["sections"]}
+        assert stored == {"kpi": "table", "by_region": "table"}
+        result = verify_manifest(manifest, {"v2_model": v2_model})
+        got = {s["section"]: s["section_type"] for s in result["sections"]}
+        assert got["kpi"] == "value"
+        assert got["by_region"] == "chart"
+
+        mixed = (
+            '<div data-tb-figure="value" data-tb-binding="kpi" '
+            'data-tb-cell="total" id="fig-kpi"></div>'
+            '<table data-tb-figure="table" data-tb-binding="by_region" '
+            'id="fig-tbl"></table>'
+            '<div data-tb-figure="chart" data-tb-binding="by_region" '
+            'data-tb-type="bar" data-tb-x="dim_r.region" data-tb-y="revenue" '
+            'id="fig-chart"></div>'
+        )
+        _html, manifest = _render(tmp_path, v2_model, body=mixed)
+        result = verify_manifest(manifest, {"v2_model": v2_model})
+        got = {s["section"]: s["section_type"] for s in result["sections"]}
+        assert got["kpi"] == "value"
+        assert got["by_region"] == "table"
+
     def test_build_refuses_a_figure_with_no_binding_and_no_mark(self, v2_model, tmp_path):
         from tracebi.reports.figures import FigureError
         with pytest.raises(FigureError, match="no third\nstate|third .?state|no binding"):
