@@ -360,6 +360,39 @@ def list_runs(
     return [_public(dict(r)) for r in rows]
 
 
+def newest_by_target(kind: str, url: Optional[str] = None) -> dict[str, dict]:
+    """The newest row of *kind* for each target.
+
+    Newest is the highest id, the same order :func:`list_runs` uses.
+    """
+    eng = ensure(url)
+    from sqlalchemy import text
+    with eng.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT * FROM tracebi_runs WHERE kind = :kind AND id IN ("
+            "SELECT MAX(id) FROM tracebi_runs WHERE kind = :kind GROUP BY target)"
+        ), {"kind": kind}).mappings().all()
+    out = {}
+    for row in rows:
+        public = _public(dict(row))
+        target = public.get("target")
+        if target:
+            out[target] = public
+    return out
+
+
+def count_by_target(kind: str, url: Optional[str] = None) -> dict[str, int]:
+    """How many rows of *kind* each target has."""
+    eng = ensure(url)
+    from sqlalchemy import text
+    with eng.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT target, COUNT(*) AS n FROM tracebi_runs "
+            "WHERE kind = :kind AND target IS NOT NULL GROUP BY target"
+        ), {"kind": kind}).fetchall()
+    return {target: int(n) for target, n in rows if target}
+
+
 def get_run(run_id: int, url: Optional[str] = None) -> Optional[dict]:
     eng = ensure(url)
     from sqlalchemy import text
