@@ -100,7 +100,7 @@ draws a proportional bar behind each named numeric cell (zero at the left, or
 centered when the column has negatives); and `data-tb-direction="up-good"` or
 `"down-good"` on a value figure marks a bound change up or down, good or bad,
 from its sign. Add `tb-table--freeze` to keep a wide table's first column in
-view. A figure with no binding carries `data-tb-unverified` —
+view. Tables past 500 rows render only the visible rows; printing and download still use every row. Find-in-page cannot see rows outside that window — search with `data-tb-search`. A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
 `presentation` block.

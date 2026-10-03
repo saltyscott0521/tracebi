@@ -73,7 +73,9 @@ whose figures each name a binding from `report.json`:
   draws a proportional bar behind a numeric column, and
   `data-tb-direction="up-good"` (or `"down-good"`) marks a bound change on a
   value figure up or down, good or bad. They reorder or decorate stamped
-  values; they never compute one.
+  values; they never compute one. Tables past 500 rows render only the
+  visible rows; printing and download still use every row. Find-in-page
+  cannot see rows outside that window — search with `data-tb-search`.
 - **Give every figure an `id`** — ids are how humans redirect you
   ("fix `tbl-seniority`").
 - **Or let the framework build the figure.** Declare it in `report.json`

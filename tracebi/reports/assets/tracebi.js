@@ -759,7 +759,9 @@
   /* data-tb-bars: a bar behind each cell of the named numeric columns,
    * proportional to the stamped value. Zero is the left edge; a column with
    * negatives gets its zero in the middle so neither side is exaggerated.
-   * The scale comes from ALL stamped rows, so a filter never rescales. */
+   * The scale comes from ALL rows of the current result (the stamped block,
+   * or the selection's full row set), never from a filter subset and never
+   * from the painted window — a bar must not change length as you scroll. */
   function barScales(el, rows, cols, numeric) {
     var want = attr(el, "data-tb-bars"), out = {};
     if (!want) return out;
@@ -789,52 +791,285 @@
     td.insertBefore(bar, td.firstChild);
   }
 
+  /* Above this many rows the scroll box paints only the visible window.
+   * At or below it, renderBody is the previous full-tbody path. */
+  var WINDOW_THRESHOLD = 500;
+  var WINDOW_OVERSCAN = 8;
+  var _printing = false;
+
+  function scrollCap(el) {
+    var want = attr(el, "data-tb-rows");
+    if (want === "all") return null; /* author opted out of the scroll box */
+    var n = want === null ? 10 : parseInt(want, 10);
+    if (!isFinite(n) || n < 1) n = 10;
+    return n;
+  }
+
+  function scrollBox(el) {
+    var p = el.parentNode;
+    while (p) {
+      if (p.className && (" " + p.className + " ").indexOf(" tb-scroll ") !== -1) {
+        return p;
+      }
+      p = p.parentNode;
+    }
+    return null;
+  }
+
+  /* Print always paints the full set. data-tb-rows="all" opts out of the
+   * scroll box, so windowing there would hide rows for good. */
+  function wantsWindow(entry, total) {
+    if (_printing) return false;
+    if (total <= WINDOW_THRESHOLD) return false;
+    return scrollCap(entry.el) !== null;
+  }
+
+  /* hydrateScroll runs after badges. Before that, a window paints into the
+   * bare table; once this is set, a large result grows its own scroll box
+   * if the authored row count never needed one (a selection can). */
+  var _scrollReady = false;
+
+  function ensureScroll(entry) {
+    if (scrollBox(entry.el)) return;
+    var el = entry.el, parent = el.parentNode, cap = scrollCap(el);
+    if (!parent || cap === null) return;
+    var wrap = document.createElement("div");
+    wrap.className = "tb-scroll";
+    wrap.style.maxHeight = ((cap + 1) * 2.6) + "em";
+    parent.insertBefore(wrap, el);
+    wrap.appendChild(el);
+    if (!wrap._tbWin) {
+      wrap._tbWin = true;
+      wrap.addEventListener("scroll", function () {
+        if (entry._rendering) return;
+        try { renderBody(entry, entry.modelRows); } catch (e) {}
+      });
+    }
+  }
+
+  function measureRow(tr) {
+    var h = 0;
+    if (tr.getBoundingClientRect) {
+      var box = tr.getBoundingClientRect();
+      if (box && box.height) h = box.height;
+    }
+    if (!h && tr.offsetHeight) h = tr.offsetHeight;
+    return h || 0;
+  }
+
+  function viewHeight(entry, rh) {
+    var box = scrollBox(entry.el), h = 0, thead, th;
+    if (box) {
+      if (box.clientHeight) h = box.clientHeight;
+      else if (box.getBoundingClientRect) {
+        var b = box.getBoundingClientRect();
+        if (b && b.height) h = b.height;
+      }
+    }
+    if (h) {
+      thead = entry.el.querySelector("thead");
+      th = 0;
+      if (thead && thead.getBoundingClientRect) {
+        th = thead.getBoundingClientRect().height || 0;
+      }
+      h = h - th;
+      if (h < rh) h = rh;
+      return h;
+    }
+    return (scrollCap(entry.el) || 10) * rh;
+  }
+
+  function spacerRow(cols, px) {
+    var tr = document.createElement("tr");
+    var td = document.createElement("td");
+    tr.className = "tb-window-pad";
+    tr.setAttribute("aria-hidden", "true");
+    tr.style.height = px + "px";
+    td.colSpan = cols;
+    td.setAttribute("colspan", String(cols));
+    td.style.height = px + "px";
+    td.style.padding = "0";
+    td.style.border = "0";
+    td.style.lineHeight = "0";
+    tr.appendChild(td);
+    return tr;
+  }
+
+  function dataRow(entry, r, fixedPx, index) {
+    var tr = document.createElement("tr");
+    var bars = entry._paintBars || entry.bars;
+    if (fixedPx) tr.style.height = fixedPx + "px";
+    if (index >= 0 && index % 2 === 1) tr.className = "tb-stripe";
+    entry.cols.forEach(function (col) {
+      var td = document.createElement("td");
+      var raw = r[col], text = (raw === undefined) ? "" : raw;
+      var n = null;
+      if (entry.numeric[col]) {
+        td.className = "tb-num";
+        n = toNum(raw);
+        if (n !== null && entry.formats[col]) {
+          var formatted = applyNamedFormat(n, entry.formats[col]);
+          if (formatted !== null) text = formatted;
+        }
+      }
+      if (fixedPx) {
+        td.style.height = fixedPx + "px";
+        td.style.boxSizing = "border-box";
+      }
+      td.textContent = text;
+      if (n !== null && bars && bars[col]) paintBar(td, n, bars[col]);
+      tr.appendChild(td);
+    });
+    return tr;
+  }
+
+  function displayRows(entry) {
+    var rows = entry.modelRows || [];
+    var sig = entry.sort ? entry.sort.col + "\n" + entry.sort.dir : "";
+    if (entry._sig === sig && entry._src === rows && entry._disp) return entry._disp;
+    entry._sig = sig;
+    entry._src = rows;
+    entry._disp = sortedRows(entry, rows);
+    return entry._disp;
+  }
+
+  /* The one row model. Sort, filter, search, selection, totals and the
+   * window all read `rows` here — the full current set, already subset by
+   * filteredRows. The window is only which of those become <tr>s. */
   function renderBody(entry, rows) {
-    var el = entry.el;
-    /* A grand total under a filtered view would not add up to the rows
-     * shown, so the totals row steps aside while a filter or search is on. */
-    if (entry.tfoot) entry.tfoot.hidden = rows.length !== entry.rowCount;
-    var tbody = el.querySelector("tbody");
+    if (entry._rendering) return;
+    entry._rendering = true;
+    try {
+      rows = rows || [];
+      if (entry._count !== undefined && entry._count !== rows.length) {
+        var reset = scrollBox(entry.el);
+        if (reset) reset.scrollTop = 0;
+      }
+      entry._count = rows.length;
+      entry.modelRows = rows;
+      if (entry._genRows !== rows) {
+        entry._genRows = rows;
+        entry._gen = (entry._gen || 0) + 1;
+      }
+      /* A grand total under a filtered view would not add up to the rows
+       * shown, so the totals row steps aside while a filter or search is on. */
+      if (entry.tfoot) entry.tfoot.hidden = rows.length !== entry.rowCount;
+      paintRows(entry, displayRows(entry));
+    } finally {
+      entry._rendering = false;
+    }
+  }
+
+  function paintRows(entry, rows) {
+    var el = entry.el, tbody = el.querySelector("tbody"), total = rows.length;
+    var windowed, live, block, all, rh, box, scrollTop, viewH, maxScroll;
+    var start, end, key, saved, topPx, botPx, i;
     if (!tbody) {
       tbody = document.createElement("tbody");
       el.appendChild(tbody);
     }
-    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
-    if (!rows.length) {
-      /* An empty result (or a filter that matches nothing) says so, rather
-       * than leaving a header over a void — mirrors the server-rendered
-       * empty row and the chart's "no data". */
-      var etr = document.createElement("tr");
-      var etd = document.createElement("td");
-      etd.className = "tb-empty";
-      etd.colSpan = entry.cols.length;
-      etd.textContent = "no data";
-      etr.appendChild(etd);
-      tbody.appendChild(etr);
+    windowed = wantsWindow(entry, total);
+    entry.windowed = windowed;
+    entry._paintBars = entry.bars;
+    if (windowed && _scrollReady) ensureScroll(entry);
+    if (windowed) {
+      /* Full result, not the rows argument: a filter/search subset must not
+       * rescale, and neither must the visible slice. */
+      live = _liveRows[entry.binding];
+      block = readBlock(entry.binding);
+      all = live || (block ? block.rows : rows);
+      entry._paintBars = barScales(el, all, entry.cols, entry.numeric);
+      addClass(el, "tb-window");
+    } else {
+      removeClass(el, "tb-window");
+      entry._winKey = null;
+    }
+    if (!windowed) {
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+      if (!total) {
+        /* An empty result (or a filter that matches nothing) says so, rather
+         * than leaving a header over a void — mirrors the server-rendered
+         * empty row and the chart's "no data". */
+        var etr = document.createElement("tr");
+        var etd = document.createElement("td");
+        etd.className = "tb-empty";
+        etd.colSpan = entry.cols.length;
+        etd.textContent = "no data";
+        etr.appendChild(etd);
+        tbody.appendChild(etr);
+        return;
+      }
+      for (i = 0; i < total; i++) tbody.appendChild(dataRow(entry, rows[i], 0, -1));
       return;
     }
-    sortedRows(entry, rows).forEach(function (r) {
-      var tr = document.createElement("tr");
-      entry.cols.forEach(function (col) {
-        var td = document.createElement("td");
-        var raw = r[col], text = (raw === undefined) ? "" : raw;
-        var n = null;
-        if (entry.numeric[col]) {
-          td.className = "tb-num";
-          n = toNum(raw);
-          if (n !== null && entry.formats[col]) {
-            var formatted = applyNamedFormat(n, entry.formats[col]);
-            if (formatted !== null) text = formatted;
-          }
-        }
-        td.textContent = text;
-        if (n !== null && entry.bars && entry.bars[col]) {
-          paintBar(td, n, entry.bars[col]);
-        }
-        tr.appendChild(td);
+    if (!entry.rowPx) {
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+      var probe = dataRow(entry, rows[0], 0, 0);
+      tbody.appendChild(probe);
+      entry.rowPx = measureRow(probe) || 36;
+      tbody.removeChild(probe);
+    }
+    rh = entry.rowPx;
+    box = scrollBox(el);
+    scrollTop = box ? (box.scrollTop || 0) : 0;
+    viewH = viewHeight(entry, rh);
+    maxScroll = Math.max(0, total * rh - viewH);
+    if (scrollTop > maxScroll) scrollTop = maxScroll;
+    if (scrollTop < 0) scrollTop = 0;
+    start = Math.floor(scrollTop / rh) - WINDOW_OVERSCAN;
+    if (start < 0) start = 0;
+    end = Math.ceil((scrollTop + viewH) / rh) + WINDOW_OVERSCAN;
+    if (scrollTop + viewH + rh >= total * rh) end = total;
+    if (end > total) end = total;
+    if (start > end) start = end;
+    key = start + ":" + end + ":" + total + ":" + (entry._sig || "") + ":" + entry._gen;
+    if (entry._winKey === key && tbody.firstChild) return;
+    entry._winKey = key;
+    saved = box ? box.scrollTop : 0;
+    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    topPx = start * rh;
+    if (topPx > 0) tbody.appendChild(spacerRow(entry.cols.length, topPx));
+    for (i = start; i < end; i++) tbody.appendChild(dataRow(entry, rows[i], rh, i));
+    botPx = (total - end) * rh;
+    if (botPx > 0) tbody.appendChild(spacerRow(entry.cols.length, botPx));
+    if (box && saved && box.scrollTop !== saved) box.scrollTop = saved;
+  }
+
+  function bindPrintMode() {
+    if (bindPrintMode.done) return;
+    bindPrintMode.done = true;
+    var apply = function (on) {
+      on = !!on;
+      if (_printing === on) return;
+      _printing = on;
+      for (var i = 0; i < _tables.length; i++) {
+        try { renderBody(_tables[i], _tables[i].modelRows); } catch (e) {}
+      }
+    };
+    if (root.addEventListener) {
+      root.addEventListener("beforeprint", function () { apply(true); });
+      root.addEventListener("afterprint", function () { apply(false); });
+    }
+    if (root.matchMedia) {
+      var mq = root.matchMedia("print");
+      var onMq = function () { apply(mq.matches); };
+      if (mq.addEventListener) mq.addEventListener("change", onMq);
+      else if (mq.addListener) mq.addListener(onMq);
+      if (mq.matches) _printing = true;
+    }
+  }
+
+  function attachWindow(entry) {
+    if (!entry.windowed) return;
+    var box = scrollBox(entry.el);
+    if (box && !box._tbWin) {
+      box._tbWin = true;
+      box.addEventListener("scroll", function () {
+        if (entry._rendering) return;
+        try { renderBody(entry, entry.modelRows); } catch (e) {}
       });
-      tbody.appendChild(tr);
-    });
+    }
+    try { renderBody(entry, entry.modelRows); } catch (e) {}
   }
 
   /* "col=Value; col2=Value" → {col: "Value", col2: "Value"}. Pairs split on
@@ -1636,6 +1871,7 @@
    * badge pins to the anchor OUTSIDE the scrolling region and stays put. */
 
   function hydrateScroll() {
+    _scrollReady = true;
     _tables.forEach(function (entry) {
       try {
         var el = entry.el;
@@ -1646,7 +1882,10 @@
         if (entry.rowCount <= n) return;
         var parent = el.parentNode;
         if (!parent) return;
-        if ((" " + parent.className + " ").indexOf(" tb-scroll ") !== -1) return;
+        if ((" " + parent.className + " ").indexOf(" tb-scroll ") !== -1) {
+          attachWindow(entry);
+          return;
+        }
         var wrap = document.createElement("div");
         wrap.className = "tb-scroll";
         /* ~n rows: a row is about 2.6em (line + cell padding), plus the
@@ -1654,6 +1893,9 @@
         wrap.style.maxHeight = ((n + 1) * 2.6) + "em";
         parent.insertBefore(wrap, el);
         wrap.appendChild(el);
+        /* The box exists now, so a windowed table can measure it and follow
+         * its scroll. Tables at or below the threshold never set windowed. */
+        attachWindow(entry);
       } catch (e) { /* defensive */ }
     });
   }
@@ -2115,6 +2357,7 @@
   }
 
   function hydrate() {
+    try { bindPrintMode(); } catch (e) {}
     try { hydrateValues(); } catch (e) {}
     try { hydrateTables(); } catch (e) {}
     try { hydrateCharts(); } catch (e) {}
