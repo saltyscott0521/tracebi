@@ -256,6 +256,9 @@ your peril):</p>
 </tr>
 </tbody>
 </table>
+<p>The <strong>Runs</strong> page is not a folder. It reads <code>GET /api/runs</code>: what ran, when,
+for whom, and whether it reproduced. It sits in the sidebar footer, beside
+Verify.</p>
 <h2 id="step-3-the-development-loop">Step 3: The development loop</h2>
 <pre><code class="language-bash">python -m tracebi.web.run                       # uvicorn with hot-reload, port 8000
 python -m tracebi.web.run --port 9000           # different port

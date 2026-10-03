@@ -406,7 +406,7 @@
       <div class="step-note">
         <span class="tag">refresh → build → check → send</span>
         <h3>Every run is recorded</h3>
-        <p>Each run writes a line to <span class="mono">output/schedule_runs.jsonl</span>: what ran, who ran it, whether the numbers reproduced, and who it went to.</p>
+        <p>Each run is a row in the run store: what ran, who ran it, whether the numbers reproduced, and who it went to. An existing <span class="mono">output/schedule_runs.jsonl</span> is imported once.</p>
         <p>The schedule is code, so adding or changing one goes through the same review as any other change.</p>
       </div>
     </div>

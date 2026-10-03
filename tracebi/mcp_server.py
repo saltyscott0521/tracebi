@@ -562,6 +562,7 @@ class BuildReportResult(TypedDict, total=False):
     spreadsheet_note: Optional[str]
     pdf_path: Optional[str]
     pdf_note: Optional[str]
+    note: Optional[str]
     errors: Optional[list[str]]
 
 
@@ -1209,6 +1210,13 @@ def gateway_build_report(
     if format == "pdf":
         result["pdf_path"] = str(pdf)
         result["pdf_note"] = _PDF_NOTE
+    from tracebi.state import try_record_report_build
+    note = try_record_report_build(
+        report, str(output),
+        manifest_path=str(output) + ".manifest.json",
+    )
+    if note:
+        result["note"] = f"report build was not recorded: {note}"
     return result
 
 

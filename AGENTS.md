@@ -262,7 +262,7 @@ sink contract that refuses the new data) fails the run before anything is
 built or sent. A failed refresh or build is retried twice, after 1 minute
 and then 5 minutes, unless `"retries"` is an integer from 0 to 5 (0
 disables); a receipt that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
-verify → email → record in `output/schedule_runs.jsonl`); a receipt that
+verify → email → record in `tracebi_runs`, kind `schedule`; an existing `output/schedule_runs.jsonl` is imported once); a receipt that
 does not verify is recorded `refused` and nothing is sent. Optional `"owner"` is one email address: a run recorded `failed`, `refused`, or `empty` emails that address a plain-text alert and does not email the report to `to`. A binding a figure uses that returned zero rows is recorded `empty` and is not sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 

@@ -42,7 +42,7 @@ from fastapi.staticfiles import StaticFiles
 from tracebi.web.api.errors import error_detail
 
 from tracebi.web.api.routers import (
-    connectors, models, reports, pipelines, docs, verify, desk, status,
+    connectors, models, reports, pipelines, docs, verify, desk, status, runs,
 )
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
@@ -115,14 +115,16 @@ else:
     )
 
 # Report builds are kept in output/ beside the working directory. When the
-# server cannot write there, each build lives only in memory and is lost on
-# restart — worth one loud line, since it looks like "reports keep re-running".
+# server cannot write there, the page goes under the system temp dir and the
+# path is recorded in the run store — worth one loud line, since a wiped
+# temp dir looks like "reports keep re-running".
 if reports._writable_output_html("tracebi-startup-check") is None:
     print(
         f"[tracebi] WARNING: cannot write report builds to "
-        f"{os.path.join(os.getcwd(), 'output')} — builds are kept in memory "
-        f"only and are lost on restart. Make the folder writable by this "
-        f"process (in Docker, see the output-perms service in docker-compose.yml).",
+        f"{os.path.join(os.getcwd(), 'output')} — builds are kept under the "
+        f"system temp directory and the path is recorded in the run store. "
+        f"Make the folder writable by this process (in Docker, see the "
+        f"output-perms service in docker-compose.yml).",
         file=sys.stderr,
     )
 
@@ -135,6 +137,7 @@ app.include_router(pipelines.router,  prefix="/api")
 app.include_router(docs.router,       prefix="/api")
 app.include_router(verify.router,     prefix="/api")
 app.include_router(status.router,     prefix="/api")
+app.include_router(runs.router,       prefix="/api")
 
 # Dev-mode reload endpoint — opt-in via TRACEBI_DEV_MODE=1.
 if os.environ.get("TRACEBI_DEV_MODE") == "1":

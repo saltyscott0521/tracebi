@@ -651,6 +651,9 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
   and inspect per-section lineage. Failures show the full Python traceback.
 - **Pipelines** — the medallion chain as a live DAG with per-layer run
   buttons and run history.
+- **Runs** — what ran, when, for whom, and whether it reproduced. A report
+  run links to the report. Only a `reproduces` verdict reads green; a run
+  that has not been checked reads "Not verified".
 
 ```bash
 # Install web dependencies

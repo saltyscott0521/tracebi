@@ -148,8 +148,12 @@ equivalent where it matters.</p>
 <td>Seconds between live-discovery scans. A running server picks up report packages, specs, model files and pipeline files added to <code>reports/</code>, <code>models/</code> and <code>pipelines/</code> (and drops deleted reports) without a restart. Default <code>5</code>; <code>0</code> turns it off, so new reports need a restart. Python report modules are still found only at startup.</td>
 </tr>
 <tr>
+<td><code>TRACEBI_STATE_URL</code></td>
+<td>The shared run store. Default <code>sqlite:///data/tracebi.db</code> beside the working directory. Point every worker at the same Postgres URL so polls, last builds, and schedule ticks share one database.</td>
+</tr>
+<tr>
 <td><code>TRACEBI_SCHEDULES_IN_SERVER</code></td>
-<td><code>1</code> runs each report package's <code>schedule</code> block inside the web server (the same job as <code>tracebi schedule serve</code>). Off by default. Assumes <strong>one process</strong>: several workers would each send the email.</td>
+<td><code>1</code> runs each report package's <code>schedule</code> block inside the web server (the same job as <code>tracebi schedule serve</code>). Off by default. On Postgres a tick takes one advisory lock per report. On SQLite the lock is a no-op, so several workers would each send the email.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_DEBUG</code></td>

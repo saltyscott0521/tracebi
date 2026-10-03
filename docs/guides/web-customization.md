@@ -144,6 +144,10 @@ your peril):
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
 | Pipeline | `registry.add_pipeline("name", runner)` | **Pipelines** (DAG, run buttons, history) |
 
+The **Runs** page is not a folder. It reads `GET /api/runs`: what ran, when,
+for whom, and whether it reproduced. It sits in the sidebar footer, beside
+Verify.
+
 ## Step 3: The development loop
 
 ```bash

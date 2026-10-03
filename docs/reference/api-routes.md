@@ -50,6 +50,7 @@ graph. It computes but persists nothing, which is why `viewer` may call it.
 | `GET` | `/api/reports/{name}/runs` | viewer |
 | `GET` | `/api/reports/{name}/runs/{run_id}` | viewer |
 | `GET` | `/api/reports/{name}/built` | viewer |
+| `GET` | `/api/runs` | viewer |
 | `GET` | `/api/reports/{name}/download?format=xlsx\|html\|pdf` | analyst |
 | `GET` | `/api/reports/{name}/lineage` | viewer |
 | `GET` | `/api/reports/{name}/mermaid` | viewer |
@@ -70,10 +71,14 @@ same work in the background and returns a `run_id` to poll.
 > `422` naming the fix, never served through a weaker path. See [[report]].
 
 `/built` is what the Reports page opens: the **last build**, from
-`output/<name>.html` or, on a read-only disk, the copy the server keeps in
-memory. A report never built on this server is built once on first open and
-kept. Opening never re-queries after that; fresh data comes from `/run`,
-`/runs` (Rebuild) or a schedule.
+`output/<name>.html` or, when that file is not there, the path recorded in
+the run store. A report never built on this server is built once on first
+open and kept. Opening never re-queries after that; fresh data comes from
+`/run`, `/runs` (Rebuild) or a schedule.
+
+`GET /api/runs` lists rows from that store, newest first. Query params:
+`kind`, `target`, `limit`. A viewer may read it. The HTML of a report stays
+on disk; the row holds the output path. The Runs page (`/runs`) is this list.
 
 The `html` download is that last build, the file the reader is looking at.
 `pdf` is a print of that same file (headless Chromium, so charts render). It
