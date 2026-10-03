@@ -403,9 +403,9 @@ into context rather than guessing:
 And three **prompts**, the fastest way to start correctly:
 
 - `author_report(question)` — the whole loop for a question: context, query,
-  a `reports/<name>/` package from the binding stubs, `build_report`,
-  `verify_manifest`. Without file access it falls back to a spec and
-  `render_report_spec`.
+  a `reports/<name>/` package (paste each `query_model` `binding` object
+  under `data.<name>`), `build_report`, `verify_manifest`. Without file
+  access it falls back to a spec and `render_report_spec`.
 - `answer_question(question, model="")` — `get_context`, then `query_model`;
   answer in plain words with each number beside its fingerprint and measure.
   Never estimate; say so when the model can't answer; no report unless asked.

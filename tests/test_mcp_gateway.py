@@ -147,6 +147,8 @@ def test_query_returns_a_binding_stub(gateway_model):
     assert binding["query"]["measures"] == out["query"]["measures"]
     assert binding["query"]["filters"] == {"status": "shipped"}
     assert "rows" not in binding
+    # Paste-ready: this object is the value of report.json data.<name>.
+    assert set(binding) == {"model", "query"}
 
 
 def test_include_lineage_false_drops_the_chain_but_keeps_the_stamp(gateway_model):
@@ -660,6 +662,7 @@ class TestMcp2Features:
         assert "build_report's output_path" in desc["fetch_artifact"]
         assert "argument is manifest" in desc["verify_manifest"]
         assert "build_report's manifest_path" in desc["verify_manifest"]
+        assert "data.<name>" in desc["query_model"]
 
     def test_answer_question_and_address_pins_render(self, gateway_model):
         pytest.importorskip("mcp")

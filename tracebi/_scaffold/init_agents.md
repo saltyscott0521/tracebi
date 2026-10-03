@@ -190,7 +190,8 @@ differs by client: `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code,
 connector under Settings → Connectors).
 
 The gateway also ships three prompts: `author_report(question)` walks the
-package loop (query, bindings, `build_report`, `verify_manifest`);
+package loop (query, paste each `binding` object under `data.<name>`,
+`build_report`, `verify_manifest`);
 `answer_question(question, model="")` answers in plain words with each
 number beside its fingerprint and measure, never estimates, and builds no
 report unless asked; `address_pins(report)` reads `workbench_state`, acts

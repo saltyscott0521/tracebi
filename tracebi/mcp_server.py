@@ -305,7 +305,9 @@ front of a person should carry a receipt. This gateway is how you produce one.
    outside it validates.
 2. **query_model** — ask star-schema questions. Every result is *stamped*: the
    resolved query, the lineage chain, and a SHA-256 fingerprint of the full
-   result. Cite the fingerprint with any number you quote. "Top N" is
+   result. Cite the fingerprint with any number you quote. The response's
+   `binding` object is the value of `data.<name>` in report.json — paste
+   it there under a name you choose. "Top N" is
    `order_by` + `limit` in the query — declarative, in the receipt.
 3. **author the report** — the report form is an ARTIFACT PACKAGE
    (`reports/<name>/`): `report.json` names query bindings; `template.html`
@@ -775,10 +777,11 @@ _BINDING_QUERY_KEYS = (
 
 
 def _binding_stub(model: str, stamped: dict) -> dict:
-    """A ``report.json`` data entry for the query that just ran.
+    """The value of one ``report.json`` ``data.<name>`` entry.
 
-    The agent pastes this under ``data``. It is the resolved query, not a
-    transcription of the rows.
+    Paste the returned object under ``data.<name>``. The response key is
+    ``binding``; ``report.json`` stores it under ``data``. It is the
+    resolved query, not a transcription of the rows.
     """
     query = {}
     for key in _BINDING_QUERY_KEYS:
@@ -1320,8 +1323,9 @@ def build_server(token: Optional[str] = None):
             "validate. Query with query_model; every response is stamped "
             "with the resolved query and a fingerprint of the full result — "
             "cite the fingerprint when you quote a number, and paste the "
-            "result's binding stub into report.json instead of transcribing "
-            "numbers. A report is a package, reports/<name>/: report.json "
+            "result's binding object as the value of data.<name> in "
+            "report.json instead of transcribing numbers. A report is a "
+            "package, reports/<name>/: report.json "
             "names the bindings, template.html claims them with "
             "data-tb-figure + data-tb-binding. build_report(report=...) "
             "publishes it and returns output_path and manifest_path; pass "
@@ -1417,8 +1421,10 @@ def build_server(token: Optional[str] = None):
             "only the transport. Returns rows plus a stamp: the resolved "
             "query, lineage chain, and a fingerprint of the full result. "
             "Quote the fingerprint with any number you cite. The "
-            "response includes binding: a report.json fragment for this "
-            "query — paste it, do not transcribe the number into HTML. Pass "
+            "response includes binding: paste that object as the value of "
+            "data.<name> in report.json (the response key is binding; the "
+            "report.json key is data). Do not transcribe the number into "
+            "HTML. Pass "
             "include_lineage=false while exploring to drop the lineage chain "
             "(the fingerprint and resolved query still let you cite and "
             "re-verify) for lighter responses."
@@ -1569,9 +1575,10 @@ def build_server(token: Optional[str] = None):
             "will validate.\n"
             "2. Use query_model to explore the numbers. Every result is "
             "stamped — keep the fingerprints for anything you cite — and "
-            "carries a binding stub.\n"
-            "3. Write the package reports/<name>/: paste each binding stub "
-            "you need into report.json, and in template.html give every "
+            "carries a binding object.\n"
+            "3. Write the package reports/<name>/: paste each binding "
+            "object as the value of data.<name> in report.json, and in "
+            "template.html give every "
             "number an element with data-tb-figure + data-tb-binding (or "
             "mark it data-tb-unverified). Never type a number a query "
             "produced.\n"
