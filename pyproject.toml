@@ -58,7 +58,7 @@ csv       = ["openpyxl>=3.1.5"]
 sql       = ["sqlalchemy>=2.0"]
 # `sql` brings SQLAlchemy but no driver, so Postgres — the database every
 # deployment doc here assumes — needed one naming.
-postgres  = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1"]
+postgres  = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1", "alembic>=1.13"]
 duckdb    = ["duckdb>=1.5.5"]
 bigquery  = ["google-cloud-bigquery>=3.0", "db-dtypes"]
 snowflake = ["snowflake-connector-python>=3.0"]
@@ -71,8 +71,8 @@ reports   = ["openpyxl>=3.1.5", "matplotlib>=3.10.9", "pyarrow>=14.0"]
 pdf       = ["playwright>=1.40", "weasyprint>=57"]
 lineage   = ["networkx>=3.0", "matplotlib>=3.10.9"]
 medallion = ["networkx>=3.0"]
-pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0"]
-web       = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.1.6", "python-multipart>=0.0.6"]
+pipeline  = ["apscheduler>=3.10", "sqlalchemy>=2.0", "alembic>=1.13"]
+web       = ["fastapi>=0.100", "uvicorn>=0.23", "starlette>=0.27", "jinja2>=3.1.6", "python-multipart>=0.0.6", "sqlalchemy>=2.0", "alembic>=1.13"]
 mcp       = ["mcp>=2.0"]  # the agent gateway — `tracebi mcp`
 # Browser smoke only. A normal `pytest tests/` skips tests/test_ui_smoke.py
 # unless TRACEBI_E2E=1, so dev does not pull Chromium.
@@ -85,6 +85,7 @@ analyst = [
     "matplotlib>=3.10.9",
     "pyarrow>=14.0",
     "sqlalchemy>=2.0",
+    "alembic>=1.13",
     "networkx>=3.0",
     "duckdb>=1.5.5",
     "python-dotenv>=1.2.3",
@@ -95,6 +96,7 @@ all = [
     "matplotlib>=3.10.9",
     "pyarrow>=14.0",
     "sqlalchemy>=2.0",
+    "alembic>=1.13",
     "psycopg[binary]>=3.1",
     "duckdb>=1.5.5",
     "google-cloud-bigquery>=3.0",
@@ -129,6 +131,7 @@ dev = [
     "networkx>=3.0",
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
+    "alembic>=1.13",
     "duckdb>=1.5.5",
     "python-dotenv>=1.2.3",
     # Web deps included so `pip install -e ".[dev]"` runs the full test suite

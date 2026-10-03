@@ -199,6 +199,11 @@ graph. It computes but persists nothing, which is why <code>viewer</code> may ca
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/runs</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/reports/{name}/download?format=xlsx\|html\|pdf</code></td>
 <td>analyst</td>
 </tr>
@@ -233,10 +238,13 @@ same work in the background and returns a <code>run_id</code> to poll.</p>
 <code>422</code> naming the fix, never served through a weaker path. See <a href="../concepts/report.html">Report — phase ③</a>.</p>
 </blockquote>
 <p><code>/built</code> is what the Reports page opens: the <strong>last build</strong>, from
-<code>output/&lt;name&gt;.html</code> or, on a read-only disk, the copy the server keeps in
-memory. A report never built on this server is built once on first open and
-kept. Opening never re-queries after that; fresh data comes from <code>/run</code>,
-<code>/runs</code> (Rebuild) or a schedule.</p>
+<code>output/&lt;name&gt;.html</code> or, when that file is not there, the path recorded in
+the run store. A report never built on this server is built once on first
+open and kept. Opening never re-queries after that; fresh data comes from
+<code>/run</code>, <code>/runs</code> (Rebuild) or a schedule.</p>
+<p><code>GET /api/runs</code> lists rows from that store, newest first. Query params:
+<code>kind</code>, <code>target</code>, <code>limit</code>. A viewer may read it. The HTML of a report stays
+on disk; the row holds the output path. The Runs page (<code>/runs</code>) is this list.</p>
 <p>The <code>html</code> download is that last build, the file the reader is looking at.
 <code>pdf</code> is a print of that same file (headless Chromium, so charts render). It
 carries no receipt; the HTML file is what <code>verify --file</code> checks.

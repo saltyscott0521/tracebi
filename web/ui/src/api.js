@@ -217,3 +217,16 @@ export const useLayerHistory = (pipeline, layer) =>
 
 export const useRunQuery = () =>
   useMutation({ mutationFn: ({ model, body }) => postJson(`/models/${encodeURIComponent(model)}/query`, body) })
+
+// Shared run store. kind and target are the API's own filters (exact match).
+export const useRuns = (kind, target) =>
+  useQuery({
+    queryKey: ['runs', kind || '', target || ''],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (kind) params.set('kind', kind)
+      if (target) params.set('target', target)
+      const q = params.toString()
+      return get('/runs' + (q ? `?${q}` : ''))
+    },
+  })

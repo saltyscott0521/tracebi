@@ -423,11 +423,15 @@ throughout: an unattributed run records `None` and behaves exactly as before.
 A ContextVar, **not a module global** — a global would let concurrent requests
 in one process read each other's actor.
 
-New columns on an existing table are reconciled at startup by
-`_add_missing_run_columns` (`CREATE TABLE IF NOT EXISTS` is a no-op against a
-table that already exists). There is no migration framework here by design; if
-you add a column to `tracebi_runs`, add it to `_RUNS_ADDED_COLUMNS` in the same
-change or upgrades will break.
+The state store (`tracebi_runs` and the other runner tables) is migrated by
+Alembic (`tracebi/migrations`). `upgrade` runs at startup. The baseline matches
+the schema today's code leaves after startup; later revisions add columns.
+`_add_missing_run_columns` still reconciles `tracebi_runs`: `CREATE TABLE IF
+NOT EXISTS` is a no-op against a table that already exists, and a baseline
+stamped onto a database that predates a column does not add it. If you add a
+column to `tracebi_runs`, add the Alembic revision and the entry in
+`_RUNS_ADDED_COLUMNS` in the same change, or an upgrade of an old file breaks.
+Warehouse layers stay idempotent; they are not migrated.
 
 ---
 
@@ -439,11 +443,15 @@ process, so the lock that actually matters is the database one:
 
 | Backend | Concurrent layer execution |
 |---|---|
-| **Postgres** | Safe. A `pg_try_advisory_lock` per layer means a second process is refused with a clear error instead of interleaving writes. |
-| **SQLite** | **Single process only.** The cross-process lock is a no-op, so two workers will both execute the same layer, interleave writes to the sink, and leave two "running" rows in the run history. |
+| **Postgres** | Safe. A `pg_try_advisory_lock` per layer, and one per scheduled report, means a second process is refused instead of interleaving writes or sending the same email twice. |
+| **SQLite** | **Single process only.** The cross-process lock is a no-op, so two workers will both execute the same layer and both send a scheduled email. |
 
 SQLite is the development and demo fallback. Anything running more than one
-process needs `PipelineRunner(db_url=<postgres url>)`.
+process needs Postgres: `TRACEBI_STATE_URL` for the shared run store, and
+`PipelineRunner(db_url=<postgres url>)` when a runner keeps its own database.
+Background report runs and the last-build path live in that store. The HTML
+stays a file; the row holds the path, so a second worker can poll a run the
+first started and open its last build.
 
 ---
 
@@ -464,7 +472,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_STATE_URL` (the shared run store; default `sqlite:///data/tracebi.db`), `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; Postgres takes one advisory lock per report, SQLite is one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
 
 ---
 
@@ -615,7 +623,8 @@ POST /api/reports/{name}/run                         → HTML + lineage manifest
 POST /api/reports/{name}/runs                        → start background run; returns run_id (202)
 GET  /api/reports/{name}/runs                        → recent background runs (no payloads)
 GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
-GET  /api/reports/{name}/built                       → the last build (disk, else memory; built once if never)
+GET  /api/reports/{name}/built                       → the last build (disk, else the path in the run store; built once if never)
+GET  /api/runs                                       → run rows (kind, target, limit); viewer may read
 GET  /api/reports/{name}/download?format=xlsx|html|pdf   → html/pdf: the last build; xlsx: rendered
 GET  /api/reports/{name}/lineage                     → transform → tables → model → queries → figures flow, from the last build's receipt
 GET  /api/reports/{name}/mermaid
@@ -637,7 +646,7 @@ Failed report/query runs return a structured ``detail``:
 ## What Doesn't Exist Yet
 
 - No Makefile (commands documented in README + this file)
-- No database migrations (layers are idempotent)
+- No migration framework for warehouse tables (layers are idempotent; the state store uses Alembic — `tracebi/migrations`)
 - No pre-commit hooks
 - No PyPI release (install is `pip install -e .` or from git)
 - No `PDFRenderer` class. A package PDF is a print of the built HTML via Playwright (`tracebi report build <name> --format pdf`, `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`). `HTMLRenderer.render_pdf()` remains the WeasyPrint path for the legacy renderer; it runs no JavaScript, so a package's charts would print blank, and it is untested without weasyprint/libgobject.

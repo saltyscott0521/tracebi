@@ -335,17 +335,24 @@ class TestPipelineRunner:
 # without needing a live Postgres in CI; the round trip against a real server
 # was verified by hand.
 
+def _baseline_migration():
+    """The runner DDL now lives in the baseline migration."""
+    import importlib
+    return importlib.import_module("tracebi.migrations.versions.0001_baseline")
+
+
 class TestDialectPortability:
     def test_ddl_has_no_hardcoded_autoincrement(self):
         # AUTOINCREMENT is SQLite-only syntax and must not be baked into the
         # shared DDL — it arrives via the {pk} substitution instead.
-        for ddl in PipelineRunner._DDL:
+        for _name, ddl in _baseline_migration()._TABLES:
             assert "AUTOINCREMENT" not in ddl
             assert "{pk}" in ddl
 
     def test_every_ddl_statement_formats_per_dialect(self):
-        for dialect, pk in PipelineRunner._PK_SQL.items():
-            for ddl in PipelineRunner._DDL:
+        mod = _baseline_migration()
+        for dialect, pk in mod._PK.items():
+            for _name, ddl in mod._TABLES:
                 sql = ddl.format(pk=pk)
                 assert "{pk}" not in sql
                 assert pk in sql, dialect
@@ -353,9 +360,10 @@ class TestDialectPortability:
     def test_unknown_dialect_falls_back_rather_than_failing(self):
         # Better to create a usable table on an untested dialect than to
         # refuse to start.
-        pk = PipelineRunner._PK_SQL.get("some-future-db", PipelineRunner._PK_DEFAULT)
+        mod = _baseline_migration()
+        pk = mod._PK.get("some-future-db", mod._PK_DEFAULT)
         assert pk == "INTEGER PRIMARY KEY"
-        for ddl in PipelineRunner._DDL:
+        for _name, ddl in mod._TABLES:
             assert "{pk}" not in ddl.format(pk=pk)
 
     def test_sqlite_still_uses_last_insert_rowid(self, runner, mem):

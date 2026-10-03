@@ -31,3 +31,7 @@ def _report_builds_leave_the_repo(monkeypatch, tmp_path):
         return os.path.join(os.getcwd(), "output")
 
     monkeypatch.setattr(reports, "_output_dir", _output_dir)
+    # The shared run store defaults to data/tracebi.db beside cwd. Point it
+    # at this test's temp dir so a schedule or build never writes the repo.
+    monkeypatch.setenv(
+        "TRACEBI_STATE_URL", f"sqlite:///{tmp_path / 'state.db'}")

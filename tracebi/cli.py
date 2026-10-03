@@ -2066,7 +2066,8 @@ def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
 
 def _build_report_target(kind: str, path: Path, output: Path,
                          theme: Optional[str] = None,
-                         badges: bool = False) -> Path:
+                         badges: bool = False,
+                         report_name: Optional[str] = None) -> Path:
     """Render one report target to *output* (+ a sibling manifest). Returns output."""
     output.parent.mkdir(parents=True, exist_ok=True)
     models = _load_project_models()
@@ -2091,6 +2092,14 @@ def _build_report_target(kind: str, path: Path, output: Path,
             for fname, content in compiled.files.items():
                 (Path(d) / fname).write_text(content, encoding="utf-8")
             TemplatePackage(d).render(models, str(output), badges=badges)
+    target = report_name or (path.stem if kind == "spec" else path.name)
+    from tracebi.state import try_record_report_build
+    note = try_record_report_build(
+        target, str(output),
+        manifest_path=str(output) + ".manifest.json",
+    )
+    if note:
+        print(f"report build was not recorded: {note}", file=sys.stderr)
     return output
 
 
@@ -2226,7 +2235,8 @@ def cmd_report(args: argparse.Namespace) -> int:
     try:
         _build_report_target(kind, path, output,
                              theme=getattr(args, 'theme', None),
-                             badges=getattr(args, 'badges', False))
+                             badges=getattr(args, 'badges', False),
+                             report_name=args.name)
     except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
         print(f"failed to build report '{args.name}': "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
@@ -2397,8 +2407,9 @@ def cmd_schedule(args: argparse.Namespace) -> int:
     for s in schedules:
         print("  " + sched.describe_schedule(s))
     print(f"\nRunning {len(schedules)} schedule(s). Runs are recorded in "
-          f"{output_dir / sched.RUN_LOG}. Restart after changing a schedule. "
-          f"Press Ctrl+C to stop.")
+          f"tracebi_runs (kind=schedule). An existing "
+          f"{output_dir / sched.RUN_LOG} is imported once. "
+          f"Restart after changing a schedule. Press Ctrl+C to stop.")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
@@ -2867,8 +2878,9 @@ def build_parser() -> argparse.ArgumentParser:
                             help="Directory holding report packages (default: ./reports).")
     p_schedule.add_argument(
         "--output-dir", default="output",
-        help="Where runs write the artifact, its manifest, and "
-             "schedule_runs.jsonl (default: ./output).")
+        help="Where runs write the artifact and its manifest. An existing "
+             "schedule_runs.jsonl here is imported into the run store once "
+             "(default: ./output).")
     p_schedule.set_defaults(func=cmd_schedule)
 
     p_session = sub.add_parser(
