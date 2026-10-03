@@ -234,13 +234,19 @@ _FETCH_MAX_BYTES = 16 * 1024 * 1024
 _XLSX_MEDIA_TYPE = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
-# fetch_artifact returns text for these; .xlsx is base64 because a workbook
-# is not text. Every other suffix stays refused.
+_PDF_MEDIA_TYPE = "application/pdf"
+# fetch_artifact returns text for these; .xlsx and .pdf are base64 because
+# neither is text. Every other suffix stays refused.
 _FETCH_TEXT_TYPES = {".html": "text/html", ".json": "application/json"}
 _XLSX_NOTE = (
     "The spreadsheet carries no receipt and is not verifiable. "
     "The checkable artifact is the HTML at output_path and its manifest "
     "at manifest_path."
+)
+_PDF_NOTE = (
+    "The PDF is a print of the built HTML. It carries no receipt and is "
+    "not verifiable. The checkable artifact is the HTML at output_path "
+    "and its manifest at manifest_path."
 )
 
 
@@ -322,10 +328,13 @@ front of a person should carry a receipt. This gateway is how you produce one.
    only its own artifact and receipt. `format="xlsx"` also writes
    `<name>.xlsx` beside them. The spreadsheet carries no receipt and is
    not verifiable; the HTML and manifest are the checkable artifact.
+   `format="pdf"` also writes `<name>.pdf`: a print of that built HTML,
+   which carries no receipt.
 6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
    Pass the returned `html_path` or `manifest_path` (to hand to verify),
-   or the `xlsx_path` from a `format="xlsx"` build. HTML and JSON come
-   back as text; an `.xlsx` comes back base64-encoded with its media type.
+   the `xlsx_path` from a `format="xlsx"` build, or the `pdf_path` from
+   a `format="pdf"` build. HTML and JSON come back as text; an `.xlsx`
+   or `.pdf` comes back base64-encoded with its media type.
 7. **verify_manifest** — re-runs the recorded queries and classifies each
    section. Only `reproduces` means a number was re-run and matched; a
    manifest with nothing to check is not a pass.
@@ -531,6 +540,8 @@ class BuildReportResult(TypedDict, total=False):
     transform_contracts: Any
     xlsx_path: Optional[str]
     spreadsheet_note: Optional[str]
+    pdf_path: Optional[str]
+    pdf_note: Optional[str]
     errors: Optional[list[str]]
 
 
@@ -1111,12 +1122,16 @@ def gateway_build_report(
     path, ``save_manifest=False``). A spreadsheet cannot carry a receipt:
     the result says so and points at the HTML and manifest, which remain
     the checkable artifact.
+
+    ``format="pdf"`` also writes ``<name>.pdf``: a print of the built HTML
+    (headless Chromium). The PDF carries no receipt; ``pdf_note`` points
+    at the HTML and manifest.
     """
     from tracebi.reports.template_package import TemplatePackage
 
-    if format not in ("html", "xlsx"):
+    if format not in ("html", "xlsx", "pdf"):
         return {"ok": False, "errors": [
-            f"format must be 'html' or 'xlsx', not {format!r}"
+            f"format must be 'html', 'xlsx', or 'pdf', not {format!r}"
         ]}
     # The name is a directory under reports/ (a folder path at most), and
     # can never climb out of it.
@@ -1136,6 +1151,7 @@ def gateway_build_report(
     out_dir.mkdir(parents=True, exist_ok=True)
     output = out_dir / f"{report}.html"          # keeps the report's folders
     xlsx = out_dir / f"{report}.xlsx"
+    pdf = out_dir / f"{report}.pdf"
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         with actor(_mcp_actor()):
@@ -1149,6 +1165,9 @@ def gateway_build_report(
                 from tracebi.reports.excel_renderer import ExcelRenderer
                 carrier, _stamped = package.build(models)
                 ExcelRenderer().render(carrier, str(xlsx), save_manifest=False)
+            elif format == "pdf":
+                from tracebi.reports.pdf import print_pdf
+                print_pdf(str(output), str(pdf))
     except Exception as exc:  # noqa: BLE001 — a refused build is a result
         return {"ok": False, "errors": [f"{type(exc).__name__}: {exc}"]}
     m = manifest.to_dict()
@@ -1166,6 +1185,9 @@ def gateway_build_report(
     if format == "xlsx":
         result["xlsx_path"] = str(xlsx)
         result["spreadsheet_note"] = _XLSX_NOTE
+    if format == "pdf":
+        result["pdf_path"] = str(pdf)
+        result["pdf_note"] = _PDF_NOTE
     return result
 
 
@@ -1175,23 +1197,24 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
     ``render_report_spec`` and ``build_report`` return a server-side PATH; a
     remote agent driving the gateway over MCP needs the BYTES to deliver the
     report or hand the manifest to ``verify_manifest``. Pass the ``html_path``
-    or ``manifest_path`` a render/build tool returned, or the ``xlsx_path``
-    from ``build_report(..., format="xlsx")``. Read-only and hard
+    or ``manifest_path`` a render/build tool returned, the ``xlsx_path``
+    from ``build_report(..., format="xlsx")``, or the ``pdf_path`` from
+    ``build_report(..., format="pdf")``. Read-only and hard
     path-guarded: the file must sit under the working directory (or
     ``$TRACEBI_OUTPUT_ROOT``), never inside the installed package, and be one of
-    the ``.html`` / ``.json`` / ``.xlsx`` artifacts those tools write — never
-    arbitrary server files. HTML and JSON come back as text. A workbook is
-    not text, so ``.xlsx`` comes back base64-encoded (``encoding="base64"``)
-    with its spreadsheet media type. Over ``_FETCH_MAX_BYTES`` it refuses
-    and names the path.
+    the ``.html`` / ``.json`` / ``.xlsx`` / ``.pdf`` artifacts those tools write — never
+    arbitrary server files. HTML and JSON come back as text. A workbook or
+    PDF is not text, so ``.xlsx`` and ``.pdf`` come back base64-encoded
+    (``encoding="base64"``) with their media type. Over ``_FETCH_MAX_BYTES``
+    it refuses and names the path.
     """
     resolved, err = _confined_read_path(path)
     if err:
         return {"ok": False, "errors": [err]}
     suffix = resolved.suffix.lower()
-    if suffix not in _FETCH_TEXT_TYPES and suffix != ".xlsx":
+    if suffix not in _FETCH_TEXT_TYPES and suffix not in (".xlsx", ".pdf"):
         return {"ok": False, "errors": [
-            "fetch_artifact reads only rendered .html, .json, and .xlsx "
+            "fetch_artifact reads only rendered .html, .json, .xlsx, and .pdf "
             f"artifacts, not {suffix!r}"]}
     size = resolved.stat().st_size
     if size > _FETCH_MAX_BYTES:
@@ -1203,6 +1226,10 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
             content = base64.b64encode(resolved.read_bytes()).decode("ascii")
             encoding = "base64"
             ctype = _XLSX_MEDIA_TYPE
+        elif suffix == ".pdf":
+            content = base64.b64encode(resolved.read_bytes()).decode("ascii")
+            encoding = "base64"
+            ctype = _PDF_MEDIA_TYPE
         else:
             content = resolved.read_text(encoding="utf-8")
             encoding = ""
@@ -1458,7 +1485,9 @@ def build_server(token: Optional[str] = None):
             "its own artifact and receipt. format='xlsx' also writes "
             "<name>.xlsx in the same output directory. The spreadsheet "
             "carries no receipt and is not verifiable; the HTML and "
-            "manifest are the checkable artifact (see spreadsheet_note)."
+            "manifest are the checkable artifact (see spreadsheet_note). "
+            "format='pdf' also writes <name>.pdf, a print of the built HTML "
+            "that carries no receipt (see pdf_note)."
         ),
     )(gateway_build_report)
     _tool(
@@ -1466,13 +1495,13 @@ def build_server(token: Optional[str] = None):
         annotations=_READ, structured_output=True,
         description=(
             "Read back the bytes of an artifact a render/build tool wrote — "
-            "pass the html_path, manifest_path, or xlsx_path it returned. "
-            "The render tools return a server-side path; this delivers the "
-            "actual content so a remote agent can send the report or hand "
-            "the manifest to verify_manifest. HTML and JSON come back as "
-            "text. An .xlsx comes back base64-encoded (encoding='base64') "
-            "with its spreadsheet media type. Read-only, guarded to the "
-            "artifact directory. Every other suffix is refused."
+            "pass the html_path, manifest_path, xlsx_path, or pdf_path it "
+            "returned. The render tools return a server-side path; this "
+            "delivers the actual content so a remote agent can send the "
+            "report or hand the manifest to verify_manifest. HTML and JSON "
+            "come back as text. An .xlsx or .pdf comes back base64-encoded "
+            "(encoding='base64') with its media type. Read-only, guarded to "
+            "the artifact directory. Every other suffix is refused."
         ),
     )(gateway_fetch_artifact)
     _tool(

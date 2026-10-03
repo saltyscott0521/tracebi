@@ -123,7 +123,6 @@ list them as open, which makes the real gaps harder to see.
 
 | Finding | Evidence |
 | --- | --- |
-| PDF download from the app (WeasyPrint + native libs in the image) is still open. | E9 |
 | Schedule retries, owner alerts, Slack/Teams delivery, and bursting are still open. | E11 |
 | E14 decisions not yet made: draft-writing tools for remote agents (after E7), OAuth for claude.ai connectors, rendered snapshot for agents. | #111 |
 
@@ -386,9 +385,9 @@ product").
 - [x] An "About this report" footer on by default: who built it, when, from
       which definitions, and what the receipt proves and doesn't, in the
       locked language. It builds on the existing `methodology` block. (#162)
-- [ ] Download as PDF, tested. `HTMLRenderer.render_pdf()` exists; a smoke
-      test skips without WeasyPrint + native libs. The Docker image needs
-      those libraries, and the app download path needs to be proven in CI.
+- [x] Download as PDF, tested. The PDF is the built report HTML printed by
+      headless Chromium (Playwright), so charts render. `HTMLRenderer.render_pdf()`
+      (WeasyPrint, no JavaScript) is unchanged. (#87)
 - [x] Large tables stay fast: a table past 500 rows renders only the
       visible window in `tracebi.js` (print and download still use every
       row; find-in-page does not — `data-tb-search` does). (#87)
