@@ -111,7 +111,10 @@ writes that skeleton (omit the flag for `dashboard`, which is also what
 `tracebi init` writes). `brief`: one finding — `.tb-lede`, a few `.tb-kpi`
 cards, one chart in one `.tb-card`. `dashboard`: `brief`, then `.tb-cols-2`
 (a chart beside a filterable table). `tabbed`: the same header, then
-`.tb-tabs` / `data-tb-tab` (Overview and Detail). Ask which one.
+`.tb-tabs` / `data-tb-tab` (Overview and Detail). Pick the one that fits —
+`brief` for one finding, `dashboard` otherwise, `tabbed` when the page
+serves two jobs. Ask only when a person is in the loop and the choice is
+not obvious.
 
 **You can also have the framework build the figure for you.** Declare it in
 `report.json` under `figures`, then place it in `template.html` with

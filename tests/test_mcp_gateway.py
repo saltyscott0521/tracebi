@@ -637,10 +637,13 @@ class TestMcp2Features:
             assert step in text, f"the SOP prompt should name {step}"
         # The package lane leads; the spec lane is the fallback.
         assert text.index("build_report") < text.index("render_report_spec")
-        # The prompt offers the three page structures, one line each, so the
-        # agent asks which one instead of designing a layout.
+        # The prompt names the three page structures, one line each. The agent
+        # picks by fit; it does not stop to ask, and a gateway-only agent
+        # writes the skeleton itself.
         assert text.index("- brief") < text.index("- dashboard") < text.index("- tabbed")
         assert "--layout" in text
+        assert "Ask which page structure" not in text
+        assert "only the gateway" in text
 
     def test_instructions_lead_with_the_package_lane(self, gateway_model):
         server, _ = self._tools()
