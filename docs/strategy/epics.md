@@ -1,62 +1,69 @@
 # Game plan: epics
 
-**Status: the live plan (2026-09-24).** This is the one list of what to build
-next. It comes from an audit of the code against every plan document in the
-repo. The other plans ([[ROADMAP]], [[production-plan]],
-[[product-readiness-audit]], [[next-level-plan]]) are kept for their reasoning
-and history. Where they disagree with this file on order, this file wins.
+**Status: the live plan (reconciled 2026-10-03).** This is the one list of
+what to build next. It comes from an audit of the code against every plan
+document in the repo (original audit 2026-09-24; checkboxes and findings
+reconciled against `main` and closed sub-issues on 2026-10-03). The other
+plans ([[ROADMAP]], [[production-plan]], [[product-readiness-audit]],
+[[next-level-plan]]) are kept for their reasoning and history. Where they
+disagree with this file on order, this file wins.
 
-**In one line:** the engine is ready and most of the production plan's first
-step has shipped. The biggest gaps are *around* the engine: a repeatable way
-to get TraceBi onto a client's server, a way onto a client's own data, and
-the team features (folders, people, run history) a shared server needs. The
-engine itself needs three things next: an agent surface with no blind spots,
-a report file that explains itself to a reader, and queries that run in the
-warehouse once the data outgrows memory.
+**In one line:** the engine, the agent surface, and the one-server install
+path have shipped. The biggest gaps now are a path onto a client's *own*
+data, the team features (one state store, a finished library, then people),
+and finishing the reader's report experience and unattended schedules.
 
 ---
 
 ## The plan on one page
 
 ```
-                NOW (next ~4 weeks)         NEXT                        LATER
+                NOW                              NEXT                        LATER
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-DISTRIBUTION  │ E1 Release pipeline  │   │ E3 Your own data in   │   │ PyPI (when development │
-get it into   │ E2 Run it on one     │──▶│    30 minutes         │   │ settles; held on       │
-people's hands│    server            │   │                       │   │ purpose)               │
+DISTRIBUTION  │ E3 Your own data in  │   │                       │   │ PyPI (when development │
+get it into   │    30 minutes        │──▶│                       │   │ settles; held on       │
+people's hands│ E1 leftovers: demo   │   │                       │   │ purpose)               │
+              │ URL + Coolify on tag │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-PLATFORM      │ E4 Quality floor     │   │ E5 One state store    │   │ E7 People, permissions │
-run it for a  │    (the quick fixes) │──▶│ E6 Report library:    │──▶│    and publishing      │
-team          │                      │   │    folders            │   │                        │
+PLATFORM      │ E5 One state store   │──▶│ E6 Report library:    │──▶│ E7 People, permissions │
+run it for a  │                      │   │    finish Library     │   │    and publishing      │
+team          │ E4 quality floor:    │   │    page + mounts      │   │                        │
+              │ done (ongoing)       │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-FRAMEWORK     │ E8 Agent surface:    │   │ E9 The report         │   │ E10 Warehouse-scale    │
-the engine    │    no blind spots    │──▶│    explains itself    │──▶│     engine             │
-              │ E14 Agents end to end│   │                       │   │                        │
+FRAMEWORK     │ E9 The report        │   │                       │   │ E10 Warehouse-scale    │
+the engine    │    explains itself   │──▶│                       │──▶│     engine             │
+              │ E8 / E14: done       │   │                       │   │                        │
+              │ (decisions remain)   │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-WORKFLOWS     │                      │   │ E11 Schedules you can │   │ E12 Workbench in the   │
-the three     │                      │   │     leave alone       │   │     web app            │
+WORKFLOWS     │ E11 Schedules you    │   │                       │   │ E12 Workbench in the   │
+the three     │     can leave alone  │──▶│                       │──▶│     web app            │
 paths         │                      │   │                       │   │ E13 Ask anywhere       │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
 ```
 
+**Shipped since the 2026-09-24 audit (code on `main`; package is
+`0.7.0.dev0` after the `v0.6.0` release):** E2 (one-server path), E4's
+listed floor items, E8, E14's buildable pieces, E1's release automation
+(`v0.6.0` published to GHCR + GitHub Releases), E9's plain-words receipt
+drawer, and E6's path-based discovery. Recent product work on `main` also
+cleared the app's data path (Sources → Pipelines → Data model → Explore →
+Reports; lineage as a flow; reports by model).
+
 **Why this order:**
 
-1. **Small-shop gaps first.** [[deployment]] already says it: they are cheaper,
-   and small teams are where early adoption comes from. The Hetzner + Coolify
-   setup this project runs on today is the template for a client install.
-   E1 and E2 turn it into something a client can repeat.
+1. **Own-data next.** E1/E2 got TraceBi onto a server; E3 is what makes the
+   first client report use *their* warehouse, not sample data.
 2. **Folders before people.** Permissions need somewhere to attach. The
    library (E6) is that place, and it needs one state store (E5) under it.
 3. **Ask waits.** It is the strategy's headline path, but it isn't needed
    right away. The model it answers from, and the reports it grows into, come
    first.
-4. **Agents first in the engine.** Agents write most reports, so a blind
-   spot in what they can see (a missing column list, a model that failed to
-   load and silently vanished) costs more than anything else in the engine.
-   E8 also adds the measurement: an eval set that scores first-build success.
+4. **Agent surface measured.** E8/E14 closed the blind spots and added the
+   eval set + gateway log loop. Remaining E14 items need a person decision
+   (draft-writing tools, OAuth, rendered snapshots).
 5. **Finish a path end to end before starting the next.** Carried over from
    [[product-strategy]]: a half-built path is worth less than a narrow,
    complete one.
@@ -65,9 +72,11 @@ paths         │                      │   │                       │   │
 
 ## What the audit found
 
-Run, not only read: the full suite (**1,437 passed, 1 skipped, 83% line
-coverage**), a fresh `tracebi init` (under a second), and every gap named in
-the plan documents checked against the code.
+Original run (2026-09-24): the full suite (**1,437 passed, 1 skipped, 83%
+line coverage**), a fresh `tracebi init`, and every gap named in the plan
+documents checked against the code. Reconcile (2026-10-03): closed
+sub-issues #92–#116 / #122 / #136 and the current tree — findings below
+drop what shipped.
 
 ### The plans are behind the code
 
@@ -81,11 +90,14 @@ list them as open, which makes the real gaps harder to see.
 | A hand-typed number can ship | ✅ The build fails on a numeral outside a figure | `template_package.py` (prose gate) |
 | Web renders don't keep the receipt | ✅ Kept in `output/` when writable, in memory when not | `routers/reports.py` `_last_build` |
 | A download re-renders | ✅ The HTML download is the last build | `download_report` |
-| The app leads with Connectors and Pipelines | ✅ Desk, Report, Contract lead | `Layout.jsx` |
+| The app leads with Connectors and Pipelines | ✅ Sources → Pipelines → Data model → Explore → Reports | `Layout.jsx` |
 | Selections recompute through the model | ✅ `POST /api/reports/{name}/selection` and keep | `routers/reports.py` |
 | `query_model` gives no binding to paste | ✅ It returns a `report.json` binding stub | `mcp_server.py` `_binding_stub` |
-
-That's most of step 1 of [[production-plan]], plus its step 2.
+| No release / no GHCR image / wrong footer version | ✅ `v0.6.0` released; footer reads `/api/health` | `release.yml`, `Layout.jsx` |
+| Schedules need a second process | ✅ Opt-in in-server schedules | `TRACEBI_SCHEDULES_IN_SERVER` |
+| Flat `reports/` only; no path identity | ✅ Recursive discovery; path is the identity | `report_paths.py`, `discovery.py` |
+| Agent blind spots (columns, failed models, pins) | ✅ `describe_table`, `list_models.skipped`, `resolve_pin`, evals, gateway log | `mcp_server.py`, `evals/agent/` |
+| Receipt drawer is ids and hashes | ✅ Plain-words first line; fingerprint behind Details | `tracebi.js` / #101 |
 
 ### Still open, by area
 
@@ -93,15 +105,11 @@ That's most of step 1 of [[production-plan]], plus its step 2.
 
 | Finding | Evidence |
 | --- | --- |
-| No release has ever been cut. No git tags, so nothing has been published yet. A `v*` tag that matches `pyproject.toml` publishes the GHCR image and a GitHub release. | `git tag` is empty; `.github/workflows/release.yml` |
-| No image is in GHCR yet. Every server still builds from a checkout until the first version tag. | `git tag` is empty |
-| A git install ships the API with no web UI. The built UI is gitignored and only the release workflow builds it. | [[ROADMAP]] item 5 |
-| The app shows the wrong version: the footer is hard-coded `v0.5.2`; the package is `0.6.0.dev0`. | `web/ui/src/components/Layout.jsx:305` |
-| The demo compose still seeds sample data. A client stack is `deploy/compose.yml`. | `docker-compose.yml`, `deploy/compose.yml` |
-| No "run it on one server" guide, even though that's how this project runs today (Hetzner + Coolify). | `docs/guides/` |
+| Coolify pointing the demo at the tagged GHCR image is a person ops step, not verified from the repo. | `docs/guides/one-server.md` |
+| `site/README.md` still points "Try the demo" at `demo.tracebi.com`; nginx routes `/app` via that hostname. Agree on one public URL. | `site/README.md:48`, `site/nginx.conf` |
 | No path onto a client's own data: no connection setup, no model drafted from warehouse tables, no `init --template`. | `tracebi init --help` |
 | Messaging disagrees with the strategy. The CLI help and the `init` README lead with "the trust layer for AI-generated analytics"; [[vision-and-positioning]] makes receipts a supporting feature and leads with ask / build / schedule. | `tracebi --help`, the scaffolded `README.md` |
-| `site/README.md` still points "Try the demo" at `demo.tracebi.com`, which didn't resolve at the last check. | `site/README.md:48`, `evals/ux-feedback-2026-09-06.md` |
+| A git install still ships the API with no web UI unless the UI was built (release wheel includes it). | [[ROADMAP]] item 5 |
 
 **Platform**
 
@@ -109,26 +117,22 @@ That's most of step 1 of [[production-plan]], plus its step 2.
 | --- | --- |
 | Background runs and the last-build cache live in one process's memory. With `--workers 4`, a poll can land on a worker that never saw the run. | `web/api/run_store.py`, `_LAST_BUILD` |
 | Run history is in three places: pipeline tables, `schedule_runs.jsonl`, and the in-memory run store. | `pipeline/runner.py`, `schedule.py`, `run_store.py` |
-| Schedules need a second process (`tracebi schedule serve`). A one-box install needs them inside the server. | [[deployment]] "Next" |
-| Reports are keyed by name and discovery reads one flat folder, so two folders can't both hold a `weekly_summary`. | `web/discovery.py` (`os.listdir`) |
+| Library page is only started: Reports groups by folder with type / last build / receipt; owner, schedule, past builds, mounts, and one read function for E7 are still open. | `Reports.jsx`, E6 |
 | **The "Keep this cut" endpoint rewrites `report.json` for any analyst, with no draft or approval step.** Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
 | One shared Basic-auth login, one shared MCP token, and a self-declared agent name. Nobody's work can be told apart in the audit log. | `web/api/auth.py`, `TRACEBI_MCP_ACTOR` |
-| A dead scheduling path is still scaffolded: `registry.scheduled()` is never read, and `tracebi init` still creates `scheduled/`. | [[target-architecture]] debt 1 |
 
-**Quality**
+**Quality / reader / schedules**
 
 | Finding | Evidence |
 | --- | --- |
-| The warehouse connectors companies will use most are the least tested: Snowflake 20%, BigQuery 39%. | coverage run |
-| The scheduler, the thing that must run unattended, is at 65%. | `tracebi/schedule.py` |
-| The React app has no tests and no lint; CI only checks that it builds. | `.github/workflows/ci.yml` |
-| Tests write receipts into the repo's `output/`, so every contributor sees stray files after a run. | [[product-readiness-audit]] P2-1, still open |
-| `tzdata` isn't a dev dependency, so one test file fails on slim Linux images. | P2-4, still open |
-| Eight overlapping plan documents, with no single marker saying which one is current. | `docs/strategy/`, `docs/architecture/`, `docs/ROADMAP.md` (now in `docs/strategy/archive/`), `NOTES.md` |
+| "About this report" footer, PDF download from the app (WeasyPrint + native libs in the image), and virtualized large tables are still open. | E9 |
+| Schedule retries, owner alerts, Slack/Teams delivery, and bursting are still open. | E11 |
+| E14 decisions not yet made: draft-writing tools for remote agents (after E7), OAuth for claude.ai connectors, rendered snapshot for agents. | #111 |
 
 **What's strong** (keep it that way): the engine, receipts and `verify`; the
 agent surface (MCP, context, guides enforced by tests); the honesty
-discipline; model reload; the prose gate; and the workbench.
+discipline; model reload; the prose gate; the workbench; one-server compose
++ guide; and the release tag path.
 
 ---
 
@@ -139,51 +143,53 @@ M = one to two weeks, L = more).
 
 ### Distribution
 
-#### E1 · Release pipeline — S/M · Now
+#### E1 · Release pipeline — S/M · Now (code done; ops leftovers)
 
 **Goal:** a tag produces everything a client installs, and every surface
 shows the same version.
 
-- [ ] One version source: `/api/health` returns it and the UI footer reads it
-      (drop the hard-coded `v0.5.2`).
-- [ ] On a `v*` tag, CI publishes the Docker image to GHCR
+- [x] One version source: `/api/health` returns it and the UI footer reads it
+      (drop the hard-coded `v0.5.2`). (#92)
+- [x] On a `v*` tag, CI publishes the Docker image to GHCR
       (`ghcr.io/<owner>/tracebi:<version>` and `:latest`) and attaches the
-      wheel (with the built UI) and the SBOM to a GitHub release.
-- [ ] The CHANGELOG `[Unreleased]` section becomes the release notes.
-- [ ] PyPI publish is wired but switched off, so turning it on later is one
-      line. (Held on purpose until development settles.)
+      wheel (with the built UI) and the SBOM to a GitHub release. (#93;
+      `v0.6.0` cut 2026-09-25)
+- [x] The CHANGELOG `[Unreleased]` section becomes the release notes.
+- [x] PyPI publish is wired but switched off, so turning it on later is one
+      line. (Held on purpose until development settles; `PUBLISH_PYPI`.)
 - [ ] Coolify pulls the tagged image instead of building from `main`, so the
-      demo runs the same bits a client would.
+      demo runs the same bits a client would. *(Person / ops.)*
 - [ ] Fix the demo link in `site/README.md` and make every external link
       agree on one URL.
 
 **Done when:** `git tag v0.6.0 && git push --tags` produces an image a client
 can `docker pull` and a wheel whose `tracebi serve` shows the UI, both
-reporting `0.6.0`.
+reporting `0.6.0`. *(Met for the tag; Coolify + public demo URL still open.)*
 
-#### E2 · Run it on one server — M · Now
+#### E2 · Run it on one server — M · Shipped
 
 **Goal:** a small shop goes from a fresh VM to their own project running, with
 schedules, in under 30 minutes.
 
-- [ ] A client compose file (`deploy/compose.yml`): the published image, a
+- [x] A client compose file (`deploy/compose.yml`): the published image, a
       bind-mounted project folder (the library), SQLite state by default,
-      Postgres as an optional profile, SMTP settings, no demo seeding.
-- [ ] Schedules run inside the web server when there's one process. It's an
+      Postgres as an optional profile, SMTP settings, no demo seeding. (#94)
+- [x] Schedules run inside the web server when there's one process. It's an
       opt-in setting, which the client compose file turns on, so an existing
       server never starts sending email on its own. `tracebi schedule serve`
-      stays for separate workers.
+      stays for separate workers. (#102)
 - [x] A status check that says what's wrong: output folder not writable,
-      files that failed discovery, SMTP not set.
+      files that failed discovery, SMTP not set. (#103)
 - [x] A one-page guide, "Run TraceBi on one server", written from the real
       Hetzner + Coolify setup, with a plain Docker path beside it. Backups are
-      "copy this folder".
-- [ ] Startup logs the resolved auth posture (who gets what role) in one line.
+      "copy this folder". (#104)
+- [x] Startup logs the resolved auth posture (who gets what role) in one line.
+      (#95)
 
 **Done when:** following only the guide, a fresh VM serves a client project
 whose scheduled report arrives by email, timed under 30 minutes.
 
-#### E3 · Your own data in 30 minutes — M · Next
+#### E3 · Your own data in 30 minutes — M · Now
 
 **Goal:** the first-report journey in [[users-and-jobs]] works on the
 builder's own database, not only the sample data.
@@ -212,29 +218,32 @@ Postgres, under 30 minutes, by someone who didn't write the code.
 
 ### Platform
 
-#### E4 · Quality floor — S · Now (and ongoing)
+#### E4 · Quality floor — S · Shipped (ongoing)
 
 **Goal:** fix the cheap things that erode trust in the codebase, and cover
 the parts that run unattended.
 
-- [ ] Tests write to `tmp_path`, never the repo's `output/`.
-- [ ] Add `tzdata` to the `dev` extra.
-- [ ] Remove the dead scheduling path (`registry.scheduled()`, the `scheduled/`
+- [x] Tests write to `tmp_path`, never the repo's `output/`. (#96)
+- [x] Add `tzdata` to the `dev` extra. (#97)
+- [x] Remove the dead scheduling path (`registry.scheduled()`, the `scheduled/`
       scaffold folder), or route it to `report.json` schedules. One way to
-      schedule.
-- [ ] Contract tests for the Snowflake and BigQuery connectors (mocked
-      driver: connect arguments, `column_schema`, filter pushdown).
-- [ ] `schedule.py` to 85%+: a failed build, a failed verify, an SMTP error,
-      and a missed tick are each recorded and not silent.
-- [ ] A browser smoke test in CI: build the UI, serve the reference project,
-      and open Desk, a report, the Source tab and a download (Playwright is
-      already used in development).
-- [ ] Mark the older plan documents with a pointer to this file.
+      schedule. (#105: `registry.scheduled` warns; `init` no longer scaffolds
+      `scheduled/`; discovery still reads the folder if an old project has it)
+- [x] Contract tests for the Snowflake and BigQuery connectors (mocked
+      driver: connect arguments, `column_schema`, filter pushdown). (#98;
+      `tests/test_warehouse_connectors.py`)
+- [x] Scheduler failure paths: a failed refresh/build, a failed verify, and
+      an SMTP error are each recorded and not silent. (#106)
+- [x] A browser smoke test in CI: build the UI, serve the reference project,
+      and open Desk, a report, the Source tab and a download. (#107;
+      `tests/test_ui_smoke.py`)
+- [x] Mark the older plan documents with a pointer to this file.
+      (`docs/strategy/archive/`)
 
 **Done when:** a clean checkout's `git status` stays clean after
 `pytest tests/`, and CI opens the real app in a browser.
 
-#### E5 · One state store — M · Next
+#### E5 · One state store — M · Now
 
 **Goal:** everything that happened (pipeline runs, report builds, schedule
 runs, background runs) is recorded in one place, and several workers can
@@ -305,54 +314,52 @@ it goes live; and the history shows both people.
 
 ### Framework
 
-#### E8 · Agent surface: no blind spots — S/M · Now
+#### E8 · Agent surface: no blind spots — S/M · Shipped
 
 **Goal:** an agent never has to guess, and we can measure how often it gets
 a report right the first time.
 
-- [ ] `list_models` over MCP names models that failed to load, with the error.
-      Today `_load_models` skips a broken model file silently, so the agent
-      thinks the model doesn't exist.
+- [x] `list_models` over MCP names models that failed to load, with the error.
+      (#99)
 - [x] A `describe_table` MCP tool and `tracebi warehouse tables`: columns and
       types of warehouse tables from connector metadata (`column_schema`, no
-      scan), so an agent drafting a model never invents a column.
+      scan), so an agent drafting a model never invents a column. (#108)
 - [x] A `--host` flag for `tracebi mcp --transport http` (default
       `127.0.0.1`), so a server install can bind where its proxy expects.
+      (#109)
 - [x] Excel output over the gateway: `build_report` can return the `.xlsx`
       the library already renders ([[ROADMAP]] item 8). `format="xlsx"`
       writes the workbook beside the HTML; the spreadsheet carries no
-      receipt. `fetch_artifact` returns it base64-encoded.
-- [ ] An agent eval set: 10–20 written requests against the reference
-      project ("fair value by sector as a bar chart, top 5 only"), each with
-      automatic checks (builds, no lint errors, `verify` reproduces). A script
-      scores a finished attempt. [[product-strategy]]'s bar is over 80% first-build
-      success on template requests; today it isn't measured.
-- [ ] Every item follows the discoverability rule: `capabilities.py`,
+      receipt. `fetch_artifact` returns it base64-encoded. (#110)
+- [x] An agent eval set: written requests against the reference project, each
+      with automatic checks (builds, `verify` reproduces, package shape).
+      `evals/agent/score.py` prints a first-build success rate. (#100)
+- [x] Every item follows the discoverability rule: `capabilities.py`,
       `AGENTS.md` and `tracebi/_scaffold/init_agents.md` in the same change.
+      (`tests/test_agent_guides.py`)
 
 **Done when:** an agent with only the gateway can list a broken model's
 error, read a warehouse table's columns, and export Excel; and the eval
 script prints a first-build success rate for a run.
 
-#### E14 · Agents work with TraceBi end to end — M/L · Now → Next
+#### E14 · Agents work with TraceBi end to end — M/L · Shipped (decisions remain)
 
 **Goal:** an agent connected over MCP is told one consistent story, can close
 every loop it's asked to close, and leaves a record of where it struggled,
 so the agent surface improves from real use. Issue #111.
 
-- [ ] Resolve a pin from the CLI and over MCP. Agents are told to "remove the
-      pin" but have no command to do it.
-- [ ] The gateway's `instructions` and prompts teach the package lane. Today
-      they teach JSON specs, while `AGENTS.md` teaches packages. Add
-      `answer_question` and `address_pins` prompts.
+- [x] Resolve a pin from the CLI and over MCP. (#112)
+- [x] The gateway's `instructions` and prompts teach the package lane. Add
+      `answer_question` and `address_pins` prompts. (#113)
 - [x] `tracebi init` writes `.mcp.json` and `.cursor/mcp.json`;
       `tracebi mcp config` prints the snippet for other clients. A second
       init without `--force` leaves an edited file alone. `--http` prints
-      `Bearer ${TRACEBI_MCP_TOKEN}`, never a token value.
-- [ ] An opt-in gateway call log (tool, ok or error, argument *names* only,
-      never values) and `tracebi agent log` to summarize it.
-- [ ] Run the eval set (#100) through the gateway, and report the top errors
-      agents hit.
+      `Bearer ${TRACEBI_MCP_TOKEN}`, never a token value. (#114)
+- [x] An opt-in gateway call log (tool, ok or error, argument *names* only,
+      never values) and `tracebi agent log` to summarize it. (#115)
+- [x] Run the eval set (#100) through the gateway, and report the top errors
+      agents hit. (#116; `evals/agent/README.md` gateway-only mode +
+      `--gateway-log`)
 - [ ] Needs a decision first: draft-writing tools for remote agents (after
       E7), OAuth for claude.ai connectors, and a rendered snapshot so an
       agent can see the page it built.
@@ -360,27 +367,27 @@ so the agent surface improves from real use. Issue #111.
 **Done when:** an MCP-only agent in a fresh `tracebi init` project is told
 the package lane, builds a report, resolves its pins and leaves a call log;
 and the eval set run through the gateway prints a first-build success rate
-and the top three errors.
+and the top three errors. *(Buildable loop met; decision items still open.)*
 
 **The loop this closes:** agents use the gateway → the call log and the eval
 set show where they stumble → those become issues → agents fix the gateway.
 
-#### E9 · The report explains itself — M · Next
+#### E9 · The report explains itself — M · Now
 
 **Goal:** the file that travels makes sense to a reader who has never heard
 of TraceBi ([[product-readiness-audit]] "Make the reader's experience the
 product").
 
-- [ ] The receipt drawer in plain words. A row reads "Fair value · $285.9M",
+- [x] The receipt drawer in plain words. A row reads "Fair value · $285.9M",
       then what it was computed from (the measure and its cut), with the
-      fingerprint behind a disclosure. Today it reads
-      `kpi-fv · value · kpis ea55a070ee46` (P1-5). The drawer shows provenance;
-      it must not claim a number reproduces, which only `verify` can say.
+      fingerprint behind a disclosure. The drawer shows provenance; it must
+      not claim a number reproduces, which only `verify` can say. (#101)
 - [ ] An "About this report" footer on by default: who built it, when, from
       which definitions, and what the receipt proves and doesn't, in the
       locked language. It builds on the existing `methodology` block.
-- [ ] Download as PDF, tested. `HTMLRenderer.render_pdf()` exists but has
-      never run in CI; the Docker image needs its system libraries.
+- [ ] Download as PDF, tested. `HTMLRenderer.render_pdf()` exists; a smoke
+      test skips without WeasyPrint + native libs. The Docker image needs
+      those libraries, and the app download path needs to be proven in CI.
 - [ ] Large tables stay fast: a virtualized table mode for big bindings
       ([[large-detail-artifacts]], [[ROADMAP]] 11c first half).
 
@@ -409,7 +416,7 @@ is correct and fast enough.
 
 ### Workflows
 
-#### E11 · Schedules you can leave alone — M · Next
+#### E11 · Schedules you can leave alone — M · Now
 
 **Goal:** the Schedule path's Run, Deliver and Monitor steps are finished end
 to end ([[product-strategy]]).
