@@ -91,7 +91,9 @@ whose figures each name a binding from `report.json`:
   (`columns`/`style`); a `custom` figure has no framework markup, so draw
   that one yourself. It refuses the silent failures — an undeclared binding
   fails at load, and a figure declared but never placed (or placed twice)
-  fails the build. Hand-written figures still work; this is sugar.
+  fails the build. Hand-written figures still work; this is sugar. `libs`
+  is optional. The build inlines ECharts automatically when the page
+  contains a chart figure.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the

@@ -51,7 +51,7 @@ trust, resolved once, fingerprinted, and recorded in the receipt.
 Note `totals` has **no dimensions** — it returns one row. A KPI needs a one-row
 binding; a value figure over a multi-row binding is refused.
 
-`"libs": ["echarts"]` is required for charts, or the panel renders blank.
+`"libs": ["echarts"]` is optional. The build inlines ECharts automatically when the page contains a chart figure.
 
 → [[report-json]] · [[queries]]
 
@@ -169,7 +169,7 @@ bindings. Exits 1 on any binding error, so CI can gate on it.
 | *names binding 'x', which is not declared in 'data'* | typo, or you forgot the binding |
 | *declares 'x' … but template.html never places it* | add `{{ figure("x") }}`, or drop the declaration |
 | *figure('x') is placed more than once* | declare a second figure; one id addresses one number |
-| chart renders blank | add `"libs": ["echarts"]` |
+| chart panel stays blank | the build inlines ECharts when the page has a chart figure; check `data-tb-x` and `data-tb-y` |
 | *limit without order_by is refused* | state the ranking → [[queries]] |
 
 ## Next

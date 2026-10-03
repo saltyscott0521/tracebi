@@ -66,7 +66,8 @@ binding is refused at build: *"a value figure needs a one-row binding
 | `palette` | explicit colour list |
 | `value_format` | formats labels, axes and tooltips → [[number-formats]] |
 
-Requires `"libs": ["echarts"]` in [[report-json]], or the panel renders blank.
+The build inlines ECharts automatically when the page contains this figure.
+`"libs"` in [[report-json]] is optional.
 
 ### `table`
 

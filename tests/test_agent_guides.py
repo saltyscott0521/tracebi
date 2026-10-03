@@ -173,3 +173,15 @@ def test_a_value_figure_is_taught_as_a_one_row_binding():
     guide = authoring_guide()
     assert "one-row binding" in guide
     assert "top sector" in guide
+
+
+def test_echarts_is_taught_as_automatic_when_the_page_has_a_chart():
+    """A chart figure no longer needs ``libs`` to list echarts. Both guides
+    and the gateway guide say the build adds it."""
+    from tracebi.mcp_server import authoring_guide
+
+    note = describe(brief=True)["presentation"]["report_json"]["libs"]
+    assert "optional" in note and "automatically" in note
+    assert "inlines ECharts automatically" in authoring_guide()
+    for name, text in _guides().items():
+        assert "inlines ECharts automatically" in text, name

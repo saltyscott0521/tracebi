@@ -156,7 +156,8 @@ binding is refused at build: <em>"a value figure needs a one-row binding
 </tr>
 </tbody>
 </table>
-<p>Requires <code>"libs": ["echarts"]</code> in <a href="../reference/report-json.html">report.json</a>, or the panel renders blank.</p>
+<p>The build inlines ECharts automatically when the page contains this figure.
+<code>"libs"</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
 <h3 id="table"><code>table</code></h3>
 <pre><code class="language-json">{&quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;holdings&quot;, &quot;columns&quot;: [&quot;issuer&quot;, &quot;fair_value&quot;],
  &quot;style&quot;: &quot;striped&quot;}

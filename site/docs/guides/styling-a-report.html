@@ -226,8 +226,8 @@ from an email attachment. So:</p>
 </ul>
 <p>Everything must be inlined at build time. That constraint is what makes the file
 self-contained and the offline <code>verify --file</code> check meaningful.</p>
-<p>Charting is already inlined for you — opt in with <code>"libs": ["echarts"]</code> in
-<a href="../reference/report-json.html">report.json</a>.</p>
+<p>Charting is inlined for you when the page has a chart figure. <code>"libs":
+["echarts"]</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
 <h2 id="fonts-and-images">Fonts and images</h2>
 <p>Put them in the package's <code>assets/</code> folder and reference them by relative path.
 The build inlines each one as a <code>data:</code> URI, so the file still fetches nothing:</p>

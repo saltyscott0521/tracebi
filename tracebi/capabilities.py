@@ -219,10 +219,10 @@ REPORT_JSON_EXAMPLE = {
 }
 
 REPORT_JSON_LIBS_NOTE = (
-    "libs is optional and defaults to []. Include \"echarts\" when the page "
-    "has a chart: without it the runtime skips every chart and the panel "
-    "stays blank (the no-JS SVG fallback still draws). A page with no chart "
-    "omits libs. Any other name is refused when the package loads."
+    "libs is optional. The build inlines ECharts automatically when the "
+    "page contains a chart figure, and leaves it out when the page has no "
+    "chart figure. Listing \"echarts\" still inlines it once. Any other "
+    "name is refused when the package loads."
 )
 
 

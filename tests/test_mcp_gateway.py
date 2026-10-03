@@ -149,7 +149,7 @@ def test_brief_context_carries_a_report_json_example_that_builds(tmp_path):
     example = block["example"]
     assert example["name"] and example["data"] and example["figures"]
     assert example["libs"] == ["echarts"]
-    assert "echarts" in block["libs"] and "blank" in block["libs"]
+    assert "optional" in block["libs"] and "automatically" in block["libs"]
     guide = authoring_guide()
     assert json.dumps(example, indent=2) in guide
     assert block["libs"] in guide

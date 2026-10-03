@@ -156,8 +156,8 @@ from an email attachment. So:
 Everything must be inlined at build time. That constraint is what makes the file
 self-contained and the offline `verify --file` check meaningful.
 
-Charting is already inlined for you — opt in with `"libs": ["echarts"]` in
-[[report-json]].
+Charting is inlined for you when the page has a chart figure. `"libs":
+["echarts"]` in [[report-json]] is optional.
 
 ## Fonts and images
 
