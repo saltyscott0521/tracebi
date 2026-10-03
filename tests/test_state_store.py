@@ -1,7 +1,10 @@
 """One ``tracebi_runs`` table, upgraded in place from a database today's code wrote."""
 
 import sqlite3
+import sys
+from pathlib import Path
 
+import pytest
 from sqlalchemy import inspect
 
 from tracebi.audit import actor
@@ -156,3 +159,71 @@ def test_schedule_import_is_idempotent_and_scoped(tmp_path):
     other.mkdir()
     assert schedule_records(other, url=url) == []
     assert schedule_records(tmp_path / "missing", url=url) == []
+
+
+def _block_store(monkeypatch):
+    monkeypatch.setitem(sys.modules, "sqlalchemy", None)
+    monkeypatch.setitem(sys.modules, "alembic", None)
+
+
+class _QuietPackage:
+    def __init__(self, _path):
+        pass
+
+    def render(self, _models, output, **_k):
+        Path(output).parent.mkdir(parents=True, exist_ok=True)
+        Path(output).write_text("<html>ok</html>", encoding="utf-8")
+        Path(str(output) + ".manifest.json").write_text("{}", encoding="utf-8")
+
+        class _Manifest:
+            def to_dict(self):
+                return {"figures": [], "embedded_data": [],
+                        "transform_contracts": {}}
+
+        return _Manifest()
+
+
+def _weekly(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    pkg = tmp_path / "reports" / "weekly"
+    pkg.mkdir(parents=True)
+    (pkg / "report.json").write_text("{}", encoding="utf-8")
+    (pkg / "template.html").write_text("<p></p>", encoding="utf-8")
+    monkeypatch.setattr(
+        "tracebi.reports.template_package.TemplatePackage", _QuietPackage)
+    _block_store(monkeypatch)
+
+
+def test_report_build_succeeds_when_the_store_is_missing(tmp_path, monkeypatch, capsys):
+    _weekly(tmp_path, monkeypatch)
+    from tracebi.cli import main
+    assert main(["report", "build", "weekly"]) == 0
+    assert (tmp_path / "output" / "weekly.html").read_text(encoding="utf-8") == "<html>ok</html>"
+    err = capsys.readouterr().err
+    assert "report build was not recorded:" in err
+    assert "tracebi[pipeline]" in err
+
+
+def test_build_report_succeeds_when_the_store_is_missing(tmp_path, monkeypatch):
+    _weekly(tmp_path, monkeypatch)
+    from tracebi.mcp_server import gateway_build_report
+    result = gateway_build_report("weekly", output_dir="output")
+    assert result["ok"] is True
+    assert "errors" not in result
+    assert "report build was not recorded:" in result["note"]
+    assert "tracebi[pipeline]" in result["note"]
+    assert (tmp_path / "output" / "weekly.html").is_file()
+
+
+def test_a_web_read_names_the_web_extra(monkeypatch):
+    _block_store(monkeypatch)
+    from tracebi.web.api.routers.runs import get_runs
+    with pytest.raises(ImportError, match=r"tracebi\[web\]"):
+        get_runs()
+
+
+def test_a_schedule_read_names_the_pipeline_extra(tmp_path, monkeypatch):
+    _block_store(monkeypatch)
+    from tracebi.schedule import last_runs
+    with pytest.raises(ImportError, match=r"tracebi\[pipeline\]"):
+        last_runs(tmp_path)

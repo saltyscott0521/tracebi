@@ -535,6 +535,7 @@ class BuildReportResult(TypedDict, total=False):
     transform_contracts: Any
     xlsx_path: str
     spreadsheet_note: str
+    note: Optional[str]
     errors: list[str]
 
 
@@ -1150,11 +1151,6 @@ def gateway_build_report(
             package = TemplatePackage(str(pkg_dir))
             models = _load_models()
             manifest = package.render(models, str(output))
-            from tracebi.state import record_report_build
-            record_report_build(
-                report, str(output),
-                manifest_path=str(output) + ".manifest.json",
-            )
             if format == "xlsx":
                 # The carrier Report holds one table per binding — the same
                 # object the web Excel download renders. A second resolve:
@@ -1179,6 +1175,13 @@ def gateway_build_report(
     if format == "xlsx":
         result["xlsx_path"] = str(xlsx)
         result["spreadsheet_note"] = _XLSX_NOTE
+    from tracebi.state import try_record_report_build
+    note = try_record_report_build(
+        report, str(output),
+        manifest_path=str(output) + ".manifest.json",
+    )
+    if note:
+        result["note"] = f"report build was not recorded: {note}"
     return result
 
 

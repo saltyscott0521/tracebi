@@ -1969,12 +1969,14 @@ def _build_report_target(kind: str, path: Path, output: Path,
             for fname, content in compiled.files.items():
                 (Path(d) / fname).write_text(content, encoding="utf-8")
             TemplatePackage(d).render(models, str(output), badges=badges)
-    from tracebi.state import record_report_build
     target = report_name or (path.stem if kind == "spec" else path.name)
-    record_report_build(
+    from tracebi.state import try_record_report_build
+    note = try_record_report_build(
         target, str(output),
         manifest_path=str(output) + ".manifest.json",
     )
+    if note:
+        print(f"report build was not recorded: {note}", file=sys.stderr)
     return output
 
 

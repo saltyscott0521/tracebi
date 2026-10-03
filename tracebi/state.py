@@ -18,8 +18,14 @@ import os
 import threading
 import zlib
 from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Optional, Union
+
+#: Which extras key a missing-store error names. Schedule and the runner
+#: say ``pipeline``. Web routes set ``web`` for the call.
+_install_extra: ContextVar[str] = ContextVar(
+    "tracebi_state_install_extra", default="pipeline")
 
 #: Namespace for advisory lock keys, so TraceBi's locks cannot collide with
 #: an application's own use of pg_advisory_lock in the same database.
@@ -60,6 +66,23 @@ def _sqlite_file(url: str) -> Optional[str]:
     return path
 
 
+@contextmanager
+def install_extra(extra: str):
+    """Name *extra* in the store's missing-dependency error for this block."""
+    token = _install_extra.set(extra)
+    try:
+        yield
+    finally:
+        _install_extra.reset(token)
+
+
+def _missing(dep: str) -> ImportError:
+    return ImportError(
+        f"The state store needs {dep}. "
+        f"Install with: pip install 'tracebi[{_install_extra.get()}]'"
+    )
+
+
 def _engine(url: str):
     eng = _engines.get(url)
     if eng is not None:
@@ -67,10 +90,7 @@ def _engine(url: str):
     try:
         from sqlalchemy import create_engine
     except ImportError:
-        raise ImportError(
-            "The state store needs SQLAlchemy. "
-            "Install with: pip install 'tracebi[pipeline]'"
-        ) from None
+        raise _missing("SQLAlchemy") from None
     kwargs: dict[str, Any] = {}
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
@@ -92,10 +112,7 @@ def upgrade(db_url: str, engine=None) -> None:
         from alembic import command
         from alembic.config import Config
     except ImportError:
-        raise ImportError(
-            "The state store needs Alembic. "
-            "Install with: pip install 'tracebi[pipeline]'"
-        ) from None
+        raise _missing("Alembic") from None
     file_path = _sqlite_file(db_url)
     if file_path:
         Path(file_path).parent.mkdir(parents=True, exist_ok=True)
@@ -188,7 +205,6 @@ def insert_run(engine, values: dict) -> int:
 
 def update_run(url: Optional[str], run_id: int, **fields) -> None:
     """Update one row. Unknown keys are ignored. ``detail`` dicts are stored as JSON."""
-    from sqlalchemy import text
     fields = {k: v for k, v in fields.items() if k in _UPDATABLE}
     if not fields:
         return
@@ -196,7 +212,9 @@ def update_run(url: Optional[str], run_id: int, **fields) -> None:
         fields["detail"] = _json_text(fields["detail"])
     sets = ", ".join(f"{k} = :{k}" for k in fields)
     fields["id"] = run_id
-    with ensure(url).begin() as conn:
+    eng = ensure(url)
+    from sqlalchemy import text
+    with eng.begin() as conn:
         conn.execute(text(f"UPDATE tracebi_runs SET {sets} WHERE id = :id"), fields)
 
 
@@ -301,6 +319,26 @@ def record_report_build(
     )
 
 
+def try_record_report_build(
+    target: str,
+    output_path: Optional[str],
+    *,
+    manifest_path: Optional[str] = None,
+    url: Optional[str] = None,
+) -> Optional[str]:
+    """Record a report build. A store failure returns a short note; it does
+    not raise. The artifact is already written."""
+    try:
+        record_report_build(
+            target, output_path, manifest_path=manifest_path, url=url,
+        )
+    except ImportError as exc:
+        return str(exc)
+    except Exception as exc:  # noqa: BLE001 — recording is not the build
+        return f"{type(exc).__name__}: {exc}"
+    return None
+
+
 def list_runs(
     *,
     kind: Optional[str] = None,
@@ -309,9 +347,10 @@ def list_runs(
     url: Optional[str] = None,
 ) -> list[dict]:
     """Newest first. ``kind`` and ``target`` are optional filters."""
-    from sqlalchemy import text
     limit = max(1, min(int(limit), 500))
-    with ensure(url).connect() as conn:
+    eng = ensure(url)
+    from sqlalchemy import text
+    with eng.connect() as conn:
         rows = conn.execute(text(
             "SELECT * FROM tracebi_runs "
             "WHERE (:kind IS NULL OR kind = :kind) "
@@ -322,8 +361,9 @@ def list_runs(
 
 
 def get_run(run_id: int, url: Optional[str] = None) -> Optional[dict]:
+    eng = ensure(url)
     from sqlalchemy import text
-    with ensure(url).connect() as conn:
+    with eng.connect() as conn:
         row = conn.execute(
             text("SELECT * FROM tracebi_runs WHERE id = :id"), {"id": run_id},
         ).mappings().first()
@@ -332,8 +372,9 @@ def get_run(run_id: int, url: Optional[str] = None) -> Optional[dict]:
 
 def latest_output(target: str, url: Optional[str] = None) -> Optional[dict]:
     """The newest page-producing run for *target* that names a file."""
+    eng = ensure(url)
     from sqlalchemy import text
-    with ensure(url).connect() as conn:
+    with eng.connect() as conn:
         row = conn.execute(text(
             "SELECT * FROM tracebi_runs "
             "WHERE (target = :t OR layer_name = :t) "
@@ -353,9 +394,10 @@ def _strip_schedule(rec: dict) -> dict:
 
 def _schedule_rows(output_dir: Union[str, Path], url: Optional[str] = None) -> list[dict]:
     """Stored schedule records for *output_dir*, oldest first, markers stripped."""
-    from sqlalchemy import text
     root = str(Path(output_dir).resolve())
-    with ensure(url).connect() as conn:
+    eng = ensure(url)
+    from sqlalchemy import text
+    with eng.connect() as conn:
         rows = conn.execute(text(
             "SELECT detail FROM tracebi_runs WHERE kind = 'schedule' ORDER BY id"
         )).fetchall()
@@ -379,8 +421,9 @@ def import_schedule_log(output_dir: Union[str, Path], url: Optional[str] = None)
     if not log.is_file():
         return 0
     root = str(Path(output_dir).resolve())
+    eng = ensure(url)
     from sqlalchemy import text
-    with ensure(url).connect() as conn:
+    with eng.connect() as conn:
         rows = conn.execute(text(
             "SELECT detail FROM tracebi_runs WHERE kind = 'schedule'"
         )).fetchall()

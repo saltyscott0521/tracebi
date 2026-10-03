@@ -3627,9 +3627,11 @@ sql = [
     { name = "sqlalchemy" },
 ]
 web = [
+    { name = "alembic" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "python-multipart" },
+    { name = "sqlalchemy" },
     { name = "starlette" },
     { name = "uvicorn" },
 ]
@@ -3641,6 +3643,7 @@ requires-dist = [
     { name = "alembic", marker = "extra == 'dev'", specifier = ">=1.13" },
     { name = "alembic", marker = "extra == 'pipeline'", specifier = ">=1.13" },
     { name = "alembic", marker = "extra == 'postgres'", specifier = ">=1.13" },
+    { name = "alembic", marker = "extra == 'web'", specifier = ">=1.13" },
     { name = "apscheduler", marker = "extra == 'all'", specifier = ">=3.10" },
     { name = "apscheduler", marker = "extra == 'dev'", specifier = ">=3.10" },
     { name = "apscheduler", marker = "extra == 'pipeline'", specifier = ">=3.10" },
@@ -3703,6 +3706,7 @@ requires-dist = [
     { name = "sqlalchemy", marker = "extra == 'pipeline'", specifier = ">=2.0" },
     { name = "sqlalchemy", marker = "extra == 'postgres'", specifier = ">=2.0" },
     { name = "sqlalchemy", marker = "extra == 'sql'", specifier = ">=2.0" },
+    { name = "sqlalchemy", marker = "extra == 'web'", specifier = ">=2.0" },
     { name = "starlette", marker = "extra == 'all'", specifier = ">=0.27" },
     { name = "starlette", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "starlette", marker = "extra == 'web'", specifier = ">=0.27" },

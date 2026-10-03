@@ -80,15 +80,16 @@ class RunStore:
 
     def start(self, kind: str, name: str, fn: Callable[[], dict]) -> dict:
         """Submit ``fn`` and return the new run record. The row exists before return."""
-        from tracebi.state import get_run, record_run
+        from tracebi.state import get_run, install_extra, record_run
 
         started = _now()
-        run_id = record_run(kind=kind, target=name, status="running", started=started)
-        self._pool.submit(self._execute, run_id, fn)
-        return _api(get_run(run_id), with_result=True)
+        with install_extra("web"):
+            run_id = record_run(kind=kind, target=name, status="running", started=started)
+            self._pool.submit(self._execute, run_id, fn)
+            return _api(get_run(run_id), with_result=True)
 
     def _execute(self, run_id: int, fn: Callable[[], dict]) -> None:
-        from tracebi.state import update_run
+        from tracebi.state import install_extra, update_run
 
         output_path = None
         try:
@@ -106,26 +107,29 @@ class RunStore:
             detail["retained"] = result.get("retained")
             detail["manifest_path"] = result.get("manifest_path")
         finished = _now()
-        update_run(
-            None, run_id, status=status, finished=finished, completed_at=finished,
-            output_path=output_path, detail=detail,
-        )
+        with install_extra("web"):
+            update_run(
+                None, run_id, status=status, finished=finished,
+                completed_at=finished, output_path=output_path, detail=detail,
+            )
 
     def get(self, run_id: str) -> Optional[dict]:
-        from tracebi.state import get_run
+        from tracebi.state import get_run, install_extra
 
         if not str(run_id).isdigit():
             return None
-        row = get_run(int(run_id))
+        with install_extra("web"):
+            row = get_run(int(run_id))
         if row is None:
             return None
         return _api(row, with_result=True)
 
     def list_for(self, kind: str, name: str, limit: int = 10) -> list[dict]:
         """Newest-first run summaries (without the result payload)."""
-        from tracebi.state import list_runs
+        from tracebi.state import install_extra, list_runs
 
-        rows = list_runs(kind=kind, target=name, limit=limit)
+        with install_extra("web"):
+            rows = list_runs(kind=kind, target=name, limit=limit)
         # list_runs returns the public shape; rebuild from the same fields.
         out = []
         for row in rows:

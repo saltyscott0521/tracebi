@@ -154,12 +154,13 @@ def _artifact_payload(name: str):
         **receipt,
     }
     _ARTIFACT_CACHE[name] = {"mtime": mtime, "at": now, "payload": payload}
-    from tracebi.state import record_report_build
-    record_report_build(
-        name,
-        payload.get("html_path"),
-        manifest_path=payload.get("manifest_path"),
-    )
+    from tracebi.state import install_extra, record_report_build
+    with install_extra("web"):
+        record_report_build(
+            name,
+            payload.get("html_path"),
+            manifest_path=payload.get("manifest_path"),
+        )
     return payload
 
 
@@ -323,9 +324,10 @@ def _read_build(name: str, path: str, manifest_path: str, *, retained: bool) -> 
 
 def _stored_build(name: str):
     """The newest page-producing run whose file is still on disk."""
-    from tracebi.state import latest_output
+    from tracebi.state import install_extra, latest_output
 
-    row = latest_output(name)
+    with install_extra("web"):
+        row = latest_output(name)
     if not row:
         return None
     path = row.get("output_path")
