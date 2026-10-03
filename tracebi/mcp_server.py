@@ -410,12 +410,12 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
 # ``{ok, errors}`` envelope, and the MCP SDK drops any returned key the schema
 # does not name — so every key a function can return is listed here.
 #
-# Every non-Any field is Optional. The SDK builds one pydantic model from the
-# TypedDict and, for each key the function omitted, dumps null (the default it
-# sets on total=False fields). A schema of ``{"type": "string", "default": null}``
-# does not allow that null, and a schema-checking client rejects the whole
-# result. Optional makes the advertised schema permit null exactly where that
-# conversion emits it. There is no nested model: containers are Any, or
+# Every non-Any field is Optional. mcp 2.0 fills each omitted total=False key
+# with null; mcp 2.3 omits those NotRequired keys instead. A schema of
+# ``{"type": "string", "default": null}`` does not allow that null, and a
+# schema-checking client rejects the whole result. Optional makes the
+# advertised schema permit null where 2.0 emits it. There is no nested model:
+# containers are Any, or
 # list/dict of str whose values the tools actually return as strings (a null
 # inside one of those would still fail, and none of the returns produce one).
 
@@ -428,7 +428,7 @@ class ContextResult(TypedDict, total=False):
     number_formats: Any
     conventions: Any
     cheat_sheets: Any
-    model: Any  # null unless model= was passed
+    model: Any  # null or absent unless model= was passed
     presentation: Any
     transform_contracts: Any
     schedule: Any
@@ -436,7 +436,7 @@ class ContextResult(TypedDict, total=False):
     pins: Any
     spreadsheet: Any
     analyst_knowledge: Any
-    brief: Any  # the omission note; null when brief=false
+    brief: Any  # the omission note; null or absent when brief=false
 
 
 class ModelsResult(TypedDict, total=False):
@@ -1359,13 +1359,14 @@ def build_server(token: Optional[str] = None):
             "TraceBi's semantic contract: every model, section type, chart "
             "type, DataSet verb, measure kind and filter operator. Pass "
             "model=<name> to include that model's tables, dimensions and "
-            "named measures; model is null unless you pass it. Call this "
-            "first — start with brief=true, the tier for authoring a "
-            "package. brief=true includes presentation (the data-tb-* "
-            "figure grammar) and number_formats. It leaves cheat_sheets, "
-            "report_sections, and dataset_verbs null — not requested in "
-            "this tier; call get_context(brief=false) for them. On "
-            "brief=false the brief field itself is null."
+            "named measures; model is null or absent unless you pass it. "
+            "Call this first — start with brief=true, the tier for "
+            "authoring a package. brief=true includes presentation (the "
+            "data-tb-* figure grammar) and number_formats. It leaves "
+            "cheat_sheets, report_sections, and dataset_verbs null or "
+            "absent — not requested in this tier; call "
+            "get_context(brief=false) for them. On brief=false the brief "
+            "field itself is null or absent."
         ),
     )(gateway_context)
     _tool(

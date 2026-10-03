@@ -731,8 +731,9 @@ def test_brief_context_returns_the_presentation_grammar(gateway_model):
 
 
 def test_structured_brief_context_keeps_presentation(gateway_model):
-    """The SDK drops any returned key the output schema does not name, and
-    fills omitted schema keys with null. The grammar must survive that."""
+    """The SDK drops any returned key the output schema does not name.
+    Omitted schema keys are null on mcp 2.0 and absent on mcp 2.3.
+    The grammar must survive either."""
     pytest.importorskip("mcp")
     import anyio
     from tracebi.mcp_server import build_server
@@ -748,10 +749,10 @@ def test_structured_brief_context_keeps_presentation(gateway_model):
     brief = anyio.run(call, {"brief": True})
     assert "data-tb-figure" in brief["presentation"]["figure_attributes"]
     assert brief["number_formats"]["currency"]
-    assert brief["cheat_sheets"] is None
-    assert brief["report_sections"] is None
-    assert brief["dataset_verbs"] is None
-    assert brief["model"] is None
+    assert brief.get("cheat_sheets") is None
+    assert brief.get("report_sections") is None
+    assert brief.get("dataset_verbs") is None
+    assert brief.get("model") is None
     assert brief["brief"]["omitted"] == [
         "cheat_sheets", "report_sections", "dataset_verbs",
     ]
@@ -759,8 +760,8 @@ def test_structured_brief_context_keeps_presentation(gateway_model):
     full = anyio.run(call, {"brief": False})
     assert full["cheat_sheets"]
     assert full["presentation"]["figure_attributes"]["data-tb-figure"]
-    assert full["brief"] is None
-    assert full["model"] is None
+    assert full.get("brief") is None
+    assert full.get("model") is None
 
 
 def test_a_schema_checking_client_accepts_every_tool(gateway_model, tmp_path,
