@@ -423,11 +423,15 @@ throughout: an unattributed run records `None` and behaves exactly as before.
 A ContextVar, **not a module global** — a global would let concurrent requests
 in one process read each other's actor.
 
-New columns on an existing table are reconciled at startup by
-`_add_missing_run_columns` (`CREATE TABLE IF NOT EXISTS` is a no-op against a
-table that already exists). There is no migration framework here by design; if
-you add a column to `tracebi_runs`, add it to `_RUNS_ADDED_COLUMNS` in the same
-change or upgrades will break.
+The state store (`tracebi_runs` and the other runner tables) is migrated by
+Alembic (`tracebi/migrations`). `upgrade` runs at startup. The baseline matches
+the schema today's code leaves after startup; later revisions add columns.
+`_add_missing_run_columns` still reconciles `tracebi_runs`: `CREATE TABLE IF
+NOT EXISTS` is a no-op against a table that already exists, and a baseline
+stamped onto a database that predates a column does not add it. If you add a
+column to `tracebi_runs`, add the Alembic revision and the entry in
+`_RUNS_ADDED_COLUMNS` in the same change, or an upgrade of an old file breaks.
+Warehouse layers stay idempotent; they are not migrated.
 
 ---
 
@@ -464,7 +468,7 @@ Lineage is non-optional. If your new transform skips the lineage step, the audit
 Each feature group (reports, pipeline, lineage, sql) has optional deps. Wrap their imports in `try/except ImportError` and raise a clear `ImportError` telling the user which extras key to install. Don't let a missing dep produce a confusing `AttributeError` later.
 
 **5. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. Framework-read env vars: `TRACEBI_STATE_URL` (the shared run store; default `sqlite:///data/tracebi.db`), `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
 
 ---
 
@@ -637,7 +641,7 @@ Failed report/query runs return a structured ``detail``:
 ## What Doesn't Exist Yet
 
 - No Makefile (commands documented in README + this file)
-- No database migrations (layers are idempotent)
+- No migration framework for warehouse tables (layers are idempotent; the state store uses Alembic — `tracebi/migrations`)
 - No pre-commit hooks
 - No PyPI release (install is `pip install -e .` or from git)
 - No `PDFRenderer` class (the `[pdf]` extras key exists; `HTMLRenderer.render_pdf()` ships but is untested — it needs weasyprint/libgobject, unavailable on this Mac)
