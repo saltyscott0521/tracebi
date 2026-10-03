@@ -27,6 +27,7 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 """
 
 import base64
+import functools
 import hmac
 import ipaddress
 import json
@@ -1251,6 +1252,7 @@ def build_server(token: Optional[str] = None):
     """
     try:
         from mcp.server.mcpserver import MCPServer
+        from mcp.server.mcpserver.exceptions import ToolError
         from mcp.types import ToolAnnotations
     except ImportError as exc:  # pragma: no cover — exercised by hand
         raise ImportError(
@@ -1319,11 +1321,22 @@ def build_server(token: Optional[str] = None):
     )
 
     # Every tool registers through here, so the opt-in call log
-    # (TRACEBI_MCP_LOG=1) wraps them all in one place.
+    # (TRACEBI_MCP_LOG=1) wraps them all in one place. The log stays inside:
+    # it records the original exception. Outside it, a plain exception becomes
+    # a ToolError whose one-line message reaches the client. On current mcp a
+    # plain exception is masked to "Error executing tool <name>".
     def _tool(**kwargs):
         def register(fn):
-            return server.tool(**kwargs)(
-                _gateway_log.logged(kwargs["name"], fn, _mcp_actor))
+            logged = _gateway_log.logged(kwargs["name"], fn, _mcp_actor)
+
+            @functools.wraps(logged)
+            def visible(*args, **kw):
+                try:
+                    return logged(*args, **kw)
+                except Exception as exc:  # noqa: BLE001 — the client must see why
+                    raise ToolError(_one_line_error(exc)) from exc
+
+            return server.tool(**kwargs)(visible)
         return register
 
     # Tools. structured_output=True advertises each return's JSON Schema and
