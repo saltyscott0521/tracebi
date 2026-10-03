@@ -405,6 +405,9 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    `<span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="revenue"
    data-tb-format="currency0">—</span>` and
    `<table data-tb-figure="table" data-tb-binding="region"></table>`.
+   A value figure needs a one-row binding: its own query with no
+   dimensions (the `kpis` binding above), or `order_by` plus `limit` 1.
+   The cell may be text, such as the top sector's name.
    A number with no query behind it is honest only as `data-tb-unverified` —
    never a value figure with the number typed in.
 

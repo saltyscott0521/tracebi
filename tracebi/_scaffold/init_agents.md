@@ -60,7 +60,10 @@ whose figures each name a binding from `report.json`:
 
 - `data-tb-figure="value|chart|table|custom"` + `data-tb-binding="<name>"` —
   the claim. Values add `data-tb-cell="<column>"` and optionally
-  `data-tb-format` (`compact`, `currency`, `comma`, `percent`, …). Charts add
+  `data-tb-format` (`compact`, `currency`, `comma`, `percent`, …). A value
+  figure needs a one-row binding: its own query with no dimensions, or
+  `order_by` plus `limit` 1. The cell may be text, such as the top
+  sector's name. Charts add
   `data-tb-type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`),
   `data-tb-x`, `data-tb-y` (comma-list for multi-series), optional
   `data-tb-color` and `data-tb-value-format`. Tables optionally add
@@ -82,7 +85,8 @@ whose figures each name a binding from `report.json`:
   `template.html` with `{{ figure("total") }}`. You keep the whole layout,
   stylesheet and script; the emitted element is byte-identical to what a
   spec would compile, so the grammar above never has to be hand-written.
-  The name becomes the id (`fig-<name>`). Kinds: `value` (needs `cell`),
+  The name becomes the id (`fig-<name>`). Kinds: `value` (needs `cell`
+  and a one-row binding),
   `chart` (`chart_type`/`x`/`y`/`color`/`palette`), `table`
   (`columns`/`style`); a `custom` figure has no framework markup, so draw
   that one yourself. It refuses the silent failures — an undeclared binding

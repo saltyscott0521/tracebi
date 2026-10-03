@@ -103,7 +103,9 @@ from its sign. Add `tb-table--freeze` to keep a wide table's first column in
 view. A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
-`presentation` block.
+`presentation` block. A value figure needs a one-row binding: its own
+query with no dimensions, or `order_by` plus `limit` 1. The cell may be
+text, such as the top sector's name.
 
 **You can also have the framework build the figure for you.** Declare it in
 `report.json` under `figures`, then place it in `template.html` with
@@ -123,7 +125,7 @@ redirect you. `tracebi context` documents the full grammar in its
 The emitted element is byte-identical to what a spec would compile, so you
 keep the whole layout, stylesheet and script while never hand-writing the
 grammar. The declared name becomes the figure id (`fig-<name>`). Kinds:
-`value` (needs `cell`), `chart` (`chart_type`/`x`/`y`/`color`/`palette`),
+`value` (needs `cell` and a one-row binding), `chart` (`chart_type`/`x`/`y`/`color`/`palette`),
 `table` (`columns`/`style`) — a `custom` figure has no framework markup, so
 draw and mark that one yourself. It refuses the silent failures: a figure
 naming an undeclared binding fails at load, and a figure declared but never

@@ -154,3 +154,22 @@ class TestLargeDetailArtifactIsTaught:
             assert "PyArrow" in text or "pyarrow" in text, (
                 f"{name} does not name the dependency the Parquet form needs"
             )
+
+
+def test_a_value_figure_is_taught_as_a_one_row_binding():
+    """data-tb-cell reads one row. A multi-row binding is a build error,
+    and a text cell (the top sector's name) is shown as text."""
+    from tracebi.mcp_server import authoring_guide
+
+    cell = describe(brief=True)["presentation"]["figure_attributes"]["data-tb-cell"]
+    assert "one-row" in cell
+    assert "row 0" not in cell
+    assert "top sector" in cell
+    kinds = describe(brief=True)["presentation"]["figure_helper"]["kinds"]
+    assert "one-row binding" in kinds
+    for name, text in _guides().items():
+        assert "one-row binding" in text, name
+        assert "top sector" in text, name
+    guide = authoring_guide()
+    assert "one-row binding" in guide
+    assert "top sector" in guide

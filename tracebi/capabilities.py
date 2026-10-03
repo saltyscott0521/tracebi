@@ -277,9 +277,14 @@ def _presentation() -> dict:
                               "sentence works, so prose numbers can be live "
                               "figures instead of typed-in text",
             "data-tb-binding": "which stamped binding feeds this element",
-            "data-tb-cell": "value figures: the column to read (row 0). The "
-                            "hydrator fills a .tb-kpi-value child when one "
-                            "exists, else the element itself",
+            "data-tb-cell": "value figures: the column of a one-row "
+                            "binding to read. Give that binding its own "
+                            "query with no dimensions, or order_by plus "
+                            "limit 1; the build refuses any other row "
+                            "count. A text cell, such as the top sector's "
+                            "name, is shown as text. The hydrator fills a "
+                            ".tb-kpi-value child when one exists, else the "
+                            "element itself",
             "data-tb-format": "value figures: compact | comma | currency | "
                               "currency0 | percent | decimal. Omitted, a "
                               "numeric cell takes the model's declared "
@@ -347,7 +352,8 @@ def _presentation() -> dict:
                            "\"binding\": \"totals\", \"cell\": \"revenue\", "
                            "\"label\": \"Revenue\", \"format\": "
                            "\"currency\"}}",
-            "kinds": "value (needs 'cell') | chart (chart_type, x, y, color, "
+            "kinds": "value (needs 'cell' and a one-row binding) | chart "
+                     "(chart_type, x, y, color, "
                      "palette, value_format) | table (columns, style, labels, formats — "
                      "labels/formats are {column: text} objects). A 'custom' figure "
                      "has no framework markup — draw it in script.js and "
