@@ -2389,6 +2389,13 @@
     try { hydrateDownloads(); } catch (e) {}
     try { hydrateReceipt(); } catch (e) {}
     try { hydrateScenarios(); } catch (e) {}
+    /* Set once figures are drawn, charts included. A printer waits for
+     * this; it changes no number. */
+    try {
+      if (document.documentElement && document.documentElement.setAttribute) {
+        document.documentElement.setAttribute("data-tb-ready", "1");
+      }
+    } catch (e) {}
   }
 
   /* ── Parquet data blocks ───────────────────────────────────────────────

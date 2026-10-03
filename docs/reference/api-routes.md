@@ -51,7 +51,7 @@ graph. It computes but persists nothing, which is why `viewer` may call it.
 | `GET` | `/api/reports/{name}/runs/{run_id}` | viewer |
 | `GET` | `/api/reports/{name}/built` | viewer |
 | `GET` | `/api/runs` | viewer |
-| `GET` | `/api/reports/{name}/download?format=xlsx\|html` | analyst |
+| `GET` | `/api/reports/{name}/download?format=xlsx\|html\|pdf` | analyst |
 | `GET` | `/api/reports/{name}/lineage` | viewer |
 | `GET` | `/api/reports/{name}/mermaid` | viewer |
 | `GET` | `/api/reports/{name}/source` | viewer |
@@ -81,6 +81,8 @@ open and kept. Opening never re-queries after that; fresh data comes from
 on disk; the row holds the output path.
 
 The `html` download is that last build, the file the reader is looking at.
+`pdf` is a print of that same file (headless Chromium, so charts render). It
+carries no receipt; the HTML file is what `verify --file` checks.
 `xlsx` goes through the Excel renderer, which derives no
 [[number-formats|formats]], and runs the report to do so.
 

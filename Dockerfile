@@ -23,7 +23,14 @@ RUN useradd --create-home --uid 10001 appuser
 WORKDIR /app
 COPY . .
 COPY --from=ui-builder /src/tracebi/web/ui/dist tracebi/web/ui/dist
-RUN pip install --no-cache-dir '.[reports,pipeline,lineage,sql,postgres,duckdb,web]'
+RUN pip install --no-cache-dir '.[reports,pipeline,lineage,sql,postgres,duckdb,web]' 'playwright>=1.40'
+# Headless Chromium prints a built report to PDF. The browser cache sits
+# outside the app user's home so the non-root server can launch it. The
+# `pdf` extra also pins weasyprint for HTMLRenderer.render_pdf(); that path
+# is not what this image serves, so only Playwright is installed here.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN python -m playwright install --with-deps chromium \
+    && chmod -R a+rX /ms-playwright
 # Bake the flagship demo: run the three-phase workflow once so the served
 # project has a warehouse and a rendered report on first boot.
 RUN cd examples/portfolio_project && python run_workflow.py
