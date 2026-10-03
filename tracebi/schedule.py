@@ -21,6 +21,13 @@ run-pipeline``), in order, each in a fresh process. A step that fails —
 including a sink contract that refuses the new data — fails the run, and
 nothing is built or sent.
 
+A failed refresh or build is retried before that failure is recorded.
+The default is two retries, waiting 60 seconds and then 300 (any further
+retry waits 300 again). ``"retries"`` is an integer from 0 to 5; 0
+disables them. A receipt that does not verify, and a delivery failure,
+are not retried — a failed send is not repeated. The recorded run
+includes ``attempts`` (1 when the first try succeeded).
+
 The schedule lives in the repo beside the bindings, so a reviewer approves
 *when* and *to whom* in the same pull request as *what*.
 
@@ -39,6 +46,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,15 +60,23 @@ FAILED = "failed"         # a refresh step failed, or the build, verify or send 
 
 RUN_LOG = "schedule_runs.jsonl"
 
-_ALLOWED_KEYS = {"cron", "timezone", "to", "refresh"}
+_ALLOWED_KEYS = {"cron", "timezone", "to", "refresh", "retries"}
 _REFRESH_KINDS = ("transforms", "pipelines")
+_DEFAULT_RETRIES = 2
+_MAX_RETRIES = 5
+# First retry waits a minute; every retry after that waits five minutes.
+_RETRY_DELAYS = (60, 300)
+
+#: Patched in tests so a retry never calls ``time.sleep``.
+_sleep = time.sleep
 
 
 def parse_schedule_block(raw, *, path: str) -> dict:
     """Validate a package's ``schedule`` block; return it normalized.
 
     Returns ``{"cron": str, "timezone": str | None, "to": list[str],
-    "refresh": {"transforms": list[str], "pipelines": list[str]}}``.
+    "refresh": {"transforms": list[str], "pipelines": list[str]},
+    "retries": int}``. ``retries`` defaults to 2.
     Raises ``ValueError`` naming *path* and the fix.
     """
     if not isinstance(raw, dict):
@@ -115,8 +131,17 @@ def parse_schedule_block(raw, *, path: str) -> dict:
             f"{path}: schedule 'refresh' must be an object like "
             f"{{\"transforms\": [\"holdings_transform\"], "
             f"\"pipelines\": [\"sales_etl\"]}}.")
+    retries = raw.get("retries", _DEFAULT_RETRIES)
+    # bool is an int subclass; True would otherwise retry once.
+    if (isinstance(retries, bool) or not isinstance(retries, int)
+            or not 0 <= retries <= _MAX_RETRIES):
+        raise ValueError(
+            f"{path}: schedule 'retries' must be an integer from 0 to "
+            f"{_MAX_RETRIES} (0 disables retries); got {retries!r}."
+        )
     return {"cron": " ".join(cron.split()), "timezone": tz, "to": list(to),
-            "refresh": {k: list(refresh.get(k, [])) for k in _REFRESH_KINDS}}
+            "refresh": {k: list(refresh.get(k, [])) for k in _REFRESH_KINDS},
+            "retries": retries}
 
 
 def discover_schedules(reports_dir: Union[str, Path]) -> tuple[list[dict], list[dict]]:
@@ -199,6 +224,9 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
                  send: bool = True) -> dict:
     """Run one schedule now: refresh → build → verify → deliver → record.
 
+    A failed refresh or build is retried (``retries``, default 2) before
+    the failure is recorded. Verify and delivery are not retried.
+
     Returns the run record (also appended to the run log). Never raises for
     a failed run — the failure is the record's ``status`` and ``error``, so
     a scheduler loop survives one bad report.
@@ -211,7 +239,7 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
         "report": name, "started_at": _now(), "finished_at": None,
         "status": FAILED, "verdict": None, "recipients": [],
         "output": None, "error": None, "actor": user, "actor_role": role,
-        "refresh": [],
+        "refresh": [], "attempts": 1,
     }
     try:
         _run(schedule, record, Path(reports_dir), Path(output_dir),
@@ -231,12 +259,30 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
 
     name = schedule["report"]
     kind, path = _resolve_report_target(name, reports_dir, purpose="schedule")
-    if not _refresh(schedule.get("refresh") or {}, record):
-        return                           # status stays FAILED, error says why
+    retries = schedule.get("retries", _DEFAULT_RETRIES)
     output = output_dir / f"{name}.html"
-    _build_report_target(kind, path, output)
+    built = False
+    # Only a failed refresh or a failed build is retried. A receipt that
+    # does not verify is a verdict, and a failed send must not be repeated.
+    for attempt in range(retries + 1):
+        record["attempts"] = attempt + 1
+        record["refresh"] = []
+        record["error"] = None
+        try:
+            if _refresh(schedule.get("refresh") or {}, record):
+                _build_report_target(kind, path, output)
+                record["output"] = str(output)
+                built = True
+                break
+        except Exception as exc:  # noqa: BLE001 — retried, then recorded
+            record["error"] = f"{type(exc).__name__}: {exc}"
+        if attempt < retries:
+            _sleep(_RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)])
+    if not built:
+        record["status"] = FAILED
+        return
+
     manifest_path = output.with_name(output.name + ".manifest.json")
-    record["output"] = str(output)
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     result = verify_manifest(manifest, load_models(models_dir))
@@ -272,7 +318,6 @@ def _refresh(refresh: dict, record: dict) -> bool:
     first step that fails; later steps and the build do not run."""
     import subprocess
     import sys
-    import time
 
     steps = [("transform", "run-transform", n) for n in refresh.get("transforms", [])]
     steps += [("pipeline", "run-pipeline", n) for n in refresh.get("pipelines", [])]
@@ -395,6 +440,9 @@ def describe_schedule(s: dict, last: Optional[dict] = None) -> str:
     to = ", ".join(s.get("to") or []) or "(build only)"
     tz = s.get("timezone") or "UTC"
     line = f"{s['report']:<28} {s['cron']:<16} {tz:<18} → {to}"
+    retries = s.get("retries", _DEFAULT_RETRIES)
+    if retries != _DEFAULT_RETRIES:
+        line += f"   retries: {retries}"
     if last:
         line += f"   last: {last.get('status')} {last.get('finished_at') or ''}"
     return line
