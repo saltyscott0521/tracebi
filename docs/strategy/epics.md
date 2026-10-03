@@ -107,7 +107,6 @@ list them as open, which makes the real gaps harder to see.
 | --- | --- |
 | Coolify pointing the demo at the tagged GHCR image is a person ops step, not verified from the repo. | `docs/guides/one-server.md` |
 | No path onto a client's own data: no connection setup, no model drafted from warehouse tables, no `init --template`. | `tracebi init --help` |
-| Messaging disagrees with the strategy. The CLI help and the `init` README lead with "the trust layer for AI-generated analytics"; [[vision-and-positioning]] makes receipts a supporting feature and leads with ask / build / schedule. *(#161 in flight.)* | `tracebi --help`, the scaffolded `README.md` |
 | A git install still ships the API with no web UI unless the UI was built (release wheel includes it). | [[ROADMAP]] item 5 |
 
 **Platform**
@@ -206,9 +205,9 @@ builder's own database, not only the sample data.
 - [ ] `tracebi init --template <name>`: start with **SaaS metrics** and **sales
       pipeline**, each a model plus two reports over sample data, which an
       agent then points at real tables.
-- [ ] The scaffolded README and `tracebi --help` lead with ask / build /
+- [x] The scaffolded README and `tracebi --help` lead with ask / build /
       schedule, per [[vision-and-positioning]]. Receipts become the "why you
-      can trust it" line.
+      can trust it" line. (#161)
 - [ ] The connection `tracebi connect` writes reads its secret the way the
       rules already require: the generated model file calls `load_dotenv()`
       itself, and the framework still never loads `.env` implicitly.
