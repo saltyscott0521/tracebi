@@ -181,8 +181,28 @@ The build itself ignores it.</p>
 <td><code>owner</code></td>
 <td>Optional. One email address. A run recorded <code>failed</code>, <code>refused</code>, or <code>empty</code> emails this address a plain-text alert and does not send the report to <code>to</code>. Without it, nothing is alerted.</td>
 </tr>
+<tr>
+<td><code>burst</code></td>
+<td>Optional. One build per filter value, each with its own recipients. <code>filter</code> is one dimension key mapped to a list or <code>{"in": [...]}</code>. <code>to</code> maps each value to email addresses. A value missing from <code>to</code> is skipped and recorded, and is not sent to the top-level <code>to</code>. <code>burst</code> without <code>to</code> is refused when the package loads.</td>
+</tr>
 </tbody>
 </table>
+<pre><code class="language-json">&quot;burst&quot;: {
+  &quot;filter&quot;: {&quot;dim_region.region&quot;: {&quot;in&quot;: [&quot;EMEA&quot;, &quot;APAC&quot;, &quot;AMER&quot;]}},
+  &quot;to&quot;: {
+    &quot;EMEA&quot;: [&quot;emea@example.com&quot;],
+    &quot;APAC&quot;: [&quot;apac@example.com&quot;],
+    &quot;AMER&quot;: [&quot;amer@example.com&quot;]
+  }
+}
+</code></pre>
+<p>Each value is its own HTML and manifest under <code>output/</code>. The filter is
+applied at build on every binding whose model has that dimension, through
+the same path as a selection filter. Each slice is verified on its own. A
+refused, empty, or failed slice is not sent; the others still are. The run
+is one parent record with a <code>slices</code> list (value, status, recipients,
+output path). If any slice failed, came back empty, or was refused, one
+owner alert names those slices.</p>
 <p>A run whose figure bindings include one with zero rows is recorded <code>empty</code>
 and is not sent. A binding no figure uses does not count.</p>
 <p>Any other field, a cron that isn't five fields, an unknown time zone, an
