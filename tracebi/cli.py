@@ -6,6 +6,7 @@ Scaffolds and drives a project through the three-phase workflow — TRANSFORM
 
     tracebi init my_project                 # scaffold a new project
     tracebi run-transform <name>            # ① run a transform → sink the warehouse
+    tracebi connect wh --kind duckdb        # point at a warehouse you already have
     tracebi new-model "Sales Model"         # ② scaffold a model over the warehouse
     tracebi report build <name>             # ③ render an artifact package + receipt
     tracebi verify <manifest>               # re-run recorded queries; classify drift
@@ -934,6 +935,11 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
         print(f"\n{exc}", file=sys.stderr)
         return 1
     return 0
+
+
+def cmd_connect(args: argparse.Namespace) -> int:
+    from tracebi.connect import connect_command
+    return connect_command(args)
 
 
 def cmd_new_model(args: argparse.Namespace) -> int:
@@ -2496,6 +2502,42 @@ def build_parser() -> argparse.ArgumentParser:
              "models/ and verify its dimension keys are unique.",
     )
     p_validate.set_defaults(func=cmd_validate)
+
+    p_connect = sub.add_parser(
+        "connect",
+        help="Connect a warehouse you already have (postgres, snowflake, "
+             "bigquery, duckdb): test it, write the secret to .env, and "
+             "write a connector module.",
+    )
+    p_connect.add_argument("name", help="Connection name, a Python identifier (e.g. wh).")
+    p_connect.add_argument(
+        "--kind", choices=["postgres", "snowflake", "bigquery", "duckdb"],
+        help="Warehouse kind. Prompted when stdin is a terminal.",
+    )
+    p_connect.add_argument("--url", help="Postgres SQLAlchemy URL (postgresql://...).")
+    p_connect.add_argument("--account", help="Snowflake account identifier.")
+    p_connect.add_argument("--user", help="Snowflake user.")
+    p_connect.add_argument("--password", help="Snowflake password. Never printed.")
+    p_connect.add_argument("--warehouse", help="Snowflake warehouse.")
+    p_connect.add_argument("--database", help="Snowflake database, or DuckDB file path.")
+    p_connect.add_argument("--schema", help="Snowflake schema.")
+    p_connect.add_argument("--role", help="Snowflake role. Optional.")
+    p_connect.add_argument("--project", help="BigQuery GCP project id.")
+    p_connect.add_argument("--dataset", help="BigQuery dataset.")
+    p_connect.add_argument(
+        "--credentials",
+        help="Path to a BigQuery service-account JSON file. Optional.",
+    )
+    p_connect.add_argument(
+        "--test", action=argparse.BooleanOptionalAction, default=True,
+        help="Connect and list tables before writing anything (default). "
+             "--no-test writes without connecting.",
+    )
+    p_connect.add_argument(
+        "--force", action="store_true",
+        help="Overwrite an existing .env key or connection module.",
+    )
+    p_connect.set_defaults(func=cmd_connect)
 
     p_new_model = sub.add_parser("new-model", help="Scaffold a new model definition.")
     p_new_model.add_argument("title", help='Free-form title, e.g. "Sales Model".')

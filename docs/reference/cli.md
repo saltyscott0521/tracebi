@@ -45,6 +45,34 @@ output/`, plus a sample transform, model and report package, `.gitignore`,
   directory. Without it, an existing file is skipped with a note and the run
   still succeeds.
 
+### `tracebi connect`
+
+```bash
+tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force]
+tracebi connect wh --kind postgres --url postgresql://user:pass@host/db
+tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET \
+    --warehouse WH --database DB --schema PUBLIC [--role ROLE]
+tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
+    [--credentials /path/service-account.json]
+tracebi connect wh --kind duckdb --database data/warehouse.duckdb
+```
+
+Tests the warehouse (unless `--no-test`), then writes the secret to `.env`
+and a connector module at `models/_connections/<name>.py`. The module calls
+`load_dotenv()` and builds the connector from `os.environ`. TraceBi itself
+never loads `.env`.
+
+The secret is written only to `.env` and is never printed. Other lines in
+`.env` are left as they are. An existing key, or an existing connection
+file, is refused without `--force`. Nothing is written when the test fails.
+
+Missing required flags are prompted when stdin is a terminal (a password via
+`getpass`); otherwise the command exits 2 and names the flags. `--dataset`
+is required for BigQuery because the connector takes it with no default.
+
+Discovery does not load `models/_connections/`: model discovery reads only
+top-level `models/*.py`, and a file there must define `model`.
+
 ### `tracebi new-transform "Title"` · `new-model` · `new-report` · `new-pipeline`
 
 ```bash

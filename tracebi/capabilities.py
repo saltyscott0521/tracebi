@@ -932,6 +932,27 @@ def describe(brief: bool = False) -> dict:
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
         "schedule": _schedule(),
+        "connect": {
+            "what": "Point a project at a warehouse it did not sink. Tests "
+                    "the connection, writes the secret to .env (never "
+                    "printed), and writes models/_connections/<name>.py. "
+                    "That module calls load_dotenv() and reads os.environ; "
+                    "the framework still does not load .env. Discovery "
+                    "ignores the directory: it only loads top-level "
+                    "models/*.py that define model.",
+            "cli": "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb "
+                   "[kind flags] [--test/--no-test] [--force]",
+            "kinds": {
+                "postgres": "--url postgresql://...",
+                "snowflake": "--account --user --password --warehouse "
+                             "--database --schema [--role]",
+                "bigquery": "--project --dataset [--credentials PATH]",
+                "duckdb": "--database PATH",
+            },
+            "env": "TRACEBI_<NAME>_URL, TRACEBI_<NAME>_PASSWORD, and the "
+                   "other constructor fields, uppercase name. An existing "
+                   "key is kept unless --force.",
+        },
         "warehouse": {
             "what": "Column names and types of a sunk table, from connector "
                     "metadata. Never a row scan, and never a substitute for "
