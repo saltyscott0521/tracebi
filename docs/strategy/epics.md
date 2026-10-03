@@ -12,7 +12,7 @@ file wins.
 **In one line:** the engine, the agent surface, one-server install, the
 state store, the reader's report experience, and the dashboard cookbook
 have shipped. The biggest gaps now are finishing the path onto a client's
-*own* data (dbt + templates), a finished Library page, and unattended
+*own* data (`init --template`), a finished Library page, and unattended
 schedule delivery (Slack file delivery, bursting, alert → Runs).
 
 ---
@@ -22,9 +22,9 @@ schedule delivery (Slack file delivery, bursting, alert → Runs).
 ```
                 NOW                              NEXT                        LATER
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-DISTRIBUTION  │ E3 leftovers: dbt    │   │                       │   │ PyPI (when development │
-get it into   │    import + init     │──▶│                       │   │ settles; held on       │
-people's hands│    --template        │   │                       │   │ purpose)               │
+DISTRIBUTION  │ E3 leftover: init    │   │                       │   │ PyPI (when development │
+get it into   │    --template        │──▶│                       │   │ settles; held on       │
+people's hands│                      │   │                       │   │ purpose)               │
               │ E1 leftover: Coolify │   │                       │   │                        │
               │    on the tagged img │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
@@ -208,9 +208,9 @@ builder's own database, not only the sample data.
 - [x] `tracebi new-model --from <connector> --tables a,b,c`: drafts a star
       schema from table metadata (the column metadata `info()` already reads),
       for the builder or their agent to edit and approve. No data scanned.
-- [ ] `tracebi import dbt <path>`: reads a dbt project's `manifest.json` and
+- [x] `tracebi import dbt <path>`: reads a dbt project's `manifest.json` and
       drafts a model over the marts ([[target-architecture]] decision 3), so a
-      team with clean tables skips phase ① entirely.
+      team with clean tables skips phase ① entirely. (#188)
 - [ ] `tracebi init --template <name>`: start with **SaaS metrics** and **sales
       pipeline**, each a model plus two reports over sample data, which an
       agent then points at real tables.

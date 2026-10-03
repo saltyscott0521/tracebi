@@ -119,6 +119,20 @@ file, is refused without <code>--force</code>. Nothing is written when the test 
 is required for BigQuery because the connector takes it with no default.</p>
 <p>Discovery does not load <code>models/_connections/</code>: model discovery reads only
 top-level <code>models/*.py</code>, and a file there must define <code>model</code>.</p>
+<h3 id="tracebi-import-dbt"><code>tracebi import dbt</code></h3>
+<pre><code class="language-bash">tracebi import dbt &lt;path&gt; [--name NAME] [--connection NAME] [--schema SCHEMA] [--force]
+tracebi import dbt ./jaffle_shop --connection wh --name jaffle
+tracebi import dbt target/manifest.json --connection wh
+</code></pre>
+<p>Reads a dbt <code>manifest.json</code> — a project root that contains
+<code>target/manifest.json</code>, or the file itself — and drafts <code>models/&lt;name&gt;.py</code>.
+It does not run dbt and does not load <code>.env</code>. The default name is the dbt
+project name, otherwise the folder name.</p>
+<p>Tables are dbt models (<code>resource_type</code> model, not ephemeral). <code>--schema</code>
+keeps one schema. <code>--connection</code> wires <code>models/_connections/&lt;name&gt;.py</code> from
+<code>tracebi connect</code> and is refused when that module is missing. Relationships
+and measures are <code># DRAFT: review</code> comments; foreign keys are not invented.
+An existing model file is kept unless <code>--force</code>.</p>
 <h3 id="tracebi-new-transform-title-new-model-new-report-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-pipeline</code></h3>
 <pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--transforms-dir DIR]
 tracebi new-model     &quot;Sales Model&quot;   [--force]
