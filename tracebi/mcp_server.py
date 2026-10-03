@@ -189,20 +189,6 @@ def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "report"
 
 
-def _report_name_error(report: str) -> Optional[str]:
-    """``None`` if ``report`` is a safe report name, else an error message.
-
-    The name indexes ``reports/<name>/``. A report in a folder is named by its
-    path (``finance/weekly``); anything that could escape the reports
-    directory (``/etc/x``, ``../../etc``, a backslash, a dot segment) is
-    refused. Applied by every tool that turns a caller-supplied name into a
-    filesystem path.
-    """
-    from tracebi.report_paths import report_name_error
-
-    return report_name_error(report)
-
-
 def _confined_output_dir(output_dir: str) -> "tuple[Optional[Path], Optional[str]]":
     """Resolve ``output_dir`` for an artifact write, refusing dangerous targets.
 
@@ -1043,18 +1029,17 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     # A caller-supplied name must never become a path: without this,
     # report='/etc/x' or '../../x' would escape reports/ and collect_state
     # would read — and execute report.py from — an attacker-chosen directory.
-    name_err = _report_name_error(report)
-    if name_err:
-        return {"errors": [name_err]}
-    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-    pkg_dir = reports_dir / report
-    if not (pkg_dir / "report.json").is_file():
+    from tracebi.report_paths import open_report
+    opened = open_report(report, purpose="view")
+    if opened.name_error:
+        return {"errors": [opened.name_error]}
+    if opened.package_dir is None:
         return {"errors": [
-            f"no artifact package at {pkg_dir} — workbench_state applies to "
+            f"no artifact package at {opened.path} — workbench_state applies to "
             f"reports/<name>/ packages"
         ]}
     with actor(_mcp_actor()):
-        return collect_state(str(pkg_dir), _load_models())
+        return collect_state(str(opened.package_dir), _load_models())
 
 
 def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinResult:
@@ -1071,14 +1056,13 @@ def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinR
     if not report or report == DISCOVERY_NAME:
         name = DISCOVERY_NAME
     else:
-        name_err = _report_name_error(report)
-        if name_err:
-            return {"ok": False, "errors": [name_err]}
-        reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-        pkg_dir = reports_dir / report
-        if not (pkg_dir / "report.json").is_file():
+        from tracebi.report_paths import open_report
+        opened = open_report(report, purpose="manage")
+        if opened.name_error:
+            return {"ok": False, "errors": [opened.name_error]}
+        if opened.package_dir is None:
             return {"ok": False, "errors": [
-                f"no artifact package at {pkg_dir} — resolve_pin applies to "
+                f"no artifact package at {opened.path} — resolve_pin applies to "
                 f"reports/<name>/ packages"
             ]}
         name = report
@@ -1126,15 +1110,13 @@ def gateway_build_report(
         ]}
     # The name is a directory under reports/ (a folder path at most), and
     # can never climb out of it.
-    name_err = _report_name_error(report)
-    if name_err:
-        return {"ok": False, "errors": [name_err]}
-    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-    pkg_dir = reports_dir / report
-    if not ((pkg_dir / "report.json").is_file()
-            and (pkg_dir / "template.html").is_file()):
+    from tracebi.report_paths import open_report
+    opened = open_report(report, purpose="build")
+    if opened.name_error:
+        return {"ok": False, "errors": [opened.name_error]}
+    if not (opened.package_dir is not None and opened.has_template):
         return {"ok": False, "errors": [
-            f"no artifact package at {pkg_dir} — build_report applies to "
+            f"no artifact package at {opened.path} — build_report applies to "
             f"reports/<name>/ packages (a .json spec renders via "
             f"render_report_spec)"
         ]}
@@ -1147,7 +1129,7 @@ def gateway_build_report(
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         with actor(_mcp_actor()):
-            package = TemplatePackage(str(pkg_dir))
+            package = TemplatePackage(str(opened.package_dir))
             models = _load_models()
             manifest = package.render(models, str(output))
             if format == "xlsx":
@@ -1522,6 +1504,22 @@ def build_server(token: Optional[str] = None):
     def _author_report_prompt(question: str) -> str:
         return (
             f"Author a governed TraceBi report that answers: {question}\n\n"
+            "Pick the page structure that fits the question instead of "
+            "designing one. brief when the answer is one finding, "
+            "dashboard (the default) otherwise, tabbed when the page "
+            "serves two jobs. Ask only if a person is in the loop and the "
+            "choice is not obvious. With a shell, "
+            "`tracebi new-report \"<Name>\" --layout <recipe>` writes the "
+            "skeleton. With only the gateway, write template.html yourself "
+            "from that recipe's pieces:\n"
+            "- brief — .tb-lede, a few .tb-kpi cards, one chart in one "
+            ".tb-card. `tracebi new-report \"<Name>\" --layout brief`\n"
+            "- dashboard — brief, then .tb-cols-2 (a chart beside a "
+            "filterable table). "
+            "`tracebi new-report \"<Name>\" --layout dashboard`\n"
+            "- tabbed — the same header, then .tb-tabs / data-tb-tab "
+            "(Overview and Detail). "
+            "`tracebi new-report \"<Name>\" --layout tabbed`\n\n"
             "Follow the loop, and do not skip a step:\n"
             "1. Call get_context (start with brief=true; add the model= you'll "
             "use) to learn the exact facts, dimensions, named measures and "

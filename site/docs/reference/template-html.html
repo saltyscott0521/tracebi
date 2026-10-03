@@ -202,7 +202,10 @@ filtered KPI needs its own binding, and value figures never react to controls.</
 <p>Filters on one binding AND-combine, and search ANDs with them. Download exports
 the binding's <strong>stamped CSV verbatim</strong> — a receipt-preserving export, always the
 full binding, never the filtered view.</p>
-<p>Tables scroll past <code>data-tb-rows</code> (default 10); <code>data-tb-rows="all"</code> opts out.</p>
+<p>Tables scroll past <code>data-tb-rows</code> (default 10); <code>data-tb-rows="all"</code> opts out.
+Tables past 500 rows render only the visible rows; printing and download still
+use every row. Find-in-page cannot see rows outside that window — <code>data-tb-search</code>
+is the in-page find.</p>
 <h2 id="layout">Layout</h2>
 <ul>
 <li><strong>Tabs</strong> — <code>&lt;div class="tb-tabs"&gt;&lt;section data-tb-tab="Label"&gt;…&lt;/section&gt;&lt;/div&gt;</code>;
