@@ -511,6 +511,11 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   gap: 20px;
   align-items: start;
 }
+/* The Reports list carries schedule, last run, builds and last change,
+   so its column is wider than the other split pages. */
+.reports-page .split-layout {
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+}
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
@@ -520,7 +525,8 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
      content's min-content width, so one wide table (even inside its own
      overflow-x wrapper) pushed the whole page wider than the phone. iOS then
      zoomed the page out, and the fixed sidebar stopped short of the bottom. */
-  .split-layout { grid-template-columns: minmax(0, 1fr); }
+  .split-layout,
+  .reports-page .split-layout { grid-template-columns: minmax(0, 1fr); }
   /* Two screens on a phone: the list, or the picked item sliding in from the
      right; its breadcrumb goes back. */
   .split-layout--screens:not(.split-layout--detail) > .split-detail { display: none; }

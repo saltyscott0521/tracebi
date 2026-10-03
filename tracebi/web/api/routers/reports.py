@@ -48,10 +48,101 @@ def _run_report_or_502(name: str):
             status_code=500, detail=_error_detail("Report factory failed", exc)
         )
 
+def _iso_mtime(stamp: float) -> str:
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(stamp, timezone.utc).isoformat()
+
+
+def _newer_mtime(*paths) -> str | None:
+    stamps = []
+    for path in paths:
+        try:
+            stamps.append(path.stat().st_mtime)
+        except OSError:
+            continue
+    if not stamps:
+        return None
+    return _iso_mtime(max(stamps))
+
+
+def _schedule_of(report_json) -> dict | None:
+    """Cron and timezone from a package ``report.json``, or None.
+
+    A broken file or a schedule that is not an object does not fail the
+    list. Only those two fields are returned — there is no owner column.
+    """
+    try:
+        raw = json.loads(report_json.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    block = raw.get("schedule") if isinstance(raw, dict) else None
+    if not isinstance(block, dict):
+        return None
+    cron = block.get("cron")
+    if not isinstance(cron, str) or not cron.strip():
+        return None
+    tz = block.get("timezone")
+    return {"cron": cron, "timezone": tz if isinstance(tz, str) and tz else None}
+
+
+def _library_package(name: str) -> tuple[dict | None, str | None]:
+    """Schedule and last-change time for one report, via :func:`open_report`.
+
+    An on-disk package uses ``report.json`` and ``template.html``. A spec
+    uses the spec file: its compiled package is a temp dir rewritten at
+    discovery, so that mtime is not a change the author made.
+    """
+    opened = _opened_report(name, "view")
+    if opened.package_dir is not None:
+        return (
+            _schedule_of(opened.package_dir / "report.json"),
+            _newer_mtime(
+                opened.package_dir / "report.json",
+                opened.package_dir / "template.html",
+            ),
+        )
+    if opened.spec_path is not None and opened.spec_path.is_file():
+        return None, _newer_mtime(opened.spec_path)
+    return None, None
+
+
+def _library_runs() -> tuple[dict, dict]:
+    """Newest schedule run and report-build count, keyed by report name.
+
+    A store that cannot be opened leaves both empty: the list still loads.
+    This does not read the warehouse.
+    """
+    try:
+        from tracebi.state import count_by_target, install_extra, newest_by_target
+        with install_extra("web"):
+            newest = newest_by_target("schedule")
+            counts = count_by_target("report_build")
+    except Exception:  # noqa: BLE001 — columns stay blank; the list still loads
+        return {}, {}
+    last = {}
+    for target, row in newest.items():
+        last[target] = {
+            "status": row.get("status"),
+            "time": row.get("finished") or row.get("started"),
+        }
+    return last, counts
+
+
 @router.get("")
 def list_reports():
-    """List all registered reports."""
-    return registry.list_reports()
+    """Registered reports, plus the library columns for the Reports list."""
+    last_runs, build_counts = _library_runs()
+    out = []
+    for item in registry.list_reports():
+        schedule, last_change = _library_package(item["name"])
+        out.append({
+            **item,
+            "schedule": schedule,
+            "last_run": last_runs.get(item["name"]),
+            "past_builds": build_counts.get(item["name"], 0),
+            "last_change": last_change,
+        })
+    return out
 
 
 #: Web renders of artifact-backed reports, cached per name: the full

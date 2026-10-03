@@ -444,7 +444,7 @@ export function SplitLayout({ left, right, detail }) {
   )
 }
 
-export function ListItem({ selected, onClick, name, sub, right }) {
+export function ListItem({ selected, onClick, name, sub, right, meta }) {
   return (
     <div onClick={onClick}
       className={selected ? '' : 'list-item-hover'}
@@ -454,20 +454,25 @@ export function ListItem({ selected, onClick, name, sub, right }) {
         cursor: 'pointer',
         background: selected ? 'var(--blue-lt)' : 'transparent',
         borderLeft: `2px solid ${selected ? 'var(--blue)' : 'transparent'}`,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        display: 'flex', flexDirection: 'column', gap: meta ? 4 : 0,
         transition: 'background var(--t)',
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)', overflowWrap: 'anywhere' }}>{name}</div>
-        {sub && (
-          <div title={typeof sub === 'string' ? sub : undefined} style={{
-            fontSize: 11, color: 'var(--muted)', marginTop: 2,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          }}>{sub}</div>
-        )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)', overflowWrap: 'anywhere' }}>{name}</div>
+          {sub && (
+            <div title={typeof sub === 'string' ? sub : undefined} style={{
+              fontSize: 11, color: 'var(--muted)', marginTop: 2,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}>{sub}</div>
+          )}
+        </div>
+        {right && <div style={{ marginLeft: 8, flexShrink: 0 }}>{right}</div>}
       </div>
-      {right && <div style={{ marginLeft: 8, flexShrink: 0 }}>{right}</div>}
+      {meta && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', maxWidth: '100%' }}>{meta}</div>
+      )}
     </div>
   )
 }

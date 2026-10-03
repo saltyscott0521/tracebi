@@ -586,6 +586,31 @@ function ReceiptChip({ build }) {
   )
 }
 
+// Schedule, last schedule run, stored builds, and last edit. No owner:
+// there are no accounts yet. Missing values are an em dash. The row opens
+// the report, whose detail already lists recent runs.
+function LibraryFacts({ report }) {
+  const schedule = report.schedule
+    ? [report.schedule.cron, report.schedule.timezone].filter(Boolean).join(' · ')
+    : null
+  const lastRun = report.last_run
+    ? [report.last_run.status, when(report.last_run.time)].filter(Boolean).join(' · ')
+    : null
+  const builds = Number(report.past_builds) > 0 ? String(report.past_builds) : null
+  const cells = [
+    ['Schedule', schedule],
+    ['Last run', lastRun],
+    ['Builds', builds, 'Open to see run history'],
+    ['Changed', when(report.last_change)],
+  ]
+  return cells.map(([label, value, title]) => (
+    <span key={label} title={title} style={{ fontSize: 11, lineHeight: 1.35, maxWidth: '100%' }}>
+      <span style={{ color: 'var(--muted)' }}>{label} </span>
+      <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{value || '—'}</span>
+    </span>
+  ))
+}
+
 // Reports in folders are named by their path ("finance/weekly"). The list
 // groups them under their folder; top-level reports come first, unheaded.
 function groupByFolder(reports) {
@@ -686,6 +711,7 @@ export default function Reports() {
                             onClick={() => select(r.name)}
                             name={r.name.slice(r.name.lastIndexOf('/') + 1)}
                             sub={r.description}
+                            meta={<LibraryFacts report={r} />}
                             right={
                               <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                                 <FormChip form={r.form} />
