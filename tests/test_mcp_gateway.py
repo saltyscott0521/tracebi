@@ -722,6 +722,30 @@ class TestMcp2Features:
         model_doc = list(anyio.run(server.read_resource, "tracebi://models/gw_demo"))[0].content
         assert json.loads(model_doc)["name"] == "gw_demo"
 
+    def test_knowledge_resource_returns_the_lesson_and_rejects_an_unknown_slug(
+            self, gateway_model):
+        """A lesson body is a resource, not a fourteenth tool."""
+        pytest.importorskip("mcp")
+        import anyio
+        from mcp.shared.exceptions import MCPError
+
+        from tracebi.knowledge import get_lesson
+
+        server, tools = self._tools()
+        assert len(tools) == 13
+        templates = {t.uri_template for t in anyio.run(server.list_resource_templates)}
+        assert "tracebi://knowledge/{slug}" in templates
+        assert "tracebi://knowledge/{slug}" in server.instructions
+
+        lesson = get_lesson("share-of-total")
+        body = list(anyio.run(
+            server.read_resource, "tracebi://knowledge/share-of-total"))[0].content
+        assert body == f"# {lesson.title}\n\n{lesson.body}\n"
+        assert "revenue_share" in body
+
+        with pytest.raises(MCPError, match="No lesson 'no-such-lesson'"):
+            anyio.run(server.read_resource, "tracebi://knowledge/no-such-lesson")
+
     def test_author_report_prompt_walks_the_loop(self, gateway_model):
         pytest.importorskip("mcp")
         import anyio
@@ -755,6 +779,7 @@ class TestMcp2Features:
         assert "output_path" in text
         assert "describe_table" in text
         assert "analyst_knowledge.lessons" in text
+        assert "tracebi://knowledge/{slug}" in text
         assert "list_models" in text
 
     def test_tool_descriptions_name_the_argument_that_feeds_the_next_call(

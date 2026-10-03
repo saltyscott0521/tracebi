@@ -302,7 +302,8 @@ front of a person should carry a receipt. This gateway is how you produce one.
 1. **get_context** — first call. Returns the whole vocabulary: models, facts,
    dimensions, named measures, the `presentation` block (the `data-tb-*`
    figure grammar, tokens, formats) and `transform_contracts`. Nothing
-   outside it validates.
+   outside it validates. A lesson body is the resource
+   `tracebi://knowledge/{slug}` (the index is `analyst_knowledge.lessons`).
 2. **query_model** — ask star-schema questions. Every result is *stamped*: the
    resolved query, the lineage chain, and a SHA-256 fingerprint of the full
    result. Cite the fingerprint with any number you quote. The response's
@@ -1357,14 +1358,16 @@ def build_server(token: Optional[str] = None):
             "html_path and manifest_path — pass that manifest_path the same "
             "way. Only 'reproduces' means the numbers matched. Column names "
             "come from describe_table. Lessons are get_context's "
-            "analyst_knowledge.lessons. A file that failed to load is under "
+            "analyst_knowledge.lessons; a lesson body is the "
+            "tracebi://knowledge/{slug} resource. A file that failed to load is under "
             "list_models (skipped) or list_reports. Under "
             "tracebi dev, read workbench_state first — the "
             "person's pins come before anything else — and resolve_pin each "
             "one you act on. Without file access, or for a fixed layout, a "
             "JSON ReportSpec is the simpler lane: validate_report_spec, then "
             "render_report_spec. Resources: tracebi://guide (how to author), "
-            "tracebi://spec-schema, tracebi://models/{name}. Prompts: "
+            "tracebi://spec-schema, tracebi://models/{name}, "
+            "tracebi://knowledge/{slug}. Prompts: "
             "author_report, answer_question, address_pins."
         ),
     )
@@ -1588,6 +1591,28 @@ def build_server(token: Optional[str] = None):
     )
     def _model_resource(name: str) -> str:
         return json.dumps(_get_model(name).info(), indent=2, default=str)
+
+    @server.resource(
+        "tracebi://knowledge/{slug}", name="Analyst lesson",
+        mime_type="text/markdown",
+        description=(
+            "One analyst-knowledge lesson body, the same text as "
+            "`tracebi knowledge <slug>`. Slugs are get_context's "
+            "analyst_knowledge.lessons."
+        ),
+    )
+    def _knowledge_resource(slug: str) -> str:
+        from mcp.shared.exceptions import MCPError
+        from mcp.types import INVALID_PARAMS
+        from tracebi.knowledge import get_lesson
+        lesson = get_lesson(slug)
+        if lesson is None:
+            raise MCPError(
+                INVALID_PARAMS,
+                f"No lesson '{slug}'. Lessons are listed in get_context "
+                f"under analyst_knowledge.lessons.",
+            )
+        return f"# {lesson.title}\n\n{lesson.body}\n"
 
     # Prompts — the authoring SOP and its two neighbours as executable
     # templates.

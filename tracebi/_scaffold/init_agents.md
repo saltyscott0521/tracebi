@@ -198,6 +198,10 @@ report unless asked; `address_pins(report)` reads `workbench_state`, acts
 on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
 `resolve_pin`s each with a one-line note.
 
+Resources: `tracebi://guide` (how to author), `tracebi://spec-schema`,
+`tracebi://models/{name}`, and `tracebi://knowledge/{slug}` (one lesson
+body, the same text as `tracebi knowledge <slug>`).
+
 ### The dev iteration, step by step
 
 0. **Discovery comes first — and it has a live surface.** Before any report
@@ -301,7 +305,8 @@ you tell a human a report is done.
    `models/sample_model.py`, `reports/sample_dashboard/`. They are a complete
    working example of the loop, receipt included.
 3. Run `tracebi knowledge` — the analyst good-practice lessons. Read the one
-   whose *when* matches your decision (`tracebi knowledge <slug>`) before
+   whose *when* matches your decision (`tracebi knowledge <slug>`, or over
+   the gateway `tracebi://knowledge/{slug}`) before
    choosing a measure or grain: a rate is a ratio of totals not a mean of
    ratios, a "weighted" average needs a weight, pick the grain first. Doing the
    analysis *right* is the job; these catch the confident-but-wrong number.

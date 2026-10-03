@@ -717,8 +717,8 @@ def _analyst_knowledge() -> dict:
     to pull a lesson in full. Present in BOTH tiers, brief included — teaching an
     agent to reach for the right lesson is exactly what the lean loop needs, and
     the index is small. The bodies live in ``tracebi/knowledge/lessons`` and are
-    fetched on demand (``tracebi knowledge <slug>``), so this never bloats the
-    payload."""
+    fetched on demand (``tracebi://knowledge/{slug}``, the same text as
+    ``tracebi knowledge <slug>``), so this never bloats the payload."""
     from tracebi.knowledge import index
 
     return {
@@ -727,9 +727,10 @@ def _analyst_knowledge() -> dict:
                 "page a reader understands at a glance. Reach for the one whose "
                 "'when' matches the decision you are making.",
         "fetch": "The lesson index (slug, title, when) is already in this "
-                 "payload under lessons. There is no separate gateway call "
-                 "for a lesson body. tracebi knowledge <slug>  (or the "
-                 "tracebi-analyst / tracebi-designer skills)",
+                 "payload under lessons. Read a body at "
+                 "tracebi://knowledge/{slug} — the same text as "
+                 "tracebi knowledge <slug> (or the tracebi-analyst / "
+                 "tracebi-designer skills).",
         "lessons": index(),
     }
 
