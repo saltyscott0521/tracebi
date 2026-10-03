@@ -76,7 +76,9 @@ whose figures each name a binding from `report.json`:
   draws a proportional bar behind a numeric column, and
   `data-tb-direction="up-good"` (or `"down-good"`) marks a bound change on a
   value figure up or down, good or bad. They reorder or decorate stamped
-  values; they never compute one.
+  values; they never compute one. Tables past 500 rows render only the
+  visible rows; printing and download still use every row. Find-in-page
+  cannot see rows outside that window — search with `data-tb-search`.
 - **Give every figure an `id`** — ids are how humans redirect you
   ("fix `tbl-seniority`").
 - **Or let the framework build the figure.** Declare it in `report.json`
@@ -132,7 +134,14 @@ whose figures each name a binding from `report.json`:
   recompute offline. Tables scroll past
   `data-tb-rows` (default 10). `data-tb-download` buttons export the
   stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
-  `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Every built
+  `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Pick a page by name instead of
+  inventing one: `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
+  (`presentation.layout` in `tracebi context`). `brief` is one finding — `.tb-lede`, a few
+  `.tb-kpi` cards, one chart in one `.tb-card`. `dashboard` (the default, also what
+  `tracebi init` writes) is `brief` plus `.tb-cols-2`, a chart beside a filterable table.
+  `tabbed` is the same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail).
+  Pick by fit — `brief` for one finding, `dashboard` otherwise, `tabbed` for two jobs —
+  and ask only when a person is in the loop and the choice is not obvious. Every built
   page carries the Receipt drawer automatically.
 - Blocks marked `data-tb-stage="exploration"` are working scratch: they render
   in dev and are DELETED at the final build.
@@ -175,7 +184,9 @@ tracebi run-transform <name>                # ① clean + sink + contract —
                                             #   fresh (python transforms/<name>.py
                                             #   works too for .py)
 tracebi new-model "<Name>"                  # ② scaffold a model; edit it
-tracebi new-report "<Name>"                 # ③ scaffold reports/<name>/ ("Finance/<Name>" → a folder)
+tracebi new-report "<Name>" [--layout brief|dashboard|tabbed]
+                                            # ③ scaffold reports/<name>/ ("Finance/<Name>" → a folder).
+                                            #   dashboard is the default; brief and tabbed are the other recipes
 tracebi dev <name>                          # the live loop (see below)
 tracebi report status <name>                # earned state in the terminal (📌 pins)
 tracebi report build <name>                 # render → output/<name>.html + manifest
@@ -279,7 +290,11 @@ body, the same text as `tracebi knowledge <slug>`).
    Pass that result's `xlsx_path` as `fetch_artifact(path=...)`; the
    workbook comes back base64-encoded. `build_report` returns `output_path`
    and `manifest_path` — pass `manifest_path` as
-   `verify_manifest(manifest=...)`.
+   `verify_manifest(manifest=...)`. A PDF
+   (`tracebi report build <name> --format pdf`, or
+   `build_report(..., format="pdf")`) is a print of that built HTML and
+   carries no receipt. A pdf build returns `pdf_path`; pass that as
+   `fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:
@@ -289,9 +304,11 @@ The reviewer approves when and to whom in the same diff as what.
 Add `"refresh": {"transforms": ["<name>"], "pipelines": ["<name>"]}` to
 run those first, so the report shows fresh data; a failed step (including a
 sink contract that refuses the new data) fails the run before anything is
-built or sent. `tracebi schedule run <name>` runs it now (refresh → build →
+built or sent. A failed refresh or build is retried twice, after 1 minute
+and then 5 minutes, unless `"retries"` is an integer from 0 to 5 (0
+disables); a receipt that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
 verify → email → record in `output/schedule_runs.jsonl`); a receipt that
-does not verify is recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
+does not verify is recorded `refused` and nothing is sent. Optional `"owner"` is one email address: a run recorded `failed`, `refused`, or `empty` emails that address a plain-text alert and does not email the report to `to`. A binding a figure uses that returned zero rows is recorded `empty` and is not sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 `tracebi verify` is the point: it re-runs the recorded queries and confirms
@@ -340,6 +357,15 @@ A JSON `ReportSpec` under `reports/` still renders (it is a serialization,
 not a lane) and `tracebi migrate spec reports/<name>.json` compiles one into
 an artifact package that shadows it. The `requests/` script lane is
 deprecated and removed in 0.8 — do not create it.
+
+## Your own data
+
+Already have tables? `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb`
+tests the warehouse, writes the secret to `.env`, and writes
+`models/_connections/<name>.py` (that file calls `load_dotenv()`; the framework
+never loads `.env`). Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
+drafts a star schema from column metadata only. Edit every line marked
+`# DRAFT: review` before a report depends on it.
 
 ## Scaffolding commands
 

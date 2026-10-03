@@ -98,9 +98,31 @@ output/</code>, plus a sample transform, model and report package, <code>.gitign
   directory. Without it, an existing file is skipped with a note and the run
   still succeeds.</li>
 </ul>
+<h3 id="tracebi-connect"><code>tracebi connect</code></h3>
+<pre><code class="language-bash">tracebi connect &lt;name&gt; --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force]
+tracebi connect wh --kind postgres --url postgresql://user:pass@host/db
+tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET \
+    --warehouse WH --database DB --schema PUBLIC [--role ROLE]
+tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
+    [--credentials /path/service-account.json]
+tracebi connect wh --kind duckdb --database data/warehouse.duckdb
+</code></pre>
+<p>Tests the warehouse (unless <code>--no-test</code>), then writes the secret to <code>.env</code>
+and a connector module at <code>models/_connections/&lt;name&gt;.py</code>. The module calls
+<code>load_dotenv()</code> and builds the connector from <code>os.environ</code>. TraceBi itself
+never loads <code>.env</code>.</p>
+<p>The secret is written only to <code>.env</code> and is never printed. Other lines in
+<code>.env</code> are left as they are. An existing key, or an existing connection
+file, is refused without <code>--force</code>. Nothing is written when the test fails.</p>
+<p>Missing required flags are prompted when stdin is a terminal (a password via
+<code>getpass</code>); otherwise the command exits 2 and names the flags. <code>--dataset</code>
+is required for BigQuery because the connector takes it with no default.</p>
+<p>Discovery does not load <code>models/_connections/</code>: model discovery reads only
+top-level <code>models/*.py</code>, and a file there must define <code>model</code>.</p>
 <h3 id="tracebi-new-transform-title-new-model-new-report-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-pipeline</code></h3>
 <pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--transforms-dir DIR]
 tracebi new-model     &quot;Sales Model&quot;   [--force]
+tracebi new-model     &quot;Sales&quot; --from wh --tables fact_sales,dim_customer,dim_product
 tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
 </code></pre>
@@ -112,6 +134,14 @@ by that path everywhere after: <code>tracebi report build finance/month_end/clos
 <code>output/finance/month_end/close_pack.html</code>, and the Reports page, which groups
 reports by folder. Two folders can each hold a report of the same name.</p>
 <p>All refuse to overwrite without <code>--force</code>.</p>
+<p><code>new-model --from &lt;connection&gt; --tables a,b,c</code> drafts that file from the
+connection <code>tracebi connect</code> wrote, using column metadata only — no row
+scan. A table named <code>fact_*</code>, or one with numeric non-key columns and
+<code>*_id</code>/<code>*_key</code> columns that match another listed table's key, is drafted as
+a fact; the rest are dimensions. Relationships follow those key names, and
+each numeric non-key column on a fact becomes a <code>sum</code> measure. Every guess
+is marked <code># DRAFT: review</code> for a person or an agent to edit. <code>--tables</code> is
+required with <code>--from</code> (prompted on a terminal, otherwise exit 2).</p>
 <p><code>new-report</code> deliberately writes <strong>no</strong> <code>script.js</code> or <code>style.css</code> — the
 runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser
 and a chart is a trap. Its <code>template.html</code> teaches the grammar instead: bound
@@ -127,10 +157,14 @@ updates this install (pip, Docker or a git checkout). A pip install can run it
 here after asking; <code>--yes</code> skips the question and <code>--check</code> never runs it.
 See <a href="../guides/updating.html">Updating TraceBi</a>.</p>
 <h3 id="tracebi-report-build"><code>tracebi report build</code></h3>
-<pre><code class="language-bash">tracebi report build &lt;name&gt; [--output PATH] [--badges] [--reports-dir DIR]
+<pre><code class="language-bash">tracebi report build &lt;name&gt; [--output PATH] [--format html|pdf] [--badges] [--reports-dir DIR]
 </code></pre>
 <p>Renders to one self-contained, offline <code>.html</code> plus a sibling
 <code>&lt;output&gt;.html.manifest.json</code>. Default output is <code>output/&lt;name&gt;.html</code>.</p>
+<p><code>--format pdf</code> also writes a sibling <code>.pdf</code>: a print of that built HTML
+(headless Chromium, so charts render). The PDF carries no receipt; the HTML
+and manifest stay the checkable artifact. Needs <code>pip install 'tracebi[pdf]'</code>
+and <code>python -m playwright install chromium</code>.</p>
 <ul>
 <li><code>--badges</code> — draw per-figure provenance badges on the page. Off by default;
   the receipt drawer already carries provenance in one place. <strong>The manifest is
@@ -264,9 +298,15 @@ tracebi schedule serve                      # run every schedule until Ctrl+C
 block in each package's <code>report.json</code> (see
 <a href="../reference/report-json.html">report.json</a>). A run is <code>report send</code> with
 the recipients taken from the package: a receipt that does not verify is
-recorded <code>refused</code> and nothing is sent. Every run appends one line to
+recorded <code>refused</code> and nothing is sent. A failed refresh or build is
+retried twice (1 minute, then 5 minutes) before that failure is recorded;
+<code>"retries"</code> (0–5) changes how many, and a refused receipt or a send
+failure is not retried. An optional <code>owner</code> address is emailed a
+plain-text alert when a run ends <code>failed</code>, <code>refused</code>, or <code>empty</code>, and
+that run is not sent to <code>to</code>. Every run appends one line to
 <code>output/schedule_runs.jsonl</code>: <code>delivered</code>, <code>built</code> (no recipients, or
-<code>--no-send</code>), <code>refused</code> or <code>failed</code>, with the verdict and who ran it.</p>
+<code>--no-send</code>), <code>refused</code>, <code>empty</code> (a figure binding returned no rows),
+or <code>failed</code>, with the verdict and who ran it.</p>
 <p><code>serve</code> needs <code>pip install "tracebi[pipeline]"</code> (APScheduler) and reads the
 schedules at startup, so restart it after changing one. To use your own
 scheduler instead, call <code>run</code> from it:</p>

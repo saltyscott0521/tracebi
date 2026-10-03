@@ -26,9 +26,21 @@ def _output_html(name: str) -> str:
                        "/".join(_safe_filename(p) for p in name.split("/")))
 
 
-def _run_report_or_502(name: str):
-    if name not in {r["name"] for r in registry.list_reports()}:
+def _opened_report(name: str, purpose: str):
+    """Resolve *name* through the one report-read seam."""
+    from tracebi.report_paths import open_report
+    return open_report(name, purpose=purpose, registry=registry)
+
+
+def _require_registered(name: str, purpose: str):
+    opened = _opened_report(name, purpose)
+    if not opened.registered:
         raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
+    return opened
+
+
+def _run_report_or_502(name: str):
+    _require_registered(name, "view")
     try:
         return registry.run_report(name)
     except Exception as exc:
@@ -97,7 +109,7 @@ def _artifact_payload(name: str):
     import tempfile
     import time
 
-    pkg_dir = registry.report_package_dir(name)
+    pkg_dir = _opened_report(name, "view").registry_package_dir
     if not pkg_dir:
         return None
 
@@ -192,10 +204,8 @@ def _selection_models(model_name: str) -> dict:
     return {model_name: model, getattr(model, "name", model_name): model}
 
 
-def _package_or_404(name: str):
-    if name not in {r["name"] for r in registry.list_reports()}:
-        raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
-    pkg_dir = registry.report_package_dir(name)
+def _package_or_404(name: str, purpose: str = "view"):
+    pkg_dir = _require_registered(name, purpose).registry_package_dir
     if not pkg_dir:
         raise HTTPException(status_code=422, detail=_NO_PACKAGE.format(name=name))
     return pkg_dir
@@ -272,7 +282,7 @@ def keep_report_selection(name: str, payload: dict):
     """
     from tracebi.reports.selection import keep_cut
 
-    pkg_dir = _package_or_404(name)
+    pkg_dir = _package_or_404(name, "manage")
     filters = (payload or {}).get("filters") or {}
     if not isinstance(filters, dict):
         raise HTTPException(status_code=400, detail="filters must be an object")
@@ -356,6 +366,9 @@ def run_report(name: str):
     It is the real artifact render (embedded data, figure claims), so what
     the browser shows is what ``verify --file`` can check.
     """
+    # Outside the render try: a refusal from the read seam must not become
+    # a generic 500.
+    _opened_report(name, "view")
     try:
         return _artifact_payload_or_refuse(name)
     except HTTPException:
@@ -378,8 +391,7 @@ def start_report_run(name: str):
     until ``status`` is ``succeeded`` (payload in ``result``) or ``failed``
     (structured detail in ``error``).
     """
-    if name not in {r["name"] for r in registry.list_reports()}:
-        raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
+    _require_registered(name, "view")
     record = run_store.start("report", name, lambda: _render_report_payload(name))
     return {
         "run_id":     record["run_id"],
@@ -391,12 +403,14 @@ def start_report_run(name: str):
 @router.get("/{name:path}/runs")
 def report_run_history(name: str, limit: int = 10):
     """Recent background runs for this report, newest first (no payloads)."""
+    _opened_report(name, "view")
     return run_store.list_for("report", name, limit)
 
 
 @router.get("/{name:path}/runs/{run_id}")
 def report_run_status(name: str, run_id: str):
     """Status + result of one background run."""
+    _opened_report(name, "view")
     record = run_store.get(run_id)
     if record is None or record["kind"] != "report" or record["name"] != name:
         raise HTTPException(
@@ -405,21 +419,62 @@ def report_run_status(name: str, run_id: str):
     return record
 
 
+def _pdf_of_last_build(name: str, fname: str):
+    """Print the last build to PDF. A missing Playwright is a structured error."""
+    built = _last_build(name)
+    html_path = built.get("html_path")
+    tmp_html = None
+    if not html_path or not os.path.isfile(html_path):
+        fd, tmp_html = tempfile.mkstemp(suffix=".html")
+        os.close(fd)
+        with open(tmp_html, "w", encoding="utf-8") as fh:
+            fh.write(built["html"])
+        html_path = tmp_html
+    fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd)
+    try:
+        from tracebi.reports.pdf import print_pdf
+        print_pdf(html_path, pdf_path)
+    except (ImportError, RuntimeError) as exc:
+        os.unlink(pdf_path)
+        raise HTTPException(
+            status_code=500,
+            detail=_error_detail("PDF export unavailable", exc),
+        ) from exc
+    except Exception as exc:
+        os.unlink(pdf_path)
+        raise HTTPException(
+            status_code=500, detail=_error_detail("PDF export failed", exc)
+        ) from exc
+    finally:
+        if tmp_html:
+            os.unlink(tmp_html)
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"{fname}.pdf",
+        background=BackgroundTask(os.unlink, pdf_path),
+    )
+
+
 @router.get("/{name:path}/download")
 def download_report(name: str, format: str = "xlsx"):
     """
     Run a report and download the rendered file.
 
-    Formats: ``xlsx`` (Excel via openpyxl) or ``html`` (self-contained page).
+    Formats: ``xlsx`` (Excel via openpyxl), ``html`` (self-contained page),
+    or ``pdf`` (a print of that page). HTML and PDF are the last build.
     """
-    if format not in ("xlsx", "html"):
+    if format not in ("xlsx", "html", "pdf"):
         raise HTTPException(
-            status_code=400, detail=f"Unsupported format '{format}'. Use xlsx or html."
+            status_code=400,
+            detail=f"Unsupported format '{format}'. Use xlsx, html, or pdf.",
         )
     fname = _safe_filename(name.rsplit("/", 1)[-1])  # the report's own name, no folders
 
     # The HTML download is the last build — the file the reader is looking
     # at, the same bytes ``verify --file`` checks — never a fresh render.
+    # PDF is a print of that same file. Neither re-queries on its own.
     if format == "html":
         return HTMLResponse(
             _last_build(name)["html"],
@@ -427,6 +482,8 @@ def download_report(name: str, format: str = "xlsx"):
                 "Content-Disposition": f'attachment; filename="{fname}.html"',
             },
         )
+    if format == "pdf":
+        return _pdf_of_last_build(name, fname)
 
     report = _run_report_or_502(name)
 
@@ -481,9 +538,7 @@ def report_source(name: str):
     Read-only, and limited to the files discovery registered for this report,
     so a request can never name an arbitrary path.
     """
-    if name not in {r["name"] for r in registry.list_reports()}:
-        raise HTTPException(status_code=404, detail=f"Report '{name}' not found")
-    src = registry.report_source(name)
+    src = _require_registered(name, "source").source
     if not src:
         return {"form": "code", "files": [], "other_files": [],
                 "hint": "Registered in Python code (a report factory), not from reports/."}

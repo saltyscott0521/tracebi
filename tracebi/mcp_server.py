@@ -27,6 +27,7 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 """
 
 import base64
+import functools
 import hmac
 import ipaddress
 import json
@@ -189,20 +190,6 @@ def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "report"
 
 
-def _report_name_error(report: str) -> Optional[str]:
-    """``None`` if ``report`` is a safe report name, else an error message.
-
-    The name indexes ``reports/<name>/``. A report in a folder is named by its
-    path (``finance/weekly``); anything that could escape the reports
-    directory (``/etc/x``, ``../../etc``, a backslash, a dot segment) is
-    refused. Applied by every tool that turns a caller-supplied name into a
-    filesystem path.
-    """
-    from tracebi.report_paths import report_name_error
-
-    return report_name_error(report)
-
-
 def _confined_output_dir(output_dir: str) -> "tuple[Optional[Path], Optional[str]]":
     """Resolve ``output_dir`` for an artifact write, refusing dangerous targets.
 
@@ -247,13 +234,19 @@ _FETCH_MAX_BYTES = 16 * 1024 * 1024
 _XLSX_MEDIA_TYPE = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
-# fetch_artifact returns text for these; .xlsx is base64 because a workbook
-# is not text. Every other suffix stays refused.
+_PDF_MEDIA_TYPE = "application/pdf"
+# fetch_artifact returns text for these; .xlsx and .pdf are base64 because
+# neither is text. Every other suffix stays refused.
 _FETCH_TEXT_TYPES = {".html": "text/html", ".json": "application/json"}
 _XLSX_NOTE = (
     "The spreadsheet carries no receipt and is not verifiable. "
     "The checkable artifact is the HTML at output_path and its manifest "
     "at manifest_path."
+)
+_PDF_NOTE = (
+    "The PDF is a print of the built HTML. It carries no receipt and is "
+    "not verifiable. The checkable artifact is the HTML at output_path "
+    "and its manifest at manifest_path."
 )
 
 
@@ -338,13 +331,15 @@ front of a person should carry a receipt. This gateway is how you produce one.
    only its own artifact and receipt. `format="xlsx"` also writes
    `<name>.xlsx` beside them. The spreadsheet carries no receipt and is
    not verifiable; the HTML and manifest are the checkable artifact.
+   `format="pdf"` also writes `<name>.pdf`: a print of that built HTML,
+   which carries no receipt.
 6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
    The argument is `path`. `build_report` returns `output_path` (the HTML)
    and `manifest_path`; `render_report_spec` returns `html_path` and
    `manifest_path`. Pass one of those as `fetch_artifact(path=...)`. An
-   xlsx build also returns `xlsx_path` — pass that the same way. HTML and
-   JSON come back as text; an `.xlsx` comes back base64-encoded with its
-   media type.
+   xlsx build also returns `xlsx_path`, and a pdf build returns `pdf_path`
+   — pass either as `fetch_artifact(path=...)`. HTML and JSON come back as
+   text; an `.xlsx` or `.pdf` comes back base64-encoded with its media type.
 7. **verify_manifest** — the argument is `manifest`. Pass `build_report`'s
    `manifest_path` as `verify_manifest(manifest=...)` (or
    `render_report_spec`'s `manifest_path`). It re-runs the recorded queries
@@ -439,12 +434,12 @@ def authoring_guide() -> str:
 # ``{ok, errors}`` envelope, and the MCP SDK drops any returned key the schema
 # does not name — so every key a function can return is listed here.
 #
-# Every non-Any field is Optional. The SDK builds one pydantic model from the
-# TypedDict and, for each key the function omitted, dumps null (the default it
-# sets on total=False fields). A schema of ``{"type": "string", "default": null}``
-# does not allow that null, and a schema-checking client rejects the whole
-# result. Optional makes the advertised schema permit null exactly where that
-# conversion emits it. There is no nested model: containers are Any, or
+# Every non-Any field is Optional. mcp 2.0 fills each omitted total=False key
+# with null; mcp 2.3 omits those NotRequired keys instead. A schema of
+# ``{"type": "string", "default": null}`` does not allow that null, and a
+# schema-checking client rejects the whole result. Optional makes the
+# advertised schema permit null where 2.0 emits it. There is no nested model:
+# containers are Any, or
 # list/dict of str whose values the tools actually return as strings (a null
 # inside one of those would still fail, and none of the returns produce one).
 
@@ -457,15 +452,17 @@ class ContextResult(TypedDict, total=False):
     number_formats: Any
     conventions: Any
     cheat_sheets: Any
-    model: Any  # null unless model= was passed
+    model: Any  # null or absent unless model= was passed
     presentation: Any
     transform_contracts: Any
     schedule: Any
     warehouse: Any
     pins: Any
     spreadsheet: Any
+    pdf: Any
+    connect: Any
     analyst_knowledge: Any
-    brief: Any  # the omission note; null when brief=false
+    brief: Any  # the omission note; null or absent when brief=false
 
 
 class ModelsResult(TypedDict, total=False):
@@ -580,6 +577,8 @@ class BuildReportResult(TypedDict, total=False):
     transform_contracts: Any
     xlsx_path: Optional[str]
     spreadsheet_note: Optional[str]
+    pdf_path: Optional[str]
+    pdf_note: Optional[str]
     errors: Optional[list[str]]
 
 
@@ -1099,18 +1098,17 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     # A caller-supplied name must never become a path: without this,
     # report='/etc/x' or '../../x' would escape reports/ and collect_state
     # would read — and execute report.py from — an attacker-chosen directory.
-    name_err = _report_name_error(report)
-    if name_err:
-        return {"errors": [name_err]}
-    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-    pkg_dir = reports_dir / report
-    if not (pkg_dir / "report.json").is_file():
+    from tracebi.report_paths import open_report
+    opened = open_report(report, purpose="view")
+    if opened.name_error:
+        return {"errors": [opened.name_error]}
+    if opened.package_dir is None:
         return {"errors": [
-            f"no artifact package at {pkg_dir} — workbench_state applies to "
+            f"no artifact package at {opened.path} — workbench_state applies to "
             f"reports/<name>/ packages"
         ]}
     with actor(_mcp_actor()):
-        return collect_state(str(pkg_dir), _load_models())
+        return collect_state(str(opened.package_dir), _load_models())
 
 
 def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinResult:
@@ -1127,14 +1125,13 @@ def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinR
     if not report or report == DISCOVERY_NAME:
         name = DISCOVERY_NAME
     else:
-        name_err = _report_name_error(report)
-        if name_err:
-            return {"ok": False, "errors": [name_err]}
-        reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-        pkg_dir = reports_dir / report
-        if not (pkg_dir / "report.json").is_file():
+        from tracebi.report_paths import open_report
+        opened = open_report(report, purpose="manage")
+        if opened.name_error:
+            return {"ok": False, "errors": [opened.name_error]}
+        if opened.package_dir is None:
             return {"ok": False, "errors": [
-                f"no artifact package at {pkg_dir} — resolve_pin applies to "
+                f"no artifact package at {opened.path} — resolve_pin applies to "
                 f"reports/<name>/ packages"
             ]}
         name = report
@@ -1173,24 +1170,26 @@ def gateway_build_report(
     path, ``save_manifest=False``). A spreadsheet cannot carry a receipt:
     the result says so and points at the HTML and manifest, which remain
     the checkable artifact.
+
+    ``format="pdf"`` also writes ``<name>.pdf``: a print of the built HTML
+    (headless Chromium). The PDF carries no receipt; ``pdf_note`` points
+    at the HTML and manifest.
     """
     from tracebi.reports.template_package import TemplatePackage
 
-    if format not in ("html", "xlsx"):
+    if format not in ("html", "xlsx", "pdf"):
         return {"ok": False, "errors": [
-            f"format must be 'html' or 'xlsx', not {format!r}"
+            f"format must be 'html', 'xlsx', or 'pdf', not {format!r}"
         ]}
     # The name is a directory under reports/ (a folder path at most), and
     # can never climb out of it.
-    name_err = _report_name_error(report)
-    if name_err:
-        return {"ok": False, "errors": [name_err]}
-    reports_dir = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-    pkg_dir = reports_dir / report
-    if not ((pkg_dir / "report.json").is_file()
-            and (pkg_dir / "template.html").is_file()):
+    from tracebi.report_paths import open_report
+    opened = open_report(report, purpose="build")
+    if opened.name_error:
+        return {"ok": False, "errors": [opened.name_error]}
+    if not (opened.package_dir is not None and opened.has_template):
         return {"ok": False, "errors": [
-            f"no artifact package at {pkg_dir} — build_report applies to "
+            f"no artifact package at {opened.path} — build_report applies to "
             f"reports/<name>/ packages (a .json spec renders via "
             f"render_report_spec)"
         ]}
@@ -1200,10 +1199,11 @@ def gateway_build_report(
     out_dir.mkdir(parents=True, exist_ok=True)
     output = out_dir / f"{report}.html"          # keeps the report's folders
     xlsx = out_dir / f"{report}.xlsx"
+    pdf = out_dir / f"{report}.pdf"
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         with actor(_mcp_actor()):
-            package = TemplatePackage(str(pkg_dir))
+            package = TemplatePackage(str(opened.package_dir))
             models = _load_models()
             manifest = package.render(models, str(output))
             if format == "xlsx":
@@ -1213,6 +1213,9 @@ def gateway_build_report(
                 from tracebi.reports.excel_renderer import ExcelRenderer
                 carrier, _stamped = package.build(models)
                 ExcelRenderer().render(carrier, str(xlsx), save_manifest=False)
+            elif format == "pdf":
+                from tracebi.reports.pdf import print_pdf
+                print_pdf(str(output), str(pdf))
     except Exception as exc:  # noqa: BLE001 — a refused build is a result
         return {"ok": False, "errors": [f"{type(exc).__name__}: {exc}"]}
     m = manifest.to_dict()
@@ -1230,6 +1233,9 @@ def gateway_build_report(
     if format == "xlsx":
         result["xlsx_path"] = str(xlsx)
         result["spreadsheet_note"] = _XLSX_NOTE
+    if format == "pdf":
+        result["pdf_path"] = str(pdf)
+        result["pdf_note"] = _PDF_NOTE
     return result
 
 
@@ -1240,23 +1246,24 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
     remote agent driving the gateway over MCP needs the BYTES to deliver the
     report or hand the manifest to ``verify_manifest``. The argument is
     ``path``. Pass ``build_report``'s ``output_path`` or ``manifest_path``,
-    ``render_report_spec``'s ``html_path`` or ``manifest_path``, or
-    ``build_report``'s ``xlsx_path``. Read-only and hard
+    ``render_report_spec``'s ``html_path`` or ``manifest_path``,
+    ``build_report``'s ``xlsx_path``, or the ``pdf_path`` a pdf build
+    returns (``build_report(..., format="pdf")``). Read-only and hard
     path-guarded: the file must sit under the working directory (or
     ``$TRACEBI_OUTPUT_ROOT``), never inside the installed package, and be one of
-    the ``.html`` / ``.json`` / ``.xlsx`` artifacts those tools write — never
-    arbitrary server files. HTML and JSON come back as text. A workbook is
-    not text, so ``.xlsx`` comes back base64-encoded (``encoding="base64"``)
-    with its spreadsheet media type. Over ``_FETCH_MAX_BYTES`` it refuses
-    and names the path.
+    the ``.html`` / ``.json`` / ``.xlsx`` / ``.pdf`` artifacts those tools write — never
+    arbitrary server files. HTML and JSON come back as text. A workbook or
+    PDF is not text, so ``.xlsx`` and ``.pdf`` come back base64-encoded
+    (``encoding="base64"``) with their media type. Over ``_FETCH_MAX_BYTES``
+    it refuses and names the path.
     """
     resolved, err = _confined_read_path(path)
     if err:
         return {"ok": False, "errors": [err]}
     suffix = resolved.suffix.lower()
-    if suffix not in _FETCH_TEXT_TYPES and suffix != ".xlsx":
+    if suffix not in _FETCH_TEXT_TYPES and suffix not in (".xlsx", ".pdf"):
         return {"ok": False, "errors": [
-            "fetch_artifact reads only rendered .html, .json, and .xlsx "
+            "fetch_artifact reads only rendered .html, .json, .xlsx, and .pdf "
             f"artifacts, not {suffix!r}"]}
     size = resolved.stat().st_size
     if size > _FETCH_MAX_BYTES:
@@ -1268,6 +1275,10 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
             content = base64.b64encode(resolved.read_bytes()).decode("ascii")
             encoding = "base64"
             ctype = _XLSX_MEDIA_TYPE
+        elif suffix == ".pdf":
+            content = base64.b64encode(resolved.read_bytes()).decode("ascii")
+            encoding = "base64"
+            ctype = _PDF_MEDIA_TYPE
         else:
             content = resolved.read_text(encoding="utf-8")
             encoding = ""
@@ -1299,6 +1310,7 @@ def build_server(token: Optional[str] = None):
     """
     try:
         from mcp.server.mcpserver import MCPServer
+        from mcp.server.mcpserver.exceptions import ToolError
         from mcp.types import ToolAnnotations
     except ImportError as exc:  # pragma: no cover — exercised by hand
         raise ImportError(
@@ -1376,11 +1388,22 @@ def build_server(token: Optional[str] = None):
     )
 
     # Every tool registers through here, so the opt-in call log
-    # (TRACEBI_MCP_LOG=1) wraps them all in one place.
+    # (TRACEBI_MCP_LOG=1) wraps them all in one place. The log stays inside:
+    # it records the original exception. Outside it, a plain exception becomes
+    # a ToolError whose one-line message reaches the client. On current mcp a
+    # plain exception is masked to "Error executing tool <name>".
     def _tool(**kwargs):
         def register(fn):
-            return server.tool(**kwargs)(
-                _gateway_log.logged(kwargs["name"], fn, _mcp_actor))
+            logged = _gateway_log.logged(kwargs["name"], fn, _mcp_actor)
+
+            @functools.wraps(logged)
+            def visible(*args, **kw):
+                try:
+                    return logged(*args, **kw)
+                except Exception as exc:  # noqa: BLE001 — the client must see why
+                    raise ToolError(_one_line_error(exc)) from exc
+
+            return server.tool(**kwargs)(visible)
         return register
 
     # Tools. structured_output=True advertises each return's JSON Schema and
@@ -1393,13 +1416,14 @@ def build_server(token: Optional[str] = None):
             "TraceBi's semantic contract: every model, section type, chart "
             "type, DataSet verb, measure kind and filter operator. Pass "
             "model=<name> to include that model's tables, dimensions and "
-            "named measures; model is null unless you pass it. Call this "
-            "first — start with brief=true, the tier for authoring a "
-            "package. brief=true includes presentation (the data-tb-* "
-            "figure grammar) and number_formats. It leaves cheat_sheets, "
-            "report_sections, and dataset_verbs null — not requested in "
-            "this tier; call get_context(brief=false) for them. On "
-            "brief=false the brief field itself is null."
+            "named measures; model is null or absent unless you pass it. "
+            "Call this first — start with brief=true, the tier for "
+            "authoring a package. brief=true includes presentation (the "
+            "data-tb-* figure grammar) and number_formats. It leaves "
+            "cheat_sheets, report_sections, and dataset_verbs null or "
+            "absent — not requested in this tier; call "
+            "get_context(brief=false) for them. On brief=false the brief "
+            "field itself is null or absent."
         ),
     )(gateway_context)
     _tool(
@@ -1534,7 +1558,10 @@ def build_server(token: Optional[str] = None):
             "receipt. format='xlsx' also writes <name>.xlsx and returns "
             "xlsx_path; pass that as fetch_artifact(path=...). The "
             "spreadsheet carries no receipt and is not verifiable; the HTML "
-            "and manifest are the checkable artifact (see spreadsheet_note)."
+            "and manifest are the checkable artifact (see spreadsheet_note). "
+            "format='pdf' also writes <name>.pdf and returns pdf_path; pass "
+            "that as fetch_artifact(path=...). The PDF is a print of the "
+            "built HTML and carries no receipt (see pdf_note)."
         ),
     )(gateway_build_report)
     _tool(
@@ -1544,12 +1571,13 @@ def build_server(token: Optional[str] = None):
             "Read back the bytes of an artifact a render/build tool wrote. "
             "The argument is path. Pass build_report's output_path or "
             "manifest_path, render_report_spec's html_path or "
-            "manifest_path, or build_report's xlsx_path. This delivers the "
-            "actual content so a remote agent can send the report or hand "
-            "the manifest to verify_manifest(manifest=...). HTML and JSON come back as "
-            "text. An .xlsx comes back base64-encoded (encoding='base64') "
-            "with its spreadsheet media type. Read-only, guarded to the "
-            "artifact directory. Every other suffix is refused."
+            "manifest_path, build_report's xlsx_path, or build_report's "
+            "pdf_path. This delivers the actual content so a remote agent "
+            "can send the report or hand the manifest to "
+            "verify_manifest(manifest=...). HTML and JSON come back as "
+            "text. An .xlsx or .pdf comes back base64-encoded "
+            "(encoding='base64') with its media type. Read-only, guarded to "
+            "the artifact directory. Every other suffix is refused."
         ),
     )(gateway_fetch_artifact)
     _tool(
@@ -1626,6 +1654,22 @@ def build_server(token: Optional[str] = None):
     def _author_report_prompt(question: str) -> str:
         return (
             f"Author a governed TraceBi report that answers: {question}\n\n"
+            "Pick the page structure that fits the question instead of "
+            "designing one. brief when the answer is one finding, "
+            "dashboard (the default) otherwise, tabbed when the page "
+            "serves two jobs. Ask only if a person is in the loop and the "
+            "choice is not obvious. With a shell, "
+            "`tracebi new-report \"<Name>\" --layout <recipe>` writes the "
+            "skeleton. With only the gateway, write template.html yourself "
+            "from that recipe's pieces:\n"
+            "- brief — .tb-lede, a few .tb-kpi cards, one chart in one "
+            ".tb-card. `tracebi new-report \"<Name>\" --layout brief`\n"
+            "- dashboard — brief, then .tb-cols-2 (a chart beside a "
+            "filterable table). "
+            "`tracebi new-report \"<Name>\" --layout dashboard`\n"
+            "- tabbed — the same header, then .tb-tabs / data-tb-tab "
+            "(Overview and Detail). "
+            "`tracebi new-report \"<Name>\" --layout tabbed`\n\n"
             "Follow the loop, and do not skip a step:\n"
             "1. Call get_context (start with brief=true; add the model= you'll "
             "use) to learn the exact facts, dimensions, named measures and "

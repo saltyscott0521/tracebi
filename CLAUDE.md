@@ -371,7 +371,7 @@ effect**, which is the question a security review actually asks:
 |---|---|
 | `viewer` | Read models, reports, lineage. Run Explore queries and spec validation — they compute but persist nothing. |
 | `analyst` | viewer + execute report and request code. |
-| `admin` | analyst + run pipeline layers, which write to the warehouse, and `/api/_dev/reload`. |
+| `admin` | analyst + run pipeline layers, which write to the warehouse, `/api/_dev/reload`, and keeping a selection cut (it writes the published `report.json`). |
 
 Three things to preserve when touching this:
 
@@ -616,7 +616,7 @@ POST /api/reports/{name}/runs                        → start background run; r
 GET  /api/reports/{name}/runs                        → recent background runs (no payloads)
 GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
 GET  /api/reports/{name}/built                       → the last build (disk, else memory; built once if never)
-GET  /api/reports/{name}/download?format=xlsx|html   → html: the last build; xlsx: rendered
+GET  /api/reports/{name}/download?format=xlsx|html|pdf   → html/pdf: the last build; xlsx: rendered
 GET  /api/reports/{name}/lineage                     → transform → tables → model → queries → figures flow, from the last build's receipt
 GET  /api/reports/{name}/mermaid
 GET  /api/reports/{name}/source                      → the spec or package files that define it
@@ -640,7 +640,7 @@ Failed report/query runs return a structured ``detail``:
 - No database migrations (layers are idempotent)
 - No pre-commit hooks
 - No PyPI release (install is `pip install -e .` or from git)
-- No `PDFRenderer` class (the `[pdf]` extras key exists; `HTMLRenderer.render_pdf()` ships but is untested — it needs weasyprint/libgobject, unavailable on this Mac)
+- No `PDFRenderer` class. A package PDF is a print of the built HTML via Playwright (`tracebi report build <name> --format pdf`, `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`). `HTMLRenderer.render_pdf()` remains the WeasyPrint path for the legacy renderer; it runs no JavaScript, so a package's charts would print blank, and it is untested without weasyprint/libgobject.
 
 Don't add these unless asked.
 

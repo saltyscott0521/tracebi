@@ -136,6 +136,9 @@ the binding's **stamped CSV verbatim** — a receipt-preserving export, always t
 full binding, never the filtered view.
 
 Tables scroll past `data-tb-rows` (default 10); `data-tb-rows="all"` opts out.
+Tables past 500 rows render only the visible rows; printing and download still
+use every row. Find-in-page cannot see rows outside that window — `data-tb-search`
+is the in-page find.
 
 ## Layout
 

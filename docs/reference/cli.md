@@ -45,11 +45,40 @@ output/`, plus a sample transform, model and report package, `.gitignore`,
   directory. Without it, an existing file is skipped with a note and the run
   still succeeds.
 
+### `tracebi connect`
+
+```bash
+tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force]
+tracebi connect wh --kind postgres --url postgresql://user:pass@host/db
+tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET \
+    --warehouse WH --database DB --schema PUBLIC [--role ROLE]
+tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
+    [--credentials /path/service-account.json]
+tracebi connect wh --kind duckdb --database data/warehouse.duckdb
+```
+
+Tests the warehouse (unless `--no-test`), then writes the secret to `.env`
+and a connector module at `models/_connections/<name>.py`. The module calls
+`load_dotenv()` and builds the connector from `os.environ`. TraceBi itself
+never loads `.env`.
+
+The secret is written only to `.env` and is never printed. Other lines in
+`.env` are left as they are. An existing key, or an existing connection
+file, is refused without `--force`. Nothing is written when the test fails.
+
+Missing required flags are prompted when stdin is a terminal (a password via
+`getpass`); otherwise the command exits 2 and names the flags. `--dataset`
+is required for BigQuery because the connector takes it with no default.
+
+Discovery does not load `models/_connections/`: model discovery reads only
+top-level `models/*.py`, and a file there must define `model`.
+
 ### `tracebi new-transform "Title"` · `new-model` · `new-report` · `new-pipeline`
 
 ```bash
 tracebi new-transform "Orders Clean"  [--force] [--transforms-dir DIR]
 tracebi new-model     "Sales Model"   [--force]
+tracebi new-model     "Sales" --from wh --tables fact_sales,dim_customer,dim_product
 tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
 tracebi new-pipeline  "Sales ETL"     [--force]
 ```
@@ -64,6 +93,15 @@ by that path everywhere after: `tracebi report build finance/month_end/close_pac
 reports by folder. Two folders can each hold a report of the same name.
 
 All refuse to overwrite without `--force`.
+
+`new-model --from <connection> --tables a,b,c` drafts that file from the
+connection `tracebi connect` wrote, using column metadata only — no row
+scan. A table named `fact_*`, or one with numeric non-key columns and
+`*_id`/`*_key` columns that match another listed table's key, is drafted as
+a fact; the rest are dimensions. Relationships follow those key names, and
+each numeric non-key column on a fact becomes a `sum` measure. Every guess
+is marked `# DRAFT: review` for a person or an agent to edit. `--tables` is
+required with `--from` (prompted on a terminal, otherwise exit 2).
 
 `new-report` deliberately writes **no** `script.js` or `style.css` — the
 runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser
@@ -89,11 +127,16 @@ See [[updating]].
 ### `tracebi report build`
 
 ```bash
-tracebi report build <name> [--output PATH] [--badges] [--reports-dir DIR]
+tracebi report build <name> [--output PATH] [--format html|pdf] [--badges] [--reports-dir DIR]
 ```
 
 Renders to one self-contained, offline `.html` plus a sibling
 `<output>.html.manifest.json`. Default output is `output/<name>.html`.
+
+`--format pdf` also writes a sibling `.pdf`: a print of that built HTML
+(headless Chromium, so charts render). The PDF carries no receipt; the HTML
+and manifest stay the checkable artifact. Needs `pip install 'tracebi[pdf]'`
+and `python -m playwright install chromium`.
 
 - `--badges` — draw per-figure provenance badges on the page. Off by default;
   the receipt drawer already carries provenance in one place. **The manifest is
@@ -268,9 +311,15 @@ A run is refresh → build → verify → email → record. It reads the `schedu
 block in each package's `report.json` (see
 [[report-json]]). A run is `report send` with
 the recipients taken from the package: a receipt that does not verify is
-recorded `refused` and nothing is sent. Every run appends one line to
+recorded `refused` and nothing is sent. A failed refresh or build is
+retried twice (1 minute, then 5 minutes) before that failure is recorded;
+`"retries"` (0–5) changes how many, and a refused receipt or a send
+failure is not retried. An optional `owner` address is emailed a
+plain-text alert when a run ends `failed`, `refused`, or `empty`, and
+that run is not sent to `to`. Every run appends one line to
 `output/schedule_runs.jsonl`: `delivered`, `built` (no recipients, or
-`--no-send`), `refused` or `failed`, with the verdict and who ran it.
+`--no-send`), `refused`, `empty` (a figure binding returned no rows),
+or `failed`, with the verdict and who ran it.
 
 `serve` needs `pip install "tracebi[pipeline]"` (APScheduler) and reads the
 schedules at startup, so restart it after changing one. To use your own

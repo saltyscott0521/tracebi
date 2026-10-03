@@ -321,7 +321,8 @@ def _presentation() -> dict:
                             "behind each named numeric cell, proportional to "
                             "the stamped value (zero at the left edge, or in "
                             "the middle when the column has negatives; scaled "
-                            "over all rows, so a filter never rescales). A "
+                            "over all rows, not the visible window, so a "
+                            "filter or a scroll never rescales). A "
                             "non-numeric or missing column fails the build",
             "data-tb-direction": "value figures: up-good | down-good — marks "
                                  "a change figure up / down / flat (an arrow) "
@@ -423,7 +424,11 @@ def _presentation() -> dict:
                             "wrapped in a .tb-scroll container sized to "
                             "show about that many rows, sticky header; "
                             "data-tb-rows=\"all\" opts out. Presentation "
-                            "only",
+                            "only. Tables past 500 rows render only the "
+                            "visible rows; printing and download still "
+                            "use every row. Find-in-page cannot see rows "
+                            "outside that window — search with "
+                            "data-tb-search",
             "data-tb-download": "<button data-tb-download "
                                 "data-tb-binding=\"B\" "
                                 "[data-tb-label=\"…\"]> — downloads the "
@@ -489,6 +494,20 @@ def _presentation() -> dict:
                     "one section at a time",
             "columns": ".tb-cols-2 / .tb-cols-3 grid classes; responsive "
                        "collapse to one column under 720px",
+            "recipes": {
+                "brief": "One finding: answer sentence (.tb-lede), a few "
+                         "KPIs (.tb-grid / .tb-kpi), one chart in one "
+                         ".tb-card. "
+                         "tracebi new-report \"Name\" --layout brief",
+                "dashboard": "brief, then .tb-cols-2 (a chart beside a "
+                             "filterable table). The default — what "
+                             "tracebi init and new-report write when "
+                             "--layout is omitted. "
+                             "tracebi new-report \"Name\" --layout dashboard",
+                "tabbed": "The same header, then .tb-tabs / data-tb-tab "
+                          "(Overview and Detail). "
+                          "tracebi new-report \"Name\" --layout tabbed",
+            },
         },
         "receipt_drawer": (
             "Every built artifact embeds a tracebi-receipt JSON block — "
@@ -695,7 +714,8 @@ def _schedule() -> dict:
         "rule": "A report that repeats declares when it runs and who "
                 "receives it in its own report.json, so a reviewer approves "
                 "when and to whom in the same diff as what. One run is "
-                "build → verify → email → record; a receipt that does not "
+                "build → verify → email → record. A failed refresh or build "
+                "is retried twice by default. A receipt that does not "
                 "verify is recorded 'refused' and nothing is sent.",
         "block": "\"schedule\": {\"cron\": \"0 9 * * MON\", "
                  "\"timezone\": \"America/New_York\", "
@@ -706,12 +726,23 @@ def _schedule() -> dict:
                   "optional {\"transforms\": [...], \"pipelines\": [...]} "
                   "run first, in that order, each in a fresh process; a "
                   "failed step (a sink contract included) fails the run "
-                  "before anything is built or sent. Any other field fails "
-                  "when the package loads.",
+                  "before anything is built or sent. retries: integer 0 to "
+                  "5, default 2. A failed refresh or build is retried that "
+                  "many times, waiting 60s then 300s, and 300s for any "
+                  "further retry; 0 disables. A receipt that does not "
+                  "verify, and a delivery failure, are not retried. "
+                  "owner: one email address, optional. A run recorded "
+                  "failed, refused, or empty emails that address a "
+                  "plain-text alert and does not send the report. Without "
+                  "owner, nothing is alerted. Any "
+                  "other field fails when the package loads.",
         "commands": "tracebi schedule list | run <name> [--no-send] | serve "
                     "(one run: refresh → build → verify → email → record). "
                     "Runs append to output/schedule_runs.jsonl with status "
-                    "delivered | built | refused | failed. serve needs "
+                    "delivered | built | refused | failed | empty, plus "
+                    "attempts. A figure binding that returned zero rows is "
+                    "recorded empty and is not sent. "
+                    "serve needs "
                     "tracebi[pipeline]; cron can call `schedule run` instead.",
         "delivery_env": "TRACEBI_SMTP_URL, TRACEBI_SMTP_FROM; "
                         "TRACEBI_SLACK_WEBHOOK adds a Slack ping.",
@@ -993,6 +1024,33 @@ def describe(brief: bool = False) -> dict:
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
         "schedule": _schedule(),
+        "connect": {
+            "what": "Point a project at a warehouse it did not sink. Tests "
+                    "the connection, writes the secret to .env (never "
+                    "printed), and writes models/_connections/<name>.py. "
+                    "That module calls load_dotenv() and reads os.environ; "
+                    "the framework still does not load .env. Discovery "
+                    "ignores the directory: it only loads top-level "
+                    "models/*.py that define model.",
+            "cli": "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb "
+                   "[kind flags] [--test/--no-test] [--force]",
+            "kinds": {
+                "postgres": "--url postgresql://...",
+                "snowflake": "--account --user --password --warehouse "
+                             "--database --schema [--role]",
+                "bigquery": "--project --dataset [--credentials PATH]",
+                "duckdb": "--database PATH",
+            },
+            "env": "TRACEBI_<NAME>_URL, TRACEBI_<NAME>_PASSWORD, and the "
+                   "other constructor fields, uppercase name. An existing "
+                   "key is kept unless --force.",
+            "then": "tracebi new-model \"<Name>\" --from <name> --tables a,b,c "
+                    "drafts a star schema from column metadata only (no row "
+                    "scan). A table named fact_* or with numeric non-key "
+                    "columns and *_id/*_key columns that match another "
+                    "listed table's key is a fact; the rest are dimensions. "
+                    "Edit every line marked # DRAFT: review.",
+        },
         "warehouse": {
             "what": "Column names and types of a sunk table, from connector "
                     "metadata. Never a row scan, and never a substitute for "
@@ -1024,6 +1082,22 @@ def describe(brief: bool = False) -> dict:
                     "verifiable. format='xlsx' still writes the HTML and "
                     "manifest beside the workbook; those are the checkable "
                     "artifact. The result's spreadsheet_note says so.",
+        },
+        "pdf": {
+            "cli": "tracebi report build <name> --format pdf",
+            "mcp": "build_report(report, output_dir='output', format='pdf')",
+            "web": "GET /api/reports/{name}/download?format=pdf — the last "
+                   "build, printed.",
+            "fetch": "fetch_artifact(path=<the pdf_path a pdf build "
+                     "returned>) — encoding is base64, "
+                     "content_type is application/pdf.",
+            "note": "The PDF is a print of the built HTML (headless "
+                    "Chromium, so charts render). It carries no receipt "
+                    "and is not verifiable. format='pdf' still writes the "
+                    "HTML and manifest; those are the checkable artifact. "
+                    "The result's pdf_note says so. Needs "
+                    "pip install 'tracebi[pdf]' and "
+                    "python -m playwright install chromium.",
         },
         "analyst_knowledge": _analyst_knowledge(),
     }

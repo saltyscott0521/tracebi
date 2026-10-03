@@ -173,11 +173,23 @@ The build itself ignores it.</p>
 <td><code>refresh</code></td>
 <td>Optional. <code>{"transforms": [...], "pipelines": [...]}</code> to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (<code>tracebi run-transform</code> / <code>tracebi run-pipeline</code>). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent.</td>
 </tr>
+<tr>
+<td><code>retries</code></td>
+<td>Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A receipt that does not verify, and a delivery failure, are not retried.</td>
+</tr>
+<tr>
+<td><code>owner</code></td>
+<td>Optional. One email address. A run recorded <code>failed</code>, <code>refused</code>, or <code>empty</code> emails this address a plain-text alert and does not send the report to <code>to</code>. Without it, nothing is alerted.</td>
+</tr>
 </tbody>
 </table>
+<p>A run whose figure bindings include one with zero rows is recorded <code>empty</code>
+and is not sent. A binding no figure uses does not count.</p>
 <p>Any other field, a cron that isn't five fields, an unknown time zone, an
-address with no <code>@</code> or a malformed <code>refresh</code> is refused when the package
-loads. A <code>refresh</code> name that doesn't exist fails the run, not the load.</p>
+address with no <code>@</code> (in <code>to</code> or <code>owner</code>), a malformed <code>refresh</code>, or a
+<code>retries</code> value that is not an integer from 0 to 5 is refused when the
+package loads. A <code>refresh</code> name that doesn't exist fails the run, not the
+load.</p>
 <hr>
 <h2 id="what-is-checked-and-when">What is checked, and when</h2>
 <p>Checked when the package <strong>loads</strong> (before any query runs):</p>
