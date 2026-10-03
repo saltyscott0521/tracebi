@@ -32,6 +32,15 @@ model (②) is a frozen contract between them. Editing a report never re-runs
 the pandas. As an agent (or analyst) you author each phase in turn: write the
 phase-① transform, declare the phase-② model, author the phase-③ report spec.
 
+## Your own data
+
+Already have tables? `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb`
+tests the warehouse, writes the secret to `.env`, and writes
+`models/_connections/<name>.py` (that file calls `load_dotenv()`; the framework
+never loads `.env`). Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
+drafts a star schema from column metadata only. Edit every line marked
+`# DRAFT: review` before a report depends on it.
+
 ## Where the trust machinery applies — and where it does not
 
 TraceBi is also a **trust layer for AI-generated analytics**: AI made producing
@@ -100,10 +109,21 @@ draws a proportional bar behind each named numeric cell (zero at the left, or
 centered when the column has negatives); and `data-tb-direction="up-good"` or
 `"down-good"` on a value figure marks a bound change up or down, good or bad,
 from its sign. Add `tb-table--freeze` to keep a wide table's first column in
-view. A figure with no binding carries `data-tb-unverified` —
+view. Tables past 500 rows render only the visible rows; printing and download still use every row. Find-in-page cannot see rows outside that window — search with `data-tb-search`. A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
-`presentation` block.
+`presentation` block, including `presentation.layout` — the page structures
+you pick by name instead of inventing one.
+
+**Pick a structure by name.** `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
+writes that skeleton (omit the flag for `dashboard`, which is also what
+`tracebi init` writes). `brief`: one finding — `.tb-lede`, a few `.tb-kpi`
+cards, one chart in one `.tb-card`. `dashboard`: `brief`, then `.tb-cols-2`
+(a chart beside a filterable table). `tabbed`: the same header, then
+`.tb-tabs` / `data-tb-tab` (Overview and Detail). Pick the one that fits —
+`brief` for one finding, `dashboard` otherwise, `tabbed` when the page
+serves two jobs. Ask only when a person is in the loop and the choice is
+not obvious.
 
 **You can also have the framework build the figure for you.** Declare it in
 `report.json` under `figures`, then place it in `template.html` with

@@ -316,8 +316,9 @@ TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.0/8,172.16.0.0/12
 may do. Three ordered roles, split by side effect: <code>viewer</code> (read models,
 reports, lineage; run Explore queries and spec validation — they compute
 but persist nothing), <code>analyst</code> (viewer + execute report and request code),
-<code>admin</code> (analyst + run pipeline layers, which write to the warehouse, and
-<code>/api/_dev/reload</code>). Assign roles per principal with
+<code>admin</code> (analyst + run pipeline layers, which write to the warehouse,
+<code>/api/_dev/reload</code>, and keeping a selection cut, which writes the published
+<code>report.json</code>). Assign roles per principal with
 <code>TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst</code> or, <strong>in proxy mode only</strong>,
 from the proxy's group claim with
 <code>TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups</code> — your proxy must <em>replace</em>
