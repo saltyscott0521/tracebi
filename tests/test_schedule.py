@@ -34,7 +34,7 @@ class TestParseScheduleBlock:
         assert got == {"cron": "0 9 * * MON", "timezone": None,
                        "to": ["a@x.com", "b@x.com"],
                        "refresh": {"transforms": [], "pipelines": []},
-                       "retries": 2, "owner": None}
+                       "retries": 2, "owner": None, "burst": None}
 
     @pytest.mark.parametrize("raw, fragment", [
         ("0 9 * * MON", "must be an object"),
@@ -136,7 +136,7 @@ class TestDiscovery:
         assert errors == []
         assert schedules == [{"report": "sample_dashboard", **SCHEDULE,
                               "refresh": {"transforms": [], "pipelines": []},
-                              "retries": 2, "owner": None}]
+                              "retries": 2, "owner": None, "burst": None}]
 
     def test_broken_block_is_an_error_entry_not_a_crash(self, scheduled):
         rj = scheduled / "reports" / "sample_dashboard" / "report.json"
@@ -1133,3 +1133,202 @@ def test_scheduler_fires_in_the_declared_timezone():
         assert str(nxt.tzinfo) == "America/New_York"
     finally:
         scheduler.shutdown(wait=False)
+
+
+# The sample warehouse's regions, after the transform normalises them.
+# Northeast is three orders; West is two. Midwest is in the filter so a
+# missing recipient is recorded, and is not built.
+_BURST = {
+    "cron": "0 9 * * MON",
+    "timezone": "America/New_York",
+    "to": ["team@example.com"],
+    "owner": "ops@example.com",
+    "burst": {
+        "filter": {"dim_region.region": ["Northeast", "West", "Midwest"]},
+        "to": {
+            "Northeast": ["ne@example.com"],
+            "West": ["west@example.com"],
+        },
+    },
+}
+
+
+def _write_schedule(proj: Path, block: dict) -> None:
+    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    decl = json.loads(rj.read_text())
+    decl["schedule"] = block
+    rj.write_text(json.dumps(decl))
+
+
+def _orders_in(html_path: Path) -> int:
+    import csv as _csv
+    import io
+    import re
+    html = html_path.read_text()
+    block = re.search(
+        r'<script[^>]*id="tracebi-data-kpis"[^>]*>(.*?)</script>',
+        html, re.S).group(1)
+    row = next(_csv.DictReader(io.StringIO(json.loads(block)["csv"])))
+    return int(float(row["orders"]))
+
+
+def _kpis_filters(manifest: dict) -> dict:
+    for section in manifest.get("sections") or []:
+        if section.get("id") != "kpis":
+            continue
+        lineage = section.get("dataset_lineage") or []
+        return lineage[-1]["metadata"]["query_spec"]["filters"]
+    raise AssertionError("manifest has no kpis section")
+
+
+class TestBurst:
+    def test_normalizes_a_list_filter_and_keeps_top_level_to(self):
+        got = sched.parse_schedule_block(_BURST, path="r")
+        assert got["to"] == ["team@example.com"]
+        assert got["owner"] == "ops@example.com"
+        assert got["burst"] == {
+            "filter": {"dim_region.region": {
+                "in": ["Northeast", "West", "Midwest"]}},
+            "to": {
+                "Northeast": ["ne@example.com"],
+                "West": ["west@example.com"],
+            },
+        }
+
+    @pytest.mark.parametrize("burst, fragment", [
+        ({"filter": {"dim_region.region": ["EMEA"]}}, "needs a 'to' object"),
+        ({"filter": {
+            "dim_region.region": ["EMEA"],
+            "dim_product.product": ["A"],
+          }, "to": {}}, "one dimension key"),
+        ({"filter": {"region": ["EMEA"]}, "to": {}}, "dimension reference"),
+        ({"filter": {"dim_region.region": {"gte": 1}}, "to": {}},
+         "list of values"),
+        ({"filter": {"dim_region.region": []}, "to": {}}, "at least one"),
+        ({"filter": {"dim_region.region": ["EMEA", "EMEA"]},
+          "to": {"EMEA": ["a@example.com"]}}, "unique"),
+        ({"filter": {"dim_region.region": ["EMEA"]},
+          "to": {"EMEA": ["not-an-address"]}}, "email addresses"),
+        ({"filter": {"dim_region.region": ["EMEA"]},
+          "to": {"APAC": ["a@example.com"]}}, "not values of burst.filter"),
+        ({"filter": {"dim_region.region": ["EMEA"]},
+          "to": {"EMEA": ["a@example.com"]}, "when": "daily"},
+         "unknown burst field"),
+    ])
+    def test_refuses(self, burst, fragment):
+        with pytest.raises(ValueError, match=fragment):
+            sched.parse_schedule_block(
+                {"cron": "0 9 * * MON", "burst": burst},
+                path="reports/x/report.json")
+
+    def test_discover_reports_a_burst_without_to(self, scheduled):
+        _write_schedule(scheduled, {
+            "cron": "0 9 * * MON",
+            "burst": {"filter": {"dim_region.region": {"in": ["EMEA"]}}},
+        })
+        schedules, errors = sched.discover_schedules(scheduled / "reports")
+        assert schedules == []
+        assert errors[0]["report"] == "sample_dashboard"
+        assert "needs a 'to' object" in errors[0]["error"]
+
+    def test_one_build_per_value_with_its_own_recipients(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        _write_schedule(scheduled, _BURST)
+        sent = []
+
+        def _send(html, _manifest, to, subject=None, verify_result=None):
+            sent.append({"to": list(to), "html": Path(html).name})
+            return list(to)
+
+        monkeypatch.setattr("tracebi._delivery.send_report", _send)
+        block = _scheduled(scheduled)
+        rec = sched.run_schedule(
+            block,
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.DELIVERED
+        assert rec["verdict"] == "reproduces"
+        assert rec["recipients"] == ["ne@example.com", "west@example.com"]
+        assert "alert" not in rec
+        by = {s["value"]: s for s in rec["slices"]}
+        assert set(by) == {"Northeast", "West", "Midwest"}
+        assert by["Northeast"]["status"] == sched.DELIVERED
+        assert by["West"]["status"] == sched.DELIVERED
+        assert by["Midwest"]["status"] == sched.SKIPPED
+        assert by["Midwest"]["output"] is None
+        assert by["Midwest"]["recipients"] == []
+        out = scheduled / "output"
+        ne = out / "sample_dashboard--Northeast.html"
+        west = out / "sample_dashboard--West.html"
+        assert ne.is_file()
+        assert (out / (ne.name + ".manifest.json")).is_file()
+        assert west.is_file()
+        assert (out / (west.name + ".manifest.json")).is_file()
+        assert not (out / "sample_dashboard--Midwest.html").exists()
+        assert not (out / "sample_dashboard.html").exists()
+        assert sent == [
+            {"to": ["ne@example.com"], "html": ne.name},
+            {"to": ["west@example.com"], "html": west.name},
+        ]
+        assert _orders_in(ne) == 3
+        assert _orders_in(west) == 2
+        manifest = json.loads((out / (ne.name + ".manifest.json")).read_text())
+        assert _kpis_filters(manifest) == {"dim_region.region": "Northeast"}
+        assert _runs(scheduled) == [rec]
+        assert "burst: dim_region.region" in sched.describe_schedule(block)
+        assert "× 3" in sched.describe_schedule(block)
+
+    def test_a_refused_slice_is_not_sent_and_one_alert_names_it(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        _write_schedule(scheduled, _BURST)
+        sent = []
+        alerts = []
+
+        def _send(_html, _manifest, to, subject=None, verify_result=None):
+            sent.append(list(to))
+            return list(to)
+
+        monkeypatch.setattr("tracebi._delivery.send_report", _send)
+        monkeypatch.setattr(
+            "tracebi._delivery.send_alert",
+            lambda to, subject, body: alerts.append(
+                {"to": to, "subject": subject, "body": body}),
+        )
+        import tracebi.verify as verify_mod
+        real = verify_mod.verify_manifest
+
+        def wrapped(manifest, models, **k):
+            if _kpis_filters(manifest).get("dim_region.region") == "West":
+                return {
+                    "verdict": "unexplained",
+                    "verdict_detail": "stub: did not reproduce",
+                    "exit_code": 1, "ok": False,
+                }
+            return real(manifest, models, **k)
+
+        monkeypatch.setattr("tracebi.verify.verify_manifest", wrapped)
+        rec = sched.run_schedule(
+            _scheduled(scheduled),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == [["ne@example.com"]]
+        by = {s["value"]: s for s in rec["slices"]}
+        assert by["Northeast"]["status"] == sched.DELIVERED
+        assert by["West"]["status"] == sched.REFUSED
+        assert by["West"]["recipients"] == []
+        assert by["Midwest"]["status"] == sched.SKIPPED
+        assert rec["status"] == sched.REFUSED
+        assert rec["verdict"] == "unexplained"
+        assert "West:" in rec["error"]
+        assert rec["alert"] == {
+            "to": "ops@example.com", "sent": True, "error": None}
+        [alert] = alerts
+        assert alert["subject"] == (
+            "TraceBi: sample_dashboard scheduled run refused")
+        assert "West (refused)" in alert["body"]
+        assert "Northeast" not in alert["body"]
+        assert len(_runs(scheduled)) == 1

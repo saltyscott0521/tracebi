@@ -2080,13 +2080,19 @@ def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
 def _build_report_target(kind: str, path: Path, output: Path,
                          theme: Optional[str] = None,
                          badges: bool = False,
-                         report_name: Optional[str] = None) -> Path:
-    """Render one report target to *output* (+ a sibling manifest). Returns output."""
+                         report_name: Optional[str] = None,
+                         filters: Optional[dict] = None) -> Path:
+    """Render one report target to *output* (+ a sibling manifest). Returns output.
+
+    *filters*, when set, is applied at build the same way a selection filter
+    is: conjoined onto every binding whose model has that dimension.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
     models = _load_project_models()
     if kind == "package":
         from tracebi.reports.template_package import TemplatePackage
-        TemplatePackage(str(path)).render(models, str(output), badges=badges)
+        TemplatePackage(str(path)).render(
+            models, str(output), badges=badges, filters=filters)
     else:
         # A bare .json spec compiles to the artifact package, then renders like
         # a hand-authored one — the same one report form as a package.
@@ -2104,7 +2110,8 @@ def _build_report_target(kind: str, path: Path, output: Path,
         with tempfile.TemporaryDirectory() as d:
             for fname, content in compiled.files.items():
                 (Path(d) / fname).write_text(content, encoding="utf-8")
-            TemplatePackage(d).render(models, str(output), badges=badges)
+            TemplatePackage(d).render(
+                models, str(output), badges=badges, filters=filters)
     target = report_name or (path.stem if kind == "spec" else path.name)
     from tracebi.state import try_record_report_build
     note = try_record_report_build(
@@ -2353,6 +2360,9 @@ def cmd_schedule(args: argparse.Namespace) -> int:
         tracebi schedule list              # every scheduled package + last run
         tracebi schedule run <name>        # build → verify → deliver → record, now
         tracebi schedule serve             # run every schedule until Ctrl+C
+
+    A ``burst`` block repeats that once per filter value. Each value is its
+    own build, with that filter applied, and is emailed to ``burst.to[value]``.
     """
     import getpass
 
@@ -2437,9 +2447,19 @@ def _print_schedule_run(rec: dict) -> None:
     if rec.get("recipients"):
         line += f" → {', '.join(rec['recipients'])}"
     ok = rec["status"] in ("delivered", "built")
-    print(line, file=sys.stdout if ok else sys.stderr)
+    out = sys.stdout if ok else sys.stderr
+    print(line, file=out)
     if rec.get("error"):
-        print(f"  {rec['error']}", file=sys.stdout if ok else sys.stderr)
+        print(f"  {rec['error']}", file=out)
+    for sl in rec.get("slices") or []:
+        piece = f"  {sl.get('value')}: {sl.get('status')}"
+        if sl.get("recipients"):
+            piece += f" → {', '.join(sl['recipients'])}"
+        if sl.get("output"):
+            piece += f"  {sl['output']}"
+        print(piece, file=out)
+        if sl.get("error"):
+            print(f"    {sl['error']}", file=out)
 
 
 # ── Workbench sessions: export / clear ──────────────────────────────────────
@@ -2922,7 +2942,10 @@ def build_parser() -> argparse.ArgumentParser:
         "schedule",
         help="Reports that run and deliver themselves: list the packages with "
              "a report.json \"schedule\" block, run one now (build → verify "
-             "→ email → record), or serve every schedule until Ctrl+C.",
+             "→ email → record), or serve every schedule until Ctrl+C. "
+             "A burst block builds once per filter value, each with its own "
+             "recipients (burst.to[value]); a value missing from burst.to is "
+             "skipped and recorded, and is not sent to the top-level to.",
     )
     p_schedule.add_argument("action", choices=["list", "run", "serve"])
     p_schedule.add_argument("name", nargs="?",

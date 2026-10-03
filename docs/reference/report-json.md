@@ -124,6 +124,26 @@ The build itself ignores it.
 | `refresh` | Optional. `{"transforms": [...], "pipelines": [...]}` to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (`tracebi run-transform` / `tracebi run-pipeline`). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent. |
 | `retries` | Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A receipt that does not verify, and a delivery failure, are not retried. |
 | `owner` | Optional. One email address. A run recorded `failed`, `refused`, or `empty` emails this address a plain-text alert and does not send the report to `to`. Without it, nothing is alerted. |
+| `burst` | Optional. One build per filter value, each with its own recipients. `filter` is one dimension key mapped to a list or `{"in": [...]}`. `to` maps each value to email addresses. A value missing from `to` is skipped and recorded, and is not sent to the top-level `to`. `burst` without `to` is refused when the package loads. |
+
+```json
+"burst": {
+  "filter": {"dim_region.region": {"in": ["EMEA", "APAC", "AMER"]}},
+  "to": {
+    "EMEA": ["emea@example.com"],
+    "APAC": ["apac@example.com"],
+    "AMER": ["amer@example.com"]
+  }
+}
+```
+
+Each value is its own HTML and manifest under `output/`. The filter is
+applied at build on every binding whose model has that dimension, through
+the same path as a selection filter. Each slice is verified on its own. A
+refused, empty, or failed slice is not sent; the others still are. The run
+is one parent record with a `slices` list (value, status, recipients,
+output path). If any slice failed, came back empty, or was refused, one
+owner alert names those slices.
 
 A run whose figure bindings include one with zero rows is recorded `empty`
 and is not sent. A binding no figure uses does not count.
