@@ -794,9 +794,9 @@ class TemplatePackage:
         """A static SVG of the chart, tagged ``.tb-chart-fallback``, so a no-JS
         reader sees a picture of it. The runtime removes the fallback and draws
         the interactive ECharts version over the same (min-height:320px)
-        container. Axis ticks in the fallback are unformatted (data-tb-value-
-        format is not threaded into to_svg) — the JS replaces it, so this is a
-        no-JS cosmetic only.
+        container. Axis ticks and labels use the figure's data-tb-value-format
+        (the same named formats as the runtime; percent multiplies by 100 for
+        display only).
         """
         import dataclasses
         import types
@@ -827,6 +827,7 @@ class TemplatePackage:
             names = {}
         spec = dataclasses.replace(
             spec, xlabel="", ylabel="",
+            value_format=a.get("data-tb-value-format") or "",
             series=tuple(names.get(s, s) for s in spec.series),
             rows=tuple({names.get(k, k): v for k, v in r.items()}
                        for r in spec.rows))

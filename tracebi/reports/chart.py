@@ -67,6 +67,9 @@ class ChartSpec:
     # The column the rows were pivoted on when built with color=. Purely
     # descriptive — the pivot has already happened by construction time.
     color: str = ""
+    # Named format for axis ticks and labels (percent, currency, …). Empty
+    # keeps _fmt. Display only: tick positions stay on the raw values.
+    value_format: str = ""
 
     # ── Construction ───────────────────────────────────────────
 
@@ -214,6 +217,8 @@ class ChartSpec:
         d["series"] = list(self.series)
         d["rows"] = [dict(r) for r in self.rows]
         d["palette"] = list(self.palette)
+        if not self.value_format:
+            d.pop("value_format", None)
         return d
 
     @classmethod
@@ -227,6 +232,7 @@ class ChartSpec:
             palette=tuple(d.get("palette") or DEFAULT_PALETTE),
             show_values=bool(d.get("show_values", False)),
             color=d.get("color", ""),
+            value_format=d.get("value_format") or "",
         )
 
     # ── Rendering ──────────────────────────────────────────────
@@ -333,6 +339,13 @@ class ChartSpec:
             return f"{int(v):,}"
         return f"{v:,.2f}".rstrip("0").rstrip(".")
 
+    def _num_label(self, v: float, *, compact: bool = False) -> str:
+        """Text for a tick or label. A named value_format is display only."""
+        if self.value_format:
+            from tracebi.reports.template_package import _ssr_format
+            return _ssr_format(v, self.value_format)
+        return self._fmt(v, compact=compact)
+
     @staticmethod
     def _esc(text: Any) -> str:
         return html.escape(str(text), quote=True)
@@ -377,7 +390,7 @@ class ChartSpec:
                     f'<line class="tb-grid" x1="{px:.1f}" y1="{_M["top"]}" '
                     f'x2="{px:.1f}" y2="{_M["top"] + ph}"/>'
                     f'<text class="tb-tick" x="{px:.1f}" y="{_M["top"] + ph + 18}" '
-                    f'text-anchor="middle">{self._esc(self._fmt(t))}</text>'
+                    f'text-anchor="middle">{self._esc(self._num_label(t))}</text>'
                 )
             else:
                 py = _M["top"] + ph - (t - lo) / (hi - lo) * ph
@@ -385,7 +398,7 @@ class ChartSpec:
                     f'<line class="tb-grid" x1="{_M["left"]}" y1="{py:.1f}" '
                     f'x2="{_M["left"] + pw}" y2="{py:.1f}"/>'
                     f'<text class="tb-tick" x="{_M["left"] - 8}" y="{py + 4:.1f}" '
-                    f'text-anchor="end">{self._esc(self._fmt(t))}</text>'
+                    f'text-anchor="end">{self._esc(self._num_label(t))}</text>'
                 )
 
         # Category labels along the other axis.
@@ -466,13 +479,13 @@ class ChartSpec:
                     f'<rect class="tb-bar" x="{x:.1f}" y="{top:.1f}" '
                     f'width="{bw:.1f}" height="{max(height, 0.5):.1f}" '
                     f'fill="{self._colour(si)}"{self._slot(si)}><title>'
-                    f'{self._esc(labels[i])}: {self._esc(self._fmt(v))}</title></rect>'
+                    f'{self._esc(labels[i])}: {self._esc(self._num_label(v))}</title></rect>'
                 )
                 if self.show_values:
                     bars.append(
                         f'<text class="tb-value" x="{x + bw / 2:.1f}" '
                         f'y="{top - 4:.1f}" text-anchor="middle">'
-                        f'{self._esc(self._fmt(v, compact=True))}</text>'
+                        f'{self._esc(self._num_label(v, compact=True))}</text>'
                     )
         return self._axes(ticks, lo, hi, labels) + self._legend() + "".join(bars)
 
@@ -498,13 +511,13 @@ class ChartSpec:
                     f'<rect class="tb-bar" x="{left:.1f}" y="{y:.1f}" '
                     f'width="{max(width, 0.5):.1f}" height="{bh:.1f}" '
                     f'fill="{self._colour(si)}"{self._slot(si)}><title>'
-                    f'{self._esc(labels[i])}: {self._esc(self._fmt(v))}</title></rect>'
+                    f'{self._esc(labels[i])}: {self._esc(self._num_label(v))}</title></rect>'
                 )
                 if self.show_values:
                     bars.append(
                         f'<text class="tb-value" x="{left + width + 4:.1f}" '
                         f'y="{y + bh / 2 + 4:.1f}">'
-                        f'{self._esc(self._fmt(v, compact=True))}</text>'
+                        f'{self._esc(self._num_label(v, compact=True))}</text>'
                     )
         return (self._axes(ticks, lo, hi, labels, horizontal=True)
                 + self._legend() + "".join(bars))
@@ -572,13 +585,13 @@ class ChartSpec:
                 out.append(
                     f'<circle class="tb-point" cx="{x:.1f}" cy="{y:.1f}" r="3.5" '
                     f'fill="{colour}"{self._slot(si)}><title>{self._esc(labels[i])}: '
-                    f'{self._esc(self._fmt(v))}</title></circle>'
+                    f'{self._esc(self._num_label(v))}</title></circle>'
                 )
                 if self.show_values:
                     out.append(
                         f'<text class="tb-value" x="{x:.1f}" y="{y - 8:.1f}" '
                         f'text-anchor="middle">'
-                        f'{self._esc(self._fmt(v, compact=True))}</text>'
+                        f'{self._esc(self._num_label(v, compact=True))}</text>'
                     )
         return (self._axes(ticks, lo, hi, labels, series_x=True)
                 + self._legend() + "".join(out))
@@ -603,7 +616,7 @@ class ChartSpec:
                 f'<line class="tb-grid" x1="{_M["left"]}" y1="{py:.1f}" '
                 f'x2="{_M["left"] + pw}" y2="{py:.1f}"/>'
                 f'<text class="tb-tick" x="{_M["left"] - 8}" y="{py + 4:.1f}" '
-                f'text-anchor="end">{self._esc(self._fmt(t))}</text>'
+                f'text-anchor="end">{self._esc(self._num_label(t))}</text>'
             )
         for si, name in enumerate(self.series):
             for i, yv in self._series_values(name):
@@ -613,7 +626,7 @@ class ChartSpec:
                 out.append(
                     f'<circle class="tb-point" cx="{cx:.1f}" cy="{cy:.1f}" r="4" '
                     f'fill="{self._colour(si)}" fill-opacity="0.75"><title>'
-                    f'{self._esc(self._fmt(xv))}, {self._esc(self._fmt(yv))}'
+                    f'{self._esc(self._num_label(xv))}, {self._esc(self._num_label(yv))}'
                     f'</title></circle>'
                 )
         return "".join(out) + self._legend()
@@ -639,7 +652,7 @@ class ChartSpec:
                 f'<path class="tb-slice" fill="{self._colour(i)}" '
                 f'd="M{cx:.1f},{cy:.1f} L{x1:.1f},{y1:.1f} '
                 f'A{r:.1f},{r:.1f} 0 {large} 1 {x2:.1f},{y2:.1f} Z">'
-                f'<title>{self._esc(labels[i])}: {self._esc(self._fmt(v))} '
+                f'<title>{self._esc(labels[i])}: {self._esc(self._num_label(v))} '
                 f'({pct:.1f}%)</title></path>'
             )
         # Legend to the right, since slice labels collide badly.
