@@ -73,6 +73,25 @@ is required for BigQuery because the connector takes it with no default.
 Discovery does not load `models/_connections/`: model discovery reads only
 top-level `models/*.py`, and a file there must define `model`.
 
+### `tracebi import dbt`
+
+```bash
+tracebi import dbt <path> [--name NAME] [--connection NAME] [--schema SCHEMA] [--force]
+tracebi import dbt ./jaffle_shop --connection wh --name jaffle
+tracebi import dbt target/manifest.json --connection wh
+```
+
+Reads a dbt `manifest.json` — a project root that contains
+`target/manifest.json`, or the file itself — and drafts `models/<name>.py`.
+It does not run dbt and does not load `.env`. The default name is the dbt
+project name, otherwise the folder name.
+
+Tables are dbt models (`resource_type` model, not ephemeral). `--schema`
+keeps one schema. `--connection` wires `models/_connections/<name>.py` from
+`tracebi connect` and is refused when that module is missing. Relationships
+and measures are `# DRAFT: review` comments; foreign keys are not invented.
+An existing model file is kept unless `--force`.
+
 ### `tracebi new-transform "Title"` · `new-model` · `new-report` · `new-pipeline`
 
 ```bash

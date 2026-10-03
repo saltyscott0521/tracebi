@@ -41,6 +41,12 @@ never loads `.env`). Then `tracebi new-model "<Name>" --from <name> --tables a,b
 drafts a star schema from column metadata only. Edit every line marked
 `# DRAFT: review` before a report depends on it.
 
+Already have dbt marts? `tracebi import dbt <path>` reads a `manifest.json`
+(a project root, or the file; it does not run dbt) and drafts `models/<name>.py`
+the same way. `--connection <name>` wires the connector `tracebi connect`
+wrote. Relationships and measures stay `# DRAFT: review` comments — foreign
+keys are not invented.
+
 ## Where the trust machinery applies — and where it does not
 
 TraceBi is also a **trust layer for AI-generated analytics**: AI made producing

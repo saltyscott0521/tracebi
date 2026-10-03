@@ -7,6 +7,7 @@ Scaffolds and drives a project through the three-phase workflow — TRANSFORM
     tracebi init my_project                 # scaffold a new project
     tracebi run-transform <name>            # ① run a transform → sink the warehouse
     tracebi connect wh --kind duckdb        # point at a warehouse you already have
+    tracebi import dbt <path>               # draft a model from a dbt manifest.json
     tracebi new-model "Sales Model"         # ② scaffold a model over the warehouse
     tracebi report build <name>             # ③ render an artifact package + receipt
     tracebi verify <manifest>               # re-run recorded queries; classify drift
@@ -950,6 +951,11 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
 def cmd_connect(args: argparse.Namespace) -> int:
     from tracebi.connect import connect_command
     return connect_command(args)
+
+
+def cmd_import_dbt(args: argparse.Namespace) -> int:
+    from tracebi.dbt_import import import_dbt_command
+    return import_dbt_command(args)
 
 
 def cmd_new_model(args: argparse.Namespace) -> int:
@@ -2704,6 +2710,42 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated tables to draft. Required with --from.",
     )
     p_new_model.set_defaults(func=cmd_new_model)
+
+    p_import = sub.add_parser(
+        "import",
+        help="Draft a TraceBi model from an existing tool.",
+    )
+    imported = p_import.add_subparsers(dest="import_cmd", required=True)
+    p_import_dbt = imported.add_parser(
+        "dbt",
+        help="Draft a model from a dbt manifest.json (does not run dbt).",
+        description="Draft models/<name>.py from a dbt manifest.json. "
+                    "This command does not run dbt and does not load .env.",
+    )
+    p_import_dbt.add_argument(
+        "path",
+        type=Path,
+        help="dbt project root (contains target/manifest.json) or a manifest.json path.",
+    )
+    p_import_dbt.add_argument(
+        "--name",
+        help="Model name. Default: the dbt project name, else the folder name.",
+    )
+    p_import_dbt.add_argument(
+        "--connection",
+        help="Wire models/_connections/<name>.py from `tracebi connect`. "
+             "Refused if that module is missing.",
+    )
+    p_import_dbt.add_argument(
+        "--schema",
+        help="Only include dbt models in this schema. "
+             "Default: every non-ephemeral model.",
+    )
+    p_import_dbt.add_argument(
+        "--force", action="store_true",
+        help="Overwrite an existing model file.",
+    )
+    p_import_dbt.set_defaults(func=cmd_import_dbt)
 
     p_list_models = sub.add_parser("list-models", help="List model definition files.")
     p_list_models.set_defaults(func=cmd_list_models)

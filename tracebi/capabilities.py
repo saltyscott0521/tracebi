@@ -1051,6 +1051,12 @@ def describe(brief: bool = False) -> dict:
                     "columns and *_id/*_key columns that match another "
                     "listed table's key is a fact; the rest are dimensions. "
                     "Edit every line marked # DRAFT: review.",
+            "dbt": "tracebi import dbt <path> drafts models/<name>.py from a "
+                   "dbt manifest.json (a project root with target/manifest.json, "
+                   "or the file). It does not run dbt and does not load .env. "
+                   "--connection <name> wires models/_connections/<name>.py. "
+                   "--schema keeps one schema. Relationships and measures are "
+                   "# DRAFT: review comments — foreign keys are not invented.",
         },
         "warehouse": {
             "what": "Column names and types of a sunk table, from connector "

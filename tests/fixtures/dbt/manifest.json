@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.8.0",
+    "project_name": "jaffle_shop",
+    "adapter_type": "postgres"
+  },
+  "nodes": {
+    "model.jaffle_shop.customers": {
+      "resource_type": "model",
+      "name": "customers",
+      "package_name": "jaffle_shop",
+      "schema": "analytics",
+      "alias": "customers",
+      "relation_name": "\"analytics\".\"customers\"",
+      "config": {"materialized": "table", "enabled": true},
+      "columns": {
+        "customer_id": {"name": "customer_id", "data_type": "integer"},
+        "name": {"name": "name", "data_type": "text"}
+      }
+    },
+    "model.other_pkg.customers": {
+      "resource_type": "model",
+      "name": "customers",
+      "package_name": "other_pkg",
+      "schema": "analytics",
+      "alias": "customers",
+      "config": {"materialized": "table"},
+      "columns": {
+        "customer_id": {"name": "customer_id", "data_type": "integer"}
+      }
+    },
+    "model.jaffle_shop.orders": {
+      "resource_type": "model",
+      "name": "orders",
+      "package_name": "jaffle_shop",
+      "schema": "analytics",
+      "alias": "orders",
+      "relation_name": "\"analytics\".\"orders\"",
+      "config": {"materialized": "incremental"},
+      "columns": {
+        "order_id": {"name": "order_id", "data_type": "integer"},
+        "customer_id": {"name": "customer_id", "data_type": "integer"},
+        "amount": {"name": "amount", "data_type": "numeric(12,2)"},
+        "margin_pct": {"name": "margin_pct", "data_type": "numeric"}
+      }
+    },
+    "model.jaffle_shop.dim_customer": {
+      "resource_type": "model",
+      "name": "dim_customer",
+      "package_name": "jaffle_shop",
+      "schema": "analytics",
+      "alias": "dim_customer_v2",
+      "config": {"materialized": "table"},
+      "columns": {
+        "customer_id": {"name": "customer_id", "data_type": "integer"}
+      }
+    },
+    "model.jaffle_shop.int_ephemeral": {
+      "resource_type": "model",
+      "name": "int_ephemeral",
+      "package_name": "jaffle_shop",
+      "schema": "analytics",
+      "config": {"materialized": "ephemeral"},
+      "columns": {
+        "id": {"name": "id", "data_type": "integer"}
+      }
+    },
+    "model.jaffle_shop.old_orders": {
+      "resource_type": "model",
+      "name": "old_orders",
+      "package_name": "jaffle_shop",
+      "schema": "analytics",
+      "config": {"materialized": "table", "enabled": false},
+      "columns": {}
+    },
+    "model.jaffle_shop.stg_payments": {
+      "resource_type": "model",
+      "name": "stg_payments",
+      "package_name": "jaffle_shop",
+      "schema": "staging",
+      "alias": "stg_payments",
+      "config": {"materialized": "view"},
+      "columns": {
+        "payment_id": {"name": "payment_id", "data_type": "integer"}
+      }
+    },
+    "seed.jaffle_shop.raw_customers": {
+      "resource_type": "seed",
+      "name": "raw_customers",
+      "schema": "analytics",
+      "config": {"materialized": "seed"}
+    },
+    "test.jaffle_shop.not_null_customers_customer_id": {
+      "resource_type": "test",
+      "name": "not_null_customers_customer_id"
+    }
+  }
+}
