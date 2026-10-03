@@ -227,6 +227,21 @@ def test_order_by_tiebreak_is_noted_and_the_fingerprint_is_unchanged(gateway_mod
     assert sc["binding"]["query"]["order_by"] == sc["query"]["order_by"]
 
 
+def test_describe_model_names_a_share_base_and_a_ratio_pair(monkeypatch):
+    """A share measure says which measure it is a share of."""
+    m = DataModel("share_demo")
+    m.add_measure("fair_value", column="fair_value", agg="sum")
+    m.add_measure("cost", column="cost", agg="sum")
+    m.add_measure("mark", ratio=("fair_value", "cost"))
+    m.add_measure("fv_share", share="fair_value", format="percent")
+    monkeypatch.setattr(
+        "tracebi.mcp_server._load_models", lambda: {"share_demo": m})
+    by_name = {item["name"]: item for item in gateway_model_info("share_demo")["measures"]}
+    assert by_name["fv_share"]["kind"] == "share"
+    assert by_name["fv_share"]["share"] == "fair_value"
+    assert by_name["mark"]["ratio"] == ["fair_value", "cost"]
+
+
 def test_query_returns_a_binding_stub(gateway_model):
     out = _query(filters={"status": "shipped"})
     binding = out["binding"]
