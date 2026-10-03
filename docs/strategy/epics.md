@@ -113,8 +113,6 @@ list them as open, which makes the real gaps harder to see.
 
 | Finding | Evidence |
 | --- | --- |
-| Background runs and the last-build cache live in one process's memory. With `--workers 4`, a poll can land on a worker that never saw the run. | `web/api/run_store.py`, `_LAST_BUILD` |
-| Run history is in three places: pipeline tables, `schedule_runs.jsonl`, and the in-memory run store. | `pipeline/runner.py`, `schedule.py`, `run_store.py` |
 | Library page is only started: Reports groups by folder with type / last build / receipt; owner, schedule, past builds, mounts, and one read function for E7 are still open. | `Reports.jsx`, E6 |
 | **The "Keep this cut" endpoint rewrites `report.json` for any analyst, with no draft or approval step.** Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
 | One shared Basic-auth login, one shared MCP token, and a self-declared agent name. Nobody's work can be told apart in the audit log. | `web/api/auth.py`, `TRACEBI_MCP_ACTOR` |
@@ -248,16 +246,17 @@ the parts that run unattended.
 runs, background runs) is recorded in one place, and several workers can
 share it.
 
-- [ ] One `tracebi_runs` shape for every kind of run (kind, target, actor,
+- [x] One `tracebi_runs` shape for every kind of run (kind, target, actor,
       status, started, finished, output path, verdict). `schedule_runs.jsonl`
-      is migrated in.
-- [ ] Background runs and the last-build pointer move from memory into the
+      is imported once into that table.
+- [x] Background runs and the last-build pointer move from memory into the
       store, so `--workers 4` on Postgres works for polls and opens.
-- [ ] A schedule tick takes a Postgres advisory lock per report, like
+- [x] A schedule tick takes a Postgres advisory lock per report, like
       pipelines already do, so two workers never send the same email twice.
 - [ ] A Runs page in the app: what ran, when, for whom, and whether it
-      reproduced.
-- [ ] Adopt a migration tool for the state store (Alembic), per [[deployment]].
+      reproduced. The read API exists (`GET /api/runs`, viewer); the page
+      does not.
+- [x] Adopt a migration tool for the state store (Alembic), per [[deployment]].
 
 **Done when:** a test with two worker processes on Postgres starts a run on
 one and polls it on the other, and a schedule tick fires exactly once.

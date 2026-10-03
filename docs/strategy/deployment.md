@@ -172,7 +172,9 @@ built).
 
 ## Data and state migrations
 
-The project today avoids a migration framework on purpose (see "Audit
-Attribution" in `CLAUDE.md`). With Postgres state for runs, requests and
-users, that changes: **adopt Alembic for the state store in Q2**, and keep
-the startup column-reconcile only for the legacy run table.
+The state store (`tracebi_runs` and the other runner tables) is migrated
+with Alembic (`tracebi/migrations`). `upgrade` runs at startup. A baseline
+matches the schema that predates the extra columns; the next revision adds
+them. `_add_missing_run_columns` still reconciles an existing `tracebi_runs`
+that predates a column, because a baseline stamped onto that file does not
+add it. Warehouse layers stay idempotent and are not migrated.

@@ -130,8 +130,9 @@ These block the plan and are cheaper to fix now. Items 1, 4 and 5 are in
 1. ~~**`registry.scheduled()` is unread.**~~ Done: the decorator warns and
    still registers the report. Schedules live in a package's `report.json`
    `"schedule"` block (`tracebi schedule`).
-2. **Run history is split** between pipeline tables and `schedule_runs.jsonl`.
-   Unify them in the state store.
+2. ~~**Run history is split** between pipeline tables and `schedule_runs.jsonl`.~~
+   Done: one `tracebi_runs` table, migrated with Alembic. An existing
+   `schedule_runs.jsonl` is imported once.
 3. ~~**The web download re-renders.**~~ Done: the HTML download is the last
    build, the same bytes its receipt describes.
 4. **Version shown in the UI is hard-coded.** Serve it from the API.
