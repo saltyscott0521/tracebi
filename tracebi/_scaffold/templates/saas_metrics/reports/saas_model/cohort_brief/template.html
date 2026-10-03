@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SaaS Cohort Brief</title></head>
+<body>
+<main class="tb-page">
+  <header>
+    <h1>The earliest cohort still holds the most ending MRR</h1>
+    <p class="tb-lede">
+      The
+      <span data-tb-figure="value" data-tb-binding="top_cohort"
+            data-tb-cell="dim_cohort.cohort" id="val-top-cohort">—</span>
+      cohort holds
+      <span data-tb-figure="value" data-tb-binding="top_cohort"
+            data-tb-cell="ending_mrr" data-tb-format="currency0"
+            id="val-cohort-mrr">—</span>
+      of ending MRR, from
+      <span data-tb-figure="value" data-tb-binding="top_cohort"
+            data-tb-cell="customers" data-tb-format="comma"
+            id="val-cohort-customers">—</span>
+      customers still active.
+    </p>
+    <p class="tb-note">Cohort is the signup month. Ending MRR and the
+      customer count are that cohort's balances at the latest month in the
+      query. Logo churn on the month tab is logos lost divided by logos at
+      the start of the month.</p>
+  </header>
+
+  <div class="tb-grid">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="ending_mrr" data-tb-format="currency0" id="kpi-mrr">
+      <span class="tb-kpi-label">Ending MRR</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">latest month, all cohorts</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="customers" data-tb-format="comma" id="kpi-customers">
+      <span class="tb-kpi-label">Customers</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">logos active at that month</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="logo_churn" data-tb-format="percent" id="kpi-churn">
+      <span class="tb-kpi-label">Logo churn</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">lost / starting logos, that month</span>
+    </div>
+  </div>
+
+  <div class="tb-tabs">
+    <section data-tb-tab="Cohorts">
+      <div class="tb-card">
+        <h2>Ending MRR by signup cohort</h2>
+        <div data-tb-figure="chart" data-tb-binding="by_cohort"
+             data-tb-type="bar" data-tb-x="dim_cohort.cohort"
+             data-tb-y="ending_mrr" data-tb-value-format="compact"
+             id="chart-by-cohort"></div>
+      </div>
+      <div class="tb-card">
+        <h2>Cohort detail</h2>
+        <p>
+          <label>Search
+            <input data-tb-search data-tb-binding="by_cohort"
+                   placeholder="type to filter…"></label>
+          <label>Cohort
+            <select data-tb-filter data-tb-binding="by_cohort"
+                    data-tb-column="dim_cohort.cohort"></select></label>
+          <button data-tb-download data-tb-binding="by_cohort"
+                  data-tb-label="Download CSV"></button>
+        </p>
+        <table data-tb-figure="table" data-tb-binding="by_cohort" data-tb-sort
+               data-tb-columns="dim_cohort.cohort, ending_mrr, customers, logo_churn"
+               data-tb-labels="dim_cohort.cohort=Cohort; ending_mrr=Ending MRR; customers=Customers; logo_churn=Logo churn"
+               data-tb-formats="ending_mrr=currency0; customers=comma; logo_churn=percent"
+               data-tb-bars="ending_mrr"
+               class="tb-table--striped" id="tbl-cohort"></table>
+      </div>
+    </section>
+
+    <section data-tb-tab="Months">
+      <div class="tb-card">
+        <h2>Month by month</h2>
+        <p class="tb-note">Each row is that month's own period-end. Logo
+          churn is recomputed inside the month, not averaged across months.</p>
+        <p>
+          <button data-tb-download data-tb-binding="by_month"
+                  data-tb-label="Download CSV"></button>
+        </p>
+        <table data-tb-figure="table" data-tb-binding="by_month" data-tb-sort
+               data-tb-columns="dim_month.month, ending_mrr, customers, logo_churn"
+               data-tb-labels="dim_month.month=Month; ending_mrr=Ending MRR; customers=Customers; logo_churn=Logo churn"
+               data-tb-formats="ending_mrr=currency0; customers=comma; logo_churn=percent"
+               data-tb-bars="ending_mrr"
+               class="tb-table--striped" id="tbl-month"></table>
+      </div>
+    </section>
+  </div>
+
+  <section class="tb-card" data-tb-methodology>
+    <h2>How these numbers were made</h2>
+    <p class="tb-note">The build appends the transform's stated methodology
+      below this line. The claim is that the sink satisfied its contract.</p>
+  </section>
+</main>
+</body></html>

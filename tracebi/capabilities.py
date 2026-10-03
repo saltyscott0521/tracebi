@@ -750,6 +750,28 @@ def _schedule() -> dict:
     }
 
 
+def _init_templates() -> dict:
+    """Named starters for ``tracebi init --template``.
+
+    The list is the catalog in ``tracebi.project_templates``, so a new
+    template shows up in ``tracebi context`` when it is registered there.
+    """
+    from tracebi.project_templates import known_template_names, template_catalog
+
+    return {
+        "what": "tracebi init --template <name> scaffolds a working "
+                "mini-project — sample data, a sink contract, a model, and "
+                "two reports — that an agent re-points at real tables. "
+                "tracebi init with no --template scaffolds the sample "
+                "orders dashboard.",
+        "cli": "tracebi init <project> --template saas-metrics",
+        "aliases": "saas_metrics is accepted for saas-metrics. Any other "
+                   "name is refused and the error lists the known templates.",
+        "names": known_template_names(),
+        "known": template_catalog(),
+    }
+
+
 def _analyst_knowledge() -> dict:
     """The good-practice curriculum, as a cheap index (slug/title/when) plus how
     to pull a lesson in full. Present in BOTH tiers, brief included — teaching an
@@ -1025,6 +1047,7 @@ def describe(brief: bool = False) -> dict:
         "transform_contracts": _transform_contracts(),
         "conventions": _conventions(),
         "schedule": _schedule(),
+        "templates": _init_templates(),
         "connect": {
             "what": "Point a project at a warehouse it did not sink. Tests "
                     "the connection, writes the secret to .env (never "

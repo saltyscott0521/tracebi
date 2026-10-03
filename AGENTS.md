@@ -47,6 +47,15 @@ the same way. `--connection <name>` wires the connector `tracebi connect`
 wrote. Relationships and measures stay `# DRAFT: review` comments — foreign
 keys are not invented.
 
+Starting from a question? `tracebi init <project> --template saas-metrics`
+(also `saas_metrics`) scaffolds the SaaS metrics starter: ending MRR, logo
+churn, and a signup-cohort cut, plus the reports `saas_model/mrr_dashboard`
+and `saas_model/cohort_brief`, over a small sample that verifies. Unknown
+template names are refused with the known list. `tracebi context` lists
+them under `templates`. Next, `tracebi connect` and re-point
+`models/saas_model.py`. Default `tracebi init` (no flag) scaffolds the
+sample orders dashboard.
+
 ## Where the trust machinery applies — and where it does not
 
 TraceBi is also a **trust layer for AI-generated analytics**: AI made producing

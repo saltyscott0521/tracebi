@@ -1,0 +1,43 @@
+{
+  "name": "SaaS MRR Dashboard",
+  "author": "tracebi init --template saas-metrics",
+  "description": "Ending MRR, customers, and logo churn, with the monthly trend and a plan cut. Every figure claims a binding on saas_model.",
+  "libs": ["echarts"],
+  "data": {
+    "kpis": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr", "customers", "logo_churn"]
+      }
+    },
+    "top_plan": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr"],
+        "dimensions": ["dim_plan.plan"],
+        "order_by": ["-ending_mrr"],
+        "limit": 1
+      }
+    },
+    "by_month": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr", "customers"],
+        "dimensions": ["dim_month.month"],
+        "order_by": ["dim_month.month"]
+      }
+    },
+    "by_plan": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr", "customers", "logo_churn"],
+        "dimensions": ["dim_plan.plan"],
+        "order_by": ["-ending_mrr"]
+      }
+    }
+  }
+}
