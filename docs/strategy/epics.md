@@ -34,7 +34,7 @@ team          │ E4 quality floor:    │   │    page + mounts      │   │
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
 FRAMEWORK     │ E9 The report        │   │                       │   │ E10 Warehouse-scale    │
 the engine    │    explains itself   │──▶│                       │──▶│     engine             │
-              │ E8 / E14: done       │   │                       │   │                        │
+              │ E8 / E14: done       │   │                       │   │ E15 Dashboard cookbook │
               │ (decisions remain)   │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
@@ -412,6 +412,52 @@ loading the fact table into Python ([[target-architecture]] decision 2).
 **Start when:** the first client dataset doesn't fit comfortably in memory,
 or a typical report build passes 60 seconds. Until then the in-process path
 is correct and fast enough.
+
+#### E15 · Dashboard cookbook — S · Later
+
+**Goal:** an author, or the agent helping them, picks a page structure by
+name instead of inventing a layout. Each recipe is a composition of pieces
+the runtime already has. Adding a recipe is a scaffold and a vocabulary
+entry, not a new design system.
+
+**Recipes, from what already ships:**
+
+| Recipe | What the page is | Built from |
+| --- | --- | --- |
+| `brief` | One finding: answer sentence, a few KPIs, one chart | `.tb-lede`, `.tb-grid` / `.tb-kpi`, one `.tb-card` |
+| `dashboard` | The finding plus the cut beside the detail | `brief`, then `.tb-cols-2` (chart and filterable table). This is what `tracebi init` and `tracebi new-report` write today (#168) |
+| `tabbed` | Two jobs on one file, one visible at a time | Same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail), as the showcase does |
+
+Filter, search, and download stay available inside any recipe. They subset
+stamped rows. They never become their own recipe, and they never compute.
+
+**Not a recipe:**
+
+- A nav bar that jumps between reports. A built file is one self-contained
+  HTML. Moving between reports is the app (the Reports list), not chrome
+  inside the artifact.
+- A second stylesheet or a theme picker. Restyle through `--tb-*` tokens.
+
+**Decision before any new control:** an in-page section nav (a bar of links
+that only scroll to sections on this page). Tabs already answer "show one
+section at a time." A scroll-nav is worth adding only if a long single page
+is a recipe people ask for, and it must not hide figures in a way that looks
+like a different cut of the numbers.
+
+**When it is built:**
+
+1. Name the recipes in `tracebi context` (`presentation.layout`).
+2. `tracebi new-report --layout brief|dashboard|tabbed` writes that
+   skeleton. Default stays `dashboard`.
+3. The `author_report` prompt offers the three names in one line each, so
+   an agent asks which structure instead of designing one.
+4. The showcase keeps showing every piece. The cookbook shows the
+   compositions. Discoverability rule applies: vocabulary, both agent
+   guides, and the scaffold in the same change.
+
+**Done when:** `tracebi new-report "Weekly" --layout tabbed` writes the
+tabbed skeleton, `tracebi context` lists `brief`, `dashboard`, and `tabbed`,
+and the default with no flag is still the dashboard row.
 
 ### Workflows
 
