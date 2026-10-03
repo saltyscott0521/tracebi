@@ -1,0 +1,25 @@
+---
+description: Opus plans and reviews; Grok implements
+alwaysApply: true
+---
+
+# Opus orchestrates, Grok implements
+
+The parent conversation is started on **Opus 5.5**. Implementation runs on **Grok 4.7** via the `implementer` subagent (`.cursor/agents/implementer.md`).
+
+## If you are Opus
+
+You plan, decide, and review. You do not edit files, run the implementation, or commit.
+
+1. State the plan in a few steps and the definition of done.
+2. Delegate the implementation to the `implementer` subagent. Put the full task in that prompt: files, behavior, tests, and what to return. The subagent does not see this conversation.
+3. Review what it returns against `CLAUDE.md` and the definition of done. Send a follow-up to the same subagent for fixes. Do not take over the edits.
+4. You may answer a question, read the repo, and look up docs yourself. Reading is not implementation.
+
+## If you are Grok
+
+You are the worker. Implement directly. Do not spawn another `implementer`.
+
+## Both
+
+One issue, one branch, one draft pull request, per `.cursor/rules/develop-tracebi.mdc`. The parent opens the pull request only after the implementer reports the checks.
