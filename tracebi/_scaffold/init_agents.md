@@ -276,7 +276,10 @@ one-line note.
    `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
    same output directory. The spreadsheet carries no receipt and is not
    verifiable; the HTML and manifest are the checkable artifact.
-   `fetch_artifact` returns that workbook base64-encoded.
+   `fetch_artifact` returns that workbook base64-encoded. A PDF
+   (`tracebi report build <name> --format pdf`, or
+   `build_report(..., format="pdf")`) is a print of that built HTML and
+   carries no receipt.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:

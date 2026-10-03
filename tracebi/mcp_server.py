@@ -27,6 +27,7 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 """
 
 import base64
+import functools
 import hmac
 import ipaddress
 import json
@@ -233,13 +234,19 @@ _FETCH_MAX_BYTES = 16 * 1024 * 1024
 _XLSX_MEDIA_TYPE = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
-# fetch_artifact returns text for these; .xlsx is base64 because a workbook
-# is not text. Every other suffix stays refused.
+_PDF_MEDIA_TYPE = "application/pdf"
+# fetch_artifact returns text for these; .xlsx and .pdf are base64 because
+# neither is text. Every other suffix stays refused.
 _FETCH_TEXT_TYPES = {".html": "text/html", ".json": "application/json"}
 _XLSX_NOTE = (
     "The spreadsheet carries no receipt and is not verifiable. "
     "The checkable artifact is the HTML at output_path and its manifest "
     "at manifest_path."
+)
+_PDF_NOTE = (
+    "The PDF is a print of the built HTML. It carries no receipt and is "
+    "not verifiable. The checkable artifact is the HTML at output_path "
+    "and its manifest at manifest_path."
 )
 
 
@@ -321,10 +328,13 @@ front of a person should carry a receipt. This gateway is how you produce one.
    only its own artifact and receipt. `format="xlsx"` also writes
    `<name>.xlsx` beside them. The spreadsheet carries no receipt and is
    not verifiable; the HTML and manifest are the checkable artifact.
+   `format="pdf"` also writes `<name>.pdf`: a print of that built HTML,
+   which carries no receipt.
 6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
    Pass the returned `html_path` or `manifest_path` (to hand to verify),
-   or the `xlsx_path` from a `format="xlsx"` build. HTML and JSON come
-   back as text; an `.xlsx` comes back base64-encoded with its media type.
+   the `xlsx_path` from a `format="xlsx"` build, or the `pdf_path` from
+   a `format="pdf"` build. HTML and JSON come back as text; an `.xlsx`
+   or `.pdf` comes back base64-encoded with its media type.
 7. **verify_manifest** — re-runs the recorded queries and classifies each
    section. Only `reproduces` means a number was re-run and matched; a
    manifest with nothing to check is not a pass.
@@ -397,10 +407,19 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
 # several tools share one dict between a success shape and an
 # ``{ok, errors}`` envelope, and the MCP SDK drops any returned key the schema
 # does not name — so every key a function can return is listed here.
+#
+# Every non-Any field is Optional. The SDK builds one pydantic model from the
+# TypedDict and, for each key the function omitted, dumps null (the default it
+# sets on total=False fields). A schema of ``{"type": "string", "default": null}``
+# does not allow that null, and a schema-checking client rejects the whole
+# result. Optional makes the advertised schema permit null exactly where that
+# conversion emits it. There is no nested model: containers are Any, or
+# list/dict of str whose values the tools actually return as strings (a null
+# inside one of those would still fail, and none of the returns produce one).
 
 
 class ContextResult(TypedDict, total=False):
-    tracebi_version: str
+    tracebi_version: Optional[str]
     semantic_model: Any
     report_sections: Any
     dataset_verbs: Any
@@ -411,20 +430,20 @@ class ContextResult(TypedDict, total=False):
 
 
 class ModelsResult(TypedDict, total=False):
-    models: dict[str, Any]
-    skipped: list[dict[str, str]]
+    models: Optional[dict[str, Any]]
+    skipped: Optional[list[dict[str, str]]]
 
 
 class DescribeTableResult(TypedDict, total=False):
-    ok: bool
-    error: str
-    connectors: list[dict[str, Any]]
-    columns: list[dict[str, Any]]
+    ok: Optional[bool]
+    error: Optional[str]
+    connectors: Optional[list[dict[str, Any]]]
+    columns: Optional[list[dict[str, Any]]]
 
 
 class ModelInfoResult(TypedDict, total=False):
-    error: str
-    name: str
+    error: Optional[str]
+    name: Optional[str]
     tables: Any
     relationships: Any
     facts: Any
@@ -435,46 +454,46 @@ class ModelInfoResult(TypedDict, total=False):
 
 
 class QueryResult(TypedDict, total=False):
-    ok: bool
-    errors: list[str]
-    model: str
-    query: dict[str, Any]
-    columns: list[str]
-    row_count: int
-    rows: list[dict[str, Any]]
-    rows_returned: int
-    truncated: bool
-    fingerprint: str
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    model: Optional[str]
+    query: Optional[dict[str, Any]]
+    columns: Optional[list[str]]
+    row_count: Optional[int]
+    rows: Optional[list[dict[str, Any]]]
+    rows_returned: Optional[int]
+    truncated: Optional[bool]
+    fingerprint: Optional[str]
     lineage: Any
-    actor: str
-    binding: dict[str, Any]
+    actor: Optional[str]
+    binding: Optional[dict[str, Any]]
 
 
 class ValidateResult(TypedDict, total=False):
-    ok: bool
-    errors: list[str]
-    warnings: list[str]
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    warnings: Optional[list[str]]
 
 
 class RenderResult(TypedDict, total=False):
-    ok: bool
-    html_path: str
-    manifest_path: str
-    report_name: str
-    sections: int
-    dataset_fingerprints: list[str]
-    warnings: list[str]
-    errors: list[str]
+    ok: Optional[bool]
+    html_path: Optional[str]
+    manifest_path: Optional[str]
+    report_name: Optional[str]
+    sections: Optional[int]
+    dataset_fingerprints: Optional[list[str]]
+    warnings: Optional[list[str]]
+    errors: Optional[list[str]]
 
 
 class FetchArtifactResult(TypedDict, total=False):
-    ok: bool
-    errors: list[str]
-    path: str
-    content_type: str
-    bytes: int
-    content: str
-    encoding: str
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    path: Optional[str]
+    content_type: Optional[str]
+    bytes: Optional[int]
+    content: Optional[str]
+    encoding: Optional[str]
 
 
 class ReportsResult(TypedDict, total=False):
@@ -482,18 +501,18 @@ class ReportsResult(TypedDict, total=False):
 
 
 class ResolvePinResult(TypedDict, total=False):
-    ok: bool
-    pin_id: str
-    resolved_note: str
-    resolved_by: str
-    errors: list[str]
+    ok: Optional[bool]
+    pin_id: Optional[str]
+    resolved_note: Optional[str]
+    resolved_by: Optional[str]
+    errors: Optional[list[str]]
 
 
 class WorkbenchStateResult(TypedDict, total=False):
     # Package shape (report given) and discovery shape (no report) share
     # this one result type — total=False keeps both valid.
-    mode: str
-    name: str
+    mode: Optional[str]
+    name: Optional[str]
     figures: Any
     coverage: Any
     bindings: Any
@@ -502,39 +521,41 @@ class WorkbenchStateResult(TypedDict, total=False):
     exhibits: Any
     pins: Any
     resolved: Any
-    resolved_count: int
+    resolved_count: Optional[int]
     code: Any
     warehouse: Any
     models: Any
     packages: Any
     error: Any
-    errors: list[str]
+    errors: Optional[list[str]]
 
 
 class BuildReportResult(TypedDict, total=False):
-    ok: bool
-    report: str
-    output_path: str
-    manifest_path: str
+    ok: Optional[bool]
+    report: Optional[str]
+    output_path: Optional[str]
+    manifest_path: Optional[str]
     figures: Any
-    embedded_fingerprints: list[str]
+    embedded_fingerprints: Optional[list[str]]
     transform_contracts: Any
-    xlsx_path: str
-    spreadsheet_note: str
-    errors: list[str]
+    xlsx_path: Optional[str]
+    spreadsheet_note: Optional[str]
+    pdf_path: Optional[str]
+    pdf_note: Optional[str]
+    errors: Optional[list[str]]
 
 
 class VerifyResult(TypedDict, total=False):
-    ok: bool
-    verdict: str
-    verdict_detail: str
-    exit_code: int
-    report_name: str
+    ok: Optional[bool]
+    verdict: Optional[str]
+    verdict_detail: Optional[str]
+    exit_code: Optional[int]
+    report_name: Optional[str]
     schema_version: Any
     python_derived: Any
     sections: Any
     summary: Any
-    errors: list[str]
+    errors: Optional[list[str]]
 
 
 # ── Gateway operations ─────────────────────────────────────────────────────
@@ -1101,12 +1122,16 @@ def gateway_build_report(
     path, ``save_manifest=False``). A spreadsheet cannot carry a receipt:
     the result says so and points at the HTML and manifest, which remain
     the checkable artifact.
+
+    ``format="pdf"`` also writes ``<name>.pdf``: a print of the built HTML
+    (headless Chromium). The PDF carries no receipt; ``pdf_note`` points
+    at the HTML and manifest.
     """
     from tracebi.reports.template_package import TemplatePackage
 
-    if format not in ("html", "xlsx"):
+    if format not in ("html", "xlsx", "pdf"):
         return {"ok": False, "errors": [
-            f"format must be 'html' or 'xlsx', not {format!r}"
+            f"format must be 'html', 'xlsx', or 'pdf', not {format!r}"
         ]}
     # The name is a directory under reports/ (a folder path at most), and
     # can never climb out of it.
@@ -1126,6 +1151,7 @@ def gateway_build_report(
     out_dir.mkdir(parents=True, exist_ok=True)
     output = out_dir / f"{report}.html"          # keeps the report's folders
     xlsx = out_dir / f"{report}.xlsx"
+    pdf = out_dir / f"{report}.pdf"
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         with actor(_mcp_actor()):
@@ -1139,6 +1165,9 @@ def gateway_build_report(
                 from tracebi.reports.excel_renderer import ExcelRenderer
                 carrier, _stamped = package.build(models)
                 ExcelRenderer().render(carrier, str(xlsx), save_manifest=False)
+            elif format == "pdf":
+                from tracebi.reports.pdf import print_pdf
+                print_pdf(str(output), str(pdf))
     except Exception as exc:  # noqa: BLE001 — a refused build is a result
         return {"ok": False, "errors": [f"{type(exc).__name__}: {exc}"]}
     m = manifest.to_dict()
@@ -1156,6 +1185,9 @@ def gateway_build_report(
     if format == "xlsx":
         result["xlsx_path"] = str(xlsx)
         result["spreadsheet_note"] = _XLSX_NOTE
+    if format == "pdf":
+        result["pdf_path"] = str(pdf)
+        result["pdf_note"] = _PDF_NOTE
     return result
 
 
@@ -1165,23 +1197,24 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
     ``render_report_spec`` and ``build_report`` return a server-side PATH; a
     remote agent driving the gateway over MCP needs the BYTES to deliver the
     report or hand the manifest to ``verify_manifest``. Pass the ``html_path``
-    or ``manifest_path`` a render/build tool returned, or the ``xlsx_path``
-    from ``build_report(..., format="xlsx")``. Read-only and hard
+    or ``manifest_path`` a render/build tool returned, the ``xlsx_path``
+    from ``build_report(..., format="xlsx")``, or the ``pdf_path`` from
+    ``build_report(..., format="pdf")``. Read-only and hard
     path-guarded: the file must sit under the working directory (or
     ``$TRACEBI_OUTPUT_ROOT``), never inside the installed package, and be one of
-    the ``.html`` / ``.json`` / ``.xlsx`` artifacts those tools write — never
-    arbitrary server files. HTML and JSON come back as text. A workbook is
-    not text, so ``.xlsx`` comes back base64-encoded (``encoding="base64"``)
-    with its spreadsheet media type. Over ``_FETCH_MAX_BYTES`` it refuses
-    and names the path.
+    the ``.html`` / ``.json`` / ``.xlsx`` / ``.pdf`` artifacts those tools write — never
+    arbitrary server files. HTML and JSON come back as text. A workbook or
+    PDF is not text, so ``.xlsx`` and ``.pdf`` come back base64-encoded
+    (``encoding="base64"``) with their media type. Over ``_FETCH_MAX_BYTES``
+    it refuses and names the path.
     """
     resolved, err = _confined_read_path(path)
     if err:
         return {"ok": False, "errors": [err]}
     suffix = resolved.suffix.lower()
-    if suffix not in _FETCH_TEXT_TYPES and suffix != ".xlsx":
+    if suffix not in _FETCH_TEXT_TYPES and suffix not in (".xlsx", ".pdf"):
         return {"ok": False, "errors": [
-            "fetch_artifact reads only rendered .html, .json, and .xlsx "
+            "fetch_artifact reads only rendered .html, .json, .xlsx, and .pdf "
             f"artifacts, not {suffix!r}"]}
     size = resolved.stat().st_size
     if size > _FETCH_MAX_BYTES:
@@ -1193,6 +1226,10 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
             content = base64.b64encode(resolved.read_bytes()).decode("ascii")
             encoding = "base64"
             ctype = _XLSX_MEDIA_TYPE
+        elif suffix == ".pdf":
+            content = base64.b64encode(resolved.read_bytes()).decode("ascii")
+            encoding = "base64"
+            ctype = _PDF_MEDIA_TYPE
         else:
             content = resolved.read_text(encoding="utf-8")
             encoding = ""
@@ -1224,6 +1261,7 @@ def build_server(token: Optional[str] = None):
     """
     try:
         from mcp.server.mcpserver import MCPServer
+        from mcp.server.mcpserver.exceptions import ToolError
         from mcp.types import ToolAnnotations
     except ImportError as exc:  # pragma: no cover — exercised by hand
         raise ImportError(
@@ -1292,11 +1330,22 @@ def build_server(token: Optional[str] = None):
     )
 
     # Every tool registers through here, so the opt-in call log
-    # (TRACEBI_MCP_LOG=1) wraps them all in one place.
+    # (TRACEBI_MCP_LOG=1) wraps them all in one place. The log stays inside:
+    # it records the original exception. Outside it, a plain exception becomes
+    # a ToolError whose one-line message reaches the client. On current mcp a
+    # plain exception is masked to "Error executing tool <name>".
     def _tool(**kwargs):
         def register(fn):
-            return server.tool(**kwargs)(
-                _gateway_log.logged(kwargs["name"], fn, _mcp_actor))
+            logged = _gateway_log.logged(kwargs["name"], fn, _mcp_actor)
+
+            @functools.wraps(logged)
+            def visible(*args, **kw):
+                try:
+                    return logged(*args, **kw)
+                except Exception as exc:  # noqa: BLE001 — the client must see why
+                    raise ToolError(_one_line_error(exc)) from exc
+
+            return server.tool(**kwargs)(visible)
         return register
 
     # Tools. structured_output=True advertises each return's JSON Schema and
@@ -1436,7 +1485,9 @@ def build_server(token: Optional[str] = None):
             "its own artifact and receipt. format='xlsx' also writes "
             "<name>.xlsx in the same output directory. The spreadsheet "
             "carries no receipt and is not verifiable; the HTML and "
-            "manifest are the checkable artifact (see spreadsheet_note)."
+            "manifest are the checkable artifact (see spreadsheet_note). "
+            "format='pdf' also writes <name>.pdf, a print of the built HTML "
+            "that carries no receipt (see pdf_note)."
         ),
     )(gateway_build_report)
     _tool(
@@ -1444,13 +1495,13 @@ def build_server(token: Optional[str] = None):
         annotations=_READ, structured_output=True,
         description=(
             "Read back the bytes of an artifact a render/build tool wrote — "
-            "pass the html_path, manifest_path, or xlsx_path it returned. "
-            "The render tools return a server-side path; this delivers the "
-            "actual content so a remote agent can send the report or hand "
-            "the manifest to verify_manifest. HTML and JSON come back as "
-            "text. An .xlsx comes back base64-encoded (encoding='base64') "
-            "with its spreadsheet media type. Read-only, guarded to the "
-            "artifact directory. Every other suffix is refused."
+            "pass the html_path, manifest_path, xlsx_path, or pdf_path it "
+            "returned. The render tools return a server-side path; this "
+            "delivers the actual content so a remote agent can send the "
+            "report or hand the manifest to verify_manifest. HTML and JSON "
+            "come back as text. An .xlsx or .pdf comes back base64-encoded "
+            "(encoding='base64') with its media type. Read-only, guarded to "
+            "the artifact directory. Every other suffix is refused."
         ),
     )(gateway_fetch_artifact)
     _tool(

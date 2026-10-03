@@ -419,21 +419,62 @@ def report_run_status(name: str, run_id: str):
     return record
 
 
+def _pdf_of_last_build(name: str, fname: str):
+    """Print the last build to PDF. A missing Playwright is a structured error."""
+    built = _last_build(name)
+    html_path = built.get("html_path")
+    tmp_html = None
+    if not html_path or not os.path.isfile(html_path):
+        fd, tmp_html = tempfile.mkstemp(suffix=".html")
+        os.close(fd)
+        with open(tmp_html, "w", encoding="utf-8") as fh:
+            fh.write(built["html"])
+        html_path = tmp_html
+    fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd)
+    try:
+        from tracebi.reports.pdf import print_pdf
+        print_pdf(html_path, pdf_path)
+    except (ImportError, RuntimeError) as exc:
+        os.unlink(pdf_path)
+        raise HTTPException(
+            status_code=500,
+            detail=_error_detail("PDF export unavailable", exc),
+        ) from exc
+    except Exception as exc:
+        os.unlink(pdf_path)
+        raise HTTPException(
+            status_code=500, detail=_error_detail("PDF export failed", exc)
+        ) from exc
+    finally:
+        if tmp_html:
+            os.unlink(tmp_html)
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"{fname}.pdf",
+        background=BackgroundTask(os.unlink, pdf_path),
+    )
+
+
 @router.get("/{name:path}/download")
 def download_report(name: str, format: str = "xlsx"):
     """
     Run a report and download the rendered file.
 
-    Formats: ``xlsx`` (Excel via openpyxl) or ``html`` (self-contained page).
+    Formats: ``xlsx`` (Excel via openpyxl), ``html`` (self-contained page),
+    or ``pdf`` (a print of that page). HTML and PDF are the last build.
     """
-    if format not in ("xlsx", "html"):
+    if format not in ("xlsx", "html", "pdf"):
         raise HTTPException(
-            status_code=400, detail=f"Unsupported format '{format}'. Use xlsx or html."
+            status_code=400,
+            detail=f"Unsupported format '{format}'. Use xlsx, html, or pdf.",
         )
     fname = _safe_filename(name.rsplit("/", 1)[-1])  # the report's own name, no folders
 
     # The HTML download is the last build — the file the reader is looking
     # at, the same bytes ``verify --file`` checks — never a fresh render.
+    # PDF is a print of that same file. Neither re-queries on its own.
     if format == "html":
         return HTMLResponse(
             _last_build(name)["html"],
@@ -441,6 +482,8 @@ def download_report(name: str, format: str = "xlsx"):
                 "Content-Disposition": f'attachment; filename="{fname}.html"',
             },
         )
+    if format == "pdf":
+        return _pdf_of_last_build(name, fname)
 
     report = _run_report_or_502(name)
 

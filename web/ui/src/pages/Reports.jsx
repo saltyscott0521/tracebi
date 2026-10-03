@@ -97,7 +97,8 @@ function ReportReceipt({ manifest }) {
       </div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
         The <strong>HTML</strong> download is one file that can be checked offline with{' '}
-        <code>tracebi verify --file</code>. Excel is a plain spreadsheet.
+        <code>tracebi verify --file</code>. Excel is a plain spreadsheet. PDF is a
+        print of this page and carries no receipt.
       </div>
     </div>
   )
@@ -462,6 +463,14 @@ function ReportDetail({ report, onBack }) {
               title="A plain spreadsheet; it can't be checked the way the HTML file can"
             >
               ↓ Excel
+            </a>
+            <a
+              href={reportDownloadUrl(report.name, 'pdf')}
+              download
+              className="dl-link"
+              title="A print of this page. Charts render. It carries no receipt; the HTML file is what can be checked"
+            >
+              ↓ PDF
             </a>
           </div>
 

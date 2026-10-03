@@ -127,11 +127,16 @@ See [[updating]].
 ### `tracebi report build`
 
 ```bash
-tracebi report build <name> [--output PATH] [--badges] [--reports-dir DIR]
+tracebi report build <name> [--output PATH] [--format html|pdf] [--badges] [--reports-dir DIR]
 ```
 
 Renders to one self-contained, offline `.html` plus a sibling
 `<output>.html.manifest.json`. Default output is `output/<name>.html`.
+
+`--format pdf` also writes a sibling `.pdf`: a print of that built HTML
+(headless Chromium, so charts render). The PDF carries no receipt; the HTML
+and manifest stay the checkable artifact. Needs `pip install 'tracebi[pdf]'`
+and `python -m playwright install chromium`.
 
 - `--badges` — draw per-figure provenance badges on the page. Off by default;
   the receipt drawer already carries provenance in one place. **The manifest is
