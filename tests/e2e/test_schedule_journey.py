@@ -44,8 +44,8 @@ def scheduled(scaffolded, monkeypatch):
 
 
 def _runs(proj):
-    return [json.loads(line) for line in
-            (proj / "output" / "schedule_runs.jsonl").read_text().splitlines()]
+    from tracebi.state import schedule_records
+    return schedule_records(proj / "output")
 
 
 def test_a_scheduled_report_is_built_verified_emailed_and_recorded(scheduled):
@@ -175,7 +175,7 @@ def test_an_empty_source_alerts_the_owner_and_sends_nothing(
     body = msg.get_content()
     assert "by_region" in body
     assert "spare" not in body
-    assert "output/schedule_runs.jsonl" in body
+    assert "tracebi_runs (kind=schedule)" in body
     assert list(msg.iter_attachments()) == []
 
     [record] = _runs(scheduled)

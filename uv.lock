@@ -18,6 +18,21 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "alembic"
+version = "1.20.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mako" },
+    { name = "sqlalchemy" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ed/aa/02910bdb8e2f1444f6654d5b296cd827d126f82209050ee7b1000f92ac4b/alembic-1.20.0.tar.gz", hash = "sha256:db505480647bc60386c5369402f4a57a506b7539c9e9ef5e270d45cbbe4939bf", size = 2093272, upload-time = "2026-09-11T19:09:11.126Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/27/78a89b55b0904d222183164e079b4ca56208e94eff1d35ad1f1ad5be9b06/alembic-1.20.0-py3-none-any.whl", hash = "sha256:77eb101048d95f982c0353e9233404889dcd7a6fc244c107836c0e2fc9cf7d9d", size = 268719, upload-time = "2026-09-11T19:09:12.88Z" },
+]
+
+[[package]]
 name = "annotated-doc"
 version = "0.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1570,6 +1585,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/48/44/2b5b95b7aa39fb2d8d9d956e0f3d5d45aef2ae1d942d4c3ffac2f9cfed1a/kiwisolver-1.5.0-pp311-pypy311_pp73-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:be4a51a55833dc29ab5d7503e7bcb3b3af3402d266018137127450005cdfe737", size = 79892, upload-time = "2026-03-09T13:15:49.694Z" },
     { url = "https://files.pythonhosted.org/packages/52/7d/7157f9bba6b455cfb4632ed411e199fc8b8977642c2b12082e1bd9e6d173/kiwisolver-1.5.0-pp311-pypy311_pp73-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:daae526907e262de627d8f70058a0f64acc9e2641c164c99c8f594b34a799a16", size = 77603, upload-time = "2026-03-09T13:15:50.945Z" },
     { url = "https://files.pythonhosted.org/packages/0a/dd/8050c947d435c8d4bc94e3252f4d8bb8a76cfb424f043a8680be637a57f1/kiwisolver-1.5.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:59cd8683f575d96df5bb48f6add94afc055012c29e28124fcae2b63661b9efb1", size = 73558, upload-time = "2026-03-09T13:15:52.112Z" },
+]
+
+[[package]]
+name = "mako"
+version = "1.4.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5a/09/e07c4b5579a79f4b16f8d4f29f6c54514ac787c4ad506b8c4f28a0e6b0bf/mako-1.4.3.tar.gz", hash = "sha256:cd6537fe88d5fec315c55c2f8529bc4ce7a9a352ad7db3eeaa6a66e2dd4ec37a", size = 412799, upload-time = "2026-09-22T20:54:31.509Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6d/a0/053d6af3e8f871e0073b4a36732d9e65be77a72e5434c31b94f6af78a6bb/mako-1.4.3-py3-none-any.whl", hash = "sha256:723296007c870bfd6b3f0c3230dba7198096e5269297ebf5e4eff9e7ffa39d4f", size = 80164, upload-time = "2026-09-22T20:54:33.128Z" },
 ]
 
 [[package]]
@@ -3488,6 +3515,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "alembic" },
     { name = "apscheduler" },
     { name = "db-dtypes" },
     { name = "duckdb" },
@@ -3512,6 +3540,7 @@ all = [
     { name = "weasyprint" },
 ]
 analyst = [
+    { name = "alembic" },
     { name = "duckdb" },
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -3530,6 +3559,7 @@ csv = [
     { name = "openpyxl" },
 ]
 dev = [
+    { name = "alembic" },
     { name = "apscheduler" },
     { name = "duckdb" },
     { name = "fastapi" },
@@ -3577,10 +3607,12 @@ pdf = [
     { name = "weasyprint" },
 ]
 pipeline = [
+    { name = "alembic" },
     { name = "apscheduler" },
     { name = "sqlalchemy" },
 ]
 postgres = [
+    { name = "alembic" },
     { name = "psycopg", extra = ["binary"] },
     { name = "sqlalchemy" },
 ]
@@ -3597,15 +3629,23 @@ sql = [
     { name = "sqlalchemy" },
 ]
 web = [
+    { name = "alembic" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "python-multipart" },
+    { name = "sqlalchemy" },
     { name = "starlette" },
     { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "alembic", marker = "extra == 'all'", specifier = ">=1.13" },
+    { name = "alembic", marker = "extra == 'analyst'", specifier = ">=1.13" },
+    { name = "alembic", marker = "extra == 'dev'", specifier = ">=1.13" },
+    { name = "alembic", marker = "extra == 'pipeline'", specifier = ">=1.13" },
+    { name = "alembic", marker = "extra == 'postgres'", specifier = ">=1.13" },
+    { name = "alembic", marker = "extra == 'web'", specifier = ">=1.13" },
     { name = "apscheduler", marker = "extra == 'all'", specifier = ">=3.10" },
     { name = "apscheduler", marker = "extra == 'dev'", specifier = ">=3.10" },
     { name = "apscheduler", marker = "extra == 'pipeline'", specifier = ">=3.10" },
@@ -3670,6 +3710,7 @@ requires-dist = [
     { name = "sqlalchemy", marker = "extra == 'pipeline'", specifier = ">=2.0" },
     { name = "sqlalchemy", marker = "extra == 'postgres'", specifier = ">=2.0" },
     { name = "sqlalchemy", marker = "extra == 'sql'", specifier = ">=2.0" },
+    { name = "sqlalchemy", marker = "extra == 'web'", specifier = ">=2.0" },
     { name = "starlette", marker = "extra == 'all'", specifier = ">=0.27" },
     { name = "starlette", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "starlette", marker = "extra == 'web'", specifier = ">=0.27" },

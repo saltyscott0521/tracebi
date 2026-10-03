@@ -126,8 +126,8 @@ def scheduled(project, tmp_path):
 
 
 def _runs(proj: Path) -> list[dict]:
-    log = proj / "output" / sched.RUN_LOG
-    return [json.loads(line) for line in log.read_text().splitlines()]
+    from tracebi.state import schedule_records
+    return schedule_records(proj / "output")
 
 
 class TestDiscovery:
@@ -430,7 +430,7 @@ class TestOwnerAlerts:
             "TraceBi: sample_dashboard scheduled run failed")
         assert "not_a_measure" in alert["body"]
         assert "Attempts: 3" in alert["body"]
-        assert "output/schedule_runs.jsonl" in alert["body"]
+        assert "tracebi_runs (kind=schedule)" in alert["body"]
 
     def test_a_refused_receipt_alerts_the_owner(self, scheduled, monkeypatch):
         _enter(scheduled, monkeypatch)
@@ -586,6 +586,26 @@ def test_a_retry_past_the_second_waits_five_minutes_again(scheduled, monkeypatch
     assert rec["recipients"] == []
 
 
+def test_a_tick_that_does_not_get_the_lock_records_nothing(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+
+    @contextmanager
+    def deny(_engine, name):
+        assert name == "schedule:weekly"
+        yield False
+
+    monkeypatch.setattr("tracebi.state.advisory_lock", deny)
+    rec = sched.run_schedule(
+        {"report": "weekly", "cron": "0 9 * * MON", "to": ["a@example.com"],
+         "timezone": None, "retries": 0, "owner": "o@example.com",
+         "refresh": {"transforms": [], "pipelines": []}},
+        reports_dir=tmp_path, output_dir=tmp_path / "output",
+    )
+    assert rec["status"] == "skipped"
+    assert rec["error"] == "already running in another process"
+    assert sched.last_runs(tmp_path / "output") == {}
+
+
 def test_last_runs_skips_a_broken_line(tmp_path):
     log = tmp_path / sched.RUN_LOG
     log.write_text('not json\n{"report": "weekly", "status": "failed"}\n',
@@ -681,7 +701,7 @@ def test_in_server_schedules_start_with_the_switch(tmp_path, monkeypatch, caplog
     assert scheduler.running is False
     text = caplog.text
     assert "weekly" in text
-    assert "one process" in text
+    assert "advisory lock per report" in text
 
 
 def test_in_server_schedules_stay_off_by_default(monkeypatch):

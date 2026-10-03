@@ -46,8 +46,9 @@ One run is: refresh → build → verify → empty check → deliver → record,
 an owner alert when one is due. It is ``tracebi report
 send`` with the recipients read from the package, and the same rule —
 distribution never outruns verification: a receipt that does not verify is
-recorded as ``refused`` and nothing is sent. Every run appends one JSON line
-to ``output/schedule_runs.jsonl``.
+recorded as ``refused`` and nothing is sent. Every run is a row in
+``tracebi_runs`` (kind ``schedule``). An existing
+``output/schedule_runs.jsonl`` is imported once.
 
 ``tracebi schedule serve`` runs every schedule in one foreground process
 (needs ``tracebi[pipeline]`` for APScheduler). Any external scheduler — cron,
@@ -213,27 +214,18 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def record_run(record: dict, output_dir: Union[str, Path]) -> Path:
-    """Append *record* as one JSON line to ``<output_dir>/schedule_runs.jsonl``."""
-    log = Path(output_dir) / RUN_LOG
-    log.parent.mkdir(parents=True, exist_ok=True)
-    with open(log, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, default=str) + "\n")
-    return log
+def record_run(record: dict, output_dir: Union[str, Path]) -> None:
+    """Record *record* in the state store. Imports a legacy log in this directory first."""
+    from tracebi.state import record_schedule
+    record_schedule(record, output_dir)
 
 
 def last_runs(output_dir: Union[str, Path]) -> dict[str, dict]:
-    """The most recent recorded run per report (unreadable lines skipped)."""
-    log = Path(output_dir) / RUN_LOG
+    """The most recent recorded run per report. A legacy log is imported once."""
+    from tracebi.state import schedule_records
     latest: dict[str, dict] = {}
-    if not log.is_file():
-        return latest
-    for line in log.read_text(encoding="utf-8").splitlines():
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(rec, dict) and rec.get("report"):
+    for rec in schedule_records(output_dir):
+        if rec.get("report"):
             latest[rec["report"]] = rec
     return latest
 
@@ -249,10 +241,36 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
     retried. An owner alert, when one is due, is sent after the outcome is
     known and before the record is written. It never raises.
 
-    Returns the run record (also appended to the run log). Never raises for
+    Returns the run record (also stored in ``tracebi_runs``). Never raises for
     a failed run — the failure is the record's ``status`` and ``error``, so
     a scheduler loop survives one bad report.
+
+    A Postgres advisory lock per report is held for the whole tick, so two
+    workers do not send the same email. When the lock is already held this
+    returns ``status="skipped"`` and writes nothing. On SQLite the lock is a
+    no-op and every worker proceeds.
     """
+    from tracebi.state import advisory_lock, ensure
+
+    name = schedule["report"]
+    with advisory_lock(ensure(), f"schedule:{name}") as got:
+        if not got:
+            now = _now()
+            return {
+                "report": name, "started_at": now, "finished_at": now,
+                "status": "skipped", "verdict": None, "recipients": [],
+                "output": None, "error": "already running in another process",
+                "actor": None, "actor_role": None, "refresh": [], "attempts": 0,
+            }
+        return _run_schedule(schedule, reports_dir=reports_dir,
+                             output_dir=output_dir, models_dir=models_dir,
+                             send=send)
+
+
+def _run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
+                  output_dir: Union[str, Path],
+                  models_dir: Union[str, Path, None] = None,
+                  send: bool = True) -> dict:
     from tracebi.audit import get_actor
 
     name = schedule["report"]
@@ -293,7 +311,7 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
         record["error"] = None
         try:
             if _refresh(schedule.get("refresh") or {}, record):
-                _build_report_target(kind, path, output)
+                _build_report_target(kind, path, output, report_name=name)
                 record["output"] = str(output)
                 built = True
                 break
@@ -395,7 +413,7 @@ def _alert_body(record: dict) -> str:
         f"Attempts: {record.get('attempts')}",
         f"Started: {record.get('started_at')}",
         f"Finished: {record.get('finished_at')}",
-        f"Recorded in: output/{RUN_LOG}",
+        f"Recorded in: tracebi_runs (kind=schedule)",
         "",
     ])
 
@@ -492,8 +510,8 @@ def start_server_scheduler():
                  reports_dir)
         return None
     log.warning(
-        "In-server schedules assume one process. With several workers, "
-        "each process would send the email.")
+        "In-server schedules on SQLite can send the same email from each "
+        "worker. Postgres takes one advisory lock per report.")
     scheduler = build_scheduler(
         schedules, make_job(reports_dir, output_dir, models_dir),
         blocking=False)

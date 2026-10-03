@@ -1,86 +1,151 @@
 """
-In-memory background run store.
+Background report runs, recorded in the shared state store.
 
-Report runs execute in a small thread pool; the API returns a run_id
-immediately and clients poll for status. Records live in memory only —
-restart clears them. Capped at MAX_RUNS to bound memory (rendered HTML
-payloads are kept on the records).
+The HTML stays in the file ``output_path`` names. Polling reads it back,
+so a second worker that shares the database can return the same result.
+The response shape the UI already polls is unchanged.
 """
 
 from __future__ import annotations
 
-import threading
-import uuid
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
 from tracebi.web.api.errors import error_detail
 
-MAX_RUNS = 50
-
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _detail(row: dict) -> dict:
+    raw = row.get("detail")
+    if isinstance(raw, str) and raw:
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _result(row: dict, detail: dict):
+    if row.get("status") != "succeeded":
+        return None
+    path = row.get("output_path")
+    manifest_path = detail.get("manifest_path")
+    if not manifest_path and path:
+        manifest_path = path + ".manifest.json"
+    html = ""
+    if path and os.path.isfile(path):
+        with open(path, encoding="utf-8") as fh:
+            html = fh.read()
+    manifest = None
+    if manifest_path and os.path.isfile(manifest_path):
+        with open(manifest_path, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+    return {
+        "name": detail.get("name") or row.get("target"),
+        "html": html,
+        "manifest": manifest,
+        "retained": detail.get("retained"),
+        "html_path": path,
+        "manifest_path": manifest_path,
+    }
+
+
+def _api(row: dict, *, with_result: bool) -> dict:
+    detail = _detail(row)
+    body = {
+        "run_id": str(row["id"]),
+        "kind": row.get("kind"),
+        "name": row.get("target") or row.get("layer_name"),
+        "status": row.get("status"),
+        "started_at": row.get("started_at"),
+        "finished_at": row.get("finished") or row.get("completed_at"),
+        "error": detail.get("error"),
+    }
+    if with_result:
+        body["result"] = _result(row, detail)
+    return body
+
+
 class RunStore:
     def __init__(self, max_workers: int = 4) -> None:
-        self._lock = threading.Lock()
-        self._runs: dict[str, dict] = {}
-        self._order: list[str] = []
         self._pool = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="tracebi-run"
         )
 
     def start(self, kind: str, name: str, fn: Callable[[], dict]) -> dict:
-        """Submit ``fn`` to the pool and return the new run record."""
-        run_id = uuid.uuid4().hex[:12]
-        record = {
-            "run_id":      run_id,
-            "kind":        kind,
-            "name":        name,
-            "status":      "running",
-            "started_at":  _now(),
-            "finished_at": None,
-            "result":      None,
-            "error":       None,
-        }
-        with self._lock:
-            self._runs[run_id] = record
-            self._order.append(run_id)
-            while len(self._order) > MAX_RUNS:
-                self._runs.pop(self._order.pop(0), None)
-        self._pool.submit(self._execute, run_id, fn)
-        return dict(record)
+        """Submit ``fn`` and return the new run record. The row exists before return."""
+        from tracebi.state import get_run, install_extra, record_run
 
-    def _execute(self, run_id: str, fn: Callable[[], dict]) -> None:
+        started = _now()
+        with install_extra("web"):
+            run_id = record_run(kind=kind, target=name, status="running", started=started)
+            self._pool.submit(self._execute, run_id, fn)
+            return _api(get_run(run_id), with_result=True)
+
+    def _execute(self, run_id: int, fn: Callable[[], dict]) -> None:
+        from tracebi.state import install_extra, update_run
+
+        output_path = None
         try:
-            result, error, status = fn(), None, "succeeded"
+            result = fn()
+            status, error = "succeeded", None
         except Exception as exc:  # noqa: BLE001 — failures are the payload here
             result, status = None, "failed"
             error = error_detail("Run failed", exc)
-        with self._lock:
-            rec = self._runs.get(run_id)
-            if rec is not None:  # may have been evicted under load
-                rec.update(status=status, result=result, error=error,
-                           finished_at=_now())
+        detail: dict = {}
+        if error is not None:
+            detail["error"] = error
+        if isinstance(result, dict):
+            output_path = result.get("html_path")
+            detail["name"] = result.get("name")
+            detail["retained"] = result.get("retained")
+            detail["manifest_path"] = result.get("manifest_path")
+        finished = _now()
+        with install_extra("web"):
+            update_run(
+                None, run_id, status=status, finished=finished,
+                completed_at=finished, output_path=output_path, detail=detail,
+            )
 
     def get(self, run_id: str) -> Optional[dict]:
-        with self._lock:
-            rec = self._runs.get(run_id)
-            return dict(rec) if rec else None
+        from tracebi.state import get_run, install_extra
+
+        if not str(run_id).isdigit():
+            return None
+        with install_extra("web"):
+            row = get_run(int(run_id))
+        if row is None:
+            return None
+        return _api(row, with_result=True)
 
     def list_for(self, kind: str, name: str, limit: int = 10) -> list[dict]:
         """Newest-first run summaries (without the result payload)."""
-        with self._lock:
-            out = [
-                {k: v for k, v in self._runs[rid].items() if k != "result"}
-                for rid in reversed(self._order)
-                if self._runs[rid]["kind"] == kind
-                and self._runs[rid]["name"] == name
-            ]
-        return out[:limit]
+        from tracebi.state import install_extra, list_runs
+
+        with install_extra("web"):
+            rows = list_runs(kind=kind, target=name, limit=limit)
+        # list_runs returns the public shape; rebuild from the same fields.
+        out = []
+        for row in rows:
+            detail = row.get("detail") or {}
+            if not isinstance(detail, dict):
+                detail = {}
+            out.append({
+                "run_id": str(row["id"]),
+                "kind": row.get("kind"),
+                "name": row.get("target"),
+                "status": row.get("status"),
+                "started_at": row.get("started"),
+                "finished_at": row.get("finished"),
+                "error": detail.get("error"),
+            })
+        return out
 
 
 run_store = RunStore()

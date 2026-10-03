@@ -103,8 +103,10 @@ A source column was renamed. The Monday run fails and is recorded, and the
 owner is alerted. An agent reads the failure, proposes a fix as a draft, and
 the approver publishes it. The run is retried.
 
-**Today:** failures are recorded in `schedule_runs.jsonl`. Alerts and the
-agent fix loop are Q3.
+**Today:** failures are recorded in `tracebi_runs` (kind `schedule`; an
+existing `output/schedule_runs.jsonl` is imported once). The owner is
+emailed when a run ends failed, refused, or empty. The agent fix loop is
+still ahead.
 
 ### 7. Proving a number (approver or auditor)
 

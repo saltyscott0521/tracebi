@@ -680,7 +680,8 @@ def _schedule() -> dict:
                   "other field fails when the package loads.",
         "commands": "tracebi schedule list | run <name> [--no-send] | serve "
                     "(one run: refresh → build → verify → email → record). "
-                    "Runs append to output/schedule_runs.jsonl with status "
+                    "Runs are recorded in tracebi_runs (kind schedule). An existing "
+                    "output/schedule_runs.jsonl is imported once. Status "
                     "delivered | built | refused | failed | empty, plus "
                     "attempts. A figure binding that returned zero rows is "
                     "recorded empty and is not sent. "
