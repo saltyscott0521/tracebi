@@ -117,10 +117,17 @@ The build itself ignores it.
 | `timezone` | Optional IANA name. Default `UTC`. |
 | `to` | Optional list of email addresses. Without it, a run rebuilds the artifact and records the run, and sends nothing. |
 | `refresh` | Optional. `{"transforms": [...], "pipelines": [...]}` to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (`tracebi run-transform` / `tracebi run-pipeline`). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent. |
+| `retries` | Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A receipt that does not verify, and a delivery failure, are not retried. |
+| `owner` | Optional. One email address. A run recorded `failed`, `refused`, or `empty` emails this address a plain-text alert and does not send the report to `to`. Without it, nothing is alerted. |
+
+A run whose figure bindings include one with zero rows is recorded `empty`
+and is not sent. A binding no figure uses does not count.
 
 Any other field, a cron that isn't five fields, an unknown time zone, an
-address with no `@` or a malformed `refresh` is refused when the package
-loads. A `refresh` name that doesn't exist fails the run, not the load.
+address with no `@` (in `to` or `owner`), a malformed `refresh`, or a
+`retries` value that is not an integer from 0 to 5 is refused when the
+package loads. A `refresh` name that doesn't exist fails the run, not the
+load.
 
 ---
 

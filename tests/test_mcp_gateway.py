@@ -424,6 +424,40 @@ class TestBuildReport:
         refused = gateway_fetch_artifact(str(outside))
         assert not refused["ok"]
 
+    def test_pdf_writes_a_print_and_fetch_returns_it(
+            self, gateway_model, tmp_path, monkeypatch):
+        """format=pdf writes a print beside the HTML. fetch returns it base64.
+        The note says the PDF carries no receipt."""
+        import base64
+        from pathlib import Path
+
+        from tracebi.mcp_server import gateway_build_report, gateway_fetch_artifact
+
+        def fake(html_path, pdf_path):
+            Path(pdf_path).write_bytes(b"%PDF-1.4\n" + b"x" * 32)
+
+        monkeypatch.setattr("tracebi.reports.pdf.print_pdf", fake)
+        self._package(tmp_path, monkeypatch, gateway_model)
+        out_dir = tmp_path / "out"
+        out = gateway_build_report(
+            "gwpkg", output_dir=str(out_dir), format="pdf")
+        assert out["ok"], out.get("errors")
+        pdf = out_dir / "gwpkg.pdf"
+        assert out["pdf_path"] == str(pdf)
+        assert pdf.read_bytes().startswith(b"%PDF")
+        assert not (out_dir / "gwpkg.pdf.manifest.json").exists()
+        assert (out_dir / "gwpkg.html").is_file()
+        note = out["pdf_note"]
+        assert "no receipt" in note
+        assert "output_path" in note and "manifest_path" in note
+
+        monkeypatch.chdir(tmp_path)
+        fetched = gateway_fetch_artifact(str(pdf))
+        assert fetched["ok"], fetched.get("errors")
+        assert fetched["encoding"] == "base64"
+        assert fetched["content_type"] == "application/pdf"
+        assert base64.b64decode(fetched["content"]) == pdf.read_bytes()
+
     def test_refuses_writing_into_the_installed_package(self, gateway_model,
                                                         tmp_path, monkeypatch):
         """Always on: an agent must not write into the tracebi package (e.g.

@@ -127,11 +127,16 @@ See [[updating]].
 ### `tracebi report build`
 
 ```bash
-tracebi report build <name> [--output PATH] [--badges] [--reports-dir DIR]
+tracebi report build <name> [--output PATH] [--format html|pdf] [--badges] [--reports-dir DIR]
 ```
 
 Renders to one self-contained, offline `.html` plus a sibling
 `<output>.html.manifest.json`. Default output is `output/<name>.html`.
+
+`--format pdf` also writes a sibling `.pdf`: a print of that built HTML
+(headless Chromium, so charts render). The PDF carries no receipt; the HTML
+and manifest stay the checkable artifact. Needs `pip install 'tracebi[pdf]'`
+and `python -m playwright install chromium`.
 
 - `--badges` — draw per-figure provenance badges on the page. Off by default;
   the receipt drawer already carries provenance in one place. **The manifest is
@@ -306,9 +311,15 @@ A run is refresh → build → verify → email → record. It reads the `schedu
 block in each package's `report.json` (see
 [[report-json]]). A run is `report send` with
 the recipients taken from the package: a receipt that does not verify is
-recorded `refused` and nothing is sent. Every run appends one line to
+recorded `refused` and nothing is sent. A failed refresh or build is
+retried twice (1 minute, then 5 minutes) before that failure is recorded;
+`"retries"` (0–5) changes how many, and a refused receipt or a send
+failure is not retried. An optional `owner` address is emailed a
+plain-text alert when a run ends `failed`, `refused`, or `empty`, and
+that run is not sent to `to`. Every run appends one line to
 `output/schedule_runs.jsonl`: `delivered`, `built` (no recipients, or
-`--no-send`), `refused` or `failed`, with the verdict and who ran it.
+`--no-send`), `refused`, `empty` (a figure binding returned no rows),
+or `failed`, with the verdict and who ran it.
 
 `serve` needs `pip install "tracebi[pipeline]"` (APScheduler) and reads the
 schedules at startup, so restart it after changing one. To use your own

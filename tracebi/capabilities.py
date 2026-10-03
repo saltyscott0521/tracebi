@@ -657,7 +657,8 @@ def _schedule() -> dict:
         "rule": "A report that repeats declares when it runs and who "
                 "receives it in its own report.json, so a reviewer approves "
                 "when and to whom in the same diff as what. One run is "
-                "build → verify → email → record; a receipt that does not "
+                "build → verify → email → record. A failed refresh or build "
+                "is retried twice by default. A receipt that does not "
                 "verify is recorded 'refused' and nothing is sent.",
         "block": "\"schedule\": {\"cron\": \"0 9 * * MON\", "
                  "\"timezone\": \"America/New_York\", "
@@ -668,12 +669,23 @@ def _schedule() -> dict:
                   "optional {\"transforms\": [...], \"pipelines\": [...]} "
                   "run first, in that order, each in a fresh process; a "
                   "failed step (a sink contract included) fails the run "
-                  "before anything is built or sent. Any other field fails "
-                  "when the package loads.",
+                  "before anything is built or sent. retries: integer 0 to "
+                  "5, default 2. A failed refresh or build is retried that "
+                  "many times, waiting 60s then 300s, and 300s for any "
+                  "further retry; 0 disables. A receipt that does not "
+                  "verify, and a delivery failure, are not retried. "
+                  "owner: one email address, optional. A run recorded "
+                  "failed, refused, or empty emails that address a "
+                  "plain-text alert and does not send the report. Without "
+                  "owner, nothing is alerted. Any "
+                  "other field fails when the package loads.",
         "commands": "tracebi schedule list | run <name> [--no-send] | serve "
                     "(one run: refresh → build → verify → email → record). "
                     "Runs append to output/schedule_runs.jsonl with status "
-                    "delivered | built | refused | failed. serve needs "
+                    "delivered | built | refused | failed | empty, plus "
+                    "attempts. A figure binding that returned zero rows is "
+                    "recorded empty and is not sent. "
+                    "serve needs "
                     "tracebi[pipeline]; cron can call `schedule run` instead.",
         "delivery_env": "TRACEBI_SMTP_URL, TRACEBI_SMTP_FROM; "
                         "TRACEBI_SLACK_WEBHOOK adds a Slack ping.",
@@ -1012,6 +1024,22 @@ def describe(brief: bool = False) -> dict:
                     "verifiable. format='xlsx' still writes the HTML and "
                     "manifest beside the workbook; those are the checkable "
                     "artifact. The result's spreadsheet_note says so.",
+        },
+        "pdf": {
+            "cli": "tracebi report build <name> --format pdf",
+            "mcp": "build_report(report, output_dir='output', format='pdf')",
+            "web": "GET /api/reports/{name}/download?format=pdf — the last "
+                   "build, printed.",
+            "fetch": "fetch_artifact(path=<the pdf_path a pdf build "
+                     "returned>) — encoding is base64, "
+                     "content_type is application/pdf.",
+            "note": "The PDF is a print of the built HTML (headless "
+                    "Chromium, so charts render). It carries no receipt "
+                    "and is not verifiable. format='pdf' still writes the "
+                    "HTML and manifest; those are the checkable artifact. "
+                    "The result's pdf_note says so. Needs "
+                    "pip install 'tracebi[pdf]' and "
+                    "python -m playwright install chromium.",
         },
         "analyst_knowledge": _analyst_knowledge(),
     }

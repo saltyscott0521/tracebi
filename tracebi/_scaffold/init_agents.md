@@ -280,7 +280,11 @@ on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
    Pass that result's `xlsx_path` as `fetch_artifact(path=...)`; the
    workbook comes back base64-encoded. `build_report` returns `output_path`
    and `manifest_path` — pass `manifest_path` as
-   `verify_manifest(manifest=...)`.
+   `verify_manifest(manifest=...)`. A PDF
+   (`tracebi report build <name> --format pdf`, or
+   `build_report(..., format="pdf")`) is a print of that built HTML and
+   carries no receipt. A pdf build returns `pdf_path`; pass that as
+   `fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:
@@ -290,9 +294,11 @@ The reviewer approves when and to whom in the same diff as what.
 Add `"refresh": {"transforms": ["<name>"], "pipelines": ["<name>"]}` to
 run those first, so the report shows fresh data; a failed step (including a
 sink contract that refuses the new data) fails the run before anything is
-built or sent. `tracebi schedule run <name>` runs it now (refresh → build →
+built or sent. A failed refresh or build is retried twice, after 1 minute
+and then 5 minutes, unless `"retries"` is an integer from 0 to 5 (0
+disables); a receipt that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
 verify → email → record in `output/schedule_runs.jsonl`); a receipt that
-does not verify is recorded `refused` and nothing is sent. `tracebi schedule serve` runs every
+does not verify is recorded `refused` and nothing is sent. Optional `"owner"` is one email address: a run recorded `failed`, `refused`, or `empty` emails that address a plain-text alert and does not email the report to `to`. A binding a figure uses that returned zero rows is recorded `empty` and is not sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 `tracebi verify` is the point: it re-runs the recorded queries and confirms

@@ -21,10 +21,29 @@ run-pipeline``), in order, each in a fresh process. A step that fails —
 including a sink contract that refuses the new data — fails the run, and
 nothing is built or sent.
 
+A failed refresh or build is retried before that failure is recorded.
+The default is two retries, waiting 60 seconds and then 300 (any further
+retry waits 300 again). ``"retries"`` is an integer from 0 to 5; 0
+disables them. A receipt that does not verify, and a delivery failure,
+are not retried — a failed send is not repeated. The recorded run
+includes ``attempts`` (1 when the first try succeeded).
+
+``owner`` is an optional email address. A run that ends ``failed``,
+``refused``, or ``empty`` emails that address a plain-text alert. Without
+it, nothing is alerted. ``--no-send`` records the alert and does not email
+it. An alert that fails to send is stored on the run and does not change
+the run's status.
+
+After a receipt verifies, a figure binding with zero rows (that section's
+``dataset_shape`` in the manifest) is recorded ``empty`` and the report is
+not sent. A binding no figure uses does not count. A receipt that does not
+verify stays ``refused``.
+
 The schedule lives in the repo beside the bindings, so a reviewer approves
 *when* and *to whom* in the same pull request as *what*.
 
-One run is: refresh → build → verify → deliver → record. It is ``tracebi report
+One run is: refresh → build → verify → empty check → deliver → record, then
+an owner alert when one is due. It is ``tracebi report
 send`` with the recipients read from the package, and the same rule —
 distribution never outruns verification: a receipt that does not verify is
 recorded as ``refused`` and nothing is sent. Every run appends one JSON line
@@ -39,6 +58,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,19 +68,30 @@ from typing import Callable, Optional, Union
 DELIVERED = "delivered"   # built, verified, sent
 BUILT = "built"           # built and verified; no recipients, or --no-send
 REFUSED = "refused"       # built; the receipt did not verify, nothing sent
+EMPTY = "empty"           # verified, but a figure's binding had no rows; nothing sent
 FAILED = "failed"         # a refresh step failed, or the build, verify or send raised
 
 RUN_LOG = "schedule_runs.jsonl"
 
-_ALLOWED_KEYS = {"cron", "timezone", "to", "refresh"}
+_ALLOWED_KEYS = {"cron", "timezone", "to", "refresh", "retries", "owner"}
+_ALERT_STATUSES = {FAILED, REFUSED, EMPTY}
 _REFRESH_KINDS = ("transforms", "pipelines")
+_DEFAULT_RETRIES = 2
+_MAX_RETRIES = 5
+# First retry waits a minute; every retry after that waits five minutes.
+_RETRY_DELAYS = (60, 300)
+
+#: Patched in tests so a retry never calls ``time.sleep``.
+_sleep = time.sleep
 
 
 def parse_schedule_block(raw, *, path: str) -> dict:
     """Validate a package's ``schedule`` block; return it normalized.
 
     Returns ``{"cron": str, "timezone": str | None, "to": list[str],
-    "refresh": {"transforms": list[str], "pipelines": list[str]}}``.
+    "refresh": {"transforms": list[str], "pipelines": list[str]},
+    "retries": int, "owner": str | None}``. ``retries`` defaults to 2.
+    ``owner`` defaults to ``None``.
     Raises ``ValueError`` naming *path* and the fix.
     """
     if not isinstance(raw, dict):
@@ -115,8 +146,22 @@ def parse_schedule_block(raw, *, path: str) -> dict:
             f"{path}: schedule 'refresh' must be an object like "
             f"{{\"transforms\": [\"holdings_transform\"], "
             f"\"pipelines\": [\"sales_etl\"]}}.")
+    retries = raw.get("retries", _DEFAULT_RETRIES)
+    # bool is an int subclass; True would otherwise retry once.
+    if (isinstance(retries, bool) or not isinstance(retries, int)
+            or not 0 <= retries <= _MAX_RETRIES):
+        raise ValueError(
+            f"{path}: schedule 'retries' must be an integer from 0 to "
+            f"{_MAX_RETRIES} (0 disables retries); got {retries!r}."
+        )
+    owner = raw.get("owner")
+    if owner is not None and (not isinstance(owner, str) or "@" not in owner):
+        raise ValueError(
+            f"{path}: schedule 'owner' must be one email address."
+        )
     return {"cron": " ".join(cron.split()), "timezone": tz, "to": list(to),
-            "refresh": {k: list(refresh.get(k, [])) for k in _REFRESH_KINDS}}
+            "refresh": {k: list(refresh.get(k, [])) for k in _REFRESH_KINDS},
+            "retries": retries, "owner": owner}
 
 
 def discover_schedules(reports_dir: Union[str, Path]) -> tuple[list[dict], list[dict]]:
@@ -197,7 +242,12 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
                  output_dir: Union[str, Path],
                  models_dir: Union[str, Path, None] = None,
                  send: bool = True) -> dict:
-    """Run one schedule now: refresh → build → verify → deliver → record.
+    """Run one schedule now: refresh → build → verify → empty check → deliver → record.
+
+    A failed refresh or build is retried (``retries``, default 2) before
+    the failure is recorded. Verify, the empty check, and delivery are not
+    retried. An owner alert, when one is due, is sent after the outcome is
+    known and before the record is written. It never raises.
 
     Returns the run record (also appended to the run log). Never raises for
     a failed run — the failure is the record's ``status`` and ``error``, so
@@ -211,7 +261,7 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
         "report": name, "started_at": _now(), "finished_at": None,
         "status": FAILED, "verdict": None, "recipients": [],
         "output": None, "error": None, "actor": user, "actor_role": role,
-        "refresh": [],
+        "refresh": [], "attempts": 1,
     }
     try:
         _run(schedule, record, Path(reports_dir), Path(output_dir),
@@ -220,6 +270,7 @@ def run_schedule(schedule: dict, *, reports_dir: Union[str, Path],
         record["status"] = FAILED
         record["error"] = f"{type(exc).__name__}: {exc}"
     record["finished_at"] = _now()
+    _maybe_alert(schedule, record, send)
     record_run(record, output_dir)
     return record
 
@@ -231,12 +282,30 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
 
     name = schedule["report"]
     kind, path = _resolve_report_target(name, reports_dir, purpose="schedule")
-    if not _refresh(schedule.get("refresh") or {}, record):
-        return                           # status stays FAILED, error says why
+    retries = schedule.get("retries", _DEFAULT_RETRIES)
     output = output_dir / f"{name}.html"
-    _build_report_target(kind, path, output)
+    built = False
+    # Only a failed refresh or a failed build is retried. A receipt that
+    # does not verify is a verdict, and a failed send must not be repeated.
+    for attempt in range(retries + 1):
+        record["attempts"] = attempt + 1
+        record["refresh"] = []
+        record["error"] = None
+        try:
+            if _refresh(schedule.get("refresh") or {}, record):
+                _build_report_target(kind, path, output)
+                record["output"] = str(output)
+                built = True
+                break
+        except Exception as exc:  # noqa: BLE001 — retried, then recorded
+            record["error"] = f"{type(exc).__name__}: {exc}"
+        if attempt < retries:
+            _sleep(_RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)])
+    if not built:
+        record["status"] = FAILED
+        return
+
     manifest_path = output.with_name(output.name + ".manifest.json")
-    record["output"] = str(output)
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     result = verify_manifest(manifest, load_models(models_dir))
@@ -244,6 +313,13 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
     if result["exit_code"] != 0:
         record["status"] = REFUSED
         record["error"] = result["verdict_detail"]
+        return
+
+    empty = _empty_bindings(manifest)
+    if empty:
+        record["status"] = EMPTY
+        record["empty_bindings"] = empty
+        record["error"] = "no rows in " + ", ".join(empty)
         return
 
     to = schedule.get("to") or []
@@ -265,6 +341,90 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
             record["error"] = f"slack notify failed (report was sent): {exc}"
 
 
+def _empty_bindings(manifest: dict) -> list[str]:
+    """Bindings a figure uses whose result has zero rows.
+
+    Row counts are the manifest section's ``dataset_shape`` (rows, columns),
+    written at build. A binding no figure names — including a totals binding
+    a figure does not reference — is ignored. The same binding on several
+    figures is listed once, in figure order.
+    """
+    used: list[str] = []
+    seen: set[str] = set()
+    for fig in manifest.get("figures") or []:
+        if not isinstance(fig, dict):
+            continue
+        for key in ("binding", "totals"):
+            name = fig.get(key)
+            if isinstance(name, str) and name and name not in seen:
+                seen.add(name)
+                used.append(name)
+    rows: dict[str, int] = {}
+
+    def walk(sections) -> None:
+        for section in sections or []:
+            if not isinstance(section, dict):
+                continue
+            name = section.get("id") or section.get("title")
+            shape = section.get("dataset_shape")
+            if isinstance(name, str) and isinstance(shape, list) and shape:
+                rows[name] = shape[0]
+            walk(section.get("sections"))
+
+    walk(manifest.get("sections"))
+    return [name for name in used if rows.get(name) == 0]
+
+
+def _what_happened(record: dict) -> str:
+    status = record.get("status")
+    if status == EMPTY:
+        names = ", ".join(record.get("empty_bindings") or [])
+        return f"These bindings returned no rows: {names}."
+    if status == REFUSED:
+        verdict = record.get("verdict") or "unknown"
+        detail = record.get("error") or ""
+        return f"The receipt did not verify ({verdict}). {detail}".strip()
+    return record.get("error") or "The run failed."
+
+
+def _alert_body(record: dict) -> str:
+    return "\n".join([
+        f"Report: {record.get('report')}",
+        f"Status: {record.get('status')}",
+        f"What happened: {_what_happened(record)}",
+        f"Attempts: {record.get('attempts')}",
+        f"Started: {record.get('started_at')}",
+        f"Finished: {record.get('finished_at')}",
+        f"Recorded in: output/{RUN_LOG}",
+        "",
+    ])
+
+
+def _maybe_alert(schedule: dict, record: dict, send: bool) -> None:
+    """Email ``owner`` when the run ended failed, refused, or empty.
+
+    Never raises. With ``send`` false, the alert is recorded and not sent.
+    No owner, or a success, leaves ``alert`` off the record.
+    """
+    if record.get("status") not in _ALERT_STATUSES:
+        return
+    owner = schedule.get("owner")
+    if not owner:
+        return
+    record["alert"] = {"to": owner, "sent": False, "error": None}
+    if not send:
+        return
+    subject = (f"TraceBi: {record.get('report')} scheduled run "
+               f"{record.get('status')}")
+    try:
+        from tracebi._delivery import send_alert
+        send_alert(owner, subject, _alert_body(record))
+    except Exception as exc:  # noqa: BLE001 — an alert must not change the run
+        record["alert"]["error"] = f"{type(exc).__name__}: {exc}"
+        return
+    record["alert"]["sent"] = True
+
+
 def _refresh(refresh: dict, record: dict) -> bool:
     """Run the schedule's refresh steps in order, each in a fresh process —
     the same commands a person runs, so a transform's sink contract still
@@ -272,7 +432,6 @@ def _refresh(refresh: dict, record: dict) -> bool:
     first step that fails; later steps and the build do not run."""
     import subprocess
     import sys
-    import time
 
     steps = [("transform", "run-transform", n) for n in refresh.get("transforms", [])]
     steps += [("pipeline", "run-pipeline", n) for n in refresh.get("pipelines", [])]
@@ -395,6 +554,11 @@ def describe_schedule(s: dict, last: Optional[dict] = None) -> str:
     to = ", ".join(s.get("to") or []) or "(build only)"
     tz = s.get("timezone") or "UTC"
     line = f"{s['report']:<28} {s['cron']:<16} {tz:<18} → {to}"
+    if s.get("owner"):
+        line += f"   owner: {s['owner']}"
+    retries = s.get("retries", _DEFAULT_RETRIES)
+    if retries != _DEFAULT_RETRIES:
+        line += f"   retries: {retries}"
     if last:
         line += f"   last: {last.get('status')} {last.get('finished_at') or ''}"
     return line
