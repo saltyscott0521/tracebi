@@ -72,10 +72,17 @@ a selection cut, which writes the published report).
 | --- | --- |
 | `TRACEBI_SMTP_URL` | `smtp://user:pass@host:587` (STARTTLS) or `smtps://` (implicit TLS) |
 | `TRACEBI_SMTP_FROM` | sender address |
-| `TRACEBI_SLACK_WEBHOOK` | optional ping after a successful `report send` |
+| `TRACEBI_SLACK_WEBHOOK` | optional text ping after a successful `report send`, and with an owner schedule alert. An incoming webhook cannot upload a file. |
+| `TRACEBI_SLACK_BOT_TOKEN` | bot token (`files:write`) for scheduled file delivery. Does nothing unless `TRACEBI_SLACK_CHANNEL` is set too. |
+| `TRACEBI_SLACK_CHANNEL` | channel id (`C…`) or name the scheduled HTML and manifest are uploaded to. |
 
-Both SMTP variables are required by `tracebi report send`. A Slack failure is
-reported but does not fail the command — the report already went out.
+Both SMTP variables are required by `tracebi report send`. A webhook ping
+that fails is reported but does not fail the command — the report already
+went out. A scheduled run also uploads the HTML and the manifest when both
+`TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are set. That upload
+is separate from the webhook. A failed upload is recorded on the run
+(`delivery.slack.error`) and is not retried. `--no-send` records the intent
+and does not call Slack.
 
 ## Agent gateway
 

@@ -716,13 +716,17 @@ def _schedule() -> dict:
                 "when and to whom in the same diff as what. One run is "
                 "build → verify → email → record. A failed refresh or build "
                 "is retried twice by default. A receipt that does not "
-                "verify is recorded 'refused' and nothing is sent.",
+                "verify is recorded 'refused' and nothing is sent. "
+                "A Slack file upload runs on a successful send when "
+                "TRACEBI_SLACK_BOT_TOKEN and TRACEBI_SLACK_CHANNEL are "
+                "both set.",
         "block": "\"schedule\": {\"cron\": \"0 9 * * MON\", "
                  "\"timezone\": \"America/New_York\", "
                  "\"to\": [\"cfo@example.com\"]}",
         "fields": "cron: five fields, required. timezone: IANA name, "
                   "default UTC. to: email list, optional; without it a run "
-                  "rebuilds the artifact and delivers nothing. refresh: "
+                  "sends no email. Slack file delivery is delivery_env, "
+                  "not a schedule field. refresh: "
                   "optional {\"transforms\": [...], \"pipelines\": [...]} "
                   "run first, in that order, each in a fresh process; a "
                   "failed step (a sink contract included) fails the run "
@@ -746,7 +750,13 @@ def _schedule() -> dict:
                     "serve needs "
                     "tracebi[pipeline]; cron can call `schedule run` instead.",
         "delivery_env": "TRACEBI_SMTP_URL, TRACEBI_SMTP_FROM; "
-                        "TRACEBI_SLACK_WEBHOOK adds a Slack ping.",
+                        "TRACEBI_SLACK_WEBHOOK is a text ping. "
+                        "TRACEBI_SLACK_BOT_TOKEN and TRACEBI_SLACK_CHANNEL "
+                        "together upload the scheduled HTML and manifest "
+                        "(report name, rendered_at, verify verdict, up to "
+                        "five headline value figures). A Slack failure is "
+                        "recorded on the run and not retried. --no-send "
+                        "records the intent and does not call Slack.",
     }
 
 

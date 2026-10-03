@@ -34,6 +34,8 @@ def scheduled(scaffolded, monkeypatch):
     monkeypatch.setattr(smtplib, "SMTP", _Outbox)
     monkeypatch.setenv("TRACEBI_SMTP_URL", "smtp://localhost:2525")
     monkeypatch.setenv("TRACEBI_SMTP_FROM", "reports@example.com")
+    monkeypatch.delenv("TRACEBI_SLACK_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TRACEBI_SLACK_CHANNEL", raising=False)
     decl = scaffolded / "reports" / "sample_dashboard" / "report.json"
     spec = json.loads(decl.read_text())
     spec["schedule"] = {"cron": "0 7 * * MON", "to": ["team@example.com"]}

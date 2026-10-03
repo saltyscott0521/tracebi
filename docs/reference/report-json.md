@@ -120,7 +120,7 @@ The build itself ignores it.
 | --- | --- |
 | `cron` | Required. Five fields: minute hour day month day_of_week. |
 | `timezone` | Optional IANA name. Default `UTC`. |
-| `to` | Optional list of email addresses. Without it, a run rebuilds the artifact and records the run, and sends nothing. |
+| `to` | Optional list of email addresses. Without it, a run sends no email. When `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set, a successful run still uploads the HTML and the manifest to that channel. |
 | `refresh` | Optional. `{"transforms": [...], "pipelines": [...]}` to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (`tracebi run-transform` / `tracebi run-pipeline`). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent. |
 | `retries` | Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A receipt that does not verify, and a delivery failure, are not retried. |
 | `owner` | Optional. One email address. A run recorded `failed`, `refused`, or `empty` emails this address a plain-text alert and does not send the report to `to`. Without it, nothing is alerted. |

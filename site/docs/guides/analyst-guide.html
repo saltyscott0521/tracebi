@@ -205,8 +205,10 @@ receipt — and <strong>refuses to send an unverified receipt</strong>:</p>
 </code></pre>
 <p><code>--force</code> sends anyway, but the failing verdict travels with the report rather
 than being hidden. Delivery reads <code>TRACEBI_SMTP_URL</code> / <code>TRACEBI_SMTP_FROM</code> for
-email and <code>TRACEBI_SLACK_WEBHOOK</code> for Slack; point cron or CI at the same
-command to schedule it. The refusal is the point: a receipt that does not
+email and <code>TRACEBI_SLACK_WEBHOOK</code> for a Slack text ping. A scheduled
+run (<code>tracebi schedule</code>) also uploads the HTML and the manifest when
+<code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> are both set. Point
+cron or CI at <code>tracebi schedule run</code> to run one on a timer. The refusal is the point: a receipt that does not
 reproduce should never leave the building looking clean.</p>
 <hr>
 <h2 id="working-with-a-model-in-code">Working with a model in code</h2>

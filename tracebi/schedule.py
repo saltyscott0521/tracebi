@@ -10,8 +10,10 @@ A package opts in with a ``schedule`` block in its ``report.json``::
     }
 
 ``cron`` is required (five fields). ``timezone`` is an IANA name, default
-UTC. ``to`` is optional: without it a run rebuilds the artifact and records
-the run, and delivers nothing. ``refresh`` is optional::
+UTC. ``to`` is optional: without it a run sends no email. When
+``TRACEBI_SLACK_BOT_TOKEN`` and ``TRACEBI_SLACK_CHANNEL`` are both set,
+a successful run still uploads the report file to that channel.
+``refresh`` is optional::
 
     "refresh": {"transforms": ["holdings_transform"], "pipelines": ["sales_etl"]}
 
@@ -36,6 +38,17 @@ there. Without an owner, nothing is alerted. ``--no-send`` records the
 alert and does not email or ping it. An alert that fails to send is
 stored on the run and does not change the run's status. A failed Slack
 ping is ``alert.slack_error`` and leaves a sent email sent.
+
+When ``TRACEBI_SLACK_BOT_TOKEN`` and ``TRACEBI_SLACK_CHANNEL`` are both
+set, a successful send also uploads the ``.html`` and the
+``.manifest.json`` to that channel, with a short summary: report name,
+``rendered_at``, the verify verdict, and up to five headline value
+figures already recorded on the manifest or written into the page.
+``TRACEBI_SLACK_WEBHOOK`` is not this path — an incoming webhook cannot
+upload a file, and it stays a text ping. A failed upload is stored as
+``delivery.slack.error`` and is not retried. ``--no-send`` records the
+channel and does not call Slack. With no email recipients, Slack alone
+still delivers.
 
 After a receipt verifies, a figure binding with zero rows (that section's
 ``dataset_shape`` in the manifest) is recorded ``empty`` and the report is
@@ -71,7 +84,7 @@ from urllib.parse import quote
 
 #: Run outcomes. ``delivered`` and ``built`` are successes.
 DELIVERED = "delivered"   # built, verified, sent
-BUILT = "built"           # built and verified; no recipients, or --no-send
+BUILT = "built"           # built and verified; nothing to deliver, or --no-send
 REFUSED = "refused"       # built; the receipt did not verify, nothing sent
 EMPTY = "empty"           # verified, but a figure's binding had no rows; nothing sent
 FAILED = "failed"         # a refresh step failed, or the build, verify or send raised
@@ -344,23 +357,69 @@ def _run(schedule: dict, record: dict, reports_dir: Path, output_dir: Path,
         record["error"] = "no rows in " + ", ".join(empty)
         return
 
-    to = schedule.get("to") or []
-    if not (send and to):
+    to = list(schedule.get("to") or [])
+    slack = _slack_file_target()
+    if not send:
+        record["status"] = BUILT
+        if slack:
+            record["delivery"] = {
+                "slack": {"channel": slack[1], "sent": False, "error": None}}
+        return
+    if not to and not slack:
         record["status"] = BUILT
         return
 
-    from tracebi._delivery import send_report, slack_notify
-    send_report(output, manifest_path, to, verify_result=result)
-    record["status"] = DELIVERED
-    record["recipients"] = list(to)
+    if to:
+        from tracebi._delivery import send_report, slack_notify
+        send_report(output, manifest_path, to, verify_result=result)
+        record["recipients"] = list(to)
 
-    webhook = os.environ.get("TRACEBI_SLACK_WEBHOOK")
-    if webhook:
+        webhook = os.environ.get("TRACEBI_SLACK_WEBHOOK")
+        if webhook:
+            try:
+                slack_notify(
+                    webhook,
+                    f"{name} delivered on schedule · "
+                    f"{result['verdict'].upper().replace('_', ' ')}")
+            except Exception as exc:  # noqa: BLE001 — the report already went out
+                record["error"] = (
+                    f"slack notify failed (report was sent): {exc}")
+
+    if slack:
+        token, channel = slack
         try:
-            slack_notify(webhook, f"{name} delivered on schedule · "
-                                  f"{result['verdict'].upper().replace('_', ' ')}")
-        except Exception as exc:  # noqa: BLE001 — the report already went out
-            record["error"] = f"slack notify failed (report was sent): {exc}"
+            from tracebi._delivery import slack_send_report
+            slack_send_report(
+                output, manifest_path, channel=channel, token=token,
+                verify_result=result)
+        except Exception as exc:  # noqa: BLE001 — recorded, not retried
+            record["delivery"] = {"slack": {
+                "channel": channel, "sent": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            }}
+            if not to:
+                record["status"] = FAILED
+                record["error"] = record["delivery"]["slack"]["error"]
+                return
+        else:
+            record["delivery"] = {
+                "slack": {"channel": channel, "sent": True, "error": None}}
+
+    record["status"] = DELIVERED
+
+
+def _slack_file_target():
+    """``(token, channel)`` when both Slack file-delivery variables are set.
+
+    ``TRACEBI_SLACK_WEBHOOK`` is a text ping and is not this path. Either
+    variable alone leaves file delivery off — a half-configured channel
+    is not a destination.
+    """
+    token = (os.environ.get("TRACEBI_SLACK_BOT_TOKEN") or "").strip()
+    channel = (os.environ.get("TRACEBI_SLACK_CHANNEL") or "").strip()
+    if token and channel:
+        return token, channel
+    return None
 
 
 def _empty_bindings(manifest: dict) -> list[str]:

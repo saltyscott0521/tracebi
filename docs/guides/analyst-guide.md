@@ -166,8 +166,10 @@ tracebi report send my_report --to team@example.com --subject "Q3 book"
 
 `--force` sends anyway, but the failing verdict travels with the report rather
 than being hidden. Delivery reads `TRACEBI_SMTP_URL` / `TRACEBI_SMTP_FROM` for
-email and `TRACEBI_SLACK_WEBHOOK` for Slack; point cron or CI at the same
-command to schedule it. The refusal is the point: a receipt that does not
+email and `TRACEBI_SLACK_WEBHOOK` for a Slack text ping. A scheduled
+run (`tracebi schedule`) also uploads the HTML and the manifest when
+`TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set. Point
+cron or CI at `tracebi schedule run` to run one on a timer. The refusal is the point: a receipt that does not
 reproduce should never leave the building looking clean.
 
 ---
