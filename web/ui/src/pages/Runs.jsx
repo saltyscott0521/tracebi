@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { reportShareUrl, useRuns } from '../api'
 import { verdictOf, when } from '../components/Attention'
@@ -80,8 +79,20 @@ function Actor({ run }) {
 }
 
 export default function Runs() {
-  const [kind, setKind] = useState('')
-  const [target, setTarget] = useState('')
+  // The owner alert links here as /runs?kind=schedule&target=<report>.
+  // The filters are that query string, so the link arrives already selected
+  // and a change stays in the URL.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const kind = searchParams.get('kind') || ''
+  const target = searchParams.get('target') || ''
+  const setFilter = (key, value) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (value) next.set(key, value)
+      else next.delete(key)
+      return next
+    }, { replace: true })
+  }
   const { data, isLoading, error } = useRuns(kind, target.trim())
   const runs = Array.isArray(data) ? data : []
 
@@ -96,7 +107,7 @@ export default function Runs() {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16, alignItems: 'flex-end' }}>
         <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
           Kind
-          <select value={kind} onChange={e => setKind(e.target.value)} style={field}>
+          <select value={kind} onChange={e => setFilter('kind', e.target.value)} style={field}>
             <option value="">All</option>
             {KINDS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
@@ -105,7 +116,7 @@ export default function Runs() {
           Target
           <input
             value={target}
-            onChange={e => setTarget(e.target.value)}
+            onChange={e => setFilter('target', e.target.value)}
             placeholder="Exact name"
             style={{ ...field, minWidth: 220 }}
           />

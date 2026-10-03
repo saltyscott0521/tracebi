@@ -29,10 +29,13 @@ are not retried — a failed send is not repeated. The recorded run
 includes ``attempts`` (1 when the first try succeeded).
 
 ``owner`` is an optional email address. A run that ends ``failed``,
-``refused``, or ``empty`` emails that address a plain-text alert. Without
-it, nothing is alerted. ``--no-send`` records the alert and does not email
-it. An alert that fails to send is stored on the run and does not change
-the run's status.
+``refused``, or ``empty`` emails that address a plain-text alert. When
+``TRACEBI_PUBLIC_URL`` is set, the alert links to that report on the Runs
+page. When ``TRACEBI_SLACK_WEBHOOK`` is set, the same text is posted
+there. Without an owner, nothing is alerted. ``--no-send`` records the
+alert and does not email or ping it. An alert that fails to send is
+stored on the run and does not change the run's status. A failed Slack
+ping is ``alert.slack_error`` and leaves a sent email sent.
 
 After a receipt verifies, a figure binding with zero rows (that section's
 ``dataset_shape`` in the manifest) is recorded ``empty`` and the report is
@@ -64,6 +67,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional, Union
+from urllib.parse import quote
 
 #: Run outcomes. ``delivered`` and ``built`` are successes.
 DELIVERED = "delivered"   # built, verified, sent
@@ -406,7 +410,7 @@ def _what_happened(record: dict) -> str:
 
 
 def _alert_body(record: dict) -> str:
-    return "\n".join([
+    lines = [
         f"Report: {record.get('report')}",
         f"Status: {record.get('status')}",
         f"What happened: {_what_happened(record)}",
@@ -414,15 +418,22 @@ def _alert_body(record: dict) -> str:
         f"Started: {record.get('started_at')}",
         f"Finished: {record.get('finished_at')}",
         f"Recorded in: tracebi_runs (kind=schedule)",
-        "",
-    ])
+    ]
+    public = (os.environ.get("TRACEBI_PUBLIC_URL") or "").strip().rstrip("/")
+    if public:
+        target = quote(str(record.get("report") or ""), safe="")
+        lines.append(f"See the run: {public}/runs?kind=schedule&target={target}")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _maybe_alert(schedule: dict, record: dict, send: bool) -> None:
     """Email ``owner`` when the run ended failed, refused, or empty.
 
     Never raises. With ``send`` false, the alert is recorded and not sent.
-    No owner, or a success, leaves ``alert`` off the record.
+    No owner, or a success, leaves ``alert`` off the record. A Slack ping,
+    when ``TRACEBI_SLACK_WEBHOOK`` is set, uses the same text and does not
+    change ``sent`` or the run status.
     """
     if record.get("status") not in _ALERT_STATUSES:
         return
@@ -434,13 +445,23 @@ def _maybe_alert(schedule: dict, record: dict, send: bool) -> None:
         return
     subject = (f"TraceBi: {record.get('report')} scheduled run "
                f"{record.get('status')}")
+    body = _alert_body(record)
     try:
         from tracebi._delivery import send_alert
-        send_alert(owner, subject, _alert_body(record))
+        send_alert(owner, subject, body)
     except Exception as exc:  # noqa: BLE001 — an alert must not change the run
         record["alert"]["error"] = f"{type(exc).__name__}: {exc}"
+    else:
+        record["alert"]["sent"] = True
+
+    webhook = os.environ.get("TRACEBI_SLACK_WEBHOOK")
+    if not webhook:
         return
-    record["alert"]["sent"] = True
+    try:
+        from tracebi._delivery import slack_notify
+        slack_notify(webhook, body)
+    except Exception as exc:  # noqa: BLE001 — a ping must not change the run
+        record["alert"]["slack_error"] = f"{type(exc).__name__}: {exc}"
 
 
 def _refresh(refresh: dict, record: dict) -> bool:
