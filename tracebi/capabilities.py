@@ -1014,12 +1014,26 @@ def describe(brief: bool = False) -> dict:
         "spreadsheet": {
             "mcp": "build_report(report, output_dir='output', format='xlsx')",
             "fetch": "fetch_artifact(xlsx_path) — encoding is base64, "
-                     "content_type is the spreadsheet media type. "
-                     "Every other suffix stays refused.",
+                     "content_type is the spreadsheet media type.",
             "note": "The spreadsheet carries no receipt and is not "
                     "verifiable. format='xlsx' still writes the HTML and "
                     "manifest beside the workbook; those are the checkable "
                     "artifact. The result's spreadsheet_note says so.",
+        },
+        "pdf": {
+            "cli": "tracebi report build <name> --format pdf",
+            "mcp": "build_report(report, output_dir='output', format='pdf')",
+            "web": "GET /api/reports/{name}/download?format=pdf — the last "
+                   "build, printed.",
+            "fetch": "fetch_artifact(pdf_path) — encoding is base64, "
+                     "content_type is application/pdf.",
+            "note": "The PDF is a print of the built HTML (headless "
+                    "Chromium, so charts render). It carries no receipt "
+                    "and is not verifiable. format='pdf' still writes the "
+                    "HTML and manifest; those are the checkable artifact. "
+                    "The result's pdf_note says so. Needs "
+                    "pip install 'tracebi[pdf]' and "
+                    "python -m playwright install chromium.",
         },
         "analyst_knowledge": _analyst_knowledge(),
     }

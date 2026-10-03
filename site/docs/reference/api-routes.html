@@ -204,7 +204,7 @@ graph. It computes but persists nothing, which is why <code>viewer</code> may ca
 </tr>
 <tr>
 <td><code>GET</code></td>
-<td><code>/api/reports/{name}/download?format=xlsx\|html</code></td>
+<td><code>/api/reports/{name}/download?format=xlsx\|html\|pdf</code></td>
 <td>analyst</td>
 </tr>
 <tr>
@@ -246,6 +246,8 @@ open and kept. Opening never re-queries after that; fresh data comes from
 <code>kind</code>, <code>target</code>, <code>limit</code>. A viewer may read it. The HTML of a report stays
 on disk; the row holds the output path. The Runs page (<code>/runs</code>) is this list.</p>
 <p>The <code>html</code> download is that last build, the file the reader is looking at.
+<code>pdf</code> is a print of that same file (headless Chromium, so charts render). It
+carries no receipt; the HTML file is what <code>verify --file</code> checks.
 <code>xlsx</code> goes through the Excel renderer, which derives no
 <a href="../reference/number-formats.html">formats</a>, and runs the report to do so.</p>
 <h2 id="report-specs">Report specs</h2>
