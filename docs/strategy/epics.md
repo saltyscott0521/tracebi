@@ -253,9 +253,9 @@ share it.
       store, so `--workers 4` on Postgres works for polls and opens.
 - [x] A schedule tick takes a Postgres advisory lock per report, like
       pipelines already do, so two workers never send the same email twice.
-- [ ] A Runs page in the app: what ran, when, for whom, and whether it
-      reproduced. The read API exists (`GET /api/runs`, viewer); the page
-      does not.
+- [x] A Runs page in the app: what ran, when, for whom, and whether it
+      reproduced. (`GET /api/runs`, viewer; the page is `/runs`, in the
+      sidebar footer beside Verify.)
 - [x] Adopt a migration tool for the state store (Alembic), per [[deployment]].
 
 **Done when:** a test with two worker processes on Postgres starts a run on
