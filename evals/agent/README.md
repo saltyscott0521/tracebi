@@ -25,8 +25,12 @@ The table is the result. `pass` means that case built, `verify --strict`
 reproduced, and the package matched the checks in the JSON (figure kinds,
 measures, dimensions, top-N `limit`, filters, no `data-tb-unverified`, no
 numeric literals in the template outside a figure — the same prose gate as
-`tracebi report build`, after exploration blocks are stripped). The
-first-build success rate is the last line.
+`tracebi report build`, after exploration blocks are stripped). Without
+`--gateway-log`, the last line is `first-build success`: this scorer
+rebuilding each package. With `--gateway-log`, that line is labeled
+`builds on rescore`, and the next line is `gateway first-call success` —
+how many cases' first `build_report` call succeeded, over the cases that
+called it.
 
 `borrower-geography` cannot be answered from `portfolio_model` (there is no
 geography). The request does not say that. It names
@@ -59,8 +63,11 @@ CLI. The call log records where it stumbles.
 8. Score, from the repo:
    `python evals/agent/score.py /tmp/tracebi-eval --gateway-log /tmp/tracebi-eval-logs`.
 
-Each row gains the tool calls, the number of errors, and whether
-`build_report` succeeded on its first call (`not called` when it never
-built). Below the table come the errors by case, then the top three errors
-across all cases. That last list is the input for the next round of fixes.
-The log holds argument names only, never values, so it is safe to share.
+Each row gains the tool calls, the number of errors, and whether the
+agent's first `build_report` call succeeded (`not called` when it never
+built, `no log` when that case has no log). `builds on rescore` is this
+scorer rebuilding the packages. `gateway first-call success` counts only
+the cases that called `build_report`. Below those lines come the errors
+by case, then the top three errors across all cases. That last list is
+the input for the next round of fixes. The log holds argument names
+only, never values, so it is safe to share.

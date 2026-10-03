@@ -3,7 +3,9 @@
     python evals/agent/score.py <project-dir> [--gateway-log DIR]
 
 Looks in the project copy for the report each case names, then checks the
-package. Prints one row per case and the first-build success rate.
+package. Prints one row per case and the rescore rate (``first-build
+success``). With ``--gateway-log``, that line is ``builds on rescore`` and
+a second line is the gateway first-call success rate.
 
 ``--gateway-log DIR`` reads one gateway call log per case
 (``DIR/<case-id>.jsonl``, written with ``TRACEBI_MCP_LOG=1``) and adds, per
@@ -228,7 +230,20 @@ def format_table(rows: list[tuple[str, bool, str]],
                 line += f"{stats['calls']:>5}  {len(stats['errors']):>6}  {first:<11}  "
         lines.append(line + reason)
     rate = 100.0 * passed / len(rows)
-    lines.append(f"first-build success: {passed}/{len(rows)} ({rate:.0f}%)")
+    if gateway is None:
+        lines.append(f"first-build success: {passed}/{len(rows)} ({rate:.0f}%)")
+    else:
+        lines.append(f"builds on rescore: {passed}/{len(rows)} ({rate:.0f}%)")
+        called = [s for s in gateway.values()
+                  if s and s["first_build"] is not None]
+        ok_first = sum(1 for s in called if s["first_build"] is True)
+        if called:
+            grate = 100.0 * ok_first / len(called)
+            lines.append(
+                f"gateway first-call success: {ok_first}/{len(called)} "
+                f"({grate:.0f}%)")
+        else:
+            lines.append("gateway first-call success: no build_report calls")
     if gateway is not None:
         hit = [(case_id, s["errors"]) for case_id, s in gateway.items()
                if s and s["errors"]]
