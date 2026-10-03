@@ -116,7 +116,7 @@ list them as open, which makes the real gaps harder to see.
 | Background runs and the last-build cache live in one process's memory. With `--workers 4`, a poll can land on a worker that never saw the run. | `web/api/run_store.py`, `_LAST_BUILD` |
 | Run history is in three places: pipeline tables, `schedule_runs.jsonl`, and the in-memory run store. | `pipeline/runner.py`, `schedule.py`, `run_store.py` |
 | Library page is only started: Reports groups by folder with type / last build / receipt; owner, schedule, past builds, mounts, and one read function for E7 are still open. | `Reports.jsx`, E6 |
-| **The "Keep this cut" endpoint rewrites `report.json` for any analyst, with no draft or approval step.** Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
+| **The "Keep this cut" endpoint rewrites `report.json` in place, with no draft or approval step.** It requires `admin` until drafts exist. Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
 | One shared Basic-auth login, one shared MCP token, and a self-declared agent name. Nobody's work can be told apart in the audit log. | `web/api/auth.py`, `TRACEBI_MCP_ACTOR` |
 
 **Quality / reader / schedules**
@@ -298,8 +298,8 @@ approval.
 - [ ] My work (drafts) and publish-with-approval, with TraceBi's own version
       history for folders without source control.
 - [ ] **"Keep this cut" writes a draft and a publish request, not
-      `report.json` in place.** (It writes the file directly today; see the
-      findings.)
+      `report.json` in place.** (It writes the file directly today, and the
+      endpoint requires `admin` until drafts exist; see the findings.)
 - [ ] A sign-in per person on the MCP gateway, so an analyst's agent sees what
       the analyst sees and the audit log names them.
 - [ ] A plain-language review screen: rendered before and after, which

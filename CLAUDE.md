@@ -371,7 +371,7 @@ effect**, which is the question a security review actually asks:
 |---|---|
 | `viewer` | Read models, reports, lineage. Run Explore queries and spec validation — they compute but persist nothing. |
 | `analyst` | viewer + execute report and request code. |
-| `admin` | analyst + run pipeline layers, which write to the warehouse, and `/api/_dev/reload`. |
+| `admin` | analyst + run pipeline layers, which write to the warehouse, `/api/_dev/reload`, and keeping a selection cut (it writes the published `report.json`). |
 
 Three things to preserve when touching this:
 
