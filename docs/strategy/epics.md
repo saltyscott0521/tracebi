@@ -13,7 +13,7 @@ file wins.
 state store, the reader's report experience, and the dashboard cookbook
 have shipped. The biggest gaps now are finishing the path onto a client's
 *own* data (dbt + templates), a finished Library page, and unattended
-schedule delivery (Slack/Teams, bursting, alert → Runs).
+schedule delivery (Slack file delivery, bursting, alert → Runs).
 
 ---
 
@@ -41,7 +41,7 @@ the engine    │    done (E14         │──▶│                       │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
 WORKFLOWS     │ E11 leftovers: Slack │   │                       │──▶│ E12 Workbench in the   │
-the three     │    /Teams delivery,  │──▶│                       │   │     web app            │
+the three     │    file delivery,    │──▶│                       │   │     web app            │
 paths         │    bursting, alert→  │   │                       │   │ E13 Ask anywhere       │
               │    Runs              │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
@@ -130,7 +130,7 @@ list them as open, which makes the real gaps harder to see.
 
 | Finding | Evidence |
 | --- | --- |
-| Slack/Teams *file* delivery, bursting, and alert → Runs links are still open. Retries and owner *email* alerts shipped. | E11 |
+| Slack *file* delivery, bursting, and alert → Runs links are still open. Retries and owner *email* alerts shipped. Teams is out of scope unless a customer asks. | E11 |
 | E14 decisions not yet made: draft-writing tools for remote agents (after E7), OAuth for claude.ai connectors, rendered snapshot for agents. | #111 |
 
 **What's strong** (keep it that way): the engine, receipts and `verify`; the
@@ -474,8 +474,9 @@ to end ([[product-strategy]]).
 - [x] Email the report's owner on a failure, empty data, or a receipt
       that didn't reproduce. Slack *owner* alerts (a ping, not the file)
       can follow once delivery lands.
-- [ ] Slack and Teams delivery of the file itself, not only a ping, plus a
-      short in-body summary (the headline figures).
+- [ ] Slack delivery of the file itself, not only a ping, plus a short
+      in-body summary (the headline figures). *(Teams deferred — not
+      needed unless a customer asks.)*
 - [ ] Per-recipient versions ("bursting"), using the filter grammar
       parameters from [[target-architecture]] decision 5.
 - [ ] The run history from E5 is what the alert links to. *(Runs page
@@ -483,8 +484,8 @@ to end ([[product-strategy]]).
 
 **Done when:** a scheduled report whose source goes empty sends its owner an
 alert instead of an empty report, and a transient failure retries and
-succeeds without anyone doing anything. *(Core met; delivery + bursting +
-alert link still open.)*
+succeeds without anyone doing anything. *(Core met; Slack delivery +
+bursting + alert link still open.)*
 
 #### E12 · Workbench in the web app — L · Later
 
