@@ -214,6 +214,16 @@ def test_build_report_succeeds_when_the_store_is_missing(tmp_path, monkeypatch):
     assert "tracebi[pipeline]" in result["note"]
     assert (tmp_path / "output" / "weekly.html").is_file()
 
+    monkeypatch.setattr(
+        "tracebi.reports.pdf.print_pdf",
+        lambda _html, pdf: Path(pdf).write_bytes(b"%PDF-1.4\n"),
+    )
+    pdf = gateway_build_report("weekly", output_dir="output", format="pdf")
+    assert pdf["ok"] is True
+    assert "errors" not in pdf
+    assert "report build was not recorded:" in pdf["note"]
+    assert (tmp_path / "output" / "weekly.pdf").is_file()
+
 
 def test_a_web_read_names_the_web_extra(monkeypatch):
     _block_store(monkeypatch)
