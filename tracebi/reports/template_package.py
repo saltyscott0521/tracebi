@@ -40,8 +40,10 @@ the analyst writing ``{{ head_extra }}`` / ``{{ body_extra }}`` and they forgot,
 the page would ship silently with **no data** — the one failure the whole
 product exists to prevent. So the ``<style>``, the app ``<script>``, and the
 safe embedded-data ``<script>`` blocks are inserted before ``</head>`` /
-``</body>`` of the *rendered* HTML, and a missing ``</head>`` or ``</body>``
-fails loudly rather than dropping the injection on the floor.
+``</body>`` of the *rendered* HTML. A pure fragment (no ``<html>`` or
+``<head>`` token) is wrapped into a minimal document first; a page that
+already has those tags but no closing ``</head>`` or ``</body>`` fails
+loudly rather than dropping the injection on the floor.
 
 The embedded data carries the M0 canonical triple, so ``tracebi verify --file``
 works on the output.
@@ -325,6 +327,11 @@ class TemplatePackage:
             )
 
         self.name = declaration.get("name") or self.name
+        raw_title = declaration.get("title")
+        self.page_title = (
+            raw_title if isinstance(raw_title, str) and raw_title.strip()
+            else self.name
+        )
         self.author = declaration.get("author", "")
         self.description = declaration.get("description", "")
 
@@ -511,6 +518,7 @@ class TemplatePackage:
 
         renderer = HTMLRenderer(
             template=self.template_html,
+            document_title=self.page_title,
             template_context={"bindings": list(self.bindings),
                               "figure": figure},
         )
@@ -1354,7 +1362,8 @@ class TemplatePackage:
         ``<head>``; charting libs → tracebi.js → the safe embedded-data
         blocks → the figures/provenance config → this package's
         ``script.js`` before ``</body>``. The author's layers run last, so
-        they win. A missing ``</head>`` or ``</body>`` is a hard error —
+        they win. A pure fragment is already a document by this point; a page
+        that still has no ``</head>`` or ``</body>`` is a hard error —
         dropping the injection would ship a page with no data and no warning.
 
         *extra_blocks_html* (the final build's semantic-contract blocks)

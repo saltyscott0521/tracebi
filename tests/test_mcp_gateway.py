@@ -147,6 +147,8 @@ def test_query_returns_a_binding_stub(gateway_model):
     assert binding["query"]["measures"] == out["query"]["measures"]
     assert binding["query"]["filters"] == {"status": "shipped"}
     assert "rows" not in binding
+    # Paste-ready: this object is the value of report.json data.<name>.
+    assert set(binding) == {"model", "query"}
 
 
 def test_include_lineage_false_drops_the_chain_but_keeps_the_stamp(gateway_model):
@@ -686,6 +688,25 @@ class TestMcp2Features:
         for name in ("workbench_state", "resolve_pin", "verify_manifest",
                      "answer_question", "address_pins"):
             assert name in text
+        assert "verify_manifest(manifest=...)" in text
+        assert "fetch_artifact(path=...)" in text
+        assert "output_path" in text
+        assert "describe_table" in text
+        assert "analyst_knowledge.lessons" in text
+        assert "list_models" in text
+
+    def test_tool_descriptions_name_the_argument_that_feeds_the_next_call(
+            self, gateway_model):
+        _server, tools = self._tools()
+        desc = {name: t.description for name, t in tools.items()}
+        assert "argument is report" in desc["build_report"]
+        assert "output_path" in desc["build_report"]
+        assert "verify_manifest(manifest=...)" in desc["build_report"]
+        assert "argument is path" in desc["fetch_artifact"]
+        assert "build_report's output_path" in desc["fetch_artifact"]
+        assert "argument is manifest" in desc["verify_manifest"]
+        assert "build_report's manifest_path" in desc["verify_manifest"]
+        assert "data.<name>" in desc["query_model"]
 
     def test_answer_question_and_address_pins_render(self, gateway_model):
         pytest.importorskip("mcp")
@@ -714,7 +735,67 @@ class TestMcp2Features:
                      "reports/weekly/"):
             assert step in pins
         assert pins.index("workbench_state") < pins.index("build_report") \
-            < pins.index("resolve_pin")
+            < pins.index("verify_manifest") < pins.index("resolve_pin")
+
+
+def test_brief_context_returns_the_presentation_grammar(gateway_model):
+    """The function-level payload, both tiers. brief is what agents call
+    first; the figure grammar has to be in it."""
+    from tracebi.mcp_server import gateway_context
+
+    brief = gateway_context(brief=True)
+    attrs = brief["presentation"]["figure_attributes"]
+    assert "data-tb-figure" in attrs
+    assert "data-tb-format" in attrs
+    assert "currency" in brief["number_formats"]
+    assert "cheat_sheets" not in brief
+    assert "report_sections" not in brief
+    assert "dataset_verbs" not in brief
+    assert "model" not in brief
+    assert "omitted" in brief["brief"]
+
+    full = gateway_context(brief=False)
+    assert "cheat_sheets" in full
+    assert "report_sections" in full
+    assert "presentation" in full
+    assert "brief" not in full
+
+    named = gateway_context(brief=True, model="gw_demo")
+    assert named["model"]["name"] == "gw_demo"
+
+
+def test_structured_brief_context_keeps_presentation(gateway_model):
+    """The SDK drops any returned key the output schema does not name.
+    Omitted schema keys are null on mcp 2.0 and absent on mcp 2.3.
+    The grammar must survive either."""
+    pytest.importorskip("mcp")
+    import anyio
+    from tracebi.mcp_server import build_server
+
+    server = build_server()
+
+    async def call(args):
+        result = await server.call_tool("get_context", args)
+        payload = result.model_dump(by_alias=True, exclude_none=True)
+        assert payload.get("isError") is not True
+        return payload["structuredContent"]
+
+    brief = anyio.run(call, {"brief": True})
+    assert "data-tb-figure" in brief["presentation"]["figure_attributes"]
+    assert brief["number_formats"]["currency"]
+    assert brief.get("cheat_sheets") is None
+    assert brief.get("report_sections") is None
+    assert brief.get("dataset_verbs") is None
+    assert brief.get("model") is None
+    assert brief["brief"]["omitted"] == [
+        "cheat_sheets", "report_sections", "dataset_verbs",
+    ]
+
+    full = anyio.run(call, {"brief": False})
+    assert full["cheat_sheets"]
+    assert full["presentation"]["figure_attributes"]["data-tb-figure"]
+    assert full.get("brief") is None
+    assert full.get("model") is None
 
 
 def test_a_schema_checking_client_accepts_every_tool(gateway_model, tmp_path,

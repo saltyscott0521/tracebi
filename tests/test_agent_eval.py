@@ -62,6 +62,8 @@ def test_scorer_passes_portfolio_book_and_fails_a_literal(tmp_path):
 
     rows = score_all(project, cases)
     table = format_table(rows)
+    assert "first-build success:" in table
+    assert "builds on rescore" not in table
     assert "book" in table and "pass" in table.split("book")[1].split("\n")[0]
     by_id = {case_id: (ok, reason) for case_id, ok, reason in rows}
     assert by_id["book"][0] is True
@@ -153,6 +155,9 @@ def test_gateway_log_adds_calls_errors_and_the_top_three(tmp_path, capsys):
     assert rows["b"].split()[1:4] == ["pass", "3", "2"]
     assert "not called" in rows["b"]
     assert "no log" in rows["c"]
+    assert "builds on rescore: 2/3 (67%)" in out
+    assert "gateway first-call success: 0/1 (0%)" in out
+    assert "first-build success:" not in out
     assert "a  build_report  refused: figure claim mismatch" in out
     top = out.split("top errors across all cases:")[1].strip().splitlines()
     assert len(top) == 3

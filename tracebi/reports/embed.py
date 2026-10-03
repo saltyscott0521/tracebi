@@ -28,8 +28,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import html as html_lib
 import json
 import os
+import re
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -91,6 +93,34 @@ def read_lib(name: str) -> str:
         )
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+
+_DOC_TOKEN = re.compile(r"<\s*(?:html|head)\b", re.IGNORECASE)
+
+
+def wrap_html_fragment(page: str, title: str) -> str:
+    """Wrap a pure fragment — no ``<html>`` or ``<head>`` token — in a document.
+
+    A page that already has either token is returned unchanged, so a malformed
+    document (``<html>`` or ``<head>`` present, no ``</head>``) still fails at
+    :func:`insert_before` instead of being rewritten. ``<header>`` is not a
+    ``<head>`` token.
+    """
+    if _DOC_TOKEN.search(page):
+        return page
+    safe = html_lib.escape(title, quote=True)
+    return (
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        f"<title>{safe}</title>\n"
+        "</head>\n"
+        "<body>\n"
+        f"{page}\n"
+        "</body>\n"
+        "</html>\n"
+    )
 
 
 def insert_before(html: str, tag: str, snippet: str) -> str:

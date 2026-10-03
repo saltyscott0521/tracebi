@@ -298,7 +298,9 @@ front of a person should carry a receipt. This gateway is how you produce one.
    outside it validates.
 2. **query_model** — ask star-schema questions. Every result is *stamped*: the
    resolved query, the lineage chain, and a SHA-256 fingerprint of the full
-   result. Cite the fingerprint with any number you quote. "Top N" is
+   result. Cite the fingerprint with any number you quote. The response's
+   `binding` object is the value of `data.<name>` in report.json — paste
+   it there under a name you choose. "Top N" is
    `order_by` + `limit` in the query — declarative, in the receipt.
 3. **author the report** — the report form is an ARTIFACT PACKAGE
    (`reports/<name>/`): `report.json` names query bindings; `template.html`
@@ -331,13 +333,17 @@ front of a person should carry a receipt. This gateway is how you produce one.
    `format="pdf"` also writes `<name>.pdf`: a print of that built HTML,
    which carries no receipt.
 6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
-   Pass the returned `html_path` or `manifest_path` (to hand to verify),
-   the `xlsx_path` from a `format="xlsx"` build, or the `pdf_path` from
-   a `format="pdf"` build. HTML and JSON come back as text; an `.xlsx`
-   or `.pdf` comes back base64-encoded with its media type.
-7. **verify_manifest** — re-runs the recorded queries and classifies each
-   section. Only `reproduces` means a number was re-run and matched; a
-   manifest with nothing to check is not a pass.
+   The argument is `path`. `build_report` returns `output_path` (the HTML)
+   and `manifest_path`; `render_report_spec` returns `html_path` and
+   `manifest_path`. Pass one of those as `fetch_artifact(path=...)`. An
+   xlsx build also returns `xlsx_path`, and a pdf build returns `pdf_path`
+   — pass either as `fetch_artifact(path=...)`. HTML and JSON come back as
+   text; an `.xlsx` or `.pdf` comes back base64-encoded with its media type.
+7. **verify_manifest** — the argument is `manifest`. Pass `build_report`'s
+   `manifest_path` as `verify_manifest(manifest=...)` (or
+   `render_report_spec`'s `manifest_path`). It re-runs the recorded queries
+   and classifies each section. Only `reproduces` means a number was
+   re-run and matched; a manifest with nothing to check is not a pass.
 
 ## The two planes
 - **Definition plane (git):** transforms, models, report specs are authored
@@ -355,9 +361,10 @@ front of a person should carry a receipt. This gateway is how you produce one.
 ## The rules
 - Never quote a number without its fingerprint.
 - Never hard-code a figure a query could produce.
-- Always verify before you claim done: build_report, then verify_manifest on
-  the manifest it wrote, and read the verdict. "Built" is not "verified" — only
-  a `reproduces` verdict earns the word.
+- Always verify before you claim done: `build_report(report=...)`, then
+  pass that result's `manifest_path` as `verify_manifest(manifest=...)`,
+  and read the verdict. "Built" is not "verified" — only a `reproduces`
+  verdict earns the word.
 - If something can't be verified, say so — an honest "unverifiable" beats a
   green badge on unchecked work.
 - The trust machinery covers the model boundary onward (the query and the
@@ -394,8 +401,11 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    A number with no query behind it is honest only as `data-tb-unverified` —
    never a value figure with the number typed in.
 
-4. Publish and check — build_report, then verify_manifest on the manifest it
-   wrote. Report the verdict; only `reproduces` means re-run and matched.
+4. Publish and check — `build_report(report="sales_by_region")` returns
+   `output_path` and `manifest_path`. Pass `manifest_path` as
+   `verify_manifest(manifest=...)`. To read the page, pass `output_path`
+   as `fetch_artifact(path=...)`. Report the verdict; only `reproduces`
+   means re-run and matched.
 """
 
 
@@ -408,12 +418,12 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
 # ``{ok, errors}`` envelope, and the MCP SDK drops any returned key the schema
 # does not name — so every key a function can return is listed here.
 #
-# Every non-Any field is Optional. The SDK builds one pydantic model from the
-# TypedDict and, for each key the function omitted, dumps null (the default it
-# sets on total=False fields). A schema of ``{"type": "string", "default": null}``
-# does not allow that null, and a schema-checking client rejects the whole
-# result. Optional makes the advertised schema permit null exactly where that
-# conversion emits it. There is no nested model: containers are Any, or
+# Every non-Any field is Optional. mcp 2.0 fills each omitted total=False key
+# with null; mcp 2.3 omits those NotRequired keys instead. A schema of
+# ``{"type": "string", "default": null}`` does not allow that null, and a
+# schema-checking client rejects the whole result. Optional makes the
+# advertised schema permit null where 2.0 emits it. There is no nested model:
+# containers are Any, or
 # list/dict of str whose values the tools actually return as strings (a null
 # inside one of those would still fail, and none of the returns produce one).
 
@@ -426,7 +436,17 @@ class ContextResult(TypedDict, total=False):
     number_formats: Any
     conventions: Any
     cheat_sheets: Any
-    model: Any  # present only when a model= argument was passed
+    model: Any  # null or absent unless model= was passed
+    presentation: Any
+    transform_contracts: Any
+    schedule: Any
+    warehouse: Any
+    pins: Any
+    spreadsheet: Any
+    pdf: Any
+    connect: Any
+    analyst_knowledge: Any
+    brief: Any  # the omission note; null or absent when brief=false
 
 
 class ModelsResult(TypedDict, total=False):
@@ -757,10 +777,11 @@ _BINDING_QUERY_KEYS = (
 
 
 def _binding_stub(model: str, stamped: dict) -> dict:
-    """A ``report.json`` data entry for the query that just ran.
+    """The value of one ``report.json`` ``data.<name>`` entry.
 
-    The agent pastes this under ``data``. It is the resolved query, not a
-    transcription of the rows.
+    Paste the returned object under ``data.<name>``. The response key is
+    ``binding``; ``report.json`` stores it under ``data``. It is the
+    resolved query, not a transcription of the rows.
     """
     query = {}
     for key in _BINDING_QUERY_KEYS:
@@ -1204,10 +1225,11 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
 
     ``render_report_spec`` and ``build_report`` return a server-side PATH; a
     remote agent driving the gateway over MCP needs the BYTES to deliver the
-    report or hand the manifest to ``verify_manifest``. Pass the ``html_path``
-    or ``manifest_path`` a render/build tool returned, the ``xlsx_path``
-    from ``build_report(..., format="xlsx")``, or the ``pdf_path`` from
-    ``build_report(..., format="pdf")``. Read-only and hard
+    report or hand the manifest to ``verify_manifest``. The argument is
+    ``path``. Pass ``build_report``'s ``output_path`` or ``manifest_path``,
+    ``render_report_spec``'s ``html_path`` or ``manifest_path``,
+    ``build_report``'s ``xlsx_path``, or the ``pdf_path`` a pdf build
+    returns (``build_report(..., format="pdf")``). Read-only and hard
     path-guarded: the file must sit under the working directory (or
     ``$TRACEBI_OUTPUT_ROOT``), never inside the installed package, and be one of
     the ``.html`` / ``.json`` / ``.xlsx`` / ``.pdf`` artifacts those tools write — never
@@ -1321,13 +1343,20 @@ def build_server(token: Optional[str] = None):
             "validate. Query with query_model; every response is stamped "
             "with the resolved query and a fingerprint of the full result — "
             "cite the fingerprint when you quote a number, and paste the "
-            "result's binding stub into report.json instead of transcribing "
-            "numbers. A report is a package, reports/<name>/: report.json "
+            "result's binding object as the value of data.<name> in "
+            "report.json instead of transcribing numbers. A report is a "
+            "package, reports/<name>/: report.json "
             "names the bindings, template.html claims them with "
-            "data-tb-figure + data-tb-binding. build_report publishes it "
-            "(self-contained HTML + manifest); verify_manifest re-runs the "
-            "manifest's queries, and only 'reproduces' means the numbers "
-            "matched. Under tracebi dev, read workbench_state first — the "
+            "data-tb-figure + data-tb-binding. build_report(report=...) "
+            "publishes it and returns output_path and manifest_path; pass "
+            "manifest_path as verify_manifest(manifest=...) and output_path "
+            "as fetch_artifact(path=...). render_report_spec returns "
+            "html_path and manifest_path — pass that manifest_path the same "
+            "way. Only 'reproduces' means the numbers matched. Column names "
+            "come from describe_table. Lessons are get_context's "
+            "analyst_knowledge.lessons. A file that failed to load is under "
+            "list_models (skipped) or list_reports. Under "
+            "tracebi dev, read workbench_state first — the "
             "person's pins come before anything else — and resolve_pin each "
             "one you act on. Without file access, or for a fixed layout, a "
             "JSON ReportSpec is the simpler lane: validate_report_spec, then "
@@ -1366,9 +1395,14 @@ def build_server(token: Optional[str] = None):
             "TraceBi's semantic contract: every model, section type, chart "
             "type, DataSet verb, measure kind and filter operator. Pass "
             "model=<name> to include that model's tables, dimensions and "
-            "named measures. Call this first — start with brief=true for the "
-            "token-lean payload (about half the size), and re-call without it "
-            "only when you need a section it omits."
+            "named measures; model is null or absent unless you pass it. "
+            "Call this first — start with brief=true, the tier for "
+            "authoring a package. brief=true includes presentation (the "
+            "data-tb-* figure grammar) and number_formats. It leaves "
+            "cheat_sheets, report_sections, and dataset_verbs null or "
+            "absent — not requested in this tier; call "
+            "get_context(brief=false) for them. On brief=false the brief "
+            "field itself is null or absent."
         ),
     )(gateway_context)
     _tool(
@@ -1422,8 +1456,10 @@ def build_server(token: Optional[str] = None):
             "only the transport. Returns rows plus a stamp: the resolved "
             "query, lineage chain, and a fingerprint of the full result. "
             "Quote the fingerprint with any number you cite. The "
-            "response includes binding: a report.json fragment for this "
-            "query — paste it, do not transcribe the number into HTML. Pass "
+            "response includes binding: paste that object as the value of "
+            "data.<name> in report.json (the response key is binding; the "
+            "report.json key is data). Do not transcribe the number into "
+            "HTML. Pass "
             "include_lineage=false while exploring to drop the lineage chain "
             "(the fingerprint and resolved query still let you cite and "
             "re-verify) for lighter responses."
@@ -1486,28 +1522,35 @@ def build_server(token: Optional[str] = None):
         annotations=_RENDER, structured_output=True,
         description=(
             "Build an artifact package (reports/<name>/) to one "
-            "self-contained HTML + its manifest — the publish step. Strips "
-            "exploration blocks, validates every figure claim against the "
-            "embedded bindings, and returns the figure records, embedded "
-            "fingerprints, and the transform_contracts join. Writes only "
-            "its own artifact and receipt. format='xlsx' also writes "
-            "<name>.xlsx in the same output directory. The spreadsheet "
-            "carries no receipt and is not verifiable; the HTML and "
-            "manifest are the checkable artifact (see spreadsheet_note). "
-            "format='pdf' also writes <name>.pdf, a print of the built HTML "
-            "that carries no receipt (see pdf_note)."
+            "self-contained HTML + its manifest — the publish step. The "
+            "argument is report (the package name). Returns output_path "
+            "(the HTML) and manifest_path. Pass manifest_path as "
+            "verify_manifest(manifest=...) and output_path as "
+            "fetch_artifact(path=...). Strips exploration blocks, validates "
+            "every figure claim against the embedded bindings, and returns "
+            "the figure records, embedded fingerprints, and the "
+            "transform_contracts join. Writes only its own artifact and "
+            "receipt. format='xlsx' also writes <name>.xlsx and returns "
+            "xlsx_path; pass that as fetch_artifact(path=...). The "
+            "spreadsheet carries no receipt and is not verifiable; the HTML "
+            "and manifest are the checkable artifact (see spreadsheet_note). "
+            "format='pdf' also writes <name>.pdf and returns pdf_path; pass "
+            "that as fetch_artifact(path=...). The PDF is a print of the "
+            "built HTML and carries no receipt (see pdf_note)."
         ),
     )(gateway_build_report)
     _tool(
         name="fetch_artifact", title="Fetch a rendered artifact",
         annotations=_READ, structured_output=True,
         description=(
-            "Read back the bytes of an artifact a render/build tool wrote — "
-            "pass the html_path, manifest_path, xlsx_path, or pdf_path it "
-            "returned. The render tools return a server-side path; this "
-            "delivers the actual content so a remote agent can send the "
-            "report or hand the manifest to verify_manifest. HTML and JSON "
-            "come back as text. An .xlsx or .pdf comes back base64-encoded "
+            "Read back the bytes of an artifact a render/build tool wrote. "
+            "The argument is path. Pass build_report's output_path or "
+            "manifest_path, render_report_spec's html_path or "
+            "manifest_path, build_report's xlsx_path, or build_report's "
+            "pdf_path. This delivers the actual content so a remote agent "
+            "can send the report or hand the manifest to "
+            "verify_manifest(manifest=...). HTML and JSON come back as "
+            "text. An .xlsx or .pdf comes back base64-encoded "
             "(encoding='base64') with its media type. Read-only, guarded to "
             "the artifact directory. Every other suffix is refused."
         ),
@@ -1516,9 +1559,10 @@ def build_server(token: Optional[str] = None):
         name="verify_manifest", title="Verify a receipt",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
-            "Re-run every recorded query in a rendered manifest (a dict, or "
-            "a path to the *.manifest.json render_report_spec wrote) and "
-            "classify each section: reproduces, source_drift (an input "
+            "Re-run every recorded query in a rendered manifest. The "
+            "argument is manifest: a dict, or build_report's manifest_path, "
+            "or render_report_spec's manifest_path. Classifies each "
+            "section: reproduces, source_drift (an input "
             "fingerprint moved), unexplained (result differs but inputs "
             "match), or unverifiable (no recorded query). Closes the loop "
             "on your own receipts. Check the receipt-level verdict, not "
@@ -1586,21 +1630,27 @@ def build_server(token: Optional[str] = None):
             "will validate.\n"
             "2. Use query_model to explore the numbers. Every result is "
             "stamped — keep the fingerprints for anything you cite — and "
-            "carries a binding stub.\n"
-            "3. Write the package reports/<name>/: paste each binding stub "
-            "you need into report.json, and in template.html give every "
+            "carries a binding object.\n"
+            "3. Write the package reports/<name>/: paste each binding "
+            "object as the value of data.<name> in report.json, and in "
+            "template.html give every "
             "number an element with data-tb-figure + data-tb-binding (or "
             "mark it data-tb-unverified). Never type a number a query "
             "produced.\n"
-            "4. build_report to publish the self-contained HTML and its "
-            "manifest. It refuses a figure whose claim does not match its "
-            "binding — fix the claim and build again.\n"
-            "5. verify_manifest on that manifest and report the verdict. "
-            "Only 'reproduces' means the numbers were re-run and matched; say "
-            "so honestly if anything is unverifiable.\n\n"
+            "4. build_report(report=<the package name>) to publish the "
+            "self-contained HTML and its manifest. It returns output_path "
+            "and manifest_path. It refuses a figure whose claim does not "
+            "match its binding — fix the claim and build again.\n"
+            "5. verify_manifest(manifest=<the manifest_path from step 4>) "
+            "and report the verdict. Only 'reproduces' means the numbers "
+            "were re-run and matched; say so honestly if anything is "
+            "unverifiable. To read the page, fetch_artifact(path=<the "
+            "output_path from step 4>).\n\n"
             "Without file access, author a JSON ReportSpec instead (read "
             "tracebi://spec-schema), validate_report_spec until ok:true — "
-            "heed its warnings too — then render_report_spec, then step 5."
+            "heed its warnings too — then render_report_spec, which returns "
+            "html_path and manifest_path. Pass that manifest_path as "
+            "verify_manifest(manifest=...)."
         )
 
     @server.prompt(
@@ -1630,7 +1680,7 @@ def build_server(token: Optional[str] = None):
 
     @server.prompt(
         name="address_pins", title="Act on the person's workbench pins",
-        description="Read workbench_state, act on each open pin in order, rebuild, then resolve each pin.",
+        description="Read workbench_state, act on each open pin in order, rebuild, verify, then resolve each pin.",
     )
     def _address_pins_prompt(report: str) -> str:
         return (
@@ -1650,12 +1700,36 @@ def build_server(token: Optional[str] = None):
             "figure.\n"
             f"3. build_report(report={report!r}). If it refuses, fix the "
             "package and build again.\n"
-            "4. resolve_pin each pin you acted on, with a one-line note of "
+            "4. verify_manifest(manifest=<the manifest_path build_report "
+            "returned>). Only a reproduces verdict means the numbers were "
+            "re-run and matched. If it does not reproduce, fix the package "
+            "and build again before resolving pins.\n"
+            "5. resolve_pin each pin you acted on, with a one-line note of "
             "what you did. If you could not act on one, leave it open and "
             "say why."
         )
 
+    _log_rejected_arguments(server)
     return server
+
+
+def _log_rejected_arguments(server) -> None:
+    """Record argument-validation failures the tool wrapper never sees."""
+    manager = server._tool_manager
+    original = manager.call_tool
+
+    async def call_tool(name, arguments, context, convert_result=False):
+        try:
+            return await original(
+                name, arguments, context, convert_result=convert_result)
+        except Exception as exc:
+            cause = exc.__cause__
+            if type(cause).__name__ == "ValidationError":
+                _gateway_log.record_rejected_arguments(
+                    name, arguments, cause, _mcp_actor())
+            raise
+
+    manager.call_tool = call_tool
 
 
 def _is_loopback(host: str) -> bool:

@@ -201,12 +201,13 @@ differs by client: `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code,
 connector under Settings → Connectors).
 
 The gateway also ships three prompts: `author_report(question)` walks the
-package loop (query, bindings, `build_report`, `verify_manifest`);
+package loop (query, paste each `binding` object under `data.<name>`,
+`build_report`, `verify_manifest`);
 `answer_question(question, model="")` answers in plain words with each
 number beside its fingerprint and measure, never estimates, and builds no
 report unless asked; `address_pins(report)` reads `workbench_state`, acts
-on each open pin in order, rebuilds, then `resolve_pin`s each with a
-one-line note.
+on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
+`resolve_pin`s each with a one-line note.
 
 ### The dev iteration, step by step
 
@@ -225,8 +226,8 @@ one-line note.
    Warehouse panel lists tables, row counts, column profiles, and
    sink-contract status as transforms land; the Models panel shows the
    star schema taking shape as you edit `models/`. Column names of a sunk
-   table come from `tracebi warehouse tables --table T` (or the MCP
-   `describe_table` tool) — connector metadata, no row scan. A connector
+   table come from the MCP `describe_table` tool (or `tracebi warehouse
+   tables --table T`) — connector metadata, no row scan. A connector
    that raises is reported in place; the others still list. Use it before you
    write a model or an ad-hoc measure. A model that failed to
    load is listed under `skipped` with its error; fix the file and call
@@ -276,10 +277,14 @@ one-line note.
    `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
    same output directory. The spreadsheet carries no receipt and is not
    verifiable; the HTML and manifest are the checkable artifact.
-   `fetch_artifact` returns that workbook base64-encoded. A PDF
+   Pass that result's `xlsx_path` as `fetch_artifact(path=...)`; the
+   workbook comes back base64-encoded. `build_report` returns `output_path`
+   and `manifest_path` — pass `manifest_path` as
+   `verify_manifest(manifest=...)`. A PDF
    (`tracebi report build <name> --format pdf`, or
    `build_report(..., format="pdf")`) is a print of that built HTML and
-   carries no receipt.
+   carries no receipt. A pdf build returns `pdf_path`; pass that as
+   `fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:

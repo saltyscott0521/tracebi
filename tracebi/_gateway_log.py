@@ -48,12 +48,17 @@ def _argument_values(value: Any) -> Iterable[str]:
 
 def _mask(message: str, arguments: dict) -> str:
     # Longest first, so a value that contains another is masked whole.
-    # Values under three characters are left alone: masking "1" or "id"
-    # would shred the message without protecting anything.
+    # Whole tokens only: "report" must not redact the "report" inside
+    # "reports". Values under three characters are left alone.
     for text in sorted(set(_argument_values(arguments)), key=len, reverse=True):
         if len(text) >= 3:
-            message = message.replace(text, "<value>")
+            message = re.sub(
+                rf"(?<!\w){re.escape(text)}(?!\w)", "<value>", message)
     return message
+
+
+def _attempt_key(arguments: dict) -> str:
+    return str(arguments.get("report") or arguments.get("name") or "")
 
 
 def _first_line(text: str) -> str:
@@ -97,7 +102,7 @@ def logged(tool: str, fn: Callable, actor: Callable[[], str]) -> Callable:
             "arguments": sorted(arguments),
         }
         if tool == "build_report":
-            key = str(arguments.get("report", ""))
+            key = _attempt_key(arguments)
             _build_attempts[key] += 1
             line["attempt"] = _build_attempts[key]
         start = time.perf_counter()
@@ -120,6 +125,35 @@ def logged(tool: str, fn: Callable, actor: Callable[[], str]) -> Callable:
         return result
 
     return wrapper
+
+
+def record_rejected_arguments(tool: str, arguments: Any, exc: BaseException,
+                              actor: str) -> None:
+    """Log a call the protocol rejected before the tool function ran.
+
+    Argument validation (a wrong name, a missing required argument) never
+    enters :func:`logged`. Record the names the client passed and a masked
+    first line. A ``build_report`` rejection counts as an attempt, keyed the
+    same way as a call that used ``report``.
+    """
+    if not enabled():
+        return
+    raw = arguments if isinstance(arguments, dict) else {}
+    line: dict = {
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "session": _SESSION,
+        "tool": tool,
+        "actor": actor,
+        "arguments": sorted(str(k) for k in raw),
+        "ok": False,
+        "error_type": type(exc).__name__,
+        "error": _mask(_first_line(str(exc)), raw),
+    }
+    if tool == "build_report":
+        key = _attempt_key(raw)
+        _build_attempts[key] += 1
+        line["attempt"] = _build_attempts[key]
+    _write(line)
 
 
 # ── Summary ─────────────────────────────────────────────────────────────────

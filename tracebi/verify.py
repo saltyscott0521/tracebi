@@ -285,6 +285,28 @@ def _mapping_index(lineage: list) -> dict[str, list[str]]:
     return out
 
 
+_FIGURE_KINDS = frozenset({"value", "chart", "table", "custom"})
+
+
+def _apply_figure_kinds(results: list[dict], figures: Any) -> None:
+    """Name the figure kind on a section when every figure on that binding
+    shares one. Mixed kinds, or no figures, leave the carrier type."""
+    if not isinstance(figures, list):
+        return
+    kinds: dict[str, set[str]] = {}
+    for fig in figures:
+        if not isinstance(fig, dict):
+            continue
+        binding, kind = fig.get("binding"), fig.get("kind")
+        if not isinstance(binding, str) or kind not in _FIGURE_KINDS:
+            continue
+        kinds.setdefault(binding, set()).add(kind)
+    for row in results:
+        found = kinds.get(row["section"])
+        if found is not None and len(found) == 1:
+            row["section_type"] = next(iter(found))
+
+
 def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dict:
     """Classify one data-bearing manifest section."""
     from tracebi.model.data_model import QuerySpec
@@ -518,6 +540,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
             continue
         label = s.get("id") or s.get("title") or f"section[{i}]"
         results.append(_verify_section(s, models, label))
+    _apply_figure_kinds(results, manifest.get("figures"))
 
     # ── Semantic-contract diagnosis — purely diagnostic ──────────────────
     # When the receipt carries the contract AS EXERCISED and a section's

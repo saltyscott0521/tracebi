@@ -90,6 +90,37 @@ def test_each_call_writes_one_line_and_no_values(log_model, tmp_path, monkeypatc
     assert "250" not in raw
 
 
+def test_mask_replaces_whole_tokens_only():
+    got = _gateway_log._mask(
+        "reports/weighted_spread/report.json",
+        {"report": "weighted_spread", "name": "report"},
+    )
+    assert got == "reports/<value>/<value>.json"
+    assert "<value>s" not in got
+
+
+def test_a_wrong_argument_name_is_logged(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("TRACEBI_MCP_LOG", "1")
+    _gateway_log._build_attempts.clear()
+
+    with pytest.raises(Exception):
+        _call("build_report", {"name": "weighted_spread"})
+    _call("build_report", {"report": "weighted_spread"})
+
+    lines = _lines(tmp_path)
+    assert len(lines) == 2
+    rejected, followed = lines
+    assert rejected["ok"] is False
+    assert rejected["error_type"] == "ValidationError"
+    assert rejected["arguments"] == ["name"]
+    assert rejected["attempt"] == 1
+    assert "weighted_spread" not in json.dumps(rejected)
+    assert followed["tool"] == "build_report"
+    assert followed["attempt"] == 2
+    assert "report" in followed["arguments"]
+
+
 def test_a_raised_error_is_recorded_masked_and_reraised(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("TRACEBI_MCP_LOG", "1")

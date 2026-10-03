@@ -248,7 +248,8 @@ the built `output/<name>.html` + receipt is the deliverable, and the package
 is already served on the Reports page — there is no separate publish step.
 A PDF (`tracebi report build <name> --format pdf`, or
 `build_report(..., format="pdf")`) is a print of that built HTML and carries
-no receipt.
+no receipt. A pdf build returns `pdf_path`; pass that as
+`fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
 runs and who receives it in `report.json`:
@@ -298,7 +299,9 @@ making is one command away:
 
 - `tracebi knowledge` — list the lessons (each with a *when* to reach for it).
 - `tracebi knowledge <slug>` — read one in full; the same set rides in
-  `tracebi context` under `analyst_knowledge`.
+  `tracebi context` under `analyst_knowledge`. Over the gateway that index
+  is `get_context`'s `analyst_knowledge.lessons` (there is no separate tool
+  for a lesson body).
 
 The ones you will use constantly: **ratio-of-totals** (a rate is a ratio of
 summed totals, never a mean of per-row ratios — `agg="mean"` on a rate is almost
@@ -406,9 +409,9 @@ Thirteen tools (`tracebi/mcp_server.py`):
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
 | `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit. Open pins only; `resolved_count` is how many have been resolved |
 | `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
-| `build_report` | The **publish step for the package lane**: build `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` in that same output directory. The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf`: a print of that built HTML, which carries no receipt; `pdf_note` points at the HTML and manifest |
-| `fetch_artifact` | Read back an artifact a render or build tool wrote, given the path it returned. HTML and JSON come back as text. An `.xlsx` from `build_report(..., format="xlsx")` or a `.pdf` from `format="pdf"` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |
-| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify: `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
+| `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML and carries no receipt; `pdf_note` points at the HTML and manifest |
+| `fetch_artifact` | Read back an artifact a render or build tool wrote. The argument is `path`: `build_report`'s `output_path` or `manifest_path`, `render_report_spec`'s `html_path` or `manifest_path`, `build_report`'s `xlsx_path`, or `build_report`'s `pdf_path`. HTML and JSON come back as text. An `.xlsx` or a `.pdf` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |
+| `verify_manifest` | Re-run every recorded query in a rendered manifest. The argument is `manifest`: pass `build_report`'s `manifest_path` (or `render_report_spec`'s `manifest_path`). Classifies `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 
 Every tool returns **structured output** (a typed `outputSchema` and
 `structuredContent`, not JSON inside a text blob), so the stamp and the verdict
@@ -428,14 +431,15 @@ into context rather than guessing:
 And three **prompts**, the fastest way to start correctly:
 
 - `author_report(question)` — the whole loop for a question: context, query,
-  a `reports/<name>/` package from the binding stubs, `build_report`,
-  `verify_manifest`. Without file access it falls back to a spec and
-  `render_report_spec`.
+  a `reports/<name>/` package (paste each `query_model` `binding` object
+  under `data.<name>`), `build_report`, `verify_manifest`. Without file
+  access it falls back to a spec and `render_report_spec`.
 - `answer_question(question, model="")` — `get_context`, then `query_model`;
   answer in plain words with each number beside its fingerprint and measure.
   Never estimate; say so when the model can't answer; no report unless asked.
 - `address_pins(report)` — read `workbench_state`, act on each open pin in
-  order, `build_report`, then `resolve_pin` each with a one-line note.
+  order, `build_report`, then `verify_manifest(manifest=<manifest_path>)`,
+  then `resolve_pin` each with a one-line note.
 
 The server's own instructions lead with the package lane (`build_report`)
 and name the spec lane (`render_report_spec`) as the simpler alternative.

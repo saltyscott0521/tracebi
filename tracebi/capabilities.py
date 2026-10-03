@@ -639,7 +639,8 @@ def _conventions() -> dict:
             "Registration happens as an import side effect, so module scope must "
             "be safe to execute at server startup.",
             "A file that raises on import is skipped with a warning, not an error — "
-            "run `tracebi validate` to see what failed to load.",
+            "list_models (skipped) and list_reports name what failed to load. "
+            "The CLI is `tracebi validate`.",
         ],
         "env_overrides": [
             "TRACEBI_MODELS_DIR", "TRACEBI_PIPELINES_DIR",
@@ -706,8 +707,10 @@ def _analyst_knowledge() -> dict:
                 "producing a number — and, in the 'design-' lessons, for a report "
                 "page a reader understands at a glance. Reach for the one whose "
                 "'when' matches the decision you are making.",
-        "fetch": "tracebi knowledge <slug>  (or the tracebi-analyst / "
-                 "tracebi-designer skills)",
+        "fetch": "The lesson index (slug, title, when) is already in this "
+                 "payload under lessons. There is no separate gateway call "
+                 "for a lesson body. tracebi knowledge <slug>  (or the "
+                 "tracebi-analyst / tracebi-designer skills)",
         "lessons": index(),
     }
 
@@ -997,10 +1000,11 @@ def describe(brief: bool = False) -> dict:
                     "the model. A connector that raises is reported in place "
                     "(name, type, error: exception type plus the first "
                     "message line); the others still list.",
-            "cli": "tracebi warehouse tables [--connector NAME] [--table T] [--json]",
             "mcp": "describe_table(table='', connector='')",
-            "when": "Before writing a model or an ad-hoc measure, so column "
-                    "names come from the catalog instead of from an error.",
+            "cli": "tracebi warehouse tables [--connector NAME] [--table T] [--json]",
+            "when": "Call describe_table before writing a model or an ad-hoc "
+                    "measure, so column names come from the catalog instead "
+                    "of from an error.",
         },
         "pins": {
             "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",
@@ -1013,8 +1017,10 @@ def describe(brief: bool = False) -> dict:
         },
         "spreadsheet": {
             "mcp": "build_report(report, output_dir='output', format='xlsx')",
-            "fetch": "fetch_artifact(xlsx_path) — encoding is base64, "
-                     "content_type is the spreadsheet media type.",
+            "fetch": "fetch_artifact(path=<the xlsx_path build_report "
+                     "returned>) — encoding is base64, "
+                     "content_type is the spreadsheet media type. "
+                     "Every other suffix stays refused.",
             "note": "The spreadsheet carries no receipt and is not "
                     "verifiable. format='xlsx' still writes the HTML and "
                     "manifest beside the workbook; those are the checkable "
@@ -1025,7 +1031,8 @@ def describe(brief: bool = False) -> dict:
             "mcp": "build_report(report, output_dir='output', format='pdf')",
             "web": "GET /api/reports/{name}/download?format=pdf — the last "
                    "build, printed.",
-            "fetch": "fetch_artifact(pdf_path) — encoding is base64, "
+            "fetch": "fetch_artifact(path=<the pdf_path a pdf build "
+                     "returned>) — encoding is base64, "
                      "content_type is application/pdf.",
             "note": "The PDF is a print of the built HTML (headless "
                     "Chromium, so charts render). It carries no receipt "
