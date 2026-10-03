@@ -1657,7 +1657,27 @@ def build_server(token: Optional[str] = None):
             "say why."
         )
 
+    _log_rejected_arguments(server)
     return server
+
+
+def _log_rejected_arguments(server) -> None:
+    """Record argument-validation failures the tool wrapper never sees."""
+    manager = server._tool_manager
+    original = manager.call_tool
+
+    async def call_tool(name, arguments, context, convert_result=False):
+        try:
+            return await original(
+                name, arguments, context, convert_result=convert_result)
+        except Exception as exc:
+            cause = exc.__cause__
+            if type(cause).__name__ == "ValidationError":
+                _gateway_log.record_rejected_arguments(
+                    name, arguments, cause, _mcp_actor())
+            raise
+
+    manager.call_tool = call_tool
 
 
 def _is_loopback(host: str) -> bool:
