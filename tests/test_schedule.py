@@ -544,6 +544,130 @@ class TestOwnerAlerts:
         assert rec["alert"]["to"] == "ops@example.com"
         assert rec["alert"]["error"] == "RuntimeError: smtp down"
 
+    def _refuse(self, monkeypatch):
+        monkeypatch.setattr(
+            "tracebi.verify.verify_manifest",
+            lambda *a, **k: {
+                "verdict": "unexplained",
+                "verdict_detail": "stub: did not reproduce",
+                "exit_code": 1, "ok": False,
+            },
+        )
+
+    def test_a_public_url_links_the_alert_to_the_runs_page(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, sent = self._capture(monkeypatch)
+        monkeypatch.delenv("TRACEBI_SLACK_WEBHOOK", raising=False)
+        monkeypatch.setenv("TRACEBI_PUBLIC_URL", "https://bi.example.com")
+        self._refuse(monkeypatch)
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert sent == []
+        assert rec["status"] == sched.REFUSED
+        assert rec["alert"]["sent"] is True
+        [alert] = alerts
+        assert (
+            "See the run: https://bi.example.com/runs?"
+            "kind=schedule&target=sample_dashboard"
+        ) in alert["body"]
+
+    def test_without_a_public_url_the_alert_has_no_runs_link(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, _sent = self._capture(monkeypatch)
+        monkeypatch.delenv("TRACEBI_PUBLIC_URL", raising=False)
+        monkeypatch.delenv("TRACEBI_SLACK_WEBHOOK", raising=False)
+        self._refuse(monkeypatch)
+        sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        [alert] = alerts
+        assert "See the run" not in alert["body"]
+        assert "tracebi_runs (kind=schedule)" in alert["body"]
+
+    def test_a_slack_webhook_is_pinged_with_the_alert_text(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        alerts, _sent = self._capture(monkeypatch)
+        pings = []
+        monkeypatch.delenv("TRACEBI_PUBLIC_URL", raising=False)
+        monkeypatch.setenv(
+            "TRACEBI_SLACK_WEBHOOK", "https://hooks.example/abc")
+        monkeypatch.setattr(
+            "tracebi._delivery.slack_notify",
+            lambda url, text: pings.append({"url": url, "text": text}) or 200,
+        )
+        self._refuse(monkeypatch)
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.REFUSED
+        assert rec["alert"]["sent"] is True
+        assert rec["alert"]["error"] is None
+        assert "slack_error" not in rec["alert"]
+        [alert] = alerts
+        assert pings == [{
+            "url": "https://hooks.example/abc", "text": alert["body"]}]
+        assert "See the run" not in alert["body"]
+
+    def test_a_failed_slack_ping_stays_on_the_alert(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        self._capture(monkeypatch)
+        monkeypatch.setenv(
+            "TRACEBI_SLACK_WEBHOOK", "https://hooks.example/abc")
+
+        def boom(_url, _text):
+            raise RuntimeError("slack down")
+
+        monkeypatch.setattr("tracebi._delivery.slack_notify", boom)
+        self._refuse(monkeypatch)
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.REFUSED
+        assert rec["alert"]["sent"] is True
+        assert rec["alert"]["error"] is None
+        assert rec["alert"]["slack_error"] == "RuntimeError: slack down"
+
+    def test_a_failed_email_still_pings_slack(
+            self, scheduled, monkeypatch):
+        _enter(scheduled, monkeypatch)
+        pings = []
+
+        def down(*_a, **_k):
+            raise RuntimeError("smtp down")
+
+        monkeypatch.setattr("tracebi._delivery.send_alert", down)
+        monkeypatch.setenv(
+            "TRACEBI_SLACK_WEBHOOK", "https://hooks.example/abc")
+        monkeypatch.setattr(
+            "tracebi._delivery.slack_notify",
+            lambda url, text: pings.append(text) or 200,
+        )
+        self._refuse(monkeypatch)
+        rec = sched.run_schedule(
+            _owner(scheduled, owner="ops@example.com"),
+            reports_dir=scheduled / "reports",
+            output_dir=scheduled / "output",
+        )
+        assert rec["status"] == sched.REFUSED
+        assert rec["alert"]["sent"] is False
+        assert rec["alert"]["error"] == "RuntimeError: smtp down"
+        assert "slack_error" not in rec["alert"]
+        assert len(pings) == 1
+        assert "stub: did not reproduce" in pings[0]
+
     def test_a_bad_owner_is_rejected_when_the_package_loads(self, scheduled):
         rj = scheduled / "reports" / "sample_dashboard" / "report.json"
         decl = json.loads(rj.read_text())
@@ -553,6 +677,24 @@ class TestOwnerAlerts:
         assert schedules == []
         assert errors[0]["report"] == "sample_dashboard"
         assert "one email" in errors[0]["error"]
+
+
+def test_the_runs_link_quotes_the_report_name(monkeypatch):
+    monkeypatch.setenv("TRACEBI_PUBLIC_URL", "https://bi.example.com/")
+    body = sched._alert_body({
+        "report": "finance/weekly board",
+        "status": "failed",
+        "error": "boom",
+        "attempts": 1,
+        "started_at": "t0",
+        "finished_at": "t1",
+    })
+    assert (
+        "See the run: https://bi.example.com/runs?"
+        "kind=schedule&target=finance%2Fweekly%20board"
+    ) in body
+    monkeypatch.delenv("TRACEBI_PUBLIC_URL")
+    assert "See the run" not in sched._alert_body({"report": "x", "error": "e"})
 
 
 def test_describe_schedule_notes_a_non_default_retry_count():
