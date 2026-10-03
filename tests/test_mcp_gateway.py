@@ -188,6 +188,45 @@ def test_brief_context_carries_a_report_json_example_that_builds(tmp_path):
     assert (tmp_path / "sales_by_region.html.manifest.json").is_file()
 
 
+def test_order_by_tiebreak_is_noted_and_the_fingerprint_is_unchanged(gateway_model):
+    """Tie-break keys stay in the receipt. The note says the gateway added them."""
+    import anyio
+
+    from tracebi.mcp_server import build_server
+
+    out = _query(order_by=["-revenue"])
+    cols = [o["column"] for o in out["query"]["order_by"]]
+    assert cols[0] == "revenue"
+    assert "dim_customer.region" in cols[1:]
+    assert out["binding"]["query"]["order_by"] == out["query"]["order_by"]
+    assert "tie-break" in out["order_by_note"]
+    direct = gateway_model.query(
+        fact="fact_orders", measures={"revenue": "sum"},
+        dimensions=["dim_customer.region"], order_by=["-revenue"],
+    )
+    assert direct.fingerprint() == out["fingerprint"]
+    plain = _query()
+    assert "order_by" not in plain["query"]
+    assert "order_by_note" not in plain
+
+    pytest.importorskip("mcp")
+    server = build_server()
+
+    async def call():
+        return await server.call_tool("query_model", {
+            "model": "gw_demo", "fact": "fact_orders",
+            "measures": {"revenue": "sum"},
+            "dimensions": ["dim_customer.region"],
+            "order_by": ["-revenue"],
+        })
+
+    payload = anyio.run(call).model_dump(by_alias=True, exclude_none=True)
+    sc = payload["structuredContent"]
+    assert sc["fingerprint"] == out["fingerprint"]
+    assert "tie-break" in sc["order_by_note"]
+    assert sc["binding"]["query"]["order_by"] == sc["query"]["order_by"]
+
+
 def test_query_returns_a_binding_stub(gateway_model):
     out = _query(filters={"status": "shipped"})
     binding = out["binding"]

@@ -502,6 +502,7 @@ class QueryResult(TypedDict, total=False):
     lineage: Any
     actor: Optional[str]
     binding: Optional[dict[str, Any]]
+    order_by_note: Optional[str]
 
 
 class ValidateResult(TypedDict, total=False):
@@ -879,7 +880,9 @@ def gateway_query(
         return {"ok": False, "errors": [str(exc)]}
     df = ds.to_pandas()
     # Echo the STAMPED resolved spec (fully resolved ordering included), so
-    # what the agent cites is what replay compares against.
+    # what the agent cites is what replay compares against. The extra
+    # tie-break keys stay in that spec: stripping them would make the
+    # paste-ready binding disagree with the receipt verify re-runs.
     stamped = spec.to_dict()
     for node in ds.lineage_to_dict():
         qs = (node.get("metadata") or {}).get("query_spec")
@@ -904,6 +907,14 @@ def gateway_query(
     # drop it with include_lineage=false and re-query when it needs the chain.
     if include_lineage:
         result["lineage"] = ds.lineage_to_dict()
+    resolved_order = stamped.get("order_by") or []
+    if len(resolved_order) > len(spec.order_by):
+        result["order_by_note"] = (
+            "The gateway appends the remaining result columns, dimension "
+            "columns first, as ascending tie-breakers so the order is "
+            "deterministic. They were not in the order_by you passed. The "
+            "receipt records them so a replay matches; paste binding as-is."
+        )
     return result
 
 
@@ -1432,7 +1443,11 @@ def build_server(token: Optional[str] = None):
             "'dim_name.attribute' references; filters accept equality, "
             "lists (IN) and operator dicts (gte, between, contains, ...); "
             "order_by ({column, desc} or '-col') sorts the result and "
-            "limit (requires order_by) keeps the top N. preview_rows caps "
+            "limit (requires order_by) keeps the top N. When order_by is "
+            "set, the resolved query and binding also list ascending "
+            "tie-breakers on the remaining result columns (dimensions "
+            "first) so the order is deterministic; order_by_note says so. "
+            "preview_rows caps "
             "only the transport. Returns rows plus a stamp: the resolved "
             "query, lineage chain, and a fingerprint of the full result. "
             "Quote the fingerprint with any number you cite. The "
