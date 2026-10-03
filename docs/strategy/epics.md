@@ -1,19 +1,20 @@
 # Game plan: epics
 
-**Status: the live plan (reconciled 2026-10-03 afternoon).** This is the one
+**Status: the live plan (reconciled 2026-10-03 evening).** This is the one
 list of what to build next. It comes from an audit of the code against every
 plan document in the repo (original audit 2026-09-24; checkboxes reconciled
 against `main` again after the afternoon NOW wave landed E5, E9, E15, and
-E3's connect path). The other plans ([[ROADMAP]], [[production-plan]],
-[[product-readiness-audit]], [[next-level-plan]]) are kept for their
-reasoning and history. Where they disagree with this file on order, this
-file wins.
+E3's connect path, then the same evening after E3's templates, E11's
+delivery leftovers, and E6's Library list landed). The other plans
+([[ROADMAP]], [[production-plan]], [[product-readiness-audit]],
+[[next-level-plan]]) are kept for their reasoning and history. Where they
+disagree with this file on order, this file wins.
 
 **In one line:** the engine, the agent surface, one-server install, the
-state store, the reader's report experience, and the dashboard cookbook
-have shipped. The biggest gaps now are finishing the path onto a client's
-*own* data (`init --template`), a finished Library page, and unattended
-schedule delivery (Slack file delivery, bursting, alert → Runs).
+state store, the reader's report experience, the dashboard cookbook, the
+path onto a client's own data, and unattended schedule delivery have
+shipped. The leftovers now are Coolify on the tagged image (E1) and
+Library mounts (E6).
 
 ---
 
@@ -22,16 +23,16 @@ schedule delivery (Slack file delivery, bursting, alert → Runs).
 ```
                 NOW                              NEXT                        LATER
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-DISTRIBUTION  │ E3 leftover: init    │   │                       │   │ PyPI (when development │
-get it into   │    --template        │──▶│                       │   │ settles; held on       │
+DISTRIBUTION  │ E1 leftover: Coolify │   │                       │   │ PyPI (when development │
+get it into   │    on the tagged img │──▶│                       │   │ settles; held on       │
 people's hands│                      │   │                       │   │ purpose)               │
-              │ E1 leftover: Coolify │   │                       │   │                        │
-              │    on the tagged img │   │                       │   │                        │
+              │ E3: done             │   │                       │   │                        │
+              │                      │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-PLATFORM      │ E6 Report library:   │──▶│                       │──▶│ E7 People, permissions │
-run it for a  │    finish Library    │   │                       │   │    and publishing      │
-team          │    page + mounts     │   │                       │   │                        │
+PLATFORM      │ E6: list done;       │──▶│                       │──▶│ E7 People, permissions │
+run it for a  │    mounts still open │   │                       │   │    and publishing      │
+team          │    (almost done)     │   │                       │   │                        │
               │ E4 / E5: done        │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
@@ -40,31 +41,31 @@ the engine    │    done (E14         │──▶│                       │
               │    decisions remain) │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-WORKFLOWS     │ E11 leftovers: Slack │   │                       │──▶│ E12 Workbench in the   │
-the three     │    file delivery,    │──▶│                       │   │     web app            │
-paths         │    bursting, alert→  │   │                       │   │ E13 Ask anywhere       │
-              │    Runs              │   │                       │   │                        │
+WORKFLOWS     │ E11: done (Teams     │   │                       │──▶│ E12 Workbench in the   │
+the three     │    deferred)         │──▶│                       │   │     web app            │
+paths         │                      │   │                       │   │ E13 Ask anywhere       │
+              │                      │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
 ```
 
 **Shipped since the 2026-09-24 audit (code on `main`; package is
-`0.7.0.dev0` after the `v0.6.0` release):** E2, E4, E5, E8, E9, E14's
-buildable pieces, E15, E1's release automation + public demo URL, E6's
-path discovery + `open_report`, E3's `tracebi connect` / `new-model --from`
-/ ask-build-schedule lead, E11's retries + owner email alerts. The app's
-data path (Sources → Pipelines → Data model → Explore → Reports) is also
-on `main`.
+`0.7.0.dev0` after the `v0.6.0` release):** E2, E3, E4, E5, E8, E9, E11
+(Teams deferred), E14's buildable pieces, E15, E1's release automation +
+public demo URL, E6's path discovery + `open_report` + Library list.
+The app's data path (Sources → Pipelines → Data model → Explore →
+Reports) is also on `main`.
 
 **Why this order:**
 
-1. **Own-data finish.** Connect and draft-model are in; dbt import and
-   `init --template` are what make the 30-minute journey real on clean
-   warehouse tables and a known-good starter.
-2. **Library before people.** E5 landed the shared store. E6's Library page
-   and mounts are the place permissions (E7) will attach.
-3. **Schedules you can leave alone.** Retries and owner email alerts are
-   in; Slack/Teams file delivery, bursting, and alert → Runs close the
-   Schedule path.
+1. **Own data is in.** Connect, `new-model --from`, dbt import, and both
+   `init --template` starters (saas-metrics, sales-pipeline) are on
+   `main`, and the scaffold leads with ask / build / schedule.
+2. **Library mounts, then people.** The Library list (schedule, last run,
+   builds, last change) is in. Mounts are the open E6 piece; they are
+   where permissions (E7) will attach.
+3. **Schedules you can leave alone — done.** Retries, owner alerts,
+   alert → Runs, Slack file delivery, and bursting are in. Teams stays
+   deferred unless a customer asks.
 4. **Ask waits.** Still the strategy's headline path, still later — the
    model and the library come first.
 5. **Finish a path end to end before starting the next.** Carried over from
@@ -80,7 +81,10 @@ line coverage**), a fresh `tracebi init`, and every gap named in the plan
 documents checked against the code. Reconcile (2026-10-03 morning): closed
 sub-issues #92–#116 / #122 / #136. Afternoon reconcile: E5 (#183/#184),
 E9 (#162/#87 PDF + windowing), E15 (#173), E3 connect (#179), E11 retries
-+ owner alerts, demo URL (#163) — findings below drop what shipped.
++ owner alerts, demo URL (#163). Evening reconcile: E3 templates (#190,
+#192) and dbt import (#188), E6 Library list (#187), E11 Slack file
+(#189), bursting (#191), and alert → Runs (#186) — findings below drop
+what shipped.
 
 ### The plans are behind the code
 
@@ -107,6 +111,9 @@ list them as open, which makes the real gaps harder to see.
 | About footer / PDF / big tables | ✅ Default About, Playwright PDF, windowed tables | #162 / #87 |
 | Named page layouts | ✅ `new-report --layout brief\|dashboard\|tabbed` | #173 |
 | Demo URL disagrees across docs | ✅ Public demo is `https://tracebi.com/app` | #163 |
+| No dbt import / no `init --template` | ✅ `tracebi import dbt`; `init --template saas-metrics` and `sales-pipeline` | #188 / #190 / #192 |
+| Library list has no schedule, last run, builds, or last change | ✅ Those columns on the Reports list; owner is an em dash until E7 | `Reports.jsx` / #187 |
+| Slack file, bursting, and alert → Runs still open | ✅ Slack file upload plus a short summary, `burst`, and the owner alert links to `/runs` | `schedule.py` / #189 / #191 / #186 |
 
 ### Still open, by area
 
@@ -115,29 +122,29 @@ list them as open, which makes the real gaps harder to see.
 | Finding | Evidence |
 | --- | --- |
 | Coolify pointing the demo at the tagged GHCR image is a person ops step, not verified from the repo. | `docs/guides/one-server.md` |
-| No dbt import and no `init --template` yet — connect works; the 30-minute starter pack does not. | `tracebi init --help`, E3 |
 | A git install still ships the API with no web UI unless the UI was built (release wheel includes it). | [[ROADMAP]] item 5 |
 
 **Platform**
 
 | Finding | Evidence |
 | --- | --- |
-| Library page is only started: Reports groups by folder with type / last build / receipt; schedule, past builds, and mounts are still open. Owner waits on E7 (no accounts yet). `open_report` is the one read seam. | `Reports.jsx`, `report_paths.py`, E6 |
+| Mounts are still open (a local path or a network share as a top-level library folder). The Library list is in; owner stays an em dash until E7. `open_report` is the one read seam. | `report_paths.py`, E6 |
 | **The "Keep this cut" endpoint rewrites `report.json` in place, with no draft or approval step.** It requires `admin` until drafts exist. Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
 | One shared Basic-auth login, one shared MCP token, and a self-declared agent name. Nobody's work can be told apart in the audit log. | `web/api/auth.py`, `TRACEBI_MCP_ACTOR` |
 
-**Schedules / agents**
+**Agents**
 
 | Finding | Evidence |
 | --- | --- |
-| Slack *file* delivery, bursting, and alert → Runs links are still open. Retries and owner *email* alerts shipped. Teams is out of scope unless a customer asks. | E11 |
 | E14 decisions not yet made: draft-writing tools for remote agents (after E7), OAuth for claude.ai connectors, rendered snapshot for agents. | #111 |
 
 **What's strong** (keep it that way): the engine, receipts and `verify`; the
 agent surface (MCP, context, guides enforced by tests); the honesty
 discipline; model reload; the prose gate; the workbench; one-server compose
 + guide; the release tag path; the state store and Runs page; the About
-footer and PDF path; named layout recipes.
+footer and PDF path; named layout recipes; the own-data starters
+(`connect`, `import dbt`, `init --template`); schedule delivery (retries,
+owner alerts, Slack file, bursting, Runs links).
 
 ---
 
@@ -196,7 +203,7 @@ schedules, in under 30 minutes.
 **Done when:** following only the guide, a fresh VM serves a client project
 whose scheduled report arrives by email, timed under 30 minutes.
 
-#### E3 · Your own data in 30 minutes — M · Now
+#### E3 · Your own data in 30 minutes — M · Shipped
 
 **Goal:** the first-report journey in [[users-and-jobs]] works on the
 builder's own database, not only the sample data.
@@ -211,9 +218,9 @@ builder's own database, not only the sample data.
 - [x] `tracebi import dbt <path>`: reads a dbt project's `manifest.json` and
       drafts a model over the marts ([[target-architecture]] decision 3), so a
       team with clean tables skips phase ① entirely. (#188)
-- [ ] `tracebi init --template <name>`: start with **SaaS metrics** and **sales
+- [x] `tracebi init --template <name>`: start with **SaaS metrics** and **sales
       pipeline**, each a model plus two reports over sample data, which an
-      agent then points at real tables.
+      agent then points at real tables. (#190, #192)
 - [x] The scaffolded README and `tracebi --help` lead with ask / build /
       schedule, per [[vision-and-positioning]]. Receipts become the "why you
       can trust it" line. (#161)
@@ -276,7 +283,7 @@ share it.
 one and polls it on the other, and a schedule tick fires exactly once.
 *(Met.)*
 
-#### E6 · Report library: folders — M · Now
+#### E6 · Report library: folders — M · Now (almost done)
 
 **Goal:** steps 1–2 of [[report-library]]. Reports live in folders people can
 browse, and a report is addressed by its path.
@@ -287,11 +294,11 @@ browse, and a report is addressed by its path.
       Desk checks all take the path; `tracebi/report_paths.py` is the one
       name guard.)
 - [x] Built outputs are stored per report path, not in one flat `output/`.
-- [ ] A read-only Library page: folders, each report's type, last change,
-      schedule, last run and past builds. *(Started: the Reports page groups
-      by folder with type, last build and receipt. Schedule, past builds and
-      last change still to come. Owner waits on E7 — no named accounts yet;
-      show an em dash, do not invent a fake owner field.)*
+- [x] A read-only Library page: folders, each report's type, last change,
+      schedule, last run and past builds. *(#187: the Reports list shows
+      schedule, last run, build count, and last change, grouped by folder,
+      beside type, last build, and receipt. Owner waits on E7 — no named
+      accounts yet; the list shows an em dash, not a fake owner field.)*
 - [ ] Mounts in configuration: several folders (a local path, a network share)
       as top-level library folders. *(Needs a design pass on the config
       shape.)*
@@ -302,6 +309,7 @@ browse, and a report is addressed by its path.
 
 **Done when:** two folders each hold a `weekly_summary`, both open, build
 and schedule independently, and the Library page shows them in their folders.
+*(Library list met; mounts still open.)*
 
 #### E7 · People, permissions and publishing — L · Later
 
@@ -463,7 +471,7 @@ tabbed skeleton, `tracebi context` lists the three names, and omitting
 
 ### Workflows
 
-#### E11 · Schedules you can leave alone — M · Now
+#### E11 · Schedules you can leave alone — M · Shipped
 
 **Goal:** the Schedule path's Run, Deliver and Monitor steps are finished end
 to end ([[product-strategy]]).
@@ -472,20 +480,21 @@ to end ([[product-strategy]]).
       failure. Default two retries (1 minute, then 5 minutes); `"retries"`
       0–5 overrides. A refused receipt or a send failure is not retried.
 - [x] Email the report's owner on a failure, empty data, or a receipt
-      that didn't reproduce. Slack *owner* alerts (a ping, not the file)
-      can follow once delivery lands.
-- [ ] Slack delivery of the file itself, not only a ping, plus a short
-      in-body summary (the headline figures). *(Teams deferred — not
+      that didn't reproduce. The same text is posted to Slack when
+      `TRACEBI_SLACK_WEBHOOK` is set (a ping, not the file).
+- [x] Slack delivery of the file itself, not only a ping, plus a short
+      in-body summary (the headline figures). (#189) *(Teams deferred — not
       needed unless a customer asks.)*
-- [ ] Per-recipient versions ("bursting"), using the filter grammar
-      parameters from [[target-architecture]] decision 5.
-- [ ] The run history from E5 is what the alert links to. *(Runs page
-      exists; the alert body still only says "Recorded in: tracebi_runs".)*
+- [x] Per-recipient versions ("bursting"), using the filter grammar
+      parameters from [[target-architecture]] decision 5. (#191)
+- [x] The run history from E5 is what the alert links to. When
+      `TRACEBI_PUBLIC_URL` is set, the owner alert links to
+      `/runs?kind=schedule&target=…`. (#186)
 
 **Done when:** a scheduled report whose source goes empty sends its owner an
 alert instead of an empty report, and a transient failure retries and
-succeeds without anyone doing anything. *(Core met; Slack delivery +
-bursting + alert link still open.)*
+succeeds without anyone doing anything. *(Met. Teams file delivery stays
+deferred unless a customer asks.)*
 
 #### E12 · Workbench in the web app — L · Later
 
