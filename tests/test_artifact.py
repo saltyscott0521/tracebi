@@ -157,10 +157,10 @@ class TestStageMeta:
         assert read_stage_meta(PAGE) == "final"
 
 # ── the stated-methodology appendix ─────────────────────────────────────────
-# The container is the template's opt-in; the build appends the pipeline's
-# STATED methodology after the author's own children. Prose, never a
-# verified claim — no badge, no status, and nothing injected without the
-# container.
+# About this report is on by default (auto footer, or the author's ONE
+# data-tb-methodology container). The build appends plain-language About
+# copy and the pipeline's STATED methodology after the author's own
+# children. Prose, never a verified claim — no badge, no status.
 
 # Deliberately markup-shaped prose: the appendix must render it inert.
 TRANSFORM_NOTE = "dropped the 9 unkeyed rows & <b>counted</b> them"
@@ -280,11 +280,23 @@ class TestMethodologyAppendix:
         assert manifest["transform_contracts"]["fact_orders"]["status"] \
             == "satisfied"
 
-    def test_without_the_container_nothing_is_injected_and_manifest_omits_it(
-            self, tmp_path):
+    def test_without_the_container_about_footer_is_default_on(self, tmp_path):
         page, manifest = _render_package(tmp_path, extra_body="")
-        assert APPENDIX not in page
-        assert "methodology" not in manifest
+        assert "About this report" in page
+        assert 'class="tb-about"' in page
+        assert "This file carries a receipt" in page
+        assert "claim the numbers are right" in page
+        assert "Definitions from the model wh_model" in page
+        assert "Built by unknown" not in page
+        assert "Built on " in page
+        receipt = page[page.index('class="tb-about-receipt"'):
+                       page.index('class="tb-about-receipt"') + 400]
+        for word in ("verified", "reproduces", "correct"):
+            assert word not in receipt.lower()
+        # Stated methodology notes ship through the default About home.
+        assert APPENDIX in page
+        assert manifest["methodology"]["transform_notes"]["fact_orders"] \
+            == TRANSFORM_NOTE
 
     def test_two_containers_error_loudly(self, tmp_path):
         with pytest.raises(FigureError, match="ONE home"):
@@ -292,6 +304,42 @@ class TestMethodologyAppendix:
                 tmp_path,
                 '<div data-tb-methodology></div><p data-tb-methodology></p>',
             )
+
+
+class TestAboutFooter:
+    def test_author_container_keeps_prose_first_and_still_gets_about(
+            self, tmp_path):
+        page, _ = _render_package(tmp_path, CONTAINER)
+        assert 'id="authors-own"' in page
+        assert page.index('id="authors-own"') < page.index(
+            "This file carries a receipt")
+        assert page.index("This file carries a receipt") < page.index(APPENDIX)
+        # Author supplied the home — no second auto footer.
+        assert page.count('class="tb-about"') == 0
+
+    def test_report_author_is_named_when_set(self, tmp_path):
+        from tracebi.reports.template_package import TemplatePackage
+
+        wh_path = _noted_warehouse(tmp_path)
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({
+            "name": "pkg",
+            "author": "Ada Analyst",
+            "data": {"kpi": {"model": "wh_model",
+                             "query": {"fact": "f", "measures": ["total"]}}},
+        }))
+        (pkg / "template.html").write_text(
+            "<html><head><title>x</title></head><body>"
+            '<div data-tb-figure="value" data-tb-binding="kpi" '
+            'data-tb-cell="total" id="fig-kpi"></div>'
+            "</body></html>"
+        )
+        out = tmp_path / "out.html"
+        TemplatePackage(str(pkg)).render(
+            {"wh_model": _noted_model(wh_path)}, str(out))
+        page = out.read_text(encoding="utf-8")
+        assert "Built by Ada Analyst on " in page
 
 
 # ── the embedded semantic contract ──────────────────────────────────────────
@@ -446,8 +494,11 @@ class TestReceiptBlockJoins:
         assert receipt["methodology"] is True
         assert receipt["semantic_contract_models"] == ["wh_model"]
 
-    def test_methodology_flag_is_false_without_the_container(self, tmp_path):
+    def test_methodology_flag_is_true_when_notes_ship_via_default_about(
+            self, tmp_path):
+        # No author container — the default About home still carries stated
+        # methodology notes, and the receipt drawer names that.
         page, manifest = _render_package(tmp_path, extra_body="")
         receipt = self._receipt(page)
-        assert receipt["methodology"] is False
-        assert "methodology" not in manifest
+        assert receipt["methodology"] is True
+        assert "methodology" in manifest

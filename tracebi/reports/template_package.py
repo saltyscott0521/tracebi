@@ -56,6 +56,7 @@ import math
 import os
 import re
 import sys
+from datetime import datetime
 from typing import Optional
 
 import pandas as pd
@@ -647,23 +648,24 @@ class TemplatePackage:
         if contracts:
             manifest.transform_contracts = contracts
 
-        # The stated-methodology appendix. A template opts in with ONE empty
-        # (or author-prefilled) data-tb-methodology container; the build
-        # appends the pipeline's STATED methodology after the author's own
-        # children — transform notes, per-check rationale, and measure
-        # descriptions the model declares. Prose, never a verified claim: no
-        # badge, no status, and it never colors a figure. Recorded in the
-        # manifest so the receipt shows what stated methodology shipped.
-        insert_at = methodology_insertion(page)
-        if insert_at is not None:
-            notes = stated_methodology_block(models, lineages)
-            measure_notes = self._measure_notes(models)
-            if measure_notes:
-                notes["measure_notes"] = measure_notes
-            if notes:
-                page = (page[:insert_at] + _methodology_html(notes, contracts)
-                        + page[insert_at:])
-                manifest.methodology = notes
+        # About this report (default on) + the stated-methodology appendix.
+        # A template may place ONE data-tb-methodology container; otherwise
+        # the build adds a footer. Either way the page gets plain-language
+        # who / when / definitions / what the receipt is for, then any
+        # stated methodology notes after the author's own children. Prose,
+        # never a verified claim: no badge, no status, and it never colors
+        # a figure. Stated notes are recorded in the manifest when present.
+        model_names = sorted({ref.model for ref in self.bindings.values()})
+        page, insert_at = _ensure_about_home(page)
+        about = _about_html(manifest, model_names)
+        notes = stated_methodology_block(models, lineages)
+        measure_notes = self._measure_notes(models)
+        if measure_notes:
+            notes["measure_notes"] = measure_notes
+        notes_html = (_methodology_html(notes, contracts) if notes else "")
+        page = page[:insert_at] + about + notes_html + page[insert_at:]
+        if notes:
+            manifest.methodology = notes
 
         # The embedded semantic contract: per model the bindings reference,
         # the contract AS EXERCISED — snapshotted at render, a record of
@@ -1373,6 +1375,86 @@ class TemplatePackage:
             figures_cfg=figures_cfg,
             report_js=self.script_js,
         )
+
+
+def _ensure_about_home(page: str) -> tuple[str, int]:
+    """Return ``(page, insert_at)`` for the About / methodology appendix.
+
+    Prefer the author's ONE ``data-tb-methodology`` container. When the
+    template left none, append a footer before ``</body>`` so About this
+    report is on by default.
+    """
+    insert_at = methodology_insertion(page)
+    if insert_at is not None:
+        return page, insert_at
+    footer = (
+        '<footer class="tb-about" data-tb-methodology>'
+        "<h2>About this report</h2>"
+        "</footer>"
+    )
+    close = page.lower().rfind("</body>")
+    if close < 0:
+        page = page + footer
+    else:
+        page = page[:close] + footer + page[close:]
+    insert_at = methodology_insertion(page)
+    assert insert_at is not None
+    return page, insert_at
+
+
+def _about_html(manifest: ReportManifest, model_names: list[str]) -> str:
+    """Plain-language About this report — who, when, definitions, receipt.
+
+    Locked honesty: names what the receipt is for and what it does not
+    claim. Never says verified, reproduces, or correct.
+    """
+    import html as _html
+
+    lines: list[str] = []
+    who = (manifest.rendered_by or "").strip()
+    when = _about_when(manifest.rendered_at)
+    if who and who != "unknown" and when:
+        lines.append(
+            f'<p class="tb-about-meta">Built by {_html.escape(who)} '
+            f"on {_html.escape(when)}.</p>"
+        )
+    elif who and who != "unknown":
+        lines.append(
+            f'<p class="tb-about-meta">Built by {_html.escape(who)}.</p>'
+        )
+    elif when:
+        lines.append(
+            f'<p class="tb-about-meta">Built on {_html.escape(when)}.</p>'
+        )
+
+    if model_names:
+        label = "model" if len(model_names) == 1 else "models"
+        names = ", ".join(_html.escape(n) for n in model_names)
+        lines.append(
+            f'<p class="tb-about-meta">Definitions from the {label} '
+            f"{names}.</p>"
+        )
+
+    lines.append(
+        '<p class="tb-about-receipt">This file carries a receipt. Each '
+        "figure names the query that produced it and a fingerprint of the "
+        "result. Running <code>tracebi verify</code> on the receipt checks "
+        "whether those numbers still match the model. The receipt does not "
+        "claim the numbers are right.</p>"
+    )
+    return "".join(lines)
+
+
+def _about_when(rendered_at: str) -> str:
+    """UTC calendar day from an ISO stamp, or empty when unusable."""
+    if not rendered_at:
+        return ""
+    try:
+        # Accept trailing Z; date-only is enough for a reader.
+        stamp = rendered_at.replace("Z", "+00:00")
+        return datetime.fromisoformat(stamp).date().isoformat()
+    except ValueError:
+        return rendered_at[:10] if len(rendered_at) >= 10 else ""
 
 
 def _methodology_html(notes: dict, contracts: dict) -> str:
