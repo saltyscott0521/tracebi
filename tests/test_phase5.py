@@ -2333,10 +2333,12 @@ class TestHomepageNeverSilently404s:
         r = self._serve_root(dist="absent", checkout=False)
 
         assert r["html_status"] != 404
-        assert "npm" not in r["html_body"]
-        assert "npm" not in r["api_body"]
-        assert "npm" not in r["stderr"]
+        # Match the build instruction, not the bare substring "npm" — a
+        # tempfile path can contain those three letters by chance
+        # (CI saw …/tmpvernpmx0/… and failed this check).
         for text in (r["html_body"], r["api_body"], r["stderr"]):
+            assert "npm ci" not in text
+            assert "npm run" not in text
             assert "clone" in text or "wheel" in text
 
     def test_with_a_bundle_the_real_index_is_served(self):
