@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { CHAIN } from './chainSteps'
+import { NAV_PRIMARY, MODEL_STORY } from './chainSteps'
 
 // Static page destinations — always available, even before data loads.
-// The chain in order, then the rest. `sub` carries the question the page answers
-// and its old name, so searching "connectors" or "refresh" still finds it.
 const PAGES = [
-  ...CHAIN.map(s => ({ label: s.label, path: s.path, kind: 'page', sub: [s.ask, s.was && `was ${s.was}`].filter(Boolean).join(' · ') })),
+  ...NAV_PRIMARY.map(s => ({
+    label: s.label,
+    path: s.path,
+    kind: 'page',
+    sub: MODEL_STORY.find(x => x.key === s.key)?.ask || '',
+  })),
   { label: 'Runs',            path: '/runs',           kind: 'page', sub: 'what ran, and whether it reproduced' },
   { label: 'Verify a file',   path: '/verify',          kind: 'page' },
   { label: 'Getting Started', path: '/getting-started', kind: 'page' },
@@ -40,18 +43,16 @@ export default function CommandPalette() {
       sub: `${m.tables.length} tables`,
     })),
     ...(reports    || []).map(r => ({ label: r.name,     path: '/reports',    kind: 'report',    sub: r.description })),
-    ...(pipelines  || []).map(p => {
-      const q = new URLSearchParams({ p: p.pipeline })
-      if (p.model) q.set('model', p.model)
-      return {
-        label: p.pipeline,
-        path: `/pipelines?${q}`,
-        kind: 'pipeline',
-        sub: p.model
-          ? `${(p.layers || []).length} layers · ${p.model}`
-          : `${(p.layers || []).length} layers`,
-      }
-    }),
+    ...(pipelines  || []).map(p => ({
+      label: p.pipeline,
+      path: p.model
+        ? `/models/${encodeURIComponent(p.model)}?tab=refresh`
+        : '/models',
+      kind: 'pipeline',
+      sub: p.model
+        ? `${(p.layers || []).length} layers · ${p.model}`
+        : `${(p.layers || []).length} layers`,
+    })),
   ], [models, reports, pipelines])
 
   const results = useMemo(() => {
