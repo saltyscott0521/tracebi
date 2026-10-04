@@ -97,6 +97,15 @@ def _inject_refresh(html: str, version: int) -> str:
     return html + snippet
 
 
+def _inject_live_view(html: str, version: int) -> str:
+    """Dev preview: live typefaces + the auto-refresh snippet.
+
+    Neither lands in ``tracebi report build`` output.
+    """
+    from tracebi.reports.live_fonts import with_live_fonts
+    return _inject_refresh(with_live_fonts(html), version)
+
+
 # ── The two target forms ────────────────────────────────────────────────────
 
 
@@ -1431,7 +1440,8 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
                 self._send(body, "application/json")
                 return
             with lock:
-                body = _inject_refresh(state["html"], state["version"]).encode()
+                body = _inject_live_view(
+                    state["html"], state["version"]).encode()
             self._send(body, "text/html; charset=utf-8")
 
         def do_POST(self):

@@ -13,8 +13,13 @@
 /* ── 1. Tokens ─────────────────────────────────────────────────────────── */
 
 :root {
+  /* Offline default: the platform UI face. Live server / `tracebi dev`
+   * preview override these tokens with Source Sans 3 / Source Code Pro
+   * (see tracebi.reports.live_fonts) — those bytes never land in the
+   * built output/*.html. */
   --tb-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
              Arial, sans-serif;
+  --tb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --tb-ink: #16181d;
   --tb-bg: #ffffff;              /* cards, tables, tooltips */
   --tb-page: #f6f6f3;            /* the plane cards sit on */
@@ -635,7 +640,7 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
 .tb-receipt-details summary { cursor: pointer; }
 .tb-receipt-meta,
 .tb-receipt-fp {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--tb-mono);
   word-break: break-all;
 }
 .tb-receipt-fp { display: block; }

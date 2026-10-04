@@ -55,14 +55,17 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
 
     built = c.get("/api/reports/sample_dashboard/built")
     assert built.status_code == 200 and "<html" in built.json()["html"].lower()
+    assert "Source Sans 3" in built.json()["html"]
 
     share = c.get("/r/sample_dashboard")
     assert share.status_code == 200
     assert share.headers["content-type"].startswith("text/html")
     assert "tracebi-receipt" in share.text
+    assert "Source Sans 3" in share.text
 
     html = c.get("/api/reports/sample_dashboard/download?format=html")
     assert html.status_code == 200 and "tracebi-receipt" in html.text
+    assert "Source Sans 3" not in html.text
     xlsx = c.get("/api/reports/sample_dashboard/download?format=xlsx")
     assert xlsx.status_code == 200 and xlsx.content[:2] == b"PK"   # a zip = xlsx
 
