@@ -170,7 +170,7 @@ SHELL = """<!doctype html>
 <link rel="icon" href="{favicon}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{up}docs.css">
 </head>
 <body>
@@ -301,7 +301,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
   backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
 .bar{max-width:1180px;margin:0 auto;padding:.7rem 1.2rem;display:flex;
   align-items:center;justify-content:space-between;gap:1rem}
-.brand{font-weight:700;font-size:1.02rem;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.brand{font-weight:600;font-size:1.02rem;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
 .nav-links{display:flex;align-items:center;gap:1.1rem}
 .nav-links a{color:var(--ink-2);text-decoration:none;font-size:.88rem;font-weight:500}
 .nav-links a:hover{color:var(--accent)}

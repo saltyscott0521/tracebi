@@ -112,7 +112,7 @@ export function AttentionStrip({ items }) {
               {it.kind}
             </Badge>
             <span style={{ flex: '1 1 14rem', minWidth: 0 }}>
-              <span style={{ display: 'block', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5, color: 'var(--text)' }}>{it.title}</span>
+              <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{it.title}</span>
               <span style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{it.detail}</span>
             </span>
           </>

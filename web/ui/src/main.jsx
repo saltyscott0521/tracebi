@@ -5,15 +5,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 // Self-hosted rather than pulled from a CDN: no third-party request on first
 // paint, and it keeps working on a corporate network that does not allow one.
-// IBM Plex — the engineered-precision pairing the marketing site and the app
-// share, so TraceBi reads as one product. Only the weights this UI uses.
-import '@fontsource/ibm-plex-sans/400.css'
-import '@fontsource/ibm-plex-sans/500.css'
-import '@fontsource/ibm-plex-sans/600.css'
-import '@fontsource/ibm-plex-sans/700.css'
-import '@fontsource/ibm-plex-mono/400.css'
-import '@fontsource/ibm-plex-mono/500.css'
-import '@fontsource/ibm-plex-mono/600.css'
+// Source Sans 3 + Source Code Pro — the same pairing as the marketing site,
+// so TraceBi reads as one product. Weights the UI actually uses (display
+// titles stay at 600; 700 is reserved for small uppercase labels).
+import '@fontsource/source-sans-3/400.css'
+import '@fontsource/source-sans-3/500.css'
+import '@fontsource/source-sans-3/600.css'
+import '@fontsource/source-sans-3/700.css'
+import '@fontsource/source-code-pro/400.css'
+import '@fontsource/source-code-pro/500.css'
+import '@fontsource/source-code-pro/600.css'
 import './styles/global.css'
 
 const queryClient = new QueryClient({

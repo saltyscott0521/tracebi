@@ -159,7 +159,7 @@ export function CardTitle({ children, action }) {
 export function PageTitle({ children }) {
   return (
     <h1 style={{
-      fontSize: 'var(--text-2xl)', fontWeight: 700,
+      fontSize: 'var(--text-2xl)', fontWeight: 600,
       marginBottom: 'var(--space-1)', lineHeight: 1.2,
       letterSpacing: 'var(--tracking-tight)',
       color: 'var(--text)',
