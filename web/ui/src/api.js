@@ -194,6 +194,58 @@ export const usePointing = () =>
     },
   })
 
+// The workbench in the app. `version` is a cheap fingerprint polled every
+// 1.5s; the state and the preview are fetched again only when it moves.
+const wb = (name) => `/reports/${reportPath(name)}/workbench`
+
+export const useWorkbenchVersion = (name, enabled) =>
+  useQuery({
+    queryKey: ['wb-version', name],
+    queryFn: () => get(`${wb(name)}/version`).then(d => d.version),
+    enabled: !!name && enabled,
+    refetchInterval: 1500,
+    retry: false,
+  })
+
+export const useWorkbenchState = (name, version, enabled) =>
+  useQuery({
+    queryKey: ['wb-state', name, version],
+    queryFn: () => get(`${wb(name)}/state`),
+    enabled: !!name && !!version && enabled,
+    retry: false,
+    placeholderData: (previous) => previous,
+  })
+
+export const useWorkbenchPreview = (name, version, enabled) =>
+  useQuery({
+    queryKey: ['wb-preview', name, version],
+    queryFn: async () => {
+      const r = await fetch(BASE + `${wb(name)}/preview`, { cache: 'no-store' })
+      if (!r.ok) throw await toError(r)
+      return r.text()
+    },
+    enabled: !!name && !!version && enabled,
+    retry: false,
+    placeholderData: (previous) => previous,
+  })
+
+export const useAddPin = (name) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (note) => postJson(`${wb(name)}/pins`, { note }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wb-version', name] }),
+  })
+}
+
+export const useRemovePin = (name) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (pinId) => fetch(BASE + `${wb(name)}/pins/${encodeURIComponent(pinId)}`,
+      { method: 'DELETE' }).then(r => (r.ok ? r.json() : toError(r).then(e => { throw e }))),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wb-version', name] }),
+  })
+}
+
 export const useKeepSelection = () =>
   useMutation({
     mutationFn: ({ name, filters }) =>

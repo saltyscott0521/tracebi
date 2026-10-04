@@ -977,16 +977,40 @@ a { color: var(--accent-text); }
 .section-title { font-size: var(--text-lg); font-weight: 600; color: var(--text); margin: 0 0 4px; }
 .section-sub { font-size: var(--text-caption); color: var(--muted); line-height: 1.6; margin: 0 0 14px; max-width: 74ch; }
 
-/* ── Build mode: the line that says what you are pointing at ─────────────── */
+/* ── Build mode: the workbench beside the report ────────────────────────── */
+.build-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .build-layout { grid-template-columns: minmax(0, 1fr); } }
+.wb { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 1100px) { .wb { position: static; max-height: none; } }
+.wb-section { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--card); }
+.wb-section__title { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: var(--text-eyebrow);
+  font-weight: 600; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--muted); }
+.wb-section__count { font-weight: 500; color: var(--text-2); }
+.wb-item { padding: 8px 0; border-top: 1px solid var(--border); font-size: var(--text-caption); color: var(--text-2); }
+.wb-item:first-of-type { border-top: 0; padding-top: 0; }
+.wb-item code, .point-note code { font-family: 'Source Code Pro', ui-monospace, monospace; font-size: var(--text-sm); color: var(--text); overflow-wrap: anywhere; }
+.wb-item__head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 2px; }
+.wb-item--done { opacity: .85; }
+.wb-item--changed { border-left: 2px solid var(--amber); padding-left: 8px; }
+.wb-item--bad { color: var(--red-text); }
+.wb-reply { margin-top: 2px; color: var(--green-text); }
+.wb-meta, .wb-hint, .wb-empty, .wb-live { font-size: var(--text-sm); color: var(--muted); }
+.wb-empty, .wb-live { margin: 0; }
+.wb-link { font: inherit; font-size: var(--text-sm); cursor: pointer; color: var(--accent-text); background: none; border: 0; padding: 2px 4px; }
+.wb-error { color: var(--red-text); font-size: var(--text-sm); }
+.wb-note { width: 100%; resize: vertical; margin: 8px 0; font: inherit; font-size: var(--text-caption);
+  color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
+.wb-actions { display: flex; align-items: center; gap: 8px; }
+.wb-resolved summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted); padding: 4px 0; }
+.wb-table-wrap { overflow-x: auto; margin-top: 6px; }
+.wb-table { font-size: var(--text-sm); border-collapse: collapse; }
+.wb-table th, .wb-table td { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.wb-note-html p { margin: 0 0 6px; }
 .point-note {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
-  padding: 8px 12px; margin-bottom: 12px; border-radius: var(--radius);
+  padding: 10px 12px; border-radius: var(--radius);
   background: var(--blue-lt); border: 1px solid var(--blue-br);
   font-size: var(--text-caption); color: var(--text-2);
 }
-.point-note code { font-family: 'Source Code Pro', ui-monospace, monospace; font-size: var(--text-sm); color: var(--text); }
-.point-note button {
-  margin-left: auto; font: inherit; font-size: var(--text-sm); cursor: pointer;
-  color: var(--accent-text); background: none; border: 1px solid var(--blue-br);
-  border-radius: var(--radius-sm); padding: 3px 10px;
-}
+/* In Build mode the report list steps aside so the report and the workbench get the room. */
+.reports-page .split-layout:has(.build-layout) { grid-template-columns: minmax(0, 1fr); }
+.reports-page .split-layout:has(.build-layout) > :first-child { display: none; }

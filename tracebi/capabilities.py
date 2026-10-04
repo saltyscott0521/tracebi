@@ -1130,11 +1130,13 @@ def describe(brief: bool = False) -> dict:
             "http": "POST|GET|DELETE /api/reports/<name>/workbench/pointing "
                     "(only when the server runs with TRACEBI_DEV_MODE=1)",
             "what": "What the human is pointing at in the web app's Build "
-                    "mode: a figure (id, binding, cell) or an element "
+                    "mode (the Build button opens the workbench beside the "
+                    "report): a figure (id, binding, cell) or an element "
                     "(selector, text, section), or null. It is what 'this' "
-                    "or 'here' means in their message. Dev-state under "
-                    ".tracebi/workbench/<report>/pointing.json; never in a "
-                    "build or a receipt.",
+                    "or 'here' means in their message; a note they pin on "
+                    "it is an open pin with the same shape as `target`. "
+                    "Dev-state under .tracebi/workbench/<report>/; never in "
+                    "a build or a receipt.",
         },
         "pins": {
             "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",

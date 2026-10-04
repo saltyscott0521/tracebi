@@ -7,9 +7,10 @@ import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
   useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, usePipelines,
-  useAppStatus, usePointing,
+  useAppStatus, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
 } from '../api'
-import { attachPointMode, label as pointLabel } from '../pointMode'
+import { attachPointMode } from '../pointMode'
+import Workbench from '../components/Workbench'
 import { ReportLineage } from '../components/ReportLineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
 import { ReportArt } from '../components/Art'
@@ -336,13 +337,22 @@ function ReportDetail({ report, onBack }) {
     ? { message: run.error?.message || 'Run failed', detail: run.error }
     : startErr
 
-  // Build mode: point at a figure or area so the agent knows what "this" means.
-  // Local only (the server says so) and for packages, which are what an agent edits.
+  // Build mode: the workbench beside the report. Point at a figure or area so
+  // the agent knows what "this" means, leave it notes, and watch it work: the
+  // preview is the working state, refreshed when the package, its model or the
+  // feed changes. Local only (the server says so) and for packages, which are
+  // what an agent edits.
   const { data: appStatus } = useAppStatus()
   const canPoint = !!appStatus?.build_mode && report?.form === 'package'
   const [pointOn, setPointOn] = useState(false)
   const [pointed, setPointed] = useState(null)
   const { mutate: sendPointing } = usePointing()
+  const { data: wbVersion } = useWorkbenchVersion(report?.name, pointOn)
+  const { data: wbState } = useWorkbenchState(report?.name, wbVersion, pointOn)
+  const wbPreview = useWorkbenchPreview(report?.name, wbVersion, pointOn)
+  // The last good render stays up while the package is broken mid-edit.
+  const frameHtml = pointOn && wbPreview.data ? wbPreview.data : shown?.html
+  const clearPointing = () => { setPointed(null); sendPointing({ name: report.name, pointing: null }) }
   useEffect(() => {
     if (!pointOn || tab !== 'Output') return undefined
     const frame = frameRef.current
@@ -359,7 +369,7 @@ function ReportDetail({ report, onBack }) {
     if (frame.contentDocument?.readyState === 'complete') attach()
     return () => { frame.removeEventListener('load', attach); detach() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pointOn, tab, shown?.html, report?.name])
+  }, [pointOn, tab, frameHtml, report?.name])
   // Leaving Point mode, or this report, stops pointing: the agent should not
   // act on something you are no longer looking at.
   useEffect(() => () => {
@@ -473,8 +483,8 @@ function ReportDetail({ report, onBack }) {
             {canPoint && (
               <Btn onClick={togglePoint} variant={pointOn ? 'primary' : 'outline'} size="sm"
                    aria-pressed={pointOn}
-                   title="Build mode: point at a figure or area. Your agent sees what you point at.">
-                ◎ Point
+                   title="Build mode: point at a figure or area, leave your agent notes, and watch it work.">
+                ◎ Build
               </Btn>
             )}
             <span style={{ flex: 1 }} />
@@ -517,25 +527,18 @@ function ReportDetail({ report, onBack }) {
 
           {tab === 'Output' && (
             <>
-              {pointOn && (
-                <div className="point-note" role="status">
-                  {pointed ? (
-                    <>
-                      <strong>Pointing at</strong> <code>{pointLabel(pointed)}</code>
-                      <span> — your agent sees this. Ask it in chat: “make this a line chart”.</span>
-                      <button type="button" onClick={() => { setPointed(null); sendPointing({ name: report.name, pointing: null }) }}>
-                        Clear
-                      </button>
-                    </>
-                  ) : (
-                    <span>Click a figure or area in the report. Your agent will know what you mean by “this”. Esc clears.</span>
-                  )}
-                </div>
-              )}
               {SHOW_ASK && (
                 <AskCut reportName={report.name} frameRef={frameRef} onPackageChange={refreshBuilt} />
               )}
-              <ReportFrame html={shown.html} title={report.name} frameRef={frameRef} />
+              {pointOn ? (
+                <div className="build-layout">
+                  <ReportFrame html={frameHtml} title={report.name} frameRef={frameRef} />
+                  <Workbench name={report.name} pointed={pointed} onClearPointing={clearPointing}
+                             state={wbState} previewError={wbPreview.error} />
+                </div>
+              ) : (
+                <ReportFrame html={shown.html} title={report.name} frameRef={frameRef} />
+              )}
             </>
           )}
 

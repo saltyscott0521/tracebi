@@ -102,12 +102,15 @@ sparingly. Take what they share and add what TraceBi needs.
 ## Order of work
 
 1. This brief.
-2. **Build mode, slice one:** click-to-select in the app's report preview, the
-   selection in `workbench_state`, a pin from the selection. Agent guides and
-   the generated vocabulary name it in the same change, as every
-   authoring-surface feature must.
-3. **Workbench in the app:** exhibits, pins and the before/after view beside
-   the preview; `tracebi dev <name>` opens the app at that report.
+2. **Build mode, slice one** (done): click-to-select in the app's report
+   preview, the pointing in `workbench_state`. Agent guides and the generated
+   vocabulary name it in the same change, as every authoring-surface feature
+   must.
+3. **The workbench in the app** (done): the Build button opens it beside the
+   report: pointing, a pin from it, the pins and what the agent answered, the
+   agent's exhibits, broken bindings, and a preview of the working state that
+   refreshes when the agent saves. Still to do: the before/after view with
+   keep and revert, and `tracebi dev <name>` opening the app at that report.
 4. **The theme pass,** one surface at a time through the audit loop: tokens
    and type first (every page changes at once and the audit shows what broke),
    then the sidebar, then lists, then the report defaults.

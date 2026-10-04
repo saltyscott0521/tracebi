@@ -34,7 +34,6 @@ import sys
 import threading
 import traceback
 import webbrowser
-from datetime import datetime
 from pathlib import Path
 
 
@@ -1453,24 +1452,15 @@ def _serve(t, port: int, open_browser: bool, poll_interval: float) -> int:
                 self._send(b'{"error": "missing id"}', "application/json", 400)
                 return
             with lock:
-                pins = [p for p in _wb.read_pins(t.wb_dir)
-                        if p.get("id") != pin_id]
                 if self.path == "/__workbench/pin":
-                    pin = {"id": pin_id,
-                           "note": payload.get("note") or "",
-                           "at_seq": _wb.last_seq(t.wb_dir)}
-                    # "Keep this" on an exhibit: a request for the agent to
-                    # promote it into a figure (see workbench.promote_request).
-                    if payload.get("kind") == "promote":
-                        pin["kind"] = "promote"
-                        pin["exhibit"] = payload.get("exhibit")
-                    # A message typed in the timeline: the author talking to
-                    # the agent, placed after the newest exhibit.
-                    elif payload.get("kind") == "message":
-                        pin["kind"] = "message"
-                        pin["at"] = datetime.now().isoformat(timespec="seconds")
-                    pins.append(pin)
-                _wb.write_pins(t.wb_dir, pins)
+                    # kind "promote": "Keep this" on an exhibit, a request for
+                    # the agent to promote it into a figure. kind "message": the
+                    # author typing to the agent in the timeline.
+                    pins = _wb.add_pin(
+                        t.wb_dir, pin_id, note=payload.get("note") or "",
+                        kind=payload.get("kind"), exhibit=payload.get("exhibit"))
+                else:
+                    pins = _wb.remove_pin(t.wb_dir, pin_id)
             self._send(json.dumps({"ok": True, "pins": pins}).encode(),
                        "application/json")
 

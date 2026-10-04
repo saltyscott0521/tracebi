@@ -1,6 +1,8 @@
 import json
 import os
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -713,7 +715,8 @@ def _source_file(path: str, reports_dir: str) -> dict:
 # TRACEBI_DEV_MODE=1, and it never touches the report or a build.
 
 
-def _workbench_dir_for(name: str) -> str:
+def _workbench_for(name: str):
+    """(package directory, workbench directory) for a report, or an HTTP error."""
     if os.environ.get("TRACEBI_DEV_MODE") != "1":
         raise HTTPException(
             status_code=403,
@@ -728,8 +731,13 @@ def _workbench_dir_for(name: str) -> str:
             status_code=422,
             detail="Build mode applies to reports/<name>/ packages. This report is "
                    "a JSON spec or a code factory: run `tracebi migrate spec` first.")
-    return os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
-        os.getcwd(), report_name_for_dir(str(opened.package_dir)))
+    package = str(opened.package_dir)
+    return package, os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
+        os.getcwd(), report_name_for_dir(package))
+
+
+def _workbench_dir_for(name: str) -> str:
+    return _workbench_for(name)[1]
 
 
 @router.get("/{name:path}/workbench/pointing")
@@ -752,6 +760,94 @@ def clear_the_pointing(name: str):
     from tracebi.workbench import clear_pointing
     clear_pointing(_workbench_dir_for(name))
     return {"pointing": None}
+
+
+# The workbench in the app: what the agent and the builder have done to this
+# report, live. The same dev-state files the MCP server reads and writes.
+
+#: Rendering the working state sets TRACEBI_WORKBENCH_DIR around the build (so
+#: show() calls in report.py land in this report's feed), and the environment is
+#: process-wide: one render at a time.
+_RENDER_LOCK = threading.Lock()
+
+
+@router.get("/{name:path}/workbench/version")
+def workbench_version(name: str):
+    """A cheap fingerprint of everything the workbench shows. Poll it; when it
+    changes, fetch the state and the preview."""
+    from tracebi.workbench import package_version
+    package, _ = _workbench_for(name)
+    return {"version": package_version(package)}
+
+
+@router.get("/{name:path}/workbench/state")
+def workbench_state(name: str):
+    """What the workbench knows: pointing, open and resolved pins, the exhibit
+    feed, and any binding that failed (the working state can be broken; that is
+    state, not an error)."""
+    from tracebi.web.api.routers.desk import _loaded_models
+    from tracebi.workbench import collect_state, package_version, read_pointing
+
+    package, wb = _workbench_for(name)
+    with _RENDER_LOCK:
+        state = collect_state(package, _loaded_models())
+    return {
+        "version": package_version(package),
+        "pointing": read_pointing(wb),
+        "pins": state.get("pins", []),
+        "resolved": (state.get("resolved") or [])[-20:],
+        "exhibits": (state.get("exhibits") or [])[:30],
+        "coverage": state.get("coverage"),
+        "broken": [{"binding": b["name"], "error": b["error"]}
+                   for b in state.get("bindings") or [] if b.get("error")],
+    }
+
+
+@router.get("/{name:path}/workbench/preview", response_class=HTMLResponse)
+def workbench_preview(name: str):
+    """The report as it is right now: the working state rendered in memory, with
+    exploration blocks kept. Not a build: no file is written, no receipt minted."""
+    from tracebi.reports.template_package import TemplatePackage
+    from tracebi.web.api.routers.desk import _loaded_models
+
+    package, wb = _workbench_for(name)
+    with _RENDER_LOCK:
+        previous = os.environ.get("TRACEBI_WORKBENCH_DIR")
+        os.environ["TRACEBI_WORKBENCH_DIR"] = wb
+        try:
+            page, _inputs, _outputs = TemplatePackage(package).render_exploration(_loaded_models())
+        except (Exception, SystemExit) as exc:  # noqa: BLE001 — a broken package is shown, not a 500
+            raise HTTPException(status_code=422, detail=_error_detail("The report package failed to render", exc))
+        finally:
+            if previous is None:
+                os.environ.pop("TRACEBI_WORKBENCH_DIR", None)
+            else:
+                os.environ["TRACEBI_WORKBENCH_DIR"] = previous
+    return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/{name:path}/workbench/pins")
+def add_the_pin(name: str, body: dict):
+    """Pin a note on what the builder points at, for the agent (`workbench_state`
+    lists it; `resolve_pin` closes it)."""
+    from tracebi.workbench import add_pin, read_pointing
+
+    _, wb = _workbench_for(name)
+    note = str(body.get("note") or "").strip()[:2000]
+    if not note:
+        raise HTTPException(status_code=422, detail="A pin needs a note.")
+    target = read_pointing(wb)
+    # A figure pin is keyed by the figure's id; a pin on an area has no id of its
+    # own, so it gets a fresh one and carries what was pointed at as `target`.
+    pin_id = (target or {}).get("id") if (target or {}).get("kind") == "figure" else ""
+    pin_id = pin_id or f"pin-{int(time.time() * 1000)}"
+    return {"pins": add_pin(wb, pin_id, note=note, target=target)}
+
+
+@router.delete("/{name:path}/workbench/pins/{pin_id}")
+def remove_the_pin(name: str, pin_id: str):
+    from tracebi.workbench import remove_pin
+    return {"pins": remove_pin(_workbench_dir_for(name), pin_id)}
 
 
 @router.get("/{name:path}/source")
