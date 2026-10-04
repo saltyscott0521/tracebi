@@ -1125,6 +1125,17 @@ def describe(brief: bool = False) -> dict:
                     "measure, so column names come from the catalog instead "
                     "of from an error.",
         },
+        "pointing": {
+            "mcp": "workbench_state(report) -> pointing",
+            "http": "POST|GET|DELETE /api/reports/<name>/workbench/pointing "
+                    "(only when the server runs with TRACEBI_DEV_MODE=1)",
+            "what": "What the human is pointing at in the web app's Build "
+                    "mode: a figure (id, binding, cell) or an element "
+                    "(selector, text, section), or null. It is what 'this' "
+                    "or 'here' means in their message. Dev-state under "
+                    ".tracebi/workbench/<report>/pointing.json; never in a "
+                    "build or a receipt.",
+        },
         "pins": {
             "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",
             "mcp": "resolve_pin(report, pin_id, note='')",

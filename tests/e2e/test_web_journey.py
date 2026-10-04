@@ -170,3 +170,31 @@ def test_a_pipeline_names_the_models_it_touches(served):
     assert listed["hand_built"]["models"] == ["source_model", "built_model"]
     assert listed["hand_built"]["model"] == "built_model"
     assert listed["plain"]["models"] == [] and listed["plain"]["model"] is None
+
+
+def test_what_the_builder_points_at_reaches_the_agent(served, monkeypatch):
+    """Build mode: a click in the app is a pointing file the agent's MCP tool
+    reads, so "make this a line chart" means a specific figure."""
+    from tracebi.mcp_server import gateway_workbench_state
+
+    point = {"kind": "figure", "figure_kind": "value", "id": "kpi-revenue",
+             "binding": "totals", "cell": "revenue", "junk": "dropped"}
+    url = "/api/reports/sample_dashboard/workbench/pointing"
+
+    # Off by default: a deployed server cannot be asked to write dev-state.
+    monkeypatch.delenv("TRACEBI_DEV_MODE", raising=False)
+    assert served.post(url, json=point).status_code == 403
+    assert served.get("/api/status").json()["build_mode"] is False
+
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "1")
+    assert served.get("/api/status").json()["build_mode"] is True
+    kept = served.post(url, json=point).json()["pointing"]
+    assert kept["id"] == "kpi-revenue" and "junk" not in kept
+
+    state = gateway_workbench_state("sample_dashboard")
+    assert state["pointing"]["binding"] == "totals"
+    assert state["pointing"]["cell"] == "revenue"
+
+    assert served.post(url, json={"kind": "nonsense"}).status_code == 422
+    assert served.delete(url).json() == {"pointing": None}
+    assert gateway_workbench_state("sample_dashboard")["pointing"] is None

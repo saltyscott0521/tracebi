@@ -278,7 +278,13 @@ body, the same text as `tracebi knowledge <slug>`).
    `tracebi.workbench.show(title, df_or_fig, note=...)` posts exhibits to
    the workbench feed during dev and is a no-op everywhere else, so probe
    code needs no cleanup and no promotion step.
-3. **Read the pins before every pass.** The human steers by PINNING figures
+3. **Read what they point at, then the pins, before every pass.** In the
+   web app's Build mode (`tracebi serve` with `TRACEBI_DEV_MODE=1`, or
+   `tracebi dev`) the human clicks **Point** and then a figure or an area of
+   the report. `workbench_state` returns it as `pointing`: a figure
+   (`id`, `binding`, `cell`) or an element (`selector`, `text`, `section`).
+   When they say "this" or "here", that is what they mean; there is no
+   pointing when `pointing` is null, so ask. The human steers by PINNING figures
    in the workbench with a note ("make this top 8 sectors only"). Read them
    with `tracebi report status <name>` (pins print with 📌) or the MCP
    `workbench_state` tool. Address pins first; they are the human pointing.

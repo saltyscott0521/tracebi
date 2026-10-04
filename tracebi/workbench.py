@@ -42,6 +42,7 @@ from typing import Optional
 
 EXHIBITS_FILE = "exhibits.jsonl"
 PINS_FILE = "pins.json"
+POINTING_FILE = "pointing.json"
 
 #: The feed cap — the workbench is a lab log of the session, not an archive.
 EXHIBIT_CAP = 100
@@ -60,6 +61,58 @@ def workbench_dir(project_root: str, report_name: str) -> str:
     path = os.path.join(project_root, ".tracebi", "workbench", report_name)
     os.makedirs(path, exist_ok=True)
     return path
+
+
+# ── Pointing: what the person is pointing at right now ──────────────────────
+
+#: Fields a pointing may carry, with the longest string kept for each. A
+#: closed set on purpose: the page that sends one is not trusted with an
+#: arbitrary document, and the agent that reads one gets a small, flat dict.
+_POINTING_FIELDS = {
+    "kind": 16, "figure_kind": 16, "id": 120, "binding": 120, "cell": 120,
+    "selector": 300, "tag": 24, "text": 200, "section": 120,
+}
+
+
+def record_pointing(wb_dir: str, pointing: dict) -> dict:
+    """Write what the person is pointing at and return what was kept.
+
+    One target at a time: pointing somewhere else replaces it. ``kind`` is
+    ``"figure"`` (a ``data-tb-figure`` element: ``figure_kind``, ``binding``,
+    ``cell``, ``id``) or ``"element"`` (anything else: ``selector``, ``tag``,
+    ``text``, ``section``). Unknown fields are dropped and strings capped, so
+    whatever the page sends, the file stays small and flat. Dev-state only.
+    """
+    kept = {}
+    for key, limit in _POINTING_FIELDS.items():
+        value = (pointing or {}).get(key)
+        if isinstance(value, str) and value.strip():
+            kept[key] = " ".join(value.split())[:limit]
+    if kept.get("kind") not in ("figure", "element"):
+        raise ValueError("pointing needs kind 'figure' or 'element'")
+    kept["at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+    os.makedirs(wb_dir, exist_ok=True)
+    with open(os.path.join(wb_dir, POINTING_FILE), "w", encoding="utf-8") as f:
+        json.dump(kept, f, indent=2)
+    return kept
+
+
+def read_pointing(wb_dir: str) -> Optional[dict]:
+    """What is being pointed at, or None (nothing, or an unreadable file)."""
+    try:
+        with open(os.path.join(wb_dir, POINTING_FILE), encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) and data.get("kind") else None
+
+
+def clear_pointing(wb_dir: str) -> None:
+    """Stop pointing (the person pressed Escape, or switched report)."""
+    try:
+        os.remove(os.path.join(wb_dir, POINTING_FILE))
+    except OSError:
+        pass
 
 
 def discovery_dir(project_root: str) -> str:
@@ -782,6 +835,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
                 lint_numeric_literals(page) if page is not None else 0,
         },
         "exhibits": exhibits,
+        # What the person is pointing at right now ("this" in their message).
+        "pointing": read_pointing(wb),
         "pins": _pins_view(pins, pkg.name, exhibits),
         "resolved": resolved_pins,
         "resolved_count": len(resolved_pins),

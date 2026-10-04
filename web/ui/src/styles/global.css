@@ -976,3 +976,17 @@ a { color: var(--accent-text); }
 .report-detail__title { display: inline; font: inherit; margin: 0; overflow-wrap: anywhere; }
 .section-title { font-size: var(--text-lg); font-weight: 600; color: var(--text); margin: 0 0 4px; }
 .section-sub { font-size: var(--text-caption); color: var(--muted); line-height: 1.6; margin: 0 0 14px; max-width: 74ch; }
+
+/* ── Build mode: the line that says what you are pointing at ─────────────── */
+.point-note {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+  padding: 8px 12px; margin-bottom: 12px; border-radius: var(--radius);
+  background: var(--blue-lt); border: 1px solid var(--blue-br);
+  font-size: var(--text-caption); color: var(--text-2);
+}
+.point-note code { font-family: 'Source Code Pro', ui-monospace, monospace; font-size: var(--text-sm); color: var(--text); }
+.point-note button {
+  margin-left: auto; font: inherit; font-size: var(--text-sm); cursor: pointer;
+  color: var(--accent-text); background: none; border: 1px solid var(--blue-br);
+  border-radius: var(--radius-sm); padding: 3px 10px;
+}
