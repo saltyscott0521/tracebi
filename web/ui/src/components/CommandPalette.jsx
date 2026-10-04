@@ -35,7 +35,12 @@ export default function CommandPalette() {
     ...PAGES,
     ...(models     || []).map(m => ({ label: m.name,     path: '/models',     kind: 'model',     sub: `${m.tables.length} tables` })),
     ...(reports    || []).map(r => ({ label: r.name,     path: '/reports',    kind: 'report',    sub: r.description })),
-    ...(pipelines  || []).map(p => ({ label: p.pipeline, path: '/pipelines',  kind: 'pipeline',  sub: `${(p.layers || []).length} layers` })),
+    ...(pipelines  || []).map(p => ({
+      label: p.pipeline,
+      path: `/pipelines?p=${encodeURIComponent(p.pipeline)}`,
+      kind: 'pipeline',
+      sub: `${(p.layers || []).length} layers`,
+    })),
   ], [models, reports, pipelines])
 
   const results = useMemo(() => {

@@ -73,7 +73,8 @@ export function attentionItems(desk, pipelines) {
       items.push({
         key: `run-${p.pipeline}-${l.name}`, kind: 'Refresh failed', variant: 'red',
         title: `${p.pipeline} / ${l.name}`,
-        detail: `Last run ${when(l.last_run) || 'recently'}`, href: '/pipelines',
+        detail: `Last run ${when(l.last_run) || 'recently'}`,
+        href: `/pipelines?p=${encodeURIComponent(p.pipeline)}`,
       })
     }
   }
