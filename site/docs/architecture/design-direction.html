@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design direction — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Design direction">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a class="on" href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="design-direction">Design direction</h1>
+<p><strong>Status: proposed (2026-10-04), agreed in conversation.</strong> What the builder
+experience is, and what the app looks like. The quality bar and the audit that
+checks it are in <a href="../architecture/ui-quality.html">The UI quality bar</a>; the work queue is <a href="../architecture/ui-backlog.html">UI backlog</a>.</p>
+<h2 id="who-it-is-for">Who it is for</h2>
+<p>Two people, two surfaces, and one rule between them.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>The reader</th>
+<th>The builder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Who</td>
+<td>someone opening a finished report</td>
+<td>an analyst or agent making one</td>
+</tr>
+<tr>
+<td>Where</td>
+<td>the report page, the share link, the emailed file</td>
+<td>the app running locally, with an agent beside it</td>
+</tr>
+<tr>
+<td>Asks for</td>
+<td>one number they can trust, then the context</td>
+<td>a change to a figure, a layout, a query</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Ask is for the builder, not the reader.</strong> A reader looks at the report and
+verifies it; they do not edit it. The reader-facing "ask a question of the
+model" path stays what it is. Everything below is the builder's.</p>
+<h2 id="the-builder-loop">The builder loop</h2>
+<p>Run TraceBi locally and the app opens beside the agent: chat on one side, the
+app on the other. In the app, open a report in <strong>Build mode</strong> (local only).</p>
+<ol>
+<li><strong>Point.</strong> Hover outlines what you can address; click selects it. A figure
+   resolves to its id, binding and cell (the report already carries
+   <code>data-tb-figure</code>, <code>data-tb-binding</code>, <code>data-tb-cell</code>); any other element
+   resolves to its selector and text.</li>
+<li><strong>Ask.</strong> In the agent's chat: "make <em>this</em> a line chart by plan." The agent
+   asks the app what <em>this</em> is (<code>workbench_state</code> returns the selection) and
+   edits the package: <code>report.json</code> and <code>template.html</code>.</li>
+<li><strong>See.</strong> The report rebuilds in the pane, the change marked against the
+   previous version. A change to a number is shown as old value, new value.</li>
+<li><strong>Keep.</strong> You accept or revert. Nothing is kept until you say so, and the
+   receipt only reads green for what was built and checked, never for a draft.</li>
+</ol>
+<p>You can also leave a note on a selection (a <strong>pin</strong>) for the agent to pick up
+later: <code>address_pins</code> already does that.</p>
+<h3 id="one-workbench-two-clients">One workbench, two clients</h3>
+<p>The workbench's state is files under <code>.tracebi/workbench/&lt;report&gt;/</code>
+(selection, pins, exhibits). The app and the MCP server are separate processes
+that both read and write them, so:</p>
+<ul>
+<li>what you click reaches the agent (<code>workbench_state</code> returns the selection);</li>
+<li>what the agent does shows up in the pane live (exhibits from
+  <code>tracebi.workbench.show</code>, pins it resolves, the rebuilt preview);</li>
+<li>the app does not call a model. Your connected agent does the editing, so
+  there is no server-side key, no bill, and no web page with the power to
+  write files on its own.</li>
+</ul>
+<p>Hard rules, kept from the workbench's design (<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a> §2.5):
+everything here is dev-state; none of it enters a build or a manifest; no
+receipt is minted. Build mode exists only on loopback with dev mode on. The
+point-mode script is injected by the server at serve time, never into a built
+file.</p>
+<h3 id="where-it-is-today-and-the-gap">Where it is today, and the gap</h3>
+<p><code>tracebi dev</code> already serves a live preview and a workbench page, with pins,
+exhibits and the MCP tools <code>workbench_state</code>, <code>resolve_pin</code> and the
+<code>address_pins</code> prompt. The gaps: the preview and the workbench are separate
+pages on a separate server, you cannot click the report itself (pinning is a
+browser pop-up from a list), and the agent cannot tell what you are pointing
+at. Build mode closes those, in the app.</p>
+<h2 id="the-look-vercels-restraint-supabases-console">The look: Vercel's restraint, Supabase's console</h2>
+<p>Both are developer tools that trust the reader with density and use colour
+sparingly. Take what they share and add what TraceBi needs.</p>
+<p><strong>Rules</strong> (each is checkable; the audit gains a check for the ones marked ◆):</p>
+<ul>
+<li><strong>Monochrome first.</strong> Neutrals carry the interface. The primary button is
+  inverted (near-black on light, near-white on dark). There is no brand
+  accent colour. ◆</li>
+<li><strong>Colour means something, and only that.</strong> Green is <em>reproduces</em>. Amber is
+  <em>needs a look</em> (source changed, checks stale). Red is <em>does not reproduce</em>
+  or failed. Blue is a link or the focus ring. Supabase's signature green is
+  deliberately not borrowed as a brand colour: green is already spoken for.
+  ◆ (a colour token used for decoration, outside status, fails)</li>
+<li><strong>Dark and light are both designed.</strong> Follow the OS setting until the viewer
+  chooses. Dark is near-black with 1px borders and no glow (Supabase's
+  craft); light is white with 1px borders (Vercel's).</li>
+<li><strong>Borders, not boxes.</strong> 1px hairlines separate regions; no cards inside
+  cards, no gradients, no backdrop blur, no resting shadows (a menu or popover
+  may have one). ◆</li>
+<li><strong>Type: Geist Sans and Geist Mono</strong> (both SIL OFL), replacing Source Sans,
+  Inter and Source Code Pro. 14px body, 13px in dense lists, tabular numerals
+  for every figure, mono for every identifier (model, table, binding, id). ◆</li>
+<li><strong>Radius 6px, sidebar the same ground as the page</strong>, not a separate navy
+  slab. Page header small (20px): the page is the content, not the title.</li>
+<li><strong>Density with hierarchy.</strong> Lists read like a console table: one line per
+  row, status as a small dot or chip, secondary text quiet. Progressive
+  disclosure (Linear): the detail opens when you ask for it.</li>
+<li><strong>The reader's report</strong> follows Mercury and Plausible: one big number, then
+  its context, then the receipt on demand. Report templates keep their own
+  style; the default theme (<code>tracebi.css</code>) takes the same tokens.</li>
+</ul>
+<h2 id="order-of-work">Order of work</h2>
+<ol>
+<li>This brief.</li>
+<li><strong>Build mode, slice one:</strong> click-to-select in the app's report preview, the
+   selection in <code>workbench_state</code>, a pin from the selection. Agent guides and
+   the generated vocabulary name it in the same change, as every
+   authoring-surface feature must.</li>
+<li><strong>Workbench in the app:</strong> exhibits, pins and the before/after view beside
+   the preview; <code>tracebi dev &lt;name&gt;</code> opens the app at that report.</li>
+<li><strong>The theme pass,</strong> one surface at a time through the audit loop: tokens
+   and type first (every page changes at once and the audit shows what broke),
+   then the sidebar, then lists, then the report defaults.</li>
+</ol>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>
