@@ -47,7 +47,9 @@ Any static host. On Vercel/Netlify, add this as its **own project** with the
 output: the directory itself) — separate from the app deploy, at the apex
 domain `tracebi.com`. The "Try the demo" links point at
 `https://tracebi.com/app` (nginx proxies `/app` to the demo container; the
-internal hostname is not a public URL).
+internal hostname is not a public URL). nginx also proxies
+`https://tracebi.com/mcp` to the hosted agent gateway (internal host
+`mcp.tracebi.com`) — see `deploy/mcp/README.md`.
 
 ## Status
 

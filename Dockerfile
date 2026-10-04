@@ -28,7 +28,11 @@ RUN apt-get update \
 WORKDIR /app
 COPY . .
 COPY --from=ui-builder /src/tracebi/web/ui/dist tracebi/web/ui/dist
-RUN pip install --no-cache-dir '.[reports,pipeline,lineage,sql,postgres,duckdb,web]' 'playwright>=1.40'
+# mcp: the hosted agent gateway (`tracebi mcp --transport http`) uses the
+# same image as the demo web app with a command override.
+RUN pip install --no-cache-dir \
+    '.[reports,pipeline,lineage,sql,postgres,duckdb,web,mcp]' \
+    'playwright>=1.40'
 # Headless Chromium prints a built report to PDF. The browser cache sits
 # outside the app user's home so the non-root server can launch it. The
 # `pdf` extra also pins weasyprint for HTMLRenderer.render_pdf(); that path
