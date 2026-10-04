@@ -114,6 +114,7 @@ list them as open, which makes the real gaps harder to see.
 | No dbt import / no `init --template` | ✅ `tracebi import dbt`; `init --template saas-metrics` and `sales-pipeline` | #188 / #190 / #192 |
 | Library list has no schedule, last run, builds, or last change | ✅ Those columns on the Reports list; owner is an em dash until E7 | `Reports.jsx` / #187 |
 | Slack file, bursting, and alert → Runs still open | ✅ Slack file upload plus a short summary, `burst`, and the owner alert links to `/runs` | `schedule.py` / #189 / #191 / #186 |
+| Coolify demo builds from git on every push | ✅ `tracebi-demo` pulls `ghcr.io/saltyscott0521/tracebi:0.6.0`; auto-deploy off; image retention disabled | Coolify / E1 |
 
 ### Still open, by area
 
@@ -121,7 +122,6 @@ list them as open, which makes the real gaps harder to see.
 
 | Finding | Evidence |
 | --- | --- |
-| Coolify pointing the demo at the tagged GHCR image | ✅ `tracebi-demo` pulls `ghcr.io/saltyscott0521/tracebi:0.6.0`; auto-deploy off | Coolify / E1 |
 | A git install still ships the API with no web UI unless the UI was built (release wheel includes it). | [[ROADMAP]] item 5 |
 
 **Platform**
