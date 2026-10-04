@@ -13,8 +13,7 @@ disagree with this file on order, this file wins.
 **In one line:** the engine, the agent surface, one-server install, the
 state store, the reader's report experience, the dashboard cookbook, the
 path onto a client's own data, and unattended schedule delivery have
-shipped. The leftovers now are Coolify on the tagged image (E1) and
-Library mounts (E6).
+shipped. The leftover on NOW is Library mounts (E6). E1 Coolify ops are done.
 
 ---
 
@@ -121,7 +120,7 @@ list them as open, which makes the real gaps harder to see.
 
 | Finding | Evidence |
 | --- | --- |
-| Coolify pointing the demo at the tagged GHCR image is a person ops step, not verified from the repo. | `docs/guides/one-server.md` |
+| Coolify pointing the demo at the tagged GHCR image | ✅ `tracebi-demo` pulls `ghcr.io/saltyscott0521/tracebi:0.6.0`; auto-deploy off | Coolify / E1 |
 | A git install still ships the API with no web UI unless the UI was built (release wheel includes it). | [[ROADMAP]] item 5 |
 
 **Platform**
@@ -169,16 +168,16 @@ shows the same version.
 - [x] The CHANGELOG `[Unreleased]` section becomes the release notes.
 - [x] PyPI publish is wired but switched off, so turning it on later is one
       line. (Held on purpose until development settles; `PUBLISH_PYPI`.)
-- [ ] Coolify pulls the tagged image instead of building from `main`, so the
-      demo runs the same bits a client would. *(Person / ops.)*
+- [x] Coolify pulls the tagged image instead of building from `main`, so the
+      demo runs the same bits a client would. (`ghcr.io/saltyscott0521/tracebi:0.6.0`;
+      git auto-deploy off; application image retention disabled on the box.)
 - [x] Fix the demo link in `site/README.md` and make every external link
       agree on one URL. (#163: public demo is `https://tracebi.com/app`;
       `demo.tracebi.com` stays an internal nginx host only.)
 
 **Done when:** `git tag v0.6.0 && git push --tags` produces an image a client
 can `docker pull` and a wheel whose `tracebi serve` shows the UI, both
-reporting `0.6.0`. *(Met for the tag and the public demo URL; Coolify ops
-still open.)*
+reporting `0.6.0`. *(Met — tag, public demo URL, and Coolify on the GHCR image.)*
 
 #### E2 · Run it on one server — M · Shipped
 

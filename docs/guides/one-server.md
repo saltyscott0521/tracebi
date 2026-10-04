@@ -122,15 +122,21 @@ is fine on a machine that is not reachable from anywhere else.
 
 ## With Coolify
 
-Create a Docker Compose resource. Point it at this repository, or at
-the image `ghcr.io/saltyscott0521/tracebi`. Set the same variables from
-`deploy/.env` in Coolify's environment screen. Bind-mount a folder on
-the host (Coolify's directory mount, a host path) at `/project`. The
-compose file's `output-perms` service mounts `output/` and `data/` from
-that same folder. A backup is still a copy of that folder.
+Prefer a **Docker Image** resource pointed at
+`ghcr.io/saltyscott0521/tracebi:<version>` (not a git Dockerfile build on
+every push — that leaves a multi-GB image per commit on the box). Turn
+**auto-deploy** off for that resource so merges to `main` do not rebuild.
+Set the same variables from `deploy/.env` in Coolify's environment
+screen. Bind-mount a folder on the host at `/project` when you want a
+live project tree; the compose file's `output-perms` service mounts
+`output/` and `data/` from that same folder. A backup is still a copy of
+that folder.
 
 Give the resource a domain in Coolify if you have one. TLS ends at
 Coolify. This page does not name a host, an address, or a password.
+
+On the Coolify server, keep **Disable application image retention**
+on (or prune unused images regularly) so old tags do not fill the disk.
 
 ## Backups
 
