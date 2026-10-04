@@ -150,14 +150,41 @@ thing that sends.</p>
 <p>With neither set, anyone who can reach the port can use the app. That
 is fine on a machine that is not reachable from anywhere else.</p>
 <h2 id="with-coolify">With Coolify</h2>
-<p>Create a Docker Compose resource. Point it at this repository, or at
-the image <code>ghcr.io/saltyscott0521/tracebi</code>. Set the same variables from
-<code>deploy/.env</code> in Coolify's environment screen. Bind-mount a folder on
-the host (Coolify's directory mount, a host path) at <code>/project</code>. The
-compose file's <code>output-perms</code> service mounts <code>output/</code> and <code>data/</code> from
-that same folder. A backup is still a copy of that folder.</p>
+<p>Prefer a <strong>Docker Image</strong> resource that <strong>pulls</strong> a GHCR tag — do not let
+Coolify build the repo Dockerfile on every push (that leaves a multi-GB
+image per commit on the box).</p>
+<p>Two tags, two jobs:</p>
+<table>
+<thead>
+<tr>
+<th>Tag</th>
+<th>Who</th>
+<th>How it updates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ghcr.io/saltyscott0521/tracebi:&lt;version&gt;</code></td>
+<td>A client install that should match a release</td>
+<td>You bump the tag when you cut a release</td>
+</tr>
+<tr>
+<td><code>ghcr.io/saltyscott0521/tracebi:main</code></td>
+<td>The hosted demo (built with <code>UI_BASE=/app/</code>)</td>
+<td>After CI is green on <code>main</code>, <code>publish-demo.yml</code> pushes the image and hits Coolify's deploy webhook</td>
+</tr>
+</tbody>
+</table>
+<p>Keep git <strong>auto-deploy</strong> off on the Docker Image resource; the webhook is
+what redeploys. Set the same variables from <code>deploy/.env</code> in Coolify's
+environment screen. Bind-mount a folder on the host at <code>/project</code> when
+you want a live project tree; the compose file's <code>output-perms</code> service
+mounts <code>output/</code> and <code>data/</code> from that same folder. A backup is still a
+copy of that folder.</p>
 <p>Give the resource a domain in Coolify if you have one. TLS ends at
 Coolify. This page does not name a host, an address, or a password.</p>
+<p>On the Coolify server, keep image retention tight (<code>docker_images_to_keep</code>
+low, or prune unused images regularly) so old tags do not fill the disk.</p>
 <h2 id="backups">Backups</h2>
 <p>Copy the project folder (<code>TRACEBI_PROJECT_DIR</code>). That folder is the
 reports, the warehouse file, and the run log. If you started the
