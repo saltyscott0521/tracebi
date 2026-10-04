@@ -77,4 +77,9 @@ Each fix that taught something general adds a line here.
   it silently. Colour is checked at the source too: the tokens, every pair.
 - Dark mode is its own palette, not the light one with the ground swapped:
   every status colour needs a dark value.
+- Audit the app people use, not the empty one: the harness builds every
+  report before it crawls. Empty states are checked too, but they are not
+  the product.
+- A control inside a `<label>` is tapped through the label; the tap-target
+  check measures the label.
 

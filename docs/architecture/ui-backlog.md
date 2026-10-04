@@ -5,24 +5,17 @@ bottom with the change that closed them.
 
 ## Open
 
-1. **Reports opens on "Pick a report"** `[empty-detail-pane]`: half the page
-   blank on desktop. Show what needs attention and the latest builds there.
-2. **Code blocks scroll but can't be focused**
-   `[axe:scrollable-region-focusable]` on Get Started and Workflow.
-3. **Learn has three pages telling one story** (Get Started, Docs,
-   Workflow), and Workflow is in no menu `[nav-you-are-here]`. Fold
-   Workflow into Get Started.
-4. **Words a reader doesn't use**: "semantic contract", "DuckDBConnector"
+1. **Words a reader doesn't use**: "semantic contract", "DuckDBConnector"
    as a badge, "STEP / never run" in the Refresh flow.
-5. **"Checks stale" items name no model**: a stale sink check shows only
+2. **"Checks stale" items name no model**: a stale sink check shows only
     under All models. Attribute warehouse tables to the models that read them.
-6. **Bundle is 1.1 MB of JS.** Split routes (React Flow, Markdown, Recharts
+3. **Bundle is 1.1 MB of JS.** Split routes (React Flow, Markdown, Recharts
     load only on the pages that use them).
-7. **113 hard-coded colours in JSX** — each is a dark-mode bug waiting.
+4. **113 hard-coded colours in JSX** — each is a dark-mode bug waiting.
     Move them to tokens.
-8. **The theme ignores the OS setting**: a first visit is always light. Follow
+5. **The theme ignores the OS setting**: a first visit is always light. Follow
    `prefers-color-scheme` until the viewer picks one.
-9. **`Btn` drops a caller's colours**: its variant styles are applied after
+6. **`Btn` drops a caller's colours**: its variant styles are applied after
     `style`, so `style={{ background }}` is silently overridden.
 
 ## Done
@@ -49,3 +42,12 @@ bottom with the change that closed them.
   mode's status text (green / amber / red: whether a report reproduces) was at
   2:1, and its grey text at 3:1; both now pass on every surface. Unstyled
   links take the accent colour. The Docs page has one h1.
+- **Reports opens on "At a glance"**, not a blank pane — how many reports,
+  how many reproduce, what needs a look, the latest builds (each opens).
+- **An open report names itself** on a phone (it is the page's h1 there).
+- **Workflow folded into Get started** as "The three phases"; `/workflow`
+  lands there. Its phase colours are theme tokens (`--phase-*`), readable in
+  dark mode. Scrolling code blocks take keyboard focus.
+- **The audit sees the populated app**: it builds every report before
+  crawling, so verdicts, receipts and latest builds are checked, not only the
+  never-built empty states.

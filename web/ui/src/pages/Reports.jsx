@@ -16,7 +16,7 @@ import { reportBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
-  SearchInput, SkeletonList, SkeletonCard, useToast, ReportFrame,
+  SearchInput, SkeletonList, SkeletonCard, useToast, ReportFrame, pressable, useNarrow,
 } from '../components/Shared'
 
 function runDuration(rec) {
@@ -322,6 +322,7 @@ function ReportDetail({ report, onBack }) {
   const { data: run } = useReportRun(report?.name, runId)
   const built = useBuiltReport(report?.name)
   const { mutate: fetchLineage, isPending: loadingLineage } = useReportLineage()
+  const narrow = useNarrow()
 
   // The run executes in the background on the server; useReportRun polls
   // until it settles. Result/error derive from the polled record.
@@ -368,21 +369,12 @@ function ReportDetail({ report, onBack }) {
     })
   }, [report?.name, fetchLineage, toast])
 
-  if (!report) return (
-    <Card>
-      <div className="fade-in" style={{ padding: '28px 12px 20px', textAlign: 'center' }}>
-        <ReportArt mode="done" size={230} />
-        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginTop: 14 }}>
-          Pick a report
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, maxWidth: '40ch', marginInline: 'auto', lineHeight: 1.55 }}>
-          Select one from the list to open its last build.
-        </div>
-      </div>
-    </Card>
-  )
+  if (!report) return null
 
   const parts = report.name.split('/')
+  // On a phone the open report is the whole screen, and its name is the
+  // page's heading; beside the list, it sits under the page's own h1.
+  const Title = narrow ? 'h1' : 'h2'
   return (
     <Card>
       <nav className="crumbs mobile-only" aria-label="Breadcrumb">
@@ -390,7 +382,7 @@ function ReportDetail({ report, onBack }) {
         {parts.slice(0, -1).map(p => <span key={p}> / {p}</span>)}
       </nav>
       <CardTitle>
-        {report.name}
+        <Title className="report-detail__title">{report.name}</Title>
         <FormChip form={report.form} style={{ marginLeft: 8, verticalAlign: 'middle' }} />
         {report.description && (
           <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>
@@ -612,6 +604,52 @@ function LibraryFacts({ report }) {
   ))
 }
 
+// What the list is, before you open anything: how many reports, whether their
+// last builds still reproduce, what needs a look, and the latest builds.
+function ReportsOverview({ reports, builds, onOpen }) {
+  const names = new Set(reports.map(r => r.name))
+  const built = builds.filter(b => names.has(b.report))
+  const good = built.filter(b => verdictOf(b.verdict).variant === 'green').length
+  const look = built.filter(b => !['green', 'gray'].includes(verdictOf(b.verdict).variant)).length
+  const never = reports.length - built.length
+  const latest = [...built].sort((a, b) => String(b.built_at).localeCompare(String(a.built_at))).slice(0, 6)
+  const tiles = [
+    ['Reports', reports.length, null],
+    ['Reproduce', built.length ? `${good} of ${built.length}` : '—', good === built.length && built.length ? 'good' : null],
+    ['Need a look', look, look ? 'bad' : null],
+    ['Never built', never, null],
+  ]
+  return (
+    <Card className="fade-in">
+      <CardTitle>At a glance</CardTitle>
+      <div className="glance-tiles">
+        {tiles.map(([label, value, tone]) => (
+          <div key={label} className={`glance-tile${tone ? ` glance-tile--${tone}` : ''}`}>
+            <div className="glance-tile__value">{value}</div>
+            <div className="glance-tile__label">{label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="glance-heading">Latest builds</div>
+      {latest.length === 0 ? (
+        <p className="glance-empty">
+          Nothing built yet. Open a report to build it, or run{' '}
+          <code>tracebi report build &lt;name&gt;</code>.
+        </p>
+      ) : latest.map(b => {
+        const v = verdictOf(b.verdict)
+        return (
+          <div key={b.report} className="glance-row" {...pressable(() => onOpen(b.report))}>
+            <span className="glance-row__name">{b.report.slice(b.report.lastIndexOf('/') + 1)}</span>
+            <span className="glance-row__when">{when(b.built_at) || '—'}</span>
+            <Badge variant={v.variant} style={{ textTransform: 'none' }}>{v.label}</Badge>
+          </div>
+        )
+      })}
+    </Card>
+  )
+}
+
 // Reports in folders are named by their path ("finance/weekly"). The list
 // groups them under their folder; top-level reports come first, unheaded.
 function groupByFolder(reports) {
@@ -730,7 +768,9 @@ export default function Reports({ model = '' }) {
               </>
             )
           }
-          right={isLoading ? <SkeletonCard /> : <ReportDetail key={current?.name} report={current} onBack={() => select(null)} />}
+          right={isLoading ? <SkeletonCard /> : current
+            ? <ReportDetail key={current.name} report={current} onBack={() => select(null)} />
+            : <ReportsOverview reports={reports} builds={desk?.builds || []} onOpen={select} />}
         />
       )}
     </div>

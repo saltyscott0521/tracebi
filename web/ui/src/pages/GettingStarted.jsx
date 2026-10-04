@@ -1,7 +1,9 @@
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useGuides } from '../api'
 import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
 import { PAGES } from '../nav'
+import { ThreePhases } from '../components/ThreePhases'
 
 const STEPS = [
   {
@@ -58,7 +60,7 @@ function Guides() {
   if (isLoading || !guides?.length) return null
   return (
     <div style={{ marginBottom: 40 }}>
-      <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>Docs</div>
+      <h2 className="section-title">Docs</h2>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
         The full handbook — concepts, guides and reference, versioned in <code>docs/</code>.
       </p>
@@ -83,7 +85,7 @@ const FOLDER = {
 function HowItFits() {
   return (
     <div style={{ marginBottom: 36 }}>
-      <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>How the pieces fit</div>
+      <h2 className="section-title">How the app fits together</h2>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '74ch' }}>
         Everything belongs to a <strong>model</strong>. Pick one at the top of the sidebar and
         every page below it is about that model: its data model, its questions, its refresh,
@@ -107,15 +109,29 @@ function HowItFits() {
 }
 
 export default function GettingStarted() {
+  // /workflow (now a section here) and other links land on a section by hash.
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+  }, [hash])
   return (
     <div>
-      <PageTitle>Getting started</PageTitle>
-      <PageSub>Five steps from install to your first lineage-tracked report.</PageSub>
+      <PageTitle>Get started</PageTitle>
+      <PageSub>How TraceBi fits together, then five steps from install to your first report with a receipt.</PageSub>
 
       <HowItFits />
 
-      <Guides />
+      <section id="phases" style={{ marginBottom: 40 }}>
+        <h2 className="section-title">The three phases</h2>
+        <p className="section-sub">
+          From a messy source to a served report. Each phase has its own folder and its own pace,
+          and hands the next a frozen artifact, so slow analysis and fast reporting never block
+          each other.
+        </p>
+        <ThreePhases />
+      </section>
 
+      <h2 className="section-title" id="steps">Five steps</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 40 }}>
         {STEPS.map(s => (
           <div key={s.n} style={{
@@ -139,6 +155,8 @@ export default function GettingStarted() {
         ))}
       </div>
 
+      <Guides />
+
       <div style={{
         background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
         borderRadius: 12, padding: '20px 24px',
@@ -147,7 +165,6 @@ export default function GettingStarted() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Link to="/models" style={LINK_STYLE}>Models</Link>
           <Link to="/reports" style={LINK_STYLE}>Reports</Link>
-          <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
         </div>
       </div>
     </div>
