@@ -198,3 +198,47 @@ def test_what_the_builder_points_at_reaches_the_agent(served, monkeypatch):
     assert served.post(url, json={"kind": "nonsense"}).status_code == 422
     assert served.delete(url).json() == {"pointing": None}
     assert gateway_workbench_state("sample_dashboard")["pointing"] is None
+
+
+def test_the_workbench_in_the_app_shows_what_the_agent_and_builder_did(served, monkeypatch, scaffolded):
+    """Build mode's panel: pins the builder writes are what the agent reads, what
+    the agent resolves comes back, and the version moves when the report is edited."""
+    from tracebi.mcp_server import gateway_resolve_pin, gateway_workbench_state
+
+    base = "/api/reports/sample_dashboard/workbench"
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "1")
+
+    v1 = served.get(f"{base}/version").json()["version"]
+    assert served.get(f"{base}/version").json()["version"] == v1          # stable when nothing changed
+
+    # The live preview is the working state, rendered in memory (not a build).
+    preview = served.get(f"{base}/preview")
+    assert preview.status_code == 200 and "<html" in preview.text.lower()
+    assert not list((scaffolded / "output").glob("sample_dashboard*")), "a preview is not a build"
+
+    # Point at something, then pin a note on it: the pin carries what was pointed at.
+    served.post(f"{base}/pointing", json={"kind": "figure", "id": "kpi-revenue",
+                                          "binding": "totals", "cell": "revenue"})
+    assert served.post(f"{base}/pins", json={"note": ""}).status_code == 422
+    pins = served.post(f"{base}/pins", json={"note": "make this a line chart"}).json()["pins"]
+    assert pins[-1]["id"] == "kpi-revenue" and pins[-1]["target"]["binding"] == "totals"
+    assert served.get(f"{base}/version").json()["version"] != v1          # a pin moves the version
+
+    # The agent sees it (MCP) and resolves it; the app shows the resolution.
+    seen = gateway_workbench_state("sample_dashboard")["pins"]
+    assert [p["note"] for p in seen] == ["make this a line chart"]
+    assert gateway_resolve_pin("sample_dashboard", "kpi-revenue", "made it a line")["ok"]
+    state = served.get(f"{base}/state").json()
+    assert state["pins"] == []
+    assert state["resolved"][-1]["resolved_note"] == "made it a line"
+
+    # Editing the package moves the version: that is how the pane knows to refresh.
+    v2 = served.get(f"{base}/version").json()["version"]
+    (scaffolded / "reports" / "sample_dashboard" / "style.css").open("a").write("\n/* edit */\n")
+    assert served.get(f"{base}/version").json()["version"] != v2
+
+    # An area, not a figure, gets its own id and says where.
+    served.post(f"{base}/pointing", json={"kind": "element", "tag": "h1", "text": "Sales"})
+    area = served.post(f"{base}/pins", json={"note": "shorter title"}).json()["pins"][-1]
+    assert area["id"].startswith("pin-") and area["target"]["tag"] == "h1"
+    assert served.delete(f"{base}/pins/{area['id']}").json()["pins"] == []

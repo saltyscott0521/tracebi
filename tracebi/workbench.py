@@ -35,6 +35,7 @@ import json
 import math
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -614,6 +615,79 @@ def _pins_view(pins: list[dict], report: Optional[str], exhibits: list[dict]) ->
 def write_pins(wb_dir: str, pins: list[dict]) -> None:
     """Replace the open list. Pins already resolved stay in the file."""
     _save_pins(wb_dir, pins, read_resolved(wb_dir))
+
+
+#: Pins are read-modify-written, and two servers (the dev server's threads, the
+#: web app's) may add one at once. One lock per process; the file is the truth.
+_PINS_LOCK = threading.Lock()
+
+
+def add_pin(wb_dir: str, pin_id: str, note: str = "", kind: Optional[str] = None,
+            exhibit=None, target: Optional[dict] = None) -> list[dict]:
+    """Add (or replace) one open pin and return the open list.
+
+    ``kind`` is None (a figure pin: *pin_id* is the figure id), ``"promote"``
+    (Keep this on an exhibit) or ``"message"`` (the author typing to the
+    agent). ``target`` is what the author pointed at when they wrote the note
+    (a :func:`record_pointing` dict), so a pin on an area, not just a figure,
+    says where. Used by the dev server and the web app alike.
+    """
+    with _PINS_LOCK:
+        pins = [p for p in read_pins(wb_dir) if p.get("id") != pin_id]
+        pin = {"id": pin_id, "note": note or "", "at_seq": last_seq(wb_dir)}
+        if kind == "promote":
+            pin["kind"] = "promote"
+            pin["exhibit"] = exhibit
+        elif kind == "message":
+            pin["kind"] = "message"
+            pin["at"] = datetime.now().isoformat(timespec="seconds")
+        if isinstance(target, dict) and target.get("kind"):
+            pin["target"] = target
+        pins.append(pin)
+        write_pins(wb_dir, pins)
+        return pins
+
+
+def remove_pin(wb_dir: str, pin_id: str) -> list[dict]:
+    """Drop one open pin (unpin) and return the open list. Resolved pins stay."""
+    with _PINS_LOCK:
+        pins = [p for p in read_pins(wb_dir) if p.get("id") != pin_id]
+        write_pins(wb_dir, pins)
+        return pins
+
+
+def package_version(package_dir: str) -> str:
+    """A cheap fingerprint of everything that changes what the workbench shows.
+
+    The package's files, the models and transforms it reads, the shared theme,
+    and the pins and feed: a path, mtime and size each. A poller compares two
+    of these to decide whether to re-render; it renders nothing itself.
+    ``pointing.json`` is left out on purpose, since the page that writes it
+    would otherwise trigger its own refresh.
+    """
+    import hashlib
+
+    from tracebi.report_paths import report_name_for_dir
+
+    roots = [Path(package_dir),
+             Path(os.environ.get("TRACEBI_MODELS_DIR", "models")),
+             Path(os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms")),
+             Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports")) / "_theme.css"]
+    wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
+        os.getcwd(), report_name_for_dir(str(package_dir)))
+    roots += [Path(wb) / PINS_FILE, Path(wb) / EXHIBITS_FILE]
+    digest = hashlib.sha1()
+    for root in roots:
+        files = [root] if root.is_file() else (
+            sorted(p for p in root.rglob("*") if p.is_file()
+                   and "__pycache__" not in p.parts) if root.is_dir() else [])
+        for path in files:
+            try:
+                st = path.stat()
+            except OSError:
+                continue
+            digest.update(f"{path}:{st.st_mtime_ns}:{st.st_size}\n".encode())
+    return digest.hexdigest()[:16]
 
 
 # ── JSON-safe previews ──────────────────────────────────────────────────────

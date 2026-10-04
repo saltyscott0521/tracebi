@@ -1,4 +1,4 @@
-"""Browser test of Build mode: point at a figure, and the agent can see it.
+"""Browser tests of Build mode: point at a figure, pin a note, watch the agent work.
 
 Skipped unless ``TRACEBI_E2E=1`` (needs Chromium; see test_ui_smoke.py).
 """
@@ -66,7 +66,7 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             frame = page.frame_locator("iframe")
             frame.locator("#kpi-mrr").wait_for()
 
-            page.get_by_role("button", name="Point").click()
+            page.get_by_role("button", name="◎ Build").click()
             assert pointing() is None
             frame.locator("#kpi-mrr").click()
 
@@ -84,13 +84,34 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             got = pointing()
             assert got["kind"] == "element" and got["tag"] == "h1", got
 
-            # Escape stops pointing; so does leaving Point mode.
+            # A note on what you point at is a pin the agent can read; when the agent
+            # resolves it (here, through the files the MCP server shares) the pane
+            # shows the answer without a reload.
+            frame.locator("#kpi-mrr").click()
+            page.get_by_label("Note for the agent").fill("make this a line chart")
+            page.get_by_role("button", name="Pin for the agent").click()
+            page.locator(".wb-item", has_text="make this a line chart").wait_for()
+            from tracebi.workbench import read_pins, resolve_pin
+            wb = project / ".tracebi" / "workbench" / "saas_model" / "mrr_dashboard"
+            assert [p["note"] for p in read_pins(str(wb))] == ["make this a line chart"]
+            assert read_pins(str(wb))[0]["target"]["binding"] == "kpis"
+            resolve_pin(str(wb), "kpi-mrr", note="made it a line", by="agent")
+            page.get_by_text("Agent: made it a line").wait_for(state="attached")
+
+            # The preview is live: the agent edits the package and the report in the
+            # pane changes on its own.
+            template = project / "reports" / "saas_model" / "mrr_dashboard" / "template.html"
+            template.write_text(template.read_text().replace(
+                "Scale leads ending MRR", "Edited while you watch"))
+            frame.get_by_role("heading", name="Edited while you watch").wait_for(timeout=15_000)
+
+            # Escape stops pointing; so does leaving Build mode.
             frame.locator("#kpi-mrr").click()
             page.keyboard.press("Escape")
             page.wait_for_function(
                 "() => /Click a figure/.test(document.querySelector('.point-note')?.innerText || '')")
             frame.locator("#kpi-mrr").click()
-            page.get_by_role("button", name="Point").click()
+            page.get_by_role("button", name="◎ Build").click()
             page.wait_for_function("() => !document.querySelector('.point-note')")
             deadline = 50
             while pointing() is not None and deadline:
@@ -123,7 +144,7 @@ def test_build_mode_is_absent_unless_the_server_is_in_dev_mode(tmp_path: Path) -
             page.set_default_timeout(60_000)
             page.goto(f"{base}/m/saas_model/reports?r=saas_model/mrr_dashboard")
             page.locator("iframe").wait_for()
-            assert page.get_by_role("button", name="Point").count() == 0
+            assert page.get_by_role("button", name="◎ Build").count() == 0
             browser.close()
         request = urllib.request.Request(
             f"{base}/api/reports/saas_model/mrr_dashboard/workbench/pointing",

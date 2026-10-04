@@ -251,12 +251,16 @@ Three rules that keep pages honest:
   status` and the MCP `workbench_state` tool).
 
 **Pointing.** In the web app's Build mode (the server runs with
-`TRACEBI_DEV_MODE=1`; `tracebi dev` does) the human clicks **Point** on a
-report and then on a figure or an area. Read it with the MCP
-`workbench_state` tool: `pointing` is a figure (`id`, `binding`, `cell`) or
-an element (`selector`, `text`, `section`), and is what "this" or "here"
-means in their message. It is dev-state only: it never reaches a build or a
-receipt, and when `pointing` is null they are pointing at nothing, so ask.
+`TRACEBI_DEV_MODE=1`; `tracebi dev` does) the human clicks **Build** on a
+report: the workbench opens beside it, and a click on a figure or an area is
+what they point at. Read it with the MCP `workbench_state` tool: `pointing`
+is a figure (`id`, `binding`, `cell`) or an element (`selector`, `text`,
+`section`), and is what "this" or "here" means in their message. A note they
+pin on it is an open pin with a `target` (the same shape). The pane shows
+them what you do, live: your `show()` exhibits, the pins you `resolve_pin`
+(with your note), and the report re-rendered whenever you save the package.
+It is dev-state only: it never reaches a build or a receipt, and when
+`pointing` is null they are pointing at nothing, so ask.
 
 And the iteration protocol itself: `tracebi dev <name>` **blocks** — run it
 in a background shell (or let the human keep it open; the portal is their
