@@ -50,8 +50,8 @@ paths         │                      │   │                       │   │
 **Shipped since the 2026-09-24 audit (code on `main`; package is
 `0.7.0.dev0` after the `v0.6.0` release):** E2, E3, E4, E5, E8, E9, E11
 (Teams deferred), E14's buildable pieces, E15, E1 (release + Coolify on
-`ghcr.io/…/tracebi:0.6.0`), E6's path discovery + `open_report` + Library
-list.
+GHCR `:main` for the demo / version tags for clients), E6's path
+discovery + `open_report` + Library list.
 The app's data path (Sources → Pipelines → Data model → Explore →
 Reports) is also on `main`.
 
@@ -114,7 +114,7 @@ list them as open, which makes the real gaps harder to see.
 | No dbt import / no `init --template` | ✅ `tracebi import dbt`; `init --template saas-metrics` and `sales-pipeline` | #188 / #190 / #192 |
 | Library list has no schedule, last run, builds, or last change | ✅ Those columns on the Reports list; owner is an em dash until E7 | `Reports.jsx` / #187 |
 | Slack file, bursting, and alert → Runs still open | ✅ Slack file upload plus a short summary, `burst`, and the owner alert links to `/runs` | `schedule.py` / #189 / #191 / #186 |
-| Coolify demo builds from git on every push | ✅ `tracebi-demo` pulls `ghcr.io/saltyscott0521/tracebi:0.6.0`; auto-deploy off; image retention disabled | Coolify / E1 |
+| Coolify demo builds from git on every push | ✅ pulls `ghcr.io/…/tracebi:main` after CI; webhook redeploy; version tags for clients | Coolify / E1 |
 
 ### Still open, by area
 
@@ -169,9 +169,10 @@ shows the same version.
 - [x] The CHANGELOG `[Unreleased]` section becomes the release notes.
 - [x] PyPI publish is wired but switched off, so turning it on later is one
       line. (Held on purpose until development settles; `PUBLISH_PYPI`.)
-- [x] Coolify pulls the tagged image instead of building from `main`, so the
-      demo runs the same bits a client would. (`ghcr.io/saltyscott0521/tracebi:0.6.0`;
-      git auto-deploy off; application image retention disabled on the box.)
+- [x] Coolify pulls a GHCR image instead of building from git on the box.
+      The hosted demo tracks `ghcr.io/…/tracebi:main` (CI → GHCR → Coolify
+      webhook after green CI; `UI_BASE=/app/`). Client installs keep using
+      version tags from `release.yml`.
 - [x] Fix the demo link in `site/README.md` and make every external link
       agree on one URL. (#163: public demo is `https://tracebi.com/app`;
       `demo.tracebi.com` stays an internal nginx host only.)

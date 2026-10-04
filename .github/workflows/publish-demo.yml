@@ -1,0 +1,73 @@
+# After CI is green on main, build the hosted-demo image and redeploy Coolify.
+# Uses UI_BASE=/app/ so assets resolve under https://tracebi.com/app.
+# Version tags (:0.x.y / :latest) stay on release.yml for clients.
+name: Publish demo image
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-demo
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: GHCR :main → Coolify
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # workflow_run checks out the default branch tip; pin to the CI run's SHA.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Lowercase image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=main
+            type=sha,prefix=main-
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            UI_BASE=/app/
+          provenance: false
+          sbom: false
+
+      - name: Redeploy Coolify demo
+        # Secrets: COOLIFY_TOKEN (deploy-only API token) and
+        # COOLIFY_WEBHOOK (https://…/api/v1/deploy?uuid=<demo>&force=false).
+        run: |
+          curl --fail --silent --show-error --request POST \
+            "${{ secrets.COOLIFY_WEBHOOK }}" \
+            --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"

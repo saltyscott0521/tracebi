@@ -122,21 +122,29 @@ is fine on a machine that is not reachable from anywhere else.
 
 ## With Coolify
 
-Prefer a **Docker Image** resource pointed at
-`ghcr.io/saltyscott0521/tracebi:<version>` (not a git Dockerfile build on
-every push — that leaves a multi-GB image per commit on the box). Turn
-**auto-deploy** off for that resource so merges to `main` do not rebuild.
-Set the same variables from `deploy/.env` in Coolify's environment
-screen. Bind-mount a folder on the host at `/project` when you want a
-live project tree; the compose file's `output-perms` service mounts
-`output/` and `data/` from that same folder. A backup is still a copy of
-that folder.
+Prefer a **Docker Image** resource that **pulls** a GHCR tag — do not let
+Coolify build the repo Dockerfile on every push (that leaves a multi-GB
+image per commit on the box).
+
+Two tags, two jobs:
+
+| Tag | Who | How it updates |
+| --- | --- | --- |
+| `ghcr.io/saltyscott0521/tracebi:<version>` | A client install that should match a release | You bump the tag when you cut a release |
+| `ghcr.io/saltyscott0521/tracebi:main` | The hosted demo (built with `UI_BASE=/app/`) | After CI is green on `main`, `publish-demo.yml` pushes the image and hits Coolify's deploy webhook |
+
+Keep git **auto-deploy** off on the Docker Image resource; the webhook is
+what redeploys. Set the same variables from `deploy/.env` in Coolify's
+environment screen. Bind-mount a folder on the host at `/project` when
+you want a live project tree; the compose file's `output-perms` service
+mounts `output/` and `data/` from that same folder. A backup is still a
+copy of that folder.
 
 Give the resource a domain in Coolify if you have one. TLS ends at
 Coolify. This page does not name a host, an address, or a password.
 
-On the Coolify server, keep **Disable application image retention**
-on (or prune unused images regularly) so old tags do not fill the disk.
+On the Coolify server, keep image retention tight (`docker_images_to_keep`
+low, or prune unused images regularly) so old tags do not fill the disk.
 
 ## Backups
 
