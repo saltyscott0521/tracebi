@@ -59,14 +59,9 @@ export default function ModelHome() {
 
   return (
     <>
-      <nav aria-label="Breadcrumb" style={{
-        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6,
-        fontSize: 11.5, color: 'var(--muted)', marginBottom: 10,
-      }}>
-        <Link to="/models" style={{ color: 'var(--muted)', textDecoration: 'none' }}>Models</Link>
-        <span aria-hidden>›</span>
-        <strong style={{ color: 'var(--accent-text)' }}>{name}</strong>
-      </nav>
+      <p style={{ margin: '0 0 10px', fontSize: 12.5 }}>
+        <Link to="/models" style={{ color: 'var(--muted)', textDecoration: 'none' }}>← All models</Link>
+      </p>
 
       <PageTitle>{name}</PageTitle>
       <PageSub>{activeMeta.ask} {activeMeta.hint}</PageSub>

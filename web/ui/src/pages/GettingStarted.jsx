@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useGuides } from '../api'
 import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
-import { MODEL_STORY, NAV_PRIMARY } from '../components/chainSteps'
+import { MODEL_STORY } from '../components/chainSteps'
 
 const STEPS = [
   {
@@ -75,9 +75,9 @@ function HowItFits() {
     <div style={{ marginBottom: 36 }}>
       <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>How the pieces fit</div>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '74ch' }}>
-        The sidebar is short: <strong>Models</strong>, <strong>Reports</strong>, <strong>Sources</strong>.
-        Open a model for its contract, refresh, explore, and reports — that is the unit of work.
-        A source keeps the data; a model says what it means; reports only ever ask the model.
+        Open a <strong>model</strong> — that is the unit of work. Its tabs are the only path into
+        contract, refresh, explore, and reports. The report library and sources live in the footer
+        when you need them outside a model.
       </p>
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
         {MODEL_STORY.map((s, i) => (
@@ -136,7 +136,8 @@ export default function GettingStarted() {
       }}>
         <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {NAV_PRIMARY.map(s => <Link key={s.key} to={s.path} style={LINK_STYLE}>{s.label}</Link>)}
+          <Link to="/models" style={LINK_STYLE}>Models</Link>
+          <Link to="/reports" style={LINK_STYLE}>All reports</Link>
           <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
         </div>
       </div>
