@@ -33,7 +33,12 @@ export default function CommandPalette() {
 
   const items = useMemo(() => [
     ...PAGES,
-    ...(models     || []).map(m => ({ label: m.name,     path: '/models',     kind: 'model',     sub: `${m.tables.length} tables` })),
+    ...(models     || []).map(m => ({
+      label: m.name,
+      path: `/models/${encodeURIComponent(m.name)}`,
+      kind: 'model',
+      sub: `${m.tables.length} tables`,
+    })),
     ...(reports    || []).map(r => ({ label: r.name,     path: '/reports',    kind: 'report',    sub: r.description })),
     ...(pipelines  || []).map(p => {
       const q = new URLSearchParams({ p: p.pipeline })

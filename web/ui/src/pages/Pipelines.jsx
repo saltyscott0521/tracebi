@@ -202,7 +202,7 @@ function pipelineSummary(layers) {
   return `${n} layer${n !== 1 ? 's' : ''}`
 }
 
-function PipelineDetail({ pipeline, layers }) {
+export function PipelineDetail({ pipeline, layers }) {
   const toast = useToast()
   const { mutate: run, isPending } = useRunLayer()
   const { mutate: runAll, isPending: isRunningAll } = useRunPipeline()

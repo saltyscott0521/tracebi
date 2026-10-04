@@ -36,7 +36,7 @@ tracebi verify output/portfolio.html.manifest.json`,
   {
     n: 5,
     title: 'Open the desk',
-    desc: 'The published file is the thing a person approves. The Reports page opens it; the Data model page reads the model.',
+    desc: 'The published file is the thing a person approves. Open a model for its reports; the Reports page can also open them from the library.',
     code: `python -m tracebi.web.run
 # → http://localhost:8000`,
   },

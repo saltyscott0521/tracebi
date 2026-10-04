@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import Chain from '../components/Chain'
-import { useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -11,7 +11,7 @@ import { modelBelongsToScope } from '../modelScope'
 import { useModels, useModel, useTablePreview, useDesk, tableCsvUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
-  Empty, Tabs, SplitLayout, ListItem, SearchInput, SkeletonList, SkeletonCard,
+  Empty, Tabs, ListItem, SearchInput, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
 // ── Table Preview ─────────────────────────────────────────────────────────────
@@ -329,7 +329,7 @@ function ModelStorage({ details, tables }) {
   )
 }
 
-function ModelDetail({ name }) {
+export function ModelDetail({ name }) {
   const { data, isLoading } = useModel(name)
   const { data: desk } = useDesk()
   const [tab, setTab] = useState(null)      // null: the model's own default tab
@@ -470,19 +470,18 @@ function ModelDetail({ name }) {
   )
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Index: pick a model → /models/:name (its home) ───────────────────────────
 
 export default function Models() {
   const { data, isLoading } = useModels()
-  const [params, setParams] = useSearchParams()
-  const [modelScope] = useModelScope()
-  const selected = params.get('m')
-  const setSelected = m => {
-    const next = new URLSearchParams(params)
-    if (m) next.set('m', m)
-    else next.delete('m')
-    setParams(next, { replace: true })
+  const [params] = useSearchParams()
+  const legacy = params.get('m')
+  if (legacy) {
+    return <Navigate to={`/models/${encodeURIComponent(legacy)}`} replace />
   }
+
+  const navigate = useNavigate()
+  const [modelScope] = useModelScope()
   const [query, setQuery] = useState('')
 
   const models = data || []
@@ -490,20 +489,17 @@ export default function Models() {
     modelBelongsToScope(m.name, modelScope) &&
     m.name.toLowerCase().includes(query.toLowerCase())
   )
-  const shown = selected && filtered.some(m => m.name === selected)
-    ? selected
-    : (filtered.length === 1 ? filtered[0].name : selected)
 
   return (
     <>
       <Chain current="models" />
-      <PageTitle>Data model</PageTitle>
+      <PageTitle>Models</PageTitle>
       <PageSub>
         {isLoading
           ? 'Loading…'
           : modelScope
             ? `Scoped to ${modelScope}.`
-            : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to see its diagram, measures and tables, and on its Storage tab where its data is kept.`
+            : `${models.length} model${models.length !== 1 ? 's' : ''}. Open one for its pipeline, contract, explore, and reports.`
         }
       </PageSub>
 
@@ -513,28 +509,32 @@ export default function Models() {
           message="No models registered. Add one with registry.add_model() in your app module."
         />
       ) : (
-        <SplitLayout
-          left={
-            isLoading ? <SkeletonList /> : (
-              <>
-                <SearchInput value={query} onChange={setQuery} placeholder="Search models…" />
-                {filtered.length === 0
-                  ? <Empty message="No matches." />
-                  : filtered.map(m => (
+        <div className="surface" style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)', overflow: 'hidden',
+          maxWidth: 560,
+        }}>
+          {isLoading ? <SkeletonList /> : (
+            <>
+              <SearchInput value={query} onChange={setQuery} placeholder="Search models…" />
+              {filtered.length === 0
+                ? <Empty message="No matches." />
+                : filtered.map((m, i) => (
+                  <div key={m.name} className="rise" style={{ '--i': i }}>
                     <ListItem
-                      key={m.name}
-                      selected={shown === m.name}
-                      onClick={() => setSelected(m.name)}
                       name={m.name}
-                      sub={m.facts ? `${m.facts.length} fact${m.facts.length !== 1 ? 's' : ''} · ${m.dimensions.length} dim · ${m.measures.length} measures` : `${m.tables.length} tables`}
+                      sub={m.facts
+                        ? `${m.facts.length} fact${m.facts.length !== 1 ? 's' : ''} · ${m.dimensions.length} dim · ${m.measures.length} measures`
+                        : `${m.tables.length} tables`}
+                      onClick={() => navigate(`/models/${encodeURIComponent(m.name)}`)}
                     />
-                  ))
-                }
-              </>
-            )
-          }
-          right={<ModelDetail key={shown} name={shown} />}
-        />
+                  </div>
+                ))
+              }
+            </>
+          )}
+        </div>
       )}
     </>
   )

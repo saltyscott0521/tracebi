@@ -177,7 +177,7 @@ function Detail({ node }) {
           )}
           {d.sha256 && <Row label="Contract"><code title={d.sha256} style={{ fontSize: 11.5 }}>{short(d.sha256)}</code></Row>}
           <div style={{ marginTop: 8 }}>
-            <Link to={`/models?m=${encodeURIComponent(node.label)}`} style={{ fontSize: 12.5 }}>Open in Data model →</Link>
+            <Link to={`/models/${encodeURIComponent(node.label)}`} style={{ fontSize: 12.5 }}>Open model →</Link>
           </div>
         </>
       )}

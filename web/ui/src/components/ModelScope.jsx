@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useModels } from '../api'
 import { pathWithModelScope } from '../modelScope'
@@ -6,12 +7,16 @@ import { pathWithModelScope } from '../modelScope'
 export function useModelScope() {
   const [params, setParams] = useSearchParams()
   const model = params.get('model') || ''
-  const setModel = (next) => {
-    const copy = new URLSearchParams(params)
-    if (next) copy.set('model', next)
-    else copy.delete('model')
-    setParams(copy, { replace: true })
-  }
+  const setModel = useCallback((next) => {
+    setParams(prev => {
+      const copy = new URLSearchParams(prev)
+      const cur = copy.get('model') || ''
+      if ((next || '') === cur) return prev
+      if (next) copy.set('model', next)
+      else copy.delete('model')
+      return copy
+    }, { replace: true })
+  }, [setParams])
   return [model, setModel]
 }
 
