@@ -12,6 +12,8 @@ import {
 import { ReportLineage } from '../components/ReportLineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
 import { ReportArt } from '../components/Art'
+import { useModelScope } from '../components/ModelScope'
+import { reportBelongsToModel } from '../modelScope'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
@@ -654,17 +656,23 @@ export default function Reports() {
   // Selection lives in the URL (?r=name), so an attention item can
   // deep-link straight to a report and the link is shareable.
   const [searchParams, setSearchParams] = useSearchParams()
+  const [modelScope] = useModelScope()
   const selected = searchParams.get('r')
-  // A history entry per pick, so a phone's back gesture returns to the list.
+  // Keep ?model= when picking a report.
   const select = (name) => {
-    setSearchParams(name ? { r: name } : {})
+    const next = new URLSearchParams(searchParams)
+    if (name) next.set('r', name)
+    else next.delete('r')
+    setSearchParams(next)
     window.scrollTo(0, 0)
   }
 
   const reports = data || []
   const filtered = reports.filter(r =>
-    r.name.toLowerCase().includes(query.toLowerCase()) ||
-    (r.description || '').toLowerCase().includes(query.toLowerCase())
+    reportBelongsToModel(r.name, modelScope) && (
+      r.name.toLowerCase().includes(query.toLowerCase()) ||
+      (r.description || '').toLowerCase().includes(query.toLowerCase())
+    )
   )
   const current = reports.find(r => r.name === selected)
   const [closed, setClosed] = useState(() => new Set())
@@ -679,7 +687,11 @@ export default function Reports() {
       <Chain current="reports" />
       <PageTitle>Reports</PageTitle>
       <PageSub>
-        {isLoading ? 'Loading…' : `${reports.length} report${reports.length !== 1 ? 's' : ''}. Select one to open its last build. Rebuild is the second action.`}
+        {isLoading
+          ? 'Loading…'
+          : modelScope
+            ? `${filtered.length} report${filtered.length !== 1 ? 's' : ''} for ${modelScope}. Select one to open its last build.`
+            : `${reports.length} report${reports.length !== 1 ? 's' : ''}. Select one to open its last build. Rebuild is the second action.`}
       </PageSub>
 
       <AttentionStrip items={attentionItems(desk, pipelines)} />

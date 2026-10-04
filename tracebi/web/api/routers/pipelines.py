@@ -35,7 +35,13 @@ def list_pipelines():
                 layer["last_actor"] = None
                 layer["last_actor_role"] = None
             layers.append(layer)
-        result.append({"pipeline": pipeline_name, "layers": layers})
+        # model_pipeline stamps .model; a hand-built runner may leave it unset.
+        model = getattr(runner, "model", None)
+        result.append({
+            "pipeline": pipeline_name,
+            "model": model if isinstance(model, str) and model else None,
+            "layers": layers,
+        })
     return result
 
 

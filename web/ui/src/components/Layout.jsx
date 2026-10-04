@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { CHAIN } from './chainSteps'
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink, Link, useSearchParams } from 'react-router-dom'
 
 import { useHealth, useAppStatus } from '../api'
+import { pathWithModelScope } from '../modelScope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -81,11 +82,11 @@ function MoonIcon() {
   )
 }
 
-function NavItem({ path, label, icon, onNavigate }) {
+function NavItem({ path, label, icon, onNavigate, model }) {
   return (
     <li>
       <NavLink
-        to={path}
+        to={pathWithModelScope(path, model)}
         end={path === '/'}
         onClick={onNavigate}
         className="nav-link"
@@ -117,7 +118,7 @@ function NavItem({ path, label, icon, onNavigate }) {
   )
 }
 
-function NavSection({ label, items, onNavigate }) {
+function NavSection({ label, items, onNavigate, model }) {
   return (
     <div style={{ marginBottom: 6 }}>
       {label && (
@@ -134,7 +135,7 @@ function NavSection({ label, items, onNavigate }) {
       )}
       <ul style={{ listStyle: 'none', padding: label ? '0 0 4px' : '8px 0 4px' }}>
         {items.map(item => (
-          <NavItem key={item.path} {...item} onNavigate={onNavigate} />
+          <NavItem key={item.path} {...item} onNavigate={onNavigate} model={model} />
         ))}
       </ul>
     </div>
@@ -142,6 +143,8 @@ function NavSection({ label, items, onNavigate }) {
 }
 
 export default function Layout({ children }) {
+  const [params] = useSearchParams()
+  const modelScope = params.get('model') || ''
   const [open, setOpen] = useState(false)
   const { data: health, isSuccess: healthOk } = useHealth()
   const version = healthOk && typeof health?.version === 'string' ? health.version : ''
@@ -270,8 +273,8 @@ export default function Layout({ children }) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          <NavSection items={NAV_PRIMARY} onNavigate={close} />
-          <NavSection label="Learn" items={NAV_SECONDARY} onNavigate={close} />
+          <NavSection items={NAV_PRIMARY} onNavigate={close} model={modelScope} />
+          <NavSection label="Learn" items={NAV_SECONDARY} onNavigate={close} model={modelScope} />
         </div>
 
         {/* Footer */}

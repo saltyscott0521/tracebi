@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Chain from '../components/Chain'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { usePipelines, useRunLayer, useRunPipeline, useLayerHistory } from '../api'
+import { useModelScope } from '../components/ModelScope'
+import { pipelineBelongsToModel } from '../modelScope'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
-  Empty, Btn, Tabs, SkeletonCard, useToast,
+  Empty, Btn, Tabs, SkeletonCard, SkeletonList, SplitLayout, ListItem,
+  SearchInput, useToast,
 } from '../components/Shared'
 
 const TYPE_BADGE = {
@@ -188,12 +192,30 @@ function LayerHistory({ pipeline, layer }) {
   )
 }
 
-function PipelineCard({ pipeline, layers }) {
+function pipelineSummary(layers) {
+  const n = layers?.length || 0
+  const failed = (layers || []).filter(l =>
+    l.last_status === 'error' || l.last_status?.startsWith?.('error:')).length
+  const running = (layers || []).some(l => l.last_status === 'running')
+  if (running) return `${n} layer${n !== 1 ? 's' : ''} · running`
+  if (failed) return `${n} layer${n !== 1 ? 's' : ''} · ${failed} failed`
+  return `${n} layer${n !== 1 ? 's' : ''}`
+}
+
+export function PipelineDetail({ pipeline, layers }) {
   const toast = useToast()
   const { mutate: run, isPending } = useRunLayer()
   const { mutate: runAll, isPending: isRunningAll } = useRunPipeline()
   const [selected, setSelected] = useState(null)
   const [tab, setTab] = useState('Flow')
+
+  if (!pipeline) {
+    return (
+      <Card>
+        <Empty message="Select a pipeline to see its flow, layers, and run history." />
+      </Card>
+    )
+  }
 
   function handleRunAll() {
     runAll({ pipeline }, {
@@ -210,7 +232,7 @@ function PipelineCard({ pipeline, layers }) {
   }
 
   return (
-    <Card>
+    <Card className="fade-in">
       <CardTitle action={
         <Btn
           size="sm"
@@ -309,7 +331,25 @@ function PipelineCard({ pipeline, layers }) {
 
 export default function Pipelines() {
   const { data, isLoading } = usePipelines()
+  const [params, setParams] = useSearchParams()
+  const [modelScope] = useModelScope()
+  const selected = params.get('p')
+  // Keep ?model= when picking a pipeline; drop it only via the scope control.
+  const select = (name) => {
+    const next = new URLSearchParams(params)
+    if (name) next.set('p', name)
+    else next.delete('p')
+    setParams(next, { replace: true })
+  }
+  const [query, setQuery] = useState('')
+
   const pipelines = data || []
+  const filtered = pipelines.filter(p =>
+    pipelineBelongsToModel(p, modelScope) &&
+    p.pipeline.toLowerCase().includes(query.toLowerCase())
+  )
+  const current = filtered.find(p => p.pipeline === selected)
+    || (filtered.length === 1 ? filtered[0] : null)
 
   return (
     <>
@@ -318,18 +358,44 @@ export default function Pipelines() {
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}: each rebuilds a model's data, then the reports that read it. Run history refreshes every 10 s.`
+          : modelScope
+            ? `${filtered.length} pipeline${filtered.length !== 1 ? 's' : ''} for ${modelScope}. Select one to open its flow.`
+            : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}: each rebuilds a model's data, then the reports that read it. Select one to open its flow. Run history refreshes every 10 s.`
         }
       </PageSub>
 
-      {isLoading ? (
-        <><SkeletonCard /><SkeletonCard /></>
-      ) : pipelines.length === 0 ? (
+      {!isLoading && pipelines.length === 0 ? (
         <Empty message="No pipelines registered. Add one with registry.add_pipeline() in your app module." />
       ) : (
-        pipelines.map(p => (
-          <PipelineCard key={p.pipeline} pipeline={p.pipeline} layers={p.layers} />
-        ))
+        <SplitLayout
+          left={
+            isLoading ? <SkeletonList /> : (
+              <>
+                <SearchInput value={query} onChange={setQuery} placeholder="Search pipelines…" />
+                {filtered.length === 0
+                  ? <Empty message="No matches." />
+                  : filtered.map((p, i) => (
+                    <div key={p.pipeline} className="rise" style={{ '--i': i }}>
+                      <ListItem
+                        selected={selected === p.pipeline}
+                        onClick={() => select(p.pipeline)}
+                        name={p.pipeline}
+                        sub={pipelineSummary(p.layers)}
+                      />
+                    </div>
+                  ))
+                }
+              </>
+            )
+          }
+          right={
+            <PipelineDetail
+              key={selected || ''}
+              pipeline={current?.pipeline}
+              layers={current?.layers || []}
+            />
+          }
+        />
       )}
     </>
   )

@@ -31,7 +31,7 @@ function ConnectorDetail({ c }) {
         {(c.used_by || []).length === 0
           ? <span style={{ color: 'var(--muted)', fontSize: 12.5 }}>No model reads from this connector.</span>
           : (c.used_by || []).map(m => (
-            <Link key={m} to={`/models?m=${encodeURIComponent(m)}`} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
+            <Link key={m} to={`/models/${encodeURIComponent(m)}`} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
           ))}
       </Section>
       {c.tables && c.tables.length > 0 && (
