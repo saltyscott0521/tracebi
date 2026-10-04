@@ -37,6 +37,7 @@ import os
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 EXHIBITS_FILE = "exhibits.jsonl"
@@ -1048,14 +1049,15 @@ def _contracts_summary(warehouse: str) -> Optional[dict]:
 
 
 def _discovery_packages(project_root: str) -> list[str]:
-    """Package names under reports/, folders included (``finance/weekly``).
+    """Package names in the library, folders included (``finance/weekly``).
 
     A directory with ``report.json`` or ``template.html`` is a package. One
     with neither and no subdirectories still counts, so a package-in-progress
     is visible; one with subdirectories is a folder, and is walked.
+    Honours ``TRACEBI_LIBRARY_MOUNTS``.
     """
-    reports = os.path.join(
-        project_root, os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+    from tracebi.report_paths import library_roots
+
     found: list[str] = []
 
     def walk(directory: str, prefix: str) -> None:
@@ -1074,5 +1076,8 @@ def _discovery_packages(project_root: str) -> list[str]:
             else:
                 walk(full, f"{prefix}{entry}/")
 
-    walk(reports, "")
+    for label, root in library_roots():
+        root_path = root if root.is_absolute() else Path(project_root) / root
+        pfx = f"{label}/" if label else ""
+        walk(str(root_path), pfx)
     return found

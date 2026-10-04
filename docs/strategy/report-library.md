@@ -6,7 +6,9 @@ share, or in any source control system. Drafts are free to edit; published
 reports are approved first. Every folder carries permissions, and every door
 into TraceBi (the app, agents, schedules) checks them the same way.**
 
-Status: design. Nothing here is built yet except the pieces marked ✅.
+Status: design for permissions and publishing (E7). Folders, the Library
+list, path identity, `open_report`, and mounts (`TRACEBI_LIBRARY_MOUNTS`)
+are built (E6).
 
 ---
 

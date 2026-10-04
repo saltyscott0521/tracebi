@@ -299,26 +299,27 @@ if _app_module:
 
 # Folder-based auto-discovery — decorator-based artifacts fire registry side
 # effects on import (reports use @register.report).
-for _env, _default in (
-    ("TRACEBI_SCHEDULED_DIR",  "scheduled"),
-    ("TRACEBI_REPORTS_DIR",    "reports"),
-):
-    _dir = os.environ.get(_env, _default)
-    if os.path.isdir(_dir):
-        from tracebi.web.discovery import auto_discover as _auto_discover
-        if _env == "TRACEBI_SCHEDULED_DIR" and any(
-                name.endswith((".py", ".ipynb"))
-                for name in os.listdir(_dir) if not name.startswith(".")):
-            print(
-                f"[tracebi] {_dir} is deprecated and never ran these "
-                f"reports. Put a \"schedule\" block in report.json. "
-                f"See `tracebi schedule --help`.",
-                file=sys.stderr,
-            )
-        _discovered = _auto_discover(_dir)
-        if _discovered:
-            print(f"[tracebi] auto-discovered {len(_discovered)} module(s) "
-                  f"from {_dir}")
+_scheduled = os.environ.get("TRACEBI_SCHEDULED_DIR", "scheduled")
+if os.path.isdir(_scheduled):
+    from tracebi.web.discovery import auto_discover as _auto_discover
+    if any(name.endswith((".py", ".ipynb"))
+           for name in os.listdir(_scheduled) if not name.startswith(".")):
+        print(
+            f"[tracebi] {_scheduled} is deprecated and never ran these "
+            f"reports. Put a \"schedule\" block in report.json. "
+            f"See `tracebi schedule --help`.",
+            file=sys.stderr,
+        )
+    _discovered = _auto_discover(_scheduled)
+    if _discovered:
+        print(f"[tracebi] auto-discovered {len(_discovered)} module(s) "
+              f"from {_scheduled}")
+
+from tracebi.web.discovery import discover_library as _discover_library
+_lib_discovered = _discover_library()
+if _lib_discovered:
+    print(f"[tracebi] auto-discovered {len(_lib_discovered)} module(s) "
+          f"from the report library")
 
 # Models discovery — each models/<name>.py exposes a `model` variable.
 _models_dir = os.environ.get("TRACEBI_MODELS_DIR", "models")

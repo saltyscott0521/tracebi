@@ -13,7 +13,8 @@ disagree with this file on order, this file wins.
 **In one line:** the engine, the agent surface, one-server install, the
 state store, the reader's report experience, the dashboard cookbook, the
 path onto a client's own data, and unattended schedule delivery have
-shipped. The leftover on NOW is Library mounts (E6). E1 Coolify ops are done.
+shipped. E6 Library mounts are in (`TRACEBI_LIBRARY_MOUNTS`). E1 Coolify
+ops are done. NOW has no open leftovers.
 
 ---
 
@@ -29,10 +30,10 @@ people's hands│                      │   │                       │   │
               │                      │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-PLATFORM      │ E6: list done;       │──▶│                       │──▶│ E7 People, permissions │
-run it for a  │    mounts still open │   │                       │   │    and publishing      │
-team          │    (almost done)     │   │                       │   │                        │
-              │ E4 / E5: done        │   │                       │   │                        │
+PLATFORM      │ E6: done             │──▶│                       │──▶│ E7 People, permissions │
+run it for a  │                      │   │                       │   │    and publishing      │
+team          │ E4 / E5: done        │   │                       │   │                        │
+              │                      │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
 FRAMEWORK     │ E8 / E9 / E14 / E15: │   │                       │──▶│ E10 Warehouse-scale    │
@@ -50,8 +51,8 @@ paths         │                      │   │                       │   │
 **Shipped since the 2026-09-24 audit (code on `main`; package is
 `0.7.0.dev0` after the `v0.6.0` release):** E2, E3, E4, E5, E8, E9, E11
 (Teams deferred), E14's buildable pieces, E15, E1 (release + Coolify on
-GHCR `:main` for the demo / version tags for clients), E6's path
-discovery + `open_report` + Library list.
+GHCR `:main` for the demo / version tags for clients), E6 (path
+discovery + `open_report` + Library list + mounts).
 The app's data path (Sources → Pipelines → Data model → Explore →
 Reports) is also on `main`.
 
@@ -60,9 +61,8 @@ Reports) is also on `main`.
 1. **Own data is in.** Connect, `new-model --from`, dbt import, and both
    `init --template` starters (saas-metrics, sales-pipeline) are on
    `main`, and the scaffold leads with ask / build / schedule.
-2. **Library mounts, then people.** The Library list (schedule, last run,
-   builds, last change) is in. Mounts are the open E6 piece; they are
-   where permissions (E7) will attach.
+2. **Library mounts are in; then people.** The Library list and
+   `TRACEBI_LIBRARY_MOUNTS` are on `main`. Permissions (E7) attach there.
 3. **Schedules you can leave alone — done.** Retries, owner alerts,
    alert → Runs, Slack file delivery, and bursting are in. Teams stays
    deferred unless a customer asks.
@@ -113,6 +113,7 @@ list them as open, which makes the real gaps harder to see.
 | Demo URL disagrees across docs | ✅ Public demo is `https://tracebi.com/app` | #163 |
 | No dbt import / no `init --template` | ✅ `tracebi import dbt`; `init --template saas-metrics` and `sales-pipeline` | #188 / #190 / #192 |
 | Library list has no schedule, last run, builds, or last change | ✅ Those columns on the Reports list; owner is an em dash until E7 | `Reports.jsx` / #187 |
+| Mounts as top-level library folders | ✅ `TRACEBI_LIBRARY_MOUNTS=label:/abs/path,…`; identity is `label/relative_path` | `report_paths.py` / #193 |
 | Slack file, bursting, and alert → Runs still open | ✅ Slack file upload plus a short summary, `burst`, and the owner alert links to `/runs` | `schedule.py` / #189 / #191 / #186 |
 | Coolify demo builds from git on every push | ✅ pulls `ghcr.io/…/tracebi:main` after CI; webhook redeploy; version tags for clients | Coolify / E1 |
 
@@ -128,7 +129,6 @@ list them as open, which makes the real gaps harder to see.
 
 | Finding | Evidence |
 | --- | --- |
-| Mounts are still open (a local path or a network share as a top-level library folder). The Library list is in; owner stays an em dash until E7. `open_report` is the one read seam. | `report_paths.py`, E6 |
 | **The "Keep this cut" endpoint rewrites `report.json` in place, with no draft or approval step.** It requires `admin` until drafts exist. Ask is hidden in the UI today (`SHOW_ASK = false`), but the endpoint is live. It contradicts the report-library rule that published reports change only through publishing. | `POST /api/reports/{name}/selection/keep` |
 | One shared Basic-auth login, one shared MCP token, and a self-declared agent name. Nobody's work can be told apart in the audit log. | `web/api/auth.py`, `TRACEBI_MCP_ACTOR` |
 
@@ -284,7 +284,7 @@ share it.
 one and polls it on the other, and a schedule tick fires exactly once.
 *(Met.)*
 
-#### E6 · Report library: folders — M · Now (almost done)
+#### E6 · Report library: folders — M · Shipped
 
 **Goal:** steps 1–2 of [[report-library]]. Reports live in folders people can
 browse, and a report is addressed by its path.
@@ -300,9 +300,11 @@ browse, and a report is addressed by its path.
       schedule, last run, build count, and last change, grouped by folder,
       beside type, last build, and receipt. Owner waits on E7 — no named
       accounts yet; the list shows an em dash, not a fake owner field.)*
-- [ ] Mounts in configuration: several folders (a local path, a network share)
-      as top-level library folders. *(Needs a design pass on the config
-      shape.)*
+- [x] Mounts in configuration: several folders (a local path, a network share
+      already mounted on the host) as top-level library folders.
+      (`TRACEBI_LIBRARY_MOUNTS=label:/abs/path,…`; #193. Identity is
+      `label/relative_path`; `TRACEBI_REPORTS_DIR` is the default single
+      root when mounts are unset.)
 - [x] Every read of a report (open, download, Source, MCP tools, schedules)
       goes through one function, where E7 will add the permission check.
       (`open_report` in `report_paths.py`; covered by
@@ -310,7 +312,7 @@ browse, and a report is addressed by its path.
 
 **Done when:** two folders each hold a `weekly_summary`, both open, build
 and schedule independently, and the Library page shows them in their folders.
-*(Library list met; mounts still open.)*
+*(Met — including two mounts each holding `weekly`.)*
 
 #### E7 · People, permissions and publishing — L · Later
 

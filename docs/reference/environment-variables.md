@@ -16,7 +16,8 @@ equivalent where it matters.
 | --- | --- | --- |
 | `TRACEBI_TRANSFORMS_DIR` | `transforms` | `new-transform`, `run-transform` |
 | `TRACEBI_MODELS_DIR` | `models` | `validate`, `new-model`, `verify`, discovery |
-| `TRACEBI_REPORTS_DIR` | `reports` | `new-report`, `report`, discovery |
+| `TRACEBI_REPORTS_DIR` | `reports` | `new-report`, `report`, discovery. Ignored when `TRACEBI_LIBRARY_MOUNTS` is set. |
+| `TRACEBI_LIBRARY_MOUNTS` | — | Comma-separated `label:/absolute/path` roots for the report Library. Each label is a top-level folder; report identity is `label/relative_path`. When set, this is authoritative over `TRACEBI_REPORTS_DIR`. |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | `run-pipeline`, discovery |
 | `TRACEBI_SCHEDULED_DIR` | `scheduled` | discovery. **Deprecated.** The folder is still imported if it exists, and a script in it logs one deprecation line. It never ran reports. Use a `"schedule"` block in `report.json` (`tracebi schedule`). |
 | `TRACEBI_WORKBENCH_DIR` | `.tracebi/workbench` | `dev`, `session` |
