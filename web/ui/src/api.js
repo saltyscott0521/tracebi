@@ -182,6 +182,18 @@ export const useReportSelection = () =>
         question ? { question } : { filters: filters || {} }),
   })
 
+// Build mode (local only): what the builder is pointing at, so the agent can
+// resolve "this". `pointing: null` stops pointing. Not the Ask cut above.
+export const usePointing = () =>
+  useMutation({
+    mutationFn: ({ name, pointing }) => {
+      const path = `/reports/${reportPath(name)}/workbench/pointing`
+      return pointing
+        ? postJson(path, pointing)
+        : fetch(BASE + path, { method: 'DELETE' }).then(r => (r.ok ? r.json() : toError(r)))
+    },
+  })
+
 export const useKeepSelection = () =>
   useMutation({
     mutationFn: ({ name, filters }) =>

@@ -323,7 +323,10 @@ front of a person should carry a receipt. This gateway is how you produce one.
    at render if it is wrong — render returns a clean `{ok:false}` to act on.)
 4. **workbench_state** — while iterating under `tracebi dev`, read this
    before every editing pass: the human steers by PINNING figures in the
-   portal with notes, and pins come first. After you act on a pin, call
+   portal with notes, and pins come first. Its `pointing` is what the
+   human is pointing at right now: when they say "this" or "here", that is
+   the figure (`id`, `binding`, `cell`) or the element (`selector`, `text`,
+   `section`) they mean. After you act on a pin, call
    **resolve_pin** with a one-line note. It moves that pin into the
    resolved list in pins.json and writes nothing else.
 5. **build_report** — the publish step: builds the package to a
@@ -556,6 +559,7 @@ class WorkbenchStateResult(TypedDict, total=False):
     unused_bindings: Any
     lint: Any
     exhibits: Any
+    pointing: Any
     pins: Any
     resolved: Any
     resolved_count: Optional[int]
@@ -1530,8 +1534,10 @@ def build_server(token: Optional[str] = None):
         description=(
             "The workbench state for an artifact package (reports/<name>/): "
             "figures with provenance, coverage, per-binding cards, the "
-            "human's pins, and the exhibit feed. Read this to see what the "
-            "human flagged in the portal before your next edit. It also "
+            "human's pins, the exhibit feed, and `pointing`: what the human "
+            "is pointing at right now (when they say \"this\", that is it). "
+            "Read this to see what the human flagged in the portal before "
+            "your next edit. It also "
             "serves the discovery session: call with no report while the "
             "human runs tracebi dev with no name, and it returns the "
             "project-level state instead — warehouse tables, sink-contract "

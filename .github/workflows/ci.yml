@@ -226,4 +226,4 @@ jobs:
         run: python -m playwright install --with-deps chromium
 
       - name: Browser smoke
-        run: TRACEBI_E2E=1 pytest tests/test_ui_smoke.py tests/test_table_window.py tests/test_pdf.py -q
+        run: TRACEBI_E2E=1 pytest tests/test_ui_smoke.py tests/test_ui_build_mode.py tests/test_table_window.py tests/test_pdf.py -q

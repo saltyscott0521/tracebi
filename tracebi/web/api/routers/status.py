@@ -107,4 +107,7 @@ def status(request: Request) -> dict:
     update = _updates.status(wait=False)
     update.pop("notes", None)
     return {"version": request.app.version, "checks": collect_checks(),
-            "update": update}
+            "update": update,
+            # Build mode: point at a figure and the agent can see what you mean
+            # (dev-state only; see /api/reports/{name}/workbench/pointing).
+            "build_mode": os.environ.get("TRACEBI_DEV_MODE") == "1"}

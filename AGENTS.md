@@ -250,6 +250,14 @@ Three rules that keep pages honest:
   coverage, and the pins a human left for you (also via `tracebi report
   status` and the MCP `workbench_state` tool).
 
+**Pointing.** In the web app's Build mode (the server runs with
+`TRACEBI_DEV_MODE=1`; `tracebi dev` does) the human clicks **Point** on a
+report and then on a figure or an area. Read it with the MCP
+`workbench_state` tool: `pointing` is a figure (`id`, `binding`, `cell`) or
+an element (`selector`, `text`, `section`), and is what "this" or "here"
+means in their message. It is dev-state only: it never reaches a build or a
+receipt, and when `pointing` is null they are pointing at nothing, so ask.
+
 And the iteration protocol itself: `tracebi dev <name>` **blocks** — run it
 in a background shell (or let the human keep it open; the portal is their
 view). Then edit and save; the watcher re-renders. Before every editing
@@ -439,7 +447,7 @@ Thirteen tools (`tracebi/mcp_server.py`):
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
-| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, and the exhibit feed — read it to see what the human flagged in the portal before your next edit. Open pins only; `resolved_count` is how many have been resolved |
+| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, the exhibit feed, and `pointing` (what the human is pointing at right now: "this") — read it to see what the human flagged in the portal before your next edit. Open pins only; `resolved_count` is how many have been resolved |
 | `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
 | `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML and carries no receipt; `pdf_note` points at the HTML and manifest |
 | `fetch_artifact` | Read back an artifact a render or build tool wrote. The argument is `path`: `build_report`'s `output_path` or `manifest_path`, `render_report_spec`'s `html_path` or `manifest_path`, `build_report`'s `xlsx_path`, or `build_report`'s `pdf_path`. HTML and JSON come back as text. An `.xlsx` or a `.pdf` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |

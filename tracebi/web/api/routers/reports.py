@@ -706,6 +706,54 @@ def _source_file(path: str, reports_dir: str) -> dict:
     }
 
 
+# ── Build mode: what the builder is pointing at ──────────────────────────────
+# So the agent can resolve "this". Dev-state files under
+# .tracebi/workbench/<report>/, shared with the MCP server (another process):
+# the page writes, `workbench_state` reads. Off unless the server runs with
+# TRACEBI_DEV_MODE=1, and it never touches the report or a build.
+
+
+def _workbench_dir_for(name: str) -> str:
+    if os.environ.get("TRACEBI_DEV_MODE") != "1":
+        raise HTTPException(
+            status_code=403,
+            detail="Build mode is off. Start the server with TRACEBI_DEV_MODE=1 "
+                   "(tracebi dev does).")
+    from tracebi.report_paths import report_name_for_dir
+    from tracebi.workbench import workbench_dir
+
+    opened = _require_registered(name, "view")
+    if opened.package_dir is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Build mode applies to reports/<name>/ packages. This report is "
+                   "a JSON spec or a code factory: run `tracebi migrate spec` first.")
+    return os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
+        os.getcwd(), report_name_for_dir(str(opened.package_dir)))
+
+
+@router.get("/{name:path}/workbench/pointing")
+def get_pointing(name: str):
+    from tracebi.workbench import read_pointing
+    return {"pointing": read_pointing(_workbench_dir_for(name))}
+
+
+@router.post("/{name:path}/workbench/pointing")
+def set_pointing(name: str, body: dict):
+    from tracebi.workbench import record_pointing
+    try:
+        return {"pointing": record_pointing(_workbench_dir_for(name), body)}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.delete("/{name:path}/workbench/pointing")
+def clear_the_pointing(name: str):
+    from tracebi.workbench import clear_pointing
+    clear_pointing(_workbench_dir_for(name))
+    return {"pointing": None}
+
+
 @router.get("/{name:path}/source")
 def report_source(name: str):
     """The files that define a report: the spec, or the package's files.
