@@ -126,7 +126,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert page.url.rstrip("/").endswith("/models"), page.url
             fail_on_browser_errors()
 
-            page.get_by_text("portfolio_model", exact=True).click()
+            # The name also appears in the model-scope <select>; click the list row.
+            page.locator(".list-item-hover").filter(
+                has_text="portfolio_model"
+            ).click()
             page.get_by_role("heading", name="portfolio_model", exact=True).wait_for()
             assert "/models/portfolio_model" in page.url, page.url
             fail_on_browser_errors()
