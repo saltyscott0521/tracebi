@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { NAV_PRIMARY, MODEL_STORY } from './chainSteps'
+import { NAV_PRIMARY, NAV_FOOTER, MODEL_STORY } from './chainSteps'
 
 // Static page destinations — always available, even before data loads.
 const PAGES = [
@@ -9,10 +9,9 @@ const PAGES = [
     label: s.label,
     path: s.path,
     kind: 'page',
-    sub: MODEL_STORY.find(x => x.key === s.key)?.ask || '',
+    sub: MODEL_STORY.find(x => x.key === s.key)?.ask || 'Pick a model',
   })),
-  { label: 'Runs',            path: '/runs',           kind: 'page', sub: 'what ran, and whether it reproduced' },
-  { label: 'Verify a file',   path: '/verify',          kind: 'page' },
+  ...NAV_FOOTER.map(s => ({ label: s.label, path: s.path, kind: 'page' })),
   { label: 'Getting Started', path: '/getting-started', kind: 'page' },
 ]
 

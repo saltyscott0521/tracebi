@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { NAV_PRIMARY, MODEL_TABS } from './chainSteps'
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { NAV_PRIMARY, NAV_FOOTER } from './chainSteps'
+import { NavLink, Link } from 'react-router-dom'
 
 import { useHealth, useAppStatus } from '../api'
 import CommandPalette from './CommandPalette'
@@ -52,14 +52,12 @@ const ICONS = {
   ),
 }
 
-// Workspace first; learn/docs below. Verify is intentionally not a primary
-// nav peer — it lives as a quiet footer action so the chrome reads as product
-// surfaces, not a trust marketing strip.
-// Primary nav is short: Models (the workspace), Reports (the library), Sources.
+// One primary destination (Models). Library / setup / ops live in the footer.
+// Learn stays secondary.
 const NAV_SECONDARY = [
-  { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
   { path: '/getting-started', label: 'Get Started', icon: 'guide' },
   { path: '/handbook',        label: 'Docs',        icon: 'docs' },
+  { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
 ]
 
 function SunIcon() {
@@ -135,53 +133,6 @@ function NavSection({ label, items, onNavigate }) {
         {items.map(item => (
           <NavItem key={item.path} {...item} onNavigate={onNavigate} end={item.end} />
         ))}
-      </ul>
-    </div>
-  )
-}
-
-/** While inside /models/:name, show that model's work surfaces under Models. */
-function ModelSubnav({ onNavigate }) {
-  const { pathname, search } = useLocation()
-  const match = pathname.match(/^\/models\/([^/]+)\/?$/)
-  if (!match) return null
-  const name = decodeURIComponent(match[1])
-  const tab = new URLSearchParams(search).get('tab') || 'contract'
-  const base = `/models/${encodeURIComponent(name)}`
-
-  return (
-    <div style={{ margin: '0 8px 8px', padding: '8px 0 4px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-      <div style={{
-        padding: '4px 12px 8px', fontSize: 11, fontWeight: 600,
-        color: 'rgba(200,220,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }} title={name}>
-        {name}
-      </div>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {MODEL_TABS.map(t => {
-          const to = t.key === 'contract' ? base : `${base}?tab=${t.key}`
-          const active = tab === t.key
-          return (
-            <li key={t.key}>
-              <Link
-                to={to}
-                onClick={onNavigate}
-                style={{
-                  display: 'block',
-                  padding: '6px 12px 6px 20px',
-                  borderRadius: 6,
-                  color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-                  textDecoration: 'none',
-                  fontSize: 12.5,
-                  fontWeight: active ? 600 : 400,
-                  background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                }}
-              >
-                {t.label}
-              </Link>
-            </li>
-          )
-        })}
       </ul>
     </div>
   )
@@ -316,52 +267,33 @@ export default function Layout({ children }) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          <NavSection
-            items={NAV_PRIMARY.map(item => ({
-              ...item,
-              // Exact match on Models so /models/:name doesn't keep "Models" lit
-              // as the only active item — the subnav carries the focus.
-              end: item.path === '/models',
-            }))}
-            onNavigate={close}
-          />
-          <ModelSubnav onNavigate={close} />
+          <NavSection items={NAV_PRIMARY} onNavigate={close} />
           <NavSection label="Learn" items={NAV_SECONDARY} onNavigate={close} />
         </div>
 
-        {/* Footer */}
+        {/* Footer — library / setup / ops (not peer workspace destinations) */}
         <div style={{
           padding: '12px 16px 14px',
           borderTop: '1px solid var(--sidebar-border)',
-          display: 'flex', flexDirection: 'column', gap: 10,
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <Link
-            to="/runs"
-            onClick={close}
-            style={{
-              fontSize: 12,
-              color: 'rgba(200,220,255,0.48)',
-              textDecoration: 'none',
-              padding: '2px 4px',
-            }}
-            className="nav-footer-link"
-          >
-            Runs
-          </Link>
-          <Link
-            to="/verify"
-            onClick={close}
-            style={{
-              fontSize: 12,
-              color: 'rgba(200,220,255,0.48)',
-              textDecoration: 'none',
-              padding: '2px 4px',
-            }}
-            className="nav-footer-link"
-          >
-            Verify a report file
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {NAV_FOOTER.map(item => (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={close}
+              style={{
+                fontSize: 12,
+                color: 'rgba(200,220,255,0.48)',
+                textDecoration: 'none',
+                padding: '2px 4px',
+              }}
+              className="nav-footer-link"
+            >
+              {item.label}
+            </Link>
+          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <span style={{
               display: 'inline-block', width: 6, height: 6,
               borderRadius: '50%', background: '#22c55e', flexShrink: 0,
