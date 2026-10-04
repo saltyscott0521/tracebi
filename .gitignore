@@ -44,3 +44,4 @@ tracebi/web/ui/dist/
 
 # Internal positioning doc — never ships to the public repo or the wheel
 docs/north-star.md
+.vercel_out/
