@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useGuides } from '../api'
 import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
-import { MODEL_STORY } from '../components/chainSteps'
+import { PAGES } from '../nav'
 
 const STEPS = [
   {
@@ -69,27 +69,36 @@ function Guides() {
   )
 }
 
-// How the pieces fit: the model is the workspace; these are its surfaces.
+// Where each page's content comes from, in the project.
+const FOLDER = {
+  model: 'models/<model>.py',
+  explore: 'a question, not a file',
+  refresh: 'pipelines/<model>.py → transforms/',
+  reports: 'reports/<model>/',
+  sources: 'the connector a model declares',
+  runs: 'the run history',
+}
+
+// How the pieces fit: pick a model, and every page is about it.
 function HowItFits() {
   return (
     <div style={{ marginBottom: 36 }}>
       <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>How the pieces fit</div>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '74ch' }}>
-        Open a <strong>model</strong> — that is the unit of work. Its tabs are the only path into
-        contract, refresh, explore, and reports. The report library and sources live in the footer
-        when you need them outside a model.
+        Everything belongs to a <strong>model</strong>. Pick one at the top of the sidebar and
+        every page below it is about that model: its data model, its questions, its refresh,
+        its reports, where its data is kept, and what ran. Pick “All models” to see everything,
+        with each row naming its model.
       </p>
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-        {MODEL_STORY.map((s, i) => (
-          <Link key={s.key} to={s.path} style={{
+        {PAGES.map(p => (
+          <Link key={p.key} to={p.all} style={{
             textDecoration: 'none', background: 'var(--card)', border: '1px solid var(--border)',
-            borderRadius: 12, padding: '14px 16px', display: 'block', position: 'relative',
+            borderRadius: 12, padding: '14px 16px', display: 'block',
           }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .6, color: '#6d28d9' }}>{i + 1}</div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', margin: '2px 0 4px' }}>{s.label}</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-text)', marginBottom: 4 }}>{s.ask}</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{s.hint}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8, fontFamily: 'Cascadia Code, Fira Code, monospace' }}>{s.folder}</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', margin: '0 0 4px' }}>{p.label}</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{p.sub}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8, fontFamily: "'Source Code Pro', monospace" }}>{FOLDER[p.key]}</div>
           </Link>
         ))}
       </div>
@@ -137,7 +146,7 @@ export default function GettingStarted() {
         <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Link to="/models" style={LINK_STYLE}>Models</Link>
-          <Link to="/reports" style={LINK_STYLE}>All reports</Link>
+          <Link to="/reports" style={LINK_STYLE}>Reports</Link>
           <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
         </div>
       </div>

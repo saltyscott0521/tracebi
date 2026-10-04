@@ -675,7 +675,7 @@ The API is self-documenting: once the server is running, open
 or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
 every endpoint, parameter, and response schema is listed there.
 
-`tracebi/web/demo_app/` is the bundled demo app — opt-in via `TRACEBI_APP=tracebi.web.demo_app` (the default is no app module, so a serve shows *your* project). It is fully self-contained: its DataModels ship inside the package at `tracebi/web/demo_app/models/` (`sales_model.py`, `wealth_model.py`), and it stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Pipelines page has live run history. Reports read from those resources.
+`tracebi/web/demo_app/` is the bundled demo app — opt-in via `TRACEBI_APP=tracebi.web.demo_app` (the default is no app module, so a serve shows *your* project). It is fully self-contained: its DataModels ship inside the package at `tracebi/web/demo_app/models/` (`sales_model.py`, `wealth_model.py`), and it stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Refresh page has live run history. Reports read from those resources.
 
 The second model — `WealthModel` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
 

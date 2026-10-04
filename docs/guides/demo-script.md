@@ -67,7 +67,7 @@ Point at the green badges above the report (**Verifiable**,
 > value' means, and the badges say the data behind it passed its checks.
 > Nobody can quietly use a different formula on one page."
 
-Optional: click **Contract** in the sidebar to show the definitions in one
+Optional: click **Data model** in the sidebar to show the definitions in one
 screen, then come back.
 
 ### Beat 2: every number has a receipt (2 minutes)
@@ -93,7 +93,7 @@ Show the browser tab with `edited.html` open.
 > by accident or on purpose. Fair value now says $295 million. It looks
 > completely normal."
 
-Click **Verify a report file** (bottom of the sidebar). Drag in `edited.html`
+Click **Verify a file** (under Tools in the sidebar). Drag in `edited.html`
 and `edited.html.manifest.json`, then click **Verify offline**.
 
 The screen turns red: **FILE ALTERED**, with the exact figures listed.

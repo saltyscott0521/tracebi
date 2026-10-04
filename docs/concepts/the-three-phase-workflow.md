@@ -13,11 +13,12 @@ one never blocks the fast one.
 
 ---
 
-> **In the app**, the sidebar follows the same flow: **Sources** (where the data
-> is kept) → **Pipelines** (how it gets there) → **Data model** (what it means) →
-> **Explore** (ask it) → **Reports** (what people read). **Runs**, in the
-> sidebar footer beside Verify, lists what ran, when, for whom, and whether
-> it reproduced. Reports and Explore
+> **In the app**, everything belongs to a model. Pick one at the top of the
+> sidebar and every page below it is about that model: **Data model** (what it
+> means), **Explore** (ask it), **Refresh** (rebuild its data, then its
+> reports), **Reports** (what people read), **Sources** (where its data is
+> kept) and **Runs** (what ran, and whether it reproduced). Pick **All
+> models** to see everything, each row naming its model. Reports and Explore
 > only ever ask the model; see [[models-and-connectors]].
 
 ## ① Transform — `transforms/`

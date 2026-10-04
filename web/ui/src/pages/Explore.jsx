@@ -1,16 +1,14 @@
 import { useState } from 'react'
-import Chain from '../components/Chain'
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
 } from 'recharts'
 
-import { useModels, useModel, useTablePreview, useRunQuery } from '../api'
-import { useModelScope } from '../components/ModelScope'
+import { useModel, useTablePreview, useRunQuery } from '../api'
 import { LineageGraph } from '../components/Lineage'
 import {
-  PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
+  Card, CardTitle, Badge, Spinner,
   Empty, Btn, ErrorDetail, SkeletonCard,
 } from '../components/Shared'
 
@@ -231,20 +229,8 @@ function downloadCsv(result) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-/** Explore the star schema. Pass *lockedModel* (and *embedded*) from a model home. */
-export default function Explore({ lockedModel = null, embedded = false } = {}) {
-  const { data: models, isLoading: loadingModels } = useModels()
-  const [modelScope] = useModelScope()
-  const modelNames = (models || []).map(m => m.name)
-    .filter(n => {
-      if (lockedModel) return n === lockedModel
-      return !modelScope || n === modelScope
-    })
-  const [modelName, setModelName] = useState(null)
-  const activeModel = lockedModel
-    || (modelScope && modelNames.includes(modelScope) ? modelScope : null)
-    || modelName
-    || modelNames[0]
+/** Explore one model's star schema: the page body under its header. */
+export default function Explore({ model: activeModel }) {
   const { data: model, isLoading: loadingModel } = useModel(activeModel)
 
   const facts = model?.facts || []
@@ -304,13 +290,9 @@ export default function Explore({ lockedModel = null, embedded = false } = {}) {
   const measureCols = result ? result.columns.filter(c => c in measures) : []
   const chartDim = result && dimAttrs.length === 1 ? dimAttrs[0] : null
 
-  if (loadingModels) {
-    return embedded
-      ? <SkeletonCard />
-      : <><Chain current="explore" /><PageTitle>Explore</PageTitle><SkeletonCard /></>
-  }
+  if (loadingModel) return <SkeletonCard />
 
-  const body = (
+  return (
       <>
       {facts.length === 0 && !loadingModel ? (
         <Empty
@@ -322,16 +304,6 @@ export default function Explore({ lockedModel = null, embedded = false } = {}) {
           {/* ── Builder ── */}
           <Card>
             <CardTitle>Query Builder</CardTitle>
-
-            {!lockedModel && modelNames.length > 1 && (
-              <>
-                <SectionLabel>Model</SectionLabel>
-                <select value={activeModel} onChange={e => { setModelName(e.target.value); selectFact(null) }}
-                  style={{ ...selectStyle, width: '100%', padding: '6px 8px', fontSize: 12 }}>
-                  {modelNames.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </>
-            )}
 
             <SectionLabel>Fact</SectionLabel>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -475,19 +447,5 @@ export default function Explore({ lockedModel = null, embedded = false } = {}) {
         </div>
       )}
       </>
-  )
-
-  if (embedded) return body
-
-  return (
-    <>
-      <Chain current="explore" />
-      <PageTitle>Explore</PageTitle>
-      <PageSub>
-        Build a star-schema query — pick measures and dimensions, run it, and see
-        the result with the full lineage of how it was computed.
-      </PageSub>
-      {body}
-    </>
   )
 }

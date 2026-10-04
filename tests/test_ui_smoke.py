@@ -68,8 +68,12 @@ def test_real_app_smoke(tmp_path: Path) -> None:
     shutil.copytree(
         _PROJECT,
         project,
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "data", ".tracebi"),
     )
+    # What a fresh checkout has: no pages built on this machine earlier, so
+    # opening a report builds it (and records the run the Runs step reads).
+    for built in (project / "output").rglob("*.html"):
+        built.unlink()
     workflow = subprocess.run(
         [sys.executable, "run_workflow.py"],
         cwd=project,
@@ -120,20 +124,28 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 page.wait_for_timeout(200)
                 assert not errors, "\n".join(errors)
 
-            # Model-first: / opens Models; open a model home; Reports is the library.
+            # Two models and no remembered pick: / opens the list of models.
             page.goto(base + "/")
-            page.get_by_role("heading", name="Models", exact=True).wait_for()
+            page.get_by_role("heading", name="Data model", exact=True).wait_for()
             assert page.url.rstrip("/").endswith("/models"), page.url
             fail_on_browser_errors()
 
-            page.locator(".list-item-hover").filter(
-                has_text="portfolio_model"
-            ).click()
-            page.get_by_role("heading", name="portfolio_model", exact=True).wait_for()
-            assert "/models/portfolio_model" in page.url, page.url
-            page.get_by_role("button", name="Explore", exact=True).click()
-            assert "tab=explore" in page.url, page.url
+            # Picking one scopes every page beneath the switcher to it.
+            page.get_by_role("link", name="portfolio_model").first.click()
+            page.wait_for_url("**/m/portfolio_model")
+            page.get_by_role("link", name="Explore", exact=True).click()
+            page.wait_for_url("**/m/portfolio_model/explore")
+            page.get_by_role("heading", name="Explore", exact=True).wait_for()
+            assert page.get_by_label("Model").input_value() == "portfolio_model"
             fail_on_browser_errors()
+
+            # The pick is remembered: / now opens that model.
+            page.goto(base + "/")
+            page.wait_for_url("**/m/portfolio_model")
+
+            # Old addresses land on the page that replaced them.
+            page.goto(base + "/models/portfolio_model?tab=refresh")
+            page.wait_for_url("**/m/portfolio_model/refresh")
 
             page.goto(base + "/reports")
             fail_on_browser_errors()
