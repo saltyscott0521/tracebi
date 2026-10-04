@@ -701,7 +701,8 @@ def _conventions() -> dict:
         ],
         "env_overrides": [
             "TRACEBI_MODELS_DIR", "TRACEBI_PIPELINES_DIR",
-            "TRACEBI_REPORTS_DIR", "TRACEBI_TRANSFORMS_DIR",
+            "TRACEBI_REPORTS_DIR", "TRACEBI_LIBRARY_MOUNTS",
+            "TRACEBI_TRANSFORMS_DIR",
             "TRACEBI_SCHEDULED_DIR", "TRACEBI_APP", "TRACEBI_DOCS_DIR",
         ],
     }

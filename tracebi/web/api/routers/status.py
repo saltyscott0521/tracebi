@@ -72,11 +72,10 @@ def _email_configured() -> dict:
 
 
 def _schedules() -> dict:
-    from tracebi.schedule import discover_schedules
+    from tracebi.schedule import discover_library_schedules
 
     on = os.environ.get("TRACEBI_SCHEDULES_IN_SERVER") == "1"
-    reports_dir = os.environ.get("TRACEBI_REPORTS_DIR", "reports")
-    schedules, _errors = discover_schedules(reports_dir)
+    schedules, _errors = discover_library_schedules()
     return _check(
         "schedules_in_server", True, {"on": on, "count": len(schedules)},
     )

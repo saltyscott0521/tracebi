@@ -219,6 +219,7 @@ def auto_discover(
     path: str,
     package: Optional[str] = None,
     strict: bool = False,
+    prefix: str = "",
 ) -> list[str]:
     """
     Register every report under *path* and import its top-level ``*.py`` /
@@ -242,6 +243,9 @@ def auto_discover(
                  from starting — the failure is recorded in
                  :func:`discovery_report` and surfaced by
                  ``tracebi validate``.
+        prefix:  Front of every report name registered here (``""`` at a
+                 single reports root; ``"finance/"`` for a library mount
+                 labeled ``finance``).
 
     Returns:
         List of successfully imported module names.
@@ -253,8 +257,26 @@ def auto_discover(
         })
         return []
 
+    return _scan(path, prefix, package, strict)
 
-    return _scan(path, "", package, strict)
+
+def discover_library(
+    package: Optional[str] = None,
+    strict: bool = False,
+) -> list[str]:
+    """Register reports from every configured library root.
+
+    Uses :func:`tracebi.report_paths.library_roots` so
+    ``TRACEBI_LIBRARY_MOUNTS`` and ``TRACEBI_REPORTS_DIR`` share one path.
+    """
+    from tracebi.report_paths import library_roots
+
+    found: list[str] = []
+    for label, root in library_roots():
+        pfx = f"{label}/" if label else ""
+        found.extend(auto_discover(str(root), package=package, strict=strict,
+                                   prefix=pfx))
+    return found
 
 
 def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[str]:
@@ -517,10 +539,33 @@ def rescan(reports_dir: str, models_dir: Optional[str] = None,
     Registers report packages and specs that appeared since the last scan,
     forgets ones whose source is gone, and adds new model files. Returns
     ``{"added", "removed", "failed", "models", "pipelines"}`` lists.
+
+    *reports_dir* is one tree (tests, an explicit root). Prefer
+    :func:`rescan_library` when the server should honour
+    ``TRACEBI_LIBRARY_MOUNTS``.
     """
+    found = _report_sources(reports_dir) if os.path.isdir(reports_dir) else {}
+    return _apply_report_sources(found, models_dir, pipelines_dir)
+
+
+def rescan_library(models_dir: Optional[str] = None,
+                   pipelines_dir: Optional[str] = None) -> dict:
+    """:func:`rescan` across every configured library root."""
+    from tracebi.report_paths import library_roots
+
+    found: dict[str, str] = {}
+    for label, root in library_roots():
+        if not root.is_dir():
+            continue
+        pfx = f"{label}/" if label else ""
+        found.update(_report_sources(str(root), pfx))
+    return _apply_report_sources(found, models_dir, pipelines_dir)
+
+
+def _apply_report_sources(found: dict[str, str], models_dir: Optional[str],
+                          pipelines_dir: Optional[str]) -> dict:
     from tracebi.registry import registry
 
-    found = _report_sources(reports_dir) if os.path.isdir(reports_dir) else {}
     added, removed, failed = [], [], []
     for name, source in found.items():
         if _live_reports.get(name) == source:
@@ -553,18 +598,26 @@ def rescan(reports_dir: str, models_dir: Optional[str] = None,
 
 def start_watcher(reports_dir: str, models_dir: Optional[str],
                   interval: float, pipelines_dir: Optional[str] = None):
-    """Run :func:`rescan` every *interval* seconds on a daemon thread.
+    """Run a live-discovery scan every *interval* seconds on a daemon thread.
 
-    Returns a ``threading.Event``; set it to stop the thread.
+    When ``TRACEBI_LIBRARY_MOUNTS`` is set, walks every mount
+    (:func:`rescan_library`). Otherwise rescans *reports_dir* (the single
+    root the server was started with). Returns a ``threading.Event``; set
+    it to stop the thread.
     """
     import threading
+
+    from tracebi.report_paths import parse_library_mounts
 
     stop = threading.Event()
 
     def loop() -> None:
         while not stop.wait(interval):
             try:
-                changes = rescan(reports_dir, models_dir, pipelines_dir)
+                if parse_library_mounts() is not None:
+                    changes = rescan_library(models_dir, pipelines_dir)
+                else:
+                    changes = rescan(reports_dir, models_dir, pipelines_dir)
             except Exception as exc:  # noqa: BLE001 — the watcher must outlive one bad scan
                 print(f"[tracebi] live discovery scan failed: {exc}", file=sys.stderr)
                 continue

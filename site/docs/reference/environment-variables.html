@@ -97,7 +97,12 @@ equivalent where it matters.</p>
 <tr>
 <td><code>TRACEBI_REPORTS_DIR</code></td>
 <td><code>reports</code></td>
-<td><code>new-report</code>, <code>report</code>, discovery</td>
+<td><code>new-report</code>, <code>report</code>, discovery. Ignored when <code>TRACEBI_LIBRARY_MOUNTS</code> is set.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_LIBRARY_MOUNTS</code></td>
+<td>—</td>
+<td>Comma-separated <code>label:/absolute/path</code> roots for the report Library. Each label is a top-level folder; report identity is <code>label/relative_path</code>. When set, this is authoritative over <code>TRACEBI_REPORTS_DIR</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_PIPELINES_DIR</code></td>

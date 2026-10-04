@@ -1932,7 +1932,31 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     *folders, title = [p.strip() for p in args.title.split("/")]
     slug = "/".join([_slugify(p) for p in folders if p] + [_slugify(title)])
     args.title = title or args.title
-    pkg_dir = reports_dir / slug
+    from tracebi.report_paths import parse_library_mounts
+    mounts = parse_library_mounts()
+    if mounts is not None:
+        # First segment must be a mount label; the rest is under that root.
+        parts = slug.split("/", 1)
+        if len(parts) < 2:
+            print(
+                f"refusing to create {slug!r}: with TRACEBI_LIBRARY_MOUNTS "
+                f"set, the name must start with a mount label "
+                f"({', '.join(lbl for lbl, _ in mounts)})",
+                file=sys.stderr,
+            )
+            return 1
+        label, rest = parts
+        mount_map = {lbl: path for lbl, path in mounts}
+        if label not in mount_map:
+            print(
+                f"refusing to create {slug!r}: unknown mount label {label!r}. "
+                f"Known: {', '.join(sorted(mount_map))}",
+                file=sys.stderr,
+            )
+            return 1
+        pkg_dir = mount_map[label] / rest
+    else:
+        pkg_dir = reports_dir / slug
     if pkg_dir.exists() and not args.force:
         print(f"refusing to overwrite existing {pkg_dir}; pass --force to replace",
               file=sys.stderr)
@@ -1960,26 +1984,33 @@ def cmd_new_report(args: argparse.Namespace) -> int:
 
 def _resolve_report_target(name: str, reports_dir: Path, *,
                            purpose: str) -> tuple[str, Path]:
-    """Resolve *name* to a package directory or a spec file under ``reports/``.
+    """Resolve *name* to a package directory or a spec file in the library.
 
-    Looks for a ``reports/<name>/`` package first, then a ``reports/<name>.json``
-    spec. Returns ``("package"|"spec", path)`` or raises ``FileNotFoundError``
-    listing where it looked. All report forms live in one ``reports/`` folder.
+    Looks for a package first, then a ``<name>.json`` spec. Returns
+    ``("package"|"spec", path)`` or raises ``FileNotFoundError`` listing
+    where it looked. When ``TRACEBI_LIBRARY_MOUNTS`` is set, *reports_dir*
+    is ignored and the name's first segment selects the mount.
     *purpose* is the read (``view``, ``build``, ``manage``, ``schedule``) the
     seam records for the permission check.
     """
-    from tracebi.report_paths import open_report
+    from tracebi.report_paths import open_report, parse_library_mounts
 
-    opened = open_report(name, purpose=purpose, reports_dir=reports_dir)
+    # Mounts are authoritative: the name's first segment selects the root.
+    # An explicit --reports-dir still wins when mounts are unset.
+    kwargs: dict = {"purpose": purpose}
+    if parse_library_mounts() is None:
+        kwargs["reports_dir"] = reports_dir
+    opened = open_report(name, **kwargs)
     if opened.name_error:
         raise FileNotFoundError(opened.name_error)
     if opened.package_dir is not None and opened.has_template:
         return "package", opened.package_dir
     if opened.has_spec:
         return "spec", opened.spec_path
+    looked = [p for p in (opened.path, opened.spec_path) if p is not None]
     raise FileNotFoundError(
         f"No report '{name}' found. Looked for a package or spec at:\n  "
-        + "\n  ".join([str(opened.path), str(opened.spec_path)])
+        + ("\n  ".join(str(p) for p in looked) if looked else "(no mount matched)")
     )
 
 
@@ -2371,7 +2402,11 @@ def cmd_schedule(args: argparse.Namespace) -> int:
 
     reports_dir: Path = args.reports_dir
     output_dir = Path(args.output_dir)
-    schedules, errors = sched.discover_schedules(reports_dir)
+    from tracebi.report_paths import parse_library_mounts
+    if parse_library_mounts() is not None:
+        schedules, errors = sched.discover_library_schedules()
+    else:
+        schedules, errors = sched.discover_schedules(reports_dir)
     for err in errors:
         print(f"skipped {err['report']}: {err['error']}", file=sys.stderr)
 

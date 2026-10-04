@@ -70,30 +70,36 @@ def _pins(root: str) -> list[dict]:
 
 
 def _drafts(root: str) -> list[dict]:
-    reports = os.environ.get("TRACEBI_REPORTS_DIR", "reports")
-    if not os.path.isabs(reports):
-        reports = os.path.join(root, reports)
-    if not os.path.isdir(reports):
-        return []
+    from pathlib import Path
+
+    from tracebi.report_paths import library_roots
+
     drafts: list[dict] = []
-    for directory, dirs, files in sorted(os.walk(reports)):
-        dirs[:] = sorted(d for d in dirs if not d.startswith((".", "_")))
-        if "template.html" not in files or directory == reports:
+    for label, reports_root in library_roots():
+        reports = reports_root if reports_root.is_absolute() else Path(root) / reports_root
+        reports = str(reports)
+        if not os.path.isdir(reports):
             continue
-        entry = os.path.relpath(directory, reports).replace(os.sep, "/")
-        template = os.path.join(directory, "template.html")
-        try:
-            text = open(template, encoding="utf-8").read()
-        except OSError:
-            continue
-        if (
-            'data-tb-stage="exploration"' in text
-            or "data-tb-stage='exploration'" in text
-        ):
-            drafts.append({
-                "report": entry,
-                "path": _rel(root, template),
-            })
+        for directory, dirs, files in sorted(os.walk(reports)):
+            dirs[:] = sorted(d for d in dirs if not d.startswith((".", "_")))
+            if "template.html" not in files or directory == reports:
+                continue
+            entry = os.path.relpath(directory, reports).replace(os.sep, "/")
+            if label:
+                entry = f"{label}/{entry}"
+            template = os.path.join(directory, "template.html")
+            try:
+                text = open(template, encoding="utf-8").read()
+            except OSError:
+                continue
+            if (
+                'data-tb-stage="exploration"' in text
+                or "data-tb-stage='exploration'" in text
+            ):
+                drafts.append({
+                    "report": entry,
+                    "path": _rel(root, template),
+                })
     return drafts
 
 

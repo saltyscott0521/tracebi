@@ -228,3 +228,115 @@ def test_every_named_report_read_goes_through_open_report(tmp_path, monkeypatch)
         cli.main(["report", "status", "seam_target",
                   "--reports-dir", str(tmp_path / "reports")])
     assert (command.value.name, command.value.purpose) == ("seam_target", "view")
+
+
+# ── Library mounts (E6 / #193) ──────────────────────────────────────────────
+
+
+def _package_at(root, rel, title, region, schedule=None):
+    """Like ``_package`` but under an arbitrary mount root."""
+    pkg = root / rel
+    pkg.mkdir(parents=True)
+    decl = {"name": title, "data": {"totals": {"model": "folder_model", "query": {
+        "fact": "fact_orders", "measures": ["revenue"],
+        "filters": {"dim_region.region": region}}}}}
+    if schedule:
+        decl["schedule"] = schedule
+    (pkg / "report.json").write_text(json.dumps(decl), encoding="utf-8")
+    (pkg / "template.html").write_text(_TEMPLATE.format(title=title), encoding="utf-8")
+
+
+@pytest.fixture
+def mounts_project(tmp_path, monkeypatch, model):
+    """Two absolute mounts that each hold a ``weekly`` package."""
+    from tracebi import cli, model_registry
+    from tracebi.report_paths import reset_mounts_warning_for_tests
+
+    alpha = tmp_path / "mnt_alpha"
+    beta = tmp_path / "mnt_beta"
+    _package_at(alpha, "weekly", "Alpha weekly", "East",
+                schedule={"cron": "0 7 * * MON"})
+    _package_at(beta, "weekly", "Beta weekly", "West")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(
+        "TRACEBI_LIBRARY_MOUNTS",
+        f"alpha:{alpha.resolve()},beta:{beta.resolve()}")
+    monkeypatch.delenv("TRACEBI_REPORTS_DIR", raising=False)
+    reset_mounts_warning_for_tests()
+    monkeypatch.setattr(cli, "_load_project_models", lambda: {model.name: model})
+    monkeypatch.setattr(model_registry, "list_models", lambda: [model.name])
+    monkeypatch.setattr(model_registry, "get_model", lambda _n: model)
+    return tmp_path, alpha, beta
+
+
+def test_parse_library_mounts_rejects_bad_labels_and_relative_paths(monkeypatch):
+    from tracebi.report_paths import parse_library_mounts
+
+    monkeypatch.delenv("TRACEBI_LIBRARY_MOUNTS", raising=False)
+    assert parse_library_mounts() is None
+
+    with pytest.raises(ValueError, match="absolute"):
+        parse_library_mounts("finance:relative/path")
+    with pytest.raises(ValueError, match="single path segment"):
+        parse_library_mounts("a/b:/tmp/x")
+    with pytest.raises(ValueError, match="duplicate"):
+        parse_library_mounts("a:/tmp/a,a:/tmp/b")
+    with pytest.raises(ValueError, match="label:/absolute"):
+        parse_library_mounts("nocolon")
+
+
+def test_two_mounts_each_hold_weekly(mounts_project):
+    """Done-when for #193: two mounts each hold weekly; both open and build."""
+    from tracebi import cli
+    from tracebi.registry import registry
+    from tracebi.report_paths import open_report, report_name_for_dir
+    from tracebi.schedule import discover_library_schedules
+    from tracebi.verify import FILE_INTACT, verify_file
+    from tracebi.web import discovery
+
+    _tmp, alpha, beta = mounts_project
+    discovery.clear_discovery_report()
+    for name in [r["name"] for r in registry.list_reports()]:
+        if name.startswith(("alpha/", "beta/")):
+            registry.remove_report(name)
+
+    discovery.discover_library()
+    names = {r["name"] for r in registry.list_reports()}
+    assert {"alpha/weekly", "beta/weekly"} <= names
+
+    assert report_name_for_dir(str(alpha / "weekly")) == "alpha/weekly"
+    assert report_name_for_dir(str(beta / "weekly")) == "beta/weekly"
+
+    a = open_report("alpha/weekly", purpose="view")
+    b = open_report("beta/weekly", purpose="view")
+    assert a.package_dir == alpha / "weekly"
+    assert b.package_dir == beta / "weekly"
+    assert open_report("weekly", purpose="view").package_dir is None
+
+    assert cli.main(["report", "build", "alpha/weekly"]) == 0
+    assert cli.main(["report", "build", "beta/weekly"]) == 0
+    a_html = _tmp / "output" / "alpha" / "weekly.html"
+    b_html = _tmp / "output" / "beta" / "weekly.html"
+    assert "Alpha weekly" in a_html.read_text()
+    assert "Beta weekly" in b_html.read_text()
+    for html in (a_html, b_html):
+        manifest = json.loads(html.with_name(html.name + ".manifest.json").read_text())
+        assert verify_file(html.read_text(), manifest)["verdict"] == FILE_INTACT
+
+    schedules, errors = discover_library_schedules()
+    assert errors == []
+    assert [s["report"] for s in schedules] == ["alpha/weekly"]
+
+
+def test_mounts_ignore_reports_dir(tmp_path, monkeypatch, capsys):
+    from tracebi.report_paths import library_roots, reset_mounts_warning_for_tests
+
+    mount = tmp_path / "only"
+    mount.mkdir()
+    monkeypatch.setenv("TRACEBI_LIBRARY_MOUNTS", f"only:{mount.resolve()}")
+    monkeypatch.setenv("TRACEBI_REPORTS_DIR", str(tmp_path / "ignored"))
+    reset_mounts_warning_for_tests()
+    roots = library_roots()
+    assert roots == [("only", mount.resolve())]
+    err = capsys.readouterr().err
+    assert "TRACEBI_REPORTS_DIR is ignored" in err

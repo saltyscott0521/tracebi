@@ -287,6 +287,28 @@ def _burst_values(spec, path: str) -> list[str]:
     return values
 
 
+def discover_library_schedules() -> tuple[list[dict], list[dict]]:
+    """Every scheduled package under the configured library roots.
+
+    Honours ``TRACEBI_LIBRARY_MOUNTS`` (and otherwise ``TRACEBI_REPORTS_DIR``).
+    Mount labels prefix the report name (``finance/weekly``).
+    """
+    from tracebi.report_paths import library_roots
+
+    schedules: list[dict] = []
+    errors: list[dict] = []
+    for label, root in library_roots():
+        found, bad = discover_schedules(root)
+        if label:
+            for item in found:
+                item["report"] = f"{label}/{item['report']}"
+            for item in bad:
+                item["report"] = f"{label}/{item['report']}"
+        schedules.extend(found)
+        errors.extend(bad)
+    return schedules, errors
+
+
 def discover_schedules(reports_dir: Union[str, Path]) -> tuple[list[dict], list[dict]]:
     """Every scheduled package under *reports_dir*.
 
@@ -856,12 +878,12 @@ def start_server_scheduler():
     # MCP gateway's confinement root, not where schedule runs are recorded.
     output_dir = "output"
     models_dir = os.environ.get("TRACEBI_MODELS_DIR", "models")
-    schedules, errors = discover_schedules(reports_dir)
+    schedules, errors = discover_library_schedules()
     for err in errors:
         log.warning("skipped %s: %s", err["report"], err["error"])
     if not schedules:
-        log.info("TRACEBI_SCHEDULES_IN_SERVER is on; no schedules in %s",
-                 reports_dir)
+        log.info("TRACEBI_SCHEDULES_IN_SERVER is on; no schedules in the "
+                 "report library")
         return None
     log.warning(
         "In-server schedules on SQLite can send the same email from each "
