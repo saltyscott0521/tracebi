@@ -75,14 +75,14 @@ export function PairArt() {
       <g className="pair-doc">
         <path d="M20 10h40l12 12v60a4 4 0 01-4 4H20a4 4 0 01-4-4V14a4 4 0 014-4z" fill="var(--surface)" stroke="var(--border-hl)" strokeWidth="1.3" />
         <path d="M60 10v12h12" stroke="var(--border-hl)" strokeWidth="1.3" />
-        <text x="44" y="46" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--accent-text)" fontFamily="IBM Plex Mono, monospace">.html</text>
+        <text x="44" y="46" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--accent-text)" fontFamily="Source Code Pro, monospace">.html</text>
         {[56, 63, 70].map((y, i) => <rect key={y} x="26" y={y} width={36 - i * 8} height="3" rx="1.5" fill="var(--muted)" opacity=".5" />)}
       </g>
       <path className="pair-link" d="M78 48 H142" stroke="var(--accent-text)" strokeWidth="1.6" strokeDasharray="3 5" strokeLinecap="round" />
       <circle className="pair-packet" cx="78" cy="48" r="3" fill="var(--accent-text)" />
       <g className="pair-doc pair-doc-2">
         <path d="M152 10h48a4 4 0 014 4v70l-6-4-6 4-6-4-6 4-6-4-6 4-6-4-6 4-6-4V14a4 4 0 014-4z" fill="var(--surface)" stroke="var(--border-hl)" strokeWidth="1.3" />
-        <text x="176" y="34" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--accent-text)" fontFamily="IBM Plex Mono, monospace">manifest</text>
+        <text x="176" y="34" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--accent-text)" fontFamily="Source Code Pro, monospace">manifest</text>
         {[44, 52, 60].map((y) => (
           <g key={y}>
             <rect x="158" y={y} width="20" height="3" rx="1.5" fill="var(--muted)" opacity=".5" />

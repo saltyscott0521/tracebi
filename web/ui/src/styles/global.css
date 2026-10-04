@@ -224,13 +224,10 @@
 ::selection { background: rgba(9,26,85,.12); color: var(--text); }
 
 body {
-  /* 'Inter Variable' is the self-hosted @fontsource-variable/inter imported in
-     main.jsx. The stack used to name plain 'Inter' while shipping no font at
-     all, so every platform quietly rendered something else and none of them
-     was the face these sizes and tracking were chosen against. The system
-     stack behind it is the fallback for first paint and for the rare client
-     that rejects the woff2. */
-  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
+  /* Source Sans 3 is self-hosted via @fontsource in main.jsx (same face as
+     the marketing site). The system stack behind it is the fallback for
+     first paint and for the rare client that rejects the woff2. */
+  font-family: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto,
                'Helvetica Neue', Arial, sans-serif;
   font-size: var(--text-base);
   color: var(--text);
@@ -270,7 +267,7 @@ body {
 .gradient-text-on-dark { background-image: var(--brand-on-dark); }
 
 code {
-  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
+  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
   font-size: 12px;
   background: var(--blue-lt);
   color: var(--accent-text);
@@ -285,7 +282,7 @@ code {
   border-radius: 10px;
   padding: 18px;
   overflow-x: auto;
-  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
+  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
   font-size: 12px;
   line-height: 1.7;
   white-space: pre;
@@ -560,8 +557,8 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 /* ── Markdown guides (Getting Started page) ──────────── */
 .markdown-doc { font-size: 13.5px; line-height: 1.7; color: var(--text-2); max-width: 760px; }
 .markdown-doc h1 { font-size: 21px; font-weight: 800; color: var(--text); margin: 0 0 14px; }
-.markdown-doc h2 { font-size: 16px; font-weight: 700; color: var(--text); margin: 28px 0 10px; }
-.markdown-doc h3 { font-size: 14px; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+.markdown-doc h2 { font-size: 16px; font-weight: 600; color: var(--text); margin: 28px 0 10px; }
+.markdown-doc h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
 .markdown-doc p  { margin: 0 0 12px; }
 .markdown-doc ul, .markdown-doc ol { margin: 0 0 12px; padding-left: 22px; }
 .markdown-doc li { margin-bottom: 4px; }
@@ -612,7 +609,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   display: flex; align-items: center; justify-content: center;
 }
 .wf-tag {
-  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
+  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
   font-size: 11.5px; color: var(--wf);
   background: color-mix(in srgb, var(--wf) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--wf) 22%, transparent);
@@ -645,7 +642,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 }
 .wf-freeze-label {
   display: flex; align-items: center; gap: 4px; justify-content: center;
-  font-family: 'IBM Plex Mono', 'Cascadia Code', ui-monospace, monospace;
+  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
   font-size: 10.5px; font-weight: 600; color: var(--text);
   line-height: 1.2;
 }

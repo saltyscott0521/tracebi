@@ -179,7 +179,7 @@ export default function Layout({ children }) {
         alignItems: 'center', justifyContent: 'space-between', padding: '0 16px',
         zIndex: 200,
       }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em' }}>
           TraceBi
         </span>
         <button onClick={() => setOpen(true)} style={{

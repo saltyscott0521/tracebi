@@ -58,7 +58,7 @@ function Guides() {
   if (isLoading || !guides?.length) return null
   return (
     <div style={{ marginBottom: 40 }}>
-      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>Docs</div>
+      <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>Docs</div>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
         The full handbook — concepts, guides and reference, versioned in <code>docs/</code>.
       </p>
@@ -74,7 +74,7 @@ function Guides() {
 function HowItFits() {
   return (
     <div style={{ marginBottom: 36 }}>
-      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>How the pieces fit</div>
+      <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>How the pieces fit</div>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '74ch' }}>
         Data moves left to right, and the sidebar follows it. A <strong>source</strong> keeps the data.
         A <strong>pipeline</strong> puts it there. The <strong>data model</strong> says what it means.
@@ -87,7 +87,7 @@ function HowItFits() {
             borderRadius: 12, padding: '14px 16px', display: 'block', position: 'relative',
           }}>
             <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .6, color: '#6d28d9' }}>{i + 1}</div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', margin: '2px 0 4px' }}>{s.label}</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', margin: '2px 0 4px' }}>{s.label}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-text)', marginBottom: 4 }}>{s.ask}</div>
             <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{s.hint}</div>
             <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8, fontFamily: 'Cascadia Code, Fira Code, monospace' }}>{s.folder}</div>
@@ -123,7 +123,7 @@ export default function GettingStarted() {
               fontSize: 14, fontWeight: 800, color: '#6d28d9',
             }}>{s.n}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 5 }}>{s.title}</div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 5 }}>{s.title}</div>
               <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 12 }}>{s.desc}</p>
               <CodeBlock>{s.code}</CodeBlock>
             </div>
@@ -135,7 +135,7 @@ export default function GettingStarted() {
         background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
         borderRadius: 12, padding: '20px 24px',
       }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
+        <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {CHAIN.map(s => <Link key={s.key} to={s.path} style={LINK_STYLE}>{s.label}</Link>)}
           <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
