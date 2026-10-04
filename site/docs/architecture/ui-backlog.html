@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Lineage — TraceBi docs</title>
+<title>UI backlog — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Lineage">
+<meta name="description" content="UI backlog">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +27,7 @@
 <div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<a class="on" href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
 <a href="../concepts/receipts.html">Receipts</a>
@@ -62,64 +62,56 @@
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
-<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a class="on" href="../architecture/ui-backlog.html">UI backlog</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
-<h1 id="lineage">Lineage</h1>
-<p><strong>Every data operation appends a node describing what happened. The chain is
-not optional, and it cannot be edited after the fact.</strong></p>
-<hr>
-<h2 id="the-two-invariants">The two invariants</h2>
-<p><strong>1. <code>DataSet</code> is immutable.</strong> Every transform method returns a <em>new</em> <code>DataSet</code>.
-Nothing mutates <code>.df</code> or <code>.lineage</code> in place.</p>
-<pre><code class="language-python">ds2 = ds.filter(region=&quot;West&quot;)     # ds is unchanged
-</code></pre>
-<p><strong>2. Every operation produces a <code>LineageNode</code>.</strong> If an operation skipped the
-lineage step, the audit chain would break silently — so the two happen together
-or not at all.</p>
-<p><code>LineageNode</code> is <strong>frozen</strong>: every field, including <code>metadata</code>, is passed at
-construction. You cannot edit a node afterwards, by design.</p>
-<h2 id="what-a-node-records">What a node records</h2>
-<p>The operation, its parameters, the source, a timestamp, and operation-specific
-metadata — enough to say <em>what produced this frame</em> without re-reading the code
-that produced it.</p>
-<pre><code class="language-python">for node in ds.lineage:
-    print(node.operation, node.source)
-</code></pre>
-<h2 id="where-it-shows-up">Where it shows up</h2>
+<h1 id="ui-backlog">UI backlog</h1>
+<p>The loop in <code>ui-quality.md</code> takes the top open item. Done items move to the
+bottom with the change that closed them.</p>
+<h2 id="open">Open</h2>
+<ol>
+<li><strong>Lists are clickable divs</strong> <code>[click-not-keyboard]</code>: <code>ListItem</code> and the
+   Verify drop zone can't be reached by keyboard. Make them buttons.</li>
+<li><strong>Phone header button has no name</strong> <code>[axe:button-name]</code>, and the header
+   is outside any landmark <code>[axe:region]</code>.</li>
+<li><strong>Contrast</strong> <code>[axe:color-contrast]</code>: diagram node labels, report list
+   meta text, badges in dark mode.</li>
+<li><strong>Reports opens on "Pick a report"</strong> <code>[empty-detail-pane]</code>: half the page
+   blank on desktop. Show what needs attention and the latest builds there.</li>
+<li><strong>The phone hides which model you are in.</strong> The switcher lives in the
+   drawer; the header says only "TraceBi". Show the model in the header.</li>
+<li><strong>Diagram edges take keyboard focus with no ring</strong> <code>[no-focus-ring]</code>, and
+   a keyboard user tabs through every edge before reaching anything useful.</li>
+<li><strong>Code blocks scroll but can't be focused</strong>
+   <code>[axe:scrollable-region-focusable]</code> on Get Started and Workflow.</li>
+<li><strong>Learn has three pages telling one story</strong> (Get Started, Docs,
+   Workflow), and Workflow is in no menu <code>[nav-you-are-here]</code>. Fold
+   Workflow into Get Started.</li>
+<li><strong>Words a reader doesn't use</strong>: "semantic contract", "DuckDBConnector"
+   as a badge, "STEP / never run" in the Refresh flow.</li>
+<li><strong>"Checks stale" items name no model</strong>: a stale sink check shows only
+    under All models. Attribute warehouse tables to the models that read them.</li>
+<li><strong>Bundle is 1.1 MB of JS.</strong> Split routes (React Flow, Markdown, Recharts
+    load only on the pages that use them).</li>
+<li><strong>113 hard-coded colours in JSX</strong> — each is a dark-mode bug waiting.
+    Move them to tokens.</li>
+</ol>
+<h2 id="done">Done</h2>
 <ul>
-<li><strong>In the receipt.</strong> A figure's manifest entry carries the resolved query and
-  the model it ran against — recovered from lineage, not re-derived.</li>
-<li><strong>In the web UI.</strong> A report's <strong>Lineage</strong> tab draws where each number came
-  from, left to right: the transform that wrote the tables, the stored tables
-  (and where they live), the model, each query, and the figures on the page.
-  It is read from the last build's <a href="../concepts/receipts.html">receipt</a>, so it shows what the
-  reader was shown, not a fresh re-run. Select a node to trace it: a figure
-  lights only the tables its own query read. <code>GET /api/reports/{name}/lineage</code>
-  returns the same graph; <code>/mermaid</code> returns a diagram.</li>
-<li><strong>What it does not show.</strong> Lineage starts at the sink: the analysis inside a
-  transform is not traced, only the contract the sink satisfied. A query
-  marked python-derived is shown as such, and never reads as verified.</li>
-<li><strong>In <code>tracebi verify</code>.</strong> Source fingerprints recorded in lineage are what let
-  drift be <em>diagnosed</em> — <code>SOURCE DRIFT</code> (an input moved) is distinguishable
-  from <code>UNEXPLAINED</code> (the inputs did not move but the answer did), and that
-  distinction is the difference between a shrug and an alarm.</li>
-</ul>
-<h2 id="where-it-deliberately-stops">Where it deliberately stops</h2>
-<p>Lineage covers the <a href="../concepts/model.html">Model — phase ②</a> and <a href="../concepts/report.html">Report — phase ③</a> phases. It does <strong>not</strong> trace
-through phase-① <a href="../concepts/transform.html">Transform — phase ①</a> pandas.</p>
-<p>That is the honest boundary described in
-<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> — drawn at the sink, where
-numbers become a contract you can query. Claiming otherwise would mean claiming
-to audit arbitrary Python.</p>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../concepts/receipts.html">Receipts</a> — what the chain is ultimately used for</li>
-<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — narrowing the phase-① gap</li>
+<li><strong>Model switcher as the frame of the app</strong> — one control at the top of the
+  sidebar narrows every page (Data model, Explore, Refresh, Reports, Sources,
+  Runs) to a model; <code>/m/&lt;model&gt;/&lt;page&gt;</code> and an all-models <code>/&lt;page&gt;</code>; the last
+  pick is remembered; old addresses redirect. "Contract" is "Data model"
+  again. Removed the dead nav code from earlier designs.</li>
+<li><strong>"You are here" on every page</strong> <code>[nav-you-are-here]</code> — every frame page
+  marks its sidebar entry.</li>
+<li><strong>Unknown URLs render a real "Page not found"</strong> <code>[blank-page]</code>.</li>
+<li><strong>Sources opens on its first source</strong>, not a blank pane; the model page no
+  longer repeats the model's name or stacks two rows of tabs.</li>
 </ul>
   </main>
 </div>

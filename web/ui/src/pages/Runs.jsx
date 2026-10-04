@@ -2,8 +2,10 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { reportShareUrl, useRuns } from '../api'
 import { verdictOf, when } from '../components/Attention'
+import { PageHeader } from '../components/Scope'
+import { modelOfReport, reportPath } from '../nav'
 import {
-  PageTitle, PageSub, Badge, Spinner, Empty, ErrorDetail,
+  Badge, Spinner, Empty, ErrorDetail,
 } from '../components/Shared'
 
 // Kinds the store records. The values are the API's filters; the labels
@@ -52,7 +54,7 @@ function duration(start, end) {
 
 function reportPage(run) {
   if (!run.target || !REPORT_KINDS.has(run.kind)) return null
-  return `/reports?r=${encodeURIComponent(run.target)}`
+  return reportPath(run.target)
 }
 
 // A filesystem path is not a URL the app serves. A report run's file is
@@ -78,7 +80,13 @@ function Actor({ run }) {
   )
 }
 
-export default function Runs() {
+// A report run's model is its folder. A pipeline's own steps keep their history
+// with the pipeline (Refresh shows it), so a model's Runs are its reports'.
+function runModel(run) {
+  return REPORT_KINDS.has(run.kind) ? modelOfReport(run.target) : ''
+}
+
+export default function Runs({ model = '' }) {
   // The owner alert links here as /runs?kind=schedule&target=<report>.
   // The filters are that query string, so the link arrives already selected
   // and a change stays in the URL.
@@ -94,15 +102,14 @@ export default function Runs() {
     }, { replace: true })
   }
   const { data, isLoading, error } = useRuns(kind, target.trim())
-  const runs = Array.isArray(data) ? data : []
+  const runs = (Array.isArray(data) ? data : []).filter(r => !model || runModel(r) === model)
 
   return (
     <>
-      <PageTitle>Runs</PageTitle>
-      <PageSub>
-        What ran, when, for whom, and whether it reproduced.
-        Only a receipt that reproduces reads green.
-      </PageSub>
+      <PageHeader pageKey="runs" model={model}
+        sub={model
+          ? `Every build of ${model}'s reports: when, for whom, and whether it reproduced. Its refreshes are on Refresh.`
+          : 'What ran, when, for whom, and whether it reproduced. Only a receipt that reproduces reads green.'} />
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16, alignItems: 'flex-end' }}>
         <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -138,6 +145,7 @@ export default function Runs() {
               <tr>
                 <th>Kind</th>
                 <th>Target</th>
+                {!model && <th>Model</th>}
                 <th>Status</th>
                 <th>Started</th>
                 <th>Finished</th>
@@ -165,6 +173,7 @@ export default function Runs() {
                         </>
                       )}
                     </td>
+                    {!model && <td style={{ fontSize: 12, color: 'var(--muted)' }}>{runModel(run) || '—'}</td>}
                     <td>
                       <Badge variant={STATUS[run.status] || 'gray'} style={{ textTransform: 'none' }}>
                         {run.status || '—'}

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge } from './Shared'
+import { modelOfPipeline, modelOfReport, pagePath, reportPath } from '../nav'
 
 // What needs a person, from GET /api/desk plus the pipelines list: review
 // notes, receipts that don't reproduce, failed refreshes, and sink checks
@@ -46,7 +47,7 @@ export function when(iso) {
 }
 
 function reportHref(name) {
-  return name && name !== '_discovery' ? `/reports?r=${encodeURIComponent(name)}` : null
+  return name && name !== '_discovery' ? reportPath(name) : null
 }
 
 export function attentionItems(desk, pipelines) {
@@ -54,6 +55,7 @@ export function attentionItems(desk, pipelines) {
   for (const pin of desk?.pins || []) {
     items.push({
       key: `pin-${pin.report}-${pin.id}`, kind: 'Review note', variant: 'blue',
+      model: modelOfReport(pin.report),
       title: pin.report === '_discovery' ? 'Project workbench' : pin.report,
       detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report),
     })
@@ -63,6 +65,7 @@ export function attentionItems(desk, pipelines) {
     const v = verdictOf(row.verdict)
     items.push({
       key: `verdict-${row.report}`, kind: v.label, variant: v.variant,
+      model: modelOfReport(row.report),
       title: row.report, detail: v.detail || row.detail || 'Its last build needs a look.',
       href: reportHref(row.report),
     })
@@ -72,11 +75,10 @@ export function attentionItems(desk, pipelines) {
       if (l.last_status !== 'failed') continue
       items.push({
         key: `run-${p.pipeline}-${l.name}`, kind: 'Refresh failed', variant: 'red',
+        model: modelOfPipeline(p),
         title: `${p.pipeline} / ${l.name}`,
         detail: `Last run ${when(l.last_run) || 'recently'}`,
-        href: p.model
-          ? `/models/${encodeURIComponent(p.model)}?tab=refresh`
-          : '/models',
+        href: pagePath('refresh', p.model || ''),
       })
     }
   }
@@ -84,7 +86,7 @@ export function attentionItems(desk, pipelines) {
     items.push({
       key: `sink-${s.table}`, kind: s.status === 'stale' ? 'Checks stale' : 'No checks',
       variant: s.status === 'stale' ? 'amber' : 'gray',
-      title: s.table, detail: SINK[s.status] || s.status, href: '/models',
+      model: '', title: s.table, detail: SINK[s.status] || s.status, href: '/models',
     })
   }
   return items

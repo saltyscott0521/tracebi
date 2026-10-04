@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useConnectors } from '../api'
 import { StorageLine, KIND_LABEL } from '../components/Storage'
+import { PageHeader } from '../components/Scope'
+import { pagePath } from '../nav'
 import {
-  PageTitle, PageSub, Card, CardTitle, Badge,
+  Card, CardTitle, Badge,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
@@ -30,7 +32,7 @@ function ConnectorDetail({ c }) {
         {(c.used_by || []).length === 0
           ? <span style={{ color: 'var(--muted)', fontSize: 12.5 }}>No model reads from this connector.</span>
           : (c.used_by || []).map(m => (
-            <Link key={m} to={`/models/${encodeURIComponent(m)}`} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
+            <Link key={m} to={pagePath('model', m)} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
           ))}
       </Section>
       {c.tables && c.tables.length > 0 && (
@@ -47,27 +49,28 @@ function ConnectorDetail({ c }) {
   )
 }
 
-export default function Connectors() {
+export default function Connectors({ model = '' }) {
   const { data, isLoading } = useConnectors()
   const [selected, setSelected] = useState(null)
   const [query, setQuery] = useState('')
 
-  const connectors = data || []
+  // A source can feed several models; with one picked, show the ones it reads.
+  const connectors = (data || []).filter(c => !model || (c.used_by || []).includes(model))
   const filtered = connectors.filter(c =>
     c.name.toLowerCase().includes(query.toLowerCase()) ||
     c.type.toLowerCase().includes(query.toLowerCase())
   )
-  const current = connectors.find(c => c.name === selected)
+  // Open on the first source rather than a blank "select one" pane.
+  const current = connectors.find(c => c.name === selected) || filtered[0]
 
   return (
     <>
-      <PageTitle>Sources</PageTitle>
-      <PageSub>
-        {isLoading ? 'Loading…' : `${connectors.length} source${connectors.length !== 1 ? 's' : ''}: where each model's data is kept. A source is a connector: a file, folder or database. A model file declares meaning; the source says where the data is.`}
-      </PageSub>
+      <PageHeader pageKey="sources" model={model} />
 
       {!isLoading && connectors.length === 0 ? (
-        <Empty message="No sources yet. A model declares its own connector (add_connector); one can also be registered in an app module." />
+        <Empty message={model
+          ? `${model} names no source. A model declares where its data is with add_connector(…).`
+          : 'No sources yet. A model declares its own (add_connector); one can also be registered in an app module.'} />
       ) : (
         <SplitLayout
           left={
@@ -79,10 +82,13 @@ export default function Connectors() {
                   : filtered.map(c => (
                     <ListItem
                       key={c.name}
-                      selected={selected === c.name}
+                      selected={current?.name === c.name}
                       onClick={() => setSelected(c.name)}
                       name={c.name}
-                      sub={c.type}
+                      sub={KIND_LABEL[c.storage?.kind] || c.type}
+                      meta={!model && (c.used_by || []).length > 0
+                        ? (c.used_by || []).map(m => <Badge key={m} variant="gray" style={{ textTransform: 'none' }}>{m}</Badge>)
+                        : null}
                     />
                   ))
                 }

@@ -139,14 +139,14 @@ your peril):
 | Resource | Call | Appears in UI as |
 |---|---|---|
 | Connector | `registry.add_connector(conn)` | **Sources** page |
-| Model | `registry.add_model(model, default=False)` | **Models** + **Explore** |
+| Model | `registry.add_model(model, default=False)` | the **model switcher**, **Data model** + **Explore** |
 | Report | `@registry.report("name", description="…")` on a zero-arg factory | **Reports** page |
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
-| Pipeline | `registry.add_pipeline("name", runner)` | **Pipelines** (DAG, run buttons, history) |
+| Pipeline | `registry.add_pipeline("name", runner)` | **Refresh** (DAG, run buttons, history) |
 
 The **Runs** page is not a folder. It reads `GET /api/runs`: what ran, when,
-for whom, and whether it reproduced. It sits in the sidebar footer, beside
-Verify.
+for whom, and whether it reproduced. Like every page under the model
+switcher, it narrows to the picked model.
 
 ## Step 3: The development loop
 
@@ -180,7 +180,8 @@ Layout of `src/`:
 ```
 api.js               # all API hooks (React Query) — one hook per endpoint
 components/
-  Layout.jsx         # sidebar, nav items, theme toggle, ⌘K trigger
+  Layout.jsx         # sidebar, theme toggle, ⌘K trigger
+  Scope.jsx          # model switcher, page header, all-models / one-model routes
   Shared.jsx         # Card, Badge, Btn, Tabs, toasts, skeletons…
   Lineage.jsx        # React Flow lineage graph renderer
   CommandPalette.jsx # ⌘K navigation
@@ -194,8 +195,10 @@ dark under `[data-theme="dark"]`. To rebrand, edit the tokens (`--blue`,
 `--bg`, `--card`, the `--op-*` lineage-node palette) — components never
 hard-code colors. The brand gradient is `--brand`.
 
-**Adding a nav page:** create `pages/MyPage.jsx`, add a route in
-`App.jsx`, and an entry in the `NAV` array in `Layout.jsx`. Use the hooks
+**Adding a nav page:** a page that is about a model goes in `PAGES` in
+`nav.js` (it gets `/m/<model>/<page>` and an all-models `/<page>`) with both
+routes in `App.jsx`, and takes a `model` prop (`''` means all models). A page
+about no one model goes in `NAV_TOOLS` in `Layout.jsx`. Use the hooks
 in `api.js` for data and the primitives in `Shared.jsx` for visual
 consistency.
 

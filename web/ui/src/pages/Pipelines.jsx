@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import Chain from '../components/Chain'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { usePipelines, useRunLayer, useRunPipeline, useLayerHistory } from '../api'
-import { useModelScope } from '../components/ModelScope'
-import { pipelineBelongsToModel } from '../modelScope'
+import { PageHeader } from '../components/Scope'
+import { modelOfPipeline, pipelineBelongsToModel } from '../nav'
 import {
-  PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
+  Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SkeletonCard, SkeletonList, SplitLayout, ListItem,
   SearchInput, useToast,
 } from '../components/Shared'
@@ -329,43 +328,43 @@ export function PipelineDetail({ pipeline, layers }) {
   )
 }
 
-export default function Pipelines() {
+/**
+ * Refresh: rebuild a model's data, then the reports that read it. One model
+ * shows its pipeline; all models list every pipeline with the model it feeds.
+ */
+export default function Pipelines({ model = '' }) {
   const { data, isLoading } = usePipelines()
   const [params, setParams] = useSearchParams()
-  const [modelScope] = useModelScope()
-  const selected = params.get('p')
-  // Keep ?model= when picking a pipeline; drop it only via the scope control.
-  const select = (name) => {
-    const next = new URLSearchParams(params)
-    if (name) next.set('p', name)
-    else next.delete('p')
-    setParams(next, { replace: true })
-  }
   const [query, setQuery] = useState('')
+  const pipelines = (data || []).filter(p => pipelineBelongsToModel(p, model))
 
-  const pipelines = data || []
+  if (model) {
+    const p = pipelines[0]
+    return (
+      <>
+        <PageHeader pageKey="refresh" model={model} />
+        {isLoading ? <SkeletonCard /> : p
+          ? <PipelineDetail key={p.pipeline} pipeline={p.pipeline} layers={p.layers || []} />
+          : (
+            <Card>
+              <Empty message={`Nothing refreshes ${model} yet. Add pipelines/${model}.py with runner = model_pipeline("${model}", transform="…") and its transform runs, then its reports rebuild.`} />
+            </Card>
+          )}
+      </>
+    )
+  }
+
   const filtered = pipelines.filter(p =>
-    pipelineBelongsToModel(p, modelScope) &&
-    p.pipeline.toLowerCase().includes(query.toLowerCase())
-  )
-  const current = filtered.find(p => p.pipeline === selected)
-    || (filtered.length === 1 ? filtered[0] : null)
+    `${p.pipeline} ${modelOfPipeline(p)}`.toLowerCase().includes(query.toLowerCase()))
+  // Open on the first pipeline rather than a blank "select one" pane.
+  const current = filtered.find(p => p.pipeline === params.get('p')) || filtered[0]
+  const select = name => setParams(name ? { p: name } : {}, { replace: true })
 
   return (
     <>
-      <Chain current="pipelines" />
-      <PageTitle>Pipelines</PageTitle>
-      <PageSub>
-        {isLoading
-          ? 'Loading…'
-          : modelScope
-            ? `${filtered.length} pipeline${filtered.length !== 1 ? 's' : ''} for ${modelScope}. Select one to open its flow.`
-            : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}: each rebuilds a model's data, then the reports that read it. Select one to open its flow. Run history refreshes every 10 s.`
-        }
-      </PageSub>
-
+      <PageHeader pageKey="refresh" model="" />
       {!isLoading && pipelines.length === 0 ? (
-        <Empty message="No pipelines registered. Add one with registry.add_pipeline() in your app module." />
+        <Empty message="Nothing refreshes yet. Add pipelines/<model>.py with runner = model_pipeline(…) for each model." />
       ) : (
         <SplitLayout
           left={
@@ -377,10 +376,13 @@ export default function Pipelines() {
                   : filtered.map((p, i) => (
                     <div key={p.pipeline} className="rise" style={{ '--i': i }}>
                       <ListItem
-                        selected={selected === p.pipeline}
+                        selected={current?.pipeline === p.pipeline}
                         onClick={() => select(p.pipeline)}
                         name={p.pipeline}
                         sub={pipelineSummary(p.layers)}
+                        meta={p.model && p.model !== p.pipeline
+                          ? <Badge variant="gray" style={{ textTransform: 'none' }}>{p.model}</Badge>
+                          : null}
                       />
                     </div>
                   ))
@@ -390,7 +392,7 @@ export default function Pipelines() {
           }
           right={
             <PipelineDetail
-              key={selected || ''}
+              key={current?.pipeline || ''}
               pipeline={current?.pipeline}
               layers={current?.layers || []}
             />

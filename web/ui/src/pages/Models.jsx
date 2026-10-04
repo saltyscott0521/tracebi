@@ -1,14 +1,17 @@
 import { useState, useMemo } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
-import { useModels, useModel, useTablePreview, useDesk, tableCsvUrl } from '../api'
 import {
-  PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
-  Empty, Tabs, ListItem, SearchInput, SkeletonList, SkeletonCard,
+  useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, tableCsvUrl,
+} from '../api'
+import { PageHeader } from '../components/Scope'
+import { pagePath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import {
+  Card, Badge, Spinner, Empty, Tabs, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
 // ── Table Preview ─────────────────────────────────────────────────────────────
@@ -355,14 +358,13 @@ export function ModelDetail({ name }) {
 
   return (
     <Card className="fade-in">
-      <CardTitle>{data.name}</CardTitle>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
         {data.source_file && <div>Defined in <code>{data.source_file}</code></div>}
         {(data.connector_details || []).map(c => (
           <div key={c.name}>Data in <StorageLine storage={c.storage} /></div>
         ))}
         {grain && <div>Grain: {grain}</div>}
-        {desk?.warehouse && sinks.length === 0 && <div>Sink tables are current.</div>}
+        {desk?.warehouse && sinks.length === 0 && <div>Its tables satisfied their checks when they were last written.</div>}
         {sinks.length > 0 && (
           <div>
             {sinks.map(s => `${s.table} ${s.status}`).join(' · ')}
@@ -467,65 +469,52 @@ export function ModelDetail({ name }) {
   )
 }
 
-// ── Index: pick a model → /models/:name (its home) ───────────────────────────
+// ── All models: pick one ─────────────────────────────────────────────────────
 
-export default function Models() {
+/**
+ * The all-models view of a page that is always about one model (Data model,
+ * Explore): the models, each opening that page for itself.
+ */
+export default function Models({ pageKey = 'model' }) {
   const { data, isLoading } = useModels()
+  const { data: reports } = useReports()
+  const { data: pipelines } = usePipelines()
   const [params] = useSearchParams()
-  const legacy = params.get('m')
-  if (legacy) {
-    return <Navigate to={`/models/${encodeURIComponent(legacy)}`} replace />
-  }
-
-  const navigate = useNavigate()
-  const [query, setQuery] = useState('')
+  // Old links: /models?m=<model>, /explore?model=<model>.
+  const legacy = params.get('m') || params.get('model')
+  if (legacy) return <Navigate to={pagePath(pageKey, legacy)} replace />
 
   const models = data || []
-  const filtered = models.filter(m =>
-    m.name.toLowerCase().includes(query.toLowerCase())
-  )
+  const reportCount = name => (reports || []).filter(r => reportBelongsToModel(r.name, name)).length
+  const refreshes = name => (pipelines || []).some(p => pipelineBelongsToModel(p, name))
 
   return (
     <>
-      <PageTitle>Models</PageTitle>
-      <PageSub>
-        {isLoading
-          ? 'Loading…'
-          : `${models.length} model${models.length !== 1 ? 's' : ''}. Open one for its contract, refresh, explore, and reports.`
-        }
-      </PageSub>
-
-      {!isLoading && models.length === 0 ? (
-        <Empty
-          icon="⬡"
-          message="No models registered. Add one with registry.add_model() in your app module."
-        />
+      <PageHeader pageKey={pageKey} model=""
+        sub={pageKey === 'explore'
+          ? 'Explore asks one model at a time. Pick one.'
+          : 'Each model is a star schema over stored tables: its grain, joins and measures. Pick one.'} />
+      {isLoading ? <SkeletonList /> : models.length === 0 ? (
+        <Empty icon="⬡" message="No models yet. Create one with tracebi new-model, in models/." />
       ) : (
-        <div className="surface" style={{
-          background: 'var(--card)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', overflow: 'hidden',
-          maxWidth: 560,
-        }}>
-          {isLoading ? <SkeletonList /> : (
-            <>
-              <SearchInput value={query} onChange={setQuery} placeholder="Search models…" />
-              {filtered.length === 0
-                ? <Empty message="No matches." />
-                : filtered.map((m, i) => (
-                  <div key={m.name} className="rise" style={{ '--i': i }}>
-                    <ListItem
-                      name={m.name}
-                      sub={m.facts
-                        ? `${m.facts.length} fact${m.facts.length !== 1 ? 's' : ''} · ${m.dimensions.length} dim · ${m.measures.length} measures`
-                        : `${m.tables.length} tables`}
-                      onClick={() => navigate(`/models/${encodeURIComponent(m.name)}`)}
-                    />
-                  </div>
-                ))
-              }
-            </>
-          )}
+        <div className="model-cards">
+          {models.map((m, i) => {
+            const n = reportCount(m.name)
+            return (
+              <Link key={m.name} to={pagePath(pageKey, m.name)} className="model-card rise" style={{ '--i': i }}>
+                <span className="model-card__name">{m.name}</span>
+                <span className="model-card__shape">
+                  {m.facts
+                    ? `${m.facts.length} fact${m.facts.length !== 1 ? 's' : ''} · ${m.dimensions.length} dimension${m.dimensions.length !== 1 ? 's' : ''} · ${m.measures.length} measures`
+                    : `${m.tables.length} tables`}
+                </span>
+                <span className="model-card__facts">
+                  <span>{n} report{n !== 1 ? 's' : ''}</span>
+                  <span>{refreshes(m.name) ? 'Has a refresh pipeline' : 'No refresh pipeline'}</span>
+                </span>
+              </Link>
+            )
+          })}
         </div>
       )}
     </>

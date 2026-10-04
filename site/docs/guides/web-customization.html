@@ -61,6 +61,8 @@
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
@@ -237,7 +239,7 @@ your peril):</p>
 <tr>
 <td>Model</td>
 <td><code>registry.add_model(model, default=False)</code></td>
-<td><strong>Models</strong> + <strong>Explore</strong></td>
+<td>the <strong>model switcher</strong>, <strong>Data model</strong> + <strong>Explore</strong></td>
 </tr>
 <tr>
 <td>Report</td>
@@ -252,13 +254,13 @@ your peril):</p>
 <tr>
 <td>Pipeline</td>
 <td><code>registry.add_pipeline("name", runner)</code></td>
-<td><strong>Pipelines</strong> (DAG, run buttons, history)</td>
+<td><strong>Refresh</strong> (DAG, run buttons, history)</td>
 </tr>
 </tbody>
 </table>
 <p>The <strong>Runs</strong> page is not a folder. It reads <code>GET /api/runs</code>: what ran, when,
-for whom, and whether it reproduced. It sits in the sidebar footer, beside
-Verify.</p>
+for whom, and whether it reproduced. Like every page under the model
+switcher, it narrows to the picked model.</p>
 <h2 id="step-3-the-development-loop">Step 3: The development loop</h2>
 <pre><code class="language-bash">python -m tracebi.web.run                       # uvicorn with hot-reload, port 8000
 python -m tracebi.web.run --port 9000           # different port
@@ -280,7 +282,8 @@ npm run build    # writes tracebi/web/ui/dist/ — FastAPI serves it at / when p
 <p>Layout of <code>src/</code>:</p>
 <pre><code>api.js               # all API hooks (React Query) — one hook per endpoint
 components/
-  Layout.jsx         # sidebar, nav items, theme toggle, ⌘K trigger
+  Layout.jsx         # sidebar, theme toggle, ⌘K trigger
+  Scope.jsx          # model switcher, page header, all-models / one-model routes
   Shared.jsx         # Card, Badge, Btn, Tabs, toasts, skeletons…
   Lineage.jsx        # React Flow lineage graph renderer
   CommandPalette.jsx # ⌘K navigation
@@ -292,8 +295,10 @@ styles/global.css    # ALL design tokens — start here for theming
 dark under <code>[data-theme="dark"]</code>. To rebrand, edit the tokens (<code>--blue</code>,
 <code>--bg</code>, <code>--card</code>, the <code>--op-*</code> lineage-node palette) — components never
 hard-code colors. The brand gradient is <code>--brand</code>.</p>
-<p><strong>Adding a nav page:</strong> create <code>pages/MyPage.jsx</code>, add a route in
-<code>App.jsx</code>, and an entry in the <code>NAV</code> array in <code>Layout.jsx</code>. Use the hooks
+<p><strong>Adding a nav page:</strong> a page that is about a model goes in <code>PAGES</code> in
+<code>nav.js</code> (it gets <code>/m/&lt;model&gt;/&lt;page&gt;</code> and an all-models <code>/&lt;page&gt;</code>) with both
+routes in <code>App.jsx</code>, and takes a <code>model</code> prop (<code>''</code> means all models). A page
+about no one model goes in <code>NAV_TOOLS</code> in <code>Layout.jsx</code>. Use the hooks
 in <code>api.js</code> for data and the primitives in <code>Shared.jsx</code> for visual
 consistency.</p>
 <h2 id="step-5-extend-the-api">Step 5: Extend the API</h2>

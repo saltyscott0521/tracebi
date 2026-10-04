@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { NAV_PRIMARY, NAV_FOOTER } from './chainSteps'
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 
-import { useHealth, useAppStatus } from '../api'
+import { useHealth, useAppStatus, useModels } from '../api'
+import { PAGES, pagePath, lastModel } from '../nav'
+import { ModelSwitcher, useScope } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -45,6 +46,16 @@ const ICONS = {
       <path fillRule="evenodd" d="M6 8.5a.5.5 0 01.5.5v2a2 2 0 002 2h3a.5.5 0 010 1h-3a3 3 0 01-3-3V9a.5.5 0 01.5-.5z" clipRule="evenodd" />
     </svg>
   ),
+  runs: (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+    </svg>
+  ),
+  verify: (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+    </svg>
+  ),
   docs: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
@@ -52,13 +63,26 @@ const ICONS = {
   ),
 }
 
-// One primary destination (Models). Library / setup / ops live in the footer.
-// Learn stays secondary.
-const NAV_SECONDARY = [
-  { path: '/getting-started', label: 'Get Started', icon: 'guide' },
-  { path: '/handbook',        label: 'Docs',        icon: 'docs' },
-  { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
+// Beneath the switcher: the same pages for every model (nav.js). Below them,
+// the things that are about no one model.
+const NAV_TOOLS = [
+  { path: '/verify',          label: 'Verify a file', icon: 'verify' },
+  { path: '/getting-started', label: 'Get started',   icon: 'guide' },
+  { path: '/handbook',        label: 'Docs',          icon: 'docs' },
 ]
+
+/**
+ * The model the sidebar's links are about: the one in the URL; on a page
+ * outside the frame, the only model or the one you were last in.
+ */
+function useSidebarModel() {
+  const { model, page } = useScope()
+  const { data } = useModels()
+  const names = (data || []).map(m => m.name)
+  if (page) return model
+  if (names.length === 1) return names[0]
+  return names.includes(lastModel()) ? lastModel() : ''
+}
 
 function SunIcon() {
   return (
@@ -154,6 +178,7 @@ export default function Layout({ children }) {
   }, [dark])
 
   const close = () => setOpen(false)
+  const model = useSidebarModel()
 
   // While the mobile menu is open, the page behind it stays put.
   useEffect(() => {
@@ -243,6 +268,7 @@ export default function Layout({ children }) {
               </div>
             </div>
           </div>
+          <ModelSwitcher model={model} onNavigate={close} />
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
             style={{
@@ -267,33 +293,17 @@ export default function Layout({ children }) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          <NavSection items={NAV_PRIMARY} onNavigate={close} />
-          <NavSection label="Learn" items={NAV_SECONDARY} onNavigate={close} />
+          <NavSection items={PAGES.map(p => ({
+            path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
+          }))} onNavigate={close} />
+          <NavSection label="Tools" items={NAV_TOOLS} onNavigate={close} />
         </div>
 
-        {/* Footer — library / setup / ops (not peer workspace destinations) */}
         <div style={{
           padding: '12px 16px 14px',
           borderTop: '1px solid var(--sidebar-border)',
-          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          {NAV_FOOTER.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={close}
-              style={{
-                fontSize: 12,
-                color: 'rgba(200,220,255,0.48)',
-                textDecoration: 'none',
-                padding: '2px 4px',
-              }}
-              className="nav-footer-link"
-            >
-              {item.label}
-            </Link>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               display: 'inline-block', width: 6, height: 6,
               borderRadius: '50%', background: '#22c55e', flexShrink: 0,
@@ -344,7 +354,6 @@ export default function Layout({ children }) {
           .app-nav.nav-open { transform: translateX(0); }
           main { margin-left: 0 !important; margin-top: 52px; padding: 20px 16px !important; max-width: 100% !important; }
         }
-        .nav-footer-link:hover { color: rgba(200,220,255,0.85) !important; }
       `}</style>
     </div>
   )

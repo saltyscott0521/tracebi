@@ -1,18 +1,14 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { NAV_PRIMARY, NAV_FOOTER, MODEL_STORY } from './chainSteps'
+import { PAGES, pagePath, reportPath, modelOfPipeline } from '../nav'
 
 // Static page destinations — always available, even before data loads.
-const PAGES = [
-  ...NAV_PRIMARY.map(s => ({
-    label: s.label,
-    path: s.path,
-    kind: 'page',
-    sub: MODEL_STORY.find(x => x.key === s.key)?.ask || 'Pick a model',
-  })),
-  ...NAV_FOOTER.map(s => ({ label: s.label, path: s.path, kind: 'page' })),
-  { label: 'Getting Started', path: '/getting-started', kind: 'page' },
+const PAGES_ALL = [
+  ...PAGES.map(p => ({ label: p.label, path: p.all, kind: 'page', sub: p.sub })),
+  { label: 'Verify a file', path: '/verify', kind: 'page' },
+  { label: 'Get started', path: '/getting-started', kind: 'page' },
+  { label: 'Docs', path: '/handbook', kind: 'page' },
 ]
 
 const KIND_META = {
@@ -34,23 +30,19 @@ export default function CommandPalette() {
   const { data: pipelines }  = usePipelines()
 
   const items = useMemo(() => [
-    ...PAGES,
+    ...PAGES_ALL,
     ...(models     || []).map(m => ({
       label: m.name,
-      path: `/models/${encodeURIComponent(m.name)}`,
+      path: pagePath('model', m.name),
       kind: 'model',
       sub: `${m.tables.length} tables`,
     })),
-    ...(reports    || []).map(r => ({ label: r.name,     path: '/reports',    kind: 'report',    sub: r.description })),
+    ...(reports    || []).map(r => ({ label: r.name, path: reportPath(r.name), kind: 'report', sub: r.description })),
     ...(pipelines  || []).map(p => ({
       label: p.pipeline,
-      path: p.model
-        ? `/models/${encodeURIComponent(p.model)}?tab=refresh`
-        : '/models',
+      path: pagePath('refresh', modelOfPipeline(p)),
       kind: 'pipeline',
-      sub: p.model
-        ? `${(p.layers || []).length} layers · ${p.model}`
-        : `${(p.layers || []).length} layers`,
+      sub: `${(p.layers || []).length} steps${p.model ? ` · ${p.model}` : ''}`,
     })),
   ], [models, reports, pipelines])
 

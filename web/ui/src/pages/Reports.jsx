@@ -11,8 +11,10 @@ import {
 import { ReportLineage } from '../components/ReportLineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
 import { ReportArt } from '../components/Art'
+import { PageHeader } from '../components/Scope'
+import { reportBelongsToModel } from '../nav'
 import {
-  PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
+  Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SplitLayout, ListItem, ErrorDetail,
   SearchInput, SkeletonList, SkeletonCard, useToast, ReportFrame,
 } from '../components/Shared'
@@ -644,7 +646,7 @@ function FolderHeading({ folder, count, open, onToggle }) {
   )
 }
 
-export default function Reports() {
+export default function Reports({ model = '' }) {
   const { data, isLoading } = useReports()
   const { data: desk } = useDesk()
   const { data: pipelines } = usePipelines()
@@ -661,7 +663,7 @@ export default function Reports() {
     window.scrollTo(0, 0)
   }
 
-  const reports = data || []
+  const reports = (data || []).filter(r => reportBelongsToModel(r.name, model))
   const filtered = reports.filter(r =>
     r.name.toLowerCase().includes(query.toLowerCase()) ||
     (r.description || '').toLowerCase().includes(query.toLowerCase())
@@ -676,17 +678,15 @@ export default function Reports() {
 
   return (
     <div className={current ? 'reports-page reports-page--detail' : 'reports-page'}>
-      <PageTitle>Reports</PageTitle>
-      <PageSub>
-        {isLoading
-          ? 'Loading…'
-          : `${reports.length} report${reports.length !== 1 ? 's' : ''}. Select one to open its last build. Rebuild is the second action.`}
-      </PageSub>
+      <PageHeader pageKey="reports" model={model} />
 
-      <AttentionStrip items={attentionItems(desk, pipelines)} />
+      <AttentionStrip items={attentionItems(desk, pipelines)
+        .filter(it => !model || it.model === model)} />
 
       {!isLoading && reports.length === 0 ? (
-        <Empty message="No reports yet. Scaffold one with tracebi new-report, or see Get Started." />
+        <Empty message={model
+          ? `No reports for ${model} yet. Reports for it live in reports/${model}/: scaffold one with tracebi new-report.`
+          : 'No reports yet. Scaffold one with tracebi new-report, or see Get Started.'} />
       ) : (
         <SplitLayout
           detail={!!current}
@@ -696,7 +696,8 @@ export default function Reports() {
                 <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" />
                 {filtered.length === 0
                   ? <Empty message="No matches." />
-                  : groupByFolder(filtered).map(({ folder, items }) => {
+                  // One model: its folder is the page, so no folder headings.
+                  : (model ? [{ folder: '', items: filtered }] : groupByFolder(filtered)).map(({ folder, items }) => {
                     // A search always shows its matches, even in a closed folder.
                     const open = !folder || query || !closed.has(folder)
                     return (
