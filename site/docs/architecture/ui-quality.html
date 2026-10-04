@@ -119,6 +119,9 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
 <li><strong>No model is a dead end</strong>: every model has at least one report
   <code>[model-without-reports]</code>. (The live demo showed three models with none:
   see the discovery fix under Rules learned.)</li>
+<li><strong>Every model has a pipeline</strong> <code>[model-without-pipeline]</code>: something its
+  Refresh page can run. A pipeline belongs to the models it names
+  (<code>runner.models</code>), else the one <code>model_pipeline</code> stamped, else its own name.</li>
 <li><strong>No colour tricks that break themes</strong>: no <code>${colour}22</code> hex-alpha gluing
   <code>[hex-alpha-concat]</code>.</li>
 </ul>
@@ -168,6 +171,8 @@ differ). Each has caught what the other could not.</p>
 <li>An app that wires its own reports folder (the demo app) fails differently
   from a project that uses <code>reports/</code>; a green audit on one says nothing about
   the other. The live site is a third thing: after a deploy, ask its own API.</li>
+<li>Data flows through more than one model (raw tables seeded from one, built into
+  another), so a pipeline names the models it touches rather than owning one.</li>
 </ul>
   </main>
 </div>

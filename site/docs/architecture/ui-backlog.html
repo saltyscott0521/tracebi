@@ -128,6 +128,10 @@ bottom with the change that closed them.</p>
   seconds after start; it forgets only what its own scan covers.</li>
 <li><strong>Diagram, Refresh and search colours are theme tokens</strong> (<code>--role-*</code>,
   <code>--phase-*</code>): readable in dark mode, and no <code>${colour}22</code> alpha-gluing.</li>
+<li><strong>Every demo model has a pipeline.</strong> <code>sales</code> and <code>wealth</code> now name the models
+  they touch (<code>runner.models</code>), so SalesModel, SalesPipelineModel and
+  WealthModel each show one on Refresh; a pipeline may belong to several.
+  The audit flags any model with none.</li>
 </ul>
   </main>
 </div>

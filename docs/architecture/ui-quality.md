@@ -52,6 +52,9 @@ Checked by the script (rule name in brackets):
 - **No model is a dead end**: every model has at least one report
   `[model-without-reports]`. (The live demo showed three models with none:
   see the discovery fix under Rules learned.)
+- **Every model has a pipeline** `[model-without-pipeline]`: something its
+  Refresh page can run. A pipeline belongs to the models it names
+  (`runner.models`), else the one `model_pipeline` stamped, else its own name.
 - **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
   `[hex-alpha-concat]`.
 
@@ -103,4 +106,6 @@ Each fix that taught something general adds a line here.
 - An app that wires its own reports folder (the demo app) fails differently
   from a project that uses `reports/`; a green audit on one says nothing about
   the other. The live site is a third thing: after a deploy, ask its own API.
+- Data flows through more than one model (raw tables seeded from one, built into
+  another), so a pipeline names the models it touches rather than owning one.
 

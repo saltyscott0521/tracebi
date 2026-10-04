@@ -5,7 +5,7 @@ import '@xyflow/react/dist/style.css'
 
 import { usePipelines, useRunLayer, useRunPipeline, useLayerHistory } from '../api'
 import { PageHeader } from '../components/Scope'
-import { modelOfPipeline, pipelineBelongsToModel } from '../nav'
+import { pipelineModels, pipelineBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SkeletonCard, SkeletonList, SplitLayout, ListItem,
@@ -344,12 +344,15 @@ export default function Pipelines({ model = '' }) {
   const pipelines = (data || []).filter(p => pipelineBelongsToModel(p, model))
 
   if (model) {
-    const p = pipelines[0]
     return (
       <>
         <PageHeader pageKey="refresh" model={model} />
-        {isLoading ? <SkeletonCard /> : p
-          ? <PipelineDetail key={p.pipeline} pipeline={p.pipeline} layers={p.layers || []} />
+        {isLoading ? <SkeletonCard /> : pipelines.length
+          ? pipelines.map(p => (
+            <div key={p.pipeline} style={{ marginBottom: 16 }}>
+              <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} />
+            </div>
+          ))
           : (
             <Card>
               <Empty message={`Nothing refreshes ${model} yet. Add pipelines/${model}.py with runner = model_pipeline("${model}", transform="…") and its transform runs, then its reports rebuild.`} />
@@ -360,7 +363,7 @@ export default function Pipelines({ model = '' }) {
   }
 
   const filtered = pipelines.filter(p =>
-    `${p.pipeline} ${modelOfPipeline(p)}`.toLowerCase().includes(query.toLowerCase()))
+    `${p.pipeline} ${pipelineModels(p).join(' ')}`.toLowerCase().includes(query.toLowerCase()))
   // Open on the first pipeline rather than a blank "select one" pane.
   const current = filtered.find(p => p.pipeline === params.get('p')) || filtered[0]
   const select = name => setParams(name ? { p: name } : {}, { replace: true })
@@ -385,9 +388,9 @@ export default function Pipelines({ model = '' }) {
                         onClick={() => select(p.pipeline)}
                         name={p.pipeline}
                         sub={pipelineSummary(p.layers)}
-                        meta={p.model && p.model !== p.pipeline
-                          ? <Badge variant="gray" style={{ textTransform: 'none' }}>{p.model}</Badge>
-                          : null}
+                        meta={pipelineModels(p).filter(m => m !== p.pipeline).map(m => (
+                          <Badge key={m} variant="gray" style={{ textTransform: 'none' }}>{m}</Badge>
+                        ))}
                       />
                     </div>
                   ))

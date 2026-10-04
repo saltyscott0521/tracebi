@@ -65,6 +65,11 @@ runner.register(_holdings_manip, name="holdings_silver", schedule="15 * * * *", 
 runner.register(_branches_manip, name="branches_silver", schedule="15 * * * *", depends_on="branches_bronze")
 runner.register(_final, name="aum_by_branch", schedule="30 6 * * *", depends_on="holdings_silver")
 
+# The models this pipeline touches, for the app's model switcher: it lands raw
+# tables seeded from WealthModel and aggregates them by branch.
+runner.model = "WealthModel"
+runner.models = ["WealthModel"]
+
 LAYERS = ["holdings_bronze", "branches_bronze", "holdings_silver", "branches_silver", "aum_by_branch"]
 
 

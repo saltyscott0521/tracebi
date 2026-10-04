@@ -158,6 +158,11 @@ runner.register(_final_by_region,   name="revenue_by_region", schedule="30 6 * *
 runner.register(_final_by_segment,  name="revenue_by_segment", schedule="30 6 * * *",
                 depends_on="orders_silver")
 
+# The models this pipeline touches, for the app's model switcher: it lands raw
+# tables seeded from SalesModel and builds the model that reads its silver tables.
+runner.model = "SalesPipelineModel"
+runner.models = ["SalesModel", "SalesPipelineModel"]
+
 #: Layers in dependency order. `tracebi run-pipeline` derives this itself from
 #: the registrations above; it is named here so seed_and_run() and the tests
 #: agree on what a full pass is.
