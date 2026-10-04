@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { PAGES, pagePath, reportPath, modelOfPipeline } from '../nav'
+import { PAGES, pagePath, reportPagePath, reportModels, modelOfPipeline } from '../nav'
 
 // Static page destinations — always available, even before data loads.
 const PAGES_ALL = [
@@ -12,10 +12,10 @@ const PAGES_ALL = [
 ]
 
 const KIND_META = {
-  page:      { tag: 'Page',      color: '#64748b' },
-  model:     { tag: 'Model',     color: '#1d4ed8' },
-  report:    { tag: 'Report',    color: '#0369a1' },
-  pipeline:  { tag: 'Pipeline',  color: '#0e7490' },
+  page:      { tag: 'Page',      color: 'var(--role-table)' },
+  model:     { tag: 'Model',     color: 'var(--phase-model)' },
+  report:    { tag: 'Report',    color: 'var(--phase-report)' },
+  pipeline:  { tag: 'Pipeline',  color: 'var(--phase-transform)' },
 }
 
 export default function CommandPalette() {
@@ -37,7 +37,7 @@ export default function CommandPalette() {
       kind: 'model',
       sub: `${m.tables.length} tables`,
     })),
-    ...(reports    || []).map(r => ({ label: r.name, path: reportPath(r.name), kind: 'report', sub: r.description })),
+    ...(reports    || []).map(r => ({ label: r.name, path: reportPagePath(r.name, reportModels(r)), kind: 'report', sub: r.description })),
     ...(pipelines  || []).map(p => ({
       label: p.pipeline,
       path: pagePath('refresh', modelOfPipeline(p)),
@@ -159,8 +159,8 @@ export default function CommandPalette() {
               >
                 <span style={{
                   fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5,
-                  color: meta.color, background: `${meta.color}14`,
-                  border: `1px solid ${meta.color}30`, borderRadius: 4,
+                  color: meta.color, background: `color-mix(in srgb, ${meta.color} 8%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${meta.color} 19%, transparent)`, borderRadius: 4,
                   padding: '1px 7px', width: 76, textAlign: 'center', flexShrink: 0,
                 }}>{meta.tag}</span>
                 <span style={{ color: 'var(--text)', fontWeight: i === cursor ? 600 : 400 }}>

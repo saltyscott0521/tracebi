@@ -2,8 +2,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { reportShareUrl, useRuns } from '../api'
 import { verdictOf, when } from '../components/Attention'
-import { PageHeader } from '../components/Scope'
-import { modelOfReport, reportPath } from '../nav'
+import { PageHeader, useReportModels } from '../components/Scope'
+import { reportPagePath } from '../nav'
 import {
   Badge, Spinner, Empty, ErrorDetail,
 } from '../components/Shared'
@@ -52,9 +52,9 @@ function duration(start, end) {
   return `${h}h ${m % 60}m`
 }
 
-function reportPage(run) {
+function reportPage(run, models) {
   if (!run.target || !REPORT_KINDS.has(run.kind)) return null
-  return reportPath(run.target)
+  return reportPagePath(run.target, models)
 }
 
 // A filesystem path is not a URL the app serves. A report run's file is
@@ -80,10 +80,11 @@ function Actor({ run }) {
   )
 }
 
-// A report run's model is its folder. A pipeline's own steps keep their history
-// with the pipeline (Refresh shows it), so a model's Runs are its reports'.
-function runModel(run) {
-  return REPORT_KINDS.has(run.kind) ? modelOfReport(run.target) : ''
+// A report run belongs to the models its report reads. A pipeline's own steps
+// keep their history with the pipeline (Refresh shows it), so a model's Runs
+// are its reports'.
+function runModels(run, modelsOf) {
+  return REPORT_KINDS.has(run.kind) ? modelsOf(run.target) : []
 }
 
 export default function Runs({ model = '' }) {
@@ -102,7 +103,8 @@ export default function Runs({ model = '' }) {
     }, { replace: true })
   }
   const { data, isLoading, error } = useRuns(kind, target.trim())
-  const runs = (Array.isArray(data) ? data : []).filter(r => !model || runModel(r) === model)
+  const modelsOf = useReportModels()
+  const runs = (Array.isArray(data) ? data : []).filter(r => !model || runModels(r, modelsOf).includes(model))
 
   return (
     <>
@@ -156,7 +158,7 @@ export default function Runs({ model = '' }) {
             <tbody>
               {runs.map(run => {
                 const verdict = runVerdict(run.verdict)
-                const page = reportPage(run)
+                const page = reportPage(run, runModels(run, modelsOf))
                 const output = outputHref(run)
                 const dur = duration(run.started, run.finished)
                 return (
@@ -173,7 +175,7 @@ export default function Runs({ model = '' }) {
                         </>
                       )}
                     </td>
-                    {!model && <td style={{ fontSize: 12, color: 'var(--muted)' }}>{runModel(run) || '—'}</td>}
+                    {!model && <td style={{ fontSize: 12, color: 'var(--muted)' }}>{runModels(run, modelsOf).join(', ') || '—'}</td>}
                     <td>
                       <Badge variant={STATUS[run.status] || 'gray'} style={{ textTransform: 'none' }}>
                         {run.status || '—'}

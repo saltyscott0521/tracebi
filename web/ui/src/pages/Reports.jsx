@@ -11,7 +11,7 @@ import {
 import { ReportLineage } from '../components/ReportLineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
 import { ReportArt } from '../components/Art'
-import { PageHeader } from '../components/Scope'
+import { PageHeader, useReportModels } from '../components/Scope'
 import { reportBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
@@ -701,7 +701,8 @@ export default function Reports({ model = '' }) {
     window.scrollTo(0, 0)
   }
 
-  const reports = (data || []).filter(r => reportBelongsToModel(r.name, model))
+  const reports = (data || []).filter(r => reportBelongsToModel(r, model))
+  const modelsOf = useReportModels()
   const filtered = reports.filter(r =>
     r.name.toLowerCase().includes(query.toLowerCase()) ||
     (r.description || '').toLowerCase().includes(query.toLowerCase())
@@ -718,8 +719,8 @@ export default function Reports({ model = '' }) {
     <div className={current ? 'reports-page reports-page--detail' : 'reports-page'}>
       <PageHeader pageKey="reports" model={model} />
 
-      <AttentionStrip items={attentionItems(desk, pipelines)
-        .filter(it => !model || it.model === model)} />
+      <AttentionStrip items={attentionItems(desk, pipelines, modelsOf)
+        .filter(it => !model || it.models.includes(model))} />
 
       {!isLoading && reports.length === 0 ? (
         <Empty message={model

@@ -110,8 +110,18 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
 <li><strong>No blank half-pages.</strong> A list-and-detail page opens on something, not on
   "Select an item" <code>[empty-detail-pane]</code>.</li>
 <li><strong>It is quick.</strong> Every page settles within 2.5s on the reference project
-  <code>[slow-page]</code>.</li>
+  <code>[slow-page]</code>. The JS bundle and the count of hard-coded colours never grow
+  against the baseline <code>[metric:*]</code>.</li>
+<li><strong>Picking a model shows exactly what belongs to it</strong>: each model's Reports
+  and Sources list what the API says it owns <code>[scope-mismatch]</code>; every model a
+  report reads is one the switcher lists <code>[report-model-unlisted]</code>; nothing
+  appears or vanishes while the audit runs <code>[registry-drift]</code>.</li>
+<li><strong>No colour tricks that break themes</strong>: no <code>${colour}22</code> hex-alpha gluing
+  <code>[hex-alpha-concat]</code>.</li>
 </ul>
+<p>Run it on both projects: the reference project, and the demo app
+(<code>--app tracebi.web.demo_app</code>: five models, folder and model names that
+differ). Each has caught what the other could not.</p>
 <p>Checked by eye, from the contact sheet:</p>
 <ul>
 <li><strong>One idea per page.</strong> The title says what the page is, the subtitle says
@@ -148,6 +158,10 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
   the product.</li>
 <li>A control inside a <code>&lt;label&gt;</code> is tapped through the label; the tap-target
   check measures the label.</li>
+<li>What a report belongs to is in its data bindings; its folder is a
+  convention. Ask the API, never infer from a path.</li>
+<li>A check is only trusted once it has failed on the bug it was written for:
+  revert the fix, watch it fail, restore.</li>
 </ul>
   </main>
 </div>

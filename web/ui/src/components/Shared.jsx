@@ -492,7 +492,7 @@ export function ListItem({ selected, onClick, name, sub, right, meta }) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)', overflowWrap: 'anywhere' }}>{name}</div>
+          <div className="list-item__name" style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)', overflowWrap: 'anywhere' }}>{name}</div>
           {sub && (
             <div title={typeof sub === 'string' ? sub : undefined} style={{
               fontSize: 11, color: 'var(--muted)', marginTop: 2,

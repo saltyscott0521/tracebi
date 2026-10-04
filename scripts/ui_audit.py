@@ -48,8 +48,9 @@ VIEWPORTS = {"desktop": (1440, 900), "phone": (390, 844)}
 THEMES = ("light", "dark")
 SEVERITY_WEIGHT = {"critical": 10, "serious": 4, "moderate": 1, "minor": 0}
 SLOW_MS = 2500
-MAX_PAGES = 80
+MAX_PAGES = 120
 PER_PATTERN = 3          # e.g. at most 3 different ?r=<report> pages
+PER_MODEL_PAGE = 8       # every model's pages, up to 8 models
 
 
 # ── serving a project ─────────────────────────────────────────────────────────
@@ -310,6 +311,7 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
     pages: list[dict] = []
 
     queue = seeds(base)
+    at_start = {r["name"] for r in _safe(base, "/api/reports")}
     seen: set[str] = set()
     per_pattern: dict[str, int] = {}
 
@@ -320,7 +322,8 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
             if path in seen:
                 continue
             pat = _pattern(path)
-            if per_pattern.get(pat, 0) >= PER_PATTERN:
+            cap = PER_MODEL_PAGE if pat.startswith("/m/<m>") and "?" not in pat else PER_PATTERN
+            if per_pattern.get(pat, 0) >= cap:
                 continue
             per_pattern[pat] = per_pattern.get(pat, 0) + 1
             seen.add(path)
@@ -401,15 +404,71 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                     record["shots"][f"{vp}-{theme}"] = str(shot.relative_to(out))
                     ctx.close()
             pages.append(record)
+
+        findings += scope_findings(browser, base)
         browser.close()
 
-    findings = _dedupe(findings + token_findings())
+    # Nothing on disk changed during the crawl, so nothing should come or go.
+    # (Live discovery once forgot an app module's own reports 5s after start.)
+    at_end = {r["name"] for r in _safe(base, "/api/reports")}
+    for name in sorted(at_start ^ at_end):
+        findings.append({"page": "/reports", "pattern": "/reports", "viewport": "-", "theme": "-",
+                         "rule": "registry-drift", "severity": "critical", "target": name,
+                         "detail": f"{name} {'vanished' if name in at_start else 'appeared'} during the audit"})
+
+    findings = _dedupe(findings + token_findings() + source_findings())
     report = {"base": base, "when": time.strftime("%Y-%m-%d %H:%M:%S"),
               "pages": pages, "findings": findings, "metrics": static_metrics(),
               "score": score(findings)}
     (out / "findings.json").write_text(json.dumps(report, indent=1))
     (out / "index.html").write_text(contact_sheet(report))
     return report
+
+
+def scope_findings(browser, base: str) -> list[dict]:
+    """Picking a model must show everything that belongs to it, and only that.
+
+    The API says which models each report reads and which models each source
+    feeds; a model's Reports and Sources pages must list exactly those. This
+    caught reports filed in a folder named unlike their model vanishing from
+    it.
+    """
+    out = []
+    reports, connectors = _safe(base, "/api/reports"), _safe(base, "/api/connectors")
+    models = _safe(base, "/api/models")
+    listed = {m["name"] for m in models}
+    for r in reports:
+        stray = [m for m in r.get("models") or [] if m not in listed]
+        if stray:
+            out.append({"page": "/reports", "pattern": "/reports", "viewport": "desktop",
+                        "theme": "light", "rule": "report-model-unlisted", "severity": "critical",
+                        "target": r["name"],
+                        "detail": f"reads {stray}, which the model switcher does not list"})
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    for m in models:
+        name = m["name"]
+        expect = {
+            "reports": {r["name"].rsplit("/", 1)[-1] for r in reports if name in (r.get("models") or [])},
+            "sources": {c["name"] for c in connectors if name in (c.get("used_by") or [])},
+        }
+        for key, want in expect.items():
+            page.goto(f"{base}/m/{urllib.parse.quote(name)}/{key}")
+            _settle(page)
+            try:   # the list can land after the page settles; give it a moment
+                page.wait_for_function(
+                    "n => document.querySelectorAll('main .list-item__name').length >= n",
+                    arg=len(want), timeout=5000)
+            except Exception:
+                pass
+            shown = set(page.eval_on_selector_all(
+                "main .list-item__name", "els => els.map(e => e.innerText.trim())"))
+            if shown != want:
+                out.append({"page": f"/m/{name}/{key}", "pattern": f"/m/<m>/{key}", "viewport": "desktop",
+                            "theme": "light", "rule": "scope-mismatch", "severity": "critical",
+                            "target": f"{key} of {name}",
+                            "detail": f"shows {sorted(shown)}; belongs: {sorted(want)}"})
+    page.close()
+    return out
 
 
 def _slug(path: str) -> str:
@@ -451,7 +510,9 @@ def score(findings: list[dict]) -> int:
 # ── things measured from the source, not the page ─────────────────────────────
 
 TEXT_TOKENS = ("--text", "--text-2", "--muted", "--accent-text",
-               "--green-text", "--amber-text", "--red-text")
+               "--green-text", "--amber-text", "--red-text",
+               "--role-dimension", "--role-fact", "--role-bridge", "--role-table",
+               "--phase-transform", "--phase-model", "--phase-report")
 SURFACE_TOKENS = ("--bg", "--surface", "--surface-2", "--card", "--card-hl")
 
 
@@ -490,6 +551,26 @@ def token_findings() -> list[dict]:
                             "theme": theme, "rule": "token-contrast", "severity": "serious",
                             "target": f"{fg} on {bg}",
                             "detail": f"{t[fg]} on {t[bg]} is {r:.2f}:1 in {theme} (needs 4.5)"})
+    return out
+
+
+def source_findings() -> list[dict]:
+    """Bugs visible in the source before anything renders.
+
+    `${color}22` glues a hex alpha onto a colour. It works only while the
+    colour is a literal hex: the day it becomes a theme token (var(--x)) the
+    result is invalid CSS and the border or wash silently disappears. Use
+    color-mix(in srgb, <colour> 13%, transparent), which takes either.
+    """
+    out = []
+    src = REPO / "web" / "ui" / "src"
+    for p in sorted(src.rglob("*.jsx")):
+        for n, line in enumerate(p.read_text().splitlines(), 1):
+            for m in re.finditer(r"\$\{[\w.]+\}[0-9a-fA-F]{2}\b", line):
+                rel = p.relative_to(src).as_posix()
+                out.append({"page": f"(source) {rel}", "pattern": f"(source) {rel}", "viewport": "-",
+                            "theme": "-", "rule": "hex-alpha-concat", "severity": "moderate",
+                            "target": f"{rel}:{n}", "detail": m.group(0)})
     return out
 
 
@@ -559,6 +640,13 @@ def compare(report: dict, baseline_path: Path) -> list[dict]:
     fixed = before - after
     new = [f for f in report["findings"] if f["key"] not in before]
     print(f"\nvs baseline: score {old['score']} → {report['score']} · fixed {len(fixed)} · new {len(new)}")
+    # Counts that only go down: a new hard-coded colour is a dark-mode bug
+    # waiting, and the bundle is what every visitor downloads.
+    for key in ("hardcoded_colors_in_jsx", "bundle_js_kb"):
+        before, after = old.get("metrics", {}).get(key), report["metrics"].get(key)
+        if before is not None and after is not None and after > before * 1.02:
+            new.append({"severity": "serious", "rule": f"metric:{key}", "page": "(metrics)",
+                        "target": f"{before} → {after}"})
     for f in new:
         print(f"  NEW {f['severity']:9} {f['rule']:24} {f['page']}  {f['target']}")
     return new

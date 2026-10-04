@@ -11,7 +11,7 @@ bottom with the change that closed them.
     under All models. Attribute warehouse tables to the models that read them.
 3. **Bundle is 1.1 MB of JS.** Split routes (React Flow, Markdown, Recharts
     load only on the pages that use them).
-4. **113 hard-coded colours in JSX** — each is a dark-mode bug waiting.
+4. **90 hard-coded colours in JSX** — each is a dark-mode bug waiting.
     Move them to tokens.
 5. **The theme ignores the OS setting**: a first visit is always light. Follow
    `prefers-color-scheme` until the viewer picks one.
@@ -51,3 +51,11 @@ bottom with the change that closed them.
 - **The audit sees the populated app**: it builds every report before
   crawling, so verdicts, receipts and latest builds are checked, not only the
   never-built empty states.
+- **A report belongs to the models it reads**, not the folder it sits in. The
+  reports API returns `models` from each report's data bindings (by the name
+  the switcher lists), so a model's Reports, Runs and attention items are
+  right even when folder and model names differ (the demo app's are).
+- **Live discovery no longer forgets an app module's own reports** five
+  seconds after start; it forgets only what its own scan covers.
+- **Diagram, Refresh and search colours are theme tokens** (`--role-*`,
+  `--phase-*`): readable in dark mode, and no `${colour}22` alpha-gluing.

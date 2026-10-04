@@ -48,14 +48,24 @@ export function whereAmI(pathname) {
   return all ? { model: '', page: all.key } : null
 }
 
-/** A report's model is its folder: reports/<model>/<name>. */
-export function modelOfReport(name) {
+/** The folder a report sits in: reports/<folder>/<name>. */
+function folderOf(name) {
   const i = (name || '').indexOf('/')
   return i === -1 ? '' : name.slice(0, i)
 }
 
-export const reportBelongsToModel = (name, model) =>
-  !model || modelOfReport(name) === model
+/**
+ * The models a report belongs to: the ones its data bindings read (the API's
+ * `models`). Its folder is only the convention, used when nothing is known.
+ */
+export function reportModels(report) {
+  if (report?.models?.length) return report.models
+  const folder = folderOf(report?.name)
+  return folder ? [folder] : []
+}
+
+export const reportBelongsToModel = (report, model) =>
+  !model || reportModels(report).includes(model)
 
 /** A pipeline's model: the one model_pipeline stamped, else its name. */
 export const modelOfPipeline = p => (p && (p.model || p.pipeline)) || ''
@@ -63,10 +73,9 @@ export const modelOfPipeline = p => (p && (p.model || p.pipeline)) || ''
 export const pipelineBelongsToModel = (p, model) =>
   !model || modelOfPipeline(p) === model
 
-/** Where to open a report: in its model's frame when it has one. */
-export function reportPath(name) {
-  const model = modelOfReport(name)
-  return `${pagePath('reports', model)}?${new URLSearchParams({ r: name })}`
+/** Where to open a report: under its (first) model when one is known. */
+export function reportPagePath(name, models = []) {
+  return `${pagePath('reports', models[0] || '')}?${new URLSearchParams({ r: name })}`
 }
 
 const LAST = 'tracebi-model'

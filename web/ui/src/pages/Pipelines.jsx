@@ -26,20 +26,20 @@ const STATUS_BADGE = { success: 'green', error: 'red', running: 'amber' }
 // ── Medallion DAG view ───────────────────────────────────────────────────────
 
 const TYPE_ACCENT = {
-  landing: '#2563eb', bronze: '#2563eb',
-  manipulation: '#6d28d9', silver: '#6d28d9',
-  final: '#059669', gold: '#059669',
+  landing: 'var(--op-landing-tx)', bronze: 'var(--op-landing-tx)',
+  manipulation: 'var(--role-fact)', silver: 'var(--role-fact)',
+  final: 'var(--op-final-tx)', gold: 'var(--op-final-tx)',
 }
 const STATUS_DOT = { success: '#16a34a', failed: '#dc2626', running: '#d97706' }
 
 function LayerNode({ data }) {
-  const accent = TYPE_ACCENT[data.layer.type] || '#64748b'
+  const accent = TYPE_ACCENT[data.layer.type] || 'var(--role-table)'
   const status = data.layer.last_status
   const dot = STATUS_DOT[status] || '#94a3b8'
   return (
     <div style={{
       background: 'var(--surface)',
-      border: `1.5px solid ${accent}38`,
+      border: `1.5px solid color-mix(in srgb, ${accent} 22%, transparent)`,
       borderRadius: 10, minWidth: 200, overflow: 'hidden',
       boxShadow: 'var(--shadow-sm)',
       fontSize: 12,
@@ -48,8 +48,8 @@ function LayerNode({ data }) {
         style={{ background: accent, width: 9, height: 9, border: '2px solid #fff', left: -5 }} />
       <div style={{
         padding: '9px 13px 7px',
-        background: `${accent}0d`,
-        borderBottom: `1px solid ${accent}22`,
+        background: `color-mix(in srgb, ${accent} 5%, transparent)`,
+        borderBottom: `1px solid color-mix(in srgb, ${accent} 13%, transparent)`,
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span className={status === 'running' ? 'pulse-glow' : undefined} style={{
@@ -64,7 +64,7 @@ function LayerNode({ data }) {
           <span style={{
             fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
             padding: '1px 7px', borderRadius: 20,
-            background: `${accent}14`, color: accent, border: `1px solid ${accent}3a`,
+            background: `color-mix(in srgb, ${accent} 8%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 23%, transparent)`,
           }}>{TYPE_LABEL[data.layer.type] || data.layer.type}</span>
           {data.layer.schedule && (
             <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: 'Cascadia Code, Fira Code, monospace' }}>
@@ -83,7 +83,7 @@ function LayerNode({ data }) {
             style={{
               marginLeft: 'auto', padding: '2px 10px', borderRadius: 5,
               fontSize: 10, fontWeight: 700, cursor: data.running ? 'default' : 'pointer',
-              background: `${accent}12`, color: accent, border: `1px solid ${accent}40`,
+              background: `color-mix(in srgb, ${accent} 7%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 25%, transparent)`,
               opacity: data.running ? .5 : 1,
             }}
           >▶ run</button>

@@ -133,3 +133,22 @@ def test_an_analyst_browses_the_model_and_queries_it(served):
 def test_an_unknown_report_is_a_clean_404(served):
     assert served.get("/api/reports/nope/built").status_code == 404
     assert served.get("/r/nope").status_code == 404
+
+
+def test_an_app_modules_own_reports_survive_live_rescans(served, scaffolded):
+    """An app module discovers its own reports folder (the demo app does);
+    the live rescan watches the project's reports/ and must not forget them
+    as "deleted" a few seconds after startup."""
+    import shutil
+
+    from tracebi.registry import registry
+    from tracebi.web import discovery
+
+    app_reports = scaffolded / "app_reports"
+    shutil.copytree(scaffolded / "reports" / "sample_dashboard", app_reports / "app_dashboard")
+    discovery.auto_discover(str(app_reports))
+    assert "app_dashboard" in [r["name"] for r in registry.list_reports()]
+
+    discovery.rescan("reports", "models", "pipelines")
+    assert "app_dashboard" in [r["name"] for r in registry.list_reports()]
+    assert served.get("/api/reports/app_dashboard/source").status_code == 200
