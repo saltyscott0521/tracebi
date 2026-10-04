@@ -13,8 +13,7 @@ disagree with this file on order, this file wins.
 **In one line:** the engine, the agent surface, one-server install, the
 state store, the reader's report experience, the dashboard cookbook, the
 path onto a client's own data, and unattended schedule delivery have
-shipped. The leftovers now are Coolify on the tagged image (E1) and
-Library mounts (E6).
+shipped. The leftover on NOW is Library mounts (E6). E1 Coolify ops are done.
 
 ---
 
@@ -23,10 +22,10 @@ Library mounts (E6).
 ```
                 NOW                              NEXT                        LATER
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-DISTRIBUTION  │ E1 leftover: Coolify │   │                       │   │ PyPI (when development │
-get it into   │    on the tagged img │──▶│                       │   │ settles; held on       │
+DISTRIBUTION  │ E1 / E2 / E3: done   │   │                       │   │ PyPI (when development │
+get it into   │                      │──▶│                       │   │ settles; held on       │
 people's hands│                      │   │                       │   │ purpose)               │
-              │ E3: done             │   │                       │   │                        │
+              │                      │   │                       │   │                        │
               │                      │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
@@ -50,8 +49,9 @@ paths         │                      │   │                       │   │
 
 **Shipped since the 2026-09-24 audit (code on `main`; package is
 `0.7.0.dev0` after the `v0.6.0` release):** E2, E3, E4, E5, E8, E9, E11
-(Teams deferred), E14's buildable pieces, E15, E1's release automation +
-public demo URL, E6's path discovery + `open_report` + Library list.
+(Teams deferred), E14's buildable pieces, E15, E1 (release + Coolify on
+`ghcr.io/…/tracebi:0.6.0`), E6's path discovery + `open_report` + Library
+list.
 The app's data path (Sources → Pipelines → Data model → Explore →
 Reports) is also on `main`.
 
@@ -114,6 +114,7 @@ list them as open, which makes the real gaps harder to see.
 | No dbt import / no `init --template` | ✅ `tracebi import dbt`; `init --template saas-metrics` and `sales-pipeline` | #188 / #190 / #192 |
 | Library list has no schedule, last run, builds, or last change | ✅ Those columns on the Reports list; owner is an em dash until E7 | `Reports.jsx` / #187 |
 | Slack file, bursting, and alert → Runs still open | ✅ Slack file upload plus a short summary, `burst`, and the owner alert links to `/runs` | `schedule.py` / #189 / #191 / #186 |
+| Coolify demo builds from git on every push | ✅ `tracebi-demo` pulls `ghcr.io/saltyscott0521/tracebi:0.6.0`; auto-deploy off; image retention disabled | Coolify / E1 |
 
 ### Still open, by area
 
@@ -121,7 +122,6 @@ list them as open, which makes the real gaps harder to see.
 
 | Finding | Evidence |
 | --- | --- |
-| Coolify pointing the demo at the tagged GHCR image is a person ops step, not verified from the repo. | `docs/guides/one-server.md` |
 | A git install still ships the API with no web UI unless the UI was built (release wheel includes it). | [[ROADMAP]] item 5 |
 
 **Platform**
@@ -155,7 +155,7 @@ M = one to two weeks, L = more).
 
 ### Distribution
 
-#### E1 · Release pipeline — S/M · Now (code done; ops leftovers)
+#### E1 · Release pipeline — S/M · Shipped
 
 **Goal:** a tag produces everything a client installs, and every surface
 shows the same version.
@@ -169,16 +169,16 @@ shows the same version.
 - [x] The CHANGELOG `[Unreleased]` section becomes the release notes.
 - [x] PyPI publish is wired but switched off, so turning it on later is one
       line. (Held on purpose until development settles; `PUBLISH_PYPI`.)
-- [ ] Coolify pulls the tagged image instead of building from `main`, so the
-      demo runs the same bits a client would. *(Person / ops.)*
+- [x] Coolify pulls the tagged image instead of building from `main`, so the
+      demo runs the same bits a client would. (`ghcr.io/saltyscott0521/tracebi:0.6.0`;
+      git auto-deploy off; application image retention disabled on the box.)
 - [x] Fix the demo link in `site/README.md` and make every external link
       agree on one URL. (#163: public demo is `https://tracebi.com/app`;
       `demo.tracebi.com` stays an internal nginx host only.)
 
 **Done when:** `git tag v0.6.0 && git push --tags` produces an image a client
 can `docker pull` and a wheel whose `tracebi serve` shows the UI, both
-reporting `0.6.0`. *(Met for the tag and the public demo URL; Coolify ops
-still open.)*
+reporting `0.6.0`. *(Met — tag, public demo URL, and Coolify on the GHCR image.)*
 
 #### E2 · Run it on one server — M · Shipped
 
