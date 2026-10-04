@@ -366,9 +366,6 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                         if expected_404 and f["rule"] == "not-found":
                             continue
                         findings.append({**where, **f})
-                    if ms > SLOW_MS:
-                        findings.append({**where, "rule": "slow-page", "severity": "moderate",
-                                         "target": "page", "detail": f"settled in {ms}ms"})
 
                     if axe_src and (vp == "desktop" or theme == "light"):
                         page.add_script_tag(content=axe_src)
@@ -403,6 +400,12 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                     page.screenshot(path=str(shot), full_page=True)
                     record["shots"][f"{vp}-{theme}"] = str(shot.relative_to(out))
                     ctx.close()
+            # One slow rendering out of four is the machine; the median is the page.
+            times = sorted(record["ms"].values())
+            if times and times[len(times) // 2] > SLOW_MS:
+                findings.append({"page": path, "pattern": pat, "viewport": "-", "theme": "-",
+                                 "rule": "slow-page", "severity": "moderate", "target": "page",
+                                 "detail": f"settles in a median {times[len(times) // 2]}ms"})
             pages.append(record)
 
         findings += scope_findings(browser, base)

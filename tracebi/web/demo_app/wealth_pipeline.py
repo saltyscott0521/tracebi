@@ -43,7 +43,7 @@ _branches_manip = (
     .drop_nulls().deduplicate(subset=["branch_id"]))
 
 # What the Final layer reads: the cleaned tables, joined the star-schema way.
-wealth_pipeline_model = DataModel("WealthPipelineModel")
+wealth_pipeline_model = DataModel("wealth_pipeline_model")
 wealth_pipeline_model.add_connector(db)
 wealth_pipeline_model.add_table("holdings_silver", connector="demo_db", source="holdings_silver")
 wealth_pipeline_model.add_table("branches_silver", connector="demo_db", source="branches_silver")
@@ -65,10 +65,9 @@ runner.register(_holdings_manip, name="holdings_silver", schedule="15 * * * *", 
 runner.register(_branches_manip, name="branches_silver", schedule="15 * * * *", depends_on="branches_bronze")
 runner.register(_final, name="aum_by_branch", schedule="30 6 * * *", depends_on="holdings_silver")
 
-# The models this pipeline touches, for the app's model switcher: it lands raw
-# tables seeded from WealthModel and aggregates them by branch.
-runner.model = "WealthModel"
-runner.models = ["WealthModel"]
+# The model this pipeline is about, for the app's model switcher: it lands raw
+# tables seeded from wealth_model and aggregates them by branch.
+runner.model = "wealth_model"
 
 LAYERS = ["holdings_bronze", "branches_bronze", "holdings_silver", "branches_silver", "aum_by_branch"]
 
