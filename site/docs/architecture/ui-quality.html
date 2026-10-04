@@ -116,6 +116,9 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
   and Sources list what the API says it owns <code>[scope-mismatch]</code>; every model a
   report reads is one the switcher lists <code>[report-model-unlisted]</code>; nothing
   appears or vanishes while the audit runs <code>[registry-drift]</code>.</li>
+<li><strong>No model is a dead end</strong>: every model has at least one report
+  <code>[model-without-reports]</code>. (The live demo showed three models with none:
+  see the discovery fix under Rules learned.)</li>
 <li><strong>No colour tricks that break themes</strong>: no <code>${colour}22</code> hex-alpha gluing
   <code>[hex-alpha-concat]</code>.</li>
 </ul>
@@ -162,6 +165,9 @@ differ). Each has caught what the other could not.</p>
   convention. Ask the API, never infer from a path.</li>
 <li>A check is only trusted once it has failed on the bug it was written for:
   revert the fix, watch it fail, restore.</li>
+<li>An app that wires its own reports folder (the demo app) fails differently
+  from a project that uses <code>reports/</code>; a green audit on one says nothing about
+  the other. The live site is a third thing: after a deploy, ask its own API.</li>
 </ul>
   </main>
 </div>
