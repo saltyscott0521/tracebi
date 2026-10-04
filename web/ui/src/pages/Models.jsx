@@ -1,13 +1,10 @@
 import { useState, useMemo } from 'react'
-import Chain from '../components/Chain'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
-import { useModelScope } from '../components/ModelScope'
-import { modelBelongsToScope } from '../modelScope'
 import { useModels, useModel, useTablePreview, useDesk, tableCsvUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
@@ -481,25 +478,20 @@ export default function Models() {
   }
 
   const navigate = useNavigate()
-  const [modelScope] = useModelScope()
   const [query, setQuery] = useState('')
 
   const models = data || []
   const filtered = models.filter(m =>
-    modelBelongsToScope(m.name, modelScope) &&
     m.name.toLowerCase().includes(query.toLowerCase())
   )
 
   return (
     <>
-      <Chain current="models" />
       <PageTitle>Models</PageTitle>
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : modelScope
-            ? `Scoped to ${modelScope}.`
-            : `${models.length} model${models.length !== 1 ? 's' : ''}. Open one for its pipeline, contract, explore, and reports.`
+          : `${models.length} model${models.length !== 1 ? 's' : ''}. Open one for its contract, refresh, explore, and reports.`
         }
       </PageSub>
 

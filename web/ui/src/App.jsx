@@ -7,11 +7,10 @@ import Docs from './pages/Docs'
 import Connectors from './pages/Connectors'
 import Models from './pages/Models'
 import ModelHome from './pages/ModelHome'
-import Explore from './pages/Explore'
 import Reports from './pages/Reports'
 import Verify from './pages/Verify'
 import Runs from './pages/Runs'
-import Pipelines from './pages/Pipelines'
+import { ExploreRedirect, PipelinesRedirect } from './pages/LegacyRedirects'
 
 export default function App() {
   return (
@@ -25,11 +24,11 @@ export default function App() {
           <Route path="/connectors" element={<Connectors />} />
           <Route path="/models" element={<Models />} />
           <Route path="/models/:name" element={<ModelHome />} />
-          <Route path="/explore" element={<Explore />} />
+          <Route path="/explore" element={<ExploreRedirect />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/runs" element={<Runs />} />
-          <Route path="/pipelines" element={<Pipelines />} />
+          <Route path="/pipelines" element={<PipelinesRedirect />} />
         </Routes>
       </Layout>
     </ToastProvider>

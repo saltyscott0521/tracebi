@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import Chain from '../components/Chain'
 import { Link } from 'react-router-dom'
 import { useConnectors } from '../api'
 import { StorageLine, KIND_LABEL } from '../components/Storage'
@@ -62,7 +61,6 @@ export default function Connectors() {
 
   return (
     <>
-      <Chain current="sources" />
       <PageTitle>Sources</PageTitle>
       <PageSub>
         {isLoading ? 'Loading…' : `${connectors.length} source${connectors.length !== 1 ? 's' : ''}: where each model's data is kept. A source is a connector: a file, folder or database. A model file declares meaning; the source says where the data is.`}

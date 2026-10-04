@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { CHAIN } from './chainSteps'
-import { NavLink, Link, useSearchParams } from 'react-router-dom'
+import { NAV_PRIMARY, MODEL_TABS } from './chainSteps'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus } from '../api'
-import { pathWithModelScope } from '../modelScope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -56,10 +55,7 @@ const ICONS = {
 // Workspace first; learn/docs below. Verify is intentionally not a primary
 // nav peer — it lives as a quiet footer action so the chrome reads as product
 // surfaces, not a trust marketing strip.
-// The workspace reads in the order the data moves: where it is kept, how it gets
-// there, what it means, ask it, read it (see chainSteps.js).
-const NAV_PRIMARY = CHAIN.map(({ path, label, icon }) => ({ path, label, icon }))
-
+// Primary nav is short: Models (the workspace), Reports (the library), Sources.
 const NAV_SECONDARY = [
   { path: '/workflow',        label: 'Workflow',    icon: 'workflow' },
   { path: '/getting-started', label: 'Get Started', icon: 'guide' },
@@ -82,12 +78,12 @@ function MoonIcon() {
   )
 }
 
-function NavItem({ path, label, icon, onNavigate, model }) {
+function NavItem({ path, label, icon, onNavigate, end }) {
   return (
     <li>
       <NavLink
-        to={pathWithModelScope(path, model)}
-        end={path === '/'}
+        to={path}
+        end={end}
         onClick={onNavigate}
         className="nav-link"
         style={({ isActive }) => ({
@@ -104,21 +100,23 @@ function NavItem({ path, label, icon, onNavigate, model }) {
           background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
         })}
       >
-        <span style={{
-          width: 15, height: 15,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-          opacity: 0.9,
-        }}>
-          {ICONS[icon]}
-        </span>
+        {icon && ICONS[icon] && (
+          <span style={{
+            width: 15, height: 15,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+            opacity: 0.9,
+          }}>
+            {ICONS[icon]}
+          </span>
+        )}
         {label}
       </NavLink>
     </li>
   )
 }
 
-function NavSection({ label, items, onNavigate, model }) {
+function NavSection({ label, items, onNavigate }) {
   return (
     <div style={{ marginBottom: 6 }}>
       {label && (
@@ -135,16 +133,61 @@ function NavSection({ label, items, onNavigate, model }) {
       )}
       <ul style={{ listStyle: 'none', padding: label ? '0 0 4px' : '8px 0 4px' }}>
         {items.map(item => (
-          <NavItem key={item.path} {...item} onNavigate={onNavigate} model={model} />
+          <NavItem key={item.path} {...item} onNavigate={onNavigate} end={item.end} />
         ))}
       </ul>
     </div>
   )
 }
 
+/** While inside /models/:name, show that model's work surfaces under Models. */
+function ModelSubnav({ onNavigate }) {
+  const { pathname, search } = useLocation()
+  const match = pathname.match(/^\/models\/([^/]+)\/?$/)
+  if (!match) return null
+  const name = decodeURIComponent(match[1])
+  const tab = new URLSearchParams(search).get('tab') || 'contract'
+  const base = `/models/${encodeURIComponent(name)}`
+
+  return (
+    <div style={{ margin: '0 8px 8px', padding: '8px 0 4px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{
+        padding: '4px 12px 8px', fontSize: 11, fontWeight: 600,
+        color: 'rgba(200,220,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }} title={name}>
+        {name}
+      </div>
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {MODEL_TABS.map(t => {
+          const to = t.key === 'contract' ? base : `${base}?tab=${t.key}`
+          const active = tab === t.key
+          return (
+            <li key={t.key}>
+              <Link
+                to={to}
+                onClick={onNavigate}
+                style={{
+                  display: 'block',
+                  padding: '6px 12px 6px 20px',
+                  borderRadius: 6,
+                  color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+                  textDecoration: 'none',
+                  fontSize: 12.5,
+                  fontWeight: active ? 600 : 400,
+                  background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
+                }}
+              >
+                {t.label}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 export default function Layout({ children }) {
-  const [params] = useSearchParams()
-  const modelScope = params.get('model') || ''
   const [open, setOpen] = useState(false)
   const { data: health, isSuccess: healthOk } = useHealth()
   const version = healthOk && typeof health?.version === 'string' ? health.version : ''
@@ -273,8 +316,17 @@ export default function Layout({ children }) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          <NavSection items={NAV_PRIMARY} onNavigate={close} model={modelScope} />
-          <NavSection label="Learn" items={NAV_SECONDARY} onNavigate={close} model={modelScope} />
+          <NavSection
+            items={NAV_PRIMARY.map(item => ({
+              ...item,
+              // Exact match on Models so /models/:name doesn't keep "Models" lit
+              // as the only active item — the subnav carries the focus.
+              end: item.path === '/models',
+            }))}
+            onNavigate={close}
+          />
+          <ModelSubnav onNavigate={close} />
+          <NavSection label="Learn" items={NAV_SECONDARY} onNavigate={close} />
         </div>
 
         {/* Footer */}

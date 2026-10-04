@@ -1,8 +1,7 @@
-import { useEffect } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { useModels, usePipelines, useReports } from '../api'
-import { useModelScope } from '../components/ModelScope'
+import { MODEL_TABS } from '../components/chainSteps'
 import { pipelineBelongsToModel, reportBelongsToModel } from '../modelScope'
 import {
   PageTitle, PageSub, Card, Empty, Tabs, ListItem, SkeletonCard, Badge,
@@ -11,39 +10,30 @@ import { ModelDetail } from './Models'
 import { PipelineDetail } from './Pipelines'
 import Explore from './Explore'
 
-const TABS = ['Refresh', 'Contract', 'Explore', 'Reports']
-const TAB_KEYS = {
-  Refresh: 'refresh',
-  Contract: 'contract',
-  Explore: 'explore',
-  Reports: 'reports',
-}
-const KEY_TABS = Object.fromEntries(Object.entries(TAB_KEYS).map(([k, v]) => [v, k]))
+const TAB_LABELS = MODEL_TABS.map(t => t.label)
+const KEY_BY_LABEL = Object.fromEntries(MODEL_TABS.map(t => [t.label, t.key]))
+const LABEL_BY_KEY = Object.fromEntries(MODEL_TABS.map(t => [t.key, t.label]))
 
 /**
- * One model as the unit of work: its pipeline, contract, explore, and reports.
- * Route: /models/:name?tab=contract
+ * One model as the unit of work.
+ * Route: /models/:name?tab=contract|refresh|explore|reports
  */
 export default function ModelHome() {
   const { name } = useParams()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const [modelScope, setModelScope] = useModelScope()
   const { data: models, isLoading: loadingModels } = useModels()
   const { data: pipelines } = usePipelines()
   const { data: reports } = useReports()
 
   const known = (models || []).some(m => m.name === name)
   const tabKey = params.get('tab') || 'contract'
-  const tab = KEY_TABS[tabKey] || 'Contract'
-
-  useEffect(() => {
-    if (name && modelScope !== name) setModelScope(name)
-  }, [name, modelScope, setModelScope])
+  const tab = LABEL_BY_KEY[tabKey] || 'Contract'
+  const activeMeta = MODEL_TABS.find(t => t.label === tab) || MODEL_TABS[0]
 
   const setTab = (label) => {
     const next = new URLSearchParams(params)
-    const key = TAB_KEYS[label] || 'contract'
+    const key = KEY_BY_LABEL[label] || 'contract'
     if (key === 'contract') next.delete('tab')
     else next.set('tab', key)
     setParams(next, { replace: true })
@@ -69,23 +59,21 @@ export default function ModelHome() {
 
   return (
     <>
-      <nav aria-label="Model workspace" style={{
+      <nav aria-label="Breadcrumb" style={{
         display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6,
         fontSize: 11.5, color: 'var(--muted)', marginBottom: 10,
       }}>
-        <Link to="/connectors" style={{ color: 'var(--muted)', textDecoration: 'none' }}>Sources</Link>
-        <span aria-hidden>›</span>
         <Link to="/models" style={{ color: 'var(--muted)', textDecoration: 'none' }}>Models</Link>
         <span aria-hidden>›</span>
         <strong style={{ color: 'var(--accent-text)' }}>{name}</strong>
       </nav>
 
       <PageTitle>{name}</PageTitle>
-      <PageSub>
-        One lineage: refresh its data, read the contract, explore, and open its reports.
-      </PageSub>
+      <PageSub>{activeMeta.ask} {activeMeta.hint}</PageSub>
 
-      <Tabs tabs={TABS} active={tab} onChange={setTab} />
+      <Tabs tabs={TAB_LABELS} active={tab} onChange={setTab} />
+
+      {tab === 'Contract' && <ModelDetail key={name} name={name} />}
 
       {tab === 'Refresh' && (
         pipeline
@@ -100,8 +88,6 @@ export default function ModelHome() {
             </Card>
           )
       )}
-
-      {tab === 'Contract' && <ModelDetail key={name} name={name} />}
 
       {tab === 'Explore' && (
         <Explore key={name} lockedModel={name} embedded />
@@ -119,11 +105,7 @@ export default function ModelHome() {
                   sub={r.description || r.name}
                   meta={<Badge variant="gray">{r.form}</Badge>}
                   onClick={() => {
-                    const q = new URLSearchParams({
-                      r: r.name,
-                      model: name,
-                    })
-                    navigate(`/reports?${q}`)
+                    navigate(`/reports?${new URLSearchParams({ r: r.name })}`)
                   }}
                 />
               </div>

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useGuides } from '../api'
 import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
-import { CHAIN } from '../components/chainSteps'
+import { MODEL_STORY, NAV_PRIMARY } from '../components/chainSteps'
 
 const STEPS = [
   {
@@ -69,19 +69,18 @@ function Guides() {
   )
 }
 
-// How the pieces fit: one picture, in the order the data moves. The sidebar is
-// the same list. What each step is, and where it lives in a project.
+// How the pieces fit: the model is the workspace; these are its surfaces.
 function HowItFits() {
   return (
     <div style={{ marginBottom: 36 }}>
       <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>How the pieces fit</div>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '74ch' }}>
-        Data moves left to right, and the sidebar follows it. A <strong>source</strong> keeps the data.
-        A <strong>pipeline</strong> puts it there. The <strong>data model</strong> says what it means.
-        Reports and Explore only ever ask the model, so a model holds no data and a report holds none either.
+        The sidebar is short: <strong>Models</strong>, <strong>Reports</strong>, <strong>Sources</strong>.
+        Open a model for its contract, refresh, explore, and reports — that is the unit of work.
+        A source keeps the data; a model says what it means; reports only ever ask the model.
       </p>
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-        {CHAIN.map((s, i) => (
+        {MODEL_STORY.map((s, i) => (
           <Link key={s.key} to={s.path} style={{
             textDecoration: 'none', background: 'var(--card)', border: '1px solid var(--border)',
             borderRadius: 12, padding: '14px 16px', display: 'block', position: 'relative',
@@ -137,7 +136,7 @@ export default function GettingStarted() {
       }}>
         <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {CHAIN.map(s => <Link key={s.key} to={s.path} style={LINK_STYLE}>{s.label}</Link>)}
+          {NAV_PRIMARY.map(s => <Link key={s.key} to={s.path} style={LINK_STYLE}>{s.label}</Link>)}
           <Link to="/workflow" style={LINK_STYLE}>↝ Workflow</Link>
         </div>
       </div>
