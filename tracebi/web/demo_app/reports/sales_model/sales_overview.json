@@ -1,0 +1,65 @@
+{
+  "name": "Sales Overview",
+  "author": "TraceBi Demo",
+  "description": "Revenue, units and margin by region and customer tier, straight off the sales model — every figure a live query.",
+  "sections": [
+    {
+      "type": "text",
+      "style": "heading1",
+      "title": "Sales at a glance",
+      "content": "Orders joined to customers through the sales model's declared relationship. Change a region or tier and the figures re-run; nothing here is typed in."
+    },
+    {
+      "type": "metrics",
+      "title": "At a glance",
+      "data": {
+        "model": "SalesModel",
+        "query": { "fact": "fact_orders", "measures": { "revenue": "sum", "qty": "sum", "cost": "sum" } }
+      },
+      "metrics": [
+        { "label": "Revenue", "value": "revenue", "format": "currency0" },
+        { "label": "Units", "value": "qty", "format": "comma" },
+        { "label": "Cost", "value": "cost", "format": "currency0" }
+      ]
+    },
+    {
+      "type": "chart",
+      "title": "Revenue by region",
+      "chart_type": "bar",
+      "x": "dim_customer.region",
+      "y": "revenue",
+      "xlabel": "Region",
+      "ylabel": "Revenue (USD)",
+      "show_values": true,
+      "data": {
+        "model": "SalesModel",
+        "query": {
+          "fact": "fact_orders",
+          "measures": { "revenue": "sum" },
+          "dimensions": ["dim_customer.region"],
+          "order_by": ["-revenue"]
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "By customer tier",
+      "column_labels": {
+        "dim_customer.tier": "Tier",
+        "revenue": "Revenue",
+        "qty": "Units",
+        "cost": "Cost"
+      },
+      "number_formats": { "revenue": "currency0", "cost": "currency0", "qty": "comma" },
+      "totals": ["revenue", "qty", "cost"],
+      "data": {
+        "model": "SalesModel",
+        "query": {
+          "fact": "fact_orders",
+          "measures": { "revenue": "sum", "qty": "sum", "cost": "sum" },
+          "dimensions": ["dim_customer.tier"]
+        }
+      }
+    }
+  ]
+}

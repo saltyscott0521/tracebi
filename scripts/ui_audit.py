@@ -444,6 +444,13 @@ def scope_findings(browser, base: str) -> list[dict]:
                         "theme": "light", "rule": "report-model-unlisted", "severity": "critical",
                         "target": r["name"],
                         "detail": f"reads {stray}, which the model switcher does not list"})
+    # A model nobody can read a report from is a dead end in the app.
+    for m in models:
+        if not any(m["name"] in (r.get("models") or []) for r in reports):
+            out.append({"page": f"/m/{m['name']}/reports", "pattern": "/m/<m>/reports",
+                        "viewport": "desktop", "theme": "light", "rule": "model-without-reports",
+                        "severity": "serious", "target": m["name"],
+                        "detail": f"{m['name']} has no report; its Reports page is empty"})
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     for m in models:
         name = m["name"]

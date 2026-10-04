@@ -49,6 +49,9 @@ Checked by the script (rule name in brackets):
   and Sources list what the API says it owns `[scope-mismatch]`; every model a
   report reads is one the switcher lists `[report-model-unlisted]`; nothing
   appears or vanishes while the audit runs `[registry-drift]`.
+- **No model is a dead end**: every model has at least one report
+  `[model-without-reports]`. (The live demo showed three models with none:
+  see the discovery fix under Rules learned.)
 - **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
   `[hex-alpha-concat]`.
 
@@ -97,4 +100,7 @@ Each fix that taught something general adds a line here.
   convention. Ask the API, never infer from a path.
 - A check is only trusted once it has failed on the bug it was written for:
   revert the fix, watch it fail, restore.
+- An app that wires its own reports folder (the demo app) fails differently
+  from a project that uses `reports/`; a green audit on one says nothing about
+  the other. The live site is a third thing: after a deploy, ask its own API.
 
