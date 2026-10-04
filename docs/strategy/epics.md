@@ -22,10 +22,10 @@ shipped. The leftover on NOW is Library mounts (E6). E1 Coolify ops are done.
 ```
                 NOW                              NEXT                        LATER
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
-DISTRIBUTION  │ E1 leftover: Coolify │   │                       │   │ PyPI (when development │
-get it into   │    on the tagged img │──▶│                       │   │ settles; held on       │
+DISTRIBUTION  │ E1 / E2 / E3: done   │   │                       │   │ PyPI (when development │
+get it into   │                      │──▶│                       │   │ settles; held on       │
 people's hands│                      │   │                       │   │ purpose)               │
-              │ E3: done             │   │                       │   │                        │
+              │                      │   │                       │   │                        │
               │                      │   │                       │   │                        │
               └──────────────────────┘   └───────────────────────┘   └────────────────────────┘
               ┌──────────────────────┐   ┌───────────────────────┐   ┌────────────────────────┐
@@ -49,8 +49,9 @@ paths         │                      │   │                       │   │
 
 **Shipped since the 2026-09-24 audit (code on `main`; package is
 `0.7.0.dev0` after the `v0.6.0` release):** E2, E3, E4, E5, E8, E9, E11
-(Teams deferred), E14's buildable pieces, E15, E1's release automation +
-public demo URL, E6's path discovery + `open_report` + Library list.
+(Teams deferred), E14's buildable pieces, E15, E1 (release + Coolify on
+`ghcr.io/…/tracebi:0.6.0`), E6's path discovery + `open_report` + Library
+list.
 The app's data path (Sources → Pipelines → Data model → Explore →
 Reports) is also on `main`.
 
@@ -154,7 +155,7 @@ M = one to two weeks, L = more).
 
 ### Distribution
 
-#### E1 · Release pipeline — S/M · Now (code done; ops leftovers)
+#### E1 · Release pipeline — S/M · Shipped
 
 **Goal:** a tag produces everything a client installs, and every surface
 shows the same version.
