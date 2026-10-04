@@ -1,7 +1,7 @@
 {
   "name": "Sales Overview",
   "author": "TraceBi Demo",
-  "description": "Revenue, units and margin by region and customer tier, straight off the sales model — every figure a live query.",
+  "description": "Revenue, units and margin by region and customer segment, straight off the sales model — every figure a live query.",
   "sections": [
     {
       "type": "text",
@@ -13,7 +13,7 @@
       "type": "metrics",
       "title": "At a glance",
       "data": {
-        "model": "SalesModel",
+        "model": "sales_model",
         "query": { "fact": "fact_orders", "measures": { "revenue": "sum", "qty": "sum", "cost": "sum" } }
       },
       "metrics": [
@@ -32,7 +32,7 @@
       "ylabel": "Revenue (USD)",
       "show_values": true,
       "data": {
-        "model": "SalesModel",
+        "model": "sales_model",
         "query": {
           "fact": "fact_orders",
           "measures": { "revenue": "sum" },
@@ -43,9 +43,9 @@
     },
     {
       "type": "table",
-      "title": "By customer tier",
+      "title": "By customer segment",
       "column_labels": {
-        "dim_customer.tier": "Tier",
+        "dim_customer.segment": "Segment",
         "revenue": "Revenue",
         "qty": "Units",
         "cost": "Cost"
@@ -53,11 +53,11 @@
       "number_formats": { "revenue": "currency0", "cost": "currency0", "qty": "comma" },
       "totals": ["revenue", "qty", "cost"],
       "data": {
-        "model": "SalesModel",
+        "model": "sales_model",
         "query": {
           "fact": "fact_orders",
           "measures": { "revenue": "sum", "qty": "sum", "cost": "sum" },
-          "dimensions": ["dim_customer.tier"]
+          "dimensions": ["dim_customer.segment"]
         }
       }
     }

@@ -6,6 +6,7 @@ over.
 
     ⓪  INPUT        inputs/holdings.csv                (a raw pull; API export / CSV / SQL)
     ①  TRANSFORM    transforms/holdings_transform.py   → data/warehouse.duckdb
+                    transforms/saas_transform.py       → data/warehouse.duckdb
                     transforms/affordability_transform.py → data/housing.duckdb
     ②  MODEL        models/portfolio_model.py          (a star schema over the sink)
     ③  REPORT       reports/portfolio_model/portfolio_dashboard.json    → data/portfolio_dashboard.html
@@ -50,6 +51,12 @@ def main() -> None:
     summary = transform.run()
     for k, v in summary.items():
         print(f"    {k:20} {v}")
+
+    # The SaaS metrics sample (reports/saas_model) sinks its own tables into the
+    # same warehouse: a billing export cleaned to one row per account per month.
+    # The transform is a plain script; loading it runs it top to bottom.
+    print("① saas transform → sink")
+    _load(os.path.join(ROOT, "transforms", "saas_transform.py"))
 
     # The housing sample (reports/housing_model/affordability) has its own input
     # and warehouse: public annual series, sunk to data/housing.duckdb.

@@ -1,0 +1,43 @@
+{
+  "name": "SaaS Cohort Brief",
+  "author": "tracebi init --template saas-metrics",
+  "description": "Which signup cohort holds ending MRR, then the monthly logo-churn series. Every figure claims a binding on saas_model.",
+  "libs": ["echarts"],
+  "data": {
+    "kpis": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr", "customers", "logo_churn"]
+      }
+    },
+    "top_cohort": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr", "customers"],
+        "dimensions": ["dim_cohort.cohort"],
+        "order_by": ["-ending_mrr"],
+        "limit": 1
+      }
+    },
+    "by_cohort": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr", "customers", "logo_churn"],
+        "dimensions": ["dim_cohort.cohort"],
+        "order_by": ["-ending_mrr"]
+      }
+    },
+    "by_month": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": ["ending_mrr", "customers", "logo_churn"],
+        "dimensions": ["dim_month.month"],
+        "order_by": ["dim_month.month"]
+      }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SaaS MRR Dashboard</title></head>
+<body>
+<main class="tb-page">
+  <header>
+    <h1>Scale leads ending MRR</h1>
+    <p class="tb-lede">
+      <span data-tb-figure="value" data-tb-binding="top_plan"
+            data-tb-cell="dim_plan.plan" id="val-top-plan">—</span>
+      leads ending MRR at
+      <span data-tb-figure="value" data-tb-binding="top_plan"
+            data-tb-cell="ending_mrr" data-tb-format="currency0"
+            id="val-top-mrr">—</span>.
+      The book ends at
+      <span data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="ending_mrr" data-tb-format="currency0"
+            id="val-mrr-inline">—</span>
+      across
+      <span data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="customers" data-tb-format="comma"
+            id="val-customers-inline">—</span>
+      customers, with logo churn of
+      <span data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="logo_churn" data-tb-format="percent"
+            id="val-churn-inline">—</span>.
+    </p>
+    <p class="tb-note">Ending MRR and the customer count are period-end
+      balances: the latest month in the query, summed across plans, never
+      added up across months. Logo churn is logos lost divided by logos at
+      the start of that month.</p>
+  </header>
+
+  <div class="tb-grid">
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="ending_mrr" data-tb-format="currency0" id="kpi-mrr">
+      <span class="tb-kpi-label">Ending MRR</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">latest month in the warehouse</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="customers" data-tb-format="comma" id="kpi-customers">
+      <span class="tb-kpi-label">Customers</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">logos active at that month</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="logo_churn" data-tb-format="percent" id="kpi-churn">
+      <span class="tb-kpi-label">Logo churn</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">lost / starting logos, that month</span>
+    </div>
+  </div>
+
+  <div class="tb-cols-2">
+    <div class="tb-card">
+      <h2>Ending MRR by month</h2>
+      <div data-tb-figure="chart" data-tb-binding="by_month" data-tb-type="line"
+           data-tb-x="dim_month.month" data-tb-y="ending_mrr"
+           data-tb-value-format="compact" id="chart-by-month"></div>
+    </div>
+
+    <div class="tb-card">
+      <h2>Ending MRR by plan</h2>
+      <p class="tb-note">Filter and search subset which stamped rows display.
+        They never compute new numbers.</p>
+      <p>
+        <label>Search
+          <input data-tb-search data-tb-binding="by_plan"
+                 placeholder="type to filter…"></label>
+        <label>Plan
+          <select data-tb-filter data-tb-binding="by_plan"
+                  data-tb-column="dim_plan.plan"></select></label>
+        <button data-tb-download data-tb-binding="by_plan"
+                data-tb-label="Download CSV"></button>
+      </p>
+      <table data-tb-figure="table" data-tb-binding="by_plan" data-tb-sort
+             data-tb-columns="dim_plan.plan, ending_mrr, customers, logo_churn"
+             data-tb-labels="dim_plan.plan=Plan; ending_mrr=Ending MRR; customers=Customers; logo_churn=Logo churn"
+             data-tb-formats="ending_mrr=currency0; customers=comma; logo_churn=percent"
+             data-tb-bars="ending_mrr"
+             class="tb-table--striped" id="tbl-plan"></table>
+    </div>
+  </div>
+
+  <section class="tb-card" data-tb-methodology>
+    <h2>How these numbers were made</h2>
+    <p class="tb-note">The build appends the transform's stated methodology
+      below this line. The claim is that the sink satisfied its contract.</p>
+  </section>
+
+  <section data-tb-stage="exploration">
+    <h3>Working notes</h3>
+    <p>Scratch space: this block renders under <code>tracebi dev</code> and
+       is deleted at the final build.</p>
+  </section>
+</main>
+</body></html>

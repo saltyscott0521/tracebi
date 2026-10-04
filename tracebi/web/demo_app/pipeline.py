@@ -2,7 +2,8 @@
 Medallion pipeline for the demo app.
 
 Defines Landing → Manipulation → Final and exports ``runner`` and
-``pipeline_model`` (the latter for the medallion_revenue report).
+``sales_model`` (a star schema over the cleaned silver tables, which the
+demo's sales reports read).
 
 **Definition and execution are separate here, and which one you get depends on
 where the data lives.** See NOTES.md, "Deployment planes".
@@ -32,19 +33,8 @@ from tracebi import (
     LandingLayer, ManipulationLayer, FinalLayer,
     PipelineRunner,
 )
-from tracebi.model_registry import get_model
-
-# Seed the pipeline from the shared SalesModel's source tables.
-_sales = get_model("sales_model")
-orders_df = _sales.load("orders").to_pandas()
-customers_df = _sales.load("customers").to_pandas()
-
-# Source data — orders with customer_id FK, customers with segment rename
-_orders_raw = orders_df.assign(
-    customer_id=[1, 2, 3, 4, 1, 3, 2, 4, 1, 3]
-)[["order_id", "customer_id", "product", "qty", "revenue", "cost", "status"]]
-
-_customers_raw = customers_df.rename(columns={"tier": "segment"})
+from tracebi.web.demo_app.sample_data import customers_df as _customers_raw
+from tracebi.web.demo_app.sample_data import orders_df as _orders_raw
 
 # Where the pipeline's tables and run history live.
 #
@@ -113,17 +103,17 @@ _customers_manip = (
 )
 
 # DataModel reading from silver tables — star-schema query surface
-pipeline_model = DataModel("SalesPipelineModel")
-pipeline_model.add_connector(db)
-pipeline_model.add_table("orders_silver",    connector="demo_db", source="orders_silver")
-pipeline_model.add_table("customers_silver", connector="demo_db", source="customers_silver")
-pipeline_model.add_dimension(
+sales_model = DataModel("sales_model")
+sales_model.add_connector(db)
+sales_model.add_table("orders_silver",    connector="demo_db", source="orders_silver")
+sales_model.add_table("customers_silver", connector="demo_db", source="customers_silver")
+sales_model.add_dimension(
     name="dim_customer",
     table_name="customers_silver",
     key_col="customer_id",
     attributes=["region", "segment"],
 )
-pipeline_model.add_fact(
+sales_model.add_fact(
     name="fact_orders",
     table_name="orders_silver",
     measures=["revenue", "qty", "cost"],
@@ -132,13 +122,13 @@ pipeline_model.add_fact(
 
 # Final / serving layers
 _final_by_region = FinalLayer(
-    model=pipeline_model, fact="fact_orders",
+    model=sales_model, fact="fact_orders",
     measures={"revenue": "sum", "qty": "sum", "cost": "sum"},
     dimensions=["dim_customer.region"],
     sink=db, sink_table="gold_revenue_by_region",
 )
 _final_by_segment = FinalLayer(
-    model=pipeline_model, fact="fact_orders",
+    model=sales_model, fact="fact_orders",
     measures={"revenue": "sum", "order_id": "count"},
     dimensions=["dim_customer.segment"],
     filters={"status": "shipped"},
@@ -158,10 +148,8 @@ runner.register(_final_by_region,   name="revenue_by_region", schedule="30 6 * *
 runner.register(_final_by_segment,  name="revenue_by_segment", schedule="30 6 * * *",
                 depends_on="orders_silver")
 
-# The models this pipeline touches, for the app's model switcher: it lands raw
-# tables seeded from SalesModel and builds the model that reads its silver tables.
-runner.model = "SalesPipelineModel"
-runner.models = ["SalesModel", "SalesPipelineModel"]
+# The model this pipeline builds, for the app's model switcher.
+runner.model = "sales_model"
 
 #: Layers in dependency order. `tracebi run-pipeline` derives this itself from
 #: the registrations above; it is named here so seed_and_run() and the tests

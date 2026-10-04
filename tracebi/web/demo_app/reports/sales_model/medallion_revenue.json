@@ -13,7 +13,7 @@
       "type": "metrics",
       "title": "At a glance",
       "data": {
-        "model": "SalesPipelineModel",
+        "model": "sales_model",
         "query": { "fact": "fact_orders", "measures": { "revenue": "sum" } }
       },
       "metrics": [
@@ -30,7 +30,7 @@
       "ylabel": "Revenue (USD)",
       "show_values": true,
       "data": {
-        "model": "SalesPipelineModel",
+        "model": "sales_model",
         "query": {
           "fact": "fact_orders",
           "measures": { "revenue": "sum" },
@@ -50,7 +50,7 @@
       "number_formats": { "revenue": "currency0", "cost": "currency0", "qty": "comma" },
       "totals": ["revenue", "qty", "cost"],
       "data": {
-        "model": "SalesPipelineModel",
+        "model": "sales_model",
         "query": {
           "fact": "fact_orders",
           "measures": { "revenue": "sum", "qty": "sum", "cost": "sum" },
@@ -68,7 +68,7 @@
       "ylabel": "Revenue (USD)",
       "show_values": true,
       "data": {
-        "model": "SalesPipelineModel",
+        "model": "sales_model",
         "query": {
           "fact": "fact_orders",
           "measures": { "revenue": "sum", "order_id": "count" },
@@ -88,7 +88,7 @@
       "number_formats": { "revenue": "currency0", "order_id": "comma" },
       "totals": ["revenue", "order_id"],
       "data": {
-        "model": "SalesPipelineModel",
+        "model": "sales_model",
         "query": {
           "fact": "fact_orders",
           "measures": { "revenue": "sum", "order_id": "count" },

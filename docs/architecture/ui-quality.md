@@ -59,8 +59,8 @@ Checked by the script (rule name in brackets):
   `[hex-alpha-concat]`.
 
 Run it on both projects: the reference project, and the demo app
-(`--app tracebi.web.demo_app`: five models, folder and model names that
-differ). Each has caught what the other could not.
+(`--app tracebi.web.demo_app`: its own models, reports folder and pipelines,
+registered by an app module rather than found under `reports/`). Each has caught what the other could not.
 
 Checked by eye, from the contact sheet:
 

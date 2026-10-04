@@ -23,6 +23,8 @@ REPORTS = {
     "portfolio_model/portfolio_concentration": "portfolio_model/portfolio_concentration",
     "portfolio_model/portfolio_showcase": "portfolio_model/portfolio_showcase",
     "housing_model/affordability": "housing_model/affordability",
+    "saas_model/mrr_dashboard": "saas_model/mrr_dashboard",
+    "saas_model/cohort_brief": "saas_model/cohort_brief",
 }
 
 
@@ -41,7 +43,7 @@ def built(tmp_path_factory):
     pipeline_registry._auto_discovered = False
     os.chdir(proj)
     try:
-        for transform in ("holdings_transform", "affordability_transform"):
+        for transform in ("holdings_transform", "saas_transform", "affordability_transform"):
             code, out = run_cli("run-transform", transform)
             assert code == 0, out
         for name in REPORTS:
@@ -76,7 +78,7 @@ def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(buil
     from tracebi.pipeline.model_pipeline import reports_of
 
     models = sorted(p.stem for p in (built / "models").glob("*.py") if not p.stem.startswith("_"))
-    assert models == ["housing_model", "portfolio_model"]
+    assert models == ["housing_model", "portfolio_model", "saas_model"]
     for model in models:
         names = reports_of(model)
         assert names, f"reports/{model}/ has no reports"
@@ -87,7 +89,7 @@ def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(buil
     assert model_pipeline  # exported at the top level for project pipelines
 
 
-@pytest.mark.parametrize("model", ["portfolio_model", "housing_model"])
+@pytest.mark.parametrize("model", ["portfolio_model", "housing_model", "saas_model"])
 def test_a_models_pipeline_rebuilds_its_data_then_its_reports(built, model):
     from tracebi.pipeline.model_pipeline import reports_of
 

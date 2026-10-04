@@ -1,5 +1,5 @@
 """
-WealthModel — banking / wealth-management demo DataModel.
+wealth_model — banking / wealth-management demo DataModel.
 
 A six-table star schema (clients, branches, products, accounts, holdings,
 activities) backed by a single MemoryConnector. Lives at the project root so
@@ -168,7 +168,7 @@ connector = MemoryConnector("banking", tables={
 
 # ── DataModel ──────────────────────────────────────────────────────────────────
 
-model = DataModel("WealthModel")
+model = DataModel("wealth_model")
 model.add_connector(connector)
 
 model.add_table("clients",    connector="banking", source="clients")
