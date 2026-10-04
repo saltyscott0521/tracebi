@@ -6,11 +6,23 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette.background import BackgroundTask
 
+from tracebi.reports.live_fonts import with_live_fonts
 from tracebi.web.api.errors import error_detail as _error_detail
 from tracebi.web.api.registry import registry
 from tracebi.web.api.run_store import run_store
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+def _view_payload(payload: dict) -> dict:
+    """Copy a build payload with live-view fonts on the HTML.
+
+    Download and on-disk ``output/*.html`` keep the offline ``system-ui``
+    stack; only browser views through this API get Source Sans 3.
+    """
+    out = dict(payload)
+    out["html"] = with_live_fonts(payload.get("html") or "")
+    return out
 
 
 def _safe_filename(name: str) -> str:
@@ -471,9 +483,10 @@ def _last_build(name: str) -> dict:
 def built_report(name: str):
     """The last build: on disk, in the run store, or built once if there is none.
 
-    Report opens this. Rebuild is a separate action.
+    Report opens this. Rebuild is a separate action. The HTML carries the
+    live-view typefaces; the file on disk does not.
     """
-    return _last_build(name)
+    return _view_payload(_last_build(name))
 
 
 @router.post("/{name:path}/run")
@@ -483,13 +496,14 @@ def run_report(name: str):
 
     The HTML is self-contained and can be rendered in an iframe with srcdoc.
     It is the real artifact render (embedded data, figure claims), so what
-    the browser shows is what ``verify --file`` can check.
+    the browser shows is what ``verify --file`` can check. Live-view fonts
+    are injected for the iframe only; download stays offline-clean.
     """
     # Outside the render try: a refusal from the read seam must not become
     # a generic 500.
     _opened_report(name, "view")
     try:
-        return _artifact_payload_or_refuse(name)
+        return _view_payload(_artifact_payload_or_refuse(name))
     except HTTPException:
         raise
     except Exception as exc:
@@ -497,7 +511,11 @@ def run_report(name: str):
 
 
 def _render_report_payload(name: str) -> dict:
-    """Run + render a report; shared by the sync and background paths."""
+    """Run + render a report; shared by the sync and background paths.
+
+    Background runs store the offline HTML (no live fonts). The poll
+    endpoint re-applies fonts when a viewer reads the result.
+    """
     return _artifact_payload_or_refuse(name)
 
 
@@ -536,6 +554,11 @@ def report_run_status(name: str, run_id: str):
         raise HTTPException(
             status_code=404, detail=f"Run '{run_id}' not found for report '{name}'"
         )
+    # Stored result keeps offline HTML; apply live fonts only for the viewer.
+    if record.get("status") == "succeeded" and isinstance(record.get("result"), dict):
+        out = dict(record)
+        out["result"] = _view_payload(record["result"])
+        return out
     return record
 
 
@@ -728,16 +751,18 @@ def report_lineage(name: str):
 
 
 # ── Share link ──────────────────────────────────────────────────────────────
-# ``/r/<name>`` is the report itself as a full page: the last build, the same
-# bytes the HTML download carries, served inline so a phone's browser runs the
-# charts and calculators. It sits outside /api so the link reads like a page.
-# Access follows the server's auth like every other GET: open on a server with
-# no auth configured (a public demo), a viewer login otherwise. The page's own
-# CSP has connect-src 'none', so its scripts cannot call this API.
+# ``/r/<name>`` is the report itself as a full page: the last build, served
+# inline so a phone's browser runs the charts and calculators. Live-view
+# typefaces are injected here; the HTML download stays the offline file
+# (system-ui, no font bytes). It sits outside /api so the link reads like a
+# page. Access follows the server's auth like every other GET: open on a
+# server with no auth configured (a public demo), a viewer login otherwise.
+# The page's own CSP has connect-src 'none', so its scripts cannot call this
+# API.
 
 share_router = APIRouter(tags=["reports"])
 
 
 @share_router.get("/r/{name:path}", response_class=HTMLResponse)
 def share_report(name: str):
-    return HTMLResponse(_last_build(name.strip("/"))["html"])
+    return HTMLResponse(with_live_fonts(_last_build(name.strip("/"))["html"]))
