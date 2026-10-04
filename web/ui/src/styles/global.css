@@ -74,6 +74,12 @@
      put the light-on-dark wordmark onto a light bar in dark mode. */
   --header-bg:   rgba(238,242,248,0.92);
 
+  /* A table's role in a star schema, wherever a diagram draws one. */
+  --role-dimension: #2563eb;
+  --role-fact:      #6d28d9;
+  --role-bridge:    #9a4508;
+  --role-table:     #526175;
+
   /* The three phases, wherever they are drawn. */
   --phase-transform: #0e7490;
   --phase-model:     #1d4ed8;
@@ -196,6 +202,11 @@
      this ground — page titles were effectively invisible in dark mode. */
   --brand-text:  linear-gradient(135deg, #7ab4f0 0%, #38bdf8 100%);
   --header-bg:   rgba(13,22,35,0.92);
+
+  --role-dimension: #93c5fd;
+  --role-fact:      #c4b5fd;
+  --role-bridge:    #fbbf24;
+  --role-table:     #94a3b8;
 
   --phase-transform: #22d3ee;
   --phase-model:     #93c5fd;

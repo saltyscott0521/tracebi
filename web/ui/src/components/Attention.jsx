@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge } from './Shared'
-import { modelOfPipeline, modelOfReport, pagePath, reportPath } from '../nav'
+import { modelOfPipeline, pagePath, reportPagePath } from '../nav'
 
 // What needs a person, from GET /api/desk plus the pipelines list: review
 // notes, receipts that don't reproduce, failed refreshes, and sink checks
@@ -46,18 +46,20 @@ export function when(iso) {
     : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function reportHref(name) {
-  return name && name !== '_discovery' ? reportPath(name) : null
+function reportHref(name, models) {
+  return name && name !== '_discovery' ? reportPagePath(name, models) : null
 }
 
-export function attentionItems(desk, pipelines) {
+// Each item carries `models`: the models it is about (none = the project).
+// *modelsOf* maps a report name to the models it reads.
+export function attentionItems(desk, pipelines, modelsOf = () => []) {
   const items = []
   for (const pin of desk?.pins || []) {
     items.push({
       key: `pin-${pin.report}-${pin.id}`, kind: 'Review note', variant: 'blue',
-      model: modelOfReport(pin.report),
+      models: modelsOf(pin.report),
       title: pin.report === '_discovery' ? 'Project workbench' : pin.report,
-      detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report),
+      detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report, modelsOf(pin.report)),
     })
   }
   for (const row of desk?.verdicts || []) {
@@ -65,9 +67,9 @@ export function attentionItems(desk, pipelines) {
     const v = verdictOf(row.verdict)
     items.push({
       key: `verdict-${row.report}`, kind: v.label, variant: v.variant,
-      model: modelOfReport(row.report),
+      models: modelsOf(row.report),
       title: row.report, detail: v.detail || row.detail || 'Its last build needs a look.',
-      href: reportHref(row.report),
+      href: reportHref(row.report, modelsOf(row.report)),
     })
   }
   for (const p of pipelines || []) {
@@ -75,7 +77,7 @@ export function attentionItems(desk, pipelines) {
       if (l.last_status !== 'failed') continue
       items.push({
         key: `run-${p.pipeline}-${l.name}`, kind: 'Refresh failed', variant: 'red',
-        model: modelOfPipeline(p),
+        models: [modelOfPipeline(p)],
         title: `${p.pipeline} / ${l.name}`,
         detail: `Last run ${when(l.last_run) || 'recently'}`,
         href: pagePath('refresh', p.model || ''),
@@ -86,7 +88,7 @@ export function attentionItems(desk, pipelines) {
     items.push({
       key: `sink-${s.table}`, kind: s.status === 'stale' ? 'Checks stale' : 'No checks',
       variant: s.status === 'stale' ? 'amber' : 'gray',
-      model: '', title: s.table, detail: SINK[s.status] || s.status, href: '/models',
+      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/models',
     })
   }
   return items

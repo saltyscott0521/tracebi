@@ -545,7 +545,7 @@ def rescan(reports_dir: str, models_dir: Optional[str] = None,
     ``TRACEBI_LIBRARY_MOUNTS``.
     """
     found = _report_sources(reports_dir) if os.path.isdir(reports_dir) else {}
-    return _apply_report_sources(found, models_dir, pipelines_dir)
+    return _apply_report_sources(found, models_dir, pipelines_dir, [reports_dir])
 
 
 def rescan_library(models_dir: Optional[str] = None,
@@ -554,16 +554,27 @@ def rescan_library(models_dir: Optional[str] = None,
     from tracebi.report_paths import library_roots
 
     found: dict[str, str] = {}
+    roots = []
     for label, root in library_roots():
+        roots.append(str(root))
         if not root.is_dir():
             continue
         pfx = f"{label}/" if label else ""
         found.update(_report_sources(str(root), pfx))
-    return _apply_report_sources(found, models_dir, pipelines_dir)
+    return _apply_report_sources(found, models_dir, pipelines_dir, roots)
+
+
+def _within(path: str, roots: list[str]) -> bool:
+    path = os.path.abspath(path)
+    for root in roots:
+        root = os.path.abspath(root)
+        if path == root or path.startswith(root + os.sep):
+            return True
+    return False
 
 
 def _apply_report_sources(found: dict[str, str], models_dir: Optional[str],
-                          pipelines_dir: Optional[str]) -> dict:
+                          pipelines_dir: Optional[str], roots: list[str]) -> dict:
     from tracebi.registry import registry
 
     added, removed, failed = [], [], []
@@ -585,7 +596,11 @@ def _apply_report_sources(found: dict[str, str], models_dir: Optional[str],
         else:
             _failed_sources[name] = (source, times)
             failed.append(name)
-    for name in [n for n in _live_reports if n not in found]:
+    # Forget only what this scan could have seen. A report an app module
+    # discovered from its own folder is not under these roots; its absence
+    # here is not a deletion (the demo app's reports vanished 5s after start).
+    for name in [n for n in _live_reports
+                 if n not in found and _within(_live_reports[n], roots)]:
         registry.remove_report(name)
         del _live_reports[name]
         _outcomes[:] = [o for o in _outcomes if o.get("module") != name]

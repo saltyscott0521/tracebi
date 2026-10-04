@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
@@ -85,25 +86,77 @@ def _schedule_of(report_json) -> dict | None:
     return {"cron": cron, "timezone": tz if isinstance(tz, str) and tz else None}
 
 
-def _library_package(name: str) -> tuple[dict | None, str | None]:
-    """Schedule and last-change time for one report, via :func:`open_report`.
+def _models_named(doc) -> list[str]:
+    """Every model a report's data bindings read, in ``report.json`` or a spec.
 
-    An on-disk package uses ``report.json`` and ``template.html``. A spec
-    uses the spec file: its compiled package is a temp dir rewritten at
-    discovery, so that mtime is not a change the author made.
+    A binding is ``{"model": ..., "query": ...}`` wherever it sits. This is
+    what a report belongs to; its folder is only a convention.
+    """
+    found: set[str] = set()
+
+    def walk(node) -> None:
+        if isinstance(node, dict):
+            if isinstance(node.get("model"), str) and "query" in node:
+                found.add(node["model"])
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(doc)
+    return sorted(found)
+
+
+def _library_package(name: str) -> tuple[dict | None, str | None, list[str]]:
+    """Schedule, last-change time and the models read, for one report.
+
+    Via :func:`open_report`. An on-disk package uses ``report.json`` and
+    ``template.html``. A spec uses the spec file: its compiled package is a
+    temp dir rewritten at discovery, so that mtime is not a change the author
+    made.
     """
     opened = _opened_report(name, "view")
     if opened.package_dir is not None:
+        manifest = opened.package_dir / "report.json"
         return (
-            _schedule_of(opened.package_dir / "report.json"),
-            _newer_mtime(
-                opened.package_dir / "report.json",
-                opened.package_dir / "template.html",
-            ),
+            _schedule_of(manifest),
+            _newer_mtime(manifest, opened.package_dir / "template.html"),
+            _models_in(manifest),
         )
     if opened.spec_path is not None and opened.spec_path.is_file():
-        return None, _newer_mtime(opened.spec_path)
-    return None, None
+        return None, _newer_mtime(opened.spec_path), _models_in(opened.spec_path)
+    # Registered by an app module rather than found under reports/: the
+    # registry knows its package (a spec's is the compiled one).
+    if opened.registry_package_dir:
+        return None, None, _models_in(Path(opened.registry_package_dir) / "report.json")
+    return None, None, []
+
+
+def _models_in(path) -> list[str]:
+    try:
+        named = _models_named(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        return []
+    return sorted({_listed_name(n) for n in named})
+
+
+def _listed_name(name: str) -> str:
+    """The name the app lists a model under, for a name a binding used.
+
+    A binding may name a model by its file stem (``wealth_model``, how the
+    model registry finds it) or by the name it declares (``WealthModel``, how
+    the app lists it); the renderer accepts both. The app shows declared
+    names, so that is the one a report belongs to.
+    """
+    if registry.get_model(name) is not None:
+        return name
+    try:
+        from tracebi.model_registry import get_model
+        declared = getattr(get_model(name), "name", None)
+    except Exception:  # noqa: BLE001 — an unloadable model keeps the name it was given
+        return name
+    return declared if declared and registry.get_model(declared) is not None else name
 
 
 def _library_runs() -> tuple[dict, dict]:
@@ -134,13 +187,15 @@ def list_reports():
     last_runs, build_counts = _library_runs()
     out = []
     for item in registry.list_reports():
-        schedule, last_change = _library_package(item["name"])
+        schedule, last_change, models = _library_package(item["name"])
         out.append({
             **item,
             "schedule": schedule,
             "last_run": last_runs.get(item["name"]),
             "past_builds": build_counts.get(item["name"], 0),
             "last_change": last_change,
+            # What it belongs to: the models its data bindings read.
+            "models": models,
         })
     return out
 

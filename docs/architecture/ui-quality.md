@@ -43,7 +43,18 @@ Checked by the script (rule name in brackets):
 - **No blank half-pages.** A list-and-detail page opens on something, not on
   "Select an item" `[empty-detail-pane]`.
 - **It is quick.** Every page settles within 2.5s on the reference project
-  `[slow-page]`.
+  `[slow-page]`. The JS bundle and the count of hard-coded colours never grow
+  against the baseline `[metric:*]`.
+- **Picking a model shows exactly what belongs to it**: each model's Reports
+  and Sources list what the API says it owns `[scope-mismatch]`; every model a
+  report reads is one the switcher lists `[report-model-unlisted]`; nothing
+  appears or vanishes while the audit runs `[registry-drift]`.
+- **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
+  `[hex-alpha-concat]`.
+
+Run it on both projects: the reference project, and the demo app
+(`--app tracebi.web.demo_app`: five models, folder and model names that
+differ). Each has caught what the other could not.
 
 Checked by eye, from the contact sheet:
 
@@ -82,4 +93,8 @@ Each fix that taught something general adds a line here.
   the product.
 - A control inside a `<label>` is tapped through the label; the tap-target
   check measures the label.
+- What a report belongs to is in its data bindings; its folder is a
+  convention. Ask the API, never infer from a path.
+- A check is only trusted once it has failed on the bug it was written for:
+  revert the fix, watch it fail, restore.
 

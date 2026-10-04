@@ -80,17 +80,17 @@ function TablePreview({ modelName, tableName }) {
 // ── ERD Diagram ──────────────────────────────────────────────────────────────
 
 const ROLE_STYLES = {
-  dimension: { header: 'var(--op-landing-bg)',      accent: '#2563eb', label: 'Dimension' },
-  fact:      { header: 'var(--op-manipulation-bg)', accent: '#6d28d9', label: 'Fact' },
-  bridge:    { header: 'var(--op-transform-bg)',    accent: '#b45309', label: 'Bridge' },
-  table:     { header: 'var(--op-default-bg)',      accent: '#64748b', label: 'Table' },
+  dimension: { header: 'var(--op-landing-bg)',      accent: 'var(--role-dimension)', label: 'Dimension' },
+  fact:      { header: 'var(--op-manipulation-bg)', accent: 'var(--role-fact)', label: 'Fact' },
+  bridge:    { header: 'var(--op-transform-bg)',    accent: 'var(--role-bridge)', label: 'Bridge' },
+  table:     { header: 'var(--op-default-bg)',      accent: 'var(--role-table)', label: 'Table' },
 }
 
 // PK / FK / Σ: a text badge, not an icon, so it reads in any theme and print.
 const FLAG_STYLES = {
   PK:  { color: 'var(--op-gold-tx)', border: 'var(--op-gold-br)', title: 'Primary key: the dimension\'s join key' },
   FK:  { color: 'var(--accent-text)', border: 'var(--blue-br)',   title: 'Foreign key: joins to a dimension' },
-  'Σ': { color: '#6d28d9',            border: '#6d28d940',        title: 'A measure column on the fact' },
+  'Σ': { color: 'var(--role-fact)',   border: 'color-mix(in srgb, var(--role-fact) 25%, transparent)', title: 'A measure column on the fact' },
 }
 
 const MONO = 'Cascadia Code, Fira Code, monospace'
@@ -100,7 +100,7 @@ function ERDTableNode({ data }) {
   const rs = ROLE_STYLES[data.role] || ROLE_STYLES.table
   return (
     <div style={{
-      background: 'var(--surface)', border: `1.5px solid ${rs.accent}38`,
+      background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${rs.accent} 22%, transparent)`,
       borderRadius: 10, width: 300, overflow: 'hidden',
       boxShadow: data.selected ? `0 0 0 2px ${rs.accent}` : 'var(--shadow-sm)',
       fontSize: 12, cursor: 'pointer',
@@ -108,7 +108,7 @@ function ERDTableNode({ data }) {
       <Handle id="in-l" type="target" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
       <Handle id="out-l" type="source" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
 
-      <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid ${rs.accent}26`, height: 62, boxSizing: 'border-box' }}>
+      <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid color-mix(in srgb, ${rs.accent} 15%, transparent)`, height: 62, boxSizing: 'border-box' }}>
         <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text)', letterSpacing: .15, marginBottom: 4 }}>
           {data.label}
         </div>
@@ -116,7 +116,7 @@ function ERDTableNode({ data }) {
           <span style={{
             fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
             padding: '1px 7px', borderRadius: 20,
-            background: 'var(--surface)', color: rs.accent, border: `1px solid ${rs.accent}3a`,
+            background: 'var(--surface)', color: rs.accent, border: `1px solid color-mix(in srgb, ${rs.accent} 23%, transparent)`,
           }}>{rs.label}</span>
           {data.connector && <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{data.connector}</span>}
         </div>
@@ -486,7 +486,7 @@ export default function Models({ pageKey = 'model' }) {
   if (legacy) return <Navigate to={pagePath(pageKey, legacy)} replace />
 
   const models = data || []
-  const reportCount = name => (reports || []).filter(r => reportBelongsToModel(r.name, name)).length
+  const reportCount = name => (reports || []).filter(r => reportBelongsToModel(r, name)).length
   const refreshes = name => (pipelines || []).some(p => pipelineBelongsToModel(p, name))
 
   return (

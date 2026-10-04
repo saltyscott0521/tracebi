@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { useModels } from '../api'
+import { useModels, useReports } from '../api'
 import {
-  PAGES, page, pagePath, whereAmI, rememberModel, lastModel,
+  PAGES, page, pagePath, whereAmI, rememberModel, lastModel, reportModels,
 } from '../nav'
 import { PageTitle, PageSub, SkeletonCard, Empty } from './Shared'
 
@@ -38,6 +38,15 @@ export function ModelSwitcher({ model, onNavigate }) {
       </select>
     </label>
   )
+}
+
+/** report name → the models it reads, from the (cached) report list. */
+export function useReportModels() {
+  const { data } = useReports()
+  return useMemo(() => {
+    const index = new Map((data || []).map(r => [r.name, reportModels(r)]))
+    return name => index.get(name) || []
+  }, [data])
 }
 
 /** Every page's heading: the model it is about, the page, what it is for. */
