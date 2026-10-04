@@ -5,31 +5,25 @@ bottom with the change that closed them.
 
 ## Open
 
-1. **Lists are clickable divs** `[click-not-keyboard]`: `ListItem` and the
-   Verify drop zone can't be reached by keyboard. Make them buttons.
-2. **Phone header button has no name** `[axe:button-name]`, and the header
-   is outside any landmark `[axe:region]`.
-3. **Contrast** `[axe:color-contrast]`: diagram node labels, report list
-   meta text, badges in dark mode.
-4. **Reports opens on "Pick a report"** `[empty-detail-pane]`: half the page
+1. **Reports opens on "Pick a report"** `[empty-detail-pane]`: half the page
    blank on desktop. Show what needs attention and the latest builds there.
-5. **The phone hides which model you are in.** The switcher lives in the
-   drawer; the header says only "TraceBi". Show the model in the header.
-6. **Diagram edges take keyboard focus with no ring** `[no-focus-ring]`, and
-   a keyboard user tabs through every edge before reaching anything useful.
-7. **Code blocks scroll but can't be focused**
+2. **Code blocks scroll but can't be focused**
    `[axe:scrollable-region-focusable]` on Get Started and Workflow.
-8. **Learn has three pages telling one story** (Get Started, Docs,
+3. **Learn has three pages telling one story** (Get Started, Docs,
    Workflow), and Workflow is in no menu `[nav-you-are-here]`. Fold
    Workflow into Get Started.
-9. **Words a reader doesn't use**: "semantic contract", "DuckDBConnector"
+4. **Words a reader doesn't use**: "semantic contract", "DuckDBConnector"
    as a badge, "STEP / never run" in the Refresh flow.
-10. **"Checks stale" items name no model**: a stale sink check shows only
+5. **"Checks stale" items name no model**: a stale sink check shows only
     under All models. Attribute warehouse tables to the models that read them.
-11. **Bundle is 1.1 MB of JS.** Split routes (React Flow, Markdown, Recharts
+6. **Bundle is 1.1 MB of JS.** Split routes (React Flow, Markdown, Recharts
     load only on the pages that use them).
-12. **113 hard-coded colours in JSX** — each is a dark-mode bug waiting.
+7. **113 hard-coded colours in JSX** — each is a dark-mode bug waiting.
     Move them to tokens.
+8. **The theme ignores the OS setting**: a first visit is always light. Follow
+   `prefers-color-scheme` until the viewer picks one.
+9. **`Btn` drops a caller's colours**: its variant styles are applied after
+    `style`, so `style={{ background }}` is silently overridden.
 
 ## Done
 
@@ -43,3 +37,15 @@ bottom with the change that closed them.
 - **Unknown URLs render a real "Page not found"** `[blank-page]`.
 - **Sources opens on its first source**, not a blank pane; the model page no
   longer repeats the model's name or stacks two rows of tabs.
+- **Everything clickable works from a keyboard** `[click-not-keyboard]` —
+  list rows and the Verify drop zone take Tab, Enter and Space
+  (`pressable()` in `Shared.jsx`); one focus ring for the whole app
+  (`--focus-ring`); diagram edges no longer take focus.
+- **Phone header**: the menu button has a name, the header is a landmark, and
+  it says which model you are in (tap it to switch).
+- **Tap targets**: small buttons are 24px tall; the Refresh page opens on its
+  list of steps on a phone, where the run buttons are full size.
+- **Contrast in both themes** `[axe:color-contrast]` `[token-contrast]` — dark
+  mode's status text (green / amber / red: whether a report reproduces) was at
+  2:1, and its grey text at 3:1; both now pass on every surface. Unstyled
+  links take the accent colour. The Docs page has one h1.

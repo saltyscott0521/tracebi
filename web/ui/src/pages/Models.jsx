@@ -196,6 +196,7 @@ function ERDDiagram({ data, selected, onSelect }) {
     // Tall enough to read a stack of facts, capped so the page still scrolls.
     <div className="erd-wrapper" style={{ height: Math.min(760, Math.max(320, height * 0.8)) }}>
       <ReactFlow
+        edgesFocusable={false}
         nodes={shown}
         edges={edges}
         nodeTypes={NODE_TYPES}

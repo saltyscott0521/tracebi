@@ -142,6 +142,7 @@ function PipelineDag({ layers, onRun, running }) {
       borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)',
     }}>
       <ReactFlow
+        edgesFocusable={false}
         nodes={nodes}
         edges={edges}
         nodeTypes={DAG_NODE_TYPES}
@@ -206,7 +207,10 @@ export function PipelineDetail({ pipeline, layers }) {
   const { mutate: run, isPending } = useRunLayer()
   const { mutate: runAll, isPending: isRunningAll } = useRunPipeline()
   const [selected, setSelected] = useState(null)
-  const [tab, setTab] = useState('Flow')
+  // A phone fits the flow into 350px and its run buttons shrink past tapping;
+  // the list of steps keeps them full size.
+  const [tab, setTab] = useState(() =>
+    window.matchMedia?.('(max-width: 768px)').matches ? 'Steps' : 'Flow')
 
   if (!pipeline) {
     return (
@@ -245,7 +249,7 @@ export function PipelineDetail({ pipeline, layers }) {
         {pipeline}
       </CardTitle>
 
-      <Tabs tabs={['Flow', 'Layers', 'History']} active={tab} onChange={t => setTab(t)} />
+      <Tabs tabs={['Flow', 'Steps', 'History']} active={tab} onChange={t => setTab(t)} />
 
       {tab === 'Flow' && (
         <div className="fade-in">
@@ -256,11 +260,11 @@ export function PipelineDetail({ pipeline, layers }) {
         </div>
       )}
 
-      {tab === 'Layers' && (
+      {tab === 'Steps' && (
         <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>
-              <tr><th>Layer</th><th>Type</th><th>Schedule</th><th>Depends On</th><th>Last Status</th><th>Rows Out</th><th>Last Run</th><th></th></tr>
+              <tr><th>Step</th><th>Type</th><th>Schedule</th><th>Runs after</th><th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Run</span></th></tr>
             </thead>
             <tbody>
               {layers.map(l => (
@@ -293,8 +297,9 @@ export function PipelineDetail({ pipeline, layers }) {
                       variant="outline"
                       disabled={isPending}
                       onClick={() => handleRunLayer(l.name)}
+                      aria-label={`Run ${l.name}`}
                     >
-                      {isPending ? <Spinner size={12} /> : '▶'}
+                      {isPending ? <Spinner size={12} /> : '▶ Run'}
                     </Btn>
                   </td>
                 </tr>
@@ -320,7 +325,7 @@ export function PipelineDetail({ pipeline, layers }) {
           </div>
           {selected
             ? <LayerHistory pipeline={pipeline} layer={selected} />
-            : <p style={{ fontSize: 13, color: 'var(--muted)' }}>Select a layer above to view its run history.</p>
+            : <p style={{ fontSize: 13, color: 'var(--muted)' }}>Pick a step above to see its run history.</p>
           }
         </div>
       )}

@@ -34,7 +34,9 @@ Checked by the script (rule name in brackets):
 - **Everything works from a keyboard.** Anything that looks clickable is a
   link or a button `[click-not-keyboard]`. Focus is always visible
   `[no-focus-ring]`. axe-core finds no serious or critical violations
-  `[axe:*]`, in light *and* dark (contrast is checked in both).
+  `[axe:*]`, in light *and* dark (contrast is checked in both). Every text
+  colour token reads at 4.5:1 on every surface token, and every diagram tag
+  on its own background, in both themes `[token-contrast]`.
 - **It fits.** No sideways scrolling at 390px or 1440px `[h-overflow]`.
   Tap targets are at least 24×24 on a phone `[small-target]`. Text that is
   cut off has a tooltip with the rest `[truncated-no-title]`.
@@ -63,3 +65,16 @@ Each fix that taught something general adds a line here.
 
 - Shell bugs (sidebar, phone header) are one bug, not one per page: the
   audit keys them as `(app shell)`.
+- A finding is keyed by the element, not its words: ten report rows with the
+  same bug are one bug, fixed in the one component that draws them.
+- A block that must be clickable (a list row with badges, a drop zone) uses
+  `pressable()` from `Shared.jsx`, never a bare `onClick` on a `div`.
+- Focus has one look, `--focus-ring`, set once in `global.css`. A component
+  moves the ring (offset) but does not remove it.
+- A diagram fitted to a phone shrinks everything in it, buttons included. On a
+  phone, open the list form of the same thing.
+- axe-core cannot judge text on a blurred or layered background, and skips
+  it silently. Colour is checked at the source too: the tokens, every pair.
+- Dark mode is its own palette, not the light one with the ground swapped:
+  every status colour needs a dark value.
+

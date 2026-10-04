@@ -95,6 +95,7 @@ function FlowGraph({ flow, selected, onSelect }) {
   return (
     <div className="erd-wrapper" style={{ height: Math.min(760, Math.max(380, layout.height * 0.8 + 40)) }}>
       <ReactFlow
+        edgesFocusable={false}
         nodes={nodes} edges={edges} nodeTypes={NODE_TYPES}
         fitView fitViewOptions={{ padding: 0.06 }} minZoom={0.2}
         proOptions={{ hideAttribution: true }}

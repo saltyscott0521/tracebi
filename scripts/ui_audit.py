@@ -362,7 +362,10 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                             "async () => (await axe.run(document, {runOnly: ['wcag2a','wcag2aa','wcag21aa','best-practice'],"
                             " resultTypes: ['violations']})).violations"
                             ".map(v => ({id: v.id, impact: v.impact, help: v.help,"
-                            " nodes: v.nodes.slice(0, 3).map(n => n.target.join(' ') + ' :: ' + (n.failureSummary||'').split('\\n')[1])}))")
+                            " nodes: v.nodes.slice(0, 3).map(n => {"
+                            "   const el = document.querySelector(n.target[0]);"
+                            "   const shell = el && el.closest('nav.app-nav, .mobile-header') ? 'nav.app-nav ' : '';"
+                            "   return shell + n.target.join(' ') + ' :: ' + (n.failureSummary||'').split('\\n')[1] })}))")
                         for v in res:
                             sev = v["impact"] or "moderate"
                             findings.append({**where, "rule": f"axe:{v['id']}", "severity": sev,
@@ -389,7 +392,7 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
             pages.append(record)
         browser.close()
 
-    findings = _dedupe(findings)
+    findings = _dedupe(findings + token_findings())
     report = {"base": base, "when": time.strftime("%Y-%m-%d %H:%M:%S"),
               "pages": pages, "findings": findings, "metrics": static_metrics(),
               "score": score(findings)}
@@ -413,7 +416,9 @@ def _key(f: dict) -> str:
     not one per page.
     """
     where = "(app shell)" if f["target"].startswith(SHELL) else f["pattern"]
-    return f"{f['rule']}|{where}|{re.sub(r'[0-9]+', '#', f['target'])}"
+    # The element, not its words: ten report rows with the same bug are one bug.
+    what = re.sub(r'"[^"]*"', '', f["target"]).strip()
+    return f"{f['rule']}|{where}|{re.sub(r'[0-9]+', '#', what)}"
 
 
 def _dedupe(findings: list[dict]) -> list[dict]:
@@ -433,6 +438,49 @@ def score(findings: list[dict]) -> int:
 
 
 # ── things measured from the source, not the page ─────────────────────────────
+
+TEXT_TOKENS = ("--text", "--text-2", "--muted", "--accent-text",
+               "--green-text", "--amber-text", "--red-text")
+SURFACE_TOKENS = ("--bg", "--surface", "--surface-2", "--card", "--card-hl")
+
+
+def _tokens(css: str, selector: str) -> dict:
+    m = re.search(re.escape(selector) + r"\s*\{(.*?)\n\}", css, re.S)
+    return dict(re.findall(r"(--[\w-]+):\s*(#[0-9a-fA-F]{6})\b", m.group(1))) if m else {}
+
+
+def _contrast(a: str, b: str) -> float:
+    def lum(h):
+        c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    hi, lo = sorted((lum(a), lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def token_findings() -> list[dict]:
+    """Every text colour on every surface, in both themes, must read at 4.5:1.
+
+    axe-core skips text whose background it cannot resolve (anything under a
+    blur), which is how dark-mode grey on dark cards went unseen. The tokens
+    are the source of truth, so check them directly.
+    """
+    css = (REPO / "web" / "ui" / "src" / "styles" / "global.css").read_text()
+    light = _tokens(css, ":root")
+    themes = {"light": light, "dark": {**light, **_tokens(css, '[data-theme="dark"]')}}
+    out = []
+    for theme, t in themes.items():
+        # Each diagram tag colour is drawn on its own background.
+        pairs = [(fg, bg) for fg in TEXT_TOKENS for bg in SURFACE_TOKENS]
+        pairs += [(k, k[:-3] + "-bg") for k in t if k.startswith("--op-") and k.endswith("-tx")]
+        for fg, bg in pairs:
+            if fg in t and bg in t and (r := _contrast(t[fg], t[bg])) < 4.5:
+                out.append({"page": "(tokens)", "pattern": "(tokens)", "viewport": "-",
+                            "theme": theme, "rule": "token-contrast", "severity": "serious",
+                            "target": f"{fg} on {bg}",
+                            "detail": f"{t[fg]} on {t[bg]} is {r:.2f}:1 in {theme} (needs 4.5)"})
+    return out
+
 
 def static_metrics() -> dict:
     src = REPO / "web" / "ui" / "src"

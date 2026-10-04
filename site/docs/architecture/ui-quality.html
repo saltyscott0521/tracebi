@@ -101,7 +101,9 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
 <li><strong>Everything works from a keyboard.</strong> Anything that looks clickable is a
   link or a button <code>[click-not-keyboard]</code>. Focus is always visible
   <code>[no-focus-ring]</code>. axe-core finds no serious or critical violations
-  <code>[axe:*]</code>, in light <em>and</em> dark (contrast is checked in both).</li>
+  <code>[axe:*]</code>, in light <em>and</em> dark (contrast is checked in both). Every text
+  colour token reads at 4.5:1 on every surface token, and every diagram tag
+  on its own background, in both themes <code>[token-contrast]</code>.</li>
 <li><strong>It fits.</strong> No sideways scrolling at 390px or 1440px <code>[h-overflow]</code>.
   Tap targets are at least 24×24 on a phone <code>[small-target]</code>. Text that is
   cut off has a tooltip with the rest <code>[truncated-no-title]</code>.</li>
@@ -129,6 +131,18 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
 <ul>
 <li>Shell bugs (sidebar, phone header) are one bug, not one per page: the
   audit keys them as <code>(app shell)</code>.</li>
+<li>A finding is keyed by the element, not its words: ten report rows with the
+  same bug are one bug, fixed in the one component that draws them.</li>
+<li>A block that must be clickable (a list row with badges, a drop zone) uses
+  <code>pressable()</code> from <code>Shared.jsx</code>, never a bare <code>onClick</code> on a <code>div</code>.</li>
+<li>Focus has one look, <code>--focus-ring</code>, set once in <code>global.css</code>. A component
+  moves the ring (offset) but does not remove it.</li>
+<li>A diagram fitted to a phone shrinks everything in it, buttons included. On a
+  phone, open the list form of the same thing.</li>
+<li>axe-core cannot judge text on a blurred or layered background, and skips
+  it silently. Colour is checked at the source too: the tokens, every pair.</li>
+<li>Dark mode is its own palette, not the light one with the ground swapped:
+  every status colour needs a dark value.</li>
 </ul>
   </main>
 </div>
