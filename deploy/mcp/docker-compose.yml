@@ -1,0 +1,43 @@
+# Hosted MCP gateway for the TraceBi demos.
+# On the box: /opt/tracebi-mcp (see README.md). Joins Coolify's Traefik.
+services:
+  tracebi-mcp:
+    image: ghcr.io/saltyscott0521/tracebi:main
+    container_name: tracebi-mcp
+    restart: unless-stopped
+    env_file: .env
+    # Until :main includes the mcp extra, install if missing.
+    command:
+      - bash
+      - -lc
+      - |
+        python -c 'import importlib.util,sys; sys.exit(0 if importlib.util.find_spec("mcp") else 1)' \
+          || pip install --user --quiet 'mcp>=2.0'
+        exec tracebi mcp --transport http --host 0.0.0.0 --port 8765
+    expose:
+      - "8765"
+    networks:
+      coolify:
+        aliases:
+          - tracebi-mcp
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "curl -fsS -o /dev/null -w '%{http_code}' http://127.0.0.1:8765/mcp | grep -Eq '401|405|406|200' || exit 1"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    labels:
+      - traefik.enable=true
+      - traefik.http.middlewares.gzip.compress=true
+      - traefik.http.routers.http-0-tracebi-mcp.entryPoints=http
+      - traefik.http.routers.http-0-tracebi-mcp.middlewares=gzip
+      - traefik.http.routers.http-0-tracebi-mcp.rule=Host(`mcp.tracebi.com`) && PathPrefix(`/`)
+      - traefik.http.routers.http-0-tracebi-mcp.service=http-0-tracebi-mcp
+      - traefik.http.services.http-0-tracebi-mcp.loadbalancer.server.port=8765
+
+networks:
+  coolify:
+    external: true
+    name: coolify
