@@ -104,6 +104,9 @@ the previous step. Then:</p>
 <pre><code class="language-bash">docker compose -f deploy/compose.yml up -d
 </code></pre>
 <p>Open <code>http://&lt;the-machine&gt;:8000</code>.</p>
+<p>To expose the agent gateway on the same host (Cursor / Claude with only a
+URL + token), see <code>deploy/mcp/README.md</code> in the repository — the public
+demo uses <code>https://tracebi.com/mcp</code>.</p>
 <p>The container serves that folder. SQLite is the default. Add
 <code>--profile postgres</code> when you want Postgres, and set <code>POSTGRES_PASSWORD</code>
 in <code>deploy/.env</code>.</p>
