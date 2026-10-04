@@ -145,6 +145,8 @@ Coolify. This page does not name a host, an address, or a password.
 
 On the Coolify server, keep image retention tight (`docker_images_to_keep`
 low, or prune unused images regularly) so old tags do not fill the disk.
+The image ships `curl` so Coolify's HTTP healthcheck against `/api/health`
+works on a pulled GHCR tag (python:slim alone does not).
 
 ## Backups
 
