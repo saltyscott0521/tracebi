@@ -1,5 +1,19 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 
+/** Track a media query, so an inline-styled layout can still be responsive. */
+export function useNarrow(query = '(max-width: 768px)') {
+  const [narrow, setNarrow] = useState(
+    () => typeof matchMedia !== 'undefined' && matchMedia(query).matches)
+  useEffect(() => {
+    const mq = matchMedia(query)
+    const on = e => setNarrow(e.matches)
+    mq.addEventListener('change', on)
+    setNarrow(mq.matches)
+    return () => mq.removeEventListener('change', on)
+  }, [query])
+  return narrow
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
 export const ToastContext = createContext(null)
@@ -496,5 +510,6 @@ export function ListItem({ selected, onClick, name, sub, right, meta }) {
 }
 
 export function CodeBlock({ children }) {
-  return <pre className="code-block">{children}</pre>
+  // Focusable: a long command scrolls sideways, and a keyboard must reach it.
+  return <pre className="code-block" tabIndex={0}>{children}</pre>
 }

@@ -74,6 +74,11 @@
      put the light-on-dark wordmark onto a light bar in dark mode. */
   --header-bg:   rgba(238,242,248,0.92);
 
+  /* The three phases, wherever they are drawn. */
+  --phase-transform: #0e7490;
+  --phase-model:     #1d4ed8;
+  --phase-report:    #0369a1;
+
   /* Type scale. The sizes here are the ones already in use across the app,
      collected rather than invented — they were spread across inline styles as
      bare numbers, so the same role (a card title, a caption) drifted a half
@@ -191,6 +196,10 @@
      this ground — page titles were effectively invisible in dark mode. */
   --brand-text:  linear-gradient(135deg, #7ab4f0 0%, #38bdf8 100%);
   --header-bg:   rgba(13,22,35,0.92);
+
+  --phase-transform: #22d3ee;
+  --phase-model:     #93c5fd;
+  --phase-report:    #38bdf8;
 
   --green-lt:   rgba(22,163,74,0.12);
   --green-br:   rgba(22,163,74,0.28);
@@ -937,3 +946,22 @@ a { color: var(--accent-text); }
 .react-flow .react-flow__node:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 8px; }
 /* Read by screen readers, not shown: a label the layout already implies. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ── Reports: at a glance (the pane before a report is opened) ──────────── */
+.glance-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 22px; }
+.glance-tile { padding: 14px 16px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); }
+.glance-tile__value { font-size: var(--text-xl); font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.glance-tile__label { font-size: var(--text-sm); color: var(--muted); margin-top: 4px; }
+.glance-tile--good { background: var(--green-lt); border-color: var(--green-br); }
+.glance-tile--good .glance-tile__value { color: var(--green-text); }
+.glance-tile--bad { background: var(--amber-lt); border-color: var(--amber-br); }
+.glance-tile--bad .glance-tile__value { color: var(--amber-text); }
+.glance-heading { font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.glance-empty { font-size: var(--text-caption); color: var(--muted); }
+.glance-row { display: flex; align-items: center; gap: 12px; padding: 9px 8px; margin: 0 -8px; border-radius: var(--radius-sm); cursor: pointer; }
+.glance-row:hover { background: var(--card-hl); }
+.glance-row__name { font-size: var(--text-caption); font-weight: 500; color: var(--text); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.glance-row__when { font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.report-detail__title { display: inline; font: inherit; margin: 0; overflow-wrap: anywhere; }
+.section-title { font-size: var(--text-lg); font-weight: 600; color: var(--text); margin: 0 0 4px; }
+.section-sub { font-size: var(--text-caption); color: var(--muted); line-height: 1.6; margin: 0 0 14px; max-width: 74ch; }

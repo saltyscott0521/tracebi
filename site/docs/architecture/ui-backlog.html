@@ -74,13 +74,6 @@
 bottom with the change that closed them.</p>
 <h2 id="open">Open</h2>
 <ol>
-<li><strong>Reports opens on "Pick a report"</strong> <code>[empty-detail-pane]</code>: half the page
-   blank on desktop. Show what needs attention and the latest builds there.</li>
-<li><strong>Code blocks scroll but can't be focused</strong>
-   <code>[axe:scrollable-region-focusable]</code> on Get Started and Workflow.</li>
-<li><strong>Learn has three pages telling one story</strong> (Get Started, Docs,
-   Workflow), and Workflow is in no menu <code>[nav-you-are-here]</code>. Fold
-   Workflow into Get Started.</li>
 <li><strong>Words a reader doesn't use</strong>: "semantic contract", "DuckDBConnector"
    as a badge, "STEP / never run" in the Refresh flow.</li>
 <li><strong>"Checks stale" items name no model</strong>: a stale sink check shows only
@@ -118,6 +111,15 @@ bottom with the change that closed them.</p>
   mode's status text (green / amber / red: whether a report reproduces) was at
   2:1, and its grey text at 3:1; both now pass on every surface. Unstyled
   links take the accent colour. The Docs page has one h1.</li>
+<li><strong>Reports opens on "At a glance"</strong>, not a blank pane — how many reports,
+  how many reproduce, what needs a look, the latest builds (each opens).</li>
+<li><strong>An open report names itself</strong> on a phone (it is the page's h1 there).</li>
+<li><strong>Workflow folded into Get started</strong> as "The three phases"; <code>/workflow</code>
+  lands there. Its phase colours are theme tokens (<code>--phase-*</code>), readable in
+  dark mode. Scrolling code blocks take keyboard focus.</li>
+<li><strong>The audit sees the populated app</strong>: it builds every report before
+  crawling, so verdicts, receipts and latest builds are checked, not only the
+  never-built empty states.</li>
 </ul>
   </main>
 </div>

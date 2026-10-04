@@ -1,10 +1,9 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import { ToastProvider } from './components/Shared'
 import {
   AllModels, OneModel, Home, Legacy, NotFound, PageHeader,
 } from './components/Scope'
-import Workflow from './pages/Workflow'
 import GettingStarted from './pages/GettingStarted'
 import Docs from './pages/Docs'
 import Connectors from './pages/Connectors'
@@ -45,7 +44,7 @@ export default function App() {
           <Route path="/verify" element={<Verify />} />
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/handbook" element={<Docs />} />
-          <Route path="/workflow" element={<Workflow />} />
+          <Route path="/workflow" element={<Navigate to="/getting-started#phases" replace />} />
 
           <Route path="/models/:name" element={<Legacy />} />
           <Route path="/connectors" element={<Legacy />} />

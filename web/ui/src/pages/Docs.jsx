@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { useGuides, useGuide } from '../api'
-import { PageTitle, PageSub, Spinner } from '../components/Shared'
+import { PageTitle, PageSub, Spinner, useNarrow } from '../components/Shared'
 
 // docs/ is a vault: pages live under concepts/, guides/, reference/ and
 // architecture/, and the API addresses a subdirectory page as "dir--stem".
@@ -31,20 +31,6 @@ const WIKI_PREFIX = 'tb-doc:'
 const FIRST = { concepts: 'the-three-phase-workflow', guides: 'plain-english', strategy: 'vision-and-positioning' }
 
 const clean = t => (t || '').replace(/`/g, '')
-
-/** Track a media query, so an inline-styled layout can still be responsive. */
-function useNarrow(query = '(max-width: 820px)') {
-  const [narrow, setNarrow] = useState(
-    () => typeof matchMedia !== 'undefined' && matchMedia(query).matches)
-  useEffect(() => {
-    const mq = matchMedia(query)
-    const on = e => setNarrow(e.matches)
-    mq.addEventListener('change', on)
-    setNarrow(mq.matches)
-    return () => mq.removeEventListener('change', on)
-  }, [query])
-  return narrow
-}
 
 function split(name) {
   const i = name.indexOf('--')
@@ -124,7 +110,7 @@ function Reader({ name, byStem, titles, onNavigate }) {
 export default function Docs() {
   const { data: guides, isLoading } = useGuides()
   const [active, setActive] = useState(null)
-  const narrow = useNarrow()
+  const narrow = useNarrow('(max-width: 820px)')
   // On a phone the sidebar is 31 links between the reader and the first word,
   // so it collapses to a disclosure that closes again after a tap.
   const [navOpen, setNavOpen] = useState(false)

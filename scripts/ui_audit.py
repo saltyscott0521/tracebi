@@ -73,6 +73,16 @@ def serve(project: Path, app: str, workdir: Path):
     if (dest / "run_workflow.py").is_file():
         subprocess.run([sys.executable, "run_workflow.py"], cwd=dest, check=True,
                        capture_output=True, text=True)
+    # Audit what a reader sees: every report built once, so receipts, verdicts
+    # and "latest builds" render, not only the never-built empty states.
+    reports = dest / "reports"
+    names = [p.parent.relative_to(reports).as_posix() for p in reports.rglob("report.json")]
+    names += [p.relative_to(reports).with_suffix("").as_posix() for p in reports.rglob("*.json")
+              if p.name != "report.json" and not (p.with_suffix("") / "report.json").exists()]
+    for name in sorted(set(names)):
+        subprocess.run([sys.executable, "-c", "import sys; from tracebi.cli import main; sys.exit(main())",
+                        "report", "build", name],
+                       cwd=dest, capture_output=True, text=True)
     port = _free_port()
     env = {k: v for k, v in os.environ.items() if not k.startswith("TRACEBI_")}
     env["TRACEBI_APP"] = app
@@ -208,7 +218,8 @@ PAGE_CHECKS_JS = r"""
   if (vw < 600) {
     for (const el of document.querySelectorAll('a,button,input,select,[role=button],[role=tab]')) {
       if (!visible(el) || (inNav(el) && !navOpen)) continue;
-      const r = el.getBoundingClientRect();
+      // A control inside a label is tapped through the label: measure that.
+      const r = (el.tagName === 'INPUT' && el.closest('label') || el).getBoundingClientRect();
       if (r.width >= 24 && r.height >= 24) continue;
       if (el.tagName === 'A' && getComputedStyle(el).display === 'inline') continue; // a link in a sentence
       out.push({rule: 'small-target', severity: 'moderate', target: label(el),

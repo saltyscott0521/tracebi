@@ -1,9 +1,8 @@
-import { Link } from 'react-router-dom'
-import WorkflowDiagram from '../components/WorkflowDiagram'
+import WorkflowDiagram from './WorkflowDiagram'
 
 function Code({ children }) {
   return (
-    <pre style={{
+    <pre tabIndex={0} style={{
       background: 'var(--code-bg)', color: 'var(--code-text)',
       border: '1px solid var(--terminal-border)', borderRadius: 8,
       padding: '12px 14px', margin: 0, overflowX: 'auto',
@@ -24,7 +23,7 @@ function Card({ children, style }) {
 
 const PHASE_DETAIL = [
   {
-    n: '1', color: '#0e7490', folder: 'transforms/', title: 'Transform',
+    n: '1', color: 'var(--phase-transform)', folder: 'transforms/', title: 'Transform',
     lead: 'The phase the framework does not constrain. Pull the queries you need and write as much Python as the work takes — window functions, algorithmic passes, prose parsing, cleaning — then write the result into the warehouse.',
     point: 'The contract is not how you clean, it is what lands: the named tables at the end of the script.',
     code: `# transforms/holdings_transform.py
@@ -36,7 +35,7 @@ wh.write(fact,  "fact_holdings")   # ← sink
 wh.write(dim_issuer, "dim_issuer")`,
   },
   {
-    n: '2', color: '#1d4ed8', folder: 'models/', title: 'Model',
+    n: '2', color: 'var(--phase-model)', folder: 'models/', title: 'Model',
     lead: 'A star schema over the warehouse. This is the reviewable contract — grain, keys and measures in a few dozen declarative lines. It reads the sink; it never sees the pandas above it.',
     point: 'A reviewer checks the model, not the transform. Change the shape here without touching the analysis.',
     code: `# models/portfolio_model.py
@@ -50,7 +49,7 @@ model = (DataModel("portfolio_model")
   .add_measure("fair_value", column="fair_value", agg="sum", format="currency0"))`,
   },
   {
-    n: '3', color: '#0369a1', folder: 'reports/', title: 'Report',
+    n: '3', color: 'var(--phase-report)', folder: 'reports/', title: 'Report',
     lead: 'A spec pointed at the model. KPI cards, charts and tables, each a query. Because the model is materialized, the page re-renders in milliseconds — no pandas in the loop.',
     point: 'Edit the JSON to reshape the page. A metrics card whose value names a measure reads it live.',
     code: `// reports/portfolio_model/portfolio_dashboard.json
@@ -63,20 +62,13 @@ model = (DataModel("portfolio_model")
   },
 ]
 
-export default function Workflow() {
+/**
+ * The three phases, with the freeze points between them: a section of
+ * Get started (it was a page of its own that no menu led to).
+ */
+export function ThreePhases() {
   return (
     <div className="fade-in">
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>
-          The workflow
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--muted)', margin: 0, maxWidth: '68ch', lineHeight: 1.55 }}>
-          From a messy source to a served dashboard in three phases. Each has its own folder and
-          its own cadence, and each hands the next a frozen artifact — so the slow, unconstrained
-          analysis and the fast, iterated reporting never block each other.
-        </p>
-      </div>
-
       <Card style={{ marginBottom: 28, padding: '26px 24px' }}>
         <WorkflowDiagram />
       </Card>
@@ -103,14 +95,14 @@ export default function Workflow() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <span style={{
                 width: 26, height: 26, borderRadius: 7, flex: 'none',
-                background: `${p.color}22`, border: `1px solid ${p.color}44`,
+                background: `color-mix(in srgb, ${p.color} 13%, transparent)`, border: `1px solid color-mix(in srgb, ${p.color} 27%, transparent)`,
                 color: p.color, fontSize: 14, fontWeight: 800,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>{p.n}</span>
               <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{p.title}</span>
               <code style={{
                 fontFamily: "'Cascadia Code', 'Fira Code', monospace", fontSize: 12,
-                color: p.color, background: `${p.color}14`, border: `1px solid ${p.color}28`,
+                color: p.color, background: `color-mix(in srgb, ${p.color} 8%, transparent)`, border: `1px solid color-mix(in srgb, ${p.color} 16%, transparent)`,
                 padding: '1px 8px', borderRadius: 5,
               }}>{p.folder}</code>
             </div>
@@ -125,34 +117,6 @@ export default function Workflow() {
         ))}
       </div>
 
-      {/* Run it */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', margin: 0 }}>Run it</h2>
-      </div>
-      <div className="workflow-run-grid">
-        <Card>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
-            Build the warehouse & render once
-          </div>
-          <Code>python transforms/&lt;your_transform&gt;.py</Code>
-          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
-            Runs phase ① explicitly: reads the raw pull from <code style={{ fontSize: 11 }}>inputs/</code>,
-            sinks the warehouse to <code style={{ fontSize: 11 }}>data/</code>. The reference
-            project wraps this in <code style={{ fontSize: 11 }}>run_workflow.py</code>.
-          </p>
-        </Card>
-        <Card>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
-            Serve it on the front end
-          </div>
-          <Code>python -m tracebi.web.run</Code>
-          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0 0', lineHeight: 1.5 }}>
-            Auto-discovers <code style={{ fontSize: 11 }}>models/</code> and{' '}
-            <code style={{ fontSize: 11 }}>reports/</code>. Open{' '}
-            <Link to="/reports" style={{ color: 'var(--accent-text)' }}>Reports</Link> → run the dashboard.
-          </p>
-        </Card>
-      </div>
     </div>
   )
 }
