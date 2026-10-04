@@ -431,8 +431,8 @@ class TestEndpoint:
         assert res.status_code == 200, res.text
         # Live fonts are layered on for the browser; the file on disk is untouched.
         assert "saved" in res.json()["html"]
-        assert "Source Sans 3" in res.json()["html"]
-        assert "Source Sans 3" not in (out / "built_demo.html").read_text()
+        assert "tracebi live fonts" in res.json()["html"]
+        assert "tracebi live fonts" not in (out / "built_demo.html").read_text()
 
     def test_last_build_is_kept_when_the_disk_is_read_only(self, tmp_path, monkeypatch):
         """A never-built report builds once on first open; after that, opening
@@ -469,9 +469,9 @@ class TestEndpoint:
         download = client.get("/api/reports/ro_demo/download?format=html")
         assert len(renders) == 1
         assert second["manifest"]["rendered_at"] == first.json()["manifest"]["rendered_at"]
-        # Live view gets Source Sans 3; the download stays the offline file.
-        assert "Source Sans 3" in first.json()["html"]
-        assert "Source Sans 3" not in download.text
+        # Live view gets the faces; the download stays the offline file.
+        assert "tracebi live fonts" in first.json()["html"]
+        assert "tracebi live fonts" not in download.text
         assert "system-ui" in download.text
 
 

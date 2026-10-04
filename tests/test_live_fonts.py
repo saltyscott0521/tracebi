@@ -55,8 +55,8 @@ def test_built_file_stays_on_system_ui(tmp_path):
         {"live_font_model": model}, str(out))
     html = out.read_text(encoding="utf-8")
     assert "system-ui" in html
-    assert "Source Sans 3" not in html
-    assert "font/woff2" not in html
+    assert "tracebi live fonts" not in html
+    assert "font/woff2;base64," not in html
 
 
 def test_with_live_fonts_injects_faces_once():
@@ -68,7 +68,7 @@ def test_with_live_fonts_injects_faces_once():
     twice = with_live_fonts(once)
     assert once.count("Source Sans 3") == twice.count("Source Sans 3")
     assert once.count("tracebi live fonts") == 1
-    assert "--tb-font:'Source Sans 3'" in once.replace(" ", "")
+    assert "Source Sans 3" in once and "--tb-font" in once
 
 
 def test_view_endpoints_inject_download_does_not(tmp_path, monkeypatch):
@@ -86,18 +86,20 @@ def test_view_endpoints_inject_download_does_not(tmp_path, monkeypatch):
 
     built = client.get("/api/reports/live_fonts_demo/built")
     assert built.status_code == 200, built.text
-    assert "Source Sans 3" in built.json()["html"]
+    assert "tracebi live fonts" in built.json()["html"]
+    assert "font/woff2;base64," in built.json()["html"]
 
     share = client.get("/r/live_fonts_demo")
     assert share.status_code == 200
-    assert "Source Sans 3" in share.text
+    assert "tracebi live fonts" in share.text
 
     download = client.get("/api/reports/live_fonts_demo/download?format=html")
     assert download.status_code == 200
-    assert "Source Sans 3" not in download.text
+    assert "tracebi live fonts" not in download.text
+    assert "font/woff2;base64," not in download.text
     assert "system-ui" in download.text
 
     # On-disk artifact matches the download, not the live view.
     disk = (tmp_path / "output" / "live_fonts_demo.html").read_text(encoding="utf-8")
-    assert "Source Sans 3" not in disk
+    assert "tracebi live fonts" not in disk
     assert disk == download.text

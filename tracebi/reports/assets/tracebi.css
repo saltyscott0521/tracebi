@@ -14,9 +14,8 @@
 
 :root {
   /* Offline default: the platform UI face. Live server / `tracebi dev`
-   * preview override these tokens with Source Sans 3 / Source Code Pro
-   * (see tracebi.reports.live_fonts) — those bytes never land in the
-   * built output/*.html. */
+   * preview override these tokens (see tracebi.reports.live_fonts) —
+   * those bytes never land in the built output/*.html. */
   --tb-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
              Arial, sans-serif;
   --tb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
