@@ -74,18 +74,8 @@
 bottom with the change that closed them.</p>
 <h2 id="open">Open</h2>
 <ol>
-<li><strong>Lists are clickable divs</strong> <code>[click-not-keyboard]</code>: <code>ListItem</code> and the
-   Verify drop zone can't be reached by keyboard. Make them buttons.</li>
-<li><strong>Phone header button has no name</strong> <code>[axe:button-name]</code>, and the header
-   is outside any landmark <code>[axe:region]</code>.</li>
-<li><strong>Contrast</strong> <code>[axe:color-contrast]</code>: diagram node labels, report list
-   meta text, badges in dark mode.</li>
 <li><strong>Reports opens on "Pick a report"</strong> <code>[empty-detail-pane]</code>: half the page
    blank on desktop. Show what needs attention and the latest builds there.</li>
-<li><strong>The phone hides which model you are in.</strong> The switcher lives in the
-   drawer; the header says only "TraceBi". Show the model in the header.</li>
-<li><strong>Diagram edges take keyboard focus with no ring</strong> <code>[no-focus-ring]</code>, and
-   a keyboard user tabs through every edge before reaching anything useful.</li>
 <li><strong>Code blocks scroll but can't be focused</strong>
    <code>[axe:scrollable-region-focusable]</code> on Get Started and Workflow.</li>
 <li><strong>Learn has three pages telling one story</strong> (Get Started, Docs,
@@ -99,6 +89,10 @@ bottom with the change that closed them.</p>
     load only on the pages that use them).</li>
 <li><strong>113 hard-coded colours in JSX</strong> — each is a dark-mode bug waiting.
     Move them to tokens.</li>
+<li><strong>The theme ignores the OS setting</strong>: a first visit is always light. Follow
+   <code>prefers-color-scheme</code> until the viewer picks one.</li>
+<li><strong><code>Btn</code> drops a caller's colours</strong>: its variant styles are applied after
+    <code>style</code>, so <code>style={{ background }}</code> is silently overridden.</li>
 </ol>
 <h2 id="done">Done</h2>
 <ul>
@@ -112,6 +106,18 @@ bottom with the change that closed them.</p>
 <li><strong>Unknown URLs render a real "Page not found"</strong> <code>[blank-page]</code>.</li>
 <li><strong>Sources opens on its first source</strong>, not a blank pane; the model page no
   longer repeats the model's name or stacks two rows of tabs.</li>
+<li><strong>Everything clickable works from a keyboard</strong> <code>[click-not-keyboard]</code> —
+  list rows and the Verify drop zone take Tab, Enter and Space
+  (<code>pressable()</code> in <code>Shared.jsx</code>); one focus ring for the whole app
+  (<code>--focus-ring</code>); diagram edges no longer take focus.</li>
+<li><strong>Phone header</strong>: the menu button has a name, the header is a landmark, and
+  it says which model you are in (tap it to switch).</li>
+<li><strong>Tap targets</strong>: small buttons are 24px tall; the Refresh page opens on its
+  list of steps on a phone, where the run buttons are full size.</li>
+<li><strong>Contrast in both themes</strong> <code>[axe:color-contrast]</code> <code>[token-contrast]</code> — dark
+  mode's status text (green / amber / red: whether a report reproduces) was at
+  2:1, and its grey text at 3:1; both now pass on every surface. Unstyled
+  links take the accent colour. The Docs page has one h1.</li>
 </ul>
   </main>
 </div>

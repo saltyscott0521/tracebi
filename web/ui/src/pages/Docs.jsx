@@ -96,6 +96,8 @@ function Reader({ name, byStem, titles, onNavigate }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          // The page's h1 is "Docs"; a document's own title is the next level.
+          h1: ({ children }) => <h2 className="md-h1">{children}</h2>,
           a: ({ href, children }) => {
             if (href?.startsWith('#' + WIKI_PREFIX)) {
               const to = href.slice(1 + WIKI_PREFIX.length)
@@ -207,7 +209,7 @@ export default function Docs() {
                   fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
                   textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2,
                 }}>{s.label}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 7, opacity: .8 }}>
+                <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 7 }}>
                   {s.blurb}
                 </div>
                 {items.map(g => (

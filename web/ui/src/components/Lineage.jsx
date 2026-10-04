@@ -145,6 +145,7 @@ export function LineageGraph({ graph, height = 340 }) {
   return (
     <div style={{ height, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: 'var(--flow-bg)' }}>
       <ReactFlow
+        edgesFocusable={false}
         nodes={graph.nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}

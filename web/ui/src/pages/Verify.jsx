@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 
 import { useVerifyFile } from '../api'
 import {
-  PageTitle, PageSub, Card, Btn, Spinner, ErrorDetail, useToast,
+  PageTitle, PageSub, Card, Btn, Spinner, ErrorDetail, useToast, pressable,
 } from '../components/Shared'
 import { PairArt, ScanArt } from '../components/Art'
 
@@ -168,7 +168,8 @@ export default function Verify() {
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
+        {...pressable(() => inputRef.current?.click())}
+        aria-label="Choose a report and its manifest"
         style={{
           border: `2px dashed ${dragging ? 'var(--accent-text)' : 'var(--border-hl)'}`,
           borderRadius: 14, background: dragging ? 'var(--blue-lt)' : 'var(--card)',

@@ -33,7 +33,7 @@
 
   --text:        #0a1628;
   --text-2:      #2e4260;
-  --muted:       #5a6e88;
+  --muted:       #4e617a;   /* 5.2:1 on a selected row, the darkest it sits on */
 
   /* Accent text — links, active tabs, highlighted values */
   --accent-text:    #091a55;
@@ -47,7 +47,7 @@
 
   /* Status */
   --green:       #16a34a;
-  --green-text:  #15803d;
+  --green-text:  #166534;
   --green-lt:    rgba(22,163,74,0.1);
   --green-br:    rgba(22,163,74,0.3);
   --amber:       #d97706;
@@ -133,7 +133,7 @@
      Used by Lineage.jsx, the pipeline DAG, and the ERD. */
   --op-default-bg: #eef2f6;  --op-default-br: #cfd9e3;  --op-default-tx: #3a4960;
   --op-load-bg:    #e8f1fd;  --op-load-br:    #b6d2f4;  --op-load-tx:    #091a55;
-  --op-filter-bg:  #e7f5ed;  --op-filter-br:  #b7e1ca;  --op-filter-tx:  #15803d;
+  --op-filter-bg:  #e7f5ed;  --op-filter-br:  #b7e1ca;  --op-filter-tx:  #166534;
   --op-transform-bg:#fdf3e1; --op-transform-br:#f0d9a6; --op-transform-tx:#92520a;
   --op-join-bg:    #fdeee4;  --op-join-br:    #f3ccae;  --op-join-tx:    #b4500f;
   --op-aggregate-bg:#fbe9f1; --op-aggregate-br:#efbcd3; --op-aggregate-tx:#ad1457;
@@ -143,7 +143,7 @@
   --op-rename-bg:  #e4f5f3;  --op-rename-br:  #b3e0da;  --op-rename-tx:  #0f766e;
   --op-landing-bg: #e8f1fd;  --op-landing-br: #b6d2f4;  --op-landing-tx: #091a55;
   --op-manipulation-bg:#e8edf8; --op-manipulation-br:#b8c6e0; --op-manipulation-tx:#091a55;
-  --op-final-bg:   #e7f5ed;  --op-final-br:   #b7e1ca;  --op-final-tx:   #15803d;
+  --op-final-bg:   #e7f5ed;  --op-final-br:   #b7e1ca;  --op-final-tx:   #166534;
   --op-bronze-bg:  #f7ede3;  --op-bronze-br:  #e4cbac;  --op-bronze-tx:  #8a5a2a;
   --op-silver-bg:  #eef1f5;  --op-silver-br:  #d3dae3;  --op-silver-tx:  #55657a;
   --op-gold-bg:    #fdf6e0;  --op-gold-br:    #ecdc9b;  --op-gold-tx:    #8a6d0b;
@@ -172,7 +172,14 @@
 
   --text:        #dde8f5;
   --text-2:      #8aaac8;
-  --muted:       #5a7a9c;
+  --muted:       #8aa5c2;
+
+  /* Status text must read on every dark surface (4.5:1 at least): the light
+     theme's greens and reds scored 2:1 here, on the badges that say whether
+     a report reproduces. scripts/ui_audit.py checks every pair. */
+  --green-text:  #4ade80;
+  --amber-text:  #fbbf24;
+  --red-text:    #fb8a8a;
 
   --blue-lt:     rgba(100,160,240,0.10);
   --blue-br:     rgba(100,160,240,0.26);
@@ -214,6 +221,7 @@
   --op-landing-bg: #0f1e38; --op-landing-br: #1e3a6e; --op-landing-tx: #7ab4f0;
   --op-manipulation-bg:#111e35;--op-manipulation-br:#1e3658;--op-manipulation-tx:#7ab4f0;
   --op-final-bg:   #0e2218; --op-final-br:   #1a4030; --op-final-tx:   #4ade80;
+  --op-gold-bg:    #241d08; --op-gold-br:    #4a3c0a; --op-gold-tx:    #facc15;
 }
 
 /* Scrollbar */
@@ -556,7 +564,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* ── Markdown guides (Getting Started page) ──────────── */
 .markdown-doc { font-size: 13.5px; line-height: 1.7; color: var(--text-2); max-width: 760px; }
-.markdown-doc h1 { font-size: 21px; font-weight: 800; color: var(--text); margin: 0 0 14px; }
+.markdown-doc h1, .markdown-doc .md-h1 { font-size: 21px; font-weight: 800; color: var(--text); margin: 0 0 14px; }
 .markdown-doc h2 { font-size: 16px; font-weight: 600; color: var(--text); margin: 28px 0 10px; }
 .markdown-doc h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
 .markdown-doc p  { margin: 0 0 12px; }
@@ -907,3 +915,25 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   color: var(--accent-text); background: var(--blue-lt); border: 1px solid var(--blue-br);
 }
 .btn:hover { background: var(--card-hl); }
+
+/* ── Keyboard focus: always visible, on every surface ───────────────────────
+   One ring for the whole app; a component overrides it only to move it. */
+:root { --focus-ring: #2563eb; }
+[data-theme="dark"] { --focus-ring: #7ab4f0; }
+
+/* A link with no style of its own reads as a link in both themes (the
+   browser's #0000ee was 1.5:1 on a dark card). */
+a { color: var(--accent-text); }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.app-nav :focus-visible { outline-color: #7ab4f0; }
+.list-item:focus-visible { outline-offset: -2px; }
+.mobile-header__model {
+  margin-left: 10px; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface);
+  font: inherit; font-size: var(--text-sm); font-weight: 500;
+  font-family: 'Source Code Pro', ui-monospace, monospace;
+  color: var(--text-2); cursor: pointer; vertical-align: 2px;
+}
+.react-flow .react-flow__node:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 8px; }
+/* Read by screen readers, not shown: a label the layout already implies. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

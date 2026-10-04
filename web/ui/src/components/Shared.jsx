@@ -331,10 +331,11 @@ export function ErrorDetail({ error }) {
   )
 }
 
-export function Btn({ children, onClick, disabled, variant = 'primary', size, style, type = 'button' }) {
+export function Btn({ children, onClick, disabled, variant = 'primary', size, style, type = 'button', ...rest }) {
   const base = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: size === 'sm' ? '5px 12px' : '9px 18px',
+    // 6px keeps a small button at 24px tall: the smallest a thumb can hit.
+    padding: size === 'sm' ? '6px 12px' : '9px 18px',
     borderRadius: 'var(--radius-sm)', border: 'none',
     fontSize: size === 'sm' ? 12 : 13,
     fontWeight: 600,
@@ -363,7 +364,7 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
     },
   }
   return (
-    <button type={type} onClick={onClick} disabled={disabled}
+    <button type={type} onClick={onClick} disabled={disabled} {...rest}
       className={`btn-${variant}`}
       style={{ ...base, ...variants[variant] }}
     >
@@ -444,10 +445,27 @@ export function SplitLayout({ left, right, detail }) {
   )
 }
 
+/**
+ * Props that make a non-button element act like one: reachable with Tab,
+ * activated with Enter or Space. For things that must stay a block (a list
+ * row holding badges, a drop zone), where a real <button> can't.
+ */
+export function pressable(onActivate) {
+  return {
+    role: 'button',
+    tabIndex: 0,
+    onClick: onActivate,
+    onKeyDown: e => {
+      if (e.target !== e.currentTarget) return
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onActivate(e) }
+    },
+  }
+}
+
 export function ListItem({ selected, onClick, name, sub, right, meta }) {
   return (
-    <div onClick={onClick}
-      className={selected ? '' : 'list-item-hover'}
+    <div {...pressable(onClick)} aria-current={selected ? 'true' : undefined}
+      className={selected ? 'list-item' : 'list-item list-item-hover'}
       style={{
         padding: '11px 16px',
         borderBottom: '1px solid var(--border)',

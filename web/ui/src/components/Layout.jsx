@@ -148,7 +148,7 @@ function NavSection({ label, items, onNavigate }) {
           fontWeight: 600,
           letterSpacing: '0.06em',
           textTransform: 'uppercase',
-          color: 'rgba(200,220,255,0.38)',
+          color: 'rgba(200,220,255,0.6)',
         }}>
           {label}
         </div>
@@ -179,6 +179,8 @@ export default function Layout({ children }) {
 
   const close = () => setOpen(false)
   const model = useSidebarModel()
+  const { data: modelList } = useModels()
+  const multi = (modelList || []).length > 1
 
   // While the mobile menu is open, the page behind it stays put.
   useEffect(() => {
@@ -191,7 +193,7 @@ export default function Layout({ children }) {
       <CommandPalette />
 
       {/* Mobile top bar */}
-      <div className="mobile-header" style={{
+      <header className="mobile-header" style={{
         display: 'none', position: 'fixed', top: 0, left: 0, right: 0,
         height: 52,
         background: 'var(--header-bg)',
@@ -201,10 +203,17 @@ export default function Layout({ children }) {
         alignItems: 'center', justifyContent: 'space-between', padding: '0 16px',
         zIndex: 200,
       }}>
-        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+        {/* On a phone the switcher is in the drawer, so the header says which
+            model every page is about. */}
+        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           TraceBi
+          {multi && (
+            <button type="button" className="mobile-header__model" onClick={() => setOpen(true)}>
+              {model || 'All models'}
+            </button>
+          )}
         </span>
-        <button onClick={() => setOpen(true)} style={{
+        <button onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} style={{
           background: 'none', border: 'none', cursor: 'pointer',
           display: 'flex', flexDirection: 'column', gap: 5,
           padding: 0, width: 44, height: 44,
@@ -214,7 +223,7 @@ export default function Layout({ children }) {
             <span key={i} style={{ display: 'block', width: 20, height: 2, background: 'var(--text-2)', borderRadius: 1 }} />
           ))}
         </button>
-      </div>
+      </header>
 
       {/* Overlay */}
       {open && (
@@ -230,7 +239,7 @@ export default function Layout({ children }) {
       {/* Pinned top AND bottom, not min-height: 100vh — on a phone, 100vh is
           not the visible screen (browser bars, zoom), and the drawer stopped
           short. It scrolls itself if the links outgrow a short screen. */}
-      <nav style={{
+      <nav aria-label="Main" style={{
         width: 'var(--nav-w)',
         background: 'var(--sidebar-bg)',
         borderRight: '1px solid var(--sidebar-border)',
@@ -253,6 +262,7 @@ export default function Layout({ children }) {
             color: 'rgba(200,220,255,0.85)', fontSize: 17, lineHeight: 1,
             zIndex: 1,
           }}
+          aria-label="Close menu"
         >×</button>
 
         {/* Brand */}
@@ -263,7 +273,7 @@ export default function Layout({ children }) {
               <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                 TraceBi
               </div>
-              <div style={{ fontSize: 11, color: 'rgba(200,220,255,0.45)', marginTop: 1 }}>
+              <div style={{ fontSize: 11, color: 'rgba(200,220,255,0.62)', marginTop: 1 }}>
                 Analytics trust layer
               </div>
             </div>
@@ -276,7 +286,7 @@ export default function Layout({ children }) {
               display: 'flex', alignItems: 'center', gap: 8,
               background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 6, padding: '7px 10px', cursor: 'pointer',
-              color: 'rgba(200,220,255,0.5)', fontSize: 12, fontFamily: 'inherit',
+              color: 'rgba(200,220,255,0.62)', fontSize: 12, fontFamily: 'inherit',
               transition: 'background .15s',
             }}
           >
@@ -287,7 +297,7 @@ export default function Layout({ children }) {
             <kbd style={{
               marginLeft: 'auto', fontSize: 10, padding: '1px 5px',
               background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 3, color: 'rgba(200,220,255,0.5)',
+              borderRadius: 3, color: 'rgba(200,220,255,0.62)',
             }}>⌘K</kbd>
           </button>
         </div>
