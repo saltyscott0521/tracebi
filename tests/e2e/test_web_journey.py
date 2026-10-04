@@ -152,3 +152,21 @@ def test_an_app_modules_own_reports_survive_live_rescans(served, scaffolded):
     discovery.rescan("reports", "models", "pipelines")
     assert "app_dashboard" in [r["name"] for r in registry.list_reports()]
     assert served.get("/api/reports/app_dashboard/source").status_code == 200
+
+
+def test_a_pipeline_names_the_models_it_touches(served):
+    """A pipeline can land data from one model and build another; a hand-built
+    runner says so with .models, and the app files it under each."""
+    from tracebi import PipelineRunner
+    from tracebi.registry import registry
+
+    runner = PipelineRunner(db_url="sqlite://")
+    runner.model, runner.models = "built_model", ["source_model", "built_model"]
+    registry.add_pipeline("hand_built", runner)
+    plain = PipelineRunner(db_url="sqlite://")
+    registry.add_pipeline("plain", plain)
+
+    listed = {p["pipeline"]: p for p in served.get("/api/pipelines").json()}
+    assert listed["hand_built"]["models"] == ["source_model", "built_model"]
+    assert listed["hand_built"]["model"] == "built_model"
+    assert listed["plain"]["models"] == [] and listed["plain"]["model"] is None

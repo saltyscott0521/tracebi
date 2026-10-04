@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge } from './Shared'
-import { modelOfPipeline, pagePath, reportPagePath } from '../nav'
+import { pipelineModels, pagePath, reportPagePath } from '../nav'
 
 // What needs a person, from GET /api/desk plus the pipelines list: review
 // notes, receipts that don't reproduce, failed refreshes, and sink checks
@@ -77,10 +77,10 @@ export function attentionItems(desk, pipelines, modelsOf = () => []) {
       if (l.last_status !== 'failed') continue
       items.push({
         key: `run-${p.pipeline}-${l.name}`, kind: 'Refresh failed', variant: 'red',
-        models: [modelOfPipeline(p)],
+        models: pipelineModels(p),
         title: `${p.pipeline} / ${l.name}`,
         detail: `Last run ${when(l.last_run) || 'recently'}`,
-        href: pagePath('refresh', p.model || ''),
+        href: pagePath('refresh', pipelineModels(p)[0] || ''),
       })
     }
   }

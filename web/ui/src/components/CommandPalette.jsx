@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { PAGES, pagePath, reportPagePath, reportModels, modelOfPipeline } from '../nav'
+import { PAGES, pagePath, reportPagePath, reportModels, pipelineModels } from '../nav'
 
 // Static page destinations — always available, even before data loads.
 const PAGES_ALL = [
@@ -40,9 +40,9 @@ export default function CommandPalette() {
     ...(reports    || []).map(r => ({ label: r.name, path: reportPagePath(r.name, reportModels(r)), kind: 'report', sub: r.description })),
     ...(pipelines  || []).map(p => ({
       label: p.pipeline,
-      path: pagePath('refresh', modelOfPipeline(p)),
+      path: pagePath('refresh', pipelineModels(p)[0] || ''),
       kind: 'pipeline',
-      sub: `${(p.layers || []).length} steps${p.model ? ` · ${p.model}` : ''}`,
+      sub: `${(p.layers || []).length} steps${pipelineModels(p).length ? ` · ${pipelineModels(p).join(', ')}` : ''}`,
     })),
   ], [models, reports, pipelines])
 

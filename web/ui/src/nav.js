@@ -67,11 +67,21 @@ export function reportModels(report) {
 export const reportBelongsToModel = (report, model) =>
   !model || reportModels(report).includes(model)
 
-/** A pipeline's model: the one model_pipeline stamped, else its name. */
-export const modelOfPipeline = p => (p && (p.model || p.pipeline)) || ''
+/**
+ * The models a pipeline touches: the ones it names (the API's `models`), else
+ * the one model_pipeline stamped, else its own name.
+ */
+export function pipelineModels(p) {
+  if (p?.models?.length) return p.models
+  const one = p && (p.model || p.pipeline)
+  return one ? [one] : []
+}
+
+/** The model a pipeline is mainly about (the first it names). */
+export const modelOfPipeline = p => pipelineModels(p)[0] || ''
 
 export const pipelineBelongsToModel = (p, model) =>
-  !model || modelOfPipeline(p) === model
+  !model || pipelineModels(p).includes(model)
 
 /** Where to open a report: under its (first) model when one is known. */
 export function reportPagePath(name, models = []) {

@@ -451,6 +451,19 @@ def scope_findings(browser, base: str) -> list[dict]:
                         "viewport": "desktop", "theme": "light", "rule": "model-without-reports",
                         "severity": "serious", "target": m["name"],
                         "detail": f"{m['name']} has no report; its Reports page is empty"})
+    # ...and one nothing can refresh. A pipeline belongs to the models it names
+    # (`models`), else the one it stamped, else its own name (as the app reads it).
+    pipelines = _safe(base, "/api/pipelines")
+
+    def pipeline_models(p):
+        return p.get("models") or ([p["model"]] if p.get("model") else [p["pipeline"]])
+
+    for m in models:
+        if not any(m["name"] in pipeline_models(p) for p in pipelines):
+            out.append({"page": f"/m/{m['name']}/refresh", "pattern": "/m/<m>/refresh",
+                        "viewport": "desktop", "theme": "light", "rule": "model-without-pipeline",
+                        "severity": "serious", "target": m["name"],
+                        "detail": f"nothing refreshes {m['name']}; its Refresh page is empty"})
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     for m in models:
         name = m["name"]

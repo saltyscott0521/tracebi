@@ -36,10 +36,16 @@ def list_pipelines():
                 layer["last_actor_role"] = None
             layers.append(layer)
         # model_pipeline stamps .model; a hand-built runner may leave it unset.
+        # A pipeline can touch more than one model (it lands data from one and
+        # builds another), so a hand-built runner may also set .models.
         model = getattr(runner, "model", None)
+        model = model if isinstance(model, str) and model else None
+        named = getattr(runner, "models", None)
+        models = [m for m in (named or []) if isinstance(m, str) and m]
         result.append({
             "pipeline": pipeline_name,
-            "model": model if isinstance(model, str) and model else None,
+            "model": model,
+            "models": models or ([model] if model else []),
             "layers": layers,
         })
     return result
