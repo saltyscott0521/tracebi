@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 
 import { useModels, useModel, useTablePreview, useRunQuery } from '../api'
+import { useModelScope } from '../components/ModelScope'
 import { LineageGraph } from '../components/Lineage'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
@@ -232,9 +233,13 @@ function downloadCsv(result) {
 
 export default function Explore() {
   const { data: models, isLoading: loadingModels } = useModels()
+  const [modelScope] = useModelScope()
   const modelNames = (models || []).map(m => m.name)
+    .filter(n => !modelScope || n === modelScope)
   const [modelName, setModelName] = useState(null)
-  const activeModel = modelName || modelNames[0]
+  const activeModel = (modelScope && modelNames.includes(modelScope) ? modelScope : null)
+    || modelName
+    || modelNames[0]
   const { data: model, isLoading: loadingModel } = useModel(activeModel)
 
   const facts = model?.facts || []

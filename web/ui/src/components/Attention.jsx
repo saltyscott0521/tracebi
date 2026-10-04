@@ -74,7 +74,11 @@ export function attentionItems(desk, pipelines) {
         key: `run-${p.pipeline}-${l.name}`, kind: 'Refresh failed', variant: 'red',
         title: `${p.pipeline} / ${l.name}`,
         detail: `Last run ${when(l.last_run) || 'recently'}`,
-        href: `/pipelines?p=${encodeURIComponent(p.pipeline)}`,
+        href: (() => {
+          const q = new URLSearchParams({ p: p.pipeline })
+          if (p.model) q.set('model', p.model)
+          return `/pipelines?${q}`
+        })(),
       })
     }
   }

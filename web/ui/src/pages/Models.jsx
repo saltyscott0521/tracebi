@@ -6,6 +6,8 @@ import '@xyflow/react/dist/style.css'
 
 import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
+import { useModelScope } from '../components/ModelScope'
+import { modelBelongsToScope } from '../modelScope'
 import { useModels, useModel, useTablePreview, useDesk, tableCsvUrl } from '../api'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
@@ -473,12 +475,24 @@ function ModelDetail({ name }) {
 export default function Models() {
   const { data, isLoading } = useModels()
   const [params, setParams] = useSearchParams()
+  const [modelScope] = useModelScope()
   const selected = params.get('m')
-  const setSelected = m => setParams(m ? { m } : {}, { replace: true })
+  const setSelected = m => {
+    const next = new URLSearchParams(params)
+    if (m) next.set('m', m)
+    else next.delete('m')
+    setParams(next, { replace: true })
+  }
   const [query, setQuery] = useState('')
 
   const models = data || []
-  const filtered = models.filter(m => m.name.toLowerCase().includes(query.toLowerCase()))
+  const filtered = models.filter(m =>
+    modelBelongsToScope(m.name, modelScope) &&
+    m.name.toLowerCase().includes(query.toLowerCase())
+  )
+  const shown = selected && filtered.some(m => m.name === selected)
+    ? selected
+    : (filtered.length === 1 ? filtered[0].name : selected)
 
   return (
     <>
@@ -487,7 +501,9 @@ export default function Models() {
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to see its diagram, measures and tables, and on its Storage tab where its data is kept.`
+          : modelScope
+            ? `Scoped to ${modelScope}.`
+            : `${models.length} model${models.length !== 1 ? 's' : ''} declared in models/. Select one to see its diagram, measures and tables, and on its Storage tab where its data is kept.`
         }
       </PageSub>
 
@@ -507,7 +523,7 @@ export default function Models() {
                   : filtered.map(m => (
                     <ListItem
                       key={m.name}
-                      selected={selected === m.name}
+                      selected={shown === m.name}
                       onClick={() => setSelected(m.name)}
                       name={m.name}
                       sub={m.facts ? `${m.facts.length} fact${m.facts.length !== 1 ? 's' : ''} · ${m.dimensions.length} dim · ${m.measures.length} measures` : `${m.tables.length} tables`}
@@ -517,7 +533,7 @@ export default function Models() {
               </>
             )
           }
-          right={<ModelDetail key={selected} name={selected} />}
+          right={<ModelDetail key={shown} name={shown} />}
         />
       )}
     </>

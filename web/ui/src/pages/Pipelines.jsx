@@ -5,6 +5,8 @@ import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/rea
 import '@xyflow/react/dist/style.css'
 
 import { usePipelines, useRunLayer, useRunPipeline, useLayerHistory } from '../api'
+import { useModelScope } from '../components/ModelScope'
+import { pipelineBelongsToModel } from '../modelScope'
 import {
   PageTitle, PageSub, Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SkeletonCard, SkeletonList, SplitLayout, ListItem,
@@ -330,16 +332,24 @@ function PipelineDetail({ pipeline, layers }) {
 export default function Pipelines() {
   const { data, isLoading } = usePipelines()
   const [params, setParams] = useSearchParams()
+  const [modelScope] = useModelScope()
   const selected = params.get('p')
-  // One pipeline in the URL, same shape as models (?m=) and reports (?r=).
-  const select = (name) => setParams(name ? { p: name } : {}, { replace: true })
+  // Keep ?model= when picking a pipeline; drop it only via the scope control.
+  const select = (name) => {
+    const next = new URLSearchParams(params)
+    if (name) next.set('p', name)
+    else next.delete('p')
+    setParams(next, { replace: true })
+  }
   const [query, setQuery] = useState('')
 
   const pipelines = data || []
   const filtered = pipelines.filter(p =>
+    pipelineBelongsToModel(p, modelScope) &&
     p.pipeline.toLowerCase().includes(query.toLowerCase())
   )
-  const current = pipelines.find(p => p.pipeline === selected)
+  const current = filtered.find(p => p.pipeline === selected)
+    || (filtered.length === 1 ? filtered[0] : null)
 
   return (
     <>
@@ -348,7 +358,9 @@ export default function Pipelines() {
       <PageSub>
         {isLoading
           ? 'Loading…'
-          : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}: each rebuilds a model's data, then the reports that read it. Select one to open its flow. Run history refreshes every 10 s.`
+          : modelScope
+            ? `${filtered.length} pipeline${filtered.length !== 1 ? 's' : ''} for ${modelScope}. Select one to open its flow.`
+            : `${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''}: each rebuilds a model's data, then the reports that read it. Select one to open its flow. Run history refreshes every 10 s.`
         }
       </PageSub>
 
