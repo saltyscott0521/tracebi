@@ -184,7 +184,9 @@ copy of that folder.</p>
 <p>Give the resource a domain in Coolify if you have one. TLS ends at
 Coolify. This page does not name a host, an address, or a password.</p>
 <p>On the Coolify server, keep image retention tight (<code>docker_images_to_keep</code>
-low, or prune unused images regularly) so old tags do not fill the disk.</p>
+low, or prune unused images regularly) so old tags do not fill the disk.
+The image ships <code>curl</code> so Coolify's HTTP healthcheck against <code>/api/health</code>
+works on a pulled GHCR tag (python:slim alone does not).</p>
 <h2 id="backups">Backups</h2>
 <p>Copy the project folder (<code>TRACEBI_PROJECT_DIR</code>). That folder is the
 reports, the warehouse file, and the run log. If you started the

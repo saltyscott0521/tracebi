@@ -20,6 +20,11 @@ ENV TRACEBI_IN_DOCKER=1
 ENV TRACEBI_DOCS_DIR=/app/docs
 # A non-root runtime user: the server must not run as root.
 RUN useradd --create-home --uid 10001 appuser
+# Coolify's Docker Image healthcheck shells out to curl/wget; python:slim
+# ships neither. Keep curl so a pulled GHCR image passes the probe.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . .
 COPY --from=ui-builder /src/tracebi/web/ui/dist tracebi/web/ui/dist
@@ -41,4 +46,6 @@ USER appuser
 # Serve the example project — its models/ and reports/ are what discovery
 # finds. docker-compose additionally sets TRACEBI_APP for the bundled demo.
 WORKDIR /app/examples/portfolio_project
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/api/health || exit 1
 CMD python -m uvicorn tracebi.web.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
