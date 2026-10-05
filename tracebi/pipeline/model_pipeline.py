@@ -112,6 +112,7 @@ def model_pipeline(
     # The Pipelines page (and the shared model scope) join a runner to its
     # model by this attribute — not by guessing from the pipeline's file name.
     runner.model = model
+    runner.transform = transform            # the phase ① script, for the Code view
     runner.register_step("transform", run_transform)
     runner.register_step("build", build_reports, depends_on="transform")
     return runner

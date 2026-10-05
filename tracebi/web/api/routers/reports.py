@@ -11,6 +11,7 @@ from starlette.background import BackgroundTask
 from tracebi.web.api.errors import error_detail as _error_detail
 from tracebi.web.api.registry import registry
 from tracebi.web.api.run_store import run_store
+from tracebi.web.api.source_view import SOURCE_LANG, SOURCE_MAX_BYTES
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -683,8 +684,7 @@ def download_report(name: str, format: str = "xlsx"):
 #: The files that define a report package, in reading order. Anything else in
 #: the package (assets/, notes) is listed by name only.
 _PACKAGE_SOURCE_FILES = ("report.json", "template.html", "style.css", "script.js", "report.py")
-_SOURCE_LANG = {".json": "json", ".html": "html", ".css": "css", ".js": "javascript", ".py": "python"}
-_SOURCE_MAX_BYTES = 256 * 1024
+_SOURCE_LANG, _SOURCE_MAX_BYTES = SOURCE_LANG, SOURCE_MAX_BYTES
 
 
 def _display_path(path: str, reports_dir: str) -> str:

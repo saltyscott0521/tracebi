@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { useConnectors } from '../api'
 import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { PageHeader } from '../components/Scope'
+import CodeView from '../components/CodeView'
 import { pagePath } from '../nav'
 import {
-  Card, CardTitle, Badge,
+  Card, CardTitle, Badge, Btn,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
@@ -15,6 +16,7 @@ function Section({ label, children }) {
 }
 
 function ConnectorDetail({ c }) {
+  const [code, setCode] = useState(false)
   if (!c) return (
     <Card>
       <Empty message="Select a source to see where its data is kept." />
@@ -22,7 +24,7 @@ function ConnectorDetail({ c }) {
   )
   return (
     <Card className="fade-in">
-      <CardTitle>{c.name}</CardTitle>
+      <CardTitle action={<Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>}>{c.name}</CardTitle>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         <Badge variant="blue">{c.type}</Badge>
         {c.storage?.kind && <Badge variant="gray">{KIND_LABEL[c.storage.kind]}</Badge>}
@@ -35,6 +37,7 @@ function ConnectorDetail({ c }) {
             <Link key={m} to={pagePath('model', m)} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
           ))}
       </Section>
+      {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}
       {c.tables && c.tables.length > 0 && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>
@@ -95,7 +98,7 @@ export default function Connectors({ model = '' }) {
               </>
             )
           }
-          right={isLoading ? <SkeletonCard /> : <ConnectorDetail c={current} />}
+          right={isLoading ? <SkeletonCard /> : <ConnectorDetail key={current?.name} c={current} />}
         />
       )}
     </>

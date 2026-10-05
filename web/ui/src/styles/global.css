@@ -619,6 +619,25 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .markdown-doc h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
 .markdown-doc p  { margin: 0 0 12px; }
 .markdown-doc ul, .markdown-doc ol { margin: 0 0 12px; padding-left: 22px; }
+/* Code behind an object: read-only, line numbers, the terminal surface. */
+.codeview__hint { font-size: var(--text-sm); color: var(--muted); margin-bottom: 12px; }
+.codeview__tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.codeview__bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.codeview__path { font-family: var(--font-mono); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.codeview {
+  display: flex; max-height: 520px; overflow: auto;
+  background: var(--code-bg); color: var(--code-text);
+  border: 1px solid var(--terminal-border); border-radius: 8px;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
+}
+.codeview pre { margin: 0; padding: 12px 0; font: inherit; }
+.codeview__gutter {
+  position: sticky; left: 0; flex: none; padding-left: 12px !important; padding-right: 12px !important;
+  text-align: right; color: var(--terminal-muted); user-select: none;
+  background: var(--code-bg); border-right: 1px solid var(--terminal-border);
+}
+.codeview__code { padding-left: 14px !important; padding-right: 14px !important; white-space: pre; }
+
 /* A run's output: the terminal surface, one row per printed line. */
 .runlog-wrap { position: relative; }
 .runlog__bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }

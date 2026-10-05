@@ -11,6 +11,7 @@ import {
 } from '../api'
 import { attachPointMode } from '../pointMode'
 import Workbench from '../components/Workbench'
+import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
@@ -457,10 +458,10 @@ function ReportDetail({ report, onBack }) {
       {!shown && !running && !built.isLoading && (
         <div style={{ display: 'flex', gap: 8 }}>
           <Btn onClick={handleRun}>▶ Run Report</Btn>
-          <Btn onClick={() => setTab('Source')} variant="outline">{'</>'} View source</Btn>
+          <Btn onClick={() => setTab('Code')} variant="outline">{'</>'} View code</Btn>
         </div>
       )}
-      {!shown && tab === 'Source' && (
+      {!shown && tab === 'Code' && (
         <div style={{ marginTop: 18 }}><ReportSource name={report.name} /></div>
       )}
       {running && (
@@ -529,7 +530,7 @@ function ReportDetail({ report, onBack }) {
           </div>
 
           <Tabs
-            tabs={lineageData ? ['Output', 'Lineage', 'Manifest', 'Source'] : ['Output', 'Manifest', 'Source']}
+            tabs={lineageData ? ['Output', 'Lineage', 'Manifest', 'Code'] : ['Output', 'Manifest', 'Code']}
             active={tab}
             onChange={setTab}
           />
@@ -553,7 +554,7 @@ function ReportDetail({ report, onBack }) {
 
           {tab === 'Lineage' && lineageData && <ReportLineage flow={lineageData.flow} />}
 
-          {tab === 'Source' && <ReportSource name={report.name} />}
+          {tab === 'Code' && <ReportSource name={report.name} />}
 
           {tab === 'Manifest' && (
             <pre className="code-block" style={{ maxHeight: 400, overflowY: 'auto' }}>
@@ -597,38 +598,9 @@ function FormChip({ form, style }) {
 // package is report.json + template.html + style.css + script.js (+ assets).
 function ReportSource({ name }) {
   const { data, isLoading, error } = useReportSource(name, true)
-  const [active, setActive] = useState(0)
-  if (isLoading) return <div style={{ color: 'var(--muted)', fontSize: 13 }}><Spinner /> Loading source…</div>
+  if (isLoading) return <div style={{ color: 'var(--muted)', fontSize: 13 }}><Spinner /> Loading code…</div>
   if (error) return <ErrorDetail error={error} />
-  const files = data?.files || []
-  const file = files[Math.min(active, files.length - 1)]
-  return (
-    <div className="fade-in">
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>{data?.hint}</div>
-      {files.length > 1 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {files.map((f, i) => (
-            <Btn key={f.path} size="sm" variant={i === active ? undefined : 'outline'} onClick={() => setActive(i)}>
-              {f.path.split('/').pop()}
-            </Btn>
-          ))}
-        </div>
-      )}
-      {file && (
-        <>
-          <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>
-            {file.path}{file.truncated ? ' (first 256 KB)' : ''}
-          </div>
-          <pre className="code-block" style={{ maxHeight: 480, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{file.content}</pre>
-        </>
-      )}
-      {data?.other_files?.length > 0 && (
-        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>
-          Also in the package: {data.other_files.join(', ')}
-        </div>
-      )}
-    </div>
-  )
+  return <CodeFiles files={data?.files || []} hint={data?.hint} other={data?.other_files} />
 }
 
 // The last build's receipt, re-checked by GET /api/desk. Nothing is shown

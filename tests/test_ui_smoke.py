@@ -164,7 +164,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 arg=_TITLE,
             )
 
-            page.get_by_role("button", name="Source").click()
+            page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="report.json").wait_for()
 
             downloaded = page.evaluate(
@@ -183,6 +183,22 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("heading", name="Runs", exact=True).wait_for()
             page.get_by_text(_REPORT).wait_for()
             page.get_by_text("Not verified").first.wait_for()
+            fail_on_browser_errors()
+
+            # Each page can show the code behind what it shows.
+            page.goto(base + "/m/portfolio_model")
+            page.get_by_role("button", name="Code", exact=True).click()
+            page.get_by_text("models/portfolio_model.py").first.wait_for()
+            page.goto(base + "/m/portfolio_model/refresh")
+            page.get_by_role("button", name="Code", exact=True).click()
+            page.get_by_role("button", name="transform", exact=True).click()
+            page.get_by_text("transforms/holdings_transform.py").first.wait_for()
+            page.goto(base + "/m/portfolio_model/explore")
+            page.get_by_text("fair_value", exact=True).first.click()
+            page.get_by_text("sector", exact=True).first.click()
+            page.get_by_text("▶ Run query").click()
+            page.get_by_text("The query as code").wait_for()
+            assert 'measures={"fair_value": "sum"}' in page.locator(".codeview__code").inner_text()
             fail_on_browser_errors()
 
             # Refresh: Run all opens the Log tab, which follows the run to its end.

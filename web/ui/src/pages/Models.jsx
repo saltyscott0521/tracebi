@@ -9,6 +9,7 @@ import {
   useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, tableCsvUrl,
 } from '../api'
 import { PageHeader } from '../components/Scope'
+import CodeView from '../components/CodeView'
 import { pagePath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
   Card, Badge, Spinner, Empty, Tabs, SkeletonList, SkeletonCard,
@@ -349,7 +350,7 @@ export function ModelDetail({ name }) {
 
   const graph = buildModelGraph(data)
   const storageOf = new Map((data.connector_details || []).map(c => [c.name, c.storage]))
-  const tabs = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Storage']
+  const tabs = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Storage', 'Code']
   // A model with joins opens on its diagram; one with none has nothing to draw.
   const active = tab || (graph.edges.length ? 'Diagram' : 'Tables')
   const grain = (data.dimensions || []).flatMap(d =>
@@ -448,6 +449,7 @@ export function ModelDetail({ name }) {
       {active === 'Measures' && <MeasuresTable measures={data.measures || []} />}
 
       {active === 'Storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} />}
+      {active === 'Code' && <CodeView kind="models" name={name} />}
 
       {active === 'Diagram' && (
         <div className="fade-in">

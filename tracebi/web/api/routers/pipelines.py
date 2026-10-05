@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from tracebi.web.api import pipeline_runs
 from tracebi.web.api.registry import registry
+from tracebi.web.api.source_view import source_payload
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
 
@@ -208,3 +209,22 @@ def pipeline_run_log(pipeline_name: str, run_id: str, after: int = 0):
     if log is None:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found for pipeline '{pipeline_name}'")
     return log
+
+
+@router.get("/{pipeline_name}/source")
+def pipeline_source(pipeline_name: str):
+    """The code a refresh runs: the pipeline file, and the transform its model
+    pipeline runs first."""
+    runner = registry.get_pipeline(pipeline_name)
+    if not runner:
+        raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found")
+    from tracebi.cli import find_transform
+    from tracebi.pipeline_registry import pipeline_path
+
+    transform = getattr(runner, "transform", None)
+    found = find_transform(transform) if isinstance(transform, str) else None
+    return source_payload(
+        [("pipeline", pipeline_path(pipeline_name)), ("transform", str(found) if found else None)],
+        missing_hint="This pipeline is registered in Python code (an app module), not from a pipelines/ file.",
+        hint="Run all runs the pipeline's steps in order; the transform is the first, and writes the warehouse.",
+    )

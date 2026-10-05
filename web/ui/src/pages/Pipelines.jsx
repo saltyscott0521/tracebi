@@ -7,6 +7,7 @@ import '@xyflow/react/dist/style.css'
 import { usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
 import { PageHeader } from '../components/Scope'
 import RunLog from '../components/RunLog'
+import CodeView from '../components/CodeView'
 import { pipelineModels, pipelineBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
@@ -263,7 +264,7 @@ export function PipelineDetail({ pipeline, layers }) {
         {pipeline}
       </CardTitle>
 
-      <Tabs tabs={['Flow', 'Steps', 'Log', 'History']} active={tab} onChange={t => setTab(t)} />
+      <Tabs tabs={['Flow', 'Steps', 'Log', 'History', 'Code']} active={tab} onChange={t => setTab(t)} />
 
       {tab === 'Flow' && (
         <div className="fade-in">
@@ -328,6 +329,8 @@ export function PipelineDetail({ pipeline, layers }) {
           <RunLog pipeline={pipeline} runs={runs} runId={shownRun} onPick={setPicked} onDone={finished} />
         </div>
       )}
+
+      {tab === 'Code' && <CodeView kind="pipelines" name={pipeline} />}
 
       {tab === 'History' && (
         <div>

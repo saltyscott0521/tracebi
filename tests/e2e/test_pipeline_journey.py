@@ -183,6 +183,13 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
     assert "Running transforms/sample_transform.py" in text
     assert text.index("[transform]") < text.index("[build]")
 
+    # The Code tab shows what ran: the pipeline file, then the transform it starts with.
+    code = c.get("/api/pipelines/sample_model/source").json()
+    assert [(f["label"], f["path"]) for f in code["files"]] == [
+        ("pipeline", "pipelines/sample_model.py"), ("transform", "transforms/sample_transform.py")]
+    assert "model_pipeline(" in code["files"][0]["content"] and "sink" in code["files"][1]["content"].lower()
+    assert c.get("/api/pipelines/nope/source").status_code == 404
+
 
 def test_the_app_refreshes_a_model_while_another_model_holds_the_same_warehouse_open(reference, monkeypatch):
     """portfolio_model and saas_model sink into one warehouse file. Listing the
@@ -198,3 +205,21 @@ def test_the_app_refreshes_a_model_while_another_model_holds_the_same_warehouse_
     text, done = follow_run(c, "portfolio_model", run["run_id"])
     assert done["status"] == "succeeded", text
     assert "[transform] ✓" in text and "[build] ✓" in text
+
+
+def test_a_model_and_its_connector_show_the_file_that_declares_them(reference, monkeypatch):
+    from tracebi import DataModel
+    from tracebi.registry import registry
+
+    c = serve_app(monkeypatch, models=True)
+    code = c.get("/api/models/portfolio_model/source").json()
+    assert [f["path"] for f in code["files"]] == ["models/portfolio_model.py"]
+    assert "DataModel(" in code["files"][0]["content"] and not code["files"][0]["truncated"]
+    # A connector is declared in the model files that read it: both models here read this warehouse.
+    shared = c.get("/api/connectors/warehouse/source").json()
+    assert sorted(f["path"] for f in shared["files"]) == ["models/portfolio_model.py", "models/saas_model.py"]
+    # A model registered in code has no file, and says so rather than showing nothing.
+    registry.add_model(DataModel("in_code"))
+    nothing = c.get("/api/models/in_code/source").json()
+    assert nothing["files"] == [] and "Python code" in nothing["hint"]
+    assert c.get("/api/models/nope/source").status_code == 404
