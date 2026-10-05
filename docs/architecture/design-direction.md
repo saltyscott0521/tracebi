@@ -113,6 +113,12 @@ sparingly. Take what they share and add what TraceBi needs.
    a timeline of what each save changed, and flip back to the version before.
    `tracebi dev <name> --app` opens it in one command (opt-in until the app
    matches the classic workbench: per-binding data cards, lint, discovery).
-4. **The theme pass,** one surface at a time through the audit loop: tokens
-   and type first (every page changes at once and the audit shows what broke),
-   then the sidebar, then lists, then the report defaults.
+4. **The theme pass,** one surface at a time through the audit loop.
+   - Foundation (done): Geist Sans and Mono, monochrome ink, neutral grounds
+     that follow the OS in light and dark, hairline borders, no gradients,
+     blur or resting shadows, a sidebar on the page's own ground. The audit
+     enforces it: `theme-font`, `theme-brand-colour`, `theme-shadow`,
+     `theme-decoration`.
+   - Still to do: lists as console rows throughout, the report defaults
+     (`tracebi.css`, so a report matches the app), the logo and illustrations,
+     and a second look at density on each page.

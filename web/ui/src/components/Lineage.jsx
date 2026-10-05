@@ -39,7 +39,7 @@ export function LineageNode({ data, selected }) {
     <div style={{
       background: op.bg,
       border: `1px solid ${selected ? 'var(--blue)' : op.br}`,
-      boxShadow: selected ? '0 0 0 3px rgba(37,99,235,.18)' : 'var(--shadow-sm)',
+      boxShadow: selected ? '0 0 0 2px var(--focus-ring)' : 'none',
       borderRadius: 8, padding: '10px 14px', minWidth: 180, color: 'var(--text)', fontSize: 12,
       cursor: 'pointer', transition: 'box-shadow .15s ease, border-color .15s ease',
     }}>
@@ -85,7 +85,7 @@ function MetaRow({ k, v }) {
       <span style={{ fontSize: 11, color: 'var(--muted)', minWidth: 92, textTransform: 'capitalize' }}>
         {k.replaceAll('_', ' ')}
       </span>
-      <span style={{ fontSize: 11.5, color: 'var(--text-2)', wordBreak: 'break-word', fontFamily: 'Cascadia Code, Fira Code, monospace' }}>
+      <span style={{ fontSize: 11.5, color: 'var(--text-2)', wordBreak: 'break-word', fontFamily: 'var(--font-mono)' }}>
         {fmtMetaValue(k, v)}
       </span>
     </div>
@@ -134,7 +134,7 @@ export function LineageGraph({ graph, height = 340 }) {
     () => (graph?.edges || []).map(e => ({
       ...e,
       animated: true,
-      style: { stroke: 'rgba(37,99,235,.45)', strokeWidth: 1.5 },
+      style: { stroke: 'var(--muted)', strokeWidth: 1.25 },
     })),
     [graph],
   )

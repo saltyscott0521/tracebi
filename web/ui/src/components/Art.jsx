@@ -15,10 +15,10 @@ export function BrandMark() {
     <div className="bm" onMouseEnter={() => setPlay(p => p + 1)} aria-hidden="true">
       <svg key={play} width="16" height="16" viewBox="0 0 20 20" fill="none">
         <path className="bm-bracket" d="M6.6 4.5 H4.6 V15.5 H6.6 M13.4 4.5 H15.4 V15.5 H13.4"
-              stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        <rect className="bm-bar bm-bar-1" x="8.1" y="9.6" width="1.7" height="4.4" rx=".4" fill="white" />
-        <rect className="bm-bar bm-bar-2" x="11" y="7.2" width="1.7" height="6.8" rx=".4" fill="white" />
-        <circle className="bm-dot" cx="5" cy="4.5" r="1.1" fill="#7dd3fc" />
+              stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        <rect className="bm-bar bm-bar-1" x="8.1" y="9.6" width="1.7" height="4.4" rx=".4" fill="currentColor" />
+        <rect className="bm-bar bm-bar-2" x="11" y="7.2" width="1.7" height="6.8" rx=".4" fill="currentColor" />
+        <circle className="bm-dot" cx="5" cy="4.5" r="1.1" fill="currentColor" />
       </svg>
     </div>
   )
@@ -75,14 +75,14 @@ export function PairArt() {
       <g className="pair-doc">
         <path d="M20 10h40l12 12v60a4 4 0 01-4 4H20a4 4 0 01-4-4V14a4 4 0 014-4z" fill="var(--surface)" stroke="var(--border-hl)" strokeWidth="1.3" />
         <path d="M60 10v12h12" stroke="var(--border-hl)" strokeWidth="1.3" />
-        <text x="44" y="46" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--accent-text)" fontFamily="Source Code Pro, monospace">.html</text>
+        <text x="44" y="46" textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--accent-text)" style={{ fontFamily: 'var(--font-mono)' }}>.html</text>
         {[56, 63, 70].map((y, i) => <rect key={y} x="26" y={y} width={36 - i * 8} height="3" rx="1.5" fill="var(--muted)" opacity=".5" />)}
       </g>
       <path className="pair-link" d="M78 48 H142" stroke="var(--accent-text)" strokeWidth="1.6" strokeDasharray="3 5" strokeLinecap="round" />
       <circle className="pair-packet" cx="78" cy="48" r="3" fill="var(--accent-text)" />
       <g className="pair-doc pair-doc-2">
         <path d="M152 10h48a4 4 0 014 4v70l-6-4-6 4-6-4-6 4-6-4-6 4-6-4-6 4-6-4V14a4 4 0 014-4z" fill="var(--surface)" stroke="var(--border-hl)" strokeWidth="1.3" />
-        <text x="176" y="34" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--accent-text)" fontFamily="Source Code Pro, monospace">manifest</text>
+        <text x="176" y="34" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="var(--accent-text)" style={{ fontFamily: 'var(--font-mono)' }}>manifest</text>
         {[44, 52, 60].map((y) => (
           <g key={y}>
             <rect x="158" y={y} width="20" height="3" rx="1.5" fill="var(--muted)" opacity=".5" />

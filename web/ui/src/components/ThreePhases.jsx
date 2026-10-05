@@ -7,7 +7,7 @@ function Code({ children }) {
       border: '1px solid var(--terminal-border)', borderRadius: 8,
       padding: '12px 14px', margin: 0, overflowX: 'auto',
       fontSize: 12, lineHeight: 1.6,
-      fontFamily: "'Cascadia Code', 'Fira Code', monospace",
+      fontFamily: 'var(--font-mono)',
     }}>{children}</pre>
   )
 }
@@ -75,10 +75,9 @@ export function ThreePhases() {
 
       <div style={{
         display: 'flex', gap: 12, alignItems: 'flex-start',
-        background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',
-        borderRadius: 12, padding: '14px 18px', marginBottom: 32,
+        background: 'var(--surface-2)', border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)', padding: '14px 18px', marginBottom: 32,
       }}>
-        <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden="true">❄️</span>
         <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>
           <strong style={{ color: 'var(--text)' }}>The freeze points are the whole idea.</strong>{' '}
           Once phase ① has run, the warehouse is a fixed input — phase ② is small enough to review as
@@ -101,7 +100,7 @@ export function ThreePhases() {
               }}>{p.n}</span>
               <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{p.title}</span>
               <code style={{
-                fontFamily: "'Cascadia Code', 'Fira Code', monospace", fontSize: 12,
+                fontFamily: 'var(--font-mono)', fontSize: 12,
                 color: p.color, background: `color-mix(in srgb, ${p.color} 8%, transparent)`, border: `1px solid color-mix(in srgb, ${p.color} 16%, transparent)`,
                 padding: '1px 8px', borderRadius: 5,
               }}>{p.folder}</code>

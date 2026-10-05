@@ -234,7 +234,7 @@ function navItemStyle(isActive) {
     border: '1px solid transparent', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 12.5, lineHeight: 1.35,
     background: isActive ? 'var(--blue)' : 'transparent',
-    color: isActive ? '#fff' : 'var(--text)',
+    color: isActive ? 'var(--on-ink)' : 'var(--text)',
     whiteSpace: 'normal',
   }
 }

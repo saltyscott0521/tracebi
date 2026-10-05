@@ -182,6 +182,11 @@ PAGE_CHECKS_JS = r"""
               detail: `page is ${sw}px wide on a ${vw}px screen`});
   }
 
+  // The face is Geist, and it actually loaded (a failed font falls back silently).
+  if (!document.fonts.check('14px "Geist Variable"'))
+    out.push({rule: 'theme-font-loaded', severity: 'serious', target: 'body',
+              detail: 'Geist did not load; the page is in the fallback face'});
+
   // One h1 per page: it is the page's name for screen readers and tabs.
   const h1s = [...document.querySelectorAll('main h1')].filter(visible);
   if (h1s.length !== 1)
@@ -419,7 +424,7 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                          "rule": "registry-drift", "severity": "critical", "target": name,
                          "detail": f"{name} {'vanished' if name in at_start else 'appeared'} during the audit"})
 
-    findings = _dedupe(findings + token_findings() + source_findings())
+    findings = _dedupe(findings + token_findings() + theme_findings() + source_findings())
     report = {"base": base, "when": time.strftime("%Y-%m-%d %H:%M:%S"),
               "pages": pages, "findings": findings, "metrics": static_metrics(),
               "score": score(findings)}
@@ -574,6 +579,58 @@ def token_findings() -> list[dict]:
                             "theme": theme, "rule": "token-contrast", "severity": "serious",
                             "target": f"{fg} on {bg}",
                             "detail": f"{t[fg]} on {t[bg]} is {r:.2f}:1 in {theme} (needs 4.5)"})
+    return out
+
+
+def theme_findings() -> list[dict]:
+    """The look, as rules ([[design-direction]]): Geist, monochrome ink, no
+    gradients or blur, shadows only on popovers. Colour is for meaning, so the
+    "brand" tokens must stay neutral: only --link and --focus-ring are blue.
+    """
+    out = []
+    ui = REPO / "web" / "ui" / "src"
+    css = (ui / "styles" / "global.css").read_text()
+
+    def finding(rule, target, detail, sev="serious"):
+        out.append({"page": "(theme)", "pattern": "(theme)", "viewport": "-", "theme": "-",
+                    "rule": rule, "severity": sev, "target": target, "detail": detail})
+
+    root = re.search(r":root\s*\{(.*?)\n\}", css, re.S)
+    if not root or "Geist" not in re.search(r"--font-sans:\s*([^;]*);", root.group(1)).group(1):
+        finding("theme-font", "--font-sans", "the sans face must be Geist")
+    if "geist" not in (ui / "main.jsx").read_text().lower():
+        finding("theme-font", "main.jsx", "Geist is not imported")
+
+    light = _tokens(css, ":root")
+    dark_own = _tokens(css, '[data-theme="dark"]')
+    themes = {"light": light, "dark": {**light, **dark_own}}
+    # An ink token the dark theme does not set is the light theme's near-black on
+    # a near-black ground: --blue was, and every active tab and row vanished.
+    for name in ("--blue", "--accent-text", "--ink", "--on-ink"):
+        if name in light and name not in dark_own:
+            finding("theme-dark-ink", name, f"{name} is not set for dark mode")
+    for theme, t in themes.items():
+        for name in ("--blue", "--accent-text", "--ink", "--brand"):
+            v = t.get(name)
+            if v and (spread := max(int(v[i:i + 2], 16) for i in (1, 3, 5))
+                      - min(int(v[i:i + 2], 16) for i in (1, 3, 5))) > 12:
+                finding("theme-brand-colour", f"{name} ({theme})",
+                        f"{v} has colour (spread {spread}); ink is neutral, colour is for meaning")
+    for m in re.finditer(r"\n\s*(--shadow[\w-]*):\s*([^;]*);", css):
+        if m.group(1) != "--shadow-pop" and m.group(2).strip() != "none":
+            finding("theme-shadow", m.group(1), f"{m.group(1)} is {m.group(2).strip()[:40]}; resting shadows are none")
+
+    # Gradients and blur: decoration. A loading shimmer is not.
+    lines = css.splitlines()
+    for n, line in enumerate(lines):
+        if re.search(r"(linear|radial)-gradient|backdrop-filter", line):
+            context = " ".join(lines[max(0, n - 4):n + 2])
+            if not re.search(r"skeleton|shimmer", context):
+                finding("theme-decoration", f"global.css:{n + 1}", line.strip()[:80])
+    for p in sorted(ui.rglob("*.jsx")):
+        for n, line in enumerate(p.read_text().splitlines(), 1):
+            if re.search(r"(linear|radial)-gradient|backdropFilter", line):
+                finding("theme-decoration", f"{p.relative_to(ui).as_posix()}:{n}", line.strip()[:80])
     return out
 
 
