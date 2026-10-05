@@ -251,16 +251,9 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
 
 
 def test_a_run_lists_only_the_reports_it_actually_rebuilt(scaffolded, monkeypatch):
-    import shutil
-
-    folder = scaffolded / "reports" / "sample_model"
-    folder.mkdir()
-    shutil.move(str(scaffolded / "reports" / "sample_dashboard"), str(folder / "sample_dashboard"))
+    folder = scaffolded / "reports" / "sample_model"               # init's layout: the model's reports
     (folder / "zz_broken").mkdir()                                  # built after the good one, and fails
     (folder / "zz_broken" / "report.json").write_text("{not json")
-    (scaffolded / "pipelines" / "sample_model.py").write_text(
-        "from tracebi import model_pipeline\n"
-        "runner = model_pipeline('sample_model', transform='sample_transform')\n")
     c = serve_app(monkeypatch)
 
     def run(layer=None):
