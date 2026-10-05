@@ -809,6 +809,10 @@ def cmd_dev(args: argparse.Namespace) -> int:
     from tracebi._dev_server import serve_dev
     from tracebi.report_paths import open_report
     if args.name is None:
+        if args.app:
+            print("tracebi dev --app opens one report in the app: give its name "
+                  "(tracebi dev <name> --app).", file=sys.stderr)
+            return 1
         return serve_dev(None, port=args.port,
                          open_browser=not args.no_browser)
     reports_dir = _default_reports_dir()
@@ -822,6 +826,8 @@ def cmd_dev(args: argparse.Namespace) -> int:
     else:
         pkg_dir = opened.path
         ready = opened.package_dir is not None and opened.has_template
+    if ready and args.app:
+        return _dev_in_the_app(args)
     if ready:
         return serve_dev(pkg_dir, port=args.port,
                          open_browser=not args.no_browser)
@@ -829,6 +835,28 @@ def cmd_dev(args: argparse.Namespace) -> int:
           f"{pkg_dir} (report.json + template.html). Scaffold one with "
           f"`tracebi new-report`.", file=sys.stderr)
     return 1
+
+
+def _dev_in_the_app(args: argparse.Namespace) -> int:
+    """``tracebi dev <name> --app``: the web app, in dev mode, open on that report
+    with Build already on. The agent's chat goes beside it; the app is where you
+    watch it work and point at what you mean (see docs/architecture/design-direction.md).
+    """
+    from urllib.parse import urlencode
+
+    # Build mode's endpoints write dev-state files, so the server is in dev mode
+    # (the same gate as /api/_dev/reload) and stays on loopback.
+    os.environ["TRACEBI_DEV_MODE"] = "1"
+    url = f"http://127.0.0.1:{args.port}/reports?" + urlencode({"r": args.name, "build": "1"})
+    print(f"\n  TraceBi dev — {args.name} in the app, Build mode")
+    print(f"  {url}")
+    print("  Put your agent's chat beside it (it connects over MCP: `tracebi mcp`).")
+    print("  Click a figure in the report to point at it; tell the agent in chat.\n")
+    if not args.no_browser:
+        import threading
+        import webbrowser
+        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    return cmd_serve(argparse.Namespace(host="127.0.0.1", port=args.port, reload=False))
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -2720,6 +2748,12 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Port for the preview server (default 8001).")
     p_dev.add_argument("--no-browser", action="store_true",
                        help="Do not open the browser automatically.")
+    p_dev.add_argument("--app", action="store_true",
+                       help="Open the web app on this report with Build mode on, "
+                            "instead of the classic preview server: the report "
+                            "re-renders as your agent saves, a timeline shows what "
+                            "changed, and you can point at a figure so \"this\" "
+                            "means something. Needs a name.")
     p_dev.set_defaults(func=cmd_dev)
 
     p_validate = sub.add_parser(

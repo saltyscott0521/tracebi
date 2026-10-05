@@ -251,7 +251,8 @@ Three rules that keep pages honest:
   status` and the MCP `workbench_state` tool).
 
 **Pointing.** In the web app's Build mode (the server runs with
-`TRACEBI_DEV_MODE=1`; `tracebi dev` does) the human clicks **Build** on a
+`TRACEBI_DEV_MODE=1`; `tracebi dev <name> --app` starts it that way and opens
+the report) the human clicks **Build** on a
 report: the workbench opens beside it, and a click on a figure or an area is
 what they point at. Read it with the MCP `workbench_state` tool: `pointing`
 is a figure (`id`, `binding`, `cell`) or an element (`selector`, `text`,

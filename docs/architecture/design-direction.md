@@ -109,8 +109,10 @@ sparingly. Take what they share and add what TraceBi needs.
 3. **The workbench in the app** (done): the Build button opens it beside the
    report: pointing, a pin from it, the pins and what the agent answered, the
    agent's exhibits, broken bindings, and a preview of the working state that
-   refreshes when the agent saves. Still to do: the before/after view with
-   keep and revert, and `tracebi dev <name>` opening the app at that report.
+   refreshes when the agent saves. You watch, you do not instruct in the app:
+   a timeline of what each save changed, and flip back to the version before.
+   `tracebi dev <name> --app` opens it in one command (opt-in until the app
+   matches the classic workbench: per-binding data cards, lint, discovery).
 4. **The theme pass,** one surface at a time through the audit loop: tokens
    and type first (every page changes at once and the audit shows what broke),
    then the sidebar, then lists, then the report defaults.

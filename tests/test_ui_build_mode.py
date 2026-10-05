@@ -159,3 +159,31 @@ def test_build_mode_is_absent_unless_the_server_is_in_dev_mode(tmp_path: Path) -
         log.close()
         server.terminate()
         server.wait(timeout=10)
+
+
+def test_the_dev_app_url_opens_in_build_mode(tmp_path: Path) -> None:
+    """`tracebi dev <name> --app` opens /reports?r=<name>&build=1: the workbench is
+    already beside the report, with nothing to click first."""
+    from playwright.sync_api import sync_playwright
+
+    project = tmp_path / "portfolio_project"
+    shutil.copytree(_PROJECT, project, ignore=shutil.ignore_patterns(
+        "__pycache__", "*.pyc", ".DS_Store", "data", "output", ".tracebi"))
+    done = subprocess.run([sys.executable, "run_workflow.py"], cwd=project,
+                          capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr or done.stdout
+
+    base, server, log = _serve(project, tmp_path / "server.log", dev_mode=True)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.set_default_timeout(60_000)
+            page.goto(f"{base}/reports?r=saas_model%2Fmrr_dashboard&build=1")
+            page.locator(".wb-version", has_text="Opened").wait_for()
+            assert page.get_by_role("button", name="◎ Build").get_attribute("aria-pressed") == "true"
+            browser.close()
+    finally:
+        log.close()
+        server.terminate()
+        server.wait(timeout=10)

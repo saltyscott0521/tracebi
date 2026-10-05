@@ -1,7 +1,6 @@
 ### Added — Build mode: point at a figure, and the agent knows what "this" means
 
-- In the web app, with the server in dev mode (`TRACEBI_DEV_MODE=1`; `tracebi
-  dev` sets it), a report package gets a **Point** button. Hover outlines what
+- In the web app, with the server in dev mode (`TRACEBI_DEV_MODE=1`), a report package gets a **Point** button. Hover outlines what
   you can address; click a figure or an area and the app records it as what
   you are pointing at. Esc, or leaving Point mode, stops.
 - The agent reads it with the MCP tool `workbench_state`: `pointing` is a

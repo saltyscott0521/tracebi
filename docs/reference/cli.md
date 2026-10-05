@@ -237,10 +237,17 @@ measure. Exits 1 on any problem.
 ### `tracebi dev`
 
 ```bash
-tracebi dev [name] [--port 8001] [--no-browser]
+tracebi dev [name] [--port 8001] [--no-browser] [--app]
 ```
 
 The live-preview loop, and **the everyday surface**.
+
+`--app` opens the **web app** on that report with **Build mode** on, instead of
+the classic preview server: put your agent's chat beside it. The report
+re-renders each time the agent saves, a timeline lists which figures each save
+changed (flip back to the version before), and you can click a figure to point
+at it, so "make this a line chart" means that figure. You instruct the agent in
+its chat, not in the app. The server runs in dev mode on `127.0.0.1` only.
 
 With a package name, serves `reports/<name>/` with the exploration render plus
 the workbench at `/__workbench`. With **no name** it enters *discovery mode*:

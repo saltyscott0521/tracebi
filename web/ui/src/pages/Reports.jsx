@@ -345,7 +345,10 @@ function ReportDetail({ report, onBack }) {
   // what an agent edits.
   const { data: appStatus } = useAppStatus()
   const canPoint = !!appStatus?.build_mode && report?.form === 'package'
-  const [pointOn, setPointOn] = useState(false)
+  // `tracebi dev <name> --app` opens the report with ?build=1: Build mode is on.
+  const [searchParams] = useSearchParams()
+  const [wantBuild, setWantBuild] = useState(() => searchParams.get('build') === '1')
+  const pointOn = wantBuild && canPoint
   const [pointed, setPointed] = useState(null)
   const { mutate: sendPointing } = usePointing()
   const { data: wbVersion } = useWorkbenchVersion(report?.name, pointOn)
@@ -382,7 +385,7 @@ function ReportDetail({ report, onBack }) {
     if (pointOn) sendPointing({ name: report.name, pointing: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointOn, report?.name])
-  const togglePoint = () => { setPointOn(on => !on); setPointed(null); timeline.reset() }
+  const togglePoint = () => { setWantBuild(on => !on); setPointed(null); timeline.reset() }
 
   useEffect(() => {
     if (run?.status === 'succeeded') {
