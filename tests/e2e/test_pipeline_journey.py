@@ -67,7 +67,7 @@ def test_the_refresh_page_runs_a_layer_and_shows_its_history(pipeline, monkeypat
     c = TestClient(app)
 
     listed = c.get("/api/pipelines").json()
-    assert [p["pipeline"] for p in listed] == ["orders_etl"]
+    assert sorted(p["pipeline"] for p in listed) == ["orders_etl", "sample_model"]   # init's own, and this one
     run = c.post("/api/pipelines/orders_etl/layers/orders_bronze/run")
     assert run.status_code == 200, run.text
     history = c.get("/api/pipelines/orders_etl/layers/orders_bronze/history").json()
@@ -77,16 +77,6 @@ def test_the_refresh_page_runs_a_layer_and_shows_its_history(pipeline, monkeypat
 def test_the_build_step_will_not_rebuild_reports_after_a_failed_transform(scaffolded):
     """`run-pipeline` keeps going after a failure to report them all; the
     model pipeline's build must not turn that into a green rebuild on stale data."""
-    import shutil
-
-    # The convention: the sample model's report lives in reports/sample_model/.
-    (scaffolded / "reports" / "sample_model").mkdir()
-    shutil.move(str(scaffolded / "reports" / "sample_dashboard"),
-                str(scaffolded / "reports" / "sample_model" / "sample_dashboard"))
-    (scaffolded / "pipelines" / "sample_model.py").write_text(
-        "from tracebi import model_pipeline\n"
-        "runner = model_pipeline('sample_model', transform='sample_transform')\n")
-
     code, out = run_cli("run-pipeline", "sample_model")
     assert code == 0, out
     assert (scaffolded / "output" / "sample_model" / "sample_dashboard.html").is_file()
@@ -166,16 +156,11 @@ runner.register_step("boom", _boom, depends_on="orders_silver")
 
 
 def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, monkeypatch):
-    import shutil
-
-    (scaffolded / "reports" / "sample_model").mkdir()
-    shutil.move(str(scaffolded / "reports" / "sample_dashboard"),
-                str(scaffolded / "reports" / "sample_model" / "sample_dashboard"))
-    (scaffolded / "pipelines" / "sample_model.py").write_text(
-        "from tracebi import model_pipeline\n"
-        "runner = model_pipeline('sample_model', transform='sample_transform')\n")
     c = serve_app(monkeypatch)
 
+    # A fresh project's Refresh page has a pipeline for its model.
+    [pipeline] = c.get("/api/pipelines").json()
+    assert (pipeline["pipeline"], pipeline["model"]) == ("sample_model", "sample_model")
     run = c.post("/api/pipelines/sample_model/runs").json()
     text, done = follow_run(c, "sample_model", run["run_id"])
     assert done["status"] == "succeeded", text

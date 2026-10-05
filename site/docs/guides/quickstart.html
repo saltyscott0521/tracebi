@@ -90,7 +90,8 @@ report built in a repo with no commits records <code>unknown</code> and warns.</
 <pre><code>inputs/       ⓪ raw pulls
 transforms/   ① pandas that lands clean tables
 models/       ② the star-schema contract
-reports/      ③ the report packages
+reports/      ③ the report packages, one folder per model
+pipelines/    one per model: run its transform, then build its reports
 data/         the warehouse lives here
 output/       built artifacts + receipts
 </code></pre>
@@ -109,30 +110,37 @@ output/       built artifacts + receipts
 silently inflates every additive measure, so this is worth running.</p>
 <p>→ <a href="../concepts/model.html">Model — phase ②</a></p>
 <h2 id="5-build-the-report-phase-3">5. Build the report — phase ③</h2>
-<pre><code class="language-bash">tracebi report build sample_dashboard
+<pre><code class="language-bash">tracebi report build sample_model/sample_dashboard
 </code></pre>
-<p>Writes two files:</p>
-<pre><code>output/sample_dashboard.html                   the artifact
-output/sample_dashboard.html.manifest.json     the receipt
+<p>The report lives in its model's folder, <code>reports/sample_model/sample_dashboard/</code>,
+and is named by that path. It writes two files:</p>
+<pre><code>output/sample_model/sample_dashboard.html                   the artifact
+output/sample_model/sample_dashboard.html.manifest.json     the receipt
 </code></pre>
 <p>The HTML is fully self-contained — no CDN, no network. Open it directly.</p>
+<p><strong>Steps 3 and 5 in one command.</strong> <code>pipelines/sample_model.py</code> ties the model's
+transform to its reports, so this runs the transform and then builds every
+report in <code>reports/sample_model/</code>:</p>
+<pre><code class="language-bash">tracebi run-pipeline sample_model
+</code></pre>
+<p>It is what the <strong>Refresh</strong> page in <code>tracebi serve</code> runs.</p>
 <p>→ <a href="../concepts/report.html">Report — phase ③</a></p>
 <h2 id="6-verify">6. Verify</h2>
-<pre><code class="language-bash">tracebi verify output/sample_dashboard.html.manifest.json
+<pre><code class="language-bash">tracebi verify output/sample_model/sample_dashboard.html.manifest.json
 </code></pre>
 <p>Re-runs every recorded query and compares fingerprints. You should see
 <code>✓ REPRODUCES</code> per figure.</p>
 <p>Then the offline check — no database, no model, just the file:</p>
-<pre><code class="language-bash">tracebi verify --file output/sample_dashboard.html
+<pre><code class="language-bash">tracebi verify --file output/sample_model/sample_dashboard.html
 </code></pre>
 <p>Edit a number inside the HTML by hand and run it again: it reports
 <code>FILE ALTERED</code> and names the binding.</p>
 <p>→ <a href="../concepts/receipts.html">Receipts</a></p>
 <hr>
 <h2 id="now-iterate">Now iterate</h2>
-<pre><code class="language-bash">tracebi dev sample_dashboard
+<pre><code class="language-bash">tracebi dev sample_model/sample_dashboard
 </code></pre>
-<p>The live loop. Edit <code>reports/sample_dashboard/template.html</code> and the page
+<p>The live loop. Edit <code>reports/sample_model/sample_dashboard/template.html</code> and the page
 reloads. The workbench at <code>/__workbench</code> shows what each figure is bound to and
 what it has earned.</p>
 <p><strong>Because the model is materialized, editing a report never re-runs the

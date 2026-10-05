@@ -57,7 +57,7 @@ def test_an_agent_authors_verifies_and_delivers_a_report(scaffolded):
     assert verified["verdict"] == "reproduces", verified
     assert verified["summary"]["reproduces"] == len(rendered["dataset_fingerprints"])
 
-    built = gw.gateway_build_report("sample_dashboard")
+    built = gw.gateway_build_report("sample_model/sample_dashboard")
     assert built["ok"] is True, built
     assert built["transform_contracts"], "the build joins the sink contract"
     fetched = gw.gateway_fetch_artifact(built["output_path"])
