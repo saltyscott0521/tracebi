@@ -184,6 +184,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text(_REPORT).wait_for()
             page.get_by_text("Not verified").first.wait_for()
             fail_on_browser_errors()
+
+            # Refresh: Run all opens the Log tab, which follows the run to its end.
+            page.goto(base + "/m/portfolio_model/refresh")
+            page.get_by_role("button", name="Run all").click()
+            output = page.get_by_role("log", name="Run output")
+            output.get_by_text("Run succeeded").wait_for()
+            text = output.inner_text()
+            assert "[transform] ✓" in text and "[build] ✓" in text, text
+            fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:

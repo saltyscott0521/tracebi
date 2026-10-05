@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Where the API lives. Defaults to a same-origin /api, which is what the
@@ -238,21 +239,61 @@ export const useKeepSelection = () =>
 export const usePipelines = () =>
   useQuery({ queryKey: ['pipelines'], queryFn: () => get('/pipelines'), refetchInterval: 10000 })
 
-export const useRunLayer = () => {
+// A run in the background, with its log read as it grows. `layer` runs just
+// that step (`refresh` adds what it depends on); without it, the whole pipeline.
+export const useStartPipelineRun = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ pipeline, layer, refresh }) =>
-      post(`/pipelines/${pipeline}/layers/${layer}/run${refresh ? '?refresh=true' : ''}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipelines'] }),
+    mutationFn: ({ pipeline, layer, refresh }) => {
+      const q = new URLSearchParams()
+      if (layer) q.set('layer', layer)
+      if (refresh != null) q.set('refresh', String(refresh))
+      const qs = q.toString()
+      return post(`/pipelines/${encodeURIComponent(pipeline)}/runs${qs ? `?${qs}` : ''}`)
+    },
+    onSuccess: (_, { pipeline }) => qc.invalidateQueries({ queryKey: ['pipeline-runs', pipeline] }),
   })
 }
 
-export const useRunPipeline = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ pipeline }) => post(`/pipelines/${pipeline}/run`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipelines'] }),
+export const usePipelineRuns = pipeline =>
+  useQuery({
+    queryKey: ['pipeline-runs', pipeline],
+    queryFn: () => get(`/pipelines/${encodeURIComponent(pipeline)}/runs?limit=10`),
+    enabled: !!pipeline,
+    refetchInterval: q => (q.state.data || []).some(r => r.status === 'running') ? 2000 : 15000,
   })
+
+const NO_LOG = { text: '', status: null, done: false, expired: false, error: null }
+
+/**
+ * What a run has printed so far, following it until it is done. Asks from
+ * where the last answer ended, so each poll carries only the new lines.
+ */
+export function useRunLog(pipeline, runId) {
+  const [log, setLog] = useState(NO_LOG)
+  useEffect(() => {
+    setLog(NO_LOG)
+    if (!pipeline || !runId) return undefined
+    let stopped = false
+    let after = 0
+    let timer
+    const poll = async () => {
+      try {
+        const got = await get(`/pipelines/${encodeURIComponent(pipeline)}/runs/${runId}/log?after=${after}`)
+        if (stopped) return
+        after = got.next
+        setLog(prev => ({ text: prev.text + got.text, status: got.status, done: got.done, expired: got.expired, error: null }))
+        if (!got.done) timer = setTimeout(poll, 1000)
+      } catch (error) {
+        if (stopped) return
+        setLog(prev => ({ ...prev, error }))
+        if (error.status !== 403 && error.status !== 404) timer = setTimeout(poll, 3000)
+      }
+    }
+    poll()
+    return () => { stopped = true; clearTimeout(timer) }
+  }, [pipeline, runId])
+  return log
 }
 
 export const useLayerHistory = (pipeline, layer) =>

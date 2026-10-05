@@ -2539,6 +2539,9 @@ class TestAuthorization:
         assert _required_role("GET", "/api/models") == "viewer"
         assert _required_role("GET", "/api/reports") == "viewer"
         assert _required_role("GET", "/api/runs") == "viewer"
+        # A run's log is whatever its steps printed, so it is read as an analyst.
+        assert _required_role("GET", "/api/pipelines/p/runs/1") == "viewer"
+        assert _required_role("GET", "/api/pipelines/p/runs/1/log") == "analyst"
 
     def test_executing_report_code_requires_analyst(self):
         from tracebi.web.api.auth import _required_role

@@ -1,5 +1,8 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 
+from tracebi.web.api import pipeline_runs
 from tracebi.web.api.registry import registry
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
@@ -51,6 +54,29 @@ def list_pipelines():
     return result
 
 
+def _pipeline_order(runner, refresh: bool) -> list[str]:
+    """The layers a whole-pipeline run executes, in order.
+
+    With ``refresh``, each leaf is run with its full upstream chain, so
+    dependencies fire in the right order with no duplicates; without it, every
+    registered layer fires independently regardless of dependencies.
+    """
+    layers = runner.layers()
+    names = [layer["name"] for layer in layers]
+    if not refresh:
+        return names
+    # Leaves = layers nothing else depends on. Running each leaf's full chain
+    # covers every layer in dependency order.
+    depends = {layer["depends_on"] for layer in layers if layer["depends_on"]}
+    leaves = [n for n in names if n not in depends] or names
+    order: list[str] = []
+    for leaf in leaves:
+        for name in runner.execution_order(leaf):
+            if name not in order:
+                order.append(name)
+    return order
+
+
 @router.post("/{pipeline_name}/run")
 def run_pipeline(pipeline_name: str, refresh: bool = True):
     """
@@ -65,30 +91,15 @@ def run_pipeline(pipeline_name: str, refresh: bool = True):
     if not runner:
         raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found")
 
-    layers = runner.layers()
-    if not layers:
+    order = _pipeline_order(runner, refresh)
+    if not order:
         return {"pipeline": pipeline_name, "status": "empty", "ran": []}
-    layer_names = [layer["name"] for layer in layers]
 
     ran: list[str] = []
     try:
-        if refresh:
-            # Leaves = layers nothing else depends on. Running each leaf's
-            # full chain covers every layer in dependency order.
-            depends = {layer["depends_on"] for layer in layers if layer["depends_on"]}
-            leaves = [n for n in layer_names if n not in depends] or layer_names
-            seen: set[str] = set()
-            for leaf in leaves:
-                for name in runner.execution_order(leaf):
-                    if name in seen:
-                        continue
-                    seen.add(name)
-                    runner.execute_layer(name)
-                    ran.append(name)
-        else:
-            for name in layer_names:
-                runner.execute_layer(name)
-                ran.append(name)
+        for name in order:
+            runner.execute_layer(name)
+            ran.append(name)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -138,3 +149,62 @@ def layer_history(pipeline_name: str, layer_name: str, limit: int = 20):
         "layer": layer_name,
         "runs": runs,
     }
+
+
+@router.post("/{pipeline_name}/runs", status_code=202)
+def start_pipeline_run(pipeline_name: str, layer: Optional[str] = None,
+                       refresh: Optional[bool] = None):
+    """
+    Start a run in the background and return at once; its log is read from
+    ``GET /pipelines/{name}/runs/{run_id}/log`` as it grows.
+
+    Without ``layer`` the whole pipeline runs (upstream first, as ``/run`` does);
+    with one, just that layer, plus its upstream chain when ``refresh=true``.
+    A pipeline already running returns that run, with ``already_running: true``.
+    """
+    runner = registry.get_pipeline(pipeline_name)
+    if not runner:
+        raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found")
+    if layer is not None and not runner.has_layer(layer):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Layer '{layer}' not found in pipeline '{pipeline_name}'",
+        )
+    if refresh is None:
+        refresh = layer is None
+    if layer is None:
+        order = _pipeline_order(runner, refresh)
+    else:
+        order = runner.execution_order(layer) if refresh else [layer]
+    if not order:
+        raise HTTPException(status_code=422, detail=f"Pipeline '{pipeline_name}' has no layers to run")
+    return pipeline_runs.start(pipeline_name, runner, order)
+
+
+@router.get("/{pipeline_name}/runs")
+def pipeline_run_history(pipeline_name: str, limit: int = 10):
+    """Recent background runs of this pipeline, newest first."""
+    if not registry.get_pipeline(pipeline_name):
+        raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found")
+    return pipeline_runs.history(pipeline_name, limit)
+
+
+@router.get("/{pipeline_name}/runs/{run_id}")
+def pipeline_run_status(pipeline_name: str, run_id: str):
+    """Status of one background run."""
+    run = pipeline_runs.get(pipeline_name, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found for pipeline '{pipeline_name}'")
+    return run
+
+
+@router.get("/{pipeline_name}/runs/{run_id}/log")
+def pipeline_run_log(pipeline_name: str, run_id: str, after: int = 0):
+    """What the run printed, from byte ``after``. Ask again from ``next`` until ``done``.
+
+    Needs ``analyst``: a log is whatever the steps printed, not only their status.
+    """
+    log = pipeline_runs.read_log(pipeline_name, run_id, after)
+    if log is None:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found for pipeline '{pipeline_name}'")
+    return log

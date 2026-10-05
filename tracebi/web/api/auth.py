@@ -77,6 +77,10 @@ def _required_role(method: str, path: str) -> str:
     default rather than open by default.
     """
     if method in ("GET", "HEAD", "OPTIONS"):
+        # A run's log is whatever its steps printed, so reading it is more than
+        # reading a status.
+        if path.startswith("/api/pipelines/") and path.endswith("/log"):
+            return "analyst"
         return "viewer"
     if path.startswith("/api/pipelines/") or path.startswith("/api/_dev/"):
         return "admin"

@@ -90,6 +90,8 @@
   --terminal-border: rgba(255,255,255,0.08);
   --terminal-text:  #d4d4d8;
   --terminal-muted: #9a9ca3;
+  --terminal-ok:    #4ade80;
+  --terminal-bad:   #f87171;
 
   /* Mobile top bar. Translucent so the backdrop blur has something to do, and
      a token rather than a literal because it had been hardcoded light — which
@@ -617,6 +619,34 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .markdown-doc h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
 .markdown-doc p  { margin: 0 0 12px; }
 .markdown-doc ul, .markdown-doc ol { margin: 0 0 12px; padding-left: 22px; }
+/* A run's output: the terminal surface, one row per printed line. */
+.runlog-wrap { position: relative; }
+.runlog__bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.runlog__meta { font-size: var(--text-sm); color: var(--muted); }
+.runlog__pick {
+  font: inherit; font-size: var(--text-sm); color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px;
+  max-width: 100%;
+}
+.runlog__error { font-size: var(--text-sm); color: var(--red); margin-bottom: 8px; }
+.runlog {
+  background: var(--terminal-bg); color: var(--terminal-text);
+  border: 1px solid var(--terminal-border); border-radius: 8px;
+  padding: 12px 0; height: 420px; overflow: auto;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
+}
+.runlog__line { display: flex; gap: 14px; padding: 0 14px; }
+.runlog__line:hover { background: rgba(255,255,255,0.04); }
+.runlog__t { flex: none; width: 7ch; color: var(--terminal-muted); user-select: none; font-variant-numeric: tabular-nums; }
+.runlog__text { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.runlog__line--ok .runlog__text { color: var(--terminal-ok); }
+.runlog__line--bad .runlog__text { color: var(--terminal-bad); }
+.runlog__note { padding: 0 14px; color: var(--terminal-muted); }
+.runlog__jump {
+  position: absolute; right: 18px; bottom: 14px; font: inherit; font-size: var(--text-sm); font-weight: 600;
+  color: var(--text); background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 999px; padding: 4px 12px; cursor: pointer;
+}
 .markdown-doc li { margin-bottom: 4px; }
 .markdown-doc hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .markdown-doc a  { color: var(--accent-text); font-weight: 600; }

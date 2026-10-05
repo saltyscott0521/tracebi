@@ -331,10 +331,33 @@ needed. See <a href="../concepts/receipts.html">Receipts</a>.</p>
 <td><code>/api/pipelines/{name}/layers/{layer}/history</code></td>
 <td>viewer</td>
 </tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/pipelines/{name}/runs</code></td>
+<td><strong>admin</strong></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/pipelines/{name}/runs</code> · <code>/api/pipelines/{name}/runs/{id}</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/pipelines/{name}/runs/{id}/log</code></td>
+<td>analyst</td>
+</tr>
 </tbody>
 </table>
 <p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
 in the role model is by side effect, not by resource.</p>
+<p><code>POST …/runs</code> is what the Refresh page's <strong>Run all</strong> and per-step <strong>Run</strong> use. It
+starts the run in the background and returns at once (<code>202</code>; <code>?layer=</code> runs one
+step, <code>?refresh=true</code> adds what it depends on). A pipeline already running
+returns that run with <code>already_running: true</code>. The run's output is a log:
+<code>GET …/runs/{id}/log?after=&lt;offset&gt;</code> returns the new lines, a <code>next</code> offset to
+ask from, and <code>done</code>. Reading a log needs <code>analyst</code> because it is whatever the
+steps printed, not only their status. Logs are files under
+<code>data/logs/pipelines/&lt;name&gt;/</code>, the newest 30 per pipeline.</p>
 <h2 id="connectors-docs-dev">Connectors, docs, dev</h2>
 <table>
 <thead>

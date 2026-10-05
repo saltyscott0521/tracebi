@@ -634,6 +634,9 @@ GET  /api/pipelines
 POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run
 GET  /api/pipelines/{name}/layers/{layer}/history
+POST /api/pipelines/{name}/runs                       → background run (202); ?layer=, ?refresh=; joins one already going
+GET  /api/pipelines/{name}/runs[/{id}]                → recent runs / one run's status
+GET  /api/pipelines/{name}/runs/{id}/log?after=N      → what the steps printed, from offset N (analyst)
 GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not
                                                        been built, a page naming the build command
 ```
