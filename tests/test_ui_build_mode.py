@@ -67,6 +67,10 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             frame.locator("#kpi-mrr").wait_for()
 
             page.get_by_role("button", name="◎ Build").click()
+            # The pane first shows the last build, then swaps to the live render; point
+            # once that has happened (a click on the page being replaced is lost).
+            page.locator(".wb-version", has_text="Opened").wait_for()
+            frame.locator("#kpi-mrr").wait_for()
             assert pointing() is None
             frame.locator("#kpi-mrr").click()
 
@@ -84,26 +88,24 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             got = pointing()
             assert got["kind"] == "element" and got["tag"] == "h1", got
 
-            # A note on what you point at is a pin the agent can read; when the agent
-            # resolves it (here, through the files the MCP server shares) the pane
-            # shows the answer without a reload.
-            frame.locator("#kpi-mrr").click()
-            page.get_by_label("Note for the agent").fill("make this a line chart")
-            page.get_by_role("button", name="Pin for the agent").click()
-            page.locator(".wb-item", has_text="make this a line chart").wait_for()
-            from tracebi.workbench import read_pins, resolve_pin
-            wb = project / ".tracebi" / "workbench" / "saas_model" / "mrr_dashboard"
-            assert [p["note"] for p in read_pins(str(wb))] == ["make this a line chart"]
-            assert read_pins(str(wb))[0]["target"]["binding"] == "kpis"
-            resolve_pin(str(wb), "kpi-mrr", note="made it a line", by="agent")
-            page.get_by_text("Agent: made it a line").wait_for(state="attached")
-
-            # The preview is live: the agent edits the package and the report in the
-            # pane changes on its own.
+            # The pane is a live view of the agent's work: it edits the package and
+            # the report in the pane changes on its own, with what changed listed.
             template = project / "reports" / "saas_model" / "mrr_dashboard" / "template.html"
-            template.write_text(template.read_text().replace(
-                "Scale leads ending MRR", "Edited while you watch"))
+            template.write_text(template.read_text()
+                .replace("Scale leads ending MRR", "Edited while you watch")
+                .replace('data-tb-format="currency0" id="kpi-mrr"',
+                         'data-tb-format="currency2" id="kpi-mrr"'))
             frame.get_by_role("heading", name="Edited while you watch").wait_for(timeout=15_000)
+            newest = page.locator(".wb-version").first
+            newest.get_by_text("kpi-mrr").wait_for(timeout=15_000)
+            assert "→" in newest.inner_text()
+
+            # Flip back to the report as it was before the edit, then to the latest.
+            page.locator(".wb-version", has_text="Opened").click()
+            frame.get_by_role("heading", name="Scale leads ending MRR").wait_for()
+            page.get_by_role("button", name="Back to latest").click()
+            frame.get_by_role("heading", name="Edited while you watch").wait_for()
+            frame.locator("#kpi-mrr").wait_for()
 
             # Escape stops pointing; so does leaving Build mode.
             frame.locator("#kpi-mrr").click()

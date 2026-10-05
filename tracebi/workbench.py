@@ -623,14 +623,12 @@ _PINS_LOCK = threading.Lock()
 
 
 def add_pin(wb_dir: str, pin_id: str, note: str = "", kind: Optional[str] = None,
-            exhibit=None, target: Optional[dict] = None) -> list[dict]:
+            exhibit=None) -> list[dict]:
     """Add (or replace) one open pin and return the open list.
 
     ``kind`` is None (a figure pin: *pin_id* is the figure id), ``"promote"``
     (Keep this on an exhibit) or ``"message"`` (the author typing to the
-    agent). ``target`` is what the author pointed at when they wrote the note
-    (a :func:`record_pointing` dict), so a pin on an area, not just a figure,
-    says where. Used by the dev server and the web app alike.
+    agent).
     """
     with _PINS_LOCK:
         pins = [p for p in read_pins(wb_dir) if p.get("id") != pin_id]
@@ -641,8 +639,6 @@ def add_pin(wb_dir: str, pin_id: str, note: str = "", kind: Optional[str] = None
         elif kind == "message":
             pin["kind"] = "message"
             pin["at"] = datetime.now().isoformat(timespec="seconds")
-        if isinstance(target, dict) and target.get("kind"):
-            pin["target"] = target
         pins.append(pin)
         write_pins(wb_dir, pins)
         return pins

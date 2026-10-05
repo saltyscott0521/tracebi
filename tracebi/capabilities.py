@@ -1133,8 +1133,9 @@ def describe(brief: bool = False) -> dict:
                     "mode (the Build button opens the workbench beside the "
                     "report): a figure (id, binding, cell) or an element "
                     "(selector, text, section), or null. It is what 'this' "
-                    "or 'here' means in their message; a note they pin on "
-                    "it is an open pin with the same shape as `target`. "
+                    "or 'here' means in their message. They instruct in chat; "
+                    "the app is where they watch (the report re-rendered on "
+                    "each save, a timeline of what changed, your exhibits). "
                     "Dev-state under .tracebi/workbench/<report>/; never in "
                     "a build or a receipt.",
         },
