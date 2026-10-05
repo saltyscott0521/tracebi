@@ -407,7 +407,7 @@ is half the audit story.
    `tracebi new-report "sales/My Report"`), point its `report.json` bindings
    at your model, and put figures in the template: `data-tb-figure` +
    `data-tb-binding` on any element — spans in prose included.
-   `tracebi dev sales/my_report` opens the live loop (edit, watch, pin).
+   `tracebi dev sales/my_report` opens the live loop in the app (edit, watch, leave notes).
    Exploration happens *inside* the artifact — blocks marked
    `data-tb-stage="exploration"` die at the final build.
 6. Copy `pipelines/sample_model.py` to `pipelines/sales.py` and name your model
