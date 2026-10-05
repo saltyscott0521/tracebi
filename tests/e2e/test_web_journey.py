@@ -129,6 +129,20 @@ def test_an_analyst_browses_the_model_and_queries_it(served):
     assert bad.status_code >= 400
     assert "no_such_measure" in bad.text       # the error names what was wrong
 
+    # A table with an empty number still previews: the cell comes back null
+    # (JSON has no NaN), not a 500 for the whole table.
+    import pandas as pd
+
+    from tracebi import DataModel, MemoryConnector
+    from tracebi.registry import registry
+    gappy = DataModel("gappy").add_connector(
+        MemoryConnector("mem", tables={"t": pd.DataFrame({"x": [1.5, None]})}))
+    gappy.add_table("t", connector="mem", source="t")
+    registry.add_model(gappy)
+    preview = c.get("/api/models/gappy/tables/t/preview")
+    assert preview.status_code == 200, preview.text
+    assert [r["x"] for r in preview.json()["data"]] == [1.5, None]
+
 
 def test_an_unknown_report_is_a_clean_404(served):
     assert served.get("/api/reports/nope/built").status_code == 404
