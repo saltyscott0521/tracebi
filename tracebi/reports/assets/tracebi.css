@@ -13,26 +13,37 @@
 /* ── 1. Tokens ─────────────────────────────────────────────────────────── */
 
 :root {
-  --tb-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-             Arial, sans-serif;
-  --tb-ink: #16181d;
+  /* Hanken Grotesk is inlined into every report (see stack.font_face_css), so a report
+   * reads as part of the web app and needs nothing installed. Anything outside
+   * its Latin subset falls through to the system face. */
+  --tb-font: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto,
+             "Helvetica Neue", Arial, sans-serif;
+  --tb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  /* Neutral grounds and one cobalt: colour is for meaning, the accent for the
+   * few places you act or are. --tb-accent is the fill (focus ring, bars, the
+   * active tab's rule); --tb-accent-text is the same blue deepened to read as
+   * small text (links, hovers) on white and on the accent wash. */
+  --tb-ink: #171717;
   --tb-bg: #ffffff;              /* cards, tables, tooltips */
-  --tb-page: #f6f6f3;            /* the plane cards sit on */
-  --tb-muted: #62615c;
-  --tb-accent: #1f63b8;
-  --tb-rule: #e4e3dd;
-  --tb-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --tb-page: #fafafa;            /* the plane cards sit on */
+  --tb-muted: #666666;
+  --tb-accent: #2f5bea;
+  --tb-accent-text: #2447c4;
+  --tb-rule: #e5e5e5;
+  /* Cards are a hairline, not a shadow. The token stays so a project theme can
+   * put one back. */
+  --tb-shadow: none;
   /* Subtle raised surfaces (striped rows, code blocks, callouts). Tokens, not
    * hard-coded hex, so overriding the palette for a dark ground carries them
    * too — a report on a dark background used to keep these light. */
-  --tb-surface: #f6f6f3;
-  --tb-surface-accent: #eef4fc;
+  --tb-surface: #f5f5f5;
+  --tb-surface-accent: #eff3fe;
 
   --tb-space-1: 4px;
   --tb-space-2: 8px;
   --tb-space-3: 16px;
   --tb-space-4: 32px;
-  --tb-radius: 10px;
+  --tb-radius: 8px;
   /* Table density in one token: rows read at this padding everywhere; the
    * --compact variant tightens it. Change density here, not per table. */
   --tb-cell-pad: 10px 12px;
@@ -78,19 +89,27 @@ h1, h2, h3, h4 {
   margin: var(--tb-space-4) 0 var(--tb-space-2);
   letter-spacing: -0.01em;
 }
-h1 { font-size: 2em; font-weight: 700; letter-spacing: -0.025em; margin-top: 0; }
+h1 { font-size: 2.1em; font-weight: 650; letter-spacing: -0.03em; margin-top: 0; }
 h1 + p { color: var(--tb-muted); font-size: 1.05em; max-width: 72ch;
          margin-top: 0; }
-h2 { font-size: 1.2em; font-weight: 650; margin-top: 40px; }
+h2 { font-size: 1.2em; font-weight: 600; margin-top: 40px; }
 h3 { font-size: 1em; font-weight: 600; }
 h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
      text-transform: uppercase; letter-spacing: 0.06em; }
 
 p { margin: var(--tb-space-2) 0 var(--tb-space-3); max-width: 75ch; }
-a { color: var(--tb-accent); }
+a { color: var(--tb-accent-text); text-underline-offset: 0.18em; }
+::selection { background: color-mix(in srgb, var(--tb-accent) 22%, transparent); }
 hr { border: 0; border-top: 1px solid var(--tb-rule);
      margin: var(--tb-space-4) 0; }
-code, pre { font-size: 0.9em; }
+code, pre { font-family: var(--tb-mono); font-size: 0.9em; }
+/* Inline code in prose is a quiet chip, so an identifier reads as one. */
+p code, li code, td code, .tb-note code, .tb-callout code {
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-rule);
+  border-radius: 4px;
+  padding: 0 0.35em;
+}
 pre { overflow-x: auto; padding: var(--tb-space-2);
       background: var(--tb-surface); border-radius: var(--tb-radius); }
 img, svg { max-width: 100%; }
@@ -163,7 +182,7 @@ img, svg { max-width: 100%; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 18px 20px;
+  padding: 20px 22px;
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
   background: var(--tb-bg);
@@ -182,7 +201,7 @@ img, svg { max-width: 100%; }
 
 .tb-kpi-value {
   font-size: 2em;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1.1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -496,23 +515,41 @@ input[data-tb-search] {
   font: inherit;
   color: var(--tb-ink);
   background: var(--tb-bg);
-  border: 1px solid var(--tb-rule);
+  border: 1px solid color-mix(in srgb, var(--tb-ink) 16%, var(--tb-rule));
   border-radius: var(--tb-radius);
-  padding: var(--tb-space-1) var(--tb-space-2);
+  height: 32px;
+  padding: 0 10px;
   margin: 0 var(--tb-space-2) var(--tb-space-2) 0;
+  box-sizing: border-box;
+}
+select[data-tb-filter]:hover,
+input[data-tb-search]:hover {
+  border-color: color-mix(in srgb, var(--tb-ink) 30%, var(--tb-rule));
+}
+input[data-tb-search]::placeholder { color: var(--tb-muted); opacity: 0.8; }
+/* The dropdown arrow is drawn, so every browser's select looks the same. */
+select[data-tb-filter] {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 button[data-tb-download] {
   font: inherit;
   font-size: 0.85em;
-  color: var(--tb-muted);
+  color: var(--tb-ink);
   background: var(--tb-bg);
-  border: 1px solid var(--tb-rule);
+  border: 1px solid color-mix(in srgb, var(--tb-ink) 16%, var(--tb-rule));
   border-radius: var(--tb-radius);
-  padding: var(--tb-space-1) var(--tb-space-2);
+  height: 32px;
+  padding: 0 12px;
+  margin: 0 var(--tb-space-2) var(--tb-space-2) 0;
   cursor: pointer;
 }
-button[data-tb-download]:hover { color: var(--tb-accent); }
+button[data-tb-download]:hover { background: var(--tb-surface); color: var(--tb-accent-text); }
 
 /* ── 11. Scrollable tables — presentation only ─────────────────────────── */
 /* The runtime wraps an over-long hydrated table; max-height is set inline
@@ -565,7 +602,7 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
   cursor: pointer;
 }
 .tb-tab.tb-tab-active {
-  color: var(--tb-accent);
+  color: var(--tb-accent-text);
   border-bottom-color: var(--tb-accent);
   font-weight: 600;
 }
@@ -594,7 +631,7 @@ button[data-tb-download]:hover { color: var(--tb-accent); }
   padding: var(--tb-space-1) var(--tb-space-3);
   cursor: pointer;
 }
-.tb-receipt-btn:hover { color: var(--tb-accent); }
+.tb-receipt-btn:hover { color: var(--tb-accent-text); }
 
 .tb-receipt-drawer {
   position: fixed;

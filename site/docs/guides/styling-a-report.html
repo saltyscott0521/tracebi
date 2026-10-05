@@ -85,11 +85,16 @@ component coherently; copying the stylesheet means inheriting every future fix
 by hand.</p>
 <h2 id="design-tokens">Design tokens</h2>
 <pre><code class="language-css">:root {
-  --tb-accent: #2e74b5;
-  --tb-ink:    #0a1628;
-  --tb-bg:     #eef2f8;
+  --tb-accent:      #2e74b5;
+  --tb-accent-text: #1f5a96;   /* the same blue, deep enough for small text */
+  --tb-ink:         #0a1628;
+  --tb-bg:          #eef2f8;
 }
 </code></pre>
+<p>Out of the box a report is Hanken Grotesk on neutral grounds with one cobalt
+accent and hairline cards: the same look as the web app. The face is inlined into
+the file (about 45 KB, Latin subset), so nothing is fetched and nothing needs installing;
+set <code>--tb-font</code> to use your own face instead.</p>
 <table>
 <thead>
 <tr>
@@ -99,8 +104,8 @@ by hand.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>--tb-font</code></td>
-<td>the type family</td>
+<td><code>--tb-font</code> / <code>--tb-mono</code></td>
+<td>the type family, and the one for code</td>
 </tr>
 <tr>
 <td><code>--tb-ink</code> / <code>--tb-muted</code></td>
@@ -111,8 +116,8 @@ by hand.</p>
 <td>the page, cards and tables, raised tints</td>
 </tr>
 <tr>
-<td><code>--tb-accent</code></td>
-<td>the accent</td>
+<td><code>--tb-accent</code> / <code>--tb-accent-text</code></td>
+<td>the accent (focus ring, bars, the active tab's rule), and the same blue deepened for small text (links, hovers): override both</td>
 </tr>
 <tr>
 <td><code>--tb-good</code> / <code>--tb-bad</code></td>
@@ -121,6 +126,10 @@ by hand.</p>
 <tr>
 <td><code>--tb-rule</code></td>
 <td>borders and rules</td>
+</tr>
+<tr>
+<td><code>--tb-shadow</code></td>
+<td>the card shadow (none by default: cards are a hairline)</td>
 </tr>
 <tr>
 <td><code>--tb-radius</code>, <code>--tb-space-1..4</code></td>

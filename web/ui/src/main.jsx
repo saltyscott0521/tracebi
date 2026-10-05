@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 // Self-hosted rather than pulled from a CDN: no third-party request on first
 // paint, and it keeps working on a corporate network that does not allow one.
-// Geist Sans and Geist Mono (SIL OFL), variable, so every weight the UI uses is
-// one file each.
-import '@fontsource-variable/geist'
-import '@fontsource-variable/geist-mono'
+// Hanken Grotesk (variable: every weight the UI uses is one file) and IBM Plex
+// Mono in the three weights it uses; both SIL OFL.
+import '@fontsource-variable/hanken-grotesk'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import '@fontsource/ibm-plex-mono/600.css'
 import './styles/global.css'
 
 const queryClient = new QueryClient({

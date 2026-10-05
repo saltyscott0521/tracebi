@@ -172,8 +172,9 @@ grounds was picked from six side-by-side options.)</p>
 <li><strong>Borders, not boxes.</strong> 1px hairlines separate regions; no cards inside
   cards, no gradients, no backdrop blur, no resting shadows (a menu or popover
   may have one). ◆</li>
-<li><strong>Type: Geist Sans and Geist Mono</strong> (both SIL OFL), replacing Source Sans,
-  Inter and Source Code Pro. 14px body, 13px in dense lists, tabular numerals
+<li><strong>Type: Hanken Grotesk and IBM Plex Mono</strong> (both SIL OFL), replacing Source
+  Sans, Inter and Source Code Pro. A clean, tightly set grotesque in the spirit
+  of Vercel's and Supabase's faces, without copying one. 14px body, 13px in dense lists, tabular numerals
   for every figure, mono for every identifier (model, table, binding, id). ◆</li>
 <li><strong>Radius 6px, sidebar the same ground as the page</strong>, not a separate navy
   slab. Page header small (20px): the page is the content, not the title.</li>
@@ -199,15 +200,17 @@ grounds was picked from six side-by-side options.)</p>
    <code>tracebi dev &lt;name&gt; --app</code> opens it in one command (opt-in until the app
    matches the classic workbench: per-binding data cards, lint, discovery).</li>
 <li><strong>The theme pass,</strong> one surface at a time through the audit loop.
-   - Foundation (done): Geist Sans and Mono; cobalt as the one brand colour on
+   - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline
      borders; no gradients, blur or resting shadows. The nav follows the data:
      Build (Sources, Refresh, Data model), then Use (Explore, Reports, Runs).
      The audit enforces it: <code>theme-font</code>, <code>theme-brand-colour</code>,
      <code>theme-dark-ink</code>, <code>theme-shadow</code>, <code>theme-decoration</code>.
-   - Still to do: lists as console rows throughout, the report defaults
-     (<code>tracebi.css</code>, so a report matches the app), the logo and illustrations,
-     and a second look at density on each page.</li>
+   - Report defaults (done): <code>tracebi.css</code> takes the same type, grounds and
+     cobalt, so a report matches the app. Hanken Grotesk is inlined into the file
+     (<code>stack.font_face_css</code>); controls and inline code are finished.
+   - Still to do: lists as console rows throughout, the logo and
+     illustrations, and a second look at density on each page.</li>
 </ol>
   </main>
 </div>

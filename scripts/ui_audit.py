@@ -182,10 +182,10 @@ PAGE_CHECKS_JS = r"""
               detail: `page is ${sw}px wide on a ${vw}px screen`});
   }
 
-  // The face is Geist, and it actually loaded (a failed font falls back silently).
-  if (!document.fonts.check('14px "Geist Variable"'))
+  // The face is Hanken Grotesk, and it actually loaded (a failed font falls back silently).
+  if (!document.fonts.check('14px "Hanken Grotesk Variable"'))
     out.push({rule: 'theme-font-loaded', severity: 'serious', target: 'body',
-              detail: 'Geist did not load; the page is in the fallback face'});
+              detail: 'Hanken Grotesk did not load; the page is in the fallback face'});
 
   // One h1 per page: it is the page's name for screen readers and tabs.
   const h1s = [...document.querySelectorAll('main h1')].filter(visible);
@@ -424,7 +424,8 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                          "rule": "registry-drift", "severity": "critical", "target": name,
                          "detail": f"{name} {'vanished' if name in at_start else 'appeared'} during the audit"})
 
-    findings = _dedupe(findings + token_findings() + theme_findings() + source_findings())
+    findings = _dedupe(findings + token_findings() + report_style_findings()
+                       + theme_findings() + source_findings())
     report = {"base": base, "when": time.strftime("%Y-%m-%d %H:%M:%S"),
               "pages": pages, "findings": findings, "metrics": static_metrics(),
               "score": score(findings)}
@@ -602,8 +603,33 @@ def token_findings() -> list[dict]:
     return out
 
 
+def report_style_findings() -> list[dict]:
+    """The report stylesheet (tracebi.css), checked at the source: axe cannot see
+    inside the iframes a report is shown in, and a report is the product.
+
+    Every text token must read at 4.5:1 on every surface a report puts text on,
+    and the stylesheet must name Hanken Grotesk first.
+    """
+    css = (REPO / "tracebi" / "reports" / "assets" / "tracebi.css").read_text()
+    t = _tokens(css, ":root")
+    out = []
+
+    def finding(target, detail):
+        out.append({"page": "(report stylesheet)", "pattern": "(report stylesheet)", "viewport": "-",
+                    "theme": "-", "rule": "report-style", "severity": "serious",
+                    "target": target, "detail": detail})
+
+    if not re.search(r'--tb-font:\s*"Hanken Grotesk"', css):
+        finding("--tb-font", "the report face must lead with Hanken Grotesk (inlined by stack.font_face_css)")
+    for fg in ("--tb-ink", "--tb-muted", "--tb-accent-text", "--tb-good", "--tb-bad"):
+        for bg in ("--tb-bg", "--tb-page", "--tb-surface", "--tb-surface-accent"):
+            if fg in t and bg in t and (r := _contrast(t[fg], t[bg])) < 4.5:
+                finding(f"{fg} on {bg}", f"{t[fg]} on {t[bg]} is {r:.2f}:1 (needs 4.5)")
+    return out
+
+
 def theme_findings() -> list[dict]:
-    """The look, as rules ([[design-direction]]): Geist, a cobalt brand that stays in
+    """The look, as rules ([[design-direction]]): Hanken Grotesk, a cobalt brand that stays in
     its blue family, no gradients or blur, shadows only on popovers. Other colour
     means something: the status tokens, the diagram roles.
     """
@@ -616,10 +642,10 @@ def theme_findings() -> list[dict]:
                     "rule": rule, "severity": sev, "target": target, "detail": detail})
 
     root = re.search(r":root\s*\{(.*?)\n\}", css, re.S)
-    if not root or "Geist" not in re.search(r"--font-sans:\s*([^;]*);", root.group(1)).group(1):
-        finding("theme-font", "--font-sans", "the sans face must be Geist")
-    if "geist" not in (ui / "main.jsx").read_text().lower():
-        finding("theme-font", "main.jsx", "Geist is not imported")
+    if not root or "Hanken Grotesk" not in re.search(r"--font-sans:\s*([^;]*);", root.group(1)).group(1):
+        finding("theme-font", "--font-sans", "the sans face must be Hanken Grotesk")
+    if "hanken-grotesk" not in (ui / "main.jsx").read_text().lower():
+        finding("theme-font", "main.jsx", "Hanken Grotesk is not imported")
 
     light = _tokens(css, ":root")
     dark_own = _tokens(css, '[data-theme="dark"]')

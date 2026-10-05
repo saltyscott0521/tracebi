@@ -7,9 +7,9 @@
   use the --code-* / --terminal-* tokens below.
 */
 :root {
-  /* Type: Geist (Vercel's), self-hosted by @fontsource in main.jsx. */
-  --font-sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* Type: Hanken Grotesk and IBM Plex Mono, self-hosted by @fontsource in main.jsx. */
+  --font-sans: 'Hanken Grotesk Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Quiet colour. Cobalt is the brand, used where you act or are: the primary
      button, the selected row, the active tab, links, focus, the logo tile. The
@@ -287,12 +287,11 @@
 ::selection { background: var(--blue-br); color: var(--text); }
 
 body {
-  /* Geist, self-hosted via @fontsource in main.jsx. The system stack behind it
+  /* Hanken Grotesk, self-hosted via @fontsource in main.jsx. The system stack behind it
      is the fallback for first paint and for the rare client that rejects the
      woff2. Figures line up: every number in the app uses tabular numerals. */
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'cv11', 'ss01';
   font-size: var(--text-base);
   color: var(--text);
   background: var(--bg);
