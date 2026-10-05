@@ -166,6 +166,17 @@ posture line.</p>
 <p><code>/source</code> returns the model's file, read-only (the <strong>Code</strong> tab). A model registered in
 Python code has no file and says so. <code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
 graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
+<p><code>/query</code> returns each row twice: <code>data</code> holds the raw values (what a CSV download
+uses) and <code>display</code> holds the same cells as text, written the way a built report's
+table writes them: a numeric column takes the model's declared format on that
+measure (<code>currency0</code>, <code>percent</code>, …), else the shape-derived default, and anything
+else stays plain text. A value JSON cannot carry (NaN from an empty total, infinity
+from a division by zero) is <code>null</code> in <code>data</code> and an empty string in <code>display</code>, never
+an error. <code>GET /api/models/{name}</code> lists, on each fact,
+<code>runnable_measures</code>: the declared measures whose columns exist on that fact's table,
+so a UI offers only what will run. When the connector cannot describe the table (the
+warehouse is not built yet), every declared measure is listed and a run reports the
+real error.</p>
 <h2 id="reports">Reports</h2>
 <table>
 <thead>

@@ -115,9 +115,26 @@ def _bundle_files(bundle_id: str) -> dict[Path, str]:
     return out
 
 
+def _pipeline(model: str, transform: str) -> str:
+    """``pipelines/<model>.py``: the transform, then the model's reports — what
+    ``tracebi run-pipeline`` and the app's Refresh page run."""
+    return f'''"""
+Pipeline for ``{model}``: rebuild the warehouse, then its reports.
+
+    transform  runs {transform}, which sinks the star schema
+    build      builds every report in reports/{model}/, each with a receipt
+
+    tracebi run-pipeline {model}
+"""
+
+from tracebi import model_pipeline
+
+runner = model_pipeline("{model}", transform="{Path(transform).stem}")
+'''
+
+
 def _readme(project: str, template: str) -> str:
     entry = next(item for item in _CATALOG if item["name"] == template)
-    reports = "\n".join(f"tracebi report build {name}" for name in entry["reports"])
     verifies = "\n".join(
         f"tracebi verify output/{name}.html.manifest.json --strict --contracts"
         for name in entry["reports"]
@@ -145,8 +162,7 @@ before you have a warehouse.
 ## Run the sample loop
 
 ```bash
-python {entry["transform"]}
-{reports}
+tracebi run-pipeline {entry["model"]}   # the transform, then the model's reports
 {verifies}
 tracebi serve
 ```
@@ -161,6 +177,7 @@ contract. The claim on the transform is "the sink satisfied its contract".
 ├── {entry["sample"]}
 ├── {entry["transform"]}
 ├── models/{entry["model"]}.py
+├── pipelines/{entry["model"]}.py
 {report_lines}
 ├── data/             warehouse (gitignored)
 └── output/           rendered HTML + manifest receipts
@@ -201,7 +218,7 @@ def init_template_project(project: Path, template: str, *, force: bool) -> int:
         target / "AGENTS.md": _scaffold_text("init_agents.md"),
         target / ".mcp.json": _mcp_json(),
         target / ".cursor" / "mcp.json": _mcp_json(),
-        target / "pipelines" / ".gitkeep": "",
+        target / "pipelines" / f"{entry['model']}.py": _pipeline(entry["model"], entry["transform"]),
     }
     for rel, content in _bundle_files(_BUNDLES[canonical]).items():
         to_write[target / rel] = content
@@ -215,13 +232,12 @@ def init_template_project(project: Path, template: str, *, force: bool) -> int:
 
     print(f"Initialised TraceBi project at {target} (template {canonical})")
     print(f"  cd {target.name}")
-    print(f"  python {entry['transform']}")
-    for name in entry["reports"]:
-        print(f"  tracebi report build {name}")
+    print(f"  tracebi run-pipeline {entry['model']}   # the transform, then the model's reports")
     first = entry["reports"][0]
     print(
         f"  tracebi verify output/{first}.html.manifest.json "
         f"--strict --contracts"
     )
+    print("  tracebi serve")
     print(f"  Next: {entry['next']}")
     return 0

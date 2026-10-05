@@ -76,7 +76,9 @@ pipeline starter: `inputs/opportunities.csv`,
 `transforms/sales_pipeline_transform.py`, `models/sales_pipeline_model.py`
 (open pipeline value, win rate as a ratio of totals, stage / rep / region),
 and two reports — `sales_pipeline_model/pipeline_dashboard` (dashboard) and
-`sales_pipeline_model/rep_scorecard` (tabbed). Unknown template names are
+`sales_pipeline_model/rep_scorecard` (tabbed). Each starter also gets
+`pipelines/<model>.py`, so `tracebi run-pipeline <model>` (and the app's Refresh
+page) runs its transform, then builds its reports. Unknown template names are
 refused with the known list. On real tables, `tracebi connect` and re-point
 the model. Default `tracebi init` (no flag) scaffolds the sample orders
 dashboard (`transforms/sample_transform.py`).
