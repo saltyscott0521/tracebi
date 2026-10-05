@@ -165,6 +165,26 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 arg=_TITLE,
             )
 
+            # An open report has the whole page: the list steps aside, and
+            # "← All reports" brings it back.
+            assert not page.get_by_placeholder("Search reports…").is_visible()
+            page.get_by_role("button", name="← All reports").wait_for()
+
+            # One Download menu holds the three files, each with its caveat.
+            page.get_by_role("button", name="↓ Download").click()
+            menu = page.locator(".dl-menu")
+            links = menu.get_by_role("link").all()
+            assert [link.inner_text().split("\n")[0] for link in links] == ["HTML", "Excel", "PDF"]
+            assert [link.get_attribute("href").rsplit("=", 1)[1] for link in links] == ["html", "xlsx", "pdf"]
+            assert "carries no receipt" in menu.inner_text()
+            page.keyboard.press("Escape")
+            assert menu.count() == 0
+
+            # Lineage is a tab like the others: no button to reveal it first.
+            assert page.get_by_role("button", name="View Lineage").count() == 0
+            page.get_by_role("button", name="Lineage", exact=True).click()
+            page.get_by_text("Where each number on the page came from").wait_for()
+
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="report.json").wait_for()
 
@@ -178,13 +198,32 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert downloaded["status"] == 200, _tail(log_path)
             assert _TITLE in downloaded["body"]
 
-            # Opening the report recorded a build. The Runs page shows that
-            # row; a build is not a verify, so the verdict is not green.
+            # Rebuild makes more build rows, and the list re-checks the new one.
+            page.get_by_role("button", name="↺ Rebuild").click()
+            page.get_by_text("Report ran successfully").wait_for()
+            page.get_by_role("button", name="← All reports").click()
+            page.locator(".list-item", has_text=_LABEL).get_by_text("Reproduces", exact=True).wait_for()
+
+            # A build is not a check: Runs shows the list's verdict on the newest
+            # build of the report, and a plain "Not checked" (never green) on
+            # every older one.
             page.goto(base + "/runs")
             page.get_by_role("heading", name="Runs", exact=True).wait_for()
-            page.get_by_text(_REPORT).wait_for()
-            page.get_by_text("Not verified").first.wait_for()
+            rows = page.locator("tr", has_text=_REPORT)
+            rows.first.wait_for()
+            page.get_by_text("Checking…").wait_for(state="detached")
+            verdicts = [r.locator("td").last.inner_text() for r in rows.all()]
+            assert len(verdicts) >= 2, verdicts
+            assert verdicts[0] == "Reproduces", verdicts
+            assert set(verdicts[1:]) == {"Not checked"}, verdicts
             fail_on_browser_errors()
+
+            # Given room, a report's three KPI cards sit on one row.
+            page.goto(f"{base}/reports?r=portfolio_model/portfolio_overview")
+            cards = page.frame_locator("iframe").locator(".tb-kpi")
+            cards.nth(2).wait_for()
+            tops = {round(card.bounding_box()["y"]) for card in cards.all()}
+            assert cards.count() == 3 and len(tops) == 1, tops
 
             # Each page can show the code behind what it shows.
             page.goto(base + "/m/portfolio_model")
@@ -229,6 +268,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # …then links the reports it rebuilt, each to its page in the app.
             page.get_by_role("link", name="portfolio_book", exact=True).click()
             page.wait_for_url("**/m/portfolio_model/reports?r=portfolio_model%2Fportfolio_book")
+            fail_on_browser_errors()
+
+            # That refresh is a run of its model: the model's Runs lists it, and
+            # All models names the model beside it.
+            page.goto(base + "/m/portfolio_model/runs")
+            page.locator("tr", has_text="Pipeline run").first.wait_for()
+            page.goto(base + "/runs")
+            pipeline_row = page.locator("tr", has_text="Pipeline run").first
+            pipeline_row.wait_for()
+            assert "portfolio_model" in pipeline_row.inner_text()
             fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)

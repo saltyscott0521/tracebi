@@ -652,15 +652,17 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
   chart, CSV download, and the *lineage graph of the exact query that ran*.
 - **Models** — table previews with column dtypes and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
-- **Reports** — run in the browser (in the background, with run history and
-  a toast when done), download the self-contained HTML artifact with its
-  embedded receipt (or a plain Excel export), read the at-a-glance receipt,
-  and inspect per-section lineage. Failures show the full Python traceback.
+- **Reports** — open one and it has the whole page (a link takes you back to
+  the list). Rebuild it in the background (run history and a toast when done),
+  download the self-contained HTML artifact with its embedded receipt (or a
+  plain Excel or PDF) from the Download menu, read the at-a-glance receipt, and
+  open its Lineage tab. Failures show the full Python traceback.
 - **Pipelines** — the medallion chain as a live DAG with per-layer run
   buttons and run history.
 - **Runs** — what ran, when, for whom, and whether it reproduced. A report
-  run links to the report. Only a `reproduces` verdict reads green; a run
-  that has not been checked reads "Not verified".
+  run links to the report, and a refresh names its model. A report's newest
+  build shows the same verdict as the Reports page; every older build reads
+  "Not checked". Only a `reproduces` verdict reads green.
 
 ```bash
 # Install web dependencies

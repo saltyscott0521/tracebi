@@ -101,11 +101,6 @@ function ReportReceipt({ manifest }) {
           </Badge>
         ))}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
-        The <strong>HTML</strong> download is one file that can be checked offline with{' '}
-        <code>tracebi verify --file</code>. Excel is a plain spreadsheet. PDF is a
-        print of this page and carries no receipt.
-      </div>
     </div>
   )
 }
@@ -286,6 +281,54 @@ function ShareLink({ name, html }) {
   )
 }
 
+// The three files a report can be downloaded as, each with what it is good for.
+const DOWNLOADS = [
+  ['html', 'HTML', 'One self-contained file, checkable offline with tracebi verify --file'],
+  ['xlsx', 'Excel', "A plain spreadsheet; it can't be checked the way the HTML file can"],
+  ['pdf', 'PDF', 'A print of this page. Charts render. It carries no receipt; the HTML file is what can be checked'],
+]
+
+// One button that opens the list under the action row. Escape, a click
+// elsewhere, or tabbing out closes it; choosing a file starts the download.
+function DownloadMenu({ name }) {
+  const [open, setOpen] = useState(false)
+  const root = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const away = e => { if (!root.current?.contains(e.target)) setOpen(false) }
+    const esc = e => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      root.current?.querySelector('button')?.focus()
+    }
+    document.addEventListener('pointerdown', away)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('pointerdown', away)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [open])
+  return (
+    <div ref={root} onBlur={e => { if (!root.current.contains(e.relatedTarget)) setOpen(false) }}>
+      <Btn onClick={() => setOpen(o => !o)} variant="outline" size="sm"
+           aria-expanded={open} aria-controls="report-downloads">
+        ↓ Download ▾
+      </Btn>
+      {open && (
+        <div id="report-downloads" className="dl-menu">
+          {DOWNLOADS.map(([format, label, note]) => (
+            <a key={format} href={reportDownloadUrl(name, format)} download
+               className="dl-menu__item" onClick={() => setOpen(false)}>
+              <span className="dl-menu__label">{label}</span>
+              <span className="dl-menu__note">{note}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FullScreen({ name, html, onClose }) {
   const closeRef = useRef(null)
   useEffect(() => {
@@ -320,6 +363,7 @@ function ReportDetail({ report, onBack }) {
   const [runId, setRunId] = useState(null)
   const [disk, setDisk] = useState(null)
   const [lineageData, setLineageData] = useState(null)
+  const [lineageErr, setLineageErr] = useState(null)
   const toast = useToast()
   const frameRef = useRef(null)
   const qc = useQueryClient()
@@ -414,27 +458,27 @@ function ReportDetail({ report, onBack }) {
     })
   }, [report?.name, startRun, toast])
 
-  const handleLineage = useCallback(() => {
+  // Lineage is a tab like the others: it loads the first time it is opened,
+  // and opening it again after a failure tries again.
+  const openTab = useCallback(t => {
+    setTab(t)
+    if (t !== 'Lineage' || lineageData || loadingLineage) return
+    setLineageErr(null)
     fetchLineage(report.name, {
-      onSuccess: data => {
-        setLineageData(data)
-        setTab('Lineage')
-      },
-      onError: err => toast(`Lineage failed: ${err.message}`, 'error'),
+      onSuccess: setLineageData,
+      onError: setLineageErr,
     })
-  }, [report?.name, fetchLineage, toast])
+  }, [report?.name, fetchLineage, lineageData, loadingLineage])
 
   if (!report) return null
 
-  const parts = report.name.split('/')
   // On a phone the open report is the whole screen, and its name is the
   // page's heading; beside the list, it sits under the page's own h1.
   const Title = narrow ? 'h1' : 'h2'
   return (
     <Card>
-      <nav className="crumbs mobile-only" aria-label="Breadcrumb">
-        <button type="button" onClick={onBack}>‹ Reports</button>
-        {parts.slice(0, -1).map(p => <span key={p}> / {p}</span>)}
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <button type="button" onClick={onBack}>← All reports</button>
       </nav>
       <CardTitle>
         <Title className="report-detail__title">{report.name}</Title>
@@ -481,15 +525,12 @@ function ReportDetail({ report, onBack }) {
             </div>
           )}
           <ReportReceipt manifest={shown.manifest} />
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Btn onClick={handleRun} disabled={running} variant="outline" size="sm">
+          <div className="report-actions">
+            {/* One filled button: Rebuild, or Build while Build mode is on. */}
+            <Btn onClick={handleRun} disabled={running} size="sm" variant={pointOn ? 'outline' : 'primary'}
+                 title="Re-run every query and build the report again">
               {running ? <><Spinner size={12} /> Rebuilding…</> : '↺ Rebuild'}
             </Btn>
-            {!lineageData && (
-              <Btn onClick={handleLineage} disabled={loadingLineage} variant="outline" size="sm">
-                {loadingLineage ? <><Spinner size={12} /> Loading…</> : '⊶ View Lineage'}
-              </Btn>
-            )}
             {canPoint && (
               <Btn onClick={togglePoint} variant={pointOn ? 'primary' : 'outline'} size="sm"
                    aria-pressed={pointOn}
@@ -497,43 +538,13 @@ function ReportDetail({ report, onBack }) {
                 ◎ Build
               </Btn>
             )}
-            <span style={{ flex: 1 }} />
-            <ShareLink name={report.name} html={shown.html} />
-            <a
-              href={reportDownloadUrl(report.name, 'html')}
-              download
-              className="dl-link"
-              title="One self-contained file, checkable offline with tracebi verify --file"
-              style={{
-                background: 'var(--ink)', color: 'var(--on-ink)', borderColor: 'var(--ink)',
-                fontWeight: 600,
-              }}
-            >
-              ↓ HTML
-            </a>
-            <a
-              href={reportDownloadUrl(report.name, 'xlsx')}
-              download
-              className="dl-link"
-              title="A plain spreadsheet; it can't be checked the way the HTML file can"
-            >
-              ↓ Excel
-            </a>
-            <a
-              href={reportDownloadUrl(report.name, 'pdf')}
-              download
-              className="dl-link"
-              title="A print of this page. Charts render. It carries no receipt; the HTML file is what can be checked"
-            >
-              ↓ PDF
-            </a>
+            <div className="report-actions__more">
+              <ShareLink name={report.name} html={shown.html} />
+              <DownloadMenu name={report.name} />
+            </div>
           </div>
 
-          <Tabs
-            tabs={lineageData ? ['Output', 'Lineage', 'Manifest', 'Code'] : ['Output', 'Manifest', 'Code']}
-            active={tab}
-            onChange={setTab}
-          />
+          <Tabs tabs={['Output', 'Lineage', 'Manifest', 'Code']} active={tab} onChange={openTab} />
 
           {tab === 'Output' && (
             <>
@@ -552,7 +563,11 @@ function ReportDetail({ report, onBack }) {
             </>
           )}
 
-          {tab === 'Lineage' && lineageData && <ReportLineage flow={lineageData.flow} />}
+          {tab === 'Lineage' && (
+            lineageData ? <ReportLineage flow={lineageData.flow} />
+              : lineageErr ? <ErrorDetail error={lineageErr} />
+                : <div style={{ color: 'var(--muted)', fontSize: 13 }}><Spinner /> Loading lineage…</div>
+          )}
 
           {tab === 'Code' && <ReportSource name={report.name} />}
 
