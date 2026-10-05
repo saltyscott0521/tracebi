@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from tracebi.web.api.errors import error_detail
 from tracebi.web.api.lineage_graph import lineage_to_graph
 from tracebi.web.api.registry import registry
+from tracebi.web.api.source_view import source_payload
 
 router = APIRouter(prefix="/models", tags=["models"])
 
@@ -36,6 +37,22 @@ def get_model(name: str):
         except ValueError:
             detail["source_file"] = path
     return detail
+
+
+@router.get("/{name}/source")
+def model_source(name: str):
+    """The model's file, read-only: the contract the Data model page describes."""
+    detail = registry.describe_model(name)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    from tracebi.model_registry import model_path
+
+    path = model_path(name) or model_path(detail.get("name") or name)
+    return source_payload(
+        [("model", path)],
+        missing_hint="This model is registered in Python code (an app module), not from a models/ file.",
+        hint="The model: its tables, joins, facts, dimensions and measures.",
+    )
 
 
 def _safe_filename(name: str) -> str:

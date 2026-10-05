@@ -7,6 +7,8 @@ import {
 
 import { useModel, useTablePreview, useRunQuery } from '../api'
 import { LineageGraph } from '../components/Lineage'
+import { CodeFiles } from '../components/CodeView'
+import { pythonOf, bindingOf } from '../queryCode'
 import {
   Card, CardTitle, Badge, Spinner,
   Empty, Btn, ErrorDetail, SkeletonCard,
@@ -250,6 +252,7 @@ export default function Explore({ model: activeModel }) {
   const factColumns = factPreview?.columns || []
 
   const { mutate: run, data: result, isPending, error, reset } = useRunQuery()
+  const [ran, setRan] = useState(null)             // the request the result below answers
 
   const toggleMeasure = col => {
     const next = { ...measures }
@@ -278,15 +281,14 @@ export default function Explore({ model: activeModel }) {
       const n = Number(v)
       typedFilters[k] = Number.isFinite(n) && v.trim() !== '' ? n : v
     }
-    run({
-      model: activeModel,
-      body: {
-        fact: fact.name,
-        measures,
-        dimensions: dimAttrs,
-        filters: Object.keys(typedFilters).length ? typedFilters : null,
-      },
-    })
+    const body = {
+      fact: fact.name,
+      measures,
+      dimensions: dimAttrs,
+      filters: Object.keys(typedFilters).length ? typedFilters : null,
+    }
+    setRan(body)
+    run({ model: activeModel, body })
   }
 
   const measureCols = result ? result.columns.filter(c => c in measures) : []
@@ -435,6 +437,18 @@ export default function Explore({ model: activeModel }) {
                     </table>
                   </div>
                 </Card>
+
+                {ran && (
+                  <Card>
+                    <CardTitle>The query as code</CardTitle>
+                    <CodeFiles
+                      hint="The same query, written two ways: run it from Python, or paste it into a report's data block."
+                      files={[
+                        { path: 'Python · DataModel.query()', label: 'Python', content: pythonOf(activeModel, ran) },
+                        { path: 'report.json · a data binding', label: 'report.json', content: bindingOf(activeModel, ran) },
+                      ]} />
+                  </Card>
+                )}
 
                 <Card>
                   <CardTitle>How this number was made</CardTitle>

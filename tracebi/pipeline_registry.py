@@ -131,6 +131,12 @@ def _ensure_discovered() -> None:
 
 # ── Public API ─────────────────────────────────────────────────────────────
 
+def pipeline_path(name: str) -> Optional[str]:
+    """Absolute path of the ``pipelines/*.py`` file for *name*, if it has one."""
+    _ensure_discovered()
+    return _registry._paths.get(name)
+
+
 def get_runner(name: str) -> Any:
     """Return a runner by name, auto-discovering ``pipelines/`` in cwd if needed."""
     _ensure_discovered()

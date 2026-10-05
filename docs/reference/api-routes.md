@@ -36,8 +36,10 @@ posture line.
 | `GET` | `/api/models/{name}/tables/{table}/preview` | viewer |
 | `GET` | `/api/models/{name}/tables/{table}/export.csv` | viewer |
 | `POST` | `/api/models/{name}/query` | viewer |
+| `GET` | `/api/models/{name}/source` | viewer |
 
-`/query` takes a [[queries|QuerySpec]] and returns the result plus a lineage
+`/source` returns the model's file, read-only (the **Code** tab). A model registered in
+Python code has no file and says so. `/query` takes a [[queries|QuerySpec]] and returns the result plus a lineage
 graph. It computes but persists nothing, which is why `viewer` may call it.
 
 ## Reports
@@ -117,6 +119,7 @@ needed. See [[receipts]].
 | `POST` | `/api/pipelines/{name}/runs` | **admin** |
 | `GET` | `/api/pipelines/{name}/runs` · `/api/pipelines/{name}/runs/{id}` | viewer |
 | `GET` | `/api/pipelines/{name}/runs/{id}/log` | analyst |
+| `GET` | `/api/pipelines/{name}/source` | viewer |
 
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
@@ -135,6 +138,7 @@ steps printed, not only their status. Logs are files under
 | Method | Path | Role |
 | --- | --- | --- |
 | `GET` | `/api/connectors` · `/api/connectors/{name}` | viewer |
+| `GET` | `/api/connectors/{name}/source` | viewer |
 | `GET` | `/api/docs` · `/api/docs/{name}` | viewer |
 | `POST` | `/api/_dev/reload` | **admin**, and only with `TRACEBI_DEV_MODE` |
 | `GET` | `/api/_dev/discovered` | admin |

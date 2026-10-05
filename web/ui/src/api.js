@@ -172,6 +172,15 @@ export const useReportSource = (name, enabled) =>
     enabled: !!(name && enabled),
   })
 
+// The code behind a model, pipeline or connector (read-only): the files
+// discovery found for it. `kind` is the route family.
+export const useSource = (kind, name) =>
+  useQuery({
+    queryKey: ['source', kind, name],
+    queryFn: () => get(`/${kind}/${encodeURIComponent(name)}/source`),
+    enabled: !!name,
+  })
+
 export const useReportLineage = () =>
   useMutation({ mutationFn: (name) => get(`/reports/${reportPath(name)}/lineage`) })
 

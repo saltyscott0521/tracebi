@@ -156,9 +156,15 @@ posture line.</p>
 <td><code>/api/models/{name}/query</code></td>
 <td>viewer</td>
 </tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/models/{name}/source</code></td>
+<td>viewer</td>
+</tr>
 </tbody>
 </table>
-<p><code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
+<p><code>/source</code> returns the model's file, read-only (the <strong>Code</strong> tab). A model registered in
+Python code has no file and says so. <code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
 graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
 <h2 id="reports">Reports</h2>
 <table>
@@ -346,6 +352,11 @@ needed. See <a href="../concepts/receipts.html">Receipts</a>.</p>
 <td><code>/api/pipelines/{name}/runs/{id}/log</code></td>
 <td>analyst</td>
 </tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/pipelines/{name}/source</code></td>
+<td>viewer</td>
+</tr>
 </tbody>
 </table>
 <p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
@@ -371,6 +382,11 @@ steps printed, not only their status. Logs are files under
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/connectors</code> · <code>/api/connectors/{name}</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/connectors/{name}/source</code></td>
 <td>viewer</td>
 </tr>
 <tr>

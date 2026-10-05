@@ -942,6 +942,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def find_transform(name: str) -> Optional[Path]:
+    """The file ``tracebi run-transform <name>`` runs: ``transforms/<name>`` as
+    given, or with ``.py`` or ``.ipynb`` added."""
+    tdir = Path(os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms"))
+    candidates = [tdir / name, tdir / f"{name}.py", tdir / f"{name}.ipynb"]
+    return next((c for c in candidates if c.is_file()), None)
+
+
 def cmd_run_transform(args: argparse.Namespace) -> int:
     """
     Execute a phase-① transform — ``.py`` or ``.ipynb`` — top-to-bottom in
@@ -955,11 +963,9 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
     notebook editor opens them as notebooks) or literal ``.ipynb``, whose
     code cells are concatenated in order and executed fresh.
     """
-    tdir = Path(os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms"))
-    candidates = [tdir / args.name, tdir / f"{args.name}.py",
-                  tdir / f"{args.name}.ipynb"]
-    path = next((c for c in candidates if c.is_file()), None)
+    path = find_transform(args.name)
     if path is None:
+        tdir = os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms")
         print(f"transform not found in {tdir}: {args.name}", file=sys.stderr)
         return 1
     print(f"Running {path} (top-to-bottom, fresh namespace)…")

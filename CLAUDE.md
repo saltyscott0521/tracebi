@@ -617,6 +617,9 @@ GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts, dimensions
 GET  /api/models/{name}/tables/{t}/preview           → first N rows + dtypes + total_rows
 GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV attachment
+GET  /api/models/{name}/source                       → the model's file (read-only; the Code tab)
+GET  /api/connectors/{name}/source                   → the model file(s) that declare it
+GET  /api/pipelines/{name}/source                    → the pipeline file + the transform it runs
 POST /api/models/{name}/query                        → star-schema query + lineage graph
 GET  /api/reports
 POST /api/reports/{name}/run                         → HTML + lineage manifest JSON (sync)
