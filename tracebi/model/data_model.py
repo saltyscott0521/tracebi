@@ -3287,6 +3287,41 @@ class DataModel:
             entry["columns"] = cols
         return entry
 
+    def _measure_fact_columns(self, name: str, fact_def: "_FactDef") -> set[str]:
+        """The fact-table columns a declared measure reads, through every
+        measure it is built on — what ``execute`` needs on the fact's table
+        for the measure to resolve (``_apply_derived``, the column check, and
+        the period_end value column)."""
+        r = self._resolve_measures([name], fact_def)
+        cols: set[str] = set()
+        for out in r.agg_map:
+            cols |= {t for t in _EXPR_TOKEN.findall(r.derived.get(out, out))
+                     if not t.isdigit()}
+        cols |= {value_col for value_col, _ in r.period_ends.values()}
+        return cols
+
+    def _runnable_measures(
+        self, fact_def: "_FactDef", columns: "Optional[set[str]]"
+    ) -> list[str]:
+        """The declared measures whose columns all exist on this fact's table.
+
+        A measure is declared once on the model, not per fact, so whether it
+        runs on a fact is decided by the columns it reads. *columns* is the
+        fact table's column set from its connector's metadata; when the
+        connector cannot say (or the warehouse is not built yet) nothing can be
+        ruled out, so every declared measure is listed and a run reports the
+        real error."""
+        if columns is None:
+            return list(self._measures)
+        out = []
+        for name in self._measures:
+            try:
+                if self._measure_fact_columns(name, fact_def) <= columns:
+                    out.append(name)
+            except ValueError:
+                continue    # a definition that cannot resolve runs on no fact
+        return out
+
     def info(self) -> dict:
         """
         The model's structure as a plain dict (tables, relationships,
@@ -3298,6 +3333,11 @@ class DataModel:
         measures carry their definition, description, and format so a
         consumer can tell what a number *means*, not just what it's called.
         """
+        tables = [self._table_info(t) for t in self._tables.values()]
+        table_columns = {
+            t["name"]: {c["name"] for c in t["columns"]}
+            for t in tables if "columns" in t
+        }
         return {
             "name": self.name,
             "connectors": list(self._connectors.keys()),
@@ -3307,7 +3347,7 @@ class DataModel:
                 {**c.describe(), "storage": c.storage()}
                 for c in self._connectors.values()
             ],
-            "tables": [self._table_info(t) for t in self._tables.values()],
+            "tables": tables,
             "relationships": [
                 {
                     "name": r.name,
@@ -3325,6 +3365,10 @@ class DataModel:
                     "table": f.table_name,
                     "measures": list(f.measures),
                     "foreign_keys": dict(f.foreign_keys),
+                    # The declared measures (top-level "measures") that can run
+                    # on this fact, so a UI offers only what will execute.
+                    "runnable_measures": self._runnable_measures(
+                        f, table_columns.get(f.table_name)),
                 }
                 for f in self._facts.values()
             ],
