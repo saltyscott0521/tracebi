@@ -131,13 +131,15 @@ class TestSaasTemplateVerifies:
             assert sunk.returncode == 0, sunk.stderr
             assert "account-months:" in sunk.stdout
 
+        # The printed step: the model's pipeline runs the transform, then
+        # builds every report in reports/saas_model/.
+        built = _run(["run-pipeline", "saas_model"], proj)
+        assert built.returncode == 0, built.stdout + built.stderr
         reports = (
             "saas_model/mrr_dashboard",
             "saas_model/cohort_brief",
         )
         for name in reports:
-            built = _run(["report", "build", name], proj)
-            assert built.returncode == 0, built.stderr
             manifest = proj / "output" / f"{name}.html.manifest.json"
             assert manifest.is_file()
             verified = _run(
@@ -221,13 +223,13 @@ class TestSalesTemplateVerifies:
         assert rated.returncode == 0, rated.stdout + rated.stderr
         assert "win-rate-ok" in rated.stdout
 
+        built = _run(["run-pipeline", "sales_pipeline_model"], proj)
+        assert built.returncode == 0, built.stdout + built.stderr
         reports = (
             "sales_pipeline_model/pipeline_dashboard",
             "sales_pipeline_model/rep_scorecard",
         )
         for name in reports:
-            built = _run(["report", "build", name], proj)
-            assert built.returncode == 0, built.stderr
             manifest = proj / "output" / f"{name}.html.manifest.json"
             assert manifest.is_file()
             verified = _run(
