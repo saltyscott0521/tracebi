@@ -31,7 +31,8 @@ You get the three-phase layout from [[the-three-phase-workflow]]:
 inputs/       ⓪ raw pulls
 transforms/   ① pandas that lands clean tables
 models/       ② the star-schema contract
-reports/      ③ the report packages
+reports/      ③ the report packages, one folder per model
+pipelines/    one per model: run its transform, then build its reports
 data/         the warehouse lives here
 output/       built artifacts + receipts
 ```
@@ -64,24 +65,35 @@ silently inflates every additive measure, so this is worth running.
 ## 5. Build the report — phase ③
 
 ```bash
-tracebi report build sample_dashboard
+tracebi report build sample_model/sample_dashboard
 ```
 
-Writes two files:
+The report lives in its model's folder, `reports/sample_model/sample_dashboard/`,
+and is named by that path. It writes two files:
 
 ```
-output/sample_dashboard.html                   the artifact
-output/sample_dashboard.html.manifest.json     the receipt
+output/sample_model/sample_dashboard.html                   the artifact
+output/sample_model/sample_dashboard.html.manifest.json     the receipt
 ```
 
 The HTML is fully self-contained — no CDN, no network. Open it directly.
+
+**Steps 3 and 5 in one command.** `pipelines/sample_model.py` ties the model's
+transform to its reports, so this runs the transform and then builds every
+report in `reports/sample_model/`:
+
+```bash
+tracebi run-pipeline sample_model
+```
+
+It is what the **Refresh** page in `tracebi serve` runs.
 
 → [[report]]
 
 ## 6. Verify
 
 ```bash
-tracebi verify output/sample_dashboard.html.manifest.json
+tracebi verify output/sample_model/sample_dashboard.html.manifest.json
 ```
 
 Re-runs every recorded query and compares fingerprints. You should see
@@ -90,7 +102,7 @@ Re-runs every recorded query and compares fingerprints. You should see
 Then the offline check — no database, no model, just the file:
 
 ```bash
-tracebi verify --file output/sample_dashboard.html
+tracebi verify --file output/sample_model/sample_dashboard.html
 ```
 
 Edit a number inside the HTML by hand and run it again: it reports
@@ -103,10 +115,10 @@ Edit a number inside the HTML by hand and run it again: it reports
 ## Now iterate
 
 ```bash
-tracebi dev sample_dashboard
+tracebi dev sample_model/sample_dashboard
 ```
 
-The live loop. Edit `reports/sample_dashboard/template.html` and the page
+The live loop. Edit `reports/sample_model/sample_dashboard/template.html` and the page
 reloads. The workbench at `/__workbench` shows what each figure is bound to and
 what it has earned.
 

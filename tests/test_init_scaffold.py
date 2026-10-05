@@ -276,7 +276,7 @@ class TestReportSend:
         attempted = []
         monkeypatch.setattr(delivery, "send_report",
                             lambda *a, **k: attempted.append(a))
-        rc = cli.main(["report", "send", "sample_dashboard",
+        rc = cli.main(["report", "send", "sample_model/sample_dashboard",
                        "--to", "a@example.com"])
         assert rc == 1
         assert not attempted, "a failing receipt must never be sent"
@@ -288,7 +288,7 @@ class TestReportSend:
         monkeypatch.setattr(verify_mod, "verify_manifest",
                             lambda *a, **k: dict(self._FAILING))
         sent = self._fake_smtp(monkeypatch)
-        rc = cli.main(["report", "send", "sample_dashboard",
+        rc = cli.main(["report", "send", "sample_model/sample_dashboard",
                        "--to", "a@example.com", "--force"])
         assert rc == 0
         body = sent["msg"].get_body(
@@ -306,7 +306,7 @@ class TestReportSend:
         monkeypatch.setattr(verify_mod, "verify_manifest",
                             lambda *a, **k: dict(self._PASSING))
         sent = self._fake_smtp(monkeypatch)
-        cli.main(["report", "send", "sample_dashboard", "--to", "a@example.com"])
+        cli.main(["report", "send", "sample_model/sample_dashboard", "--to", "a@example.com"])
         assert isinstance(sent.get("starttls_context"), ssl.SSLContext)
 
     def test_refuses_cleartext_credentials_when_no_starttls(self, tmp_path,

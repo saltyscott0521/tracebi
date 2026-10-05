@@ -39,7 +39,9 @@ class TestTemplateFlag:
         proj = tmp_path / "plain"
         assert cli.main(["init", str(proj)]) == 0
         assert (proj / "models" / "sample_model.py").is_file()
-        assert (proj / "reports" / "sample_dashboard" / "template.html").is_file()
+        assert (proj / "reports" / "sample_model" / "sample_dashboard"
+                / "template.html").is_file()
+        assert (proj / "pipelines" / "sample_model.py").is_file()
         assert (proj / "inputs" / "orders.csv").is_file()
         assert not (proj / "models" / "saas_model.py").exists()
         assert not (proj / "reports" / "saas_model").exists()
