@@ -148,3 +148,39 @@ def test_status_and_the_review_snapshot(scaffolded):
     assert not (scaffolded / "output" / "sample_dashboard.snapshot.html.manifest.json").exists()
     code, out = run_cli("verify", "--file", str(snapshot))
     assert code != 0, "a review snapshot is not a receipt"
+
+
+def test_dev_app_opens_the_web_app_on_the_report_in_build_mode(scaffolded, monkeypatch):
+    """`tracebi dev <name> --app`: one command, the app in dev mode, pointed at
+    that report with Build already on (the agent's chat goes beside it)."""
+    import os
+    import urllib.parse
+
+    seen = {}
+
+    class _Timer:                       # the browser opens a moment after the server is up
+        def __init__(self, delay, fn):
+            seen["open"] = fn
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr("threading.Timer", _Timer)
+    monkeypatch.setattr("webbrowser.open", lambda url: seen.setdefault("browser", url))
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: seen.update(app=app, **kw))
+    # The command sets this in the process; recording it here makes pytest undo it.
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "0")
+
+    code, out = run_cli("dev", "sample_dashboard", "--app", "--port", "8765")
+    assert code == 0, out
+    assert os.environ["TRACEBI_DEV_MODE"] == "1", "Build mode needs the server in dev mode"
+    assert seen["app"] == "tracebi.web.api.main:app" and seen["port"] == 8765
+    assert seen["host"] == "127.0.0.1", "dev-state endpoints stay on loopback"
+    url = "http://127.0.0.1:8765/reports?" + urllib.parse.urlencode(
+        {"r": "sample_dashboard", "build": "1"})
+    assert url in out
+    seen["open"]()
+    assert seen["browser"] == url
+
+    code, out = run_cli("dev", "nope", "--app")
+    assert code == 1 and "not found" in out

@@ -255,9 +255,15 @@ measure. Exits 1 on any problem.</p>
 <hr>
 <h2 id="working-live">Working live</h2>
 <h3 id="tracebi-dev"><code>tracebi dev</code></h3>
-<pre><code class="language-bash">tracebi dev [name] [--port 8001] [--no-browser]
+<pre><code class="language-bash">tracebi dev [name] [--port 8001] [--no-browser] [--app]
 </code></pre>
 <p>The live-preview loop, and <strong>the everyday surface</strong>.</p>
+<p><code>--app</code> opens the <strong>web app</strong> on that report with <strong>Build mode</strong> on, instead of
+the classic preview server: put your agent's chat beside it. The report
+re-renders each time the agent saves, a timeline lists which figures each save
+changed (flip back to the version before), and you can click a figure to point
+at it, so "make this a line chart" means that figure. You instruct the agent in
+its chat, not in the app. The server runs in dev mode on <code>127.0.0.1</code> only.</p>
 <p>With a package name, serves <code>reports/&lt;name&gt;/</code> with the exploration render plus
 the workbench at <code>/__workbench</code>. With <strong>no name</strong> it enters <em>discovery mode</em>:
 warehouse tables, sink contracts, models and packages — the live surface before

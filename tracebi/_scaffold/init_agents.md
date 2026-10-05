@@ -279,8 +279,8 @@ body, the same text as `tracebi knowledge <slug>`).
    the workbench feed during dev and is a no-op everywhere else, so probe
    code needs no cleanup and no promotion step.
 3. **Read what they point at, then the pins, before every pass.** In the
-   web app's Build mode (`tracebi serve` with `TRACEBI_DEV_MODE=1`, or
-   `tracebi dev`) the human clicks **Build** and then a figure or an area of
+   web app's Build mode (`tracebi dev <name> --app`, or `tracebi serve` with
+   `TRACEBI_DEV_MODE=1`) the human clicks **Build** and then a figure or an area of
    the report; the workbench beside it is where they watch you work: the report
    re-rendered each time you save, which figures each save changed, your
    exhibits, and the pins you resolve. They instruct you in chat. `workbench_state` returns it as `pointing`: a figure
