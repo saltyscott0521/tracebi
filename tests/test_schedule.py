@@ -118,7 +118,7 @@ def scheduled(project, tmp_path):
     """A copy of the project whose sample report carries SCHEDULE."""
     proj = tmp_path / "proj"
     shutil.copytree(project, proj)
-    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    rj = proj / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     decl = json.loads(rj.read_text())
     decl["schedule"] = SCHEDULE
     rj.write_text(json.dumps(decl))
@@ -134,24 +134,24 @@ class TestDiscovery:
     def test_finds_scheduled_packages_only(self, scheduled):
         schedules, errors = sched.discover_schedules(scheduled / "reports")
         assert errors == []
-        assert schedules == [{"report": "sample_dashboard", **SCHEDULE,
+        assert schedules == [{"report": "sample_model/sample_dashboard", **SCHEDULE,
                               "refresh": {"transforms": [], "pipelines": []},
                               "retries": 2, "owner": None, "burst": None}]
 
     def test_broken_block_is_an_error_entry_not_a_crash(self, scheduled):
-        rj = scheduled / "reports" / "sample_dashboard" / "report.json"
+        rj = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
         decl = json.loads(rj.read_text())
         decl["schedule"] = {"cron": "weekly"}
         rj.write_text(json.dumps(decl))
         schedules, errors = sched.discover_schedules(scheduled / "reports")
         assert schedules == []
-        assert errors[0]["report"] == "sample_dashboard"
+        assert errors[0]["report"] == "sample_model/sample_dashboard"
         assert "five-field cron" in errors[0]["error"]
 
 
 class TestScheduleRun:
     def test_a_receipt_that_does_not_verify_is_refused_and_not_sent(self, scheduled):
-        out = _run(["schedule", "run", "sample_dashboard"],
+        out = _run(["schedule", "run", "sample_model/sample_dashboard"],
                    scheduled, _STUB_SEND + _FAIL_VERIFY)
         assert out.returncode == 1
         assert not (scheduled / "sent.json").exists()
@@ -160,7 +160,7 @@ class TestScheduleRun:
         assert rec["recipients"] == []
 
     def test_run_needs_a_schedule_block(self, project):
-        out = _run(["schedule", "run", "sample_dashboard"], project)
+        out = _run(["schedule", "run", "sample_model/sample_dashboard"], project)
         assert out.returncode == 1
         assert "no schedule block" in out.stderr
 
@@ -168,7 +168,7 @@ def _kpi_orders(proj: Path) -> int:
     import csv as _csv
     import io
     import re
-    html = (proj / "output" / "sample_dashboard.html").read_text()
+    html = (proj / "output" / "sample_model" / "sample_dashboard.html").read_text()
     block = re.search(r'<script[^>]*id="tracebi-data-kpis"[^>]*>(.*?)</script>',
                       html, re.S).group(1)
     row = next(_csv.DictReader(io.StringIO(json.loads(block)["csv"])))
@@ -180,14 +180,14 @@ class TestRefresh:
     fresh data; a failed step stops the run before anything is built."""
 
     def _with_refresh(self, proj, transforms):
-        rj = proj / "reports" / "sample_dashboard" / "report.json"
+        rj = proj / "reports" / "sample_model" / "sample_dashboard" / "report.json"
         decl = json.loads(rj.read_text())
         decl["schedule"]["refresh"] = {"transforms": transforms}
         rj.write_text(json.dumps(decl))
 
     def test_refresh_runs_the_transform_before_the_build(self, scheduled):
         # Baseline: a build before any new data.
-        assert _run(["report", "build", "sample_dashboard"], scheduled).returncode == 0
+        assert _run(["report", "build", "sample_model/sample_dashboard"], scheduled).returncode == 0
         before = _kpi_orders(scheduled)
         # One new order lands in the raw input after the warehouse was built.
         csv = scheduled / "inputs" / "orders.csv"
@@ -196,7 +196,7 @@ class TestRefresh:
         csv.write_text("\n".join(lines + [new_row]) + "\n")
 
         self._with_refresh(scheduled, ["sample_transform"])
-        out = _run(["schedule", "run", "sample_dashboard", "--no-send"], scheduled)
+        out = _run(["schedule", "run", "sample_model/sample_dashboard", "--no-send"], scheduled)
         assert out.returncode == 0, out.stderr
         [rec] = _runs(scheduled)
         assert rec["status"] == sched.BUILT
@@ -207,12 +207,12 @@ class TestRefresh:
 
     def test_a_failed_refresh_builds_and_sends_nothing(self, scheduled):
         self._with_refresh(scheduled, ["no_such_transform"])
-        out = _run(["schedule", "run", "sample_dashboard"], scheduled, _STUB_SEND)
+        out = _run(["schedule", "run", "sample_model/sample_dashboard"], scheduled, _STUB_SEND)
         assert out.returncode == 1
         [rec] = _runs(scheduled)
         assert rec["status"] == sched.FAILED
         assert "refresh transform 'no_such_transform' failed" in rec["error"]
-        assert not (scheduled / "output" / "sample_dashboard.html").exists()
+        assert not (scheduled / "output" / "sample_model" / "sample_dashboard.html").exists()
         assert not (scheduled / "sent.json").exists()
 
 
@@ -251,7 +251,7 @@ class TestFailurePaths:
             "tracebi._delivery.send_report",
             lambda *a, **k: sent.append(a) or ["nobody"],
         )
-        rj = scheduled / "reports" / "sample_dashboard" / "report.json"
+        rj = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
         decl = json.loads(rj.read_text())
         binding = next(iter(decl["data"]))
         decl["data"][binding]["query"]["measures"] = ["not_a_measure"]
@@ -284,7 +284,7 @@ class TestFailurePaths:
         assert rec["status"] == sched.FAILED
         assert "refresh transform 'no_such_transform' failed" in rec["error"]
         assert rec["refresh"][0]["ok"] is False
-        assert not (scheduled / "output" / "sample_dashboard.html").exists()
+        assert not (scheduled / "output" / "sample_model" / "sample_dashboard.html").exists()
 
     def test_smtp_failure_is_recorded_and_not_delivered(self, scheduled, monkeypatch):
         _enter(scheduled, monkeypatch)
@@ -313,13 +313,13 @@ class TestFailurePaths:
         schedule block cannot: ``force`` is not a field, so the package is
         skipped, and a receipt that does not verify is refused with nothing
         sent."""
-        rj = scheduled / "reports" / "sample_dashboard" / "report.json"
+        rj = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
         decl = json.loads(rj.read_text())
         decl["schedule"]["force"] = True
         rj.write_text(json.dumps(decl))
         schedules, errors = sched.discover_schedules(scheduled / "reports")
         assert schedules == []
-        assert errors[0]["report"] == "sample_dashboard"
+        assert errors[0]["report"] == "sample_model/sample_dashboard"
         assert "unknown schedule field" in errors[0]["error"]
         assert "force" in errors[0]["error"]
 
@@ -364,7 +364,7 @@ class TestFailurePaths:
 
 def _owner(proj: Path, **extra) -> dict:
     """The project's schedule, with *extra* written into the block."""
-    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    rj = proj / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     decl = json.loads(rj.read_text())
     decl["schedule"].update(extra)
     rj.write_text(json.dumps(decl))
@@ -372,7 +372,7 @@ def _owner(proj: Path, **extra) -> dict:
 
 
 def _break_build(proj: Path) -> None:
-    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    rj = proj / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     decl = json.loads(rj.read_text())
     binding = next(iter(decl["data"]))
     decl["data"][binding]["query"]["measures"] = ["not_a_measure"]
@@ -381,7 +381,7 @@ def _break_build(proj: Path) -> None:
 
 def _empty_region(proj: Path, *names: str) -> None:
     """A filter no region matches, so a grouped binding returns zero rows."""
-    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    rj = proj / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     decl = json.loads(rj.read_text())
     nowhere = {"dim_region.region": "no-such-region"}
     for name in names:
@@ -431,7 +431,7 @@ class TestOwnerAlerts:
         [alert] = alerts
         assert alert["to"] == "ops@example.com"
         assert alert["subject"] == (
-            "TraceBi: sample_dashboard scheduled run failed")
+            "TraceBi: sample_model/sample_dashboard scheduled run failed")
         assert "not_a_measure" in alert["body"]
         assert "Attempts: 3" in alert["body"]
         assert "tracebi_runs (kind=schedule)" in alert["body"]
@@ -576,7 +576,7 @@ class TestOwnerAlerts:
         [alert] = alerts
         assert (
             "See the run: https://bi.example.com/runs?"
-            "kind=schedule&target=sample_dashboard"
+            "kind=schedule&target=sample_model%2Fsample_dashboard"
         ) in alert["body"]
 
     def test_without_a_public_url_the_alert_has_no_runs_link(
@@ -673,13 +673,13 @@ class TestOwnerAlerts:
         assert "stub: did not reproduce" in pings[0]
 
     def test_a_bad_owner_is_rejected_when_the_package_loads(self, scheduled):
-        rj = scheduled / "reports" / "sample_dashboard" / "report.json"
+        rj = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
         decl = json.loads(rj.read_text())
         decl["schedule"]["owner"] = "not-an-address"
         rj.write_text(json.dumps(decl))
         schedules, errors = sched.discover_schedules(scheduled / "reports")
         assert schedules == []
-        assert errors[0]["report"] == "sample_dashboard"
+        assert errors[0]["report"] == "sample_model/sample_dashboard"
         assert "one email" in errors[0]["error"]
 
 
@@ -1035,7 +1035,7 @@ class TestSlackFileDelivery:
             send=False,
         )
         assert rec["status"] == sched.BUILT
-        html = scheduled / "output" / "sample_dashboard.html"
+        html = scheduled / "output" / "sample_model" / "sample_dashboard.html"
         manifest = html.with_name(html.name + ".manifest.json")
         page = html.read_text(encoding="utf-8")
         calls = []
@@ -1154,7 +1154,7 @@ _BURST = {
 
 
 def _write_schedule(proj: Path, block: dict) -> None:
-    rj = proj / "reports" / "sample_dashboard" / "report.json"
+    rj = proj / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     decl = json.loads(rj.read_text())
     decl["schedule"] = block
     rj.write_text(json.dumps(decl))
@@ -1228,7 +1228,7 @@ class TestBurst:
         })
         schedules, errors = sched.discover_schedules(scheduled / "reports")
         assert schedules == []
-        assert errors[0]["report"] == "sample_dashboard"
+        assert errors[0]["report"] == "sample_model/sample_dashboard"
         assert "needs a 'to' object" in errors[0]["error"]
 
     def test_one_build_per_value_with_its_own_recipients(
@@ -1259,7 +1259,7 @@ class TestBurst:
         assert by["Midwest"]["status"] == sched.SKIPPED
         assert by["Midwest"]["output"] is None
         assert by["Midwest"]["recipients"] == []
-        out = scheduled / "output"
+        out = scheduled / "output" / "sample_model"
         ne = out / "sample_dashboard--Northeast.html"
         west = out / "sample_dashboard--West.html"
         assert ne.is_file()
@@ -1328,7 +1328,7 @@ class TestBurst:
             "to": "ops@example.com", "sent": True, "error": None}
         [alert] = alerts
         assert alert["subject"] == (
-            "TraceBi: sample_dashboard scheduled run refused")
+            "TraceBi: sample_model/sample_dashboard scheduled run refused")
         assert "West (refused)" in alert["body"]
         assert "Northeast" not in alert["body"]
         assert len(_runs(scheduled)) == 1

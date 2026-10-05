@@ -31,11 +31,21 @@ honest path costs one attribute.
 ②  models/       a declarative DataModel over the sink: grain, keys, measures.
                  It reads the warehouse; it never sees the transform.
                         ── freeze: the model (the contract) ──
-③  reports/      an ARTIFACT PACKAGE — reports/<name>/ holding report.json
-                 (named query bindings) + template.html (your page, where
-                 every figure claims a binding). Builds to one self-contained
-                 HTML + a manifest (the receipt).
+③  reports/      an ARTIFACT PACKAGE in a folder named for its model —
+                 reports/<model>/<name>/ holding report.json (named query
+                 bindings) + template.html (your page, where every figure
+                 claims a binding). Builds to one self-contained HTML + a
+                 manifest (the receipt).
 ```
+
+A model, its transform and its reports belong together, and a **pipeline**
+runs them as one: `models/<model>.py`, `pipelines/<model>.py` (`runner =
+model_pipeline("<model>", transform="<transform>")`), `reports/<model>/`.
+`tracebi run-pipeline <model>` runs the transform, then builds every report in
+`reports/<model>/`, each with its receipt; the app's Refresh page runs the
+same pipeline. A report is named by its path (`<model>/<name>`) in every
+command, and builds to `output/<model>/<name>.html`. The sample is
+`sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
 
 The phases are decoupled: editing a report never re-runs the pandas. Phase ①
 is unconstrained — write whatever pandas the data needs; the contract is the
@@ -73,7 +83,7 @@ dashboard (`transforms/sample_transform.py`).
 
 ## Authoring a report (the artifact package)
 
-`reports/sample_dashboard/` is the working example — a page of ordinary HTML
+`reports/sample_model/sample_dashboard/` is the working example — a page of ordinary HTML
 whose figures each name a binding from `report.json`:
 
 - `data-tb-figure="value|chart|table|custom"` + `data-tb-binding="<name>"` —
@@ -202,9 +212,11 @@ tracebi run-transform <name>                # ① clean + sink + contract —
                                             #   fresh (python transforms/<name>.py
                                             #   works too for .py)
 tracebi new-model "<Name>"                  # ② scaffold a model; edit it
-tracebi new-report "<Name>" [--layout brief|dashboard|tabbed]
-                                            # ③ scaffold reports/<name>/ ("Finance/<Name>" → a folder).
-                                            #   dashboard is the default; brief and tabbed are the other recipes
+tracebi new-report "<model>/<Name>" [--layout brief|dashboard|tabbed]
+                                            # ③ scaffold reports/<model>/<name>/ — a report lives in
+                                            #   its model's folder. dashboard is the default; brief
+                                            #   and tabbed are the other recipes
+tracebi run-pipeline <model>                # ①→③ run the transform, then build the model's reports
 tracebi dev <name>                          # the live loop (see below)
 tracebi report status <name>                # earned state in the terminal (📌 pins)
 tracebi report build <name>                 # render → output/<name>.html + manifest
@@ -360,8 +372,9 @@ you tell a human a report is done.
    model's schema; drop `--brief` only when writing Python against the
    library directly.
 2. Read the sample files: `transforms/sample_transform.py`,
-   `models/sample_model.py`, `reports/sample_dashboard/`. They are a complete
-   working example of the loop, receipt included.
+   `models/sample_model.py`, `pipelines/sample_model.py`,
+   `reports/sample_model/sample_dashboard/`. They are a complete working
+   example of the loop, receipt included.
 3. Run `tracebi knowledge` — the analyst good-practice lessons. Read the one
    whose *when* matches your decision (`tracebi knowledge <slug>`, or over
    the gateway `tracebi://knowledge/{slug}`) before

@@ -145,6 +145,11 @@ ask from, and `done`. Reading a log needs `analyst` because it is whatever the
 steps printed, not only their status. Logs are files under
 `data/logs/pipelines/<name>/`, the newest 30 per pipeline.
 
+`GET …/runs` lists every recorded run of the pipeline, newest first, whether it
+started from the app or from `tracebi run-pipeline` (those carry
+`actor_role: "cli"`). A run has `layers` (the steps it ran) and `reports` (the
+reports its build step rebuilt, only those it actually built).
+
 ## Connectors, docs, dev
 
 | Method | Path | Role |

@@ -94,8 +94,9 @@ tracebi verify output/my_report.html.manifest.json
 <p>Scaffolds a complete three-phase project whose sample loop ends in
 <code>tracebi verify</code> printing REPRODUCES.</p>
 <p>Creates <code>inputs/ transforms/ models/ pipelines/ reports/ scheduled/ data/
-output/</code>, plus a sample transform, model and report package, <code>.gitignore</code>,
-<code>.env.example</code>, <code>README.md</code> and <code>AGENTS.md</code>.</p>
+output/</code>, plus a sample transform, model, pipeline and report package
+(<code>reports/sample_model/sample_dashboard/</code>), <code>.gitignore</code>, <code>.env.example</code>,
+<code>README.md</code> and <code>AGENTS.md</code>.</p>
 <ul>
 <li><code>--force</code> — overwrite existing files, and required to init into a non-empty
   directory. Without it, an existing file is skipped with a note and the run
@@ -418,6 +419,12 @@ takes a number and <code>d</code>, <code>h</code> or <code>m</code>.</p>
 wrote, so every failure is reported, then a summary and exit 1.</p>
 <p>Records the OS user as the audit actor, so "who ran this" answers for cron and
 CI runs too.</p>
+<p>A run is recorded like one started from the app: a <code>pipeline_run</code> row in the
+state store (so the Refresh page's <strong>Runs</strong> tab and the Runs page list it) and
+the same log, <code>data/logs/pipelines/&lt;name&gt;/&lt;id&gt;.log</code>, while the terminal prints
+what it always did. <code>--status</code> runs nothing and records nothing. If the state
+store cannot be reached the pipeline still runs; it says the run is not being
+recorded.</p>
 <h3 id="tracebi-list-models-tracebi-list-pipelines"><code>tracebi list-models</code> · <code>tracebi list-pipelines</code></h3>
 <p>List definition files. Never fail: a missing or empty directory prints a note
 and exits 0.</p>

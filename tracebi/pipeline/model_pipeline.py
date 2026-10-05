@@ -23,6 +23,7 @@ import io
 import os
 from typing import Optional
 
+from tracebi.pipeline.run_record import built_report
 from tracebi.pipeline.runlog import capture
 from tracebi.pipeline.runner import PipelineRunner
 
@@ -106,6 +107,7 @@ def model_pipeline(
             raise RuntimeError(f"no reports in {os.path.join(reports_dir, model)}/")
         for name in names:
             _cli("report", "build", name)
+            built_report(name)                                  # the run lists what it rebuilt
         return len(names)                                       # reports rebuilt
 
     runner = PipelineRunner(db_url=db_url)
