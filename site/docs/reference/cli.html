@@ -419,6 +419,12 @@ takes a number and <code>d</code>, <code>h</code> or <code>m</code>.</p>
 wrote, so every failure is reported, then a summary and exit 1.</p>
 <p>Records the OS user as the audit actor, so "who ran this" answers for cron and
 CI runs too.</p>
+<p>A run is recorded like one started from the app: a <code>pipeline_run</code> row in the
+state store (so the Refresh page's <strong>Runs</strong> tab and the Runs page list it) and
+the same log, <code>data/logs/pipelines/&lt;name&gt;/&lt;id&gt;.log</code>, while the terminal prints
+what it always did. <code>--status</code> runs nothing and records nothing. If the state
+store cannot be reached the pipeline still runs; it says the run is not being
+recorded.</p>
 <h3 id="tracebi-list-models-tracebi-list-pipelines"><code>tracebi list-models</code> · <code>tracebi list-pipelines</code></h3>
 <p>List definition files. Never fail: a missing or empty directory prints a note
 and exits 0.</p>

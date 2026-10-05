@@ -118,6 +118,77 @@ def test_the_refresh_page_follows_a_run_as_a_log(pipeline, monkeypatch):
     assert done["status"] == "succeeded" and "[orders_bronze]" not in text
 
 
+def test_a_run_from_the_command_line_is_in_the_same_list_as_one_from_the_app(pipeline, monkeypatch):
+    """`tracebi run-pipeline` used to leave nothing the Refresh page could show:
+    a cron job's run was invisible beside the ones started from a button."""
+    code, out = run_cli("run-pipeline", "orders_etl")
+    assert code == 0, out
+    c = serve_app(monkeypatch)
+
+    [ran] = c.get("/api/pipelines/orders_etl/runs").json()
+    assert ran["status"] == "succeeded" and ran["layers"] == ["orders_bronze", "orders_silver"]
+    assert ran["actor_role"] == "cli" and ran["finished_at"]
+    text, done = follow_run(c, "orders_etl", ran["run_id"])
+    assert done["status"] == "succeeded" and not done["expired"]
+    assert "[orders_silver] ✓  12 in → 11 out" in text
+    assert text.rstrip().splitlines()[-1].split("  ", 1)[1].startswith("Run succeeded in")
+    assert "[orders_silver] ✓" in out                       # the terminal still gets what it always did
+
+    # `--status` runs nothing, so it records nothing; one layer is a run of its own.
+    assert run_cli("run-pipeline", "orders_etl", "--status")[0] == 0
+    assert run_cli("run-pipeline", "orders_etl", "--layer", "orders_silver")[0] == 0
+    # …and a run from the app lands in the same list, newest first.
+    from_app = c.post("/api/pipelines/orders_etl/runs").json()
+    follow_run(c, "orders_etl", from_app["run_id"])
+    runs = c.get("/api/pipelines/orders_etl/runs").json()
+    assert [r["layers"] for r in runs] == [["orders_bronze", "orders_silver"], ["orders_silver"],
+                                           ["orders_bronze", "orders_silver"]]
+    assert [r["run_id"] for r in runs][0] == from_app["run_id"] and runs[2]["run_id"] == ran["run_id"]
+
+
+def test_a_failed_command_line_run_is_recorded_as_failed_and_still_runs_the_rest(pipeline, monkeypatch):
+    path = pipeline / "pipelines" / "orders_etl.py"
+    path.write_text(path.read_text() + '''
+def _boom():
+    raise ValueError("the warehouse said no")
+
+runner.register_step("boom", _boom, depends_on="orders_silver")
+''')
+    code, out = run_cli("run-pipeline", "orders_etl")
+    assert code == 1 and "[tracebi] boom FAILED: ValueError: the warehouse said no" in out
+    c = serve_app(monkeypatch)
+
+    [ran] = c.get("/api/pipelines/orders_etl/runs").json()
+    assert ran["status"] == "failed" and "the warehouse said no" in ran["error"]["message"]
+    text, done = follow_run(c, "orders_etl", ran["run_id"])
+    assert "[orders_silver] ✓" in text and "[tracebi] boom FAILED" in text    # what ran before it, and the failure
+    assert text.rstrip().splitlines()[-1].split("  ", 1)[1].startswith("Run failed in")
+
+
+def test_a_command_line_run_that_is_interrupted_does_not_stay_running(pipeline, monkeypatch):
+    """A run stuck at 'running' would keep the Refresh page's Run all disabled for good."""
+    path = pipeline / "pipelines" / "orders_etl.py"
+    path.write_text(path.read_text() + '''
+def _interrupt():
+    raise KeyboardInterrupt
+
+runner.register_step("interrupt", _interrupt, depends_on="orders_silver")
+''')
+    with pytest.raises(KeyboardInterrupt):
+        run_cli("run-pipeline", "orders_etl")
+    [ran] = serve_app(monkeypatch).get("/api/pipelines/orders_etl/runs").json()
+    assert ran["status"] == "failed" and "KeyboardInterrupt" in ran["error"]["exception_type"]
+
+
+def test_a_refresh_from_the_command_line_does_not_need_the_run_record(pipeline, monkeypatch):
+    """The record is a convenience: a state store that cannot be reached must not stop the data refreshing."""
+    (pipeline / "blocked").write_text("a file where the store's folder should be")
+    monkeypatch.setenv("TRACEBI_STATE_URL", f"sqlite:///{pipeline / 'blocked' / 'state.db'}")
+    code, out = run_cli("run-pipeline", "orders_etl")
+    assert code == 0, out
+    assert "this run is not being recorded" in out and "[orders_silver] ✓" in out
+
+
 def test_a_failed_run_says_where_and_why_and_a_second_click_joins_the_first(pipeline, monkeypatch):
     path = pipeline / "pipelines" / "orders_etl.py"
     path.write_text(path.read_text() + '''
@@ -167,6 +238,9 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
     # The transform ran through `tracebi run-transform`, whose own output used to be thrown away.
     assert "Running transforms/sample_transform.py" in text
     assert text.index("[transform]") < text.index("[build]")
+    # The run says which reports it rebuilt, for the page to link to.
+    assert c.get(f"/api/pipelines/sample_model/runs/{run['run_id']}").json()["reports"] == [
+        "sample_model/sample_dashboard"]
 
     # The Code tab shows what ran: the pipeline file, then the transform it starts with.
     code = c.get("/api/pipelines/sample_model/source").json()
@@ -174,6 +248,23 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
         ("pipeline", "pipelines/sample_model.py"), ("transform", "transforms/sample_transform.py")]
     assert "model_pipeline(" in code["files"][0]["content"] and "sink" in code["files"][1]["content"].lower()
     assert c.get("/api/pipelines/nope/source").status_code == 404
+
+
+def test_a_run_lists_only_the_reports_it_actually_rebuilt(scaffolded, monkeypatch):
+    folder = scaffolded / "reports" / "sample_model"               # init's layout: the model's reports
+    (folder / "zz_broken").mkdir()                                  # built after the good one, and fails
+    (folder / "zz_broken" / "report.json").write_text("{not json")
+    c = serve_app(monkeypatch)
+
+    def run(layer=None):
+        started = c.post("/api/pipelines/sample_model/runs", params={"layer": layer} if layer else {}).json()
+        follow_run(c, "sample_model", started["run_id"])
+        return c.get(f"/api/pipelines/sample_model/runs/{started['run_id']}").json()
+
+    stopped = run()
+    assert stopped["status"] == "failed" and stopped["reports"] == ["sample_model/sample_dashboard"]
+    # A run that never reached the build step rebuilt nothing.
+    assert run("transform")["reports"] == []
 
 
 def test_the_app_refreshes_a_model_while_another_model_holds_the_same_warehouse_open(reference, monkeypatch):
@@ -190,6 +281,10 @@ def test_the_app_refreshes_a_model_while_another_model_holds_the_same_warehouse_
     text, done = follow_run(c, "portfolio_model", run["run_id"])
     assert done["status"] == "succeeded", text
     assert "[transform] ✓" in text and "[build] ✓" in text
+    # Every report of the model, and none of another model's.
+    from tracebi.pipeline.model_pipeline import reports_of
+    rebuilt = c.get(f"/api/pipelines/portfolio_model/runs/{run['run_id']}").json()["reports"]
+    assert len(rebuilt) > 1 and sorted(rebuilt) == reports_of("portfolio_model")
 
 
 def test_a_model_and_its_connector_show_the_file_that_declares_them(reference, monkeypatch):
