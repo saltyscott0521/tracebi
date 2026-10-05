@@ -148,12 +148,17 @@ def run_query(name: str, body: QueryRequest):
          if n.get("metadata", {}).get("engine")),
         None,
     )
+    # The cells as a built report's table writes them (the model's declared
+    # formats), beside the raw values: "data" is what a download uses.
+    from tracebi.reports.template_package import declared_column_formats, display_rows
+
     return {
         "model": name,
         "fact": body.fact,
         "rows": len(df),
         "columns": list(df.columns),
         "data": df.to_dict(orient="records"),
+        "display": display_rows(df, declared_column_formats(model, df.columns)),
         "engine": engine,
         "elapsed_ms": elapsed_ms,
         "lineage": lineage,

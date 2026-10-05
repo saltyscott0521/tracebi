@@ -10,6 +10,7 @@ built project.
 
 import json
 import os
+import re
 import shutil
 
 import pytest
@@ -193,3 +194,52 @@ def test_the_housing_scenario_is_recorded_never_receipted(built):
             "chart-rate", "chart-pti", "chart-share"} <= ids
     assert not any(i.startswith("calc-") for i in ids), \
         "a scenario output must never be recorded as a figure"
+
+
+def test_explore_speaks_the_models_language(built, monkeypatch):
+    """Explore queries the model's named measures, offers a fact only the ones
+    it can run, and writes the numbers the way a built report does."""
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.registry import registry
+
+    c = serve_app(monkeypatch, models=True)
+    try:
+        # A measure is declared once on the model; the fact decides whether it
+        # runs. Whatever a fact lists, its query answers — and nothing it
+        # leaves out would have.
+        info = c.get("/api/models/housing_model").json()
+        offered = {f["name"]: set(f["runnable_measures"]) for f in info["facts"]}
+        assert offered["fact_housing"] != offered["fact_ten_year"]
+        for fact, names in offered.items():
+            for measure in (m["name"] for m in info["measures"]):
+                answer = c.post("/api/models/housing_model/query",
+                                json={"fact": fact, "measures": [measure]})
+                assert (answer.status_code == 200) == (measure in names), (
+                    f"{fact}.{measure}: offered={measure in names}, query answered {answer.status_code}")
+
+        # The named-measure query: the raw values are the model's own answer.
+        body = {"fact": "fact_holdings", "measures": ["fair_value", "positions", "mark"],
+                "dimensions": ["dim_issuer.sector"]}
+        got = c.post("/api/models/portfolio_model/query", json=body).json()
+        direct = registry.get_model("portfolio_model").query(
+            "fact_holdings", body["measures"], dimensions=body["dimensions"])
+        assert got["data"] == direct.to_pandas().to_dict(orient="records")
+
+        # ...and the display text carries each measure's declared format.
+        for raw, shown in zip(got["data"], got["display"]):
+            assert shown["dim_issuer.sector"] == raw["dim_issuer.sector"]
+            assert re.fullmatch(r"\$[\d,]+", shown["fair_value"]), shown
+            assert re.fullmatch(r"\d+\.\d%", shown["mark"]), shown
+            assert shown["positions"] == f"{raw['positions']:,}"
+
+        # It is the very text the built overview report prints for that query.
+        html = (built / "output" / "portfolio_model" / "portfolio_overview.html").read_text()
+        top = c.post("/api/models/portfolio_model/query", json={
+            "fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"],
+            "dimensions": ["dim_issuer.issuer"], "order_by": ["-fair_value"], "limit": 8}).json()
+        assert len(top["display"]) == 8
+        for shown in top["display"]:
+            for column in ("fair_value", "cost_basis", "mark"):
+                assert f'<td class="tb-num">{shown[column]}</td>' in html
+    finally:
+        release_warehouses()

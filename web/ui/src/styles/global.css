@@ -560,6 +560,15 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   gap: 20px;
   align-items: start;
 }
+/* Ask's builder: the raw-column fallback folds away under the model's measures. */
+.explore-more { margin-top: 18px; }
+.explore-more summary {
+  cursor: pointer; padding: 4px 0;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--muted);
+}
+.explore-more[open] summary { margin-bottom: 4px; }
+.explore-note { font-size: var(--text-sm); color: var(--muted); margin: 4px 0 8px; }
 .split-layout {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);

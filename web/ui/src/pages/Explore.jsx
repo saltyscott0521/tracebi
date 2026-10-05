@@ -30,18 +30,22 @@ function SectionLabel({ children }) {
   )
 }
 
-function CheckRow({ checked, onToggle, label, right }) {
+function CheckRow({ checked, onToggle, label, sub, right, disabled }) {
   return (
     <label style={{
-      display: 'flex', alignItems: 'center', gap: 9, padding: '6px 10px',
-      borderRadius: 6, cursor: 'pointer', fontSize: 13,
+      display: 'flex', alignItems: sub ? 'flex-start' : 'center', gap: 9, padding: '6px 10px',
+      borderRadius: 6, cursor: disabled ? 'default' : 'pointer', fontSize: 13,
       background: checked ? 'var(--blue-lt)' : 'transparent',
       border: `1px solid ${checked ? 'var(--blue-br)' : 'transparent'}`,
       transition: 'background var(--t)',
     }}>
-      <input type="checkbox" checked={checked} onChange={onToggle} style={{ accentColor: 'var(--ink)' }} />
-      <span style={{ color: checked ? 'var(--text)' : 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-        {label}
+      <input type="checkbox" checked={checked} onChange={onToggle} disabled={disabled}
+        style={{ accentColor: 'var(--ink)', marginTop: sub ? 2 : undefined }} />
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <span style={{ color: checked ? 'var(--text)' : 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+          {label}
+        </span>
+        {sub && <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{sub}</span>}
       </span>
       {right && <span style={{ marginLeft: 'auto' }}>{right}</span>}
     </label>
@@ -106,8 +110,11 @@ const tooltipStyle = {
   borderRadius: 8, fontSize: 12, color: 'var(--text)',
 }
 
-const fmtValue = (v, name) => [
-  typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v,
+// The tooltip shows the server's text for the number (the model's declared
+// format, as a built report writes it); the locale string is only a fallback.
+const fmtValue = (v, name, item) => [
+  item?.payload?._display?.[name]
+    ?? (typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v),
   name,
 ]
 
@@ -142,13 +149,14 @@ function ChartTypeToggle({ type, onChange }) {
 // width, the enter animation runs against that geometry, and what settles is an
 // empty chart: axes, gridlines, ticks, no bars or lines. It reads as "the query
 // returned nothing" rather than as a rendering bug, which is how it survived.
-function ResultChart({ data, dimCol, measureCols, type = 'bar' }) {
+function ResultChart({ data, display, dimCol, measureCols, type = 'bar' }) {
   if (!data.length || !dimCol || !measureCols.length) return null
 
   // Trim long dimension labels for the axis
-  const trimmed = data.map(row => ({
+  const trimmed = data.map((row, i) => ({
     ...row,
     _label: String(row[dimCol]).slice(0, 20),
+    _display: display[i],
   }))
 
   const grid = <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={type !== 'bar'} vertical={type === 'bar'} />
@@ -242,7 +250,10 @@ export default function Explore({ model: activeModel }) {
   const [factName, setFactName] = useState(null)
   const fact = facts.find(f => f.name === factName) || facts[0]
 
-  const [measures, setMeasures] = useState({})        // {col: agg}
+  // A query names the model's measures (a list) or aggregates raw columns
+  // (a {col: agg} map): the API takes one form per request, so a run uses one.
+  const [named, setNamed] = useState([])              // ["fair_value", ...]
+  const [measures, setMeasures] = useState({})        // {col: agg} — "Other columns"
   const [dimAttrs, setDimAttrs] = useState([])        // ["dim.attr"]
   const [filters, setFilters] = useState({})          // {col: "value"}
   const [chartType, setChartType] = useState('bar')   // bar | line | area
@@ -254,6 +265,10 @@ export default function Explore({ model: activeModel }) {
   const { mutate: run, data: result, isPending, error, reset } = useRunQuery()
   const [ran, setRan] = useState(null)             // the request the result below answers
 
+  // The model's declared measures this fact can run (the model says which).
+  const offered = (model?.measures || []).filter(m => fact?.runnable_measures?.includes(m.name))
+  const toggleNamed = name =>
+    setNamed(named.includes(name) ? named.filter(n => n !== name) : [...named, name])
   const toggleMeasure = col => {
     const next = { ...measures }
     if (col in next) delete next[col]
@@ -265,13 +280,15 @@ export default function Explore({ model: activeModel }) {
 
   const selectFact = name => {
     setFactName(name)
+    setNamed([])
     setMeasures({})
     setDimAttrs([])
     setFilters({})
     reset()
   }
 
-  const canRun = fact && Object.keys(measures).length > 0
+  const adHoc = Object.keys(measures).length > 0
+  const canRun = fact && (named.length > 0 || adHoc)
 
   const handleRun = () => {
     // Coerce numeric-looking filter values so equality matches typed columns.
@@ -283,7 +300,7 @@ export default function Explore({ model: activeModel }) {
     }
     const body = {
       fact: fact.name,
-      measures,
+      measures: named.length ? named : measures,
       dimensions: dimAttrs,
       filters: Object.keys(typedFilters).length ? typedFilters : null,
     }
@@ -291,7 +308,15 @@ export default function Explore({ model: activeModel }) {
     run({ model: activeModel, body })
   }
 
-  const measureCols = result ? result.columns.filter(c => c in measures) : []
+  // The columns the request asked for (a ratio's inputs come back too, as table columns only).
+  const asked = Array.isArray(ran?.measures) ? ran.measures : Object.keys(ran?.measures || {})
+  const measureCols = result ? result.columns.filter(c => asked.includes(c)) : []
+  // One axis, one unit: chart the measures that share the first one's declared
+  // format (dollars with dollars); the rest are in the table.
+  const unitOf = c => (model?.measures || []).find(m => m.name === c)?.format ?? null
+  const chartCols = Array.isArray(ran?.measures)
+    ? measureCols.filter(c => unitOf(c) === unitOf(measureCols[0]))
+    : measureCols
   const chartDim = result && dimAttrs.length === 1 ? dimAttrs[0] : null
 
   if (loadingModel) return <SkeletonCard />
@@ -324,24 +349,51 @@ export default function Explore({ model: activeModel }) {
             {fact && (
               <>
                 <SectionLabel>Measures</SectionLabel>
-                {fact.measures.map(col => (
+                {offered.map(m => (
                   <CheckRow
-                    key={col}
-                    checked={col in measures}
-                    onToggle={() => toggleMeasure(col)}
-                    label={col}
-                    right={col in measures && (
-                      <select
-                        value={measures[col]}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => setMeasures({ ...measures, [col]: e.target.value })}
-                        style={selectStyle}
-                      >
-                        {AGG_FUNCS.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    )}
+                    key={m.name}
+                    checked={named.includes(m.name)}
+                    onToggle={() => toggleNamed(m.name)}
+                    disabled={adHoc}
+                    label={m.name}
+                    sub={m.description}
                   />
                 ))}
+                {offered.length === 0 && (
+                  <p className="explore-note">
+                    {model.measures?.length ? `None of this model's measures run on ${fact.name}.` : 'This model declares no measures.'}
+                  </p>
+                )}
+                {adHoc && offered.length > 0 && (
+                  <p className="explore-note">Clear the other columns to pick measures.</p>
+                )}
+
+                <details className="explore-more" open={offered.length === 0}>
+                  <summary>Other columns</summary>
+                  <p className="explore-note">
+                    A raw column of {fact.table}, aggregated here.
+                    {offered.length > 0 && " It can't be combined with the measures above."}
+                  </p>
+                  {fact.measures.map(col => (
+                    <CheckRow
+                      key={col}
+                      checked={col in measures}
+                      onToggle={() => toggleMeasure(col)}
+                      disabled={named.length > 0}
+                      label={col}
+                      right={col in measures && (
+                        <select
+                          value={measures[col]}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => setMeasures({ ...measures, [col]: e.target.value })}
+                          style={selectStyle}
+                        >
+                          {AGG_FUNCS.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      )}
+                    />
+                  ))}
+                </details>
 
                 <SectionLabel>Group by</SectionLabel>
                 {dims.length === 0 && (
@@ -407,12 +459,17 @@ export default function Explore({ model: activeModel }) {
                     <Badge variant="gray">{result.elapsed_ms} ms</Badge>
                   </div>
 
-                  {chartDim && measureCols.length > 0 && (
+                  {chartDim && chartCols.length > 0 && (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                        <span className="explore-note" style={{ margin: 0 }}>
+                          {chartCols.length < measureCols.length &&
+                            `Charting ${chartCols.join(', ')}. The other measures are in a different unit, so they are in the table only.`}
+                        </span>
                         <ChartTypeToggle type={chartType} onChange={setChartType} />
                       </div>
-                      <ResultChart data={result.data} dimCol={chartDim} measureCols={measureCols} type={chartType} />
+                      <ResultChart data={result.data} display={result.display} dimCol={chartDim}
+                        measureCols={chartCols} type={chartType} />
                     </>
                   )}
 
@@ -426,9 +483,7 @@ export default function Explore({ model: activeModel }) {
                               <td key={c} style={typeof row[c] === 'number' ? { fontVariantNumeric: 'tabular-nums' } : undefined}>
                                 {row[c] == null
                                   ? <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>null</span>
-                                  : typeof row[c] === 'number'
-                                    ? row[c].toLocaleString(undefined, { maximumFractionDigits: 2 })
-                                    : String(row[c])}
+                                  : result.display[i][c]}
                               </td>
                             ))}
                           </tr>

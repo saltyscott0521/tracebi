@@ -7,6 +7,7 @@ Chromium or the ``e2e`` extra. The CI job ``ui-smoke`` sets the variable.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -193,12 +194,17 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="transform", exact=True).click()
             page.get_by_text("transforms/holdings_transform.py").first.wait_for()
+            # Explore leads with the model's own measures (each with what it means),
+            # sends their names, and writes the results in their declared formats.
             page.goto(base + "/m/portfolio_model/explore")
+            page.get_by_text("Total fair value").wait_for()
             page.get_by_text("fair_value", exact=True).first.click()
+            page.get_by_text("positions", exact=True).first.click()
             page.get_by_text("sector", exact=True).first.click()
             page.get_by_text("▶ Run query").click()
             page.get_by_text("The query as code").wait_for()
-            assert 'measures={"fair_value": "sum"}' in page.locator(".codeview__code").inner_text()
+            assert 'measures=["fair_value", "positions"]' in page.locator(".codeview__code").inner_text()
+            assert re.search(r"\$[\d,]+", page.locator("table tbody tr").first.inner_text())
             fail_on_browser_errors()
 
             # Refresh: Run all opens the Log tab, which follows the run to its end.

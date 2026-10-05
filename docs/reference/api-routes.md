@@ -42,6 +42,16 @@ posture line.
 Python code has no file and says so. `/query` takes a [[queries|QuerySpec]] and returns the result plus a lineage
 graph. It computes but persists nothing, which is why `viewer` may call it.
 
+`/query` returns each row twice: `data` holds the raw values (what a CSV download
+uses) and `display` holds the same cells as text, written the way a built report's
+table writes them: a numeric column takes the model's declared format on that
+measure (`currency0`, `percent`, …), else the shape-derived default, and anything
+else stays plain text. `GET /api/models/{name}` lists, on each fact,
+`runnable_measures`: the declared measures whose columns exist on that fact's table,
+so a UI offers only what will run. When the connector cannot describe the table (the
+warehouse is not built yet), every declared measure is listed and a run reports the
+real error.
+
 ## Reports
 
 | Method | Path | Role |
