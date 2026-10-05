@@ -194,7 +194,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   mcp_server.py        # agent gateway over MCP — 13 tools + 3 prompts (author_report, answer_question, address_pins)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
-  _dev_server.py       # dev preview server (loopback) for `tracebi dev`
+  _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode
   _delivery.py         # `tracebi report send` — SMTP / Slack delivery of a built artifact
   _session_export.py   # session export — the committed lab-notebook record (HTML or md twin)
   _notebook.py         # notebook_to_source() — concatenates code cells for exec

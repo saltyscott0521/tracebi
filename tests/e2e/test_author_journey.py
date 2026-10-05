@@ -150,9 +150,11 @@ def test_status_and_the_review_snapshot(scaffolded):
     assert code != 0, "a review snapshot is not a receipt"
 
 
-def test_dev_app_opens_the_web_app_on_the_report_in_build_mode(scaffolded, monkeypatch):
-    """`tracebi dev <name> --app`: one command, the app in dev mode, pointed at
-    that report with Build already on (the agent's chat goes beside it)."""
+@pytest.mark.parametrize("flags", [[], ["--app"]])
+def test_dev_opens_the_web_app_on_the_report_in_build_mode(scaffolded, monkeypatch, flags):
+    """`tracebi dev <name>`: one command, the app in dev mode, pointed at that
+    report with Build already on (the agent's chat goes beside it). `--app` is the
+    old spelling of the same thing and still works."""
     import os
     import urllib.parse
 
@@ -171,7 +173,7 @@ def test_dev_app_opens_the_web_app_on_the_report_in_build_mode(scaffolded, monke
     # The command sets this in the process; recording it here makes pytest undo it.
     monkeypatch.setenv("TRACEBI_DEV_MODE", "0")
 
-    code, out = run_cli("dev", "sample_model/sample_dashboard", "--app", "--port", "8765")
+    code, out = run_cli("dev", "sample_model/sample_dashboard", *flags, "--port", "8765")
     assert code == 0, out
     assert os.environ["TRACEBI_DEV_MODE"] == "1", "Build mode needs the server in dev mode"
     assert seen["app"] == "tracebi.web.api.main:app" and seen["port"] == 8765
@@ -182,5 +184,54 @@ def test_dev_app_opens_the_web_app_on_the_report_in_build_mode(scaffolded, monke
     seen["open"]()
     assert seen["browser"] == url
 
-    code, out = run_cli("dev", "nope", "--app")
+    code, out = run_cli("dev", "nope", *flags)
     assert code == 1 and "not found" in out
+
+
+@pytest.fixture
+def no_server(monkeypatch):
+    """Neither server can start: record which one `tracebi dev` reached for."""
+    seen = {}
+    monkeypatch.setattr("webbrowser.open", lambda url: None)
+    monkeypatch.setattr("uvicorn.run", lambda app, **kw: seen.update(app=app, **kw))
+    monkeypatch.setattr("tracebi._dev_server.serve_dev", lambda target, **kw: seen.update(
+        classic=target, **kw) or 0)
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "0")   # the command sets it; pytest undoes it
+    return seen
+
+
+def test_dev_with_no_name_opens_the_app_where_the_agents_exhibits_land(scaffolded, no_server):
+    """No report yet: the app, in dev mode, on Reports, where the project feed is."""
+    import os
+
+    code, out = run_cli("dev", "--no-browser", "--port", "8766")
+    assert code == 0, out
+    assert os.environ["TRACEBI_DEV_MODE"] == "1"
+    assert no_server["app"] == "tracebi.web.api.main:app" and no_server["port"] == 8766
+    assert no_server["host"] == "127.0.0.1" and "classic" not in no_server
+    assert "http://127.0.0.1:8766/reports\n" in out
+    assert "tracebi.workbench.show" in out
+
+
+def test_dev_classic_keeps_the_old_preview_server(scaffolded, no_server):
+    code, out = run_cli("dev", "sample_model/sample_dashboard", "--classic", "--port", "8767")
+    assert code == 0, out
+    assert str(no_server["classic"]).endswith("sample_model/sample_dashboard") and no_server["port"] == 8767
+    assert "app" not in no_server
+
+    no_server.clear()
+    code, out = run_cli("dev", "--classic")
+    assert code == 0, out
+    assert no_server["classic"] is None and "app" not in no_server, "no name is the discovery workbench"
+
+
+def test_dev_without_the_web_extra_falls_back_to_the_classic_preview(scaffolded, no_server, monkeypatch):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "uvicorn", None)       # `import uvicorn` now fails
+    for args in (["dev", "sample_model/sample_dashboard"], ["dev"]):
+        no_server.clear()
+        code, out = run_cli(*args)
+        assert code == 0, out
+        assert "classic" in no_server and "app" not in no_server
+        assert "pip install 'tracebi[web]'" in out and "Traceback" not in out

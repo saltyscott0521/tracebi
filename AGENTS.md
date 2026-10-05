@@ -252,37 +252,45 @@ Three rules that keep pages honest:
   maintained kitchen-sink demo of all of it.
 - **Explore inside the artifact.** Blocks marked
   `data-tb-stage="exploration"` render under `tracebi dev` and are deleted
-  at the final build; the workbench at `/__workbench` shows figures,
-  coverage, and the pins a human left for you (also via `tracebi report
-  status` and the MCP `workbench_state` tool).
+  at the final build; the app's Build panel shows the data each binding reads,
+  the checks on the report, and the pins and notes a human left for you (also
+  via `tracebi report status` and the MCP `workbench_state` tool).
 
-**Pointing.** In the web app's Build mode (the server runs with
-`TRACEBI_DEV_MODE=1`; `tracebi dev <name> --app` starts it that way and opens
-the report) the human clicks **Build** on a
-report: the workbench opens beside it, and a click on a figure or an area is
+**Pointing.** `tracebi dev <name>` opens the web app on that report with Build
+mode on (the server runs with `TRACEBI_DEV_MODE=1`, on loopback only; on
+another report the human clicks **Build**): the workbench opens beside the
+report, and a click on a figure or an area is
 what they point at. Read it with the MCP `workbench_state` tool: `pointing`
 is a figure (`id`, `binding`, `cell`) or an element (`selector`, `text`,
 `section`), and is what "this" or "here" means in their message. They give
-you instructions in chat, not in the app. The pane is how they watch you
+you instructions in chat; the panel's note box leaves you a note too, which
+you read as an open `message` pin. The pane is how they watch you
 work, live: the report re-rendered each time you save the package, a timeline
 of which figures each save changed (they can flip back to the version before),
 your `show()` exhibits, and the pins you `resolve_pin` (with your note). It
+also lists **Data** (each binding: its model, rows × columns, the figures
+that read it, a few rows) and **Checks** (figures with no data behind them,
+bindings no figure reads, numbers typed outside figures — they point; the
+final build enforces). It
 is dev-state only: it never reaches a build or a receipt, and when
 `pointing` is null they are pointing at nothing, so ask.
+`tracebi dev --classic` is the older stdlib preview server with its own
+`/__workbench` page: the fallback when the web extra is not installed.
 
 And the iteration protocol itself: `tracebi dev <name>` **blocks** — run it
-in a background shell (or let the human keep it open; the portal is their
+in a background shell (or let the human keep it open; the app is their
 view). Then edit and save; the watcher re-renders. Before every editing
 pass, read the pins (`tracebi report status <name>` — 📌 lines — or MCP
-`workbench_state`): a pin is the human pointing at a figure with a note, and
+`workbench_state`): a pin is a note the human left (on a figure on the
+`--classic` page, or in the app's note box), and
 it comes first. A pin with `"kind": "promote"` is the human pressing **Keep
-this** on an exhibit: its `request` field (a `→ keep:` line in `report
+this** on an exhibit (on the `--classic` page): its `request` field (a `→ keep:` line in `report
 status`) says which exhibit, the code that produced it, and what to do —
 re-express it as a model binding + figure when the model can, else in
 `report.py` (python-derived) — then resolve the pin with a one-line note
 (`tracebi report pins <name> --resolve <id> --note "..."`, or MCP
 `resolve_pin`). A `"kind": "message"`
-pin (a `→ message:` line) is the human leaving a note in the timeline's note box:
+pin (a `→ message:` line) is the human leaving a note in the note box:
 treat it as an instruction, then resolve the pin with a one-line note. The workbench never
 edits the report; you do. `tracebi report snapshot <name>` shares a draft (exploration
 kept, review banner, no manifest — `verify` refuses it by name). Publishing
@@ -319,17 +327,21 @@ does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_B
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
-name** opens the **discovery workbench** — the live surface for phase ① and
-②: while this server is up, `tracebi.workbench.show(df, note=...)` from ANY
-script you run (a transform probe, a scratch analysis) posts the frame to
-the portal with no configuration, the Warehouse panel lists tables, row
-counts and contract status as sinks land, and the Models panel shows the
-star schema (facts, dimensions, measures) taking shape as you edit
-`models/`. The human pins tables and exhibits there exactly as they pin
-figures later (MCP: `workbench_state` with no `report`). Interrogate in the
-open — excerpts and visuals in the portal, not buried in chat — then
-scaffold the package and the same portal continues into the figure loop.
-Everything is dev-state: no receipts are minted before the model boundary.
+name** opens the app on Reports, with the **project feed** — the live
+surface for phase ① and ②: while this server is up,
+`tracebi.workbench.show(df, note=...)` from ANY script you run (a transform
+probe, a scratch analysis) posts the frame to the feed (Reports → *From
+your agent*) with no configuration, and the human leaves you notes there
+(MCP: `workbench_state` with no `report` returns the feed and pins, plus
+the warehouse's tables with row counts and contract status as sinks land,
+and the models' star schemas taking shape as you edit `models/`). The human
+browses the warehouse and the model in the app's Sources and Data model
+pages; `tracebi dev --classic` lays the Warehouse, Models and Packages
+panels out beside the feed on one page. Interrogate in the
+open — excerpts and visuals in the app, not buried in chat — then
+scaffold the package and `tracebi dev <name>` continues into the figure loop
+in the same app. Everything is dev-state: no receipts are minted before the
+model boundary.
 
 When a session shaped the pipeline, SAVE it: `tracebi session export`
 writes the full feed chronologically to `explorations/<session>` — ONE
@@ -459,7 +471,7 @@ Thirteen tools (`tracebi/mcp_server.py`):
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
-| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, the exhibit feed, and `pointing` (what the human is pointing at right now: "this") — read it to see what the human flagged in the portal before your next edit. Open pins only; `resolved_count` is how many have been resolved |
+| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, the exhibit feed, and `pointing` (what the human is pointing at right now: "this") — read it to see what the human flagged in the app before your next edit. Open pins only; `resolved_count` is how many have been resolved |
 | `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
 | `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML and carries no receipt; `pdf_note` points at the HTML and manifest |
 | `fetch_artifact` | Read back an artifact a render or build tool wrote. The argument is `path`: `build_report`'s `output_path` or `manifest_path`, `render_report_spec`'s `html_path` or `manifest_path`, `build_report`'s `xlsx_path`, or `build_report`'s `pdf_path`. HTML and JSON come back as text. An `.xlsx` or a `.pdf` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |

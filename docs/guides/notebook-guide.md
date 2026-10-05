@@ -89,14 +89,15 @@ transforms to a script.
 
 ## The discovery workbench
 
-While you explore, push what you find into a live, shared surface. Run the
-workbench in **discovery mode** in a terminal:
+While you explore, push what you find into a live, shared surface. Open the
+app with no report named, in a terminal:
 
 ```bash
-tracebi dev            # no report named → the project-level workbench at /__workbench
+tracebi dev            # no report named → the app on Reports, with the project feed
 ```
 
-Then, from any notebook cell, `show()` frames, charts, and notes into its feed:
+Then, from any notebook cell, `show()` frames, charts, and notes into its feed
+(Reports → *From your agent*):
 
 ```python
 import tracebi.workbench as workbench

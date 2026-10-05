@@ -79,7 +79,7 @@ commands, and most days you use only those.</p>
 environment — see <a href="../reference/environment-variables.html">Environment variables</a>.</p>
 <hr>
 <h2 id="the-everyday-loop">The everyday loop</h2>
-<pre><code class="language-bash">tracebi dev                      # the live surface (no name = discovery mode)
+<pre><code class="language-bash">tracebi dev                      # the app, in dev mode (no name = where your agent's exhibits land)
 tracebi run-transform holdings   # ① clean + sink to the warehouse
 tracebi report build my_report   # ③ render one self-contained .html + receipt
 tracebi report status my_report  # what the artifact has actually earned
@@ -256,19 +256,29 @@ measure. Exits 1 on any problem.</p>
 <hr>
 <h2 id="working-live">Working live</h2>
 <h3 id="tracebi-dev"><code>tracebi dev</code></h3>
-<pre><code class="language-bash">tracebi dev [name] [--port 8001] [--no-browser] [--app]
+<pre><code class="language-bash">tracebi dev [name] [--port 8001] [--no-browser] [--classic]
 </code></pre>
-<p>The live-preview loop, and <strong>the everyday surface</strong>.</p>
-<p><code>--app</code> opens the <strong>web app</strong> on that report with <strong>Build mode</strong> on, instead of
-the classic preview server: put your agent's chat beside it. The report
-re-renders each time the agent saves, a timeline lists which figures each save
-changed (flip back to the version before), and you can click a figure to point
-at it, so "make this a line chart" means that figure. You instruct the agent in
-its chat, not in the app. The server runs in dev mode on <code>127.0.0.1</code> only.</p>
-<p>With a package name, serves <code>reports/&lt;name&gt;/</code> with the exploration render plus
-the workbench at <code>/__workbench</code>. With <strong>no name</strong> it enters <em>discovery mode</em>:
-warehouse tables, sink contracts, models and packages — the live surface before
-any report exists.</p>
+<p>The live-preview loop, and <strong>the everyday surface</strong>. It opens the <strong>web app</strong>
+in dev mode (on <code>127.0.0.1</code> only), so there is one place to look at a report and
+to build it.</p>
+<p>With a package name it opens <code>reports/&lt;name&gt;/</code> with <strong>Build mode</strong> on: put your
+agent's chat beside it. The report re-renders each time the agent saves, a
+timeline lists which figures each save changed (flip back to the version
+before), and you can click a figure to point at it, so "make this a line chart"
+means that figure. The panel also lists <strong>Data</strong> (each binding: its model, rows
+× columns, the figures that read it, a few rows) and <strong>Checks</strong> (figures with no
+data behind them, bindings no figure reads, numbers typed outside figures), and
+has a note box for your agent. You instruct the agent in its chat; a note is
+for later.</p>
+<p>With <strong>no name</strong> it opens the app on Reports, where what your agent shows you
+(<code>tracebi.workbench.show</code>, from any script in the project) appears under <em>From
+your agent</em>, before any report exists, along with the notes you leave it.</p>
+<p><code>--classic</code> serves the older stdlib preview server instead: the report at the
+root and the workbench page at <code>/__workbench</code> (figures, per-binding data, code,
+lint; with no name, <em>discovery mode</em> lays out the warehouse tables, sink
+contracts, models and packages beside the feed). It is also what runs, with a
+one-line note, when the <code>web</code> extra is not installed. <code>--app</code> is still
+accepted; it is the default.</p>
 <h3 id="tracebi-report-preview"><code>tracebi report preview</code></h3>
 <pre><code class="language-bash">tracebi report preview &lt;name&gt; [--port 8080] [--no-browser]
 </code></pre>

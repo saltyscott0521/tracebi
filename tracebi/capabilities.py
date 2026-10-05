@@ -1137,14 +1137,29 @@ def describe(brief: bool = False) -> dict:
             "http": "POST|GET|DELETE /api/reports/<name>/workbench/pointing "
                     "(only when the server runs with TRACEBI_DEV_MODE=1)",
             "what": "What the human is pointing at in the web app's Build "
-                    "mode (the Build button opens the workbench beside the "
-                    "report): a figure (id, binding, cell) or an element "
-                    "(selector, text, section), or null. It is what 'this' "
-                    "or 'here' means in their message. They instruct in chat; "
-                    "the app is where they watch (the report re-rendered on "
-                    "each save, a timeline of what changed, your exhibits). "
-                    "Dev-state under .tracebi/workbench/<report>/; never in "
-                    "a build or a receipt.",
+                    "mode (`tracebi dev <name>` opens the report with the "
+                    "workbench beside it): a figure (id, binding, cell) or an "
+                    "element (selector, text, section), or null. It is what "
+                    "'this' or 'here' means in their message. They instruct "
+                    "in chat (or leave a note in the panel, which is an open "
+                    "pin); the app is where they watch (the report "
+                    "re-rendered on each save, a timeline of what changed, "
+                    "your exhibits, the data each binding reads, and checks "
+                    "for unbound figures, unused bindings and numbers typed "
+                    "outside figures). Dev-state under "
+                    ".tracebi/workbench/<report>/; never in a build or a "
+                    "receipt.",
+        },
+        "project_feed": {
+            "mcp": "workbench_state() with no report",
+            "http": "GET /api/workbench/project, POST /api/workbench/project/note "
+                    "(only when the server runs with TRACEBI_DEV_MODE=1)",
+            "what": "Before a report is open, `tracebi dev` opens the app on "
+                    "Reports and the human sees your show() exhibits there "
+                    "(From your agent) and leaves notes. While it is up any "
+                    "script in the project can call tracebi.workbench.show() "
+                    "with no setup. Dev-state under "
+                    ".tracebi/workbench/_discovery/.",
         },
         "pins": {
             "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",

@@ -1086,7 +1086,15 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .wb-link { font: inherit; font-size: var(--text-sm); cursor: pointer; color: var(--accent-text); background: none; border: 0; padding: 2px 4px; }
 .wb-error { color: var(--red-text); font-size: var(--text-sm); }
 .wb-actions { display: flex; align-items: center; gap: 8px; }
-.wb-resolved summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted); padding: 4px 0; }
+.wb-resolved summary, .wb-details summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted); padding: 4px 0; }
+.wb-note-form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.wb-note-form textarea {
+  width: 100%; box-sizing: border-box; resize: vertical; padding: 6px 8px;
+  font: inherit; font-size: var(--text-caption); color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.wb-note-form textarea::placeholder { color: var(--muted); }
+.wb--project { position: static; max-height: none; margin-top: 16px; }
 .wb-table-wrap { overflow-x: auto; margin-top: 6px; }
 .wb-table { font-size: var(--text-sm); border-collapse: collapse; }
 .wb-table th, .wb-table td { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }

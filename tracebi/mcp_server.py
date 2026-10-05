@@ -322,8 +322,8 @@ front of a person should carry a receipt. This gateway is how you produce one.
    warnings, not just its errors: a filter/column it cannot pre-verify fails
    at render if it is wrong — render returns a clean `{ok:false}` to act on.)
 4. **workbench_state** — while iterating under `tracebi dev`, read this
-   before every editing pass: the human steers by PINNING figures in the
-   portal with notes, and pins come first. Its `pointing` is what the
+   before every editing pass: the human steers by leaving notes (and pins)
+   in the app, and they come first. Its `pointing` is what the
    human is pointing at right now: when they say "this" or "here", that is
    the figure (`id`, `binding`, `cell`) or the element (`selector`, `text`,
    `section`) they mean. After you act on a pin, call
@@ -1083,7 +1083,8 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     """
     The workbench state for an artifact package: figures with provenance,
     the coverage bar, per-binding cards, the human's PINS, and the exhibit
-    feed — the same JSON the workbench page renders from (v2 §2.5).
+    feed — the same state the app's Build panel and the classic workbench
+    page render from (v2 §2.5).
 
     With no *report* (or ``"_discovery"``): the DISCOVERY session's state
     instead — warehouse tables and sink-contract summaries, every model's
@@ -1536,12 +1537,13 @@ def build_server(token: Optional[str] = None):
             "figures with provenance, coverage, per-binding cards, the "
             "human's pins, the exhibit feed, and `pointing`: what the human "
             "is pointing at right now (when they say \"this\", that is it). "
-            "Read this to see what the human flagged in the portal before "
+            "Read this to see what the human flagged in the app before "
             "your next edit. It also "
             "serves the discovery session: call with no report while the "
             "human runs tracebi dev with no name, and it returns the "
             "project-level state instead — warehouse tables, sink-contract "
-            "summaries, models, packages, and the discovery feed and pins."
+            "summaries, models, packages, and the project feed (your "
+            "show() exhibits) and the human's notes."
         ),
     )(gateway_workbench_state)
     _tool(

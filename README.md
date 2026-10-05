@@ -323,8 +323,9 @@ keep the rest of TraceBi as the data layer.
 ```bash
 tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
 tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (artifact package)
-tracebi dev portfolio_book                           # live loop: exploration render + the workbench
-tracebi dev                                          # no name: the DISCOVERY workbench (phases ①/②)
+tracebi dev portfolio_book                           # live loop in the app: Build mode on that report (:8001)
+tracebi dev                                          # no name: the app on Reports, where your agent's exhibits land (phases ①/②)
+tracebi dev portfolio_book --classic                 # the old stdlib preview + /__workbench page (fallback)
 tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
 tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
 tracebi migrate spec reports/sales.json              # compile a JSON spec into reports/sales/ (shadows the spec)
@@ -355,10 +356,16 @@ Kubernetes CronJob, an Airflow task, a CI job. It exits non-zero if any layer
 fails, so whatever invoked it can act on that. TraceBi does not need to own
 the schedule.
 
-`tracebi dev` serves the rendered report on http://127.0.0.1:8001 and reloads
-the browser every time you save the script — keep it next to your editor for
-a tight authoring loop. Script errors render as a traceback page that
-recovers on the next good save.
+`tracebi dev <name>` opens the web app on that report with Build mode on, at
+http://127.0.0.1:8001 (loopback only). The report re-renders every time you
+save the package; the panel beside it lists what changed, the data each
+binding reads, and checks (figures with no data behind them, bindings nothing
+reads, numbers typed outside figures). Click a figure to point at it, or leave
+your agent a note. With no name it opens the app on Reports, where what your
+agent shows you appears before any report exists. Keep it next to your editor
+for a tight authoring loop. `--classic` serves the older stdlib preview and
+its `/__workbench` page instead, and is what runs when the `web` extra is not
+installed.
 
 ---
 
@@ -835,9 +842,9 @@ tracebi/                        ← the framework repo
 
 The ad-hoc lane IS the artifact now: `tracebi new-report "My Report"`
 scaffolds `reports/my_report/` and `tracebi dev my_report` opens the live
-loop — edit the template, watch the page, explore inside
-`data-tb-stage="exploration"` blocks that die at the final build, and pin
-figures in the workbench for the next editing pass. What matters gets built
+loop in the app — edit the template, watch the page, explore inside
+`data-tb-stage="exploration"` blocks that die at the final build, and leave
+notes in the Build panel for the next editing pass. What matters gets built
 (`tracebi report build`) and ships with a receipt.
 
 The old `requests/` script lane (`tracebi run`, `request_params()`, the

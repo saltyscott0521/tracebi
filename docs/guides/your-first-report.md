@@ -135,8 +135,8 @@ attribute — and each bound span becomes a verified figure in the receipt.
 tracebi dev portfolio_book
 ```
 
-Edit and the page reloads. `/__workbench` shows what each figure is bound to and
-what it has earned. Wrap scratch work in `data-tb-stage="exploration"` — it is
+This opens the web app on the report. Edit and the page reloads; the panel beside it
+shows what each figure is bound to (Data) and what needs a look (Checks). Wrap scratch work in `data-tb-stage="exploration"` — it is
 deleted at final build.
 
 ## 7. Build and verify

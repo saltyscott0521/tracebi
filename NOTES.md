@@ -106,7 +106,9 @@ lives in code.
 - **The workbench + human pins + `tracebi dev`** (`workbench.py`,
   `_dev_server.py`). A live authoring surface over a package (figures,
   coverage, per-binding cards, pins); with no report named, discovery mode is
-  the same surface over phases ① and ②.
+  the same surface over phases ① and ②. `tracebi dev` opens it in the web app
+  (Build panel and project feed, on `/api/reports/<name>/workbench/*` and
+  `/api/workbench/project`); `_dev_server.py` is the `--classic` fallback.
 - **The embedded semantic-contract slice + the subsetting rule**
   (`capabilities.py`, `tracebi.js`). The artifact carries what the model's
   vocabulary meant; interactive controls subset which stamped rows a figure

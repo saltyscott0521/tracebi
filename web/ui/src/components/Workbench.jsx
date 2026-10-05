@@ -1,11 +1,14 @@
+import { useId, useState } from 'react'
 import { label as pointLabel } from '../pointMode'
 import { summarize } from '../buildTimeline'
-import { pressable } from './Shared'
+import { useLeaveNote, useProjectFeed } from '../api'
+import { Btn, pressable } from './Shared'
 
 // The builder's side of the loop, next to the report: what you are pointing at,
-// the pins you have left for the agent, what the agent has shown you, and any
-// binding that is broken right now. Everything here is dev-state under
-// .tracebi/workbench/<report>/ and is shared with the agent over MCP.
+// the data the report reads and the checks on it, the pins and notes you have
+// left for the agent, what the agent has shown you, and any binding that is
+// broken right now. Everything here is dev-state under .tracebi/workbench/ and
+// is shared with the agent over MCP.
 
 function Section({ title, count, children, empty }) {
   return (
@@ -74,14 +77,41 @@ function Timeline({ timeline }) {
   )
 }
 
-function Pins({ pins, resolved }) {
-  if (!pins.length && !resolved.length) return null
+// The note box: what you type is a pin the agent reads on its next pass (not
+// live; it is not a chat).
+function NoteBox({ name }) {
+  const id = useId()
+  const [text, setText] = useState('')
+  const { mutate, isPending, error } = useLeaveNote(name)
+  const submit = e => {
+    e?.preventDefault()
+    const note = text.trim()
+    if (note) mutate(note, { onSuccess: () => setText('') })
+  }
   return (
-    <Section title="Pins" count={pins.length}>
+    <form className="wb-note-form" onSubmit={submit}>
+      <label className="wb-hint" htmlFor={id}>
+        Leave your agent a note. It reads notes on its next pass, not live.
+      </label>
+      <textarea id={id} rows={2} value={text} onChange={e => setText(e.target.value)}
+                placeholder="e.g. split this by fund"
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e) }} />
+      <div className="wb-actions">
+        <Btn type="submit" size="sm" disabled={!text.trim() || isPending}>Leave note</Btn>
+        {error && <span className="wb-error" role="alert">{error.message}</span>}
+      </div>
+    </form>
+  )
+}
+
+function Pins({ pins, resolved, name }) {
+  return (
+    <Section title="Your notes" count={pins.length}>
       {pins.map(p => (
         <div key={p.id} className="wb-item">
-          <div className="wb-item__head"><code>{p.id}</code></div>
-          <div>{p.request || p.note || '—'}</div>
+          {/* A note is your own words; a pin on a figure names it. */}
+          {p.kind !== 'message' && <div className="wb-item__head"><code>{p.id}</code></div>}
+          <div>{(p.kind === 'message' ? p.note : p.request || p.note) || '—'}</div>
         </div>
       ))}
       {resolved.length > 0 && (
@@ -89,18 +119,34 @@ function Pins({ pins, resolved }) {
           <summary>{resolved.length} resolved</summary>
           {[...resolved].reverse().map(p => (
             <div key={`${p.id}-${p.resolved_at}`} className="wb-item wb-item--done">
-              <div className="wb-item__head"><code>{p.id}</code></div>
+              {p.kind !== 'message' && <div className="wb-item__head"><code>{p.id}</code></div>}
               <div>{p.note}</div>
               {p.resolved_note && <div className="wb-reply">Agent: {p.resolved_note}</div>}
             </div>
           ))}
         </details>
       )}
+      <NoteBox name={name} />
     </Section>
   )
 }
 
-function Exhibit({ ex }) {
+// A few rows, as the report would write them. Shared by exhibits and the Data section.
+function SampleTable({ cols, rows }) {
+  if (!rows.length) return null
+  return (
+    <div className="wb-table-wrap">
+      <table className="wb-table">
+        <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => (
+          <tr key={i}>{cols.map(c => <td key={c}>{String(r[c] ?? '')}</td>)}</tr>
+        ))}</tbody>
+      </table>
+    </div>
+  )
+}
+
+export function Exhibit({ ex }) {
   const rows = (ex.display?.length ? ex.display : ex.rows || []).slice(0, 5)
   const cols = ex.columns || (rows[0] ? Object.keys(rows[0]) : [])
   return (
@@ -116,21 +162,63 @@ function Exhibit({ ex }) {
       {ex.kind === 'chart' && ex.recipe && (
         <div className="wb-meta">chart: {ex.recipe.chart} · {ex.recipe.x} by {[].concat(ex.recipe.y).join(', ')}</div>
       )}
-      {rows.length > 0 && (
-        <div className="wb-table-wrap">
-          <table className="wb-table">
-            <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
-            <tbody>{rows.map((r, i) => (
-              <tr key={i}>{cols.map(c => <td key={c}>{String(r[c] ?? '')}</td>)}</tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
+      <SampleTable cols={cols} rows={rows} />
     </div>
   )
 }
 
-export default function Workbench({ pointed, onClearPointing, state, previewError, timeline }) {
+// What the report reads: each binding, the model it comes from, how big it is,
+// the figures that use it, and a few rows.
+function Data({ bindings }) {
+  return (
+    <Section title="Data" count={bindings.length}
+             empty={!bindings.length && <p className="wb-empty">This report reads no data yet.</p>}>
+      {bindings.map(b => (
+        <div key={b.name} className="wb-item">
+          <div className="wb-item__head">
+            <code>{b.name}</code>
+            {!b.error && <span className="wb-meta">{b.rows.toLocaleString()} × {b.columns.length}</span>}
+          </div>
+          <div className="wb-meta">
+            {b.model ? `from ${b.model}` : 'computed in report.py'}
+            {' · '}
+            {b.used_by.length ? `used by ${b.used_by.join(', ')}` : 'no figure uses it'}
+          </div>
+          {b.error
+            ? <div className="wb-item--bad">Not running: {b.error}</div>
+            : b.sample.length > 0 && (
+              <details className="wb-details">
+                <summary>Sample rows</summary>
+                <SampleTable cols={b.columns} rows={b.sample} />
+              </details>
+            )}
+        </div>
+      ))}
+    </Section>
+  )
+}
+
+// The lint the classic workbench ran, now beside the report. It points; the
+// final build is what enforces.
+function Checks({ checks }) {
+  const { unbound_figures: unbound = [], unused_bindings: unused = [], numbers_outside_figures: loose = 0 } = checks || {}
+  const found = [
+    unbound.length > 0 && <>No data behind: <code>{unbound.join(', ')}</code></>,
+    unused.length > 0 && <>No figure reads: <code>{unused.join(', ')}</code></>,
+    loose > 0 && <>{loose} number{loose === 1 ? '' : 's'} typed in the text outside any figure</>,
+  ].filter(Boolean)
+  return (
+    <Section title="Checks" count={found.length || null}
+             empty={!found.length && (
+               <p className="wb-empty">All clear: every figure has data behind it, every binding is
+                 read, and no numbers are typed outside figures.</p>)}>
+      {found.map((line, i) => <div key={i} className="wb-item">{line}</div>)}
+      {found.length > 0 && <p className="wb-hint">These point; they do not block. The final build enforces.</p>}
+    </Section>
+  )
+}
+
+export default function Workbench({ pointed, onClearPointing, name, state, previewError, timeline }) {
   const exhibits = state?.exhibits || []
   const broken = state?.broken || []
   return (
@@ -151,7 +239,10 @@ export default function Workbench({ pointed, onClearPointing, state, previewErro
         </Section>
       )}
 
-      <Pins pins={state?.pins || []} resolved={state?.resolved || []} />
+      {state && <Checks checks={state.checks} />}
+      {state && <Data bindings={state.bindings || []} />}
+
+      <Pins pins={state?.pins || []} resolved={state?.resolved || []} name={name} />
 
       <Section title="From your agent" count={exhibits.length}
                empty={!exhibits.length && (
@@ -161,5 +252,26 @@ export default function Workbench({ pointed, onClearPointing, state, previewErro
 
       <p className="wb-live">Live: refreshes when the report, its model or this feed changes.</p>
     </aside>
+  )
+}
+
+// The same feed with no report open: what the agent shows you and the notes you
+// leave it while it works on the transform and the model, before there is a
+// report to build. Shown on the Reports page in dev mode.
+export function ProjectFeed() {
+  const { data } = useProjectFeed(true)
+  const exhibits = data?.exhibits || []
+  return (
+    <div className="wb wb--project">
+      <Pins pins={data?.pins || []} resolved={data?.resolved || []} name={null} />
+      <Section title="From your agent" count={exhibits.length}
+               empty={!exhibits.length && (
+                 <p className="wb-empty">
+                   What your agent shows you while it works appears here. A script it runs can
+                   call <code>tracebi.workbench.show(df, note=…)</code> while this server is up.
+                 </p>)}>
+        {exhibits.map(ex => <Exhibit key={ex.seq ?? ex.at} ex={ex} />)}
+      </Section>
+    </div>
   )
 }

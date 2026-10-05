@@ -29,7 +29,7 @@ tracebi run-transform holdings`,
   {
     n: 4,
     title: 'Build the report and verify it',
-    desc: 'Phase ③ is a package in reports/. The build fills every figure from a query. verify re-runs those queries.',
+    desc: 'Phase ③ is a package in reports/. tracebi dev opens it in this app with Build mode on. The build fills every figure from a query. verify re-runs those queries.',
     code: `tracebi new-report "portfolio"
 tracebi dev portfolio
 tracebi report build portfolio

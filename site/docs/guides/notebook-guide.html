@@ -135,11 +135,12 @@ model.describe()       # plain-text model summary
 <p>This makes notebooks the best place to <em>discover</em> data before committing
 transforms to a script.</p>
 <h2 id="the-discovery-workbench">The discovery workbench</h2>
-<p>While you explore, push what you find into a live, shared surface. Run the
-workbench in <strong>discovery mode</strong> in a terminal:</p>
-<pre><code class="language-bash">tracebi dev            # no report named → the project-level workbench at /__workbench
+<p>While you explore, push what you find into a live, shared surface. Open the
+app with no report named, in a terminal:</p>
+<pre><code class="language-bash">tracebi dev            # no report named → the app on Reports, with the project feed
 </code></pre>
-<p>Then, from any notebook cell, <code>show()</code> frames, charts, and notes into its feed:</p>
+<p>Then, from any notebook cell, <code>show()</code> frames, charts, and notes into its feed
+(Reports → <em>From your agent</em>):</p>
 <pre><code class="language-python">import tracebi.workbench as workbench
 
 workbench.show(fact_holdings_df, note=&quot;after dedupe — 3 rows dropped&quot;)

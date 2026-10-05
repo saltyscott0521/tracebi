@@ -805,20 +805,35 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _dev_classic(args: argparse.Namespace) -> bool:
+    """Whether ``tracebi dev`` serves the classic preview: asked for with
+    ``--classic``, or the web extra the app needs is not installed (said once,
+    with the command that adds it)."""
+    if args.classic:
+        return True
+    try:
+        import fastapi  # noqa: F401
+        import uvicorn  # noqa: F401
+    except ImportError:
+        print("tracebi dev opens the web app, which needs the web extra "
+              "(pip install 'tracebi[web]'). Serving the classic preview "
+              "instead.", file=sys.stderr)
+        return True
+    return False
+
+
 def cmd_dev(args: argparse.Namespace) -> int:
-    # An artifact package under reports/ gets the artifact-native live loop with
-    # the workbench. No name at all is DISCOVERY MODE — no report anchored, the
-    # project-level workbench (warehouse, models, packages, exhibit feed) for
-    # phases ① and ②.
+    # The app is the one place you build: an artifact package under reports/
+    # opens in it with Build mode on, and no name at all opens it where the
+    # agent's exhibits land (before any report exists). --classic is the old
+    # stdlib preview server and /__workbench page, kept as the fallback.
     from tracebi._dev_server import serve_dev
     from tracebi.report_paths import open_report
     if args.name is None:
-        if args.app:
-            print("tracebi dev --app opens one report in the app: give its name "
-                  "(tracebi dev <name> --app).", file=sys.stderr)
-            return 1
-        return serve_dev(None, port=args.port,
-                         open_browser=not args.no_browser)
+        if _dev_classic(args):
+            return serve_dev(None, port=args.port,
+                             open_browser=not args.no_browser)
+        return _dev_in_the_app(args)
     reports_dir = _default_reports_dir()
     opened = open_report(args.name, purpose="view", reports_dir=reports_dir)
     # A name the guard refuses keeps the historical lookup, so the message
@@ -830,11 +845,11 @@ def cmd_dev(args: argparse.Namespace) -> int:
     else:
         pkg_dir = opened.path
         ready = opened.package_dir is not None and opened.has_template
-    if ready and args.app:
-        return _dev_in_the_app(args)
     if ready:
-        return serve_dev(pkg_dir, port=args.port,
-                         open_browser=not args.no_browser)
+        if _dev_classic(args):
+            return serve_dev(pkg_dir, port=args.port,
+                             open_browser=not args.no_browser)
+        return _dev_in_the_app(args)
     print(f"Report package not found: {args.name}. Expected a package at "
           f"{pkg_dir} (report.json + template.html). Scaffold one with "
           f"`tracebi new-report`.", file=sys.stderr)
@@ -842,20 +857,32 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
 
 def _dev_in_the_app(args: argparse.Namespace) -> int:
-    """``tracebi dev <name> --app``: the web app, in dev mode, open on that report
-    with Build already on. The agent's chat goes beside it; the app is where you
-    watch it work and point at what you mean (see docs/architecture/design-direction.md).
+    """``tracebi dev [<name>]``: the web app, in dev mode. With a name it opens
+    that report with Build already on; without one, the Reports page, where what
+    the agent shows you lands before any report exists. The agent's chat goes
+    beside it; the app is where you watch it work and point at what you mean
+    (see docs/architecture/design-direction.md).
     """
     from urllib.parse import urlencode
 
     # Build mode's endpoints write dev-state files, so the server is in dev mode
     # (the same gate as /api/_dev/reload) and stays on loopback.
     os.environ["TRACEBI_DEV_MODE"] = "1"
-    url = f"http://127.0.0.1:{args.port}/reports?" + urlencode({"r": args.name, "build": "1"})
-    print(f"\n  TraceBi dev — {args.name} in the app, Build mode")
-    print(f"  {url}")
-    print("  Put your agent's chat beside it (it connects over MCP: `tracebi mcp`).")
-    print("  Click a figure in the report to point at it; tell the agent in chat.\n")
+    url = f"http://127.0.0.1:{args.port}/reports"
+    if args.name:
+        url += "?" + urlencode({"r": args.name, "build": "1"})
+        print(f"\n  TraceBi dev — {args.name} in the app, Build mode")
+        print(f"  {url}")
+        print("  Put your agent's chat beside it (it connects over MCP: `tracebi mcp`).")
+        print("  Click a figure in the report to point at it; tell the agent in chat.\n")
+    else:
+        print("\n  TraceBi dev — the app, before any report is open")
+        print(f"  {url}")
+        print("  What your agent shows you while it works appears under Reports, "
+              "as From your agent.")
+        print("  Any script you run can call tracebi.workbench.show(df, note=...) "
+              "while this is up — no env var needed.")
+        print("  Put your agent's chat beside it (it connects over MCP: `tracebi mcp`).\n")
     if not args.no_browser:
         import threading
         import webbrowser
@@ -2756,26 +2783,30 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_dev = sub.add_parser(
         "dev",
-        help="Live-preview a report while you edit it. An artifact package "
-             "(reports/<name>/) gets the in-memory exploration render plus "
-             "the workbench at /__workbench; with no name, DISCOVERY MODE "
-             "serves the project-level workbench (warehouse tables, sink "
-             "contracts, models, packages, exhibit feed) — the live surface "
-             "before any report exists.",
+        help="Build in the web app, in dev mode (loopback only). An artifact "
+             "package (reports/<name>/) opens with Build mode on: the report "
+             "re-renders as your agent saves, a timeline shows what changed, "
+             "you point at a figure, and Data and Checks show what it reads. "
+             "With no name it opens the app where what your agent shows you "
+             "lands, before any report exists. --classic keeps the old "
+             "stdlib preview server.",
     )
     p_dev.add_argument("name", nargs="?",
-                       help="Package name under reports/. Omit for discovery "
-                            "mode: the project-level workbench.")
+                       help="Package name under reports/. Omit to open the app "
+                            "before any report is open.")
     p_dev.add_argument("--port", type=int, default=8001,
-                       help="Port for the preview server (default 8001).")
+                       help="Port to serve on (default 8001).")
     p_dev.add_argument("--no-browser", action="store_true",
                        help="Do not open the browser automatically.")
-    p_dev.add_argument("--app", action="store_true",
-                       help="Open the web app on this report with Build mode on, "
-                            "instead of the classic preview server: the report "
-                            "re-renders as your agent saves, a timeline shows what "
-                            "changed, and you can point at a figure so \"this\" "
-                            "means something. Needs a name.")
+    mode = p_dev.add_mutually_exclusive_group()
+    mode.add_argument("--classic", action="store_true",
+                      help="Serve the classic preview server and its workbench "
+                           "page (/__workbench) instead of the app: the fallback "
+                           "when the web extra is not installed, and what "
+                           "tracebi dev was before the app.")
+    mode.add_argument("--app", action="store_true",
+                      help="Open the app. This is the default; the flag is kept "
+                           "so older commands still work.")
     p_dev.set_defaults(func=cmd_dev)
 
     p_validate = sub.add_parser(

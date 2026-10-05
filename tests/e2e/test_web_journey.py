@@ -204,7 +204,7 @@ def test_the_workbench_in_the_app_shows_what_the_agent_did(served, monkeypatch, 
     """Build mode's pane is a live view: the version moves when the agent edits the
     package or leaves a pin, the preview is the working state, and what the agent
     resolved comes back in the state."""
-    from tracebi.mcp_server import gateway_resolve_pin
+    from tracebi.mcp_server import gateway_resolve_pin, gateway_workbench_state
     from tracebi.workbench import add_pin, workbench_dir
 
     base = "/api/reports/sample_model/sample_dashboard/workbench"
@@ -218,8 +218,15 @@ def test_the_workbench_in_the_app_shows_what_the_agent_did(served, monkeypatch, 
     assert preview.status_code == 200 and "<html" in preview.text.lower()
     assert not list((scaffolded / "output").rglob("sample_dashboard*")), "a preview is not a build"
 
-    # The person has nowhere to instruct the agent here: the app writes no pins.
-    assert served.post(f"{base}/pins", json={"note": "x"}).status_code in (404, 405)
+    # A note left here is a pin the agent reads over MCP, and it moves the version.
+    note = served.post(f"{base}/note", json={"note": "split this by region"}).json()["pin"]
+    assert note["kind"] == "message" and note["note"] == "split this by region"
+    assert served.get(f"{base}/version").json()["version"] != v1
+    assert [p["note"] for p in gateway_workbench_state("sample_model/sample_dashboard")["pins"]] \
+        == ["split this by region"]
+    assert gateway_resolve_pin("sample_model/sample_dashboard", note["id"], "done")["ok"]
+    assert served.post(f"{base}/note", json={"note": "  "}).status_code == 422
+    v1 = served.get(f"{base}/version").json()["version"]
 
     # A pin (left from the workbench or the CLI) moves the version; the agent
     # resolves it over MCP and the pane's state shows the answer.
@@ -234,3 +241,85 @@ def test_the_workbench_in_the_app_shows_what_the_agent_did(served, monkeypatch, 
     v2 = served.get(f"{base}/version").json()["version"]
     (scaffolded / "reports" / "sample_model" / "sample_dashboard" / "style.css").open("a").write("\n/* edit */\n")
     assert served.get(f"{base}/version").json()["version"] != v2
+
+
+def test_the_build_panel_reads_the_data_and_the_checks(served, monkeypatch, scaffolded):
+    """What the classic workbench's Figures & data tab showed, from the app: each binding
+    with its model, size, the figures that read it and a few rows, plus the three
+    checks (unbound figures, unused bindings, numbers typed outside figures)."""
+    import json
+
+    from tracebi.workbench import discovery_dir, heartbeat, read_exhibits
+
+    pkg = scaffolded / "reports" / "sample_model" / "sample_dashboard"
+    url = "/api/reports/sample_model/sample_dashboard/workbench/state"
+    spec = json.loads((pkg / "report.json").read_text())
+    spec["data"]["spare"] = {"model": "sample_model",
+                             "query": {"fact": "fact_orders", "measures": ["revenue"]}}
+    (pkg / "report.json").write_text(json.dumps(spec))
+    template = (pkg / "template.html").read_text()
+    (pkg / "template.html").write_text(template.replace(
+        "Prose numbers can be bound too; never type one in.", "We took 1250 orders."))
+    # report.py runs to describe the report; its show() must not reach the project
+    # feed, which a live dev server keeps open for scripts.
+    (pkg / "report.py").write_text(
+        "from tracebi.workbench import show\n"
+        "def build(frames):\n    show('from report.py')\n    return {}\n")
+    monkeypatch.delenv("TRACEBI_WORKBENCH_DIR", raising=False)
+    heartbeat(discovery_dir(str(scaffolded)))
+
+    monkeypatch.delenv("TRACEBI_DEV_MODE", raising=False)
+    assert served.get(url).status_code == 403
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "1")
+    state = served.get(url).json()
+    assert read_exhibits(discovery_dir(str(scaffolded))) == [], "reading state is not an exhibit"
+
+    data = {b["name"]: b for b in state["bindings"]}
+    assert set(data) == {"kpis", "top_region", "by_region", "region_detail", "spare"}
+    kpis = data["kpis"]
+    assert kpis["model"] == "sample_model" and kpis["rows"] == 1
+    assert kpis["columns"] == ["revenue", "orders", "units"] and "kpi-revenue" in kpis["used_by"]
+    assert 0 < len(data["by_region"]["sample"]) <= 5, "a few rows, not the table"
+    assert state["checks"] == {"unbound_figures": [], "unused_bindings": ["spare"],
+                               "numbers_outside_figures": 1}
+
+    # A binding that stops running leaves its figures with no data behind them.
+    spec["data"]["kpis"]["query"]["measures"] = ["no_such_measure"]
+    (pkg / "report.json").write_text(json.dumps(spec))
+    state = served.get(url).json()
+    assert "kpis" in [b["binding"] for b in state["broken"]]
+    assert "kpi-revenue" in state["checks"]["unbound_figures"]
+    assert {b["name"]: b for b in state["bindings"]}["kpis"]["error"]
+
+
+def test_the_project_feed_carries_the_agents_exhibits_before_any_report(served, monkeypatch, scaffolded):
+    """With no report open the agent's exhibits and the person's notes live in the
+    project feed. A script's show() reaches it with no setup while the dev app is
+    up, the person's note reaches the agent over MCP, and none of it answers
+    outside dev mode."""
+    import pandas as pd
+
+    from tracebi.mcp_server import gateway_workbench_state
+    from tracebi.workbench import show
+
+    feed = "/api/workbench/project"
+    monkeypatch.delenv("TRACEBI_DEV_MODE", raising=False)
+    monkeypatch.delenv("TRACEBI_WORKBENCH_DIR", raising=False)
+    assert served.get(feed).status_code == 403
+    assert served.post(f"{feed}/note", json={"note": "hello"}).status_code == 403
+
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "1")
+    with served:                      # the app's startup keeps the feed's heartbeat live
+        assert served.get(feed).json()["exhibits"] == []
+        show(pd.DataFrame({"region": ["East", "West"], "revenue": [10.5, 20.5]}),
+             note="revenue by region", name="region_scan")
+        shown = served.get(feed).json()["exhibits"]
+        assert [(e["name"], e["shape"]) for e in shown] == [("region_scan", [2, 2])]
+        assert shown[0]["display"][0]["revenue"] == "10.50", "rows are written as the report would"
+
+        note = served.post(f"{feed}/note", json={"note": "split by fund"}).json()["pin"]
+        assert [p["note"] for p in served.get(feed).json()["pins"]] == ["split by fund"]
+        agent_sees = gateway_workbench_state()
+        assert [p["id"] for p in agent_sees["pins"]] == [note["id"]]
+        assert [e["name"] for e in agent_sees["exhibits"]] == ["region_scan"]
+        assert served.post(f"{feed}/note", json={"note": "   "}).status_code == 422
