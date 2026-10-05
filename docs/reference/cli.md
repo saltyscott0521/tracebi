@@ -38,8 +38,9 @@ Scaffolds a complete three-phase project whose sample loop ends in
 `tracebi verify` printing REPRODUCES.
 
 Creates `inputs/ transforms/ models/ pipelines/ reports/ scheduled/ data/
-output/`, plus a sample transform, model and report package, `.gitignore`,
-`.env.example`, `README.md` and `AGENTS.md`.
+output/`, plus a sample transform, model, pipeline and report package
+(`reports/sample_model/sample_dashboard/`), `.gitignore`, `.env.example`,
+`README.md` and `AGENTS.md`.
 
 - `--force` — overwrite existing files, and required to init into a non-empty
   directory. Without it, an existing file is skipped with a note and the run
@@ -469,6 +470,13 @@ wrote, so every failure is reported, then a summary and exit 1.
 
 Records the OS user as the audit actor, so "who ran this" answers for cron and
 CI runs too.
+
+A run is recorded like one started from the app: a `pipeline_run` row in the
+state store (so the Refresh page's **Runs** tab and the Runs page list it) and
+the same log, `data/logs/pipelines/<name>/<id>.log`, while the terminal prints
+what it always did. `--status` runs nothing and records nothing. If the state
+store cannot be reached the pipeline still runs; it says the run is not being
+recorded.
 
 ### `tracebi list-models` · `tracebi list-pipelines`
 

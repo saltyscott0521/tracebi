@@ -36,7 +36,7 @@ def scheduled(scaffolded, monkeypatch):
     monkeypatch.setenv("TRACEBI_SMTP_FROM", "reports@example.com")
     monkeypatch.delenv("TRACEBI_SLACK_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TRACEBI_SLACK_CHANNEL", raising=False)
-    decl = scaffolded / "reports" / "sample_dashboard" / "report.json"
+    decl = scaffolded / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     spec = json.loads(decl.read_text())
     spec["schedule"] = {"cron": "0 7 * * MON", "to": ["team@example.com"]}
     decl.write_text(json.dumps(spec))
@@ -52,9 +52,9 @@ def _runs(proj):
 
 def test_a_scheduled_report_is_built_verified_emailed_and_recorded(scheduled):
     code, out = run_cli("schedule", "list")
-    assert code == 0 and "sample_dashboard" in out and "0 7 * * MON" in out, out
+    assert code == 0 and "sample_model/sample_dashboard" in out and "0 7 * * MON" in out, out
 
-    code, out = run_cli("schedule", "run", "sample_dashboard")
+    code, out = run_cli("schedule", "run", "sample_model/sample_dashboard")
     assert code == 0, out
     [msg] = _Outbox.sent
     assert msg["To"] == "team@example.com"
@@ -71,7 +71,7 @@ def test_a_scheduled_report_is_built_verified_emailed_and_recorded(scheduled):
 
 def test_sending_without_a_mail_server_says_what_to_set(scheduled, monkeypatch):
     monkeypatch.delenv("TRACEBI_SMTP_URL")
-    code, out = run_cli("report", "send", "sample_dashboard", "--to", "team@example.com")
+    code, out = run_cli("report", "send", "sample_model/sample_dashboard", "--to", "team@example.com")
     assert code != 0
     assert "TRACEBI_SMTP_URL" in out
     assert _Outbox.sent == []
@@ -90,12 +90,12 @@ def test_a_refresh_that_fails_once_is_retried_and_succeeds(scheduled, monkeypatc
         "    raise RuntimeError('transient failure')\n",
         encoding="utf-8",
     )
-    decl = scheduled / "reports" / "sample_dashboard" / "report.json"
+    decl = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     spec = json.loads(decl.read_text())
     spec["schedule"]["refresh"] = {"transforms": ["flaky_once"]}
     decl.write_text(json.dumps(spec))
 
-    code, out = run_cli("schedule", "run", "sample_dashboard")
+    code, out = run_cli("schedule", "run", "sample_model/sample_dashboard")
     assert code == 0, out
     assert len(_Outbox.sent) == 1
     [record] = _runs(scheduled)
@@ -109,12 +109,12 @@ def test_a_refresh_that_fails_once_is_retried_and_succeeds(scheduled, monkeypatc
 def test_a_build_that_always_fails_is_retried_then_recorded(scheduled, monkeypatch):
     slept = []
     monkeypatch.setattr("tracebi.schedule._sleep", slept.append)
-    decl = scheduled / "reports" / "sample_dashboard" / "report.json"
+    decl = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     spec = json.loads(decl.read_text())
     spec["data"]["kpis"]["query"]["measures"] = ["not_a_measure"]
     decl.write_text(json.dumps(spec))
 
-    code, out = run_cli("schedule", "run", "sample_dashboard")
+    code, out = run_cli("schedule", "run", "sample_model/sample_dashboard")
     assert code == 1, out
     assert _Outbox.sent == []
     [record] = _runs(scheduled)
@@ -137,7 +137,7 @@ def test_a_receipt_that_does_not_reproduce_is_not_retried(scheduled, monkeypatch
             "ok": False,
         },
     )
-    code, out = run_cli("schedule", "run", "sample_dashboard")
+    code, out = run_cli("schedule", "run", "sample_model/sample_dashboard")
     assert code == 1, out
     assert _Outbox.sent == []
     [record] = _runs(scheduled)
@@ -152,7 +152,7 @@ def test_an_empty_source_alerts_the_owner_and_sends_nothing(
     and the owner gets an alert that names the binding. A binding no figure
     uses does not count. Verify still has to pass first."""
     monkeypatch.setattr("tracebi.schedule._sleep", lambda *_a, **_k: None)
-    decl = scheduled / "reports" / "sample_dashboard" / "report.json"
+    decl = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     spec = json.loads(decl.read_text())
     spec["schedule"]["owner"] = "owner@example.com"
     nowhere = {"dim_region.region": "no-such-region"}
@@ -168,12 +168,12 @@ def test_an_empty_source_alerts_the_owner_and_sends_nothing(
     }
     decl.write_text(json.dumps(spec))
 
-    code, out = run_cli("schedule", "run", "sample_dashboard")
+    code, out = run_cli("schedule", "run", "sample_model/sample_dashboard")
     assert code == 1, out
     [msg] = _Outbox.sent
     assert msg["To"] == "owner@example.com"
     assert "team@example.com" not in msg["To"]
-    assert msg["Subject"] == "TraceBi: sample_dashboard scheduled run empty"
+    assert msg["Subject"] == "TraceBi: sample_model/sample_dashboard scheduled run empty"
     body = msg.get_content()
     assert "by_region" in body
     assert "spare" not in body
@@ -198,17 +198,17 @@ def test_retries_zero_does_not_retry_a_failed_refresh(scheduled, monkeypatch):
         "raise RuntimeError('nope')\n",
         encoding="utf-8",
     )
-    decl = scheduled / "reports" / "sample_dashboard" / "report.json"
+    decl = scheduled / "reports" / "sample_model" / "sample_dashboard" / "report.json"
     spec = json.loads(decl.read_text())
     spec["schedule"]["retries"] = 0
     spec["schedule"]["refresh"] = {"transforms": ["always_fails"]}
     decl.write_text(json.dumps(spec))
 
-    code, out = run_cli("schedule", "run", "sample_dashboard")
+    code, out = run_cli("schedule", "run", "sample_model/sample_dashboard")
     assert code == 1, out
     assert _Outbox.sent == []
     [record] = _runs(scheduled)
     assert record["status"] == "failed"
     assert record["attempts"] == 1
     assert slept == []
-    assert not (scheduled / "output" / "sample_dashboard.html").exists()
+    assert not (scheduled / "output" / "sample_model" / "sample_dashboard.html").exists()

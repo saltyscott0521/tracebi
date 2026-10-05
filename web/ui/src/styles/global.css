@@ -647,11 +647,30 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .runlog-wrap { position: relative; }
 .runlog__bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .runlog__meta { font-size: var(--text-sm); color: var(--muted); }
-.runlog__pick {
-  font: inherit; font-size: var(--text-sm); color: var(--text);
-  background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px;
-  max-width: 100%;
+.runlist {
+  list-style: none; margin: 0 0 12px; padding: 0; max-height: 220px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 8px;
 }
+.runlist li + li { border-top: 1px solid var(--border); }
+.runlist__row {
+  display: grid; grid-template-columns: 96px 110px 64px 150px minmax(0, 1fr); align-items: center; gap: 12px;
+  width: 100%; padding: 8px 14px; border: 0; border-left: 2px solid transparent; background: transparent;
+  font: inherit; font-size: var(--text-sm); text-align: left; color: var(--text-2); cursor: pointer;
+}
+.runlist__row[aria-current="true"] { background: var(--blue-lt); border-left-color: var(--blue); color: var(--text); }
+.runlist__took { font-variant-numeric: tabular-nums; }
+.runlist__by { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runlist__steps { font-family: var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 768px) {
+  .runlist__row { grid-template-columns: auto 1fr auto; gap: 4px 12px; padding: 10px 14px; }
+  .runlist__took { text-align: right; }
+  .runlist__by, .runlist__steps { grid-column: 1 / -1; }
+}
+.runlog__reports {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px;
+  font-size: var(--text-sm); color: var(--muted);
+}
+.runlog__reports a { color: var(--accent-text); font-weight: 600; padding: 4px 0; }
 .runlog__error { font-size: var(--text-sm); color: var(--red); margin-bottom: 8px; }
 .runlog {
   background: var(--terminal-bg); color: var(--terminal-text);

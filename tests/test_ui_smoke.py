@@ -240,13 +240,17 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert 'measures={"fair_value": "sum"}' in page.locator(".codeview__code").inner_text()
             fail_on_browser_errors()
 
-            # Refresh: Run all opens the Log tab, which follows the run to its end.
+            # Refresh: Run all opens the Runs tab, which follows the run to its end…
             page.goto(base + "/m/portfolio_model/refresh")
             page.get_by_role("button", name="Run all").click()
             output = page.get_by_role("log", name="Run output")
             output.get_by_text("Run succeeded").wait_for()
             text = output.inner_text()
             assert "[transform] ✓" in text and "[build] ✓" in text, text
+            assert page.get_by_role("list", name="Runs").get_by_role("button").count() == 1
+            # …then links the reports it rebuilt, each to its page in the app.
+            page.get_by_role("link", name="portfolio_book", exact=True).click()
+            page.wait_for_url("**/m/portfolio_model/reports?r=portfolio_model%2Fportfolio_book")
             fail_on_browser_errors()
 
             # That refresh is a run of its model: the model's Runs lists it, and

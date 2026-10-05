@@ -24,7 +24,7 @@ def _free_port():
 
 @pytest.fixture
 def dev(scaffolded, monkeypatch):
-    """`tracebi dev sample_dashboard` on a spare port, shut down after."""
+    """`tracebi dev sample_model/sample_dashboard` on a spare port, shut down after."""
     from tracebi import _dev_server
 
     servers = []
@@ -39,7 +39,7 @@ def dev(scaffolded, monkeypatch):
     assert code == 0, out
     port = _free_port()
     thread = threading.Thread(target=_dev_server.serve_dev, daemon=True, kwargs={
-        "target": str(scaffolded / "reports" / "sample_dashboard"),
+        "target": str(scaffolded / "reports" / "sample_model" / "sample_dashboard"),
         "port": port, "open_browser": False})
     thread.start()
     base = f"http://127.0.0.1:{port}"
@@ -73,12 +73,12 @@ def test_an_author_previews_pins_and_resolves(dev, scaffolded):
     with urllib.request.urlopen(pin, timeout=5) as r:
         assert json.loads(r.read())["ok"] is True
 
-    code, out = run_cli("report", "pins", "sample_dashboard")
+    code, out = run_cli("report", "pins", "sample_model/sample_dashboard")
     assert code == 0 and "kpi-revenue" in out and "label this net" in out, out
-    code, out = run_cli("report", "pins", "sample_dashboard",
+    code, out = run_cli("report", "pins", "sample_model/sample_dashboard",
                         "--resolve", "kpi-revenue", "--note", "relabelled")
     assert code == 0, out
-    code, out = run_cli("report", "pins", "sample_dashboard")
+    code, out = run_cli("report", "pins", "sample_model/sample_dashboard")
     assert "no open pins" in out, out
 
 
@@ -137,15 +137,15 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
 def test_status_and_the_review_snapshot(scaffolded):
     code, out = run_cli("run-transform", "sample_transform")
     assert code == 0, out
-    code, out = run_cli("report", "status", "sample_dashboard")
+    code, out = run_cli("report", "status", "sample_model/sample_dashboard")
     assert code == 0, out
     assert "8 figure(s) — 8 query-backed, 0 python-derived, 0 unverified" in out
 
-    code, out = run_cli("report", "snapshot", "sample_dashboard")
+    code, out = run_cli("report", "snapshot", "sample_model/sample_dashboard")
     assert code == 0, out
-    snapshot = scaffolded / "output" / "sample_dashboard.snapshot.html"
+    snapshot = scaffolded / "output" / "sample_model" / "sample_dashboard.snapshot.html"
     assert snapshot.is_file()
-    assert not (scaffolded / "output" / "sample_dashboard.snapshot.html.manifest.json").exists()
+    assert not (scaffolded / "output" / "sample_model" / "sample_dashboard.snapshot.html.manifest.json").exists()
     code, out = run_cli("verify", "--file", str(snapshot))
     assert code != 0, "a review snapshot is not a receipt"
 
@@ -171,13 +171,13 @@ def test_dev_app_opens_the_web_app_on_the_report_in_build_mode(scaffolded, monke
     # The command sets this in the process; recording it here makes pytest undo it.
     monkeypatch.setenv("TRACEBI_DEV_MODE", "0")
 
-    code, out = run_cli("dev", "sample_dashboard", "--app", "--port", "8765")
+    code, out = run_cli("dev", "sample_model/sample_dashboard", "--app", "--port", "8765")
     assert code == 0, out
     assert os.environ["TRACEBI_DEV_MODE"] == "1", "Build mode needs the server in dev mode"
     assert seen["app"] == "tracebi.web.api.main:app" and seen["port"] == 8765
     assert seen["host"] == "127.0.0.1", "dev-state endpoints stay on loopback"
     url = "http://127.0.0.1:8765/reports?" + urllib.parse.urlencode(
-        {"r": "sample_dashboard", "build": "1"})
+        {"r": "sample_model/sample_dashboard", "build": "1"})
     assert url in out
     seen["open"]()
     assert seen["browser"] == url
