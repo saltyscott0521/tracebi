@@ -141,19 +141,27 @@ def run_query(name: str, body: QueryRequest):
         raise HTTPException(status_code=500, detail=error_detail("Query failed", exc))
     elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
 
-    df = ds.to_pandas()
+    # JSON has no NaN or infinity, and a result can hold one (an empty total, a
+    # division by zero): they go out as missing, null in data and blank in
+    # display, rather than failing the whole response.
+    df = ds.to_pandas().replace([float("inf"), float("-inf")], float("nan"))
     lineage = ds.lineage_to_dict()
     engine = next(
         (n["metadata"].get("engine") for n in reversed(lineage)
          if n.get("metadata", {}).get("engine")),
         None,
     )
+    # The cells as a built report's table writes them (the model's declared
+    # formats), beside the raw values: "data" is what a download uses.
+    from tracebi.reports.template_package import declared_column_formats, display_rows
+
     return {
         "model": name,
         "fact": body.fact,
         "rows": len(df),
         "columns": list(df.columns),
-        "data": df.to_dict(orient="records"),
+        "data": df.astype(object).where(df.notna(), None).to_dict(orient="records"),
+        "display": display_rows(df, declared_column_formats(model, df.columns)),
         "engine": engine,
         "elapsed_ms": elapsed_ms,
         "lineage": lineage,

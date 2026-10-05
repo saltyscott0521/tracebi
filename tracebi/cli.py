@@ -973,6 +973,15 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _project_path(path) -> str:
+    """*path* as the person reads it: relative to the project when it is inside
+    it (output/sales/q3.html), absolute otherwise."""
+    try:
+        return str(Path(path).resolve().relative_to(Path.cwd().resolve()))
+    except ValueError:
+        return str(path)
+
+
 def find_transform(name: str) -> Optional[Path]:
     """The file ``tracebi run-transform <name>`` runs: ``transforms/<name>`` as
     given, or with ``.py`` or ``.ipynb`` added."""
@@ -2377,8 +2386,8 @@ def cmd_report(args: argparse.Namespace) -> int:
         return 1
 
     manifest = output.with_name(output.name + ".manifest.json")
-    print(f"Rendered {args.name} ({kind}) → {output}")
-    print(f"  manifest → {manifest}")
+    print(f"Rendered {args.name} ({kind}) → {_project_path(output)}")
+    print(f"  manifest → {_project_path(manifest)}")
 
     if pdf:
         pdf_path = output.with_suffix(".pdf")
