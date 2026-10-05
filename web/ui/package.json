@@ -10,9 +10,8 @@
     "build:echarts": "esbuild echarts-bundle.js --bundle --minify --format=iife --banner:js=\"/*! Third-party libraries bundled and inlined into TraceBi reports: Apache ECharts 6.1.0 (Apache-2.0), zrender 6.1.0 (BSD-3-Clause), tslib 2.3.0 (ISC). Full attribution: NOTICE in the TraceBi distribution. */\" --outfile=../../tracebi/reports/assets/echarts.min.js"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "^5.3.0",
-    "@fontsource/source-code-pro": "^5.3.0",
-    "@fontsource/source-sans-3": "^5.3.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@tanstack/react-query": "^5",
     "@xyflow/react": "^12.11.3",
     "react": "^19.2.8",

@@ -51,7 +51,7 @@ function TablePreview({ modelName, tableName }) {
                     <span style={{
                       display: 'block', fontSize: 9.5, fontWeight: 400,
                       color: 'var(--muted)', textTransform: 'none', letterSpacing: 0,
-                      fontFamily: 'Cascadia Code, Fira Code, monospace',
+                      fontFamily: 'var(--font-mono)',
                     }}>{data.dtypes[c]}</span>
                   )}
                 </th>
@@ -80,10 +80,10 @@ function TablePreview({ modelName, tableName }) {
 // ── ERD Diagram ──────────────────────────────────────────────────────────────
 
 const ROLE_STYLES = {
-  dimension: { header: 'var(--op-landing-bg)',      accent: 'var(--role-dimension)', label: 'Dimension' },
-  fact:      { header: 'var(--op-manipulation-bg)', accent: 'var(--role-fact)', label: 'Fact' },
-  bridge:    { header: 'var(--op-transform-bg)',    accent: 'var(--role-bridge)', label: 'Bridge' },
-  table:     { header: 'var(--op-default-bg)',      accent: 'var(--role-table)', label: 'Table' },
+  dimension: { header: 'var(--surface-2)',      accent: 'var(--role-dimension)', label: 'Dimension' },
+  fact:      { header: 'var(--surface-2)', accent: 'var(--role-fact)', label: 'Fact' },
+  bridge:    { header: 'var(--surface-2)',    accent: 'var(--role-bridge)', label: 'Bridge' },
+  table:     { header: 'var(--surface-2)',      accent: 'var(--role-table)', label: 'Table' },
 }
 
 // PK / FK / Σ: a text badge, not an icon, so it reads in any theme and print.
@@ -93,7 +93,7 @@ const FLAG_STYLES = {
   'Σ': { color: 'var(--role-fact)',   border: 'color-mix(in srgb, var(--role-fact) 25%, transparent)', title: 'A measure column on the fact' },
 }
 
-const MONO = 'Cascadia Code, Fira Code, monospace'
+const MONO = 'var(--font-mono)'
 const HANDLE = { width: 10, height: 10, border: '2px solid #fff' }
 
 function ERDTableNode({ data }) {
@@ -180,11 +180,11 @@ function ERDDiagram({ data, selected, onSelect }) {
         // across instead of looping round the outside.
         sourceHandle: x[e.from] > x[e.to] ? 'out-l' : 'out-r',
         targetHandle: x[e.from] > x[e.to] ? 'in-r' : 'in-l',
-        style: { stroke: '#3b82f680', strokeWidth: 1.5 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6', width: 12, height: 12 },
+        style: { stroke: 'var(--muted)', strokeWidth: 1.25 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#8a8a8a', width: 12, height: 12 },
         label: edgeLabel(e),
-        labelStyle: { fontSize: 9, fill: '#55657a', fontFamily: MONO },
-        labelBgStyle: { fill: '#ffffff', fillOpacity: 0.92 },
+        labelStyle: { fontSize: 9, fill: 'var(--muted)', fontFamily: MONO },
+        labelBgStyle: { fill: 'var(--surface)', fillOpacity: 0.92 },
       })),
     }
   }, [data])
@@ -213,11 +213,11 @@ function ERDDiagram({ data, selected, onSelect }) {
         onInit={flow => setTimeout(() => flow.fitView({ padding: 0.12 }), 350)}
       >
         <Background color="var(--flow-dots)" gap={30} size={1} />
-        <Controls style={{ background: 'rgba(8,15,32,.9)', border: '1px solid var(--border)', borderRadius: 8 }} />
+        <Controls style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }} />
         {nodes.length > 10 && (
           <MiniMap
             nodeColor={n => ROLE_STYLES[n.data?.role]?.accent || '#64748b'}
-            style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8 }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}
             maskColor="rgba(228,233,240,.6)"
           />
         )}
@@ -432,7 +432,7 @@ export function ModelDetail({ name }) {
                     <tr key={e.id}>
                       <td><code>{e.from}</code></td>
                       <td><code>{e.to}</code></td>
-                      <td style={{ color: 'var(--muted)', fontSize: 12, fontFamily: 'Cascadia Code, Fira Code, monospace' }}>
+                      <td style={{ color: 'var(--muted)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
                         {e.fromKey} = {e.toKey}
                       </td>
                       <td><Badge variant="gray">{e.cardinality === 'many-to-one' ? 'many to one' : (e.how || 'join')}</Badge></td>

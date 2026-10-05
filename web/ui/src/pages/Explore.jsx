@@ -13,7 +13,9 @@ import {
 } from '../components/Shared'
 
 const AGG_FUNCS = ['sum', 'count', 'mean', 'min', 'max', 'nunique']
-const MEASURE_COLORS = ['#091a55', '#1d4ed8', '#0e7490', '#334155', '#475569', '#0369a1']
+// Series identity, not meaning: ink first, then a restrained set. Tokens, so each
+// has a dark value (--chart-1..6 in global.css).
+const MEASURE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)']
 
 // ── Builder controls ─────────────────────────────────────────────────────────
 
@@ -35,8 +37,8 @@ function CheckRow({ checked, onToggle, label, right }) {
       border: `1px solid ${checked ? 'var(--blue-br)' : 'transparent'}`,
       transition: 'background var(--t)',
     }}>
-      <input type="checkbox" checked={checked} onChange={onToggle} style={{ accentColor: '#3b82f6' }} />
-      <span style={{ color: checked ? 'var(--text)' : 'var(--text-2)', fontFamily: 'Cascadia Code, Fira Code, monospace', fontSize: 12 }}>
+      <input type="checkbox" checked={checked} onChange={onToggle} style={{ accentColor: 'var(--ink)' }} />
+      <span style={{ color: checked ? 'var(--text)' : 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
         {label}
       </span>
       {right && <span style={{ marginLeft: 'auto' }}>{right}</span>}

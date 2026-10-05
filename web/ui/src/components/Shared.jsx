@@ -30,14 +30,12 @@ function ToastContainer({ toasts, remove }) {
         return (
           <div key={t.id} className="toast-enter" style={{
             pointerEvents: 'all',
-            background: isErr ? '#fdf1f1' : isOk ? '#effaf2' : 'var(--surface)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: `1px solid ${isErr ? 'var(--red-br)' : isOk ? 'var(--green-br)' : 'var(--blue-br)'}`,
-            borderRadius: 12, padding: '12px 14px',
+            background: 'var(--surface)',
+            border: `1px solid ${isErr ? 'var(--red-br)' : isOk ? 'var(--green-br)' : 'var(--border-strong)'}`,
+            borderRadius: 'var(--radius-lg)', padding: '12px 14px',
             fontSize: 13, lineHeight: 1.5,
             color: isErr ? 'var(--red-text)' : isOk ? 'var(--green-text)' : 'var(--text)',
-            boxShadow: 'var(--shadow)',
+            boxShadow: 'var(--shadow-pop)',
             display: 'flex', alignItems: 'center', gap: 10,
             minWidth: 260, maxWidth: 380,
           }}>
@@ -139,8 +137,6 @@ export function Card({ children, style, hover, accent }) {
       className={['surface', hover ? 'card-hover' : '', accent ? 'card-accent' : ''].filter(Boolean).join(' ')}
       style={{
         background: 'var(--card)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius)',
         padding: '20px 24px',
@@ -201,12 +197,14 @@ const BADGE_STYLES = {
   amber:        { background: 'var(--amber-lt)',         color: 'var(--amber-text)',  border: '1px solid var(--amber-br)' },
   red:          { background: 'var(--red-lt)',           color: 'var(--red-text)',    border: '1px solid var(--red-br)' },
   gray:         { background: 'var(--surface-2)',        color: 'var(--muted)',       border: '1px solid var(--border)' },
-  gold:         { background: 'rgba(202,138,4,.1)',      color: '#854d0e', border: '1px solid rgba(202,138,4,.3)' },
-  silver:       { background: 'rgba(100,116,139,.08)',   color: '#475569', border: '1px solid rgba(100,116,139,.25)' },
-  bronze:       { background: 'rgba(180,120,40,.12)',    color: '#92531a', border: '1px solid rgba(180,120,40,.3)' },
-  landing:      { background: 'rgba(37,99,235,.08)',     color: '#1d4ed8', border: '1px solid rgba(37,99,235,.28)' },
-  manipulation: { background: 'rgba(9,26,85,.08)',      color: '#091a55', border: '1px solid rgba(9,26,85,.22)' },
-  final:        { background: 'rgba(5,150,105,.08)',     color: '#047857', border: '1px solid rgba(5,150,105,.3)' },
+  // A layer's type is a meaning (landing, manipulation, final), so it keeps a
+  // colour: the same operation palette the diagrams use, with a dark value.
+  gold:         { background: 'var(--op-gold-bg)',         color: 'var(--op-gold-tx)',         border: '1px solid var(--op-gold-br)' },
+  silver:       { background: 'var(--op-silver-bg)',       color: 'var(--op-silver-tx)',       border: '1px solid var(--op-silver-br)' },
+  bronze:       { background: 'var(--op-bronze-bg)',       color: 'var(--op-bronze-tx)',       border: '1px solid var(--op-bronze-br)' },
+  landing:      { background: 'var(--op-landing-bg)',      color: 'var(--op-landing-tx)',      border: '1px solid var(--op-landing-br)' },
+  manipulation: { background: 'var(--op-manipulation-bg)', color: 'var(--op-manipulation-tx)', border: '1px solid var(--op-manipulation-br)' },
+  final:        { background: 'var(--op-final-bg)',        color: 'var(--op-final-tx)',        border: '1px solid var(--op-final-br)' },
   purple:       { background: 'var(--blue-lt)',          color: 'var(--accent-text)', border: '1px solid var(--blue-br)' },
 }
 
@@ -334,9 +332,9 @@ export function ErrorDetail({ error }) {
           </summary>
           <pre style={{
             marginTop: 8, padding: 12, borderRadius: 6, overflowX: 'auto',
-            background: 'var(--code-bg)', color: '#fda4af',
+            background: 'var(--code-bg)', color: 'var(--red-text)',
             fontSize: 11, lineHeight: 1.55,
-            fontFamily: 'Cascadia Code, Fira Code, monospace',
+            fontFamily: 'var(--font-mono)',
             whiteSpace: 'pre-wrap',
           }}>{tb}</pre>
         </details>
@@ -357,19 +355,18 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
     textDecoration: 'none',
     opacity: disabled ? .4 : 1,
     transition: 'filter var(--t), box-shadow var(--t), background var(--t), opacity var(--t), transform var(--t)',
-    lineHeight: 1, letterSpacing: .1,
+    lineHeight: 1,
     ...style,
   }
   const variants = {
     primary: {
-      background: 'var(--brand)',
-      color: '#fff',
-      boxShadow: '0 2px 12px rgba(37,99,235,.25)',
+      background: 'var(--ink)',
+      color: 'var(--on-ink)',
     },
     outline: {
       background: 'transparent',
-      color: 'var(--accent-text)',
-      border: '1px solid var(--blue-br)',
+      color: 'var(--text)',
+      border: '1px solid var(--border-strong)',
     },
     red: {
       background: 'var(--red-lt)',
@@ -387,32 +384,20 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
   )
 }
 
-export function StatTile({ value, label, color, icon }) {
+export function StatTile({ value, label, icon }) {
   return (
     <div className="card-hover" style={{
       background: 'var(--card)',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
       border: '1px solid var(--border)',
       borderRadius: 'var(--radius)',
       padding: '20px 22px',
       minWidth: 130, flex: 1,
       position: 'relative', overflow: 'hidden',
     }}>
-      {/* Subtle color tint in corner */}
-      <div style={{
-        position: 'absolute', top: 0, right: 0,
-        width: 80, height: 80,
-        background: `radial-gradient(circle at top right, ${color || 'rgba(59,130,246,.12)'} 0%, transparent 70%)`,
-        pointerEvents: 'none',
-      }} />
       {icon && <div style={{ fontSize: 18, marginBottom: 10, opacity: .7 }}>{icon}</div>}
       <div style={{
-        fontSize: 32, fontWeight: 800,
-        background: 'var(--brand-text)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
+        fontSize: 30, fontWeight: 600, color: 'var(--text)',
+        letterSpacing: '-0.02em',
         lineHeight: 1, fontVariantNumeric: 'tabular-nums',
       }}>{value ?? '—'}</div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 7, fontWeight: 500 }}>{label}</div>
@@ -447,8 +432,6 @@ export function SplitLayout({ left, right, detail }) {
     <div className={cls}>
       <div className="surface" style={{
         background: 'var(--card)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius)', overflow: 'hidden',
       }}>

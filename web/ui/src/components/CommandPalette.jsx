@@ -102,7 +102,6 @@ export default function CommandPalette() {
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(10,18,40,.45)',
-        backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
         display: 'flex', justifyContent: 'center', paddingTop: '14vh',
       }}
     >

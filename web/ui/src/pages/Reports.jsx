@@ -504,7 +504,7 @@ function ReportDetail({ report, onBack }) {
               className="dl-link"
               title="One self-contained file, checkable offline with tracebi verify --file"
               style={{
-                background: 'var(--blue)', color: '#fff', borderColor: 'var(--blue)',
+                background: 'var(--ink)', color: 'var(--on-ink)', borderColor: 'var(--ink)',
                 fontWeight: 600,
               }}
             >
@@ -576,17 +576,15 @@ const FORMS = {
 
 function FormChip({ form, style }) {
   const f = FORMS[form] || FORMS.code
-  const custom = form === 'package'
+  // How a report is authored is a fact, not a status: neutral (amber means "needs a look").
   return (
     <span
       title={f.title}
       style={{
         display: 'inline-flex', alignItems: 'center',
-        fontSize: 10, fontWeight: 700, letterSpacing: 0.2,
-        padding: '2px 7px', borderRadius: 20, whiteSpace: 'nowrap',
-        background: custom ? 'var(--amber-lt)' : 'var(--blue-lt)',
-        color: custom ? 'var(--amber-text)' : 'var(--accent-text)',
-        border: `1px solid ${custom ? 'var(--amber-br)' : 'var(--border)'}`,
+        fontSize: 10, fontWeight: 500,
+        padding: '1px 7px', borderRadius: 'var(--radius-sm)', whiteSpace: 'nowrap',
+        background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border)',
         ...style,
       }}
     >
@@ -665,10 +663,15 @@ function LibraryFacts({ report }) {
     ['Builds', builds, 'Open to see run history'],
     ['Changed', when(report.last_change)],
   ]
-  return cells.map(([label, value, title]) => (
+  // Only what exists: a row of "Schedule —  Last run —  Builds —" says nothing.
+  const present = cells.filter(([, value]) => value)
+  if (!present.length) {
+    return <span style={{ fontSize: 11, color: 'var(--muted)' }}>No schedule, never built</span>
+  }
+  return present.map(([label, value, title]) => (
     <span key={label} title={title} style={{ fontSize: 11, lineHeight: 1.35, maxWidth: '100%' }}>
       <span style={{ color: 'var(--muted)' }}>{label} </span>
-      <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{value || '—'}</span>
+      <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     </span>
   ))
 }
@@ -821,13 +824,8 @@ export default function Reports({ model = '' }) {
                             onClick={() => select(r.name)}
                             name={r.name.slice(r.name.lastIndexOf('/') + 1)}
                             sub={r.description}
-                            meta={<LibraryFacts report={r} />}
-                            right={
-                              <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                <FormChip form={r.form} />
-                                <ReceiptChip build={builds[r.name]} />
-                              </span>
-                            }
+                            meta={<><FormChip form={r.form} /><LibraryFacts report={r} /></>}
+                            right={<ReceiptChip build={builds[r.name]} />}
                           />
                           </div>
                         ))}

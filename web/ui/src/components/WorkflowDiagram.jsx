@@ -56,9 +56,6 @@ function Handoff({ label, sub, i }) {
       <Arrow i={i} />
       <div className="wf-freeze" title="frozen between phases">
         <div className="wf-freeze-label">
-          <svg viewBox="0 0 20 20" width="12" height="12" fill="currentColor" aria-hidden="true">
-            <path fillRule="evenodd" d="M10 1a1 1 0 011 1v2.02l1.3-.75a1 1 0 111 1.73l-1.3.76 1.74 1V6a1 1 0 112 0v2.29l1.75 1.01a1 1 0 010 1.73L16.74 12H18a1 1 0 110 2h-2.02l.76 1.3a1 1 0 11-1.73 1l-.76-1.3-1 1.74H14a1 1 0 110 2h-2.29l-1.01 1.75a1 1 0 01-1.73 0L7.96 20H6a1 1 0 110-2h.02l-.75-1.3a1 1 0 111.73-1l.75 1.3 1-1.74V16a1 1 0 11-2 0v-.02l-1.3.76a1 1 0 11-1-1.73l1.3-.76L4.01 12H4a1 1 0 110-2h.02l-.76-1.3a1 1 0 111.73-1l.76 1.3 1-1.74V6a1 1 0 112 0v.02l1.3-.76a1 1 0 111 1.74L11.06 8h.01L10 6.26 8.94 8h.01L7.7 6.72 10 5.02V4a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
           {label}
         </div>
         <div className="wf-freeze-sub">{sub}</div>

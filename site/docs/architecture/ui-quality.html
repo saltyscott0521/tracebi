@@ -123,6 +123,12 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
 <li><strong>Every model has a pipeline</strong> <code>[model-without-pipeline]</code>: something its
   Refresh page can run. A pipeline belongs to the models it names
   (<code>runner.models</code>), else the one <code>model_pipeline</code> stamped, else its own name.</li>
+<li><strong>The look</strong> (<a href="../architecture/design-direction.html">Design direction</a>): Geist loads <code>[theme-font-loaded]</code>
+  <code>[theme-font]</code>; the brand is cobalt and stays in its blue family, and other
+  colour means something (green reproduces, amber needs a look, red does not
+  reproduce) <code>[theme-brand-colour]</code>; the dark theme
+  sets its own ink <code>[theme-dark-ink]</code>; resting shadows are none
+  <code>[theme-shadow]</code>; no decorative gradients or blur <code>[theme-decoration]</code>.</li>
 <li><strong>No colour tricks that break themes</strong>: no <code>${colour}22</code> hex-alpha gluing
   <code>[hex-alpha-concat]</code>.</li>
 </ul>
@@ -174,6 +180,14 @@ registered by an app module rather than found under <code>reports/</code>). Each
   the other. The live site is a third thing: after a deploy, ask its own API.</li>
 <li>Data flows through more than one model (raw tables seeded from one, built into
   another), so a pipeline names the models it touches rather than owning one.</li>
+<li>A colour used for decoration steals its meaning from the status colours:
+  the amber "Custom" chip read as "needs a look". How a report is authored is a
+  fact, so it is neutral.</li>
+<li>A token with a hex-alpha suffix (<code>${accent}70</code>) turns into invalid CSS the
+  moment the token becomes <code>var(--x)</code>: the pipeline edges silently lost their
+  stroke. Use <code>var(--muted)</code> or <code>color-mix</code>, and check an edge renders.</li>
+<li>A theme token the dark block does not set silently inherits the light value:
+  <code>--blue</code> stayed near-black and every active tab and row vanished in dark.</li>
 </ul>
   </main>
 </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useModels } from '../api'
-import { PAGES, pagePath, lastModel } from '../nav'
+import { GROUPS, PAGES, pagePath, lastModel } from '../nav'
 import { ModelSwitcher, useScope } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
@@ -118,21 +118,26 @@ function NavItem({ path, label, icon, onNavigate, end }) {
           color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
           textDecoration: 'none',
           fontSize: 13,
-          fontWeight: isActive ? 600 : 400,
-          background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+          fontWeight: isActive ? 500 : 400,
+          background: isActive ? 'var(--sidebar-active)' : 'transparent',
         })}
       >
-        {icon && ICONS[icon] && (
-          <span style={{
-            width: 15, height: 15,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            opacity: 0.9,
-          }}>
-            {ICONS[icon]}
-          </span>
+        {({ isActive }) => (
+          <>
+            {icon && ICONS[icon] && (
+              <span style={{
+                width: 15, height: 15,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                opacity: isActive ? 1 : 0.85,
+                color: isActive ? 'var(--sidebar-accent)' : 'inherit',
+              }}>
+                {ICONS[icon]}
+              </span>
+            )}
+            {label}
+          </>
         )}
-        {label}
       </NavLink>
     </li>
   )
@@ -148,7 +153,7 @@ function NavSection({ label, items, onNavigate }) {
           fontWeight: 600,
           letterSpacing: '0.06em',
           textTransform: 'uppercase',
-          color: 'rgba(200,220,255,0.6)',
+          color: 'var(--sidebar-text)',
         }}>
           {label}
         </div>
@@ -168,14 +173,23 @@ export default function Layout({ children }) {
   const version = healthOk && typeof health?.version === 'string' ? health.version : ''
   const { data: appStatus } = useAppStatus()
   const update = appStatus?.update?.available ? appStatus.update : null
+  // Follow the OS until the viewer picks one; their pick is remembered, the OS
+  // default is not (so it keeps following the OS).
   const [dark, setDark] = useState(() => {
-    try { return localStorage.getItem('tracebi-theme') === 'dark' } catch { return false }
+    try {
+      const saved = localStorage.getItem('tracebi-theme')
+      if (saved) return saved === 'dark'
+    } catch { /* private window */ }
+    return !!window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  })
+  const [chose, setChose] = useState(() => {
+    try { return !!localStorage.getItem('tracebi-theme') } catch { return false }
   })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
-    try { localStorage.setItem('tracebi-theme', dark ? 'dark' : 'light') } catch { /* ignore */ }
-  }, [dark])
+    if (chose) { try { localStorage.setItem('tracebi-theme', dark ? 'dark' : 'light') } catch { /* ignore */ } }
+  }, [dark, chose])
 
   const close = () => setOpen(false)
   const model = useSidebarModel()
@@ -197,8 +211,6 @@ export default function Layout({ children }) {
         display: 'none', position: 'fixed', top: 0, left: 0, right: 0,
         height: 52,
         background: 'var(--header-bg)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border)',
         alignItems: 'center', justifyContent: 'space-between', padding: '0 16px',
         zIndex: 200,
@@ -229,8 +241,7 @@ export default function Layout({ children }) {
       {open && (
         <div onClick={close} style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(10,18,40,.45)',
-          backdropFilter: 'blur(2px)',
+          background: 'rgba(0,0,0,.4)',
           zIndex: 250,
         }} />
       )}
@@ -254,12 +265,12 @@ export default function Layout({ children }) {
           style={{
             display: 'none',
             position: 'absolute', top: 10, right: 10,
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'var(--sidebar-field)',
+            border: '1px solid var(--sidebar-field-border)',
             borderRadius: 6, width: 32, height: 32,
             alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
-            color: 'rgba(200,220,255,0.85)', fontSize: 17, lineHeight: 1,
+            color: 'var(--sidebar-text)', fontSize: 17, lineHeight: 1,
             zIndex: 1,
           }}
           aria-label="Close menu"
@@ -270,10 +281,10 @@ export default function Layout({ children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <BrandMark />
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                 TraceBi
               </div>
-              <div style={{ fontSize: 11, color: 'rgba(200,220,255,0.62)', marginTop: 1 }}>
+              <div style={{ fontSize: 11, color: 'var(--sidebar-text)', marginTop: 1 }}>
                 Analytics trust layer
               </div>
             </div>
@@ -284,9 +295,9 @@ export default function Layout({ children }) {
             style={{
               width: '100%',
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--sidebar-field)', border: '1px solid var(--sidebar-field-border)',
               borderRadius: 6, padding: '7px 10px', cursor: 'pointer',
-              color: 'rgba(200,220,255,0.62)', fontSize: 12, fontFamily: 'inherit',
+              color: 'var(--sidebar-text)', fontSize: 12, fontFamily: 'inherit',
               transition: 'background .15s',
             }}
           >
@@ -296,16 +307,19 @@ export default function Layout({ children }) {
             Search…
             <kbd style={{
               marginLeft: 'auto', fontSize: 10, padding: '1px 5px',
-              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 3, color: 'rgba(200,220,255,0.62)',
+              background: 'var(--sidebar-field)', border: '1px solid var(--sidebar-field-border)',
+              borderRadius: 3, color: 'var(--sidebar-text)',
             }}>⌘K</kbd>
           </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          <NavSection items={PAGES.map(p => ({
-            path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
-          }))} onNavigate={close} />
+          {GROUPS.map(g => (
+            <NavSection key={g.key} label={g.label} onNavigate={close}
+              items={PAGES.filter(p => p.group === g.key).map(p => ({
+                path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
+              }))} />
+          ))}
           <NavSection label="Tools" items={NAV_TOOLS} onNavigate={close} />
         </div>
 
@@ -316,7 +330,7 @@ export default function Layout({ children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               display: 'inline-block', width: 6, height: 6,
-              borderRadius: '50%', background: '#22c55e', flexShrink: 0,
+              borderRadius: '50%', background: 'var(--green)', flexShrink: 0,
             }} />
             {version ? (
               <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v{version}</span>
@@ -325,20 +339,20 @@ export default function Layout({ children }) {
               <a href={update.url || '#'} target="_blank" rel="noreferrer"
                  title={`TraceBi ${update.latest} is available. To update this ${update.kind} install:\n${update.command}\n\n(or run: tracebi update)`}
                  style={{
-                   fontSize: 10.5, fontWeight: 600, color: '#7dd3fc', textDecoration: 'none',
-                   border: '1px solid rgba(125,211,252,.35)', borderRadius: 999,
+                   fontSize: 10.5, fontWeight: 600, color: 'var(--sidebar-accent)', textDecoration: 'none',
+                   border: '1px solid var(--sidebar-field-border)', borderRadius: 999,
                    padding: '1px 7px', whiteSpace: 'nowrap',
                  }}>
                 v{update.latest} available
               </a>
             )}
             <button
-              onClick={() => setDark(d => !d)}
+              onClick={() => { setChose(true); setDark(d => !d) }}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
               style={{
-                marginLeft: 'auto', background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5,
-                color: 'rgba(200,220,255,0.7)', cursor: 'pointer',
+                marginLeft: 'auto', background: 'var(--sidebar-field)',
+                border: '1px solid var(--sidebar-field-border)', borderRadius: 5,
+                color: 'var(--sidebar-text)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 26, height: 26, flexShrink: 0, transition: 'background .15s',
               }}

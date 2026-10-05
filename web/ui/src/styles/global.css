@@ -7,12 +7,29 @@
   use the --code-* / --terminal-* tokens below.
 */
 :root {
-  --blue:        #091a55;
-  --blue-md:     #061244;
-  --blue-lt:     rgba(9,26,85,0.1);
-  --blue-br:     rgba(9,26,85,0.28);
-  --purple:      #091a55;
-  --purple-lt:   rgba(9,26,85,0.1);
+  /* Type: Geist (Vercel's), self-hosted by @fontsource in main.jsx. */
+  --font-sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Quiet colour. Cobalt is the brand, used where you act or are: the primary
+     button, the selected row, the active tab, links, focus, the logo tile. The
+     sidebar is a neutral near-black slab. Beyond that, colour means something
+     (the status tokens below: green reproduces, amber needs a look, red does not
+     reproduce). */
+  --ink:         #2f5bea;
+  --on-ink:      #ffffff;
+  --link:        #2f5bea;
+  --focus-ring:  #2f5bea;
+  --border-strong: #d4d4d4;
+  --chart-1: #2f5bea; --chart-2: #171717; --chart-3: #8f8f8f; --chart-4: #0e7490; --chart-5: #7c3aed; --chart-6: #b45309;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a9ca3' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  --shadow-pop:  0 8px 30px rgba(0,0,0,.12);
+  --blue:        #2f5bea;
+  --blue-md:     #2447c4;
+  --blue-lt:     rgba(47,91,234,0.07);
+  --blue-br:     rgba(47,91,234,0.28);
+  --purple:      #2f5bea;
+  --purple-lt:   rgba(47,91,234,0.07);
 
   /* Surfaces are an elevation ladder, not a set of similar greys. The ground
      is the furthest back and cards sit on top of it; the gap between them is
@@ -22,27 +39,32 @@
      nothing lifted and --shadow had nothing to fall onto. The ground is now a
      cool near-white and cards are plain white, which is also what lets the
      hairline --border do its job instead of drawing a heavy outline. */
-  --bg:          #eef2f8;
+  --bg:          #fafafa;
   --surface:     #ffffff;
-  --surface-2:   #f6f8fc;
+  --surface-2:   #f5f5f5;
   --card:        #ffffff;
   --card-solid:  #ffffff;
-  --card-hl:     #f4f7fc;
-  --border:      #dce4ef;
-  --border-hl:   rgba(9,26,85,0.28);
+  --card-hl:     #f0f0f0;
+  --border:      #e5e5e5;
+  --border-hl:   rgba(47,91,234,0.32);
 
-  --text:        #0a1628;
-  --text-2:      #2e4260;
-  --muted:       #4e617a;   /* 5.2:1 on a selected row, the darkest it sits on */
+  --text:        #171717;
+  --text-2:      #404040;
+  --muted:       #666666;   /* 5.2:1 on a selected row, the darkest it sits on */
 
   /* Accent text — links, active tabs, highlighted values */
-  --accent-text:    #091a55;
-  --accent-text-2:  #061244;
+  --accent-text:    #2447c4;
+  --accent-text-2:  #1d3a9f;
 
   /* Sidebar (dark navy panel) */
-  --sidebar-bg:          #0a1228;
+  --sidebar-bg:          #0f1012;
   --sidebar-border:      rgba(255,255,255,0.08);
-  --sidebar-text:        rgba(200,220,255,0.72);
+  --sidebar-text:        #9a9ca3;
+  --sidebar-hover:       rgba(255,255,255,0.05);
+  --sidebar-active:      rgba(255,255,255,0.10);
+  --sidebar-field:       rgba(255,255,255,0.05);
+  --sidebar-field-border: rgba(255,255,255,0.12);
+  --sidebar-accent:      #7a9cff;
   --sidebar-text-active: #ffffff;
 
   /* Status */
@@ -60,19 +82,19 @@
   --red-br:      rgba(220,38,38,0.28);
 
   /* Dark code/terminal surfaces — deliberate islands of dark */
-  --code-bg:        #101a2e;
-  --code-text:      #9ec1f0;
-  --code-muted:     #5a7099;
-  --terminal-bg:    #0e1830;
-  --terminal-bg-2:  rgba(8,15,32,0.95);
+  --code-bg:        #0f1012;
+  --code-text:      #d4d4d8;
+  --code-muted:     #9a9ca3;
+  --terminal-bg:    #0f1012;
+  --terminal-bg-2:  #0f1012;
   --terminal-border: rgba(255,255,255,0.08);
-  --terminal-text:  #d1ddf5;
-  --terminal-muted: #4a6280;
+  --terminal-text:  #d4d4d8;
+  --terminal-muted: #9a9ca3;
 
   /* Mobile top bar. Translucent so the backdrop blur has something to do, and
      a token rather than a literal because it had been hardcoded light — which
      put the light-on-dark wordmark onto a light bar in dark mode. */
-  --header-bg:   rgba(238,242,248,0.92);
+  --header-bg:   rgba(250,250,250,0.94);
 
   /* A table's role in a star schema, wherever a diagram draws one. */
   --role-dimension: #2563eb;
@@ -82,7 +104,7 @@
 
   /* The three phases, wherever they are drawn. */
   --phase-transform: #0e7490;
-  --phase-model:     #1d4ed8;
+  --phase-model:     #2f5bea;
   --phase-report:    #0369a1;
 
   /* Type scale. The sizes here are the ones already in use across the app,
@@ -118,42 +140,42 @@
   --space-8:  32px;
 
   --nav-w:       232px;
-  --radius-sm:   5px;
-  --radius:      8px;
-  --radius-lg:   10px;
+  --radius-sm:   4px;
+  --radius:      6px;
+  --radius-lg:   8px;
   /* Two layers, not one: a tight contact shadow pins the element to the
      surface and a wide ambient one gives it height. A single soft blur on a
      near-white ground reads as smudge rather than elevation. */
-  --shadow:      0 1px 2px rgba(15,28,52,.04), 0 4px 12px rgba(15,28,52,.05);
-  --shadow-sm:   0 1px 2px rgba(15,28,52,.04);
-  --shadow-lift: 0 1px 3px rgba(15,28,52,.05), 0 8px 18px rgba(15,28,52,.08);
-  --shadow-glow: 0 1px 2px rgba(9,26,85,.05), 0 4px 14px rgba(9,26,85,.1);
+  --shadow:      none;
+  --shadow-sm:   none;
+  --shadow-lift: none;
+  --shadow-glow: none;
   --t:           0.14s ease;
 
   /* Brand gradient. --brand-text is for text on a *page* surface and so flips
      with the theme (see the dark block). --brand-on-dark is for the surfaces
      that are dark in BOTH themes — today just the sidebar — and never flips:
-     the navy start of --brand-text scored 1.14:1 on the #0a1228 sidebar, so
+     the dark start of --brand-text scored 1.14:1 on the sidebar, so
      the wordmark's leading letters were invisible in light mode too, not only
      in dark. Anything painted on the sidebar wants this one. */
-  --brand: linear-gradient(135deg, #091a55 0%, #0369a1 100%);
-  --brand-text: linear-gradient(135deg, #091a55 0%, #0369a1 100%);
-  --brand-on-dark: linear-gradient(135deg, #7ab4f0 0%, #38bdf8 100%);
+  --brand: #2f5bea;
+  --brand-text: #2f5bea;
+  --brand-on-dark: #ededed;
 
   /* Lineage / diagram node palette — light tint, border, text per operation.
      Used by Lineage.jsx, the pipeline DAG, and the ERD. */
   --op-default-bg: #eef2f6;  --op-default-br: #cfd9e3;  --op-default-tx: #3a4960;
-  --op-load-bg:    #e8f1fd;  --op-load-br:    #b6d2f4;  --op-load-tx:    #091a55;
+  --op-load-bg:    #e8f1fd;  --op-load-br:    #b6d2f4;  --op-load-tx:    #2447c4;
   --op-filter-bg:  #e7f5ed;  --op-filter-br:  #b7e1ca;  --op-filter-tx:  #166534;
   --op-transform-bg:#fdf3e1; --op-transform-br:#f0d9a6; --op-transform-tx:#92520a;
   --op-join-bg:    #fdeee4;  --op-join-br:    #f3ccae;  --op-join-tx:    #b4500f;
   --op-aggregate-bg:#fbe9f1; --op-aggregate-br:#efbcd3; --op-aggregate-tx:#ad1457;
   --op-assign-bg:  #ebebfa;  --op-assign-br:  #c7c7ee;  --op-assign-tx:  #4338ca;
-  --op-sort-bg:    #e8edf8;  --op-sort-br:    #b8c6e0;  --op-sort-tx:    #091a55;
+  --op-sort-bg:    #e8edf8;  --op-sort-br:    #b8c6e0;  --op-sort-tx:    #2447c4;
   --op-select-bg:  #eef2f6;  --op-select-br:  #cfd9e3;  --op-select-tx:  #3a4960;
   --op-rename-bg:  #e4f5f3;  --op-rename-br:  #b3e0da;  --op-rename-tx:  #0f766e;
-  --op-landing-bg: #e8f1fd;  --op-landing-br: #b6d2f4;  --op-landing-tx: #091a55;
-  --op-manipulation-bg:#e8edf8; --op-manipulation-br:#b8c6e0; --op-manipulation-tx:#091a55;
+  --op-landing-bg: #e8f1fd;  --op-landing-br: #b6d2f4;  --op-landing-tx: #2447c4;
+  --op-manipulation-bg:#e8edf8; --op-manipulation-br:#b8c6e0; --op-manipulation-tx:#2447c4;
   --op-final-bg:   #e7f5ed;  --op-final-br:   #b7e1ca;  --op-final-tx:   #166534;
   --op-bronze-bg:  #f7ede3;  --op-bronze-br:  #e4cbac;  --op-bronze-tx:  #8a5a2a;
   --op-silver-bg:  #eef1f5;  --op-silver-br:  #d3dae3;  --op-silver-tx:  #55657a;
@@ -163,8 +185,8 @@
   /* Diagram canvas (React Flow panes). Deliberately a shade *below* --bg so
      the canvas reads as a surface you are looking at, rather than a hole in
      the page — the nodes on it are white and need something to sit against. */
-  --flow-bg:       #e7ecf5;
-  --flow-dots:     #c6d0e0;
+  --flow-bg:       #f5f5f5;
+  --flow-dots:     #d4d4d4;
 }
 
 /* ── Dark mode overrides ─────────────────────────────────────────────────────
@@ -172,18 +194,25 @@
    are already dark-friendly and need no change.
 */
 [data-theme="dark"] {
-  --bg:          #0d1623;
-  --surface:     #162030;
-  --surface-2:   #111d2c;
-  --card:        #1a2a3e;
-  --card-solid:  #1a2a3e;
-  --card-hl:     #203048;
-  --border:      #2a3d54;
-  --border-hl:   rgba(100,160,240,0.35);
+  --ink:         #2f5bea;
+  --on-ink:      #ffffff;
+  --link:        #7a9cff;
+  --focus-ring:  #7a9cff;
+  --border-strong: #3a3a3a;
+  --chart-1: #7a9cff; --chart-2: #ededed; --chart-3: #8f8f8f; --chart-4: #22d3ee; --chart-5: #a78bfa; --chart-6: #fbbf24;
+  --shadow-pop:  0 8px 30px rgba(0,0,0,.6);
+  --bg:          #0a0a0a;
+  --surface:     #111111;
+  --surface-2:   #0f0f0f;
+  --card:        #111111;
+  --card-solid:  #111111;
+  --card-hl:     #1a1a1a;
+  --border:      #262626;
+  --border-hl:   rgba(122,156,255,0.32);
 
-  --text:        #dde8f5;
-  --text-2:      #8aaac8;
-  --muted:       #8aa5c2;
+  --text:        #ededed;
+  --text-2:      #b4b4b4;
+  --muted:       #8f8f8f;
 
   /* Status text must read on every dark surface (4.5:1 at least): the light
      theme's greens and reds scored 2:1 here, on the badges that say whether
@@ -192,16 +221,20 @@
   --amber-text:  #fbbf24;
   --red-text:    #fb8a8a;
 
-  --blue-lt:     rgba(100,160,240,0.10);
-  --blue-br:     rgba(100,160,240,0.26);
+  --blue:        #7a9cff;
+  --blue-md:     #a3b9ff;
+  --purple:      #7a9cff;
+  --purple-lt:   rgba(122,156,255,0.10);
+  --blue-lt:     rgba(122,156,255,0.10);
+  --blue-br:     rgba(122,156,255,0.28);
 
-  --accent-text:   #7ab4f0;
-  --accent-text-2: #5894d4;
+  --accent-text:   #7a9cff;
+  --accent-text-2: #a3b9ff;
 
   /* Headings use .gradient-text, and the light navy start scored 1.12:1 on
      this ground — page titles were effectively invisible in dark mode. */
-  --brand-text:  linear-gradient(135deg, #7ab4f0 0%, #38bdf8 100%);
-  --header-bg:   rgba(13,22,35,0.92);
+  --brand-text:  #7a9cff;
+  --header-bg:   rgba(10,10,10,0.94);
 
   --role-dimension: #93c5fd;
   --role-fact:      #c4b5fd;
@@ -209,7 +242,7 @@
   --role-table:     #94a3b8;
 
   --phase-transform: #22d3ee;
-  --phase-model:     #93c5fd;
+  --phase-model:     #7a9cff;
   --phase-report:    #38bdf8;
 
   --green-lt:   rgba(22,163,74,0.12);
@@ -219,13 +252,13 @@
   --red-lt:     rgba(220,38,38,0.10);
   --red-br:     rgba(220,38,38,0.26);
 
-  --shadow:     0 8px 24px rgba(0,0,0,.35);
-  --shadow-sm:  0 2px 8px rgba(0,0,0,.28);
-  --shadow-lift:0 2px 6px rgba(0,0,0,.32), 0 14px 32px rgba(0,0,0,.44);
-  --shadow-glow:0 4px 20px rgba(100,160,240,.12);
+  --shadow:     none;
+  --shadow-sm:  none;
+  --shadow-lift:none;
+  --shadow-glow:none;
 
-  --flow-bg:    #111d2c;
-  --flow-dots:  #2a3d54;
+  --flow-bg:    #111111;
+  --flow-dots:  #262626;
 
   /* Operation node palette (dark) */
   --op-default-bg: #1a2535; --op-default-br: #2e405a; --op-default-tx: #8aaac8;
@@ -242,21 +275,24 @@
   --op-manipulation-bg:#111e35;--op-manipulation-br:#1e3658;--op-manipulation-tx:#7ab4f0;
   --op-final-bg:   #0e2218; --op-final-br:   #1a4030; --op-final-tx:   #4ade80;
   --op-gold-bg:    #241d08; --op-gold-br:    #4a3c0a; --op-gold-tx:    #facc15;
+  --op-bronze-bg:  #241a10; --op-bronze-br:  #4a3416; --op-bronze-tx:  #e0a56a;
+  --op-silver-bg:  #1c1f24; --op-silver-br:  #353b45; --op-silver-tx:  #a8b3c2;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c2cddd; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(9,26,85,.4); }
-::selection { background: rgba(9,26,85,.12); color: var(--text); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::selection { background: var(--blue-br); color: var(--text); }
 
 body {
-  /* Source Sans 3 is self-hosted via @fontsource in main.jsx (same face as
-     the marketing site). The system stack behind it is the fallback for
-     first paint and for the rare client that rejects the woff2. */
-  font-family: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto,
-               'Helvetica Neue', Arial, sans-serif;
+  /* Geist, self-hosted via @fontsource in main.jsx. The system stack behind it
+     is the fallback for first paint and for the rare client that rejects the
+     woff2. Figures line up: every number in the app uses tabular numerals. */
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'cv11', 'ss01';
   font-size: var(--text-base);
   color: var(--text);
   background: var(--bg);
@@ -281,26 +317,19 @@ body {
 /* Content sits above orbs */
 .layout-main { position: relative; z-index: 1; }
 
-/* Gradient text utility. Use .gradient-text-on-dark for anything sitting on a
-   surface that stays dark in both themes (the sidebar). */
-.gradient-text-on-dark,
-.gradient-text {
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-/* background-image, not the `background` shorthand — the shorthand resets
-   background-clip back to border-box and the text stops being clipped. */
-.gradient-text         { background-image: var(--brand-text); }
-.gradient-text-on-dark { background-image: var(--brand-on-dark); }
+/* Titles are plain ink. (This was a gradient; colour is for meaning now.) */
+.gradient-text, .gradient-text-on-dark { color: var(--text); }
+
+a { color: var(--link); }
 
 code {
-  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-  background: var(--blue-lt);
-  color: var(--accent-text);
-  padding: 1px 6px;
-  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
 }
 
 .code-block {
@@ -310,7 +339,7 @@ code {
   border-radius: 10px;
   padding: 18px;
   overflow-x: auto;
-  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.7;
   white-space: pre;
@@ -637,7 +666,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   display: flex; align-items: center; justify-content: center;
 }
 .wf-tag {
-  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11.5px; color: var(--wf);
   background: color-mix(in srgb, var(--wf) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--wf) 22%, transparent);
@@ -670,9 +699,9 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 }
 .wf-freeze-label {
   display: flex; align-items: center; gap: 4px; justify-content: center;
-  font-family: 'Source Code Pro', 'Cascadia Code', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 10.5px; font-weight: 600; color: var(--text);
-  line-height: 1.2;
+  line-height: 1.2; flex-wrap: wrap; overflow-wrap: anywhere;
 }
 .wf-freeze-sub { font-size: 9.5px; color: var(--muted); margin-top: 2px; line-height: 1.2; }
 .wf-arrow { flex: none; }
@@ -726,9 +755,9 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* The brand mark: brackets draw, bars rise, a trace dot runs across. */
 .bm {
-  width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
-  background: #091a55; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 0 1px rgba(125,211,252,.18), 0 4px 14px rgba(56,189,248,.18);
+  width: 28px; height: 28px; border-radius: var(--radius); flex-shrink: 0;
+  background: var(--ink); color: var(--on-ink);
+  display: flex; align-items: center; justify-content: center;
 }
 .bm svg { width: 16px; height: 16px; overflow: visible; }
 .bm-bracket { stroke-dasharray: 32; animation: bm-draw .5s var(--ease-out) both; }
@@ -817,12 +846,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   100% { transform: translateX(13px); opacity: 0; }
 }
 .wf-freeze { position: relative; overflow: hidden; }
-.wf-freeze::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(105deg, transparent 35%, rgba(125,211,252,.28) 50%, transparent 65%);
-  transform: translateX(-120%); animation: frost 4.5s ease-in-out infinite;
-}
-@keyframes frost { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
 .wf-wrap > .wf-phase { animation: rise .5s var(--ease-out) both; animation-delay: calc(var(--i, 0) * .12s); }
 
 /* Folders on the Reports page: the caret turns, the reports rise in. */
@@ -889,20 +912,20 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .model-switcher select {
   appearance: none; -webkit-appearance: none;
   width: 100%; font: inherit; font-size: 13.5px; font-weight: 600;
-  color: #fff; background-color: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.16); border-radius: 7px;
+  color: var(--sidebar-text-active); background-color: var(--sidebar-field);
+  border: 1px solid var(--sidebar-field-border); border-radius: var(--radius);
   padding: 8px 30px 8px 10px; cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23c8dcff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: var(--chevron);
   background-repeat: no-repeat; background-position: right 11px center;
   transition: background-color var(--t), border-color var(--t);
 }
-.model-switcher select:hover { background-color: rgba(255,255,255,0.11); }
-.model-switcher select:focus-visible { outline: 2px solid #7ab4f0; outline-offset: 2px; }
+.model-switcher select:hover { background-color: var(--sidebar-hover); }
+.model-switcher select:focus-visible { outline: 2px solid var(--sidebar-accent); outline-offset: 2px; }
 .model-switcher option { color: #0a1628; background: #fff; }
 
 /* The model the page is about, above its name: an identifier, so monospace. */
 .page-header__scope {
-  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm); font-weight: 500;
   color: var(--muted); margin-bottom: 6px;
 }
@@ -938,12 +961,9 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* ── Keyboard focus: always visible, on every surface ───────────────────────
    One ring for the whole app; a component overrides it only to move it. */
-:root { --focus-ring: #2563eb; }
-[data-theme="dark"] { --focus-ring: #7ab4f0; }
 
 /* A link with no style of its own reads as a link in both themes (the
-   browser's #0000ee was 1.5:1 on a dark card). */
-a { color: var(--accent-text); }
+   browser's #0000ee was 1.5:1 on a dark card): the one blue, --link. */
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .app-nav :focus-visible { outline-color: #7ab4f0; }
 .list-item:focus-visible { outline-offset: -2px; }
@@ -951,7 +971,7 @@ a { color: var(--accent-text); }
   margin-left: 10px; padding: 3px 9px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--surface);
   font: inherit; font-size: var(--text-sm); font-weight: 500;
-  font-family: 'Source Code Pro', ui-monospace, monospace;
+  font-family: var(--font-mono);
   color: var(--text-2); cursor: pointer; vertical-align: 2px;
 }
 .react-flow .react-flow__node:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 8px; }
@@ -988,7 +1008,7 @@ a { color: var(--accent-text); }
 .wb-section__count { font-weight: 500; color: var(--text-2); }
 .wb-item { padding: 8px 0; border-top: 1px solid var(--border); font-size: var(--text-caption); color: var(--text-2); }
 .wb-item:first-of-type { border-top: 0; padding-top: 0; }
-.wb-item code, .point-note code { font-family: 'Source Code Pro', ui-monospace, monospace; font-size: var(--text-sm); color: var(--text); overflow-wrap: anywhere; }
+.wb-item code, .point-note code { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text); overflow-wrap: anywhere; }
 .wb-item__head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 2px; }
 .wb-item--done { opacity: .85; }
 .wb-item--changed { border-left: 2px solid var(--amber); padding-left: 8px; }

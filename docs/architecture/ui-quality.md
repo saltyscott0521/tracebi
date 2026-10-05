@@ -55,6 +55,12 @@ Checked by the script (rule name in brackets):
 - **Every model has a pipeline** `[model-without-pipeline]`: something its
   Refresh page can run. A pipeline belongs to the models it names
   (`runner.models`), else the one `model_pipeline` stamped, else its own name.
+- **The look** ([[design-direction]]): Geist loads `[theme-font-loaded]`
+  `[theme-font]`; the brand is cobalt and stays in its blue family, and other
+  colour means something (green reproduces, amber needs a look, red does not
+  reproduce) `[theme-brand-colour]`; the dark theme
+  sets its own ink `[theme-dark-ink]`; resting shadows are none
+  `[theme-shadow]`; no decorative gradients or blur `[theme-decoration]`.
 - **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
   `[hex-alpha-concat]`.
 
@@ -108,4 +114,12 @@ Each fix that taught something general adds a line here.
   the other. The live site is a third thing: after a deploy, ask its own API.
 - Data flows through more than one model (raw tables seeded from one, built into
   another), so a pipeline names the models it touches rather than owning one.
+- A colour used for decoration steals its meaning from the status colours:
+  the amber "Custom" chip read as "needs a look". How a report is authored is a
+  fact, so it is neutral.
+- A token with a hex-alpha suffix (`${accent}70`) turns into invalid CSS the
+  moment the token becomes `var(--x)`: the pipeline edges silently lost their
+  stroke. Use `var(--muted)` or `color-mix`, and check an edge renders.
+- A theme token the dark block does not set silently inherits the light value:
+  `--blue` stayed near-black and every active tab and row vanished in dark.
 

@@ -30,12 +30,12 @@ const TYPE_ACCENT = {
   manipulation: 'var(--role-fact)', silver: 'var(--role-fact)',
   final: 'var(--op-final-tx)', gold: 'var(--op-final-tx)',
 }
-const STATUS_DOT = { success: '#16a34a', failed: '#dc2626', running: '#d97706' }
+const STATUS_DOT = { success: 'var(--green)', failed: 'var(--red)', running: 'var(--amber)' }
 
 function LayerNode({ data }) {
   const accent = TYPE_ACCENT[data.layer.type] || 'var(--role-table)'
   const status = data.layer.last_status
-  const dot = STATUS_DOT[status] || '#94a3b8'
+  const dot = STATUS_DOT[status] || 'var(--muted)'
   return (
     <div style={{
       background: 'var(--surface)',
@@ -55,7 +55,7 @@ function LayerNode({ data }) {
         <span className={status === 'running' ? 'pulse-glow' : undefined} style={{
           width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0,
         }} />
-        <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', fontFamily: 'Cascadia Code, Fira Code, monospace' }}>
+        <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
           {data.layer.name}
         </span>
       </div>
@@ -67,7 +67,7 @@ function LayerNode({ data }) {
             background: `color-mix(in srgb, ${accent} 8%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 23%, transparent)`,
           }}>{TYPE_LABEL[data.layer.type] || data.layer.type}</span>
           {data.layer.schedule && (
-            <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: 'Cascadia Code, Fira Code, monospace' }}>
+            <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
               {data.layer.schedule}
             </span>
           )}
@@ -126,8 +126,8 @@ function PipelineDag({ layers, onRun, running }) {
         source: l.depends_on,
         target: l.name,
         animated: true,
-        style: { stroke: `${TYPE_ACCENT[l.type] || '#64748b'}70`, strokeWidth: 1.6 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: TYPE_ACCENT[l.type] || '#64748b', width: 13, height: 13 },
+        style: { stroke: 'var(--muted)', strokeWidth: 1.4 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#8a8a8a', width: 13, height: 13 },
       }))
     return { nodes, edges }
   }, [layers, onRun, running])

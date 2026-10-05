@@ -51,7 +51,7 @@ function FileChip({ file, kind }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px',
       borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface-2)',
-      fontSize: 12.5, fontFamily: "'Source Code Pro', monospace",
+      fontSize: 12.5, fontFamily: 'var(--font-mono)',
     }}>
       <span style={{ color: 'var(--accent-text)', fontWeight: 600 }}>{kind}</span>
       {file.name}
@@ -82,7 +82,7 @@ function Result({ result }) {
         </div>
         <div>
           <div style={{
-            fontFamily: "'Source Code Pro', monospace", fontWeight: 600, fontSize: 18,
+            fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 18,
             color: tone.color, letterSpacing: '.02em',
           }}>{v.label}</div>
           <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 3 }}>{v.line}</div>
@@ -100,10 +100,10 @@ function Result({ result }) {
                 fontSize: 13.5,
               }}>
                 <span style={{
-                  fontFamily: "'Source Code Pro', monospace", fontWeight: 600,
+                  fontFamily: 'var(--font-mono)', fontWeight: 600,
                   color: ok ? 'var(--accent-text)' : 'var(--red-text)',
                 }}>{ok ? '✓' : '✗'}</span>
-                <span style={{ fontFamily: "'Source Code Pro', monospace" }}>{f.figure}</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{f.figure}</span>
                 <span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 12 }}>{f.detail}</span>
               </div>
             )
@@ -113,7 +113,7 @@ function Result({ result }) {
 
       <div style={{
         padding: '13px 22px', borderTop: '1px solid var(--border)',
-        color: 'var(--muted)', fontSize: 12.5, fontFamily: "'Source Code Pro', monospace",
+        color: 'var(--muted)', fontSize: 12.5, fontFamily: 'var(--font-mono)',
       }}>{result.verdict_detail}</div>
     </Card>
   )

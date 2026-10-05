@@ -17,12 +17,12 @@ const KIND_LABEL = {
   binding: 'Query', figures: 'Figures', unverified: 'Typed in',
 }
 const STATUS = {
-  ok:      { stripe: '#16a34a', tint: 'var(--surface)' },
-  warn:    { stripe: '#d97706', tint: 'var(--amber-lt)' },
-  derived: { stripe: '#6d28d9', tint: 'var(--surface)' },
-  muted:   { stripe: '#94a3b8', tint: 'var(--surface)' },
+  ok:      { stripe: 'var(--green)', tint: 'var(--surface)' },
+  warn:    { stripe: 'var(--amber)', tint: 'var(--amber-lt)' },
+  derived: { stripe: 'var(--role-fact)', tint: 'var(--surface)' },
+  muted:   { stripe: 'var(--muted)', tint: 'var(--surface)' },
 }
-const MONO = 'Cascadia Code, Fira Code, monospace'
+const MONO = 'var(--font-mono)'
 
 function FlowNode({ data }) {
   const st = STATUS[data.status] || STATUS.muted
@@ -30,7 +30,7 @@ function FlowNode({ data }) {
   return (
     <div style={{
       width: NODE_W, boxSizing: 'border-box', background: st.tint, borderRadius: 10,
-      border: `1.5px ${dashed ? 'dashed' : 'solid'} ${data.selected ? '#2563eb' : 'var(--border)'}`,
+      border: `1.5px ${dashed ? 'dashed' : 'solid'} ${data.selected ? 'var(--focus-ring)' : 'var(--border)'}`,
       borderLeft: `5px solid ${st.stripe}`, padding: '9px 12px', cursor: 'pointer',
       boxShadow: data.selected ? '0 0 0 2px #2563eb55' : 'var(--shadow-sm)',
       opacity: data.dim ? 0.28 : 1, transition: 'opacity .15s', height: data.height, overflow: 'hidden',
@@ -86,9 +86,9 @@ function FlowGraph({ flow, selected, onSelect }) {
     const on = !path || (path.has(e.source) && path.has(e.target))
     return {
       id: e.id, source: e.source, target: e.target, type: 'smoothstep',
-      style: { stroke: on && path ? '#2563eb' : '#94a3b8', strokeWidth: on && path ? 2 : 1.3,
+      style: { stroke: on && path ? 'var(--focus-ring)' : 'var(--muted)', strokeWidth: on && path ? 2 : 1.3,
                strokeDasharray: e.dashed ? '5 4' : undefined, opacity: on ? 1 : 0.15 },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 11, height: 11, color: on && path ? '#2563eb' : '#94a3b8' },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 11, height: 11, color: on && path ? '#0068d6' : '#8a8a8a' },
     }
   }), [flow, path])
 
@@ -105,7 +105,7 @@ function FlowGraph({ flow, selected, onSelect }) {
         onInit={f => setTimeout(() => f.fitView({ padding: 0.06 }), 350)}
       >
         <Background color="var(--flow-dots)" gap={30} size={1} />
-        <Controls showInteractive={false} style={{ background: 'rgba(8,15,32,.9)', border: '1px solid var(--border)', borderRadius: 8 }} />
+        <Controls showInteractive={false} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
       </ReactFlow>
     </div>
   )

@@ -100,7 +100,7 @@ function HowItFits() {
           }}>
             <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', margin: '0 0 4px' }}>{p.label}</div>
             <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{p.sub}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8, fontFamily: "'Source Code Pro', monospace" }}>{FOLDER[p.key]}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>{FOLDER[p.key]}</div>
           </Link>
         ))}
       </div>
@@ -141,10 +141,10 @@ export default function GettingStarted() {
           }}>
             <div style={{
               width: 34, height: 34, borderRadius: 8, flexShrink: 0, marginTop: 1,
-              background: 'linear-gradient(135deg, rgba(37,99,235,.12), rgba(124,58,237,.12))',
-              border: '1px solid rgba(124,58,237,.22)',
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, fontWeight: 800, color: '#6d28d9',
+              fontSize: 14, fontWeight: 600, color: 'var(--text)',
             }}>{s.n}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 5 }}>{s.title}</div>
