@@ -11,6 +11,7 @@ import {
 } from '../api'
 import { attachPointMode } from '../pointMode'
 import Workbench from '../components/Workbench'
+import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
 import { AttentionStrip, attentionItems, verdictOf, when } from '../components/Attention'
 import { ReportArt } from '../components/Art'
@@ -350,11 +351,16 @@ function ReportDetail({ report, onBack }) {
   const { data: wbVersion } = useWorkbenchVersion(report?.name, pointOn)
   const { data: wbState } = useWorkbenchState(report?.name, wbVersion, pointOn)
   const wbPreview = useWorkbenchPreview(report?.name, wbVersion, pointOn)
-  // The last good render stays up while the package is broken mid-edit.
-  const frameHtml = pointOn && wbPreview.data ? wbPreview.data : shown?.html
+  // The last good render stays up while the package is broken mid-edit. The
+  // timeline keeps each version, and can show an earlier one.
+  const timeline = useBuildTimeline({
+    html: wbPreview.data, frameRef, enabled: pointOn,
+  })
+  const frameHtml = pointOn && timeline.shownHtml ? timeline.shownHtml : shown?.html
   const clearPointing = () => { setPointed(null); sendPointing({ name: report.name, pointing: null }) }
   useEffect(() => {
-    if (!pointOn || tab !== 'Output') return undefined
+    // Pointing is at the live report; an earlier version is only for looking.
+    if (!pointOn || tab !== 'Output' || !timeline.isLatest) return undefined
     const frame = frameRef.current
     if (!frame) return undefined
     let detach = () => {}
@@ -369,14 +375,14 @@ function ReportDetail({ report, onBack }) {
     if (frame.contentDocument?.readyState === 'complete') attach()
     return () => { frame.removeEventListener('load', attach); detach() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pointOn, tab, frameHtml, report?.name])
+  }, [pointOn, tab, frameHtml, report?.name, timeline.isLatest])
   // Leaving Point mode, or this report, stops pointing: the agent should not
   // act on something you are no longer looking at.
   useEffect(() => () => {
     if (pointOn) sendPointing({ name: report.name, pointing: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointOn, report?.name])
-  const togglePoint = () => { setPointOn(on => !on); setPointed(null) }
+  const togglePoint = () => { setPointOn(on => !on); setPointed(null); timeline.reset() }
 
   useEffect(() => {
     if (run?.status === 'succeeded') {
@@ -533,8 +539,8 @@ function ReportDetail({ report, onBack }) {
               {pointOn ? (
                 <div className="build-layout">
                   <ReportFrame html={frameHtml} title={report.name} frameRef={frameRef} />
-                  <Workbench name={report.name} pointed={pointed} onClearPointing={clearPointing}
-                             state={wbState} previewError={wbPreview.error} />
+                  <Workbench pointed={pointed} onClearPointing={clearPointing}
+                             state={wbState} previewError={wbPreview.error} timeline={timeline} />
                 </div>
               ) : (
                 <ReportFrame html={shown.html} title={report.name} frameRef={frameRef} />

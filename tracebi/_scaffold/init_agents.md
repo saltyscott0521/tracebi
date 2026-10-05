@@ -281,12 +281,12 @@ body, the same text as `tracebi knowledge <slug>`).
 3. **Read what they point at, then the pins, before every pass.** In the
    web app's Build mode (`tracebi serve` with `TRACEBI_DEV_MODE=1`, or
    `tracebi dev`) the human clicks **Build** and then a figure or an area of
-   the report; the workbench beside it shows them your exhibits, the pins you
-   resolve, and the report re-rendered each time you save. `workbench_state` returns it as `pointing`: a figure
+   the report; the workbench beside it is where they watch you work: the report
+   re-rendered each time you save, which figures each save changed, your
+   exhibits, and the pins you resolve. They instruct you in chat. `workbench_state` returns it as `pointing`: a figure
    (`id`, `binding`, `cell`) or an element (`selector`, `text`, `section`).
    When they say "this" or "here", that is what they mean; there is no
-   pointing when `pointing` is null, so ask. A note they pin on it is an open
-   pin whose `target` has the same shape. The human steers by PINNING figures
+   pointing when `pointing` is null, so ask. The human steers by PINNING figures
    in the workbench with a note ("make this top 8 sectors only"). Read them
    with `tracebi report status <name>` (pins print with 📌) or the MCP
    `workbench_state` tool. Address pins first; they are the human pointing.

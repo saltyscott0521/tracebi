@@ -2,7 +2,6 @@ import json
 import os
 import tempfile
 import threading
-import time
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -782,9 +781,9 @@ def workbench_version(name: str):
 
 @router.get("/{name:path}/workbench/state")
 def workbench_state(name: str):
-    """What the workbench knows: pointing, open and resolved pins, the exhibit
-    feed, and any binding that failed (the working state can be broken; that is
-    state, not an error)."""
+    """What the workbench knows: pointing, the pins and the exhibit feed (what the
+    agent has left for the person), and any binding that failed (the working
+    state can be broken; that is state, not an error)."""
     from tracebi.web.api.routers.desk import _loaded_models
     from tracebi.workbench import collect_state, package_version, read_pointing
 
@@ -824,30 +823,6 @@ def workbench_preview(name: str):
             else:
                 os.environ["TRACEBI_WORKBENCH_DIR"] = previous
     return HTMLResponse(page, headers={"Cache-Control": "no-store"})
-
-
-@router.post("/{name:path}/workbench/pins")
-def add_the_pin(name: str, body: dict):
-    """Pin a note on what the builder points at, for the agent (`workbench_state`
-    lists it; `resolve_pin` closes it)."""
-    from tracebi.workbench import add_pin, read_pointing
-
-    _, wb = _workbench_for(name)
-    note = str(body.get("note") or "").strip()[:2000]
-    if not note:
-        raise HTTPException(status_code=422, detail="A pin needs a note.")
-    target = read_pointing(wb)
-    # A figure pin is keyed by the figure's id; a pin on an area has no id of its
-    # own, so it gets a fresh one and carries what was pointed at as `target`.
-    pin_id = (target or {}).get("id") if (target or {}).get("kind") == "figure" else ""
-    pin_id = pin_id or f"pin-{int(time.time() * 1000)}"
-    return {"pins": add_pin(wb, pin_id, note=note, target=target)}
-
-
-@router.delete("/{name:path}/workbench/pins/{pin_id}")
-def remove_the_pin(name: str, pin_id: str):
-    from tracebi.workbench import remove_pin
-    return {"pins": remove_pin(_workbench_dir_for(name), pin_id)}
 
 
 @router.get("/{name:path}/source")

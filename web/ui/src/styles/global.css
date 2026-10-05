@@ -998,8 +998,6 @@ a { color: var(--accent-text); }
 .wb-empty, .wb-live { margin: 0; }
 .wb-link { font: inherit; font-size: var(--text-sm); cursor: pointer; color: var(--accent-text); background: none; border: 0; padding: 2px 4px; }
 .wb-error { color: var(--red-text); font-size: var(--text-sm); }
-.wb-note { width: 100%; resize: vertical; margin: 8px 0; font: inherit; font-size: var(--text-caption);
-  color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
 .wb-actions { display: flex; align-items: center; gap: 8px; }
 .wb-resolved summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted); padding: 4px 0; }
 .wb-table-wrap { overflow-x: auto; margin-top: 6px; }
@@ -1014,3 +1012,7 @@ a { color: var(--accent-text); }
 /* In Build mode the report list steps aside so the report and the workbench get the room. */
 .reports-page .split-layout:has(.build-layout) { grid-template-columns: minmax(0, 1fr); }
 .reports-page .split-layout:has(.build-layout) > :first-child { display: none; }
+.wb-version { cursor: pointer; padding-left: 8px; margin-left: -8px; border-left: 2px solid transparent; }
+.wb-version:hover { background: var(--card-hl); }
+.wb-version--on { border-left-color: var(--blue); }
+.wb-viewing { margin-bottom: 8px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--amber-lt); border: 1px solid var(--amber-br); font-size: var(--text-sm); color: var(--amber-text); }

@@ -255,11 +255,12 @@ Three rules that keep pages honest:
 report: the workbench opens beside it, and a click on a figure or an area is
 what they point at. Read it with the MCP `workbench_state` tool: `pointing`
 is a figure (`id`, `binding`, `cell`) or an element (`selector`, `text`,
-`section`), and is what "this" or "here" means in their message. A note they
-pin on it is an open pin with a `target` (the same shape). The pane shows
-them what you do, live: your `show()` exhibits, the pins you `resolve_pin`
-(with your note), and the report re-rendered whenever you save the package.
-It is dev-state only: it never reaches a build or a receipt, and when
+`section`), and is what "this" or "here" means in their message. They give
+you instructions in chat, not in the app. The pane is how they watch you
+work, live: the report re-rendered each time you save the package, a timeline
+of which figures each save changed (they can flip back to the version before),
+your `show()` exhibits, and the pins you `resolve_pin` (with your note). It
+is dev-state only: it never reaches a build or a receipt, and when
 `pointing` is null they are pointing at nothing, so ask.
 
 And the iteration protocol itself: `tracebi dev <name>` **blocks** — run it

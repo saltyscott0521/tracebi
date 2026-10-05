@@ -229,23 +229,6 @@ export const useWorkbenchPreview = (name, version, enabled) =>
     placeholderData: (previous) => previous,
   })
 
-export const useAddPin = (name) => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (note) => postJson(`${wb(name)}/pins`, { note }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wb-version', name] }),
-  })
-}
-
-export const useRemovePin = (name) => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (pinId) => fetch(BASE + `${wb(name)}/pins/${encodeURIComponent(pinId)}`,
-      { method: 'DELETE' }).then(r => (r.ok ? r.json() : toError(r).then(e => { throw e }))),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wb-version', name] }),
-  })
-}
-
 export const useKeepSelection = () =>
   useMutation({
     mutationFn: ({ name, filters }) =>

@@ -1,8 +1,6 @@
-import { useState } from 'react'
-
-import { useAddPin, useRemovePin } from '../api'
 import { label as pointLabel } from '../pointMode'
-import { Btn } from './Shared'
+import { summarize } from '../buildTimeline'
+import { pressable } from './Shared'
 
 // The builder's side of the loop, next to the report: what you are pointing at,
 // the pins you have left for the agent, what the agent has shown you, and any
@@ -22,9 +20,7 @@ function Section({ title, count, children, empty }) {
   )
 }
 
-function Pointing({ name, pointed, onClear }) {
-  const [note, setNote] = useState('')
-  const add = useAddPin(name)
+function Pointing({ pointed, onClear }) {
   if (!pointed) {
     return (
       <div className="point-note" role="status">
@@ -33,46 +29,58 @@ function Pointing({ name, pointed, onClear }) {
       </div>
     )
   }
-  const pin = () => {
-    if (!note.trim()) return
-    add.mutate(note.trim(), { onSuccess: () => setNote('') })
-  }
   return (
     <div className="point-note point-note--picked" role="status">
-      <div>
-        <strong>Pointing at</strong> <code>{pointLabel(pointed)}</code>
-      </div>
-      <div className="wb-hint">
-        Your agent sees this. Ask it in chat (“make this a line chart”), or leave it a note:
-      </div>
-      <textarea
-        className="wb-note" rows={2} value={note}
-        placeholder="What should change here?"
-        aria-label="Note for the agent"
-        onChange={e => setNote(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) pin() }}
-      />
-      <div className="wb-actions">
-        <Btn size="sm" onClick={pin} disabled={!note.trim() || add.isPending}>Pin for the agent</Btn>
-        <button type="button" className="wb-link" onClick={onClear}>Clear</button>
-      </div>
-      {add.error && <div className="wb-error">{add.error.message}</div>}
+      <div><strong>Pointing at</strong> <code>{pointLabel(pointed)}</code></div>
+      <div className="wb-hint">Your agent sees this. Ask it in chat: “make this a line chart”.</div>
+      <div className="wb-actions"><button type="button" className="wb-link" onClick={onClear}>Clear</button></div>
     </div>
   )
 }
 
-function Pins({ name, pins, resolved }) {
-  const remove = useRemovePin(name)
+const clock = at => new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })
+
+// What each edit did, newest first. Pick a version to see the report as it was
+// then; the latest is live.
+function Timeline({ timeline }) {
+  const { versions, viewed, view } = timeline
+  const latest = versions.length ? versions[versions.length - 1].id : null
   return (
-    <Section title="Pins" count={pins.length}
-             empty={!pins.length && !resolved.length && (
-               <p className="wb-empty">Pins you leave appear here, and your agent resolves them.</p>)}>
+    <Section title="Changes" count={Math.max(versions.length - 1, 0)}
+             empty={versions.length <= 1 && (
+               <p className="wb-empty">When your agent changes the report, what changed appears here.</p>)}>
+      {viewed && (
+        <div className="wb-viewing" role="status">
+          Showing the version from {clock(viewed.at)}.{' '}
+          <button type="button" className="wb-link" onClick={() => view(null)}>Back to latest</button>
+        </div>
+      )}
+      {[...versions].reverse().map((v, k, all) => {
+        const first = k === all.length - 1
+        const text = first ? 'Opened' : summarize(v.changes)
+        const on = viewed ? viewed.id === v.id : v.id === latest
+        return (
+          <div key={v.id} className={`wb-item wb-version${on ? ' wb-version--on' : ''}`}
+               {...pressable(() => view(v.id === latest ? null : v.id))}
+               aria-current={on ? 'true' : undefined}>
+            <div className="wb-item__head">
+              <span>{text}</span>
+              <span className="wb-meta">{clock(v.at)}{v.id === latest ? ' · latest' : ''}</span>
+            </div>
+          </div>
+        )
+      })}
+    </Section>
+  )
+}
+
+function Pins({ pins, resolved }) {
+  if (!pins.length && !resolved.length) return null
+  return (
+    <Section title="Pins" count={pins.length}>
       {pins.map(p => (
         <div key={p.id} className="wb-item">
-          <div className="wb-item__head">
-            <code>{p.target ? pointLabel(p.target) : p.id}</code>
-            <button type="button" className="wb-link" onClick={() => remove.mutate(p.id)}>Unpin</button>
-          </div>
+          <div className="wb-item__head"><code>{p.id}</code></div>
           <div>{p.request || p.note || '—'}</div>
         </div>
       ))}
@@ -81,7 +89,7 @@ function Pins({ name, pins, resolved }) {
           <summary>{resolved.length} resolved</summary>
           {[...resolved].reverse().map(p => (
             <div key={`${p.id}-${p.resolved_at}`} className="wb-item wb-item--done">
-              <div className="wb-item__head"><code>{p.target ? pointLabel(p.target) : p.id}</code></div>
+              <div className="wb-item__head"><code>{p.id}</code></div>
               <div>{p.note}</div>
               {p.resolved_note && <div className="wb-reply">Agent: {p.resolved_note}</div>}
             </div>
@@ -122,14 +130,14 @@ function Exhibit({ ex }) {
   )
 }
 
-export default function Workbench({ name, pointed, onClearPointing, state, previewError }) {
-  const pins = state?.pins || []
-  const resolved = state?.resolved || []
+export default function Workbench({ pointed, onClearPointing, state, previewError, timeline }) {
   const exhibits = state?.exhibits || []
   const broken = state?.broken || []
   return (
     <aside className="wb" aria-label="Workbench">
-      <Pointing name={name} pointed={pointed} onClear={onClearPointing} />
+      <Pointing pointed={pointed} onClear={onClearPointing} />
+
+      <Timeline timeline={timeline} />
 
       {(previewError || broken.length > 0) && (
         <Section title="Needs a look" count={broken.length + (previewError ? 1 : 0)}>
@@ -143,7 +151,7 @@ export default function Workbench({ name, pointed, onClearPointing, state, previ
         </Section>
       )}
 
-      <Pins name={name} pins={pins} resolved={resolved} />
+      <Pins pins={state?.pins || []} resolved={state?.resolved || []} />
 
       <Section title="From your agent" count={exhibits.length}
                empty={!exhibits.length && (
