@@ -1144,6 +1144,7 @@ def cmd_run_pipeline(args: argparse.Namespace) -> int:
     import getpass
 
     from tracebi.audit import set_actor
+    from tracebi.pipeline import run_record
     from tracebi.pipeline_registry import get_runner, list_pipelines
 
     # Attribute CLI-driven runs too. A cron job or CI step runs as some
@@ -1198,21 +1199,32 @@ def cmd_run_pipeline(args: argparse.Namespace) -> int:
         return 0
 
     print(f"[tracebi] {args.name}: {' → '.join(chain)}")
+    # Recorded like a run started from the app: a row in the state store and a
+    # log, so the Refresh page lists both. Recording is not running, though: a
+    # store that cannot be reached costs the record, not the refresh.
+    try:
+        run_id = run_record.begin(args.name, chain)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[tracebi] this run is not being recorded: {exc}", file=sys.stderr)
+        run_id = None
     failed: list[str] = []
-    for step in chain:
-        try:
-            runner.execute_layer(step)
-        except Exception as exc:  # noqa: BLE001 — report and keep going
-            # Downstream layers read what upstream wrote, so a failure part
-            # way through leaves the rest resting on stale data. Report every
-            # failure rather than stopping at the first, and exit non-zero so
-            # whatever scheduler invoked this can act on it.
-            failed.append(step)
-            print(f"[tracebi] {step} FAILED: {type(exc).__name__}: {exc}", file=sys.stderr)
+    with run_record.recording(args.name, run_id, chain) as rec:
+        for step in chain:
+            try:
+                runner.execute_layer(step)
+            except Exception as exc:  # noqa: BLE001 — report and keep going
+                # Downstream layers read what upstream wrote, so a failure part
+                # way through leaves the rest resting on stale data. Report every
+                # failure rather than stopping at the first, and exit non-zero so
+                # whatever scheduler invoked this can act on it.
+                failed.append(step)
+                rec.fail(exc)
+                print(f"[tracebi] {step} FAILED: {type(exc).__name__}: {exc}", file=sys.stderr)
 
+        if failed:
+            print(f"[tracebi] {len(failed)} of {len(chain)} layer(s) failed: "
+                  f"{', '.join(failed)}", file=sys.stderr)
     if failed:
-        print(f"[tracebi] {len(failed)} of {len(chain)} layer(s) failed: "
-              f"{', '.join(failed)}", file=sys.stderr)
         return 1
 
     print(f"[tracebi] {len(chain)} layer(s) completed.")

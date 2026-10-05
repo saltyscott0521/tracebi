@@ -369,6 +369,10 @@ returns that run with <code>already_running: true</code>. The run's output is a 
 ask from, and <code>done</code>. Reading a log needs <code>analyst</code> because it is whatever the
 steps printed, not only their status. Logs are files under
 <code>data/logs/pipelines/&lt;name&gt;/</code>, the newest 30 per pipeline.</p>
+<p><code>GET …/runs</code> lists every recorded run of the pipeline, newest first, whether it
+started from the app or from <code>tracebi run-pipeline</code> (those carry
+<code>actor_role: "cli"</code>). A run has <code>layers</code> (the steps it ran) and <code>reports</code> (the
+reports its build step rebuilt, only those it actually built).</p>
 <h2 id="connectors-docs-dev">Connectors, docs, dev</h2>
 <table>
 <thead>

@@ -169,7 +169,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer; the artifact
                        #   lane: template_package, figures, stack, compile_spec, derive,
                        #   assets/ (tracebi.js + tracebi.css + vendored ECharts)
-  pipeline/            # PipelineRunner + APScheduler integration
+  pipeline/            # PipelineRunner + APScheduler integration; run_record (a recorded run: row + log)
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
   web/                 # register facade + auto-discovery for discovered modules (.py and .ipynb)
     api/
@@ -638,7 +638,7 @@ POST /api/pipelines/{name}/run
 POST /api/pipelines/{name}/layers/{layer}/run
 GET  /api/pipelines/{name}/layers/{layer}/history
 POST /api/pipelines/{name}/runs                       → background run (202); ?layer=, ?refresh=; joins one already going
-GET  /api/pipelines/{name}/runs[/{id}]                → recent runs / one run's status
+GET  /api/pipelines/{name}/runs[/{id}]                → recent runs (app and `run-pipeline`) / one run's status; each lists its steps and the reports it rebuilt
 GET  /api/pipelines/{name}/runs/{id}/log?after=N      → what the steps printed, from offset N (analyst)
 GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not
                                                        been built, a page naming the build command

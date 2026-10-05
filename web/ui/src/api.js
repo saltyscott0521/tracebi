@@ -267,7 +267,7 @@ export const useStartPipelineRun = () => {
 export const usePipelineRuns = pipeline =>
   useQuery({
     queryKey: ['pipeline-runs', pipeline],
-    queryFn: () => get(`/pipelines/${encodeURIComponent(pipeline)}/runs?limit=10`),
+    queryFn: () => get(`/pipelines/${encodeURIComponent(pipeline)}/runs?limit=30`),
     enabled: !!pipeline,
     refetchInterval: q => (q.state.data || []).some(r => r.status === 'running') ? 2000 : 15000,
   })

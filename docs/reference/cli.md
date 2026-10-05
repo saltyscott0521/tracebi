@@ -470,6 +470,13 @@ wrote, so every failure is reported, then a summary and exit 1.
 Records the OS user as the audit actor, so "who ran this" answers for cron and
 CI runs too.
 
+A run is recorded like one started from the app: a `pipeline_run` row in the
+state store (so the Refresh page's **Runs** tab and the Runs page list it) and
+the same log, `data/logs/pipelines/<name>/<id>.log`, while the terminal prints
+what it always did. `--status` runs nothing and records nothing. If the state
+store cannot be reached the pipeline still runs; it says the run is not being
+recorded.
+
 ### `tracebi list-models` · `tracebi list-pipelines`
 
 List definition files. Never fail: a missing or empty directory prints a note

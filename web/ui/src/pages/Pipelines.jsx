@@ -6,7 +6,7 @@ import '@xyflow/react/dist/style.css'
 
 import { usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
 import { PageHeader } from '../components/Scope'
-import RunLog from '../components/RunLog'
+import RunLog, { RunList } from '../components/RunLog'
 import CodeView from '../components/CodeView'
 import { pipelineModels, pipelineBelongsToModel } from '../nav'
 import {
@@ -205,13 +205,13 @@ function pipelineSummary(layers) {
   return `${n} layer${n !== 1 ? 's' : ''}`
 }
 
-export function PipelineDetail({ pipeline, layers }) {
+export function PipelineDetail({ pipeline, layers, models = [] }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
   const { data: runs } = usePipelineRuns(pipeline)
   const [picked, setPicked] = useState(null)
-  const [selected, setSelected] = useState(null)
+  const [openStep, setOpenStep] = useState(null)
   // A phone fits the flow into 350px and its run buttons shrink past tapping;
   // the list of steps keeps them full size.
   const [tab, setTab] = useState(() =>
@@ -220,12 +220,12 @@ export function PipelineDetail({ pipeline, layers }) {
   if (!pipeline) {
     return (
       <Card>
-        <Empty message="Select a pipeline to see its flow, layers, and run history." />
+        <Empty message="Select a pipeline to see its flow, layers, and runs." />
       </Card>
     )
   }
 
-  // A run goes on in the background and its output is the Log tab: starting
+  // A run goes on in the background and its output is on the Runs tab: starting
   // one (or joining the one already going) opens it there.
   const latest = runs?.[0]
   const busy = isStarting || latest?.status === 'running'
@@ -235,7 +235,7 @@ export function PipelineDetail({ pipeline, layers }) {
     start({ pipeline, layer }, {
       onSuccess: res => {
         setPicked(res.run_id)
-        setTab('Log')
+        setTab('Runs')
         if (res.already_running) toast('Already running. Showing its log.', 'info')
       },
       onError: err => toast(`Could not start: ${err.message}`, 'error'),
@@ -264,7 +264,7 @@ export function PipelineDetail({ pipeline, layers }) {
         {pipeline}
       </CardTitle>
 
-      <Tabs tabs={['Flow', 'Steps', 'Log', 'History', 'Code']} active={tab} onChange={t => setTab(t)} />
+      <Tabs tabs={['Flow', 'Steps', 'Runs', 'Code']} active={tab} onChange={t => setTab(t)} />
 
       {tab === 'Flow' && (
         <div className="fade-in">
@@ -279,7 +279,7 @@ export function PipelineDetail({ pipeline, layers }) {
         <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>
-              <tr><th>Step</th><th>Type</th><th>Schedule</th><th>Runs after</th><th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Run</span></th></tr>
+              <tr><th>Step</th><th>Type</th><th>Schedule</th><th>Runs after</th><th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Actions</span></th></tr>
             </thead>
             <tbody>
               {layers.map(l => (
@@ -306,7 +306,7 @@ export function PipelineDetail({ pipeline, layers }) {
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>
                     {l.last_run ? new Date(l.last_run).toLocaleString() : '—'}
                   </td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <Btn
                       size="sm"
                       variant="outline"
@@ -316,42 +316,40 @@ export function PipelineDetail({ pipeline, layers }) {
                     >
                       {busy ? <Spinner size={12} /> : '▶ Run'}
                     </Btn>
+                    {' '}
+                    <Btn
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setOpenStep(openStep === l.name ? null : l.name)}
+                      aria-expanded={openStep === l.name}
+                      aria-label={`History of ${l.name}`}
+                    >
+                      History
+                    </Btn>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {openStep && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                History of <code style={{ fontSize: 12 }}>{openStep}</code>
+              </div>
+              <LayerHistory pipeline={pipeline} layer={openStep} />
+            </div>
+          )}
         </div>
       )}
 
-      {tab === 'Log' && (
+      {tab === 'Runs' && (
         <div className="fade-in">
-          <RunLog pipeline={pipeline} runs={runs} runId={shownRun} onPick={setPicked} onDone={finished} />
+          {runs?.length > 0 && <RunList runs={runs} runId={shownRun} onPick={setPicked} />}
+          <RunLog pipeline={pipeline} runs={runs} runId={shownRun} models={models} onDone={finished} />
         </div>
       )}
 
       {tab === 'Code' && <CodeView kind="pipelines" name={pipeline} />}
-
-      {tab === 'History' && (
-        <div>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-            {layers.map(l => (
-              <button key={l.name} onClick={() => setSelected(l.name)} style={{
-                padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                background: selected === l.name ? 'var(--blue-lt)' : 'var(--surface-2)',
-                color: selected === l.name ? 'var(--accent-text)' : 'var(--muted)',
-                border: `1px solid ${selected === l.name ? 'var(--blue-br)' : 'var(--border)'}`,
-                cursor: 'pointer',
-                transition: 'background var(--t), color var(--t)',
-              }}>{l.name}</button>
-            ))}
-          </div>
-          {selected
-            ? <LayerHistory pipeline={pipeline} layer={selected} />
-            : <p style={{ fontSize: 13, color: 'var(--muted)' }}>Pick a step above to see its run history.</p>
-          }
-        </div>
-      )}
     </Card>
   )
 }
@@ -373,7 +371,7 @@ export default function Pipelines({ model = '' }) {
         {isLoading ? <SkeletonCard /> : pipelines.length
           ? pipelines.map(p => (
             <div key={p.pipeline} style={{ marginBottom: 16 }}>
-              <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} />
+              <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} models={pipelineModels(p)} />
             </div>
           ))
           : (
@@ -426,6 +424,7 @@ export default function Pipelines({ model = '' }) {
               key={current?.pipeline || ''}
               pipeline={current?.pipeline}
               layers={current?.layers || []}
+              models={current ? pipelineModels(current) : []}
             />
           }
         />
