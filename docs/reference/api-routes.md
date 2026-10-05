@@ -93,6 +93,9 @@ open and kept. Opening never re-queries after that; fresh data comes from
 `GET /api/runs` lists rows from that store, newest first. Query params:
 `kind`, `target`, `limit`. A viewer may read it. The HTML of a report stays
 on disk; the row holds the output path. The Runs page (`/runs`) is this list.
+A build row stores no verdict (a build is not a check), so the page shows the
+`/api/desk` re-check, the one the Reports list shows, on a report's newest
+build, and "Not checked" on the older ones.
 
 The `html` download is that last build, the file the reader is looking at.
 `pdf` is a print of that same file (headless Chromium, so charts render). It

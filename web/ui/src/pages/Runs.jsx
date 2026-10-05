@@ -1,9 +1,10 @@
+import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { reportShareUrl, useRuns } from '../api'
+import { reportShareUrl, useDesk, usePipelines, useRuns } from '../api'
 import { verdictOf, when } from '../components/Attention'
 import { PageHeader, useReportModels } from '../components/Scope'
-import { reportPagePath } from '../nav'
+import { pipelineModels, reportPagePath } from '../nav'
 import {
   Badge, Spinner, Empty, ErrorDetail,
 } from '../components/Shared'
@@ -19,6 +20,8 @@ const KINDS = [
 ]
 const KIND_LABEL = Object.fromEntries(KINDS)
 const REPORT_KINDS = new Set(['report_build', 'background_run', 'schedule'])
+// Kinds that write a report's page. Those rows record a build, not a check.
+const BUILD_KINDS = new Set(['report_build', 'background_run'])
 
 const STATUS = {
   success: 'green', succeeded: 'green', delivered: 'green', built: 'green',
@@ -32,11 +35,20 @@ const field = {
   borderRadius: 6, padding: '6px 10px',
 }
 
-// Only `reproduces` is green — the same words the Reports page uses.
-// An unset verdict has not been checked, so it never reads green.
-function runVerdict(v) {
-  if (v == null || v === '') return { label: 'Not verified', variant: 'gray' }
-  return verdictOf(v)
+// The words and chips the Reports page uses, and only `reproduces` is green.
+// A build row stores no verdict (a build is not a check). Only the newest
+// successful build of a report is still the page on disk, and the Reports page
+// re-checks that one: its row shows that verdict. Any other build was never
+// checked, and says so in grey.
+function runVerdict(run, latestBuild, checks) {
+  if (run.verdict) return verdictOf(run.verdict)
+  const latest = BUILD_KINDS.has(run.kind) && latestBuild[run.target] === run.id
+  if (latest && checks.loading) return { label: 'Checking…', variant: 'gray' }
+  if (latest && checks.byReport[run.target]) return verdictOf(checks.byReport[run.target])
+  return {
+    label: 'Not checked', variant: 'gray',
+    title: BUILD_KINDS.has(run.kind) ? 'Only the latest build of a report is re-checked; the Reports page shows it.' : undefined,
+  }
 }
 
 function duration(start, end) {
@@ -81,11 +93,12 @@ function Actor({ run }) {
   )
 }
 
-// A report run belongs to the models its report reads. A pipeline's own steps
-// keep their history with the pipeline (Refresh shows it), so a model's Runs
-// are its reports'.
-function runModels(run, modelsOf) {
-  return REPORT_KINDS.has(run.kind) ? modelsOf(run.target) : []
+// A report run belongs to the models its report reads; a refresh (a pipeline
+// run, or one of its steps) to the models its pipeline names.
+function runModels(run, modelsOf, pipelineModelsOf) {
+  if (REPORT_KINDS.has(run.kind)) return modelsOf(run.target)
+  if (run.kind === 'pipeline_run' || run.kind === 'pipeline_layer') return pipelineModelsOf(run.target)
+  return []
 }
 
 export default function Runs({ model = '' }) {
@@ -104,14 +117,39 @@ export default function Runs({ model = '' }) {
     }, { replace: true })
   }
   const { data, isLoading, error } = useRuns(kind, target.trim())
+  const { data: everything } = useRuns('', '')   // the same request when nothing is filtered
   const modelsOf = useReportModels()
-  const runs = (Array.isArray(data) ? data : []).filter(r => !model || runModels(r, modelsOf).includes(model))
+  const { data: pipelines } = usePipelines()
+  // A run's `target` is its pipeline's name, or a step's (layer's) name.
+  const pipelineModelsOf = useMemo(() => {
+    const index = new Map()
+    for (const p of pipelines || []) {
+      for (const name of [p.pipeline, ...(p.layers || []).map(l => l.name)]) {
+        index.set(name, [...new Set([...(index.get(name) || []), ...pipelineModels(p)])])
+      }
+    }
+    return name => index.get(name) || []
+  }, [pipelines])
+  const { data: desk, isLoading: deskLoading } = useDesk()
+  const checks = {
+    loading: deskLoading,
+    byReport: Object.fromEntries((desk?.builds || []).map(b => [b.report, b.verdict])),
+  }
+  // The newest successful build of each report, whatever the filters hide.
+  const latestBuild = {}
+  for (const r of [...(Array.isArray(everything) ? everything : []), ...(Array.isArray(data) ? data : [])]) {
+    if (BUILD_KINDS.has(r.kind) && r.status === 'succeeded' && r.target && r.id > (latestBuild[r.target] || 0)) {
+      latestBuild[r.target] = r.id
+    }
+  }
+  const runs = (Array.isArray(data) ? data : [])
+    .filter(r => !model || runModels(r, modelsOf, pipelineModelsOf).includes(model))
 
   return (
     <>
       <PageHeader pageKey="runs" model={model}
         sub={model
-          ? `Every build of ${model}'s reports: when, for whom, and whether it reproduced. Its refreshes are on Refresh.`
+          ? `Every build of ${model}'s reports and every refresh of its data: when, for whom, and whether it reproduced.`
           : 'What ran, when, for whom, and whether it reproduced. Only a receipt that reproduces reads green.'} />
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16, alignItems: 'flex-end' }}>
@@ -158,8 +196,9 @@ export default function Runs({ model = '' }) {
             </thead>
             <tbody>
               {runs.map(run => {
-                const verdict = runVerdict(run.verdict)
-                const page = reportPage(run, runModels(run, modelsOf))
+                const models = runModels(run, modelsOf, pipelineModelsOf)
+                const verdict = runVerdict(run, latestBuild, checks)
+                const page = reportPage(run, models)
                 const output = outputHref(run)
                 const dur = duration(run.started, run.finished)
                 return (
@@ -176,7 +215,7 @@ export default function Runs({ model = '' }) {
                         </>
                       )}
                     </td>
-                    {!model && <td style={{ fontSize: 12, color: 'var(--muted)' }}>{runModels(run, modelsOf).join(', ') || '—'}</td>}
+                    {!model && <td style={{ fontSize: 12, color: 'var(--muted)' }}>{models.join(', ') || '—'}</td>}
                     <td>
                       <Badge variant={STATUS[run.status] || 'gray'} style={{ textTransform: 'none' }}>
                         {run.status || '—'}
@@ -191,7 +230,7 @@ export default function Runs({ model = '' }) {
                     </td>
                     <td style={{ fontSize: 12 }}><Actor run={run} /></td>
                     <td>
-                      <Badge variant={verdict.variant} style={{ textTransform: 'none' }}>
+                      <Badge variant={verdict.variant} style={{ textTransform: 'none' }} title={verdict.title}>
                         {verdict.label}
                       </Badge>
                     </td>

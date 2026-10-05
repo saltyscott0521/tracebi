@@ -233,6 +233,22 @@ PAGE_CHECKS_JS = r"""
     }
   }
 
+  // Desktop: a flat row of three or more action buttons (Btn, or a download link)
+  // that wraps onto a second line has more actions than room. Group them: a menu,
+  // a quieter secondary set. (A picker of chips may wrap; it is not a row of actions.)
+  if (vw >= 1024) {
+    for (const row of document.querySelectorAll('main *')) {
+      if (!visible(row)) continue;
+      const s = getComputedStyle(row);
+      if (s.display !== 'flex' || s.flexWrap !== 'wrap') continue;
+      const acts = [...row.children].filter(k => visible(k) && k.matches('button[class^="btn-"],a.dl-link'));
+      const lines = new Set(acts.map(k => Math.round(k.getBoundingClientRect().top)));
+      if (acts.length >= 3 && lines.size > 1)
+        out.push({rule: 'action-row-wraps', severity: 'moderate', target: label(row),
+                  detail: `${acts.length} actions wrap onto ${lines.size} lines at ${vw}px`});
+    }
+  }
+
   // "Where am I": exactly one sidebar entry marks the page you are on.
   const current = document.querySelectorAll('nav.app-nav [aria-current="page"]').length;
   if (location.pathname !== '/no-such-page' && current !== 1)
@@ -263,7 +279,14 @@ PAGE_CHECKS_JS = r"""
 
 FOCUS_JS = r"""
 () => {
-  const el = document.activeElement;
+  let el = document.activeElement;
+  // Focus that is inside a report's frame belongs to the element inside it: judge
+  // that one, since the frame itself draws no ring.
+  while (el && el.tagName === 'IFRAME') {
+    const inner = el.contentDocument && el.contentDocument.activeElement;
+    if (!inner || inner === el.contentDocument.body) break;
+    el = inner;
+  }
   if (!el || el === document.body) return null;
   const s = getComputedStyle(el);
   const ring = (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) ||
