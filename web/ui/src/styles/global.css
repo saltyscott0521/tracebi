@@ -571,6 +571,11 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .reports-page .split-layout {
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
 }
+/* An open report gets the whole content width, at any screen size: the list
+   steps aside (its "← All reports" link brings it back), so a report is laid
+   out as wide as it will be read, and Build mode has the room for its workbench. */
+.reports-page--detail .split-layout { grid-template-columns: minmax(0, 1fr); }
+.reports-page--detail .split-layout > :first-child { display: none; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
@@ -933,9 +938,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .fullscreen-close:hover { background: var(--blue-lt); }
 .fullscreen-frame { flex: 1; width: 100%; border: 0; background: #fff; }
 
-/* Phone-only breadcrumb above a detail screen. */
-.mobile-only { display: none; }
-@media (max-width: 768px) { .mobile-only { display: block; } }
+/* The way back from an open item to its list. */
 .crumbs { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
 .crumbs button {
   font: inherit; font-weight: 600; color: var(--blue-md, var(--blue));
@@ -1045,6 +1048,27 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .section-title { font-size: var(--text-lg); font-weight: 600; color: var(--text); margin: 0 0 4px; }
 .section-sub { font-size: var(--text-caption); color: var(--muted); line-height: 1.6; margin: 0 0 14px; max-width: 74ch; }
 
+/* ── A report's action row: what to do (left), what to share or take (right) ── */
+.report-actions { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.report-actions__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+/* The Download list opens under the row, never wider than it, so it cannot leave a phone's screen. */
+.dl-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 20;
+  width: min(380px, 100%); padding: 4px;
+  background: var(--card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); box-shadow: var(--shadow-pop);
+}
+.dl-menu__item { display: block; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
+.dl-menu__item:hover { background: var(--card-hl); }
+.dl-menu__label { display: block; font-size: var(--text-caption); font-weight: 600; }
+.dl-menu__note { display: block; margin-top: 2px; font-size: var(--text-sm); line-height: 1.4; color: var(--muted); }
+/* A phone: the buttons share the row in a tidy grid, two across, instead of wrapping raggedly. */
+@media (max-width: 480px) {
+  .report-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-actions__more { display: contents; }
+  .report-actions button { width: 100%; justify-content: center; }
+}
+
 /* ── Build mode: the workbench beside the report ────────────────────────── */
 .build-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
 @media (max-width: 1100px) { .build-layout { grid-template-columns: minmax(0, 1fr); } }
@@ -1077,9 +1101,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   background: var(--blue-lt); border: 1px solid var(--blue-br);
   font-size: var(--text-caption); color: var(--text-2);
 }
-/* In Build mode the report list steps aside so the report and the workbench get the room. */
-.reports-page .split-layout:has(.build-layout) { grid-template-columns: minmax(0, 1fr); }
-.reports-page .split-layout:has(.build-layout) > :first-child { display: none; }
 .wb-version { cursor: pointer; padding-left: 8px; margin-left: -8px; border-left: 2px solid transparent; }
 .wb-version:hover { background: var(--card-hl); }
 .wb-version--on { border-left-color: var(--blue); }

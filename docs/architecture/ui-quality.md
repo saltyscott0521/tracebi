@@ -42,6 +42,8 @@ Checked by the script (rule name in brackets):
   cut off has a tooltip with the rest `[truncated-no-title]`.
 - **No blank half-pages.** A list-and-detail page opens on something, not on
   "Select an item" `[empty-detail-pane]`.
+- **A row of actions fits** `[action-row-wraps]`: three or more buttons in a
+  flat row do not wrap onto a second line at desktop width.
 - **It is quick.** Every page settles within 2.5s on the reference project
   `[slow-page]`. The JS bundle and the count of hard-coded colours never grow
   against the baseline `[metric:*]`.
@@ -125,4 +127,13 @@ Each fix that taught something general adds a line here.
   stroke. Use `var(--muted)` or `color-mix`, and check an edge renders.
 - A theme token the dark block does not set silently inherits the light value:
   `--blue` stayed near-black and every active tab and row vanished in dark.
-
+- A page that shows a fact another page shows uses the same words and chips,
+  from the same data: the Runs page shows the verdict the Reports page shows
+  (`/api/desk`) on a report's newest build, and a neutral "Not checked" on every
+  older one. A build row stores no verdict, so it never reads green by itself.
+- A row of seven buttons is a grouping problem, not a wrapping problem: one
+  primary action, the rest quiet, and a menu for the family (Download holds
+  HTML, Excel and PDF, each with its one-line caveat). An open item gets the
+  page's full width; its list is one click away.
+- Focus that sits inside a report's frame belongs to the element inside it, so
+  the audit judges that element; the frame draws no ring of its own.

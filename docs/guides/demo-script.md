@@ -28,12 +28,12 @@ Then, in the browser:
    Go to **Report** → `portfolio_dashboard`, then `portfolio_showcase`. A
    report that has never been built is built on first open and kept.
 2. **Make the "edited" copy for beat 3.** On `portfolio_dashboard`, click
-   **↓ HTML**. The build also saved the matching pair in
+   **↓ Download → HTML**. The build also saved the matching pair in
    `examples/portfolio_project/output/`:
    `portfolio_dashboard.html` and `portfolio_dashboard.html.manifest.json`.
    Copy both into a folder on your desktop called `demo/`. Then make a second
    copy of the pair named `edited.html` and `edited.html.manifest.json`.
-   Also download `portfolio_showcase` with **↓ HTML** into
+   Also download `portfolio_showcase` with **↓ Download → HTML** into
    `demo/`. You will use it for beat 2.
 3. Open `edited.html` in a plain text editor (TextEdit in plain-text mode, or
    Notepad). Find `285904445.21` (it appears once) and change it to
