@@ -614,13 +614,13 @@ POST /api/spec/render                                → build a spec and render
 GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/models
-GET  /api/models/{name}                              → tables, relationships, facts, dimensions
+GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
 GET  /api/models/{name}/tables/{t}/preview           → first N rows + dtypes + total_rows
 GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV attachment
 GET  /api/models/{name}/source                       → the model's file (read-only; the Code tab)
 GET  /api/connectors/{name}/source                   → the model file(s) that declare it
 GET  /api/pipelines/{name}/source                    → the pipeline file + the transform it runs
-POST /api/models/{name}/query                        → star-schema query + lineage graph
+POST /api/models/{name}/query                        → star-schema query + lineage graph; rows raw (data) and as report-formatted text (display)
 GET  /api/reports
 POST /api/reports/{name}/run                         → HTML + lineage manifest JSON (sync)
 POST /api/reports/{name}/runs                        → start background run; returns run_id (202)

@@ -271,6 +271,49 @@ def _ssr_cell(raw) -> str:
     return str(raw)
 
 
+def declared_column_formats(model, columns) -> dict:
+    """``{column: format}`` for the *columns* that are measures *model*
+    declares a format on — including a ratio's inputs, which a query returns as
+    their own columns. Presentation only: it picks how a number is written,
+    never which number."""
+    declared = model.measures()
+    return {c: declared[c].format for c in sorted(str(c) for c in columns)
+            if c in declared and declared[c].format}
+
+
+def table_number_formats(df, declared=None) -> dict:
+    """The format each numeric column of a table gets before an author's own
+    overrides: the shape-derived default (``derive_number_formats``, which
+    tracebi.js ``deriveFormat`` ports), then the model's declared format on a
+    measure, which wins. One place decides it, for the built report's tables and
+    for the web app's Explore results alike."""
+    from tracebi.reports.derive import derive_number_formats
+    numeric = {str(c) for c in df.select_dtypes(include="number").columns}
+    formats = derive_number_formats(df)      # dataset=None: shape-only == JS
+    formats.update({c: v for c, v in (declared or {}).items() if c in numeric})
+    return formats
+
+
+def display_rows(df, declared=None) -> list[dict]:
+    """Each row of *df* as the text a built report's table shows for it:
+    numeric columns through their format, everything else as plain text. The
+    raw values stay in *df*; this is only how they are written."""
+    numeric = {str(c) for c in df.select_dtypes(include="number").columns}
+    formats = table_number_formats(df, declared)
+    # Column by column, never iterrows: a row of an all-numeric frame is one
+    # float Series, which would print the year 1979 as "1979.0".
+    names = [str(c) for c in df.columns]
+    values = [df.iloc[:, i].tolist() for i in range(len(names))]
+    rows = []
+    for r in range(len(df)):
+        cells = {}
+        for name, col in zip(names, values):
+            fmt = formats.get(name) if name in numeric else None
+            cells[name] = _ssr_format(col[r], fmt) if fmt else _ssr_cell(col[r])
+        rows.append(cells)
+    return rows
+
+
 class _PythonDerivedSection(TableSection):
     """A carrier section for a ``report.py`` output (architecture §4).
 
@@ -815,10 +858,7 @@ class TemplatePackage:
             ds, model = frames.get(name), models.get(ref.model)
             if ds is None or model is None:
                 continue
-            declared = model.measures()
-            cols = {str(c) for c in ds.to_pandas().columns}
-            fmts = {c: declared[c].format for c in sorted(cols)
-                    if c in declared and declared[c].format}
+            fmts = declared_column_formats(model, ds.to_pandas().columns)
             if fmts:
                 out[name] = fmts
         return out
@@ -912,7 +952,7 @@ class TemplatePackage:
         re-register the table for filter/search.
         """
         import html as _html
-        from tracebi.reports.derive import derive_number_formats, humanise
+        from tracebi.reports.derive import humanise
         df = ds.to_pandas()
         cols = [str(c) for c in df.columns]
         allow = fig.attrs.get("data-tb-columns")
@@ -921,10 +961,9 @@ class TemplatePackage:
         if not cols:
             return None
         numeric = {str(c) for c in df.select_dtypes(include="number").columns}
-        formats = derive_number_formats(df)      # dataset=None: shape-only == JS
         # A format the model declares on a measure beats the shape guess (the
         # runtime reads the same map from the tracebi-formats block).
-        formats.update({c: v for c, v in (declared or {}).items() if c in numeric})
+        formats = table_number_formats(df, declared)
         # Author overrides win over the derived defaults (validated at build);
         # a format applies only to a numeric column, as in the runtime.
         labels = parse_column_map(fig.attrs.get("data-tb-labels"))
