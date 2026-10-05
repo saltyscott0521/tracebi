@@ -1,7 +1,7 @@
-### Changed — the app's look: Geist type, one cobalt, a nav that follows the data
+### Changed — the app's look: Hanken Grotesk type, one cobalt, a nav that follows the data
 
-- **Type:** Geist Sans and Geist Mono (self-hosted, variable) replace Source
-  Sans, Inter and Source Code Pro. Every number uses tabular figures.
+- **Type:** Hanken Grotesk (variable) and IBM Plex Mono, both self-hosted,
+  replace Source Sans, Inter and Source Code Pro. Every number uses tabular figures.
 - **Colour:** one cobalt blue (`#2f5bea`, lighter on dark) used where you act or
   are: the primary button, the selected row, the active tab, links, focus, the
   logo tile. Grounds are neutral, borders are hairlines, and the sidebar is a
@@ -16,6 +16,6 @@
   authoring-form chip is neutral, hardcoded colours in components 90 -> 13
   (tokens with dark values), pipeline edges regained their stroke, and the
   "warehouse.duckdb" pill is no longer clipped.
-- `scripts/ui_audit.py` enforces the look: Geist loaded, a brand that stays in
+- `scripts/ui_audit.py` enforces the look: Hanken Grotesk loaded, a brand that stays in
   its blue family, dark sets its own ink, no resting shadows, no decorative
   gradients or blur.

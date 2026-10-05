@@ -136,6 +136,12 @@ class TestStackOrder:
         assert html.count("Content-Security-Policy") == 1
         assert "http://" not in html.replace("http://www.w3.org", "")
         assert 'src="https://' not in html and "@import" not in html
+        # The typeface travels inside the file: inlined (the CSP allows font-src
+        # data: only), never fetched, and the first face the stylesheet names.
+        assert 'font-family:"Hanken Grotesk"' in html
+        assert 'url("data:font/woff2;base64,' in html
+        assert not any(f"url({q}http" in html for q in ("", "'", '"'))
+        assert '--tb-font: "Hanken Grotesk"' in html
 
 
 # ── the receipt block ───────────────────────────────────────────────────────

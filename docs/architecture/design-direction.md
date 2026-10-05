@@ -93,8 +93,9 @@ grounds was picked from six side-by-side options.)
 - **Borders, not boxes.** 1px hairlines separate regions; no cards inside
   cards, no gradients, no backdrop blur, no resting shadows (a menu or popover
   may have one). ◆
-- **Type: Geist Sans and Geist Mono** (both SIL OFL), replacing Source Sans,
-  Inter and Source Code Pro. 14px body, 13px in dense lists, tabular numerals
+- **Type: Hanken Grotesk and IBM Plex Mono** (both SIL OFL), replacing Source
+  Sans, Inter and Source Code Pro. A clean, tightly set grotesque in the spirit
+  of Vercel's and Supabase's faces, without copying one. 14px body, 13px in dense lists, tabular numerals
   for every figure, mono for every identifier (model, table, binding, id). ◆
 - **Radius 6px, sidebar the same ground as the page**, not a separate navy
   slab. Page header small (20px): the page is the content, not the title.
@@ -120,12 +121,14 @@ grounds was picked from six side-by-side options.)
    `tracebi dev <name> --app` opens it in one command (opt-in until the app
    matches the classic workbench: per-binding data cards, lint, discovery).
 4. **The theme pass,** one surface at a time through the audit loop.
-   - Foundation (done): Geist Sans and Mono; cobalt as the one brand colour on
+   - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline
      borders; no gradients, blur or resting shadows. The nav follows the data:
      Build (Sources, Refresh, Data model), then Use (Explore, Reports, Runs).
      The audit enforces it: `theme-font`, `theme-brand-colour`,
      `theme-dark-ink`, `theme-shadow`, `theme-decoration`.
-   - Still to do: lists as console rows throughout, the report defaults
-     (`tracebi.css`, so a report matches the app), the logo and illustrations,
-     and a second look at density on each page.
+   - Report defaults (done): `tracebi.css` takes the same type, grounds and
+     cobalt, so a report matches the app. Hanken Grotesk is inlined into the file
+     (`stack.font_face_css`); controls and inline code are finished.
+   - Still to do: lists as console rows throughout, the logo and
+     illustrations, and a second look at density on each page.

@@ -55,12 +55,15 @@ Checked by the script (rule name in brackets):
 - **Every model has a pipeline** `[model-without-pipeline]`: something its
   Refresh page can run. A pipeline belongs to the models it names
   (`runner.models`), else the one `model_pipeline` stamped, else its own name.
-- **The look** ([[design-direction]]): Geist loads `[theme-font-loaded]`
+- **The look** ([[design-direction]]): Hanken Grotesk loads `[theme-font-loaded]`
   `[theme-font]`; the brand is cobalt and stays in its blue family, and other
   colour means something (green reproduces, amber needs a look, red does not
   reproduce) `[theme-brand-colour]`; the dark theme
   sets its own ink `[theme-dark-ink]`; resting shadows are none
   `[theme-shadow]`; no decorative gradients or blur `[theme-decoration]`.
+- **A report carries the same look** `[report-style]`: `tracebi.css` leads with
+  Hanken Grotesk (inlined, not fetched) and every report text token reads at 4.5:1 on
+  every surface a report puts text on.
 - **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
   `[hex-alpha-concat]`.
 
