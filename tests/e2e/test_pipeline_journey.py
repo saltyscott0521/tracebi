@@ -237,6 +237,8 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
     assert done["status"] == "succeeded", text
     # The transform ran through `tracebi run-transform`, whose own output used to be thrown away.
     assert "Running transforms/sample_transform.py" in text
+    # Paths read as the project's own, not the machine's.
+    assert "→ output/sample_model/sample_dashboard.html\n" in text
     assert text.index("[transform]") < text.index("[build]")
     # The run says which reports it rebuilt, for the page to link to.
     assert c.get(f"/api/pipelines/sample_model/runs/{run['run_id']}").json()["reports"] == [
