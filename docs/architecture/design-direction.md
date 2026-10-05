@@ -66,21 +66,27 @@ pages on a separate server, you cannot click the report itself (pinning is a
 browser pop-up from a list), and the agent cannot tell what you are pointing
 at. Build mode closes those, in the app.
 
-## The look: Vercel's restraint, Supabase's console
+## The look: Vercel's restraint, Supabase's console, one blue
 
 Both are developer tools that trust the reader with density and use colour
-sparingly. Take what they share and add what TraceBi needs.
+sparingly. Take that restraint (type, hairlines, no gloss) and spend one blue in
+few places. (First pass went black and white, then back to the old navy, which
+read heavy: sleek is blue as an accent, not as a field. Cobalt on neutral
+grounds was picked from six side-by-side options.)
 
 **Rules** (each is checkable; the audit gains a check for the ones marked ◆):
 
-- **Monochrome first.** Neutrals carry the interface. The primary button is
-  inverted (near-black on light, near-white on dark). There is no brand
-  accent colour. ◆
-- **Colour means something, and only that.** Green is *reproduces*. Amber is
+- **Quiet colour: one cobalt, used where you act or are.** Cobalt (`#2f5bea`)
+  is the brand: the primary button, the selected row, the active tab, links,
+  focus, the logo tile; a lighter cobalt on dark and for the active nav icon.
+  Grounds are neutral (`#fafafa` / `#0a0a0a`) with hairline borders, and the
+  sidebar is a near-black slab in both themes. The brand stays in its blue
+  family. ◆
+- **Beyond the brand, colour means something.** Green is *reproduces*. Amber is
   *needs a look* (source changed, checks stale). Red is *does not reproduce*
-  or failed. Blue is a link or the focus ring. Supabase's signature green is
-  deliberately not borrowed as a brand colour: green is already spoken for.
-  ◆ (a colour token used for decoration, outside status, fails)
+  or failed. Supabase's signature green is deliberately not borrowed as a brand
+  colour: green is already spoken for. A decorative amber chip reads as a
+  warning.
 - **Dark and light are both designed.** Follow the OS setting until the viewer
   chooses. Dark is near-black with 1px borders and no glow (Supabase's
   craft); light is white with 1px borders (Vercel's).
@@ -114,11 +120,12 @@ sparingly. Take what they share and add what TraceBi needs.
    `tracebi dev <name> --app` opens it in one command (opt-in until the app
    matches the classic workbench: per-binding data cards, lint, discovery).
 4. **The theme pass,** one surface at a time through the audit loop.
-   - Foundation (done): Geist Sans and Mono, monochrome ink, neutral grounds
-     that follow the OS in light and dark, hairline borders, no gradients,
-     blur or resting shadows, a sidebar on the page's own ground. The audit
-     enforces it: `theme-font`, `theme-brand-colour`, `theme-shadow`,
-     `theme-decoration`.
+   - Foundation (done): Geist Sans and Mono; cobalt as the one brand colour on
+     neutral grounds that follow the OS; a near-black sidebar slab; hairline
+     borders; no gradients, blur or resting shadows. The nav follows the data:
+     Build (Sources, Refresh, Data model), then Use (Explore, Reports, Runs).
+     The audit enforces it: `theme-font`, `theme-brand-colour`,
+     `theme-dark-ink`, `theme-shadow`, `theme-decoration`.
    - Still to do: lists as console rows throughout, the report defaults
      (`tracebi.css`, so a report matches the app), the logo and illustrations,
      and a second look at density on each page.

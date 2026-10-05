@@ -546,7 +546,7 @@ SURFACE_TOKENS = ("--bg", "--surface", "--surface-2", "--card", "--card-hl")
 
 def _tokens(css: str, selector: str) -> dict:
     m = re.search(re.escape(selector) + r"\s*\{(.*?)\n\}", css, re.S)
-    return dict(re.findall(r"(--[\w-]+):\s*(#[0-9a-fA-F]{6})\b", m.group(1))) if m else {}
+    return dict(re.findall(r"(--[\w-]+):\s*(#[0-9a-fA-F]{6}\b|rgba\([^)]*\))", m.group(1))) if m else {}
 
 
 def _contrast(a: str, b: str) -> float:
@@ -579,13 +579,33 @@ def token_findings() -> list[dict]:
                             "theme": theme, "rule": "token-contrast", "severity": "serious",
                             "target": f"{fg} on {bg}",
                             "detail": f"{t[fg]} on {t[bg]} is {r:.2f}:1 in {theme} (needs 4.5)"})
+    # Text on its own wash: a badge or link-button is --x-text on --x-lt laid over a
+    # surface. The wash is translucent, so blend it first.
+    def blend(rgba: str, base: str) -> str:
+        r, g, b, a = (float(x) for x in re.findall(r"[\d.]+", rgba)[:4])
+        under = [int(base[k:k + 2], 16) for k in (1, 3, 5)]
+        return "#" + "".join(f"{round(c * a + u * (1 - a)):02x}" for c, u in zip((r, g, b), under))
+
+    for theme, t in themes.items():
+        for name, wash in (("--accent-text", "--blue-lt"), ("--green-text", "--green-lt"),
+                           ("--amber-text", "--amber-lt"), ("--red-text", "--red-lt")):
+            for ground in ("--card", "--bg", "--surface-2"):
+                if all(k in t for k in (name, wash, ground)) and t[wash].startswith("rgba") and t[ground].startswith("#"):
+                    once = blend(t[wash], t[ground])
+                    twice = blend(t[wash], once)         # a tinted button inside a tinted box
+                    for layers, under in (("", once), (" twice", twice)):
+                        if (r := _contrast(t[name], under)) < 4.5:
+                            out.append({"page": "(tokens)", "pattern": "(tokens)", "viewport": "-",
+                                        "theme": theme, "rule": "token-contrast", "severity": "serious",
+                                        "target": f"{name} on {wash}{layers} over {ground}",
+                                        "detail": f"{t[name]} on {under} is {r:.2f}:1 in {theme} (needs 4.5)"})
     return out
 
 
 def theme_findings() -> list[dict]:
-    """The look, as rules ([[design-direction]]): Geist, monochrome ink, no
-    gradients or blur, shadows only on popovers. Colour is for meaning, so the
-    "brand" tokens must stay neutral: only --link and --focus-ring are blue.
+    """The look, as rules ([[design-direction]]): Geist, a cobalt brand that stays in
+    its blue family, no gradients or blur, shadows only on popovers. Other colour
+    means something: the status tokens, the diagram roles.
     """
     out = []
     ui = REPO / "web" / "ui" / "src"
@@ -609,13 +629,19 @@ def theme_findings() -> list[dict]:
     for name in ("--blue", "--accent-text", "--ink", "--on-ink"):
         if name in light and name not in dark_own:
             finding("theme-dark-ink", name, f"{name} is not set for dark mode")
+    # The brand is cobalt and its blues. Any saturated brand token outside that family
+    # (a purple, a green) is decoration spending a colour that means something.
+    import colorsys
     for theme, t in themes.items():
-        for name in ("--blue", "--accent-text", "--ink", "--brand"):
+        for name in ("--blue", "--blue-md", "--accent-text", "--accent-text-2", "--ink", "--brand", "--brand-text"):
             v = t.get(name)
-            if v and (spread := max(int(v[i:i + 2], 16) for i in (1, 3, 5))
-                      - min(int(v[i:i + 2], 16) for i in (1, 3, 5))) > 12:
+            if not v:
+                continue
+            r, g, b = (int(v[i:i + 2], 16) / 255 for i in (1, 3, 5))
+            h, _, sat = colorsys.rgb_to_hls(r, g, b)
+            if sat > 0.2 and not (195 <= h * 360 <= 250):
                 finding("theme-brand-colour", f"{name} ({theme})",
-                        f"{v} has colour (spread {spread}); ink is neutral, colour is for meaning")
+                        f"{v} is hue {h * 360:.0f}; the brand is cobalt and its blues (195-250)")
     for m in re.finditer(r"\n\s*(--shadow[\w-]*):\s*([^;]*);", css):
         if m.group(1) != "--shadow-pop" and m.group(2).strip() != "none":
             finding("theme-shadow", m.group(1), f"{m.group(1)} is {m.group(2).strip()[:40]}; resting shadows are none")

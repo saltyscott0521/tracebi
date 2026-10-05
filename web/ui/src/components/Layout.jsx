@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useModels } from '../api'
-import { PAGES, pagePath, lastModel } from '../nav'
+import { GROUPS, PAGES, pagePath, lastModel } from '../nav'
 import { ModelSwitcher, useScope } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
@@ -119,20 +119,25 @@ function NavItem({ path, label, icon, onNavigate, end }) {
           textDecoration: 'none',
           fontSize: 13,
           fontWeight: isActive ? 500 : 400,
-          background: isActive ? 'var(--card-hl)' : 'transparent',
+          background: isActive ? 'var(--sidebar-active)' : 'transparent',
         })}
       >
-        {icon && ICONS[icon] && (
-          <span style={{
-            width: 15, height: 15,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            opacity: 0.9,
-          }}>
-            {ICONS[icon]}
-          </span>
+        {({ isActive }) => (
+          <>
+            {icon && ICONS[icon] && (
+              <span style={{
+                width: 15, height: 15,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                opacity: isActive ? 1 : 0.85,
+                color: isActive ? 'var(--sidebar-accent)' : 'inherit',
+              }}>
+                {ICONS[icon]}
+              </span>
+            )}
+            {label}
+          </>
         )}
-        {label}
       </NavLink>
     </li>
   )
@@ -260,8 +265,8 @@ export default function Layout({ children }) {
           style={{
             display: 'none',
             position: 'absolute', top: 10, right: 10,
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
+            background: 'var(--sidebar-field)',
+            border: '1px solid var(--sidebar-field-border)',
             borderRadius: 6, width: 32, height: 32,
             alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
@@ -276,7 +281,7 @@ export default function Layout({ children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <BrandMark />
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                 TraceBi
               </div>
               <div style={{ fontSize: 11, color: 'var(--sidebar-text)', marginTop: 1 }}>
@@ -290,7 +295,7 @@ export default function Layout({ children }) {
             style={{
               width: '100%',
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'var(--surface)', border: '1px solid var(--border)',
+              background: 'var(--sidebar-field)', border: '1px solid var(--sidebar-field-border)',
               borderRadius: 6, padding: '7px 10px', cursor: 'pointer',
               color: 'var(--sidebar-text)', fontSize: 12, fontFamily: 'inherit',
               transition: 'background .15s',
@@ -302,16 +307,19 @@ export default function Layout({ children }) {
             Search…
             <kbd style={{
               marginLeft: 'auto', fontSize: 10, padding: '1px 5px',
-              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              background: 'var(--sidebar-field)', border: '1px solid var(--sidebar-field-border)',
               borderRadius: 3, color: 'var(--sidebar-text)',
             }}>⌘K</kbd>
           </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          <NavSection items={PAGES.map(p => ({
-            path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
-          }))} onNavigate={close} />
+          {GROUPS.map(g => (
+            <NavSection key={g.key} label={g.label} onNavigate={close}
+              items={PAGES.filter(p => p.group === g.key).map(p => ({
+                path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
+              }))} />
+          ))}
           <NavSection label="Tools" items={NAV_TOOLS} onNavigate={close} />
         </div>
 
@@ -331,8 +339,8 @@ export default function Layout({ children }) {
               <a href={update.url || '#'} target="_blank" rel="noreferrer"
                  title={`TraceBi ${update.latest} is available. To update this ${update.kind} install:\n${update.command}\n\n(or run: tracebi update)`}
                  style={{
-                   fontSize: 10.5, fontWeight: 600, color: 'var(--link)', textDecoration: 'none',
-                   border: '1px solid var(--border-strong)', borderRadius: 999,
+                   fontSize: 10.5, fontWeight: 600, color: 'var(--sidebar-accent)', textDecoration: 'none',
+                   border: '1px solid var(--sidebar-field-border)', borderRadius: 999,
                    padding: '1px 7px', whiteSpace: 'nowrap',
                  }}>
                 v{update.latest} available
@@ -342,8 +350,8 @@ export default function Layout({ children }) {
               onClick={() => { setChose(true); setDark(d => !d) }}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
               style={{
-                marginLeft: 'auto', background: 'var(--surface)',
-                border: '1px solid var(--border)', borderRadius: 5,
+                marginLeft: 'auto', background: 'var(--sidebar-field)',
+                border: '1px solid var(--sidebar-field-border)', borderRadius: 5,
                 color: 'var(--sidebar-text)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 26, height: 26, flexShrink: 0, transition: 'background .15s',

@@ -2,29 +2,36 @@
 // model. Pick a model and every page narrows to it; pick "All models" and
 // every row says which model it belongs to.
 //
+//   /m/<model>/sources    Sources           /sources
+//   /m/<model>/refresh    Refresh           /refresh
 //   /m/<model>            Data model        /models     (all: pick a model)
 //   /m/<model>/explore    Explore           /explore    (all: pick a model)
-//   /m/<model>/refresh    Refresh           /refresh
 //   /m/<model>/reports    Reports           /reports
-//   /m/<model>/sources    Sources           /sources
 //   /m/<model>/runs       Runs              /runs
 //
 // The convention that ties them (and what model_pipeline stamps): the model
 // file models/<model>.py, its pipeline pipelines/<model>.py, its reports
 // under reports/<model>/.
 
+// In the order the data moves: where it is kept, how it is rebuilt, what it
+// means; then what you do with it. The sidebar shows the two groups.
+export const GROUPS = [
+  { key: 'build', label: 'Build' },
+  { key: 'use',   label: 'Use' },
+]
+
 export const PAGES = [
-  { key: 'model',   label: 'Data model', icon: 'models',     all: '/models',
-    sub: 'Its tables, how they join, and the measures it defines.' },
-  { key: 'explore', label: 'Explore',    icon: 'explore',    all: '/explore',
-    sub: 'Ask a question and see the query behind the answer.' },
-  { key: 'refresh', label: 'Refresh',    icon: 'pipelines',  all: '/refresh',
-    sub: 'Rebuild the data, then the reports that read it.' },
-  { key: 'reports', label: 'Reports',    icon: 'reports',    all: '/reports',
-    sub: 'What people read. Every number carries its receipt.' },
-  { key: 'sources', label: 'Sources',    icon: 'connectors', all: '/sources',
+  { key: 'sources', group: 'build', label: 'Sources',    icon: 'connectors', all: '/sources',
     sub: 'Where the data is kept: a file, a folder or a database.' },
-  { key: 'runs',    label: 'Runs',       icon: 'runs',       all: '/runs',
+  { key: 'refresh', group: 'build', label: 'Refresh',    icon: 'pipelines',  all: '/refresh',
+    sub: 'Rebuild the data, then the reports that read it.' },
+  { key: 'model',   group: 'build', label: 'Data model', icon: 'models',     all: '/models',
+    sub: 'Its tables, how they join, and the measures it defines.' },
+  { key: 'explore', group: 'use',   label: 'Explore',    icon: 'explore',    all: '/explore',
+    sub: 'Ask a question and see the query behind the answer.' },
+  { key: 'reports', group: 'use',   label: 'Reports',    icon: 'reports',    all: '/reports',
+    sub: 'What people read. Every number carries its receipt.' },
+  { key: 'runs',    group: 'use',   label: 'Runs',       icon: 'runs',       all: '/runs',
     sub: 'What ran, when, for whom, and whether it reproduced.' },
 ]
 

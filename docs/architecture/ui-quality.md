@@ -56,9 +56,9 @@ Checked by the script (rule name in brackets):
   Refresh page can run. A pipeline belongs to the models it names
   (`runner.models`), else the one `model_pipeline` stamped, else its own name.
 - **The look** ([[design-direction]]): Geist loads `[theme-font-loaded]`
-  `[theme-font]`; the ink and every "brand" token stay neutral, because colour
-  is for meaning (green reproduces, amber needs a look, red does not
-  reproduce, blue is a link or focus) `[theme-brand-colour]`; the dark theme
+  `[theme-font]`; the brand is cobalt and stays in its blue family, and other
+  colour means something (green reproduces, amber needs a look, red does not
+  reproduce) `[theme-brand-colour]`; the dark theme
   sets its own ink `[theme-dark-ink]`; resting shadows are none
   `[theme-shadow]`; no decorative gradients or blur `[theme-decoration]`.
 - **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
