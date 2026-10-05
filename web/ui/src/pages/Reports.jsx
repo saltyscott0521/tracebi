@@ -526,7 +526,8 @@ function ReportDetail({ report, onBack }) {
           )}
           <ReportReceipt manifest={shown.manifest} />
           <div className="report-actions">
-            <Btn onClick={handleRun} disabled={running} size="sm"
+            {/* One filled button: Rebuild, or Build while Build mode is on. */}
+            <Btn onClick={handleRun} disabled={running} size="sm" variant={pointOn ? 'outline' : 'primary'}
                  title="Re-run every query and build the report again">
               {running ? <><Spinner size={12} /> Rebuilding…</> : '↺ Rebuild'}
             </Btn>
