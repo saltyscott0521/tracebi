@@ -291,6 +291,10 @@ _INIT_SAMPLE_TRANSFORM = _scaffold_text("init_sample_transform.py.txt")
 
 _INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.py.txt")
 
+# The pipeline every model gets (tracebi.pipeline.model_pipeline): the
+# transform, then the model's reports. It is what the app's Refresh page runs.
+_INIT_SAMPLE_PIPELINE = _scaffold_text("init_sample_pipeline.py.txt")
+
 # The sample report is an ARTIFACT PACKAGE — the one report lane — so the
 # first page a new project renders demonstrates the real product: figure
 # claims, the presentation stack, provenance badges, and a receipt that
@@ -350,9 +354,8 @@ route works either way.)
 The scaffold is a complete working example — messy input included:
 
 ```bash
-python transforms/sample_transform.py       # ① clean + sink → data/warehouse.duckdb
-tracebi report build sample_dashboard       # ③ render → output/sample_dashboard.html + receipt
-tracebi verify output/sample_dashboard.html.manifest.json   # every checked section: REPRODUCES
+tracebi run-pipeline sample_model           # ① clean + sink, then ③ build → output/sample_model/sample_dashboard.html + receipt
+tracebi verify output/sample_model/sample_dashboard.html.manifest.json   # every checked section: REPRODUCES
 tracebi serve                               # browse it at http://127.0.0.1:8000
 ```
 
@@ -365,7 +368,7 @@ warehouse. The offline check re-hashes the data embedded in the file against
 the receipt it carries:
 
 ```bash
-tracebi verify --file output/sample_dashboard.html   # FILE INTACT, or names what was altered
+tracebi verify --file output/sample_model/sample_dashboard.html   # FILE INTACT, or names what was altered
 ```
 
 ## Layout
@@ -375,8 +378,8 @@ tracebi verify --file output/sample_dashboard.html   # FILE INTACT, or names wha
 ├── inputs/           Phase ⓪ — raw pulls (orders.csv is the sample)
 ├── transforms/       Phase ① — pandas that reads inputs/, sinks star tables
 ├── models/           Phase ② — each .py exposes `model` (a DataModel)
-├── reports/          Phase ③ — ReportSpec .json, packages, and factories
-├── pipelines/        PipelineRunner definitions — each .py exposes `runner`
+├── reports/          Phase ③ — one folder per model: reports/<model>/<report>/
+├── pipelines/        One per model: transform, then build its reports — each .py exposes `runner`
 ├── data/             The warehouse (gitignored)
 ├── output/           Rendered reports; *.manifest.json receipts stay tracked
 └── .env.example      Copy to `.env` and fill in credentials
@@ -399,12 +402,17 @@ is half the audit story.
    phase; the contract is what lands.
 4. `tracebi new-model "Sales"` — declare the star schema over those tables.
    `tracebi validate` confirms it loads and its dimension keys are unique.
-5. Copy `reports/sample_dashboard/` (or `tracebi new-report "My Report"`),
-   point its `report.json` bindings at your model, and put figures in the
-   template: `data-tb-figure` + `data-tb-binding` on any element — spans in
-   prose included. `tracebi dev my_report` opens the live loop (edit, watch,
-   pin). Exploration happens *inside* the artifact — blocks marked
+5. Reports go in a folder named for their model: copy
+   `reports/sample_model/sample_dashboard/` to `reports/sales/my_report/` (or
+   `tracebi new-report "sales/My Report"`), point its `report.json` bindings
+   at your model, and put figures in the template: `data-tb-figure` +
+   `data-tb-binding` on any element — spans in prose included.
+   `tracebi dev sales/my_report` opens the live loop (edit, watch, pin).
+   Exploration happens *inside* the artifact — blocks marked
    `data-tb-stage="exploration"` die at the final build.
+6. Copy `pipelines/sample_model.py` to `pipelines/sales.py` and name your model
+   and transform in it. `tracebi run-pipeline sales` then runs the transform
+   and rebuilds the model's reports, and the app's Refresh page runs the same.
 
 ## Agents
 
@@ -461,16 +469,14 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / "inputs" / "orders.csv":   _INIT_SAMPLE_CSV,
         target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,
         target / "models" / "sample_model.py": _INIT_SAMPLE_MODEL,
-        target / "reports" / "sample_dashboard" / "report.json":
+        target / "pipelines" / "sample_model.py": _INIT_SAMPLE_PIPELINE,
+        target / "reports" / "sample_model" / "sample_dashboard" / "report.json":
             _INIT_SAMPLE_REPORT_JSON,
-        target / "reports" / "sample_dashboard" / "template.html":
+        target / "reports" / "sample_model" / "sample_dashboard" / "template.html":
             _INIT_SAMPLE_TEMPLATE_HTML,
         target / ".mcp.json": _INIT_MCP_JSON,
         target / ".cursor" / "mcp.json": _INIT_MCP_JSON,
     }
-    # Keep the still-empty discovery directories in git so the layout
-    # survives a clone.
-    files[target / "pipelines" / ".gitkeep"] = ""
 
     for path, content in files.items():
         if path.exists() and not args.force:
@@ -482,10 +488,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(f"Initialised TraceBi project at {target}")
     print(f"  cd {target.name}")
     print(f"  git init && git add . && git commit -m init   # manifests stamp the commit (git_sha)")
-    print(f"  python transforms/sample_transform.py  # ① clean + sink the sample input")
-    print(f"  tracebi report build sample_dashboard  # ③ render + receipt")
-    print(f"  tracebi verify output/sample_dashboard.html.manifest.json   # re-run the queries")
-    print(f"  tracebi verify --file output/sample_dashboard.html          # a reviewer's offline check (the .html + its .manifest.json)")
+    print(f"  tracebi run-pipeline sample_model      # ① clean + sink, then ③ build the report + receipt")
+    print(f"  tracebi verify output/sample_model/sample_dashboard.html.manifest.json   # re-run the queries")
     print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
     print(f"AGENTS.md orients an AI agent working in this project.")
     return 0

@@ -671,16 +671,23 @@ def _conventions() -> dict:
                 "path": "pipelines/",
                 "must_define": "runner",
                 "type": "PipelineRunner",
-                "note": "Also loadable via tracebi.pipeline_registry.get_runner(name)",
+                "note": "Also loadable via tracebi.pipeline_registry.get_runner(name). "
+                        "One per model: runner = model_pipeline(\"<model>\", "
+                        "transform=\"<transform>\") (from tracebi import "
+                        "model_pipeline). `tracebi run-pipeline <model>` runs "
+                        "the transform, then builds every report in "
+                        "reports/<model>/; the app's Refresh page runs the same.",
             },
             {
                 "path": "reports/",
                 "must_define": None,
                 "type": "report package",
-                "note": "A report is a PACKAGE: reports/<name>/ (report.json + "
+                "note": "A report is a PACKAGE, in a folder named for its model: "
+                        "reports/<model>/<name>/ (report.json + "
                         "template.html, plus optional style.css / script.js), "
-                        "or a reports/<name>.json spec compiled into one. "
-                        "Scaffold with `tracebi new-report \"<name>\"`. There "
+                        "or a reports/<model>/<name>.json spec compiled into "
+                        "one. Scaffold with `tracebi new-report "
+                        "\"<model>/<name>\"`. There "
                         "is one renderer: a registered report with no package "
                         "is refused, never served as a weaker page.",
             },

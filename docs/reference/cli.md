@@ -38,8 +38,9 @@ Scaffolds a complete three-phase project whose sample loop ends in
 `tracebi verify` printing REPRODUCES.
 
 Creates `inputs/ transforms/ models/ pipelines/ reports/ scheduled/ data/
-output/`, plus a sample transform, model and report package, `.gitignore`,
-`.env.example`, `README.md` and `AGENTS.md`.
+output/`, plus a sample transform, model, pipeline and report package
+(`reports/sample_model/sample_dashboard/`), `.gitignore`, `.env.example`,
+`README.md` and `AGENTS.md`.
 
 - `--force` — overwrite existing files, and required to init into a non-empty
   directory. Without it, an existing file is skipped with a note and the run
