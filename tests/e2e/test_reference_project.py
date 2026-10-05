@@ -71,6 +71,30 @@ def test_every_report_reproduces_and_its_file_is_intact(built, name):
     assert "FILE INTACT" in out
 
 
+def test_the_working_preview_formats_numbers_like_the_build(built):
+    """The dev preview and the Build-mode preview render the working state
+    (`render_exploration`); a snapshot is the same render, on disk. It must
+    carry the model's declared column formats the build embeds, or a table
+    that ships as $35,736,396 and 100.4% previews as 35,736,396.18 and 1.00."""
+    import re
+
+    name = "portfolio_model/portfolio_overview"
+    code, out = run_cli("report", "snapshot", name)
+    assert code == 0, out
+
+    def formats(path):
+        html = path.read_text(encoding="utf-8")
+        block = re.search(
+            r'<script id="tracebi-formats" type="application/json">(.*?)</script>', html)
+        assert block, f"{path.name} has no tracebi-formats block"
+        return json.loads(block.group(1))
+
+    shipped = formats(built / "output" / f"{name}.html")
+    assert shipped["top_issuers"] == {
+        "cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}
+    assert formats(built / "output" / f"{name}.snapshot.html") == shipped
+
+
 def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(built):
     """The convention: reports/<model>/ holds a model's reports, and
     pipelines/<model>.py rebuilds its data and then those reports."""
