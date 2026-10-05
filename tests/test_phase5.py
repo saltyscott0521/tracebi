@@ -1825,9 +1825,8 @@ class TestConsumerProjectPath:
     """
 
     def test_discovery_dirs_survive_a_clone(self, tmp_path):
-        """Empty directories vanish in git without a keepfile. models/ and
-        reports/ now survive via their scaffolded sample files; the dirs
-        init leaves empty still need a .gitkeep."""
+        """Empty directories vanish in git without a keepfile. models/,
+        pipelines/ and reports/ survive via their scaffolded sample files."""
         from tracebi.cli import main
 
         target = tmp_path / "proj"

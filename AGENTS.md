@@ -19,12 +19,18 @@ materialized artifact handed across the boundary:
 |---|---|---|---|
 | ① **Transform** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables. Notebook-shaped by scaffold (`# %%` percent cells + markdown cells — editors open them AS notebooks; the file stays reviewable Python); literal `.ipynb` works too, and `tracebi run-transform` executes either top-to-bottom fresh | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
-| ③ **Report** | `reports/` | an **artifact package** (`reports/<name>/`, or in a folder, `reports/finance/<name>/`, named `finance/<name>` in every command: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
+| ③ **Report** | `reports/` | an **artifact package**, in a folder named for its model (`reports/<model>/<name>/`, named `<model>/<name>` in every command: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
 
 Reference implementation, end to end, at `examples/portfolio_project/`:
 `transforms/holdings_transform.py` → `models/portfolio_model.py` →
 `reports/portfolio_model/portfolio_dashboard.json`, wired by `run_workflow.py`.
 `docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
+
+A model also gets a pipeline, `pipelines/<model>.py` (`runner =
+model_pipeline("<model>", transform="<transform>")`): `tracebi run-pipeline
+<model>` runs the transform, then builds every report in `reports/<model>/`,
+and the app's Refresh page runs the same. `tracebi init` scaffolds exactly this
+for `sample_model`.
 
 The split earns its keep at the freeze points: the slow, unconstrained analysis
 (①) and the fast, iterated reporting (③) never block each other, because the

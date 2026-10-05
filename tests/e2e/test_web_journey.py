@@ -34,7 +34,7 @@ def served(scaffolded, monkeypatch):
     code, out = run_cli("run-transform", "sample_transform")
     assert code == 0, out
     found = discovery.rescan("reports", "models", "pipelines")
-    assert "sample_dashboard" in found["added"], found
+    assert "sample_model/sample_dashboard" in found["added"], found
     return TestClient(app)
 
 
@@ -45,32 +45,32 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
     assert "version" in status
 
     names = [r["name"] for r in c.get("/api/reports").json()]
-    assert "sample_dashboard" in names
+    assert "sample_model/sample_dashboard" in names
 
-    run = c.post("/api/reports/sample_dashboard/run")
+    run = c.post("/api/reports/sample_model/sample_dashboard/run")
     assert run.status_code == 200, run.text
     body = run.json()
     assert "<html" in body["html"].lower()
     assert body["manifest"]["figures"], "a run returns its receipt"
 
-    built = c.get("/api/reports/sample_dashboard/built")
+    built = c.get("/api/reports/sample_model/sample_dashboard/built")
     assert built.status_code == 200 and "<html" in built.json()["html"].lower()
 
-    share = c.get("/r/sample_dashboard")
+    share = c.get("/r/sample_model/sample_dashboard")
     assert share.status_code == 200
     assert share.headers["content-type"].startswith("text/html")
     assert "tracebi-receipt" in share.text
 
-    html = c.get("/api/reports/sample_dashboard/download?format=html")
+    html = c.get("/api/reports/sample_model/sample_dashboard/download?format=html")
     assert html.status_code == 200 and "tracebi-receipt" in html.text
-    xlsx = c.get("/api/reports/sample_dashboard/download?format=xlsx")
+    xlsx = c.get("/api/reports/sample_model/sample_dashboard/download?format=xlsx")
     assert xlsx.status_code == 200 and xlsx.content[:2] == b"PK"   # a zip = xlsx
 
-    source = c.get("/api/reports/sample_dashboard/source").json()
+    source = c.get("/api/reports/sample_model/sample_dashboard/source").json()
     assert source, "the report's source files are served"
     # Lineage is read from the last build's receipt: transform → tables →
     # model → queries → figures, each figure under the query it reads.
-    lineage = c.get("/api/reports/sample_dashboard/lineage")
+    lineage = c.get("/api/reports/sample_model/sample_dashboard/lineage")
     assert lineage.status_code == 200
     flow = lineage.json()["flow"]
     kinds = {n["kind"] for n in flow["nodes"]}
@@ -84,16 +84,16 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
 
 def test_a_background_run_settles_with_a_result(served):
     c = served
-    start = c.post("/api/reports/sample_dashboard/runs")
+    start = c.post("/api/reports/sample_model/sample_dashboard/runs")
     assert start.status_code == 202, start.text
     run_id = start.json()["run_id"]
     for _ in range(100):
-        state = c.get(f"/api/reports/sample_dashboard/runs/{run_id}").json()
+        state = c.get(f"/api/reports/sample_model/sample_dashboard/runs/{run_id}").json()
         if state["status"] in ("succeeded", "failed"):
             break
         time.sleep(0.05)
     assert state["status"] == "succeeded", state
-    listed = c.get("/api/reports/sample_dashboard/runs").json()
+    listed = c.get("/api/reports/sample_model/sample_dashboard/runs").json()
     assert any(r["run_id"] == run_id for r in listed)
 
 
@@ -145,7 +145,7 @@ def test_an_app_modules_own_reports_survive_live_rescans(served, scaffolded):
     from tracebi.web import discovery
 
     app_reports = scaffolded / "app_reports"
-    shutil.copytree(scaffolded / "reports" / "sample_dashboard", app_reports / "app_dashboard")
+    shutil.copytree(scaffolded / "reports" / "sample_model" / "sample_dashboard", app_reports / "app_dashboard")
     discovery.auto_discover(str(app_reports))
     assert "app_dashboard" in [r["name"] for r in registry.list_reports()]
 
@@ -179,7 +179,7 @@ def test_what_the_builder_points_at_reaches_the_agent(served, monkeypatch):
 
     point = {"kind": "figure", "figure_kind": "value", "id": "kpi-revenue",
              "binding": "totals", "cell": "revenue", "junk": "dropped"}
-    url = "/api/reports/sample_dashboard/workbench/pointing"
+    url = "/api/reports/sample_model/sample_dashboard/workbench/pointing"
 
     # Off by default: a deployed server cannot be asked to write dev-state.
     monkeypatch.delenv("TRACEBI_DEV_MODE", raising=False)
@@ -191,13 +191,13 @@ def test_what_the_builder_points_at_reaches_the_agent(served, monkeypatch):
     kept = served.post(url, json=point).json()["pointing"]
     assert kept["id"] == "kpi-revenue" and "junk" not in kept
 
-    state = gateway_workbench_state("sample_dashboard")
+    state = gateway_workbench_state("sample_model/sample_dashboard")
     assert state["pointing"]["binding"] == "totals"
     assert state["pointing"]["cell"] == "revenue"
 
     assert served.post(url, json={"kind": "nonsense"}).status_code == 422
     assert served.delete(url).json() == {"pointing": None}
-    assert gateway_workbench_state("sample_dashboard")["pointing"] is None
+    assert gateway_workbench_state("sample_model/sample_dashboard")["pointing"] is None
 
 
 def test_the_workbench_in_the_app_shows_what_the_agent_did(served, monkeypatch, scaffolded):
@@ -207,7 +207,7 @@ def test_the_workbench_in_the_app_shows_what_the_agent_did(served, monkeypatch, 
     from tracebi.mcp_server import gateway_resolve_pin
     from tracebi.workbench import add_pin, workbench_dir
 
-    base = "/api/reports/sample_dashboard/workbench"
+    base = "/api/reports/sample_model/sample_dashboard/workbench"
     monkeypatch.setenv("TRACEBI_DEV_MODE", "1")
 
     v1 = served.get(f"{base}/version").json()["version"]
@@ -216,21 +216,21 @@ def test_the_workbench_in_the_app_shows_what_the_agent_did(served, monkeypatch, 
     # The live preview is the working state, rendered in memory (not a build).
     preview = served.get(f"{base}/preview")
     assert preview.status_code == 200 and "<html" in preview.text.lower()
-    assert not list((scaffolded / "output").glob("sample_dashboard*")), "a preview is not a build"
+    assert not list((scaffolded / "output").rglob("sample_dashboard*")), "a preview is not a build"
 
     # The person has nowhere to instruct the agent here: the app writes no pins.
     assert served.post(f"{base}/pins", json={"note": "x"}).status_code in (404, 405)
 
     # A pin (left from the workbench or the CLI) moves the version; the agent
     # resolves it over MCP and the pane's state shows the answer.
-    wb = workbench_dir(str(scaffolded), "sample_dashboard")
+    wb = workbench_dir(str(scaffolded), "sample_model/sample_dashboard")
     add_pin(wb, "val-total", note="make this a line chart")
     assert served.get(f"{base}/version").json()["version"] != v1
-    assert gateway_resolve_pin("sample_dashboard", "val-total", "made it a line")["ok"]
+    assert gateway_resolve_pin("sample_model/sample_dashboard", "val-total", "made it a line")["ok"]
     state = served.get(f"{base}/state").json()
     assert state["pins"] == [] and state["resolved"][-1]["resolved_note"] == "made it a line"
 
     # Editing the package moves the version: that is how the pane knows to refresh.
     v2 = served.get(f"{base}/version").json()["version"]
-    (scaffolded / "reports" / "sample_dashboard" / "style.css").open("a").write("\n/* edit */\n")
+    (scaffolded / "reports" / "sample_model" / "sample_dashboard" / "style.css").open("a").write("\n/* edit */\n")
     assert served.get(f"{base}/version").json()["version"] != v2
