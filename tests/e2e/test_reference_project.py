@@ -217,6 +217,20 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
                 assert (answer.status_code == 200) == (measure in names), (
                     f"{fact}.{measure}: offered={measure in names}, query answered {answer.status_code}")
 
+        # Likewise a dimension: a fact joins the ones in its foreign_keys, and
+        # grouping by any other cannot run.
+        joins = {f["name"]: set(f["foreign_keys"]) for f in info["facts"]}
+        assert joins["fact_ten_year"] == {"dim_cohort"}
+        for fact in offered:
+            measure = sorted(offered[fact])[0]
+            for dim in info["dimensions"]:
+                answer = c.post("/api/models/housing_model/query", json={
+                    "fact": fact, "measures": [measure],
+                    "dimensions": [f"{dim['name']}.{dim['attributes'][0]}"]})
+                assert (answer.status_code == 200) == (dim["name"] in joins[fact]), (
+                    f"{fact} x {dim['name']}: joined={dim['name'] in joins[fact]}, "
+                    f"query answered {answer.status_code}")
+
         # The named-measure query: the raw values are the model's own answer.
         body = {"fact": "fact_holdings", "measures": ["fair_value", "positions", "mark"],
                 "dimensions": ["dim_issuer.sector"]}
@@ -241,5 +255,21 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
         for shown in top["display"]:
             for column in ("fair_value", "cost_basis", "mark"):
                 assert f'<td class="tb-num">{shown[column]}</td>' in html
+
+        # A result holding NaN (an empty total) or infinity (a division by zero)
+        # is answered with missing values, not a 500: JSON has neither.
+        empty = c.post("/api/models/portfolio_model/query", json={
+            "fact": "fact_holdings", "measures": ["fair_value", "mark"],
+            "filters": {"spread_bps": -1}})
+        assert empty.status_code == 200
+        assert empty.json()["data"] == [{"fair_value": None, "cost_basis": None, "mark": None}]
+        assert empty.json()["display"] == [{"fair_value": "", "cost_basis": "", "mark": ""}]
+        blown = c.post("/api/models/portfolio_model/query", json={
+            "fact": "fact_holdings", "measures": {
+                "fair_value": "sum", "inv": {"expr": "1 / (fair_value - fair_value)", "agg": "sum"}}})
+        assert blown.status_code == 200
+        assert blown.json()["data"][0]["inv"] is None
+        assert blown.json()["data"][0]["fair_value"] > 0
+        assert blown.json()["display"][0]["inv"] == ""
     finally:
         release_warehouses()

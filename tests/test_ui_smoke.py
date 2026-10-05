@@ -63,7 +63,7 @@ def _tail(path: Path, n: int = 40) -> str:
 
 
 def test_real_app_smoke(tmp_path: Path) -> None:
-    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import expect, sync_playwright
 
     project = tmp_path / "portfolio_project"
     shutil.copytree(
@@ -198,6 +198,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # sends their names, and writes the results in their declared formats.
             page.goto(base + "/m/portfolio_model/explore")
             page.get_by_text("Total fair value").wait_for()
+            # However long the builder is, Run stays in view.
+            expect(page.get_by_text("▶ Run query")).to_be_in_viewport(ratio=1)
             page.get_by_text("fair_value", exact=True).first.click()
             page.get_by_text("positions", exact=True).first.click()
             page.get_by_text("sector", exact=True).first.click()
@@ -205,6 +207,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("The query as code").wait_for()
             assert 'measures=["fair_value", "positions"]' in page.locator(".codeview__code").inner_text()
             assert re.search(r"\$[\d,]+", page.locator("table tbody tr").first.inner_text())
+            fail_on_browser_errors()
+
+            # Group by offers only what the picked fact joins.
+            page.goto(base + "/m/housing_model/explore")
+            builder = page.locator(".explore-grid")
+            expect(builder).to_contain_text("dim_year")
+            page.get_by_role("button", name="fact_ten_year").click()
+            expect(builder).not_to_contain_text("dim_year")
+            expect(builder).to_contain_text("dim_cohort")
             fail_on_browser_errors()
 
             # Refresh: Run all opens the Log tab, which follows the run to its end.

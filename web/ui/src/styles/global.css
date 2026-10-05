@@ -569,6 +569,13 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 }
 .explore-more[open] summary { margin-bottom: 4px; }
 .explore-note { font-size: var(--text-sm); color: var(--muted); margin: 4px 0 8px; }
+/* Run stays at the foot of the viewport while the builder is taller than it. */
+.explore-run {
+  position: sticky; bottom: 0; z-index: 2;
+  margin: 20px -24px -20px; padding: 12px 24px 16px;
+  background: var(--card); border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
 .split-layout {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -602,6 +609,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .grid-3       { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .concept-grid { grid-template-columns: minmax(0, 1fr); }
   .explore-grid { grid-template-columns: minmax(0, 1fr); }
+  .explore-run { position: static; margin: 20px 0 0; padding: 0; border-top: 0; }
 
   /* Shrink page headings on small screens (layout-main is the content area) */
   .layout-main h1 { font-size: 20px !important; }

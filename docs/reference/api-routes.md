@@ -46,7 +46,9 @@ graph. It computes but persists nothing, which is why `viewer` may call it.
 uses) and `display` holds the same cells as text, written the way a built report's
 table writes them: a numeric column takes the model's declared format on that
 measure (`currency0`, `percent`, …), else the shape-derived default, and anything
-else stays plain text. `GET /api/models/{name}` lists, on each fact,
+else stays plain text. A value JSON cannot carry (NaN from an empty total, infinity
+from a division by zero) is `null` in `data` and an empty string in `display`, never
+an error. `GET /api/models/{name}` lists, on each fact,
 `runnable_measures`: the declared measures whose columns exist on that fact's table,
 so a UI offers only what will run. When the connector cannot describe the table (the
 warehouse is not built yet), every declared measure is listed and a run reports the

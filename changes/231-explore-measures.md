@@ -12,6 +12,9 @@
   where it works). When the connector can't describe the table, every measure is
   listed and a run reports the real error. `describe_model` / `tracebi context
   --model` carry it too.
+- **Group by offers only the dimensions the fact joins** (its `foreign_keys`, which
+  the API already returned). On `housing_model`, `fact_ten_year` joins only
+  `dim_cohort`; grouping it by `dim_year` could never run.
 - **Results are written the way a built report writes them.** `POST
   /api/models/{name}/query` returns `display` beside `data`: each row's cells as text,
   from the same code the report build's server-side render uses (the model's declared
@@ -20,3 +23,14 @@
   display text, and the chart plots the picked measures that share the first one's
   unit (dollars with dollars), saying which; the rest are in the table.
 - **The query as code** shows the measure list exactly as sent.
+- **A compact builder with Run in reach.** Measure rows are two tight lines (the
+  description is cut to one line, the whole text on hover), and the **Run query**
+  button stays at the foot of the screen on a desktop while the builder is longer
+  than it. On a phone it sits in the normal flow.
+
+### Fixed — a query result with NaN or infinity no longer fails the response
+
+- `POST /api/models/{name}/query` answered with a 500 ("Out of range float values are
+  not JSON compliant") when the result held a NaN (an empty total, such as a filter
+  that matches no rows) or an infinity (a division by zero). Those values are now
+  `null` in `data` and an empty string in `display`; the table shows them as `null`.

@@ -32,20 +32,26 @@ function SectionLabel({ children }) {
 
 function CheckRow({ checked, onToggle, label, sub, right, disabled }) {
   return (
-    <label style={{
-      display: 'flex', alignItems: sub ? 'flex-start' : 'center', gap: 9, padding: '6px 10px',
+    <label title={sub || undefined} style={{
+      display: 'flex', alignItems: 'center', gap: 9, padding: sub ? '3px 10px' : '6px 10px',
       borderRadius: 6, cursor: disabled ? 'default' : 'pointer', fontSize: 13,
       background: checked ? 'var(--blue-lt)' : 'transparent',
       border: `1px solid ${checked ? 'var(--blue-br)' : 'transparent'}`,
       transition: 'background var(--t)',
     }}>
       <input type="checkbox" checked={checked} onChange={onToggle} disabled={disabled}
-        style={{ accentColor: 'var(--ink)', marginTop: sub ? 2 : undefined }} />
-      <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        style={{ accentColor: 'var(--ink)' }} />
+      <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.3 }}>
         <span style={{ color: checked ? 'var(--text)' : 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
           {label}
         </span>
-        {sub && <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{sub}</span>}
+        {/* One line, cut with an ellipsis; the whole text is the row's tooltip. */}
+        {sub && (
+          <span style={{
+            fontSize: 11.5, color: 'var(--muted)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{sub}</span>
+        )}
       </span>
       {right && <span style={{ marginLeft: 'auto' }}>{right}</span>}
     </label>
@@ -265,8 +271,10 @@ export default function Explore({ model: activeModel }) {
   const { mutate: run, data: result, isPending, error, reset } = useRunQuery()
   const [ran, setRan] = useState(null)             // the request the result below answers
 
-  // The model's declared measures this fact can run (the model says which).
+  // The model's declared measures this fact can run (the model says which), and
+  // the dimensions it joins (its foreign_keys): a query can group by only those.
   const offered = (model?.measures || []).filter(m => fact?.runnable_measures?.includes(m.name))
+  const joined = dims.filter(d => d.name in (fact?.foreign_keys || {}))
   const toggleNamed = name =>
     setNamed(named.includes(name) ? named.filter(n => n !== name) : [...named, name])
   const toggleMeasure = col => {
@@ -396,10 +404,12 @@ export default function Explore({ model: activeModel }) {
                 </details>
 
                 <SectionLabel>Group by</SectionLabel>
-                {dims.length === 0 && (
-                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>No dimensions defined.</p>
+                {joined.length === 0 && (
+                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                    {dims.length === 0 ? 'No dimensions defined.' : `No dimension is joined to ${fact.name}.`}
+                  </p>
                 )}
-                {dims.map(d => (
+                {joined.map(d => (
                   <div key={d.name} style={{ marginBottom: 6 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-2)', margin: '4px 0 2px', fontWeight: 600 }}>
                       {d.name} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>· {d.table}</span>
@@ -417,7 +427,7 @@ export default function Explore({ model: activeModel }) {
                 <SectionLabel>Filters (on {fact.table})</SectionLabel>
                 <FilterRows columns={factColumns} filters={filters} setFilters={setFilters} />
 
-                <div style={{ marginTop: 20 }}>
+                <div className="explore-run">
                   <Btn onClick={handleRun} disabled={!canRun || isPending} style={{ width: '100%', justifyContent: 'center' }}>
                     {isPending ? <><Spinner size={14} /> Running…</> : '▶ Run query'}
                   </Btn>
