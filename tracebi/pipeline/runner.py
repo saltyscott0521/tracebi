@@ -26,6 +26,7 @@ Usage::
 from __future__ import annotations
 
 import threading
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -608,6 +609,7 @@ class PipelineRunner:
         error_msg: Optional[str] = None
 
         print(f"  [{name}] Running ({reg.layer_type})...")
+        began = time.monotonic()
         try:
             ds = reg.layer.execute()
             rows_out = len(ds)
@@ -620,7 +622,7 @@ class PipelineRunner:
             if rows_in == 0:
                 rows_in = rows_out
             status = "success"
-            print(f"  [{name}] ✓  {rows_in} in → {rows_out} out")
+            print(f"  [{name}] ✓  {rows_in} in → {rows_out} out  ({time.monotonic() - began:.1f}s)")
         except Exception as exc:
             error_msg = str(exc)
             print(f"  [{name}] ✗  {error_msg}")

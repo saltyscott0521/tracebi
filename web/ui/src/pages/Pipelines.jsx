@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { usePipelines, useRunLayer, useRunPipeline, useLayerHistory } from '../api'
+import { usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
 import { PageHeader } from '../components/Scope'
+import RunLog from '../components/RunLog'
 import { pipelineModels, pipelineBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
@@ -204,8 +206,10 @@ function pipelineSummary(layers) {
 
 export function PipelineDetail({ pipeline, layers }) {
   const toast = useToast()
-  const { mutate: run, isPending } = useRunLayer()
-  const { mutate: runAll, isPending: isRunningAll } = useRunPipeline()
+  const qc = useQueryClient()
+  const { mutate: start, isPending: isStarting } = useStartPipelineRun()
+  const { data: runs } = usePipelineRuns(pipeline)
+  const [picked, setPicked] = useState(null)
   const [selected, setSelected] = useState(null)
   // A phone fits the flow into 350px and its run buttons shrink past tapping;
   // the list of steps keeps them full size.
@@ -220,18 +224,28 @@ export function PipelineDetail({ pipeline, layers }) {
     )
   }
 
-  function handleRunAll() {
-    runAll({ pipeline }, {
-      onSuccess: res => toast(`Pipeline ran ${res.ran?.length ?? 0} layer(s)`, 'success'),
-      onError: err => toast(`Pipeline failed: ${err.message}`, 'error'),
+  // A run goes on in the background and its output is the Log tab: starting
+  // one (or joining the one already going) opens it there.
+  const latest = runs?.[0]
+  const busy = isStarting || latest?.status === 'running'
+  const shownRun = picked || latest?.run_id || null
+
+  function begin(layer) {
+    start({ pipeline, layer }, {
+      onSuccess: res => {
+        setPicked(res.run_id)
+        setTab('Log')
+        if (res.already_running) toast('Already running. Showing its log.', 'info')
+      },
+      onError: err => toast(`Could not start: ${err.message}`, 'error'),
     })
   }
-
-  function handleRunLayer(layer) {
-    run({ pipeline, layer }, {
-      onSuccess: () => toast(`Layer "${layer}" triggered`, 'success'),
-      onError: err => toast(`Failed: ${err.message}`, 'error'),
-    })
+  const handleRunAll = () => begin(undefined)
+  const handleRunLayer = layer => begin(layer)
+  // A run that ends changes what the page says about every step.
+  const finished = () => {
+    qc.invalidateQueries({ queryKey: ['pipelines'] })
+    qc.invalidateQueries({ queryKey: ['pipeline-runs', pipeline] })
   }
 
   return (
@@ -240,20 +254,20 @@ export function PipelineDetail({ pipeline, layers }) {
         <Btn
           size="sm"
           variant="outline"
-          disabled={isRunningAll}
+          disabled={busy}
           onClick={handleRunAll}
         >
-          {isRunningAll ? <><Spinner size={12} /> Running…</> : '▶ Run all'}
+          {busy ? <><Spinner size={12} /> Running…</> : '▶ Run all'}
         </Btn>
       }>
         {pipeline}
       </CardTitle>
 
-      <Tabs tabs={['Flow', 'Steps', 'History']} active={tab} onChange={t => setTab(t)} />
+      <Tabs tabs={['Flow', 'Steps', 'Log', 'History']} active={tab} onChange={t => setTab(t)} />
 
       {tab === 'Flow' && (
         <div className="fade-in">
-          <PipelineDag layers={layers} onRun={handleRunLayer} running={isPending || isRunningAll} />
+          <PipelineDag layers={layers} onRun={handleRunLayer} running={busy} />
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
             Each step runs after the one it depends on. Status updates every 10 s; run any step from its node.
           </p>
@@ -295,17 +309,23 @@ export function PipelineDetail({ pipeline, layers }) {
                     <Btn
                       size="sm"
                       variant="outline"
-                      disabled={isPending}
+                      disabled={busy}
                       onClick={() => handleRunLayer(l.name)}
                       aria-label={`Run ${l.name}`}
                     >
-                      {isPending ? <Spinner size={12} /> : '▶ Run'}
+                      {busy ? <Spinner size={12} /> : '▶ Run'}
                     </Btn>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {tab === 'Log' && (
+        <div className="fade-in">
+          <RunLog pipeline={pipeline} runs={runs} runId={shownRun} onPick={setPicked} onDone={finished} />
         </div>
       )}
 

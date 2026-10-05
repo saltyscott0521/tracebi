@@ -19,11 +19,11 @@ Run from the project root, like every other ``tracebi`` command.
 
 from __future__ import annotations
 
-import contextlib
 import io
 import os
 from typing import Optional
 
+from tracebi.pipeline.runlog import capture
 from tracebi.pipeline.runner import PipelineRunner
 
 
@@ -48,7 +48,8 @@ def _cli(*args: str) -> str:
     from tracebi import cli
 
     out = io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+    # Kept off the terminal as before, but still seen by a pipeline run's log.
+    with capture(out.write, echo=False):
         try:
             code = cli.main(list(args))
         except SystemExit as exc:      # a script that ends with sys.exit(): a
@@ -74,16 +75,17 @@ def model_pipeline(
         db_url:      Where run history is kept (default ``data/<model>_runs.db``).
         reports_dir: The project's reports folder.
     """
-    from tracebi.model_registry import get_model
+    from tracebi.model_registry import get_model, release_all
 
     if db_url is None:
         os.makedirs("data", exist_ok=True)
         db_url = f"sqlite:///{os.path.abspath(os.path.join('data', model + '_runs.db'))}"
 
     def release() -> None:
-        # The model holds its warehouse open read-only; the transform needs it
-        # read-write, and DuckDB allows one or the other in a process.
-        get_model(model).disconnect()
+        # A model holds its warehouse open read-only; the transform needs it
+        # read-write, and DuckDB allows one or the other in a process. Every
+        # model is released, not just this one: another may read the same file.
+        release_all()
 
     def run_transform():
         release()

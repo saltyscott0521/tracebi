@@ -118,6 +118,16 @@ class ModelRegistry:
             raise KeyError("No default model registered or discovered.")
         return self.get(self._default)
 
+    def release_all(self) -> None:
+        """Release the open handles of every model loaded so far.
+
+        A warehouse file can be read by more than one model, and DuckDB allows
+        one configuration of a file per process; the model that rewrites it
+        cannot do so while another holds it open read-only.
+        """
+        for model in list(self._models.values()):
+            model.disconnect()
+
     def list_models(self) -> list[str]:
         """Names of all known models (registered + on-disk but not yet loaded)."""
         return sorted(set(self._models) | set(self._paths))
@@ -192,6 +202,11 @@ def list_models() -> list[str]:
     """List all known model names (discovered + explicitly registered)."""
     _ensure_discovered()
     return _registry.list_models()
+
+
+def release_all() -> None:
+    """Release the open handles of every loaded model (see ``ModelRegistry.release_all``)."""
+    _registry.release_all()
 
 
 def model_path(name: str) -> Optional[str]:

@@ -15,6 +15,7 @@ const KINDS = [
   ['background_run', 'Background run'],
   ['schedule', 'Schedule'],
   ['pipeline_layer', 'Pipeline'],
+  ['pipeline_run', 'Pipeline run'],
 ]
 const KIND_LABEL = Object.fromEntries(KINDS)
 const REPORT_KINDS = new Set(['report_build', 'background_run', 'schedule'])

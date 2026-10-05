@@ -111,4 +111,40 @@ def env_off(monkeypatch, *names: str) -> None:
         monkeypatch.delenv(n, raising=False)
 
 
-__all__ = ["run_cli", "manifests", "env_off", "REFERENCE_PROJECT", "os"]
+def serve_app(monkeypatch, *, models: bool = False):
+    """The web app over the project's pipelines (and models), as the Refresh page sees it."""
+    from fastapi.testclient import TestClient
+
+    from tracebi.registry import registry
+    from tracebi.web import discovery
+    from tracebi.web.api.main import app
+
+    for attr in ("_connectors", "_models", "_report_factories",
+                 "_scheduled_factories", "_pipelines"):
+        monkeypatch.setattr(registry, attr, {})
+    monkeypatch.setattr(discovery, "_live_pipelines", set())
+    monkeypatch.setattr(discovery, "_live_models", set())
+    discovery.register_pipelines("pipelines")
+    if models:
+        discovery.register_models("models")
+    return TestClient(app)
+
+
+def follow_run(client, pipeline, run_id):
+    """Read a run's log the way the page does: from where the last read ended,
+    until the run is done. Returns the whole text and the final answer."""
+    import time
+
+    text, after = "", 0
+    deadline = time.monotonic() + 60
+    while True:
+        got = client.get(f"/api/pipelines/{pipeline}/runs/{run_id}/log", params={"after": after}).json()
+        text += got["text"]
+        after = got["next"]
+        if got["done"]:
+            return text, got
+        assert time.monotonic() < deadline, f"run never finished:\n{text}"
+        time.sleep(0.05)
+
+
+__all__ = ["run_cli", "manifests", "env_off", "serve_app", "follow_run", "REFERENCE_PROJECT", "os"]

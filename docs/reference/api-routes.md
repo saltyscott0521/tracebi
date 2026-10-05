@@ -114,9 +114,21 @@ needed. See [[receipts]].
 | `POST` | `/api/pipelines/{name}/run` | **admin** |
 | `POST` | `/api/pipelines/{name}/layers/{layer}/run` | **admin** |
 | `GET` | `/api/pipelines/{name}/layers/{layer}/history` | viewer |
+| `POST` | `/api/pipelines/{name}/runs` | **admin** |
+| `GET` | `/api/pipelines/{name}/runs` · `/api/pipelines/{name}/runs/{id}` | viewer |
+| `GET` | `/api/pipelines/{name}/runs/{id}/log` | analyst |
 
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
+
+`POST …/runs` is what the Refresh page's **Run all** and per-step **Run** use. It
+starts the run in the background and returns at once (`202`; `?layer=` runs one
+step, `?refresh=true` adds what it depends on). A pipeline already running
+returns that run with `already_running: true`. The run's output is a log:
+`GET …/runs/{id}/log?after=<offset>` returns the new lines, a `next` offset to
+ask from, and `done`. Reading a log needs `analyst` because it is whatever the
+steps printed, not only their status. Logs are files under
+`data/logs/pipelines/<name>/`, the newest 30 per pipeline.
 
 ## Connectors, docs, dev
 

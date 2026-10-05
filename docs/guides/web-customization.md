@@ -142,7 +142,7 @@ your peril):
 | Model | `registry.add_model(model, default=False)` | the **model switcher**, **Data model** + **Explore** |
 | Report | `@registry.report("name", description="…")` on a zero-arg factory | **Reports** page |
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
-| Pipeline | `registry.add_pipeline("name", runner)` | **Refresh** (DAG, run buttons, history) |
+| Pipeline | `registry.add_pipeline("name", runner)` | **Refresh** (DAG, run buttons, a live run log, history) |
 
 The **Runs** page is not a folder. It reads `GET /api/runs`: what ran, when,
 for whom, and whether it reproduced. Like every page under the model
