@@ -118,9 +118,9 @@ Edit a number inside the HTML by hand and run it again: it reports
 tracebi dev sample_model/sample_dashboard
 ```
 
-The live loop. Edit `reports/sample_model/sample_dashboard/template.html` and the page
-reloads. The workbench at `/__workbench` shows what each figure is bound to and
-what it has earned.
+The live loop, in the web app. Edit `reports/sample_model/sample_dashboard/template.html` and the page
+reloads. The panel beside the report shows what changed on each save, the data
+each figure is bound to, and checks on what it has earned.
 
 **Because the model is materialized, editing a report never re-runs the
 pandas** — that is the whole point of [[freeze-points]].

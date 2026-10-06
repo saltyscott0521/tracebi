@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -187,3 +188,64 @@ def test_the_dev_app_url_opens_in_build_mode(tmp_path: Path) -> None:
         log.close()
         server.terminate()
         server.wait(timeout=10)
+
+
+def test_build_mode_shows_the_data_and_checks_and_the_project_feed(tmp_path: Path, monkeypatch) -> None:
+    """What only the classic workbench page showed is in the app's panel (each binding
+    with its size, and the checks), a note left there reaches the agent, and with no
+    report open the Reports page carries the agent's exhibits from the project feed."""
+    import pandas as pd
+    from playwright.sync_api import sync_playwright
+
+    from tracebi.workbench import show
+
+    project = tmp_path / "portfolio_project"
+    shutil.copytree(_PROJECT, project, ignore=shutil.ignore_patterns(
+        "__pycache__", "*.pyc", ".DS_Store", "data", "output", ".tracebi"))
+    done = subprocess.run([sys.executable, "run_workflow.py"], cwd=project,
+                          capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr or done.stdout
+
+    base, server, log = _serve(project, tmp_path / "server.log", dev_mode=True)
+    state_url = f"{base}/api/reports/saas_model/mrr_dashboard/workbench/state"
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.set_default_timeout(60_000)
+            page.goto(f"{base}/reports?r=saas_model%2Fmrr_dashboard&build=1")
+
+            def section(title: str):
+                return page.locator(".wb-section", has=page.locator(
+                    ".wb-section__title", has_text=title))
+
+            kpis = section("Data").locator(".wb-item", has_text="kpis")
+            kpis.wait_for()
+            text = kpis.inner_text()
+            assert "from saas_model" in text and "used by" in text, text
+            assert re.search(r"\d+ × \d+", text), text
+            section("Checks").get_by_text("All clear").wait_for()
+
+            page.get_by_label("Leave your agent a note").fill("make the legend smaller")
+            page.get_by_role("button", name="Leave note").click()
+            section("Your notes").get_by_text("make the legend smaller").wait_for()
+            with urllib.request.urlopen(state_url, timeout=30) as r:
+                pins = json.loads(r.read())["pins"]
+            assert [(p["kind"], p["note"]) for p in pins] == [("message", "make the legend smaller")]
+
+            # No report open: the project feed. The script posts the way the agent's do,
+            # with no setup, because the dev server's heartbeat is live.
+            monkeypatch.chdir(project)
+            monkeypatch.delenv("TRACEBI_WORKBENCH_DIR", raising=False)
+            show(pd.DataFrame({"region": ["East", "West"], "revenue": [10.5, 20.5]}),
+                 note="revenue by region", name="region_scan")
+            page.goto(f"{base}/reports")
+            feed = page.locator(".wb--project")
+            feed.get_by_text("region_scan").wait_for()
+            assert "East" in feed.inner_text()
+            browser.close()
+    finally:
+        log.close()
+        server.terminate()
+        server.wait(timeout=10)
+    assert "Traceback" not in _tail(tmp_path / "server.log"), _tail(tmp_path / "server.log")

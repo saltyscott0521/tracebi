@@ -11,15 +11,15 @@ Two shared primitives live here, deliberately outside the dev server:
   posts to ``./.tracebi/workbench/_discovery`` in the CURRENT working
   directory **only if** that directory's ``.active`` heartbeat exists and
   was touched within the last :data:`HEARTBEAT_WINDOW` seconds — i.e. a
-  ``tracebi dev`` discovery server is running right now. Otherwise show()
-  is a **no-op**, so a build or CI run (no live server → stale or absent
-  heartbeat) ignores it entirely, and it never raises — a broken exhibit
-  must not kill a build.
+  dev server (``tracebi dev``, the app in dev mode) is running right now.
+  Otherwise show() is a **no-op**, so a build or CI run (no live server →
+  stale or absent heartbeat) ignores it entirely, and it never raises — a
+  broken exhibit must not kill a build.
 
-* :func:`collect_state` — THE one state builder. The dev server's
-  ``/__workbench`` page, ``tracebi report status``, and the MCP
-  ``workbench_state`` tool all consume this dict; factoring it here keeps
-  the three surfaces honest copies of one another. Per-binding resolution
+* :func:`collect_state` — THE one state builder. The app's Build panel, the
+  classic dev server's ``/__workbench`` page, ``tracebi report status``, and
+  the MCP ``workbench_state`` tool all consume this dict; factoring it here
+  keeps the surfaces honest copies of one another. Per-binding resolution
   errors are captured *into* the state rather than raised — the workbench
   is where a broken working state becomes visible, so it must render one.
 
@@ -31,6 +31,8 @@ warehouse or mints a fingerprint claim.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import json
 import math
 import os
@@ -124,9 +126,10 @@ def discovery_dir(project_root: str) -> str:
 def heartbeat(wb_dir: str) -> None:
     """Touch ``.active`` in *wb_dir* — the discovery server's liveness marker.
 
-    The dev server calls this each watcher tick; :func:`show` treats a fresh
-    marker as permission to post without ``TRACEBI_WORKBENCH_DIR``. Same
-    never-raise contract as the rest of the feed plumbing.
+    The dev app (and the classic discovery server) calls this on a timer;
+    :func:`show` treats a fresh marker as permission to post without
+    ``TRACEBI_WORKBENCH_DIR``. Same never-raise contract as the rest of the
+    feed plumbing.
     """
     try:
         os.makedirs(wb_dir, exist_ok=True)
@@ -160,6 +163,23 @@ def _active_discovery_dir() -> Optional[str]:
 _CHART_KINDS = ("bar", "barh", "line", "area", "pie", "scatter")
 
 
+#: Set while the dev app computes state it only reads (collect_state runs
+#: report.py): a show() there is not an exhibit anyone asked for, and with the
+#: app's heartbeat live it would land in the project feed on every refresh.
+_SHOW_OFF: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "tracebi_show_off", default=False)
+
+
+@contextlib.contextmanager
+def show_off():
+    """Inside the block, :func:`show` posts nothing."""
+    token = _SHOW_OFF.set(True)
+    try:
+        yield
+    finally:
+        _SHOW_OFF.reset(token)
+
+
 def show(obj=None, note: Optional[str] = None, name: Optional[str] = None,
          chart: Optional[str] = None, x: Optional[str] = None,
          y=None) -> None:
@@ -189,13 +209,15 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None,
     when set. When it is unset, the exhibit posts to
     ``./.tracebi/workbench/_discovery`` in the CURRENT working directory
     **only if** its ``.active`` heartbeat was touched within the last
-    :data:`HEARTBEAT_WINDOW` seconds — a ``tracebi dev`` discovery server is
+    :data:`HEARTBEAT_WINDOW` seconds — a dev server (``tracebi dev``) is
     live, so ANY script run in the project posts frames with zero
     configuration. Otherwise show() is a **no-op** (builds and CI have no
     live server, so a stale or absent heartbeat keeps them clean), and it
     never raises: a broken exhibit is dropped with a stderr note, never a
     dead build. Exhibits carry no receipts.
     """
+    if _SHOW_OFF.get():
+        return
     wb = os.environ.get("TRACEBI_WORKBENCH_DIR")
     if not wb:
         wb = _active_discovery_dir()
@@ -652,6 +674,26 @@ def remove_pin(wb_dir: str, pin_id: str) -> list[dict]:
         return pins
 
 
+#: The longest note kept. The page that sends one is not trusted with an
+#: arbitrary document, same as :data:`_POINTING_FIELDS`.
+NOTE_MAX = 2000
+
+
+def leave_note(wb_dir: str, text: str) -> dict:
+    """The person's note for the agent, left as a ``message`` pin; returns it.
+
+    What the dev server's "Leave note" box and the app's note box both write:
+    the agent reads it as an open pin (``workbench_state``, ``tracebi report
+    pins``) and resolves it like any other. An empty note raises ``ValueError``.
+    """
+    text = (text or "").strip()[:NOTE_MAX]
+    if not text:
+        raise ValueError("a note needs some text")
+    pin_id = f"msg-{int(time.time() * 1000)}"
+    return next(p for p in add_pin(wb_dir, pin_id, note=text, kind="message")
+                if p["id"] == pin_id)
+
+
 def package_version(package_dir: str) -> str:
     """A cheap fingerprint of everything that changes what the workbench shows.
 
@@ -876,14 +918,16 @@ def collect_state(package_dir: str, models: dict) -> dict:
     except Exception:  # noqa: BLE001 — formats are presentation only
         declared = {}
     bindings_state = []
-    for bname in pkg.bindings:
+    for bname, ref in pkg.bindings.items():
         if bname in errors:
             bindings_state.append({"name": bname, "source": "query",
-                                   "error": errors[bname],
+                                   "model": ref.model, "error": errors[bname],
                                    "used_by": used_by.get(bname, [])})
         else:
-            bindings_state.append(_binding_state(by_name[bname], "query", used_by,
-                                                 declared.get(bname)))
+            bindings_state.append({
+                **_binding_state(by_name[bname], "query", used_by,
+                                 declared.get(bname)),
+                "model": ref.model})
     for sd in outputs:
         bindings_state.append(_binding_state(sd, "python", used_by))
     if REPORT_PY in errors:
@@ -970,6 +1014,24 @@ def collect_discovery_state(project_root: str, models: dict) -> dict:
         "warehouse": _discovery_warehouse(project_root, loaded),
         "models": model_entries,
         "packages": _discovery_packages(project_root),
+        "exhibits": exhibits,
+        "pins": _pins_view(read_pins(wb), None, exhibits),
+        "resolved": resolved,
+        "resolved_count": len(resolved),
+    }
+
+
+def collect_feed(project_root: str) -> dict:
+    """The project feed — the ``_discovery`` workbench's exhibits and pins.
+
+    The part of :func:`collect_discovery_state` the app shows when no report is
+    open. It leaves out the warehouse, models and packages (the app has pages
+    for those), so polling it reads two small files and opens nothing.
+    """
+    wb = discovery_dir(project_root)
+    exhibits = _feed(wb)
+    resolved = read_resolved(wb)
+    return {
         "exhibits": exhibits,
         "pins": _pins_view(read_pins(wb), None, exhibits),
         "resolved": resolved,

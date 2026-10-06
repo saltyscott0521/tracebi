@@ -35,8 +35,8 @@ app on the other. In the app, open a report in **Build mode** (local only).
 4. **Keep.** You accept or revert. Nothing is kept until you say so, and the
    receipt only reads green for what was built and checked, never for a draft.
 
-You can also leave a note on a selection (a **pin**) for the agent to pick up
-later: `address_pins` already does that.
+You can also leave a note (a **pin**) for the agent to pick up later, from
+the panel's note box: `address_pins` already does that.
 
 ### One workbench, two clients
 
@@ -116,10 +116,12 @@ grounds was picked from six side-by-side options.)
 3. **The workbench in the app** (done): the Build button opens it beside the
    report: pointing, a pin from it, the pins and what the agent answered, the
    agent's exhibits, broken bindings, and a preview of the working state that
-   refreshes when the agent saves. You watch, you do not instruct in the app:
-   a timeline of what each save changed, and flip back to the version before.
-   `tracebi dev <name> --app` opens it in one command (opt-in until the app
-   matches the classic workbench: per-binding data cards, lint, discovery).
+   refreshes when the agent saves. You instruct the agent in chat; the panel
+   also takes a note for later. A timeline of what each save changed, and
+   flip back to the version before. `tracebi dev <name>` opens it in one
+   command, and is the default now that the app has the classic workbench's
+   per-binding data and lint (Data, Checks) and the project feed before a
+   report exists (`tracebi dev --classic` keeps the old preview server).
 4. **The theme pass,** one surface at a time through the audit loop.
    - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline

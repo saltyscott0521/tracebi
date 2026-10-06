@@ -10,7 +10,7 @@ import {
   useAppStatus, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
 } from '../api'
 import { attachPointMode } from '../pointMode'
-import Workbench from '../components/Workbench'
+import Workbench, { ProjectFeed } from '../components/Workbench'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
@@ -390,7 +390,7 @@ function ReportDetail({ report, onBack }) {
   // what an agent edits.
   const { data: appStatus } = useAppStatus()
   const canPoint = !!appStatus?.build_mode && report?.form === 'package'
-  // `tracebi dev <name> --app` opens the report with ?build=1: Build mode is on.
+  // `tracebi dev <name>` opens the report with ?build=1: Build mode is on.
   const [searchParams] = useSearchParams()
   const [wantBuild, setWantBuild] = useState(() => searchParams.get('build') === '1')
   const pointOn = wantBuild && canPoint
@@ -554,7 +554,7 @@ function ReportDetail({ report, onBack }) {
               {pointOn ? (
                 <div className="build-layout">
                   <ReportFrame html={frameHtml} title={report.name} frameRef={frameRef} />
-                  <Workbench pointed={pointed} onClearPointing={clearPointing}
+                  <Workbench pointed={pointed} onClearPointing={clearPointing} name={report.name}
                              state={wbState} previewError={wbPreview.error} timeline={timeline} />
                 </div>
               ) : (
@@ -747,6 +747,10 @@ export default function Reports({ model = '' }) {
   const { data, isLoading } = useReports()
   const { data: desk } = useDesk()
   const { data: pipelines } = usePipelines()
+  // In dev mode (`tracebi dev`) the agent's exhibits and your notes to it are
+  // here whenever no report is open, even before one exists.
+  const { data: appStatus } = useAppStatus()
+  const dev = !!appStatus?.build_mode
   const [query, setQuery] = useState('')
   const builds = Object.fromEntries((desk?.builds || []).map(b => [b.report, b]))
   // Selection lives in the URL (?r=name), so an attention item can
@@ -782,9 +786,12 @@ export default function Reports({ model = '' }) {
         .filter(it => !model || it.models.includes(model))} />
 
       {!isLoading && reports.length === 0 ? (
-        <Empty message={model
-          ? `No reports for ${model} yet. Reports for it live in reports/${model}/: scaffold one with tracebi new-report.`
-          : 'No reports yet. Scaffold one with tracebi new-report, or see Get Started.'} />
+        <>
+          <Empty message={model
+            ? `No reports for ${model} yet. Reports for it live in reports/${model}/: scaffold one with tracebi new-report.`
+            : 'No reports yet. Scaffold one with tracebi new-report, or see Get Started.'} />
+          {dev && <ProjectFeed />}
+        </>
       ) : (
         <SplitLayout
           detail={!!current}
@@ -825,7 +832,12 @@ export default function Reports({ model = '' }) {
           }
           right={isLoading ? <SkeletonCard /> : current
             ? <ReportDetail key={current.name} report={current} onBack={() => select(null)} />
-            : <ReportsOverview reports={reports} builds={desk?.builds || []} onOpen={select} />}
+            : (
+              <>
+                <ReportsOverview reports={reports} builds={desk?.builds || []} onOpen={select} />
+                {dev && <ProjectFeed />}
+              </>
+            )}
         />
       )}
     </div>

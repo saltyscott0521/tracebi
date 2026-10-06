@@ -458,6 +458,14 @@ tr.tb-window-pad td {
 /* Runtime wrapper around figures an absolute badge cannot anchor against
  * directly (tables) — positions the badge at the figure's own corner. */
 .tb-badge-anchor { position: relative; }
+/* A table has no free corner: pinned to the top-right it sits on the last
+ * column header. Give it a row of its own above the table instead. */
+.tb-badge-anchor > .tb-badge {
+  position: static;
+  display: block;
+  width: fit-content;
+  margin: 0 0 var(--tb-space-1) auto;
+}
 
 /* Scenarios — the reader's what-if, computed in the browser. Visibly apart
  * from the stamped figures: a dashed frame and the runtime's label, so a

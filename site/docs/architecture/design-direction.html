@@ -121,8 +121,8 @@ app on the other. In the app, open a report in <strong>Build mode</strong> (loca
 <li><strong>Keep.</strong> You accept or revert. Nothing is kept until you say so, and the
    receipt only reads green for what was built and checked, never for a draft.</li>
 </ol>
-<p>You can also leave a note on a selection (a <strong>pin</strong>) for the agent to pick up
-later: <code>address_pins</code> already does that.</p>
+<p>You can also leave a note (a <strong>pin</strong>) for the agent to pick up later, from
+the panel's note box: <code>address_pins</code> already does that.</p>
 <h3 id="one-workbench-two-clients">One workbench, two clients</h3>
 <p>The workbench's state is files under <code>.tracebi/workbench/&lt;report&gt;/</code>
 (selection, pins, exhibits). The app and the MCP server are separate processes
@@ -195,10 +195,12 @@ grounds was picked from six side-by-side options.)</p>
 <li><strong>The workbench in the app</strong> (done): the Build button opens it beside the
    report: pointing, a pin from it, the pins and what the agent answered, the
    agent's exhibits, broken bindings, and a preview of the working state that
-   refreshes when the agent saves. You watch, you do not instruct in the app:
-   a timeline of what each save changed, and flip back to the version before.
-   <code>tracebi dev &lt;name&gt; --app</code> opens it in one command (opt-in until the app
-   matches the classic workbench: per-binding data cards, lint, discovery).</li>
+   refreshes when the agent saves. You instruct the agent in chat; the panel
+   also takes a note for later. A timeline of what each save changed, and
+   flip back to the version before. <code>tracebi dev &lt;name&gt;</code> opens it in one
+   command, and is the default now that the app has the classic workbench's
+   per-binding data and lint (Data, Checks) and the project feed before a
+   report exists (<code>tracebi dev --classic</code> keeps the old preview server).</li>
 <li><strong>The theme pass,</strong> one surface at a time through the audit loop.
    - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline

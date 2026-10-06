@@ -100,9 +100,11 @@ carries `data-tb-unverified`; there is no third state.
 The dev loop, step by step:
 
 - **`tracebi dev <name>` blocks** — keep it open in its own terminal. It
-  serves the report at the root and the **workbench** at `/__workbench`
-  (figures, binding coverage, and the pins a reviewer left), re-rendering
-  on every save to the package, `models/`, or `transforms/`.
+  opens the web app on the report with Build mode on: the report, and beside
+  it the **workbench** (what changed on each save, the data each binding
+  reads, checks, and the notes a reviewer left), re-rendering on every save
+  to the package, `models/`, or `transforms/`. (`--classic` is the older
+  stdlib preview, with the workbench at `/__workbench`.)
 - **Explore inside the artifact.** Blocks marked
   `data-tb-stage="exploration"` render under `tracebi dev` and die at
   build — scratch work never ships.
@@ -127,14 +129,16 @@ under `verify`. A JSON `ReportSpec` under `reports/` still renders — it is
 a serialization, not a lane — and `tracebi migrate spec reports/<name>.json`
 compiles it into a package, which shadows the same-named spec at discovery.
 
-### Discovery mode — the workbench before a report exists
+### The project feed — the workbench before a report exists
 
-Run `tracebi dev` with **no argument** to open discovery mode: the same
-workbench, anchored to nothing, over the project as a whole — warehouse tables,
-sink contracts, models, and packages. It is the live surface for phases ① and
-② before any report package exists. `tracebi dev <name>` anchors the workbench
-to one package; `tracebi dev` alone is where you look while you are still
-building the model underneath.
+Run `tracebi dev` with **no argument** and the app opens on Reports with the
+project feed: what your agent shows you while it works (`show()` from any
+script in the project), and the notes you leave it. It is the live surface for
+phases ① and ② before any report package exists. `tracebi dev <name>` anchors
+the workbench to one package; `tracebi dev` alone is where you look while you
+are still building the model underneath. The warehouse tables and the model's
+schema are on the app's Sources and Data model pages (`tracebi dev --classic`
+lays them out beside the feed on one page).
 
 ### Interactive controls subset — they never compute
 
