@@ -144,6 +144,54 @@ def test_an_analyst_browses_the_model_and_queries_it(served):
     assert [r["x"] for r in preview.json()["data"]] == [1.5, None]
 
 
+def test_the_warehouse_view_says_what_is_there_and_what_was_certified(served, scaffolded):
+    """Sources → Warehouse: tables, row counts, profiles, and each table's sink
+    contract read honestly — a table changed or added behind the certificate's
+    back is stale / no_contract, never green — and the file is not held open."""
+    import pandas as pd
+
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+    [conn] = served.get("/api/connectors").json()
+    url = f"/api/connectors/{conn['name']}/warehouse"
+    wh = served.get(url).json()
+    assert wh["supported"] and wh["exists"]
+    tables = {t["name"]: t for t in wh["tables"]}
+    orders = tables["fact_orders"]
+    assert orders["rows"] == 10
+    assert orders["profile"]["order_id"]["distinct"] == 10
+    assert orders["contract"]["status"] == "satisfied"
+    assert orders["contract"]["checks"] > 0
+    assert all(t["contract"]["status"] == "satisfied" for t in tables.values())
+
+    # Behind the certificate's back: one table rewritten, one added. Writing
+    # here also proves the request held nothing open.
+    w = DuckDBConnector("w", database=str(scaffolded / "data" / "warehouse.duckdb"))
+    df = w.load("fact_orders")
+    w.write(df.iloc[:9], "fact_orders")
+    w.write(pd.DataFrame({"x": [1]}), "scratch")
+    w.disconnect()
+    tables = {t["name"]: t for t in served.get(url).json()["tables"]}
+    assert tables["fact_orders"]["rows"] == 9
+    assert tables["fact_orders"]["contract"]["status"] == "stale"
+    assert tables["scratch"]["contract"] == {"status": "no_contract"}
+
+    # A transform runs right after the call, and re-certifies.
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    tables = {t["name"]: t for t in served.get(url).json()["tables"]}
+    assert tables["fact_orders"]["contract"]["status"] == "satisfied"
+
+    assert served.get("/api/connectors/nope/warehouse").status_code == 404
+
+
+def test_a_warehouse_that_is_not_built_yet_says_so(served, scaffolded):
+    [conn] = served.get("/api/connectors").json()
+    (scaffolded / "data" / "warehouse.duckdb").unlink()
+    wh = served.get(f"/api/connectors/{conn['name']}/warehouse").json()
+    assert wh["supported"] and wh["exists"] is False and wh["tables"] == []
+
+
 def test_an_unknown_report_is_a_clean_404(served):
     assert served.get("/api/reports/nope/built").status_code == 404
     assert served.get("/r/nope").status_code == 404

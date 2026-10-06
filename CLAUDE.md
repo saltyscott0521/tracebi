@@ -619,6 +619,7 @@ GET  /api/models/{name}/tables/{t}/preview           → first N rows + dtypes +
 GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV attachment
 GET  /api/models/{name}/source                       → the model's file (read-only; the Code tab)
 GET  /api/connectors/{name}/source                   → the model file(s) that declare it
+GET  /api/connectors/{name}/warehouse                → tables, row counts, column profiles, per-table sink-contract status (read-only, closed per request)
 GET  /api/pipelines/{name}/source                    → the pipeline file + the transform it runs
 POST /api/models/{name}/query                        → star-schema query + lineage graph; rows raw (data) and as report-formatted text (display)
 GET  /api/reports

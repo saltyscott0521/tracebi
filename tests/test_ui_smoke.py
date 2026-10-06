@@ -233,6 +233,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="transform", exact=True).click()
             page.get_by_text("transforms/holdings_transform.py").first.wait_for()
+            # Sources → Warehouse says what the warehouse holds and that the sink
+            # satisfied its contract, before any report is opened.
+            page.goto(base + "/m/portfolio_model/sources")
+            page.get_by_role("button", name="Warehouse", exact=True).click()
+            table = page.locator("details", has_text="fact_holdings")
+            table.wait_for()
+            assert re.search(r"[\d,]+ rows", table.locator("summary").inner_text())
+            assert table.locator("summary").get_by_text("satisfied", exact=True).count() == 1
+            fail_on_browser_errors()
             # Explore leads with the model's own measures (each with what it means),
             # sends their names, and writes the results in their declared formats.
             page.goto(base + "/m/portfolio_model/explore")

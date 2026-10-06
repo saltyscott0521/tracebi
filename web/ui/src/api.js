@@ -181,7 +181,15 @@ export const useSource = (kind, name) =>
     enabled: !!name,
   })
 
-export const useReportLineage = () =>
+// What a file-backed warehouse holds: tables, row counts, profiles, contract status.
+export const useConnectorWarehouse = (name) =>
+  useQuery({
+    queryKey: ['warehouse', name],
+    queryFn: () => get(`/connectors/${encodeURIComponent(name)}/warehouse`),
+    enabled: !!name,
+  })
+
+export const useReportLineage =() =>
   useMutation({ mutationFn: (name) => get(`/reports/${reportPath(name)}/lineage`) })
 
 // Ask is a client of the selection endpoint: a cut, not a private query path.

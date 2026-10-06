@@ -33,3 +33,20 @@ def connector_source(name: str):
         missing_hint="No model file declares this connector: it is registered in Python code (an app module).",
         hint="A connector is declared in the model file that reads from it.",
     )
+
+
+@router.get("/{name}/warehouse")
+def connector_warehouse(name: str):
+    """What a file-backed warehouse holds: tables, row counts, column profiles
+    and each table's sink-contract status. Read-only; the file is opened and
+    closed within the request. Other connectors answer ``supported: false``."""
+    c = registry.get_connector(name)
+    if not c:
+        raise HTTPException(status_code=404, detail=f"Connector '{name}' not found")
+    d = c.describe()
+    database = d.get("database")
+    if d.get("type") != "DuckDBConnector" or not database or database == ":memory:":
+        return {"supported": False, "tables": []}
+    from tracebi.workbench import warehouse_view
+
+    return {"supported": True, **warehouse_view(str(database))}

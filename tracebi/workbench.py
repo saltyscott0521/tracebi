@@ -1133,6 +1133,26 @@ def _discovery_warehouse(project_root: str, loaded: list) -> dict:
     return wh
 
 
+def warehouse_view(path: str) -> dict:
+    """One file-backed warehouse for the app's Warehouse tab: every table with
+    its row count, column profile and sink-contract status. The same
+    introspection the classic discovery panel uses, on short-lived read-only
+    connections closed before this returns. Failures land in ``"error"``."""
+    from tracebi.contracts import table_statuses
+
+    view: dict = {"path": path, "exists": os.path.isfile(path), "tables": []}
+    if not view["exists"]:
+        return view
+    try:
+        view["tables"] = _warehouse_tables(path)
+        statuses = table_statuses(path, [t["name"] for t in view["tables"]])
+        for t in view["tables"]:
+            t["contract"] = statuses[t["name"]]
+    except Exception as exc:  # noqa: BLE001 — a locked file is a result
+        view["error"] = f"{type(exc).__name__}: {exc}"
+    return view
+
+
 #: Column cap for warehouse profiles — beyond it the per-column aggregate
 #: scan costs more than a glance is worth, so the entry says why instead.
 PROFILE_COLUMN_CAP = 50
