@@ -4,6 +4,7 @@ import { useConnectors } from '../api'
 import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
+import Warehouse from '../components/Warehouse'
 import { pagePath } from '../nav'
 import {
   Card, CardTitle, Badge, Btn,
@@ -17,14 +18,21 @@ function Section({ label, children }) {
 
 function ConnectorDetail({ c }) {
   const [code, setCode] = useState(false)
+  const [warehouse, setWarehouse] = useState(false)
   if (!c) return (
     <Card>
       <Empty message="Select a source to see where its data is kept." />
     </Card>
   )
+  const isWarehouse = c.type === 'DuckDBConnector' && c.storage?.kind === 'file'
   return (
     <Card className="fade-in">
-      <CardTitle action={<Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>}>{c.name}</CardTitle>
+      <CardTitle action={(
+        <span style={{ display: 'inline-flex', gap: 6 }}>
+          {isWarehouse && <Btn size="sm" variant="outline" onClick={() => setWarehouse(v => !v)}>{warehouse ? 'Hide warehouse' : 'Warehouse'}</Btn>}
+          <Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>
+        </span>
+      )}>{c.name}</CardTitle>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         <Badge variant="blue">{c.type}</Badge>
         {c.storage?.kind && <Badge variant="gray">{KIND_LABEL[c.storage.kind]}</Badge>}
@@ -37,6 +45,7 @@ function ConnectorDetail({ c }) {
             <Link key={m} to={pagePath('model', m)} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
           ))}
       </Section>
+      {warehouse && <Section label="Warehouse"><Warehouse connector={c} /></Section>}
       {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}
       {c.tables && c.tables.length > 0 && (
         <div>

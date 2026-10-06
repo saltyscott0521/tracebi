@@ -432,21 +432,51 @@ def transform_contracts_block(models: dict,
             if rec is None:
                 block.setdefault(table, {"status": "no_contract"})
                 continue
-            current = frame_fingerprint(conn.load(table))
-            recorded = rec["tables"][table]
-            block[table] = {
-                "status": "satisfied" if current == recorded else "stale",
-                "transform": rec.get("transform"),
-                "checked_at": rec.get("checked_at"),
-                "checks": sum(1 for c in rec.get("checks", [])
-                              if _check_touches(c, table)),
-                "fingerprint": recorded,
-            }
-            # The transform-level stated methodology rides along — prose the
-            # transform states about itself, never part of the status.
-            if rec.get("note"):
-                block[table]["note"] = rec["note"]
+            block[table] = _status_entry(
+                rec, table, frame_fingerprint(conn.load(table)))
     return block
+
+
+def _status_entry(rec: dict, table: str, current: str) -> dict:
+    """One table's contract status: the record covering it, judged against the
+    fingerprint the table has *right now* (read through the connector load
+    path). Shared by the manifest join and the Warehouse view."""
+    recorded = rec["tables"][table]
+    entry = {
+        "status": "satisfied" if current == recorded else "stale",
+        "transform": rec.get("transform"),
+        "checked_at": rec.get("checked_at"),
+        "checks": sum(1 for c in rec.get("checks", [])
+                      if _check_touches(c, table)),
+        "fingerprint": recorded,
+    }
+    # The transform-level stated methodology rides along — prose the
+    # transform states about itself, never part of the status.
+    if rec.get("note"):
+        entry["note"] = rec["note"]
+    return entry
+
+
+def table_statuses(warehouse: str, tables: list[str]) -> dict[str, dict]:
+    """``satisfied`` / ``stale`` / ``no_contract`` for each of *tables* in a
+    file-backed *warehouse* — the same join a report manifest records, without
+    needing a report. One short-lived read-only connector, released before
+    returning, so the warehouse is never held open."""
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.model.dataset import frame_fingerprint
+
+    certs = read_contracts(warehouse)
+    out: dict[str, dict] = {}
+    wh = DuckDBConnector("contracts", database=warehouse)
+    try:
+        for table in tables:
+            rec = _record_covering(certs, table)
+            out[table] = ({"status": "no_contract"} if rec is None else
+                          _status_entry(rec, table,
+                                        frame_fingerprint(wh.load(table))))
+    finally:
+        wh.disconnect()
+    return out
 
 
 def stated_methodology_block(models: dict,
