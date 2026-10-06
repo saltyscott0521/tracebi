@@ -70,6 +70,14 @@ def _load_table(name: str, table_name: str):
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+def _records(df) -> list[dict]:
+    """Rows for a JSON response. JSON has no NaN or infinity, and data can hold
+    one (an empty cell, an empty total, a division by zero): those go out as
+    null rather than failing the whole response."""
+    df = df.replace([float("inf"), float("-inf")], float("nan"))
+    return df.astype(object).where(df.notna(), None).to_dict(orient="records")
+
+
 @router.get("/{name}/tables/{table_name}/preview")
 def preview_table(name: str, table_name: str, rows: int = 50):
     """Load a table from a model and return the first N rows."""
@@ -83,7 +91,7 @@ def preview_table(name: str, table_name: str, rows: int = 50):
         "total_rows": len(full_df),
         "columns": list(df.columns),
         "dtypes": {c: str(t) for c, t in full_df.dtypes.items()},
-        "data": df.to_dict(orient="records"),
+        "data": _records(df),
         "lineage": ds.lineage_to_dict(),
     }
 
@@ -160,7 +168,7 @@ def run_query(name: str, body: QueryRequest):
         "fact": body.fact,
         "rows": len(df),
         "columns": list(df.columns),
-        "data": df.astype(object).where(df.notna(), None).to_dict(orient="records"),
+        "data": _records(df),
         "display": display_rows(df, declared_column_formats(model, df.columns)),
         "engine": engine,
         "elapsed_ms": elapsed_ms,

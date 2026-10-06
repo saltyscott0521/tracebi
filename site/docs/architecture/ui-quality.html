@@ -110,6 +110,8 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
   cut off has a tooltip with the rest <code>[truncated-no-title]</code>.</li>
 <li><strong>No blank half-pages.</strong> A list-and-detail page opens on something, not on
   "Select an item" <code>[empty-detail-pane]</code>.</li>
+<li><strong>A row of actions fits</strong> <code>[action-row-wraps]</code>: three or more buttons in a
+  flat row do not wrap onto a second line at desktop width.</li>
 <li><strong>It is quick.</strong> Every page settles within 2.5s on the reference project
   <code>[slow-page]</code>. The JS bundle and the count of hard-coded colours never grow
   against the baseline <code>[metric:*]</code>.</li>
@@ -191,6 +193,16 @@ registered by an app module rather than found under <code>reports/</code>). Each
   stroke. Use <code>var(--muted)</code> or <code>color-mix</code>, and check an edge renders.</li>
 <li>A theme token the dark block does not set silently inherits the light value:
   <code>--blue</code> stayed near-black and every active tab and row vanished in dark.</li>
+<li>A page that shows a fact another page shows uses the same words and chips,
+  from the same data: the Runs page shows the verdict the Reports page shows
+  (<code>/api/desk</code>) on a report's newest build, and a neutral "Not checked" on every
+  older one. A build row stores no verdict, so it never reads green by itself.</li>
+<li>A row of seven buttons is a grouping problem, not a wrapping problem: one
+  primary action, the rest quiet, and a menu for the family (Download holds
+  HTML, Excel and PDF, each with its one-line caveat). An open item gets the
+  page's full width; its list is one click away.</li>
+<li>Focus that sits inside a report's frame belongs to the element inside it, so
+  the audit judges that element; the frame draws no ring of its own.</li>
 </ul>
   </main>
 </div>
