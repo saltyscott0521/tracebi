@@ -1254,9 +1254,16 @@ class TemplatePackage:
         cfg = {"badges": True,
                "figures": figures_config(work_figs,
                                          {sd.name for sd in outputs})}
-        page = self._inject(page, data_blocks_html(inputs + outputs),
-                            stage="exploration", figures_cfg=cfg,
-                            extra_blocks_html=self._selection_blocks(models))
+        # The model's declared formats, as the build embeds them — a preview
+        # that formats numbers differently from the file that ships is no
+        # preview.
+        formats = self._declared_column_formats(
+            models, {sd.name: sd.dataset for sd in inputs + outputs})
+        page = self._inject(
+            page, data_blocks_html(inputs + outputs),
+            stage="exploration", figures_cfg=cfg,
+            extra_blocks_html=(embed_json(formats, "tracebi-formats") + "\n"
+                               + self._selection_blocks(models)))
         page = self._allow_selection_connect(page)
         return page, inputs, outputs
 
