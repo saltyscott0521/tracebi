@@ -85,10 +85,14 @@ money stored as strings.
 
 ## Exploring before a report exists
 
-`tracebi dev` with no report name opens the **discovery workbench**. Any script
-run while it's open can call `tracebi.workbench.show(df, note=...)` to post an
-excerpt; the warehouse panel lists tables and their contract status as they
-land, and the models panel shows the star schema taking shape.
+`tracebi dev` with no report name opens the app on Reports with the **project
+feed**. Any script run while it's open can call
+`tracebi.workbench.show(df, note=...)` to post an excerpt, and you can leave
+your agent notes there. The warehouse tables are on the app's Sources page, and
+the Data model page shows the star schema taking shape. Sink-contract status and
+column profiles of the warehouse tables are in the agent's `workbench_state`,
+and on the classic page (`tracebi dev --classic`), which lays the warehouse,
+models and packages out beside the feed.
 `tracebi session export` saves the session to `explorations/` as a committed
 record (`--format md` for a version that reads well in a git review). It is
 marked as exploration and carries no receipt, and `verify` refuses it by name.

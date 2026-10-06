@@ -153,9 +153,11 @@ carries <code>data-tb-unverified</code>; there is no third state.</p>
 <p>The dev loop, step by step:</p>
 <ul>
 <li><strong><code>tracebi dev &lt;name&gt;</code> blocks</strong> — keep it open in its own terminal. It
-  serves the report at the root and the <strong>workbench</strong> at <code>/__workbench</code>
-  (figures, binding coverage, and the pins a reviewer left), re-rendering
-  on every save to the package, <code>models/</code>, or <code>transforms/</code>.</li>
+  opens the web app on the report with Build mode on: the report, and beside
+  it the <strong>workbench</strong> (what changed on each save, the data each binding
+  reads, checks, and the notes a reviewer left), re-rendering on every save
+  to the package, <code>models/</code>, or <code>transforms/</code>. (<code>--classic</code> is the older
+  stdlib preview, with the workbench at <code>/__workbench</code>.)</li>
 <li><strong>Explore inside the artifact.</strong> Blocks marked
   <code>data-tb-stage="exploration"</code> render under <code>tracebi dev</code> and die at
   build — scratch work never ships.</li>
@@ -179,13 +181,15 @@ can't express; its output stamps <code>verifiable: false</code> and never reads 
 under <code>verify</code>. A JSON <code>ReportSpec</code> under <code>reports/</code> still renders — it is
 a serialization, not a lane — and <code>tracebi migrate spec reports/&lt;name&gt;.json</code>
 compiles it into a package, which shadows the same-named spec at discovery.</p>
-<h3 id="discovery-mode-the-workbench-before-a-report-exists">Discovery mode — the workbench before a report exists</h3>
-<p>Run <code>tracebi dev</code> with <strong>no argument</strong> to open discovery mode: the same
-workbench, anchored to nothing, over the project as a whole — warehouse tables,
-sink contracts, models, and packages. It is the live surface for phases ① and
-② before any report package exists. <code>tracebi dev &lt;name&gt;</code> anchors the workbench
-to one package; <code>tracebi dev</code> alone is where you look while you are still
-building the model underneath.</p>
+<h3 id="the-project-feed-the-workbench-before-a-report-exists">The project feed — the workbench before a report exists</h3>
+<p>Run <code>tracebi dev</code> with <strong>no argument</strong> and the app opens on Reports with the
+project feed: what your agent shows you while it works (<code>show()</code> from any
+script in the project), and the notes you leave it. It is the live surface for
+phases ① and ② before any report package exists. <code>tracebi dev &lt;name&gt;</code> anchors
+the workbench to one package; <code>tracebi dev</code> alone is where you look while you
+are still building the model underneath. The warehouse tables and the model's
+schema are on the app's Sources and Data model pages (<code>tracebi dev --classic</code>
+lays them out beside the feed on one page).</p>
 <h3 id="interactive-controls-subset-they-never-compute">Interactive controls subset — they never compute</h3>
 <p>A built artifact can carry <code>data-tb-filter</code> dropdowns, <code>data-tb-search</code>, and
 <code>data-tb-rows</code> (scrollable tables). The honesty rule is locked in the runtime:

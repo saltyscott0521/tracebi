@@ -23,7 +23,9 @@ Environment switches:
     TRACEBI_PIPELINES_DIR       — pipeline definitions folder (default: pipelines)
     TRACEBI_REPORTS_DIR         — reports folder: specs, packages, factories (default: reports)
     TRACEBI_SCHEDULED_DIR       — scheduled scripts folder (default: scheduled)
-    TRACEBI_DEV_MODE=1          — mount /_dev/reload
+    TRACEBI_DEV_MODE=1          — mount /_dev/reload; Build mode and the project
+                                  feed (/api/workbench/project) answer, and the
+                                  feed's heartbeat keeps show() posting
     TRACEBI_AUTH_USER / _PASS   — enable HTTP Basic auth
     TRACEBI_AUTH_PROXY_HEADER   — enable proxy header-trust auth
     TRACEBI_SCHEDULES_IN_SERVER=1
@@ -34,6 +36,7 @@ Environment switches:
 import importlib
 import os
 import sys
+import threading
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,12 +76,34 @@ async def _lifespan(app):
                              os.environ.get("TRACEBI_MODELS_DIR", "models"),
                              interval,
                              os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
+    stop_beat = _start_feed_heartbeat() if os.environ.get("TRACEBI_DEV_MODE") == "1" else None
     try:
         async with server_lifespan(app):
             yield
     finally:
         if stop is not None:
             stop.set()
+        if stop_beat is not None:
+            stop_beat.set()
+
+
+def _start_feed_heartbeat() -> threading.Event:
+    """Keep the project feed live while the app runs in dev mode, so any script
+    in the project can ``tracebi.workbench.show(...)`` with no setup and the
+    exhibit lands where the person is looking. Stops (and the marker goes stale
+    in seconds) when the server does. Returns the event that stops it."""
+    from tracebi import workbench
+
+    wb = workbench.discovery_dir(os.getcwd())
+    stop = threading.Event()
+
+    def beat() -> None:
+        workbench.heartbeat(wb)
+        while not stop.wait(workbench.HEARTBEAT_WINDOW / 3):
+            workbench.heartbeat(wb)
+
+    threading.Thread(target=beat, daemon=True).start()
+    return stop
 
 
 app = FastAPI(
@@ -133,6 +158,7 @@ app.include_router(desk.router,       prefix="/api")
 app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")
 app.include_router(reports.share_router)                # /r/<name>: the share link
+app.include_router(reports.workbench_router, prefix="/api")   # dev mode: the project feed
 app.include_router(pipelines.router,  prefix="/api")
 app.include_router(docs.router,       prefix="/api")
 app.include_router(verify.router,     prefix="/api")

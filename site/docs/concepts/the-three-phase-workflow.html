@@ -160,10 +160,14 @@ tracebi serve                   # browse it: Reports → portfolio_dashboard
 into issuers, trailing position counters to strip, sectors spelled six ways,
 money stored as strings.</p>
 <h2 id="exploring-before-a-report-exists">Exploring before a report exists</h2>
-<p><code>tracebi dev</code> with no report name opens the <strong>discovery workbench</strong>. Any script
-run while it's open can call <code>tracebi.workbench.show(df, note=...)</code> to post an
-excerpt; the warehouse panel lists tables and their contract status as they
-land, and the models panel shows the star schema taking shape.
+<p><code>tracebi dev</code> with no report name opens the app on Reports with the <strong>project
+feed</strong>. Any script run while it's open can call
+<code>tracebi.workbench.show(df, note=...)</code> to post an excerpt, and you can leave
+your agent notes there. The warehouse tables are on the app's Sources page, and
+the Data model page shows the star schema taking shape. Sink-contract status and
+column profiles of the warehouse tables are in the agent's <code>workbench_state</code>,
+and on the classic page (<code>tracebi dev --classic</code>), which lays the warehouse,
+models and packages out beside the feed.
 <code>tracebi session export</code> saves the session to <code>explorations/</code> as a committed
 record (<code>--format md</code> for a version that reads well in a git review). It is
 marked as exploration and carries no receipt, and <code>verify</code> refuses it by name.</p>

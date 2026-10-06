@@ -239,6 +239,28 @@ export const useWorkbenchPreview = (name, version, enabled) =>
     placeholderData: (previous) => previous,
   })
 
+// A note for the agent, left from the workbench: it reads it as an open pin.
+// `name` is the report whose workbench this is, or null for the project feed.
+export const useLeaveNote = (name) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (note) => postJson(name ? `${wb(name)}/note` : '/workbench/project/note', { note }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [name ? 'wb-state' : 'wb-project'] }),
+  })
+}
+
+// The project feed (dev mode only): what the agent shows you, and your notes to
+// it, before a report is open. The server rebuilds it only when it changed.
+export const useProjectFeed = (enabled) =>
+  useQuery({
+    queryKey: ['wb-project'],
+    queryFn: () => get('/workbench/project'),
+    enabled,
+    refetchInterval: 2000,
+    retry: false,
+    placeholderData: (previous) => previous,
+  })
+
 export const useKeepSelection = () =>
   useMutation({
     mutationFn: ({ name, filters }) =>

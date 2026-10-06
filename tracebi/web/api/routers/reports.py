@@ -714,13 +714,17 @@ def _source_file(path: str, reports_dir: str) -> dict:
 # TRACEBI_DEV_MODE=1, and it never touches the report or a build.
 
 
-def _workbench_for(name: str):
-    """(package directory, workbench directory) for a report, or an HTTP error."""
+def _require_dev_mode() -> None:
     if os.environ.get("TRACEBI_DEV_MODE") != "1":
         raise HTTPException(
             status_code=403,
             detail="Build mode is off. Start the server with TRACEBI_DEV_MODE=1 "
                    "(tracebi dev does).")
+
+
+def _workbench_for(name: str):
+    """(package directory, workbench directory) for a report, or an HTTP error."""
+    _require_dev_mode()
     from tracebi.report_paths import report_name_for_dir
     from tracebi.workbench import workbench_dir
 
@@ -782,13 +786,20 @@ def workbench_version(name: str):
 @router.get("/{name:path}/workbench/state")
 def workbench_state(name: str):
     """What the workbench knows: pointing, the pins and the exhibit feed (what the
-    agent has left for the person), and any binding that failed (the working
-    state can be broken; that is state, not an error)."""
+    agent has left for the person), the data each binding reads, the checks the
+    classic workbench ran (unbound figures, unused bindings, numbers typed outside
+    figures), and any binding that failed (the working state can be broken; that
+    is state, not an error)."""
+    from tracebi.reports.template_package import REPORT_PY
     from tracebi.web.api.routers.desk import _loaded_models
-    from tracebi.workbench import collect_state, package_version, read_pointing
+    from tracebi.workbench import (
+        collect_state, package_version, read_pointing, show_off,
+    )
 
     package, wb = _workbench_for(name)
-    with _RENDER_LOCK:
+    # This reads the report's code to describe it; it is not the render the
+    # person is watching, so a show() in report.py posts nothing from here.
+    with _RENDER_LOCK, show_off():
         state = collect_state(package, _loaded_models())
     return {
         "version": package_version(package),
@@ -799,7 +810,43 @@ def workbench_state(name: str):
         "coverage": state.get("coverage"),
         "broken": [{"binding": b["name"], "error": b["error"]}
                    for b in state.get("bindings") or [] if b.get("error")],
+        "bindings": [_binding_view(b) for b in state.get("bindings") or []
+                     if b["name"] != REPORT_PY],
+        "checks": {
+            "unbound_figures": [f["id"] for f in state.get("figures") or []
+                                if f.get("unbound")],
+            "unused_bindings": state.get("unused_bindings") or [],
+            "numbers_outside_figures":
+                (state.get("lint") or {}).get("numeric_literals_outside_figures", 0),
+        },
     }
+
+
+#: Rows of a binding the panel shows; the full table is the model's to query.
+_SAMPLE_ROWS = 5
+
+
+def _binding_view(b: dict) -> dict:
+    """One binding as the panel shows it: where it comes from, how big it is, which
+    figures read it, and a few rows as the report would write them."""
+    view = {"name": b["name"], "source": b["source"], "model": b.get("model"),
+            "used_by": b["used_by"]}
+    if b.get("error"):
+        view["error"] = b["error"].split("\n")[0]
+    else:
+        view.update(rows=b["rows"], columns=b["columns"],
+                    sample=(b.get("display") or b["preview"])[:_SAMPLE_ROWS])
+    return view
+
+
+@router.post("/{name:path}/workbench/note")
+def leave_a_note(name: str, body: dict):
+    """The person's note for the agent: it reads it as an open pin."""
+    from tracebi.workbench import leave_note
+    try:
+        return {"pin": leave_note(_workbench_dir_for(name), body.get("note"))}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @router.get("/{name:path}/workbench/preview", response_class=HTMLResponse)
@@ -823,6 +870,53 @@ def workbench_preview(name: str):
             else:
                 os.environ["TRACEBI_WORKBENCH_DIR"] = previous
     return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+
+
+# The project feed: before a report is open (or exists), what the agent shows you
+# and the notes you leave it live in the _discovery workbench, the same files a
+# script's show() writes. Same gate as the report workbench above.
+workbench_router = APIRouter(prefix="/workbench", tags=["workbench"])
+
+_feed_cache: dict = {}
+
+
+def _file_sig(path: str):
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_mtime_ns, st.st_size)
+
+
+@workbench_router.get("/project")
+def project_feed():
+    """The agent's exhibits and the pins for the project as a whole. The page polls
+    this, so it is rebuilt only when the feed or the pins moved."""
+    from tracebi.workbench import (
+        EXHIBITS_FILE, PINS_FILE, collect_feed, discovery_dir,
+    )
+
+    _require_dev_mode()
+    root = os.getcwd()
+    wb = discovery_dir(root)
+    key = (wb, _file_sig(os.path.join(wb, EXHIBITS_FILE)),
+           _file_sig(os.path.join(wb, PINS_FILE)))
+    if _feed_cache.get("key") != key:
+        feed = collect_feed(root)
+        _feed_cache.update(key=key, feed={
+            **feed, "exhibits": feed["exhibits"][:30], "resolved": feed["resolved"][-20:]})
+    return _feed_cache["feed"]
+
+
+@workbench_router.post("/project/note")
+def leave_a_project_note(body: dict):
+    from tracebi.workbench import discovery_dir, leave_note
+
+    _require_dev_mode()
+    try:
+        return {"pin": leave_note(discovery_dir(os.getcwd()), body.get("note"))}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @router.get("/{name:path}/source")

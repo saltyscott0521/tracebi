@@ -15,7 +15,7 @@ environment — see [[environment-variables]].
 ## The everyday loop
 
 ```bash
-tracebi dev                      # the live surface (no name = discovery mode)
+tracebi dev                      # the app, in dev mode (no name = where your agent's exhibits land)
 tracebi run-transform holdings   # ① clean + sink to the warehouse
 tracebi report build my_report   # ③ render one self-contained .html + receipt
 tracebi report status my_report  # what the artifact has actually earned
@@ -238,22 +238,33 @@ measure. Exits 1 on any problem.
 ### `tracebi dev`
 
 ```bash
-tracebi dev [name] [--port 8001] [--no-browser] [--app]
+tracebi dev [name] [--port 8001] [--no-browser] [--classic]
 ```
 
-The live-preview loop, and **the everyday surface**.
+The live-preview loop, and **the everyday surface**. It opens the **web app**
+in dev mode (on `127.0.0.1` only), so there is one place to look at a report and
+to build it.
 
-`--app` opens the **web app** on that report with **Build mode** on, instead of
-the classic preview server: put your agent's chat beside it. The report
-re-renders each time the agent saves, a timeline lists which figures each save
-changed (flip back to the version before), and you can click a figure to point
-at it, so "make this a line chart" means that figure. You instruct the agent in
-its chat, not in the app. The server runs in dev mode on `127.0.0.1` only.
+With a package name it opens `reports/<name>/` with **Build mode** on: put your
+agent's chat beside it. The report re-renders each time the agent saves, a
+timeline lists which figures each save changed (flip back to the version
+before), and you can click a figure to point at it, so "make this a line chart"
+means that figure. The panel also lists **Data** (each binding: its model, rows
+× columns, the figures that read it, a few rows) and **Checks** (figures with no
+data behind them, bindings no figure reads, numbers typed outside figures), and
+has a note box for your agent. You instruct the agent in its chat; a note is
+for later.
 
-With a package name, serves `reports/<name>/` with the exploration render plus
-the workbench at `/__workbench`. With **no name** it enters *discovery mode*:
-warehouse tables, sink contracts, models and packages — the live surface before
-any report exists.
+With **no name** it opens the app on Reports, where what your agent shows you
+(`tracebi.workbench.show`, from any script in the project) appears under *From
+your agent*, before any report exists, along with the notes you leave it.
+
+`--classic` serves the older stdlib preview server instead: the report at the
+root and the workbench page at `/__workbench` (figures, per-binding data, code,
+lint; with no name, *discovery mode* lays out the warehouse tables, sink
+contracts, models and packages beside the feed). It is also what runs, with a
+one-line note, when the `web` extra is not installed. `--app` is still
+accepted; it is the default.
 
 ### `tracebi report preview`
 

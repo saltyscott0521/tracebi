@@ -255,19 +255,22 @@ body, the same text as `tracebi knowledge <slug>`).
 
 0. **Discovery comes first — and it has a live surface.** Before any report
    exists, run `tracebi dev` with **no name** (backgrounded — it blocks):
-   the discovery workbench. While it serves, ANY script you run can call
-   `tracebi.workbench.show(...)` — no env var needed — and the portal
-   updates live. **Work like a notebook**: `show("## Approach\n...")`
+   it opens the web app on Reports, where the project feed is. While it
+   serves, ANY script you run can call `tracebi.workbench.show(...)` — no
+   env var needed — and the feed (*From your agent*) updates live; the
+   human leaves you notes there. **Work like a notebook**: `show("## Approach\n...")`
    renders as a markdown cell (narrate the methodology as you go — the
    human can flip the feed to read top-down as a document);
    `show(df, note=...)` posts a frame excerpt with column profiles;
    `show(df, chart="bar", x=..., y=...)` sketches a real chart (bar,
    barh, line, area, pie, scatter) — iterate by re-showing, and when the
-   human pins one for the report, re-express it as a model-query binding
-   + figure: the sketch is exploration, the figure is the claim. The
-   Warehouse panel lists tables, row counts, column profiles, and
-   sink-contract status as transforms land; the Models panel shows the
-   star schema taking shape as you edit `models/`. Column names of a sunk
+   human asks to keep one for the report, re-express it as a model-query
+   binding + figure: the sketch is exploration, the figure is the claim.
+   `workbench_state` (no `report`) lists the warehouse's tables, row counts,
+   column profiles, and sink-contract status as transforms land, and the
+   star schema taking shape as you edit `models/`; the human sees them in
+   the app's Sources and Data model pages (`tracebi dev --classic` lays
+   them out beside the feed on one page). Column names of a sunk
    table come from the MCP `describe_table` tool (or `tracebi warehouse
    tables --table T`) — connector metadata, no row scan. A connector
    that raises is reported in place; the others still list. Use it before you
@@ -283,9 +286,12 @@ body, the same text as `tracebi knowledge <slug>`).
    exploration-stamped, no receipts, `verify` refuses it by name.
 1. **Start the dev server — it blocks.** Run `tracebi dev <name>` in a
    background shell (or ask the human to run it and keep the tab open; the
-   page is their view, not yours). It serves the report at the root and the
-   workbench at `/__workbench`, and reloads on every save to the package,
-   `models/`, `transforms/`, or `reports/_theme.css`.
+   page is their view, not yours). It opens the web app on that report with
+   Build mode on — the report beside the workbench panel — and reloads on
+   every save to the package, `models/`, `transforms/`, or
+   `reports/_theme.css`. (`tracebi dev --classic` is the older stdlib
+   preview with its own `/__workbench` page: the fallback when the web
+   extra is not installed.)
 2. **Edit; the portal follows.** Work in `template.html` / `report.json` /
    `style.css` / `script.js`. Explore inside `data-tb-stage="exploration"`
    blocks — they render in dev and die at build. From `report.py`,
@@ -293,23 +299,30 @@ body, the same text as `tracebi knowledge <slug>`).
    the workbench feed during dev and is a no-op everywhere else, so probe
    code needs no cleanup and no promotion step.
 3. **Read what they point at, then the pins, before every pass.** In the
-   web app's Build mode (`tracebi dev <name> --app`, or `tracebi serve` with
-   `TRACEBI_DEV_MODE=1`) the human clicks **Build** and then a figure or an area of
-   the report; the workbench beside it is where they watch you work: the report
-   re-rendered each time you save, which figures each save changed, your
-   exhibits, and the pins you resolve. They instruct you in chat. `workbench_state` returns it as `pointing`: a figure
+   web app's Build mode (`tracebi dev <name>` turns it on; `tracebi serve`
+   with `TRACEBI_DEV_MODE=1` has the **Build** button) the human clicks a
+   figure or an area of the report; the workbench beside it is where they
+   watch you work: the report re-rendered each time you save, which figures
+   each save changed, your exhibits, the pins you resolve, **Data** (each
+   binding's model, rows × columns, the figures that read it, a few rows)
+   and **Checks** (figures with no data behind them, bindings no figure
+   reads, numbers typed outside figures — they point; the final build
+   enforces). They instruct you in chat, and can leave a note in the
+   panel's note box. `workbench_state` returns what they point at as `pointing`: a figure
    (`id`, `binding`, `cell`) or an element (`selector`, `text`, `section`).
    When they say "this" or "here", that is what they mean; there is no
-   pointing when `pointing` is null, so ask. The human steers by PINNING figures
-   in the workbench with a note ("make this top 8 sectors only"). Read them
+   pointing when `pointing` is null, so ask. A note they leave is a pin
+   ("make this top 8 sectors only"; on the `--classic` page they can also
+   pin a figure). Read them
    with `tracebi report status <name>` (pins print with 📌) or the MCP
    `workbench_state` tool. Address pins first; they are the human pointing.
    A `"kind": "promote"` pin (a `→ keep:` line) is the human pressing
-   **Keep this** on an exhibit: its `request` says which exhibit, the code
+   **Keep this** on an exhibit (on the `--classic` page): its `request`
+   says which exhibit, the code
    that produced it, and how to promote it — a model binding + figure when
    the model can express it, else `report.py` (python-derived). A
    `"kind": "message"` pin (a `→ message:` line) is the human typing in
-   the timeline's note box — an instruction for you. Then resolve the pin
+   the note box — an instruction for you. Then resolve the pin
    with a one-line note (`tracebi report pins <name> --resolve <id>
    --note "..."`, or MCP `resolve_pin`). The workbench never
    edits the report; you do.
