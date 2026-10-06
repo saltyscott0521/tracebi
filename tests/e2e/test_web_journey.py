@@ -257,6 +257,32 @@ def test_the_workbench_in_the_app_shows_what_the_agent_did(served, monkeypatch, 
     assert served.get(f"{base}/version").json()["version"] != v2
 
 
+def test_a_transform_reruns_while_the_dev_app_is_open(served, monkeypatch, scaffolded):
+    """The building loop: the app is open in dev mode beside an agent that
+    re-runs the transform from the terminal (another process). The app must not
+    hold the warehouse between requests, or the transform cannot write it."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "1")
+    c = served
+    fact = c.get("/api/models/sample_model").json()["facts"][0]["name"]
+    asked = c.post("/api/models/sample_model/query", json={"fact": fact, "measures": ["revenue"]})
+    assert asked.status_code == 200, asked.text            # the app has read the warehouse
+
+    repo = Path(__file__).resolve().parents[2]
+    rerun = subprocess.run(
+        [sys.executable, "-m", "tracebi.cli", "run-transform", "sample_transform"],
+        cwd=scaffolded, env={**os.environ, "PYTHONPATH": str(repo)},
+        capture_output=True, text=True, timeout=120)
+    assert rerun.returncode == 0, rerun.stdout + rerun.stderr
+    # ...and the app still answers from the rewritten warehouse.
+    assert c.post("/api/models/sample_model/query",
+                  json={"fact": fact, "measures": ["revenue"]}).status_code == 200
+
+
 def test_the_build_panel_reads_the_data_and_the_checks(served, monkeypatch, scaffolded):
     """What the classic workbench's Figures & data tab showed, from the app: each binding
     with its model, size, the figures that read it and a few rows, plus the three
