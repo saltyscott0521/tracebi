@@ -134,6 +134,15 @@ class Registry:
         with self._lock:
             return self._models.get(name)
 
+    def release_all(self) -> None:
+        """Release every registered model's open handles (a warehouse file held
+        open read-only blocks a transform in another process from writing it);
+        the next query reconnects."""
+        with self._lock:
+            models = list(self._models.values())
+        for model in models:
+            model.disconnect()
+
     def list_models(self) -> list[dict]:
         with self._lock:
             models = list(self._models.values())

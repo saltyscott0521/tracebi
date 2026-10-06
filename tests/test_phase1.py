@@ -725,6 +725,41 @@ class TestDuckDBReadOnlyCoexistence:
         finally:
             holder.close()
 
+    def test_write_waits_for_another_process_to_finish_reading(self, warehouse, sample_df, monkeypatch):
+        """Another process holding the file read-only for a moment (the dev app
+        answering a request) delays a write; one that never lets go fails it,
+        naming the fix."""
+        import subprocess
+        import sys
+
+        def hold(seconds):
+            proc = subprocess.Popen(
+                [sys.executable, "-c",
+                 "import duckdb, sys, time\n"
+                 f"c = duckdb.connect({warehouse!r}, read_only=True)\n"
+                 "print('held', flush=True)\n"
+                 f"time.sleep({seconds})\n"
+                 "c.close()\n"],
+                stdout=subprocess.PIPE, text=True)
+            assert proc.stdout.readline().strip() == "held"
+            return proc
+
+        reader = hold(1.0)
+        try:
+            DuckDBConnector("dd", database=warehouse).write(sample_df, "sales_copy")
+        finally:
+            reader.wait(timeout=30)
+        assert len(DuckDBConnector("dd", database=warehouse).load("sales_copy")) == len(sample_df)
+
+        monkeypatch.setattr(DuckDBConnector, "WRITE_LOCK_WAIT", 0.5)
+        reader = hold(5.0)
+        try:
+            with pytest.raises(RuntimeError, match="tracebi serve"):
+                DuckDBConnector("dd", database=warehouse).write(sample_df, "sales_copy")
+        finally:
+            reader.kill()
+            reader.wait(timeout=30)
+
     def test_load_before_any_write_names_missing_file(self, tmp_path):
         conn = DuckDBConnector("dd", database=str(tmp_path / "missing.duckdb"))
         with pytest.raises(FileNotFoundError, match="does not exist"):

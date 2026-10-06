@@ -5,6 +5,7 @@ from __future__ import annotations
 import decimal
 import os
 import threading
+import time
 from typing import Any, Optional
 
 import pandas as pd
@@ -104,6 +105,9 @@ class DuckDBConnector(BaseConnector):
                 "Install with: pip install 'tracebi[duckdb]'"
             )
         return duckdb
+
+    #: Seconds a write waits for another process's read to finish.
+    WRITE_LOCK_WAIT = 10.0
 
     @staticmethod
     def _is_lock_conflict(exc: Exception) -> bool:
@@ -258,16 +262,26 @@ class DuckDBConnector(BaseConnector):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
-        try:
-            write_conn = duckdb.connect(self.database)
-        except duckdb.Error as exc:
-            if self._is_lock_conflict(exc):
-                raise RuntimeError(
-                    f"Cannot open '{self.database}' read-write: another "
-                    "tracebi process holds the warehouse open — stop "
-                    "`tracebi serve` / `tracebi dev` first."
-                ) from exc
-            raise
+        # Another process reading (the dev app answering a request) holds the
+        # file only for that read, so wait a moment for it to let go rather
+        # than failing the transform. A same-process conflict never clears by
+        # waiting, so it fails at once.
+        deadline = time.monotonic() + self.WRITE_LOCK_WAIT
+        while True:
+            try:
+                write_conn = duckdb.connect(self.database)
+                break
+            except duckdb.Error as exc:
+                if not self._is_lock_conflict(exc):
+                    raise
+                if "lock" not in str(exc).lower() or time.monotonic() >= deadline:
+                    raise RuntimeError(
+                        f"Cannot open '{self.database}' read-write: another "
+                        "tracebi process holds the warehouse open — stop "
+                        "`tracebi serve` (or close the notebook holding it) "
+                        "first; `tracebi dev` lets go between requests."
+                    ) from exc
+                time.sleep(0.2)
         try:
             self._write_into(write_conn, df, table, if_exists)
         finally:

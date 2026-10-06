@@ -97,6 +97,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In dev mode the app is beside an agent that re-runs transforms from the
+# terminal, which needs the warehouse read-write; a read-only handle kept open
+# between requests would block it. So in dev mode the app lets go of every
+# warehouse after each request (the next query reopens it, which is cheap).
+@app.middleware("http")
+async def _release_warehouses_in_dev(request, call_next):
+    response = await call_next(request)
+    if os.environ.get("TRACEBI_DEV_MODE") == "1":
+        from starlette.concurrency import run_in_threadpool
+
+        from tracebi import model_registry
+        from tracebi.registry import registry
+
+        def release() -> None:
+            registry.release_all()
+            model_registry.release_all()
+
+        await run_in_threadpool(release)
+    return response
+
+
 # Same-origin CSRF guard: a browser cross-site POST carries an Origin and is
 # refused unless allowed; a request with no Origin (curl, CLI) is not a browser
 # CSRF and passes. CORS alone does not stop a cross-site POST reaching us.
