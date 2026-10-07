@@ -88,7 +88,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => []) {
     items.push({
       key: `sink-${s.table}`, kind: s.status === 'stale' ? 'Checks stale' : 'No checks',
       variant: s.status === 'stale' ? 'amber' : 'gray',
-      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/models',
+      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/sources',
     })
   }
   return items
