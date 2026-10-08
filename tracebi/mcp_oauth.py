@@ -172,6 +172,12 @@ class OAuthConfig:
     def callback_url(self) -> str:
         return f"{self.issuer}/oauth/callback"
 
+    @property
+    def login_callback_url(self) -> str:
+        """The app's own sign-in return address: a second redirect URI the
+        admin registers at the identity provider (see tracebi/web/api/sso.py)."""
+        return f"{self.issuer}/login/callback"
+
     @classmethod
     def from_env(cls, env=None) -> Optional["OAuthConfig"]:
         env = os.environ if env is None else env
@@ -392,10 +398,12 @@ class _OIDC:
         self._keys = (_now() + 3600, keys)
         return keys
 
-    def authorize_url(self, state: str, nonce: str, challenge: str) -> str:
+    def authorize_url(self, state: str, nonce: str, challenge: str,
+                      redirect_uri: Optional[str] = None) -> str:
         query = urllib.parse.urlencode({
             "response_type": "code", "client_id": self.cfg.client_id,
-            "redirect_uri": self.cfg.callback_url, "scope": self.cfg.scopes,
+            "redirect_uri": redirect_uri or self.cfg.callback_url,
+            "scope": self.cfg.scopes,
             "state": state, "nonce": nonce,
             "code_challenge": challenge, "code_challenge_method": "S256"})
         return f"{self.discovery()['authorization_endpoint']}?{query}"
@@ -439,11 +447,12 @@ class _OIDC:
             raise SignInError("ID token authorized party is not this app")
         return claims
 
-    def sign_in(self, code: str, verifier: str, nonce: str) -> dict:
+    def sign_in(self, code: str, verifier: str, nonce: str,
+                redirect_uri: Optional[str] = None) -> dict:
         try:
             reply = _fetch_json(self.discovery()["token_endpoint"], form={
                 "grant_type": "authorization_code", "code": code,
-                "redirect_uri": self.cfg.callback_url,
+                "redirect_uri": redirect_uri or self.cfg.callback_url,
                 "client_id": self.cfg.client_id,
                 "client_secret": self.cfg.client_secret,
                 "code_verifier": verifier})

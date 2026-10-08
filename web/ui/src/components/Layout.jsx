@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 
-import { useHealth, useAppStatus, useModels } from '../api'
+import { useHealth, useAppStatus, useModels, useMe, signOut } from '../api'
 import { PAGES, pagePath, lastModel } from '../nav'
 import { ModelSwitcher, useScope } from './Scope'
 import CommandPalette from './CommandPalette'
@@ -177,6 +177,8 @@ export default function Layout({ children }) {
   const version = healthOk && typeof health?.version === 'string' ? health.version : ''
   const { data: appStatus } = useAppStatus()
   const update = appStatus?.update?.available ? appStatus.update : null
+  const { data: me } = useMe()
+  const person = me?.sign_in === 'oidc' && me.actor ? me : null
   // Follow the OS until the viewer picks one; their pick is remembered, the OS
   // default is not (so it keeps following the OS).
   const [dark, setDark] = useState(() => {
@@ -376,6 +378,19 @@ export default function Layout({ children }) {
               {dark ? <SunIcon /> : <MoonIcon />}
             </button>
           </div>
+          {person && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 11.5, color: 'var(--sidebar-text)' }}>
+              <span title={`${person.actor} (${person.role})`}
+                    style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {person.actor}
+              </span>
+              <button onClick={signOut} style={{
+                marginLeft: 'auto', flexShrink: 0, background: 'none', cursor: 'pointer',
+                border: '1px solid var(--sidebar-field-border)', borderRadius: 5,
+                color: 'var(--sidebar-text)', fontSize: 11, padding: '2px 8px', fontFamily: 'inherit',
+              }}>Sign out</button>
+            </div>
+          )}
         </div>
       </nav>
 

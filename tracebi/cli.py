@@ -766,6 +766,30 @@ def _web_app_importable() -> bool:
         return False
 
 
+def cmd_login(args: argparse.Namespace) -> int:
+    """Sign in to a TraceBi server through the browser (OAuth + PKCE)."""
+    from tracebi import credentials
+
+    try:
+        credentials.login(args.server, timeout=args.timeout)
+    except credentials.CredentialsError as exc:
+        print(f"tracebi login: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_logout(args: argparse.Namespace) -> int:
+    """Revoke this machine's sign-in to a server and forget it."""
+    from tracebi import credentials
+
+    try:
+        credentials.logout(args.server)
+    except credentials.CredentialsError as exc:
+        print(f"tracebi logout: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def cmd_update(args: argparse.Namespace) -> int:
     """Is there a newer TraceBi, and how does this install get it?
 
@@ -2932,6 +2956,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--reload", action="store_true",
                          help="Restart on file changes (development).")
     p_serve.set_defaults(func=cmd_serve)
+
+    p_login = sub.add_parser(
+        "login",
+        help="Sign in to a TraceBi server (opens your browser; the company "
+             "login). Tokens are kept in ~/.config/tracebi/credentials.json.",
+    )
+    p_login.add_argument("--server", required=True, metavar="URL",
+                         help="The server's address, such as https://bi.example.com.")
+    p_login.add_argument("--timeout", type=float, default=300,
+                         help="Seconds to wait for the browser (default 300).")
+    p_login.set_defaults(func=cmd_login)
+
+    p_logout = sub.add_parser(
+        "logout", help="Revoke this machine's sign-in to a TraceBi server and forget it.")
+    p_logout.add_argument("--server", required=True, metavar="URL")
+    p_logout.set_defaults(func=cmd_logout)
 
     p_update = sub.add_parser(
         "update",
