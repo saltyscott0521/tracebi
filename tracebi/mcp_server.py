@@ -13,7 +13,9 @@ the page it appears on.
 Deliberately read-and-compute only. Queries, validation and spec rendering
 compute but persist nothing beyond an output file; pipeline execution
 writes to the warehouse and stays off this surface until per-agent scopes
-exist to gate it.
+exist to gate it. The draft tools are the one other write: they write under
+``drafts/``, and ``publish_draft`` copies a validated draft into the library
+(report packages and declarative models only, never Python).
 
 Two layers, on purpose:
 
@@ -87,9 +89,44 @@ class StaticTokenVerifier:
         return AccessToken(token=token, client_id=_mcp_actor(), scopes=[])
 
 
+def _caller() -> tuple[str, Optional[str]]:
+    """``(actor, role)`` behind the tool call being served.
+
+    With per-person sign-in the verified token names the person (their
+    identity provider login) and the role their groups map to; everyone else
+    (stdio, the static token) is the configured ``TRACEBI_MCP_ACTOR`` with no
+    role claim. Claims come only from this process's own token verifier.
+    """
+    claims: dict = {}
+    try:
+        from mcp.server.auth.middleware.auth_context import get_access_token
+        token = get_access_token()
+        claims = (token.claims or {}) if token is not None else {}
+    except ImportError:  # the optional mcp package is absent
+        pass
+    return (claims.get("tracebi_actor")
+            or f"mcp:{os.environ.get('TRACEBI_MCP_ACTOR', 'agent')}",
+            claims.get("tracebi_role"))
+
+
 def _mcp_actor() -> str:
     """The identity recorded against this gateway's work."""
-    return f"mcp:{os.environ.get('TRACEBI_MCP_ACTOR', 'agent')}"
+    return _caller()[0]
+
+
+def _acting():
+    """The audit actor scope for one gateway operation: the person, with role."""
+    who, role = _caller()
+    return actor(who, role=role)
+
+
+#: Tools that write (an artifact, pins.json, a draft) or publish. A viewer
+#: reads and computes; these are refused for that role. Tests check this set
+#: against the tools' own readOnlyHint, so a new write tool cannot be forgotten.
+_WRITE_TOOLS = frozenset({
+    "render_report_spec", "resolve_pin", "build_report", "start_draft",
+    "write_draft_file", "preview_draft", "publish_draft",
+})
 
 
 def _models_dir() -> Path:
@@ -116,7 +153,8 @@ def _one_line_error(exc: BaseException) -> str:
 
 
 def _model_file(directory: Path, stem: str) -> str:
-    return f"{directory.name}/{stem}.py"
+    ext = "json" if (directory / f"{stem}.json").is_file() else "py"
+    return f"{directory.name}/{stem}.{ext}"
 
 
 def _load_models() -> _LoadedModels:
@@ -882,7 +920,7 @@ def _query(
     except Exception as exc:  # noqa: BLE001 — a malformed query is data, not a crash
         return {"ok": False, "errors": [f"invalid query: {exc}"]}
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             ds = m.execute(spec)
     except Exception as exc:  # noqa: BLE001 — a bad fact/dim/filter is data
         return {"ok": False, "errors": [str(exc)]}
@@ -1035,7 +1073,7 @@ def _render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
         html_path = out_dir / f"{_slug(rs.name)}.html"
         manifest_path = out_dir / f"{_slug(rs.name)}.manifest.json"
 
-        with actor(_mcp_actor()):
+        with _acting():
             # One report form: compile the spec to the artifact package and
             # render it through the same path as a hand-authored package, so a
             # spec gets figures, badges, the receipt drawer, and a schema-2
@@ -1130,7 +1168,7 @@ def gateway_verify_manifest(manifest: Any) -> VerifyResult:
         ]}
 
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             return verify_manifest(manifest, load_models())
     except Exception as exc:  # noqa: BLE001 — corrupt receipts are data, not crashes
         return {"ok": False, "errors": [
@@ -1158,7 +1196,7 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     from tracebi.workbench import DISCOVERY_NAME, collect_discovery_state, collect_state
 
     if not report or report == DISCOVERY_NAME:
-        with actor(_mcp_actor()):
+        with _acting():
             return collect_discovery_state(os.getcwd(), _load_models())
     # A caller-supplied name must never become a path: without this,
     # report='/etc/x' or '../../x' would escape reports/ and collect_state
@@ -1172,7 +1210,7 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
             f"no artifact package at {opened.path} — workbench_state applies to "
             f"reports/<name>/ packages"
         ]}
-    with actor(_mcp_actor()):
+    with _acting():
         return collect_state(str(opened.package_dir), _load_models())
 
 
@@ -1202,7 +1240,7 @@ def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinR
         name = report
     wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(os.getcwd(), name)
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             moved = resolve_pin(wb, pin_id, note=note)
     except ValueError as exc:
         return {"ok": False, "errors": [str(exc)]}
@@ -1267,7 +1305,7 @@ def _build_report(
     pdf = out_dir / f"{report}.pdf"
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             package = TemplatePackage(str(opened.package_dir))
             models = _load_models()
             manifest = package.render(models, str(output))
@@ -1385,13 +1423,99 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
 # ── MCP registration ───────────────────────────────────────────────────────
 
 
-def build_server(token: Optional[str] = None):
+class DraftResult(TypedDict, total=False):
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    drafts: Optional[list[dict]]
+    owner: Optional[str]
+    kind: Optional[str]
+    path: Optional[str]
+    url: Optional[str]
+    files: Any
+    updated: Optional[str]
+    differs_from_published: Optional[bool]
+    version: Optional[str]
+    previous: Optional[str]
+    note: Optional[str]
+
+
+def _draft_owner() -> str:
+    """The acting principal as a draft owner: the MCP actor, ``mcp:`` dropped."""
+    from tracebi.drafts import slug_owner
+    return slug_owner(_mcp_actor().removeprefix("mcp:"))
+
+
+def _draft_call(fn, *args, **kwargs) -> DraftResult:
+    """Run one draft operation as the MCP actor; a refusal is a result."""
+    from tracebi.drafts import DraftError
+    try:
+        with _acting():
+            return {"ok": True, **fn(*args, **kwargs)}
+    except DraftError as exc:
+        return {"ok": False, "errors": [str(exc)]}
+
+
+def gateway_list_drafts() -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(lambda: {"drafts": [
+        {**d, "url": drafts.draft_url(d["owner"], d["kind"], d["path"])}
+        for d in drafts.list_drafts(_draft_owner())]})
+
+
+def gateway_start_draft(kind: str, path: str,
+                        from_published: bool = False) -> DraftResult:
+    from tracebi import drafts
+    owner = _draft_owner()
+    return _draft_call(lambda: {
+        **drafts.start_draft(owner, kind, path, from_published),
+        "url": drafts.draft_url(owner, kind, path)})
+
+
+def gateway_read_draft(kind: str, path: str) -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(drafts.read_draft, _draft_owner(), kind, path)
+
+
+def gateway_write_draft_file(kind: str, path: str, file: str,
+                             content: str) -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(drafts.write_draft_file, _draft_owner(), kind, path,
+                       file, content)
+
+
+def gateway_preview_draft(kind: str, path: str) -> DraftResult:
+    from tracebi import drafts
+
+    def preview():
+        owner = _draft_owner()
+        drafts.render_preview(owner, kind, path)
+        return {"url": drafts.draft_url(owner, kind, path)}
+    try:
+        return _draft_call(preview)
+    except Exception as exc:  # noqa: BLE001 — a package that will not render is a result
+        return {"ok": False, "errors": [_one_line_error(exc)]}
+
+
+def gateway_publish_draft(kind: str, path: str, note: str = "") -> DraftResult:
+    from tracebi import drafts
+    result = _draft_call(lambda: drafts.publish_draft(
+        _draft_owner(), kind, path, _mcp_actor(), note or None, _load_models()))
+    _show_action("publish_draft", (
+        f"Published {kind}/{path}" if result.get("ok") else
+        f"Publish of {kind}/{path} refused: " + "; ".join(result["errors"])))
+    return result
+
+
+def build_server(token: Optional[str] = None, oauth=None):
     """
     Register the gateway operations as MCP tools.
 
     With *token*, the streamable-http transport requires
     ``Authorization: Bearer <token>`` on every request (401 otherwise),
-    via the SDK's own ``token_verifier`` hook; stdio ignores it.
+    via the SDK's own ``token_verifier`` hook; stdio ignores it. With
+    *oauth* (a ``tracebi.mcp_oauth.GatewayOAuth``) every request needs a
+    TraceBi access token for a signed-in person, and *token*, if also given,
+    stays accepted for automation (as ``TRACEBI_MCP_ACTOR``, role analyst).
 
     The only place the optional ``mcp`` package is imported, per the
     fail-loudly rule for optional dependencies.
@@ -1423,7 +1547,13 @@ def build_server(token: Optional[str] = None):
                                   idempotentHint=False, openWorldHint=False)
 
     auth_kwargs: dict[str, Any] = {}
-    if token is not None:
+    if oauth is not None:
+        auth_kwargs = {
+            "token_verifier": oauth.verifier(
+                StaticTokenVerifier(token) if token else None),
+            "auth": oauth.auth_settings(),
+        }
+    elif token is not None:
         from mcp.server.auth.settings import AuthSettings
 
         auth_kwargs = {
@@ -1471,7 +1601,10 @@ def build_server(token: Optional[str] = None):
             "render_report_spec. Resources: tracebi://guide (how to author), "
             "tracebi://spec-schema, tracebi://models/{name}, "
             "tracebi://knowledge/{slug}. Prompts: "
-            "author_report, answer_question, address_pins."
+            "author_report, answer_question, address_pins. To author a "
+            "report or declarative model remotely: start_draft, "
+            "write_draft_file, preview_draft (give the person its url), "
+            "then publish_draft once they agree."
         ),
     )
 
@@ -1482,7 +1615,16 @@ def build_server(token: Optional[str] = None):
     # plain exception is masked to "Error executing tool <name>".
     def _tool(**kwargs):
         def register(fn):
-            logged = _gateway_log.logged(kwargs["name"], fn, _mcp_actor)
+            @functools.wraps(fn)
+            def guarded(*args, **kw):
+                if kwargs["name"] in _WRITE_TOOLS and _caller()[1] == "viewer":
+                    raise PermissionError(
+                        f"your role (viewer) may read and query but not call "
+                        f"{kwargs['name']}, which writes. Ask an admin to map "
+                        f"your group to analyst.")
+                return fn(*args, **kw)
+
+            logged = _gateway_log.logged(kwargs["name"], guarded, _mcp_actor)
 
             @functools.wraps(logged)
             def visible(*args, **kw):
@@ -1686,6 +1828,72 @@ def build_server(token: Optional[str] = None):
             "matched, and a manifest with nothing to check is not a pass."
         ),
     )(gateway_verify_manifest)
+
+    # Drafts: the remote-authoring lane. Writes land in drafts/<owner>/ only;
+    # publish_draft is the one that changes what the project serves.
+    _DRAFT_WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                                   idempotentHint=True, openWorldHint=False)
+    _PUBLISH = ToolAnnotations(readOnlyHint=False, destructiveHint=True,
+                               idempotentHint=False, openWorldHint=False)
+    _tool(
+        name="list_drafts", title="List your drafts", annotations=_READ,
+        structured_output=True,
+        description=(
+            "The caller's drafts: kind, path, url, updated, and whether the "
+            "draft differs from what is published."
+        ),
+    )(gateway_list_drafts)
+    _tool(
+        name="start_draft", title="Start a draft (writes drafts/)",
+        annotations=_DRAFT_WRITE, structured_output=True,
+        description=(
+            "Create a draft: kind is 'reports' (a package: report.json, "
+            "template.html, style.css) or 'models' (one declarative "
+            "<name>.yaml, or <name>.json; a new model draft starts as "
+            "YAML). path is a report path like finance/weekly, or a "
+            "model name [a-z0-9_]+. from_published=true copies the published "
+            "one; a published report with a report.py or script.js cannot be "
+            "drafted remotely. Returns the draft's url: give it to the person "
+            "once. Writes only under drafts/."
+        ),
+    )(gateway_start_draft)
+    _tool(
+        name="read_draft", title="Read a draft", annotations=_READ,
+        structured_output=True,
+        description="The draft's files as {name: text}, with its url's path.",
+    )(gateway_read_draft)
+    _tool(
+        name="write_draft_file", title="Write a draft file (writes drafts/)",
+        annotations=_DRAFT_WRITE, structured_output=True,
+        description=(
+            "Replace one file of an existing draft with content (UTF-8 text, "
+            "at most 512 KB). file is report.json, template.html or "
+            "style.css for a report; <name>.yaml or <name>.json for a model "
+            "(one form at a time: writing the other replaces the draft's "
+            "file). Nothing else is accepted. Writes only under drafts/; nothing is published."
+        ),
+    )(gateway_write_draft_file)
+    _tool(
+        name="preview_draft", title="Preview a draft", annotations=_READ_WAREHOUSE,
+        structured_output=True,
+        description=(
+            "Render the draft in memory against the project's models (no "
+            "file, no receipt) and return ok, errors, and the draft's url, "
+            "where the person sees it. A model draft is validated, with no "
+            "page."
+        ),
+    )(gateway_preview_draft)
+    _tool(
+        name="publish_draft", title="Publish a draft (changes the project)",
+        annotations=_PUBLISH, structured_output=True,
+        description=(
+            "Validate the draft (a report must render), keep the version it "
+            "replaces under .tracebi/history/, copy the draft into the "
+            "library and record a publish run with this actor and the note. "
+            "The draft is kept. The person's go-ahead comes first: this "
+            "changes what the app serves."
+        ),
+    )(gateway_publish_draft)
 
     # Resources — reference material a client can pull into context. The guide
     # puts the authoring SOP on the surface itself (an MCP-only agent never

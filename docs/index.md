@@ -52,6 +52,7 @@ Task-shaped walkthroughs.
 - [[web-customization]] — theming the served web UI
 - [[one-server]] — one VM, Docker or Coolify, a folder, SMTP, a schedule
 - [[updating]] — `tracebi update`: what's new, and the command for your install
+- [[connect-chatgpt-and-claude]] — a sign-in per person for the MCP connector
 
 ## Reference
 
@@ -62,6 +63,7 @@ vocabulary, so they describe what the code actually accepts.
 - [[template-html]] — the `data-tb-*` figure grammar
 - [[figure-helper]] — `{{ figure("name") }}`: framework-built figures, your layout
 - [[measures]] — every measure kind the semantic layer knows
+- [[model-json]] — a model as data: `models/<name>.yaml` (or `.json`)
 - [[queries]] — filters, `having`, ordering, limits
 - [[number-formats]] — the named formats and how defaults are derived
 - [[cli]] — every `tracebi` command

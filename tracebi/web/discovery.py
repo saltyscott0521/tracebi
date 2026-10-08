@@ -26,6 +26,13 @@ import os
 import sys
 from typing import Optional
 
+from tracebi.model.model_spec import (
+    SPEC_SUFFIXES,
+    ModelSpecError,
+    read_model_doc,
+    validate_model_spec,
+)
+
 
 # Track everything we've imported so we can reload it later.
 _discovered: dict[str, str] = {}  # module_name -> file path
@@ -492,14 +499,47 @@ def register_models(models_dir: str) -> list[str]:
     added: list[str] = []
     if not os.path.isdir(models_dir):
         return added
-    for stem in model_registry.auto_discover(models_dir):
+    stems = model_registry.auto_discover(models_dir)
+    # A refusal reported earlier is rebuilt from the current files, so a
+    # deleted twin stops being reported.
+    _outcomes[:] = [o for o in _outcomes
+                    if not (str(o.get("module", "")).startswith("models/")
+                            and " refused: " in str(o.get("reason", "")))]
+    for path, reason in model_registry.clashes().items():
+        if os.path.abspath(os.path.dirname(path)) == os.path.abspath(models_dir):
+            name = f"models/{os.path.basename(path)}"
+            _record(name, path, {"module": name, "status": "failed",
+                                 "reason": reason})
+    for stem in stems:
         if stem in _live_models:
             continue
+        path = model_registry.model_path(stem)
+        if path and path.endswith(SPEC_SUFFIXES):
+            # Structural check only: the file is read, never the warehouse.
+            try:
+                errors = validate_model_spec(read_model_doc(path))
+            except ModelSpecError as exc:
+                errors = exc.errors
+            except (OSError, ValueError) as exc:
+                errors = [f"cannot be read ({exc})"]
+            if errors:
+                _record(f"models/{stem}", path, {
+                    "module": f"models/{stem}", "status": "failed",
+                    "reason": "; ".join(errors)})
+                print(f"[tracebi] model '{stem}' failed to load: "
+                      f"{'; '.join(errors)}", file=sys.stderr)
+                continue
         try:
             model = model_registry.get_model(stem)
         except Exception as exc:  # noqa: BLE001 — one broken model must not stop the rest
+            if path and path.endswith(SPEC_SUFFIXES):
+                _record(f"models/{stem}", path, {
+                    "module": f"models/{stem}", "status": "failed", "reason": str(exc)})
             print(f"[tracebi] model '{stem}' failed to load: {exc}", file=sys.stderr)
             continue
+        if path and path.endswith(SPEC_SUFFIXES):
+            _outcomes[:] = [o for o in _outcomes
+                            if o.get("module") != f"models/{stem}"]
         if getattr(model, "name", stem) not in [m["name"] for m in registry.list_models()]:
             registry.add_model(model)
         _live_models.add(stem)

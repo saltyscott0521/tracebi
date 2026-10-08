@@ -45,7 +45,7 @@ from fastapi.staticfiles import StaticFiles
 from tracebi.web.api.errors import error_detail
 
 from tracebi.web.api.routers import (
-    connectors, models, reports, pipelines, docs, verify, desk, status, runs,
+    connectors, models, reports, pipelines, docs, verify, desk, status, runs, drafts,
 )
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
@@ -78,13 +78,23 @@ async def _lifespan(app):
                              os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
     stop_beat = _start_feed_heartbeat() if os.environ.get("TRACEBI_DEV_MODE") == "1" else None
     try:
-        async with server_lifespan(app):
+        async with server_lifespan(app), _mcp_sessions():
             yield
     finally:
         if stop is not None:
             stop.set()
         if stop_beat is not None:
             stop_beat.set()
+
+
+@asynccontextmanager
+async def _mcp_sessions():
+    """Run the gateway's session manager while the app runs, when /mcp is served."""
+    if _mcp_server is None:
+        yield
+        return
+    async with _mcp_server.session_manager.run():
+        yield
 
 
 def _start_feed_heartbeat() -> threading.Event:
@@ -185,6 +195,59 @@ app.include_router(docs.router,       prefix="/api")
 app.include_router(verify.router,     prefix="/api")
 app.include_router(status.router,     prefix="/api")
 app.include_router(runs.router,       prefix="/api")
+app.include_router(drafts.router,     prefix="/api")
+
+# The agent gateway, served by this app at /mcp when TRACEBI_MCP_TOKEN is set,
+# or when TRACEBI_OIDC_ISSUER is set (a sign-in per person, TraceBi's own OAuth
+# endpoints beside /mcp): one process, so an agent's drafts are the app's
+# drafts. The bearer token is the gate (/mcp and the OAuth endpoints are outside
+# the app's Basic/proxy auth, which guards /api). Without either there is no
+# /mcp here; `tracebi mcp --transport http` still serves it on its own.
+_mcp_server = None
+_gateway_routes: list = []
+
+
+def serve_gateway(token=None, oauth=None):
+    """Serve the gateway at /mcp behind *token* and/or per-person *oauth*
+    (a ``tracebi.mcp_oauth.GatewayOAuth``). Returns the /mcp route; the OAuth
+    routes are added with it (``unserve_gateway`` removes them all).
+    The app's lifespan runs its sessions, so call this before the app starts."""
+    global _mcp_server
+    from starlette.routing import Route
+
+    from tracebi.mcp_server import build_server
+
+    _mcp_server = build_server(token=token, oauth=oauth)
+    # host is not loopback: behind a proxy the Host header is the public name,
+    # and the bearer token, not a Host check, is what keeps strangers out.
+    route = Route("/mcp", endpoint=_mcp_server.streamable_http_app(
+        streamable_http_path="/mcp", host="0.0.0.0"))
+    added = [route] + (oauth.routes() if oauth is not None else [])
+    _gateway_routes[:] = added
+    app.router.routes[0:0] = added
+    return route
+
+
+def unserve_gateway() -> None:
+    """Take the gateway's routes back out (tests; the app never does this)."""
+    global _mcp_server
+    for route in _gateway_routes:
+        if route in app.router.routes:
+            app.router.routes.remove(route)
+    _gateway_routes.clear()
+    _mcp_server = None
+
+
+if os.environ.get("TRACEBI_OIDC_ISSUER", "").strip():
+    from tracebi.mcp_oauth import GatewayOAuth, OAuthConfig
+
+    _static = os.environ.get("TRACEBI_MCP_TOKEN", "").strip() or None
+    serve_gateway(_static, oauth=GatewayOAuth(OAuthConfig.from_env()))
+    print("[tracebi] mcp gateway: /mcp (sign-in per person via TRACEBI_OIDC_ISSUER"
+          + ("; static TRACEBI_MCP_TOKEN also accepted)" if _static else ")"))
+elif os.environ.get("TRACEBI_MCP_TOKEN", "").strip():
+    serve_gateway(os.environ["TRACEBI_MCP_TOKEN"].strip())
+    print("[tracebi] mcp gateway: /mcp (bearer TRACEBI_MCP_TOKEN)")
 
 # Dev-mode reload endpoint — opt-in via TRACEBI_DEV_MODE=1.
 if os.environ.get("TRACEBI_DEV_MODE") == "1":

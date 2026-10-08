@@ -77,6 +77,100 @@ def _slugify(title: str) -> str:
     return s or "report"
 
 
+# The declarative model forms (see tracebi.model.model_spec.SPEC_SUFFIXES);
+# repeated here so the CLI does not import pandas to list a folder.
+_MODEL_FILE_SUFFIXES = (".yaml", ".yml", ".json")
+
+
+def _model_yaml_template_text(title: str) -> str:
+    today = date.today().isoformat()
+    slug = _slugify(title)
+    return f"""\
+# {title}
+#
+# A model: the star schema over the warehouse your phase-1 transform sank.
+# Scaffolded by `tracebi new-model` on {today}. Comments are the point of
+# YAML: say why a measure is weighted and which trap it avoids.
+#
+# Use it from a notebook or script:
+#     from tracebi.model_registry import get_model
+#     model = get_model("{slug}")
+#
+# Files in models/ are discovered by the web server and by get_model(). Loading
+# reads no rows; a query is what opens the warehouse. If a models/{slug}.py
+# exists too, the Python file wins (a model is one file).
+
+# The name equals this file's name.
+name: {slug}
+
+# connectors: where the tables live. `database` is a DuckDB file inside the
+# project (no absolute path, no ".."). No credentials belong here: for a
+# database, run `tracebi connect` and use `connection: <name>` instead.
+connectors:
+  - name: warehouse
+    type: duckdb
+    database: data/warehouse.duckdb
+
+# tables: each table the transform sank, by the name it has in the warehouse.
+tables:
+  - name: my_table
+    connector: warehouse
+    source: my_table
+  # - name: customers
+  #   connector: warehouse
+  #   source: customers
+
+# relationships: named joins between tables (right_key defaults to left_key,
+# how to left). Only needed for tables the star schema below does not join.
+# relationships:
+#   - name: orders_customers
+#     left_table: orders
+#     right_table: customers
+#     left_key: customer_id
+
+# dimensions: the descriptive tables. `key` is the column facts point at;
+# `attributes` are the columns reports may group and filter by.
+# dimensions:
+#   - name: dim_customer
+#     table: customers
+#     key: customer_id
+#     attributes: [region, segment]
+
+# facts: the event tables. `measures` lists the numeric columns, and
+# `foreign_keys` maps each dimension to this table's key column for it.
+# facts:
+#   - name: fact_orders
+#     table: orders
+#     measures: [revenue, qty]
+#     foreign_keys:
+#       dim_customer: customer_id
+
+# time_grains / value_bins: groupable attributes derived from a dimension
+# column, so "by month" or "by score band" is declared once, not re-cut in
+# every report.
+# time_grains:
+#   - dimension: dim_customer
+#     name: signup_month
+#     source: signup_date
+#     grain: month
+# value_bins:
+#   - dimension: dim_customer
+#     name: score_band
+#     source: credit_score
+#     edges: [600, 700, 800]      # N edges make N+1 bands
+
+# measures: the named vocabulary every report asks for. One of column+agg,
+# expr+agg, ratio, share, rank, running, period_end, offset, growth, to_date.
+# A ratio is a ratio of totals, not a mean of row ratios.
+# measures:
+#   - name: revenue
+#     column: revenue
+#     agg: sum
+#     description: Total revenue
+#     format: currency0
+"""
+
+
 def _model_template_text(title: str) -> str:
     today = date.today().isoformat()
     slug = _slugify(title)
@@ -742,7 +836,9 @@ def cmd_serve(args: argparse.Namespace) -> int:
     """
     cwd = Path.cwd()
     discovered = {
-        d: len([p for p in (cwd / d).glob("*.py") if not p.name.startswith("_")])
+        d: len([p for p in (cwd / d).iterdir()
+                if p.suffix in (".py", *(_MODEL_FILE_SUFFIXES if d == "models" else ()))
+                and not p.name.startswith("_")])
         for d in ("models", "pipelines", "reports")
         if (cwd / d).is_dir()
     }
@@ -946,7 +1042,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
             try:
                 model = model_registry.get_model(name)
             except Exception as exc:  # noqa: BLE001 — reported, not raised
-                problems.append(f"✗ models/{name}.py failed to load: {exc}")
+                ext = next((e for e in ("yaml", "yml", "json")
+                            if (models_dir / f"{name}.{e}").is_file()), "py")
+                problems.append(f"✗ models/{name}.{ext} failed to load: {exc}")
                 continue
 
             result = model.validate()
@@ -1047,11 +1145,24 @@ def cmd_new_model(args: argparse.Namespace) -> int:
     models_dir.mkdir(parents=True, exist_ok=True)
 
     slug = _slugify(args.title)
-    out_path = models_dir / f"{slug}.py"
+    out_path = models_dir / f"{slug}.{'py' if args.python else 'yaml'}"
     if out_path.exists() and not args.force:
         print(f"refusing to overwrite existing {out_path}; pass --force to replace",
               file=sys.stderr)
         return 1
+    twins = [models_dir / f"{slug}{e}" for e in (".py", *_MODEL_FILE_SUFFIXES)
+             if (models_dir / f"{slug}{e}").exists() and models_dir / f"{slug}{e}" != out_path]
+    if twins:
+        print(f"refusing: {twins[0]} exists; a model is one file, so delete one",
+              file=sys.stderr)
+        return 1
+
+    if not args.python:
+        out_path.write_text(_model_yaml_template_text(args.title), encoding="utf-8")
+        print(f"Created {out_path}")
+        print(f"  Edit the file; it is picked up by discovery and by:")
+        print(f'    from tracebi.model_registry import get_model; get_model("{slug}")')
+        return 0
 
     out_path.write_text(_model_template_text(args.title), encoding="utf-8")
     print(f"Created {out_path}")
@@ -1084,7 +1195,8 @@ def cmd_list_models(args: argparse.Namespace) -> int:
     if not models_dir.is_dir():
         print(f"No models directory at {models_dir}")
         return 0
-    files = sorted(p for p in models_dir.glob("*.py") if not p.name.startswith("_"))
+    files = sorted(p for p in models_dir.iterdir()
+                   if p.suffix in (".py", *_MODEL_FILE_SUFFIXES) and not p.name.startswith("_"))
     if not files:
         print(f"No model files found in {models_dir}")
         return 0
@@ -1638,6 +1750,45 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return exit_code
 
 
+def _migrate_model(args: argparse.Namespace) -> int:
+    """``tracebi migrate model models/<name>.py [--write]``: the loaded model
+    as YAML. Never renames or deletes the Python file: while it exists it wins
+    over the YAML, and removing it is the user's step."""
+    from tracebi.model.model_yaml import ModelMigrationError, model_to_yaml
+    from tracebi.model_registry import ModelRegistry
+
+    src = Path(args.path)
+    if src.suffix != ".py" or not src.is_file():
+        print(f"expected an existing models/<name>.py, got {src}", file=sys.stderr)
+        return 1
+    registry = ModelRegistry()
+    registry.auto_discover(str(src.parent))
+    try:
+        model = registry.get(src.stem)
+        text = model_to_yaml(model, src.stem, src.resolve().parent.parent)
+    except ModelMigrationError as exc:
+        print(f"cannot migrate {src}: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:  # noqa: BLE001 — a model that will not load is a user error
+        print(f"cannot load {src}: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        registry.release_all()
+    if not args.write:
+        print(text, end="")
+        return 0
+    target = src.with_suffix(".yaml")
+    if target.exists() and not args.force:
+        print(f"target already exists: {target}\nPass --force to overwrite it.",
+              file=sys.stderr)
+        return 1
+    target.write_text(text, encoding="utf-8")
+    print(f"Wrote {target}")
+    print(f"{src.name} still wins over it (a model is one file): delete {src.name} "
+          f"when you are ready to cut over; nothing was renamed or removed.")
+    return 0
+
+
 def cmd_migrate(args: argparse.Namespace) -> int:
     """
     ``tracebi migrate spec <file.json>`` — compile a JSON spec into an
@@ -1650,6 +1801,9 @@ def cmd_migrate(args: argparse.Namespace) -> int:
     rollback is deleting it. The spec's ``theme``/``script`` files compile
     into the package's ``style.css``/``script.js``.
     """
+    if args.what == "model":
+        return _migrate_model(args)
+
     from tracebi.reports.compile_spec import compile_spec
     from tracebi.spec import ReportSpec
 
@@ -2876,6 +3030,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--tables",
         help="Comma-separated tables to draft. Required with --from.",
     )
+    p_new_model.add_argument(
+        "--python", action="store_true",
+        help="Write a Python models/<name>.py instead of the YAML default.",
+    )
     p_new_model.set_defaults(func=cmd_new_model)
 
     p_import = sub.add_parser(
@@ -3153,10 +3311,16 @@ def build_parser() -> argparse.ArgumentParser:
              "reports/<stem>/ (report.json bindings + template.html of "
              "default-component figures) alongside the original.",
     )
-    p_migrate.add_argument("what", choices=["spec"])
-    p_migrate.add_argument("path", help="Path to a reports/<name>.json spec.")
+    p_migrate.add_argument("what", choices=["spec", "model"])
+    p_migrate.add_argument(
+        "path", help="Path to a reports/<name>.json spec, or a models/<name>.py "
+                     "model.")
     p_migrate.add_argument("--force", action="store_true",
-                           help="Overwrite an existing target directory.")
+                           help="Overwrite an existing target directory (spec) "
+                                "or models/<name>.yaml (model).")
+    p_migrate.add_argument("--write", action="store_true",
+                           help="model: write models/<name>.yaml beside the "
+                                ".py instead of printing it.")
     p_migrate.set_defaults(func=cmd_migrate)
 
     p_run_pipeline = sub.add_parser(

@@ -38,6 +38,14 @@ _DEFAULT_ALLOWED = (
 )
 
 
+#: OAuth endpoints for the MCP gateway's connectors. They authenticate with
+#: the request's own body (a PKCE code, a refresh token) and use no cookie or
+#: Basic credential a browser would attach, so there is nothing for a
+#: cross-site POST to ride on; a browser-based MCP client (an inspector) sends
+#: an Origin here and must not be refused.
+_EXEMPT_PATHS = frozenset({"/token", "/register", "/revoke"})
+
+
 def allowed_origins() -> list[str]:
     """The configured allow-list: the defaults plus ``TRACEBI_ALLOWED_ORIGINS``."""
     extra = os.environ.get("TRACEBI_ALLOWED_ORIGINS", "")
@@ -56,7 +64,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     """Refuse a state-changing request from a disallowed browser Origin."""
 
     async def dispatch(self, request: Request, call_next):
-        if request.method not in _SAFE_METHODS:
+        if request.method not in _SAFE_METHODS and request.url.path not in _EXEMPT_PATHS:
             origin = request.headers.get("origin")
             if origin and not _origin_allowed(origin, request):
                 return JSONResponse(

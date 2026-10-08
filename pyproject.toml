@@ -44,6 +44,9 @@ classifiers = [
 ]
 dependencies = [
     "pandas>=1.5",
+    # models/<name>.yaml is the default model form, and a model is core: the
+    # registry loads it with no extras installed.
+    "pyyaml>=6.0",
 ]
 
 [project.urls]

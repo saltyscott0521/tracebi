@@ -1,45 +1,38 @@
 # Hosted MCP gateway (demo)
 
-Same `ghcr.io/saltyscott0521/tracebi` image as the web demo, with a
-different command. It serves the portfolio + bundled demo models over
-streamable HTTP so a Cursor / Claude client with only a URL and a bearer
-token can query the demos.
+The demo web app serves the agent gateway itself, at `/mcp`, when
+`TRACEBI_MCP_TOKEN` is set on it. One process: what an agent drafts over the
+gateway is what the app shows.
 
-Public URL (proxied by `site/nginx.conf`):
+Public URL (proxied by `site/nginx.conf` to the demo container):
 
 ```
-https://tracebi.com/mcp
+https://tracebi.com/mcp                 the gateway (bearer token)
 ```
 
-Internal Traefik host (no public DNS): `mcp.tracebi.com`.
+## Coolify (the existing `tracebi-demo` resource)
 
-## Coolify
+Add to its environment:
 
-1. New resource in project **TraceBi** → Docker Image
-   `ghcr.io/saltyscott0521/tracebi:main`.
-2. Ports: expose **8765**.
-3. Domains: `http://mcp.tracebi.com` (internal — same pattern as
-   `demo.tracebi.com`; the site nginx proxies `/mcp` with that Host).
-4. Custom command:
+| Var | Value |
+|---|---|
+| `TRACEBI_MCP_TOKEN` | long random secret (Coolify secret) |
+| `TRACEBI_PUBLIC_URL` | `https://tracebi.com/app`, so links the gateway hands out are full URLs |
+| `TRACEBI_MCP_ACTOR` | `demo` (optional) |
 
-   ```
-   tracebi mcp --transport http --host 0.0.0.0 --port 8765
-   ```
+Redeploy it (its log says `mcp gateway: /mcp`), then redeploy the site so
+nginx sends `/mcp` to the demo, and check `https://tracebi.com/mcp` answers
+401 without the token. Set the token **before** the site redeploys: until the
+demo has it, the demo serves no `/mcp`.
 
-5. Environment:
+The separate `tracebi mcp --transport http` resource (internal host
+`mcp.tracebi.com`) is no longer needed once nginx points at the demo; stop it
+after the switch. `tracebi mcp --transport http` itself still works for anyone
+who wants a gateway with no web app;
+`docker-compose.yml` here is that stand-alone container.
 
-   | Var | Value |
-   |---|---|
-   | `TRACEBI_MCP_TOKEN` | long random secret (Coolify secret) |
-   | `TRACEBI_APP` | `tracebi.web.demo_app` |
-   | `TRACEBI_MCP_ACTOR` | `demo` (optional) |
-
-6. Health check: disable Coolify's HTTP probe on `/api/health`, or point
-   it at a TCP check on 8765 — this process is not the web app.
-
-Redeploy when `:main` moves (same cadence as `tracebi-demo`), or add the
-Coolify deploy webhook next to `COOLIFY_WEBHOOK` in
-`.github/workflows/publish-demo.yml`.
+Run one worker (the demo does). MCP sessions live in the process that opened
+them; several workers need a load balancer that keeps a session on one worker.
 
 ## Cursor client (other machine)
 

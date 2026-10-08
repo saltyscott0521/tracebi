@@ -7,6 +7,7 @@ lineage, the model browser and an Explore query. The process-wide registry is
 swapped for an empty one for the journey and restored after.
 """
 
+import json
 import time
 
 import pytest
@@ -450,3 +451,334 @@ def test_the_person_watches_the_agent_work_over_mcp(served, monkeypatch, scaffol
                                     "output/sample_model/sample_dashboard.html")
         assert shown[0]["text"].startswith("Build of sample_model/no_such_report refused: ")
         assert "fingerprint" not in json.dumps(shown), "an exhibit carries no receipt"
+
+
+def _mcp_call(client, method, params=None, session=None, token="s3cret", id=1):
+    """One JSON-RPC request to the app's /mcp: (response, the result or None)."""
+    body = {"jsonrpc": "2.0", "method": method, "params": params or {}}
+    if id is not None:
+        body["id"] = id
+    headers = {"Accept": "application/json, text/event-stream",
+               "Authorization": f"Bearer {token}"}
+    if session:
+        headers["mcp-session-id"] = session
+    resp = client.post("/mcp", json=body, headers=headers)
+    data = [json.loads(line[5:]) for line in resp.text.splitlines() if line.startswith("data:")]
+    return resp, (data[-1].get("result") if data else None)
+
+
+def _mcp_session(client, token="s3cret"):
+    resp, _ = _mcp_call(client, "initialize", {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "clientInfo": {"name": "journey", "version": "0"}}, token=token)
+    session = resp.headers["mcp-session-id"]
+    _mcp_call(client, "notifications/initialized", session=session, token=token, id=None)
+    return session
+
+
+def test_the_app_serves_the_agent_gateway_behind_its_token(served):
+    """With TRACEBI_MCP_TOKEN set, the app answers MCP at /mcp: a wrong token is
+    refused, and with the right one an agent queries the same models the app
+    serves."""
+    pytest.importorskip("mcp")
+    from tracebi.web.api import main
+
+    route = main.serve_gateway("s3cret")
+    try:
+        with served:                  # the app's lifespan runs the MCP sessions
+            assert _mcp_call(served, "initialize", token="wrong")[0].status_code == 401
+            session = _mcp_session(served)
+            _, info = _mcp_call(served, "tools/call", {
+                "name": "describe_model", "arguments": {"model": "sample_model"}}, session=session)
+            fact = info["structuredContent"]["facts"][0]["name"]
+            _, asked = _mcp_call(served, "tools/call", {"name": "query_model", "arguments": {
+                "model": "sample_model", "fact": fact, "measures": ["revenue"],
+                "include_lineage": False}}, session=session)
+            assert asked["structuredContent"]["ok"], asked
+            assert asked["structuredContent"]["fingerprint"]
+    finally:
+        main.app.router.routes.remove(route)
+        main._mcp_server = None
+
+
+def test_a_declarative_model_answers_like_the_python_one(served, scaffolded):
+    """models/<name>.json is discovered beside models/*.py and a query through
+    it fingerprints exactly like the same query through the Python model."""
+    from tracebi import model_registry
+    from tracebi.web import discovery
+
+    (scaffolded / "models" / "sample_json.json").write_text(json.dumps({
+        "name": "sample_json",
+        "connectors": [{"name": "warehouse", "type": "duckdb",
+                        "database": "data/warehouse.duckdb"}],
+        "tables": [
+            {"name": "fact_orders", "connector": "warehouse", "source": "fact_orders"},
+            {"name": "dim_region", "connector": "warehouse", "source": "dim_region"}],
+        "dimensions": [{"name": "dim_region", "table": "dim_region",
+                        "key": "region_id", "attributes": ["region"]}],
+        "facts": [{"name": "fact_orders", "table": "fact_orders",
+                   "measures": ["revenue", "qty"],
+                   "foreign_keys": {"dim_region": "region_id"}}],
+        "measures": [
+            {"name": "revenue", "column": "revenue", "agg": "sum",
+             "description": "Total revenue", "format": "currency0"},
+            {"name": "units", "column": "qty", "agg": "sum"},
+            {"name": "orders", "column": "order_id", "agg": "count"}],
+    }))
+    assert "sample_json" in discovery.register_models("models")
+    assert "sample_json" in [m["name"] for m in served.get("/api/models").json()]
+
+    query = dict(fact="fact_orders", measures=["revenue", "units"],
+                 dimensions=["dim_region.region"])
+    via_json = model_registry.get_model("sample_json").query(**query)
+    via_python = model_registry.get_model("sample_model").query(**query)
+    assert via_json.fingerprint() == via_python.fingerprint()
+
+    # A bad file is a reported failure with its reason, and the others stay up.
+    (scaffolded / "models" / "broken.json").write_text(json.dumps(
+        {"name": "broken", "measures": [{"name": "m", "agg": "sum", "colum": "x"}]}))
+    discovery.register_models("models")
+    [entry] = [e for e in served.get("/api/discovery").json()["entries"]
+               if e["file"] == "broken.json"]
+    assert entry["status"] == "failed" and "measures[0]" in entry["reason"]
+
+    # x.py and x.json together: the Python model stands, the JSON is refused.
+    (scaffolded / "models" / "sample_model.json").write_text("{}")
+    discovery.register_models("models")
+    [clash] = [e for e in served.get("/api/discovery").json()["entries"]
+               if e["file"] == "sample_model.json"]
+    assert clash["status"] == "failed" and "sample_model.py exists" in clash["reason"]
+
+
+def test_a_python_model_migrates_to_yaml_and_answers_identically(scaffolded):
+    """`tracebi migrate model` writes the YAML beside the .py (which still
+    wins); with the .py moved away the YAML model is discovered and a query
+    through it fingerprints exactly like the same query through the Python."""
+    from tracebi import model_registry
+
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    query = dict(fact="fact_orders", measures=["revenue", "units"],
+                 dimensions=["dim_region.region"])
+    before = model_registry.get_model("sample_model").query(**query).fingerprint()
+
+    code, out = run_cli("migrate", "model", "models/sample_model.py", "--write")
+    assert code == 0, out
+    assert "still wins" in out
+    yaml_file = scaffolded / "models" / "sample_model.yaml"
+    assert yaml_file.is_file() and (scaffolded / "models" / "sample_model.py").is_file()
+
+    # The Python file is the user's to remove; here, in the temp project only.
+    (scaffolded / "models" / "sample_model.py").rename(scaffolded / "sample_model.py.old")
+    fresh = model_registry.ModelRegistry()
+    assert fresh.auto_discover("models") == ["sample_model"]
+    assert fresh.get("sample_model").query(**query).fingerprint() == before
+    fresh.release_all()
+
+
+def test_the_reference_models_convert_or_refuse_with_a_reason(reference):
+    """Every model of the reference project converts; one that cannot be
+    expressed is refused with its reason and nothing is written."""
+    for name in ("portfolio_model", "housing_model", "saas_model"):
+        code, out = run_cli("migrate", "model", f"models/{name}.py")
+        assert code == 0, f"{name}: {out}"
+        assert f"name: {name}" in out
+    (reference / "models" / "renamed.py").write_text(
+        "from tracebi import DataModel\nmodel = DataModel('Other')\n")
+    code, out = run_cli("migrate", "model", "models/renamed.py", "--write")
+    assert code == 1 and "is named 'Other'" in out
+    assert not (reference / "models" / "renamed.yaml").exists()
+
+
+def test_a_yaml_model_with_comments_time_grains_and_bins_answers(scaffolded):
+    """A commented YAML model declares a month grain and value bins, and a
+    query grouped by each answers; a repeated key is refused at discovery with
+    its reason."""
+    import pandas as pd
+
+    from tracebi import model_registry
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.web import discovery
+
+    warehouse = DuckDBConnector("w", database=str(scaffolded / "data" / "yaml_demo.duckdb"))
+    warehouse.write(pd.DataFrame({
+        "id": [1, 2, 3, 4],
+        "day": pd.to_datetime(["2024-01-05", "2024-01-20", "2024-02-03", "2024-02-28"]),
+        "score": [550, 650, 750, 850]}), "dim_customer")
+    warehouse.write(pd.DataFrame({"cust": [1, 2, 3, 4], "amount": [10.0, 20.0, 30.0, 40.0]}),
+                    "fact_sales")
+    warehouse.disconnect()
+
+    body = """\
+# Sales by month and score band.
+name: banded
+connectors:
+  - {name: w, type: duckdb, database: data/yaml_demo.duckdb}
+tables:
+  - {name: dim_customer, connector: w, source: dim_customer}
+  - {name: fact_sales, connector: w, source: fact_sales}
+dimensions:
+  - {name: dim_customer, table: dim_customer, key: id, attributes: [day, score]}
+facts:
+  - {name: fact_sales, table: fact_sales, measures: [amount],
+     foreign_keys: {dim_customer: cust}}
+time_grains:
+  - {dimension: dim_customer, name: month, source: day, grain: month}
+value_bins:
+  - dimension: dim_customer
+    name: band
+    source: score
+    edges: [600, 700, 800]      # four bands
+measures:
+  # a plain sum: nothing to weight
+  - {name: revenue, column: amount, agg: sum}
+"""
+    (scaffolded / "models" / "banded.yaml").write_text(body)
+    assert "banded" in discovery.register_models("models")
+    model = model_registry.get_model("banded")
+    by_band = model.query(fact="fact_sales", measures=["revenue"],
+                          dimensions=["dim_customer.band"]).to_pandas()
+    assert sorted(by_band["revenue"]) == [10.0, 20.0, 30.0, 40.0]
+    by_month = model.query(fact="fact_sales", measures=["revenue"],
+                           dimensions=["dim_customer.month"]).to_pandas()
+    assert sorted(by_month["revenue"]) == [30.0, 70.0]
+
+    (scaffolded / "models" / "dup.yaml").write_text("name: dup\nname: dup\n")
+    discovery.register_models("models")
+    [entry] = [e for e in discovery.discovery_report() if e["file"] == "dup.yaml"]
+    assert entry["status"] == "failed" and "duplicate key" in entry["reason"]
+
+
+def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, scaffolded):
+    """The remote-authoring loop over the real /mcp and the real app: start a
+    draft from a published report, change it, preview it, publish it. The
+    published file has the change, the old version is kept, and the Runs list
+    says who published."""
+    pytest.importorskip("mcp")
+    from tracebi.web.api import main
+
+    def call(session, name, **arguments):
+        _, got = _mcp_call(served, "tools/call", {"name": name, "arguments": arguments},
+                           session=session)
+        return got["structuredContent"]
+
+    path = "sample_model/sample_dashboard"
+    published = scaffolded / "reports" / path / "template.html"
+    route = main.serve_gateway("s3cret")
+    try:
+        with served:
+            session = _mcp_session(served)
+            started = call(session, "start_draft", kind="reports", path=path, from_published=True)
+            assert started["ok"], started
+            assert started["url"] == f"/drafts/agent/reports/{path}"
+
+            html = call(session, "read_draft", kind="reports", path=path)["files"]["template.html"]
+            assert html == published.read_text(encoding="utf-8")
+            changed = html + "\n<p>a note added in the draft</p>\n"
+            assert call(session, "write_draft_file", kind="reports", path=path,
+                        file="template.html", content=changed)["ok"]
+            assert call(session, "preview_draft", kind="reports", path=path)["ok"]
+            refused = call(session, "write_draft_file", kind="reports", path=path,
+                           file="report.py", content="print(1)")
+            assert not refused["ok"] and "report.py" in refused["errors"][0]
+
+            listed = served.get("/api/drafts").json()["drafts"]
+            assert [(d["owner"], d["kind"], d["path"], d["differs_from_published"])
+                    for d in listed] == [("agent", "reports", path, True)]
+            page = served.get(f"/api/drafts/agent/reports/{path}/preview")
+            assert page.status_code == 200
+            assert "a note added in the draft" in page.text
+            assert page.headers["cache-control"] == "no-store"
+            assert "a note added in the draft" not in published.read_text(encoding="utf-8")
+
+            done = call(session, "publish_draft", kind="reports", path=path, note="adds a note")
+            assert done["ok"], done
+            assert published.read_text(encoding="utf-8") == changed
+            kept = scaffolded / ".tracebi" / "history" / "reports" / path / done["version"]
+            assert (kept / "template.html").read_text(encoding="utf-8") == html
+
+            rows = served.get("/api/runs", params={"kind": "publish"}).json()
+            assert [(r["target"], r["actor"]) for r in rows] == [(f"reports/{path}", "mcp:agent")]
+            assert rows[0]["detail"]["note"] == "adds a note"
+    finally:
+        main.app.router.routes.remove(route)
+        main._mcp_server = None
+
+
+def test_a_report_can_be_drafted_on_a_draft_model_but_publishes_only_after_it(scaffolded):
+    """dev → prod ordering: a report draft previews against the agent's draft
+    model, but publishing it is refused until that model is published, so
+    production never reads a model that only exists in someone's drafts. A
+    model draft that does not compile is refused at publish."""
+    from tracebi import mcp_server as gw
+
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    regions = {
+        "name": "regions",
+        "connectors": [{"name": "warehouse", "type": "duckdb",
+                        "database": "data/warehouse.duckdb"}],
+        "tables": [
+            {"name": "fact_orders", "connector": "warehouse", "source": "fact_orders"},
+            {"name": "dim_region", "connector": "warehouse", "source": "dim_region"}],
+        "dimensions": [{"name": "dim_region", "table": "dim_region",
+                        "key": "region_id", "attributes": ["region"]}],
+        "facts": [{"name": "fact_orders", "table": "fact_orders",
+                   "measures": ["revenue", "qty"],
+                   "foreign_keys": {"dim_region": "region_id"}}],
+        "measures": [{"name": "revenue", "column": "revenue", "agg": "summ"},
+                     {"name": "units", "column": "qty", "agg": "sum"},
+                     {"name": "orders", "column": "order_id", "agg": "count"}],
+    }
+    assert gw.gateway_start_draft("models", "regions")["ok"]
+    gw.gateway_write_draft_file("models", "regions", "regions.json", json.dumps(regions))
+    refused = gw.gateway_publish_draft("models", "regions")
+    assert not refused["ok"] and "summ" in json.dumps(refused["errors"])
+    regions["measures"][0]["agg"] = "sum"
+    gw.gateway_write_draft_file("models", "regions", "regions.json", json.dumps(regions))
+
+    report = "sample_model/sample_dashboard"
+    assert gw.gateway_start_draft("reports", report, from_published=True)["ok"]
+    spec = gw.gateway_read_draft("reports", report)["files"]["report.json"]
+    gw.gateway_write_draft_file("reports", report, "report.json",
+                                spec.replace('"sample_model"', '"regions"'))
+    assert gw.gateway_preview_draft("reports", report)["ok"], "previews on the draft model"
+    early = gw.gateway_publish_draft("reports", report)
+    assert not early["ok"] and "regions" in json.dumps(early["errors"])
+
+    assert gw.gateway_publish_draft("models", "regions")["ok"]
+    assert (scaffolded / "models" / "regions.json").is_file()
+    published = gw.gateway_publish_draft("reports", report)
+    assert published["ok"], published
+    assert '"regions"' in (scaffolded / "reports" / report / "report.json").read_text()
+
+
+def test_a_model_draft_written_as_yaml_publishes_as_yaml(scaffolded):
+    """A model draft may be YAML: it publishes as models/<name>.yaml, and
+    writing the JSON form instead replaces the draft's file and, on publish,
+    the published one (the old one is kept in history)."""
+    from tracebi import mcp_server as gw
+
+    yaml_text = (
+        "# the regions\n"
+        "name: regions\n"
+        "connectors:\n"
+        "  - {name: warehouse, type: duckdb, database: data/warehouse.duckdb}\n"
+        "tables:\n"
+        "  - {name: dim_region, connector: warehouse, source: dim_region}\n")
+    assert gw.gateway_start_draft("models", "regions")["ok"]
+    assert gw.gateway_write_draft_file("models", "regions", "regions.yaml", yaml_text)["ok"]
+    files = gw.gateway_read_draft("models", "regions")["files"]
+    assert files == {"regions.yaml": yaml_text}
+    assert gw.gateway_publish_draft("models", "regions")["ok"]
+    assert (scaffolded / "models" / "regions.yaml").read_text() == yaml_text
+
+    as_json = json.dumps({"name": "regions", "connectors": [
+        {"name": "warehouse", "type": "duckdb", "database": "data/warehouse.duckdb"}]})
+    gw.gateway_write_draft_file("models", "regions", "regions.json", as_json)
+    assert list(gw.gateway_read_draft("models", "regions")["files"]) == ["regions.json"]
+    assert gw.gateway_publish_draft("models", "regions")["ok"]
+    assert (scaffolded / "models" / "regions.json").is_file()
+    assert not (scaffolded / "models" / "regions.yaml").exists()
+    kept = list((scaffolded / ".tracebi" / "history" / "models" / "regions").rglob("regions.yaml"))
+    assert kept, "the replaced YAML is kept in history"

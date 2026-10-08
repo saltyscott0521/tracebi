@@ -667,13 +667,15 @@ def test_build_server_registers_the_tools(gateway_model):
     # joined it — the publish step for the package lane, so an MCP-driving
     # agent can finish the loop it iterates in the workbench. fetch_artifact
     # then delivers the rendered bytes a remote agent cannot otherwise reach
-    # (thirteen tools).
+    # (thirteen tools). The six draft tools make nineteen.
     assert names == {
         "get_context", "list_models", "describe_model", "describe_table",
         "query_model",
         "validate_report_spec", "render_report_spec", "list_reports",
         "verify_manifest", "workbench_state", "resolve_pin", "build_report",
         "fetch_artifact",
+        "list_drafts", "start_draft", "read_draft", "write_draft_file",
+        "preview_draft", "publish_draft",
     }
 
 
@@ -719,6 +721,11 @@ class TestMcp2Features:
         assert pin.get("readOnlyHint") is False
         assert built.get("readOnlyHint") is False
         assert pin.get("destructiveHint") is False
+        # The draft writers say so; reading and previewing a draft write nothing.
+        for name in ("start_draft", "write_draft_file", "publish_draft"):
+            assert tools[name].annotations.model_dump(by_alias=True)["readOnlyHint"] is False, name
+        for name in ("list_drafts", "read_draft", "preview_draft"):
+            assert tools[name].annotations.model_dump(by_alias=True)["readOnlyHint"] is True, name
 
     def test_query_tool_emits_structured_content(self, gateway_model):
         pytest.importorskip("mcp")
@@ -766,7 +773,7 @@ class TestMcp2Features:
         from tracebi.knowledge import get_lesson
 
         server, tools = self._tools()
-        assert len(tools) == 13
+        assert len(tools) == 19
         templates = {t.uri_template for t in anyio.run(server.list_resource_templates)}
         assert "tracebi://knowledge/{slug}" in templates
         assert "tracebi://knowledge/{slug}" in server.instructions

@@ -290,6 +290,40 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             pipeline_row.wait_for()
             assert "portfolio_model" in pipeline_row.inner_text()
             fail_on_browser_errors()
+
+            # Drafts: a report draft on disk is listed, rendered live, follows
+            # edits to its file without a reload, and publishes with a toast.
+            draft = project / "drafts" / "anonymous" / "reports" / "portfolio_model" / "draft_demo"
+            shutil.copytree(project / "reports" / "portfolio_model" / "portfolio_overview", draft)
+            template = draft / "template.html"
+            template.write_text(
+                template.read_text(encoding="utf-8").replace("Portfolio Overview", "Draft Marker One"),
+                encoding="utf-8")
+            page.goto(base + "/drafts")
+            page.get_by_role("heading", name="Drafts", exact=True).wait_for()
+            row = page.get_by_role("list", name="Drafts").get_by_role("link")
+            assert "portfolio_model/draft_demo" in row.inner_text()
+            assert "changed" in row.inner_text().lower()
+            row.click()
+            page.wait_for_url("**/drafts/anonymous/reports/portfolio_model/draft_demo")
+            page.get_by_role("heading", name="portfolio_model/draft_demo", exact=True).wait_for()
+            page.wait_for_function(
+                "(t) => (document.querySelector('iframe')?.srcdoc || '').includes(t)",
+                arg="Draft Marker One")
+            template.write_text(
+                template.read_text(encoding="utf-8").replace("Draft Marker One", "Draft Marker Two"),
+                encoding="utf-8")
+            page.wait_for_function(
+                "(t) => (document.querySelector('iframe')?.srcdoc || '').includes(t)",
+                arg="Draft Marker Two")
+            page.get_by_role("button", name="Files", exact=True).click()
+            page.get_by_role("button", name="template.html").wait_for()
+            page.get_by_role("button", name="Publish", exact=True).click()
+            page.get_by_role("button", name="Publish for everyone").click()
+            page.get_by_text("Published report portfolio_model/draft_demo").wait_for()
+            page.get_by_role("link", name="Open the published report").wait_for()
+            assert (project / "reports" / "portfolio_model" / "draft_demo" / "report.json").is_file()
+            fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:

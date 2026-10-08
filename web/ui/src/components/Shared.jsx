@@ -268,6 +268,10 @@ export function ReportFrame({ html, title, frameRef }) {
       if (!doc?.body) return
       const h = Math.max(doc.documentElement?.scrollHeight || 0, doc.body.scrollHeight || 0)
       if (h) setHeight(h)
+      // A frame holding nothing to operate is not a keyboard stop: Tab would
+      // land on a page-sized box that shows no focus.
+      frame.tabIndex = doc.querySelector(
+        'a[href],button,input,select,textarea,summary,[tabindex],[contenteditable]') ? 0 : -1
     }
 
     const onLoad = () => {
