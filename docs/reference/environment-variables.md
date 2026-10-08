@@ -98,8 +98,11 @@ and does not call Slack.
 ### A sign-in per person
 
 Set `TRACEBI_OIDC_ISSUER` and the web app serves `/mcp` with a sign-in per
-person ([[connect-chatgpt-and-claude]]). Nothing is read from these variables
-when it is unset.
+person ([[connect-chatgpt-and-claude]]) and signs people in to the app itself
+at `/login` ([[sign-in]]), which turns role enforcement on. It cannot be
+combined with `TRACEBI_AUTH_USER`/`TRACEBI_AUTH_PASS` or
+`TRACEBI_AUTH_PROXY_HEADER`: the server refuses to start. Nothing is read from
+these variables when it is unset.
 
 | Variable | Meaning |
 | --- | --- |

@@ -290,6 +290,8 @@ tracebi schedule list                          # packages with a report.json "sc
 tracebi schedule run <name> [--no-send]        # build → verify → email → record, now
 tracebi schedule serve                         # run every schedule (needs [pipeline])
 tracebi serve                                  # browse the project
+tracebi login --server <url>                   # sign in (browser, OAuth + PKCE); ~/.config/tracebi/credentials.json
+tracebi logout --server <url>                  # revoke and forget
 tracebi update [--check] [--yes]               # newer release? what's new + the command for this install
 
 # Tests
@@ -397,6 +399,19 @@ Three things to preserve when touching this:
    guarded by default rather than open by default. Add an explicit rule when a
    new route needs `admin`.
 
+4. **OIDC sign-in is a third role source, and it switches enforcement on by
+   design.** Setting `TRACEBI_OIDC_ISSUER` turns on the app's own sign-in
+   (`tracebi/web/api/sso.py`): the provider's groups, mapped by
+   `TRACEBI_OIDC_ROLE_MAP` (else `TRACEBI_OIDC_DEFAULT_ROLE`, `viewer`), give
+   the role, and `SessionAuthMiddleware` passes it to `_Authorizer.check(...,
+   role=)`. That is an explicit operator choice, so it does not breach
+   invariant 1's no-lockout rule. It is mutually exclusive with Basic and proxy
+   auth (`install_if_configured` raises). Sessions are server-side
+   (`tracebi_sessions`, SHA-256 of the id only; 12h idle / 7d absolute); a
+   `Bearer tbat_...` TraceBi access token (what `tracebi login` stores) is also
+   accepted on `/api/`, `/dashboards/`, `/r/`. The static shell stays public;
+   navigations without a session redirect to `/login`, API calls get 401.
+
 Enforcement lives in the middleware, not in the routers — one place, and it
 avoids touching the router imports that tests rebind for isolation.
 
@@ -416,7 +431,7 @@ with actor("alice", role="admin"):
     runner.run("orders_bronze")     # recorded against alice
 ```
 
-Set by `BasicAuthMiddleware` / `ProxyHeaderAuthMiddleware` around `call_next`,
+Set by `BasicAuthMiddleware` / `ProxyHeaderAuthMiddleware` / `SessionAuthMiddleware` around `call_next`,
 and by `tracebi run-pipeline` from the OS user. Attribution is optional
 throughout: an unattributed run records `None` and behaves exactly as before.
 
@@ -606,6 +621,8 @@ Add a file under `tracebi/web/api/routers/`, include it in `tracebi/web/api/main
 
 ```
 GET  /api/health
+GET  /api/me                                         → {actor, role, sign_in: oidc|basic|proxy|none}
+GET  /login?next=  /login/callback   POST /logout    → app sign-in through the OIDC provider (TRACEBI_OIDC_ISSUER; tracebi/web/api/sso.py)
 GET  /api/status                                     → version plus what's wrong with this install
 GET  /api/schema                                     → machine-readable vocabulary (generated)
 GET  /api/discovery                                  → per-file registered/skipped/failed + reason

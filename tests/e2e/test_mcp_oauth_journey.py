@@ -70,7 +70,8 @@ class FakeIdP:
             grant = self.pending.pop(form["code"], None)
             assert grant, "unknown provider code"
             assert form["client_id"] == CLIENT_ID and form["client_secret"] == "idp-secret"
-            assert form["redirect_uri"] == f"{PUBLIC}/oauth/callback"
+            assert form["redirect_uri"] in (f"{PUBLIC}/oauth/callback",
+                                            f"{PUBLIC}/login/callback")
             assert _challenge(form["code_verifier"]) == grant["challenge"], "provider PKCE"
             return {"id_token": grant["id_token"]}
         raise AssertionError(f"unexpected fetch {url}")
@@ -619,10 +620,12 @@ def test_an_id_token_that_does_not_check_out_signs_nobody_in(signin, idp, kind):
     back = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(done.headers["location"]).query))
     assert back["error"] == "access_denied" and "code" not in back
     assert back["state"] == "client-state"
-    # The sign-in is spent: replaying the callback is refused outright.
+    # The sign-in is spent: the browser is told to drop its cookie, and a
+    # replay that kept it gets no code either (the provider's code is spent).
+    assert 'tb_oauth_' in done.headers["set-cookie"] and "Max-Age=0" in done.headers["set-cookie"]
     again = c.get("/oauth/callback", params={"code": code, "state": q["state"]},
                   headers={"Cookie": cookie_header(auth)}, follow_redirects=False)
-    assert again.status_code == 400
+    assert "code=" not in again.headers.get("location", "")
 
 
 def test_a_sign_in_must_finish_in_the_browser_that_began_it(signin, idp):
@@ -638,10 +641,42 @@ def test_a_sign_in_must_finish_in_the_browser_that_began_it(signin, idp):
     stranger = c.get("/oauth/callback", params={"code": "c1", "state": q["state"]},
                      follow_redirects=False)
     assert stranger.status_code == 400 and "different browser" in stranger.text
-    # Burnt: the original browser cannot retry the same state either.
-    retry = c.get("/oauth/callback", params={"code": "c1", "state": q["state"]},
-                  headers={"Cookie": cookie_header(auth)}, follow_redirects=False)
-    assert retry.status_code == 400
+    assert "c1" not in stranger.text and "location" not in stranger.headers
+
+
+def test_a_strangers_authorize_requests_write_nothing(signin):
+    """/authorize is open to anyone. If each request kept a row until it
+    expired, a stranger could grow the store (or, with a cap, lock everyone
+    out of sign-in); the in-flight state lives in the browser instead."""
+    from sqlalchemy import text
+
+    from tracebi import state
+
+    c = signin
+    client_id = register(c).json()["client_id"]
+    for _ in range(25):
+        assert authorize(c, client_id)[0].status_code == 302
+    with state.ensure().connect() as conn:
+        assert conn.execute(text("SELECT COUNT(*) FROM tracebi_oauth_pending")).scalar() == 0
+
+
+def test_a_tampered_sign_in_cookie_is_refused(signin, idp):
+    """The cookie carries the grant (redirect, PKCE challenge); editing it
+    must not get past the callback."""
+    c = signin
+    client_id = register(c).json()["client_id"]
+    auth, _ = authorize(c, client_id)
+    q = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(auth.headers["location"]).query))
+    idp.pending["c1"] = {"challenge": q["code_challenge"], "id_token": idp.id_token(nonce=q["nonce"])}
+    (name, value), = auth.cookies.items()
+    body, _, mac = value.partition(".")
+    grant = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+    grant["p"]["state"] = "attacker-state"
+    edited = base64.urlsafe_b64encode(json.dumps(grant).encode()).decode().rstrip("=")
+    forged = f"{edited}.{mac}"
+    done = c.get("/oauth/callback", params={"code": "c1", "state": q["state"]},
+                 headers={"Cookie": f"{name}={forged}"}, follow_redirects=False)
+    assert done.status_code == 400 and "not valid" in done.text
 
 
 def test_a_made_up_state_and_an_idp_error_are_handled(signin, idp):

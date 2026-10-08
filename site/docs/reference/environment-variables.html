@@ -41,6 +41,7 @@
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
 <a href="../guides/styling-a-report.html">Styling a report</a>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
 <a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
@@ -308,8 +309,11 @@ and does not call Slack.</p>
 </table>
 <h3 id="a-sign-in-per-person">A sign-in per person</h3>
 <p>Set <code>TRACEBI_OIDC_ISSUER</code> and the web app serves <code>/mcp</code> with a sign-in per
-person (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>). Nothing is read from these variables
-when it is unset.</p>
+person (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>) and signs people in to the app itself
+at <code>/login</code> (<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>), which turns role enforcement on. It cannot be
+combined with <code>TRACEBI_AUTH_USER</code>/<code>TRACEBI_AUTH_PASS</code> or
+<code>TRACEBI_AUTH_PROXY_HEADER</code>: the server refuses to start. Nothing is read from
+these variables when it is unset.</p>
 <table>
 <thead>
 <tr>
