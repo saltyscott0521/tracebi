@@ -611,11 +611,13 @@ class TestCLIModelCommands:
             "new-model", "Sales Model",
         ])
         assert rc == 0
-        created = models_dir / "sales_model.py"
+        created = models_dir / "sales_model.yaml"
         assert created.is_file()
-        content = created.read_text()
-        assert "model = DataModel(" in content
-        assert "get_model" in content
+        assert "get_model" in created.read_text()
+        rc = main(["--models-dir", str(models_dir), "new-model", "Py Model",
+                   "--python"])
+        assert rc == 0
+        assert "model = DataModel(" in (models_dir / "py_model.py").read_text()
 
     def test_new_model_refuses_overwrite(self, tmp_path):
         from tracebi.cli import main
@@ -646,8 +648,8 @@ class TestCLIModelCommands:
         main(["--models-dir", str(models_dir), "new-model", "Banking Model"])
         main(["--models-dir", str(models_dir), "list-models"])
         captured = capsys.readouterr()
-        assert "sales_model.py" in captured.out
-        assert "banking_model.py" in captured.out
+        assert "sales_model.yaml" in captured.out
+        assert "banking_model.yaml" in captured.out
 
 # ── Pipeline registry ─────────────────────────────────────────────────────
 

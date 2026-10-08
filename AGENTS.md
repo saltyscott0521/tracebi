@@ -26,6 +26,14 @@ Reference implementation, end to end, at `examples/portfolio_project/`:
 `reports/portfolio_model/portfolio_dashboard.json`, wired by `run_workflow.py`.
 `docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
 
+A model is YAML by default: `models/<name>.yaml` (`tracebi new-model` writes a
+commented starter; `--python` writes the old `.py`). It loads through the same
+validator as a `.json` model, a repeated key is an error, and a model is one
+file (a `.py` beside a `.yaml` wins; two declarative forms of one name are both
+refused). `tracebi migrate model models/<name>.py [--write]` converts a Python
+model and leaves the `.py` in place until you delete it. A model draft over the
+gateway may be `<name>.yaml` or `<name>.json`.
+
 A model also gets a pipeline, `pipelines/<model>.py` (`runner =
 model_pipeline("<model>", transform="<transform>")`): `tracebi run-pipeline
 <model>` runs the transform, then builds every report in `reports/<model>/`,
@@ -480,9 +488,9 @@ Nineteen tools (`tracebi/mcp_server.py`):
 | `fetch_artifact` | Read back an artifact a render or build tool wrote. The argument is `path`: `build_report`'s `output_path` or `manifest_path`, `render_report_spec`'s `html_path` or `manifest_path`, `build_report`'s `xlsx_path`, or `build_report`'s `pdf_path`. HTML and JSON come back as text. An `.xlsx` or a `.pdf` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest. The argument is `manifest`: pass `build_report`'s `manifest_path` (or `render_report_spec`'s `manifest_path`). Classifies `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 | `list_drafts` | Your drafts under `drafts/<owner>/`: kind, path, url, and whether each differs from what is published |
-| `start_draft` | Create a draft: `kind` is `reports` (a package) or `models` (one `models/<name>.json`); `from_published=true` copies the published one. A published report with a `report.py` or `script.js` cannot be drafted remotely. Returns the draft's url |
+| `start_draft` | Create a draft: `kind` is `reports` (a package) or `models` (one `models/<name>.yaml` or `.json`); `from_published=true` copies the published one. A published report with a `report.py` or `script.js` cannot be drafted remotely. Returns the draft's url |
 | `read_draft` | The draft's files as `{name: text}` |
-| `write_draft_file` | Replace one file of a draft with `content`. A report draft takes `report.json`, `template.html` or `style.css`; a model draft takes its `<name>.json`. Writes only under `drafts/` |
+| `write_draft_file` | Replace one file of a draft with `content`. A report draft takes `report.json`, `template.html` or `style.css`; a model draft takes its `<name>.yaml` or `<name>.json` (writing the other form replaces it). Writes only under `drafts/` |
 | `preview_draft` | Render the draft in memory against the published models plus your draft models. Returns `ok`, `errors`, and the url where the person sees it. Writes nothing |
 | `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first |
 
@@ -551,7 +559,7 @@ the gateway. A draft is a private working copy under `drafts/<owner>/`, and
 nothing a draft holds goes live until `publish_draft`.
 
 1. `start_draft(kind, path)`. `kind` is `reports` (a package) or `models` (one
-   `models/<name>.json`, see `docs/reference/model-json.md`).
+   `models/<name>.yaml` or `.json`, see `docs/reference/model-json.md`).
 2. `write_draft_file(kind, path, file, content)` for each file the draft needs.
 3. `preview_draft(kind, path)`, then give the person the `url` it returns. They
    see the draft rendered in the app.

@@ -1,7 +1,9 @@
 """
-A model as data: ``models/<name>.json``.
+A model as data: ``models/<name>.yaml`` (also ``.yml``) or ``models/<name>.json``.
 
-The JSON mirrors the :class:`DataModel` builder calls one to one, so a model
+YAML is the human form of the same schema: comments, no quoting, one loader
+(``yaml.safe_load`` semantics only, and a repeated key is an error rather than
+last-wins). The document mirrors the :class:`DataModel` builder calls one to one, so a model
 can be drafted without running anyone's Python. The schema is closed —
 unknown keys are errors — and carries no credentials: a connector is either a
 DuckDB file under the project, or a reference to a ``models/_connections/<x>.py``
@@ -25,14 +27,20 @@ from tracebi.model.data_model import DataModel
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
+SPEC_SUFFIXES = (".yaml", ".yml", ".json")
+
 _TOP = {"name", "connectors", "tables", "relationships", "dimensions", "facts",
-        "measures"}
+        "measures", "time_grains", "value_bins"}
 _CONNECTOR = {"name", "type", "database", "connection"}
 _TABLE = {"name", "connector", "source"}
 _RELATIONSHIP = {"name", "left_table", "right_table", "left_key", "right_key",
                  "how"}
 _DIMENSION = {"name", "table", "key", "attributes"}
 _FACT = {"name", "table", "measures", "foreign_keys"}
+# The keyword arguments of DataModel.add_time_grain / add_value_bins; `dim`
+# is spelled out as `dimension`, like the dimension's own `table` and `key`.
+_TIME_GRAIN = {"dimension", "name", "source", "grain"}
+_VALUE_BINS = {"dimension", "name", "source", "edges", "labels"}
 # Every keyword DataModel.add_measure takes, plus the measure's name.
 _MEASURE = {"name", "column", "agg", "expr", "ratio", "share", "rank", "running",
             "partition_by", "period_end", "offset", "growth", "to_date",
@@ -50,6 +58,53 @@ class ModelSpecError(ValueError):
     def __init__(self, filename: str, errors: list[str]) -> None:
         super().__init__(f"{filename}: " + "; ".join(errors))
         self.errors = errors
+
+
+def _unique_key_loader():
+    """A ``SafeLoader`` that refuses a repeated mapping key (PyYAML keeps the
+    last one silently, which would let a second ``agg:`` quietly win)."""
+    import yaml
+
+    class _Loader(yaml.SafeLoader):
+        def construct_mapping(self, node, deep=False):
+            self.flatten_mapping(node)
+            seen = set()
+            for key_node, _ in node.value:
+                key = self.construct_object(key_node, deep=True)
+                try:
+                    dup = key in seen
+                    seen.add(key)
+                except TypeError:
+                    continue  # unhashable: the parent's construct_mapping says so
+                if dup:
+                    raise yaml.constructor.ConstructorError(
+                        "while constructing a mapping", node.start_mark,
+                        f"found duplicate key {key!r}", key_node.start_mark)
+            return super().construct_mapping(node, deep)
+
+    return _Loader
+
+
+def read_model_doc(path: "str | os.PathLike[str]") -> Any:
+    """The parsed document of a model file: ``.json`` as JSON, ``.yaml`` /
+    ``.yml`` through a ``SafeLoader`` that refuses repeated keys (never an
+    arbitrary-object loader). Raises :class:`ModelSpecError`."""
+    path = Path(path)
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".json":
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ModelSpecError(path.name, [f"not valid JSON ({exc})"]) from exc
+    try:
+        import yaml
+    except ImportError as exc:  # pyyaml is a base dependency; say so if it is gone
+        raise ImportError("YAML models need PyYAML: pip install pyyaml") from exc
+    try:
+        return yaml.load(text, Loader=_unique_key_loader())  # noqa: S506 — a SafeLoader subclass
+    except yaml.YAMLError as exc:
+        why = " ".join(str(exc).split())
+        raise ModelSpecError(path.name, [f"not valid YAML ({why})"]) from exc
 
 
 def _unknown(keys: Any, allowed: set[str], path: str) -> list[str]:
@@ -99,7 +154,7 @@ def validate_model_spec(doc: Any) -> list[str]:
     (``measures[2].agg``). Empty means the shape is right; whether the builder
     accepts the declarations is checked when the model is compiled."""
     if not isinstance(doc, dict):
-        return ["the file must hold one JSON object"]
+        return ["the file must hold one object (a mapping at the top level)"]
     errors = _unknown(doc, _TOP, "model")
     _need(doc, "model", ("name",), errors)
 
@@ -152,6 +207,19 @@ def validate_model_spec(doc: Any) -> list[str]:
                         for k, v in fks.items())):
             errors.append(f"{path}.foreign_keys: must map dimension name to "
                           "the fact's key column")
+    for path, g in _items(doc, "time_grains", _TIME_GRAIN, errors):
+        _need(g, path, ("dimension", "name", "source", "grain"), errors)
+    for path, b in _items(doc, "value_bins", _VALUE_BINS, errors):
+        _need(b, path, ("dimension", "name", "source"), errors)
+        edges = b.get("edges")
+        if not (isinstance(edges, list) and edges and all(
+                isinstance(e, (int, float)) and not isinstance(e, bool)
+                for e in edges)):
+            errors.append(f"{path}.edges: required, a non-empty list of numbers")
+        labels = b.get("labels")
+        if labels is not None and not (
+                isinstance(labels, list) and all(isinstance(v, str) for v in labels)):
+            errors.append(f"{path}.labels: must be a list of strings")
     for path, m in _items(doc, "measures", _MEASURE, errors):
         _need(m, path, ("name",), errors)
         for k in _STR & m.keys():
@@ -204,7 +272,8 @@ def _connector(c: dict, root: Path):
 
 def load_model_spec(path: "str | os.PathLike[str]",
                     root: "str | os.PathLike[str] | None" = None) -> DataModel:
-    """Compile ``models/<name>.json`` into a :class:`DataModel`.
+    """Compile ``models/<name>.yaml`` (or ``.yml`` / ``.json``) into a
+    :class:`DataModel`.
 
     *root* is the project root that ``database`` paths and
     ``models/_connections/`` resolve against (default: the folder above the
@@ -212,10 +281,7 @@ def load_model_spec(path: "str | os.PathLike[str]",
     """
     path = Path(path)
     root = Path(root) if root is not None else path.resolve().parent.parent
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ModelSpecError(path.name, [f"not valid JSON ({exc})"]) from exc
+    doc = read_model_doc(path)
     errors = validate_model_spec(doc)
     if not errors and doc["name"] != path.stem:
         errors.append(f"name: must equal the file name '{path.stem}', got "
@@ -240,6 +306,12 @@ def load_model_spec(path: "str | os.PathLike[str]",
     for f in doc.get("facts", []):
         model.add_fact(f["name"], table_name=f["table"], measures=f["measures"],
                        foreign_keys=f.get("foreign_keys"))
+    for g in doc.get("time_grains", []):
+        model.add_time_grain(g["dimension"], g["name"], source=g["source"],
+                             grain=g["grain"])
+    for b in doc.get("value_bins", []):
+        model.add_value_bins(b["dimension"], b["name"], source=b["source"],
+                             edges=b["edges"], labels=b.get("labels"))
     for m in doc.get("measures", []):
         kwargs = {k: v for k, v in m.items() if k != "name"}
         for k in _PAIR | _TRIPLE:

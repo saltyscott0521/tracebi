@@ -30,6 +30,7 @@ honest path costs one attribute.
                         ── freeze: the warehouse + its contract ──
 ②  models/       a declarative DataModel over the sink: grain, keys, measures.
                  It reads the warehouse; it never sees the transform.
+                 YAML by default (models/<name>.yaml).
                         ── freeze: the model (the contract) ──
 ③  reports/      an ARTIFACT PACKAGE in a folder named for its model —
                  reports/<model>/<name>/ holding report.json (named query
@@ -213,7 +214,8 @@ tracebi run-transform <name>                # ① clean + sink + contract —
                                             #   runs .py or .ipynb top-to-bottom
                                             #   fresh (python transforms/<name>.py
                                             #   works too for .py)
-tracebi new-model "<Name>"                  # ② scaffold a model; edit it
+tracebi new-model "<Name>"                  # ② scaffold models/<name>.yaml (--python: a .py); edit it
+tracebi migrate model models/<name>.py [--write]  # a Python model → YAML; the .py stays until you delete it
 tracebi new-report "<model>/<Name>" [--layout brief|dashboard|tabbed]
                                             # ③ scaffold reports/<model>/<name>/ — a report lives in
                                             #   its model's folder. dashboard is the default; brief
@@ -251,8 +253,8 @@ If you cannot reach the project's files, draft over the gateway instead:
 `start_draft`, `write_draft_file`, `preview_draft` (give the person the url it
 returns), then `publish_draft` once they agree. Drafts live under `drafts/`
 and nothing goes live until publish. Publish a model before a report that uses
-it. A declarative `models/<name>.json` can be drafted this way; a Python model
-cannot.
+it. A declarative model, `models/<name>.yaml` or `.json`, can be drafted this
+way (writing the other form replaces the draft file); a Python model cannot.
 
 Resources: `tracebi://guide` (how to author), `tracebi://spec-schema`,
 `tracebi://models/{name}`, and `tracebi://knowledge/{slug}` (one lesson

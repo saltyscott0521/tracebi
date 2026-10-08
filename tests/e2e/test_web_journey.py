@@ -550,6 +550,105 @@ def test_a_declarative_model_answers_like_the_python_one(served, scaffolded):
     assert clash["status"] == "failed" and "sample_model.py exists" in clash["reason"]
 
 
+def test_a_python_model_migrates_to_yaml_and_answers_identically(scaffolded):
+    """`tracebi migrate model` writes the YAML beside the .py (which still
+    wins); with the .py moved away the YAML model is discovered and a query
+    through it fingerprints exactly like the same query through the Python."""
+    from tracebi import model_registry
+
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    query = dict(fact="fact_orders", measures=["revenue", "units"],
+                 dimensions=["dim_region.region"])
+    before = model_registry.get_model("sample_model").query(**query).fingerprint()
+
+    code, out = run_cli("migrate", "model", "models/sample_model.py", "--write")
+    assert code == 0, out
+    assert "still wins" in out
+    yaml_file = scaffolded / "models" / "sample_model.yaml"
+    assert yaml_file.is_file() and (scaffolded / "models" / "sample_model.py").is_file()
+
+    # The Python file is the user's to remove; here, in the temp project only.
+    (scaffolded / "models" / "sample_model.py").rename(scaffolded / "sample_model.py.old")
+    fresh = model_registry.ModelRegistry()
+    assert fresh.auto_discover("models") == ["sample_model"]
+    assert fresh.get("sample_model").query(**query).fingerprint() == before
+    fresh.release_all()
+
+
+def test_the_reference_models_convert_or_refuse_with_a_reason(reference):
+    """Every model of the reference project converts; one that cannot be
+    expressed is refused with its reason and nothing is written."""
+    for name in ("portfolio_model", "housing_model", "saas_model"):
+        code, out = run_cli("migrate", "model", f"models/{name}.py")
+        assert code == 0, f"{name}: {out}"
+        assert f"name: {name}" in out
+    (reference / "models" / "renamed.py").write_text(
+        "from tracebi import DataModel\nmodel = DataModel('Other')\n")
+    code, out = run_cli("migrate", "model", "models/renamed.py", "--write")
+    assert code == 1 and "is named 'Other'" in out
+    assert not (reference / "models" / "renamed.yaml").exists()
+
+
+def test_a_yaml_model_with_comments_time_grains_and_bins_answers(scaffolded):
+    """A commented YAML model declares a month grain and value bins, and a
+    query grouped by each answers; a repeated key is refused at discovery with
+    its reason."""
+    import pandas as pd
+
+    from tracebi import model_registry
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.web import discovery
+
+    warehouse = DuckDBConnector("w", database=str(scaffolded / "data" / "yaml_demo.duckdb"))
+    warehouse.write(pd.DataFrame({
+        "id": [1, 2, 3, 4],
+        "day": pd.to_datetime(["2024-01-05", "2024-01-20", "2024-02-03", "2024-02-28"]),
+        "score": [550, 650, 750, 850]}), "dim_customer")
+    warehouse.write(pd.DataFrame({"cust": [1, 2, 3, 4], "amount": [10.0, 20.0, 30.0, 40.0]}),
+                    "fact_sales")
+    warehouse.disconnect()
+
+    body = """\
+# Sales by month and score band.
+name: banded
+connectors:
+  - {name: w, type: duckdb, database: data/yaml_demo.duckdb}
+tables:
+  - {name: dim_customer, connector: w, source: dim_customer}
+  - {name: fact_sales, connector: w, source: fact_sales}
+dimensions:
+  - {name: dim_customer, table: dim_customer, key: id, attributes: [day, score]}
+facts:
+  - {name: fact_sales, table: fact_sales, measures: [amount],
+     foreign_keys: {dim_customer: cust}}
+time_grains:
+  - {dimension: dim_customer, name: month, source: day, grain: month}
+value_bins:
+  - dimension: dim_customer
+    name: band
+    source: score
+    edges: [600, 700, 800]      # four bands
+measures:
+  # a plain sum: nothing to weight
+  - {name: revenue, column: amount, agg: sum}
+"""
+    (scaffolded / "models" / "banded.yaml").write_text(body)
+    assert "banded" in discovery.register_models("models")
+    model = model_registry.get_model("banded")
+    by_band = model.query(fact="fact_sales", measures=["revenue"],
+                          dimensions=["dim_customer.band"]).to_pandas()
+    assert sorted(by_band["revenue"]) == [10.0, 20.0, 30.0, 40.0]
+    by_month = model.query(fact="fact_sales", measures=["revenue"],
+                           dimensions=["dim_customer.month"]).to_pandas()
+    assert sorted(by_month["revenue"]) == [30.0, 70.0]
+
+    (scaffolded / "models" / "dup.yaml").write_text("name: dup\nname: dup\n")
+    discovery.register_models("models")
+    [entry] = [e for e in discovery.discovery_report() if e["file"] == "dup.yaml"]
+    assert entry["status"] == "failed" and "duplicate key" in entry["reason"]
+
+
 def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, scaffolded):
     """The remote-authoring loop over the real /mcp and the real app: start a
     draft from a published report, change it, preview it, publish it. The
@@ -652,3 +751,34 @@ def test_a_report_can_be_drafted_on_a_draft_model_but_publishes_only_after_it(sc
     published = gw.gateway_publish_draft("reports", report)
     assert published["ok"], published
     assert '"regions"' in (scaffolded / "reports" / report / "report.json").read_text()
+
+
+def test_a_model_draft_written_as_yaml_publishes_as_yaml(scaffolded):
+    """A model draft may be YAML: it publishes as models/<name>.yaml, and
+    writing the JSON form instead replaces the draft's file and, on publish,
+    the published one (the old one is kept in history)."""
+    from tracebi import mcp_server as gw
+
+    yaml_text = (
+        "# the regions\n"
+        "name: regions\n"
+        "connectors:\n"
+        "  - {name: warehouse, type: duckdb, database: data/warehouse.duckdb}\n"
+        "tables:\n"
+        "  - {name: dim_region, connector: warehouse, source: dim_region}\n")
+    assert gw.gateway_start_draft("models", "regions")["ok"]
+    assert gw.gateway_write_draft_file("models", "regions", "regions.yaml", yaml_text)["ok"]
+    files = gw.gateway_read_draft("models", "regions")["files"]
+    assert files == {"regions.yaml": yaml_text}
+    assert gw.gateway_publish_draft("models", "regions")["ok"]
+    assert (scaffolded / "models" / "regions.yaml").read_text() == yaml_text
+
+    as_json = json.dumps({"name": "regions", "connectors": [
+        {"name": "warehouse", "type": "duckdb", "database": "data/warehouse.duckdb"}]})
+    gw.gateway_write_draft_file("models", "regions", "regions.json", as_json)
+    assert list(gw.gateway_read_draft("models", "regions")["files"]) == ["regions.json"]
+    assert gw.gateway_publish_draft("models", "regions")["ok"]
+    assert (scaffolded / "models" / "regions.json").is_file()
+    assert not (scaffolded / "models" / "regions.yaml").exists()
+    kept = list((scaffolded / ".tracebi" / "history" / "models" / "regions").rglob("regions.yaml"))
+    assert kept, "the replaced YAML is kept in history"

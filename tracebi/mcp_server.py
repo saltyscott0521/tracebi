@@ -1796,7 +1796,8 @@ def build_server(token: Optional[str] = None):
         description=(
             "Create a draft: kind is 'reports' (a package: report.json, "
             "template.html, style.css) or 'models' (one declarative "
-            "<name>.json). path is a report path like finance/weekly, or a "
+            "<name>.yaml, or <name>.json; a new model draft starts as "
+            "YAML). path is a report path like finance/weekly, or a "
             "model name [a-z0-9_]+. from_published=true copies the published "
             "one; a published report with a report.py or script.js cannot be "
             "drafted remotely. Returns the draft's url: give it to the person "
@@ -1814,8 +1815,9 @@ def build_server(token: Optional[str] = None):
         description=(
             "Replace one file of an existing draft with content (UTF-8 text, "
             "at most 512 KB). file is report.json, template.html or "
-            "style.css for a report; <name>.json for a model. Nothing else "
-            "is accepted. Writes only under drafts/; nothing is published."
+            "style.css for a report; <name>.yaml or <name>.json for a model "
+            "(one form at a time: writing the other replaces the draft's "
+            "file). Nothing else is accepted. Writes only under drafts/; nothing is published."
         ),
     )(gateway_write_draft_file)
     _tool(

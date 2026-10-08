@@ -62,7 +62,7 @@ vocabulary, so they describe what the code actually accepts.
 - [[template-html]] — the `data-tb-*` figure grammar
 - [[figure-helper]] — `{{ figure("name") }}`: framework-built figures, your layout
 - [[measures]] — every measure kind the semantic layer knows
-- [[model-json]] — a model as data: `models/<name>.json`
+- [[model-json]] — a model as data: `models/<name>.yaml` (or `.json`)
 - [[queries]] — filters, `having`, ordering, limits
 - [[number-formats]] — the named formats and how defaults are derived
 - [[cli]] — every `tracebi` command
