@@ -41,6 +41,7 @@
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
 <a href="../guides/styling-a-report.html">Styling a report</a>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
 <a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
@@ -101,7 +102,9 @@ exact address is what people paste into the connector. If yours differs, set
 <p><strong>2. Register TraceBi at your identity provider.</strong> One web application with a
 client secret:</p>
 <ul>
-<li>Redirect URI: <code>https://bi.example.com/oauth/callback</code></li>
+<li>Redirect URI: <code>https://bi.example.com/oauth/callback</code>, and, if people also
+  sign in to the app and the CLI, <code>https://bi.example.com/login/callback</code>
+  (<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>)</li>
 <li>Scopes: <code>openid</code>, <code>email</code>, <code>profile</code></li>
 <li>Send the person's groups in the ID token. In Entra: <em>Token configuration</em>,
   add a groups claim (security groups). In Okta: add a <code>groups</code> claim to the ID
@@ -121,7 +124,8 @@ stops the server at startup with the reason; it never starts half open.</p>
 <p><strong>4. Let the connectors' requests through.</strong> If a proxy or SSO gateway sits in
 front of TraceBi, these paths must reach it without a login of their own (they
 carry their own authentication): <code>/mcp</code>, <code>/authorize</code>, <code>/token</code>, <code>/register</code>,
-<code>/revoke</code>, <code>/oauth/callback</code> and everything under <code>/.well-known/</code>. The rest of
+<code>/revoke</code>, <code>/oauth/callback</code>, <code>/login</code>, <code>/login/callback</code>, <code>/logout</code> and
+everything under <code>/.well-known/</code>. The rest of
 the app stays behind whatever you already use.</p>
 <p><strong>5. Use Postgres if you run more than one worker.</strong> Clients, codes and tokens
 live in the run store (<code>TRACEBI_STATE_URL</code>), so several workers share them. See
@@ -225,6 +229,7 @@ people see it only if they are admins.</p>
 </table>
 <h2 id="related">Related</h2>
 <ul>
+<li><a href="../guides/sign-in.html">Sign in to the app and the CLI</a> — the same login for the web app and <code>tracebi login</code></li>
 <li><strong>remote-authoring</strong> — the design: drafts, publishing, and this sign-in</li>
 <li><a href="../reference/environment-variables.html">Environment variables</a> — every variable above</li>
 <li><a href="../guides/one-server.html">Run TraceBi on one server</a> — hosting on one server</li>
