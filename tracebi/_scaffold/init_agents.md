@@ -247,6 +247,13 @@ report unless asked; `address_pins(report)` reads `workbench_state`, acts
 on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
 `resolve_pin`s each with a one-line note.
 
+If you cannot reach the project's files, draft over the gateway instead:
+`start_draft`, `write_draft_file`, `preview_draft` (give the person the url it
+returns), then `publish_draft` once they agree. Drafts live under `drafts/`
+and nothing goes live until publish. Publish a model before a report that uses
+it. A declarative `models/<name>.json` can be drafted this way; a Python model
+cannot.
+
 Resources: `tracebi://guide` (how to author), `tracebi://spec-schema`,
 `tracebi://models/{name}`, and `tracebi://knowledge/{slug}` (one lesson
 body, the same text as `tracebi knowledge <slug>`).

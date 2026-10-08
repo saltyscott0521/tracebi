@@ -114,6 +114,11 @@ equivalent where it matters.</p>
 <td><code>run-pipeline</code>, discovery</td>
 </tr>
 <tr>
+<td><code>TRACEBI_DRAFTS_DIR</code></td>
+<td><code>drafts</code></td>
+<td>Remote drafts: each owner's drafts live under <code>drafts/&lt;owner&gt;/</code>. The <code>/mcp</code> draft tools and <code>/api/drafts</code> read and write there. Publishing copies a draft into the library.</td>
+</tr>
+<tr>
 <td><code>TRACEBI_SCHEDULED_DIR</code></td>
 <td><code>scheduled</code></td>
 <td>discovery. <strong>Deprecated.</strong> The folder is still imported if it exists, and a script in it logs one deprecation line. It never ran reports. Use a <code>"schedule"</code> block in <code>report.json</code> (<code>tracebi schedule</code>).</td>

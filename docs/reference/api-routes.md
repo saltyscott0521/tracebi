@@ -103,6 +103,27 @@ carries no receipt; the HTML file is what `verify --file` checks.
 `xlsx` goes through the Excel renderer, which derives no
 [[number-formats|formats]], and runs the report to do so.
 
+## Drafts
+
+Remote drafts (design: `docs/strategy/remote-authoring.md`). `{kind}` is `reports` or `models`.
+A draft's owner is the acting principal; `{owner}` is that name slugged to
+`[a-z0-9._-]`.
+
+| Method | Path | Role |
+| --- | --- | --- |
+| `GET` | `/api/drafts` | owner (their own); admin (everyone's) |
+| `GET` | `/api/drafts/{owner}/{kind}/{path}/files` | owner or admin |
+| `GET` | `/api/drafts/{owner}/{kind}/{path}/version` | owner or admin |
+| `GET` | `/api/drafts/{owner}/{kind}/{path}/preview` | owner or admin |
+| `POST` | `/api/drafts/{owner}/{kind}/{path}/publish` | analyst, and owner or admin |
+| `DELETE` | `/api/drafts/{owner}/{kind}/{path}` | analyst, and owner or admin |
+
+`/preview` renders the draft in memory against the published models plus the
+owner's draft models, and writes nothing. `/publish` validates the draft first,
+keeps the version it replaces under `.tracebi/history/`, copies it into the
+library and records a `publish` run. The draft is kept. `DELETE` removes the
+draft only, never the published copy.
+
 ## Report specs
 
 | Method | Path | Role |
