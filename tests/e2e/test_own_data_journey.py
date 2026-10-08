@@ -32,10 +32,10 @@ def test_connect_then_draft_a_model_that_loads(scaffolded, cli, monkeypatch):
     assert code == 0, out
     assert "3 tables" in out
     assert str(db) not in out
-    env = (scaffolded / ".env").read_text(encoding="utf-8")
-    assert "TRACEBI_WH_DATABASE" in env
-    assert (scaffolded / "models" / "_connections" / "wh.py").is_file()
-    assert ".env" in (scaffolded / ".gitignore").read_text(encoding="utf-8").splitlines()
+    # A warehouse inside the project is a path in the file; nothing to hide.
+    declared = (scaffolded / "connections" / "wh.yaml").read_text(encoding="utf-8")
+    assert "database: sales.duckdb" in declared
+    assert not (scaffolded / "models" / "_connections").exists()
 
     code, out = cli(
         "new-model", "Sales", "--from", "wh",
@@ -45,7 +45,7 @@ def test_connect_then_draft_a_model_that_loads(scaffolded, cli, monkeypatch):
     model_text = (scaffolded / "models" / "sales.py").read_text(encoding="utf-8")
     assert "# DRAFT: review" in model_text
     assert str(db) not in model_text
-    assert "load_dotenv" not in model_text  # the connection module loads it
+    assert "connection_file('wh', ROOT)" in model_text
 
     code, out = cli("list-models")
     assert code == 0, out

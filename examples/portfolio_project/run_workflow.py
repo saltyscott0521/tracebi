@@ -8,7 +8,7 @@ over.
     ①  TRANSFORM    transforms/holdings_transform.py   → data/warehouse.duckdb
                     transforms/saas_transform.py       → data/warehouse.duckdb
                     transforms/affordability_transform.py → data/housing.duckdb
-    ②  MODEL        models/portfolio_model.py          (a star schema over the sink)
+    ②  MODEL        models/portfolio_model.yaml          (a star schema over the sink)
     ③  REPORT       reports/portfolio_model/portfolio_dashboard.json    → data/portfolio_dashboard.html
 
 This script does phase ① (build the warehouse) and renders phase ③ once, offline,

@@ -10,7 +10,7 @@ it is the worked version of that scaffold with real cleaning to do.
 ①  TRANSFORM   transforms/holdings_transform.py  parse prose blobs, dedupe,
                                                  normalise → SINK star tables
                           ── freeze: data/warehouse.duckdb ──
-②  MODEL       models/portfolio_model.py         grain, keys, measures — the contract
+②  MODEL       models/portfolio_model.yaml         grain, keys, measures — the contract
                           ── freeze: the model ──
 ③  REPORT      reports/portfolio_model/portfolio_dashboard.json   every figure a live query
                reports/portfolio_model/portfolio_book/            freeform template package
@@ -68,7 +68,7 @@ Under `reports/housing_model/`:
   from Freddie Mac, existing-home price from NAR through HUD and FHFA, income
   from the Census, one earner's pay from BLS). `inputs/housing_history.csv` is
   sunk by `transforms/affordability_transform.py` to its own
-  `data/housing.duckdb` and modelled by `models/housing_model.py`. Today's buyer
+  `data/housing.duckdb` and modelled by `models/housing_model.yaml`. Today's buyer
   is a labelled **scenario** (`data-tb-scenario`) whose assumptions the reader
   sets; it is computed in the browser and never part of the receipt.
   `python inputs/fetch_housing.py` refreshes the snapshot from the publishers

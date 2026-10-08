@@ -1,0 +1,9 @@
+# Connection "warehouse": the DuckDB file phase 1 sinks into.
+#
+# A connection is a type and its fields. Any value may be ${ENV_VAR} (the whole
+# value); a password, or a URL that carries one, MUST be, and the value goes in
+# .env, never here. `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb`
+# tests a warehouse you already have and writes one of these.
+name: warehouse
+type: duckdb
+database: data/warehouse.duckdb

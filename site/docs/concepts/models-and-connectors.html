@@ -50,10 +50,12 @@
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
 <a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/measures.html">Measures</a>
 <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
@@ -115,7 +117,7 @@ model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;, 
 <h2 id="finding-where-the-data-is">Finding where the data is</h2>
 <ul>
 <li><strong>In the app</strong>, open <strong>Data model</strong>, pick a model: the header says
-  <em>Defined in</em> <code>models/portfolio_model.py</code> and <em>Data in</em>
+  <em>Defined in</em> <code>models/portfolio_model.yaml</code> and <em>Data in</em>
   <code>data/warehouse.duckdb</code>, and whether the file is there yet and how big it is.
   The <strong>Storage</strong> tab lists each connector, what kind of place it is, and
   exactly which tables it serves. The <strong>Sources</strong> page (a source is a connector) is the same list
@@ -136,9 +138,9 @@ model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;, 
 </ul>
 <h2 id="a-model-its-reports-and-its-pipeline">A model, its reports and its pipeline</h2>
 <p>Reports are organised <strong>by model</strong>: the folder is the model's name.</p>
-<pre><code>models/portfolio_model.py            what the data means
+<pre><code>models/portfolio_model.yaml            what the data means
 reports/portfolio_model/…            every report that reads it
-pipelines/portfolio_model.py         rebuild its data, then those reports
+pipelines/portfolio_model.yaml         rebuild its data, then those reports
 </code></pre>
 <p>One line makes the pipeline: <code>model_pipeline("portfolio_model",
 transform="holdings_transform")</code> registers a <strong>transform</strong> step (the phase ①

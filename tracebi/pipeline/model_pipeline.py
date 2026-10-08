@@ -64,23 +64,39 @@ def model_pipeline(
     model: str,
     transform: str,
     *,
+    models: Optional[list[str]] = None,
+    reports: Optional[list[str]] = None,
+    schedule: Optional[str] = None,
+    name: Optional[str] = None,
     db_url: Optional[str] = None,
     reports_dir: str = "reports",
 ) -> PipelineRunner:
     """A runner with ``transform`` → ``build`` steps for *model*.
 
+    This is what a ``pipelines/<name>.yaml`` compiles to
+    (``tracebi.pipeline.pipeline_spec``).
+
     Args:
         model:       The model's name (its file in ``models/`` and its folder in
                      ``reports/``).
         transform:   The phase ① transform to run, as ``tracebi run-transform`` names it.
-        db_url:      Where run history is kept (default ``data/<model>_runs.db``).
+        models:      Every model the transform feeds, *model* first (default:
+                     just *model*). ``build`` rebuilds the reports of each.
+        reports:     The reports ``build`` rebuilds, by name; default every
+                     report in ``reports/<model>/`` of each model.
+        schedule:    A cron expression: when the scheduler fires it, the whole
+                     chain runs (transform, then build).
+        name:        The pipeline's name, for its run-history file (default *model*).
+        db_url:      Where run history is kept (default ``data/<name>_runs.db``).
         reports_dir: The project's reports folder.
     """
     from tracebi.model_registry import get_model, release_all
 
+    models = list(models) if models else [model]
+    custom_db = db_url is not None
     if db_url is None:
         os.makedirs("data", exist_ok=True)
-        db_url = f"sqlite:///{os.path.abspath(os.path.join('data', model + '_runs.db'))}"
+        db_url = f"sqlite:///{os.path.abspath(os.path.join('data', (name or model) + '_runs.db'))}"
 
     def release() -> None:
         # A model holds its warehouse open read-only; the transform needs it
@@ -92,7 +108,7 @@ def model_pipeline(
         release()
         _cli("run-transform", transform)
         release()
-        return len(get_model(model).info()["tables"])          # tables now in place
+        return sum(len(get_model(m).info()["tables"]) for m in models)   # tables now in place
 
     def build_reports():
         # `run-pipeline` keeps going after a failure so it can report them all;
@@ -102,9 +118,11 @@ def model_pipeline(
         if last and last[0]["status"] != "success":
             raise RuntimeError("the last transform did not succeed; not rebuilding "
                                "reports from a warehouse it failed to refresh")
-        names = reports_of(model, reports_dir)
+        names = reports if reports is not None else [
+            r for m in models for r in reports_of(m, reports_dir)]
         if not names:
-            raise RuntimeError(f"no reports in {os.path.join(reports_dir, model)}/")
+            raise RuntimeError("no reports in " + ", ".join(
+                os.path.join(reports_dir, m) + "/" for m in models))
         for name in names:
             _cli("report", "build", name)
             built_report(name)                                  # the run lists what it rebuilt
@@ -114,7 +132,13 @@ def model_pipeline(
     # The Pipelines page (and the shared model scope) join a runner to its
     # model by this attribute — not by guessing from the pipeline's file name.
     runner.model = model
+    runner.models = models
     runner.transform = transform            # the phase ① script, for the Code view
+    runner.declared = {"model": model, "models": models, "transform": transform,
+                       "reports": reports, "schedule": schedule,
+                       "reports_dir": reports_dir, "name": name or model,
+                       "custom_db_url": custom_db}
     runner.register_step("transform", run_transform)
-    runner.register_step("build", build_reports, depends_on="transform")
+    runner.register_step("build", build_reports, depends_on="transform",
+                         schedule=schedule, chain=True)
     return runner

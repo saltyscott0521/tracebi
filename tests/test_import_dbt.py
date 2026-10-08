@@ -171,7 +171,7 @@ def test_missing_connection_writes_nothing(tmp_path, monkeypatch, capsys):
     assert code == 1
     err = capsys.readouterr().err
     assert "demo" in err
-    assert "_connections" in err
+    assert "connections/" in err
     assert not (tmp_path / "models" / "dbt_marts.py").exists()
 
 

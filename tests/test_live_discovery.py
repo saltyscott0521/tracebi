@@ -59,7 +59,8 @@ def test_a_package_added_after_startup_is_registered(reports):
 
     # Nothing new: a second scan changes nothing.
     assert discovery.rescan(str(reports)) == {
-        "added": [], "removed": [], "failed": [], "models": [], "pipelines": []}
+        "added": [], "removed": [], "failed": [], "models": [], "pipelines": [],
+        "connections": []}
 
 
 def test_a_deleted_package_is_forgotten(reports):

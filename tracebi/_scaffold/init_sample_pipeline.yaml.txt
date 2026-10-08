@@ -1,0 +1,18 @@
+# Pipeline for sample_model: rebuild the warehouse, then its reports.
+#
+#     transform  runs transforms/sample_transform.py: cleans inputs/orders.csv
+#                and sinks the star schema into data/warehouse.duckdb
+#     build      builds every report in reports/sample_model/, each with a receipt
+#
+#     tracebi run-pipeline sample_model
+#
+# A model, the transform that fills its warehouse, and the reports that read it
+# belong together: models/sample_model.yaml, transforms/sample_transform.py,
+# reports/sample_model/. `tracebi serve` finds this file and runs it from the
+# model's Refresh page.
+name: sample_model
+description: Rebuild the sample warehouse, then its reports.
+transform: sample_transform
+models: [sample_model]
+reports: all
+schedule: null

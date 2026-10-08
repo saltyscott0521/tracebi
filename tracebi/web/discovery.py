@@ -47,6 +47,8 @@ _failed_sources: dict[str, tuple] = {}
 # Model and pipeline files live discovery has already put in the web registry.
 _live_models: set[str] = set()
 _live_pipelines: set[str] = set()
+# Connection files already put in the web registry: stem -> (path, mtime).
+_live_connections: dict[str, tuple] = {}
 
 
 # Per-file outcome of every discovery attempt, in order. Discovery is
@@ -547,24 +549,84 @@ def register_models(models_dir: str) -> list[str]:
     return added
 
 
+def register_connections(connections_dir: str) -> list[str]:
+    """Put each ``connections/<name>.yaml`` in the web registry, so the Sources
+    page lists it. Nothing is resolved or opened: a missing environment
+    variable surfaces when the connection is used, not here. A file that is
+    new or changed since the last call is (re)registered; one that does not
+    validate is reported and left out. Returns the names added this call."""
+    from tracebi.connections import SUFFIXES, load_connection
+    from tracebi.registry import registry
+
+    added: list[str] = []
+    if not os.path.isdir(connections_dir):
+        return added
+    entries = sorted(e for e in os.listdir(connections_dir)
+                     if not e.startswith(("_", ".")) and e.endswith(SUFFIXES))
+    stems = [os.path.splitext(e)[0] for e in entries]
+    for entry, stem in zip(entries, stems):
+        full = os.path.join(connections_dir, entry)
+        name = f"connections/{entry}"
+        if stems.count(stem) > 1:
+            _record(name, full, {"module": name, "status": "failed",
+                                 "reason": f"{stem}.yaml and {stem}.yml both exist; "
+                                           f"a connection is one file, so delete one"})
+            continue
+        try:
+            stamp = (full, os.stat(full).st_mtime_ns)
+        except OSError:
+            continue
+        if _live_connections.get(stem) == stamp:
+            continue
+        try:
+            connector = load_connection(full, root=os.getcwd())
+        except Exception as exc:  # noqa: BLE001 — one broken file must not stop the rest
+            reason = "; ".join(getattr(exc, "errors", None) or [str(exc)])
+            _record(name, full, {"module": name, "status": "failed", "reason": reason})
+            print(f"[tracebi] connection '{stem}' failed to load: {reason}", file=sys.stderr)
+            _live_connections[stem] = stamp      # retried when the file changes
+            continue
+        registry.add_connector(connector)
+        _outcomes[:] = [o for o in _outcomes if o.get("module") != name]
+        _live_connections[stem] = stamp
+        added.append(stem)
+    return added
+
+
 def register_pipelines(pipelines_dir: str) -> list[str]:
-    """Record new ``pipelines/*.py`` files and put each runner in the web
-    registry. Returns the names added this call; a file that fails to load
-    is left out and retried on the next call."""
+    """Record new ``pipelines/*.py`` and ``pipelines/*.yaml`` files and put
+    each runner in the web registry. Returns the names added this call; a file
+    that fails to load is left out and retried on the next call."""
     from tracebi import pipeline_registry
     from tracebi.registry import registry
 
     added: list[str] = []
     if not os.path.isdir(pipelines_dir):
         return added
-    for stem in pipeline_registry.auto_discover(pipelines_dir):
+    stems = pipeline_registry.auto_discover(pipelines_dir)
+    # A refusal reported earlier is rebuilt from the current files, so a
+    # deleted twin stops being reported.
+    _outcomes[:] = [o for o in _outcomes
+                    if not (str(o.get("module", "")).startswith("pipelines/")
+                            and " refused: " in str(o.get("reason", "")))]
+    for path, reason in pipeline_registry.clashes().items():
+        if os.path.abspath(os.path.dirname(path)) == os.path.abspath(pipelines_dir):
+            name = f"pipelines/{os.path.basename(path)}"
+            _record(name, path, {"module": name, "status": "failed", "reason": reason})
+    for stem in stems:
         if stem in _live_pipelines:
             continue
         try:
             runner = pipeline_registry.get_runner(stem)
         except Exception as exc:  # noqa: BLE001 — one broken pipeline must not stop the rest
+            path = pipeline_registry.pipeline_path(stem)
+            if path and path.endswith((".yaml", ".yml")):
+                reason = "; ".join(getattr(exc, "errors", None) or [str(exc)])
+                _record(f"pipelines/{stem}", path, {
+                    "module": f"pipelines/{stem}", "status": "failed", "reason": reason})
             print(f"[tracebi] pipeline '{stem}' failed to load: {exc}", file=sys.stderr)
             continue
+        _outcomes[:] = [o for o in _outcomes if o.get("module") != f"pipelines/{stem}"]
         if stem not in registry.list_pipeline_names():
             registry.add_pipeline(stem, runner)
         _live_pipelines.add(stem)
@@ -573,7 +635,8 @@ def register_pipelines(pipelines_dir: str) -> list[str]:
 
 
 def rescan(reports_dir: str, models_dir: Optional[str] = None,
-           pipelines_dir: Optional[str] = None) -> dict:
+           pipelines_dir: Optional[str] = None,
+           connections_dir: Optional[str] = None) -> dict:
     """Bring the registry in line with the project on disk.
 
     Registers report packages and specs that appeared since the last scan,
@@ -585,11 +648,13 @@ def rescan(reports_dir: str, models_dir: Optional[str] = None,
     ``TRACEBI_LIBRARY_MOUNTS``.
     """
     found = _report_sources(reports_dir) if os.path.isdir(reports_dir) else {}
-    return _apply_report_sources(found, models_dir, pipelines_dir, [reports_dir])
+    return _apply_report_sources(found, models_dir, pipelines_dir, [reports_dir],
+                                 connections_dir)
 
 
 def rescan_library(models_dir: Optional[str] = None,
-                   pipelines_dir: Optional[str] = None) -> dict:
+                   pipelines_dir: Optional[str] = None,
+                   connections_dir: Optional[str] = None) -> dict:
     """:func:`rescan` across every configured library root."""
     from tracebi.report_paths import library_roots
 
@@ -601,7 +666,8 @@ def rescan_library(models_dir: Optional[str] = None,
             continue
         pfx = f"{label}/" if label else ""
         found.update(_report_sources(str(root), pfx))
-    return _apply_report_sources(found, models_dir, pipelines_dir, roots)
+    return _apply_report_sources(found, models_dir, pipelines_dir, roots,
+                                 connections_dir)
 
 
 def _within(path: str, roots: list[str]) -> bool:
@@ -614,7 +680,8 @@ def _within(path: str, roots: list[str]) -> bool:
 
 
 def _apply_report_sources(found: dict[str, str], models_dir: Optional[str],
-                          pipelines_dir: Optional[str], roots: list[str]) -> dict:
+                          pipelines_dir: Optional[str], roots: list[str],
+                          connections_dir: Optional[str] = None) -> dict:
     from tracebi.registry import registry
 
     added, removed, failed = [], [], []
@@ -645,14 +712,16 @@ def _apply_report_sources(found: dict[str, str], models_dir: Optional[str],
         del _live_reports[name]
         _outcomes[:] = [o for o in _outcomes if o.get("module") != name]
         removed.append(name)
+    connections = register_connections(connections_dir) if connections_dir else []
     models = register_models(models_dir) if models_dir else []
     pipelines = register_pipelines(pipelines_dir) if pipelines_dir else []
     return {"added": added, "removed": removed, "failed": failed,
-            "models": models, "pipelines": pipelines}
+            "models": models, "pipelines": pipelines, "connections": connections}
 
 
 def start_watcher(reports_dir: str, models_dir: Optional[str],
-                  interval: float, pipelines_dir: Optional[str] = None):
+                  interval: float, pipelines_dir: Optional[str] = None,
+                  connections_dir: Optional[str] = None):
     """Run a live-discovery scan every *interval* seconds on a daemon thread.
 
     When ``TRACEBI_LIBRARY_MOUNTS`` is set, walks every mount
@@ -670,15 +739,17 @@ def start_watcher(reports_dir: str, models_dir: Optional[str],
         while not stop.wait(interval):
             try:
                 if parse_library_mounts() is not None:
-                    changes = rescan_library(models_dir, pipelines_dir)
+                    changes = rescan_library(models_dir, pipelines_dir, connections_dir)
                 else:
-                    changes = rescan(reports_dir, models_dir, pipelines_dir)
+                    changes = rescan(reports_dir, models_dir, pipelines_dir,
+                                     connections_dir)
             except Exception as exc:  # noqa: BLE001 — the watcher must outlive one bad scan
                 print(f"[tracebi] live discovery scan failed: {exc}", file=sys.stderr)
                 continue
             for key, verb in (("added", "found"), ("removed", "removed"),
                               ("models", "found model"),
-                              ("pipelines", "found pipeline")):
+                              ("pipelines", "found pipeline"),
+                              ("connections", "found connection")):
                 for name in changes[key]:
                     print(f"[tracebi] live discovery: {verb} {name}", file=sys.stderr)
 

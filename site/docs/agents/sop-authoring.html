@@ -50,10 +50,12 @@
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
 <a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/measures.html">Measures</a>
 <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
@@ -83,7 +85,7 @@ human carries its receipt.</strong></p>
 <strong>phase ③ — REPORT</strong>, authoring over the model boundary. You are handed two
 freeze points: a warehouse phase ① already sank (<code>data/warehouse.duckdb</code>)
 and a model phase ② already declared over it (<code>models/*.py</code>, e.g.
-<code>models/portfolio_model.py</code>). You do not re-run the phase-① pandas and you do not
+<code>models/portfolio_model.yaml</code>). You do not re-run the phase-① pandas and you do not
 see it — the model is the contract you author against, and everything below is
 exactly how <code>reports/portfolio_model/portfolio_dashboard.json</code> was written. <strong>The trust
 machinery in this SOP — stamped queries, validate-before-execute, <code>verify</code> —

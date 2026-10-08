@@ -86,7 +86,7 @@ python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → Reports �
 The reference implementation ships in the repo at `examples/portfolio_project/`
 — a complete project with the same shape `tracebi init` scaffolds (plus its own
 `run_workflow.py` driver):
-`transforms/holdings_transform.py`, `models/portfolio_model.py`,
+`transforms/holdings_transform.py`, `models/portfolio_model.yaml`,
 `reports/portfolio_model/portfolio_dashboard.json`, driven by `run_workflow.py`. Full
 walkthrough: **[the three-phase workflow](docs/concepts/the-three-phase-workflow.md)**.
 
@@ -334,7 +334,7 @@ tracebi validate                                     # load every model; check d
 tracebi serve                                        # browse the project at http://127.0.0.1:8000
 tracebi new-model "Sales Model"                      # → models/sales_model.py
 tracebi list-models
-tracebi new-pipeline "Sales ETL"                     # → pipelines/sales_etl.py
+tracebi new-pipeline "Sales ETL"                     # → pipelines/sales_etl.yaml
 tracebi list-pipelines
 tracebi run-pipeline sales_etl                       # run every layer, upstream first
 tracebi run-pipeline sales_etl --status              # last run per layer, executes nothing
@@ -726,7 +726,7 @@ ds = model.load("orders")
 Same pattern for pipelines:
 
 ```bash
-tracebi new-pipeline "Sales ETL"         # scaffold pipelines/sales_etl.py
+tracebi new-pipeline "Sales ETL"         # scaffold pipelines/sales_etl.yaml
 ```
 
 ```python
@@ -828,7 +828,7 @@ tracebi/                        ← the framework repo
 │   ├── portfolio_project/      THE reference project — the three-phase workflow
 │   │   ├── inputs/             ⓪ raw pulls (holdings.csv + its generator)
 │   │   ├── transforms/         ① pandas → sink star tables to DuckDB
-│   │   ├── models/             ② the star-schema contract (portfolio_model.py)
+│   │   ├── models/             ② the star-schema contract (portfolio_model.yaml)
 │   │   ├── reports/            ③ spec + artifact packages + escape hatch
 │   │   └── run_workflow.py     drives ①→③ (see docs/concepts/)
 │   ├── seeds/                  Medallion demo DB seeding + Supabase companions

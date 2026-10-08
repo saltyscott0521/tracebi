@@ -57,6 +57,10 @@ def _default_models_dir() -> Path:
     return Path(os.environ.get("TRACEBI_MODELS_DIR", "models"))
 
 
+def _default_connections_dir() -> Path:
+    return Path(os.environ.get("TRACEBI_CONNECTIONS_DIR", "connections"))
+
+
 def _default_pipelines_dir() -> Path:
     return Path(os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
 
@@ -80,6 +84,42 @@ def _slugify(title: str) -> str:
 # The declarative model forms (see tracebi.model.model_spec.SPEC_SUFFIXES);
 # repeated here so the CLI does not import pandas to list a folder.
 _MODEL_FILE_SUFFIXES = (".yaml", ".yml", ".json")
+_PIPELINE_FILE_SUFFIXES = (".yaml", ".yml")
+
+
+def _pipeline_yaml_template_text(title: str) -> str:
+    today = date.today().isoformat()
+    slug = _slugify(title)
+    return f"""\
+# {title}
+#
+# A pipeline: run a phase-1 transform, then rebuild the reports. Scaffolded by
+# `tracebi new-pipeline` on {today}. It only NAMES things; the transform stays
+# Python. Run it with `tracebi run-pipeline {slug}`, or from the app's Refresh page.
+#
+# If a pipelines/{slug}.py exists too, the Python file wins (a pipeline is one file).
+
+# The name equals this file's name.
+name: {slug}
+description: Rebuild the warehouse, then its reports.
+
+# transform: the script to run first, transforms/<name>.py (or .ipynb), run
+# top-to-bottom in a fresh namespace. `tracebi new-transform` scaffolds one.
+transform: {slug}
+
+# models: the models that transform feeds (models/<name>.yaml or .py).
+models: [{slug}]
+
+# reports: "all" rebuilds every report in reports/<model>/ for those models, or
+# list names to rebuild only some:
+#   reports:
+#     - {slug}/overview
+reports: all
+
+# schedule: a 5-field cron expression (minute hour day month weekday), or null
+# to run only on demand. A scheduled run does the transform, then the reports.
+schedule: null
+"""
 
 
 def _model_yaml_template_text(title: str) -> str:
@@ -383,11 +423,14 @@ _INIT_SAMPLE_CSV = _scaffold_text("init_sample_orders.csv")
 
 _INIT_SAMPLE_TRANSFORM = _scaffold_text("init_sample_transform.py.txt")
 
-_INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.py.txt")
+_INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.yaml.txt")
+
+# The source the model reads (connections/warehouse.yaml): where phase ① sinks.
+_INIT_CONNECTION = _scaffold_text("init_connection_warehouse.yaml.txt")
 
 # The pipeline every model gets (tracebi.pipeline.model_pipeline): the
 # transform, then the model's reports. It is what the app's Refresh page runs.
-_INIT_SAMPLE_PIPELINE = _scaffold_text("init_sample_pipeline.py.txt")
+_INIT_SAMPLE_PIPELINE = _scaffold_text("init_sample_pipeline.yaml.txt")
 
 # The sample report is an ARTIFACT PACKAGE — the one report lane — so the
 # first page a new project renders demonstrates the real product: figure
@@ -551,8 +594,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     # with `tracebi verify` reading REPRODUCES.
     # No requests/ — the exploration story is the artifact's own:
     # `tracebi dev` + exploration blocks that die at build (architecture v2 §7).
-    for d in ("inputs", "transforms", "models", "pipelines", "reports",
-              "data", "output"):
+    for d in ("inputs", "transforms", "connections", "models", "pipelines",
+              "reports", "data", "output"):
         (target / d).mkdir(parents=True, exist_ok=True)
 
     files = {
@@ -562,8 +605,9 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / "AGENTS.md":               _INIT_AGENTS_MD,
         target / "inputs" / "orders.csv":   _INIT_SAMPLE_CSV,
         target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,
-        target / "models" / "sample_model.py": _INIT_SAMPLE_MODEL,
-        target / "pipelines" / "sample_model.py": _INIT_SAMPLE_PIPELINE,
+        target / "connections" / "warehouse.yaml": _INIT_CONNECTION,
+        target / "models" / "sample_model.yaml": _INIT_SAMPLE_MODEL,
+        target / "pipelines" / "sample_model.yaml": _INIT_SAMPLE_PIPELINE,
         target / "reports" / "sample_model" / "sample_dashboard" / "report.json":
             _INIT_SAMPLE_REPORT_JSON,
         target / "reports" / "sample_model" / "sample_dashboard" / "template.html":
@@ -861,7 +905,8 @@ def cmd_serve(args: argparse.Namespace) -> int:
     cwd = Path.cwd()
     discovered = {
         d: len([p for p in (cwd / d).iterdir()
-                if p.suffix in (".py", *(_MODEL_FILE_SUFFIXES if d == "models" else ()))
+                if p.suffix in (".py", *(_MODEL_FILE_SUFFIXES if d == "models" else
+                                         _PIPELINE_FILE_SUFFIXES if d == "pipelines" else ()))
                 and not p.name.startswith("_")])
         for d in ("models", "pipelines", "reports")
         if (cwd / d).is_dir()
@@ -1081,6 +1126,33 @@ def cmd_validate(args: argparse.Namespace) -> int:
             for warn in result["warnings"]:
                 warnings.append(f"· {name}: {warn}")
 
+    # ── Connections and pipelines declared as YAML: check shape only ─────
+    # A connection's ${ENV_VAR}s are resolved when it connects, not here, so a
+    # variable that is unset on this machine is not a problem with the file.
+    from tracebi.connections import SUFFIXES as _CONN_SUFFIXES, validate_connection_file
+
+    conn_dir = args.connections_dir
+    conn_files = sorted(p for p in conn_dir.iterdir()
+                        if p.suffix in _CONN_SUFFIXES and not p.name.startswith("_")) \
+        if conn_dir.is_dir() else []
+    for path in conn_files:
+        errors = validate_connection_file(path)
+        if errors:
+            problems.append(f"✗ {conn_dir.name}/{path.name}: " + "; ".join(errors))
+        else:
+            ok.append(f"✓ {conn_dir.name}/{path.name} is well formed")
+    from tracebi.pipeline.pipeline_spec import validate_pipeline_file
+
+    pipe_dir = args.pipelines_dir
+    for path in (sorted(pipe_dir.iterdir()) if pipe_dir.is_dir() else []):
+        if path.suffix not in _PIPELINE_FILE_SUFFIXES or path.name.startswith("_"):
+            continue
+        errors = validate_pipeline_file(path)
+        if errors:
+            problems.append(f"✗ {pipe_dir.name}/{path.name}: " + "; ".join(errors))
+        else:
+            ok.append(f"✓ {pipe_dir.name}/{path.name} is well formed")
+
     for line in ok:
         print(line)
     for line in warnings:
@@ -1271,11 +1343,24 @@ def cmd_new_pipeline(args: argparse.Namespace) -> int:
     pipelines_dir.mkdir(parents=True, exist_ok=True)
 
     slug = _slugify(args.title)
-    out_path = pipelines_dir / f"{slug}.py"
+    out_path = pipelines_dir / f"{slug}.{'py' if args.python else 'yaml'}"
     if out_path.exists() and not args.force:
         print(f"refusing to overwrite existing {out_path}; pass --force to replace",
               file=sys.stderr)
         return 1
+    twins = [pipelines_dir / f"{slug}{e}" for e in (".py", *_PIPELINE_FILE_SUFFIXES)
+             if (pipelines_dir / f"{slug}{e}").exists() and pipelines_dir / f"{slug}{e}" != out_path]
+    if twins:
+        print(f"refusing: {twins[0]} exists; a pipeline is one file, so delete one",
+              file=sys.stderr)
+        return 1
+
+    if not args.python:
+        out_path.write_text(_pipeline_yaml_template_text(args.title), encoding="utf-8")
+        print(f"Created {out_path}")
+        print(f"  Name its transform and models, then run it with:")
+        print(f"    tracebi run-pipeline {slug}")
+        return 0
 
     out_path.write_text(_pipeline_template_text(args.title), encoding="utf-8")
     print(f"Created {out_path}")
@@ -1412,7 +1497,8 @@ def cmd_list_pipelines(args: argparse.Namespace) -> int:
     if not pipelines_dir.is_dir():
         print(f"No pipelines directory at {pipelines_dir}")
         return 0
-    files = sorted(p for p in pipelines_dir.glob("*.py") if not p.name.startswith("_"))
+    files = sorted(p for p in pipelines_dir.iterdir()
+                   if p.suffix in (".py", *_PIPELINE_FILE_SUFFIXES) and not p.name.startswith("_"))
     if not files:
         print(f"No pipeline files found in {pipelines_dir}")
         return 0
@@ -1813,6 +1899,49 @@ def _migrate_model(args: argparse.Namespace) -> int:
     return 0
 
 
+def _migrate_declarative(args: argparse.Namespace) -> int:
+    """``tracebi migrate connection|pipeline <file.py> [--write]``: the loaded
+    object as YAML, or a refusal naming the construct that cannot be written
+    declaratively. Never deletes the Python file."""
+    src = Path(args.path)
+    if src.suffix != ".py" or not src.is_file():
+        print(f"expected an existing {args.what} .py file, got {src}", file=sys.stderr)
+        return 1
+    try:
+        if args.what == "connection":
+            from tracebi.connections import connection_to_yaml
+
+            text = connection_to_yaml(src)
+            target = args.connections_dir / f"{src.stem}.yaml"
+        else:
+            from tracebi.pipeline.pipeline_spec import pipeline_to_yaml
+            from tracebi.pipeline_registry import PipelineRegistry
+
+            registry = PipelineRegistry()
+            registry.auto_discover(str(src.parent))
+            text = pipeline_to_yaml(registry.get(src.stem), src.stem)
+            target = src.with_suffix(".yaml")
+    except Exception as exc:  # noqa: BLE001 — the reason is the answer
+        print(f"cannot migrate {src}: {exc}", file=sys.stderr)
+        return 1
+    if not args.write:
+        print(text, end="")
+        return 0
+    if target.exists() and not args.force:
+        print(f"target already exists: {target}\nPass --force to overwrite it.",
+              file=sys.stderr)
+        return 1
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+    print(f"Wrote {target}")
+    print(f"{src.name} still wins over it for a pipeline (one file each): delete "
+          f"{src.name} when you are ready to cut over; nothing was removed."
+          if args.what == "pipeline" else
+          f"{src}: nothing was removed. A model that names this connection as "
+          f"`connection: {src.stem}` now reads {target.name} first.")
+    return 0
+
+
 def cmd_migrate(args: argparse.Namespace) -> int:
     """
     ``tracebi migrate spec <file.json>`` — compile a JSON spec into an
@@ -1827,6 +1956,8 @@ def cmd_migrate(args: argparse.Namespace) -> int:
     """
     if args.what == "model":
         return _migrate_model(args)
+    if args.what in ("connection", "pipeline"):
+        return _migrate_declarative(args)
 
     from tracebi.reports.compile_spec import compile_spec
     from tracebi.spec import ReportSpec
@@ -2884,6 +3015,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=_default_pipelines_dir(),
         help="Directory holding pipeline definitions (default: ./pipelines).",
     )
+    parser.add_argument(
+        "--connections-dir",
+        type=Path,
+        default=_default_connections_dir(),
+        help="Directory holding connection files (default: ./connections).",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_init = sub.add_parser(
@@ -3023,9 +3160,9 @@ def build_parser() -> argparse.ArgumentParser:
         "connect",
         help="Connect a warehouse you already have (postgres, snowflake, "
              "bigquery, duckdb): test it, write the secret to .env, and "
-             "write a connector module.",
+             "write connections/<name>.yaml.",
     )
-    p_connect.add_argument("name", help="Connection name, a Python identifier (e.g. wh).")
+    p_connect.add_argument("name", help="Connection name, letters, digits and underscore (e.g. wh).")
     p_connect.add_argument(
         "--kind", choices=["postgres", "snowflake", "bigquery", "duckdb"],
         help="Warehouse kind. Prompted when stdin is a terminal.",
@@ -3051,7 +3188,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_connect.add_argument(
         "--force", action="store_true",
-        help="Overwrite an existing .env key or connection module.",
+        help="Overwrite an existing .env key or connection file.",
+    )
+    p_connect.add_argument(
+        "--python", action="store_true",
+        help="Write the legacy models/_connections/<name>.py module instead "
+             "of connections/<name>.yaml.",
     )
     p_connect.set_defaults(func=cmd_connect)
 
@@ -3141,6 +3283,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_new_pipeline = sub.add_parser("new-pipeline", help="Scaffold a new pipeline definition.")
     p_new_pipeline.add_argument("title", help='Free-form title, e.g. "Sales Pipeline".')
     p_new_pipeline.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_pipeline.add_argument(
+        "--python", action="store_true",
+        help="Write a Python pipelines/<name>.py instead of the YAML default.",
+    )
     p_new_pipeline.set_defaults(func=cmd_new_pipeline)
 
     p_run_transform = sub.add_parser(
@@ -3351,16 +3497,18 @@ def build_parser() -> argparse.ArgumentParser:
              "reports/<stem>/ (report.json bindings + template.html of "
              "default-component figures) alongside the original.",
     )
-    p_migrate.add_argument("what", choices=["spec", "model"])
+    p_migrate.add_argument("what", choices=["spec", "model", "connection", "pipeline"])
     p_migrate.add_argument(
-        "path", help="Path to a reports/<name>.json spec, or a models/<name>.py "
-                     "model.")
+        "path", help="Path to a reports/<name>.json spec, a models/<name>.py "
+                     "model, a models/_connections/<name>.py connection, or a "
+                     "pipelines/<name>.py pipeline.")
     p_migrate.add_argument("--force", action="store_true",
                            help="Overwrite an existing target directory (spec) "
                                 "or models/<name>.yaml (model).")
     p_migrate.add_argument("--write", action="store_true",
-                           help="model: write models/<name>.yaml beside the "
-                                ".py instead of printing it.")
+                           help="model, connection, pipeline: write the .yaml "
+                                "beside the project's other files instead of "
+                                "printing it. The Python file is never deleted.")
     p_migrate.set_defaults(func=cmd_migrate)
 
     p_run_pipeline = sub.add_parser(

@@ -45,7 +45,7 @@ _CATALOG: list[dict] = [
         "transform": "transforms/saas_transform.py",
         "next": (
             "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb, "
-            "then re-point models/saas_model.py at your tables."
+            "then point models/saas_model.yaml's `connection:` at it."
         ),
     },
     {
@@ -65,7 +65,7 @@ _CATALOG: list[dict] = [
         "transform": "transforms/sales_pipeline_transform.py",
         "next": (
             "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb, "
-            "then re-point models/sales_pipeline_model.py at your tables."
+            "then point models/sales_pipeline_model.yaml's `connection:` at it."
         ),
     },
 ]
@@ -116,21 +116,22 @@ def _bundle_files(bundle_id: str) -> dict[Path, str]:
 
 
 def _pipeline(model: str, transform: str) -> str:
-    """``pipelines/<model>.py``: the transform, then the model's reports — what
+    """``pipelines/<model>.yaml``: the transform, then the model's reports — what
     ``tracebi run-pipeline`` and the app's Refresh page run."""
-    return f'''"""
-Pipeline for ``{model}``: rebuild the warehouse, then its reports.
-
-    transform  runs {transform}, which sinks the star schema
-    build      builds every report in reports/{model}/, each with a receipt
-
-    tracebi run-pipeline {model}
+    return f"""\
+# Pipeline for {model}: rebuild the warehouse, then its reports.
+#
+#     transform  runs {transform}, which sinks the star schema
+#     build      builds every report in reports/{model}/, each with a receipt
+#
+#     tracebi run-pipeline {model}
+name: {model}
+description: Rebuild the warehouse, then its reports.
+transform: {Path(transform).stem}
+models: [{model}]
+reports: all
+schedule: null
 """
-
-from tracebi import model_pipeline
-
-runner = model_pipeline("{model}", transform="{Path(transform).stem}")
-'''
 
 
 def _readme(project: str, template: str) -> str:
@@ -153,9 +154,9 @@ before you have a warehouse.
 
 1. `{entry["next"].split(", then ")[0]}`
    tests the warehouse, writes the secret to `.env`, and writes
-   `models/_connections/<name>.py`.
-2. Re-point `models/{entry["model"]}.py` at those tables (the connector
-   and the `source=` names). Or draft a fresh model with
+   `connections/<name>.yaml` (the secret appears there only as `${{ENV_VAR}}`).
+2. Re-point `models/{entry["model"]}.yaml` at those tables (`connection:`
+   and the `source:` names). Or draft a fresh model with
    `tracebi new-model "<Name>" --from <name> --tables ...` and edit every
    line marked `# DRAFT: review` before a report depends on it.
 
@@ -176,8 +177,9 @@ contract. The claim on the transform is "the sink satisfied its contract".
 {project}/
 ├── {entry["sample"]}
 ├── {entry["transform"]}
-├── models/{entry["model"]}.py
-├── pipelines/{entry["model"]}.py
+├── connections/warehouse.yaml
+├── models/{entry["model"]}.yaml
+├── pipelines/{entry["model"]}.yaml
 {report_lines}
 ├── data/             warehouse (gitignored)
 └── output/           rendered HTML + manifest receipts
@@ -206,8 +208,8 @@ def init_template_project(project: Path, template: str, *, force: bool) -> int:
             )
             return 1
 
-    for d in ("inputs", "transforms", "models", "pipelines", "reports",
-              "data", "output"):
+    for d in ("inputs", "transforms", "connections", "models", "pipelines",
+              "reports", "data", "output"):
         (target / d).mkdir(parents=True, exist_ok=True)
 
     entry = next(item for item in _CATALOG if item["name"] == canonical)
@@ -218,7 +220,8 @@ def init_template_project(project: Path, template: str, *, force: bool) -> int:
         target / "AGENTS.md": _scaffold_text("init_agents.md"),
         target / ".mcp.json": _mcp_json(),
         target / ".cursor" / "mcp.json": _mcp_json(),
-        target / "pipelines" / f"{entry['model']}.py": _pipeline(entry["model"], entry["transform"]),
+        target / "connections" / "warehouse.yaml": _scaffold_text("init_connection_warehouse.yaml.txt"),
+        target / "pipelines" / f"{entry['model']}.yaml": _pipeline(entry["model"], entry["transform"]),
     }
     for rel, content in _bundle_files(_BUNDLES[canonical]).items():
         to_write[target / rel] = content

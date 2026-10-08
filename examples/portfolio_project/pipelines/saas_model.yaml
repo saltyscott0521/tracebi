@@ -1,0 +1,13 @@
+# Pipeline for saas_model: rebuild the warehouse, then its reports.
+#
+#     transform  runs transforms/saas_transform.py: cleans inputs/subscriptions.csv
+#                and sinks the star schema into data/warehouse.duckdb
+#     build      builds every report in reports/saas_model/, each with a receipt
+#
+#     tracebi run-pipeline saas_model
+name: saas_model
+description: Rebuild the SaaS warehouse, then its reports.
+transform: saas_transform
+models: [saas_model]
+reports: all
+schedule: null

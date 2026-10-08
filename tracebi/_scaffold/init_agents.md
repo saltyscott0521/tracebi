@@ -40,8 +40,9 @@ honest path costs one attribute.
 ```
 
 A model, its transform and its reports belong together, and a **pipeline**
-runs them as one: `models/<model>.py`, `pipelines/<model>.py` (`runner =
-model_pipeline("<model>", transform="<transform>")`), `reports/<model>/`.
+runs them as one: `models/<model>.yaml`, `pipelines/<model>.yaml` (`transform:`,
+`models:`, `reports: all`, `schedule:`; it only names the Python transform),
+`reports/<model>/`. A source is `connections/<name>.yaml`.
 `tracebi run-pipeline <model>` runs the transform, then builds every report in
 `reports/<model>/`, each with its receipt; the app's Refresh page runs the
 same pipeline. A report is named by its path (`<model>/<name>`) in every
@@ -69,12 +70,12 @@ verified"; nothing machine-checks the pandas above the sink.
 `tracebi context` lists them under `templates`. `tracebi init <project>
 --template saas-metrics` (also `saas_metrics`) scaffolds the SaaS metrics
 starter: `inputs/subscriptions.csv`, `transforms/saas_transform.py`,
-`models/saas_model.py` (ending MRR, logo churn, a signup-cohort cut), and
+`models/saas_model.yaml` (ending MRR, logo churn, a signup-cohort cut), and
 two reports — `saas_model/mrr_dashboard` (dashboard) and
 `saas_model/cohort_brief` (tabbed). `tracebi init <project>
 --template sales-pipeline` (also `sales_pipeline`) scaffolds the sales
 pipeline starter: `inputs/opportunities.csv`,
-`transforms/sales_pipeline_transform.py`, `models/sales_pipeline_model.py`
+`transforms/sales_pipeline_transform.py`, `models/sales_pipeline_model.yaml`
 (open pipeline value, win rate as a ratio of totals, stage / rep / region),
 and two reports — `sales_pipeline_model/pipeline_dashboard` (dashboard) and
 `sales_pipeline_model/rep_scorecard` (tabbed). Each starter also gets
@@ -397,7 +398,7 @@ you tell a human a report is done.
    model's schema; drop `--brief` only when writing Python against the
    library directly.
 2. Read the sample files: `transforms/sample_transform.py`,
-   `models/sample_model.py`, `pipelines/sample_model.py`,
+   `models/sample_model.yaml`, `pipelines/sample_model.yaml`,
    `reports/sample_model/sample_dashboard/`. They are a complete working
    example of the loop, receipt included.
 3. Run `tracebi knowledge` — the analyst good-practice lessons. Read the one
@@ -435,14 +436,20 @@ deprecated and removed in 0.8 — do not create it.
 
 Already have tables? `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb`
 tests the warehouse, writes the secret to `.env`, and writes
-`models/_connections/<name>.py` (that file calls `load_dotenv()`; the framework
-never loads `.env`). Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
+`connections/<name>.yaml`: a type and its fields, where any value may be
+`${ENV_VAR}` (the whole value) and a password, or a URL that carries one,
+MUST be (a literal secret is a validation error). The variable is read when the
+connection is used, never at discovery; a model points at it with
+`connection: <name>` in its `connectors:`. (`--python` writes the older
+`models/_connections/<name>.py`; a model reads `connections/<name>.yaml`
+first, then that.) `tracebi migrate connection models/_connections/<name>.py
+[--write]` converts one. Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
 drafts a star schema from column metadata only. Edit every line marked
 `# DRAFT: review` before a report depends on it.
 
 Already have dbt marts? `tracebi import dbt <path>` reads a `manifest.json`
 (a project root, or the file; it does not run dbt) and drafts `models/<name>.py`
-the same way. `--connection <name>` wires the connector `tracebi connect`
+the same way. `--connection <name>` wires the connection `tracebi connect`
 wrote. Relationships and measures stay `# DRAFT: review` comments — foreign
 keys are not invented.
 

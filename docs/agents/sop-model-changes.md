@@ -10,7 +10,7 @@ in this project.
 phase-③ report (`reports/*.json`) that queries the model by name. The
 model **reads the sink; it never sees the transform** — it is the semantic
 contract, a few dozen declarative lines a reviewer reads without opening the
-pandas above it (`models/portfolio_model.py` is the reference). It is also where
+pandas above it (`models/portfolio_model.yaml` is the reference). It is also where
 the trust machinery begins: everything from this boundary onward is stamped and
 verifiable; phase ① below it is unverified by design, trusted as reviewed code.
 

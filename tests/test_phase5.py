@@ -742,8 +742,8 @@ class TestCLIPipelineCommands:
         main(["--pipelines-dir", str(pipes_dir), "new-pipeline", "Finance Pipeline"])
         main(["--pipelines-dir", str(pipes_dir), "list-pipelines"])
         captured = capsys.readouterr()
-        assert "sales_pipeline.py" in captured.out
-        assert "finance_pipeline.py" in captured.out
+        assert "sales_pipeline.yaml" in captured.out
+        assert "finance_pipeline.yaml" in captured.out
 
 # ── Auto-discovery ────────────────────────────────────────────────────────
 

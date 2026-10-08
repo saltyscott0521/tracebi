@@ -1,13 +1,16 @@
 """``tracebi connect`` — point a project at a warehouse the builder already has.
 
-Writes the secret to the project's ``.env`` and a connector module under
-``models/_connections/``. Discovery loads only top-level ``models/*.py``
-files that define ``model`` (``model_registry.auto_discover`` is
-non-recursive and skips names starting with ``_``), so a connection module
-beside the models would be reported as a model that failed to load.
+Writes ``connections/<name>.yaml`` (``tracebi.connections``): the type and its
+fields, with every secret as a ``${ENV_VAR}`` reference, and puts the secret
+itself in the project's ``.env``. With ``--python`` it writes the older
+connector module under ``models/_connections/`` instead. Discovery loads only
+top-level ``models/*.py`` files that define ``model``
+(``model_registry.auto_discover`` is non-recursive and skips names starting
+with ``_``), so a connection module beside the models would be reported as a
+model that failed to load.
 
-The generated module calls ``load_dotenv()`` itself and reads
-``os.environ[...]``. This module never loads ``.env``.
+The legacy module calls ``load_dotenv()`` itself and reads ``os.environ[...]``.
+This module never loads ``.env``.
 """
 
 from __future__ import annotations
@@ -41,6 +44,76 @@ _SECRET = {"url", "password"}
 def connection_path(models_dir: Path, name: str) -> Path:
     """Where ``tracebi connect <name>`` writes the connector module."""
     return models_dir / "_connections" / f"{name}.py"
+
+
+def connection_yaml_path(name: str, connections_dir: "Path | None" = None) -> Path:
+    """Where ``tracebi connect <name>`` writes the connection file."""
+    from tracebi.connections import connections_dir as default_dir
+
+    return Path(connections_dir or default_dir()) / f"{name}.yaml"
+
+
+# What goes in .env for a declarative connection: only these. Everything else
+# is written into the YAML, where it can be read and reviewed.
+_ENV_FIELDS = {"postgres": ("url",), "snowflake": ("password",)}
+
+
+def _scalar(field: str, value: str) -> str:
+    import yaml
+
+    return yaml.safe_dump({field: value}, allow_unicode=True, width=10**6).rstrip()
+
+
+def _project_relative(path: str) -> "str | None":
+    """*path* as a path inside the working directory, else None."""
+    from tracebi.model.model_spec import _escapes
+
+    p = Path(path)
+    if p.is_absolute():
+        try:
+            p = p.resolve().relative_to(Path.cwd().resolve())
+        except ValueError:
+            return None
+    rel = p.as_posix()
+    return None if _escapes(rel) else rel
+
+
+def _declared_document(name: str, kind: str, values: dict) -> tuple[str, dict]:
+    """``(yaml text, {env key: secret})`` for ``connections/<name>.yaml``."""
+    lines = [("name", name), ("type", kind)]
+    updates: dict[str, str] = {}
+
+    def literal(field: str) -> None:
+        if values.get(field):
+            lines.append((field, values[field]))
+
+    def secret(field: str) -> None:
+        key = env_var(name, field)
+        updates[key] = values[field]
+        lines.append((field, "${" + key + "}"))
+
+    if kind == "postgres":
+        secret("url")
+    elif kind == "snowflake":
+        for field in ("account", "user"):
+            literal(field)
+        secret("password")
+        for field in ("warehouse", "database", "schema", "role"):
+            literal(field)
+    elif kind == "bigquery":
+        for field in ("project", "dataset", "credentials"):
+            literal(field)
+    else:
+        inside = _project_relative(values["database"])
+        if inside is None:      # a warehouse outside the project: a path in .env
+            secret("database")
+        else:
+            lines.append(("database", inside))
+    body = "\n".join(_scalar(f, v) for f, v in lines)
+    head = (f"# Connection {name!r} ({kind}). Written by `tracebi connect`.\n"
+            "# ${NAME} is read from the environment, or from .env beside this\n"
+            "# folder, when the connection is used. No secret belongs in this file.\n")
+    return head + body + "\n", updates
 
 
 def env_var(name: str, field: str) -> str:
@@ -94,12 +167,17 @@ def connect_command(args) -> int:
             values[field] = entered
 
     models_dir: Path = args.models_dir
-    conn_path = connection_path(models_dir, name)
-    updates = {
-        env_var(name, field): values[field]
-        for field in list(_REQUIRED[kind]) + list(_OPTIONAL.get(kind, ()))
-        if values.get(field)
-    }
+    python_form = getattr(args, "python", False)
+    if python_form:
+        conn_path = connection_path(models_dir, name)
+        updates = {
+            env_var(name, field): values[field]
+            for field in list(_REQUIRED[kind]) + list(_OPTIONAL.get(kind, ()))
+            if values.get(field)
+        }
+    else:
+        conn_path = connection_yaml_path(name, getattr(args, "connections_dir", None))
+        text, updates = _declared_document(name, kind, values)
     env_path = Path.cwd() / ".env"
     conflicts = _env_conflicts(env_path, list(updates))
     problems: list[str] = []
@@ -124,14 +202,18 @@ def connect_command(args) -> int:
         print(f"{name}: {summary}")
 
     conn_path.parent.mkdir(parents=True, exist_ok=True)
-    env_rel = os.path.relpath(env_path, start=conn_path.parent)
-    conn_path.write_text(_connection_source(name, kind, env_rel), encoding="utf-8")
-    _apply_env(env_path, updates)
-    added = _ensure_dotenv_ignored(Path.cwd() / ".gitignore")
+    if python_form:
+        env_rel = os.path.relpath(env_path, start=conn_path.parent)
+        conn_path.write_text(_connection_source(name, kind, env_rel), encoding="utf-8")
+    else:
+        conn_path.write_text(text, encoding="utf-8")
     print(f"wrote {conn_path}")
-    print("wrote .env (" + ", ".join(updates) + ")")
-    if added:
-        print("added .env to .gitignore")
+    if updates:
+        _apply_env(env_path, updates)
+        added = _ensure_dotenv_ignored(Path.cwd() / ".gitignore")
+        print("wrote .env (" + ", ".join(updates) + ")")
+        if added:
+            print("added .env to .gitignore")
     return 0
 
 
@@ -418,10 +500,11 @@ def draft_model_command(args) -> int:
         return 2
 
     models_dir: Path = args.models_dir
-    conn_path = connection_path(models_dir, connection)
-    if not conn_path.is_file():
+    conn_path = _find_connection(models_dir, connection)
+    if conn_path is None:
         print(
-            f"connection {connection!r} not found at {conn_path} — "
+            f"connection {connection!r} not found at "
+            f"{connection_yaml_path(connection)} — "
             f"run `tracebi connect {connection}` first",
             file=sys.stderr,
         )
@@ -442,7 +525,8 @@ def draft_model_command(args) -> int:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
-        _model_source(args.title, slug, connection, _classify(schemas)),
+        _model_source(args.title, slug, connection, _classify(schemas),
+                      declared=conn_path.suffix != ".py"),
         encoding="utf-8",
     )
     print(f"Created {out_path}")
@@ -453,12 +537,28 @@ def draft_model_command(args) -> int:
     return 0
 
 
+def _find_connection(models_dir: Path, name: str) -> "Path | None":
+    """The connection's file: ``connections/<name>.yaml``, else the legacy
+    ``models/_connections/<name>.py``."""
+    from tracebi.connections import connection_file
+
+    declared = connection_file(name)
+    if declared is not None:
+        return declared
+    legacy = connection_path(models_dir, name)
+    return legacy if legacy.is_file() else None
+
+
 def _read_schemas(conn_path: Path, tables: list[str]) -> dict | None:
     import runpy
 
     try:
-        namespace = runpy.run_path(str(conn_path))
-    except Exception as exc:  # noqa: BLE001 — a broken connection module is the result
+        if conn_path.suffix == ".py":
+            namespace = runpy.run_path(str(conn_path))
+        else:
+            from tracebi.connections import load_connection
+            namespace = {"connector": load_connection(conn_path, Path.cwd())}
+    except Exception as exc:  # noqa: BLE001 — a broken connection is the result
         print(_one_line_error(exc), file=sys.stderr)
         return None
     connector = namespace.get("connector")
@@ -582,9 +682,31 @@ def _classify(schemas: dict[str, list[dict]]) -> list[dict]:
     return drafts
 
 
-def _model_source(title: str, slug: str, connection: str, drafts: list[dict]) -> str:
+def _model_source(title: str, slug: str, connection: str, drafts: list[dict],
+                  declared: bool = False) -> str:
     model_name = title.strip().replace(" ", "") or slug
-    rel = f"_connections/{connection}.py"
+    if declared:
+        wire = [
+            "import os",
+            "",
+            "from tracebi import DataModel",
+            "from tracebi.connections import connection_file, load_connection",
+            "",
+            "ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))",
+            f"connector = load_connection(connection_file({connection!r}, ROOT), ROOT)",
+        ]
+    else:
+        wire = [
+            "import os",
+            "import runpy",
+            "",
+            "from tracebi import DataModel",
+            "",
+            "_conn = runpy.run_path(os.path.join(",
+            "    os.path.dirname(os.path.abspath(__file__)),",
+            f"    {f'_connections/{connection}.py'!r}))",
+            'connector = _conn["connector"]',
+        ]
     lines = [
         '"""',
         title.strip() or slug,
@@ -600,15 +722,7 @@ def _model_source(title: str, slug: str, connection: str, drafts: list[dict]) ->
         f'    model = get_model("{slug}")',
         '"""',
         "",
-        "import os",
-        "import runpy",
-        "",
-        "from tracebi import DataModel",
-        "",
-        "_conn = runpy.run_path(os.path.join(",
-        "    os.path.dirname(os.path.abspath(__file__)),",
-        f"    {rel!r}))",
-        'connector = _conn["connector"]',
+        *wire,
         "",
         "# Importing this file must not query the warehouse. A query connects.",
         "",

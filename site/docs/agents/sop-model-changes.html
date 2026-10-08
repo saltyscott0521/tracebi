@@ -50,10 +50,12 @@
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
 <a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/measures.html">Measures</a>
 <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
@@ -83,7 +85,7 @@ in this project.</p>
 phase-③ report (<code>reports/*.json</code>) that queries the model by name. The
 model <strong>reads the sink; it never sees the transform</strong> — it is the semantic
 contract, a few dozen declarative lines a reviewer reads without opening the
-pandas above it (<code>models/portfolio_model.py</code> is the reference). It is also where
+pandas above it (<code>models/portfolio_model.yaml</code> is the reference). It is also where
 the trust machinery begins: everything from this boundary onward is stamped and
 verifiable; phase ① below it is unverified by design, trusted as reviewed code.</p>
 <p><strong>The rule this whole document unpacks:</strong> <em>change the contract in git; use the

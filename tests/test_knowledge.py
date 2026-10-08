@@ -136,16 +136,15 @@ def test_reference_model_obeys_the_weighted_mean_lesson():
     once. If it ever comes back (or lands in the scaffold), fail here, because
     the canonical example teaches by being correct."""
     model_src = (Path(__file__).resolve().parents[1] / "examples"
-                 / "portfolio_project" / "models" / "portfolio_model.py")
-    src = model_src.read_text(encoding="utf-8")
-    # Strip comments so a note ABOUT the trap ("previously agg=mean, 'weighted'")
-    # doesn't trip the lint — only real declarations count.
-    src = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
-    for block in src.split(".add_measure(")[1:]:
-        call = block.split(".add_measure(")[0]        # up to the next measure
-        norm = call.replace("'", '"')
-        is_mean = 'agg="mean"' in norm or 'agg="avg"' in norm
-        says_weighted = re.search(r"weight", call, re.IGNORECASE)
+                 / "portfolio_project" / "models" / "portfolio_model.yaml")
+    import yaml
+
+    # Parsing drops comments, so a note ABOUT the trap ("previously agg=mean,
+    # 'weighted'") doesn't trip the lint; only real declarations count.
+    doc = yaml.safe_load(model_src.read_text(encoding="utf-8"))
+    for measure in doc["measures"]:
+        is_mean = measure.get("agg") in ("mean", "avg")
+        says_weighted = re.search(r"weight", str(measure.get("description", "")), re.IGNORECASE)
         assert not (is_mean and says_weighted), (
             "portfolio_model declares a 'weighted' measure as a plain mean — "
             "see tracebi knowledge weighted-vs-plain-mean; use a ratio of "

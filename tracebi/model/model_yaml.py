@@ -66,12 +66,14 @@ def _dumper():
 def _connector(c, root: Path) -> dict:
     from tracebi.connectors.duckdb_connector import DuckDBConnector
 
+    if getattr(c, "declared_in", None):
+        return {"name": c.name, "connection": c.name}
     if not isinstance(c, DuckDBConnector):
         raise ModelMigrationError(
             f"connector '{c.name}' is a {type(c).__name__}; a YAML model "
-            f"declares a DuckDB file, or reuses models/_connections/<x>.py "
-            f"written by `tracebi connect` (add it there, then write "
-            f"`connection: <x>` by hand)")
+            f"declares a DuckDB file, or reuses connections/<x>.yaml (run "
+            f"`tracebi migrate connection models/_connections/{c.name}.py` or "
+            f"`tracebi connect`, then write `connection: <x>` by hand)")
     described = c.describe()
     if described.get("directory"):
         raise ModelMigrationError(
