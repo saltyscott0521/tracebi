@@ -347,8 +347,9 @@ def test_a_tampered_or_expired_sign_in_cookie_is_refused(sso, idp, monkeypatch):
     resp, q = begin(b)
     name = next(c for c in b.cookies.keys() if c.startswith("tb_login_"))
     body, _, mac = b.cookies.get(name).partition(".")
-    b.cookies.set(name, body + "." + ("0" * len(mac)), path="/login/callback")
-    assert answer(b, idp, q).status_code == 400 and sessions() == []
+    b.cookies.clear()     # send only the forged copy, whatever the jar's domain rules
+    forged = answer(b, idp, q, cookies={name: body + "." + ("0" * len(mac))})
+    assert forged.status_code == 400 and "not valid" in forged.text and sessions() == []
 
     b = sso()
     monkeypatch.setattr(sso_module, "_LOGIN_TTL", -1)
