@@ -167,6 +167,24 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 arg=_TITLE,
             )
 
+            # The d3 figure (tracebi.draw) follows the page: drawn in the
+            # theme's accent, and redrawn from the server's selection when the
+            # sector filter changes, as the declared figures are.
+            report = page.frame_locator("iframe")
+            report.get_by_role("button", name="Detail", exact=True).click()
+            cells = report.locator("#fig-treemap g.cell rect")
+            cells.first.wait_for()
+            assert cells.count() == 13
+            accent = report.locator("html").evaluate(
+                "el => getComputedStyle(el).getPropertyValue('--tb-accent').trim()")
+            assert cells.first.get_attribute("fill") == accent
+            report.locator("select[data-tb-column='dim_issuer.sector']").select_option("Software")
+            report.locator("#fig-treemap g.sector").first.wait_for()
+            page.wait_for_function(
+                """() => document.querySelector('iframe').contentDocument
+                    .querySelectorAll('#fig-treemap g.cell').length === 2""")
+            fail_on_browser_errors()
+
             # An open report has the whole page: the list steps aside, and
             # "← All reports" brings it back.
             assert not page.get_by_placeholder("Search reports…").is_visible()

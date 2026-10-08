@@ -181,7 +181,16 @@ whose figures each name a binding from `report.json`:
   tokens in `reports/_theme.css` (project-wide) or the package's `style.css`
   (per report); later wins. `script.js` may restyle charts via
   `tracebi.configureChart` — config can restyle, never re-source: series data
-  always comes from the stamped bytes. Provenance badges pick their state
+  always comes from the stamped bytes.
+- Code-drawn figures: when the chart types cannot draw it (a treemap, a
+  Sankey), add `"libs": ["d3"]` to `report.json`, a `data-tb-figure="custom"`
+  element with a `data-tb-binding` and an id, and in `script.js`
+  `tracebi.draw("fig-x", function (surface, rows, theme) { … })`. It runs once
+  the data is loaded and again whenever the figure's rows change (filter,
+  search, selection) or its width does; `rows` are the binding's stamped rows
+  as the filters leave them, `theme` the page's tokens (`tracebi.theme()`).
+  Draw from `rows` only; `tracebi.setSelection({column: value})` filters the
+  page from a click. Provenance badges pick their state
   from the manifest; a stylesheet can restyle a badge, never re-color honesty.
   Fonts and images go in the package's `assets/` folder: `url(assets/…)` in
   `style.css` and `src="assets/…"` in `template.html` are inlined as `data:`

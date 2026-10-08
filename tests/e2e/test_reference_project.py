@@ -137,7 +137,8 @@ def test_the_showcase_carries_every_affordance(built):
                    'id="tracebi-selection"', 'id="tracebi-grain"',
                    "connect-src 'self'", 'class="tb-total"',
                    "data-tb-sort", "data-tb-bars", "data-tb-direction",
-                   "tb-table--freeze", "tb-about-receipt"):
+                   "tb-table--freeze", "tb-about-receipt",
+                   'id="fig-treemap"', "D3 7.9.0 (ISC)"):
         assert marker in html, f"showcase lost its {marker} affordance"
     assert "Working notes" not in html, "exploration must die at build"
 

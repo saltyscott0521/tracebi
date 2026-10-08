@@ -177,3 +177,17 @@ body {
 .sc-footer ul { margin: 8px 0 0; padding-left: 18px; }
 
 .tb-receipt-btn { font-weight: 600; color: var(--tb-accent); }
+
+/* The d3 treemap's tooltip (script.js). tracebi.draw's surface is
+   position: relative, so the tooltip places itself inside it. */
+.sc-treemap { margin: 0 0 16px; }
+.sc-tip {
+  position: absolute; pointer-events: none; z-index: 2;
+  display: flex; flex-direction: column; gap: 2px; min-width: 160px;
+  padding: 8px 10px; border-radius: 8px; font-size: 12px;
+  background: var(--tb-bg); color: var(--tb-muted);
+  border: 1px solid var(--tb-rule); box-shadow: var(--tb-shadow);
+}
+.sc-tip strong { color: var(--tb-ink); font-size: 14px; }
+.sc-tip[hidden] { display: none; }
+

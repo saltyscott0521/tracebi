@@ -221,8 +221,9 @@ REPORT_JSON_EXAMPLE = {
 REPORT_JSON_LIBS_NOTE = (
     "libs is optional. The build inlines ECharts automatically when the "
     "page contains a chart figure, and leaves it out when the page has no "
-    "chart figure. Listing \"echarts\" still inlines it once. Any other "
-    "name is refused when the package loads."
+    "chart figure. Listing \"echarts\" still inlines it once. List \"d3\" "
+    "to inline D3 for figures drawn in script.js with tracebi.draw. Any "
+    "other name is refused when the package loads."
 )
 
 
@@ -357,8 +358,8 @@ def _presentation() -> dict:
                      "(chart_type, x, y, color, "
                      "palette, value_format) | table (columns, style, labels, formats — "
                      "labels/formats are {column: text} objects). A 'custom' figure "
-                     "has no framework markup — draw it in script.js and "
-                     "mark it yourself.",
+                     "has no framework markup — draw it in script.js with "
+                     "tracebi.draw.",
             "figure_id": "The declared name becomes the figure id "
                          "(fig-<name>) — the receipt's stable address.",
             "refusals": "A figure naming an undeclared binding fails when "
@@ -537,6 +538,17 @@ def _presentation() -> dict:
             "tracebi.fmt(value, 'compact') → the one '550.7B' formatter",
             "tracebi.configureChart(figureId, patch) → restyle an ECharts "
             "option; series data is always re-sourced from the stamped bytes",
+            "tracebi.draw(figureId, fn) → draw a data-tb-figure=\"custom\" "
+            "element in code, usually d3 (report.json \"libs\": [\"d3\"]): "
+            "fn(surface, rows, theme) runs once the data is loaded and again "
+            "whenever the figure's rows change (filter, search, selection) or "
+            "its width does. surface is an empty div inside the figure; rows "
+            "are copies of its binding's stamped rows as the page's filters "
+            "leave them; drawing never adds a number. Use it instead of "
+            "tracebi.ready + tracebi.data for anything you draw",
+            "tracebi.theme() → the page's resolved tokens {ink, muted, rule, "
+            "bg, surface, accent, good, bad, font, mono, palette} — colour a "
+            "drawn figure from these so it follows the theme",
         ],
         "embed_format": (
             "A built artifact embeds each binding's data as CSV, or as "

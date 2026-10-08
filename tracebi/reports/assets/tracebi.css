@@ -769,3 +769,7 @@ button[data-tb-download]:hover { background: var(--tb-surface); color: var(--tb-
   /* A scrolling region would truncate rows on paper — unclip it. */
   .tb-scroll { overflow-y: visible; max-height: none !important; }
 }
+
+/* The surface tracebi.draw hands a code-drawn (custom) figure: positioned,
+   so a figure's own tooltip can place itself inside it. */
+.tb-draw { position: relative; }

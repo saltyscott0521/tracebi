@@ -424,12 +424,16 @@
         } catch (e) { /* defensive */ }
       }
     }
+    for (i = 0; i < _drawers.length; i++) {
+      if (_drawers[i].binding === binding && _drawers[i].surface) drawEntry(_drawers[i]);
+    }
   }
 
   function resizeCharts() {
     for (var i = 0; i < _charts.length; i++) {
       try { _charts[i].chart.resize(); } catch (e) { /* defensive */ }
     }
+    redrawResized();
   }
 
   /* ── configureChart — the raw-ECharts escape valve ─────────────────────
@@ -1405,6 +1409,87 @@
     });
   }
 
+  /* ── Code-drawn figures — tracebi.draw ─────────────────────────────────
+   * A custom figure (data-tb-figure="custom") is drawn by the author's
+   * script.js, typically with the inlined d3 (report.json "libs": ["d3"]).
+   * draw(figureId, fn) calls fn(surface, rows, theme): surface is an empty
+   * <div> inside the figure (cleared before every call, so the receipt badge
+   * the runtime pins to the figure survives), rows are the figure binding's
+   * rows as the page's filters and search currently leave them, and theme is
+   * tracebi.theme(). fn runs again whenever those rows change or the figure
+   * is resized, so a hand-drawn figure follows the theme and the page's
+   * filters with no wiring of its own. The rows are copies of the same
+   * stamped rows every other figure reads: drawing cannot add a number. */
+  var _drawers = []; /* { el, binding, fn, surface, width } */
+  var _drawReady = false;
+
+  /* The page's design tokens, resolved: what a hand-drawn figure colours
+   * itself with so it matches the declared figures around it. */
+  function theme() {
+    var out = { palette: cssPalette() }, cs, names, i;
+    if (typeof getComputedStyle === "undefined") return out;
+    cs = getComputedStyle(document.documentElement);
+    names = ["ink", "muted", "rule", "bg", "surface", "accent", "good", "bad",
+             "font", "mono"];
+    for (i = 0; i < names.length; i++) out[names[i]] = cssVar(cs, "--tb-" + names[i]);
+    return out;
+  }
+
+  /* A figure inside a hidden tab measures 0 wide: it is drawn when it is
+   * shown (the tab switch remeasures through resizeCharts). */
+  function drawEntry(entry) {
+    var surface = entry.surface;
+    entry.width = surface.clientWidth;
+    if (!entry.width) return;
+    while (surface.firstChild) surface.removeChild(surface.firstChild);
+    try { entry.fn(surface, filteredRows(entry.binding).map(function (r) {
+      var o = {}, k;
+      for (k in r) if (r.hasOwnProperty(k)) o[k] = r[k];
+      return o;
+    }), theme()); } catch (e) { /* an author's drawing must not stop the rest */ }
+  }
+
+  function startDrawer(entry) {
+    var el = document.getElementById(entry.id);
+    if (!el) return;
+    entry.el = el;
+    entry.binding = attr(el, "data-tb-binding");
+    var surface = document.createElement("div");
+    surface.className = "tb-draw";
+    el.appendChild(surface);
+    entry.surface = surface;
+    drawEntry(entry);
+  }
+
+  function draw(figureId, fn) {
+    if (typeof fn !== "function" || typeof document === "undefined") return;
+    var entry = { id: String(figureId), fn: fn };
+    _drawers.push(entry);
+    if (_drawReady) startDrawer(entry);
+  }
+
+  function redrawResized() {
+    for (var i = 0; i < _drawers.length; i++) {
+      var d = _drawers[i];
+      if (d.surface && d.surface.clientWidth !== d.width) drawEntry(d);
+    }
+  }
+
+  function hydrateDrawn() {
+    _drawReady = true;
+    for (var i = 0; i < _drawers.length; i++) startDrawer(_drawers[i]);
+    if (_drawers.length && root.addEventListener) {
+      var pending = false;
+      root.addEventListener("resize", function () {
+        if (pending) return;
+        pending = true;
+        var later = typeof requestAnimationFrame === "function"
+          ? requestAnimationFrame : function (f) { setTimeout(f, 16); };
+        later(function () { pending = false; redrawResized(); });
+      });
+    }
+  }
+
   /* ── Receipt badges — provenance from the manifest-derived config only.
    *    Author CSS can restyle a badge; the runtime never lets a grey one
    *    become green, because the class is chosen from provenance here. ──── */
@@ -2377,6 +2462,7 @@
     try { hydrateValues(); } catch (e) {}
     try { hydrateTables(); } catch (e) {}
     try { hydrateCharts(); } catch (e) {}
+    try { hydrateDrawn(); } catch (e) {}
     /* Badges after values (value writes replace textContent and must not
      * eat them) and BEFORE the scroll wrap, so a table's badge anchors
      * outside the scrolling region. */
@@ -2515,6 +2601,8 @@
     ready: ready,
     fmt: fmt,
     configureChart: configureChart,
+    draw: draw,
+    theme: theme,
     setSelection: setSelection,
     /* The scenario evaluator, exposed so tests and authors can check a
      * formula gives what they expect. It computes from the values passed. */
