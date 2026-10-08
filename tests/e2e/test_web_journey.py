@@ -548,3 +548,107 @@ def test_a_declarative_model_answers_like_the_python_one(served, scaffolded):
     [clash] = [e for e in served.get("/api/discovery").json()["entries"]
                if e["file"] == "sample_model.json"]
     assert clash["status"] == "failed" and "sample_model.py exists" in clash["reason"]
+
+
+def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, scaffolded):
+    """The remote-authoring loop over the real /mcp and the real app: start a
+    draft from a published report, change it, preview it, publish it. The
+    published file has the change, the old version is kept, and the Runs list
+    says who published."""
+    pytest.importorskip("mcp")
+    from tracebi.web.api import main
+
+    def call(session, name, **arguments):
+        _, got = _mcp_call(served, "tools/call", {"name": name, "arguments": arguments},
+                           session=session)
+        return got["structuredContent"]
+
+    path = "sample_model/sample_dashboard"
+    published = scaffolded / "reports" / path / "template.html"
+    route = main.serve_gateway("s3cret")
+    try:
+        with served:
+            session = _mcp_session(served)
+            started = call(session, "start_draft", kind="reports", path=path, from_published=True)
+            assert started["ok"], started
+            assert started["url"] == f"/drafts/agent/reports/{path}"
+
+            html = call(session, "read_draft", kind="reports", path=path)["files"]["template.html"]
+            assert html == published.read_text(encoding="utf-8")
+            changed = html + "\n<p>a note added in the draft</p>\n"
+            assert call(session, "write_draft_file", kind="reports", path=path,
+                        file="template.html", content=changed)["ok"]
+            assert call(session, "preview_draft", kind="reports", path=path)["ok"]
+            refused = call(session, "write_draft_file", kind="reports", path=path,
+                           file="report.py", content="print(1)")
+            assert not refused["ok"] and "report.py" in refused["errors"][0]
+
+            listed = served.get("/api/drafts").json()["drafts"]
+            assert [(d["owner"], d["kind"], d["path"], d["differs_from_published"])
+                    for d in listed] == [("agent", "reports", path, True)]
+            page = served.get(f"/api/drafts/agent/reports/{path}/preview")
+            assert page.status_code == 200
+            assert "a note added in the draft" in page.text
+            assert page.headers["cache-control"] == "no-store"
+            assert "a note added in the draft" not in published.read_text(encoding="utf-8")
+
+            done = call(session, "publish_draft", kind="reports", path=path, note="adds a note")
+            assert done["ok"], done
+            assert published.read_text(encoding="utf-8") == changed
+            kept = scaffolded / ".tracebi" / "history" / "reports" / path / done["version"]
+            assert (kept / "template.html").read_text(encoding="utf-8") == html
+
+            rows = served.get("/api/runs", params={"kind": "publish"}).json()
+            assert [(r["target"], r["actor"]) for r in rows] == [(f"reports/{path}", "mcp:agent")]
+            assert rows[0]["detail"]["note"] == "adds a note"
+    finally:
+        main.app.router.routes.remove(route)
+        main._mcp_server = None
+
+
+def test_a_report_can_be_drafted_on_a_draft_model_but_publishes_only_after_it(scaffolded):
+    """dev → prod ordering: a report draft previews against the agent's draft
+    model, but publishing it is refused until that model is published, so
+    production never reads a model that only exists in someone's drafts. A
+    model draft that does not compile is refused at publish."""
+    from tracebi import mcp_server as gw
+
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    regions = {
+        "name": "regions",
+        "connectors": [{"name": "warehouse", "type": "duckdb",
+                        "database": "data/warehouse.duckdb"}],
+        "tables": [
+            {"name": "fact_orders", "connector": "warehouse", "source": "fact_orders"},
+            {"name": "dim_region", "connector": "warehouse", "source": "dim_region"}],
+        "dimensions": [{"name": "dim_region", "table": "dim_region",
+                        "key": "region_id", "attributes": ["region"]}],
+        "facts": [{"name": "fact_orders", "table": "fact_orders",
+                   "measures": ["revenue", "qty"],
+                   "foreign_keys": {"dim_region": "region_id"}}],
+        "measures": [{"name": "revenue", "column": "revenue", "agg": "summ"},
+                     {"name": "units", "column": "qty", "agg": "sum"},
+                     {"name": "orders", "column": "order_id", "agg": "count"}],
+    }
+    assert gw.gateway_start_draft("models", "regions")["ok"]
+    gw.gateway_write_draft_file("models", "regions", "regions.json", json.dumps(regions))
+    refused = gw.gateway_publish_draft("models", "regions")
+    assert not refused["ok"] and "summ" in json.dumps(refused["errors"])
+    regions["measures"][0]["agg"] = "sum"
+    gw.gateway_write_draft_file("models", "regions", "regions.json", json.dumps(regions))
+
+    report = "sample_model/sample_dashboard"
+    assert gw.gateway_start_draft("reports", report, from_published=True)["ok"]
+    spec = gw.gateway_read_draft("reports", report)["files"]["report.json"]
+    gw.gateway_write_draft_file("reports", report, "report.json",
+                                spec.replace('"sample_model"', '"regions"'))
+    assert gw.gateway_preview_draft("reports", report)["ok"], "previews on the draft model"
+    early = gw.gateway_publish_draft("reports", report)
+    assert not early["ok"] and "regions" in json.dumps(early["errors"])
+
+    assert gw.gateway_publish_draft("models", "regions")["ok"]
+    assert (scaffolded / "models" / "regions.json").is_file()
+    published = gw.gateway_publish_draft("reports", report)
+    assert published["ok"], published
+    assert '"regions"' in (scaffolded / "reports" / report / "report.json").read_text()

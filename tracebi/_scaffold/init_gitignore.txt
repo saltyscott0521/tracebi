@@ -18,3 +18,5 @@ output/**
 .ipynb_checkpoints/
 # Workbench dev-state (exhibit feed, pins) — session scratch, never receipts.
 .tracebi/
+# Remote-authoring drafts: private working copies, written over MCP or HTTP
+drafts/

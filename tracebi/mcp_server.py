@@ -13,7 +13,9 @@ the page it appears on.
 Deliberately read-and-compute only. Queries, validation and spec rendering
 compute but persist nothing beyond an output file; pipeline execution
 writes to the warehouse and stays off this surface until per-agent scopes
-exist to gate it.
+exist to gate it. The draft tools are the one other write: they write under
+``drafts/``, and ``publish_draft`` copies a validated draft into the library
+(report packages and declarative models only, never Python).
 
 Two layers, on purpose:
 
@@ -1386,6 +1388,89 @@ def gateway_fetch_artifact(path: str) -> FetchArtifactResult:
 # ── MCP registration ───────────────────────────────────────────────────────
 
 
+class DraftResult(TypedDict, total=False):
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    drafts: Optional[list[dict]]
+    owner: Optional[str]
+    kind: Optional[str]
+    path: Optional[str]
+    url: Optional[str]
+    files: Any
+    updated: Optional[str]
+    differs_from_published: Optional[bool]
+    version: Optional[str]
+    previous: Optional[str]
+    note: Optional[str]
+
+
+def _draft_owner() -> str:
+    """The acting principal as a draft owner: the MCP actor, ``mcp:`` dropped."""
+    from tracebi.drafts import slug_owner
+    return slug_owner(_mcp_actor().removeprefix("mcp:"))
+
+
+def _draft_call(fn, *args, **kwargs) -> DraftResult:
+    """Run one draft operation as the MCP actor; a refusal is a result."""
+    from tracebi.drafts import DraftError
+    try:
+        with actor(_mcp_actor()):
+            return {"ok": True, **fn(*args, **kwargs)}
+    except DraftError as exc:
+        return {"ok": False, "errors": [str(exc)]}
+
+
+def gateway_list_drafts() -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(lambda: {"drafts": [
+        {**d, "url": drafts.draft_url(d["owner"], d["kind"], d["path"])}
+        for d in drafts.list_drafts(_draft_owner())]})
+
+
+def gateway_start_draft(kind: str, path: str,
+                        from_published: bool = False) -> DraftResult:
+    from tracebi import drafts
+    owner = _draft_owner()
+    return _draft_call(lambda: {
+        **drafts.start_draft(owner, kind, path, from_published),
+        "url": drafts.draft_url(owner, kind, path)})
+
+
+def gateway_read_draft(kind: str, path: str) -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(drafts.read_draft, _draft_owner(), kind, path)
+
+
+def gateway_write_draft_file(kind: str, path: str, file: str,
+                             content: str) -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(drafts.write_draft_file, _draft_owner(), kind, path,
+                       file, content)
+
+
+def gateway_preview_draft(kind: str, path: str) -> DraftResult:
+    from tracebi import drafts
+
+    def preview():
+        owner = _draft_owner()
+        drafts.render_preview(owner, kind, path)
+        return {"url": drafts.draft_url(owner, kind, path)}
+    try:
+        return _draft_call(preview)
+    except Exception as exc:  # noqa: BLE001 — a package that will not render is a result
+        return {"ok": False, "errors": [_one_line_error(exc)]}
+
+
+def gateway_publish_draft(kind: str, path: str, note: str = "") -> DraftResult:
+    from tracebi import drafts
+    result = _draft_call(lambda: drafts.publish_draft(
+        _draft_owner(), kind, path, _mcp_actor(), note or None, _load_models()))
+    _show_action("publish_draft", (
+        f"Published {kind}/{path}" if result.get("ok") else
+        f"Publish of {kind}/{path} refused: " + "; ".join(result["errors"])))
+    return result
+
+
 def build_server(token: Optional[str] = None):
     """
     Register the gateway operations as MCP tools.
@@ -1472,7 +1557,10 @@ def build_server(token: Optional[str] = None):
             "render_report_spec. Resources: tracebi://guide (how to author), "
             "tracebi://spec-schema, tracebi://models/{name}, "
             "tracebi://knowledge/{slug}. Prompts: "
-            "author_report, answer_question, address_pins."
+            "author_report, answer_question, address_pins. To author a "
+            "report or declarative model remotely: start_draft, "
+            "write_draft_file, preview_draft (give the person its url), "
+            "then publish_draft once they agree."
         ),
     )
 
@@ -1687,6 +1775,70 @@ def build_server(token: Optional[str] = None):
             "matched, and a manifest with nothing to check is not a pass."
         ),
     )(gateway_verify_manifest)
+
+    # Drafts: the remote-authoring lane. Writes land in drafts/<owner>/ only;
+    # publish_draft is the one that changes what the project serves.
+    _DRAFT_WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                                   idempotentHint=True, openWorldHint=False)
+    _PUBLISH = ToolAnnotations(readOnlyHint=False, destructiveHint=True,
+                               idempotentHint=False, openWorldHint=False)
+    _tool(
+        name="list_drafts", title="List your drafts", annotations=_READ,
+        structured_output=True,
+        description=(
+            "The caller's drafts: kind, path, url, updated, and whether the "
+            "draft differs from what is published."
+        ),
+    )(gateway_list_drafts)
+    _tool(
+        name="start_draft", title="Start a draft (writes drafts/)",
+        annotations=_DRAFT_WRITE, structured_output=True,
+        description=(
+            "Create a draft: kind is 'reports' (a package: report.json, "
+            "template.html, style.css) or 'models' (one declarative "
+            "<name>.json). path is a report path like finance/weekly, or a "
+            "model name [a-z0-9_]+. from_published=true copies the published "
+            "one; a published report with a report.py or script.js cannot be "
+            "drafted remotely. Returns the draft's url: give it to the person "
+            "once. Writes only under drafts/."
+        ),
+    )(gateway_start_draft)
+    _tool(
+        name="read_draft", title="Read a draft", annotations=_READ,
+        structured_output=True,
+        description="The draft's files as {name: text}, with its url's path.",
+    )(gateway_read_draft)
+    _tool(
+        name="write_draft_file", title="Write a draft file (writes drafts/)",
+        annotations=_DRAFT_WRITE, structured_output=True,
+        description=(
+            "Replace one file of an existing draft with content (UTF-8 text, "
+            "at most 512 KB). file is report.json, template.html or "
+            "style.css for a report; <name>.json for a model. Nothing else "
+            "is accepted. Writes only under drafts/; nothing is published."
+        ),
+    )(gateway_write_draft_file)
+    _tool(
+        name="preview_draft", title="Preview a draft", annotations=_READ_WAREHOUSE,
+        structured_output=True,
+        description=(
+            "Render the draft in memory against the project's models (no "
+            "file, no receipt) and return ok, errors, and the draft's url, "
+            "where the person sees it. A model draft is validated, with no "
+            "page."
+        ),
+    )(gateway_preview_draft)
+    _tool(
+        name="publish_draft", title="Publish a draft (changes the project)",
+        annotations=_PUBLISH, structured_output=True,
+        description=(
+            "Validate the draft (a report must render), keep the version it "
+            "replaces under .tracebi/history/, copy the draft into the "
+            "library and record a publish run with this actor and the note. "
+            "The draft is kept. The person's go-ahead comes first: this "
+            "changes what the app serves."
+        ),
+    )(gateway_publish_draft)
 
     # Resources — reference material a client can pull into context. The guide
     # puts the authoring SOP on the surface itself (an MCP-only agent never
