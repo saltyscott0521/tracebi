@@ -466,6 +466,16 @@ tr.tb-window-pad td {
   width: fit-content;
   margin: 0 0 var(--tb-space-1) auto;
 }
+/* An inline value (a number inside a sentence) is a span with no positioned
+ * box, so an absolute badge escapes to the page's top-right corner and stacks
+ * with every other inline value's badge there. Keep it inline, beside the
+ * number it marks. */
+span > .tb-badge {
+  position: static;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: var(--tb-space-1);
+}
 
 /* Scenarios — the reader's what-if, computed in the browser. Visibly apart
  * from the stamped figures: a dashed frame and the runtime's label, so a
