@@ -267,8 +267,9 @@ export function ProjectFeed() {
       <Section title="From your agent" count={exhibits.length}
                empty={!exhibits.length && (
                  <p className="wb-empty">
-                   What your agent shows you while it works appears here. A script it runs can
-                   call <code>tracebi.workbench.show(df, note=…)</code> while this server is up.
+                   What your agent does while it works appears here: the queries it runs
+                   and the reports it builds over MCP, and anything a script it runs passes
+                   to <code>tracebi.workbench.show(df, note=…)</code> while this server is up.
                  </p>)}>
         {exhibits.map(ex => <Exhibit key={ex.seq ?? ex.at} ex={ex} />)}
       </Section>

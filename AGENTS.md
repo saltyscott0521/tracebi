@@ -331,7 +331,10 @@ name** opens the app on Reports, with the **project feed** — the live
 surface for phase ① and ②: while this server is up,
 `tracebi.workbench.show(df, note=...)` from ANY script you run (a transform
 probe, a scratch analysis) posts the frame to the feed (Reports → *From
-your agent*) with no configuration, and the human leaves you notes there
+your agent*) with no configuration, and the human leaves you notes there.
+Your gateway work lands there too, with nothing to call: each `query_model`
+result as a table, and each `build_report` / `render_report_spec` as one
+line, refusals included — so the human watches you work
 (MCP: `workbench_state` with no `report` returns the feed and pins, plus
 the warehouse's tables with row counts and contract status as sinks land,
 and the models' star schemas taking shape as you edit `models/`). The human

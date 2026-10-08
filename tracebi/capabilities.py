@@ -1158,8 +1158,10 @@ def describe(brief: bool = False) -> dict:
                     "Reports and the human sees your show() exhibits there "
                     "(From your agent) and leaves notes. While it is up any "
                     "script in the project can call tracebi.workbench.show() "
-                    "with no setup. Dev-state under "
-                    ".tracebi/workbench/_discovery/.",
+                    "with no setup. Your gateway work posts there too: each "
+                    "query_model result as a table, and each build_report / "
+                    "render_report_spec as one line (refusals included). "
+                    "Dev-state under .tracebi/workbench/_discovery/.",
         },
         "pins": {
             "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",
