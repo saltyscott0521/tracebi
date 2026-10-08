@@ -62,7 +62,8 @@ def test_a_python_model_wins_over_a_json_of_the_same_name(tmp_path):
     (tmp_path / "models" / "m.py").write_text("from tracebi import DataModel\nmodel = DataModel('m')\n")
     reg = ModelRegistry()
     assert reg.auto_discover(str(tmp_path / "models")) == ["m"]
-    assert reg.clashes() == {"m": str(tmp_path / "models" / "m.json")}
+    assert reg.clashes() == {str(tmp_path / "models" / "m.json"):
+                             "m.json refused: m.py exists; a model is one file, so delete one"}
     assert reg.get("m").measures() == {}          # the Python one
 
 
@@ -70,3 +71,45 @@ def test_a_good_file_compiles_without_reading_the_warehouse(tmp_path):
     model = load_model_spec(_write(tmp_path, _doc()))
     assert list(model.measures()) == ["n"]
     assert not (tmp_path / "data").exists()
+
+
+def _yaml(tmp_path, text, stem="m"):
+    (tmp_path / "models").mkdir(exist_ok=True)
+    path = tmp_path / "models" / f"{stem}.yaml"
+    path.write_text(text)
+    return path
+
+
+def test_a_repeated_yaml_key_is_an_error_not_last_wins(tmp_path):
+    path = _yaml(tmp_path, "name: m\nmeasures:\n  - name: n\n    agg: sum\n    agg: mean\n")
+    errors = validate_model_file(path)
+    assert len(errors) == 1 and "duplicate key 'agg'" in errors[0]
+
+
+def test_a_yaml_object_tag_is_refused_not_constructed(tmp_path):
+    marker = tmp_path / "ran"
+    path = _yaml(tmp_path, "name: !!python/object/apply:pathlib.Path.touch "
+                           f"[!!python/object/apply:pathlib.Path [{marker}]]\n")
+    errors = validate_model_file(path)
+    assert errors and "not valid YAML" in errors[0]
+    assert not marker.exists()
+
+
+def test_one_model_one_file_across_the_declarative_forms(tmp_path):
+    from tracebi.model_registry import ModelRegistry
+
+    models = tmp_path / "models"
+    _yaml(tmp_path, "name: both\n", stem="both")
+    (models / "both.json").write_text('{"name": "both"}')
+    _yaml(tmp_path, "name: solo\n", stem="solo")
+    _yaml(tmp_path, "name: py\n", stem="py")
+    (models / "py.py").write_text("from tracebi import DataModel\nmodel = DataModel('py')\n")
+    reg = ModelRegistry()
+    assert reg.auto_discover(str(models)) == ["py", "solo"]
+    refused = {p.rsplit("/", 1)[1]: why for p, why in reg.clashes().items()}
+    assert set(refused) == {"both.yaml", "both.json", "py.yaml"}
+    assert "both.json" in refused["both.yaml"] and "both.yaml" in refused["both.json"]
+    assert "py.py exists" in refused["py.yaml"]
+    (models / "both.json").unlink()                 # delete one: the other is the model
+    assert reg.auto_discover(str(models)) == ["both", "py", "solo"]
+    assert set(reg.clashes()) == {str(models / "py.yaml")}

@@ -535,8 +535,8 @@ effectively does not exist).
 3. Register: `registry.add_connector(instance)` in your app module
 
 ### New model definition (project-scope, no web server required)
-1. `tracebi new-model "My Model"` — creates `models/my_model.py`
-2. Edit the file: wire connectors, tables, relationships, facts, dimensions. The variable **must** be named `model`.
+1. `tracebi new-model "My Model"` — creates `models/my_model.yaml`, a commented starter (`--python` writes `models/my_model.py` instead). A Python model converts with `tracebi migrate model models/x.py [--write]`, which writes the YAML beside it and leaves the `.py` (it wins until you delete it).
+2. Edit the file: wire connectors, tables, relationships, facts, dimensions, measures. The variable-must-be-named-`model` rule applies to the Python form only. A model is one file: `.yaml`/`.yml`/`.json` share one schema and validator (`tracebi/model/model_spec.py`), and two declarative forms of one name are both refused.
 3. Import anywhere: `from tracebi.model_registry import get_model; model = get_model("my_model")`
 4. The web server auto-discovers `models/` at startup (`TRACEBI_MODELS_DIR` to override).
 

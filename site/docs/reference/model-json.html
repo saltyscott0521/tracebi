@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>models/&lt;name&gt;.json — TraceBi docs</title>
+<title>Model files (YAML or JSON) — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="models/&lt;name&gt;.json">
+<meta name="description" content="Model files (YAML or JSON)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,7 +51,7 @@
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/measures.html">Measures</a>
-<a class="on" href="../reference/model-json.html">models/&lt;name&gt;.json</a>
+<a class="on" href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
@@ -72,13 +72,58 @@
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
-<h1 id="modelsnamejson"><code>models/&lt;name&gt;.json</code></h1>
+<h1 id="model-files-yaml-or-json">Model files (YAML or JSON)</h1>
 <p><strong>A model as data: the same star schema as a Python <code>DataModel</code>, written as a
-document a remote agent can draft without the server running anyone's code.</strong></p>
-<p>The JSON mirrors the builder calls one to one. Loading it reads no rows; a
-query is what opens the warehouse, exactly as with <code>models/&lt;name&gt;.py</code>.</p>
+document a person reviews and a remote agent can draft without the server
+running anyone's code.</strong></p>
+<p><code>models/&lt;name&gt;.yaml</code> is the human form (comments say why a measure is weighted
+and which trap it avoids); <code>.yml</code> and <code>.json</code> are the same schema and load
+through the same validator and builder. The document mirrors the builder calls
+one to one. Loading it reads no rows; a query is what opens the warehouse,
+exactly as with <code>models/&lt;name&gt;.py</code>. <code>tracebi new-model "Sales"</code> writes a
+commented <code>models/sales.yaml</code>.</p>
 <hr>
 <h2 id="example">Example</h2>
+<pre><code class="language-yaml"># models/sales_model.yaml
+name: sales_model
+
+connectors:
+  - name: warehouse
+    type: duckdb
+    database: data/warehouse.duckdb
+
+tables:
+  - {name: fact_orders, connector: warehouse, source: fact_orders}
+  - {name: dim_region, connector: warehouse, source: dim_region}
+
+dimensions:
+  - name: dim_region
+    table: dim_region
+    key: region_id
+    attributes: [region]
+
+facts:
+  - name: fact_orders
+    table: fact_orders
+    measures: [amount]
+    foreign_keys: {dim_region: region_id}
+
+# Derived, groupable attributes: declared once, not re-cut in every report.
+time_grains:
+  - {dimension: dim_date, name: order_month, source: order_date, grain: month}
+value_bins:
+  - dimension: dim_customer
+    name: score_band
+    source: credit_score
+    edges: [600, 700, 800]      # N edges make N+1 bands
+
+measures:
+  - name: revenue
+    column: amount
+    agg: sum
+    format: currency0
+</code></pre>
+<p>The same model as JSON, for a tool that writes JSON:</p>
 <pre><code class="language-json">{
   &quot;name&quot;: &quot;sales_model&quot;,
   &quot;connectors&quot;: [{&quot;name&quot;: &quot;warehouse&quot;, &quot;type&quot;: &quot;duckdb&quot;, &quot;database&quot;: &quot;data/warehouse.duckdb&quot;}],
@@ -93,7 +138,8 @@ query is what opens the warehouse, exactly as with <code>models/&lt;name&gt;.py<
 }
 </code></pre>
 <h2 id="keys">Keys</h2>
-<p>The schema is closed: an unknown key is an error that names the closest key.</p>
+<p>The schema is closed: an unknown key is an error that names the closest key.
+Errors lead with their path, e.g. <code>measures[2].agg</code>.</p>
 <table>
 <thead>
 <tr>
@@ -106,7 +152,7 @@ query is what opens the warehouse, exactly as with <code>models/&lt;name&gt;.py<
 <tr>
 <td><code>name</code></td>
 <td><code>DataModel(name)</code></td>
-<td><strong>Required.</strong> Must equal the file name without <code>.json</code>.</td>
+<td><strong>Required.</strong> Must equal the file name without its extension.</td>
 </tr>
 <tr>
 <td><code>connectors</code></td>
@@ -134,31 +180,74 @@ query is what opens the warehouse, exactly as with <code>models/&lt;name&gt;.py<
 <td><code>name</code>, <code>table</code>, <code>measures</code>, optional <code>foreign_keys</code></td>
 </tr>
 <tr>
+<td><code>time_grains</code></td>
+<td><code>add_time_grain</code></td>
+<td><code>dimension</code>, <code>name</code>, <code>source</code>, <code>grain</code> (<code>month</code>, <code>quarter</code>, ...)</td>
+</tr>
+<tr>
+<td><code>value_bins</code></td>
+<td><code>add_value_bins</code></td>
+<td><code>dimension</code>, <code>name</code>, <code>source</code>, <code>edges</code>, optional <code>labels</code> (one more than <code>edges</code>)</td>
+</tr>
+<tr>
 <td><code>measures</code></td>
 <td><code>add_measure</code></td>
-<td><code>name</code> plus any keyword of <a href="../reference/measures.html">Measures</a>: <code>column</code>, <code>agg</code>, <code>expr</code>, <code>ratio</code>, <code>share</code>, <code>rank</code>, <code>running</code>, <code>partition_by</code>, <code>period_end</code>, <code>offset</code>, <code>growth</code>, <code>to_date</code>, <code>description</code>, <code>format</code>, <code>allow_rate_agg</code>, <code>allow_additive</code>. Pairs and triples are JSON arrays.</td>
+<td><code>name</code> plus any keyword of <a href="../reference/measures.html">Measures</a>: <code>column</code>, <code>agg</code>, <code>expr</code>, <code>ratio</code>, <code>share</code>, <code>rank</code>, <code>running</code>, <code>partition_by</code>, <code>period_end</code>, <code>offset</code>, <code>growth</code>, <code>to_date</code>, <code>description</code>, <code>format</code>, <code>allow_rate_agg</code>, <code>allow_additive</code>. Pairs and triples are lists.</td>
 </tr>
 </tbody>
 </table>
-<p>Time grains and value bins have no JSON form yet; use a Python model for them.</p>
+<p><code>time_grains</code> and <code>value_bins</code> name the dimension as <code>dimension</code> (the builder's
+<code>dim</code>); the other fields are the builder's own keyword arguments.</p>
+<h3 id="yaml-specifics">YAML specifics</h3>
+<ul>
+<li>The file is read with a safe loader only: no YAML tag can construct an
+  object, so <code>!!python/object</code> is refused.</li>
+<li><strong>A repeated key is an error</strong>, not last-wins: a second <code>agg:</code> in one measure
+  would otherwise quietly replace the first.</li>
+<li>Beware YAML's own scalars when a value is text: <code>no</code>, <code>on</code> and <code>null</code> are not
+  strings. Quote them.</li>
+</ul>
 <h3 id="connectors-and-no-credentials">Connectors, and no credentials</h3>
 <ul>
-<li><code>{"type": "duckdb", "database": "data/warehouse.duckdb"}</code> is a DuckDB file
+<li><code>type: duckdb</code> with <code>database: data/warehouse.duckdb</code> is a DuckDB file
   <strong>inside the project</strong>. An absolute path or one with <code>..</code> is refused.</li>
-<li><code>{"name": "warehouse", "connection": "warehouse"}</code> reuses the connector in
+<li><code>{name: warehouse, connection: warehouse}</code> reuses the connector in
   <code>models/_connections/warehouse.py</code> (written by <code>tracebi connect</code>). Its own
   <code>name</code> must match.</li>
 </ul>
 <p>There is no key for a URL, password or token, so a file cannot carry one. The
 secret stays in <code>.env</code>, read by the connection module.</p>
-<h2 id="discovery">Discovery</h2>
-<p><code>models/&lt;name&gt;.json</code> is discovered beside <code>models/*.py</code> at startup and by live
-discovery, validated structurally, and loaded on first use. A bad file is a
-<strong>failed</strong> entry in <code>/api/discovery</code> (and <code>tracebi validate</code>) with the path of
-the problem, e.g. <code>measures[2].agg</code>; the other models keep loading.</p>
-<p>If <code>x.py</code> and <code>x.json</code> both exist, <strong>the Python file wins</strong> and the JSON is
-reported as failed ("<code>x.json</code> refused: <code>x.py</code> exists"). A model is one or the
-other.</p>
+<h2 id="one-model-one-file">One model, one file</h2>
+<p><code>models/&lt;name&gt;.yaml</code>, <code>.yml</code> and <code>.json</code> are discovered beside <code>models/*.py</code> at
+startup and by live discovery, validated structurally, and loaded on first
+use. A bad file is a <strong>failed</strong> entry in <code>/api/discovery</code> (and <code>tracebi
+validate</code>) with the path of the problem; the other models keep loading.</p>
+<ul>
+<li>If <code>x.py</code> and any declarative <code>x.*</code> both exist, <strong>the Python file wins</strong> and
+  the declarative one is reported as failed ("<code>x.yaml</code> refused: <code>x.py</code>
+  exists").</li>
+<li>If more than one declarative form exists (<code>x.yaml</code> and <code>x.json</code>), <strong>all of
+  them are refused</strong>, each with a reason naming the others, because nothing
+  says which is current. Delete all but one.</li>
+</ul>
+<h2 id="converting-a-python-model">Converting a Python model</h2>
+<pre><code>tracebi migrate model models/sales.py            # print the YAML
+tracebi migrate model models/sales.py --write    # write models/sales.yaml beside it
+</code></pre>
+<p>The YAML is built from the loaded model, compiled again, and compared with the
+original; a model that cannot be expressed is refused with the reason (a
+connector that is not a DuckDB file inside the project, a name that differs
+from the file name, a measure that needed <code>allow_additive</code>). Comments in the
+Python file are not carried over. Nothing is renamed or deleted: the <code>.py</code>
+keeps winning until you delete it, and a query through the YAML fingerprints
+the same as through the Python.</p>
+<h2 id="drafts-over-the-gateway">Drafts over the gateway</h2>
+<p>A model draft is one file, <code>&lt;name&gt;.yaml</code> or <code>&lt;name&gt;.json</code>, under
+<code>drafts/&lt;owner&gt;/models/</code>. A new draft starts as YAML. Writing the other form
+replaces the draft's file, so the two never coexist. Publishing copies the file
+as it is to <code>models/</code>, replacing any other declarative form of that name there
+(the previous one is kept under <code>.tracebi/history/</code>). A <code>.yml</code> model can be
+drafted (it opens as <code>.yaml</code>) but a draft is never written as <code>.yml</code>.</p>
   </main>
 </div>
 <script>

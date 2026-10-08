@@ -1181,9 +1181,9 @@ def describe(brief: bool = False) -> dict:
             "what": "Remote drafts: a report or model written before it goes live. "
                     "Drafts live under drafts/<owner>/ (TRACEBI_DRAFTS_DIR, default "
                     "drafts/). A report draft holds only report.json, template.html "
-                    "and style.css. A model draft is one models/<name>.json (see "
-                    "model_json). preview_draft renders against the published "
-                    "models plus the owner's draft models, in memory, and returns "
+                    "and style.css. A model draft is one models/<name>.yaml or "
+                    ".json, one form at a time (see model_json). preview_draft "
+                    "renders against the published models plus the owner's draft models, in memory, and returns "
                     "the url where the person sees it. publish_draft validates "
                     "first: a report must render against the PUBLISHED models only, "
                     "and a model must compile. It keeps the version it replaces "
@@ -1193,13 +1193,22 @@ def describe(brief: bool = False) -> dict:
                     "be drafted remotely.",
         },
         "model_json": {
-            "file": "models/<name>.json",
+            "file": "models/<name>.yaml (also .yml, or .json)",
             "reference": "docs/reference/model-json.md",
             "what": "A declarative model: the same star schema as a Python "
-                    "DataModel, written as one JSON document. Loading it reads no "
-                    "rows, and a remote agent can draft it without the server "
+                    "DataModel, written as one YAML document (comments allowed; "
+                    "JSON is the same schema). Top-level keys: name, connectors, "
+                    "tables, relationships, dimensions, facts, measures, "
+                    "time_grains (dimension, name, source, grain) and value_bins "
+                    "(dimension, name, source, edges, labels). Loading it reads "
+                    "no rows, and a remote agent can draft it without the server "
                     "running any code. A query opens the warehouse, as with a .py "
-                    "model. If a .py and a .json share a name, the .py wins.",
+                    "model. A model is one file: a .py beside a .yaml/.json of "
+                    "the same name wins; two declarative forms of one name are "
+                    "both refused (see /api/discovery). A repeated YAML key is an "
+                    "error. `tracebi new-model` writes YAML (--python for the old "
+                    "form); `tracebi migrate model models/x.py [--write]` "
+                    "converts a Python model and leaves the .py in place.",
         },
         "spreadsheet": {
             "mcp": "build_report(report, output_dir='output', format='xlsx')",

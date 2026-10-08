@@ -159,7 +159,7 @@ class TestNewModelScaffold:
         every model file, and a connect at import opens a connection (or
         fails outright) on every scan."""
         out = _run(["--models-dir", str(tmp_path / "models"),
-                    "new-model", "My Model"], tmp_path)
+                    "new-model", "My Model", "--python"], tmp_path)
         assert out.returncode == 0, out.stderr
         text = (tmp_path / "models" / "my_model.py").read_text()
         assert "\nmodel.connect()" not in text

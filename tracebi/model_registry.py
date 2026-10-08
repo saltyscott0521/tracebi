@@ -9,8 +9,8 @@ or script::
     model = get_model("sales")        # lazy-loads models/sales.py on first call
     print(list_models())              # ["banking", "sales"]
 
-A model may also be a declarative ``models/<name>.json``
-(``tracebi.model.model_spec``). Each Python model file must expose a
+A model may also be declarative: ``models/<name>.yaml`` (or ``.yml`` /
+``.json``; ``tracebi.model.model_spec``). Each Python model file must expose a
 module-level ``model`` variable (a DataModel).
 The registry auto-discovers ``models/`` in the current working directory on
 first access, or you can point it at a specific path with ``auto_discover()``.
@@ -22,6 +22,9 @@ import importlib.util
 import os
 import sys
 from typing import Any, Optional
+
+
+_DECLARATIVE = (".yaml", ".yml", ".json")
 
 
 class ModelRegistry:
@@ -39,7 +42,7 @@ class ModelRegistry:
         self._origin: dict[str, str] = {}     # indexed name -> file stem
         self._mtime_ns: dict[str, int] = {}   # stem -> mtime at last good load
         self._default: Optional[str] = None
-        self._clashes: dict[str, str] = {}    # stem -> path of the refused .json
+        self._clashes: dict[str, str] = {}    # refused file path -> why
 
     # ── Registration ───────────────────────────────────────────────────────
 
@@ -56,30 +59,46 @@ class ModelRegistry:
 
     def auto_discover(self, path: str) -> list[str]:
         """
-        Record all ``*.py`` and declarative ``*.json`` files in *path* for
-        lazy loading.
+        Record all ``*.py`` and declarative ``*.yaml`` / ``*.yml`` / ``*.json``
+        files in *path* for lazy loading.
 
         Non-recursive; skips files whose names begin with ``_``. Files are
-        not imported until ``get()`` is called for that name. When ``x.py``
-        and ``x.json`` both exist the Python file wins and the JSON is
-        refused (see ``clashes()``).
+        not imported until ``get()`` is called for that name. A model is one
+        file: when ``x.py`` exists beside a declarative ``x.*`` the Python
+        file wins and the declarative one is refused; when more than one
+        declarative form exists (``x.yaml`` and ``x.json``) all of them are
+        refused, because nothing says which is current (see ``clashes()``).
 
         Returns the list of discovered stems (file names without extension).
         """
         if not os.path.isdir(path):
             return []
+        path = os.path.normpath(path)
         found: list[str] = []
         entries = sorted(os.listdir(path))
+        for old in [p for p in self._clashes if os.path.dirname(p) == path]:
+            del self._clashes[old]
         for entry in entries:
-            if entry.startswith("_") or not entry.endswith((".py", ".json")):
+            if entry.startswith("_") or not entry.endswith((".py", *_DECLARATIVE)):
                 continue
             stem, ext = os.path.splitext(entry)
-            if ext == ".json" and f"{stem}.py" in entries:
-                self._clashes[stem] = os.path.join(path, entry)
-                continue
-            if ext == ".json":
-                self._clashes.pop(stem, None)
-            self._paths[stem] = os.path.join(path, entry)
+            full = os.path.join(path, entry)
+            if ext in _DECLARATIVE:
+                if f"{stem}.py" in entries:
+                    self._clashes[full] = (
+                        f"{entry} refused: {stem}.py exists; a model is one "
+                        f"file, so delete one")
+                    continue
+                twins = [f"{stem}{e}" for e in _DECLARATIVE if f"{stem}{e}" in entries]
+                if len(twins) > 1:
+                    self._clashes[full] = (
+                        f"{entry} refused: {' and '.join(twins)} both exist; "
+                        f"a model is one file, so delete all but one")
+                    if self._paths.get(stem) == full:
+                        for index in (self._paths, self._models, self._origin):
+                            index.pop(stem, None)
+                    continue
+            self._paths[stem] = full
             if self._default is None:
                 self._default = stem
             found.append(stem)
@@ -111,8 +130,8 @@ class ModelRegistry:
         return self._models[name]
 
     def clashes(self) -> dict[str, str]:
-        """``{stem: path}`` of each ``<stem>.json`` refused because
-        ``<stem>.py`` exists."""
+        """``{path: reason}`` of each declarative file refused because the
+        model has another file (``<stem>.py``, or another declarative form)."""
         return dict(self._clashes)
 
     def _stem_for(self, name: str) -> Optional[str]:
@@ -152,7 +171,7 @@ class ModelRegistry:
     # ── Private ────────────────────────────────────────────────────────────
 
     def _load(self, stem: str, path: str) -> None:
-        if path.endswith(".json"):
+        if path.endswith(_DECLARATIVE):
             from tracebi.model.model_spec import load_model_spec
 
             self._publish(stem, path, load_model_spec(path))
@@ -229,7 +248,7 @@ def list_models() -> list[str]:
 
 
 def clashes() -> dict[str, str]:
-    """``{stem: path}`` of each ``<stem>.json`` refused because ``<stem>.py`` exists."""
+    """``{path: reason}`` of each declarative model file refused (see ``ModelRegistry.clashes``)."""
     return _registry.clashes()
 
 

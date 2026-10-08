@@ -4,7 +4,7 @@ A draft is a private working copy owned by whoever is acting (an MCP agent, a
 signed-in person). It lives under ``TRACEBI_DRAFTS_DIR`` (default ``drafts/``)::
 
     drafts/<owner>/reports/<path>/    report.json, template.html, style.css
-    drafts/<owner>/models/<name>.json a declarative model
+    drafts/<owner>/models/<name>.yaml a declarative model (or <name>.json)
 
 Nothing a draft holds runs on the server: a report package is a closed
 vocabulary that can only ask the model questions, so the allowed files are
@@ -15,12 +15,16 @@ copies the files into the library and records a ``publish`` run. The draft is
 kept. See ``docs/strategy/remote-authoring.md``.
 
 ``kind`` is ``"reports"`` or ``"models"`` (the singular is accepted).
+
+A model draft is exactly one file, ``<name>.yaml`` or ``<name>.json``: writing
+the other form replaces it, so the two never coexist. A new draft starts as
+YAML. Publishing copies the file as it is to ``models/``, replacing any other
+declarative form of that name there (the previous one is kept in history).
 """
 
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -39,6 +43,9 @@ REPORT_FILES = ("report.json", "template.html", "style.css")
 _KINDS = {"report": "reports", "reports": "reports",
           "model": "models", "models": "models"}
 _MODEL_NAME = re.compile(r"[a-z0-9_]+")
+#: The forms a model draft may take; ``.yml`` is published but not drafted.
+_DRAFT_MODEL_FORMS = (".yaml", ".json")
+_PUBLISHED_MODEL_FORMS = (".yaml", ".yml", ".json")
 _LAPTOP = "edit it from a laptop (git, or `tracebi push`)"
 
 
@@ -99,16 +106,21 @@ def drafts_root() -> Path:
 
 
 def draft_dir(owner: str, kind: str, path: str) -> Path:
-    """Where the draft lives: its directory for a report, its ``.json`` file for
-    a model. Validates all three; the path may not exist yet."""
+    """Where the draft lives: its directory for a report, its file for a model
+    (the ``.yaml`` or ``.json`` that exists; ``.yaml`` for a new one). Validates
+    all three; the path may not exist yet."""
     owner, kind = _owner(owner), _kind(kind)
     _check_path(kind, path)
     base = drafts_root() / owner / kind
-    return base / f"{path}.json" if kind == "models" else base / path
+    if kind == "models":
+        return next((f for f in (base / f"{path}{e}" for e in _DRAFT_MODEL_FORMS)
+                     if f.is_file()), base / f"{path}.yaml")
+    return base / path
 
 
 def _allowed_file(kind: str, path: str, file: str) -> str:
-    allowed = REPORT_FILES if kind == "reports" else (f"{path}.json",)
+    allowed = REPORT_FILES if kind == "reports" else tuple(
+        f"{path}{e}" for e in _DRAFT_MODEL_FORMS)
     if file not in allowed:
         raise DraftError(
             f"a {kind[:-1]} draft may hold only {', '.join(allowed)}; "
@@ -176,8 +188,8 @@ def _mtime(paths) -> str:
 def _published(kind: str, path: str) -> dict:
     """name -> text of what is published now (empty when nothing is)."""
     if kind == "models":
-        f = _models_dir() / f"{path}.json"
-        return {f.name: f.read_text(encoding="utf-8")} if f.is_file() else {}
+        f = next(iter(_published_model_files(path)), None)
+        return {f.name: f.read_text(encoding="utf-8")} if f else {}
     root, rel = _report_target(path)
     pkg = root / rel
     return {n: (pkg / n).read_text(encoding="utf-8")
@@ -197,6 +209,12 @@ def _summary(owner: str, kind: str, path: str, where: Path) -> dict:
 
 def _models_dir() -> Path:
     return Path(os.environ.get("TRACEBI_MODELS_DIR", "models"))
+
+
+def _published_model_files(path: str) -> list:
+    """The declarative files of model *path* in ``models/`` (one, normally)."""
+    return [f for f in (_models_dir() / f"{path}{e}"
+                        for e in _PUBLISHED_MODEL_FORMS) if f.is_file()]
 
 
 def _report_target(path: str) -> "tuple[Path, str]":
@@ -244,12 +262,13 @@ def start_draft(owner: str, kind: str, path: str,
             raise DraftError(
                 f"model {path} is Python (models/{path}.py), which cannot be "
                 f"drafted remotely: {_LAPTOP}")
-        source = published / f"{path}.json"
-        if not source.is_file():
+        [source, *_] = _published_model_files(path) or [None]
+        if source is None:
             raise DraftError(f"no published declarative model {path!r} to copy")
+        where = where.with_suffix(".json" if source.suffix == ".json" else ".yaml")
         files = {where.name: _text(_read_text(source))}
     elif kind == "models":
-        files = {where.name: json.dumps({"name": path}, indent=2) + "\n"}
+        files = {where.name: f"name: {path}\n"}
     if kind == "reports":
         where.mkdir(parents=True)
         for name, content in files.items():
@@ -278,9 +297,12 @@ def list_drafts(owner: Optional[str] = None) -> list:
                     found.append(_summary(who, "reports", rel, d))
         base = root / who / "models"
         if base.is_dir():
-            for f in sorted(base.glob("*.json")):
-                if _MODEL_NAME.fullmatch(f.stem):
-                    found.append(_summary(who, "models", f.stem, f))
+            stems = sorted({f.stem for e in _DRAFT_MODEL_FORMS
+                            for f in base.glob(f"*{e}")})
+            for stem in stems:
+                if _MODEL_NAME.fullmatch(stem):
+                    found.append(_summary(who, "models", stem,
+                                          draft_dir(who, "models", stem)))
     return sorted(found, key=lambda d: d["updated"], reverse=True)
 
 
@@ -298,7 +320,14 @@ def write_draft_file(owner: str, kind: str, path: str, file: str,
     kind = _kind(kind)
     where = _exists(owner, kind, path)
     _allowed_file(kind, path, file)
-    _write(where if kind == "models" else where / file, _text(content))
+    if kind == "models":
+        where = where.with_name(file)
+        _write(where, _text(content))
+        for other in _DRAFT_MODEL_FORMS:        # one form at a time
+            if f"{path}{other}" != file:
+                where.with_name(f"{path}{other}").unlink(missing_ok=True)
+    else:
+        _write(where / file, _text(content))
     return _summary(owner, kind, path, where)
 
 
@@ -309,7 +338,8 @@ def delete_draft(owner: str, kind: str, path: str) -> bool:
     if kind == "models":
         if not where.is_file():
             return False
-        where.unlink()
+        for form in _DRAFT_MODEL_FORMS:
+            where.with_name(f"{path}{form}").unlink(missing_ok=True)
         return True
     if not where.is_dir():
         return False
@@ -334,17 +364,18 @@ def draft_version(owner: str, kind: str, path: str) -> str:
 
 
 def _validate_model_draft(path: Path) -> None:
-    """Check a declarative-model draft: valid JSON, an object whose ``name``
-    equals the file name, and a model that compiles (the same loader
+    """Check a declarative-model draft: valid YAML or JSON, a mapping whose
+    ``name`` equals the file name, and a model that compiles (the same loader
     discovery uses, against this project)."""
-    from tracebi.model.model_spec import validate_model_file
+    from tracebi.model.model_spec import ModelSpecError, read_model_doc, validate_model_file
 
+    _read_text(path)                            # size and encoding, before parsing
     try:
-        doc = json.loads(_read_text(path))
-    except json.JSONDecodeError as exc:
-        raise DraftError(f"{path.name} is not valid JSON: {exc}") from None
+        doc = read_model_doc(path)
+    except ModelSpecError as exc:
+        raise DraftError(f"{path.name} is {exc.errors[0]}") from None
     if not isinstance(doc, dict):
-        raise DraftError(f"{path.name} must be a JSON object")
+        raise DraftError(f"{path.name} must hold one object (a mapping at the top level)")
     if doc.get("name") != path.stem:
         raise DraftError(
             f"the model's name must equal its file name: {path.name} "
@@ -367,7 +398,7 @@ def preview_models(owner: str, published: dict) -> dict:
 
     models = dict(published)
     base = drafts_root() / owner / "models"
-    for f in sorted(base.glob("*.json")) if base.is_dir() else []:
+    for f in sorted(base.glob("*.yaml")) + sorted(base.glob("*.json")) if base.is_dir() else []:
         try:
             model = load_model_spec(f, root=Path.cwd())
         except Exception:  # noqa: BLE001 — a broken draft model is its own draft's problem
@@ -419,7 +450,7 @@ def _keep_previous(kind: str, path: str, current: Path, stamp: str) -> Optional[
     if current.is_dir():
         shutil.copytree(current, keep)
     else:
-        keep.mkdir()
+        keep.mkdir(exist_ok=True)
         shutil.copy2(current, keep / current.name)
     return keep
 
@@ -433,7 +464,7 @@ def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
     where = _exists(owner, kind, path)
     if kind == "models":
         _validate_model_draft(where)
-        target = _models_dir() / f"{path}.json"
+        target = _models_dir() / where.name
         if (_models_dir() / f"{path}.py").is_file():
             raise DraftError(
                 f"models/{path}.py is a Python model of that name; a draft "
@@ -450,8 +481,14 @@ def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     kept = _keep_previous(kind, path, target, stamp)
     if kind == "models":
+        # Another declarative form of this name would clash with the new one.
+        stale = [f for f in _published_model_files(path) if f != target]
+        for old in stale:
+            kept = _keep_previous(kind, path, old, stamp) or kept
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(where, target)
+        for old in stale:
+            old.unlink()
         published = [target.name]
     else:
         target.mkdir(parents=True, exist_ok=True)

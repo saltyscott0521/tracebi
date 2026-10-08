@@ -32,7 +32,7 @@ That is the whole shape: connectors, tables, dimensions, facts, measures.
 The file declares meaning; the connector says where the data is kept — see
 [[models-and-connectors]].
 
-A model can also be a declarative `models/<name>.json` instead of a `.py` file: the same connectors, tables, dimensions, facts and measures, written as one JSON document (see [[model-json]]). The reason is the remote case. An agent without access to the server can draft a JSON model and publish it through the gateway, because a JSON file runs no code. A Python model runs on the server with its connections, so it stays a file someone reviews and commits.
+A model is a declarative `models/<name>.yaml` by default (`.json` is the same schema), with a `.py` file for anything exotic: the same connectors, tables, dimensions, facts and measures, written as one document with comments (see [[model-json]]). The reason is the remote case. An agent without access to the server can draft a YAML model and publish it through the gateway, because a YAML file runs no code. A Python model runs on the server with its connections, so it stays a file someone reviews and commits.
 
 ## Why it is only a declaration
 

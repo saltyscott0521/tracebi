@@ -3384,7 +3384,8 @@ class DataModel:
                     **({"derived": {
                         n: {"kind": v.get("kind"), "of": v.get("source"),
                             **({"grain": v["grain"]} if v.get("grain") else {}),
-                            **({"bands": v["labels"]} if v.get("labels") else {})}
+                            **({"bands": v["labels"]} if v.get("labels") else {}),
+                            **({"edges": v["edges"]} if v.get("edges") else {})}
                         for n, v in d.derived.items()}}
                        if d.derived else {}),
                 }
