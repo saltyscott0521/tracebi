@@ -413,22 +413,25 @@ def _display_rows(df, rows: list[dict], declared: Optional[dict] = None) -> list
         return []
 
 
+def with_display(ex: dict) -> dict:
+    """*ex* with its table excerpt also written as the report would show it
+    (``display``); anything else, or a frame that will not format, as it is."""
+    if ex.get("kind") in ("frame", "chart") and ex.get("rows"):
+        try:
+            import pandas as pd
+
+            df = pd.DataFrame(ex["rows"], columns=ex.get("columns"))
+            return {**ex, "display": _display_rows(df, ex["rows"])}
+        except Exception:  # noqa: BLE001
+            pass
+    return ex
+
+
 def _feed(wb_dir: str) -> list[dict]:
     """The exhibit feed as the workbench shows it: markdown rendered, re-runs
     marked, and table excerpts carrying display text."""
-    import pandas as pd
-
     feed = mark_changes(render_note_markdown(read_exhibits(wb_dir)))
-    out = []
-    for ex in feed:
-        if ex.get("kind") in ("frame", "chart") and ex.get("rows"):
-            try:
-                df = pd.DataFrame(ex["rows"], columns=ex.get("columns"))
-                ex = {**ex, "display": _display_rows(df, ex["rows"])}
-            except Exception:  # noqa: BLE001
-                pass
-        out.append(ex)
-    return out
+    return [with_display(ex) for ex in feed]
 
 
 def _chart_recipe(chart, x, y, columns: list):

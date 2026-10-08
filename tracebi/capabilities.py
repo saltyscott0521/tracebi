@@ -1163,6 +1163,20 @@ def describe(brief: bool = False) -> dict:
                     "render_report_spec as one line (refusals included). "
                     "Dev-state under .tracebi/workbench/_discovery/.",
         },
+        "watch_link": {
+            "mcp": "get_context's watch: {url, tell_the_person}",
+            "http": "GET /api/live/{watch}?after=N (the page: /live/{watch})",
+            "what": "When you are connected to a TraceBi app's own /mcp "
+                    "(it serves the gateway there when TRACEBI_MCP_TOKEN is "
+                    "set), get_context returns watch: a private link to a "
+                    "page where the person watches your session live — each "
+                    "query_model result as a table, each build_report / "
+                    "render_report_spec as one line, refusals included. Give "
+                    "the person watch.url at the start. One link per MCP "
+                    "session; anyone holding it can watch. Events are kept "
+                    "24 hours and carry no receipts. Absent over stdio and "
+                    "on the stand-alone `tracebi mcp --transport http`.",
+        },
         "pins": {
             "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",
             "mcp": "resolve_pin(report, pin_id, note='')",

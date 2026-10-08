@@ -337,7 +337,11 @@ result as a table, and each `build_report` / `render_report_spec` as one
 line, refusals included — so the human watches you work
 (MCP: `workbench_state` with no `report` returns the feed and pins, plus
 the warehouse's tables with row counts and contract status as sinks land,
-and the models' star schemas taking shape as you edit `models/`). The human
+and the models' star schemas taking shape as you edit `models/`).
+Connected to a TraceBi app's own `/mcp` instead (no local install),
+`get_context` returns `watch`: give the person `watch.url` first — a
+private page where the same queries and builds appear as you go, one link
+per session. The human
 browses the warehouse and the model in the app's Sources and Data model
 pages; `tracebi dev --classic` lays the Warehouse, Models and Packages
 panels out beside the feed on one page. Interrogate in the

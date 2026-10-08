@@ -259,7 +259,9 @@ body, the same text as `tracebi knowledge <slug>`).
    serves, ANY script you run can call `tracebi.workbench.show(...)` — no
    env var needed — and the feed (*From your agent*) updates live; the
    human leaves you notes there. Your MCP work posts there too, with
-   nothing to call: each `query_model` result, each build and each refusal. **Work like a notebook**: `show("## Approach\n...")`
+   nothing to call: each `query_model` result, each build and each refusal.
+   On a TraceBi app's own `/mcp`, `get_context` returns `watch` instead:
+   give the person `watch.url` first, a private page that shows the same. **Work like a notebook**: `show("## Approach\n...")`
    renders as a markdown cell (narrate the methodology as you go — the
    human can flip the feed to read top-down as a document);
    `show(df, note=...)` posts a frame excerpt with column profiles;

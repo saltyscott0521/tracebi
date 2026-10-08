@@ -521,3 +521,42 @@ def schedule_records(output_dir: Union[str, Path], url: Optional[str] = None) ->
     """Schedule runs for *output_dir*, oldest first, after a one-time import."""
     import_schedule_log(output_dir, url=url)
     return _schedule_rows(output_dir, url=url)
+
+
+#: How long a watched session's events are kept. A watch link is for watching
+#: an agent work, not an archive; older events are dropped on the next write.
+LIVE_KEEP_HOURS = 24
+
+
+def record_live(watch: str, entry: dict, url: Optional[str] = None) -> None:
+    """Append one event to the private watch feed *watch*, and drop events
+    older than :data:`LIVE_KEEP_HOURS`."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import text
+
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(hours=LIVE_KEEP_HOURS)).isoformat(timespec="seconds")
+    eng = ensure(url)
+    with eng.begin() as conn:
+        conn.execute(text("DELETE FROM tracebi_live_events WHERE at < :cutoff"),
+                     {"cutoff": cutoff})
+        conn.execute(
+            text("INSERT INTO tracebi_live_events (watch, at, entry) "
+                 "VALUES (:watch, :at, :entry)"),
+            {"watch": watch, "at": now.isoformat(timespec="seconds"),
+             "entry": json.dumps(entry, default=str)})
+
+
+def live_events(watch: str, after: int = 0, url: Optional[str] = None) -> list[dict]:
+    """The events of watch feed *watch* after id *after*, oldest first. Each
+    is its entry plus ``seq`` (the row id) and ``at``."""
+    from sqlalchemy import text
+
+    eng = ensure(url)
+    with eng.connect() as conn:
+        rows = conn.execute(
+            text("SELECT id, at, entry FROM tracebi_live_events "
+                 "WHERE watch = :watch AND id > :after ORDER BY id LIMIT 200"),
+            {"watch": watch, "after": int(after)}).mappings().all()
+    return [{**json.loads(r["entry"]), "seq": r["id"], "at": r["at"]} for r in rows]

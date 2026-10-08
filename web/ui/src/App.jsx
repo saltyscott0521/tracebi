@@ -13,6 +13,7 @@ import Pipelines from './pages/Pipelines'
 import Explore from './pages/Explore'
 import Verify from './pages/Verify'
 import Runs from './pages/Runs'
+import Live from './pages/Live'
 
 // Every page under the model switcher has two addresses: one model
 // (/m/<model>/<page>) and all models (/<page>). See nav.js.
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/runs" element={<AllModels pageKey="runs"><Runs /></AllModels>} />
 
           <Route path="/verify" element={<Verify />} />
+          <Route path="/live/:watch" element={<Live />} />
           <Route path="/getting-started" element={<GettingStarted />} />
           <Route path="/handbook" element={<Docs />} />
           <Route path="/workflow" element={<Navigate to="/getting-started#phases" replace />} />

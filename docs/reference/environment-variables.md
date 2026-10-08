@@ -89,12 +89,14 @@ and does not call Slack.
 
 | Variable | Meaning |
 | --- | --- |
-| `TRACEBI_MCP_TOKEN` | bearer token for `tracebi mcp --transport http` |
+| `TRACEBI_MCP_TOKEN` | bearer token for `tracebi mcp --transport http`. Set on the web app, it also serves the gateway at `/mcp` behind the same token, and each MCP session there gets a private watch link (`/live/<id>`). |
 | `TRACEBI_MCP_ACTOR` | audit attribution for gateway work (default `agent`) |
 | `TRACEBI_MCP_LOG` | `1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl`: tool, ok or error, duration, actor, argument **names**. Never argument values or results. Off by default; local only. Read it with `tracebi agent log`. |
 
 The http transport **refuses to start** until you either set the token or pass
-`--insecure` deliberately.
+`--insecure` deliberately. The web app has no insecure mode: without the token
+it serves no `/mcp`. Its watch links use `TRACEBI_PUBLIC_URL` (as the alert
+links do) when set, and a path on the same host otherwise.
 
 ## Updates
 

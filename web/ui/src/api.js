@@ -357,3 +357,35 @@ export const useRuns = (kind, target) =>
       return get('/runs' + (q ? `?${q}` : ''))
     },
   })
+
+/**
+ * What one MCP session's agent has done, newest first, kept current: each
+ * poll asks only for what came after the last event it has.
+ */
+export function useLive(watch) {
+  const [events, setEvents] = useState([])
+  const [error, setError] = useState(null)
+  useEffect(() => {
+    let after = 0
+    let stopped = false
+    let timer
+    setEvents([])
+    const tick = async () => {
+      try {
+        const { events: fresh } = await get(`/live/${encodeURIComponent(watch)}?after=${after}`)
+        if (stopped) return
+        if (fresh.length) {
+          after = fresh[fresh.length - 1].seq
+          setEvents(prev => [...[...fresh].reverse(), ...prev])
+        }
+        setError(null)
+      } catch (e) {
+        if (!stopped) setError(e)
+      }
+      if (!stopped) timer = setTimeout(tick, 1500)
+    }
+    tick()
+    return () => { stopped = true; clearTimeout(timer) }
+  }, [watch])
+  return { events, error }
+}

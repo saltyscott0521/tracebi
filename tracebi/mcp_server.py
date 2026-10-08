@@ -29,11 +29,15 @@ Run it with ``tracebi mcp`` (stdio, for a local agent) or
 import base64
 import functools
 import hmac
+import inspect
 import ipaddress
 import json
 import os
 import re
+import secrets
 import sys
+import typing
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Optional, TypedDict
 
@@ -85,6 +89,26 @@ class StaticTokenVerifier:
         if not hmac.compare_digest(token.encode("utf-8"), self._token):
             return None
         return AccessToken(token=token, client_id=_mcp_actor(), scopes=[])
+
+
+#: The private watch feed of the MCP session this call belongs to, or None
+#: (stdio, a plain function call, or the stand-alone HTTP gateway).
+_WATCH: "ContextVar[Optional[str]]" = ContextVar("tracebi_mcp_watch", default=None)
+
+#: Keys watch ids when no TRACEBI_MCP_TOKEN is set: ids change on restart.
+_WATCH_KEY = secrets.token_bytes(32)
+
+
+def watch_id(session_id: str) -> str:
+    """The watch id for an MCP session: unguessable without the token, and the
+    same in every worker that shares it, so no table maps one to the other."""
+    key = os.environ.get("TRACEBI_MCP_TOKEN", "").strip().encode("utf-8") or _WATCH_KEY
+    return hmac.new(key, session_id.encode("utf-8"), "sha256").hexdigest()[:32]
+
+
+def _public_url() -> str:
+    """Where people open the app (TRACEBI_PUBLIC_URL), or "" for this host."""
+    return (os.environ.get("TRACEBI_PUBLIC_URL") or "").strip().rstrip("/")
 
 
 def _mcp_actor() -> str:
@@ -466,6 +490,7 @@ class ContextResult(TypedDict, total=False):
     connect: Any
     analyst_knowledge: Any
     brief: Any  # the omission note; null or absent when brief=false
+    watch: Any  # the private watch link; null or absent off the app's /mcp
 
 
 class ModelsResult(TypedDict, total=False):
@@ -621,6 +646,15 @@ def gateway_context(model: Optional[str] = None,
     payload = describe(brief=brief)
     if model:
         payload["model"] = _get_model(model).info()
+    watch = _WATCH.get()
+    if watch:
+        link = f"{_public_url()}/live/{watch}"
+        payload["watch"] = {
+            "url": link,
+            "tell_the_person": (
+                f"You can watch me work at {link} — the queries I run and "
+                f"the reports I build appear there as I go."),
+        }
     return payload
 
 
@@ -964,10 +998,27 @@ def _project_relative(path: str) -> str:
     return path if rel.startswith(os.pardir) else rel
 
 
-def _show_action(tool: str, text: str, frame: Optional[dict] = None) -> None:
-    """Show the person with the app open what the agent just did."""
+def _show_action(tool: str, text: str, frame: Optional[dict] = None,
+                 report: Optional[str] = None) -> None:
+    """Show the person what the agent just did: in the project feed while the
+    dev app runs, and on the session's watch link when it has one."""
     from tracebi.workbench import post_agent_action
     post_agent_action(tool, text, frame)
+    watch = _WATCH.get()
+    if not watch:
+        return
+    entry: dict[str, Any] = {"kind": "frame" if frame else "auto",
+                             "name": f"agent · {tool}", "text": text}
+    if frame:
+        entry.update(frame)
+    if report:
+        entry["report"] = report
+    try:
+        from tracebi.state import record_live
+        record_live(watch, entry)
+    except Exception as exc:  # noqa: BLE001 — watching must never fail a tool
+        print(f"[tracebi] watch event dropped: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
 
 
 def gateway_validate_spec(spec: Any) -> ValidateResult:
@@ -1317,7 +1368,8 @@ def gateway_build_report(
     result = _build_report(report, output_dir, format)
     if result.get("ok"):
         _show_action("build_report",
-                     f"Built {report} → {_project_relative(result['output_path'])}")
+                     f"Built {report} → {_project_relative(result['output_path'])}",
+                     report=report)
     else:
         _show_action("build_report", f"Build of {report} refused: "
                      + "; ".join(map(str, result.get("errors") or [])))
@@ -1397,7 +1449,7 @@ def build_server(token: Optional[str] = None):
     fail-loudly rule for optional dependencies.
     """
     try:
-        from mcp.server.mcpserver import MCPServer
+        from mcp.server.mcpserver import Context, MCPServer
         from mcp.server.mcpserver.exceptions import ToolError
         from mcp.types import ToolAnnotations
     except ImportError as exc:  # pragma: no cover — exercised by hand
@@ -1447,7 +1499,9 @@ def build_server(token: Optional[str] = None):
             "brief=true — the token-lean tier, about half the payload) — it "
             "returns the vocabulary (models, facts, dimensions, measures, "
             "the data-tb-* figure grammar) and nothing outside it will "
-            "validate. Query with query_model; every response is stamped "
+            "validate. When it returns watch, give the person watch.url "
+            "first: it is a private page where they watch your queries and "
+            "builds as you work. Query with query_model; every response is stamped "
             "with the resolved query and a fingerprint of the full result — "
             "cite the fingerprint when you quote a number, and paste the "
             "result's binding object as the value of data.<name> in "
@@ -1485,12 +1539,28 @@ def build_server(token: Optional[str] = None):
             logged = _gateway_log.logged(kwargs["name"], fn, _mcp_actor)
 
             @functools.wraps(logged)
-            def visible(*args, **kw):
+            def visible(*args, mcp_context: Context = None, **kw):
+                # Over HTTP the session id names the private watch feed the
+                # call posts to. It is never a tool argument the agent sees.
+                try:
+                    headers = mcp_context.headers if mcp_context is not None else None
+                except ValueError:      # called outside a request: no session
+                    headers = None
+                session = (headers or {}).get("mcp-session-id")
+                token = _WATCH.set(watch_id(session) if session else None)
                 try:
                     return logged(*args, **kw)
                 except Exception as exc:  # noqa: BLE001 — the client must see why
                     raise ToolError(_one_line_error(exc)) from exc
+                finally:
+                    _WATCH.reset(token)
 
+            sig = inspect.signature(fn)
+            visible.__signature__ = sig.replace(parameters=[
+                *sig.parameters.values(),
+                inspect.Parameter("mcp_context", inspect.Parameter.KEYWORD_ONLY,
+                                  default=None, annotation=Context)])
+            visible.__annotations__ = {**typing.get_type_hints(fn), "mcp_context": Context}
             return server.tool(**kwargs)(visible)
         return register
 

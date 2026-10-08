@@ -7,6 +7,7 @@ lineage, the model browser and an Explore query. The process-wide registry is
 swapped for an empty one for the journey and restored after.
 """
 
+import json
 import time
 
 import pytest
@@ -417,8 +418,6 @@ def test_the_person_watches_the_agent_work_over_mcp(served, monkeypatch, scaffol
     """With the dev app open, what an agent does over the gateway lands in the
     project feed: the query it ran (as a table) and the build it made, or the
     one it was refused. With no app open it posts nothing."""
-    import json
-
     from tracebi import mcp_server as gw
 
     feed = "/api/workbench/project"
@@ -450,3 +449,76 @@ def test_the_person_watches_the_agent_work_over_mcp(served, monkeypatch, scaffol
                                     "output/sample_model/sample_dashboard.html")
         assert shown[0]["text"].startswith("Build of sample_model/no_such_report refused: ")
         assert "fingerprint" not in json.dumps(shown), "an exhibit carries no receipt"
+
+
+def _mcp_call(client, method, params=None, session=None, token="s3cret", id=1):
+    """One JSON-RPC request to the app's /mcp: (response, the result or None)."""
+    body = {"jsonrpc": "2.0", "method": method, "params": params or {}}
+    if id is not None:
+        body["id"] = id
+    headers = {"Accept": "application/json, text/event-stream",
+               "Authorization": f"Bearer {token}"}
+    if session:
+        headers["mcp-session-id"] = session
+    resp = client.post("/mcp", json=body, headers=headers)
+    data = [json.loads(line[5:]) for line in resp.text.splitlines() if line.startswith("data:")]
+    return resp, (data[-1].get("result") if data else None)
+
+
+def _mcp_session(client):
+    resp, _ = _mcp_call(client, "initialize", {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "clientInfo": {"name": "journey", "version": "0"}})
+    session = resp.headers["mcp-session-id"]
+    _mcp_call(client, "notifications/initialized", session=session, id=None)
+    return session
+
+
+def test_an_agent_on_the_apps_mcp_hands_the_person_a_private_watch_link(served, monkeypatch):
+    """The app serves the gateway at /mcp behind the token. An agent there gets
+    a watch link from get_context; what it queries and builds appears on that
+    link's page, and only on that one: another session gets its own."""
+    pytest.importorskip("mcp")
+    from tracebi.web.api import main
+
+    monkeypatch.delenv("TRACEBI_PUBLIC_URL", raising=False)
+    route = main.serve_gateway("s3cret")
+    try:
+        with served:                  # the app's lifespan runs the MCP sessions
+            assert _mcp_call(served, "initialize", token="wrong")[0].status_code == 401
+
+            session = _mcp_session(served)
+            _, ctx = _mcp_call(served, "tools/call", {
+                "name": "get_context", "arguments": {"brief": True}}, session=session)
+            link = ctx["structuredContent"]["watch"]["url"]
+            assert link.startswith("/live/") and link in ctx["structuredContent"]["watch"]["tell_the_person"]
+            watch = link.rsplit("/", 1)[1]
+            assert served.get(f"/api/live/{watch}").json() == {"events": []}
+
+            _, info = _mcp_call(served, "tools/call", {
+                "name": "describe_model", "arguments": {"model": "sample_model"}}, session=session)
+            fact = info["structuredContent"]["facts"][0]["name"]
+            _, asked = _mcp_call(served, "tools/call", {"name": "query_model", "arguments": {
+                "model": "sample_model", "fact": fact, "measures": ["revenue"],
+                "dimensions": ["dim_region.region"], "include_lineage": False}}, session=session)
+            _, built = _mcp_call(served, "tools/call", {"name": "build_report", "arguments": {
+                "report": "sample_model/sample_dashboard"}}, session=session)
+            assert asked["structuredContent"]["ok"] and built["structuredContent"]["ok"]
+
+            events = served.get(f"/api/live/{watch}").json()["events"]     # oldest first
+            assert [e["name"] for e in events] == ["agent · query_model", "agent · build_report"]
+            assert events[0]["shape"] == [asked["structuredContent"]["row_count"], 2]
+            assert events[0]["display"], "rows are written as the report would"
+            assert events[1]["report"] == "sample_model/sample_dashboard"
+            assert served.get(f"/api/live/{watch}?after={events[0]['seq']}").json()["events"] == events[1:]
+
+            other = _mcp_session(served)
+            _, ctx2 = _mcp_call(served, "tools/call", {
+                "name": "get_context", "arguments": {"brief": True}}, session=other)
+            other_watch = ctx2["structuredContent"]["watch"]["url"].rsplit("/", 1)[1]
+            assert other_watch != watch
+            assert served.get(f"/api/live/{other_watch}").json() == {"events": []}
+            assert served.get("/api/live/not-a-watch-id").status_code == 404
+    finally:
+        main.app.router.routes.remove(route)
+        main._mcp_server = None
