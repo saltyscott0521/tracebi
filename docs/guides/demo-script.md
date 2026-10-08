@@ -93,7 +93,7 @@ Show the browser tab with `edited.html` open.
 > by accident or on purpose. Fair value now says $295 million. It looks
 > completely normal."
 
-Click **Verify a file** (under Tools in the sidebar). Drag in `edited.html`
+Click **Verify a file** (below the model's pages in the sidebar). Drag in `edited.html`
 and `edited.html.manifest.json`, then click **Verify offline**.
 
 The screen turns red: **FILE ALTERED**, with the exact figures listed.

@@ -125,13 +125,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 page.wait_for_timeout(200)
                 assert not errors, "\n".join(errors)
 
-            # Two models and no remembered pick: / opens the list of models.
+            # Two models and no remembered pick: / opens every model's reports.
             page.goto(base + "/")
-            page.get_by_role("heading", name="Data model", exact=True).wait_for()
-            assert page.url.rstrip("/").endswith("/models"), page.url
+            page.get_by_role("heading", name="Reports", exact=True).wait_for()
+            assert page.url.rstrip("/").endswith("/reports"), page.url
             fail_on_browser_errors()
 
             # Picking one scopes every page beneath the switcher to it.
+            page.goto(base + "/models")
+            page.get_by_role("heading", name="Data model", exact=True).wait_for()
             page.get_by_role("link", name="portfolio_model").first.click()
             page.wait_for_url("**/m/portfolio_model")
             page.get_by_role("link", name="Explore", exact=True).click()
@@ -140,9 +142,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert page.get_by_label("Model").input_value() == "portfolio_model"
             fail_on_browser_errors()
 
-            # The pick is remembered: / now opens that model.
+            # The pick is remembered: / now opens that model's reports.
             page.goto(base + "/")
-            page.wait_for_url("**/m/portfolio_model")
+            page.wait_for_url("**/m/portfolio_model/reports")
 
             # Old addresses land on the page that replaced them.
             page.goto(base + "/models/portfolio_model?tab=refresh")

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useModels } from '../api'
-import { GROUPS, PAGES, pagePath, lastModel } from '../nav'
+import { PAGES, pagePath, lastModel } from '../nav'
 import { ModelSwitcher, useScope } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
@@ -35,11 +35,6 @@ const ICONS = {
       <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
     </svg>
   ),
-  guide: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
-    </svg>
-  ),
   workflow: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path d="M3 4.5A1.5 1.5 0 014.5 3h2A1.5 1.5 0 018 4.5v2A1.5 1.5 0 016.5 8h-2A1.5 1.5 0 013 6.5v-2zM12 13.5a1.5 1.5 0 011.5-1.5h2a1.5 1.5 0 011.5 1.5v2a1.5 1.5 0 01-1.5 1.5h-2a1.5 1.5 0 01-1.5-1.5v-2z" />
@@ -64,12 +59,15 @@ const ICONS = {
 }
 
 // Beneath the switcher: the same pages for every model (nav.js). Below them,
-// the things that are about no one model.
-const NAV_TOOLS = [
-  { path: '/verify',          label: 'Verify a file', icon: 'verify' },
-  { path: '/getting-started', label: 'Get started',   icon: 'guide' },
-  { path: '/handbook',        label: 'Docs',          icon: 'docs' },
+// the one page about no model: a file can come from anywhere.
+const NAV_UNSCOPED = [
+  { path: '/verify', label: 'Verify a file', icon: 'verify' },
 ]
+
+// Help is not a place you work in, so it sits in the footer. Get started and
+// the Docs it links to are one entry, marked current on either (a NavLink
+// would only mark its own path).
+const HELP_PATHS = ['/getting-started', '/handbook']
 
 /**
  * The model the sidebar's links are about: the one in the URL; on a page
@@ -192,6 +190,8 @@ export default function Layout({ children }) {
   }, [dark, chose])
 
   const close = () => setOpen(false)
+  const { pathname } = useLocation()
+  const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
   const model = useSidebarModel()
   const { data: modelList } = useModels()
   const multi = (modelList || []).length > 1
@@ -289,7 +289,6 @@ export default function Layout({ children }) {
               </div>
             </div>
           </div>
-          <ModelSwitcher model={model} onNavigate={close} />
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
             style={{
@@ -311,16 +310,16 @@ export default function Layout({ children }) {
               borderRadius: 3, color: 'var(--sidebar-text)',
             }}>⌘K</kbd>
           </button>
+          <ModelSwitcher model={model} onNavigate={close} />
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          {GROUPS.map(g => (
-            <NavSection key={g.key} label={g.label} onNavigate={close}
-              items={PAGES.filter(p => p.group === g.key).map(p => ({
-                path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
-              }))} />
-          ))}
-          <NavSection label="Tools" items={NAV_TOOLS} onNavigate={close} />
+          <NavSection onNavigate={close}
+            items={PAGES.map(p => ({
+              path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
+            }))} />
+          <div style={{ borderTop: '1px solid var(--sidebar-border)', margin: '0 16px' }} />
+          <NavSection items={NAV_UNSCOPED} onNavigate={close} />
         </div>
 
         <div style={{
@@ -332,6 +331,17 @@ export default function Layout({ children }) {
               display: 'inline-block', width: 6, height: 6,
               borderRadius: '50%', background: 'var(--green)', flexShrink: 0,
             }} />
+            <Link to="/getting-started" onClick={close}
+              aria-current={inHelp ? 'page' : undefined}
+              className="nav-link"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 12, textDecoration: 'none', borderRadius: 5, padding: '3px 6px',
+                color: inHelp ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+                background: inHelp ? 'var(--sidebar-active)' : 'transparent',
+              }}>
+              {ICONS.docs}Help
+            </Link>
             {version ? (
               <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v{version}</span>
             ) : null}

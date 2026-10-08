@@ -26,7 +26,7 @@ export function ModelSwitcher({ model, onNavigate }) {
 
   const go = next => {
     rememberModel(next)
-    navigate(pagePath(current || 'model', next))
+    navigate(pagePath(current || 'reports', next))
     onNavigate?.()
   }
   return (
@@ -95,15 +95,15 @@ export function OneModel({ children }) {
   return children(model)
 }
 
-/** `/`: the model you were last in, the only model, or the list of models. */
+/** `/`: the reports of the model you were last in, of the only model, or of all. */
 export function Home() {
   const { data, isLoading } = useModels()
   if (isLoading) return <SkeletonCard />
   const names = (data || []).map(m => m.name)
   const last = lastModel()
-  if (names.includes(last)) return <Navigate to={pagePath('model', last)} replace />
-  if (names.length === 1) return <Navigate to={pagePath('model', names[0])} replace />
-  return <Navigate to="/models" replace />
+  if (names.includes(last)) return <Navigate to={pagePath('reports', last)} replace />
+  if (names.length === 1) return <Navigate to={pagePath('reports', names[0])} replace />
+  return <Navigate to="/reports" replace />
 }
 
 /** Old URLs keep working: they land on the page that replaced them. */
