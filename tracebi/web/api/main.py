@@ -64,6 +64,7 @@ async def _lifespan(app):
     server runs.
     TRACEBI_DISCOVERY_INTERVAL sets the seconds between scans (default 5;
     0 turns it off)."""
+    from tracebi.connections import connections_dir
     from tracebi.web.discovery import start_watcher
 
     try:
@@ -75,7 +76,8 @@ async def _lifespan(app):
         stop = start_watcher(os.environ.get("TRACEBI_REPORTS_DIR", "reports"),
                              os.environ.get("TRACEBI_MODELS_DIR", "models"),
                              interval,
-                             os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
+                             os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"),
+                             str(connections_dir()))
     stop_beat = _start_feed_heartbeat() if os.environ.get("TRACEBI_DEV_MODE") == "1" else None
     try:
         async with server_lifespan(app), _mcp_sessions():
@@ -431,6 +433,16 @@ if _lib_discovered:
     print(f"[tracebi] auto-discovered {len(_lib_discovered)} module(s) "
           f"from the report library")
 
+# Connections discovery — each connections/<name>.yaml declares a source. Done
+# before models so the Sources page lists them; nothing is resolved or opened.
+from tracebi.connections import connections_dir as _connections_dir
+_conn_dir = str(_connections_dir())
+if os.path.isdir(_conn_dir):
+    from tracebi.web.discovery import register_connections as _register_connections
+    _disc_conns = _register_connections(_conn_dir)
+    if _disc_conns:
+        print(f"[tracebi] auto-discovered {len(_disc_conns)} connection(s) from {_conn_dir}")
+
 # Models discovery — each models/<name>.py exposes a `model` variable.
 _models_dir = os.environ.get("TRACEBI_MODELS_DIR", "models")
 if os.path.isdir(_models_dir):
@@ -440,7 +452,8 @@ if os.path.isdir(_models_dir):
     if _disc_models:
         print(f"[tracebi] auto-discovered {len(_disc_models)} model(s) from {_models_dir}")
 
-# Pipelines discovery — each pipelines/<name>.py exposes a `runner` variable.
+# Pipelines discovery — each pipelines/<name>.py exposes a `runner` variable;
+# a pipelines/<name>.yaml compiles to one.
 _pipelines_dir = os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines")
 if os.path.isdir(_pipelines_dir):
     # The same registration live discovery repeats while the server runs.

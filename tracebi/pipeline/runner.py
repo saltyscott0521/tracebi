@@ -44,6 +44,7 @@ class _LayerReg:
     schedule: Optional[str]
     depends_on: Optional[str]
     layer_type: str
+    chain: bool = False
 
 
 class _StepResult:
@@ -253,6 +254,7 @@ class PipelineRunner:
         depends_on: Optional[str] = None,
         schedule: Optional[str] = None,
         label: str = "step",
+        chain: bool = False,
     ) -> "PipelineRunner":
         """
         Register any function as a step, beside (or instead of) the medallion
@@ -264,9 +266,15 @@ class PipelineRunner:
 
             runner.register_step("transform", run_transform)
             runner.register_step("build", build_reports, depends_on="transform")
+
+        With ``chain=True`` a scheduled firing runs the step's upstream chain
+        first (what ``run(name, refresh=True)`` does), so one cron line
+        refreshes a whole transform → build pipeline.
         """
-        return self.register(_StepLayer(fn, label), name=name,
-                             schedule=schedule, depends_on=depends_on)
+        self.register(_StepLayer(fn, label), name=name,
+                      schedule=schedule, depends_on=depends_on)
+        self._layers[name].chain = chain
+        return self
 
     def register_model(self, model) -> "PipelineRunner":
         """
@@ -394,7 +402,7 @@ class PipelineRunner:
                 )
             minute, hour, day, month, dow = parts
             self._scheduler.add_job(
-                func=lambda n=name: self._execute(n),
+                func=lambda n=name, c=reg.chain: self.run(n, refresh=c),
                 trigger="cron",
                 minute=minute,
                 hour=hour,

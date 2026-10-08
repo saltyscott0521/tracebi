@@ -6,8 +6,9 @@ YAML is the human form of the same schema: comments, no quoting, one loader
 last-wins). The document mirrors the :class:`DataModel` builder calls one to one, so a model
 can be drafted without running anyone's Python. The schema is closed —
 unknown keys are errors — and carries no credentials: a connector is either a
-DuckDB file under the project, or a reference to a ``models/_connections/<x>.py``
-that ``tracebi connect`` wrote (the secret stays in ``.env``).
+DuckDB file under the project, or a reference (``connection: <x>``) to
+``connections/<x>.yaml`` or, failing that, the legacy
+``models/_connections/<x>.py``; either way the secret stays in ``.env``.
 
 Loading is as lazy as the Python form: building the :class:`DataModel` reads
 no rows. A query is what opens the warehouse.
@@ -168,11 +169,11 @@ def validate_model_spec(doc: Any) -> list[str]:
             conn = c["connection"]
             if not isinstance(conn, str) or not _NAME.fullmatch(conn):
                 errors.append(f"{path}.connection: must name a "
-                              "models/_connections/<name>.py (letters, digits, "
+                              "connections/<name>.yaml (letters, digits, "
                               "underscore)")
         elif c.get("type") != "duckdb":
             errors.append(f"{path}.type: must be 'duckdb' (or give 'connection' "
-                          f"to reuse models/_connections/<name>.py), got "
+                          f"to reuse connections/<name>.yaml), got "
                           f"{c.get('type')!r}")
         else:
             db = c.get("database")
@@ -248,18 +249,25 @@ def validate_model_spec(doc: Any) -> list[str]:
 
 def _connector(c: dict, root: Path):
     if "connection" in c:
-        path = root / "models" / "_connections" / f"{c['connection']}.py"
-        if not path.is_file():
-            raise ValueError(f"connector '{c['name']}': models/_connections/"
-                             f"{c['connection']}.py does not exist (run "
-                             f"`tracebi connect {c['connection']}`)")
-        connector = runpy.run_path(str(path)).get("connector")
-        if connector is None:
-            raise ValueError(f"{path} does not define 'connector'")
+        from tracebi.connections import connection_file, load_connection
+
+        declared = connection_file(c["connection"], root)
+        if declared is not None:
+            connector = load_connection(declared, root)
+            where = f"connections/{declared.name}"
+        else:
+            path = root / "models" / "_connections" / f"{c['connection']}.py"
+            if not path.is_file():
+                raise ValueError(f"connector '{c['name']}': connections/"
+                                 f"{c['connection']}.yaml does not exist (run "
+                                 f"`tracebi connect {c['connection']}`)")
+            connector = runpy.run_path(str(path)).get("connector")
+            if connector is None:
+                raise ValueError(f"{path} does not define 'connector'")
+            where = f"models/_connections/{c['connection']}.py"
         if connector.name != c["name"]:
-            raise ValueError(f"connector '{c['name']}': models/_connections/"
-                             f"{c['connection']}.py builds a connector named "
-                             f"'{connector.name}'")
+            raise ValueError(f"connector '{c['name']}': {where} builds a "
+                             f"connector named '{connector.name}'")
         return connector
     from tracebi.connectors.duckdb_connector import DuckDBConnector
 

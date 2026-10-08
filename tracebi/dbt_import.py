@@ -20,7 +20,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from tracebi.connect import _is_key_column, _summable, connection_path
+from tracebi.connect import _find_connection, _is_key_column, _summable
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _NUMERIC = {
@@ -84,10 +84,10 @@ def import_dbt_command(args) -> int:
                 file=sys.stderr,
             )
             return 2
-        conn_path = connection_path(models_dir, connection)
-        if not conn_path.is_file():
+        conn_path = _find_connection(models_dir, connection)
+        if conn_path is None:
             problems.append(
-                f"connection {connection!r} not found at {conn_path} — "
+                f"connection {connection!r} not found in connections/ — "
                 f"run `tracebi connect {connection}` first"
             )
     out_path = models_dir / f"{slug}.py"
@@ -101,7 +101,8 @@ def import_dbt_command(args) -> int:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
-        _model_source(slug, connection or None, models),
+        _model_source(slug, connection or None, models,
+                      declared=bool(connection) and conn_path.suffix != ".py"),
         encoding="utf-8",
     )
     print(f"Created {out_path}")
@@ -230,7 +231,8 @@ def _numeric(dtype: str) -> bool:
     return head in _NUMERIC
 
 
-def _model_source(slug: str, connection: str | None, models: list[dict]) -> str:
+def _model_source(slug: str, connection: str | None, models: list[dict],
+                  declared: bool = False) -> str:
     lines = [
         '"""',
         slug,
@@ -249,17 +251,30 @@ def _model_source(slug: str, connection: str | None, models: list[dict]) -> str:
         "",
     ]
     if connection:
-        rel = f"_connections/{connection}.py"
+        if declared:
+            wire = [
+                "import os",
+                "",
+                "from tracebi import DataModel",
+                "from tracebi.connections import connection_file, load_connection",
+                "",
+                "ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))",
+                f"connector = load_connection(connection_file({connection!r}, ROOT), ROOT)",
+            ]
+        else:
+            wire = [
+                "import os",
+                "import runpy",
+                "",
+                "from tracebi import DataModel",
+                "",
+                "_conn = runpy.run_path(os.path.join(",
+                "    os.path.dirname(os.path.abspath(__file__)),",
+                f"    {f'_connections/{connection}.py'!r}))",
+                'connector = _conn["connector"]',
+            ]
         lines.extend([
-            "import os",
-            "import runpy",
-            "",
-            "from tracebi import DataModel",
-            "",
-            "_conn = runpy.run_path(os.path.join(",
-            "    os.path.dirname(os.path.abspath(__file__)),",
-            f"    {rel!r}))",
-            'connector = _conn["connector"]',
+            *wire,
             "",
             "# Importing this file must not query the warehouse. A query connects.",
             "",

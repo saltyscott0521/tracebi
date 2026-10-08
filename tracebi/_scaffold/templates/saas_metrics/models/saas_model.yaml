@@ -1,0 +1,89 @@
+# Phase ② — MODEL. SaaS metrics template.
+#
+# A star schema over the warehouse phase ① sank. Grain is one row per
+# account per month, including the churn month and the inactive months
+# after it, so every account is still present at the latest snapshot.
+#
+# Ending MRR and customer count are period-end balances: summed across
+# plans and cohorts, taken at the latest month in the query. They are not
+# summed across months. Logo churn is logos lost divided by logos at the
+# start of that same month — a ratio of totals, not a mean of per-account
+# rates. The cohort dimension is the signup month, so a report can cut
+# those balances by cohort without treating cohort as the time axis.
+#
+#     from tracebi.model_registry import get_model
+#     model = get_model("saas_model")
+#
+# Next step on your own warehouse: `tracebi connect <name> --kind ...`,
+# then point `connection:` below at it and re-point the `source:` names (or
+# draft a new model with `tracebi new-model --from`).
+
+name: saas_model
+
+# connectors: where the tables live. `connection: warehouse` is
+# connections/warehouse.yaml (a DuckDB file here). For a database you already
+# have, `tracebi connect` writes one, with its secrets as ${ENV_VAR}.
+connectors:
+  - name: warehouse
+    connection: warehouse
+
+# tables: each table the phase-1 transform sank, by its warehouse name
+tables:
+  - name: fact_account_month
+    connector: warehouse
+    source: fact_account_month
+  - name: dim_month
+    connector: warehouse
+    source: dim_month
+  - name: dim_plan
+    connector: warehouse
+    source: dim_plan
+  - name: dim_cohort
+    connector: warehouse
+    source: dim_cohort
+
+# dimensions: the descriptive tables (key column, attributes to slice by)
+dimensions:
+  - name: dim_month
+    table: dim_month
+    key: month_id
+    attributes: [month]
+  - name: dim_plan
+    table: dim_plan
+    key: plan_id
+    attributes: [plan]
+  - name: dim_cohort
+    table: dim_cohort
+    key: cohort_id
+    attributes: [cohort]
+
+# facts: the event tables (numeric columns, key to each dimension)
+facts:
+  - name: fact_account_month
+    table: fact_account_month
+    measures: [mrr, active, churned, starting]
+    foreign_keys:
+      dim_month: month_id
+      dim_plan: plan_id
+      dim_cohort: cohort_id
+
+# measures: the named vocabulary reports ask for
+measures:
+  - name: ending_mrr
+    period_end: [mrr, dim_month.month]
+    description: Ending MRR at the latest month in the query
+    format: currency0
+  - name: customers
+    period_end: [active, dim_month.month]
+    description: Logos active at the latest month in the query
+    format: comma
+  - name: churned_logos
+    period_end: [churned, dim_month.month]
+    description: Logos that churned in the latest month of the query
+  - name: starting_logos
+    period_end: [starting, dim_month.month]
+    description: Logos that were customers at the start of that month
+  - name: logo_churn
+    ratio: [churned_logos, starting_logos]
+    description: 'Logo churn: logos lost / logos at the start of the month (ratio of totals)'
+    format: percent

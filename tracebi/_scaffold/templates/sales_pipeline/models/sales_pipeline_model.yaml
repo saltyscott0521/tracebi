@@ -1,0 +1,92 @@
+# Phase ② — MODEL. Sales pipeline template.
+#
+# A star schema over the warehouse phase ① sank. Grain is one row per
+# opportunity. Stage, rep, and region are the cuts.
+#
+# Open pipeline value is the sum of amounts still in an open stage. Won
+# and lost deals contribute zero, so the total is not a sum of every
+# deal's original amount. Win rate is won deals divided by closed deals
+# (won plus lost) — a ratio of those totals. It is not the mean of
+# per-rep win rates, which would weight a rep with one close the same as
+# a rep with many.
+#
+#     from tracebi.model_registry import get_model
+#     model = get_model("sales_pipeline_model")
+#
+# Next step on your own warehouse: `tracebi connect <name> --kind ...`,
+# then point `connection:` below at it and re-point the `source:` names (or
+# draft a new model with `tracebi new-model --from`).
+
+name: sales_pipeline_model
+
+# connectors: where the tables live. `connection: warehouse` is
+# connections/warehouse.yaml (a DuckDB file here). For a database you already
+# have, `tracebi connect` writes one, with its secrets as ${ENV_VAR}.
+connectors:
+  - name: warehouse
+    connection: warehouse
+
+# tables: each table the phase-1 transform sank, by its warehouse name
+tables:
+  - name: fact_opportunity
+    connector: warehouse
+    source: fact_opportunity
+  - name: dim_stage
+    connector: warehouse
+    source: dim_stage
+  - name: dim_rep
+    connector: warehouse
+    source: dim_rep
+  - name: dim_region
+    connector: warehouse
+    source: dim_region
+
+# dimensions: the descriptive tables (key column, attributes to slice by)
+dimensions:
+  - name: dim_stage
+    table: dim_stage
+    key: stage_id
+    attributes: [stage]
+  - name: dim_rep
+    table: dim_rep
+    key: rep_id
+    attributes: [rep]
+  - name: dim_region
+    table: dim_region
+    key: region_id
+    attributes: [region]
+
+# facts: the event tables (numeric columns, key to each dimension)
+facts:
+  - name: fact_opportunity
+    table: fact_opportunity
+    measures: [amount, pipeline_amount, won, closed, won_amount]
+    foreign_keys:
+      dim_stage: stage_id
+      dim_rep: rep_id
+      dim_region: region_id
+
+# measures: the named vocabulary reports ask for
+measures:
+  - name: pipeline_value
+    column: pipeline_amount
+    agg: sum
+    description: 'Open pipeline: sum of amounts on deals still open'
+    format: currency0
+  - name: won_deals
+    column: won
+    agg: sum
+    description: Deals with status won
+  - name: closed_deals
+    column: closed
+    agg: sum
+    description: Deals closed won or lost; the win-rate denominator
+  - name: won_value
+    column: won_amount
+    agg: sum
+    description: Amount on won deals
+    format: currency0
+  - name: win_rate
+    ratio: [won_deals, closed_deals]
+    description: 'Win rate: won deals / closed deals (ratio of totals, not a mean of per-rep rates)'
+    format: percent

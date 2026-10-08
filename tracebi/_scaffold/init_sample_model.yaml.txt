@@ -1,0 +1,60 @@
+# Phase ② — MODEL.
+#
+# A star schema over the warehouse phase ① sank into. This file is the
+# *contract*: grain, keys, and measures in a few declarative lines a reviewer
+# reads without ever opening the pandas that produced the tables.
+#
+#     from tracebi.model_registry import get_model
+#     model = get_model("sample_model")
+#
+# Loading this file does not touch the warehouse, so it loads fine before
+# phase ① has ever run; a query is what reads it.
+
+name: sample_model
+
+# connectors: where the tables live. `connection: warehouse` is
+# connections/warehouse.yaml (a DuckDB file here). For a database you already
+# have, `tracebi connect` writes one, with its secrets as ${ENV_VAR}.
+connectors:
+  - name: warehouse
+    connection: warehouse
+
+# tables: each table the phase-1 transform sank, by its warehouse name
+tables:
+  - name: fact_orders
+    connector: warehouse
+    source: fact_orders
+  - name: dim_region
+    connector: warehouse
+    source: dim_region
+
+# dimensions: the descriptive tables (key column, attributes to slice by)
+dimensions:
+  - name: dim_region
+    table: dim_region
+    key: region_id
+    attributes: [region]
+
+# facts: the event tables (numeric columns, key to each dimension)
+facts:
+  - name: fact_orders
+    table: fact_orders
+    measures: [revenue, qty]
+    foreign_keys:
+      dim_region: region_id
+
+# measures: the named vocabulary reports ask for
+measures:
+  - name: revenue
+    column: revenue
+    agg: sum
+    description: Total revenue
+    format: currency0
+  - name: units
+    column: qty
+    agg: sum
+    description: Units sold
+  - name: orders
+    column: order_id
+    agg: count
+    description: Order count
