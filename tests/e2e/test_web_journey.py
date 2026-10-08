@@ -499,3 +499,59 @@ def test_the_app_serves_the_agent_gateway_behind_its_token(served):
     finally:
         main.app.router.routes.remove(route)
         main._mcp_server = None
+
+
+def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, scaffolded):
+    """The remote-authoring loop over the real /mcp and the real app: start a
+    draft from a published report, change it, preview it, publish it. The
+    published file has the change, the old version is kept, and the Runs list
+    says who published."""
+    pytest.importorskip("mcp")
+    from tracebi.web.api import main
+
+    def call(session, name, **arguments):
+        _, got = _mcp_call(served, "tools/call", {"name": name, "arguments": arguments},
+                           session=session)
+        return got["structuredContent"]
+
+    path = "sample_model/sample_dashboard"
+    published = scaffolded / "reports" / path / "template.html"
+    route = main.serve_gateway("s3cret")
+    try:
+        with served:
+            session = _mcp_session(served)
+            started = call(session, "start_draft", kind="reports", path=path, from_published=True)
+            assert started["ok"], started
+            assert started["url"] == f"/drafts/agent/reports/{path}"
+
+            html = call(session, "read_draft", kind="reports", path=path)["files"]["template.html"]
+            assert html == published.read_text(encoding="utf-8")
+            changed = html + "\n<p>a note added in the draft</p>\n"
+            assert call(session, "write_draft_file", kind="reports", path=path,
+                        file="template.html", content=changed)["ok"]
+            assert call(session, "preview_draft", kind="reports", path=path)["ok"]
+            refused = call(session, "write_draft_file", kind="reports", path=path,
+                           file="report.py", content="print(1)")
+            assert not refused["ok"] and "report.py" in refused["errors"][0]
+
+            listed = served.get("/api/drafts").json()["drafts"]
+            assert [(d["owner"], d["kind"], d["path"], d["differs_from_published"])
+                    for d in listed] == [("agent", "reports", path, True)]
+            page = served.get(f"/api/drafts/agent/reports/{path}/preview")
+            assert page.status_code == 200
+            assert "a note added in the draft" in page.text
+            assert page.headers["cache-control"] == "no-store"
+            assert "a note added in the draft" not in published.read_text(encoding="utf-8")
+
+            done = call(session, "publish_draft", kind="reports", path=path, note="adds a note")
+            assert done["ok"], done
+            assert published.read_text(encoding="utf-8") == changed
+            kept = scaffolded / ".tracebi" / "history" / "reports" / path / done["version"]
+            assert (kept / "template.html").read_text(encoding="utf-8") == html
+
+            rows = served.get("/api/runs", params={"kind": "publish"}).json()
+            assert [(r["target"], r["actor"]) for r in rows] == [(f"reports/{path}", "mcp:agent")]
+            assert rows[0]["detail"]["note"] == "adds a note"
+    finally:
+        main.app.router.routes.remove(route)
+        main._mcp_server = None
