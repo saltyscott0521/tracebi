@@ -37,6 +37,7 @@
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
@@ -293,6 +294,58 @@ and does not call Slack.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="a-sign-in-per-person">A sign-in per person</h3>
+<p>Set <code>TRACEBI_OIDC_ISSUER</code> and the web app serves <code>/mcp</code> with a sign-in per
+person (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>). Nothing is read from these variables
+when it is unset.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_OIDC_ISSUER</code></td>
+<td>the company identity provider's OIDC issuer URL (https). Turns per-person sign-in on.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_OIDC_CLIENT_ID</code> / <code>TRACEBI_OIDC_CLIENT_SECRET</code></td>
+<td>the one app registration at the provider. Both required once the issuer is set.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_OIDC_SCOPES</code></td>
+<td>scopes asked of the provider (default <code>openid email profile</code>; <code>openid</code> is always included)</td>
+</tr>
+<tr>
+<td><code>TRACEBI_OIDC_GROUPS_CLAIM</code></td>
+<td>the ID-token claim that lists the person's groups (default <code>groups</code>)</td>
+</tr>
+<tr>
+<td><code>TRACEBI_OIDC_ROLE_MAP</code></td>
+<td><code>group:role</code> pairs, comma separated, e.g. <code>bi-admins:admin,bi-analysts:analyst</code>. The highest matching role wins. A bad entry stops startup.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_OIDC_DEFAULT_ROLE</code></td>
+<td>role for a person in no mapped group (default <code>viewer</code>)</td>
+</tr>
+<tr>
+<td><code>TRACEBI_PUBLIC_URL</code></td>
+<td>the address people reach this server at. The MCP address is its origin plus <code>/mcp</code>.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_PUBLIC_MCP_URL</code></td>
+<td>the public MCP address when it is not <code>&lt;TRACEBI_PUBLIC_URL origin&gt;/mcp</code>. Must equal what you give ChatGPT or Claude.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_OAUTH_REDIRECTS</code></td>
+<td>extra exact redirect URIs a connector may return to, comma separated. Claude's and ChatGPT's callbacks and loopback addresses on any port are always allowed.</td>
+</tr>
+</tbody>
+</table>
+<p><code>TRACEBI_MCP_TOKEN</code> keeps working beside it, for automation, acting as
+<code>TRACEBI_MCP_ACTOR</code> with the <code>analyst</code> role.</p>
 <p>The http transport <strong>refuses to start</strong> until you either set the token or pass
 <code>--insecure</code> deliberately. The web app has no insecure mode: without the token
 it serves no <code>/mcp</code>.</p>

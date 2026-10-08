@@ -89,9 +89,44 @@ class StaticTokenVerifier:
         return AccessToken(token=token, client_id=_mcp_actor(), scopes=[])
 
 
+def _caller() -> tuple[str, Optional[str]]:
+    """``(actor, role)`` behind the tool call being served.
+
+    With per-person sign-in the verified token names the person (their
+    identity provider login) and the role their groups map to; everyone else
+    (stdio, the static token) is the configured ``TRACEBI_MCP_ACTOR`` with no
+    role claim. Claims come only from this process's own token verifier.
+    """
+    claims: dict = {}
+    try:
+        from mcp.server.auth.middleware.auth_context import get_access_token
+        token = get_access_token()
+        claims = (token.claims or {}) if token is not None else {}
+    except ImportError:  # the optional mcp package is absent
+        pass
+    return (claims.get("tracebi_actor")
+            or f"mcp:{os.environ.get('TRACEBI_MCP_ACTOR', 'agent')}",
+            claims.get("tracebi_role"))
+
+
 def _mcp_actor() -> str:
     """The identity recorded against this gateway's work."""
-    return f"mcp:{os.environ.get('TRACEBI_MCP_ACTOR', 'agent')}"
+    return _caller()[0]
+
+
+def _acting():
+    """The audit actor scope for one gateway operation: the person, with role."""
+    who, role = _caller()
+    return actor(who, role=role)
+
+
+#: Tools that write (an artifact, pins.json, a draft) or publish. A viewer
+#: reads and computes; these are refused for that role. Tests check this set
+#: against the tools' own readOnlyHint, so a new write tool cannot be forgotten.
+_WRITE_TOOLS = frozenset({
+    "render_report_spec", "resolve_pin", "build_report", "start_draft",
+    "write_draft_file", "preview_draft", "publish_draft",
+})
 
 
 def _models_dir() -> Path:
@@ -885,7 +920,7 @@ def _query(
     except Exception as exc:  # noqa: BLE001 — a malformed query is data, not a crash
         return {"ok": False, "errors": [f"invalid query: {exc}"]}
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             ds = m.execute(spec)
     except Exception as exc:  # noqa: BLE001 — a bad fact/dim/filter is data
         return {"ok": False, "errors": [str(exc)]}
@@ -1038,7 +1073,7 @@ def _render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
         html_path = out_dir / f"{_slug(rs.name)}.html"
         manifest_path = out_dir / f"{_slug(rs.name)}.manifest.json"
 
-        with actor(_mcp_actor()):
+        with _acting():
             # One report form: compile the spec to the artifact package and
             # render it through the same path as a hand-authored package, so a
             # spec gets figures, badges, the receipt drawer, and a schema-2
@@ -1133,7 +1168,7 @@ def gateway_verify_manifest(manifest: Any) -> VerifyResult:
         ]}
 
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             return verify_manifest(manifest, load_models())
     except Exception as exc:  # noqa: BLE001 — corrupt receipts are data, not crashes
         return {"ok": False, "errors": [
@@ -1161,7 +1196,7 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     from tracebi.workbench import DISCOVERY_NAME, collect_discovery_state, collect_state
 
     if not report or report == DISCOVERY_NAME:
-        with actor(_mcp_actor()):
+        with _acting():
             return collect_discovery_state(os.getcwd(), _load_models())
     # A caller-supplied name must never become a path: without this,
     # report='/etc/x' or '../../x' would escape reports/ and collect_state
@@ -1175,7 +1210,7 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
             f"no artifact package at {opened.path} — workbench_state applies to "
             f"reports/<name>/ packages"
         ]}
-    with actor(_mcp_actor()):
+    with _acting():
         return collect_state(str(opened.package_dir), _load_models())
 
 
@@ -1205,7 +1240,7 @@ def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinR
         name = report
     wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(os.getcwd(), name)
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             moved = resolve_pin(wb, pin_id, note=note)
     except ValueError as exc:
         return {"ok": False, "errors": [str(exc)]}
@@ -1270,7 +1305,7 @@ def _build_report(
     pdf = out_dir / f"{report}.pdf"
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             package = TemplatePackage(str(opened.package_dir))
             models = _load_models()
             manifest = package.render(models, str(output))
@@ -1414,7 +1449,7 @@ def _draft_call(fn, *args, **kwargs) -> DraftResult:
     """Run one draft operation as the MCP actor; a refusal is a result."""
     from tracebi.drafts import DraftError
     try:
-        with actor(_mcp_actor()):
+        with _acting():
             return {"ok": True, **fn(*args, **kwargs)}
     except DraftError as exc:
         return {"ok": False, "errors": [str(exc)]}
@@ -1471,13 +1506,16 @@ def gateway_publish_draft(kind: str, path: str, note: str = "") -> DraftResult:
     return result
 
 
-def build_server(token: Optional[str] = None):
+def build_server(token: Optional[str] = None, oauth=None):
     """
     Register the gateway operations as MCP tools.
 
     With *token*, the streamable-http transport requires
     ``Authorization: Bearer <token>`` on every request (401 otherwise),
-    via the SDK's own ``token_verifier`` hook; stdio ignores it.
+    via the SDK's own ``token_verifier`` hook; stdio ignores it. With
+    *oauth* (a ``tracebi.mcp_oauth.GatewayOAuth``) every request needs a
+    TraceBi access token for a signed-in person, and *token*, if also given,
+    stays accepted for automation (as ``TRACEBI_MCP_ACTOR``, role analyst).
 
     The only place the optional ``mcp`` package is imported, per the
     fail-loudly rule for optional dependencies.
@@ -1509,7 +1547,13 @@ def build_server(token: Optional[str] = None):
                                   idempotentHint=False, openWorldHint=False)
 
     auth_kwargs: dict[str, Any] = {}
-    if token is not None:
+    if oauth is not None:
+        auth_kwargs = {
+            "token_verifier": oauth.verifier(
+                StaticTokenVerifier(token) if token else None),
+            "auth": oauth.auth_settings(),
+        }
+    elif token is not None:
         from mcp.server.auth.settings import AuthSettings
 
         auth_kwargs = {
@@ -1571,7 +1615,16 @@ def build_server(token: Optional[str] = None):
     # plain exception is masked to "Error executing tool <name>".
     def _tool(**kwargs):
         def register(fn):
-            logged = _gateway_log.logged(kwargs["name"], fn, _mcp_actor)
+            @functools.wraps(fn)
+            def guarded(*args, **kw):
+                if kwargs["name"] in _WRITE_TOOLS and _caller()[1] == "viewer":
+                    raise PermissionError(
+                        f"your role (viewer) may read and query but not call "
+                        f"{kwargs['name']}, which writes. Ask an admin to map "
+                        f"your group to analyst.")
+                return fn(*args, **kw)
+
+            logged = _gateway_log.logged(kwargs["name"], guarded, _mcp_actor)
 
             @functools.wraps(logged)
             def visible(*args, **kw):

@@ -93,6 +93,27 @@ and does not call Slack.
 | `TRACEBI_MCP_ACTOR` | audit attribution for gateway work (default `agent`) |
 | `TRACEBI_MCP_LOG` | `1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl`: tool, ok or error, duration, actor, argument **names**. Never argument values or results. Off by default; local only. Read it with `tracebi agent log`. |
 
+### A sign-in per person
+
+Set `TRACEBI_OIDC_ISSUER` and the web app serves `/mcp` with a sign-in per
+person ([[connect-chatgpt-and-claude]]). Nothing is read from these variables
+when it is unset.
+
+| Variable | Meaning |
+| --- | --- |
+| `TRACEBI_OIDC_ISSUER` | the company identity provider's OIDC issuer URL (https). Turns per-person sign-in on. |
+| `TRACEBI_OIDC_CLIENT_ID` / `TRACEBI_OIDC_CLIENT_SECRET` | the one app registration at the provider. Both required once the issuer is set. |
+| `TRACEBI_OIDC_SCOPES` | scopes asked of the provider (default `openid email profile`; `openid` is always included) |
+| `TRACEBI_OIDC_GROUPS_CLAIM` | the ID-token claim that lists the person's groups (default `groups`) |
+| `TRACEBI_OIDC_ROLE_MAP` | `group:role` pairs, comma separated, e.g. `bi-admins:admin,bi-analysts:analyst`. The highest matching role wins. A bad entry stops startup. |
+| `TRACEBI_OIDC_DEFAULT_ROLE` | role for a person in no mapped group (default `viewer`) |
+| `TRACEBI_PUBLIC_URL` | the address people reach this server at. The MCP address is its origin plus `/mcp`. |
+| `TRACEBI_PUBLIC_MCP_URL` | the public MCP address when it is not `<TRACEBI_PUBLIC_URL origin>/mcp`. Must equal what you give ChatGPT or Claude. |
+| `TRACEBI_OAUTH_REDIRECTS` | extra exact redirect URIs a connector may return to, comma separated. Claude's and ChatGPT's callbacks and loopback addresses on any port are always allowed. |
+
+`TRACEBI_MCP_TOKEN` keeps working beside it, for automation, acting as
+`TRACEBI_MCP_ACTOR` with the `analyst` role.
+
 The http transport **refuses to start** until you either set the token or pass
 `--insecure` deliberately. The web app has no insecure mode: without the token
 it serves no `/mcp`.
