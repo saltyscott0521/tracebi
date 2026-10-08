@@ -70,7 +70,8 @@ class FakeIdP:
             grant = self.pending.pop(form["code"], None)
             assert grant, "unknown provider code"
             assert form["client_id"] == CLIENT_ID and form["client_secret"] == "idp-secret"
-            assert form["redirect_uri"] == f"{PUBLIC}/oauth/callback"
+            assert form["redirect_uri"] in (f"{PUBLIC}/oauth/callback",
+                                            f"{PUBLIC}/login/callback")
             assert _challenge(form["code_verifier"]) == grant["challenge"], "provider PKCE"
             return {"id_token": grant["id_token"]}
         raise AssertionError(f"unexpected fetch {url}")

@@ -39,7 +39,9 @@ exact address is what people paste into the connector. If yours differs, set
 **2. Register TraceBi at your identity provider.** One web application with a
 client secret:
 
-- Redirect URI: `https://bi.example.com/oauth/callback`
+- Redirect URI: `https://bi.example.com/oauth/callback`, and, if people also
+  sign in to the app and the CLI, `https://bi.example.com/login/callback`
+  ([[sign-in]])
 - Scopes: `openid`, `email`, `profile`
 - Send the person's groups in the ID token. In Entra: *Token configuration*,
   add a groups claim (security groups). In Okta: add a `groups` claim to the ID
@@ -63,7 +65,8 @@ stops the server at startup with the reason; it never starts half open.
 **4. Let the connectors' requests through.** If a proxy or SSO gateway sits in
 front of TraceBi, these paths must reach it without a login of their own (they
 carry their own authentication): `/mcp`, `/authorize`, `/token`, `/register`,
-`/revoke`, `/oauth/callback` and everything under `/.well-known/`. The rest of
+`/revoke`, `/oauth/callback`, `/login`, `/login/callback`, `/logout` and
+everything under `/.well-known/`. The rest of
 the app stays behind whatever you already use.
 
 **5. Use Postgres if you run more than one worker.** Clients, codes and tokens
@@ -143,6 +146,7 @@ people see it only if they are admins.
 
 ## Related
 
+- [[sign-in]] — the same login for the web app and `tracebi login`
 - [[remote-authoring]] — the design: drafts, publishing, and this sign-in
 - [[environment-variables]] — every variable above
 - [[one-server]] — hosting on one server

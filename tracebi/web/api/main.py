@@ -38,7 +38,7 @@ import os
 import sys
 import threading
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -48,6 +48,7 @@ from tracebi.web.api.routers import (
     connectors, models, reports, pipelines, docs, verify, desk, status, runs, drafts,
 )
 from tracebi.web.api.auth import install_if_configured as _install_auth
+from tracebi.web.api.sso import SessionAuthMiddleware as _SessionAuthMiddleware
 from tracebi.web.api.csrf import CSRFMiddleware as _CSRFMiddleware
 from tracebi.web.api.csrf import allowed_origins as _allowed_origins
 
@@ -160,6 +161,9 @@ app.add_middleware(_CSRFMiddleware)
 
 # Optional auth — Basic or reverse-proxy header trust, depending on env.
 _auth_mode = _install_auth(app)
+# App sign-in (OIDC): always in the stack, inert until serve_sso() turns it on,
+# so a late start (tests, an app module) needs no middleware rebuild.
+app.add_middleware(_SessionAuthMiddleware)
 if _auth_mode:
     print(f"[tracebi] auth mode: {_auth_mode}")
 else:
@@ -238,11 +242,40 @@ def unserve_gateway() -> None:
     _mcp_server = None
 
 
+def serve_sso(oauth) -> None:
+    """Turn on the app's own sign-in (/login, /logout, session cookies) over
+    *oauth*, the ``GatewayOAuth`` that holds the OIDC settings. Role
+    enforcement is on from here: the identity provider's groups decide."""
+    from tracebi.web.api import sso
+
+    app_sso = sso.AppSSO(oauth)
+    routes = app_sso.routes()
+    sso.enable(app_sso)
+    _sso_routes[:] = routes
+    app.router.routes[0:0] = routes
+
+
+def unserve_sso() -> None:
+    """Take app sign-in back out (tests; the app never does this)."""
+    from tracebi.web.api import sso
+
+    sso.enable(None)
+    for route in _sso_routes:
+        if route in app.router.routes:
+            app.router.routes.remove(route)
+    _sso_routes.clear()
+
+
+_sso_routes: list = []
+
 if os.environ.get("TRACEBI_OIDC_ISSUER", "").strip():
     from tracebi.mcp_oauth import GatewayOAuth, OAuthConfig
 
     _static = os.environ.get("TRACEBI_MCP_TOKEN", "").strip() or None
-    serve_gateway(_static, oauth=GatewayOAuth(OAuthConfig.from_env()))
+    _oauth = GatewayOAuth(OAuthConfig.from_env())
+    serve_gateway(_static, oauth=_oauth)
+    serve_sso(_oauth)
+    print("[tracebi] app sign-in: /login (OIDC; roles enforced from the provider's groups)")
     print("[tracebi] mcp gateway: /mcp (sign-in per person via TRACEBI_OIDC_ISSUER"
           + ("; static TRACEBI_MCP_TOKEN also accepted)" if _static else ")"))
 elif os.environ.get("TRACEBI_MCP_TOKEN", "").strip():
@@ -261,6 +294,15 @@ def health():
     # Resolved once at startup (FastAPI's app.version). Probes call this
     # constantly, so don't re-read package metadata on each request.
     return {"status": "ok", "version": app.version}
+
+
+@app.get("/api/me")
+def me(request: Request):
+    """Who the app thinks is asking, and how they signed in. The UI shows the
+    person (and a sign-out) only for OIDC."""
+    how = getattr(request.state, "sign_in", None) or _auth_mode or "none"
+    return {"actor": getattr(request.state, "user", None),
+            "role": getattr(request.state, "role", "admin"), "sign_in": how}
 
 
 @app.get("/api/discovery")

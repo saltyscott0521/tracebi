@@ -1,7 +1,7 @@
 """
 Optional auth for the TraceBi web layer.
 
-Two modes, mutually exclusive:
+Three modes, mutually exclusive (the third, OIDC sign-in, lives in ``sso.py``):
 
 * **Basic auth** — enabled when ``TRACEBI_AUTH_USER`` and ``TRACEBI_AUTH_PASS``
   are both set. Single shared user/password, suitable for small-team deployments.
@@ -234,9 +234,17 @@ class _Authorizer:
             return self.role_map[user]
         return self.default_role
 
-    def check(self, request: Request, user: Optional[str]) -> Optional[Response]:
-        """None when permitted, otherwise the 403 to return."""
-        role = self.role_for(request, user)
+    def check(self, request: Request, user: Optional[str],
+              role: Optional[str] = None) -> Optional[Response]:
+        """None when permitted, otherwise the 403 to return.
+
+        *role* is one the identity provider already decided (app sign-in, see
+        ``sso.py``): it is enforced as given, whatever the env-configured
+        sources say, and a name outside ROLES gets nothing."""
+        if role is None:
+            role = self.role_for(request, user)
+        elif role not in _ROLE_RANK:
+            role = "viewer"
         request.state.role = role
         needed = _required_role(request.method, request.url.path)
         if _rank(role) >= _rank(needed):
@@ -375,6 +383,9 @@ def _posture_text(mode: str, authz: _Authorizer) -> str:
         source = f"default role {authz.default_role}"
     else:
         source = "none"
+    if mode == "oidc":
+        return ("auth posture: OIDC; role source: identity provider groups "
+                "(TRACEBI_OIDC_ROLE_MAP, TRACEBI_OIDC_DEFAULT_ROLE); enforcement on")
     if mode == "off":
         # install_if_configured installs no middleware in this mode, so a
         # role map or header cannot be enforced. Naming the source above
@@ -387,7 +398,7 @@ def _posture_text(mode: str, authz: _Authorizer) -> str:
         enforcement = "enforcement on"
     else:
         enforcement = "enforcement is off: every principal is admin"
-    label = {"off": "off", "basic": "Basic", "proxy": "proxy"}[mode]
+    label = {"off": "off", "basic": "Basic", "proxy": "proxy", "oidc": "OIDC"}[mode]
     return f"auth posture: {label}; role source: {source}; {enforcement}"
 
 
@@ -400,7 +411,9 @@ def posture_line() -> str:
 
     Same words ``_log_posture`` writes. No password, token, or header value.
     """
-    if os.environ.get("TRACEBI_AUTH_PROXY_HEADER"):
+    if os.environ.get("TRACEBI_OIDC_ISSUER", "").strip():
+        mode, trust = "oidc", False
+    elif os.environ.get("TRACEBI_AUTH_PROXY_HEADER"):
         mode, trust = "proxy", True
     elif os.environ.get("TRACEBI_AUTH_USER") and os.environ.get("TRACEBI_AUTH_PASS"):
         mode, trust = "basic", False
@@ -419,6 +432,18 @@ def install_if_configured(app) -> Optional[str]:
     user = os.environ.get("TRACEBI_AUTH_USER")
     pw = os.environ.get("TRACEBI_AUTH_PASS")
     proxy_header = os.environ.get("TRACEBI_AUTH_PROXY_HEADER")
+
+    if os.environ.get("TRACEBI_OIDC_ISSUER", "").strip():
+        # App sign-in (sso.py) is the one way in. Two ways to say who a person
+        # is, on one app, would let the weaker one decide: refuse to start.
+        clash = [name for name, on in (("TRACEBI_AUTH_USER/TRACEBI_AUTH_PASS", user and pw),
+                                       ("TRACEBI_AUTH_PROXY_HEADER", proxy_header)) if on]
+        if clash:
+            raise ValueError(
+                "TRACEBI_OIDC_ISSUER turns on the app's own sign-in, which cannot run "
+                f"beside {' / '.join(clash)}. Unset one: either people sign in through "
+                "the identity provider, or the app keeps its Basic / proxy login.")
+        return "oidc"
 
     if proxy_header:
         trusted = os.environ.get("TRACEBI_AUTH_PROXY_TRUSTED_IPS", "")
