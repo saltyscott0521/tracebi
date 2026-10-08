@@ -178,16 +178,43 @@ The JSON mirrors the builder calls one to one:
 
 ## Step 2 — A sign-in per person
 
-- `/mcp` becomes an OAuth protected resource. TraceBi validates access tokens
-  issued by the company's identity provider (OIDC: Entra ID, Okta, Google) and
-  publishes its protected-resource metadata so ChatGPT and Claude connectors
-  can sign the person in. The shared token stays for local and demo use.
-- The app signs people in with the same provider (authorization code).
-- `tracebi login --server <url>` (device flow) for the CLI.
+ChatGPT and Claude connectors both sign people in with OAuth 2.1 as the MCP
+authorization spec describes: a `401` pointing at protected-resource metadata
+(RFC 9728), authorization-server metadata (RFC 8414), PKCE with S256, and a
+client identity they get on their own: a Client ID Metadata Document (CIMD,
+ChatGPT's preference) or Dynamic Client Registration (DCR). Company identity
+providers (Entra ID, Okta) usually allow neither for outside apps, and Entra
+also wants the MCP URL registered as an Application ID URI.
+
+So **TraceBi runs its own small authorization server for `/mcp`, and hands
+the actual login to the company's provider:**
+
+```
+ ChatGPT / Claude ──OAuth 2.1 (CIMD or DCR, PKCE)──► TraceBi /authorize, /token, /register
+                                                        │  "who are you?"
+                                                        ▼
+                                              company IdP (OIDC: Entra, Okta, Google)
+                                              one ordinary app registration
+```
+
+- TraceBi is an ordinary OIDC client of the company's provider (one app
+  registration, any provider). The same login signs people into the app.
+- For connectors, TraceBi's authorization server advertises CIMD
+  (`client_id_metadata_document_supported`, `none` in
+  `token_endpoint_auth_methods_supported`) and a `registration_endpoint` for
+  DCR, requires PKCE S256, issues short-lived access tokens and rotating
+  refresh tokens (`offline_access`), and answers refresh failures with
+  `invalid_grant`. The MCP SDK's authorization-server hooks host these routes.
+- Redirect URIs are allowlisted: `https://claude.ai/api/mcp/auth_callback`,
+  ChatGPT's callback, and loopback on any port for Claude Code
+  (`localhost` and `127.0.0.1`). The allowlist is configurable.
+- Grants, clients and tokens live in the run store (Alembic revision), so
+  several workers share them.
 - The provider's groups map to viewer, analyst and admin through the existing
   role map. The person is the audit actor and the drafts owner everywhere.
-- How each connector registers its client differs by provider; check the
-  current ChatGPT and Claude connector documentation when building.
+- `tracebi login --server <url>` signs the CLI in through the same server
+  (loopback redirect, as Claude Code does).
+- The shared token stays for local and demo use.
 
 ## Step 3 — Submitting from a laptop
 
