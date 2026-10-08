@@ -237,6 +237,25 @@ the actual login to the company's provider:**
 
 ---
 
+## Declarative by default (decided 2026-10-08)
+
+Everything after the sink is data, not code; only transforms stay Python
+(phase ① is unconstrained by design). That also simplifies trust: only
+transforms ever need code review and approval.
+
+| Piece | Form |
+|---|---|
+| Models | `models/<name>.yaml` (or `.json`: JSON is YAML, one loader). Python models still load, for anything exotic |
+| Sources | `connections/<name>.yaml`: a type and fields; secrets only as `${ENV_VAR}` references, never inline |
+| Pipelines | `pipelines/<name>.yaml`: the transform, the models, the reports to rebuild, the schedule |
+| Report packages | unchanged: `report.json` + HTML/CSS (`report.py` stays a laptop-only escape hatch) |
+| Transforms | Python |
+
+YAML because these files are written and reviewed by people, and a semantic
+contract needs comments (why a measure is weighted, which trap it avoids).
+`tracebi new-model` writes YAML; `tracebi migrate model models/x.py` converts
+an existing model from its loaded form.
+
 ## Order of work
 
 1. Drafts: storage, publish, MCP tools, HTTP API, the Drafts UI, the
