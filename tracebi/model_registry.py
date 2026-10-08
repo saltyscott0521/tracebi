@@ -9,7 +9,9 @@ or script::
     model = get_model("sales")        # lazy-loads models/sales.py on first call
     print(list_models())              # ["banking", "sales"]
 
-Each model file must expose a module-level ``model`` variable (a DataModel).
+A model may also be a declarative ``models/<name>.json``
+(``tracebi.model.model_spec``). Each Python model file must expose a
+module-level ``model`` variable (a DataModel).
 The registry auto-discovers ``models/`` in the current working directory on
 first access, or you can point it at a specific path with ``auto_discover()``.
 """
@@ -37,6 +39,7 @@ class ModelRegistry:
         self._origin: dict[str, str] = {}     # indexed name -> file stem
         self._mtime_ns: dict[str, int] = {}   # stem -> mtime at last good load
         self._default: Optional[str] = None
+        self._clashes: dict[str, str] = {}    # stem -> path of the refused .json
 
     # ── Registration ───────────────────────────────────────────────────────
 
@@ -53,20 +56,29 @@ class ModelRegistry:
 
     def auto_discover(self, path: str) -> list[str]:
         """
-        Record all ``*.py`` files in *path* for lazy loading.
+        Record all ``*.py`` and declarative ``*.json`` files in *path* for
+        lazy loading.
 
         Non-recursive; skips files whose names begin with ``_``. Files are
-        not imported until ``get()`` is called for that name.
+        not imported until ``get()`` is called for that name. When ``x.py``
+        and ``x.json`` both exist the Python file wins and the JSON is
+        refused (see ``clashes()``).
 
-        Returns the list of discovered stems (file names without ``.py``).
+        Returns the list of discovered stems (file names without extension).
         """
         if not os.path.isdir(path):
             return []
         found: list[str] = []
-        for entry in sorted(os.listdir(path)):
-            if entry.startswith("_") or not entry.endswith(".py"):
+        entries = sorted(os.listdir(path))
+        for entry in entries:
+            if entry.startswith("_") or not entry.endswith((".py", ".json")):
                 continue
-            stem = entry[:-3]
+            stem, ext = os.path.splitext(entry)
+            if ext == ".json" and f"{stem}.py" in entries:
+                self._clashes[stem] = os.path.join(path, entry)
+                continue
+            if ext == ".json":
+                self._clashes.pop(stem, None)
             self._paths[stem] = os.path.join(path, entry)
             if self._default is None:
                 self._default = stem
@@ -97,6 +109,11 @@ class ModelRegistry:
                     f"Model '{name}' not found. Available: {available}"
                 )
         return self._models[name]
+
+    def clashes(self) -> dict[str, str]:
+        """``{stem: path}`` of each ``<stem>.json`` refused because
+        ``<stem>.py`` exists."""
+        return dict(self._clashes)
 
     def _stem_for(self, name: str) -> Optional[str]:
         if name in self._paths:
@@ -135,6 +152,11 @@ class ModelRegistry:
     # ── Private ────────────────────────────────────────────────────────────
 
     def _load(self, stem: str, path: str) -> None:
+        if path.endswith(".json"):
+            from tracebi.model.model_spec import load_model_spec
+
+            self._publish(stem, path, load_model_spec(path))
+            return
         mod_name = f"tracebi_model_{stem}"
         spec = importlib.util.spec_from_file_location(mod_name, path)
         if spec is None or spec.loader is None:
@@ -147,7 +169,9 @@ class ModelRegistry:
                 f"Model file '{path}' must define a module-level 'model' variable "
                 "(a DataModel instance)."
             )
-        loaded = module.model
+        self._publish(stem, path, module.model)
+
+    def _publish(self, stem: str, path: str, loaded: Any) -> None:
         # Drop aliases from the previous good load of this file before
         # publishing the new object, so a renamed model does not linger.
         for key, origin in list(self._origin.items()):

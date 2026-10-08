@@ -946,7 +946,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
             try:
                 model = model_registry.get_model(name)
             except Exception as exc:  # noqa: BLE001 — reported, not raised
-                problems.append(f"✗ models/{name}.py failed to load: {exc}")
+                ext = "json" if (models_dir / f"{name}.json").is_file() else "py"
+                problems.append(f"✗ models/{name}.{ext} failed to load: {exc}")
                 continue
 
             result = model.validate()

@@ -116,7 +116,8 @@ def _one_line_error(exc: BaseException) -> str:
 
 
 def _model_file(directory: Path, stem: str) -> str:
-    return f"{directory.name}/{stem}.py"
+    ext = "json" if (directory / f"{stem}.json").is_file() else "py"
+    return f"{directory.name}/{stem}.{ext}"
 
 
 def _load_models() -> _LoadedModels:

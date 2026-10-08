@@ -22,9 +22,12 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import json
 import os
 import sys
 from typing import Optional
+
+from tracebi.model.model_spec import validate_model_spec
 
 
 # Track everything we've imported so we can reload it later.
@@ -492,14 +495,42 @@ def register_models(models_dir: str) -> list[str]:
     added: list[str] = []
     if not os.path.isdir(models_dir):
         return added
-    for stem in model_registry.auto_discover(models_dir):
+    stems = model_registry.auto_discover(models_dir)
+    for stem, path in model_registry._registry.clashes().items():
+        if os.path.abspath(os.path.dirname(path)) == os.path.abspath(models_dir):
+            _record(f"models/{stem}", path, {
+                "module": f"models/{stem}", "status": "failed",
+                "reason": f"{stem}.json refused: {stem}.py exists; a model is "
+                          f"one or the other, so delete one"})
+    for stem in stems:
         if stem in _live_models:
             continue
+        path = model_registry.model_path(stem)
+        if path and path.endswith(".json"):
+            # Structural check only: the file is read, never the warehouse.
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    errors = validate_model_spec(json.load(fh))
+            except (OSError, ValueError) as exc:
+                errors = [f"not valid JSON ({exc})"]
+            if errors:
+                _record(f"models/{stem}", path, {
+                    "module": f"models/{stem}", "status": "failed",
+                    "reason": "; ".join(errors)})
+                print(f"[tracebi] model '{stem}' failed to load: "
+                      f"{'; '.join(errors)}", file=sys.stderr)
+                continue
         try:
             model = model_registry.get_model(stem)
         except Exception as exc:  # noqa: BLE001 — one broken model must not stop the rest
+            if path and path.endswith(".json"):
+                _record(f"models/{stem}", path, {
+                    "module": f"models/{stem}", "status": "failed", "reason": str(exc)})
             print(f"[tracebi] model '{stem}' failed to load: {exc}", file=sys.stderr)
             continue
+        if path and path.endswith(".json"):
+            _outcomes[:] = [o for o in _outcomes
+                            if o.get("module") != f"models/{stem}"]
         if getattr(model, "name", stem) not in [m["name"] for m in registry.list_models()]:
             registry.add_model(model)
         _live_models.add(stem)

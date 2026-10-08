@@ -499,3 +499,52 @@ def test_the_app_serves_the_agent_gateway_behind_its_token(served):
     finally:
         main.app.router.routes.remove(route)
         main._mcp_server = None
+
+
+def test_a_declarative_model_answers_like_the_python_one(served, scaffolded):
+    """models/<name>.json is discovered beside models/*.py and a query through
+    it fingerprints exactly like the same query through the Python model."""
+    from tracebi import model_registry
+    from tracebi.web import discovery
+
+    (scaffolded / "models" / "sample_json.json").write_text(json.dumps({
+        "name": "sample_json",
+        "connectors": [{"name": "warehouse", "type": "duckdb",
+                        "database": "data/warehouse.duckdb"}],
+        "tables": [
+            {"name": "fact_orders", "connector": "warehouse", "source": "fact_orders"},
+            {"name": "dim_region", "connector": "warehouse", "source": "dim_region"}],
+        "dimensions": [{"name": "dim_region", "table": "dim_region",
+                        "key": "region_id", "attributes": ["region"]}],
+        "facts": [{"name": "fact_orders", "table": "fact_orders",
+                   "measures": ["revenue", "qty"],
+                   "foreign_keys": {"dim_region": "region_id"}}],
+        "measures": [
+            {"name": "revenue", "column": "revenue", "agg": "sum",
+             "description": "Total revenue", "format": "currency0"},
+            {"name": "units", "column": "qty", "agg": "sum"},
+            {"name": "orders", "column": "order_id", "agg": "count"}],
+    }))
+    assert "sample_json" in discovery.register_models("models")
+    assert "sample_json" in [m["name"] for m in served.get("/api/models").json()]
+
+    query = dict(fact="fact_orders", measures=["revenue", "units"],
+                 dimensions=["dim_region.region"])
+    via_json = model_registry.get_model("sample_json").query(**query)
+    via_python = model_registry.get_model("sample_model").query(**query)
+    assert via_json.fingerprint() == via_python.fingerprint()
+
+    # A bad file is a reported failure with its reason, and the others stay up.
+    (scaffolded / "models" / "broken.json").write_text(json.dumps(
+        {"name": "broken", "measures": [{"name": "m", "agg": "sum", "colum": "x"}]}))
+    discovery.register_models("models")
+    [entry] = [e for e in served.get("/api/discovery").json()["entries"]
+               if e["file"] == "broken.json"]
+    assert entry["status"] == "failed" and "measures[0]" in entry["reason"]
+
+    # x.py and x.json together: the Python model stands, the JSON is refused.
+    (scaffolded / "models" / "sample_model.json").write_text("{}")
+    discovery.register_models("models")
+    [clash] = [e for e in served.get("/api/discovery").json()["entries"]
+               if e["file"] == "sample_model.json"]
+    assert clash["status"] == "failed" and "sample_model.py exists" in clash["reason"]
