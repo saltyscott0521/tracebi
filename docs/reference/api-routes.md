@@ -162,6 +162,7 @@ reports its build step rebuilt, only those it actually built).
 | `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request |
 | `GET` | `/api/docs` · `/api/docs/{name}` | viewer |
 | `POST` | `/api/_dev/reload` | **admin**, and only with `TRACEBI_DEV_MODE` |
+| `POST` · `GET` · `DELETE` | `/mcp` | the agent gateway, only when `TRACEBI_MCP_TOKEN` is set. Bearer token, outside the app's Basic/proxy auth |
 | `GET` | `/api/_dev/discovered` | admin |
 
 ## The SPA

@@ -78,13 +78,23 @@ async def _lifespan(app):
                              os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
     stop_beat = _start_feed_heartbeat() if os.environ.get("TRACEBI_DEV_MODE") == "1" else None
     try:
-        async with server_lifespan(app):
+        async with server_lifespan(app), _mcp_sessions():
             yield
     finally:
         if stop is not None:
             stop.set()
         if stop_beat is not None:
             stop_beat.set()
+
+
+@asynccontextmanager
+async def _mcp_sessions():
+    """Run the gateway's session manager while the app runs, when /mcp is served."""
+    if _mcp_server is None:
+        yield
+        return
+    async with _mcp_server.session_manager.run():
+        yield
 
 
 def _start_feed_heartbeat() -> threading.Event:
@@ -185,6 +195,35 @@ app.include_router(docs.router,       prefix="/api")
 app.include_router(verify.router,     prefix="/api")
 app.include_router(status.router,     prefix="/api")
 app.include_router(runs.router,       prefix="/api")
+
+# The agent gateway, served by this app at /mcp when TRACEBI_MCP_TOKEN is set:
+# one process, so an agent's drafts are the app's drafts. The
+# bearer token is the gate (/mcp is outside the app's Basic/proxy auth, which
+# guards /api). Without a token there is no /mcp here; `tracebi mcp
+# --transport http` still serves it on its own.
+_mcp_server = None
+
+
+def serve_gateway(token: str):
+    """Serve the gateway at /mcp behind *token*. Returns the route it added.
+    The app's lifespan runs its sessions, so call this before the app starts."""
+    global _mcp_server
+    from starlette.routing import Route
+
+    from tracebi.mcp_server import build_server
+
+    _mcp_server = build_server(token=token)
+    # host is not loopback: behind a proxy the Host header is the public name,
+    # and the bearer token, not a Host check, is what keeps strangers out.
+    route = Route("/mcp", endpoint=_mcp_server.streamable_http_app(
+        streamable_http_path="/mcp", host="0.0.0.0"))
+    app.router.routes.insert(0, route)
+    return route
+
+
+if os.environ.get("TRACEBI_MCP_TOKEN", "").strip():
+    serve_gateway(os.environ["TRACEBI_MCP_TOKEN"].strip())
+    print("[tracebi] mcp gateway: /mcp (bearer TRACEBI_MCP_TOKEN)")
 
 # Dev-mode reload endpoint — opt-in via TRACEBI_DEV_MODE=1.
 if os.environ.get("TRACEBI_DEV_MODE") == "1":

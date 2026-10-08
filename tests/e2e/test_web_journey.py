@@ -7,6 +7,7 @@ lineage, the model browser and an Explore query. The process-wide registry is
 swapped for an empty one for the journey and restored after.
 """
 
+import json
 import time
 
 import pytest
@@ -450,3 +451,51 @@ def test_the_person_watches_the_agent_work_over_mcp(served, monkeypatch, scaffol
                                     "output/sample_model/sample_dashboard.html")
         assert shown[0]["text"].startswith("Build of sample_model/no_such_report refused: ")
         assert "fingerprint" not in json.dumps(shown), "an exhibit carries no receipt"
+
+
+def _mcp_call(client, method, params=None, session=None, token="s3cret", id=1):
+    """One JSON-RPC request to the app's /mcp: (response, the result or None)."""
+    body = {"jsonrpc": "2.0", "method": method, "params": params or {}}
+    if id is not None:
+        body["id"] = id
+    headers = {"Accept": "application/json, text/event-stream",
+               "Authorization": f"Bearer {token}"}
+    if session:
+        headers["mcp-session-id"] = session
+    resp = client.post("/mcp", json=body, headers=headers)
+    data = [json.loads(line[5:]) for line in resp.text.splitlines() if line.startswith("data:")]
+    return resp, (data[-1].get("result") if data else None)
+
+
+def _mcp_session(client, token="s3cret"):
+    resp, _ = _mcp_call(client, "initialize", {
+        "protocolVersion": "2025-06-18", "capabilities": {},
+        "clientInfo": {"name": "journey", "version": "0"}}, token=token)
+    session = resp.headers["mcp-session-id"]
+    _mcp_call(client, "notifications/initialized", session=session, token=token, id=None)
+    return session
+
+
+def test_the_app_serves_the_agent_gateway_behind_its_token(served):
+    """With TRACEBI_MCP_TOKEN set, the app answers MCP at /mcp: a wrong token is
+    refused, and with the right one an agent queries the same models the app
+    serves."""
+    pytest.importorskip("mcp")
+    from tracebi.web.api import main
+
+    route = main.serve_gateway("s3cret")
+    try:
+        with served:                  # the app's lifespan runs the MCP sessions
+            assert _mcp_call(served, "initialize", token="wrong")[0].status_code == 401
+            session = _mcp_session(served)
+            _, info = _mcp_call(served, "tools/call", {
+                "name": "describe_model", "arguments": {"model": "sample_model"}}, session=session)
+            fact = info["structuredContent"]["facts"][0]["name"]
+            _, asked = _mcp_call(served, "tools/call", {"name": "query_model", "arguments": {
+                "model": "sample_model", "fact": fact, "measures": ["revenue"],
+                "include_lineage": False}}, session=session)
+            assert asked["structuredContent"]["ok"], asked
+            assert asked["structuredContent"]["fingerprint"]
+    finally:
+        main.app.router.routes.remove(route)
+        main._mcp_server = None

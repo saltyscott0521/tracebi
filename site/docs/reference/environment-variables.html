@@ -280,7 +280,7 @@ and does not call Slack.</p>
 <tbody>
 <tr>
 <td><code>TRACEBI_MCP_TOKEN</code></td>
-<td>bearer token for <code>tracebi mcp --transport http</code></td>
+<td>bearer token for <code>tracebi mcp --transport http</code>. Set on the web app, it also serves the gateway at <code>/mcp</code> behind the same token.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_MCP_ACTOR</code></td>
@@ -293,7 +293,8 @@ and does not call Slack.</p>
 </tbody>
 </table>
 <p>The http transport <strong>refuses to start</strong> until you either set the token or pass
-<code>--insecure</code> deliberately.</p>
+<code>--insecure</code> deliberately. The web app has no insecure mode: without the token
+it serves no <code>/mcp</code>.</p>
 <h2 id="updates">Updates</h2>
 <p>How an install learns about a newer TraceBi (<a href="../guides/updating.html">Updating TraceBi</a>).</p>
 <table>
