@@ -31,6 +31,12 @@ async function toError(r) {
   const err = new Error(message)
   err.detail = typeof detail === 'object' ? detail : null
   err.status = r.status
+  // The server signs people in itself (OIDC) and says where: a 401 that names
+  // a login address sends the browser there, and back to this page after.
+  if (r.status === 401 && typeof detail?.login === 'string' && detail.login.startsWith('/')) {
+    const next = window.location.pathname + window.location.search
+    window.location.assign(`${detail.login}?next=${encodeURIComponent(next)}`)
+  }
   return err
 }
 
@@ -95,6 +101,13 @@ export const useAppStatus = () =>
     queryFn: () => get('/status'),
     refetchInterval: (q) => (q.state.data?.update?.latest ? 30 * 60 * 1000 : 60 * 1000),
   })
+
+// Who is signed in, and how. Only an OIDC sign-in shows a person and a way out.
+export const useMe = () =>
+  useQuery({ queryKey: ['me'], queryFn: () => get('/me'), staleTime: 5 * 60 * 1000, retry: false })
+
+export const signOut = () =>
+  fetch('/logout', { method: 'POST' }).finally(() => window.location.assign('/'))
 
 export const useConnectors = () =>
   useQuery({ queryKey: ['connectors'], queryFn: () => get('/connectors') })

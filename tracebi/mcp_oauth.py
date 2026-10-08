@@ -112,6 +112,7 @@ _LOOPBACK_HOSTS = ("localhost", "127.0.0.1")
 _CHALLENGE = re.compile(r"[A-Za-z0-9_-]{43}")      # base64url(sha256), unpadded
 _FLOW = re.compile(r"[A-Za-z0-9_-]{8,32}")
 _MAX_DOC_BYTES = 64 * 1024
+_MAX_COOKIE = 3800                 # browsers keep at most ~4 KB per cookie
 _FETCH_TIMEOUT = 5
 
 
@@ -125,6 +126,25 @@ def _now() -> float:
 
 def _h(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def seal(key: bytes, payload: dict) -> str:
+    """*payload* as a tamper-evident cookie value: base64url(JSON) + HMAC."""
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    return f"{body}.{hmac.new(key, body.encode(), 'sha256').hexdigest()}"
+
+
+def unseal(key: bytes, sealed: str) -> Optional[dict]:
+    """The payload :func:`seal` made with *key*, or None if it was altered."""
+    body, _, mac = (sealed or "").partition(".")
+    good = hmac.new(key, body.encode(), "sha256").hexdigest()
+    if not body or not hmac.compare_digest(mac, good):
+        return None
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+    except ValueError:
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def _loopback_url(url: str) -> bool:
@@ -171,6 +191,12 @@ class OAuthConfig:
     @property
     def callback_url(self) -> str:
         return f"{self.issuer}/oauth/callback"
+
+    @property
+    def login_callback_url(self) -> str:
+        """The app's own sign-in return address: a second redirect URI the
+        admin registers at the identity provider (see tracebi/web/api/sso.py)."""
+        return f"{self.issuer}/login/callback"
 
     @classmethod
     def from_env(cls, env=None) -> Optional["OAuthConfig"]:
@@ -392,10 +418,12 @@ class _OIDC:
         self._keys = (_now() + 3600, keys)
         return keys
 
-    def authorize_url(self, state: str, nonce: str, challenge: str) -> str:
+    def authorize_url(self, state: str, nonce: str, challenge: str,
+                      redirect_uri: Optional[str] = None) -> str:
         query = urllib.parse.urlencode({
             "response_type": "code", "client_id": self.cfg.client_id,
-            "redirect_uri": self.cfg.callback_url, "scope": self.cfg.scopes,
+            "redirect_uri": redirect_uri or self.cfg.callback_url,
+            "scope": self.cfg.scopes,
             "state": state, "nonce": nonce,
             "code_challenge": challenge, "code_challenge_method": "S256"})
         return f"{self.discovery()['authorization_endpoint']}?{query}"
@@ -439,11 +467,12 @@ class _OIDC:
             raise SignInError("ID token authorized party is not this app")
         return claims
 
-    def sign_in(self, code: str, verifier: str, nonce: str) -> dict:
+    def sign_in(self, code: str, verifier: str, nonce: str,
+                redirect_uri: Optional[str] = None) -> dict:
         try:
             reply = _fetch_json(self.discovery()["token_endpoint"], form={
                 "grant_type": "authorization_code", "code": code,
-                "redirect_uri": self.cfg.callback_url,
+                "redirect_uri": redirect_uri or self.cfg.callback_url,
                 "client_id": self.cfg.client_id,
                 "client_secret": self.cfg.client_secret,
                 "code_verifier": verifier})
@@ -557,9 +586,13 @@ class Provider:
 
     def _purge(self) -> None:
         now = int(_now())
-        self._exec("DELETE FROM tracebi_oauth_pending WHERE expires_at < :n", n=now)
         self._exec("DELETE FROM tracebi_oauth_codes WHERE expires_at < :n", n=now - 3600)
         self._exec("DELETE FROM tracebi_oauth_tokens WHERE expires_at < :n", n=now - 86400)
+
+    def _sign_in_key(self) -> bytes:
+        """Signs the in-flight sign-in cookie. Derived from the identity
+        provider client secret, which every worker shares and nobody else has."""
+        return hashlib.sha256(b"tracebi-oauth:" + self.cfg.client_secret.encode()).digest()
 
     def _revoke_family(self, family_id: str) -> None:
         self._exec("UPDATE tracebi_oauth_tokens SET revoked_at = :n "
@@ -661,23 +694,19 @@ class Provider:
             "scopes": params.scopes or ["mcp"], "state": params.state,
             "resource": self.cfg.mcp_url}
 
-        def begin():
-            self._purge()
-            url = self.oidc.authorize_url(state, nonce, challenge)
-            self._exec(
-                "INSERT INTO tracebi_oauth_pending (state_hash, client_id, params, "
-                "binder_hash, nonce, idp_verifier, expires_at) VALUES "
-                "(:s, :c, :p, :b, :n, :v, :e)",
-                s=_h(state), c=client.client_id, p=json.dumps(grant),
-                b=_h(flow["binder"]), n=nonce, v=verifier,
-                e=int(_now()) + PENDING_TTL)
-            return url
+        # What the return trip needs travels in a signed cookie in this
+        # browser, so a stranger's /authorize writes nothing on the server.
+        sealed = seal(self._sign_in_key(), {
+            "s": _h(state), "c": client.client_id, "p": grant, "n": nonce,
+            "v": verifier, "e": int(_now()) + PENDING_TTL})
+        if len(sealed) > _MAX_COOKIE:
+            raise AuthorizeError("invalid_request", "the request is too large")
         try:
-            url = await asyncio.to_thread(begin)
+            url = await asyncio.to_thread(self.oidc.authorize_url, state, nonce, challenge)
         except (SignInError, OSError, ValueError, urllib.error.URLError) as exc:
             log.error("cannot reach the identity provider: %s", exc)
             raise AuthorizeError("server_error", "the identity provider is unreachable") from exc
-        flow["used"] = True
+        flow["sealed"] = sealed
         return url
 
     # -- the identity provider answers ----------------------------------
@@ -688,18 +717,19 @@ class Provider:
         if not _FLOW.fullmatch(flow_id):
             return _bad("This sign-in link is not valid. Start again from your AI app.")
         cookie_name = f"tb_oauth_{flow_id}"
-        binder = request.cookies.get(cookie_name)
-        row = await asyncio.to_thread(self._consume_pending, state)
-        if row is None:
-            return _bad("This sign-in link is not valid or has expired. "
-                        "Start again from your AI app.")
-        if not binder or not hmac.compare_digest(_h(binder), row["binder_hash"]):
+        sealed = request.cookies.get(cookie_name)
+        if not sealed:
             # The sign-in was begun in a different browser: a link someone
             # else made, not this person's own request.
             log.warning("sign-in refused: callback came from a browser that did not begin it")
             return _bad("This sign-in was started in a different browser. "
                         "Start again from your AI app.")
-        grant = json.loads(row["params"])
+        row = unseal(self._sign_in_key(), sealed)
+        if (row is None or not hmac.compare_digest(str(row.get("s", "")), _h(state))
+                or int(row.get("e", 0)) < _now()):
+            return _bad("This sign-in link is not valid or has expired. "
+                        "Start again from your AI app.")
+        grant = row["p"]
         target = grant["redirect_uri"]
         if not redirect_allowed(target):
             return _bad("The redirect address is no longer allowed.")
@@ -717,7 +747,7 @@ class Provider:
                         error_description="sign-in was not completed")
         try:
             claims = await asyncio.to_thread(
-                self.oidc.sign_in, code, row["idp_verifier"], row["nonce"])
+                self.oidc.sign_in, code, row["v"], row["n"])
             who = self.oidc.identity(claims)
         except Exception as exc:  # noqa: BLE001 — whatever went wrong, the answer is no
             log.warning("sign-in refused: %s", exc)
@@ -729,19 +759,10 @@ class Provider:
             self._exec,
             "INSERT INTO tracebi_oauth_codes (code_hash, client_id, params, identity, "
             "family_id, expires_at, used_at) VALUES (:h, :c, :p, :i, :f, :e, NULL)",
-            h=_h(issued), c=row["client_id"], p=row["params"],
+            h=_h(issued), c=row["c"], p=json.dumps(grant),
             i=json.dumps({**who, "session_expires_at": now + SESSION_TTL}),
             f=secrets.token_urlsafe(16), e=now + CODE_TTL)
         return back(code=issued)
-
-    def _consume_pending(self, state: str) -> Optional[dict]:
-        key = _h(state)
-        row = self._row("SELECT * FROM tracebi_oauth_pending WHERE state_hash = :s", s=key)
-        # Delete-then-check: one callback per state, even if two race.
-        if row is None or self._exec(
-                "DELETE FROM tracebi_oauth_pending WHERE state_hash = :s", s=key) != 1:
-            return None
-        return row if row["expires_at"] >= _now() else None
 
     # -- authorization code -> tokens -----------------------------------
     async def load_authorization_code(self, client, authorization_code: str):
@@ -968,17 +989,16 @@ def _authorize_view(provider: Provider, secure: bool):
     handler = AuthorizationHandler(provider)
 
     async def view(request: Request) -> Response:
-        flow = {"id": secrets.token_urlsafe(9), "binder": secrets.token_urlsafe(32),
-                "used": False}
+        flow = {"id": secrets.token_urlsafe(9), "sealed": None}
         token = _flow.set(flow)
         try:
             resp = await handler.handle(request)
         finally:
             _flow.reset(token)
-        if flow["used"]:
+        if flow["sealed"]:
             # Ties the return trip to this browser: a sign-in link made by
             # someone else, opened by a victim, has no cookie to match.
-            resp.set_cookie(f"tb_oauth_{flow['id']}", flow["binder"], max_age=PENDING_TTL,
+            resp.set_cookie(f"tb_oauth_{flow['id']}", flow["sealed"], max_age=PENDING_TTL,
                             httponly=True, secure=secure, samesite="lax",
                             path="/oauth/callback")
         return resp
