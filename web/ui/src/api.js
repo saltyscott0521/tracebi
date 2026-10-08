@@ -357,3 +357,57 @@ export const useRuns = (kind, target) =>
       return get('/runs' + (q ? `?${q}` : ''))
     },
   })
+
+// Drafts: what an agent (or a person) is writing before it is published. A
+// draft's path may hold slashes, so each part is encoded like a report's.
+const draftUrl = (d) => `/drafts/${encodeURIComponent(d.owner)}/${d.kind}/${reportPath(d.path)}`
+
+export const useDrafts = () =>
+  useQuery({ queryKey: ['drafts'], queryFn: () => get('/drafts'), refetchInterval: 10000 })
+
+export const useDraftVersion = (d) =>
+  useQuery({
+    queryKey: ['draft-version', d.owner, d.kind, d.path],
+    queryFn: () => get(`${draftUrl(d)}/version`).then(x => x.version),
+    refetchInterval: 1500,
+    retry: false,
+  })
+
+export const useDraftFiles = (d, version) =>
+  useQuery({
+    queryKey: ['draft-files', d.owner, d.kind, d.path, version],
+    queryFn: () => get(`${draftUrl(d)}/files`),
+    enabled: !!version,
+    retry: false,
+    placeholderData: (previous) => previous,
+  })
+
+export const useDraftPreview = (d, version, enabled) =>
+  useQuery({
+    queryKey: ['draft-preview', d.owner, d.kind, d.path, version],
+    queryFn: async () => {
+      const r = await fetch(BASE + `${draftUrl(d)}/preview`, { cache: 'no-store' })
+      if (!r.ok) throw await toError(r)
+      return r.text()
+    },
+    enabled: !!version && enabled,
+    retry: false,
+    placeholderData: (previous) => previous,
+  })
+
+export const usePublishDraft = (d) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (note) => postJson(`${draftUrl(d)}/publish`, { note }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['drafts'] }),
+  })
+}
+
+export const useDeleteDraft = (d) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => fetch(BASE + draftUrl(d), { method: 'DELETE' })
+      .then(async r => { if (!r.ok) throw await toError(r); return r.json() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['drafts'] }),
+  })
+}
