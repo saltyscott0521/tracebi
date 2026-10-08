@@ -19,6 +19,7 @@ equivalent where it matters.
 | `TRACEBI_REPORTS_DIR` | `reports` | `new-report`, `report`, discovery. Ignored when `TRACEBI_LIBRARY_MOUNTS` is set. |
 | `TRACEBI_LIBRARY_MOUNTS` | — | Comma-separated `label:/absolute/path` roots for the report Library. Each label is a top-level folder; report identity is `label/relative_path`. When set, this is authoritative over `TRACEBI_REPORTS_DIR`. |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | `run-pipeline`, discovery |
+| `TRACEBI_DRAFTS_DIR` | `drafts` | Remote drafts: each owner's drafts live under `drafts/<owner>/`. The `/mcp` draft tools and `/api/drafts` read and write there. Publishing copies a draft into the library. |
 | `TRACEBI_SCHEDULED_DIR` | `scheduled` | discovery. **Deprecated.** The folder is still imported if it exists, and a script in it logs one deprecation line. It never ran reports. Use a `"schedule"` block in `report.json` (`tracebi schedule`). |
 | `TRACEBI_WORKBENCH_DIR` | `.tracebi/workbench` | `dev`, `session` |
 | `TRACEBI_OUTPUT_ROOT` | `output` | build outputs |

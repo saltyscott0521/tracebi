@@ -274,6 +274,56 @@ build, and "Not checked" on the older ones.</p>
 carries no receipt; the HTML file is what <code>verify --file</code> checks.
 <code>xlsx</code> goes through the Excel renderer, which derives no
 <a href="../reference/number-formats.html">formats</a>, and runs the report to do so.</p>
+<h2 id="drafts">Drafts</h2>
+<p>Remote drafts (design: <code>docs/strategy/remote-authoring.md</code>). <code>{kind}</code> is <code>reports</code> or <code>models</code>.
+A draft's owner is the acting principal; <code>{owner}</code> is that name slugged to
+<code>[a-z0-9._-]</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/drafts</code></td>
+<td>owner (their own); admin (everyone's)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/drafts/{owner}/{kind}/{path}/files</code></td>
+<td>owner or admin</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/drafts/{owner}/{kind}/{path}/version</code></td>
+<td>owner or admin</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/drafts/{owner}/{kind}/{path}/preview</code></td>
+<td>owner or admin</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/drafts/{owner}/{kind}/{path}/publish</code></td>
+<td>analyst, and owner or admin</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/drafts/{owner}/{kind}/{path}</code></td>
+<td>analyst, and owner or admin</td>
+</tr>
+</tbody>
+</table>
+<p><code>/preview</code> renders the draft in memory against the published models plus the
+owner's draft models, and writes nothing. <code>/publish</code> validates the draft first,
+keeps the version it replaces under <code>.tracebi/history/</code>, copies it into the
+library and records a <code>publish</code> run. The draft is kept. <code>DELETE</code> removes the
+draft only, never the published copy.</p>
 <h2 id="report-specs">Report specs</h2>
 <table>
 <thead>
