@@ -56,9 +56,7 @@ COOKIE = "tracebi_session"
 IDLE_TTL = 12 * 3600            # a session unused this long ends ...
 ABSOLUTE_TTL = 7 * 86400        # ... and none outlives a week
 _TOUCH_EVERY = 300              # extend the idle deadline at most this often
-_MAX_PENDING = 2000             # sign-ins in flight, so /login cannot fill the table
-#: Marks this app's rows in ``tracebi_oauth_pending`` (the MCP flow's table).
-APP_CLIENT = "tracebi-app-login"
+_LOGIN_TTL = 600                # a sign-in must come back within ten minutes
 _FLOW = re.compile(r"[A-Za-z0-9_-]{8,32}")
 _NEXT = re.compile(r"/(?![/\\])[^\x00-\x20\x7f\\]*")
 
@@ -170,26 +168,31 @@ class AppSSO:
                 Route("/login/callback", self.callback, methods=["GET"]),
                 Route("/logout", self.logout, methods=["POST"])]
 
-    def _begin(self, state: str, nonce: str, challenge: str, verifier: str,
-               binder: str, nxt: str) -> Optional[str]:
-        from tracebi.mcp_oauth import PENDING_TTL      # the 'mcp' extra, only when SSO is on
-        now = int(time.time())
-        self._exec("DELETE FROM tracebi_oauth_pending WHERE expires_at < :n", n=now)
-        busy = self._row("SELECT COUNT(*) AS n FROM tracebi_oauth_pending WHERE client_id = :c",
-                         c=APP_CLIENT)["n"]
-        if busy >= _MAX_PENDING:
+    def _login_key(self) -> bytes:
+        """Signs the in-flight sign-in cookie. Derived from the identity
+        provider client secret, which every worker shares and nobody else has."""
+        return hashlib.sha256(b"tracebi-login:" + self.cfg.client_secret.encode()).digest()
+
+    def _seal(self, payload: dict) -> str:
+        body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+        mac = hmac.new(self._login_key(), body.encode(), "sha256").hexdigest()
+        return f"{body}.{mac}"
+
+    def _open(self, sealed: str) -> Optional[dict]:
+        body, _, mac = (sealed or "").partition(".")
+        good = hmac.new(self._login_key(), body.encode(), "sha256").hexdigest()
+        if not body or not hmac.compare_digest(mac, good):
             return None
-        url = self.oidc.authorize_url(state, nonce, challenge,
-                                      redirect_uri=self.cfg.login_callback_url)
-        self._exec(
-            "INSERT INTO tracebi_oauth_pending (state_hash, client_id, params, binder_hash, "
-            "nonce, idp_verifier, expires_at) VALUES (:s, :c, :p, :b, :n, :v, :e)",
-            s=_h(state), c=APP_CLIENT, p=json.dumps({"next": nxt}), b=_h(binder),
-            n=nonce, v=verifier, e=now + PENDING_TTL)
-        return url
+        try:
+            return json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+        except ValueError:
+            return None
 
     async def login(self, request: Request) -> Response:
-        flow_id, binder = secrets.token_urlsafe(9), secrets.token_urlsafe(32)
+        """Send the browser to the identity provider. What the return trip needs
+        (nonce, PKCE verifier, where to land) travels in a signed cookie in this
+        browser, so a stranger's /login writes nothing on the server."""
+        flow_id = secrets.token_urlsafe(9)
         nonce, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(48)
         state = f"{flow_id}.{secrets.token_urlsafe(32)}"
         challenge = base64.urlsafe_b64encode(
@@ -197,30 +200,20 @@ class AppSSO:
         nxt = safe_next(request.query_params.get("next"))
         try:
             url = await asyncio.to_thread(
-                self._begin, state, nonce, challenge, verifier, binder, nxt)
+                self.oidc.authorize_url, state, nonce, challenge,
+                redirect_uri=self.cfg.login_callback_url)
         except Exception as exc:  # noqa: BLE001 — provider down: say so, leak nothing
             log.error("cannot reach the identity provider: %s", exc)
             return _page("The identity provider is unreachable. Try again shortly.", 502)
-        if url is None:
-            return _page("Too many sign-ins are in progress. Try again shortly.", 503)
+        sealed = self._seal({"s": _h(state), "n": nonce, "v": verifier, "x": nxt,
+                             "e": int(time.time()) + _LOGIN_TTL})
         resp = RedirectResponse(url, status_code=302, headers={"Cache-Control": "no-store"})
         # Ties the return trip to this browser: a sign-in link made by someone
         # else and opened by a victim has no matching cookie.
-        resp.set_cookie(f"tb_login_{flow_id}", binder, max_age=600, httponly=True,
+        resp.set_cookie(f"tb_login_{flow_id}", sealed, max_age=_LOGIN_TTL, httponly=True,
                         secure=self.secure_cookies or request.url.scheme == "https",
                         samesite="lax", path="/login/callback")
         return resp
-
-    def _consume(self, state: str) -> Optional[dict]:
-        key = _h(state)
-        row = self._row("SELECT * FROM tracebi_oauth_pending WHERE state_hash = :s", s=key)
-        # Delete-then-check: one callback per state, even if two race.
-        if row is None or self._exec(
-                "DELETE FROM tracebi_oauth_pending WHERE state_hash = :s", s=key) != 1:
-            return None
-        if row["client_id"] != APP_CLIENT or row["expires_at"] < time.time():
-            return None
-        return row
 
     async def callback(self, request: Request) -> Response:
         q = request.query_params
@@ -229,26 +222,27 @@ class AppSSO:
         if not _FLOW.fullmatch(flow_id):
             return _page("This sign-in link is not valid. Start again.", 400)
         cookie_name = f"tb_login_{flow_id}"
-        binder = request.cookies.get(cookie_name)
-        row = await asyncio.to_thread(self._consume, state)
-        if row is None:
-            return _page("This sign-in link is not valid or has expired. Start again.", 400)
-        if not binder or not hmac.compare_digest(_h(binder), row["binder_hash"]):
+        sealed = request.cookies.get(cookie_name)
+        if not sealed:
             log.warning("sign-in refused: callback came from a browser that did not begin it")
             return _page("This sign-in was started in a different browser. Start again.", 400)
+        pending = self._open(sealed)
+        if (pending is None or not hmac.compare_digest(str(pending.get("s", "")), _h(state))
+                or int(pending.get("e", 0)) < time.time()):
+            return _page("This sign-in link is not valid or has expired. Start again.", 400)
         code = q.get("code")
         if q.get("error") or not code:
             return _page("Sign-in was not completed.", 403)
         try:
             claims = await asyncio.to_thread(
-                self.oidc.sign_in, code, row["idp_verifier"], row["nonce"],
+                self.oidc.sign_in, code, pending["v"], pending["n"],
                 self.cfg.login_callback_url)
             who = self.oidc.identity(claims)
         except Exception as exc:  # noqa: BLE001 — whatever went wrong, the answer is no
             log.warning("sign-in refused: %s", exc)
             return _page("Sign-in could not be verified.", 403)
         raw = await asyncio.to_thread(self.create_session, who)
-        resp = RedirectResponse(safe_next(json.loads(row["params"]).get("next")),
+        resp = RedirectResponse(safe_next(pending.get("x")),
                                 status_code=302, headers={"Cache-Control": "no-store"})
         resp.delete_cookie(cookie_name, path="/login/callback")
         self._set_session_cookie(resp, raw, request)

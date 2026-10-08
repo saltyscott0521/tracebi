@@ -20,3 +20,4 @@
   `tracebi.credentials.access_token(server)` refreshes them. The app's API also
   accepts `Authorization: Bearer tbat_...` access tokens. See
   `docs/guides/sign-in.md`.
+- `/login` keeps what the return trip needs (nonce, PKCE verifier, where to land) in a cookie signed with a key derived from the identity provider client secret, so a stranger's sign-in attempts write nothing on the server and cannot lock anyone out.

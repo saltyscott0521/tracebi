@@ -324,15 +324,36 @@ def test_a_denied_sign_in_makes_no_session(sso, idp):
     assert resp.status_code == 403 and sessions() == []
 
 
-def test_sign_ins_in_flight_are_capped(sso, monkeypatch):
-    """/login is open to strangers and writes a row: it must not be a way to
-    fill the table."""
+def test_a_strangers_sign_in_attempts_write_nothing(sso):
+    """/login is open to strangers: what the return trip needs travels in a
+    signed cookie in their browser, so no number of attempts fills a table or
+    locks anyone out."""
+    import sqlalchemy as sa
+
+    from tracebi import state
+
+    b = sso()
+    for _ in range(25):
+        assert b.get("/login", follow_redirects=False).status_code == 302
+    with state.ensure().connect() as conn:
+        assert conn.execute(sa.text("SELECT COUNT(*) FROM tracebi_oauth_pending")).scalar() == 0
+    assert sessions() == []
+
+
+def test_a_tampered_or_expired_sign_in_cookie_is_refused(sso, idp, monkeypatch):
     from tracebi.web.api import sso as sso_module
 
-    monkeypatch.setattr(sso_module, "_MAX_PENDING", 1)
     b = sso()
-    assert b.get("/login", follow_redirects=False).status_code == 302
-    assert b.get("/login", follow_redirects=False).status_code == 503
+    resp, q = begin(b)
+    name = next(c for c in b.cookies.keys() if c.startswith("tb_login_"))
+    body, _, mac = b.cookies.get(name).partition(".")
+    b.cookies.set(name, body + "." + ("0" * len(mac)), path="/login/callback")
+    assert answer(b, idp, q).status_code == 400 and sessions() == []
+
+    b = sso()
+    monkeypatch.setattr(sso_module, "_LOGIN_TTL", -1)
+    resp, q = begin(b)
+    assert answer(b, idp, q).status_code == 400 and sessions() == []
 
 
 # ── who gets in without a session ────────────────────────────────────────
