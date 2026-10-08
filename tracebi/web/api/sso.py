@@ -32,7 +32,6 @@ import asyncio
 import base64
 import hashlib
 import hmac
-import json
 import logging
 import re
 import secrets
@@ -48,6 +47,7 @@ from starlette.routing import Route
 
 from tracebi import state
 from tracebi.audit import actor as audit_actor
+from tracebi.mcp_oauth import seal, unseal
 from tracebi.web.api.auth import _EXEMPT_PATHS, _PROTECTED_PREFIXES, _Authorizer
 
 log = logging.getLogger("tracebi.sso")
@@ -174,19 +174,10 @@ class AppSSO:
         return hashlib.sha256(b"tracebi-login:" + self.cfg.client_secret.encode()).digest()
 
     def _seal(self, payload: dict) -> str:
-        body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-        mac = hmac.new(self._login_key(), body.encode(), "sha256").hexdigest()
-        return f"{body}.{mac}"
+        return seal(self._login_key(), payload)
 
     def _open(self, sealed: str) -> Optional[dict]:
-        body, _, mac = (sealed or "").partition(".")
-        good = hmac.new(self._login_key(), body.encode(), "sha256").hexdigest()
-        if not body or not hmac.compare_digest(mac, good):
-            return None
-        try:
-            return json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
-        except ValueError:
-            return None
+        return unseal(self._login_key(), sealed)
 
     async def login(self, request: Request) -> Response:
         """Send the browser to the identity provider. What the return trip needs
