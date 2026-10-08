@@ -228,6 +228,11 @@ def list_models() -> list[str]:
     return _registry.list_models()
 
 
+def clashes() -> dict[str, str]:
+    """``{stem: path}`` of each ``<stem>.json`` refused because ``<stem>.py`` exists."""
+    return _registry.clashes()
+
+
 def release_all() -> None:
     """Release the open handles of every loaded model (see ``ModelRegistry.release_all``)."""
     _registry.release_all()

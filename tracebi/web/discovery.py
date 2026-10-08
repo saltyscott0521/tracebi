@@ -496,7 +496,7 @@ def register_models(models_dir: str) -> list[str]:
     if not os.path.isdir(models_dir):
         return added
     stems = model_registry.auto_discover(models_dir)
-    for stem, path in model_registry._registry.clashes().items():
+    for stem, path in model_registry.clashes().items():
         if os.path.abspath(os.path.dirname(path)) == os.path.abspath(models_dir):
             _record(f"models/{stem}", path, {
                 "module": f"models/{stem}", "status": "failed",
