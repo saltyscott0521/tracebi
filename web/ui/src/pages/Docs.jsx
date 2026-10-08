@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Link } from 'react-router-dom'
 
 import { useGuides, useGuide } from '../api'
 import { PageTitle, PageSub, Spinner, useNarrow } from '../components/Shared'
@@ -152,6 +153,7 @@ export default function Docs() {
       <PageSub>
         The handbook — readable here, versioned in <code>docs/</code>, and an
         Obsidian vault if you open the folder.
+        New here? <Link to="/getting-started">Get started</Link>.
       </PageSub>
 
       <div style={{

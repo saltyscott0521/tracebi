@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useGuides } from '../api'
 import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
-import { PAGES } from '../nav'
 import { ThreePhases } from '../components/ThreePhases'
 
 const STEPS = [
@@ -71,39 +70,18 @@ function Guides() {
   )
 }
 
-// Where each page's content comes from, in the project.
-const FOLDER = {
-  model: 'models/<model>.py',
-  explore: 'a question, not a file',
-  refresh: 'pipelines/<model>.py → transforms/',
-  reports: 'reports/<model>/',
-  sources: 'the connector a model declares',
-  runs: 'the run history',
-}
-
 // How the pieces fit: pick a model, and every page is about it.
 function HowItFits() {
   return (
     <div style={{ marginBottom: 36 }}>
       <h2 className="section-title">How the app fits together</h2>
-      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '74ch' }}>
+      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: 0, maxWidth: '74ch' }}>
         Everything belongs to a <strong>model</strong>. Pick one at the top of the sidebar and
-        every page below it is about that model: its data model, its questions, its refresh,
-        its reports, where its data is kept, and what ran. Pick “All models” to see everything,
-        with each row naming its model.
+        every page below it is about that model: its reports, its questions, its data model,
+        its refresh, where its data is kept, and what ran. Pick “All models” to see everything,
+        with each row naming its model. <Link to="/verify">Verify a file</Link> belongs to no
+        model: it checks a report file from anywhere.
       </p>
-      <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-        {PAGES.map(p => (
-          <Link key={p.key} to={p.all} style={{
-            textDecoration: 'none', background: 'var(--card)', border: '1px solid var(--border)',
-            borderRadius: 12, padding: '14px 16px', display: 'block',
-          }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', margin: '0 0 4px' }}>{p.label}</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{p.sub}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>{FOLDER[p.key]}</div>
-          </Link>
-        ))}
-      </div>
     </div>
   )
 }

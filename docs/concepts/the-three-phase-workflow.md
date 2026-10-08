@@ -14,10 +14,11 @@ one never blocks the fast one.
 ---
 
 > **In the app**, everything belongs to a model. Pick one at the top of the
-> sidebar and every page below it is about that model: **Data model** (what it
-> means), **Explore** (ask it), **Refresh** (rebuild its data, then its
-> reports), **Reports** (what people read), **Sources** (where its data is
-> kept) and **Runs** (what ran, and whether it reproduced). Pick **All
+> sidebar and every page below it is about that model, in the order a receipt
+> traces a number: **Reports** (what people read), **Explore** (ask it),
+> **Data model** (what it means), **Refresh** (rebuild its data, then its
+> reports), **Sources** (where its data is kept) and **Runs** (what ran, and
+> whether it reproduced). Pick **All
 > models** to see everything, each row naming its model. Reports and Explore
 > only ever ask the model; see [[models-and-connectors]].
 
