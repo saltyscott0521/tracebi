@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Quickstart — TraceBi docs</title>
+<title>models/&lt;name&gt;.json — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Quickstart">
+<meta name="description" content="models/&lt;name&gt;.json">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,7 +38,7 @@
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a class="on" href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
 <a href="../guides/styling-a-report.html">Styling a report</a>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
@@ -50,7 +50,7 @@
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/measures.html">Measures</a>
-<a href="../reference/model-json.html">models/&lt;name&gt;.json</a>
+<a class="on" href="../reference/model-json.html">models/&lt;name&gt;.json</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
@@ -71,120 +71,93 @@
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
-<h1 id="quickstart">Quickstart</h1>
-<p><strong>Install, scaffold a project, and build one verified report — about five
-minutes.</strong></p>
+<h1 id="modelsnamejson"><code>models/&lt;name&gt;.json</code></h1>
+<p><strong>A model as data: the same star schema as a Python <code>DataModel</code>, written as a
+document a remote agent can draft without the server running anyone's code.</strong></p>
+<p>The JSON mirrors the builder calls one to one. Loading it reads no rows; a
+query is what opens the warehouse, exactly as with <code>models/&lt;name&gt;.py</code>.</p>
 <hr>
-<h2 id="1-install">1. Install</h2>
-<pre><code class="language-bash">pip install -e &quot;.[all]&quot;
+<h2 id="example">Example</h2>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;sales_model&quot;,
+  &quot;connectors&quot;: [{&quot;name&quot;: &quot;warehouse&quot;, &quot;type&quot;: &quot;duckdb&quot;, &quot;database&quot;: &quot;data/warehouse.duckdb&quot;}],
+  &quot;tables&quot;: [
+    {&quot;name&quot;: &quot;fact_orders&quot;, &quot;connector&quot;: &quot;warehouse&quot;, &quot;source&quot;: &quot;fact_orders&quot;},
+    {&quot;name&quot;: &quot;dim_region&quot;, &quot;connector&quot;: &quot;warehouse&quot;, &quot;source&quot;: &quot;dim_region&quot;}
+  ],
+  &quot;dimensions&quot;: [{&quot;name&quot;: &quot;dim_region&quot;, &quot;table&quot;: &quot;dim_region&quot;, &quot;key&quot;: &quot;region_id&quot;, &quot;attributes&quot;: [&quot;region&quot;]}],
+  &quot;facts&quot;: [{&quot;name&quot;: &quot;fact_orders&quot;, &quot;table&quot;: &quot;fact_orders&quot;, &quot;measures&quot;: [&quot;amount&quot;],
+             &quot;foreign_keys&quot;: {&quot;dim_region&quot;: &quot;region_id&quot;}}],
+  &quot;measures&quot;: [{&quot;name&quot;: &quot;revenue&quot;, &quot;column&quot;: &quot;amount&quot;, &quot;agg&quot;: &quot;sum&quot;, &quot;format&quot;: &quot;currency0&quot;}]
+}
 </code></pre>
-<p>The minimum working set is pandas + duckdb + jinja2. <code>[all]</code> covers it plus the
-web UI and Excel export.</p>
-<h2 id="2-scaffold">2. Scaffold</h2>
-<pre><code class="language-bash">tracebi init my_project
-cd my_project
-git init &amp;&amp; git commit --allow-empty -m &quot;init&quot;
-</code></pre>
-<p>Commit early: every manifest stamps the current commit as <code>git_sha</code>, so a
-report built in a repo with no commits records <code>unknown</code> and warns.</p>
-<p>You get the three-phase layout from <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:</p>
-<pre><code>inputs/       ⓪ raw pulls
-transforms/   ① pandas that lands clean tables
-models/       ② the star-schema contract
-reports/      ③ the report packages, one folder per model
-pipelines/    one per model: run its transform, then build its reports
-data/         the warehouse lives here
-output/       built artifacts + receipts
-</code></pre>
-<h2 id="3-run-the-transform-phase-1">3. Run the transform — phase ①</h2>
-<pre><code class="language-bash">tracebi run-transform sample_transform
-</code></pre>
-<p>Reads <code>inputs/orders.csv</code>, cleans it, and sinks star-schema tables into
-<code>data/warehouse.duckdb</code>. That file is the first <a href="../concepts/freeze-points.html">freeze point</a>.</p>
-<p>→ <a href="../concepts/transform.html">Transform — phase ①</a></p>
-<h2 id="4-look-at-the-model-phase-2">4. Look at the model — phase ②</h2>
-<p>Open <code>models/sample_model.py</code>. A few dozen lines: tables, keys, and
-<a href="../reference/measures.html">Measures</a>. Nothing to run — it is a declaration.</p>
-<pre><code class="language-bash">tracebi validate
-</code></pre>
-<p>Checks the model loads and its dimension keys are unique. A non-unique key
-silently inflates every additive measure, so this is worth running.</p>
-<p>→ <a href="../concepts/model.html">Model — phase ②</a></p>
-<h2 id="5-build-the-report-phase-3">5. Build the report — phase ③</h2>
-<pre><code class="language-bash">tracebi report build sample_model/sample_dashboard
-</code></pre>
-<p>The report lives in its model's folder, <code>reports/sample_model/sample_dashboard/</code>,
-and is named by that path. It writes two files:</p>
-<pre><code>output/sample_model/sample_dashboard.html                   the artifact
-output/sample_model/sample_dashboard.html.manifest.json     the receipt
-</code></pre>
-<p>The HTML is fully self-contained — no CDN, no network. Open it directly.</p>
-<p><strong>Steps 3 and 5 in one command.</strong> <code>pipelines/sample_model.py</code> ties the model's
-transform to its reports, so this runs the transform and then builds every
-report in <code>reports/sample_model/</code>:</p>
-<pre><code class="language-bash">tracebi run-pipeline sample_model
-</code></pre>
-<p>It is what the <strong>Refresh</strong> page in <code>tracebi serve</code> runs.</p>
-<p>→ <a href="../concepts/report.html">Report — phase ③</a></p>
-<h2 id="6-verify">6. Verify</h2>
-<pre><code class="language-bash">tracebi verify output/sample_model/sample_dashboard.html.manifest.json
-</code></pre>
-<p>Re-runs every recorded query and compares fingerprints. You should see
-<code>✓ REPRODUCES</code> per figure.</p>
-<p>Then the offline check — no database, no model, just the file:</p>
-<pre><code class="language-bash">tracebi verify --file output/sample_model/sample_dashboard.html
-</code></pre>
-<p>Edit a number inside the HTML by hand and run it again: it reports
-<code>FILE ALTERED</code> and names the binding.</p>
-<p>→ <a href="../concepts/receipts.html">Receipts</a></p>
-<hr>
-<h2 id="now-iterate">Now iterate</h2>
-<pre><code class="language-bash">tracebi dev sample_model/sample_dashboard
-</code></pre>
-<p>The live loop, in the web app. Edit <code>reports/sample_model/sample_dashboard/template.html</code> and the page
-reloads. The panel beside the report shows what changed on each save, the data
-each figure is bound to, and checks on what it has earned.</p>
-<p><strong>Because the model is materialized, editing a report never re-runs the
-pandas</strong> — that is the whole point of <a href="../concepts/freeze-points.html">Freeze points</a>.</p>
-<h2 id="where-to-go-next">Where to go next</h2>
+<h2 id="keys">Keys</h2>
+<p>The schema is closed: an unknown key is an error that names the closest key.</p>
 <table>
 <thead>
 <tr>
-<th>You want to…</th>
-<th>Go to</th>
+<th>Key</th>
+<th>Builder call</th>
+<th>Fields</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Author a report properly</td>
-<td><a href="../guides/your-first-report.html">Your first report</a></td>
+<td><code>name</code></td>
+<td><code>DataModel(name)</code></td>
+<td><strong>Required.</strong> Must equal the file name without <code>.json</code>.</td>
 </tr>
 <tr>
-<td>Add a figure without writing markup</td>
-<td><a href="../reference/figure-helper.html">{{ figure("name") }}</a></td>
+<td><code>connectors</code></td>
+<td><code>add_connector</code></td>
+<td><code>{name, type: "duckdb", database}</code> or <code>{name, connection}</code></td>
 </tr>
 <tr>
-<td>Understand the <code>data-tb-*</code> attributes</td>
-<td><a href="../reference/template-html.html">template.html — the figure grammar</a></td>
+<td><code>tables</code></td>
+<td><code>add_table</code></td>
+<td><code>name</code>, <code>connector</code>, <code>source</code></td>
 </tr>
 <tr>
-<td>Add a measure</td>
-<td><a href="../reference/measures.html">Measures</a></td>
+<td><code>relationships</code></td>
+<td><code>add_relationship</code></td>
+<td><code>name</code>, <code>left_table</code>, <code>right_table</code>, <code>left_key</code>, optional <code>right_key</code>, <code>how</code></td>
 </tr>
 <tr>
-<td>Filter, sort, or limit</td>
-<td><a href="../reference/queries.html">Queries</a></td>
+<td><code>dimensions</code></td>
+<td><code>add_dimension</code></td>
+<td><code>name</code>, <code>table</code>, <code>key</code>, optional <code>attributes</code></td>
 </tr>
 <tr>
-<td>Style the page</td>
-<td><a href="../guides/styling-a-report.html">Styling a report</a></td>
+<td><code>facts</code></td>
+<td><code>add_fact</code></td>
+<td><code>name</code>, <code>table</code>, <code>measures</code>, optional <code>foreign_keys</code></td>
 </tr>
 <tr>
-<td>See every command</td>
-<td><a href="../reference/cli.html">CLI reference</a></td>
+<td><code>measures</code></td>
+<td><code>add_measure</code></td>
+<td><code>name</code> plus any keyword of <a href="../reference/measures.html">Measures</a>: <code>column</code>, <code>agg</code>, <code>expr</code>, <code>ratio</code>, <code>share</code>, <code>rank</code>, <code>running</code>, <code>partition_by</code>, <code>period_end</code>, <code>offset</code>, <code>growth</code>, <code>to_date</code>, <code>description</code>, <code>format</code>, <code>allow_rate_agg</code>, <code>allow_additive</code>. Pairs and triples are JSON arrays.</td>
 </tr>
 </tbody>
 </table>
+<p>Time grains and value bins have no JSON form yet; use a Python model for them.</p>
+<h3 id="connectors-and-no-credentials">Connectors, and no credentials</h3>
+<ul>
+<li><code>{"type": "duckdb", "database": "data/warehouse.duckdb"}</code> is a DuckDB file
+  <strong>inside the project</strong>. An absolute path or one with <code>..</code> is refused.</li>
+<li><code>{"name": "warehouse", "connection": "warehouse"}</code> reuses the connector in
+  <code>models/_connections/warehouse.py</code> (written by <code>tracebi connect</code>). Its own
+  <code>name</code> must match.</li>
+</ul>
+<p>There is no key for a URL, password or token, so a file cannot carry one. The
+secret stays in <code>.env</code>, read by the connection module.</p>
+<h2 id="discovery">Discovery</h2>
+<p><code>models/&lt;name&gt;.json</code> is discovered beside <code>models/*.py</code> at startup and by live
+discovery, validated structurally, and loaded on first use. A bad file is a
+<strong>failed</strong> entry in <code>/api/discovery</code> (and <code>tracebi validate</code>) with the path of
+the problem, e.g. <code>measures[2].agg</code>; the other models keep loading.</p>
+<p>If <code>x.py</code> and <code>x.json</code> both exist, <strong>the Python file wins</strong> and the JSON is
+reported as failed ("<code>x.json</code> refused: <code>x.py</code> exists"). A model is one or the
+other.</p>
   </main>
 </div>
 <script>
