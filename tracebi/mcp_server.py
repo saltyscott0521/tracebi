@@ -818,7 +818,7 @@ def _binding_stub(model: str, stamped: dict) -> dict:
     return {"model": model, "query": query}
 
 
-def gateway_query(
+def _query(
     model: str,
     fact: str,
     measures: Any,
@@ -926,6 +926,50 @@ def gateway_query(
     return result
 
 
+def gateway_query(
+    model: str,
+    fact: str,
+    measures: Any,
+    dimensions: Optional[list[str]] = None,
+    filters: Optional[dict] = None,
+    having: Optional[dict] = None,
+    aggregate: bool = True,
+    allow_fanout: bool = False,
+    order_by: Optional[list] = None,
+    limit: Optional[int] = None,
+    preview_rows: int = _ROW_DEFAULT,
+    include_lineage: bool = True,
+) -> QueryResult:
+    result = _query(model, fact, measures, dimensions, filters, having,
+                    aggregate, allow_fanout, order_by, limit, preview_rows,
+                    include_lineage)
+    if result.get("ok"):
+        q = result["query"]
+        by = ", ".join(q.get("dimensions") or [])
+        _show_action("query_model",
+                     f"Queried {model}: {', '.join(map(str, q.get('measures') or []))}"
+                     + (f" by {by}" if by else ""),
+                     frame={"columns": result["columns"],
+                            "shape": [result["row_count"], len(result["columns"])],
+                            "rows": result["rows"][:50]})
+    return result
+
+
+gateway_query.__doc__ = _query.__doc__
+
+
+def _project_relative(path: str) -> str:
+    """*path* relative to the project when it is inside it, as the feed shows it."""
+    rel = os.path.relpath(path, os.getcwd())
+    return path if rel.startswith(os.pardir) else rel
+
+
+def _show_action(tool: str, text: str, frame: Optional[dict] = None) -> None:
+    """Show the person with the app open what the agent just did."""
+    from tracebi.workbench import post_agent_action
+    post_agent_action(tool, text, frame)
+
+
 def gateway_validate_spec(spec: Any) -> ValidateResult:
     """
     Check a report spec against the project's models without loading a row.
@@ -947,7 +991,7 @@ def gateway_validate_spec(spec: Any) -> ValidateResult:
     return rs.validate(_load_models())
 
 
-def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
+def _render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
     """
     Validate, build and render a spec to a self-contained HTML artifact,
     writing the lineage manifest beside it.
@@ -1025,6 +1069,21 @@ def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
         "dataset_fingerprints": fingerprints,
         "warnings": result["warnings"] + compiled.warnings,
     }
+
+
+def gateway_render_spec(spec: Any, output_dir: str = "output") -> RenderResult:
+    result = _render_spec(spec, output_dir)
+    if result.get("ok"):
+        _show_action("render_report_spec",
+                     f"Rendered {result['report_name']} → "
+                     f"{_project_relative(result['html_path'])}")
+    else:
+        _show_action("render_report_spec",
+                     "Render refused: " + "; ".join(map(str, result.get("errors") or [])))
+    return result
+
+
+gateway_render_spec.__doc__ = _render_spec.__doc__
 
 
 def gateway_reports() -> ReportsResult:
@@ -1155,7 +1214,7 @@ def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinR
     }
 
 
-def gateway_build_report(
+def _build_report(
     report: str, output_dir: str = "output", format: str = "html",
 ) -> BuildReportResult:
     """
@@ -1250,6 +1309,22 @@ def gateway_build_report(
     if note:
         result["note"] = f"report build was not recorded: {note}"
     return result
+
+
+def gateway_build_report(
+    report: str, output_dir: str = "output", format: str = "html",
+) -> BuildReportResult:
+    result = _build_report(report, output_dir, format)
+    if result.get("ok"):
+        _show_action("build_report",
+                     f"Built {report} → {_project_relative(result['output_path'])}")
+    else:
+        _show_action("build_report", f"Build of {report} refused: "
+                     + "; ".join(map(str, result.get("errors") or [])))
+    return result
+
+
+gateway_build_report.__doc__ = _build_report.__doc__
 
 
 def gateway_fetch_artifact(path: str) -> FetchArtifactResult:

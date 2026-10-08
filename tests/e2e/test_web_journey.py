@@ -411,3 +411,42 @@ def test_the_project_feed_carries_the_agents_exhibits_before_any_report(served, 
         assert [p["id"] for p in agent_sees["pins"]] == [note["id"]]
         assert [e["name"] for e in agent_sees["exhibits"]] == ["region_scan"]
         assert served.post(f"{feed}/note", json={"note": "   "}).status_code == 422
+
+
+def test_the_person_watches_the_agent_work_over_mcp(served, monkeypatch, scaffolded):
+    """With the dev app open, what an agent does over the gateway lands in the
+    project feed: the query it ran (as a table) and the build it made, or the
+    one it was refused. With no app open it posts nothing."""
+    import json
+
+    from tracebi import mcp_server as gw
+
+    feed = "/api/workbench/project"
+    monkeypatch.delenv("TRACEBI_WORKBENCH_DIR", raising=False)
+    fact = gw.gateway_model_info("sample_model")["facts"][0]["name"]
+    exhibits = scaffolded / ".tracebi" / "workbench" / "_discovery" / "exhibits.jsonl"
+
+    # No app serving: the gateway still answers, and the feed stays empty.
+    assert gw.gateway_query("sample_model", fact, ["revenue"])["ok"]
+    assert not exhibits.exists() or not exhibits.read_text().strip()
+
+    monkeypatch.setenv("TRACEBI_DEV_MODE", "1")
+    with served:                      # the app's startup keeps the feed's heartbeat live
+        asked = gw.gateway_query("sample_model", fact, ["revenue"],
+                                 dimensions=["dim_region.region"])
+        built = gw.gateway_build_report("sample_model/sample_dashboard")
+        refused = gw.gateway_build_report("sample_model/no_such_report")
+        assert asked["ok"] and built["ok"] and not refused["ok"]
+
+        shown = served.get(feed).json()["exhibits"]       # newest first
+        assert [e["name"] for e in shown] == [
+            "agent · build_report", "agent · build_report", "agent · query_model"]
+        query = shown[2]
+        assert query["shape"] == [asked["row_count"], len(asked["columns"])]
+        assert query["note"] == "Queried sample_model: revenue by dim_region.region"
+        dim = asked["columns"][0]
+        assert [r[dim] for r in query["rows"]] == [r[dim] for r in asked["rows"]]
+        assert shown[1]["text"] == ("Built sample_model/sample_dashboard → "
+                                    "output/sample_model/sample_dashboard.html")
+        assert shown[0]["text"].startswith("Build of sample_model/no_such_report refused: ")
+        assert "fingerprint" not in json.dumps(shown), "an exhibit carries no receipt"

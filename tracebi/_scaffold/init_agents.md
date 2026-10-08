@@ -258,7 +258,8 @@ body, the same text as `tracebi knowledge <slug>`).
    it opens the web app on Reports, where the project feed is. While it
    serves, ANY script you run can call `tracebi.workbench.show(...)` — no
    env var needed — and the feed (*From your agent*) updates live; the
-   human leaves you notes there. **Work like a notebook**: `show("## Approach\n...")`
+   human leaves you notes there. Your MCP work posts there too, with
+   nothing to call: each `query_model` result, each build and each refusal. **Work like a notebook**: `show("## Approach\n...")`
    renders as a markdown cell (narrate the methodology as you go — the
    human can flip the feed to read top-down as a document);
    `show(df, note=...)` posts a frame excerpt with column profiles;

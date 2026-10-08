@@ -268,6 +268,32 @@ def show(obj=None, note: Optional[str] = None, name: Optional[str] = None,
               f"{type(exc).__name__}: {exc}", file=sys.stderr)
 
 
+def post_agent_action(tool: str, text: str, frame: Optional[dict] = None) -> None:
+    """Post what an MCP agent just did to the project feed (*From your agent*).
+
+    The gateway calls this after a tool runs, so a person with the app open
+    watches the agent work: a query lands as a frame (``frame`` holds its
+    ``columns``, ``shape`` and ``rows``), a build or a refusal as one line.
+    Where it lands follows :func:`show` exactly — ``TRACEBI_WORKBENCH_DIR``,
+    else the discovery feed only while a dev server's heartbeat is fresh,
+    else nothing — and it never raises. Exhibits carry no receipts.
+    """
+    if _SHOW_OFF.get():
+        return
+    wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or _active_discovery_dir()
+    if not wb:
+        return
+    try:
+        entry = {"kind": "auto", "name": f"agent · {tool}", "text": text,
+                 "source": "agent"}
+        if frame:
+            entry.update(kind="frame", note=text, text=None, **frame)
+        _append_exhibit(wb, entry)
+    except Exception as exc:  # noqa: BLE001 — same contract as show()
+        print(f"[tracebi workbench] agent action dropped: "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+
+
 def _script_source() -> Optional[str]:
     """The running script's path (``sys.argv[0]``) — an exhibit's provenance.
 
