@@ -148,6 +148,18 @@ class TestLargeDetailArtifactIsTaught:
         for name, text in _guides().items():
             assert "tracebi.ready(" in text, f"{name} does not teach tracebi.ready"
 
+    def test_draw_api_is_in_the_vocabulary_and_both_guides(self):
+        from tracebi.capabilities import describe
+
+        payload = json.dumps(describe())
+        assert "tracebi.draw(" in payload and "tracebi.theme()" in payload, (
+            "the vocabulary must document tracebi.draw and tracebi.theme — "
+            "without them an agent draws once from tracebi.data and the "
+            "figure ignores the page's filters and theme"
+        )
+        for name, text in _guides().items():
+            assert "tracebi.draw(" in text, f"{name} does not teach tracebi.draw"
+
     def test_the_size_chosen_embed_format_is_explained_in_both_guides(self):
         for name, text in _guides().items():
             assert "Parquet" in text, f"{name} never mentions the Parquet embed"

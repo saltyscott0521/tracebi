@@ -2,7 +2,7 @@
   "name": "Portfolio Showcase",
   "author": "tracebi reference",
   "description": "The maintained kitchen-sink demo: every figure kind, controls, layouts, and trust affordance the artifact offers, on the reference data.",
-  "libs": ["echarts"],
+  "libs": ["echarts", "d3"],
   "data": {
     "kpis": {
       "model": "portfolio_model",

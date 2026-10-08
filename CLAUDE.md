@@ -168,7 +168,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer; the artifact
                        #   lane: template_package, figures, stack, compile_spec, derive,
-                       #   assets/ (tracebi.js + tracebi.css + vendored ECharts)
+                       #   assets/ (tracebi.js + tracebi.css + vendored ECharts and D3)
   pipeline/            # PipelineRunner + APScheduler integration; run_record (a recorded run: row + log)
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
   web/                 # register facade + auto-discovery for discovered modules (.py and .ipynb)

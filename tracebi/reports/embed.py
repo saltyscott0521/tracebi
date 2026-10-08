@@ -51,7 +51,7 @@ _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
 #: Charting libraries the generator can inline. Their minified IIFE bundles live
 #: in ``tracebi/reports/assets/<name>.min.js`` and expose a global of the name.
-KNOWN_LIBS = {"echarts"}
+KNOWN_LIBS = {"echarts", "d3"}
 
 #: The strict CSP embedded in every generated page (architecture §5). Inline
 #: script/style are unavoidable in a static self-contained file; ``connect-src
@@ -89,7 +89,7 @@ def read_lib(name: str) -> str:
     if not os.path.isfile(path):
         raise FileNotFoundError(
             f"Charting library '{name}' is declared but its bundle is missing "
-            f"at {path}. Rebuild it (see web/ui/echarts-bundle.js)."
+            f"at {path}. Rebuild it (see web/ui/{name}-bundle.js)."
         )
     with open(path, encoding="utf-8") as f:
         return f.read()

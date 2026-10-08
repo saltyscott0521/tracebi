@@ -8,13 +8,15 @@
                              binding from report.json; the runtime fills it.
   report.json                The data bindings (model + query per name), the
                              declared figures placed with figure("…"), and
-                             "libs": ["echarts"], which inlines Apache ECharts.
+                             "libs": ["echarts", "d3"], which inlines
+                             Apache ECharts and D3.
   report.py                  The escape hatch: python-derived data, which the
                              receipt marks as not query-reproducible.
   style.css                  The custom theme: fonts, one gradient hero,
                              pill tabs, token overrides.
   script.js                  Small chart restyling through
-                             tracebi.configureChart. It restyles only.
+                             tracebi.configureChart, and the d3 treemap
+                             drawn through tracebi.draw.
   assets/                    Fonts (Inter, Fraunces; SIL Open Font License)
                              and hero artwork, inlined at build.
 
@@ -137,6 +139,12 @@
           <button data-tb-download data-tb-binding="holdings_detail"
                   data-tb-label="Download CSV"></button>
         </p>
+        <!-- A custom figure: no framework markup, drawn by script.js with
+             d3 through tracebi.draw. It reads the same stamped rows as the
+             table below, so the sector filter and the search redraw it. -->
+        <div data-tb-figure="custom" data-tb-binding="holdings_detail"
+             class="sc-treemap" id="fig-treemap"
+             aria-label="Fair value by issuer, grouped by sector"></div>
         <table data-tb-figure="table" data-tb-binding="holdings_detail"
                data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
                data-tb-totals="holdings_total"
@@ -173,7 +181,8 @@
     <ul>
       <li>the data behind every figure, fingerprinted, with its receipt;</li>
       <li>TraceBi's design system and runtime (MIT);</li>
-      <li>Apache ECharts for the charts (Apache License);</li>
+      <li>Apache ECharts for the charts (Apache License), and D3 for the
+        treemap (ISC License);</li>
       <li>the Inter and Fraunces typefaces (SIL Open Font License).</li>
     </ul>
     Check it with <code>tracebi verify --file</code>.

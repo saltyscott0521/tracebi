@@ -190,11 +190,30 @@ keep the whole layout, stylesheet and script while never hand-writing the
 grammar. The declared name becomes the figure id (`fig-<name>`). Kinds:
 `value` (needs `cell` and a one-row binding), `chart` (`chart_type`/`x`/`y`/`color`/`palette`),
 `table` (`columns`/`style`) — a `custom` figure has no framework markup, so
-draw and mark that one yourself. It refuses the silent failures: a figure
+draw it in code with `tracebi.draw` (below). It refuses the silent failures: a figure
 naming an undeclared binding fails at load, and a figure declared but never
 placed — or placed twice — fails the build. Hand-written figures still work
 everywhere; this is sugar, not a replacement. `libs` is optional. The build
 inlines ECharts automatically when the page contains a chart figure.
+
+**Code-drawn figures (d3).** When the chart types above cannot draw what the
+page needs (a treemap, a Sankey, an annotated waterfall), write it: put
+`"libs": ["d3"]` in `report.json`, a `<div data-tb-figure="custom"
+data-tb-binding="…" id="fig-…">` in the template, and in `script.js`:
+
+```js
+tracebi.draw("fig-flows", function (surface, rows, theme) {
+  var svg = d3.select(surface).append("svg");   // surface: an empty div, cleared each call
+  // rows: the binding's stamped rows as the page's filters leave them
+  // theme: {ink, muted, rule, bg, accent, font, palette, …} from the page's tokens
+});
+```
+
+`fn` runs once the data is loaded and again whenever the figure's rows change
+(a filter, the search, a selection) or its width does, so the figure follows
+the theme and the page's controls with no wiring of its own. Draw from `rows`
+only; `tracebi.setSelection({column: value})` filters the page from a click.
+The showcase's holdings treemap is the worked example.
 
 **Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
 (`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for two

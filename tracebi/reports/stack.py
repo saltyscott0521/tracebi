@@ -115,11 +115,16 @@ def figures_config(figures, output_names, badges: bool = True) -> list[dict]:
 
 @functools.lru_cache(maxsize=None)
 def _lib_credit(lib: str) -> str:
-    """"Apache ECharts 6.1.0 (Apache-2.0)" from the vendored file's own
-    header, so the credit can never drift from the bundled version."""
+    """"Apache ECharts 6.1.0 (Apache-2.0)" or "D3 7.9.0 (ISC)" from the
+    vendored file's own header, so the credit can never drift from the
+    bundled version."""
     import re
-    m = re.search(r"Apache ECharts ([0-9][0-9.]*)", read_lib(lib)[:2000])
-    return f"Apache ECharts {m.group(1)} (Apache-2.0)" if m else lib
+    head = read_lib(lib)[:2000]
+    m = re.search(r"Apache ECharts ([0-9][0-9.]*)", head)
+    if m:
+        return f"Apache ECharts {m.group(1)} (Apache-2.0)"
+    m = re.search(r"D3 ([0-9][0-9.]*)", head)
+    return f"D3 {m.group(1)} (ISC)" if m else lib
 
 
 def libraries_comment(libs) -> str:
