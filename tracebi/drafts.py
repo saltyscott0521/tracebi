@@ -19,6 +19,7 @@ kept. See ``docs/strategy/remote-authoring.md``.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -50,9 +51,15 @@ class DraftNotFound(DraftError):
 
 
 def slug_owner(owner: Optional[str]) -> str:
-    """The owner as a folder name: lowercase ``[a-z0-9._-]``, never dot-leading."""
-    slug = re.sub(r"[^a-z0-9._-]", "-", (owner or "").lower())
+    """The owner as a folder name: lowercase ``[a-z0-9._@+-]``, never
+    dot-leading. When a character had to be replaced, a short hash of the
+    original is appended, so two people never share a folder
+    (``a/b@x.com`` and ``a-b@x.com`` stay apart)."""
+    lowered = (owner or "").lower()
+    slug = re.sub(r"[^a-z0-9._@+-]", "-", lowered)
     slug = re.sub(r"^\.+", lambda m: "-" * len(m.group()), slug)
+    if slug != lowered:
+        slug = f"{slug}-{hashlib.sha256(lowered.encode('utf-8')).hexdigest()[:8]}"
     return slug or "anonymous"
 
 

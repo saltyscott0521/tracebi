@@ -158,3 +158,15 @@ class TestWhoMayTouchADraft:
         assert sorted(d["owner"] for d in everyone) == ["alice", "bob"]
         assert client.get("/api/drafts/alice/reports/finance/weekly/files",
                           headers=self._as("root", "admin")).status_code == 200
+
+
+def test_two_people_never_share_a_drafts_folder():
+    """Owner folders come from sign-in identities. A replaced character must not
+    let two people land in one folder and read each other's drafts."""
+    from tracebi.drafts import slug_owner
+
+    people = ["a/b@x.com", "a-b@x.com", "a b@x.com", "DOMAIN\\ann", "domain-ann",
+              "ann+bi@x.com", "ann-bi@x.com"]
+    folders = [slug_owner(p) for p in people]
+    assert len(set(folders)) == len(people), folders
+    assert all(slug_owner(f) == f for f in folders), "a folder name is its own slug"
