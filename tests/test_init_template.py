@@ -38,14 +38,14 @@ class TestTemplateFlag:
     def test_default_init_is_unchanged(self, tmp_path):
         proj = tmp_path / "plain"
         assert cli.main(["init", str(proj)]) == 0
-        assert (proj / "models" / "sample_model.py").is_file()
+        assert (proj / "models" / "sample_model.yaml").is_file()
         assert (proj / "reports" / "sample_model" / "sample_dashboard"
                 / "template.html").is_file()
-        assert (proj / "pipelines" / "sample_model.py").is_file()
+        assert (proj / "pipelines" / "sample_model.yaml").is_file()
         assert (proj / "inputs" / "orders.csv").is_file()
-        assert not (proj / "models" / "saas_model.py").exists()
+        assert not (proj / "models" / "saas_model.yaml").exists()
         assert not (proj / "reports" / "saas_model").exists()
-        assert not (proj / "models" / "sales_pipeline_model.py").exists()
+        assert not (proj / "models" / "sales_pipeline_model.yaml").exists()
         assert not (proj / "reports" / "sales_pipeline_model").exists()
         readme = (proj / "README.md").read_text(encoding="utf-8")
         assert "sample_dashboard" in readme
@@ -56,7 +56,7 @@ class TestTemplateFlag:
         proj = tmp_path / "saas"
         assert cli.main(
             ["init", str(proj), "--template", "saas_metrics"]) == 0
-        assert (proj / "models" / "saas_model.py").is_file()
+        assert (proj / "models" / "saas_model.yaml").is_file()
         assert (proj / "transforms" / "saas_transform.py").is_file()
         assert (proj / "reports" / "saas_model" / "mrr_dashboard"
                 / "template.html").is_file()
@@ -65,13 +65,13 @@ class TestTemplateFlag:
         readme = (proj / "README.md").read_text(encoding="utf-8")
         assert "saas-metrics" in readme
         assert "tracebi connect" in readme
-        model = proj / "models" / "saas_model.py"
+        model = proj / "models" / "saas_model.yaml"
         model.write_text("# edited\n", encoding="utf-8")
         assert cli.main(["init", str(proj), "--template", "saas-metrics"]) == 1
         assert model.read_text(encoding="utf-8") == "# edited\n"
         assert cli.main(
             ["init", str(proj), "--template", "saas-metrics", "--force"]) == 0
-        assert "DataModel" in model.read_text(encoding="utf-8")
+        assert "measures:" in model.read_text(encoding="utf-8")
         # capsys drains the init prints so they don't leak into later asserts
         capsys.readouterr()
 
@@ -153,7 +153,7 @@ class TestSalesTemplateVerifies:
         proj = tmp_path / "sales"
         assert cli.main(
             ["init", str(proj), "--template", "sales_pipeline"]) == 0
-        assert (proj / "models" / "sales_pipeline_model.py").is_file()
+        assert (proj / "models" / "sales_pipeline_model.yaml").is_file()
         assert (proj / "transforms" / "sales_pipeline_transform.py").is_file()
         assert (proj / "inputs" / "opportunities.csv").is_file()
         assert (proj / "reports" / "sales_pipeline_model" / "pipeline_dashboard"

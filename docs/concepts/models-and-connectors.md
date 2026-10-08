@@ -27,7 +27,7 @@ model.add_fact("fact_holdings", table_name="fact_holdings",                     
 ## Finding where the data is
 
 - **In the app**, open **Data model**, pick a model: the header says
-  *Defined in* `models/portfolio_model.py` and *Data in*
+  *Defined in* `models/portfolio_model.yaml` and *Data in*
   `data/warehouse.duckdb`, and whether the file is there yet and how big it is.
   The **Storage** tab lists each connector, what kind of place it is, and
   exactly which tables it serves. The **Sources** page (a source is a connector) is the same list
@@ -51,9 +51,9 @@ model.add_fact("fact_holdings", table_name="fact_holdings",                     
 Reports are organised **by model**: the folder is the model's name.
 
 ```
-models/portfolio_model.py            what the data means
+models/portfolio_model.yaml            what the data means
 reports/portfolio_model/…            every report that reads it
-pipelines/portfolio_model.py         rebuild its data, then those reports
+pipelines/portfolio_model.yaml         rebuild its data, then those reports
 ```
 
 One line makes the pipeline: `model_pipeline("portfolio_model",

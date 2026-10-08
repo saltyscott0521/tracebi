@@ -10,7 +10,7 @@ human carries its receipt.**
 **phase ③ — REPORT**, authoring over the model boundary. You are handed two
 freeze points: a warehouse phase ① already sank (`data/warehouse.duckdb`)
 and a model phase ② already declared over it (`models/*.py`, e.g.
-`models/portfolio_model.py`). You do not re-run the phase-① pandas and you do not
+`models/portfolio_model.yaml`). You do not re-run the phase-① pandas and you do not
 see it — the model is the contract you author against, and everything below is
 exactly how `reports/portfolio_model/portfolio_dashboard.json` was written. **The trust
 machinery in this SOP — stamped queries, validate-before-execute, `verify` —

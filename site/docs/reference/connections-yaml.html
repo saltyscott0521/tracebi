@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Freeze points — TraceBi docs</title>
+<title>Connection files (YAML) — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Freeze points">
+<meta name="description" content="Connection files (YAML)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
     <div class="links"><a href="../index.html">Overview</a>
 <div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a class="on" href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
@@ -49,7 +49,7 @@
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a class="on" href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/measures.html">Measures</a>
 <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
@@ -74,75 +74,96 @@
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
-<h1 id="freeze-points">Freeze points</h1>
-<p><strong>A freeze point is a materialized artifact handed from one phase to the next.
-It is what lets the three phases run at different speeds.</strong></p>
-<p>There are two, one between each pair of phases in <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:</p>
+<h1 id="connection-files-yaml">Connection files (YAML)</h1>
+<p><strong>A source as data: a type and its fields, with every secret kept out of the
+file as a <code>${ENV_VAR}</code> reference.</strong></p>
+<p><code>connections/&lt;name&gt;.yaml</code> (<code>.yml</code> works too; <code>TRACEBI_CONNECTIONS_DIR</code> moves
+the folder) declares a place data lives. <code>tracebi connect &lt;name&gt; --kind ...</code>
+tests a warehouse, writes the file, and puts any secret in <code>.env</code>. A model
+points at it with <code>connection: &lt;name&gt;</code> in its <code>connectors:</code>.</p>
+<p>The file loads with <code>yaml.safe_load</code> semantics, a repeated key is an error,
+and the schema is closed: an unknown key is refused with a suggestion.</p>
+<hr>
+<h2 id="example">Example</h2>
+<pre><code class="language-yaml"># connections/wh.yaml
+name: wh                      # equals the file name
+type: postgres
+url: ${TRACEBI_WH_URL}        # the value lives in .env or the environment
+</code></pre>
+<pre><code class="language-yaml"># models/sales.yaml
+connectors:
+  - name: wh                  # equals the connection's name
+    connection: wh
+</code></pre>
+<hr>
+<h2 id="fields">Fields</h2>
+<p>Every file has <code>name</code> and <code>type</code>. <code>type</code> is one of:</p>
 <table>
 <thead>
 <tr>
-<th>Freeze</th>
-<th>What it is</th>
-<th>Written by</th>
-<th>Read by</th>
+<th>type</th>
+<th>required</th>
+<th>optional</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>The sink</strong></td>
-<td><code>data/warehouse.duckdb</code> — real tables on disk</td>
-<td><a href="../concepts/transform.html">Transform — phase ①</a> (①)</td>
-<td><a href="../concepts/model.html">Model — phase ②</a> (②)</td>
+<td><code>duckdb</code></td>
+<td><code>database</code></td>
+<td><code>directory</code></td>
 </tr>
 <tr>
-<td><strong>The model</strong></td>
-<td>the semantic contract: grain, keys, <a href="../reference/measures.html">Measures</a></td>
-<td>you, in <code>models/</code></td>
-<td><a href="../concepts/report.html">Report — phase ③</a> (③)</td>
+<td><code>csv</code></td>
+<td><code>directory</code></td>
+<td><code>encoding</code></td>
+</tr>
+<tr>
+<td><code>sql</code>, <code>postgres</code></td>
+<td><code>url</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>snowflake</code></td>
+<td><code>account</code>, <code>user</code>, <code>password</code>, <code>warehouse</code>, <code>database</code></td>
+<td><code>schema</code> (default <code>PUBLIC</code>), <code>role</code></td>
+</tr>
+<tr>
+<td><code>bigquery</code></td>
+<td><code>project</code>, <code>dataset</code></td>
+<td><code>credentials</code> (path to a service-account file)</td>
 </tr>
 </tbody>
 </table>
-<hr>
-<h2 id="why-they-matter">Why they matter</h2>
-<p>Without a freeze point, every report render would re-run the analysis above it.
-With one, the expensive work happens once and the cheap work happens as often
-as you like.</p>
-<p>That is the whole reason the reporting loop is fast:</p>
+<p>All values are strings.</p>
+<h2 id="env_var"><code>${ENV_VAR}</code></h2>
+<p>Any value may be a reference, written as the whole value and named
+<code>[A-Z_][A-Z0-9_]*</code>. <code>"x-${A}"</code> is an error.</p>
 <ul>
-<li><strong>Editing a report re-renders in milliseconds.</strong> It queries materialized
-  tables; no pandas runs.</li>
-<li><strong>Re-running a transform does not touch your reports.</strong> They keep serving
-  the last good sink until you refresh it.</li>
-<li><strong>Changing a model is a reviewable diff</strong>, not a cascade — because what sits
-  below it is frozen, and what sits above it only speaks the model's
-  vocabulary.</li>
+<li><strong>Secrets must be references.</strong> <code>password</code> always. <code>url</code> may be a literal
+  only when it carries no credential (no password, no <code>password=</code>, <code>token=</code>,
+  <code>key=</code>... in the query); <code>sqlite:///data/x.db</code> is fine, a URL with a
+  password is a validation error.</li>
+<li><strong>Paths stay inside the project when literal.</strong> <code>database</code> and <code>directory</code>
+  of a <code>duckdb</code>/<code>csv</code> connection: no absolute path, no <code>..</code>. Use a reference
+  to point elsewhere. Relative paths resolve against the project root.</li>
+<li><strong>Resolved lazily.</strong> Reading the file builds a connector and reads no
+  environment. The variable is read when the connection is used; an unset one
+  fails there with an error naming the variable (and not its value).
+  Lookup is the process environment, then the project's <code>.env</code>. <code>.env</code> is
+  never copied into <code>os.environ</code>, and only the names a connection references
+  are read.</li>
+<li><strong>Never shown.</strong> <code>/api/connectors</code> and the Sources page show a referenced
+  value as <code>${NAME}</code> and a literal URL with its password redacted; a
+  credential is never resolved to describe a connection.</li>
 </ul>
-<h2 id="what-crossing-a-freeze-point-costs">What crossing a freeze point costs</h2>
-<p>A freeze point is a <em>contract</em>, so crossing it deliberately loses information.</p>
-<ul>
-<li><strong>The model cannot see the transform.</strong> It reads tables, not the code that
-  produced them. If a number is wrong because the pandas was wrong, the model
-  has no way to know — this is the honest boundary described in <a href="../concepts/receipts.html">Receipts</a>.</li>
-<li><strong>The report cannot see the warehouse directly.</strong> It speaks in
-  <a href="../reference/measures.html">Measures</a> and dimensions the model declares. That is what makes a figure
-  re-runnable, and it is why an expressiveness gap in the model pushes work
-  into ungoverned code where the receipt weakens.</li>
-</ul>
-<h2 id="refreshing-a-freeze-point">Refreshing a freeze point</h2>
-<p>Re-run the transform (<code>tracebi run-transform &lt;name&gt;</code>) and the sink is replaced.
-Transforms are written to be <strong>idempotent</strong> — a rerun replaces the warehouse
-tables rather than appending to them.</p>
-<blockquote>
-<p><strong>One operational catch:</strong> DuckDB allows many readers but a single writer. A
-warehouse refresh is blocked while a <code>tracebi dev</code> or <code>tracebi serve</code> process
-holds the file open. Stop the server to refresh.</p>
-</blockquote>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../concepts/transform.html">Transform — phase ①</a> — what writes the sink</li>
-<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — checks that run at sink time</li>
-<li><a href="../concepts/model.html">Model — phase ②</a> — what reads it</li>
-</ul>
+<h2 id="discovery-and-precedence">Discovery and precedence</h2>
+<p>Files in <code>connections/</code> are registered at startup and as they change, so the
+Sources page lists them. A model's <code>connection: &lt;x&gt;</code> reads
+<code>connections/&lt;x&gt;.yaml</code> first, then the legacy <code>models/_connections/&lt;x&gt;.py</code>
+that <code>tracebi connect --python</code> writes. <code>tracebi migrate connection
+models/_connections/&lt;x&gt;.py [--write]</code> converts one (it never deletes the
+module) and refuses, with a reason, a module that is not one of the types
+above or that builds a credential in code.</p>
   </main>
 </div>
 <script>

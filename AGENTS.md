@@ -22,7 +22,7 @@ materialized artifact handed across the boundary:
 | ③ **Report** | `reports/` | an **artifact package**, in a folder named for its model (`reports/<model>/<name>/`, named `<model>/<name>` in every command: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
 
 Reference implementation, end to end, at `examples/portfolio_project/`:
-`transforms/holdings_transform.py` → `models/portfolio_model.py` →
+`transforms/holdings_transform.py` → `models/portfolio_model.yaml` →
 `reports/portfolio_model/portfolio_dashboard.json`, wired by `run_workflow.py`.
 `docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
 
@@ -34,10 +34,13 @@ refused). `tracebi migrate model models/<name>.py [--write]` converts a Python
 model and leaves the `.py` in place until you delete it. A model draft over the
 gateway may be `<name>.yaml` or `<name>.json`.
 
-A model also gets a pipeline, `pipelines/<model>.py` (`runner =
-model_pipeline("<model>", transform="<transform>")`): `tracebi run-pipeline
-<model>` runs the transform, then builds every report in `reports/<model>/`,
-and the app's Refresh page runs the same. `tracebi init` scaffolds exactly this
+A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
+`reports: all`, `schedule:`; it only names the Python transform; `.py` with
+`model_pipeline(...)` still works and wins on a name clash): `tracebi
+run-pipeline <model>` runs the transform, then builds every report in
+`reports/<model>/`, and the app's Refresh page runs the same. `tracebi
+new-pipeline` writes YAML; `tracebi migrate pipeline pipelines/x.py [--write]`
+converts. Sources are declarative too: `connections/<name>.yaml` (see below). `tracebi init` scaffolds exactly this
 for `sample_model`.
 
 The split earns its keep at the freeze points: the slow, unconstrained analysis
@@ -50,14 +53,20 @@ phase-① transform, declare the phase-② model, author the phase-③ report sp
 
 Already have tables? `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb`
 tests the warehouse, writes the secret to `.env`, and writes
-`models/_connections/<name>.py` (that file calls `load_dotenv()`; the framework
-never loads `.env`). Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
+`connections/<name>.yaml`: a type and its fields, where any value may be
+`${ENV_VAR}` (the whole value) and a password, or a URL that carries one,
+MUST be (a literal secret is a validation error). The variable is read when the
+connection is used, never at discovery; a model points at it with
+`connection: <name>` in its `connectors:`. (`--python` writes the older
+`models/_connections/<name>.py`; a model reads `connections/<name>.yaml`
+first, then that.) `tracebi migrate connection models/_connections/<name>.py
+[--write]` converts one. Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
 drafts a star schema from column metadata only. Edit every line marked
 `# DRAFT: review` before a report depends on it.
 
 Already have dbt marts? `tracebi import dbt <path>` reads a `manifest.json`
 (a project root, or the file; it does not run dbt) and drafts `models/<name>.py`
-the same way. `--connection <name>` wires the connector `tracebi connect`
+the same way. `--connection <name>` wires the connection `tracebi connect`
 wrote. Relationships and measures stay `# DRAFT: review` comments — foreign
 keys are not invented.
 
@@ -71,8 +80,8 @@ scaffolds the sales pipeline starter: open pipeline value and win rate
 region, plus `sales_pipeline_model/pipeline_dashboard` and
 `sales_pipeline_model/rep_scorecard`. Unknown template names are refused
 with the known list. `tracebi context` lists them under `templates`. Next,
-`tracebi connect` and re-point the model (`models/saas_model.py` or
-`models/sales_pipeline_model.py`). Default `tracebi init` (no flag)
+`tracebi connect` and point the model's `connection:` at it (`models/saas_model.yaml` or
+`models/sales_pipeline_model.yaml`). Default `tracebi init` (no flag)
 scaffolds the sample orders dashboard.
 
 ## Where the trust machinery applies — and where it does not
@@ -421,7 +430,7 @@ freely, never re-source.
   `reports/*` (specs, packages, and factories; plus `pipelines/*.py`). Every phase is
   authored and code-reviewed here. Missing a measure? The fix is a code-reviewed
   edit to the model file (e.g. `model.add_measure(...)` in
-  `models/portfolio_model.py`) — never a workaround in the report layer.
+  `models/portfolio_model.yaml`) — never a workaround in the report layer.
   Missing a *column the measure needs*? That is a phase-① change: sink it in the
   transform. A fresh gateway process sees new vocabulary on its next call (stdio
   one-shot clients get this for free; a long-running server must be restarted —

@@ -56,7 +56,7 @@ class TestConnectFlags:
         (tmp_path / ".env").write_text("OTHER=keep\nTRACEBI_WH_DATABASE=old-value\n")
         code = _run(
             monkeypatch, tmp_path,
-            "connect", "wh", "--kind", "duckdb", "--database", str(db),
+            "connect", "--python", "wh", "--kind", "duckdb", "--database", str(db),
         )
         assert code == 1
         text = (tmp_path / ".env").read_text()
@@ -75,7 +75,7 @@ class TestConnectFlags:
         (tmp_path / ".env").write_text("# comment\nOTHER=keep\nTRACEBI_WH_DATABASE=old-value\n")
         code = _run(
             monkeypatch, tmp_path,
-            "connect", "wh", "--kind", "duckdb", "--database", str(db), "--force",
+            "connect", "--python", "wh", "--kind", "duckdb", "--database", str(db), "--force",
         )
         assert code == 0
         lines = (tmp_path / ".env").read_text().splitlines()
@@ -88,7 +88,7 @@ class TestConnectFlags:
         url = "postgresql://analyst:s3cret-token@localhost:5432/sales"
         code = _run(
             monkeypatch, tmp_path,
-            "connect", "wh", "--kind", "postgres", "--url", url, "--no-test",
+            "connect", "--python", "wh", "--kind", "postgres", "--url", url, "--no-test",
         )
         assert code == 0
         captured = capsys.readouterr()
@@ -109,7 +109,7 @@ class TestConnectFlags:
         con.close()
         code = _run(
             monkeypatch, tmp_path,
-            "connect", "wh", "--kind", "duckdb", "--database", str(db),
+            "connect", "--python", "wh", "--kind", "duckdb", "--database", str(db),
         )
         assert code == 0
         out = capsys.readouterr().out
@@ -135,7 +135,7 @@ class TestConnectFlags:
 
 class TestGeneratedConnections:
     def _source(self, tmp_path, monkeypatch, argv) -> str:
-        assert _run(monkeypatch, tmp_path, *argv) == 0
+        assert _run(monkeypatch, tmp_path, argv[0], "--python", *argv[1:]) == 0
         return (tmp_path / "models" / "_connections" / "wh.py").read_text()
 
     def test_each_kind_parses(self, tmp_path, monkeypatch):
@@ -193,7 +193,7 @@ def test_missing_table_writes_no_model(tmp_path, monkeypatch, capsys):
     )
     assert code == 1
     assert not (tmp_path / "models" / "sales.py").exists()
-    assert (tmp_path / "models" / "_connections" / "wh.py").is_file()
+    assert (tmp_path / "connections" / "wh.yaml").is_file()
 
 
 def test_help_lists_connect(capsys):

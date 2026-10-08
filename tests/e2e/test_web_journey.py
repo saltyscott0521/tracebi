@@ -542,12 +542,35 @@ def test_a_declarative_model_answers_like_the_python_one(served, scaffolded):
                if e["file"] == "broken.json"]
     assert entry["status"] == "failed" and "measures[0]" in entry["reason"]
 
-    # x.py and x.json together: the Python model stands, the JSON is refused.
+    # x.yaml and x.json together: a model is one file, so both are refused.
     (scaffolded / "models" / "sample_model.json").write_text("{}")
     discovery.register_models("models")
     [clash] = [e for e in served.get("/api/discovery").json()["entries"]
                if e["file"] == "sample_model.json"]
-    assert clash["status"] == "failed" and "sample_model.py exists" in clash["reason"]
+    assert clash["status"] == "failed" and "both exist" in clash["reason"]
+
+
+PYTHON_SAMPLE_MODEL = """\
+import os
+
+from tracebi import DataModel
+from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+connector = DuckDBConnector("warehouse", database=os.path.join(ROOT, "data", "warehouse.duckdb"))
+model = (
+    DataModel("sample_model")
+    .add_connector(connector)
+    .add_table("fact_orders", connector="warehouse", source="fact_orders")
+    .add_table("dim_region", connector="warehouse", source="dim_region")
+    .add_dimension("dim_region", table_name="dim_region", key_col="region_id", attributes=["region"])
+    .add_fact("fact_orders", table_name="fact_orders", measures=["revenue", "qty"],
+              foreign_keys={"dim_region": "region_id"})
+    .add_measure("revenue", column="revenue", agg="sum", description="Total revenue", format="currency0")
+    .add_measure("units", column="qty", agg="sum", description="Units sold")
+    .add_measure("orders", column="order_id", agg="count", description="Order count")
+)
+"""
 
 
 def test_a_python_model_migrates_to_yaml_and_answers_identically(scaffolded):
@@ -560,6 +583,9 @@ def test_a_python_model_migrates_to_yaml_and_answers_identically(scaffolded):
     assert code == 0, out
     query = dict(fact="fact_orders", measures=["revenue", "units"],
                  dimensions=["dim_region.region"])
+    # The scaffold's model is YAML now; stand a Python twin in its place.
+    (scaffolded / "models" / "sample_model.yaml").rename(scaffolded / "sample_model.yaml.old")
+    (scaffolded / "models" / "sample_model.py").write_text(PYTHON_SAMPLE_MODEL)
     before = model_registry.get_model("sample_model").query(**query).fingerprint()
 
     code, out = run_cli("migrate", "model", "models/sample_model.py", "--write")
@@ -579,10 +605,9 @@ def test_a_python_model_migrates_to_yaml_and_answers_identically(scaffolded):
 def test_the_reference_models_convert_or_refuse_with_a_reason(reference):
     """Every model of the reference project converts; one that cannot be
     expressed is refused with its reason and nothing is written."""
+    from tracebi import model_registry
     for name in ("portfolio_model", "housing_model", "saas_model"):
-        code, out = run_cli("migrate", "model", f"models/{name}.py")
-        assert code == 0, f"{name}: {out}"
-        assert f"name: {name}" in out
+        assert model_registry.get_model(name).name == name
     (reference / "models" / "renamed.py").write_text(
         "from tracebi import DataModel\nmodel = DataModel('Other')\n")
     code, out = run_cli("migrate", "model", "models/renamed.py", "--write")

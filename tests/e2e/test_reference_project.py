@@ -102,12 +102,12 @@ def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(buil
     from tracebi.pipeline import model_pipeline
     from tracebi.pipeline.model_pipeline import reports_of
 
-    models = sorted(p.stem for p in (built / "models").glob("*.py") if not p.stem.startswith("_"))
+    models = sorted(p.stem for p in (built / "models").glob("*.yaml") if not p.stem.startswith("_"))
     assert models == ["housing_model", "portfolio_model", "saas_model"]
     for model in models:
         names = reports_of(model)
         assert names, f"reports/{model}/ has no reports"
-        assert (built / "pipelines" / f"{model}.py").is_file(), f"{model} has no pipeline"
+        assert (built / "pipelines" / f"{model}.yaml").is_file(), f"{model} has no pipeline"
         # ...and every report in the reference project sits under a model's folder
     everything = {name for names in map(reports_of, models) for name in names}
     assert everything == set(REPORTS), "a report sits outside its model's folder"

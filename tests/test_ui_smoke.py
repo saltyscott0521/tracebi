@@ -230,7 +230,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # Each page can show the code behind what it shows.
             page.goto(base + "/m/portfolio_model")
             page.get_by_role("button", name="Code", exact=True).click()
-            page.get_by_text("models/portfolio_model.py").first.wait_for()
+            page.get_by_text("models/portfolio_model.yaml").first.wait_for()
             page.goto(base + "/m/portfolio_model/refresh")
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="transform", exact=True).click()

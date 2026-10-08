@@ -25,7 +25,7 @@ runner.register(SilverLayer(source=_db, source_table="orders_bronze", sink=_db,
 
 @pytest.fixture
 def pipeline(scaffolded):
-    code, out = run_cli("new-pipeline", "Orders ETL")
+    code, out = run_cli("new-pipeline", "--python", "Orders ETL")
     assert code == 0, out
     path = scaffolded / "pipelines" / "orders_etl.py"
     src = path.read_text()
@@ -247,8 +247,8 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
     # The Code tab shows what ran: the pipeline file, then the transform it starts with.
     code = c.get("/api/pipelines/sample_model/source").json()
     assert [(f["label"], f["path"]) for f in code["files"]] == [
-        ("pipeline", "pipelines/sample_model.py"), ("transform", "transforms/sample_transform.py")]
-    assert "model_pipeline(" in code["files"][0]["content"] and "sink" in code["files"][1]["content"].lower()
+        ("pipeline", "pipelines/sample_model.yaml"), ("transform", "transforms/sample_transform.py")]
+    assert "transform: sample_transform" in code["files"][0]["content"] and "sink" in code["files"][1]["content"].lower()
     assert c.get("/api/pipelines/nope/source").status_code == 404
 
 
@@ -295,11 +295,11 @@ def test_a_model_and_its_connector_show_the_file_that_declares_them(reference, m
 
     c = serve_app(monkeypatch, models=True)
     code = c.get("/api/models/portfolio_model/source").json()
-    assert [f["path"] for f in code["files"]] == ["models/portfolio_model.py"]
-    assert "DataModel(" in code["files"][0]["content"] and not code["files"][0]["truncated"]
+    assert [f["path"] for f in code["files"]] == ["models/portfolio_model.yaml"]
+    assert "measures:" in code["files"][0]["content"] and not code["files"][0]["truncated"]
     # A connector is declared in the model files that read it: both models here read this warehouse.
     shared = c.get("/api/connectors/warehouse/source").json()
-    assert sorted(f["path"] for f in shared["files"]) == ["models/portfolio_model.py", "models/saas_model.py"]
+    assert sorted(f["path"] for f in shared["files"]) == ["models/portfolio_model.yaml", "models/saas_model.yaml"]
     # A model registered in code has no file, and says so rather than showing nothing.
     registry.add_model(DataModel("in_code"))
     nothing = c.get("/api/models/in_code/source").json()

@@ -145,7 +145,7 @@ pitch.
 | Phase | Folder | What it is | Reference impl |
 |---|---|---|---|
 | ① **Transform** | `transforms/` | Ordinary, unconstrained pandas — window functions, prose parsing, cleaning — that *sinks* clean star-schema tables into a file-backed DuckDB warehouse. The framework does not constrain this phase. | `examples/portfolio_project/transforms/holdings_transform.py` |
-| ② **Model** | `models/` | A declarative `DataModel` (grain, keys, measures) over the warehouse, read by a reviewer without opening the pandas above it. It reads the sink; it never sees the transform. | `examples/portfolio_project/models/portfolio_model.py` |
+| ② **Model** | `models/` | A declarative `DataModel` (grain, keys, measures) over the warehouse, read by a reviewer without opening the pandas above it. It reads the sink; it never sees the transform. | `examples/portfolio_project/models/portfolio_model.yaml` |
 | ③ **Report** | `reports/` | A `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables — where every figure is a live query, re-rendered in milliseconds. (Also the home of template packages and `@register.report` factories — one folder for every report form.) | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json` |
 
 Note on the word: this workflow phase ③ artifact is a *rendered `ReportSpec`
@@ -182,7 +182,7 @@ clean; it is *what* lands — the named tables at the end of the script.
 ### What shipped
 
 - The reference project (now at `examples/portfolio_project/`):
-  `transforms/holdings_transform.py`, `models/portfolio_model.py`,
+  `transforms/holdings_transform.py`, `models/portfolio_model.yaml`,
   `reports/portfolio_model/portfolio_dashboard.json`, `run_workflow.py`,
   `inputs/generate_raw.py` (+ `inputs/holdings.csv`),
   `WORKFLOW.md`. `python run_workflow.py` builds the warehouse (phase ①) and

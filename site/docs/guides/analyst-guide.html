@@ -49,10 +49,12 @@
 <div class="sec"><span>Reference</span><em>Look things up.</em></div>
 <a href="../reference/api-routes.html">API routes</a>
 <a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/measures.html">Measures</a>
 <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
@@ -117,7 +119,7 @@ you clean; the contract is <em>what lands</em>. Reference impl:
 <a href="../examples/portfolio_project/transforms/holdings_transform.py">transforms/holdings_transform.py</a>.</p>
 <p><strong>Phase ②</strong> declares a star schema over the warehouse — it reads the sink and
 never sees the transform above it. Reference impl:
-<a href="../examples/portfolio_project/models/portfolio_model.py">models/portfolio_model.py</a>.</p>
+<a href="../examples/portfolio_project/models/portfolio_model.yaml">models/portfolio_model.yaml</a>.</p>
 <p><strong>Phase ③</strong> is an <strong>artifact package</strong> (<code>reports/&lt;name&gt;/</code>) — or a JSON
 <code>ReportSpec</code>, a serialization of the same thing — whose every figure is a
 live query against the model. Because the model is materialized, the page
@@ -369,7 +371,7 @@ match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</cod
 model once in <code>models/</code> so nobody has to repeat the connector and table
 setup:</p>
 <pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;       # creates models/sales_model.py — edit and commit it
-tracebi new-pipeline &quot;Sales ETL&quot;      # creates pipelines/sales_etl.py — edit and commit it
+tracebi new-pipeline &quot;Sales ETL&quot;      # creates pipelines/sales_etl.yaml — edit and commit it
 </code></pre>
 <p>Anyone on the team then gets:</p>
 <pre><code class="language-python">from tracebi.model_registry import get_model

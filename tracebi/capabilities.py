@@ -672,11 +672,31 @@ def _conventions() -> dict:
                 "must_define": "runner",
                 "type": "PipelineRunner",
                 "note": "Also loadable via tracebi.pipeline_registry.get_runner(name). "
-                        "One per model: runner = model_pipeline(\"<model>\", "
-                        "transform=\"<transform>\") (from tracebi import "
-                        "model_pipeline). `tracebi run-pipeline <model>` runs "
-                        "the transform, then builds every report in "
-                        "reports/<model>/; the app's Refresh page runs the same.",
+                        "Declarative by default: pipelines/<name>.yaml is "
+                        "{name, transform, models, reports ('all' or names), "
+                        "schedule, description}; it only NAMES the Python "
+                        "transform. A .py beside a .yaml of the same name "
+                        "wins (the .yaml is refused; see /api/discovery). "
+                        "`tracebi new-pipeline` writes YAML (--python for "
+                        "the old form); `tracebi migrate pipeline "
+                        "pipelines/x.py [--write]` converts a "
+                        "model_pipeline(...) runner. `tracebi run-pipeline "
+                        "<name>` runs the transform, then builds the "
+                        "reports (all of reports/<model>/ by default); the "
+                        "app's Refresh page runs the same.",
+            },
+            {
+                "path": "connections/",
+                "must_define": "a connections/<name>.yaml per source",
+                "type": "connection",
+                "note": "{name, type, ...fields}; type is duckdb, csv, sql, "
+                        "postgres, snowflake or bigquery. Any value may be "
+                        "${ENV_VAR} (the whole value); password, and a url "
+                        "that carries credentials, MUST be, or the file is "
+                        "refused. The variable is read when the connection "
+                        "is used (an unset one is an error naming it), never "
+                        "at discovery. A model's connector says "
+                        "`connection: <name>`. Written by `tracebi connect`.",
             },
             {
                 "path": "reports/",
@@ -694,7 +714,8 @@ def _conventions() -> dict:
         ],
         "rules": [
             "Files starting with '_' are skipped (that is why _template.py is ignored).",
-            "models/ and pipelines/ load only .py (and .ipynb) at the top level. "
+            "models/ load only .py (and .ipynb) and pipelines/ only .py at the top "
+            "level, plus the declarative .yaml/.yml forms (models also .json). "
             "reports/ is scanned recursively: a subdirectory that is not a "
             "package is a folder, and a report inside it is named by its path "
             "(`finance/weekly_summary`) everywhere — `tracebi report build "
@@ -708,7 +729,7 @@ def _conventions() -> dict:
         ],
         "env_overrides": [
             "TRACEBI_MODELS_DIR", "TRACEBI_PIPELINES_DIR",
-            "TRACEBI_REPORTS_DIR", "TRACEBI_LIBRARY_MOUNTS",
+            "TRACEBI_CONNECTIONS_DIR", "TRACEBI_REPORTS_DIR", "TRACEBI_LIBRARY_MOUNTS",
             "TRACEBI_TRANSFORMS_DIR",
             "TRACEBI_SCHEDULED_DIR", "TRACEBI_APP", "TRACEBI_DOCS_DIR",
         ],
@@ -1090,11 +1111,14 @@ def describe(brief: bool = False) -> dict:
         "connect": {
             "what": "Point a project at a warehouse it did not sink. Tests "
                     "the connection, writes the secret to .env (never "
-                    "printed), and writes models/_connections/<name>.py. "
-                    "That module calls load_dotenv() and reads os.environ; "
-                    "the framework still does not load .env. Discovery "
-                    "ignores the directory: it only loads top-level "
-                    "models/*.py that define model.",
+                    "printed), and writes connections/<name>.yaml, where "
+                    "the secret appears only as a ${ENV_VAR} reference "
+                    "(read from the environment, else the project's .env, "
+                    "when the connection is used; .env is never loaded into "
+                    "os.environ). --python writes the legacy "
+                    "models/_connections/<name>.py instead. "
+                    "`tracebi migrate connection <that .py> [--write]` "
+                    "converts one.",
             "cli": "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb "
                    "[kind flags] [--test/--no-test] [--force]",
             "kinds": {
@@ -1116,7 +1140,7 @@ def describe(brief: bool = False) -> dict:
             "dbt": "tracebi import dbt <path> drafts models/<name>.py from a "
                    "dbt manifest.json (a project root with target/manifest.json, "
                    "or the file). It does not run dbt and does not load .env. "
-                   "--connection <name> wires models/_connections/<name>.py. "
+                   "--connection <name> wires connections/<name>.yaml. "
                    "--schema keeps one schema. Relationships and measures are "
                    "# DRAFT: review comments — foreign keys are not invented.",
         },

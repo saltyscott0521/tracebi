@@ -51,7 +51,7 @@ you clean; the contract is *what lands*. Reference impl:
 
 **Phase ②** declares a star schema over the warehouse — it reads the sink and
 never sees the transform above it. Reference impl:
-[models/portfolio_model.py](../examples/portfolio_project/models/portfolio_model.py).
+[models/portfolio_model.yaml](../examples/portfolio_project/models/portfolio_model.yaml).
 
 **Phase ③** is an **artifact package** (`reports/<name>/`) — or a JSON
 `ReportSpec`, a serialization of the same thing — whose every figure is a
@@ -296,7 +296,7 @@ setup:
 
 ```bash
 tracebi new-model "Sales Model"       # creates models/sales_model.py — edit and commit it
-tracebi new-pipeline "Sales ETL"      # creates pipelines/sales_etl.py — edit and commit it
+tracebi new-pipeline "Sales ETL"      # creates pipelines/sales_etl.yaml — edit and commit it
 ```
 
 Anyone on the team then gets:

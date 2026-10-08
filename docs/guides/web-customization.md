@@ -51,7 +51,7 @@ Scaffold files with the CLI, then edit and commit them:
 
 ```bash
 tracebi new-model "Sales Model"     # → models/sales_model.py
-tracebi new-pipeline "Sales ETL"    # → pipelines/sales_etl.py
+tracebi new-pipeline "Sales ETL"    # → pipelines/sales_etl.yaml
 tracebi new-report "Weekly Report"  # → reports/weekly_report/ (artifact package)
 ```
 
