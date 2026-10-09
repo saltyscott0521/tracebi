@@ -215,8 +215,12 @@ export const useReportSelection = () =>
 
 // Build mode (local only): what the builder is pointing at, so the agent can
 // resolve "this". `pointing: null` stops pointing. Not the Ask cut above.
+// One scope runs these one at a time, in the order sent: a click and then
+// leaving Build mode must reach the server in that order, or the clear can
+// land first and the agent keeps acting on a figure nobody is looking at.
 export const usePointing = () =>
   useMutation({
+    scope: { id: 'workbench-pointing' },
     mutationFn: ({ name, pointing }) => {
       const path = `/reports/${reportPath(name)}/workbench/pointing`
       return pointing

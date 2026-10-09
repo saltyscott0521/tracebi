@@ -113,9 +113,20 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             page.keyboard.press("Escape")
             page.wait_for_function(
                 "() => /Click a figure/.test(document.querySelector('.point-note')?.innerText || '')")
+            # Hold the last "pointing at" request in flight while Build mode
+            # is left: the clear must still land after it, or the agent keeps
+            # acting on a figure nobody is looking at.
+            page.evaluate("""() => {
+                const real = window.fetch;
+                window.fetch = (url, init) =>
+                    String(url).endsWith('/workbench/pointing') && init && init.method === 'POST'
+                        ? new Promise(r => setTimeout(r, 600)).then(() => real.call(window, url, init))
+                        : real.call(window, url, init);
+            }""")
             frame.locator("#kpi-mrr").click()
             page.get_by_role("button", name="◎ Build").click()
             page.wait_for_function("() => !document.querySelector('.point-note')")
+            page.wait_for_timeout(1500)   # the held request has landed by now
             deadline = 50
             while pointing() is not None and deadline:
                 page.wait_for_timeout(100)
