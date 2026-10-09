@@ -2,7 +2,6 @@
   "name": "AUM by Branch & Asset Class",
   "author": "TraceBi Demo",
   "description": "The custom-styled demo report: AUM and unrealized gain by branch and asset class, every figure a live query against wealth_model.",
-  "libs": ["echarts"],
   "data": {
     "at_a_glance": {
       "model": "wealth_model",

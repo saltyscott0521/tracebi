@@ -26,9 +26,6 @@
       }
     }
   },
-  "libs": [
-    "echarts"
-  ],
   "figures": {
     "share_chart": {
       "kind": "chart",
@@ -36,14 +33,6 @@
       "chart_type": "barh",
       "x": "dim_issuer.issuer",
       "y": "fv_share",
-      "value_format": "percent"
-    },
-    "curve_chart": {
-      "kind": "chart",
-      "binding": "concentration",
-      "chart_type": "line",
-      "x": "fv_rank",
-      "y": "fv_cum_share",
       "value_format": "percent"
     },
     "ranking": {

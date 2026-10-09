@@ -300,6 +300,9 @@ def _presentation() -> dict:
                              "the series into one slot per category. The "
                              "stack lays rows end to end; no total is written",
             "data-tb-x-title / data-tb-y-title": "chart axis titles",
+            "data-tb-unit": "chart suffix after every value, tick and mark "
+                            "(\"%\" on a rate stored as 6.81, \"×\" on a "
+                            "ratio): text only, the number is never rescaled",
             "data-tb-mark": "line, area and bar charts: max | min | first | "
                             "last, comma-separated — circle and label that "
                             "row's own value (\"High 6.81\")",

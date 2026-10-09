@@ -1,4 +1,5 @@
-// Draw the whole page from the embedded, FINGERPRINTED data. Each data block is
+// Draw the issuer table from the embedded, FINGERPRINTED data (the sector chart
+// is declared in template.html and drawn by the runtime from the same bytes). Each data block is
 // a <script type="application/json"> carrying the canonical triple — including
 // the exact `csv` the receipt hashes. The page parses that same csv, so a
 // displayed number cannot diverge from a verified one. Values reach the DOM only
@@ -47,57 +48,6 @@
   function money(v) {
     return "$" + Math.round(Number(v)).toLocaleString();
   }
-
-  // Fair value by sector → an ECharts bar chart, drawn from the verified csv.
-  // echarts is the inlined global (report.json "libs": ["echarts"]).
-  var sectors = read("tracebi-data-by_sector")
-    .slice()
-    .sort(function (a, b) { return Number(a.fair_value) - Number(b.fair_value); });
-  var host = document.getElementById("by-sector");
-  function drawSectorChart() {
-    if (!host || !sectors.length || !window.echarts) return;
-    var chart = echarts.init(host);
-    window.addEventListener("resize", function () { chart.resize(); });
-    chart.setOption({
-      // A report is a static document — render immediately, don't animate.
-      animation: false,
-      grid: { left: 8, right: 96, top: 8, bottom: 8, containLabel: true },
-      tooltip: {
-        trigger: "axis",
-        axisPointer: { type: "shadow" },
-        valueFormatter: function (v) { return money(v); },
-      },
-      xAxis: {
-        type: "value",
-        axisLabel: {
-          color: "#898781",
-          formatter: function (v) { return "$" + Math.round(v / 1e6) + "M"; },
-        },
-        splitLine: { lineStyle: { color: "#e4e3dd" } },
-      },
-      yAxis: {
-        type: "category",
-        data: sectors.map(function (r) { return r["dim_issuer.sector"]; }),
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: "#c3c2b7" } },
-        axisLabel: { color: "#16181d", fontSize: 13 },
-      },
-      series: [{
-        type: "bar",
-        barMaxWidth: 26,
-        data: sectors.map(function (r) { return Number(r.fair_value); }),
-        itemStyle: { color: "#2a78d6", borderRadius: [0, 4, 4, 0] },
-        label: {
-          show: true, position: "right", color: "#62615c",
-          formatter: function (p) { return money(p.value); },
-        },
-      }],
-    });
-  }
-  // Draw after layout, so ECharts reads the container's real size (a chart
-  // init'd at zero width renders nothing).
-  if (document.readyState === "complete") requestAnimationFrame(drawSectorChart);
-  else window.addEventListener("load", function () { requestAnimationFrame(drawSectorChart); });
 
   // Largest issuer exposures → table, top 10 by fair value.
   var issuers = read("tracebi-data-top_issuers");

@@ -201,6 +201,7 @@ bar or slice that sets the page's filter control for that column. List `"echarts
 
 Chart attributes beyond the wiring: `data-tb-stack` (stack bar, barh or area
 series in one slot), `data-tb-x-title` / `data-tb-y-title` (axis titles),
+`data-tb-unit="%"` (a suffix on every value, never a rescale),
 `data-tb-mark="max,last"` (circle and label a series' own high, low, first or
 last row), `data-tb-annotate="2008=Financial crisis; 2020=Pandemic"` (a dashed
 rule and note at a category) and `data-tb-facet="dim_fund.fund"` (small

@@ -1427,18 +1427,28 @@
    * table's precedence, so a tooltip agrees with the table beside it. */
   function chartFormatter(plan, rows, col) {
     var mode = plan.valueFormat || declaredFormats()[col] || deriveFormat(rows, col);
+    var unit = plan.unit || "";
     return function (v) {
       var n = toNum(v);
       if (n === null) return v === null || v === undefined ? "" : String(v);
       var out = mode ? applyNamedFormat(n, mode) : null;
-      return out === null ? String(v) : out;
+      return (out === null ? String(v) : out) + unit;
     };
   }
 
+  /* Axis ticks are short: compact digits, keeping a currency sign or a
+   * percent, so "$20M" rather than "$20,000,000". Tooltips and marks keep
+   * the full format. data-tb-unit is a suffix only ("%" on a rate stored
+   * as 6.81): it never rescales the number. */
   function tickFormatter(plan) {
+    var mode = plan.valueFormat, unit = plan.unit || "";
     return function (v) {
-      var out = applyNamedFormat(Number(v), plan.valueFormat || "compact");
-      return out === null ? String(v) : out;
+      var n = Number(v), out;
+      if (mode === "percent") out = applyNamedFormat(n, "percent");
+      else if (mode === "currency" || mode === "currency0") {
+        out = (n < 0 ? "-$" : "$") + applyNamedFormat(Math.abs(n), "compact");
+      } else out = applyNamedFormat(n, "compact");
+      return (out === null ? String(v) : out) + unit;
     };
   }
 
@@ -2421,7 +2431,8 @@
           stack: el.getAttribute("data-tb-stack") !== null,
           mark: attr(el, "data-tb-mark"),
           annotate: attr(el, "data-tb-annotate"),
-          facet: attr(el, "data-tb-facet")
+          facet: attr(el, "data-tb-facet"),
+          unit: attr(el, "data-tb-unit")
         };
         /* Remove the server-rendered static SVG fallback (no-JS picture of the
          * chart) before drawing — echarts.init appends its root without

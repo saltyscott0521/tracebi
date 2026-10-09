@@ -40,7 +40,7 @@ section {
   margin-bottom: 1.25rem;
 }
 
-/* ECharts draws into a sized container (inlined bundle, fully offline). */
+/* The D3 chart draws into a sized container. */
 .chart { height: 340px; width: 100%; }
 
 table { border-collapse: collapse; width: 100%; }

@@ -68,7 +68,7 @@ _FIGURES = """
 <div id="line" data-tb-figure="chart" data-tb-binding="by_quarter" data-tb-type="line"
      data-tb-x="dim_sale.quarter" data-tb-y="revenue" data-tb-color="dim_sale.product"></div>
 <div id="area" data-tb-figure="chart" data-tb-binding="totals_by_quarter" data-tb-type="area"
-     data-tb-x="dim_sale.quarter" data-tb-y="revenue"></div>
+     data-tb-x="dim_sale.quarter" data-tb-y="revenue" data-tb-unit=" u"></div>
 <div id="pie" data-tb-figure="chart" data-tb-binding="by_product" data-tb-type="pie"
      data-tb-x="dim_sale.product" data-tb-y="revenue"></div>
 <div id="scatter" data-tb-figure="chart" data-tb-binding="by_region" data-tb-type="scatter"
@@ -256,4 +256,15 @@ def test_small_multiples_share_one_scale(page):
     ticks = [panels.nth(i).locator(".tb-axis-v text").all_text_contents() for i in range(2)]
     assert ticks[0] and ticks[0] == ticks[1], "panels compare only on a shared scale"
     assert page.locator("#facet .tb-panel-title").all_text_contents() == ["A", "B"]
+
+
+def test_currency_ticks_stay_short_and_a_unit_never_rescales(page):
+    _reset(page)
+    ticks = page.locator("#bar .tb-axis-v text").all_text_contents()
+    assert ticks and all(t.startswith("$") and "," not in t for t in ticks), ticks
+    assert "$6K" in ticks                                    # East's 6,000 on the axis
+    page.locator("#area .tb-hit").first.hover()
+    # Q1 revenue is 1200+900+400+300 = 2,800: the unit is a suffix, not a scale.
+    assert page.locator("#area .tb-chart-tip strong").inner_text() == "2,800 u"
+    assert all(t.endswith(" u") for t in page.locator("#area .tb-axis-v text").all_text_contents())
 

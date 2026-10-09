@@ -9,7 +9,7 @@
   template.html  This layout. Each data-tb-figure element claims a binding
                  and the runtime fills it with the fingerprinted rows.
   style.css      The theme: fonts, the hero, colours, KPI tiles.
-  script.js      Chart restyling through tracebi.configureChart.
+  Chart colours are declared on each figure (data-tb-palette).
   assets/        Fonts (Inter, Fraunces; SIL Open Font License) and the
                  hero artwork, inlined at build.
 -->
@@ -53,14 +53,14 @@
       <div data-tb-figure="chart" data-tb-binding="by_branch"
            data-tb-type="bar" data-tb-x="dim_branch.branch"
            data-tb-y="market_value" data-tb-value-format="compact"
-           id="chart-branch"></div>
+           data-tb-palette="#1f6f5c" id="chart-branch"></div>
     </div>
     <div class="tb-card">
       <h2>AUM by asset class</h2>
       <div data-tb-figure="chart" data-tb-binding="by_asset_class"
            data-tb-type="pie" data-tb-x="dim_product.asset_class"
            data-tb-y="market_value" data-tb-value-format="compact"
-           id="chart-asset"></div>
+           data-tb-palette="#1f6f5c,#c08a2b,#4c6ea8,#b5563c" id="chart-asset"></div>
     </div>
   </div>
 
