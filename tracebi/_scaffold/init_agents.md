@@ -185,7 +185,8 @@ whose figures each name a binding from `report.json`:
   `tracebi.configureChart` — config can restyle, never re-source: series data
   always comes from the stamped bytes.
 - Chart attributes: `data-tb-stack` (stack bar, barh or area series),
-  `data-tb-x-title` / `data-tb-y-title`, `data-tb-mark="max,last"` (label a
+  `data-tb-x-title` / `data-tb-y-title`, `data-tb-unit="%"` (a suffix,
+  never a rescale), `data-tb-mark="max,last"` (label a
   series' own high, low, first or last row), `data-tb-annotate="2008=Crisis;
   2020=Pandemic"` (a note at a category) and `data-tb-facet="column"` (small
   multiples on one scale). Line and area charts with 8+ categories zoom by
