@@ -713,9 +713,10 @@ class TestDuckDBReadOnlyCoexistence:
         # An in-memory database lives on its connection — it stays open
         assert conn._conn is not None
 
-    def test_write_lock_conflict_names_the_fix(self, warehouse, sample_df):
+    def test_write_lock_conflict_names_the_fix(self, warehouse, sample_df, monkeypatch):
         import duckdb
 
+        monkeypatch.setattr(DuckDBConnector, "WRITE_LOCK_WAIT", 0.3)
         holder = duckdb.connect(warehouse, read_only=True)
         try:
             conn = DuckDBConnector("dd", database=warehouse)
@@ -759,6 +760,19 @@ class TestDuckDBReadOnlyCoexistence:
         finally:
             reader.kill()
             reader.wait(timeout=30)
+
+    def test_write_waits_for_a_short_read_in_this_process(self, warehouse, sample_df):
+        """The web app opens a read-only handle per request; one that lands
+        while a pipeline's transform writes is closed a moment later, and the
+        write waits for it instead of failing the run."""
+        import threading
+
+        import duckdb
+
+        holder = duckdb.connect(warehouse, read_only=True)
+        threading.Timer(0.4, holder.close).start()
+        DuckDBConnector("dd", database=warehouse).write(sample_df, "sales_copy")
+        assert len(DuckDBConnector("dd", database=warehouse).load("sales_copy")) == len(sample_df)
 
     def test_load_before_any_write_names_missing_file(self, tmp_path):
         conn = DuckDBConnector("dd", database=str(tmp_path / "missing.duckdb"))
