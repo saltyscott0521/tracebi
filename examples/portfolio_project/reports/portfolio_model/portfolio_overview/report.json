@@ -1,9 +1,6 @@
 {
   "name": "portfolio_overview",
   "description": "The default-component lane: KPI, chart, and table figures hydrated by the shipped runtime from the stamped bytes \u2014 no author CSS or JS at all.",
-  "libs": [
-    "echarts"
-  ],
   "data": {
     "kpis": {
       "model": "portfolio_model",

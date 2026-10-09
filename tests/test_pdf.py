@@ -46,7 +46,6 @@ def _package(reports: Path, model: DataModel) -> Path:
     pkg.mkdir(parents=True)
     (pkg / "report.json").write_text(json.dumps({
         "name": "bars",
-        "libs": ["echarts"],
         "data": {"by_region": {
             "model": model.name,
             "query": {"fact": "fact_orders", "measures": ["revenue"],

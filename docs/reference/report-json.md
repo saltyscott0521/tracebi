@@ -86,20 +86,23 @@ they produce the same bytes.
 
 ### `libs` — array, optional
 
-Charting libraries to inline into the self-contained file. Currently only
+Charting libraries to inline into the self-contained file: `"d3"` and
 `"echarts"`.
 
 ```json
-"libs": ["echarts"]
+"libs": ["d3"]
 ```
 
-`libs` is optional. The build inlines ECharts automatically when the page
+`libs` is optional. The build inlines D3 automatically when the page
 contains a chart figure — a hand-written `data-tb-figure="chart"`, a
-`{{ figure("…") }}` chart, or a chart compiled from a spec — and leaves it
-out when the page has no chart figure, so a data-only report stays small.
-A final build decides from the page after exploration blocks are stripped;
-`tracebi dev` and a snapshot include ECharts when that rendered page has a
-chart. Listing `"echarts"` still inlines it once. An unknown value is
+`{{ figure("…") }}` chart, or a chart compiled from a spec — and draws every
+chart type with it. It leaves D3 out when the page has no chart figure, so a
+data-only report stays small. A final build decides from the page after
+exploration blocks are stripped; `tracebi dev` and a snapshot include D3 when
+that rendered page has a chart. List `"d3"` yourself for a `custom` figure
+drawn with `tracebi.draw`. List `"echarts"` to keep the older ECharts engine
+for the page's charts (no D3 is then added for them); `tracebi.configureChart`
+patches apply only there. Each library is inlined once. An unknown value is
 refused at load.
 
 ### `schedule` — object, optional

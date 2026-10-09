@@ -135,17 +135,20 @@ receipt.</p>
 <p>Omit it entirely if you hand-write your figure markup — both styles work, and
 they produce the same bytes.</p>
 <h3 id="libs-array-optional"><code>libs</code> — array, optional</h3>
-<p>Charting libraries to inline into the self-contained file. Currently only
+<p>Charting libraries to inline into the self-contained file: <code>"d3"</code> and
 <code>"echarts"</code>.</p>
-<pre><code class="language-json">&quot;libs&quot;: [&quot;echarts&quot;]
+<pre><code class="language-json">&quot;libs&quot;: [&quot;d3&quot;]
 </code></pre>
-<p><code>libs</code> is optional. The build inlines ECharts automatically when the page
+<p><code>libs</code> is optional. The build inlines D3 automatically when the page
 contains a chart figure — a hand-written <code>data-tb-figure="chart"</code>, a
-<code>{{ figure("…") }}</code> chart, or a chart compiled from a spec — and leaves it
-out when the page has no chart figure, so a data-only report stays small.
-A final build decides from the page after exploration blocks are stripped;
-<code>tracebi dev</code> and a snapshot include ECharts when that rendered page has a
-chart. Listing <code>"echarts"</code> still inlines it once. An unknown value is
+<code>{{ figure("…") }}</code> chart, or a chart compiled from a spec — and draws every
+chart type with it. It leaves D3 out when the page has no chart figure, so a
+data-only report stays small. A final build decides from the page after
+exploration blocks are stripped; <code>tracebi dev</code> and a snapshot include D3 when
+that rendered page has a chart. List <code>"d3"</code> yourself for a <code>custom</code> figure
+drawn with <code>tracebi.draw</code>. List <code>"echarts"</code> to keep the older ECharts engine
+for the page's charts (no D3 is then added for them); <code>tracebi.configureChart</code>
+patches apply only there. Each library is inlined once. An unknown value is
 refused at load.</p>
 <h3 id="schedule-object-optional"><code>schedule</code> — object, optional</h3>
 <p>When the report runs and who receives it. Read by <code>tracebi schedule</code> (<a href="../reference/cli.html">CLI reference</a>).

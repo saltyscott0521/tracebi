@@ -2,7 +2,6 @@
   "name": "Sales Pipeline Dashboard",
   "author": "tracebi init --template sales-pipeline",
   "description": "Open pipeline value and win rate, with the stage cut and a region table. Every figure claims a binding on sales_pipeline_model. Win rate is a ratio of totals.",
-  "libs": ["echarts"],
   "data": {
     "kpis": {
       "model": "sales_pipeline_model",

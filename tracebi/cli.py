@@ -2084,7 +2084,6 @@ def _report_json_text(title: str, model: str, query: dict) -> str:
                        "new-report. Every figure claims a stamped binding; edit "
                        "template.html to reshape the page — nothing re-runs the "
                        "pandas.",
-        "libs": ["echarts"],
         "data": data,
     }
     return json.dumps(declaration, indent=2) + "\n"

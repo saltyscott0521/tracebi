@@ -1432,12 +1432,14 @@ class TemplatePackage:
         return page.replace("connect-src 'none'", "connect-src 'self'", 1)
 
     def _libs_for_page(self, page: str) -> list:
-        """Declared ``libs``, plus ECharts when *page* contains a chart figure.
+        """Declared ``libs``, plus D3 when *page* contains a chart figure.
 
         *page* is the one the reader gets: ``{{ figure() }}`` already
         expanded, and exploration already stripped on a final build. Dev
         and snapshot pass the page with exploration kept, so a chart there
-        draws too. An explicit ``echarts`` entry is inlined once.
+        draws too. A report that lists ``echarts`` keeps the ECharts engine
+        (its ``configureChart`` patches apply only there) and gets no D3
+        added; each lib is inlined once.
         """
         from tracebi.reports.figures import FigureError, extract_figures
 
@@ -1453,8 +1455,8 @@ class TemplatePackage:
             has_chart = any(fig.kind == "chart" for fig in extract_figures(page))
         except FigureError:
             has_chart = False
-        if has_chart:
-            libs.append("echarts")
+        if has_chart and "d3" not in seen:
+            libs.append("d3")
         return libs
 
     def _inject(self, page: str, data_blocks: str, stage: Optional[str] = None,

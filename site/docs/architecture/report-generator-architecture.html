@@ -262,6 +262,13 @@ depth, not the XSS control — the safe embedder is.</strong> A malicious analys
 scope by design.</p>
 <hr>
 <h2 id="6-charts-echarts-pluggable">6. Charts — ECharts, pluggable</h2>
+<blockquote>
+<p><strong>Update (2026-10):</strong> D3 replaced ECharts as the default engine. The build
+inlines a tree-shaken D3 for any page with a chart figure, and <code>tracebi.js</code>
+draws all six chart types as SVG from the same plan (<code>changes/d3-charts.md</code>).
+ECharts remains for a report that lists <code>"libs": ["echarts"]</code>. The text below
+is the original decision.</p>
+</blockquote>
 <p>The whole product renders charts <strong>client-side</strong> from the embedded data. This fits
 the kernel: a chart is just the stamped JSON handed to a library in the browser. The
 Python side stays light (it emits data + config; the browser draws), preserving the

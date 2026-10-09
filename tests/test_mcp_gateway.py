@@ -148,7 +148,7 @@ def test_brief_context_carries_a_report_json_example_that_builds(tmp_path):
     block = pres["report_json"]
     example = block["example"]
     assert example["name"] and example["data"] and example["figures"]
-    assert example["libs"] == ["echarts"]
+    assert "libs" not in example  # the build adds D3 for the chart
     assert "optional" in block["libs"] and "automatically" in block["libs"]
     guide = authoring_guide()
     assert json.dumps(example, indent=2) in guide

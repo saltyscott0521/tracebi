@@ -175,6 +175,12 @@ scope by design.
 
 ## 6. Charts — ECharts, pluggable
 
+> **Update (2026-10):** D3 replaced ECharts as the default engine. The build
+> inlines a tree-shaken D3 for any page with a chart figure, and `tracebi.js`
+> draws all six chart types as SVG from the same plan (`changes/d3-charts.md`).
+> ECharts remains for a report that lists `"libs": ["echarts"]`. The text below
+> is the original decision.
+
 The whole product renders charts **client-side** from the embedded data. This fits
 the kernel: a chart is just the stamped JSON handed to a library in the browser. The
 Python side stays light (it emits data + config; the browser draws), preserving the

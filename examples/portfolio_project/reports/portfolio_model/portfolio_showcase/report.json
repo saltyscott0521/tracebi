@@ -2,7 +2,7 @@
   "name": "Portfolio Showcase",
   "author": "tracebi reference",
   "description": "The maintained kitchen-sink demo: every figure kind, controls, layouts, and trust affordance the artifact offers, on the reference data.",
-  "libs": ["echarts", "d3"],
+  "libs": ["d3"],
   "data": {
     "kpis": {
       "model": "portfolio_model",
@@ -67,7 +67,8 @@
   "figures": {
     "chart_fund": {
       "kind": "chart", "binding": "by_fund", "chart_type": "pie",
-      "x": "dim_fund.fund", "y": "fair_value", "value_format": "compact"
+      "x": "dim_fund.fund", "y": "fair_value", "value_format": "compact",
+      "palette": ["#3b5bdb", "#0f9d8a", "#f08c00"]
     }
   }
 }
