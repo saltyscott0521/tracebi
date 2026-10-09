@@ -116,6 +116,17 @@
                id="chart-conc"></div>
         </div>
       </div>
+
+      <!-- Small multiples: one panel per fund on one shared scale, each
+           fund's largest sector labelled with its own row's value. -->
+      <div class="tb-card">
+        <h2>Each fund's book by sector</h2>
+        <div data-tb-figure="chart" data-tb-binding="fund_sector" data-tb-type="bar"
+             data-tb-x="dim_issuer.sector" data-tb-y="fair_value"
+             data-tb-facet="dim_fund.fund" data-tb-mark="max"
+             data-tb-y-title="Fair value" data-tb-value-format="compact"
+             id="chart-fund-sector"></div>
+      </div>
     </section>
 
     <section data-tb-tab="Detail">

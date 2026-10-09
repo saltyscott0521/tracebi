@@ -84,7 +84,7 @@ tslib 2.3.0  —  https://github.com/microsoft/tslib
 
 ================================================================================
 D3 7.9.0 modules  —  https://d3js.org/
-d3-array, d3-axis, d3-color, d3-dispatch, d3-format, d3-hierarchy,
+d3-array, d3-axis, d3-brush, d3-color, d3-dispatch, d3-drag, d3-format, d3-hierarchy,
 d3-interpolate, d3-path, d3-scale, d3-selection, d3-shape, d3-time,
 d3-time-format, d3-timer, d3-transition (ISC License) and d3-ease
 (BSD 3-Clause License), with internmap (ISC License). Bundled as

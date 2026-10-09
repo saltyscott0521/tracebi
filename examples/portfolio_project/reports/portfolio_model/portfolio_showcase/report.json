@@ -33,6 +33,14 @@
         "dimensions": ["dim_fund.fund"], "order_by": ["-fair_value"]
       }
     },
+    "fund_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value"],
+        "dimensions": ["dim_fund.fund", "dim_issuer.sector"],
+        "order_by": ["dim_issuer.sector"]
+      }
+    },
     "holdings_detail": {
       "model": "portfolio_model",
       "query": {

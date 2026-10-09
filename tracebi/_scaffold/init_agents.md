@@ -184,6 +184,12 @@ whose figures each name a binding from `report.json`:
   (per report); later wins. `script.js` may restyle charts via
   `tracebi.configureChart` — config can restyle, never re-source: series data
   always comes from the stamped bytes.
+- Chart attributes: `data-tb-stack` (stack bar, barh or area series),
+  `data-tb-x-title` / `data-tb-y-title`, `data-tb-mark="max,last"` (label a
+  series' own high, low, first or last row), `data-tb-annotate="2008=Crisis;
+  2020=Pandemic"` (a note at a category) and `data-tb-facet="column"` (small
+  multiples on one scale). Line and area charts with 8+ categories zoom by
+  dragging. None computes a number.
 - Code-drawn figures: when the chart types cannot draw it (a treemap, a
   Sankey), add `"libs": ["d3"]` to `report.json`, a `data-tb-figure="custom"`
   element with a `data-tb-binding` and an id, and in `script.js`

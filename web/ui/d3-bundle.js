@@ -5,6 +5,7 @@
 // from tracebi.data(), never the network.
 export * from 'd3-array';
 export * from 'd3-axis';
+export * from 'd3-brush';
 export * from 'd3-color';
 export * from 'd3-format';
 export * from 'd3-hierarchy';
