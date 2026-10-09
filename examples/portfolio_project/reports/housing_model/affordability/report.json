@@ -2,9 +2,6 @@
   "name": "Then vs Now: Buying the Median Home",
   "author": "tracebi reference",
   "description": "What buying the median home took of a household's income over ten years \u2014 the cash to get in plus every payment \u2014 for every buyer since 1979, today's projected, with the worst of the eighties set against today.",
-  "libs": [
-    "echarts"
-  ],
   "data": {
     "peak": {
       "model": "housing_model",

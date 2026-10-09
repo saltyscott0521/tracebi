@@ -21,7 +21,9 @@
       </div>
       <div class="tb-card">
         <h2>Cumulative share, largest issuer first</h2>
-        {{ figure("curve_chart") }}
+        <div data-tb-figure="chart" data-tb-binding="concentration" data-tb-type="line"
+             data-tb-x="fv_rank" data-tb-y="fv_cum_share" data-tb-value-format="percent"
+             data-tb-x-title="Issuers, by rank" id="fig-curve_chart"></div>
       </div>
     </div>
 

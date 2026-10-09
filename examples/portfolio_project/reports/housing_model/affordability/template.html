@@ -133,7 +133,8 @@
       <h3>Ten years of housing cost as a share of ten years' income, by year bought</h3>
       <div data-tb-figure="chart" data-tb-binding="ten_year" data-tb-type="bar"
            data-tb-x="dim_cohort.purchase_year" data-tb-y="housing_share"
-           data-tb-color="dim_cohort.basis"
+           data-tb-color="dim_cohort.basis" data-tb-stack
+           data-tb-palette="#1f7a4d,#b8860b"
            data-tb-value-format="percent" id="chart-ten-year" class="mp-chart mp-chart--tall"></div>
       <p class="mp-source">Measured: all ten years are in the data. Projected:
         the years not yet lived assume the rate stays at
@@ -249,6 +250,7 @@
       <div data-tb-figure="chart" data-tb-binding="paths" data-tb-type="line"
            data-tb-x="dim_held.years_owned" data-tb-y="payment_share"
            data-tb-color="dim_cohort.purchase_year"
+           data-tb-x-title="years owned" data-tb-palette="#b5523b,#2b6f9e,#1f7a4d"
            data-tb-value-format="percent" id="chart-paths" class="mp-chart mp-chart--tall"></div>
       <p class="mp-source">Years since buying, left to right. Each buyer refinances
         in any year whose average rate is a full point below the rate they hold.
@@ -263,23 +265,26 @@
     <div class="mp-trends">
       <div class="tb-card mp-chart-card">
         <h3>Thirty-year mortgage rate (%)</h3>
-        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
+        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="area"
              data-tb-x="dim_year.year" data-tb-y="mortgage_rate"
+             data-tb-mark="max,last" data-tb-palette="#2b6f9e"
              id="chart-rate" class="mp-chart"></div>
         <p class="mp-source">Annual average of Freddie Mac's weekly survey.</p>
       </div>
       <div class="tb-card mp-chart-card">
         <h3>Home price ÷ household income</h3>
-        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
+        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="area"
              data-tb-x="dim_year.year" data-tb-y="price_to_income"
+             data-tb-mark="max,last" data-tb-palette="#b8860b"
              id="chart-pti" class="mp-chart"></div>
         <p class="mp-source">Years of median household income to buy the median
           existing home outright.</p>
       </div>
       <div class="tb-card mp-chart-card">
         <h3>First-year payment, share of income</h3>
-        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="line"
+        <div data-tb-figure="chart" data-tb-binding="history" data-tb-type="area"
              data-tb-x="dim_year.year" data-tb-y="payment_share"
+             data-tb-mark="max,last" data-tb-palette="#1f7a4d"
              data-tb-value-format="percent" id="chart-share" class="mp-chart"></div>
         <p class="mp-source">The first-year payment on that year's median home,
           with property tax and insurance, over that year's median household income.</p>
