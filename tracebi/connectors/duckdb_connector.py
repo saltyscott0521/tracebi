@@ -262,10 +262,13 @@ class DuckDBConnector(BaseConnector):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
-        # Another process reading (the dev app answering a request) holds the
-        # file only for that read, so wait a moment for it to let go rather
-        # than failing the transform. A same-process conflict never clears by
-        # waiting, so it fails at once.
+        # A reader holds the file only for that read, so wait a moment for it
+        # to let go rather than failing the transform. That reader may be
+        # another process (the dev app answering a request) or this one: the
+        # web app opens a short read-only handle per request (the model page's
+        # warehouse status), and one landing between the pipeline releasing
+        # its models and this write is gone a few milliseconds later. A holder
+        # that never lets go still fails, after WRITE_LOCK_WAIT.
         deadline = time.monotonic() + self.WRITE_LOCK_WAIT
         while True:
             try:
@@ -274,7 +277,7 @@ class DuckDBConnector(BaseConnector):
             except duckdb.Error as exc:
                 if not self._is_lock_conflict(exc):
                     raise
-                if "lock" not in str(exc).lower() or time.monotonic() >= deadline:
+                if time.monotonic() >= deadline:
                     raise RuntimeError(
                         f"Cannot open '{self.database}' read-write: another "
                         "tracebi process holds the warehouse open — stop "
