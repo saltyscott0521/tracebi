@@ -126,8 +126,10 @@ whose figures each name a binding from `report.json`:
   that one yourself. It refuses the silent failures — an undeclared binding
   fails at load, and a figure declared but never placed (or placed twice)
   fails the build. Hand-written figures still work; this is sugar. `libs`
-  is optional. The build inlines ECharts automatically when the page
-  contains a chart figure.
+  is optional. The build inlines D3 automatically when the page
+  contains a chart figure and draws every chart type with it (legend
+  toggles, tooltips, arrow-key reading, a click on a bar or slice sets the
+  page's filter control for that column). List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the

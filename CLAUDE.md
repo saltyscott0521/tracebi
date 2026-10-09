@@ -597,11 +597,16 @@ When the spec's section vocabulary is too rigid — a bespoke layout, your own
 CSS — scaffold a package instead: `tracebi new-report "My Report"` creates
 `reports/my_report/` (`report.json` data bindings + `template.html` / `style.css`
 / `script.js`). `tracebi report build my_report` renders ONE self-contained HTML
-(CSS, JS, and fingerprinted data inlined; strict CSP; ECharts vendored, no CDN)
+(CSS, JS, and fingerprinted data inlined; strict CSP; D3 vendored, no CDN)
 plus a manifest. `report.py` beside `report.json` is the escape hatch for pandas
 the model can't express — its output stamps `verifiable: false` and never reads
-green under `verify`. Charts render with ECharts in the browser; the SVG path is
-kept only for the (unshipped) PDF renderer.
+green under `verify`. Charts render with D3 in the browser (SVG; `tracebi.js`
+"The D3 chart engine"): legend toggles, tooltips, arrow-key reading, animated
+updates, and a click on a mark sets the page's filter control for that column.
+It draws only the rows' own values and colours series from the unfiltered rows.
+A report that lists `"libs": ["echarts"]` keeps the older ECharts engine, the only
+place `tracebi.configureChart` applies. The server-side SVG path is kept only for
+the (unshipped) PDF renderer.
 
 ### New medallion layer
 ```python

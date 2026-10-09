@@ -51,7 +51,7 @@ trust, resolved once, fingerprinted, and recorded in the receipt.
 Note `totals` has **no dimensions** — it returns one row. A KPI needs a one-row
 binding; a value figure over a multi-row binding is refused.
 
-`"libs": ["echarts"]` is optional. The build inlines ECharts automatically when the page contains a chart figure.
+`"libs"` is optional. The build inlines D3 automatically when the page contains a chart figure.
 
 → [[report-json]] · [[queries]]
 

@@ -349,6 +349,44 @@ tr.tb-window-pad td {
   position: relative; /* anchors a .tb-badge in the corner */
 }
 
+/* The live D3 chart: a legend row of toggle chips, the SVG, and one tooltip.
+ * Every colour is a token, so a theme restyles charts with the rest. */
+.tb-chart { position: relative; }
+.tb-chart-svg { display: block; overflow: visible; }
+.tb-chart-svg:focus { outline: none; }
+.tb-chart-svg:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 4px; border-radius: 4px; }
+.tb-legend-row { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0 0 8px; }
+.tb-legend-row[hidden] { display: none; }
+.tb-legend-item {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px;
+  border: 1px solid var(--tb-rule); border-radius: 999px; background: var(--tb-bg);
+  color: var(--tb-ink); font: inherit; font-size: 12px; line-height: 1.4; cursor: pointer;
+  transition: opacity .15s, border-color .15s;
+}
+.tb-legend-item:hover { border-color: var(--tb-muted); }
+.tb-legend-item:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+.tb-legend-item[aria-pressed="false"] { opacity: .45; }
+.tb-legend-item[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--tb-muted); }
+.tb-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.tb-legend-swatch--line { height: 3px; width: 14px; border-radius: 2px; }
+.tb-legend-swatch--dot { border-radius: 50%; }
+.tb-chart-tip {
+  position: absolute; z-index: 3; pointer-events: none; min-width: 140px; max-width: 280px;
+  padding: 8px 10px; border-radius: 8px; background: var(--tb-bg); color: var(--tb-muted);
+  border: 1px solid var(--tb-rule); box-shadow: 0 4px 16px rgba(16, 24, 40, .12);
+  font-size: 12px; line-height: 1.45;
+}
+.tb-chart-tip[hidden] { display: none; }
+.tb-chart-tip-title { color: var(--tb-ink); font-weight: 600; margin-bottom: 2px; }
+.tb-chart-tip-row { display: flex; align-items: baseline; gap: 6px; }
+.tb-chart-tip-row strong { color: var(--tb-ink); font-variant-numeric: tabular-nums; }
+.tb-chart-tip-key { width: 10px; height: 3px; border-radius: 2px; flex: none; align-self: center; }
+.tb-sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+@media print { .tb-chart-tip, .tb-legend-item[aria-pressed="false"] { display: none; } }
+
 /* The no-JS picture: a static SVG built at render time, shown where scripts
  * never run (a phone's file preview, an email client). The runtime removes it
  * before drawing, so these rules only ever style that picture. It keeps its

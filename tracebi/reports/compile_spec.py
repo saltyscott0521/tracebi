@@ -419,12 +419,7 @@ def compile_spec(
         report_json["author"] = spec.author
     if spec.description:
         report_json["description"] = spec.description
-    # Charts hydrate through the vendored ECharts, which a package opts
-    # into per report — a compiled spec with any chart section must carry
-    # the opt-in or every chart panel renders permanently blank.
-    if any(s.get("type") == SectionType.CHART.value
-           for s in _walk_specs(spec.sections)):
-        report_json["libs"] = ["echarts"]
+    # No "libs": the build inlines D3 for any page with a chart figure.
 
     files = {
         "report.json": json.dumps(report_json, indent=2) + "\n",

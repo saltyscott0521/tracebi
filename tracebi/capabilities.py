@@ -181,7 +181,6 @@ def _dataset_verbs() -> list[dict]:
 
 REPORT_JSON_EXAMPLE = {
     "name": "Sales by region",
-    "libs": ["echarts"],
     "data": {
         "kpis": {
             "model": "sales",
@@ -219,11 +218,12 @@ REPORT_JSON_EXAMPLE = {
 }
 
 REPORT_JSON_LIBS_NOTE = (
-    "libs is optional. The build inlines ECharts automatically when the "
-    "page contains a chart figure, and leaves it out when the page has no "
-    "chart figure. Listing \"echarts\" still inlines it once. List \"d3\" "
-    "to inline D3 for figures drawn in script.js with tracebi.draw. Any "
-    "other name is refused when the package loads."
+    "libs is optional. The build inlines D3 automatically when the page "
+    "contains a chart figure and draws every chart type with it, and leaves "
+    "it out when the page has no chart figure. List \"d3\" for a custom "
+    "figure drawn in script.js with tracebi.draw. List \"echarts\" to keep "
+    "the older ECharts engine for the page's charts (configureChart patches "
+    "apply only there). Any other name is refused when the package loads."
 )
 
 
@@ -537,7 +537,9 @@ def _presentation() -> dict:
             "on small ones. ready(fn) behaves the same on both.",
             "tracebi.fmt(value, 'compact') → the one '550.7B' formatter",
             "tracebi.configureChart(figureId, patch) → restyle an ECharts "
-            "option; series data is always re-sourced from the stamped bytes",
+            "option, on a report that lists \"echarts\" (the D3 engine "
+            "ignores it); series data is always re-sourced from the stamped "
+            "bytes",
             "tracebi.draw(figureId, fn) → draw a data-tb-figure=\"custom\" "
             "element in code, usually d3 (report.json \"libs\": [\"d3\"]): "
             "fn(surface, rows, theme) runs once the data is loaded and again "

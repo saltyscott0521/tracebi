@@ -194,7 +194,10 @@ draw it in code with `tracebi.draw` (below). It refuses the silent failures: a f
 naming an undeclared binding fails at load, and a figure declared but never
 placed — or placed twice — fails the build. Hand-written figures still work
 everywhere; this is sugar, not a replacement. `libs` is optional. The build
-inlines ECharts automatically when the page contains a chart figure.
+inlines D3 automatically when the page contains a chart figure and draws every
+chart type with it: a legend that toggles series, a tooltip on every mark,
+arrow-key reading, animated updates when a filter changes, and a click on a
+bar or slice that sets the page's filter control for that column. List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
 
 **Code-drawn figures (d3).** When the chart types above cannot draw what the
 page needs (a treemap, a Sankey, an annotated waterfall), write it: put

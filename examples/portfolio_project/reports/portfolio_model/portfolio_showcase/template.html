@@ -8,15 +8,14 @@
                              binding from report.json; the runtime fills it.
   report.json                The data bindings (model + query per name), the
                              declared figures placed with figure("…"), and
-                             "libs": ["echarts", "d3"], which inlines
-                             Apache ECharts and D3.
+                             "libs": ["d3"], which inlines D3: it
+                             draws every chart and the treemap.
   report.py                  The escape hatch: python-derived data, which the
                              receipt marks as not query-reproducible.
   style.css                  The custom theme: fonts, one gradient hero,
                              pill tabs, token overrides.
-  script.js                  Small chart restyling through
-                             tracebi.configureChart, and the d3 treemap
-                             drawn through tracebi.draw.
+  script.js                  The d3 treemap, drawn through
+                             tracebi.draw.
   assets/                    Fonts (Inter, Fraunces; SIL Open Font License)
                              and hero artwork, inlined at build.
 
@@ -181,8 +180,7 @@
     <ul>
       <li>the data behind every figure, fingerprinted, with its receipt;</li>
       <li>TraceBi's design system and runtime (MIT);</li>
-      <li>Apache ECharts for the charts (Apache License), and D3 for the
-        treemap (ISC License);</li>
+      <li>D3 for the charts and the treemap (ISC License);</li>
       <li>the Inter and Fraunces typefaces (SIL Open Font License).</li>
     </ul>
     Check it with <code>tracebi verify --file</code>.

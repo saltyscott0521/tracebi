@@ -724,18 +724,20 @@ class TestChartLibraries:
         out = tmp_path / f"{dirname}.html"
         manifest = TemplatePackage(str(pkg)).render(
             {model.name: model}, str(out))
-        return out.read_text(encoding="utf-8"), manifest, read_lib("echarts")
+        return out.read_text(encoding="utf-8"), manifest, read_lib("d3")
 
-    def test_chart_figure_inlines_echarts_without_libs(self, tmp_path, model):
-        """A chart on the page the reader gets pulls ECharts in. ``libs``
-        is optional, including a chart emitted by ``{{ figure() }}``."""
+    def test_chart_figure_inlines_d3_without_libs(self, tmp_path, model):
+        """A chart on the page the reader gets pulls D3 in, and not ECharts.
+        ``libs`` is optional, including a chart emitted by ``{{ figure() }}``."""
+        from tracebi.reports.embed import read_lib
+
         html, manifest, bundle = self._render_chart(tmp_path, model)
         assert 'data-tb-figure="chart"' in html
         assert html.count(bundle) == 1
-        assert "window.echarts" in html
+        assert read_lib("echarts") not in html
         assert verify_file(html, manifest.to_dict())["verdict"] == FILE_INTACT
 
-    def test_hand_written_chart_inlines_echarts_without_libs(
+    def test_hand_written_chart_inlines_d3_without_libs(
             self, tmp_path, model):
         html, _manifest, bundle = self._render_chart(
             tmp_path, model, dirname="hand", figures={},
@@ -745,7 +747,6 @@ class TestChartLibraries:
                 'data-tb-y="revenue" id="by-region"></div>'),
         )
         assert html.count(bundle) == 1
-        assert "window.echarts" in html
 
     def test_page_without_a_chart_omits_echarts(self, tmp_path, model):
         from tracebi.reports.embed import read_lib
@@ -757,11 +758,15 @@ class TestChartLibraries:
         assert read_lib("echarts") not in html
         assert "Apache ECharts" not in html
 
-    def test_explicit_echarts_is_inlined_once(self, tmp_path, model):
-        html, _manifest, bundle = self._render_chart(
+    def test_explicit_echarts_keeps_the_echarts_engine(self, tmp_path, model):
+        """A report that lists echarts keeps that engine (its configureChart
+        patches apply only there): ECharts once, and no D3 added."""
+        from tracebi.reports.embed import read_lib
+
+        html, _manifest, d3_bundle = self._render_chart(
             tmp_path, model, libs=["echarts"], dirname="listed")
-        assert html.count(bundle) == 1
-        assert "window.echarts" in html
+        assert html.count(read_lib("echarts")) == 1
+        assert d3_bundle not in html
 
     def test_exploration_chart_draws_in_dev_and_not_in_the_final_build(
             self, tmp_path, model):
@@ -769,7 +774,7 @@ class TestChartLibraries:
         the block, so a chart that lives only there still draws."""
         from tracebi.reports.embed import read_lib
 
-        bundle = read_lib("echarts")
+        bundle = read_lib("d3")
         pkg = _write_package(
             tmp_path, dirname="explore_chart", script=None,
             data=self._CHART_DATA, figures=self._CHART_FIGURES,

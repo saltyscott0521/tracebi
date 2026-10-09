@@ -56,7 +56,7 @@ multi-row binding fails the build.
 `data-tb-x`, `data-tb-y` (comma-list for multi-series), `data-tb-color`,
 and `data-tb-value-format` for labels, axes and tooltips.
 
-The build inlines ECharts automatically when the page contains a chart
+The build inlines D3 automatically when the page contains a chart
 figure. `"libs"` in [[report-json]] is optional.
 
 ### Table figures
