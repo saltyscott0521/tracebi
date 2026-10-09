@@ -296,6 +296,21 @@ def _presentation() -> dict:
                                     "chart type: compact | comma | currency | "
                                     "currency0 | percent | decimal "
                                     "(compact → '550.7B')",
+            "data-tb-stack": "bar, barh and area charts (no value): stack "
+                             "the series into one slot per category. The "
+                             "stack lays rows end to end; no total is written",
+            "data-tb-x-title / data-tb-y-title": "chart axis titles",
+            "data-tb-mark": "line, area and bar charts: max | min | first | "
+                            "last, comma-separated — circle and label that "
+                            "row's own value (\"High 6.81\")",
+            "data-tb-annotate": "categorical charts: \"2008=Financial crisis; "
+                                "2020=Pandemic\" — a dashed rule and a note "
+                                "at each x category, in the author's words",
+            "data-tb-facet": "bar, barh, line and area charts: a column; one "
+                             "small panel per value, sharing one scale and one "
+                             "category axis. Line and area charts with 8 or "
+                             "more categories zoom by dragging across the "
+                             "plot; double-click or Reset zoom returns",
             "data-tb-columns": "table figures: column allowlist/order",
             "data-tb-labels": "table figures: header text per column, "
                               "\"col=Label; col2=Label\" (';' separates "

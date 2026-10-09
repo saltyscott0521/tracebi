@@ -199,6 +199,15 @@ chart type with it: a legend that toggles series, a tooltip on every mark,
 arrow-key reading, animated updates when a filter changes, and a click on a
 bar or slice that sets the page's filter control for that column. List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
 
+Chart attributes beyond the wiring: `data-tb-stack` (stack bar, barh or area
+series in one slot), `data-tb-x-title` / `data-tb-y-title` (axis titles),
+`data-tb-mark="max,last"` (circle and label a series' own high, low, first or
+last row), `data-tb-annotate="2008=Financial crisis; 2020=Pandemic"` (a dashed
+rule and note at a category) and `data-tb-facet="dim_fund.fund"` (small
+multiples on one shared scale). Line and area charts with 8 or more categories
+zoom by dragging across the plot. None of them computes a number: a mark labels
+a row's own value, and a stack lays rows end to end with no total written.
+
 **Code-drawn figures (d3).** When the chart types above cannot draw what the
 page needs (a treemap, a Sankey, an annotated waterfall), write it: put
 `"libs": ["d3"]` in `report.json`, a `<div data-tb-figure="custom"

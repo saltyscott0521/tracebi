@@ -1581,11 +1581,6 @@
   }
 
   /* Keyboard readouts are placed in svg coordinates; the legend sits above. */
-  function svgTop(entry) {
-    return entry.svg ? entry.svg.node().getBoundingClientRect().top -
-      entry.surface.getBoundingClientRect().top : 0;
-  }
-
   function tipHide(entry) {
     if (entry.tip) entry.tip.hidden = true;
     if (entry.svg) {
@@ -1597,9 +1592,22 @@
   function legendFor(entry, kind) {
     var host = entry.legend;
     while (host.firstChild) host.removeChild(host.firstChild);
-    var show = kind === "pie" || entry.keys.length > 1;
+    var zoomed = !!(entry.zoom || entry.zoomX);
+    var show = kind === "pie" || entry.keys.length > 1 || zoomed;
     host.hidden = !show;
-    if (!show) return;
+    if (zoomed) {
+      var reset = document.createElement("button");
+      reset.type = "button";
+      reset.className = "tb-legend-item tb-legend-reset";
+      reset.textContent = "Reset zoom";
+      reset.addEventListener("click", function () {
+        entry.zoom = null;
+        entry.zoomX = null;
+        renderD3Chart(entry, filteredRows(entry.binding), true);
+      });
+      host.appendChild(reset);
+    }
+    if (!show || (kind !== "pie" && entry.keys.length < 2)) return;
     entry.keys.forEach(function (key) {
       var btn = document.createElement("button");
       btn.type = "button";
@@ -1658,23 +1666,86 @@
     return entry.animate ? sel.transition().duration(_MOTION_MS).ease(root.d3.easeCubicOut) : sel;
   }
 
-  function renderCategorical(entry, rows, kind, W, H, t) {
-    var d3 = root.d3, plan = entry.plan, svg = entry.svg;
-    var series = chartSeries(entry, rows, kind);
-    var cats = categories(plan, rows);
-    var horizontal = kind === "barh";
-    var ticks = tickFormatter(plan);
+  /* Where *host* (the chart's svg, or one facet panel) sits in the surface:
+   * keyboard readouts are placed in its coordinates. */
+  function hostOffset(entry, host) {
+    var a = host.node().getBoundingClientRect(), b = entry.surface.getBoundingClientRect();
+    return { x: a.left - b.left, y: a.top - b.top };
+  }
+
+  /* "2020=Pandemic; 2022=Rates rise" → [{at: "2020", text: "Pandemic"}, …] */
+  function annotations(plan) {
+    if (!plan.annotate) return [];
+    return String(plan.annotate).split(";").map(function (part) {
+      var i = part.indexOf("=");
+      return i < 0 ? null : { at: trim(part.slice(0, i)), text: trim(part.slice(i + 1)) };
+    }).filter(function (a) { return a && a.at; });
+  }
+
+  function marksWanted(plan) {
+    return plan.mark ? splitList(String(plan.mark)).map(function (m) {
+      return m.toLowerCase();
+    }) : [];
+  }
+
+  /* Stacked series: each point gets the band it occupies, y0 → y1, positives
+   * up from zero and negatives down. Drawing only: the stack's height is the
+   * rows' own values laid end to end, and no total is written anywhere. */
+  function stackPoints(series, cats) {
+    var up = {}, down = {};
+    cats.forEach(function (c) { up[c] = 0; down[c] = 0; });
+    series.forEach(function (s) {
+      s.points.forEach(function (p) {
+        if (p.y === null || !(p.cat in up)) { p.y0 = p.y1 = null; return; }
+        if (p.y >= 0) { p.y0 = up[p.cat]; p.y1 = up[p.cat] += p.y; }
+        else { p.y0 = down[p.cat]; p.y1 = down[p.cat] += p.y; }
+      });
+    });
+  }
+
+  function valueExtent(series, stacked) {
     var lo = 0, hi = 0;
     series.forEach(function (s) {
       s.points.forEach(function (p) {
-        if (p.y === null) return;
-        if (p.y < lo) lo = p.y;
-        if (p.y > hi) hi = p.y;
+        var vs = stacked ? [p.y0, p.y1] : [p.y];
+        vs.forEach(function (v) {
+          if (v === null || v === undefined) return;
+          if (v < lo) lo = v;
+          if (v > hi) hi = v;
+        });
       });
     });
     if (lo === hi) hi = lo + 1;
-    var m = { top: 10, right: 16, bottom: 28, left: 12 };
-    var catLabelW = 0, rotate = false;
+    return [lo, hi];
+  }
+
+  function zoomable(kind, n) {
+    return (kind === "line" || kind === "area") && n >= 8;
+  }
+
+  /* One categorical panel (bar, barh, line, area) into *host*. Returns the
+   * readout the caller's keyboard walk drives. opt: {domain, title, zoom}. */
+  function renderCategorical(entry, host, rows, kind, W, H, t, opt) {
+    var d3 = root.d3, plan = entry.plan, svg = host;
+    opt = opt || {};
+    var series = chartSeries(entry, rows, kind);
+    var allCats = opt.cats || categories(plan, rows);
+    var cats = allCats;
+    if (opt.zoom && zoomable(kind, allCats.length)) {
+      cats = allCats.slice(opt.zoom[0], opt.zoom[1] + 1);
+      series.forEach(function (s) {
+        s.points = s.points.filter(function (p) { return cats.indexOf(p.cat) !== -1; });
+      });
+    }
+    var horizontal = kind === "barh";
+    var stacked = !!plan.stack && kind !== "line";
+    if (stacked) stackPoints(series, cats);
+    var ticks = tickFormatter(plan);
+    var ext = opt.domain || valueExtent(series, stacked);
+    var lo = ext[0], hi = ext[1];
+    var titleH = opt.title ? 20 : 0;
+    var m = { top: 10 + titleH, right: 16, bottom: 28, left: 12 };
+    var catLabelW = 0, rotate = false, every = 1;
     cats.forEach(function (c) { catLabelW = Math.max(catLabelW, textWidth(svg, c, 12)); });
     var val = d3.scaleLinear().domain([lo, hi]).nice(5);
     var tickW = 0;
@@ -1684,24 +1755,43 @@
       m.bottom = 24;
     } else {
       m.left = Math.ceil(tickW) + 10;
-      rotate = cats.length > 12 || (cats.length && (W - m.left - m.right) / cats.length < catLabelW + 6);
+      var room = (W - m.left - m.right) / Math.max(1, cats.length);
+      /* Names that collide: up to 16 categories turn 30°; more than that
+       * (a run of years, months) label every k-th one, flat. */
+      if (cats.length && room < catLabelW + 6) {
+        if (cats.length > 16) every = Math.ceil((catLabelW + 14) / room);
+        else rotate = true;
+      }
       m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.55) + 22, 96) : 28;
     }
+    if (plan.yTitle) m.left += 18;
+    if (plan.xTitle) m.bottom += 18;
+    var marks = marksWanted(plan);
+    if (marks.length && !horizontal) m.top += 14;
+    if (marks.length && horizontal) m.right += 56;
     var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
     var band = d3.scaleBand().domain(cats).range(horizontal ? [0, ih] : [0, iw])
       .paddingInner(kind === "bar" || kind === "barh" ? 0.28 : 0).paddingOuter(0.14);
     val.range(horizontal ? [0, iw] : [ih, 0]);
     var keys = series.map(function (s) { return s.key; });
-    var inner = d3.scaleBand().domain(keys).range([0, band.bandwidth()]).paddingInner(0.12);
+    var inner = d3.scaleBand().domain(stacked ? ["all"] : keys)
+      .range([0, band.bandwidth()]).paddingInner(0.12);
+    var slot = function (k) { return inner(stacked ? "all" : k); };
     var centre = function (c) { return band(c) + band.bandwidth() / 2; };
+    var zero = val(Math.max(val.domain()[0], Math.min(0, val.domain()[1])));
 
     var g = svg.selectAll("g.tb-plot").data([0]).join("g").attr("class", "tb-plot")
       .attr("transform", "translate(" + m.left + "," + m.top + ")");
+    if (opt.title) {
+      svg.selectAll("text.tb-panel-title").data([opt.title]).join("text")
+        .attr("class", "tb-panel-title").attr("x", m.left).attr("y", 14)
+        .attr("fill", t.ink).attr("font-size", 12).attr("font-weight", 600)
+        .text(function (d) { return d; });
+    }
 
     /* Grid and axes: recessive, in the page's rule and muted ink. */
     var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
-    var gridTicks = val.ticks(5);
-    transition(entry, grid.selectAll("line").data(gridTicks, function (v) { return v; }).join(
+    transition(entry, grid.selectAll("line").data(val.ticks(5), function (v) { return v; }).join(
       function (en) { return en.append("line").attr("stroke", t.rule); }))
       .attr(horizontal ? "x1" : "y1", function (v) { return val(v); })
       .attr(horizontal ? "x2" : "y2", function (v) { return val(v); })
@@ -1714,6 +1804,9 @@
     vAxis.ticks(5).tickSize(0).tickPadding(8).tickFormat(ticks);
     var cAxis = horizontal ? d3.axisLeft(band) : d3.axisBottom(band);
     cAxis.tickSize(0).tickPadding(8);
+    if (!horizontal && every > 1) {
+      cAxis.tickValues(cats.filter(function (c, i) { return (cats.length - 1 - i) % every === 0; }));
+    }
     var va = g.selectAll("g.tb-axis-v").data([0]).join("g").attr("class", "tb-axis tb-axis-v")
       .attr("transform", horizontal ? "translate(0," + ih + ")" : null);
     transition(entry, va).call(vAxis);
@@ -1723,39 +1816,72 @@
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11)
       .attr("font-family", t.font);
-    ca.selectAll("text").attr("font-size", 12).each(function (c) {
-      fitText(this, horizontal ? m.left - 10 : rotate ? m.bottom * 1.6 : band.step());
+    ca.selectAll("text").attr("font-size", 12).each(function () {
+      fitText(this, horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
+        : rotate ? m.bottom * 1.6 : band.step() * (every || 1));
     });
     if (rotate) {
       ca.selectAll("text").attr("text-anchor", "end").attr("dx", "-0.4em")
         .attr("dy", "0.5em").attr("transform", "rotate(-30)");
     }
+    var titles = [];
+    if (plan.xTitle) titles.push({ text: plan.xTitle, x: iw / 2, y: ih + m.bottom - 6, rot: 0 });
+    if (plan.yTitle) titles.push({ text: plan.yTitle, x: -ih / 2, y: -m.left + 12, rot: -90 });
+    g.selectAll("text.tb-axis-title").data(titles).join("text").attr("class", "tb-axis-title")
+      .attr("text-anchor", "middle").attr("fill", t.muted).attr("font-size", 11)
+      .attr("font-weight", 600).attr("x", function (d) { return d.x; })
+      .attr("y", function (d) { return d.y; })
+      .attr("transform", function (d) { return d.rot ? "rotate(" + d.rot + ")" : null; })
+      .text(function (d) { return d.text; });
 
-    /* Hover band behind the marks. */
+    /* Annotations: the author's notes at a category, a dashed rule and a word. */
+    var notes = annotations(plan).filter(function (a) { return band(a.at) !== undefined; });
+    var ng = g.selectAll("g.tb-annotations").data([0]).join("g").attr("class", "tb-annotations");
+    var na = ng.selectAll("g.tb-annotation").data(notes, function (a) { return a.at; }).join(function (en) {
+      var e = en.append("g").attr("class", "tb-annotation");
+      e.append("line");
+      e.append("text");
+      return e;
+    });
+    na.select("line").attr("stroke", t.muted).attr("stroke-dasharray", "4 3").attr("stroke-opacity", 0.8)
+      .attr("x1", function (a) { return horizontal ? 0 : centre(a.at); })
+      .attr("x2", function (a) { return horizontal ? iw : centre(a.at); })
+      .attr("y1", function (a) { return horizontal ? centre(a.at) : 0; })
+      .attr("y2", function (a) { return horizontal ? centre(a.at) : ih; });
+    na.select("text").attr("fill", t.muted).attr("font-size", 11).attr("font-style", "italic")
+      .attr("x", function (a) { return horizontal ? iw - 4 : centre(a.at) + 4; })
+      .attr("y", function (a) { return horizontal ? centre(a.at) - 4 : 10; })
+      .attr("text-anchor", horizontal ? "end" : "start")
+      .text(function (a) { return a.text; });
+
     var hover = g.selectAll("rect.tb-hover").data([0]).join("rect").attr("class", "tb-hover")
       .attr("fill", t.ink).attr("fill-opacity", 0.05).attr("opacity", 0).attr("rx", 4);
     var cross = g.selectAll("line.tb-hover").data([0]).join("line").attr("class", "tb-hover")
       .attr("stroke", t.muted).attr("stroke-dasharray", "3 3").attr("opacity", 0);
 
     var colour = function (k) { return colourOf(entry, k); };
-    var marks = g.selectAll("g.tb-series").data(series, function (s) { return s.key; }).join(
+    var groups = g.selectAll("g.tb-series").data(series, function (s) { return s.key; }).join(
       function (en) { return en.append("g").attr("class", "tb-series"); },
       function (up) { return up; },
       function (ex) { return transition(entry, ex).attr("opacity", 0).remove(); });
+    var from = function (p) { return stacked ? p.y0 : 0; };
+    var to = function (p) { return stacked ? p.y1 : p.y; };
 
     if (kind === "bar" || kind === "barh") {
       var thick = Math.min(inner.bandwidth(), 44);
       var off = (inner.bandwidth() - thick) / 2;
-      var base = val(Math.max(lo, Math.min(0, hi)));
-      marks.each(function (s) {
+      groups.each(function (s) {
         var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
         var r = d3.select(this).selectAll("path.tb-mark").data(pts, function (p) { return p.cat; });
         var shape = function (p) {
-          var a = band(p.cat) + inner(s.key) + off, v = val(p.y), b = base;
-          var lo2 = Math.min(v, b), len = Math.abs(v - b), rad = Math.min(4, len, thick / 2);
+          var a = band(p.cat) + slot(s.key) + off, v = val(to(p)), b = val(from(p));
+          var lo2 = Math.min(v, b), len = Math.abs(v - b);
+          /* Round only the end that faces away from zero, and only the
+           * outermost segment of a stack. */
+          var outer = !stacked || p.y1 === (p.y >= 0 ? stackTop(series, p.cat, 1) : stackTop(series, p.cat, -1));
+          var rad = outer ? Math.min(4, len, thick / 2) : 0;
           var pos = p.y >= 0;
           if (horizontal) {
-            /* rounded at the value end only */
             var x0 = lo2, x1 = lo2 + len, y0 = a, y1 = a + thick;
             return pos
               ? "M" + x0 + "," + y0 + "H" + (x1 - rad) + "Q" + x1 + "," + y0 + " " + x1 + "," + (y0 + rad) +
@@ -1771,59 +1897,118 @@
               "H" + (rr - rad) + "Q" + rr + "," + bot + " " + rr + "," + (bot - rad) + "V" + top + "Z";
         };
         var flat = function (p) {
-          var a = band(p.cat) + inner(s.key) + off;
+          var a = band(p.cat) + slot(s.key) + off, b = val(from(p));
           return horizontal
-            ? "M" + base + "," + a + "H" + base + "V" + (a + thick) + "H" + base + "Z"
-            : "M" + a + "," + base + "H" + (a + thick) + "V" + base + "H" + a + "Z";
+            ? "M" + b + "," + a + "H" + b + "V" + (a + thick) + "H" + b + "Z"
+            : "M" + a + "," + b + "H" + (a + thick) + "V" + b + "H" + a + "Z";
         };
         transition(entry, r.join(
           function (en) { return en.append("path").attr("class", "tb-mark").attr("d", flat); },
           function (up) { return up; },
           /* A leaving bar's category is gone from the axis: it fades where it stood. */
           function (ex) { return transition(entry, ex).attr("opacity", 0).remove(); }))
-          .attr("d", shape).attr("fill", colour(s.key));
+          .attr("d", shape).attr("fill", colour(s.key))
+          .attr("stroke", stacked ? t.bg : null).attr("stroke-width", stacked ? 1 : null);
       });
     } else {
       var lineGen = d3.line().defined(function (p) { return p.y !== null; })
         .x(function (p) { return centre(p.cat); })
-        .y(function (p) { return val(p.y); });
+        .y(function (p) { return val(to(p)); });
       var areaGen = d3.area().defined(function (p) { return p.y !== null; })
         .x(function (p) { return centre(p.cat); })
-        .y0(val(Math.max(lo, Math.min(0, hi)))).y1(function (p) { return val(p.y); });
-      marks.each(function (s) {
+        .y0(function (p) { return stacked ? val(p.y0) : zero; })
+        .y1(function (p) { return val(to(p)); });
+      groups.each(function (s, si) {
         var pts = s.points.filter(function (p) { return band(p.cat) !== undefined; });
         var sel = d3.select(this);
         if (kind === "area") {
+          /* A soft vertical gradient: strongest at the line, fading to the base. */
+          var gid = entry.uid + "-" + (opt.panel || 0) + "-" + si;
+          var defs = svg.selectAll("defs").data([0]).join("defs");
+          var grad = defs.selectAll("linearGradient#" + gid).data([0]).join("linearGradient")
+            .attr("id", gid).attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
+          grad.selectAll("stop").data([[0, 0.32], [1, 0.03]]).join("stop")
+            .attr("offset", function (d) { return d[0]; })
+            .attr("stop-color", colour(s.key)).attr("stop-opacity", function (d) { return d[1]; });
           var ar = sel.selectAll("path.tb-area").data([pts]).join("path").attr("class", "tb-area")
-            .attr("fill", colour(s.key)).attr("fill-opacity", 0.14);
+            .attr("fill", "url(#" + gid + ")");
           transition(entry, ar).attr("d", areaGen);
         }
         var ln = sel.selectAll("path.tb-line").data([pts]).join("path").attr("class", "tb-line tb-mark")
-          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", 2)
+          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", 2.25)
           .attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
         transition(entry, ln).attr("d", lineGen);
         var dots = sel.selectAll("circle.tb-dot").data(pts.filter(function (p) { return p.y !== null; }),
           function (p) { return p.cat; });
         transition(entry, dots.join(
           function (en) { return en.append("circle").attr("class", "tb-dot").attr("r", 0)
-            .attr("cx", function (p) { return centre(p.cat); }).attr("cy", function (p) { return val(p.y); }); },
+            .attr("cx", function (p) { return centre(p.cat); }).attr("cy", function (p) { return val(to(p)); }); },
           function (up) { return up; },
           function (ex) { return ex.remove(); }))
           .attr("cx", function (p) { return centre(p.cat); })
-          .attr("cy", function (p) { return val(p.y); })
-          .attr("r", cats.length > 40 ? 0 : 4)
+          .attr("cy", function (p) { return val(to(p)); })
+          .attr("r", cats.length > 24 ? 0 : 3.5)
           .attr("fill", colour(s.key)).attr("stroke", t.bg).attr("stroke-width", 2);
       });
     }
 
+    /* Marked points: the series' own high, low, first or last row, labelled
+     * with that row's value. Picking a row never makes a number. */
+    var marked = [];
+    if (marks.length) {
+      series.forEach(function (s) {
+        var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
+        if (!pts.length) return;
+        var pick = {};
+        marks.forEach(function (mk) {
+          var p = null;
+          if (mk === "max" || mk === "high") p = pts.reduce(function (a, b) { return b.y > a.y ? b : a; });
+          else if (mk === "min" || mk === "low") p = pts.reduce(function (a, b) { return b.y < a.y ? b : a; });
+          else if (mk === "first") p = pts[0];
+          else if (mk === "last") p = pts[pts.length - 1];
+          if (!p) return;
+          var word = mk === "max" || mk === "high" ? "High" : mk === "min" || mk === "low" ? "Low" : "";
+          if (pick[p.cat]) { if (word && !pick[p.cat].word) pick[p.cat].word = word; return; }
+          pick[p.cat] = { p: p, s: s, word: word, low: mk === "min" || mk === "low" };
+        });
+        for (var c in pick) if (pick.hasOwnProperty(c)) marked.push(pick[c]);
+      });
+    }
+    var mg = g.selectAll("g.tb-marked").data([0]).join("g").attr("class", "tb-marked");
+    var mm = mg.selectAll("g.tb-marked-point").data(marked, function (d) { return d.s.key + "|" + d.p.cat; })
+      .join(function (en) {
+        var e = en.append("g").attr("class", "tb-marked-point");
+        e.append("circle");
+        e.append("text");
+        return e;
+      });
+    var fmtCol = function (d) { return chartFormatter(plan, rows, d.s.col)(d.p.y); };
+    var bar = kind === "bar" || kind === "barh";
+    mm.select("circle")
+      .attr("cx", function (d) { return horizontal ? val(to(d.p)) : centre(d.p.cat); })
+      .attr("cy", function (d) { return horizontal ? centre(d.p.cat) : val(to(d.p)); })
+      .attr("r", bar ? 0 : 5).attr("fill", t.bg)
+      .attr("stroke", function (d) { return colour(d.s.key); }).attr("stroke-width", 2.5);
+    mm.select("text")
+      .attr("x", function (d) {
+        return horizontal ? val(to(d.p)) + 6 : centre(d.p.cat);
+      })
+      .attr("y", function (d) {
+        if (horizontal) return centre(d.p.cat) + 4;
+        return d.low ? val(to(d.p)) + 18 : val(to(d.p)) - 10;
+      })
+      .attr("text-anchor", horizontal ? "start" : "middle")
+      .attr("fill", t.ink).attr("font-size", 11).attr("font-weight", 600)
+      .text(function (d) { return (d.word ? d.word + " " : "") + fmtCol(d); });
+
     /* One hit target per category, the full plot height: the reader aims at
      * a category, never at a 2px line. */
-    var filterable = filterControlsFor(plan.x).length > 0;
+    var filterable = !opt.noFilter && filterControlsFor(plan.x).length > 0;
     var showAt = function (i, px, py) {
       var c = cats[i];
       if (c === undefined) return;
       var a = band(c);
-      if (kind === "bar" || kind === "barh") {
+      if (bar) {
         hover.attr(horizontal ? "y" : "x", a - band.step() * band.paddingInner() / 2)
           .attr(horizontal ? "x" : "y", 0)
           .attr(horizontal ? "height" : "width", band.step())
@@ -1842,22 +2027,112 @@
           }
         }
       });
-      var x = px === undefined ? m.left + (horizontal ? iw / 2 : centre(c)) : px;
-      var y = py === undefined ? svgTop(entry) + m.top + (horizontal ? centre(c) : ih / 3) : py;
-      tipShow(entry, x, y, c, rowsOut);
+      var o = px === undefined ? hostOffset(entry, svg) : { x: 0, y: 0 };
+      var x = px === undefined ? o.x + m.left + (horizontal ? iw / 2 : centre(c)) : px;
+      var y = py === undefined ? o.y + m.top + (horizontal ? centre(c) : ih / 3) : py;
+      tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut);
     };
-    var hits = g.selectAll("rect.tb-hit").data(cats, function (c) { return c; }).join("rect")
-      .attr("class", "tb-hit").attr("fill", "transparent")
-      .style("cursor", filterable ? "pointer" : null)
-      .attr(horizontal ? "y" : "x", function (c) { return band(c) - band.step() * band.paddingInner() / 2; })
-      .attr(horizontal ? "x" : "y", 0)
-      .attr(horizontal ? "height" : "width", band.step())
-      .attr(horizontal ? "width" : "height", horizontal ? iw : ih);
-    hoverable(entry, hits, function (c, px, py) { showAt(cats.indexOf(c), px, py); });
-    hits.on("click", function (event, c) { filterTo(plan.x, c); });
-    hits.raise();
-    keyboardWalk(entry, cats.length, function (i) { showAt(i); },
-      filterable ? function (i) { filterTo(plan.x, cats[i]); } : null);
+    var choose = filterable ? function (i) { filterTo(plan.x, cats[i]); } : null;
+    var catAt = function (px) {
+      var best = 0, bd = Infinity;
+      cats.forEach(function (c, i) {
+        var d = Math.abs((horizontal ? centre(c) : centre(c)) - px);
+        if (d < bd) { bd = d; best = i; }
+      });
+      return best;
+    };
+
+    if (opt.brush && zoomable(kind, allCats.length)) {
+      /* Drag across the plot to zoom to those categories; double-click (or
+       * the Reset chip) returns to all of them. Hover reads as before. */
+      g.selectAll("rect.tb-hit").remove();
+      var bg = g.selectAll("g.tb-brush").data([0]).join("g").attr("class", "tb-brush");
+      var brush = d3.brushX().extent([[0, 0], [iw, ih]]).on("end", function (event) {
+        if (!event.selection) return;
+        var a0 = catAt(event.selection[0]), a1 = catAt(event.selection[1]);
+        bg.call(brush.move, null);
+        if (a1 - a0 < 1) return;
+        var first = allCats.indexOf(cats[a0]), last = allCats.indexOf(cats[a1]);
+        opt.brush([first, last]);
+      });
+      bg.call(brush);
+      bg.selectAll(".selection").attr("fill", t.accent || t.ink).attr("fill-opacity", 0.12)
+        .attr("stroke", "none");
+      bg.selectAll(".overlay").style("cursor", "crosshair")
+        .on("pointermove.tb", function (event) {
+          var q = d3.pointer(event, g.node());
+          var p = d3.pointer(event, entry.surface);
+          entry.keyboard = false;
+          showAt(catAt(q[0]), p[0], p[1]);
+        })
+        .on("pointerleave.tb", function () { tipHide(entry); })
+        .on("dblclick.tb", function () { opt.brush(null); });
+    } else {
+      g.selectAll("g.tb-brush").remove();
+      var hits = g.selectAll("rect.tb-hit").data(cats, function (c) { return c; }).join("rect")
+        .attr("class", "tb-hit").attr("fill", "transparent")
+        .style("cursor", filterable ? "pointer" : null)
+        .attr(horizontal ? "y" : "x", function (c) { return band(c) - band.step() * band.paddingInner() / 2; })
+        .attr(horizontal ? "x" : "y", 0)
+        .attr(horizontal ? "height" : "width", band.step())
+        .attr(horizontal ? "width" : "height", horizontal ? iw : ih);
+      hoverable(entry, hits, function (c, px, py) { showAt(cats.indexOf(c), px, py); });
+      hits.on("click", function (event, c) { if (choose) choose(cats.indexOf(c)); });
+      hits.raise();
+    }
+    return { count: cats.length, show: showAt, choose: choose };
+  }
+
+  function stackTop(series, cat, sign) {
+    var edge = 0;
+    series.forEach(function (s) {
+      s.points.forEach(function (p) {
+        if (p.cat !== cat || p.y1 === null || p.y1 === undefined) return;
+        if (sign > 0 ? p.y1 > edge : p.y1 < edge) edge = p.y1;
+      });
+    });
+    return edge;
+  }
+
+  /* Small multiples: one panel per value of plan.facet, laid out in a grid,
+   * sharing one value scale so the panels compare at a glance. */
+  function renderFacets(entry, rows, kind, W, H, t) {
+    var d3 = root.d3, plan = entry.plan;
+    var block = readBlock(entry.binding);
+    var order = [];
+    (block ? block.rows : rows).forEach(function (r) {
+      var f = groupOf(r[plan.facet]);
+      if (order.indexOf(f) === -1) order.push(f);
+    });
+    var byFacet = {};
+    rows.forEach(function (r) {
+      var f = groupOf(r[plan.facet]);
+      (byFacet[f] = byFacet[f] || []).push(r);
+    });
+    var facets = order.filter(function (f) { return byFacet[f]; });
+    var all = [];
+    facets.forEach(function (f) {
+      var s = chartSeries(entry, byFacet[f], kind);
+      if (plan.stack && kind !== "line") stackPoints(s, categories(plan, byFacet[f]));
+      all = all.concat(s);
+    });
+    var domain = valueExtent(all, !!plan.stack && kind !== "line");
+    var shared = categories(plan, rows);
+    var cols = Math.max(1, Math.min(facets.length, Math.floor(W / 260)));
+    var rowsN = Math.ceil(facets.length / cols);
+    var pw = Math.floor(W / cols), ph = Math.max(160, Math.floor((H + (rowsN - 1) * 40) / rowsN));
+    entry.svg.attr("height", ph * rowsN).attr("viewBox", "0 0 " + W + " " + (ph * rowsN));
+    var panels = entry.svg.selectAll("svg.tb-panel").data(facets, function (f) { return f; }).join("svg")
+      .attr("class", "tb-panel").attr("overflow", "visible")
+      .attr("x", function (f, i) { return (i % cols) * pw; })
+      .attr("y", function (f, i) { return Math.floor(i / cols) * ph; })
+      .attr("width", pw).attr("height", ph);
+    var readouts = [];
+    panels.each(function (f, i) {
+      readouts.push(renderCategorical(entry, d3.select(this), byFacet[f], kind, pw, ph, t,
+        { domain: domain, title: f, panel: i + 1, cats: shared }));
+    });
+    return readouts;
   }
 
   function renderScatter(entry, rows, W, H, t) {
@@ -1869,6 +2144,9 @@
     });
     var ticks = tickFormatter(plan);
     var fx = chartFormatter(plan, rows, plan.x);
+    if (entry.zoomX) {
+      pts = pts.filter(function (p) { return p.x >= entry.zoomX[0] && p.x <= entry.zoomX[1]; });
+    }
     var xs = d3.scaleLinear().domain(d3.extent(pts, function (p) { return p.x; })).nice(6);
     var ys = d3.scaleLinear().domain(d3.extent(pts, function (p) { return p.y; })).nice(5);
     if (!pts.length) { xs.domain([0, 1]); ys.domain([0, 1]); }
@@ -1894,8 +2172,8 @@
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11).attr("font-family", t.font);
     g.selectAll("text.tb-axis-title").data([
-      { text: humanise(plan.x), x: iw / 2, y: ih + 38, rot: 0 },
-      { text: humanise(plan.y[0]), x: -ih / 2, y: -m.left + 12, rot: -90 }
+      { text: plan.xTitle || humanise(plan.x), x: iw / 2, y: ih + 38, rot: 0 },
+      { text: plan.yTitle || humanise(plan.y[0]), x: -ih / 2, y: -m.left + 12, rot: -90 }
     ]).join("text").attr("class", "tb-axis-title")
       .attr("text-anchor", "middle").attr("fill", t.ink).attr("font-size", 12)
       .attr("font-weight", 600).attr("x", function (d) { return d.x; })
@@ -1925,7 +2203,7 @@
       if (!p) return;
       ring.attr("cx", xs(p.x)).attr("cy", ys(p.y)).attr("opacity", 1);
       tipShow(entry, px === undefined ? m.left + xs(p.x) : px,
-        py === undefined ? svgTop(entry) + m.top + ys(p.y) : py,
+        py === undefined ? hostOffset(entry, entry.svg).y + m.top + ys(p.y) : py,
         labelCol && p.row[labelCol] !== undefined
           ? String(p.row[labelCol]) + (plan.color ? " \u00b7 " + p.series.name : "")
           : p.series.name, [
@@ -1934,10 +2212,28 @@
             value: chartFormatter(plan, rows, p.series.col)(p.y) }
         ]);
     };
-    /* Nearest point wins: the reader only has to be closest, not dead on. */
-    var overlay = g.selectAll("rect.tb-hit").data([0]).join("rect").attr("class", "tb-hit")
-      .attr("width", iw).attr("height", ih).attr("fill", "transparent");
-    overlay.on("pointermove", function (event) {
+    /* Nearest point wins: the reader only has to be closest, not dead on.
+     * Dragging across the plot zooms to that range of x; double-click or
+     * the Reset chip returns. */
+    g.selectAll("rect.tb-hit").remove();
+    var bg = g.selectAll("g.tb-brush").data([0]).join("g").attr("class", "tb-brush");
+    var brush = d3.brushX().extent([[0, 0], [iw, ih]]).on("end", function (event) {
+      if (!event.selection) return;
+      var x0 = xs.invert(event.selection[0]), x1 = xs.invert(event.selection[1]);
+      bg.call(brush.move, null);
+      var inside = pts.filter(function (p) { return p.x >= x0 && p.x <= x1; });
+      if (inside.length < 2) return;
+      entry.zoomX = [x0, x1];
+      renderD3Chart(entry, filteredRows(entry.binding), true);
+    });
+    bg.call(brush);
+    bg.selectAll(".selection").attr("fill", t.accent || t.ink).attr("fill-opacity", 0.12).attr("stroke", "none");
+    var overlay = bg.selectAll(".overlay").style("cursor", "crosshair");
+    overlay.on("dblclick.tb", function () {
+      entry.zoomX = null;
+      renderD3Chart(entry, filteredRows(entry.binding), true);
+    });
+    overlay.on("pointermove.tb", function (event) {
       var q = d3.pointer(event, this), best = -1, bd = Infinity;
       for (var i = 0; i < pts.length; i++) {
         var dx = xs(pts[i].x) - q[0], dy = ys(pts[i].y) - q[1], dd = dx * dx + dy * dy;
@@ -1948,7 +2244,7 @@
         var p2 = d3.pointer(event, entry.surface);
         showAt(best, p2[0], p2[1]);
       } else tipHide(entry);
-    }).on("pointerleave", function () { tipHide(entry); });
+    }).on("pointerleave.tb", function () { tipHide(entry); });
     keyboardWalk(entry, pts.length, function (i) { showAt(i); }, null);
   }
 
@@ -1994,7 +2290,7 @@
       g.selectAll("path.tb-mark").attr("d", function (b) { return b === a ? big(b) : arc(b); });
       var c = arc.centroid(a);
       tipShow(entry, px === undefined ? W / 2 + c[0] : px,
-        py === undefined ? svgTop(entry) + H / 2 + c[1] : py,
+        py === undefined ? hostOffset(entry, entry.svg).y + H / 2 + c[1] : py,
         a.data.key, [{ colour: colourOf(entry, a.data.key), name: humanise(y0), value: fmtV(a.data.raw) }]);
     };
     joined.style("cursor", filterable ? "pointer" : null)
@@ -2039,9 +2335,28 @@
     if (entry.kindDrawn && entry.kindDrawn !== kind) entry.svg.selectAll("*").remove();
     entry.kindDrawn = kind;
     tipHide(entry);
-    if (kind === "pie") renderPie(entry, rows, W, H, t);
-    else if (kind === "scatter") renderScatter(entry, rows, W, H, t);
-    else renderCategorical(entry, rows, kind, W, H, t);
+    if (kind === "pie") { renderPie(entry, rows, W, H, t); return; }
+    if (kind === "scatter") { renderScatter(entry, rows, W, H, t); return; }
+    var readouts;
+    if (entry.plan.facet) {
+      entry.svg.selectAll("g.tb-plot").remove();
+      readouts = renderFacets(entry, rows, kind, W, H, t);
+    } else {
+      entry.svg.selectAll("svg.tb-panel").remove();
+      readouts = [renderCategorical(entry, entry.svg, rows, kind, W, H, t, {
+        zoom: entry.zoom,
+        brush: function (range) {
+          entry.zoom = range;
+          renderD3Chart(entry, filteredRows(entry.binding), true);
+        }
+      })];
+    }
+    /* One keyboard walk across every panel's categories, in reading order. */
+    var stops = [];
+    readouts.forEach(function (r) { for (var i = 0; i < r.count; i++) stops.push([r, i]); });
+    keyboardWalk(entry, stops.length,
+      function (n) { stops[n][0].show(stops[n][1]); },
+      function (n) { if (stops[n][0].choose) stops[n][0].choose(stops[n][1]); });
   }
 
   function hydrateD3Chart(el, plan, binding, block) {
@@ -2066,6 +2381,7 @@
     el.appendChild(surface);
     var entry = { el: el, binding: binding, plan: plan, surface: surface, legend: legend,
                   tip: tip, live: live, hidden: {}, d3: true, height: height,
+                  uid: "tbc" + (_charts.length + 1),
                   keys: seriesKeys(plan, block.rows, chartKind(plan)) };
     _charts.push(entry);
     renderD3Chart(entry, filteredRows(binding), false);
@@ -2099,7 +2415,13 @@
           y: splitList(y),
           color: attr(el, "data-tb-color"),
           valueFormat: attr(el, "data-tb-value-format"),
-          palette: own ? splitList(own) : palette
+          palette: own ? splitList(own) : palette,
+          xTitle: attr(el, "data-tb-x-title"),
+          yTitle: attr(el, "data-tb-y-title"),
+          stack: el.getAttribute("data-tb-stack") !== null,
+          mark: attr(el, "data-tb-mark"),
+          annotate: attr(el, "data-tb-annotate"),
+          facet: attr(el, "data-tb-facet")
         };
         /* Remove the server-rendered static SVG fallback (no-JS picture of the
          * chart) before drawing — echarts.init appends its root without
