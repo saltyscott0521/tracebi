@@ -736,6 +736,55 @@ def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, s
         main._mcp_server = None
 
 
+def test_a_person_starts_edits_previews_and_publishes_a_draft_in_the_app(served, scaffolded):
+    """The agent's loop, with the app's own calls: "Edit as a draft" starts the
+    signed-in person's copy of a published report (asking again opens the same
+    one), a saved file moves the preview and not the library, and publishing
+    puts it in the library. Python is refused with the laptop line."""
+    c = served
+    path = "sample_model/sample_dashboard"
+    published = scaffolded / "reports" / path / "template.html"
+    before = published.read_text(encoding="utf-8")
+
+    started = c.post("/api/drafts", json={"kind": "reports", "path": path, "from_published": True})
+    assert started.status_code == 201, started.text
+    draft = started.json()
+    assert (draft["owner"], draft["kind"], draft["path"]) == ("anonymous", "reports", path)
+    assert draft["differs_from_published"] is False and draft["created"] is True
+    base = f"/api/drafts/anonymous/reports/{path}"
+    version = c.get(f"{base}/version").json()["version"]
+
+    # Asking again is "open my draft": the same one, nothing started over.
+    again = c.post("/api/drafts", json={"kind": "reports", "path": path, "from_published": True})
+    assert again.status_code == 200 and again.json()["created"] is False
+    assert again.json()["updated"] == draft["updated"]
+
+    changed = before + "\n<p>edited in the app</p>\n"
+    saved = c.put(f"{base}/files/template.html", json={"content": changed})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["differs_from_published"] is True
+    assert saved.json()["version"] == c.get(f"{base}/version").json()["version"] != version
+    assert c.get(f"{base}/files").json()["files"]["template.html"] == changed
+    preview = c.get(f"{base}/preview")
+    assert preview.status_code == 200 and "edited in the app" in preview.text
+    assert published.read_text(encoding="utf-8") == before
+
+    # A file a draft may not hold is refused, and the draft is left as it was.
+    refused = c.put(f"{base}/files/report.py", json={"content": "print(1)"})
+    assert refused.status_code == 422 and "report.py" in refused.json()["detail"]["message"]
+
+    done = c.post(f"{base}/publish", json={"note": "edited in the app"})
+    assert done.status_code == 200, done.text
+    assert published.read_text(encoding="utf-8") == changed
+    files = c.get(f"/api/reports/{path}/source").json()["files"]
+    assert any("edited in the app" in f["content"] for f in files)
+
+    (scaffolded / "models" / "legacy.py").write_text("model = None\n", encoding="utf-8")
+    python = c.post("/api/drafts", json={"kind": "models", "path": "legacy"})
+    assert python.status_code == 422 and "laptop" in python.json()["detail"]["message"]
+    assert [d["path"] for d in c.get("/api/drafts").json()["drafts"]] == [path]
+
+
 def test_a_report_can_be_drafted_on_a_draft_model_but_publishes_only_after_it(scaffolded):
     """dev → prod ordering: a report draft previews against the agent's draft
     model, but publishing it is refused until that model is published, so

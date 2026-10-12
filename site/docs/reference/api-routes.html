@@ -297,6 +297,16 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 <td>owner (their own); admin (everyone's)</td>
 </tr>
 <tr>
+<td><code>POST</code></td>
+<td><code>/api/drafts</code></td>
+<td>analyst: start your own draft of a published report or model</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/drafts/{owner}/{kind}/{path}/files/{file}</code></td>
+<td>analyst, and owner or admin</td>
+</tr>
+<tr>
 <td><code>GET</code></td>
 <td><code>/api/drafts/{owner}/{kind}/{path}/files</code></td>
 <td>owner or admin</td>
@@ -323,6 +333,11 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 </tr>
 </tbody>
 </table>
+<p><code>POST /api/drafts</code> takes <code>{"kind": "reports"|"models", "path", "from_published"}</code>
+and answers <code>201</code> with the new draft, or <code>200</code> with the one the caller already
+has; a Python model, or a report with a <code>report.py</code>, is <code>422</code> and the message
+says to edit it from a laptop. <code>PUT .../files/{file}</code> takes <code>{"content"}</code> and
+answers with the draft's new <code>version</code>.</p>
 <p><code>/preview</code> renders the draft in memory against the published models plus the
 owner's draft models, and writes nothing. <code>/publish</code> validates the draft first,
 keeps the version it replaces under <code>.tracebi/history/</code>, copies it into the
