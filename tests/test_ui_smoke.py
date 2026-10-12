@@ -167,6 +167,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.goto(base + "/")
             page.wait_for_url("**/m/portfolio_model")
 
+            # The Map is every model as one picture: opening one zooms in, and
+            # picking a measure says in words which reports ask for it.
+            page.get_by_role("link", name="Map", exact=True).click()
+            page.wait_for_url("**/map")
+            page.get_by_role("button", name="Open portfolio_model").click()
+            page.wait_for_url("**/map?model=portfolio_model")
+            page.get_by_role("button", name=re.compile(r"^measure: fv_share")).click()
+            expect(page.get_by_label("Selection")).to_contain_text("portfolio_concentration")
+            fail_on_browser_errors()
+
             # Old addresses land on the page that replaced them.
             page.goto(base + "/models/portfolio_model?tab=refresh")
             page.wait_for_url("**/m/portfolio_model/transform")

@@ -75,7 +75,9 @@ in the default style), `package` (a `reports/<name>/` with its own template
 and style) or `code`. `/source` returns the files that define the report —
 the spec, or the package's `report.json`, `template.html`, `style.css`,
 `script.js` and `report.py` — read-only, and only the files discovery
-registered for it.
+registered for it. It also gives each report `models` (the models its data
+bindings read) and `measures` (the declared measure names they ask for, read
+from the file, never from a warehouse); the Map draws both.
 
 `/run` returns `{name, html, manifest}` — the **real artifact render**, so what
 the browser shows is what `verify --file` can check. `POST /runs` starts the
@@ -167,7 +169,8 @@ needed. See [[receipts]].
 
 `GET /api/pipelines` lists each pipeline with its `layers` and last run of each,
 the `model`(s) it feeds, and, from its `pipelines/<name>.yaml`, the `transform`
-it runs and its `description`; a model's Overview shows both.
+it runs (the phase ① script; `null` for a hand-built runner) and its
+`description`; a model's Overview and the Map show them.
 
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.

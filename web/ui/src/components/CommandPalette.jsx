@@ -4,9 +4,10 @@ import { useModels, useReports, usePipelines } from '../api'
 import { page, pagePath, reportPagePath, reportModels, pipelineModels } from '../nav'
 
 // Static page destinations — always available, even before data loads. The
-// sidebar's own four, then help.
+// sidebar's own five, then help.
 const PAGES_ALL = [
   { label: 'Overview', path: page('overview').all, kind: 'page', sub: page('overview').sub },
+  { label: 'Map', path: '/map', kind: 'page', sub: 'Every model as one picture: what feeds what.' },
   { label: 'Explore', path: page('explore').all, kind: 'page', sub: page('explore').sub },
   { label: 'Drafts', path: '/drafts', kind: 'page' },
   { label: 'Verify a file', path: '/verify', kind: 'page' },

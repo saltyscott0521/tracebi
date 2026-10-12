@@ -14,6 +14,7 @@ import Explore from './pages/Explore'
 import Verify from './pages/Verify'
 import Runs from './pages/Runs'
 import Drafts, { DraftPage } from './pages/Drafts'
+import Map from './pages/Map'
 
 // Every page under the model switcher has two addresses: one model
 // (/m/<model>/<page>) and all models (/<page>). See nav.js.
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/sources" element={<AllModels pageKey="sources"><Connectors /></AllModels>} />
           <Route path="/runs" element={<AllModels pageKey="runs"><Runs /></AllModels>} />
 
+          <Route path="/map" element={<Map />} />
           <Route path="/drafts" element={<Drafts />} />
           <Route path="/drafts/:owner/:kind/*" element={<DraftPage />} />
           <Route path="/verify" element={<Verify />} />

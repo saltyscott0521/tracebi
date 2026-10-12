@@ -110,8 +110,35 @@ def _models_named(doc) -> list[str]:
     return sorted(found)
 
 
-def _library_package(name: str) -> tuple[dict | None, str | None, list[str]]:
-    """Schedule, last-change time and the models read, for one report.
+def _measures_named(doc) -> list[str]:
+    """The declared measures a report's data bindings ask for, sorted.
+
+    Read from each binding's ``query.measures`` list. The ``{column: agg}``
+    form is an ad-hoc aggregation, not a named measure, so it is left out.
+    Reads the file only: nothing here touches a warehouse.
+    """
+    found: set[str] = set()
+
+    def walk(node) -> None:
+        if isinstance(node, dict):
+            query = node.get("query")
+            if isinstance(node.get("model"), str) and isinstance(query, dict):
+                asked = query.get("measures")
+                if isinstance(asked, list):
+                    found.update(m for m in asked if isinstance(m, str))
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(doc)
+    return sorted(found)
+
+
+def _library_package(name: str) -> tuple[dict | None, str | None, list[str], list[str]]:
+    """Schedule, last-change time, the models read and the measures asked for,
+    for one report.
 
     Via :func:`open_report`. An on-disk package uses ``report.json`` and
     ``template.html``. A spec uses the spec file: its compiled package is a
@@ -124,23 +151,24 @@ def _library_package(name: str) -> tuple[dict | None, str | None, list[str]]:
         return (
             _schedule_of(manifest),
             _newer_mtime(manifest, opened.package_dir / "template.html"),
-            _models_in(manifest),
+            *_bindings_in(manifest),
         )
     if opened.spec_path is not None and opened.spec_path.is_file():
-        return None, _newer_mtime(opened.spec_path), _models_in(opened.spec_path)
+        return None, _newer_mtime(opened.spec_path), *_bindings_in(opened.spec_path)
     # Registered by an app module rather than found under reports/: the
     # registry knows its package (a spec's is the compiled one).
     if opened.registry_package_dir:
-        return None, None, _models_in(Path(opened.registry_package_dir) / "report.json")
-    return None, None, []
+        return None, None, *_bindings_in(Path(opened.registry_package_dir) / "report.json")
+    return None, None, [], []
 
 
-def _models_in(path) -> list[str]:
+def _bindings_in(path) -> tuple[list[str], list[str]]:
+    """The models and the measures a report file's data bindings read."""
     try:
-        named = _models_named(json.loads(path.read_text(encoding="utf-8")))
+        doc = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return []
-    return sorted({_listed_name(n) for n in named})
+        return [], []
+    return sorted({_listed_name(n) for n in _models_named(doc)}), _measures_named(doc)
 
 
 def _listed_name(name: str) -> str:
@@ -189,7 +217,7 @@ def list_reports():
     last_runs, build_counts = _library_runs()
     out = []
     for item in registry.list_reports():
-        schedule, last_change, models = _library_package(item["name"])
+        schedule, last_change, models, measures = _library_package(item["name"])
         out.append({
             **item,
             "schedule": schedule,
@@ -198,6 +226,8 @@ def list_reports():
             "last_change": last_change,
             # What it belongs to: the models its data bindings read.
             "models": models,
+            # The named measures those bindings ask for (the Map draws them).
+            "measures": measures,
         })
     return out
 

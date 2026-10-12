@@ -1,0 +1,208 @@
+/* Map ─────────────────────────────────────────────────────────────────────
+   The project as one picture. A card (rounded rectangle) is something you
+   write; a pill is what gets handed on. There is no green: a state is a glyph
+   and words (✕ failed, △ needs a look, ○ never built), and colour only
+   repeats it. */
+
+.map-page {
+  --map-ink: #171717;
+  --map-ink-2: #262626;
+  --map-muted: #5a5a5a;
+  --map-muted-2: #404040;
+  --map-card-bg: #ffffff;
+  --map-card-bd: #a3a3a0;
+  --map-model-bg: #fbfbfa;
+  --map-pill-bg: #f7f7f5;
+  --map-pill-bd: #cfcfcb;
+  --map-btn-bd: #d6d6d2;
+  --map-frame-bg: #ffffff;
+  --map-frame-bd: #e3e3e0;
+  --map-dot: #e7e7e4;
+  --map-band-bg: #f7f7f5;
+  --map-band-bd: #ebebe8;
+  --map-tint-bg: #f3f6fe;
+  --map-tint-bd: #d6e0fb;
+  --map-num-bg: #ececea;
+  --map-edge: #8a8a86;
+  --map-hot: #2f5bea;
+  --map-hot-bg: #eef2fe;
+  --map-hot-ink: #2447c4;
+  --map-bad: #b91c1c;
+  --map-bad-bd: #b91c1c;
+  --map-bad-bg: #fef2f2;
+  --map-warn: #b45309;
+  --map-warn-ink: #92400e;
+  --map-warn-bg: #fffbeb;
+  --map-ghost: #737373;
+  --map-ghost-ink: #404040;
+  color: var(--map-ink);
+  font-family: var(--font-sans);
+}
+
+[data-theme="dark"] .map-page {
+  --map-ink: #ededed;
+  --map-ink-2: #d4d4d4;
+  --map-muted: #a3a3a3;
+  --map-muted-2: #b4b4b4;
+  --map-card-bg: #161616;
+  --map-card-bd: #5c5c5c;
+  --map-model-bg: #131313;
+  --map-pill-bg: #1c1c1c;
+  --map-pill-bd: #4a4a4a;
+  --map-btn-bd: #3a3a3a;
+  --map-frame-bg: #101010;
+  --map-frame-bd: #262626;
+  --map-dot: #1f1f1f;
+  --map-band-bg: #151515;
+  --map-band-bd: #262626;
+  --map-tint-bg: rgba(122, 156, 255, 0.08);
+  --map-tint-bd: rgba(122, 156, 255, 0.28);
+  --map-num-bg: #2a2a2a;
+  --map-edge: #6b6b6b;
+  --map-hot: #7a9cff;
+  --map-hot-bg: rgba(122, 156, 255, 0.14);
+  --map-hot-ink: #a3b9ff;
+  --map-bad: #fb8a8a;
+  --map-bad-bd: #f87171;
+  --map-bad-bg: rgba(220, 38, 38, 0.14);
+  --map-warn: #d97706;
+  --map-warn-ink: #fbbf24;
+  --map-warn-bg: rgba(217, 119, 6, 0.14);
+  --map-ghost: #8f8f8f;
+  --map-ghost-ink: #b4b4b4;
+}
+
+.map-mono { font-family: var(--font-mono); }
+.map-cap { font: 600 12px/1.2 var(--font-sans); color: var(--map-muted); }
+
+/* Heading */
+.map-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+.map-head__main { flex: 1; min-width: 240px; }
+.map-head__crumb { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.map-head h1 { margin: 6px 0 0; font-size: 24px; font-weight: 600; line-height: 1.2; color: var(--map-ink); overflow-wrap: anywhere; }
+.map-head__hint { margin: 0; font-size: 14px; color: var(--map-muted-2); }
+.map-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px;
+  border-radius: 9px; border: 1px solid var(--map-btn-bd); background: var(--map-card-bg);
+  color: var(--map-ink); font: 500 14px/1 var(--font-sans); cursor: pointer;
+}
+.map-btn:hover { border-color: var(--map-card-bd); }
+.map-narrow { display: none; margin: 0 0 10px; font-size: 13px; color: var(--map-muted-2); }
+.map-note { margin: 0 0 10px; font-size: 13px; color: var(--map-warn-ink); }
+@media (max-width: 860px) { .map-narrow { display: block; } }
+
+/* The frame scrolls sideways when the map is wider than the page. */
+.map-frame {
+  overflow-x: auto; border: 1px solid var(--map-frame-bd); border-radius: 16px;
+  background-color: var(--map-frame-bg);
+  background-image: radial-gradient(var(--map-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.map-level { position: relative; margin: 0 auto; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes map-zoom { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+  .map-level { animation: map-zoom 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); transform-origin: 50% 40%; }
+}
+
+/* Column headings; the numerals are the three phases */
+.map-colh {
+  position: absolute; display: flex; align-items: center; gap: 6px;
+  font: 600 12px/1 var(--font-sans); color: var(--map-muted-2); white-space: nowrap;
+}
+.map-colh--in { position: static; }
+.map-colh__n {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--map-num-bg); color: var(--map-ink-2); font: 700 11px/1 var(--font-sans);
+}
+
+/* A band is one model's line. The tinted one is the model you are in. */
+.map-band { position: absolute; border-radius: 18px; background: var(--map-band-bg); border: 1px solid var(--map-band-bd); }
+.map-band--tinted { background: var(--map-tint-bg); border-color: var(--map-tint-bd); }
+.map-open {
+  position: absolute; z-index: 2; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 34px; padding: 0 12px; border-radius: 9px;
+  border: 1px solid var(--map-btn-bd); background: var(--map-card-bg); color: var(--map-ink);
+  font: 500 14px/1 var(--font-mono); cursor: pointer;
+}
+.map-open:hover { border-color: var(--map-card-bd); }
+.map-open--tinted { border-color: var(--map-hot); color: var(--map-hot-ink); }
+
+/* The model, opened: a tall card that holds its measures. */
+.map-modelcard {
+  position: absolute; box-sizing: border-box; display: flex; flex-direction: column; gap: 3px;
+  padding: 14px 16px; border-radius: 16px; border: 1px solid var(--map-card-bd); background: var(--map-model-bg);
+}
+.map-modelcard__name { font: 600 13px/1.45 var(--font-mono); overflow-wrap: anywhere; }
+.map-modelcard__empty { margin: 36px 0 0; font: italic 400 13px/1.45 var(--font-sans); color: var(--map-muted); }
+
+/* Edges sit under the nodes; the lit path is drawn last, in blue. */
+.map-edges { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.map-edge path { stroke-linejoin: miter; }
+.map-edge--quiet { stroke: var(--map-edge); fill: var(--map-edge); }
+.map-edge--warn { stroke: var(--map-warn); fill: var(--map-warn); }
+.map-edge--hot { stroke: var(--map-hot); fill: var(--map-hot); }
+
+/* Nodes */
+.map-node {
+  position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  margin: 0; padding: 6px 12px; text-align: left; font: inherit; color: var(--map-ink);
+  background: var(--map-card-bg); border: 1px solid var(--map-card-bd); border-radius: 11px;
+  transition: background 0.15s, border-color 0.15s;
+}
+button.map-node { cursor: pointer; }
+button.map-node:hover { box-shadow: 0 0 0 3px rgba(47, 91, 234, 0.16); }
+.map-node--pill {
+  align-items: center; text-align: center; padding: 4px 12px;
+  border-radius: 999px; background: var(--map-pill-bg); border-color: var(--map-pill-bd);
+}
+.map-node--noted { align-items: stretch; text-align: left; padding-left: 14px; }
+/* The note ("unused") sits at the right edge: the name wraps before it, not under it. */
+.map-node--noted .map-node__name { padding-right: 56px; }
+.map-node__kind { font: 500 11px/1.15 var(--font-sans); color: var(--map-muted); }
+.map-node__name { padding-bottom: 1px; font: 500 13px/1.45 var(--font-mono); white-space: normal; overflow-wrap: anywhere; }
+.map-node__note {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font: italic 400 12px/1 var(--font-sans); color: var(--map-muted);
+}
+
+.map-node--unused { color: var(--map-muted); }
+.map-node--hot { background: var(--map-hot-bg); border: 2px solid var(--map-hot); }
+.map-node--hot .map-node__name { font-weight: 600; }
+.map-node--bad { background: var(--map-bad-bg); border: 1.5px solid var(--map-bad-bd); }
+.map-node--bad .map-node__kind { color: var(--map-bad); font-weight: 600; }
+.map-node--warn { background: var(--map-warn-bg); border: 1.5px solid var(--map-warn); }
+.map-node--warn .map-node__kind { color: var(--map-warn-ink); font-weight: 600; }
+.map-node--ghost { background: var(--map-card-bg); border: 1.5px dashed var(--map-ghost); color: var(--map-ink-2); }
+.map-node--ghost .map-node__kind { color: var(--map-ghost-ink); font-weight: 600; }
+
+.map-empty {
+  position: absolute; margin: 0; min-height: 52px; display: flex; align-items: center;
+  font: italic 400 13px/1.45 var(--font-sans); color: var(--map-muted);
+}
+
+/* Under the map */
+.map-under { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-start; margin-top: 14px; }
+.map-readout {
+  flex: 1 1 380px; padding: 14px 18px; border-radius: 14px;
+  background: var(--map-card-bg); border: 1px solid var(--map-frame-bd);
+}
+.map-readout__name { margin-top: 4px; font: 600 15px/1.3 var(--font-mono); overflow-wrap: anywhere; }
+.map-readout__text { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: var(--map-ink-2); }
+.map-readout__open {
+  display: inline-flex; align-items: center; min-height: 40px; margin-top: 10px; padding: 0 14px;
+  border-radius: 9px; border: 1px solid #2f5bea; background: #2f5bea; color: #fff;
+  font: 600 14px/1 var(--font-sans); text-decoration: none;
+}
+.map-readout__open:hover { filter: brightness(1.06); }
+
+.map-legend {
+  flex: 0 1 380px; display: flex; flex-direction: column; gap: 9px; padding-top: 6px;
+  font-size: 13px; color: var(--map-ink-2);
+}
+.map-legend span { display: flex; align-items: center; gap: 10px; }
+.map-key { flex: none; display: inline-block; width: 30px; box-sizing: border-box; }
+.map-key--card { height: 18px; border-radius: 5px; border: 1px solid var(--map-card-bd); background: var(--map-card-bg); }
+.map-key--pill { height: 18px; border-radius: 999px; border: 1px solid var(--map-pill-bd); background: var(--map-pill-bg); }
+.map-key--path { height: 3px; background: var(--map-hot); }
+.map-key--ghost { height: 18px; border-radius: 5px; border: 1.5px dashed var(--map-ghost); }

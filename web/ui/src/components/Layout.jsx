@@ -13,6 +13,11 @@ const ICONS = {
       <circle cx="4" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="20" cy="12" r="2" /><path d="M6 12h4M14 12h4" />
     </svg>
   ),
+  map: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5" cy="6" r="2.5" /><circle cx="19" cy="6" r="2.5" /><circle cx="12" cy="18" r="2.5" /><path d="M7.5 6h9M6.5 8l4 8M17.5 8l-4 8" />
+    </svg>
+  ),
   explore: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.707a1 1 0 00-1.111-.206l-4 1.714a1 1 0 00-.525.525l-1.714 4a1 1 0 001.317 1.317l4-1.714a1 1 0 00.525-.525l1.714-4a1 1 0 00-.206-1.111zM10 11a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" />
@@ -264,11 +269,13 @@ export default function Layout({ children }) {
         </div>
 
         {/* Overview and Explore are about the picked model (all models: the
-            Overview lists them); Drafts and Verify a file are about no one
-            model: a file can come from anywhere. */}
+            Overview lists them); the Map is every model, the picked one's band
+            tinted; Drafts and Verify a file are about no one model: a file can
+            come from anywhere. */}
         <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
           {[
             { path: pagePath('overview', model), label: 'Overview', icon: 'overview', active: scope.page === 'overview' },
+            { path: '/map', label: 'Map', icon: 'map', active: pathname.startsWith('/map') },
             { path: pagePath('explore', model), label: 'Explore', icon: 'explore', active: scope.page === 'explore' },
             { path: '/drafts', label: 'Drafts', icon: 'drafts', active: pathname.startsWith('/drafts') },
             { path: '/verify', label: 'Verify a file', icon: 'verify', active: pathname.startsWith('/verify') },
