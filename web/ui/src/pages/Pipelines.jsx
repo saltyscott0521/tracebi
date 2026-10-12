@@ -30,7 +30,7 @@ const TYPE_ACCENT = {
   manipulation: 'var(--role-fact)', silver: 'var(--role-fact)',
   final: 'var(--op-final-tx)', gold: 'var(--op-final-tx)',
 }
-const STATUS_DOT = { success: 'var(--green)', failed: 'var(--red)', running: 'var(--amber)' }
+const STATUS_DOT = { success: 'var(--muted)', failed: 'var(--red)', running: 'var(--amber)' }
 
 function LayerNode({ data }) {
   const accent = TYPE_ACCENT[data.layer.type] || 'var(--role-table)'
