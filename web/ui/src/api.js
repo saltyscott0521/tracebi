@@ -156,11 +156,14 @@ export const useDesk = () =>
 export const fetchBuiltReport = (name) =>
   getOrNull(`/reports/${reportPath(name)}/built`)
 
-export const useBuiltReport = (name) =>
+// Asking for the last build of a report that has none builds it once (the
+// server keeps that build for everyone), so a caller that has not seen the
+// report built passes enabled = false.
+export const useBuiltReport = (name, enabled = true) =>
   useQuery({
     queryKey: ['built-report', name],
     queryFn: () => fetchBuiltReport(name),
-    enabled: !!name,
+    enabled: !!name && enabled,
     retry: false,
   })
 

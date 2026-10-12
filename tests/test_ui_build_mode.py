@@ -62,7 +62,9 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/m/saas_model/reports?r={report}")
+            # The page of a report nobody has built yet: building is a click, never a side effect of looking.
+            page.goto(f"{base}/m/saas_model/reports?r={report}&open=1")
+            page.get_by_role("button", name="Build it now").click()
             page.locator("iframe").wait_for()
             frame = page.frame_locator("iframe")
             frame.locator("#kpi-mrr").wait_for()
@@ -156,8 +158,9 @@ def test_build_mode_is_absent_unless_the_server_is_in_dev_mode(tmp_path: Path) -
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/m/saas_model/reports?r=saas_model/mrr_dashboard")
-            page.locator("iframe").wait_for()
+            page.goto(f"{base}/m/saas_model/reports?r=saas_model/mrr_dashboard&open=1")
+            page.get_by_role("button", name="Share").wait_for()   # the page is up, and has asked what the server is
+            page.wait_for_load_state("networkidle")
             assert page.get_by_role("button", name="◎ Build").count() == 0
             browser.close()
         request = urllib.request.Request(

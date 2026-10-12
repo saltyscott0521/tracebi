@@ -17,7 +17,7 @@ const KIND_LABEL = {
   binding: 'Query', figures: 'Figures', unverified: 'Typed in',
 }
 const STATUS = {
-  ok:      { stripe: 'var(--green)', tint: 'var(--surface)' },
+  ok:      { stripe: 'var(--text-2)', tint: 'var(--surface)' },
   warn:    { stripe: 'var(--amber)', tint: 'var(--amber-lt)' },
   derived: { stripe: 'var(--role-fact)', tint: 'var(--surface)' },
   muted:   { stripe: 'var(--muted)', tint: 'var(--surface)' },
@@ -143,7 +143,7 @@ function Detail({ node }) {
           {d.contract && (
             <Row label="Written by">
               <code>{d.contract.transform}</code>{' '}
-              <Badge variant={d.contract.status === 'satisfied' ? 'green' : 'amber'}>
+              <Badge variant={d.contract.status === 'satisfied' ? 'gray' : 'amber'}>
                 {d.contract.status === 'satisfied' ? 'sink satisfied its contract' : 'sink changed since'}
               </Badge>
             </Row>
@@ -188,7 +188,7 @@ function Detail({ node }) {
         <>
           <Row label="Replayable">
             {d.verifiable
-              ? <Badge variant="green">query-backed</Badge>
+              ? <Badge variant="gray">query-backed</Badge>
               : <Badge variant="purple">python-derived: cannot be replayed</Badge>}
           </Row>
           {d.rows != null && <Row label="Result">{d.rows} row{d.rows !== 1 ? 's' : ''} × {d.columns} column{d.columns !== 1 ? 's' : ''}</Row>}

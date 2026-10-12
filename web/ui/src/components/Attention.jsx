@@ -34,7 +34,17 @@ export function verdictOf(v) {
   return VERDICT[v] || { label: v || 'Unknown', variant: 'amber' }
 }
 
-const isQuiet = v => ['green', 'gray'].includes(verdictOf(v).variant)
+export const isQuiet = v => ['green', 'gray'].includes(verdictOf(v).variant)
+
+// A verdict as a flag, for a page that marks only what is not fine: ✕ it does
+// not reproduce, △ it needs a look, ○ it cannot be re-run. `reproduces` is a
+// plain fact, so it has none.
+const MARK = { red: ['bad', '✕'], amber: ['warn', '△'], gray: ['none', '○'] }
+export function verdictFlag(verdict) {
+  const v = verdictOf(verdict)
+  const [kind, glyph] = MARK[v.variant] || []
+  return kind ? { kind, glyph, text: v.label } : null
+}
 
 export function when(iso) {
   if (!iso) return null
@@ -50,13 +60,18 @@ function reportHref(name, models) {
   return name && name !== '_discovery' ? reportPagePath(name, models) : null
 }
 
+const NOTE = 'Review note'
+
+/** The review notes among *items*: the one thing the Overview's line and a report's row do not already say. */
+export const reviewNotes = items => items.filter(it => it.kind === NOTE)
+
 // Each item carries `models`: the models it is about (none = the project).
 // *modelsOf* maps a report name to the models it reads.
 export function attentionItems(desk, pipelines, modelsOf = () => []) {
   const items = []
   for (const pin of desk?.pins || []) {
     items.push({
-      key: `pin-${pin.report}-${pin.id}`, kind: 'Review note', variant: 'blue',
+      key: `pin-${pin.report}-${pin.id}`, kind: NOTE, variant: 'blue',
       models: modelsOf(pin.report),
       title: pin.report === '_discovery' ? 'Project workbench' : pin.report,
       detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report, modelsOf(pin.report)),

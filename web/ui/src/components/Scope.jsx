@@ -3,14 +3,23 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 
 import { useModels, useReports } from '../api'
 import {
-  PAGES, page, pagePath, whereAmI, rememberModel, lastModel, reportModels,
+  PAGES, page, pagePath, whereAmI, rememberModel, lastModel, reportModels, openedReport,
 } from '../nav'
-import { PageTitle, PageSub, SkeletonCard, Empty } from './Shared'
+import { PageTitle, PageSub, SkeletonCard, Empty, useNarrow } from './Shared'
+
+// Below this the Reports stage has no preview pane, and a row opens the report.
+export const PREVIEW_QUERY = '(max-width: 1100px)'
 
 /** The page, model and (on the Overview) stage the URL names. */
 export function useScope() {
   const { pathname } = useLocation()
   return whereAmI(pathname) || { model: '', page: null, stage: null }
+}
+
+/** The report this address opens as a page of its own ({name, model}), or null. */
+export function useOpenReport() {
+  const { pathname, search } = useLocation()
+  return openedReport(pathname, search, useNarrow(PREVIEW_QUERY))
 }
 
 /**

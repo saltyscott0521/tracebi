@@ -8,7 +8,8 @@ import Warehouse from '../components/Warehouse'
 import EditAsDraft from '../components/EditAsDraft'
 import { ModelDetail } from './Models'
 import Pipelines from './Pipelines'
-import Reports from './Reports'
+import Reports, { ReportPage } from './Reports'
+import { useOpenReport } from '../components/Scope'
 import { pagePath } from '../nav'
 import { Btn, Card, Spinner, useToast } from '../components/Shared'
 
@@ -85,7 +86,7 @@ const STAGE_LABEL = { transform: 'Transform', model: 'Model', reports: 'Reports'
  * A model's page: how it is made, as the line (nav.js says which address is
  * which stage), and under it the stage you are looking at.
  */
-export default function Overview({ model, stage }) {
+function ModelPage({ model, stage }) {
   const facts = useLineFacts(model)
   const { transform } = facts
   const { data: me } = useMe()
@@ -166,4 +167,10 @@ export default function Overview({ model, stage }) {
       </section>
     </div>
   )
+}
+
+// A report opened from the Reports stage is a page of its own, not part of this one.
+export default function Overview(props) {
+  const open = useOpenReport()
+  return open ? <ReportPage name={open.name} model={open.model} /> : <ModelPage {...props} />
 }

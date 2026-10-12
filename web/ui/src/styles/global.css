@@ -587,11 +587,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .reports-page .split-layout {
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
 }
-/* An open report gets the whole content width, at any screen size: the list
-   steps aside (its "← All reports" link brings it back), so a report is laid
-   out as wide as it will be read, and Build mode has the room for its workbench. */
-.reports-page--detail .split-layout { grid-template-columns: minmax(0, 1fr); }
-.reports-page--detail .split-layout > :first-child { display: none; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
@@ -609,7 +604,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .split-layout--screens { overflow-x: clip; }   /* the slide never scrolls the page sideways */
   .split-layout--detail > :first-child { display: none; }
   .split-layout--detail > .split-detail { animation: slide-in .26s cubic-bezier(.2,.7,.2,1); }
-  .reports-page--detail > :not(.split-layout) { display: none; }
   .grid-2       { grid-template-columns: minmax(0, 1fr); }
   .grid-3       { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .concept-grid { grid-template-columns: minmax(0, 1fr); }
@@ -951,35 +945,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   }
 }
 
-/* Full screen report: over the whole app, a slim bar to close it. */
-.fullscreen {
-  position: fixed; inset: 0; z-index: 1000;
-  display: flex; flex-direction: column;
-  background: var(--bg, #fff);
-}
-.fullscreen-bar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top));
-  border-bottom: 1px solid var(--border);
-}
-.fullscreen-title {
-  flex: 1; min-width: 0; font-size: 13px; font-weight: 600;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fullscreen-close {
-  font: inherit; font-size: 13px; font-weight: 600;
-  padding: 6px 12px; border-radius: 6px; cursor: pointer;
-  border: 1px solid var(--border); background: var(--surface, transparent); color: inherit;
-}
-.fullscreen-close:hover { background: var(--blue-lt); }
-.fullscreen-frame { flex: 1; width: 100%; border: 0; background: #fff; }
-
-/* The way back from an open item to its list. */
-.crumbs { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-.crumbs button {
-  font: inherit; font-weight: 600; color: var(--blue-md, var(--blue));
-  background: none; border: 0; padding: 4px 0; cursor: pointer;
-}
 @keyframes slide-in { from { transform: translateX(100%); opacity: .4; } }
 @media (prefers-reduced-motion: reduce) {
   .split-layout--detail > .split-detail { animation: none; }
@@ -1080,34 +1045,10 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .glance-row:hover { background: var(--card-hl); }
 .glance-row__name { font-size: var(--text-caption); font-weight: 500; color: var(--text); flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .glance-row__when { font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.report-detail__title { display: inline; font: inherit; margin: 0; overflow-wrap: anywhere; }
 .section-title { font-size: var(--text-lg); font-weight: 600; color: var(--text); margin: 0 0 4px; }
 .section-sub { font-size: var(--text-caption); color: var(--muted); line-height: 1.6; margin: 0 0 14px; max-width: 74ch; }
 
-/* ── A report's action row: what to do (left), what to share or take (right) ── */
-.report-actions { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
-.report-actions__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
-/* The Download list opens under the row, never wider than it, so it cannot leave a phone's screen. */
-.dl-menu {
-  position: absolute; right: 0; top: calc(100% + 4px); z-index: 20;
-  width: min(380px, 100%); padding: 4px;
-  background: var(--card); border: 1px solid var(--border-strong);
-  border-radius: var(--radius); box-shadow: var(--shadow-pop);
-}
-.dl-menu__item { display: block; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
-.dl-menu__item:hover { background: var(--card-hl); }
-.dl-menu__label { display: block; font-size: var(--text-caption); font-weight: 600; }
-.dl-menu__note { display: block; margin-top: 2px; font-size: var(--text-sm); line-height: 1.4; color: var(--muted); }
-/* A phone: the buttons share the row in a tidy grid, two across, instead of wrapping raggedly. */
-@media (max-width: 480px) {
-  .report-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .report-actions__more { display: contents; }
-  .report-actions button { width: 100%; justify-content: center; }
-}
-
 /* ── Build mode: the workbench beside the report ────────────────────────── */
-.build-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
-@media (max-width: 1100px) { .build-layout { grid-template-columns: minmax(0, 1fr); } }
 .wb { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 @media (max-width: 1100px) { .wb { position: static; max-height: none; } }
 .wb-section { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--card); }
@@ -1285,3 +1226,170 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 }
 
 .stage__actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+
+/* ── The Reports stage: the list, and the last build of the one picked ───────
+   The list on the left (a search, three filters, a row per report); on the
+   right the picked report's header, and its last build as readers see it
+   (Preview) or the files that define it (Config). Below 1100px there is no
+   pane: the list is the stage, and a row opens the report. */
+
+.rsplit {
+  display: grid; grid-template-columns: minmax(300px, .85fr) minmax(0, 1.15fr); min-height: 520px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+}
+.rsplit--list { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+.rsplit__list { min-width: 0; border-right: 1px solid var(--border); }
+.rsplit--list .rsplit__list { border-right: 0; }
+.rsplit__find { display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 12px; }
+.rsplit__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rsplit__chip {
+  appearance: none; min-height: 40px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: var(--text-caption); font-weight: 500;
+  border: 1px solid var(--border-strong); background: var(--card); color: var(--text);
+}
+.rsplit__chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--card); }
+.rsplit__rows { margin: 0; padding: 0; list-style: none; }
+.rrow {
+  appearance: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start;
+  width: 100%; margin: 0; padding: 12px 16px; border: 0; border-top: 1px solid var(--border);
+  background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer;
+  box-shadow: inset 3px 0 0 transparent; transition: background .12s;
+}
+.rrow:hover { background: rgba(47, 91, 234, .04); }
+.rrow[aria-pressed="true"] { background: rgba(47, 91, 234, .09); box-shadow: inset 3px 0 0 var(--blue); }
+.rrow:focus-visible { outline-offset: -2px; }
+.rrow__main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rrow__name { font-family: var(--font-mono); font-size: var(--text-base); font-weight: 500; overflow-wrap: anywhere; }
+.rrow__desc {
+  font-size: var(--text-caption); line-height: 1.4; color: var(--text-2);
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.rrow__side { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; text-align: right; }
+.rrow__built, .rrow__sched { font-size: var(--text-sm); white-space: nowrap; }
+.rrow__built { color: var(--muted); }
+.rrow__sched { color: var(--text-2); }
+.rsplit__none, .rsplit__receipt { margin: 0; border-top: 1px solid var(--border); color: var(--text-2); }
+.rsplit__none { padding: 20px 16px; font-size: var(--text-base); }
+.rsplit__receipt { padding: 12px 16px; font-size: var(--text-sm); line-height: 1.45; }
+.rsplit .flag { font-size: var(--text-caption); white-space: nowrap; }
+.rsplit .search-input { height: 40px; padding-left: 36px; border-radius: 9px; border-color: var(--border-strong); background: var(--card); font-size: var(--text-base); }
+.rsplit .search-icon { left: 12px; }
+
+.rview { min-width: 0; display: flex; flex-direction: column; }
+.rview__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.rview__id { flex: 1; min-width: 180px; }
+.rview__name { font-family: var(--font-mono); font-size: var(--text-lg); font-weight: 600; overflow-wrap: anywhere; }
+.rview__built { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; margin-top: 2px; font-size: var(--text-sm); color: var(--muted); }
+.rview__built > * + *::before { content: "· "; color: var(--muted); font-weight: 400; }
+.rview__built .flag { font-size: var(--text-sm); }
+.rview__body { flex: 1; padding: 18px; background: var(--bg); }
+.seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface-2); }
+.seg button {
+  appearance: none; min-height: 34px; padding: 0 12px; border: 0; border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--text-2); font: inherit; font-size: var(--text-caption); font-weight: 600;
+}
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.open-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 9px;
+  background: var(--ink); color: var(--on-ink); font-size: var(--text-base); font-weight: 600; text-decoration: none;
+}
+.open-btn:hover { color: var(--on-ink); filter: brightness(1.06); }
+
+/* The last build, shrunk to the pane; the top of the page, never scrolled. */
+.rprev__box {
+  position: relative; overflow: hidden; border: 1px solid var(--border); border-radius: 12px;
+  background: #fff; box-shadow: 0 8px 24px rgba(0, 0, 0, .05);
+}
+.rprev__frame { display: block; border: 0; background: #fff; transform-origin: 0 0; pointer-events: none; }
+.rprev__box--clipped::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; pointer-events: none;
+  background: linear-gradient(rgba(255, 255, 255, 0), #fff);
+}
+.rprev__note { margin: 10px 2px 0; font-size: var(--text-sm); color: var(--muted); }
+.rprev__never {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 36px 28px;
+  border: 1.5px dashed var(--border-strong); border-radius: 12px; background: var(--card);
+}
+.rprev__never p { margin: 0; max-width: 46ch; font-size: var(--text-base); line-height: 1.5; color: var(--text-2); }
+.rprev__never .flag { font-size: var(--text-caption); }
+
+.rconfig { display: flex; flex-direction: column; min-width: 0; }
+.rconfig__form { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 14px 18px 0; font-size: var(--text-sm); color: var(--muted); }
+.rconfig__code { padding: 12px 18px 16px; }
+.rconfig__foot { display: flex; justify-content: flex-end; padding: 12px 18px; border-top: 1px solid var(--border); }
+.rconfig__foot:empty { display: none; }
+
+/* ── A report's own page ──────────────────────────────────────────────────────
+   No sidebar: one light bar, and the report on the rest of the screen. The
+   frame is as tall as the screen and scrolls inside, so the report's own
+   receipt drawer (tracebi.js, position: fixed) opens at the edge you can see. */
+
+.rp {
+  --flag-warn: #92400e;
+  display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: var(--bg);
+}
+[data-theme="dark"] .rp { --flag-warn: var(--amber-text); }
+.rp__bar {
+  position: relative; z-index: 40; flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--border);
+}
+.rp__back { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 6px; color: var(--text-2); font-size: var(--text-base); text-decoration: none; }
+.rp__back:hover { color: var(--text); }
+.rp__model { font-family: var(--font-mono); }
+.rp__sep { color: var(--muted); }
+.rp__name { margin: 0; font-family: var(--font-mono); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.rp__built { font-size: var(--text-caption); color: var(--muted); }
+.rp__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.rp__menu {
+  position: absolute; right: 16px; top: calc(100% + 6px); z-index: 50; width: min(380px, calc(100vw - 32px)); padding: 6px 0;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-pop);
+}
+.rp__item {
+  appearance: none; display: block; width: 100%; min-height: 40px; padding: 9px 16px; border: 0; background: transparent;
+  color: var(--text); font: inherit; font-size: var(--text-base); font-weight: 500; text-align: left; text-decoration: none; cursor: pointer;
+}
+.rp__item:hover:not(:disabled) { background: var(--card-hl); }
+.rp__item:disabled { opacity: .5; cursor: default; }
+.rp__item:focus-visible { outline-offset: -2px; }
+.rp__item-label { display: block; }
+.rp__item-note { display: block; margin-top: 2px; font-size: var(--text-sm); font-weight: 400; line-height: 1.4; color: var(--muted); }
+.rp__rule { height: 1px; margin: 6px 0; background: var(--border); }
+.rp__body { flex: 1; min-height: 0; display: flex; }
+.rp__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rp__frame { flex: 1; width: 100%; min-height: 0; border: 0; background: #fff; }
+.rp__note { margin: 0; padding: 8px 16px; font-size: var(--text-caption); color: var(--text-2); background: var(--card); border-bottom: 1px solid var(--border); }
+.rp__err { padding: 16px 16px 0; }
+.rp__state { padding: 36px clamp(16px, 4vw, 64px); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: var(--text-caption); }
+.rp__state > .rprev__never { flex: 1 1 360px; max-width: 640px; }
+.rp__wb { flex: 0 0 340px; overflow-y: auto; padding: 16px; border-left: 1px solid var(--border); background: var(--bg); }
+.rp__wb .wb { position: static; max-height: none; }
+.rp__scrim { position: fixed; inset: 0; z-index: 60; background: rgba(17, 18, 20, .32); }
+.rp__drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 70; width: min(720px, 100vw); overflow-y: auto;
+  padding: 20px 22px 40px; background: var(--card); border-left: 1px solid var(--border); box-shadow: -16px 0 40px rgba(0, 0, 0, .18);
+}
+.rp__drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.rp__drawer-head h2 { margin: 0; font-size: var(--text-lg); font-weight: 600; }
+.rp__close {
+  appearance: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border: 1px solid var(--border-strong); border-radius: 9px; background: var(--card); color: var(--text); cursor: pointer;
+}
+.rp__lead { margin: 0 0 8px; font-size: var(--text-lg); color: var(--text); }
+.rp__none { margin: 0 0 10px; font-size: var(--text-caption); color: var(--muted); }
+.rp__receipt { margin: 0 0 16px; padding: 0; list-style: none; font-size: var(--text-caption); color: var(--text-2); }
+.rp__receipt li { padding: 2px 0; }
+.rp__runs { margin: 0; padding: 0; list-style: none; }
+.rp__runs li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 9px 0; border-top: 1px solid var(--border); font-size: var(--text-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.rp__runs li:first-child { border-top: 0; }
+.rp__manifest { margin-top: 16px; }
+.rp__manifest summary { cursor: pointer; font-size: var(--text-caption); font-weight: 600; margin-bottom: 8px; }
+.rp__foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+.rp__foot:empty { display: none; }
+
+/* Build mode on a narrow screen: the workbench goes under the report, and the page scrolls. */
+@media (max-width: 1100px) {
+  .rp--build { height: auto; min-height: 100vh; }
+  .rp--build .rp__body { flex-direction: column; }
+  .rp--build .rp__frame { flex: none; height: 75vh; }
+  .rp--build .rp__wb { flex: none; border-left: 0; border-top: 1px solid var(--border); }
+}

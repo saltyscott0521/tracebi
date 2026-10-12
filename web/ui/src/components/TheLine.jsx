@@ -224,7 +224,7 @@ const STATIONS = [
 // A hand-off's track runs, and shows it, beside the stage you are looking at.
 const HOT = [['transform', 'model'], ['model', 'reports']]
 
-function Flag({ flag }) {
+export function Flag({ flag }) {
   return (
     <span className={`flag flag--${flag.kind}`}>
       <span aria-hidden="true">{flag.glyph}</span> {flag.text}

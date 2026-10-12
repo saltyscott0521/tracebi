@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useModels, useMe, signOut } from '../api'
 import { pagePath, lastModel } from '../nav'
-import { ModelSwitcher, useScope } from './Scope'
+import { ModelSwitcher, useScope, useOpenReport } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -148,6 +148,7 @@ export default function Layout({ children }) {
   const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
   const model = useSidebarModel()
   const scope = useScope()
+  const openReport = useOpenReport()
   const { data: modelList } = useModels()
   const multi = (modelList || []).length > 1
 
@@ -156,6 +157,9 @@ export default function Layout({ children }) {
     document.body.style.overflow = open ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [open])
+
+  // An open report is a page of its own, with a light bar of its own: no sidebar.
+  if (openReport) return children
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
