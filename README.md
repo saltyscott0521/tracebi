@@ -656,12 +656,17 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 - **Reports** — a model's Overview, Reports stage: the list, and beside it the last
   build of the report you picked (Preview) or the files that define it (Config); a
   report with no build says so and offers **Build it now**. **Open** gives a report the
-  whole page, with one light bar (a link back to the model). Rebuild it in the
-  background (a toast when done), Share it, and under **More** download the
-  self-contained HTML artifact with its embedded receipt (or a plain Excel or PDF),
-  read the at-a-glance receipt and its lineage and manifest, see its code, check it
-  again, see when it is scheduled and its past builds. Failures show the full Python
-  traceback.
+  whole page: the app's nav is a slim icon rail on the left, and a breadcrumb leads
+  back to the model, above a labeled toolbar. **Rebuild** runs it again in the background (a toast when done).
+  **Export** saves a PDF, an Excel file, or the self-contained HTML with its embedded
+  receipt. Only the HTML carries the receipt, and `tracebi verify --file` checks it.
+  **Share** copies the report's link, and **Edit as a draft** makes an editable draft
+  of it. **Lineage**, **History** and **Details** open a side panel beside the report,
+  which also has a **Code** tab. **Details** shows the build time, the re-run check
+  (**Check again**), the sink-contract status of each table, the model, figures,
+  schedule and files. **Lineage** shows where each number came from, **History** lists
+  the past builds, and **Code** shows the report's files, read-only. Failures show the
+  full Python traceback.
 - **Transform** — a model's Overview, Transform stage: the medallion chain as a live DAG
   with per-layer run buttons and run history. **Refresh data** (admin), in the Overview's
   header, runs the whole pipeline.

@@ -69,7 +69,7 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             frame = page.frame_locator("iframe")
             frame.locator("#kpi-mrr").wait_for()
 
-            page.get_by_role("button", name="◎ Build").click()
+            page.get_by_role("button", name="Build", exact=True).click()
             # The pane first shows the last build, then swaps to the live render; point
             # once that has happened (a click on the page being replaced is lost).
             page.locator(".wb-version", has_text="Opened").wait_for()
@@ -126,7 +126,7 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
                         : real.call(window, url, init);
             }""")
             frame.locator("#kpi-mrr").click()
-            page.get_by_role("button", name="◎ Build").click()
+            page.get_by_role("button", name="Build", exact=True).click()
             page.wait_for_function("() => !document.querySelector('.point-note')")
             page.wait_for_timeout(1500)   # the held request has landed by now
             deadline = 50
@@ -161,7 +161,7 @@ def test_build_mode_is_absent_unless_the_server_is_in_dev_mode(tmp_path: Path) -
             page.goto(f"{base}/m/saas_model/reports?r=saas_model/mrr_dashboard&open=1")
             page.get_by_role("button", name="Share").wait_for()   # the page is up, and has asked what the server is
             page.wait_for_load_state("networkidle")
-            assert page.get_by_role("button", name="◎ Build").count() == 0
+            assert page.get_by_role("button", name="Build", exact=True).count() == 0
             browser.close()
         request = urllib.request.Request(
             f"{base}/api/reports/saas_model/mrr_dashboard/workbench/pointing",
@@ -196,7 +196,7 @@ def test_the_dev_app_url_opens_in_build_mode(tmp_path: Path) -> None:
             page.set_default_timeout(60_000)
             page.goto(f"{base}/reports?r=saas_model%2Fmrr_dashboard&build=1")
             page.locator(".wb-version", has_text="Opened").wait_for()
-            assert page.get_by_role("button", name="◎ Build").get_attribute("aria-pressed") == "true"
+            assert page.get_by_role("button", name="Build", exact=True).get_attribute("aria-pressed") == "true"
             browser.close()
     finally:
         log.close()

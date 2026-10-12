@@ -12,7 +12,7 @@ import { Btn, useToast } from './Shared'
 // (a Python model, a report with a report.py) is the server's own sentence: it
 // names why and where to edit it instead.
 
-export default function EditAsDraft({ kind, path, label = 'Edit as a draft' }) {
+export default function EditAsDraft({ kind, path, label = 'Edit as a draft', bare = false }) {
   const { data: me } = useMe()
   const start = useStartDraft()
   const navigate = useNavigate()
@@ -25,6 +25,16 @@ export default function EditAsDraft({ kind, path, label = 'Edit as a draft' }) {
     onError: err => toast(err.message, 'error'),
   })
 
+  // In a toolbar it is a flat command like its neighbours.
+  if (bare) {
+    return (
+      <button type="button" className="cmd" aria-label={label} onClick={go} disabled={start.isPending}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+        <span className="cmd__lab">{start.isPending ? 'Starting…' : label}</span>
+      </button>
+    )
+  }
   return (
     <Btn variant="outline" onClick={go} disabled={start.isPending} style={{ minHeight: 44 }}>
       {start.isPending ? 'Starting…' : label}

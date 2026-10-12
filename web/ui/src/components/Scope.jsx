@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { useModels, useReports } from '../api'
@@ -15,6 +15,13 @@ export function useScope() {
   const { pathname } = useLocation()
   return whereAmI(pathname) || { model: '', page: null, stage: null }
 }
+
+/**
+ * The full menu, for a page that shows only the rail (a report) or, on a phone,
+ * nothing: `{open}` there, null where the sidebar is always on screen.
+ */
+export const NavMenuContext = createContext(null)
+export const useNavMenu = () => useContext(NavMenuContext)
 
 /** The report this address opens as a page of its own ({name, model}), or null. */
 export function useOpenReport() {
