@@ -667,6 +667,8 @@ POST /api/pipelines/{name}/runs                       → background run (202); 
 GET  /api/pipelines/{name}/runs[/{id}]                → recent runs (app and `run-pipeline`) / one run's status; each lists its steps and the reports it rebuilt
 GET  /api/pipelines/{name}/runs/{id}/log?after=N      → what the steps printed, from offset N (analyst)
 GET  /api/drafts                                     → the caller's drafts (admin: everyone's)
+POST /api/drafts                                     → start (or open) the caller's own draft of a published report or model: {kind, path, from_published}; 201 new, 200 already theirs, 422 refused (a Python model says to edit it from a laptop) (analyst)
+PUT  /api/drafts/{owner}/{kind}/{path}/files/{file}  → write one draft file {content}; returns the new version (analyst; owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/files         → a draft's files (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/version       → a draft's version (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/preview       → the draft rendered in memory; writes nothing (owner or admin)

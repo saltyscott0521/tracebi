@@ -70,6 +70,16 @@ async function postJson(path, body) {
   return r.json()
 }
 
+async function putJson(path, body) {
+  const r = await fetch(BASE + path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) throw await toError(r)
+  return r.json()
+}
+
 export const reportDownloadUrl = (name, format) =>
   `${BASE}/reports/${reportPath(name)}/download?format=${format}`
 
@@ -417,6 +427,31 @@ export const usePublishDraft = (d) => {
   return useMutation({
     mutationFn: (note) => postJson(`${draftUrl(d)}/publish`, { note }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['drafts'] }),
+  })
+}
+
+// Start the caller's own draft of a published report or model. Asking again for
+// one that exists returns it, so the same call means "open my draft".
+export const useStartDraft = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ kind, path }) => postJson('/drafts', { kind, path, from_published: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['drafts'] }),
+  })
+}
+
+// Write one file of a draft. The answer carries the draft's new version; hand
+// it to the version query so the files and the preview follow at once instead
+// of on the next poll.
+export const useWriteDraftFile = (d) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, content }) =>
+      putJson(`${draftUrl(d)}/files/${encodeURIComponent(file)}`, { content }),
+    onSuccess: (res) => {
+      qc.setQueryData(['draft-version', d.owner, d.kind, d.path], res.version)
+      qc.invalidateQueries({ queryKey: ['drafts'] })
+    },
   })
 }
 
