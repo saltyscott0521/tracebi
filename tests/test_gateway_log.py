@@ -85,9 +85,11 @@ def test_each_call_writes_one_line_and_no_values(log_model, tmp_path, monkeypatc
     assert "\n" not in failed["error"]
     assert "no_such_model" not in failed["error"]
 
-    raw = (tmp_path / ".tracebi" / "gateway_log.jsonl").read_text()
-    assert "Acme Corp" not in raw
-    assert "250" not in raw
+    # The random session id, the timestamp and the timing can contain any digits.
+    for line in (ok, failed):
+        logged = json.dumps({k: v for k, v in line.items() if k not in ("session", "at", "ms")})
+        assert "Acme Corp" not in logged
+        assert "250" not in logged
 
 
 def test_mask_replaces_whole_tokens_only():
