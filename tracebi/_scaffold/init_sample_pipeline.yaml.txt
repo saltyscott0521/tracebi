@@ -9,7 +9,7 @@
 # A model, the transform that fills its warehouse, and the reports that read it
 # belong together: models/sample_model.yaml, transforms/sample_transform.py,
 # reports/sample_model/. `tracebi serve` finds this file and runs it from the
-# model's Refresh page.
+# model's Overview, under Refresh data.
 name: sample_model
 description: Rebuild the sample warehouse, then its reports.
 transform: sample_transform

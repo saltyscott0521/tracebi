@@ -13,7 +13,7 @@ development flow; this guide covers what's different in a notebook.
 TraceBi's spine is the three-phase workflow in [[the-three-phase-workflow]]:
 phase ① `transforms/` writes clean star-schema tables into a DuckDB warehouse,
 phase ② `models/` declares a thin `DataModel` over it, and phase ③ `reports/`
-is an artifact package (or a JSON `ReportSpec`) served on the Reports page.
+is an artifact package (or a JSON `ReportSpec`) served in the app, on the model's Overview.
 
 A notebook is the natural home for **phase ①** — the slow, unconstrained pandas
 analysis — because the rich previews below let you *see* the data as you clean
@@ -93,11 +93,11 @@ While you explore, push what you find into a live, shared surface. Open the
 app with no report named, in a terminal:
 
 ```bash
-tracebi dev            # no report named → the app on Reports, with the project feed
+tracebi dev            # no report named → the app's Reports list, with the project feed
 ```
 
 Then, from any notebook cell, `show()` frames, charts, and notes into its feed
-(Reports → *From your agent*):
+(the app's Reports, under *From your agent*):
 
 ```python
 import tracebi.workbench as workbench
@@ -198,7 +198,7 @@ def _factory():
 
 Place the notebook (with its `@register.report` cell) in **`reports/`** — the
 server auto-discovers `*.py` and `*.ipynb` there, and the report appears on the
-Reports page. In an interactive kernel the decorator is harmless if the web
+model's Overview. In an interactive kernel the decorator is harmless if the web
 extras aren't installed — it raises a clear `ImportError` telling you to
 `pip install "tracebi[web]"`.
 

@@ -37,7 +37,7 @@ tracebi verify output/portfolio.html.manifest.json`,
   {
     n: 5,
     title: 'Open the desk',
-    desc: 'The published file is the thing a person approves. Open a model for its reports; the Reports page can also open them from the library.',
+    desc: 'The published file is the thing a person approves. Open a model for its reports in its Overview; the app can also open them from the library.',
     code: `python -m tracebi.web.run
 # → http://localhost:8000`,
   },
@@ -77,10 +77,12 @@ function HowItFits() {
       <h2 className="section-title">How the app fits together</h2>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: 0, maxWidth: '74ch' }}>
         Everything belongs to a <strong>model</strong>. Pick one at the top of the sidebar and
-        every page below it is about that model: its reports, its questions, its data model,
-        its refresh, where its data is kept, and what ran. Pick “All models” to see everything,
-        with each row naming its model. <Link to="/verify">Verify a file</Link> belongs to no
-        model: it checks a report file from anywhere.
+        every page below it is about that model. Its <strong>Overview</strong> draws how it is made
+        in three stages: its transform (where its data is kept and when it last ran), its model,
+        and its reports. <strong>Explore</strong> asks it questions, and <strong>History</strong>
+        shows what ran. Pick “All models” to see everything, with each row naming its model.
+        <strong>Map</strong> draws every model as one picture, and <Link to="/verify">Verify a file</Link>
+        belongs to no model: it checks a report file from anywhere.
       </p>
     </div>
   )

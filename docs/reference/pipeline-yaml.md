@@ -4,7 +4,7 @@
 reports to rebuild, and when. Transforms stay Python; a pipeline only names one.**
 
 `pipelines/<name>.yaml` (or `.yml`) compiles to the same runner as
-`model_pipeline(...)`: `tracebi run-pipeline <name>` and the app's Refresh page
+`model_pipeline(...)`: `tracebi run-pipeline <name>` and the app's **Refresh data**
 run the transform fresh (`tracebi run-transform`), then rebuild the reports,
 recording each run. `tracebi new-pipeline "Sales ETL"` writes a commented
 starter; `--python` writes the old `pipelines/<name>.py`.

@@ -44,7 +44,7 @@ runs them as one: `models/<model>.yaml`, `pipelines/<model>.yaml` (`transform:`,
 `models:`, `reports: all`, `schedule:`; it only names the Python transform),
 `reports/<model>/`. A source is `connections/<name>.yaml`.
 `tracebi run-pipeline <model>` runs the transform, then builds every report in
-`reports/<model>/`, each with its receipt; the app's Refresh page runs the
+`reports/<model>/`, each with its receipt; the app's **Refresh data** runs the
 same pipeline. A report is named by its path (`<model>/<name>`) in every
 command, and builds to `output/<model>/<name>.html`. The sample is
 `sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
@@ -79,8 +79,9 @@ pipeline starter: `inputs/opportunities.csv`,
 (open pipeline value, win rate as a ratio of totals, stage / rep / region),
 and two reports — `sales_pipeline_model/pipeline_dashboard` (dashboard) and
 `sales_pipeline_model/rep_scorecard` (tabbed). Each starter also gets
-`pipelines/<model>.py`, so `tracebi run-pipeline <model>` (and the app's Refresh
-page) runs its transform, then builds its reports. Unknown template names are
+`pipelines/<model>.py`, so `tracebi run-pipeline <model>` (and the app's
+**Refresh data**) runs its transform, then builds its reports. Unknown template
+names are
 refused with the known list. On real tables, `tracebi connect` and re-point
 the model. Default `tracebi init` (no flag) scaffolds the sample orders
 dashboard (`transforms/sample_transform.py`).
@@ -283,7 +284,7 @@ body, the same text as `tracebi knowledge <slug>`).
 
 0. **Discovery comes first — and it has a live surface.** Before any report
    exists, run `tracebi dev` with **no name** (backgrounded — it blocks):
-   it opens the web app on Reports, where the project feed is. While it
+   it opens the web app's Reports list, where the project feed is. While it
    serves, ANY script you run can call `tracebi.workbench.show(...)` — no
    env var needed — and the feed (*From your agent*) updates live; the
    human leaves you notes there. Your MCP work posts there too, with
@@ -298,7 +299,7 @@ body, the same text as `tracebi knowledge <slug>`).
    `workbench_state` (no `report`) lists the warehouse's tables, row counts,
    column profiles, and sink-contract status as transforms land, and the
    star schema taking shape as you edit `models/`; the human sees them in
-   the app's Sources and Data model pages (`tracebi dev --classic` lays
+   the app's Transform and Model stages (`tracebi dev --classic` lays
    them out beside the feed on one page). Column names of a sunk
    table come from the MCP `describe_table` tool (or `tracebi warehouse
    tables --table T`) — connector metadata, no row scan. A connector
@@ -364,7 +365,7 @@ body, the same text as `tracebi knowledge <slug>`).
    The build strips exploration, validates every figure claim against the
    embedded bindings, and writes the receipt. `output/<name>.html` (+ its
    `.manifest.json`) is the deliverable to hand over or commit — and the
-   package is already served live on the Reports page of `tracebi serve`;
+   package is already served live in the app (`tracebi serve`), on its model's Overview;
    there is no separate publish step. The gateway's
    `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
    same output directory. The spreadsheet carries no receipt and is not

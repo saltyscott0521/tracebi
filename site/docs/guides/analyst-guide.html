@@ -110,7 +110,7 @@ shape:</p>
                                                         │
                                                         ▼  freeze: the model (the semantic contract)
 ③  REPORT       reports/          an artifact package (or JSON ReportSpec) over the model
-     KPI cards, charts, tables — every figure a live query; served on the Reports page
+     KPI cards, charts, tables — every figure a live query; served in the app, on the model's Overview
 </code></pre>
 <p><strong>Phase ①</strong> is the real analysis: pull the queries you need and do whatever the
 data demands — window functions, prose parsing, cleaning — then <em>sink</em> clean,
@@ -130,7 +130,7 @@ never re-runs phase ①. Reference impls:
 <a href="../examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json">reports/portfolio_model/portfolio_dashboard.json</a> (spec).</p>
 <pre><code class="language-bash">cd examples/portfolio_project   # the reference project ships in the repo
 python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once
-python -m tracebi.web.run    # serve it: Reports → portfolio_dashboard
+python -m tracebi.web.run    # serve it: portfolio_model → Reports → portfolio_dashboard
 </code></pre>
 <p><strong>Honest scope of the trust machinery.</strong> Lineage is <em>not</em> traced through the
 phase-① pandas — the framework draws the line at the sink, where the numbers
@@ -175,7 +175,7 @@ carries <code>data-tb-unverified</code>; there is no third state.</p>
 <li><strong>Publishing is build + verify.</strong> <code>tracebi report build &lt;name&gt;</code> strips
   exploration, validates every figure claim against its binding, and writes
   <code>output/&lt;name&gt;.html</code> plus the <code>.manifest.json</code> receipt. The package is
-  already served on the <strong>Reports</strong> page — there is no separate publish
+  already served in the app, on the model's Overview — there is no separate publish
   step. <code>--contracts</code> also re-runs the sink contracts, so the receipt can
   say <strong>the sink satisfied its contract</strong> (never "the transform was
   verified" — contract status certifies what landed, not the pandas above
@@ -187,13 +187,14 @@ under <code>verify</code>. A JSON <code>ReportSpec</code> under <code>reports/</
 a serialization, not a lane — and <code>tracebi migrate spec reports/&lt;name&gt;.json</code>
 compiles it into a package, which shadows the same-named spec at discovery.</p>
 <h3 id="the-project-feed-the-workbench-before-a-report-exists">The project feed — the workbench before a report exists</h3>
-<p>Run <code>tracebi dev</code> with <strong>no argument</strong> and the app opens on Reports with the
-project feed: what your agent shows you while it works (<code>show()</code> from any
+<p>Run <code>tracebi dev</code> with <strong>no argument</strong> and the app opens on the Reports list
+with the project feed: what your agent shows you while it works (<code>show()</code> from
+any
 script in the project), and the notes you leave it. It is the live surface for
 phases ① and ② before any report package exists. <code>tracebi dev &lt;name&gt;</code> anchors
 the workbench to one package; <code>tracebi dev</code> alone is where you look while you
 are still building the model underneath. The warehouse tables and the model's
-schema are on the app's Sources and Data model pages (<code>tracebi dev --classic</code>
+schema are on the app's Transform and Model stages (<code>tracebi dev --classic</code>
 lays them out beside the feed on one page).</p>
 <h3 id="interactive-controls-subset-they-never-compute">Interactive controls subset — they never compute</h3>
 <p>A built artifact can carry <code>data-tb-filter</code> dropdowns, <code>data-tb-search</code>, and
@@ -252,7 +253,7 @@ orders.help()           # cheat sheet of every DataSet verb
 <pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;   # scaffolds models/sales_model.py
 # edit it, then import with get_model(&quot;sales_model&quot;)
 </code></pre>
-<p>Or browse the web UI: <strong>Models</strong> shows every table with previews and the ER
+<p>Or browse the web UI: a model's <strong>Model</strong> stage shows every table with previews and the ER
 diagram; <strong>Explore</strong> lets you prototype aggregations visually before
 committing them to code.</p>
 <h3 id="load-and-transform">Load and transform</h3>

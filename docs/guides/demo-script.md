@@ -25,7 +25,8 @@ tracebi serve                           # → http://127.0.0.1:8000
 Then, in the browser:
 
 1. **Open the two reports you will show**, so they open instantly on the day.
-   Go to **Report** → `portfolio_dashboard`, then `portfolio_showcase`. A
+   Pick `portfolio_model` and open `portfolio_dashboard` and
+   `portfolio_showcase` on its **Reports** stage. A
    report that has never been built is built on first open and kept.
 2. **Make the "edited" copy for beat 3.** On `portfolio_dashboard`, click
    **↓ Download → HTML**. The build also saved the matching pair in
@@ -40,8 +41,8 @@ Then, in the browser:
    `295904445.21`. Save. Open `edited.html` in the browser and check the
    headline now reads **$295,904,445**, $10 million more than the real
    report.
-4. Close every other tab. The app opens on the **Report** page, which is where
-   the demo starts.
+4. Close every other tab. The app opens on the **Reports** stage of the model
+   you were last in, which is where the demo starts.
 
 ## The script
 
@@ -54,7 +55,7 @@ Then, in the browser:
 
 ### Beat 1: a report built from definitions (2 minutes)
 
-Open **Report** → `portfolio_dashboard`.
+Open `portfolio_dashboard` on the **Reports** stage.
 
 > "This is a fund's holdings report: fair value, positions, breakdowns by
 > sector and fund. It could have been built by an analyst or by an AI
@@ -67,8 +68,8 @@ Point at the green badges above the report (**Verifiable**,
 > value' means, and the badges say the data behind it passed its checks.
 > Nobody can quietly use a different formula on one page."
 
-Optional: click **Data model** in the sidebar to show the definitions in one
-screen, then come back.
+Optional: open the model's **Overview** and its **Model** stage to show the definitions in one
+screen, then go back to **Reports**.
 
 ### Beat 2: every number has a receipt (2 minutes)
 
@@ -93,7 +94,7 @@ Show the browser tab with `edited.html` open.
 > by accident or on purpose. Fair value now says $295 million. It looks
 > completely normal."
 
-Click **Verify a file** (below the model's pages in the sidebar). Drag in `edited.html`
+Click **Verify a file** in the sidebar (below **Drafts**). Drag in `edited.html`
 and `edited.html.manifest.json`, then click **Verify offline**.
 
 The screen turns red: **FILE ALTERED**, with the exact figures listed.
@@ -106,7 +107,7 @@ Then drag in the untouched pair (`portfolio_dashboard.html` and its
 
 ### Beat 4: ask a question (1 minute, optional)
 
-Back on **Report** → `portfolio_showcase`. In the **Ask** box, type
+Back on the **Reports** stage: `portfolio_showcase`. In the **Ask** box, type
 `what about Software` and click **Apply cut**.
 
 > "You can ask for a slice, like just the Software sector, and the numbers are

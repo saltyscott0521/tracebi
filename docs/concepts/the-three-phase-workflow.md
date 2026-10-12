@@ -13,14 +13,15 @@ one never blocks the fast one.
 
 ---
 
-> **In the app**, everything belongs to a model. Pick one at the top of the
-> sidebar and every page below it is about that model, in the order a receipt
-> traces a number: **Reports** (what people read), **Explore** (ask it),
-> **Data model** (what it means), **Refresh** (rebuild its data, then its
-> reports), **Sources** (where its data is kept) and **Runs** (what ran, and
-> whether it reproduced). Pick **All
-> models** to see everything, each row naming its model. Reports and Explore
-> only ever ask the model; see [[models-and-connectors]].
+> **In the app**, everything belongs to a model. Pick one in the model switcher at the top of
+> the sidebar, and its **Overview** draws how it is made as three stages in a line:
+> **Transform** (the pipeline that rebuilds its warehouse, and what the sink contract says
+> about it), **Model** (its tables, joins and measures) and **Reports** (what people read,
+> each with its receipt). **Refresh data** runs the pipeline, and **History** lists what ran.
+> The rest of the sidebar is **Map** (every model as one picture), **Explore** (ask a model a
+> question), **Drafts**, and **Verify a file** (check a report file from anywhere). Pick
+> **All models** to see everything, each row naming its model. Reports and Explore only ever
+> ask the model; see [[models-and-connectors]].
 
 ## ① Transform — `transforms/`
 
@@ -62,8 +63,8 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 |---|---|---|---|
 | ⓪ Input | `inputs/` | a raw pull: a CSV, an API export, a SQL dump | it doesn't; you put it there |
 | ① Transform | `transforms/` | pandas (a `.py` or `.ipynb`) that writes DuckDB tables | it doesn't; you run it with `tracebi run-transform` |
-| ② Model | `models/` | a `DataModel` in a variable named `model` | listed on the Data model page |
-| ③ Report | `reports/` | a package (`report.json` + `template.html`), or a JSON spec that compiles into one | listed on the Reports page |
+| ② Model | `models/` | a `DataModel` in a variable named `model` | listed on the model's Overview, Model stage |
+| ③ Report | `reports/` | a package (`report.json` + `template.html`), or a JSON spec that compiles into one | listed on the model's Overview, Reports stage |
 
 The warehouse is one file, `data/warehouse.duckdb`: phase ① writes it and phase
 ② reads it, so the two can run in separate processes. `output/` holds what
@@ -76,7 +77,7 @@ behind every rendered number.
 ```bash
 cd examples/portfolio_project
 python run_workflow.py          # ① build the warehouse, ③ render the report once
-tracebi serve                   # browse it: Reports → portfolio_dashboard
+tracebi serve                   # browse it: portfolio_model → Reports → portfolio_dashboard
 ```
 
 The first run generates a deliberately messy Schedule of Investments into
@@ -86,11 +87,12 @@ money stored as strings.
 
 ## Exploring before a report exists
 
-`tracebi dev` with no report name opens the app on Reports with the **project
-feed**. Any script run while it's open can call
+`tracebi dev` with no report name opens the app's Reports list with the
+**project feed**. Any script run while it's open can call
 `tracebi.workbench.show(df, note=...)` to post an excerpt, and you can leave
-your agent notes there. The warehouse tables are on the app's Sources page, and
-the Data model page shows the star schema taking shape. Sink-contract status and
+your agent notes there. The warehouse tables are on the model's Transform stage,
+and the Model stage shows the star
+schema taking shape. Sink-contract status and
 column profiles of the warehouse tables are in the agent's `workbench_state`,
 and on the classic page (`tracebi dev --classic`), which lays the warehouse,
 models and packages out beside the feed.

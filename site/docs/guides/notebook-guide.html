@@ -85,7 +85,7 @@ development flow; this guide covers what's different in a notebook.</p>
 <p>TraceBi's spine is the three-phase workflow in <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:
 phase ① <code>transforms/</code> writes clean star-schema tables into a DuckDB warehouse,
 phase ② <code>models/</code> declares a thin <code>DataModel</code> over it, and phase ③ <code>reports/</code>
-is an artifact package (or a JSON <code>ReportSpec</code>) served on the Reports page.</p>
+is an artifact package (or a JSON <code>ReportSpec</code>) served in the app, on the model's Overview.</p>
 <p>A notebook is the natural home for <strong>phase ①</strong> — the slow, unconstrained pandas
 analysis — because the rich previews below let you <em>see</em> the data as you clean
 it, before you commit anything. When the analysis settles, sink the named
@@ -142,10 +142,10 @@ transforms to a script.</p>
 <h2 id="the-discovery-workbench">The discovery workbench</h2>
 <p>While you explore, push what you find into a live, shared surface. Open the
 app with no report named, in a terminal:</p>
-<pre><code class="language-bash">tracebi dev            # no report named → the app on Reports, with the project feed
+<pre><code class="language-bash">tracebi dev            # no report named → the app's Reports list, with the project feed
 </code></pre>
 <p>Then, from any notebook cell, <code>show()</code> frames, charts, and notes into its feed
-(Reports → <em>From your agent</em>):</p>
+(the app's Reports, under <em>From your agent</em>):</p>
 <pre><code class="language-python">import tracebi.workbench as workbench
 
 workbench.show(fact_holdings_df, note=&quot;after dedupe — 3 rows dropped&quot;)
@@ -220,7 +220,7 @@ def _factory():
 </code></pre>
 <p>Place the notebook (with its <code>@register.report</code> cell) in <strong><code>reports/</code></strong> — the
 server auto-discovers <code>*.py</code> and <code>*.ipynb</code> there, and the report appears on the
-Reports page. In an interactive kernel the decorator is harmless if the web
+model's Overview. In an interactive kernel the decorator is harmless if the web
 extras aren't installed — it raises a clear <code>ImportError</code> telling you to
 <code>pip install "tracebi[web]"</code>.</p>
 <p>For a governed, receipt-bearing report, prefer the artifact package

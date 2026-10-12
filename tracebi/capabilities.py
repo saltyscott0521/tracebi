@@ -715,7 +715,7 @@ def _conventions() -> dict:
                         "model_pipeline(...) runner. `tracebi run-pipeline "
                         "<name>` runs the transform, then builds the "
                         "reports (all of reports/<model>/ by default); the "
-                        "app's Refresh page runs the same.",
+                        "app's Refresh data runs the same.",
             },
             {
                 "path": "connections/",

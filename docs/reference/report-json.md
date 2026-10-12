@@ -47,7 +47,7 @@ Recorded in the manifest as `rendered_by`.
 
 ### `description` — string, optional
 
-Shown on the Reports page in the web UI.
+Shown in the web UI, on the model's Overview.
 
 ### `data` — object, **required**
 
