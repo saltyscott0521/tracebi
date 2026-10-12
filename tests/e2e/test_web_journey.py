@@ -45,8 +45,13 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
     status = c.get("/api/status").json()
     assert "version" in status
 
-    names = [r["name"] for r in c.get("/api/reports").json()]
-    assert "sample_model/sample_dashboard" in names
+    listed = {r["name"]: r for r in c.get("/api/reports").json()}
+    assert "sample_model/sample_dashboard" in listed
+    # The Map draws which measures a report asks for, from its bindings alone.
+    assert listed["sample_model/sample_dashboard"]["measures"] == ["orders", "revenue", "units"]
+    # ...and the transform a model's pipeline runs, by the name it is run under.
+    pipelines = {p["pipeline"]: p for p in c.get("/api/pipelines").json()}
+    assert pipelines["sample_model"]["transform"] == "sample_transform"
 
     run = c.post("/api/reports/sample_model/sample_dashboard/run")
     assert run.status_code == 200, run.text
@@ -233,6 +238,7 @@ def test_a_pipeline_names_the_models_it_touches(served):
     assert listed["hand_built"]["models"] == ["source_model", "built_model"]
     assert listed["hand_built"]["model"] == "built_model"
     assert listed["plain"]["models"] == [] and listed["plain"]["model"] is None
+    assert listed["plain"]["transform"] is None     # a hand-built runner runs no named transform
 
 
 def test_what_the_builder_points_at_reaches_the_agent(served, monkeypatch):

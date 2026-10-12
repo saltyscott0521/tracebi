@@ -46,10 +46,13 @@ def list_pipelines():
         model = model if isinstance(model, str) and model else None
         named = getattr(runner, "models", None)
         models = [m for m in (named or []) if isinstance(m, str) and m]
+        # The phase ① script a model pipeline runs first; a hand-built runner has none.
+        transform = getattr(runner, "transform", None)
         result.append({
             "pipeline": pipeline_name,
             "model": model,
             "models": models or ([model] if model else []),
+            "transform": transform if isinstance(transform, str) and transform else None,
             "layers": layers,
         })
     return result
