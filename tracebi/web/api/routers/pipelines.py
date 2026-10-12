@@ -46,10 +46,16 @@ def list_pipelines():
         model = model if isinstance(model, str) and model else None
         named = getattr(runner, "models", None)
         models = [m for m in (named or []) if isinstance(m, str) and m]
+        # What a pipelines/<name>.yaml says about itself: the transform it runs
+        # and its one-line description (the model's Overview shows both).
+        transform = getattr(runner, "transform", None)
+        description = getattr(runner, "description", None)
         result.append({
             "pipeline": pipeline_name,
             "model": model,
             "models": models or ([model] if model else []),
+            "transform": transform if isinstance(transform, str) and transform else None,
+            "description": description.strip() if isinstance(description, str) and description.strip() else None,
             "layers": layers,
         })
     return result

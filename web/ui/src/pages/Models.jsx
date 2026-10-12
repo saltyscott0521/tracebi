@@ -475,10 +475,10 @@ export function ModelDetail({ name }) {
 // ── All models: pick one ─────────────────────────────────────────────────────
 
 /**
- * The all-models view of a page that is always about one model (Data model,
+ * The all-models view of a page that is always about one model (Overview,
  * Explore): the models, each opening that page for itself.
  */
-export default function Models({ pageKey = 'model' }) {
+export default function Models({ pageKey = 'overview' }) {
   const { data, isLoading } = useModels()
   const { data: reports } = useReports()
   const { data: pipelines } = usePipelines()
@@ -494,9 +494,7 @@ export default function Models({ pageKey = 'model' }) {
   return (
     <>
       <PageHeader pageKey={pageKey} model=""
-        sub={pageKey === 'explore'
-          ? 'Explore asks one model at a time. Pick one.'
-          : 'Each model is a star schema over stored tables: its grain, joins and measures. Pick one.'} />
+        sub={pageKey === 'explore' ? 'Explore asks one model at a time. Pick one.' : undefined} />
       {isLoading ? <SkeletonList /> : models.length === 0 ? (
         <Empty icon="⬡" message="No models yet. Create one with tracebi new-model, in models/." />
       ) : (

@@ -7,10 +7,10 @@ import {
 } from '../nav'
 import { PageTitle, PageSub, SkeletonCard, Empty } from './Shared'
 
-/** The page and model the URL names. */
+/** The page, model and (on the Overview) stage the URL names. */
 export function useScope() {
   const { pathname } = useLocation()
-  return whereAmI(pathname) || { model: '', page: null }
+  return whereAmI(pathname) || { model: '', page: null, stage: null }
 }
 
 /**
@@ -19,14 +19,15 @@ export function useScope() {
  */
 export function ModelSwitcher({ model, onNavigate }) {
   const { data } = useModels()
-  const { page: current } = useScope()
+  const { page: current, stage } = useScope()
   const navigate = useNavigate()
   const names = (data || []).map(m => m.name).sort()
   if (names.length < 2) return null
 
+  // Switching keeps you on the same page, and the same stage of the Overview.
   const go = next => {
     rememberModel(next)
-    navigate(pagePath(current || 'reports', next))
+    navigate(pagePath(stage || current || 'overview', next))
     onNavigate?.()
   }
   return (
@@ -95,15 +96,21 @@ export function OneModel({ children }) {
   return children(model)
 }
 
-/** `/`: the reports of the model you were last in, of the only model, or of all. */
+/** `/`: the Overview of the model you were last in, or of the only model; else the models. */
 export function Home() {
   const { data, isLoading } = useModels()
   if (isLoading) return <SkeletonCard />
   const names = (data || []).map(m => m.name)
   const last = lastModel()
-  if (names.includes(last)) return <Navigate to={pagePath('reports', last)} replace />
-  if (names.length === 1) return <Navigate to={pagePath('reports', names[0])} replace />
-  return <Navigate to="/reports" replace />
+  if (names.includes(last)) return <Navigate to={pagePath('overview', last)} replace />
+  if (names.length === 1) return <Navigate to={pagePath('overview', names[0])} replace />
+  return <Navigate to="/models" replace />
+}
+
+/** A /m/<model>/<page> address that moved: it opens *stage* of the same model. */
+export function ToStage({ stage }) {
+  const { model } = useParams()
+  return <Navigate to={pagePath(stage, model)} replace />
 }
 
 /** Old URLs keep working: they land on the page that replaced them. */
@@ -114,12 +121,12 @@ export function Legacy() {
   const tab = params.get('tab')
   let to = '/'
   if (pathname.startsWith('/models/')) {
-    const key = { refresh: 'refresh', explore: 'explore', reports: 'reports' }[tab] || 'model'
+    const key = { refresh: 'transform', explore: 'explore', reports: 'reports' }[tab] || 'overview'
     to = pagePath(key, name)
   } else if (pathname === '/connectors') {
     to = '/sources'
   } else if (pathname === '/pipelines') {
-    to = pagePath('refresh', params.get('model') || '')
+    to = pagePath('transform', params.get('model') || '')
   }
   return <Navigate to={to} replace />
 }

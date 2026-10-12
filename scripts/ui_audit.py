@@ -114,19 +114,20 @@ def seeds(base: str) -> list[str]:
     The crawl follows links from here, so a page reachable by a link is found
     without being listed. Pages reached only by a button (tabs) need a seed.
     """
-    pages = ["model", "explore", "refresh", "reports", "sources", "runs"]
+    pages = ["reports", "model", "transform", "explore", "runs"]
     paths = ["/", "/models", "/explore", "/refresh", "/reports", "/sources", "/runs",
              "/verify", "/getting-started", "/handbook", "/workflow"]
     models = _safe(base, "/api/models")
     for m in models:
         name = urllib.parse.quote(m["name"])
-        paths += [f"/m/{name}"] + [f"/m/{name}/{p}" for p in pages[1:]]
+        paths += [f"/m/{name}"] + [f"/m/{name}/{p}" for p in pages]
     for r in _safe(base, "/api/reports")[:PER_PATTERN]:
         paths.append("/reports?" + urllib.parse.urlencode({"r": r["name"]}))
     # Old addresses must still land somewhere real.
     if models:
         name = urllib.parse.quote(models[0]["name"])
-        paths += [f"/models/{name}?tab=explore", "/connectors", "/pipelines"]
+        paths += [f"/models/{name}?tab=explore", f"/m/{name}/refresh", f"/m/{name}/sources",
+                  "/connectors", "/pipelines"]
     paths.append("/no-such-page")
     return list(dict.fromkeys(paths))
 
@@ -466,7 +467,7 @@ def scope_findings(browser, base: str) -> list[dict]:
     it.
     """
     out = []
-    reports, connectors = _safe(base, "/api/reports"), _safe(base, "/api/connectors")
+    reports = _safe(base, "/api/reports")
     models = _safe(base, "/api/models")
     listed = {m["name"] for m in models}
     for r in reports:
@@ -492,16 +493,15 @@ def scope_findings(browser, base: str) -> list[dict]:
 
     for m in models:
         if not any(m["name"] in pipeline_models(p) for p in pipelines):
-            out.append({"page": f"/m/{m['name']}/refresh", "pattern": "/m/<m>/refresh",
+            out.append({"page": f"/m/{m['name']}/transform", "pattern": "/m/<m>/transform",
                         "viewport": "desktop", "theme": "light", "rule": "model-without-pipeline",
                         "severity": "serious", "target": m["name"],
-                        "detail": f"nothing refreshes {m['name']}; its Refresh page is empty"})
+                        "detail": f"nothing refreshes {m['name']}; its Transform stage is empty"})
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     for m in models:
         name = m["name"]
         expect = {
             "reports": {r["name"].rsplit("/", 1)[-1] for r in reports if name in (r.get("models") or [])},
-            "sources": {c["name"] for c in connectors if name in (c.get("used_by") or [])},
         }
         for key, want in expect.items():
             page.goto(f"{base}/m/{urllib.parse.quote(name)}/{key}")

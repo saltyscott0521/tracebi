@@ -1,23 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useModels, useMe, signOut } from '../api'
-import { PAGES, pagePath, lastModel } from '../nav'
+import { pagePath, lastModel } from '../nav'
 import { ModelSwitcher, useScope } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
 const ICONS = {
-  connectors: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
-    </svg>
-  ),
-  models: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-      <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-      <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
+  overview: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="4" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="20" cy="12" r="2" /><path d="M6 12h4M14 12h4" />
     </svg>
   ),
   explore: (
@@ -25,25 +18,10 @@ const ICONS = {
       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.707a1 1 0 00-1.111-.206l-4 1.714a1 1 0 00-.525.525l-1.714 4a1 1 0 001.317 1.317l4-1.714a1 1 0 00.525-.525l1.714-4a1 1 0 00-.206-1.111zM10 11a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" />
     </svg>
   ),
-  reports: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-    </svg>
-  ),
-  pipelines: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-    </svg>
-  ),
   workflow: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path d="M3 4.5A1.5 1.5 0 014.5 3h2A1.5 1.5 0 018 4.5v2A1.5 1.5 0 016.5 8h-2A1.5 1.5 0 013 6.5v-2zM12 13.5a1.5 1.5 0 011.5-1.5h2a1.5 1.5 0 011.5 1.5v2a1.5 1.5 0 01-1.5 1.5h-2a1.5 1.5 0 01-1.5-1.5v-2z" />
       <path fillRule="evenodd" d="M6 8.5a.5.5 0 01.5.5v2a2 2 0 002 2h3a.5.5 0 010 1h-3a3 3 0 01-3-3V9a.5.5 0 01.5-.5z" clipRule="evenodd" />
-    </svg>
-  ),
-  runs: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
     </svg>
   ),
   drafts: (
@@ -63,15 +41,8 @@ const ICONS = {
   ),
 }
 
-// Beneath the switcher: the same pages for every model (nav.js). Below them,
-// the one page about no model: a file can come from anywhere.
-const NAV_UNSCOPED = [
-  { path: '/drafts', label: 'Drafts', icon: 'drafts' },
-  { path: '/verify', label: 'Verify a file', icon: 'verify' },
-]
-
 // Help is not a place you work in, so it sits in the footer. Get started and
-// the Docs it links to are one entry, marked current on either (a NavLink
+// the Docs it links to are one entry, marked current on either (a plain link
 // would only mark its own path).
 const HELP_PATHS = ['/getting-started', '/handbook']
 
@@ -104,70 +75,40 @@ function MoonIcon() {
   )
 }
 
-function NavItem({ path, label, icon, onNavigate, end }) {
+function NavItem({ path, label, icon, active, onNavigate }) {
   return (
     <li>
-      <NavLink
+      <Link
         to={path}
-        end={end}
         onClick={onNavigate}
+        aria-current={active ? 'page' : undefined}
         className="nav-link"
-        style={({ isActive }) => ({
+        style={{
           display: 'flex',
           alignItems: 'center',
           gap: 10,
           padding: '8px 12px',
           margin: '0 8px',
           borderRadius: 6,
-          color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+          color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
           textDecoration: 'none',
           fontSize: 13,
-          fontWeight: isActive ? 500 : 400,
-          background: isActive ? 'var(--sidebar-active)' : 'transparent',
-        })}
+          fontWeight: active ? 500 : 400,
+          background: active ? 'var(--sidebar-active)' : 'transparent',
+        }}
       >
-        {({ isActive }) => (
-          <>
-            {icon && ICONS[icon] && (
-              <span style={{
-                width: 15, height: 15,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-                opacity: isActive ? 1 : 0.85,
-                color: isActive ? 'var(--sidebar-accent)' : 'inherit',
-              }}>
-                {ICONS[icon]}
-              </span>
-            )}
-            {label}
-          </>
-        )}
-      </NavLink>
-    </li>
-  )
-}
-
-function NavSection({ label, items, onNavigate }) {
-  return (
-    <div style={{ marginBottom: 6 }}>
-      {label && (
-        <div style={{
-          padding: '14px 20px 6px',
-          fontSize: 10.5,
-          fontWeight: 600,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          color: 'var(--sidebar-text)',
+        <span style={{
+          width: 15, height: 15,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+          opacity: active ? 1 : 0.85,
+          color: active ? 'var(--sidebar-accent)' : 'inherit',
         }}>
-          {label}
-        </div>
-      )}
-      <ul style={{ listStyle: 'none', padding: label ? '0 0 4px' : '8px 0 4px' }}>
-        {items.map(item => (
-          <NavItem key={item.path} {...item} onNavigate={onNavigate} end={item.end} />
-        ))}
-      </ul>
-    </div>
+          {ICONS[icon]}
+        </span>
+        {label}
+      </Link>
+    </li>
   )
 }
 
@@ -201,6 +142,7 @@ export default function Layout({ children }) {
   const { pathname } = useLocation()
   const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
   const model = useSidebarModel()
+  const scope = useScope()
   const { data: modelList } = useModels()
   const multi = (modelList || []).length > 1
 
@@ -321,14 +263,17 @@ export default function Layout({ children }) {
           <ModelSwitcher model={model} onNavigate={close} />
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', paddingTop: 4 }}>
-          <NavSection onNavigate={close}
-            items={PAGES.map(p => ({
-              path: pagePath(p.key, model), label: p.label, icon: p.icon, end: p.key === 'model',
-            }))} />
-          <div style={{ borderTop: '1px solid var(--sidebar-border)', margin: '0 16px' }} />
-          <NavSection items={NAV_UNSCOPED} onNavigate={close} />
-        </div>
+        {/* Overview and Explore are about the picked model (all models: the
+            Overview lists them); Drafts and Verify a file are about no one
+            model: a file can come from anywhere. */}
+        <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
+          {[
+            { path: pagePath('overview', model), label: 'Overview', icon: 'overview', active: scope.page === 'overview' },
+            { path: pagePath('explore', model), label: 'Explore', icon: 'explore', active: scope.page === 'explore' },
+            { path: '/drafts', label: 'Drafts', icon: 'drafts', active: pathname.startsWith('/drafts') },
+            { path: '/verify', label: 'Verify a file', icon: 'verify', active: pathname.startsWith('/verify') },
+          ].map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
+        </ul>
 
         <div style={{
           padding: '12px 16px 14px',
@@ -403,8 +348,9 @@ export default function Layout({ children }) {
       </main>
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 860px) {
           .mobile-header { display: flex !important; }
+          .nav-close-btn { display: flex !important; }
           .app-nav { transform: translateX(-100%); transition: transform .25s ease; }
           .app-nav.nav-open { transform: translateX(0); }
           main { margin-left: 0 !important; margin-top: 52px; padding: 20px 16px !important; max-width: 100% !important; }

@@ -157,6 +157,10 @@ needed. See [[receipts]].
 | `GET` | `/api/pipelines/{name}/runs/{id}/log` | analyst |
 | `GET` | `/api/pipelines/{name}/source` | viewer |
 
+`GET /api/pipelines` lists each pipeline with its `layers` and last run of each,
+the `model`(s) it feeds, and, from its `pipelines/<name>.yaml`, the `transform`
+it runs and its `description`; a model's Overview shows both.
+
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
 

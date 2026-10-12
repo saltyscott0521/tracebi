@@ -61,13 +61,12 @@ function ConnectorDetail({ c }) {
   )
 }
 
-export default function Connectors({ model = '' }) {
+export default function Connectors() {
   const { data, isLoading } = useConnectors()
   const [selected, setSelected] = useState(null)
   const [query, setQuery] = useState('')
 
-  // A source can feed several models; with one picked, show the ones it reads.
-  const connectors = (data || []).filter(c => !model || (c.used_by || []).includes(model))
+  const connectors = data || []
   const filtered = connectors.filter(c =>
     c.name.toLowerCase().includes(query.toLowerCase()) ||
     c.type.toLowerCase().includes(query.toLowerCase())
@@ -77,12 +76,10 @@ export default function Connectors({ model = '' }) {
 
   return (
     <>
-      <PageHeader pageKey="sources" model={model} />
+      <PageHeader pageKey="sources" model="" />
 
       {!isLoading && connectors.length === 0 ? (
-        <Empty message={model
-          ? `${model} names no source. A model declares where its data is with add_connector(…).`
-          : 'No sources yet. A model declares its own (add_connector); one can also be registered in an app module.'} />
+        <Empty message="No sources yet. A model declares its own (add_connector); one can also be registered in an app module." />
       ) : (
         <SplitLayout
           left={
@@ -98,7 +95,7 @@ export default function Connectors({ model = '' }) {
                       onClick={() => setSelected(c.name)}
                       name={c.name}
                       sub={KIND_LABEL[c.storage?.kind] || c.type}
-                      meta={!model && (c.used_by || []).length > 0
+                      meta={(c.used_by || []).length > 0
                         ? (c.used_by || []).map(m => <Badge key={m} variant="gray" style={{ textTransform: 'none' }}>{m}</Badge>)
                         : null}
                     />

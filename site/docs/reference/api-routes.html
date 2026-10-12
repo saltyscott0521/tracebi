@@ -428,6 +428,9 @@ needed. See <a href="../concepts/receipts.html">Receipts</a>.</p>
 </tr>
 </tbody>
 </table>
+<p><code>GET /api/pipelines</code> lists each pipeline with its <code>layers</code> and last run of each,
+the <code>model</code>(s) it feeds, and, from its <code>pipelines/&lt;name&gt;.yaml</code>, the <code>transform</code>
+it runs and its <code>description</code>; a model's Overview shows both.</p>
 <p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
 in the role model is by side effect, not by resource.</p>
 <p><code>POST …/runs</code> is what the Refresh page's <strong>Run all</strong> and per-step <strong>Run</strong> use. It

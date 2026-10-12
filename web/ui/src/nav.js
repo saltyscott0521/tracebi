@@ -1,35 +1,44 @@
-// The app's frame: a model switcher, and the same pages beneath it for every
-// model. Pick a model and every page narrows to it; pick "All models" and
-// every row says which model it belongs to.
+// The app's frame: a model switcher, and beneath it the pages of one model.
+// Pick a model and every page narrows to it; pick "All models" and the
+// Overview lists the models, and every row says which model it belongs to.
 //
-//   /m/<model>/reports    Reports           /reports
-//   /m/<model>/explore    Explore           /explore    (all: pick a model)
-//   /m/<model>            Data model        /models     (all: pick a model)
-//   /m/<model>/refresh    Refresh           /refresh
-//   /m/<model>/sources    Sources           /sources
-//   /m/<model>/runs       Runs              /runs
+//   /m/<model>             Overview, Reports stage    /models   (all: pick a model)
+//   /m/<model>/reports     Overview, Reports stage    /reports
+//   /m/<model>/model       Overview, Model stage
+//   /m/<model>/transform   Overview, Transform stage
+//   /m/<model>/explore     Explore                    /explore  (all: pick a model)
+//   /m/<model>/runs        History                    /runs
+//
+// The Overview is "the line": ① transforms/ → ② models/ → ③ reports/, one stage
+// shown at a time, each with an address of its own. /m/<model>/refresh and
+// /m/<model>/sources are old addresses of the Transform stage.
 //
 // The convention that ties them (and what model_pipeline stamps): the model
 // file models/<model>.py, its pipeline pipelines/<model>.py, its reports
 // under reports/<model>/.
 
-// One list, under the model switcher that scopes it, in the order a receipt
-// traces a number: what people read, the question, what it means, how it is
-// rebuilt, where it comes from; then what ran.
+// Every addressable page. `all` is where it lives with no model picked; the
+// stages of the Overview have no all-models page of their own, so they open
+// the list of models.
 export const PAGES = [
-  { key: 'reports', label: 'Reports',    icon: 'reports',    all: '/reports',
+  { key: 'overview',  label: 'Overview',  all: '/models',
+    sub: 'The tables a model reads, the numbers it names, and the reports that show them. Pick a model.' },
+  { key: 'reports',   label: 'Reports',   all: '/reports',
     sub: 'What people read. Every number carries its receipt.' },
-  { key: 'explore', label: 'Explore',    icon: 'explore',    all: '/explore',
-    sub: 'Ask a question and see the query behind the answer.' },
-  { key: 'model',   label: 'Data model', icon: 'models',     all: '/models',
+  { key: 'model',     label: 'Model',     all: '/models',
     sub: 'Its tables, how they join, and the measures it defines.' },
-  { key: 'refresh', label: 'Refresh',    icon: 'pipelines',  all: '/refresh',
+  { key: 'transform', label: 'Transform', all: '/models',
     sub: 'Rebuild the data, then the reports that read it.' },
-  { key: 'sources', label: 'Sources',    icon: 'connectors', all: '/sources',
+  { key: 'explore',   label: 'Explore',   all: '/explore',
+    sub: 'Ask a question and see the query behind the answer.' },
+  { key: 'sources',   label: 'Sources',   all: '/sources',
     sub: 'Where the data is kept: a file, a folder or a database.' },
-  { key: 'runs',    label: 'Runs',       icon: 'runs',       all: '/runs',
+  { key: 'runs',      label: 'History',   all: '/runs',
     sub: 'What ran, when, for whom, and whether it reproduced.' },
 ]
+
+// The three stations of the Overview's line, in the order a number is made.
+export const STAGES = ['transform', 'model', 'reports']
 
 export const page = key => PAGES.find(p => p.key === key)
 
@@ -37,18 +46,23 @@ export const page = key => PAGES.find(p => p.key === key)
 export function pagePath(pageKey, model) {
   if (!model) return page(pageKey).all
   const base = `/m/${encodeURIComponent(model)}`
-  return pageKey === 'model' ? base : `${base}/${pageKey}`
+  return pageKey === 'overview' ? base : `${base}/${pageKey}`
 }
 
-/** Which page and model a pathname is, or null for pages outside the frame. */
+/**
+ * Which page and model a pathname is, or null for pages outside the frame.
+ * A stage of the Overview is that page, with `stage` saying which one.
+ */
 export function whereAmI(pathname) {
   const scoped = pathname.match(/^\/m\/([^/]+)(?:\/([^/]+))?\/?$/)
   if (scoped) {
-    const key = scoped[2] || 'model'
-    return page(key) ? { model: decodeURIComponent(scoped[1]), page: key } : null
+    const model = decodeURIComponent(scoped[1])
+    const key = scoped[2] || 'reports'
+    if (STAGES.includes(key)) return { model, page: 'overview', stage: key }
+    return ['explore', 'runs'].includes(key) ? { model, page: key, stage: null } : null
   }
   const all = PAGES.find(p => p.all === pathname.replace(/\/+$/, ''))
-  return all ? { model: '', page: all.key } : null
+  return all ? { model: '', page: all.key, stage: null } : null
 }
 
 /** The folder a report sits in: reports/<folder>/<name>. */

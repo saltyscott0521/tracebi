@@ -303,8 +303,11 @@ dark under <code>[data-theme="dark"]</code>. To rebrand, edit the tokens (<code>
 hard-code colors. The brand gradient is <code>--brand</code>.</p>
 <p><strong>Adding a nav page:</strong> a page that is about a model goes in <code>PAGES</code> in
 <code>nav.js</code> (it gets <code>/m/&lt;model&gt;/&lt;page&gt;</code> and an all-models <code>/&lt;page&gt;</code>) with both
-routes in <code>App.jsx</code>, and takes a <code>model</code> prop (<code>''</code> means all models). A page
-about no one model goes in <code>NAV_TOOLS</code> in <code>Layout.jsx</code>. Use the hooks
+routes in <code>App.jsx</code>, and takes a <code>model</code> prop (<code>''</code> means all models); the
+sidebar's four links are listed in <code>Layout.jsx</code>. A model's Overview
+(<code>pages/Overview.jsx</code>, the line in <code>components/TheLine.jsx</code>) is one page with
+three stages (<code>transform</code>, <code>model</code>, <code>reports</code>), each with an address of its own.
+A page about no one model is linked from <code>Layout.jsx</code> the same way. Use the hooks
 in <code>api.js</code> for data and the primitives in <code>Shared.jsx</code> for visual
 consistency.</p>
 <h2 id="step-5-extend-the-api">Step 5: Extend the API</h2>

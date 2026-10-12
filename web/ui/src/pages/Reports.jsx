@@ -358,7 +358,7 @@ function FullScreen({ name, html, onClose }) {
   )
 }
 
-function ReportDetail({ report, onBack }) {
+function ReportDetail({ report, onBack, embedded }) {
   const [tab, setTab] = useState('Output')
   const [runId, setRunId] = useState(null)
   const [disk, setDisk] = useState(null)
@@ -473,8 +473,9 @@ function ReportDetail({ report, onBack }) {
   if (!report) return null
 
   // On a phone the open report is the whole screen, and its name is the
-  // page's heading; beside the list, it sits under the page's own h1.
-  const Title = narrow ? 'h1' : 'h2'
+  // page's heading; beside the list, or under the Overview, it sits under the
+  // page's own h1.
+  const Title = narrow && !embedded ? 'h1' : 'h2'
   return (
     <Card>
       <nav className="crumbs" aria-label="Breadcrumb">
@@ -743,7 +744,7 @@ function FolderHeading({ folder, count, open, onToggle }) {
   )
 }
 
-export default function Reports({ model = '' }) {
+export default function Reports({ model = '', embedded = false }) {
   const { data, isLoading } = useReports()
   const { data: desk } = useDesk()
   const { data: pipelines } = usePipelines()
@@ -780,7 +781,7 @@ export default function Reports({ model = '' }) {
 
   return (
     <div className={current ? 'reports-page reports-page--detail' : 'reports-page'}>
-      <PageHeader pageKey="reports" model={model} />
+      {!embedded && <PageHeader pageKey="reports" model={model} />}
 
       <AttentionStrip items={attentionItems(desk, pipelines, modelsOf)
         .filter(it => !model || it.models.includes(model))} />
@@ -831,7 +832,7 @@ export default function Reports({ model = '' }) {
             )
           }
           right={isLoading ? <SkeletonCard /> : current
-            ? <ReportDetail key={current.name} report={current} onBack={() => select(null)} />
+            ? <ReportDetail key={current.name} report={current} onBack={() => select(null)} embedded={embedded} />
             : (
               <>
                 <ReportsOverview reports={reports} builds={desk?.builds || []} onOpen={select} />
