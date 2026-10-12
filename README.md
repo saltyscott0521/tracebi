@@ -653,12 +653,15 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 - **Model** — a model's Overview, Model stage: table previews with column dtypes
   and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
-- **Reports** — a model's Overview, Reports stage: open one and it has the whole
-  page (a link takes you back to
-  the list). Rebuild it in the background (run history and a toast when done),
-  download the self-contained HTML artifact with its embedded receipt (or a
-  plain Excel or PDF) from the Download menu, read the at-a-glance receipt, and
-  open its Lineage tab. Failures show the full Python traceback.
+- **Reports** — a model's Overview, Reports stage: the list, and beside it the last
+  build of the report you picked (Preview) or the files that define it (Config); a
+  report with no build says so and offers **Build it now**. **Open** gives a report the
+  whole page, with one light bar (a link back to the model). Rebuild it in the
+  background (a toast when done), Share it, and under **More** download the
+  self-contained HTML artifact with its embedded receipt (or a plain Excel or PDF),
+  read the at-a-glance receipt and its lineage and manifest, see its code, check it
+  again, see when it is scheduled and its past builds. Failures show the full Python
+  traceback.
 - **Transform** — a model's Overview, Transform stage: the medallion chain as a live DAG
   with per-layer run buttons and run history. **Refresh data** (admin), in the Overview's
   header, runs the whole pipeline.

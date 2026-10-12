@@ -24,17 +24,17 @@ tracebi serve                           # → http://127.0.0.1:8000
 
 Then, in the browser:
 
-1. **Open the two reports you will show**, so they open instantly on the day.
-   Pick `portfolio_model` and open `portfolio_dashboard` and
-   `portfolio_showcase` on its **Reports** stage. A
-   report that has never been built is built on first open and kept.
-2. **Make the "edited" copy for beat 3.** On `portfolio_dashboard`, click
-   **↓ Download → HTML**. The build also saved the matching pair in
+1. **Build the two reports you will show**, so they open instantly on the day.
+   Pick `portfolio_model` and, on its **Reports** stage, pick
+   `portfolio_dashboard` and `portfolio_showcase` in turn. A report that has
+   never been built says so; press **Build it now**, and it is kept.
+2. **Make the "edited" copy for beat 3.** Open `portfolio_dashboard` (**Open**)
+   and choose **More → Download HTML**. The build also saved the matching pair in
    `examples/portfolio_project/output/`:
    `portfolio_dashboard.html` and `portfolio_dashboard.html.manifest.json`.
    Copy both into a folder on your desktop called `demo/`. Then make a second
    copy of the pair named `edited.html` and `edited.html.manifest.json`.
-   Also download `portfolio_showcase` with **↓ Download → HTML** into
+   Also download `portfolio_showcase` with **More → Download HTML** into
    `demo/`. You will use it for beat 2.
 3. Open `edited.html` in a plain text editor (TextEdit in plain-text mode, or
    Notepad). Find `285904445.21` (it appears once) and change it to

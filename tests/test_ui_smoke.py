@@ -187,14 +187,36 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.goto(base + "/refresh")
             page.wait_for_url("**/models")
 
-            page.goto(base + "/reports")
-            fail_on_browser_errors()
-            page.get_by_text(_LABEL, exact=True).click()
+            # The Reports stage is the list with the last build of the picked
+            # report beside it. A fresh checkout has built nothing, and looking at a
+            # report does not build it: it says so, marked, and offers to build it.
+            page.goto(base + "/m/portfolio_model")
+            row = page.get_by_role("button", name=re.compile(rf"^{_LABEL}\b"))
+            row.click()
+            page.wait_for_url(f"**?r={_REPORT.replace('/', '%2F')}")
+            expect(row).to_have_attribute("aria-pressed", "true")
+            expect(row).to_contain_text("○ Never built")
+            expect(row).to_contain_text("Mondays 07:00")   # its schedule, in words
+            page.get_by_text("There is no page to show yet").wait_for()
+            assert page.locator("iframe").count() == 0
+            # The files that define it are one click away, read-only, with the way to a draft.
+            page.get_by_role("button", name="Config", exact=True).click()
+            page.get_by_role("button", name="report.json").wait_for()
+            page.get_by_role("button", name="Edit as a draft").wait_for()
+            page.get_by_role("button", name="Preview", exact=True).click()
+            page.get_by_role("button", name="Build it now").click()
             try:
                 page.locator("iframe").wait_for()
             except Exception as exc:
                 fail_on_browser_errors()
                 raise AssertionError(page.inner_text("body")[:4000]) from exc
+            expect(row).not_to_contain_text("Never built")
+            fail_on_browser_errors()
+
+            # Open gives the report the whole page.
+            page.get_by_role("link", name="Open").click()
+            page.wait_for_url("**open=1")
+            page.locator("iframe.rp__frame").wait_for()
             page.wait_for_function(
                 """(title) => {
                     const frame = document.querySelector('iframe');
@@ -222,28 +244,33 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                     .querySelectorAll('#fig-treemap g.cell').length === 2""")
             fail_on_browser_errors()
 
-            # An open report has the whole page: the list steps aside, and
-            # "← All reports" brings it back.
+            # An open report is a page of its own: no sidebar, no list, one light
+            # bar whose first link goes back to its model.
+            assert page.get_by_role("navigation", name="Main").count() == 0
             assert not page.get_by_placeholder("Search reports…").is_visible()
-            page.get_by_role("button", name="← All reports").wait_for()
+            back = page.get_by_role("link", name="portfolio_model", exact=True)
+            back.wait_for()
 
-            # One Download menu holds the three files, each with its caveat.
-            page.get_by_role("button", name="↓ Download").click()
-            menu = page.locator(".dl-menu")
+            # One More menu holds the three files, each with its caveat.
+            page.get_by_role("button", name="More").click()
+            menu = page.locator("#report-more")
             links = menu.get_by_role("link").all()
-            assert [link.inner_text().split("\n")[0] for link in links] == ["HTML", "Excel", "PDF"]
+            assert [link.inner_text().split("\n")[0] for link in links] == [
+                "Download HTML", "Download Excel", "Download PDF"]
             assert [link.get_attribute("href").rsplit("=", 1)[1] for link in links] == ["html", "xlsx", "pdf"]
             assert "carries no receipt" in menu.inner_text()
             page.keyboard.press("Escape")
             assert menu.count() == 0
 
-            # Lineage is a tab like the others: no button to reveal it first.
-            assert page.get_by_role("button", name="View Lineage").count() == 0
-            page.get_by_role("button", name="Lineage", exact=True).click()
+            # Lineage and the code are reached from the same menu, over the report.
+            page.get_by_role("button", name="More").click()
+            page.get_by_role("button", name="Lineage and manifest").click()
             page.get_by_text("Where each number on the page came from").wait_for()
-
+            page.keyboard.press("Escape")
+            page.get_by_role("button", name="More").click()
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="report.json").wait_for()
+            page.get_by_role("button", name="Close").click()
 
             downloaded = page.evaluate(
                 """async (url) => {
@@ -255,11 +282,40 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert downloaded["status"] == 200, _tail(log_path)
             assert _TITLE in downloaded["body"]
 
-            # Rebuild makes more build rows, and the list re-checks the new one.
-            page.get_by_role("button", name="↺ Rebuild").click()
+            # Rebuild makes more build rows, and the stage re-checks the new one:
+            # the sentence under the list says the built report still re-runs to
+            # the same numbers, and its row says when it was built.
+            page.get_by_role("button", name="Rebuild").click()
             page.get_by_text("Report ran successfully").wait_for()
-            page.get_by_role("button", name="← All reports").click()
-            page.locator(".list-item", has_text=_LABEL).get_by_text("Reproduces", exact=True).wait_for()
+            back.click()
+            page.get_by_text(re.compile(r"re-runs? to the same numbers")).wait_for()
+            expect(row).to_contain_text("Built ")
+
+            # A build whose source changed since never reads as fine: its row, the
+            # sentence under the list and the bar of its page say so, in words with a
+            # glyph, and the sentence does not claim it re-runs.
+            def source_changed(route):
+                desk = route.fetch().json()
+                for built in desk["builds"]:
+                    built["verdict"] = "source_drift"
+                route.fulfill(json=desk)
+
+            page.route("**/api/desk", source_changed)
+            page.reload()
+            expect(row).to_contain_text("△ Source changed")
+            expect(page.get_by_role("button", name=re.compile(r"^Needs a look \(\d+\)"))).to_be_visible()
+            page.get_by_text("0 of 1 built reports re-run to the same numbers").wait_for()
+            page.get_by_role("link", name="Open").click()
+            page.get_by_text("Source changed since").wait_for()
+            page.unroute("**/api/desk")
+
+            # The all-models page keeps its list; a row there opens the same page.
+            page.goto(base + "/reports")
+            fail_on_browser_errors()
+            page.get_by_text(_LABEL, exact=True).click()
+            page.wait_for_url("**/reports?r=*")
+            page.locator("iframe").wait_for()
+            assert page.get_by_role("heading", name=_LABEL, exact=True).is_visible()
 
             # A build is not a check: History shows the list's verdict on the newest
             # build of the report, and a plain "Not checked" (never green) on
@@ -277,6 +333,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             # Given room, a report's three KPI cards sit on one row.
             page.goto(f"{base}/reports?r=portfolio_model/portfolio_overview")
+            page.get_by_role("button", name="Build it now").click()
             cards = page.frame_locator("iframe").locator(".tb-kpi")
             cards.nth(2).wait_for()
             tops = {round(card.bounding_box()["y"]) for card in cards.all()}

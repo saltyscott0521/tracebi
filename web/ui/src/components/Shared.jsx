@@ -110,9 +110,9 @@ export function SkeletonCard() {
 
 // ── Search ────────────────────────────────────────────────────────────────────
 
-export function SearchInput({ value, onChange, placeholder = 'Search…' }) {
+export function SearchInput({ value, onChange, placeholder = 'Search…', label, style }) {
   return (
-    <div className="search-wrap" style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+    <div className="search-wrap" style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', ...style }}>
       <span className="search-icon">
         <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <circle cx="9" cy="9" r="5.5" /><line x1="15" y1="15" x2="19" y2="19" />
@@ -124,6 +124,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…' }) {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-label={label}
       />
     </div>
   )

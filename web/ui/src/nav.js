@@ -4,6 +4,8 @@
 //
 //   /m/<model>             Overview, Reports stage    /models   (all: pick a model)
 //   /m/<model>/reports     Overview, Reports stage    /reports
+//   …/reports?r=<name>     that report picked beside the list (its preview); &open=1 opens it
+//                          as a page of its own (on /reports, ?r= alone opens it)
 //   /m/<model>/model       Overview, Model stage
 //   /m/<model>/transform   Overview, Transform stage
 //   /m/<model>/explore     Explore                    /explore  (all: pick a model)
@@ -103,6 +105,29 @@ export const pipelineBelongsToModel = (p, model) =>
 /** Where to open a report: under its (first) model when one is known. */
 export function reportPagePath(name, models = []) {
   return `${pagePath('reports', models[0] || '')}?${new URLSearchParams({ r: name })}`
+}
+
+/** The report's own page, from the Reports stage of *model* (where ?r= alone only picks it beside the list). */
+export function reportOpenPath(name, model = '') {
+  return `${pagePath('reports', model)}?${new URLSearchParams({ r: name, open: '1' })}`
+}
+
+/**
+ * The report an address opens as a page ({name, model}), or null. On a model's
+ * Reports stage ?r=<name> only picks it beside the list, where its preview is;
+ * ?open=1 opens it, and so does ?build=1 (Build mode lives on the page) and a
+ * screen too narrow for the preview. The all-models page has no preview, so
+ * there ?r= opens it.
+ */
+export function openedReport(pathname, search, narrow = false) {
+  const at = whereAmI(pathname)
+  if (!at || (at.page !== 'reports' && at.stage !== 'reports')) return null
+  const q = new URLSearchParams(search)
+  const name = q.get('r')
+  if (!name) return null
+  const previewed = at.stage === 'reports'
+  const open = !previewed || narrow || q.get('open') === '1' || q.get('build') === '1'
+  return open ? { name, model: at.model } : null
 }
 
 const LAST = 'tracebi-model'
