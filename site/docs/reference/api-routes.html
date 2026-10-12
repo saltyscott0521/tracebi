@@ -254,7 +254,9 @@ in the default style), <code>package</code> (a <code>reports/&lt;name&gt;/</code
 and style) or <code>code</code>. <code>/source</code> returns the files that define the report —
 the spec, or the package's <code>report.json</code>, <code>template.html</code>, <code>style.css</code>,
 <code>script.js</code> and <code>report.py</code> — read-only, and only the files discovery
-registered for it.</p>
+registered for it. It also gives each report <code>models</code> (the models its data
+bindings read) and <code>measures</code> (the declared measure names they ask for, read
+from the file, never from a warehouse); the Map draws both.</p>
 <p><code>/run</code> returns <code>{name, html, manifest}</code> — the <strong>real artifact render</strong>, so what
 the browser shows is what <code>verify --file</code> can check. <code>POST /runs</code> starts the
 same work in the background and returns a <code>run_id</code> to poll.</p>
@@ -445,6 +447,9 @@ needed. See <a href="../concepts/receipts.html">Receipts</a>.</p>
 </table>
 <p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
 in the role model is by side effect, not by resource.</p>
+<p><code>GET /api/pipelines</code> names each pipeline's <code>models</code>, its layers with their last
+run, and its <code>transform</code> (the phase ① script a model pipeline runs; <code>null</code> for a
+hand-built runner).</p>
 <p><code>POST …/runs</code> is what the Refresh page's <strong>Run all</strong> and per-step <strong>Run</strong> use. It
 starts the run in the background and returns at once (<code>202</code>; <code>?layer=</code> runs one
 step, <code>?refresh=true</code> adds what it depends on). A pipeline already running
