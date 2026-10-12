@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, forwardRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -16,10 +16,10 @@ import { ReportLineage } from '../components/ReportLineage'
 import {
   AttentionStrip, attentionItems, reviewNotes, verdictOf, verdictFlag, isQuiet, when,
 } from '../components/Attention'
-import { Flag, stamp } from '../components/TheLine'
+import { Flag, stamp, useLineFacts } from '../components/TheLine'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
-import { PageHeader, useReportModels, useOpenReport, PREVIEW_QUERY } from '../components/Scope'
+import { PageHeader, useReportModels, useOpenReport, useNavMenu, PREVIEW_QUERY } from '../components/Scope'
 import { reportBelongsToModel, reportModels, pagePath, reportOpenPath } from '../nav'
 import { scheduleWords } from '../schedule'
 import {
@@ -78,29 +78,6 @@ function figureProvenance(manifest) {
     else if (f.binding) reproducible++
   })
   return { total: figures.length, reproducible, unverified, derived }
-}
-
-// Plain facts; a glyph only where something is not fine (△ changed, ○ cannot be
-// re-run or not declared).
-function ReportReceipt({ manifest }) {
-  if (!manifest) return null
-  const p = figureProvenance(manifest)
-  const v2 = manifest.schema_version === 2
-  const contracts = Object.entries(manifest.transform_contracts || {})
-  const sink = (table, status) => {
-    if (status === 'satisfied') return <>{table}: the sink satisfied its contract</>
-    if (status === 'stale') return <><span aria-hidden="true">△</span> {table}: changed since the sink last satisfied its contract</>
-    return <><span aria-hidden="true">○</span> {table}: no contract declared</>
-  }
-  return (
-    <ul className="rp__receipt">
-      <li>{v2 ? 'Verifiable receipt (schema 2)' : `○ Manifest v${manifest.schema_version ?? '?'}: no per-figure receipts to re-run`}</li>
-      {p.total > 0 && <li>{p.total} figures: {p.reproducible} re-run from their queries</li>}
-      {p.derived > 0 && <li><span aria-hidden="true">○</span> {p.derived} from python, which cannot be re-run</li>}
-      {p.unverified > 0 && <li><span aria-hidden="true">△</span> {p.unverified} unverified</li>}
-      {contracts.map(([table, c]) => <li key={table}>{sink(table, c?.status)}</li>)}
-    </ul>
-  )
 }
 
 // Start a report run, follow it, and say how it ended: what Rebuild on the
@@ -292,131 +269,223 @@ function AskCut({ reportName, frameRef, onPackageChange }) {
 }
 
 // ── The report's own page ────────────────────────────────────────────────────
-// One light bar (back to its model, its name, when it was built and what is not
-// fine about that, then Rebuild, Share and More) and the report filling the
-// rest of the screen. The report keeps its own receipt drawer on every figure
-// (tracebi.js): the frame is as tall as the screen and scrolls inside, so that
-// drawer opens at the edge of what you are looking at.
+// The app's nav stays as a rail. Two header rows (where it is, then its name,
+// what is not fine about it and when it was built), a toolbar of labelled
+// commands, a bar only when something is not fine, and the report filling the
+// rest of the screen, with a panel docked beside it (Details, Lineage, History,
+// Code). The report keeps its own receipt drawer on every figure (tracebi.js):
+// the frame is as tall as the screen and scrolls inside, so that drawer opens
+// at the edge of what you are looking at.
 
-const BAR_BTN = { minHeight: 40, padding: '0 14px', borderRadius: 9, fontSize: 14 }
-
-// Share hands the link to the phone's share sheet, or copies it where there is none.
-function ShareButton({ name }) {
-  const url = reportShareUrl(name)
-  const [copied, setCopied] = useState(false)
-  const share = async () => {
-    try {
-      if (navigator.share) { await navigator.share({ url }); return }
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch { /* the reader closed the share sheet */ }
-  }
-  return <Btn onClick={share} variant="outline" style={BAR_BTN}>{copied ? 'Link copied' : 'Share'}</Btn>
+const ICON = {
+  rebuild: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />,
+  export: <path d="M12 3v12M7 10l5 5 5-5M4 21h16" />,
+  share: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />,
+  edit: <path d="M4 20h4L19 9l-4-4L4 16z" />,
+  build: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="2.5" /></>,
+  lineage: <><rect x="3" y="4" width="6" height="5" rx="1" /><rect x="15" y="15" width="6" height="5" rx="1" /><path d="M9 6.5h3a2 2 0 0 1 2 2v7a2 2 0 0 0 2 2" /></>,
+  history: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  details: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
+  menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
+  file: <><path d="M6 2h9l5 5v15H6z" /><path d="M15 2v5h5" /></>,
+  close: <path d="M6 6l12 12M18 6L6 18" />,
 }
 
-// The three files a report can be downloaded as, each with what it is good for.
-const DOWNLOADS = [
-  ['html', 'HTML', 'One self-contained file, checkable offline with tracebi verify --file'],
-  ['xlsx', 'Excel', "A plain spreadsheet; it can't be checked the way the HTML file can"],
-  ['pdf', 'PDF', 'A print of this page. Charts render. It carries no receipt; the HTML file is what can be checked'],
-]
+function Icon({ name, size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICON[name]}</svg>
+  )
+}
 
-// Everything a reader does not do every time: take a copy, trace a number back,
-// read the code, check it again, see when it runs and what ran. Escape, a click
-// elsewhere, or tabbing out closes it; choosing a file starts the download.
-function MoreMenu({ name, rootRef, onPanel, onCheck, checking }) {
+// A flat command in the toolbar: icon and word. `on` marks a toggle that is on.
+const Cmd = forwardRef(function Cmd({ icon, children, caret, on, className = '', ...rest }, ref) {
+  return (
+    <button ref={ref} type="button" className={`cmd ${className}`} aria-pressed={on}
+            aria-label={typeof children === 'string' ? children : undefined} {...rest}>
+      {icon && <Icon name={icon} />}
+      {children && <span className="cmd__lab">{children}</span>}
+      {caret && (
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+             strokeLinecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      )}
+    </button>
+  )
+})
+
+// A menu or popover under a command: Escape, a click elsewhere, or tabbing out
+// closes it and puts focus back on the command.
+function usePopover() {
   const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
   useEffect(() => {
     if (!open) return undefined
     const away = e => { if (!rootRef.current?.contains(e.target)) setOpen(false) }
     const esc = e => {
       if (e.key !== 'Escape') return
+      e.stopPropagation()
       setOpen(false)
       rootRef.current?.querySelector('button')?.focus()
     }
     document.addEventListener('pointerdown', away)
-    document.addEventListener('keydown', esc)
+    document.addEventListener('keydown', esc, true)
     return () => {
       document.removeEventListener('pointerdown', away)
-      document.removeEventListener('keydown', esc)
+      document.removeEventListener('keydown', esc, true)
     }
-  }, [open, rootRef])
-  const then = fn => () => { setOpen(false); fn() }
+  }, [open])
+  const onBlur = e => { if (!rootRef.current?.contains(e.relatedTarget)) setOpen(false) }
+  return { open, setOpen, rootRef, onBlur }
+}
+
+// The three files a report can be exported as. Only the HTML carries its receipt.
+const EXPORTS = [['pdf', 'PDF'], ['xlsx', 'Excel'], ['html', 'HTML', 'with receipt']]
+
+function ExportMenu({ name }) {
+  const { open, setOpen, rootRef, onBlur } = usePopover()
   return (
-    <div ref={rootRef} onBlur={e => { if (!rootRef.current.contains(e.relatedTarget)) setOpen(false) }}>
-      <Btn onClick={() => setOpen(o => !o)} variant="outline" style={BAR_BTN}
-           aria-expanded={open} aria-controls="report-more">
-        More
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-             strokeLinecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-      </Btn>
+    <div ref={rootRef} className="rp__pop" onBlur={onBlur}>
+      <Cmd icon="export" caret on={open} aria-haspopup="menu" aria-expanded={open}
+           onClick={() => setOpen(o => !o)}>Export</Cmd>
       {open && (
-        <div id="report-more" className="rp__menu">
-          {DOWNLOADS.map(([format, label, note]) => (
-            <a key={format} href={reportDownloadUrl(name, format)} download
+        <div className="rp__menu" role="menu">
+          {EXPORTS.map(([format, label, tag]) => (
+            <a key={format} role="menuitem" href={reportDownloadUrl(name, format)} download
                className="rp__item" onClick={() => setOpen(false)}>
-              <span className="rp__item-label">Download {label}</span>
-              <span className="rp__item-note">{note}</span>
+              <Icon name="file" />{label}{tag && <span className="rp__tag">{tag}</span>}
             </a>
           ))}
           <div className="rp__rule" role="separator" />
-          <button type="button" className="rp__item" onClick={then(() => onPanel('lineage'))}>Lineage and manifest</button>
-          <button type="button" className="rp__item" onClick={then(() => onPanel('code'))}>Code</button>
-          <button type="button" className="rp__item" onClick={then(onCheck)} disabled={checking}>Check it again</button>
-          <button type="button" className="rp__item" onClick={then(() => onPanel('schedule'))}>Schedule…</button>
-          <button type="button" className="rp__item" onClick={then(() => onPanel('history'))}>Past builds</button>
+          <p className="rp__menu-note">
+            Only the HTML file carries its receipt; check it with <code>tracebi verify --file</code>.
+          </p>
         </div>
       )}
     </div>
   )
 }
 
-// A panel from the right edge over the report: Escape, its ✕ or a click on the
-// report behind it closes it.
-function Drawer({ title, onClose, children }) {
-  const close = useRef(null)
-  useEffect(() => {
-    const esc = e => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', esc)
-    close.current?.focus()
-    return () => document.removeEventListener('keydown', esc)
-  }, [onClose])
+function SharePopover({ name }) {
+  const { open, setOpen, rootRef, onBlur } = usePopover()
+  const [copied, setCopied] = useState(false)
+  const url = reportShareUrl(name)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* clipboard refused: the link is selectable in the field */ }
+  }
   return (
-    <>
-      <div className="rp__scrim" onClick={onClose} aria-hidden="true" />
-      <aside className="rp__drawer" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="rp__drawer-head">
-          <h2>{title}</h2>
-          <button ref={close} type="button" className="rp__close" onClick={onClose} aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                 strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
+    <div ref={rootRef} className="rp__pop" onBlur={onBlur}>
+      <Cmd icon="share" on={open} aria-haspopup="dialog" aria-expanded={open}
+           onClick={() => setOpen(o => !o)}>Share</Cmd>
+      {open && (
+        <div className="rp__menu rp__menu--share" role="dialog" aria-label="Share">
+          <div className="rp__menu-title">Share this report</div>
+          <div className="rp__share">
+            <input readOnly value={url} aria-label="Link to this report" onFocus={e => e.target.select()} />
+            <Btn onClick={copy}>{copied ? 'Link copied' : 'Copy link'}</Btn>
+          </div>
+          <p className="rp__menu-note">Opens this build. Readers sign in the same way they sign in to the app.</p>
         </div>
-        {children}
-      </aside>
-    </>
+      )}
+    </div>
   )
 }
 
-// What the last build's receipt says (plain facts), the lineage drawn from it,
-// and the manifest it is read from.
-function LineagePanel({ name, manifest }) {
-  const { mutate: fetchLineage, data, error } = useReportLineage()
-  useEffect(() => { if (manifest) fetchLineage(name) }, [name, manifest, fetchLineage])
-  if (!manifest) return <p className="rp__none">Nothing to trace yet: this report has not been built.</p>
+const SINK_LINE = (table, status) => {
+  if (status === 'satisfied') return <>{table}: the sink satisfied its contract</>
+  if (status === 'stale') return <><span aria-hidden="true">△</span> {table}: changed since the sink last satisfied its contract</>
+  return <><span aria-hidden="true">○</span> {table}: no contract declared</>
+}
+
+const TABS = [['details', 'Details'], ['lineage', 'Lineage'], ['history', 'History'], ['code', 'Code']]
+const PANEL_KEY = 'tracebi-report-panel'
+
+function readPanel() {
+  try {
+    const v = JSON.parse(localStorage.getItem(PANEL_KEY) || 'null')
+    return v && TABS.some(([k]) => k === v.tab) ? { open: !!v.open, tab: v.tab } : { open: false, tab: 'details' }
+  } catch { return { open: false, tab: 'details' } }
+}
+
+function Facts({ children }) { return <dl className="rpanel__kv">{children}</dl> }
+function Fact({ k, children }) { return <><dt>{k}</dt><dd>{children}</dd></> }
+function Section({ title, children }) {
+  return <section className="rpanel__sec"><h2>{title}</h2>{children}</section>
+}
+
+function DetailsTab({ report, model, shown, lastBuild, checkedAt, flag, onCheck, checking, goCode }) {
+  const manifest = shown?.manifest
+  const p = figureProvenance(manifest)
+  const contracts = Object.entries(manifest?.transform_contracts || {})
+  const words = scheduleWords(report.schedule)
+  const last = report.last_run
+  const verdict = lastBuild && verdictOf(lastBuild.verdict)
+  const builtAt = manifest?.rendered_at ? stamp(manifest.rendered_at) : null
+  const form = (FORMS[report.form] || FORMS.code).label
   return (
     <>
-      <ReportReceipt manifest={manifest} />
-      {data ? <ReportLineage flow={data.flow} />
-        : error ? <ErrorDetail error={error} />
-          : <div className="rp__none"><Spinner /> Loading lineage…</div>}
-      <details className="rp__manifest">
-        <summary>Manifest</summary>
-        <pre className="code-block" style={{ maxHeight: 400, overflowY: 'auto' }}>
-          {JSON.stringify(manifest, null, 2)}
-        </pre>
-      </details>
+      {report.description && <section className="rpanel__sec"><p className="rpanel__lead">{report.description}</p></section>}
+      <Section title="Status">
+        <Facts>
+          <Fact k="Built">{builtAt || 'Not built yet'}</Fact>
+          {lastBuild && (
+            <Fact k="Re-run check">
+              {flag ? <Flag flag={flag} /> : verdict.label}
+              {checkedAt ? <> · {stamp(new Date(checkedAt).toISOString())}</> : null}
+              <br />
+              <button type="button" className="rpanel__link" onClick={onCheck} disabled={checking}>Check again</button>
+            </Fact>
+          )}
+          {manifest && manifest.schema_version !== 2 && (
+            <Fact k="Receipt">○ Manifest v{manifest.schema_version ?? '?'}: no per-figure receipts to re-run</Fact>
+          )}
+          {contracts.length > 0 && (
+            <Fact k="Source tables">
+              {contracts.map(([table, c]) => <div key={table}>{SINK_LINE(table, c?.status)}</div>)}
+            </Fact>
+          )}
+        </Facts>
+      </Section>
+      {manifest && (
+        <Section title="Data">
+          <Facts>
+            {model && <Fact k="Model"><Link to={pagePath('model', model)} className="mono">{model}</Link></Fact>}
+            <Fact k="Figures">
+              {p.total} {p.total === 1 ? 'figure' : 'figures'} from {(manifest.embedded_data || []).length} {(manifest.embedded_data || []).length === 1 ? 'query' : 'queries'}
+              {p.derived > 0 && <div><span aria-hidden="true">○</span> {p.derived} from python, which cannot be re-run</div>}
+              {p.unverified > 0 && <div><span aria-hidden="true">△</span> {p.unverified} unverified</div>}
+            </Fact>
+          </Facts>
+        </Section>
+      )}
+      <Section title="Delivery">
+        <Facts>
+          <Fact k="Schedule">
+            {words ? words.long : 'Not scheduled'}
+            {!words && <div className="rpanel__hint">A <code>schedule</code> block in report.json builds it on a timetable.</div>}
+          </Fact>
+          {last && (
+            <Fact k="Last run">
+              {stamp(last.time) || ''}
+              {SCHEDULE_ALERT[last.status] && (
+                <> · <span className={`flag flag--${SCHEDULE_ALERT[last.status][0]}`}>
+                  <span aria-hidden="true">{SCHEDULE_ALERT[last.status][1]}</span> {last.status}
+                </span></>
+              )}
+            </Fact>
+          )}
+        </Facts>
+      </Section>
+      <Section title="Definition">
+        <Facts>
+          <Fact k="Kind">{form}</Fact>
+          <Fact k="Files"><button type="button" className="rpanel__link" onClick={goCode}>Read the files</button></Fact>
+        </Facts>
+      </Section>
     </>
   )
 }
@@ -424,50 +493,107 @@ function LineagePanel({ name, manifest }) {
 // A scheduled run that did not go out: failed, or built but refused or empty.
 const SCHEDULE_ALERT = { failed: ['bad', '✕'], refused: ['warn', '△'], empty: ['warn', '△'] }
 
-// When it runs, in words, and how the last run went.
-function SchedulePanel({ report }) {
-  const words = scheduleWords(report.schedule)
-  const last = report.last_run
-  if (!words) {
-    return (
-      <>
-        <p className="rp__lead">Not scheduled.</p>
-        <p className="rp__none">A <code>schedule</code> block in report.json builds it on a timetable.</p>
-      </>
-    )
+// The lineage, top to bottom: each stage and what is in it. The drawn flow is one click away.
+function LineageTab({ name, manifest }) {
+  const { mutate: fetchLineage, data, error } = useReportLineage()
+  const [full, setFull] = useState(false)
+  useEffect(() => { if (manifest) fetchLineage(name) }, [name, manifest, fetchLineage])
+  if (!manifest) return <p className="rpanel__empty">Nothing to trace yet: this report has not been built.</p>
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${name.slice(name.lastIndexOf('/') + 1)}.manifest.json`
+    a.click()
+    URL.revokeObjectURL(url)
   }
+  const flow = data?.flow
+  const mark = status => (status === 'warn' ? '△ ' : status === 'derived' ? '○ python: ' : '')
+  return (
+    <div className="rpanel__sec rpanel__sec--last">
+      <p className="rpanel__lead rpanel__lead--small">Where the numbers on this page came from, read from this build's receipt.</p>
+      {flow ? (
+        <ol className="chain">
+          {flow.columns.map(col => {
+            const nodes = flow.nodes.filter(n => n.column === col.index)
+            if (!nodes.length) return null
+            return (
+              <li key={col.index}>
+                <span className="chain__dot" aria-hidden="true" />
+                <div className="chain__kind">{col.label}</div>
+                {nodes.map(n => (
+                  <div key={n.id} className="chain__node">
+                    <b className="mono">{n.label}</b>{n.sub ? <> · {n.sub}</> : null}
+                    {n.status && n.status !== 'ok' && n.status !== 'muted' && <div className="chain__warn">{mark(n.status)}{n.status === 'warn' ? 'needs a look' : ''}</div>}
+                    {n.detail?.contract?.status === 'satisfied' && <div className="chain__sub">The sink satisfied its contract.</div>}
+                  </div>
+                ))}
+              </li>
+            )
+          })}
+        </ol>
+      ) : error ? <ErrorDetail error={error} />
+        : <div className="rp__none"><Spinner /> Loading lineage…</div>}
+      <div className="rpanel__buttons">
+        <Btn variant="outline" size="sm" onClick={() => setFull(true)} disabled={!flow}>Full graph</Btn>
+        <Btn variant="outline" size="sm" onClick={download}>Download manifest</Btn>
+      </div>
+      <p className="rpanel__hint">Lineage starts at the sink. The analysis inside a transform is not traced.</p>
+      {full && flow && (
+        <FullGraph onClose={() => setFull(false)}><ReportLineage flow={flow} /></FullGraph>
+      )}
+    </div>
+  )
+}
+
+function FullGraph({ onClose, children }) {
+  const close = useRef(null)
+  useEffect(() => {
+    const esc = e => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
+    document.addEventListener('keydown', esc, true)
+    close.current?.focus()
+    return () => document.removeEventListener('keydown', esc, true)
+  }, [onClose])
   return (
     <>
-      <p className="rp__lead">{words.long}</p>
-      {words.long !== report.schedule.cron && (
-        <p className="rp__none"><code>{report.schedule.cron}</code>{report.schedule.timezone ? ` · ${report.schedule.timezone}` : ''}</p>
-      )}
-      {last && (
-        <p className="rp__none">
-          Last scheduled run {stamp(last.time) || ''}
-          {SCHEDULE_ALERT[last.status] && (
-            <> · <span className={`flag flag--${SCHEDULE_ALERT[last.status][0]}`}>
-              <span aria-hidden="true">{SCHEDULE_ALERT[last.status][1]}</span> {last.status}
-            </span></>
-          )}
-        </p>
-      )}
+      <div className="rp__scrim" onClick={onClose} aria-hidden="true" />
+      <div className="rp__full" role="dialog" aria-modal="true" aria-label="Lineage graph">
+        <div className="rp__full-head">
+          <h2>Lineage graph</h2>
+          <button ref={close} type="button" className="rp__close" onClick={onClose} aria-label="Close the graph">
+            <Icon name="close" />
+          </button>
+        </div>
+        {children}
+      </div>
     </>
   )
 }
 
-// The files that define the report, read-only, and a way to change a copy.
-function CodePanel({ name }) {
+// The panel beside the report: its own tabs, a close, and the open tab's content.
+function ReportPanel({ tab, setTab, onClose, ...props }) {
+  const { report, shown } = props
   return (
-    <>
-      <ReportSource name={name} />
-      <div className="rp__foot"><EditAsDraft kind="reports" path={name} /></div>
-    </>
+    <aside className="rpanel" aria-label="About this report">
+      <div className="rpanel__tabs">
+        <div role="tablist" aria-label="About this report" className="rpanel__tablist">
+          {TABS.map(([key, label]) => (
+            <button key={key} type="button" role="tab" id={`rp-tab-${key}`} aria-selected={tab === key}
+                    aria-controls="rp-tabpanel" className="rpanel__tab" onClick={() => setTab(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="cmd" onClick={onClose} aria-label="Close the panel"><Icon name="close" /></button>
+      </div>
+      <div className="rpanel__body" role="tabpanel" id="rp-tabpanel" aria-labelledby={`rp-tab-${tab}`}>
+        {tab === 'details' && <DetailsTab {...props} goCode={() => setTab('code')} />}
+        {tab === 'lineage' && <LineageTab name={report.name} manifest={shown?.manifest} />}
+        {tab === 'history' && <div className="rpanel__sec rpanel__sec--last"><RunHistory name={report.name} /></div>}
+        {tab === 'code' && <div className="rpanel__sec rpanel__sec--last"><ReportSource name={report.name} /></div>}
+      </div>
+    </aside>
   )
-}
-
-const PANELS = {
-  lineage: 'Lineage and manifest', code: 'Code', schedule: 'Schedule', history: 'Past builds',
 }
 
 // "Source changed" on a build reads, beside its time, as "Source changed since".
@@ -495,18 +621,20 @@ function NeverBuilt({ build, canBuild }) {
 
 function OpenReport({ report, model }) {
   const name = report.name
-  const [panel, setPanel] = useState(null)
+  const [panel, setPanel] = useState(readPanel)
   const [disk, setDisk] = useState(null)
   const [checking, setChecking] = useState(false)
   const toast = useToast()
   const frameRef = useRef(null)
-  const moreRef = useRef(null)
+  const panelOpener = useRef(null)
   const qc = useQueryClient()
   const narrow = useNarrow(PREVIEW_QUERY)
+  const navMenu = useNavMenu()
   const { data: me } = useMe()
   const canBuild = me?.role === 'analyst' || me?.role === 'admin'
-  const { data: desk, isError: deskFailed, isFetching: checkingDesk } = useDesk()
+  const { data: desk, dataUpdatedAt, isError: deskFailed, isFetching: checkingDesk } = useDesk()
   const lastBuild = (desk?.builds || []).find(b => b.report === name)
+  const refreshed = useLineFacts(model).transform.goodAt
   const buildRun = useReportBuild(name)
   const { build: startBuild, running, result, error: runErr } = buildRun
   // The server builds a report it has no build of when asked for it, so ask
@@ -562,7 +690,11 @@ function OpenReport({ report, model }) {
     if (pointOn) sendPointing({ name, pointing: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointOn, name])
-  const togglePoint = () => { setWantBuild(on => !on); setPointed(null); timeline.reset() }
+  // The workbench and the panel share the right edge: one at a time.
+  const togglePoint = () => {
+    setWantBuild(on => !on); setPointed(null); timeline.reset()
+    setPanel(p => ({ ...p, open: false }))
+  }
 
   const refreshBuilt = useCallback(async () => {
     const fresh = await qc.fetchQuery({
@@ -572,10 +704,27 @@ function OpenReport({ report, model }) {
     setDisk(fresh || null)
   }, [qc, name])
 
+  // The panel's open/closed and its tab are remembered for next time.
+  useEffect(() => {
+    try { localStorage.setItem(PANEL_KEY, JSON.stringify(panel)) } catch { /* private window */ }
+  }, [panel])
+  const showPanel = panel.open && !pointOn
+  const openPanel = (tab, e) => {
+    panelOpener.current = e?.currentTarget || null
+    setWantBuild(false)
+    setPanel(p => (p.open && p.tab === tab ? { ...p, open: false } : { open: true, tab }))
+  }
   const closePanel = useCallback(() => {
-    setPanel(null)
-    moreRef.current?.querySelector('button')?.focus()
+    setPanel(p => ({ ...p, open: false }))
+    if (panelOpener.current?.isConnected) panelOpener.current.focus()
   }, [])
+  // Escape closes the panel (a menu or dialog has already taken the key).
+  useEffect(() => {
+    if (!showPanel) return undefined
+    const esc = e => { if (e.key === 'Escape' && !e.defaultPrevented) closePanel() }
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [showPanel, closePanel])
 
   // The desk re-runs every recorded query against the warehouse as it is now.
   const checkAgain = async () => {
@@ -594,48 +743,81 @@ function OpenReport({ report, model }) {
 
   // A check still running would show the verdict from before it.
   const flag = !checkingDesk && lastBuild ? sinceFlag(lastBuild.verdict) : null
+  const message = flag && verdictOf(lastBuild.verdict)
   const builtAt = shown?.manifest?.rendered_at ? stamp(shown.manifest.rendered_at) : null
   const opening = !frameHtml && !running && ((!desk && !deskFailed) || built.isLoading)
-  const back = model
+  const toModel = model
     ? `${pagePath('reports', model)}${narrow ? '' : `?${new URLSearchParams({ r: name })}`}`
     : pagePath('reports', '')
   const label = name.slice(name.lastIndexOf('/') + 1)
+  const words = scheduleWords(report.schedule)
 
   return (
     <div className={pointOn ? 'rp rp--build' : 'rp'}>
-      <header className="rp__bar">
-        <Link to={back} className="rp__back">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-               strokeLinecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
-          <span className={model ? 'rp__model' : undefined}>{model || 'All reports'}</span>
-        </Link>
-        <span className="rp__sep" aria-hidden="true">/</span>
-        <h1 className="rp__name" title={name}>{label}</h1>
-        {builtAt && (
-          <span className="rp__built"
-                title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">
-            Built {builtAt}
-          </span>
-        )}
-        {flag && <Flag flag={flag} />}
-        <div className="rp__actions">
-          {canBuild && shown && (
-            <Btn onClick={rebuild} disabled={running} variant="outline" style={BAR_BTN}
-                 title="Re-run every query and build the report again">
-              {running ? <><Spinner size={12} /> Rebuilding…</> : 'Rebuild'}
-            </Btn>
+      <header className="rp__head">
+        <nav aria-label="Where this report is" className="rp__crumb">
+          {navMenu && (
+            <button type="button" className="cmd rp__menu-btn" aria-label="Menu" onClick={navMenu.open}><Icon name="menu" size={18} /></button>
           )}
-          {canPoint && (
-            <Btn onClick={togglePoint} variant={pointOn ? 'primary' : 'outline'} style={BAR_BTN}
-                 aria-pressed={pointOn}
-                 title="Build mode: point at a figure or area, leave your agent notes, and watch it work.">
-              ◎ Build
-            </Btn>
+          {model ? (
+            <>
+              <Link to={pagePath('overview', model)} className="rp__model">{model}</Link>
+              <span aria-hidden="true">›</span>
+              <Link to={toModel}>Reports</Link>
+            </>
+          ) : <Link to={toModel}>All reports</Link>}
+        </nav>
+        <div className="rp__titlerow">
+          <h1 className="rp__name" title={name}>{label}</h1>
+          {flag && (
+            <button type="button" className={`rp__chip rp__chip--${flag.kind}`} onClick={e => openPanel('details', e)}>
+              <span aria-hidden="true">{flag.glyph}</span> {flag.text}
+            </button>
           )}
-          <ShareButton name={name} />
-          <MoreMenu name={name} rootRef={moreRef} onPanel={setPanel} onCheck={checkAgain} checking={checking} />
+          <div className="rp__meta">
+            {builtAt && (
+              <span title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">Built {builtAt}</span>
+            )}
+            {refreshed && <span className="rp__hide-sm">Data refreshed {stamp(refreshed)}</span>}
+            {words && <span className="rp__hide-sm"><Icon name="calendar" size={13} /> {words.short}</span>}
+          </div>
         </div>
+
+      <div role="toolbar" aria-label="Report actions" className="rp__bar">
+        {canBuild && shown && (
+          <Cmd icon="rebuild" onClick={rebuild} disabled={running}
+               title="Re-run every query and build the report again">
+            {running ? <><Spinner size={12} /> Rebuilding…</> : 'Rebuild'}
+          </Cmd>
+        )}
+        {canBuild && <ExportMenu name={name} />}
+        <SharePopover name={name} />
+        {canBuild && <span className="rp__vr" aria-hidden="true" />}
+        <EditAsDraft kind="reports" path={name} bare />
+        {canPoint && (
+          <Cmd icon="build" on={pointOn} onClick={togglePoint}
+               title="Build mode: point at a figure or area, leave your agent notes, and watch it work.">
+            Build
+          </Cmd>
+        )}
+        <span className="rp__grow" />
+        {!pointOn && TABS.slice(1, 3).concat(TABS.slice(0, 1)).map(([key, text]) => (
+          <Cmd key={key} icon={key} on={showPanel && (panel.tab === key || (key === 'details' && panel.tab === 'code'))}
+               onClick={e => openPanel(key, e)}>{text}</Cmd>
+        ))}
+      </div>
       </header>
+
+      {message && (
+        <div role="status" className={`rp__msg rp__msg--${flag.kind}`}>
+          <span aria-hidden="true">{flag.glyph}</span>
+          <span className="rp__msg-text">
+            <strong>{message.label}.</strong> {message.detail || 'See Details.'}
+          </span>
+          {canBuild && <button type="button" className="rpanel__link" onClick={rebuild} disabled={running}>Rebuild</button>}
+          <button type="button" className="rpanel__link" onClick={e => openPanel('details', e)}>Details</button>
+        </div>
+      )}
 
       <div className="rp__body">
         <main className="rp__main">
@@ -670,16 +852,15 @@ function OpenReport({ report, model }) {
                        state={wbState} previewError={wbPreview.error} timeline={timeline} />
           </aside>
         )}
+        {showPanel && (
+          <>
+            <div className="rp__scrim rp__scrim--panel" onClick={closePanel} aria-hidden="true" />
+            <ReportPanel tab={panel.tab} setTab={tab => setPanel({ open: true, tab })} onClose={closePanel}
+                         report={report} model={model} shown={shown} lastBuild={lastBuild}
+                         checkedAt={dataUpdatedAt} flag={flag} onCheck={checkAgain} checking={checking} />
+          </>
+        )}
       </div>
-
-      {panel && (
-        <Drawer title={PANELS[panel]} onClose={closePanel}>
-          {panel === 'lineage' && <LineagePanel name={name} manifest={shown?.manifest} />}
-          {panel === 'code' && <CodePanel name={name} />}
-          {panel === 'schedule' && <SchedulePanel report={report} />}
-          {panel === 'history' && <RunHistory name={name} />}
-        </Drawer>
-      )}
     </div>
   )
 }
@@ -692,10 +873,10 @@ export function ReportPage({ name, model }) {
   if (!report) {
     return (
       <div className="rp">
-        <header className="rp__bar">
-          <Link to={model ? pagePath('reports', model) : '/reports'} className="rp__back">
-            <span aria-hidden="true">‹</span> {model || 'All reports'}
-          </Link>
+        <header className="rp__head">
+          <nav aria-label="Where this report is" className="rp__crumb">
+            <Link to={model ? pagePath('reports', model) : '/reports'}>{model || 'All reports'}</Link>
+          </nav>
         </header>
         <main className="rp__state">
           <p className="rp__lead">No report named “{name}”.</p>

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useModels, useMe, signOut } from '../api'
 import { pagePath, lastModel } from '../nav'
-import { ModelSwitcher, useScope, useOpenReport } from './Scope'
+import { ModelSwitcher, useScope, useOpenReport, NavMenuContext } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -117,6 +117,34 @@ function NavItem({ path, label, icon, active, onNavigate }) {
   )
 }
 
+// A page of its own (an open report) keeps the app's nav as a 56px rail: the
+// same places, icon only, each with a name and a tooltip. "Expand the menu"
+// opens the full sidebar over the page; on a phone the rail is hidden and the
+// page's own Menu button does the same.
+function Rail({ items, expanded, onExpand }) {
+  return (
+    <nav aria-label="Main" className="rail" aria-hidden={expanded || undefined} inert={expanded}>
+      <div className="rail__brand"><BrandMark /></div>
+      {items.map(item => (
+        <Link key={item.path} to={item.path} className="rail__item" aria-label={item.label}
+              aria-current={item.active ? 'page' : undefined}>
+          <span className="rail__ico">{ICONS[item.icon]}</span>
+          <span className="rail__tip" aria-hidden="true">{item.label}</span>
+        </Link>
+      ))}
+      <span className="rail__fill" />
+      <button type="button" className="rail__item" aria-label="Expand the menu"
+              aria-expanded={!!expanded} onClick={onExpand}>
+        <span className="rail__ico">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+               strokeLinecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        </span>
+        <span className="rail__tip" aria-hidden="true">Expand the menu</span>
+      </button>
+    </nav>
+  )
+}
+
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false)
   const { data: health, isSuccess: healthOk } = useHealth()
@@ -145,6 +173,8 @@ export default function Layout({ children }) {
 
   const close = () => setOpen(false)
   const { pathname } = useLocation()
+  const openerRef = useRef(null)
+  const closeRef = useRef(null)
   const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
   const model = useSidebarModel()
   const scope = useScope()
@@ -158,15 +188,43 @@ export default function Layout({ children }) {
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  // An open report is a page of its own, with a light bar of its own: no sidebar.
-  if (openReport) return children
+  // Over a report the full menu is an overlay: focus goes into it, Escape closes
+  // it (before the report's own panel hears the key), and focus goes back to
+  // what opened it.
+  const wasOpen = useRef(false)
+  useEffect(() => {
+    if (!openReport) return undefined
+    if (open) {
+      wasOpen.current = true
+      closeRef.current?.focus()
+      const esc = e => { if (e.key === 'Escape') { e.stopPropagation(); close() } }
+      document.addEventListener('keydown', esc, true)
+      return () => document.removeEventListener('keydown', esc, true)
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false
+      if (openerRef.current?.isConnected) openerRef.current.focus()
+    }
+    return undefined
+  }, [open, openReport])
+  // The opener is the clicked button (a click does not focus a button in every browser).
+  const openMenu = e => { openerRef.current = e?.currentTarget || document.activeElement; setOpen(true) }
+
+  const items = [
+    { path: pagePath('overview', model), label: 'Overview', icon: 'overview', active: scope.page === 'overview' },
+    { path: '/map', label: 'Map', icon: 'map', active: pathname.startsWith('/map') },
+    { path: pagePath('explore', model), label: 'Explore', icon: 'explore', active: scope.page === 'explore' },
+    { path: '/drafts', label: 'Drafts', icon: 'drafts', active: pathname.startsWith('/drafts') },
+    { path: '/verify', label: 'Verify a file', icon: 'verify', active: pathname.startsWith('/verify') },
+  ]
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={openReport ? undefined : { display: 'flex', minHeight: '100vh' }}
+         className={openReport ? 'rail-shell' : undefined}>
       <CommandPalette />
 
       {/* Mobile top bar */}
-      <header className="mobile-header" style={{
+      {!openReport && <header className="mobile-header" style={{
         display: 'none', position: 'fixed', top: 0, left: 0, right: 0,
         height: 52,
         background: 'var(--header-bg)',
@@ -194,7 +252,7 @@ export default function Layout({ children }) {
             <span key={i} style={{ display: 'block', width: 20, height: 2, background: 'var(--text-2)', borderRadius: 1 }} />
           ))}
         </button>
-      </header>
+      </header>}
 
       {/* Overlay */}
       {open && (
@@ -205,20 +263,24 @@ export default function Layout({ children }) {
         }} />
       )}
 
+      {/* An open report keeps the nav as a rail; the sidebar opens over it. */}
+      {openReport && <Rail items={items} expanded={open} onExpand={openMenu} />}
+
       {/* Sidebar */}
       {/* Pinned top AND bottom, not min-height: 100vh — on a phone, 100vh is
           not the visible screen (browser bars, zoom), and the drawer stopped
           short. It scrolls itself if the links outgrow a short screen. */}
-      <nav aria-label="Main" style={{
+      {(!openReport || open) && <nav aria-label="Main" style={{
         width: 'var(--nav-w)',
         background: 'var(--sidebar-bg)',
         borderRight: '1px solid var(--sidebar-border)',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
         position: 'fixed', top: 0, bottom: 0, left: 0, zIndex: 300,
         overflowY: 'auto', overscrollBehavior: 'contain',
-      }} className={`app-nav${open ? ' nav-open' : ''}`}>
+      }} className={`app-nav${open ? ' nav-open' : ''}${openReport ? ' app-nav--overlay' : ''}`}>
 
         <button
+          ref={closeRef}
           className="nav-close-btn"
           onClick={close}
           style={{
@@ -277,13 +339,7 @@ export default function Layout({ children }) {
             tinted; Drafts and Verify a file are about no one model: a file can
             come from anywhere. */}
         <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
-          {[
-            { path: pagePath('overview', model), label: 'Overview', icon: 'overview', active: scope.page === 'overview' },
-            { path: '/map', label: 'Map', icon: 'map', active: pathname.startsWith('/map') },
-            { path: pagePath('explore', model), label: 'Explore', icon: 'explore', active: scope.page === 'explore' },
-            { path: '/drafts', label: 'Drafts', icon: 'drafts', active: pathname.startsWith('/drafts') },
-            { path: '/verify', label: 'Verify a file', icon: 'verify', active: pathname.startsWith('/verify') },
-          ].map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
+          {items.map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
         </ul>
 
         <div style={{
@@ -348,17 +404,23 @@ export default function Layout({ children }) {
             </div>
           )}
         </div>
-      </nav>
+      </nav>}
 
       {/* Main content */}
-      <main style={{
-        marginLeft: 'var(--nav-w)', flex: 1, minWidth: 0,
-        padding: '36px 44px', maxWidth: 1340,
-      }} className="layout-main">
-        {children}
-      </main>
+      {openReport ? (
+        <NavMenuContext.Provider value={{ open: openMenu }}>
+          <div className="rail-shell__page" inert={open}>{children}</div>
+        </NavMenuContext.Provider>
+      ) : (
+        <main style={{
+          marginLeft: 'var(--nav-w)', flex: 1, minWidth: 0,
+          padding: '36px 44px', maxWidth: 1340,
+        }} className="layout-main">
+          {children}
+        </main>
+      )}
 
-      <style>{`
+      {!openReport && <style>{`
         @media (max-width: 860px) {
           .mobile-header { display: flex !important; }
           .nav-close-btn { display: flex !important; }
@@ -366,7 +428,7 @@ export default function Layout({ children }) {
           .app-nav.nav-open { transform: translateX(0); }
           main { margin-left: 0 !important; margin-top: 52px; padding: 20px 16px !important; max-width: 100% !important; }
         }
-      `}</style>
+      `}</style>}
     </div>
   )
 }

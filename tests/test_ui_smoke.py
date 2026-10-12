@@ -244,33 +244,35 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                     .querySelectorAll('#fig-treemap g.cell').length === 2""")
             fail_on_browser_errors()
 
-            # An open report is a page of its own: no sidebar, no list, one light
-            # bar whose first link goes back to its model.
-            assert page.get_by_role("navigation", name="Main").count() == 0
+            # An open report is a page of its own: the nav stays as a rail, the list
+            # does not, and the breadcrumb's Reports link goes back to its model.
+            rail = page.get_by_role("navigation", name="Main")
+            rail.get_by_role("link", name="Overview").wait_for()
             assert not page.get_by_placeholder("Search reports…").is_visible()
-            back = page.get_by_role("link", name="portfolio_model", exact=True)
+            back = page.get_by_role("link", name="Reports", exact=True)
             back.wait_for()
 
-            # One More menu holds the three files, each with its caveat.
-            page.get_by_role("button", name="More").click()
-            menu = page.locator("#report-more")
-            links = menu.get_by_role("link").all()
-            assert [link.inner_text().split("\n")[0] for link in links] == [
-                "Download HTML", "Download Excel", "Download PDF"]
-            assert [link.get_attribute("href").rsplit("=", 1)[1] for link in links] == ["html", "xlsx", "pdf"]
-            assert "carries no receipt" in menu.inner_text()
+            # Export is one menu of the three files, and says which carries the receipt.
+            page.get_by_role("button", name="Export").click()
+            menu = page.get_by_role("menu")
+            links = menu.get_by_role("menuitem").all()
+            assert [link.inner_text().split("\n")[0] for link in links] == ["PDF", "Excel", "HTML"]
+            assert [link.get_attribute("href").rsplit("=", 1)[1] for link in links] == ["pdf", "xlsx", "html"]
+            assert "Only the HTML file carries its receipt" in menu.inner_text()
             page.keyboard.press("Escape")
             assert menu.count() == 0
 
-            # Lineage and the code are reached from the same menu, over the report.
-            page.get_by_role("button", name="More").click()
-            page.get_by_role("button", name="Lineage and manifest").click()
-            page.get_by_text("Where each number on the page came from").wait_for()
-            page.keyboard.press("Escape")
-            page.get_by_role("button", name="More").click()
-            page.get_by_role("button", name="Code", exact=True).click()
+            # Lineage, the check and the code are a panel beside the report.
+            page.get_by_role("button", name="Lineage").click()
+            page.get_by_text("Where the numbers on this page came from").wait_for()
+            page.get_by_text("fact_holdings").first.wait_for()
+            page.get_by_role("tab", name="Details").click()
+            page.get_by_text("fact_holdings: the sink satisfied its contract").wait_for()
+            page.get_by_role("button", name="Check again").wait_for()
+            page.get_by_role("tab", name="Code").click()
             page.get_by_role("button", name="report.json").wait_for()
-            page.get_by_role("button", name="Close").click()
+            page.get_by_role("button", name="Close the panel").click()
+            assert page.get_by_role("tab", name="Code").count() == 0
 
             downloaded = page.evaluate(
                 """async (url) => {
@@ -307,6 +309,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("0 of 1 built reports re-run to the same numbers").wait_for()
             page.get_by_role("link", name="Open").click()
             page.get_by_text("Source changed since").wait_for()
+            bar = page.get_by_role("status").filter(has_text="Source changed.")
+            expect(bar).to_contain_text("The data changed since it was built")
+            assert "re-run to the same" not in bar.inner_text()
             page.unroute("**/api/desk")
 
             # The all-models page keeps its list; a row there opens the same page.
