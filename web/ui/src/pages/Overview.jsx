@@ -5,6 +5,7 @@ import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { useMe, useStartPipelineRun } from '../api'
 import TheLine, { Breakable, stamp, since, useLineFacts } from '../components/TheLine'
 import Warehouse from '../components/Warehouse'
+import EditAsDraft from '../components/EditAsDraft'
 import { ModelDetail } from './Models'
 import Pipelines from './Pipelines'
 import Reports from './Reports'
@@ -155,7 +156,12 @@ export default function Overview({ model, stage }) {
 
       <section className="stage" aria-label={STAGE_LABEL[stage]}>
         {stage === 'reports' && <Reports model={model} embedded />}
-        {stage === 'model' && <ModelDetail name={model} />}
+        {stage === 'model' && (
+          <>
+            <div className="stage__actions"><EditAsDraft kind="models" path={model} /></div>
+            <ModelDetail name={model} />
+          </>
+        )}
         {stage === 'transform' && <TransformStage model={model} facts={facts} />}
       </section>
     </div>

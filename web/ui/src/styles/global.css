@@ -1283,3 +1283,5 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .station__notch, .station[aria-current="page"] .station__notch { display: none; }
   .stage { margin-top: 16px; }
 }
+
+.stage__actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
