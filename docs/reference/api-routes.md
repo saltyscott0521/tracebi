@@ -75,7 +75,9 @@ in the default style), `package` (a `reports/<name>/` with its own template
 and style) or `code`. `/source` returns the files that define the report —
 the spec, or the package's `report.json`, `template.html`, `style.css`,
 `script.js` and `report.py` — read-only, and only the files discovery
-registered for it.
+registered for it. It also gives each report `models` (the models its data
+bindings read) and `measures` (the declared measure names they ask for, read
+from the file, never from a warehouse); the Map draws both.
 
 `/run` returns `{name, html, manifest}` — the **real artifact render**, so what
 the browser shows is what `verify --file` can check. `POST /runs` starts the
@@ -167,6 +169,10 @@ needed. See [[receipts]].
 
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
+
+`GET /api/pipelines` names each pipeline's `models`, its layers with their last
+run, and its `transform` (the phase ① script a model pipeline runs; `null` for a
+hand-built runner).
 
 `POST …/runs` is what the Refresh page's **Run all** and per-step **Run** use. It
 starts the run in the background and returns at once (`202`; `?layer=` runs one
