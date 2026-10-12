@@ -150,6 +150,22 @@ class TestWhoMayTouchADraft:
         assert client.post(f"{url}/publish", headers=self._as("carol", "viewer")).status_code == 403
         assert client.delete(url, headers=self._as("carol", "viewer")).status_code == 403
 
+    def test_only_the_owner_at_analyst_or_above_can_start_or_write(self, client, project):
+        """Starting and writing are writes: a viewer gets 403 on both, even on
+        their own draft, and another analyst cannot write into someone else's."""
+        url = "/api/drafts/alice/reports/finance/weekly/files/template.html"
+        body = {"content": "<p>changed</p>"}
+        start = {"kind": "reports", "path": "finance/weekly"}
+        assert client.put(url, json=body, headers=self._as("alice", "viewer")).status_code == 403
+        assert client.put(url, json=body, headers=self._as("bob", "analyst")).status_code == 403
+        assert client.post("/api/drafts", json=start, headers=self._as("carol", "viewer")).status_code == 403
+        assert not (project / "drafts/carol").exists()
+        assert (project / "drafts/alice/reports/finance/weekly/template.html").read_text() == "<p>secret</p>"
+
+        assert client.put(url, json=body, headers=self._as("alice", "analyst")).status_code == 200
+        assert client.put(url, json={"content": "<p>root</p>"},
+                          headers=self._as("root", "admin")).status_code == 200
+
     def test_the_list_is_your_own_and_an_admin_sees_all(self, client):
         drafts.start_draft("bob", "reports", "other")
         mine = client.get("/api/drafts", headers=self._as("bob", "analyst")).json()["drafts"]

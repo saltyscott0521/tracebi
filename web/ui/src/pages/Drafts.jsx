@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
   useDrafts, useDraftVersion, useDraftFiles, useDraftPreview,
-  usePublishDraft, useDeleteDraft,
+  usePublishDraft, useDeleteDraft, useWriteDraftFile, useMe,
 } from '../api'
 import { reportModels, reportPagePath } from '../nav'
 import {
@@ -15,7 +15,8 @@ import { when } from '../components/Attention'
 
 // Drafts: what an agent (or a person) is writing before it is published. A
 // draft is private to its owner; Publish is the one step that changes what
-// everyone sees.
+// everyone sees. An analyst or admin can edit a draft's files here; Save writes
+// the file and the live preview follows.
 
 const href = d => `/drafts/${encodeURIComponent(d.owner)}/${d.kind}/${d.path.split('/').map(encodeURIComponent).join('/')}`
 const kindLabel = kind => (kind === 'models' ? 'Model' : 'Report')
@@ -83,9 +84,12 @@ export function DraftPage() {
   const [note, setNote] = useState('')
   const [published, setPublished] = useState(null)
   const [refusal, setRefusal] = useState(null)
+  const [edits, setEdits] = useState({}) // file name -> { base, text, saved, error }
 
+  const { data: me } = useMe()
+  const canEdit = me?.role === 'analyst' || me?.role === 'admin'
   const { data: version, error: versionError } = useDraftVersion(d)
-  const { data: files } = useDraftFiles(d, version)
+  const { data: files, isPlaceholderData: filesStale } = useDraftFiles(d, version)
   const { data: html, error: previewError } = useDraftPreview(d, version, isReport)
   // Keep the last page that rendered, so a broken save shows its error above
   // the previous page instead of a blank one.
@@ -93,6 +97,16 @@ export function DraftPage() {
   if (html) lastHtml.current = html
   const publish = usePublishDraft(d)
   const del = useDeleteDraft(d)
+  const write = useWriteDraftFile(d)
+  const unsaved = Object.values(edits).some(e => e.text !== e.base)
+
+  // Closing the tab with text that never reached the draft would lose it.
+  useEffect(() => {
+    if (!unsaved) return undefined
+    const warn = e => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [unsaved])
 
   const doPublish = () => {
     setRefusal(null)
@@ -119,10 +133,7 @@ export function DraftPage() {
     )
   }
 
-  const fileList = Object.entries(files?.files || {}).map(([name, content]) => ({
-    path: name, content,
-  }))
-  const busy = publish.isPending || del.isPending
+  const busy = publish.isPending || del.isPending || write.isPending
 
   return (
     <div className="fade-in">
@@ -144,6 +155,11 @@ export function DraftPage() {
             Publishing replaces the {kindLabel(kind).toLowerCase()} everyone sees with this draft.
             The version it replaces is kept.
           </p>
+          {unsaved && (
+            <Alert variant="warn">
+              △ A file has unsaved changes. Publishing uses what is saved in the draft.
+            </Alert>
+          )}
           <label htmlFor="draft-note" style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
             Note (optional)
           </label>
@@ -192,16 +208,155 @@ export function DraftPage() {
             : !previewError && <Spinner />}
         </>
       )}
-      {tab === 'Files' && (
-        <>
-          {!isReport && (
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
-              A model draft has no page. It is the file below, and it becomes a model when published.
-            </p>
-          )}
-          {fileList.length ? <CodeFiles files={fileList} /> : <Spinner />}
-        </>
-      )}
+      {/* Hidden, not unmounted, off its tab: an open editor keeps its text. */}
+      <div hidden={tab !== 'Files'}>
+        {!isReport && (
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+            A model draft has no page. It is the file below, and it becomes a model when published.
+          </p>
+        )}
+        {files
+          ? <DraftFiles texts={files.files} stale={filesStale} edits={edits} setEdits={setEdits}
+              write={write} canEdit={canEdit} />
+          : <Spinner />}
+      </div>
     </div>
+  )
+}
+
+const mono = { fontFamily: 'var(--font-mono)' }
+const target = { minHeight: 44 }
+
+// The Files tab: each file read-only until Edit, then a textarea. Nothing
+// reaches the draft until Save. The text lives in the page's `edits` so it
+// survives choosing another file or tab.
+function DraftFiles({ texts, stale, edits, setEdits, write, canEdit }) {
+  const names = Object.keys(texts)
+  const [active, setActive] = useState(null)
+  const leave = useRef(false)   // Esc was pressed: the next Tab leaves the textarea
+  const focus = useRef(false)   // focus the textarea once, when Edit opens it
+  const name = names.includes(active) ? active : names[0]
+  const edit = edits[name]
+  const dirty = !!edit && edit.text !== edit.base
+  // The file changed under the editor (an agent wrote it). With typing in the
+  // editor Save would replace that, so say so; with none, the editor just
+  // follows the file.
+  const changed = !!edit && !stale && texts[name] !== edit.base
+  const elsewhere = changed && dirty
+
+  const patch = (file, change) =>
+    setEdits(all => (all[file] ? { ...all, [file]: { ...all[file], ...change } } : all))
+  const begin = () => {
+    focus.current = true
+    setEdits(all => ({ ...all, [name]: { base: texts[name], text: texts[name], saved: false, error: null } }))
+  }
+  const close = () => setEdits(all => {
+    const { [name]: _closed, ...rest } = all
+    return rest
+  })
+  const save = () => {
+    if (!dirty || write.isPending) return
+    const { text } = edit
+    write.mutate({ file: name, content: text }, {
+      onSuccess: () => setEdits(all => (all[name]
+        ? { ...all, [name]: { ...all[name], base: text, saved: all[name].text === text, error: null } }
+        : all)),
+      onError: error => patch(name, { error }),
+    })
+  }
+
+  useEffect(() => {
+    if (changed && !dirty) patch(name, { base: texts[name], text: texts[name] })
+  }, [changed, dirty, name, texts]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onKeyDown = e => {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 's') {
+      e.preventDefault()
+      save()
+    } else if (e.key === 'Escape') {
+      leave.current = true
+    } else if (e.key !== 'Tab') {
+      leave.current = false
+    } else if (!leave.current && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault()
+      const box = e.currentTarget
+      box.setRangeText('  ', box.selectionStart, box.selectionEnd, 'end')
+      patch(name, { text: box.value, saved: false, error: null })
+    }
+  }
+
+  if (!name) return <Spinner />
+
+  return (
+    <>
+      {names.length > 1 && (
+        <div className="codeview__tabs">
+          {names.map(n => {
+            const open = edits[n] && edits[n].text !== edits[n].base
+            return (
+              <Btn key={n} size="sm" variant={n === name ? undefined : 'outline'}
+                   aria-label={open ? `${n}, unsaved changes` : undefined}
+                   onClick={() => setActive(n)} style={{ ...mono, minHeight: 36 }}>
+                {n}{open && ' △'}
+              </Btn>
+            )
+          })}
+        </div>
+      )}
+
+      {canEdit && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          {edit ? (
+            <>
+              <Btn onClick={save} disabled={!dirty || write.isPending} style={target}>
+                {write.isPending ? 'Saving…' : 'Save'}
+              </Btn>
+              <Btn variant="outline" onClick={close} disabled={write.isPending} style={target}>
+                {dirty ? 'Discard' : 'Close'}
+              </Btn>
+            </>
+          ) : (
+            <Btn variant="outline" onClick={begin} style={target}>Edit</Btn>
+          )}
+          <span role="status" style={{
+            fontSize: 12, color: dirty ? 'var(--amber-text)' : 'var(--muted)', fontWeight: dirty ? 600 : 400,
+          }}>
+            {dirty ? '△ Unsaved changes' : edit?.saved ? 'Saved' : ''}
+          </span>
+        </div>
+      )}
+
+      {edit?.error && <div role="alert"><ErrorDetail error={edit.error} /></div>}
+      {elsewhere && (
+        <Alert variant="warn">
+          △ This file changed on the server since you started editing. Saving replaces it with your version.
+        </Alert>
+      )}
+
+      {edit ? (
+        <>
+          <div className="codeview__bar"><span className="codeview__path">{name}</span></div>
+          <textarea
+            key={name}
+            ref={el => { if (el && focus.current) { focus.current = false; el.focus() } }}
+            aria-label={`Edit ${name}`} aria-describedby="draft-editor-hint"
+            value={edit.text} wrap="off" spellCheck={false} autoCapitalize="off" autoComplete="off"
+            rows={Math.min(32, Math.max(14, edit.text.split('\n').length + 1))}
+            onChange={e => patch(name, { text: e.target.value, saved: false, error: null })}
+            onKeyDown={onKeyDown} onBlur={() => { leave.current = false }}
+            style={{
+              ...mono, display: 'block', width: '100%', boxSizing: 'border-box', padding: '12px 14px',
+              fontSize: 13, lineHeight: 1.6, tabSize: 2, whiteSpace: 'pre', overflow: 'auto', resize: 'vertical',
+              color: 'var(--text)', background: 'var(--surface)',
+              border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-lg)',
+            }} />
+          <p id="draft-editor-hint" style={{ fontSize: 12, color: 'var(--muted)', margin: '6px 0 0' }}>
+            Tab inserts two spaces; Esc, then Tab, leaves the editor. Cmd or Ctrl+S saves.
+          </p>
+        </>
+      ) : (
+        <CodeFiles key={name} files={[{ path: name, content: texts[name] }]} />
+      )}
+    </>
   )
 }

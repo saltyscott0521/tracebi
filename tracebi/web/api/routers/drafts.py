@@ -1,15 +1,16 @@
 """Drafts over HTTP: the person's view of what an agent (or they) are writing.
 
-Reading is for the draft's owner or an admin; publishing and deleting also need
-``analyst`` (the unlisted-write default in ``auth._required_role``). With no
-authorization configured every principal is ``admin``, as everywhere else.
+Reading is for the draft's owner or an admin; starting, writing, publishing and
+deleting also need ``analyst`` (the unlisted-write default in
+``auth._required_role``). With no authorization configured every principal is
+``admin``, as everywhere else.
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -22,6 +23,16 @@ router = APIRouter(prefix="/drafts", tags=["drafts"])
 
 class PublishBody(BaseModel):
     note: str = ""
+
+
+class StartBody(BaseModel):
+    kind: Literal["reports", "models"]
+    path: str
+    from_published: bool = True
+
+
+class FileBody(BaseModel):
+    content: str
 
 
 def _who() -> "tuple[Optional[str], bool]":
@@ -52,6 +63,24 @@ def list_drafts():
         for d in found]}
 
 
+@router.post("")
+def start_draft(body: StartBody, response: Response):
+    """Start the acting user's draft of a published report or model. One they
+    already have is returned as it is (200), so "edit this" is safe to repeat;
+    a new one is 201. A Python model or a report that runs code is refused
+    (422), and the message says to edit it from a laptop."""
+    owner = drafts.slug_owner(_who()[0])
+    try:
+        have = next((d for d in drafts.list_drafts(owner)
+                     if (d["kind"], d["path"]) == (body.kind, body.path)), None)
+        draft = have or drafts.start_draft(owner, body.kind, body.path, body.from_published)
+    except drafts.DraftError as exc:
+        raise _refused(exc)
+    response.status_code = 200 if have else 201
+    return {**draft, "url": drafts.draft_url(owner, body.kind, body.path),
+            "created": have is None}
+
+
 @router.get("/{owner}/{kind}/{path:path}/version")
 def draft_version(owner: str, kind: str, path: str):
     _allow(owner)
@@ -66,6 +95,18 @@ def draft_files(owner: str, kind: str, path: str):
     _allow(owner)
     try:
         return drafts.read_draft(owner, kind, path)
+    except drafts.DraftError as exc:
+        raise _refused(exc)
+
+
+@router.put("/{owner}/{kind}/{path:path}/files/{file}")
+def write_draft_file(owner: str, kind: str, path: str, file: str, body: FileBody):
+    """Write one of the draft's files. The answer carries the draft's new
+    version, so a page can follow it without waiting for its next poll."""
+    _allow(owner)
+    try:
+        written = drafts.write_draft_file(owner, kind, path, file, body.content)
+        return {**written, "version": drafts.draft_version(owner, kind, path)}
     except drafts.DraftError as exc:
         raise _refused(exc)
 

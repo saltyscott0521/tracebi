@@ -137,6 +137,8 @@ once.
 | Method | Path | Role |
 |---|---|---|
 | GET | `/api/drafts` | viewer: own drafts (an admin sees everyone's) |
+| POST | `/api/drafts` | analyst: start (or open) your own draft of a published report or model |
+| PUT | `/api/drafts/{owner}/{kind}/{path}/files/{file}` | analyst; owner or admin (returns the new version) |
 | GET | `/api/drafts/{owner}/{kind}/{path}/version` | owner or admin |
 | GET | `/api/drafts/{owner}/{kind}/{path}/preview` | owner or admin (HTML) |
 | GET | `/api/drafts/{owner}/{kind}/{path}/files` | owner or admin |
@@ -149,7 +151,16 @@ once.
   person's drafts, newest first.
 - **The Draft page** (`/drafts/<owner>/<kind>/<path>`): the report rendered
   live (polls `version`, re-fetches `preview` when it changes), its files in a
-  read-only Code tab, and **Publish** with an optional note.
+  Files tab, and **Publish** with an optional note. For an analyst or admin
+  the Files tab is editable: **Edit** opens a file in a text box, **Save**
+  writes it and the preview follows.
+- **A signed-in person can start and edit a draft in the app**, without an
+  agent: the `EditAsDraft` button (`web/ui/src/components/EditAsDraft.jsx`)
+  calls `POST /api/drafts` for the published report or model, which copies it
+  into the person's own drafts (or opens the one they already have), then goes
+  to the Draft page. A Python model, or a report with a `report.py`, is
+  refused with the same "edit it from a laptop" line as over MCP. A viewer is
+  not offered the button and the routes refuse them.
 
 ### Declarative model: `models/<name>.json`
 

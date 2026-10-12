@@ -112,11 +112,19 @@ A draft's owner is the acting principal; `{owner}` is that name slugged to
 | Method | Path | Role |
 | --- | --- | --- |
 | `GET` | `/api/drafts` | owner (their own); admin (everyone's) |
+| `POST` | `/api/drafts` | analyst: start your own draft of a published report or model |
+| `PUT` | `/api/drafts/{owner}/{kind}/{path}/files/{file}` | analyst, and owner or admin |
 | `GET` | `/api/drafts/{owner}/{kind}/{path}/files` | owner or admin |
 | `GET` | `/api/drafts/{owner}/{kind}/{path}/version` | owner or admin |
 | `GET` | `/api/drafts/{owner}/{kind}/{path}/preview` | owner or admin |
 | `POST` | `/api/drafts/{owner}/{kind}/{path}/publish` | analyst, and owner or admin |
 | `DELETE` | `/api/drafts/{owner}/{kind}/{path}` | analyst, and owner or admin |
+
+`POST /api/drafts` takes `{"kind": "reports"|"models", "path", "from_published"}`
+and answers `201` with the new draft, or `200` with the one the caller already
+has; a Python model, or a report with a `report.py`, is `422` and the message
+says to edit it from a laptop. `PUT .../files/{file}` takes `{"content"}` and
+answers with the draft's new `version`.
 
 `/preview` renders the draft in memory against the published models plus the
 owner's draft models, and writes nothing. `/publish` validates the draft first,
