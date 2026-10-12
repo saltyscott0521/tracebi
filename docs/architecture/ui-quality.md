@@ -132,8 +132,8 @@ Each fix that taught something general adds a line here.
   (`/api/desk`) on a report's newest build, and a neutral "Not checked" on every
   older one. A build row stores no verdict, so it never reads green by itself.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one
-  primary action, the rest quiet, and a menu for the family (Download holds
-  HTML, Excel and PDF, each with its one-line caveat). An open item gets the
+  primary action, the rest quiet, and a menu for the family (Export holds
+  HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the
   page's full width; its list is one click away.
 - Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.
