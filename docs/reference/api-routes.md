@@ -86,7 +86,7 @@ same work in the background and returns a `run_id` to poll.
 > **There is one renderer.** A registered report with no package is refused with
 > `422` naming the fix, never served through a weaker path. See [[report]].
 
-`/built` is what the Reports page opens: the **last build**, from
+`/built` is what the app opens for a report: the **last build**, from
 `output/<name>.html` or, when that file is not there, the path recorded in
 the run store. A report never built on this server is built once on first
 open and kept. Opening never re-queries after that; fresh data comes from
@@ -94,7 +94,7 @@ open and kept. Opening never re-queries after that; fresh data comes from
 
 `GET /api/runs` lists rows from that store, newest first. Query params:
 `kind`, `target`, `limit`. A viewer may read it. The HTML of a report stays
-on disk; the row holds the output path. The Runs page (`/runs`) is this list.
+on disk; the row holds the output path. The **History** list (`/runs`) is this list.
 A build row stores no verdict (a build is not a check), so the page shows the
 `/api/desk` re-check, the one the Reports list shows, on a report's newest
 build, and "Not checked" on the older ones.
@@ -175,7 +175,8 @@ it runs (the phase ① script; `null` for a hand-built runner) and its
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
 
-`POST …/runs` is what the Refresh page's **Run all** and per-step **Run** use. It
+`POST …/runs` is what **Refresh data** (the Transform stage's **Run all**) and
+per-step **Run** use. It
 starts the run in the background and returns at once (`202`; `?layer=` runs one
 step, `?refresh=true` adds what it depends on). A pipeline already running
 returns that run with `already_running: true`. The run's output is a log:

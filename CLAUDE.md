@@ -140,8 +140,10 @@ phase to the next):
 3. **REPORT** — `reports/`. A `ReportSpec` (JSON) pointed at the model —
    KPI cards, charts, tables — where every figure is a live query. Because the
    model is materialized, the page re-renders in milliseconds with no pandas in
-   the loop. Reference: `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json`; served on the
-   Reports page of the web UI. `reports/` also holds template packages and
+   the loop. Reference:
+   `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json`;
+   served in the web UI, on the model's Overview. `reports/` also holds template
+   packages and
    `@register.report` factories — every report form lives in the one folder.
 
 **Why the split:** the slow, unconstrained analysis (①) and the fast, iterated
@@ -246,7 +248,7 @@ cd examples/portfolio_project && python run_workflow.py
                                                 # phase ① builds data/warehouse.duckdb,
                                                 #   phase ③ renders the report HTML once, offline
 python -m tracebi.web.run                       # serves it; auto-discovers models/ + reports/
-                                                #   → Reports page (TRACEBI_REPORTS_DIR, default reports)
+                                                #   → the model's Overview (TRACEBI_REPORTS_DIR, default reports)
 
 # Run (dev)
 python -m tracebi.web.run                              # http://127.0.0.1:8000
@@ -545,7 +547,16 @@ effectively does not exist).
    replaces the warehouse tables). Nothing downstream imports this file.
 
 ### New connector
-Most sources need no code. **Declarative first:** `tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb` writes `connections/<name>.yaml` (`docs/reference/connections-yaml.md`): a type and its fields, any value may be `${ENV_VAR}` (the whole value), and a password or credential-bearing URL MUST be. Variables resolve when the connection is used (lazily), from the environment then the project `.env`; an unset one is an error naming it. A model's connector says `connection: <name>`; discovery registers the file so the Sources page lists it (credentials are never resolved to describe it). `--python` / `tracebi migrate connection models/_connections/x.py` cover the legacy module. A new connector *type* is code:
+Most sources need no code. **Declarative first:** `tracebi connect <name> --kind
+postgres|snowflake|bigquery|duckdb` writes `connections/<name>.yaml`
+(`docs/reference/connections-yaml.md`): a type and its fields, any value may be
+`${ENV_VAR}` (the whole value), and a password or credential-bearing URL MUST
+be. Variables resolve when the connection is used (lazily), from the environment
+then the project `.env`; an unset one is an error naming it. A model's connector
+says `connection: <name>`; discovery registers the file so the Sources list
+(`/sources`) shows it (credentials are never resolved to describe it).
+`--python` / `tracebi migrate connection models/_connections/x.py` cover the
+legacy module. A new connector *type* is code:
 1. Subclass `tracebi.connectors.BaseConnector`
 2. Implement `load(name) -> DataSet` — must append a `LineageNode`
 3. Register: `registry.add_connector(instance)` in your app module
@@ -557,7 +568,13 @@ Most sources need no code. **Declarative first:** `tracebi connect <name> --kind
 4. The web server auto-discovers `models/` at startup (`TRACEBI_MODELS_DIR` to override).
 
 ### New pipeline definition (project-scope, no web server required)
-1. `tracebi new-pipeline "My ETL"` — creates `pipelines/my_etl.yaml` (`docs/reference/pipeline-yaml.md`): `transform` (the Python script it runs), `models`, `reports` (`all` or names), `schedule`. It compiles to the `model_pipeline` runner, so `tracebi run-pipeline my_etl` and the Refresh page run the transform, then rebuild the reports. A pipeline is one file: a `.py` beside the `.yaml` wins. `tracebi migrate pipeline pipelines/x.py [--write]` converts a `model_pipeline` runner.
+1. `tracebi new-pipeline "My ETL"` — creates `pipelines/my_etl.yaml`
+   (`docs/reference/pipeline-yaml.md`): `transform` (the Python script it runs),
+   `models`, `reports` (`all` or names), `schedule`. It compiles to the
+   `model_pipeline` runner, so `tracebi run-pipeline my_etl` and **Refresh
+   data** in the app run the transform, then rebuild the reports. A pipeline is
+   one file: a `.py` beside the `.yaml` wins. `tracebi migrate pipeline
+   pipelines/x.py [--write]` converts a `model_pipeline` runner.
 2. `--python` writes `pipelines/my_etl.py` for medallion layers or custom steps: wire connectors, layers, and `runner.register(...)`. The variable **must** be named `runner`.
 3. Import anywhere: `from tracebi.pipeline_registry import get_runner; runner = get_runner("my_etl")`
 4. The web server auto-discovers `pipelines/` at startup (`TRACEBI_PIPELINES_DIR` to override).
@@ -573,7 +590,7 @@ package shadows the same-named spec at discovery.)
 Put a report **package** in `reports/` — a `<name>/` directory (`report.json` +
 `template.html`, plus optional `style.css` / `script.js`), or a `<name>.json`
 spec that is compiled into exactly that at discovery. Either is auto-discovered
-at startup and served on the Reports page.
+at startup and served in the app, on the model's Overview.
 
 **There is one renderer.** A registered report with no package is refused
 (HTTP 422 naming the fix), never served through a second path. The old bare
@@ -590,7 +607,7 @@ removed is the fallback that rendered a factory with no package.
    `metrics` section may carry a `data` query; a card whose `value` names a
    measure reads it live from the one-row result rather than hard-coding it.
 3. Validate before running: `tracebi spec validate reports/<name>.json`. The
-   folder is auto-discovered and served on the Reports page.
+   folder is auto-discovered and served in the app, on the model's Overview.
 
 ### New report as a template package (freeform HTML)
 When the spec's section vocabulary is too rigid — a bespoke layout, your own

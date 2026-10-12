@@ -33,7 +33,7 @@ no `add_measure` will conjure it; the fix is **upstream in phase ①**, sinking 
 missing column or table in `transforms/*.py` (unconstrained pandas), after which
 the model can reference it. Only once the underlying data is in the sink is a
 model change the right tool. Check the warehouse's tables (`describe_model`, or
-the Models page) before assuming this is a phase-② edit.
+the model's Overview) before assuming this is a phase-② edit.
 
 Then the plane question: **is this shared meaning, or presentation?**
 

@@ -86,7 +86,7 @@ report in `reports/sample_model/`:
 tracebi run-pipeline sample_model
 ```
 
-It is what the **Refresh** page in `tracebi serve` runs.
+It is what **Refresh data** in `tracebi serve` runs.
 
 → [[report]]
 

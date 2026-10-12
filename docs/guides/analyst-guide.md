@@ -39,7 +39,7 @@ shape:
                                                         │
                                                         ▼  freeze: the model (the semantic contract)
 ③  REPORT       reports/          an artifact package (or JSON ReportSpec) over the model
-     KPI cards, charts, tables — every figure a live query; served on the Reports page
+     KPI cards, charts, tables — every figure a live query; served in the app, on the model's Overview
 ```
 
 **Phase ①** is the real analysis: pull the queries you need and do whatever the
@@ -64,7 +64,7 @@ never re-runs phase ①. Reference impls:
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
 python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once
-python -m tracebi.web.run    # serve it: Reports → portfolio_dashboard
+python -m tracebi.web.run    # serve it: portfolio_model → Reports → portfolio_dashboard
 ```
 
 **Honest scope of the trust machinery.** Lineage is *not* traced through the
@@ -117,7 +117,7 @@ The dev loop, step by step:
 - **Publishing is build + verify.** `tracebi report build <name>` strips
   exploration, validates every figure claim against its binding, and writes
   `output/<name>.html` plus the `.manifest.json` receipt. The package is
-  already served on the **Reports** page — there is no separate publish
+  already served in the app, on the model's Overview — there is no separate publish
   step. `--contracts` also re-runs the sink contracts, so the receipt can
   say **the sink satisfied its contract** (never "the transform was
   verified" — contract status certifies what landed, not the pandas above
@@ -131,13 +131,14 @@ compiles it into a package, which shadows the same-named spec at discovery.
 
 ### The project feed — the workbench before a report exists
 
-Run `tracebi dev` with **no argument** and the app opens on Reports with the
-project feed: what your agent shows you while it works (`show()` from any
+Run `tracebi dev` with **no argument** and the app opens on the Reports list
+with the project feed: what your agent shows you while it works (`show()` from
+any
 script in the project), and the notes you leave it. It is the live surface for
 phases ① and ② before any report package exists. `tracebi dev <name>` anchors
 the workbench to one package; `tracebi dev` alone is where you look while you
 are still building the model underneath. The warehouse tables and the model's
-schema are on the app's Sources and Data model pages (`tracebi dev --classic`
+schema are on the app's Transform and Model stages (`tracebi dev --classic`
 lays them out beside the feed on one page).
 
 ### Interactive controls subset — they never compute
@@ -220,7 +221,7 @@ tracebi new-model "Sales Model"   # scaffolds models/sales_model.py
 # edit it, then import with get_model("sales_model")
 ```
 
-Or browse the web UI: **Models** shows every table with previews and the ER
+Or browse the web UI: a model's **Model** stage shows every table with previews and the ER
 diagram; **Explore** lets you prototype aggregations visually before
 committing them to code.
 

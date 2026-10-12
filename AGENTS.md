@@ -38,7 +38,7 @@ A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
 `reports: all`, `schedule:`; it only names the Python transform; `.py` with
 `model_pipeline(...)` still works and wins on a name clash): `tracebi
 run-pipeline <model>` runs the transform, then builds every report in
-`reports/<model>/`, and the app's Refresh page runs the same. `tracebi
+`reports/<model>/`, and the app's **Refresh data** runs the same. `tracebi
 new-pipeline` writes YAML; `tracebi migrate pipeline pipelines/x.py [--write]`
 converts. Sources are declarative too: `connections/<name>.yaml` (see below). `tracebi init` scaffolds exactly this
 for `sample_model`.
@@ -345,7 +345,7 @@ edits the report; you do. `tracebi report snapshot <name>` shares a draft (explo
 kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
-is already served on the Reports page — there is no separate publish step.
+is already served in the app, on its model's Overview — there is no separate publish step.
 A PDF (`tracebi report build <name> --format pdf`, or
 `build_report(..., format="pdf")`) is a print of that built HTML and carries
 no receipt. A pdf build returns `pdf_path`; pass that as
@@ -376,19 +376,20 @@ does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_B
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
-name** opens the app on Reports, with the **project feed** — the live
+name** opens the app's Reports list, with the **project feed** — the live
 surface for phase ① and ②: while this server is up,
 `tracebi.workbench.show(df, note=...)` from ANY script you run (a transform
-probe, a scratch analysis) posts the frame to the feed (Reports → *From
-your agent*) with no configuration, and the human leaves you notes there.
+probe, a scratch analysis) posts the frame to the feed (the app's Reports, under
+*From your agent*) with no configuration, and the human leaves you notes there.
 Your gateway work lands there too, with nothing to call: each `query_model`
 result as a table, and each `build_report` / `render_report_spec` as one
 line, refusals included — so the human watches you work
 (MCP: `workbench_state` with no `report` returns the feed and pins, plus
 the warehouse's tables with row counts and contract status as sinks land,
 and the models' star schemas taking shape as you edit `models/`). The human
-browses the warehouse and the model in the app's Sources and Data model
-pages; `tracebi dev --classic` lays the Warehouse, Models and Packages
+browses the warehouse and the model in the app's Transform and Model stages (on
+the model's Overview); `tracebi dev --classic` lays the Warehouse, Models and
+Packages
 panels out beside the feed on one page. Interrogate in the
 open — excerpts and visuals in the app, not buried in chat — then
 scaffold the package and `tracebi dev <name>` continues into the figure loop

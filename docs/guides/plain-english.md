@@ -66,7 +66,7 @@ page.
   engineers review code. An AI working through TraceBi's gateway can check its
   own work, but it has no write access to the data it reports on.
 - **The reader** gets one file. It opens in any web browser, works offline, and
-  carries its own receipt. They can check it with the **Verify** page in the app
+  carries its own receipt. They can check it with **Verify a file** in the app
   by dropping in the report and its receipt file.
 
 ## What the receipt does *not* promise
@@ -99,7 +99,7 @@ This matters, and TraceBi is deliberately strict about it.
 | **Measure** | A defined calculation, such as "total fair value" or "average spread". |
 | **Sink** / **warehouse** | The clean tables produced by step 1, stored in one file. |
 | **Contract satisfied / no contract** | Whether the cleaned tables passed their declared checks, or have no checks declared. |
-| **Needs attention** | The strip at the top of the Reports page: anything a person should look at right now, such as a receipt that no longer matches. It only appears when there is something. |
+| **Needs attention** | The strip at the top of the Reports stage: anything a person should look at right now, such as a receipt that no longer matches. It only appears when there is something. |
 | **Draft / exploration** | A report still being worked on. It contains scratch work that is removed before publishing. |
 | **Agent** | An AI assistant that builds reports using the same rules as a person. |
 

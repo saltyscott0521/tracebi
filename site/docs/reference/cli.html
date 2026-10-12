@@ -154,7 +154,7 @@ title slugified: <code>"Portfolio Book"</code> → <code>portfolio_book</code>.<
 <p><code>new-report</code> can put the report in a folder: <code>"Finance/Month end/Close pack"</code>
 creates <code>reports/finance/month_end/close_pack/</code>. A report in a folder is named
 by that path everywhere after: <code>tracebi report build finance/month_end/close_pack</code>,
-<code>output/finance/month_end/close_pack.html</code>, and the Reports page, which groups
+<code>output/finance/month_end/close_pack.html</code>, and the app, which groups
 reports by folder. Two folders can each hold a report of the same name.</p>
 <p>All refuse to overwrite without <code>--force</code>.</p>
 <p><code>new-model --from &lt;connection&gt; --tables a,b,c</code> drafts that file from the
@@ -275,7 +275,7 @@ means that figure. The panel also lists <strong>Data</strong> (each binding: its
 data behind them, bindings no figure reads, numbers typed outside figures), and
 has a note box for your agent. You instruct the agent in its chat; a note is
 for later.</p>
-<p>With <strong>no name</strong> it opens the app on Reports, where what your agent shows you
+<p>With <strong>no name</strong> it opens the app's Reports list, where what your agent shows you
 (<code>tracebi.workbench.show</code>, from any script in the project) appears under <em>From
 your agent</em>, before any report exists, along with the notes you leave it.</p>
 <p><code>--classic</code> serves the older stdlib preview server instead: the report at the
@@ -435,7 +435,7 @@ wrote, so every failure is reported, then a summary and exit 1.</p>
 <p>Records the OS user as the audit actor, so "who ran this" answers for cron and
 CI runs too.</p>
 <p>A run is recorded like one started from the app: a <code>pipeline_run</code> row in the
-state store (so the Refresh page's <strong>Runs</strong> tab and the Runs page list it) and
+state store (so the app's <strong>History</strong> lists it) and
 the same log, <code>data/logs/pipelines/&lt;name&gt;/&lt;id&gt;.log</code>, while the terminal prints
 what it always did. <code>--status</code> runs nothing and records nothing. If the state
 store cannot be reached the pipeline still runs; it says the run is not being

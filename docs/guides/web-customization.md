@@ -31,7 +31,7 @@ tables into a DuckDB warehouse, phase ② `models/` declares a thin `DataModel`
 over that warehouse, and phase ③ `reports/` holds artifact packages
 (`reports/<name>/`) and `ReportSpec` JSON files pointed at the model.
 Phases ② and ③ are auto-discovered directories (below) and land
-on the **Models** and **Reports** pages; phase ① runs explicitly (e.g. via
+on a model's **Overview** (its **Model** and **Reports** stages); phase ① runs explicitly (e.g. via
 `python run_workflow.py`) and is not something the server discovers — the sink
 it produces is the input the model reads.
 
@@ -44,7 +44,7 @@ lowest-friction way to add resources — no app module configuration needed:
 |---|---|---|
 | `models/` | each `.py` exposes a `model` variable (a `DataModel`) | registers it via `registry.add_model()` |
 | `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | registers it via `registry.add_pipeline()` |
-| `reports/` | a `<name>/` **artifact package** (the current report lane; a package directory shadows a same-named `.json` spec), a `.json` `ReportSpec` (phase ③), or a `.py` `@register.report(...)` factory | registered as a report on the Reports page |
+| `reports/` | a `<name>/` **artifact package** (the current report lane; a package directory shadows a same-named `.json` spec), a `.json` `ReportSpec` (phase ③), or a `.py` `@register.report(...)` factory | registered as a report, shown on its model's Overview |
 | `requests/` | ad-hoc scripts with `request_params()` and `run()` — **deprecated, removed in 0.8** | still appears on the Requests page through 0.7, with a deprecation notice |
 
 Scaffold files with the CLI, then edit and commit them:
@@ -129,22 +129,22 @@ your peril):
 
 | Directory | File convention | Result |
 |---|---|---|
-| `models/` | `model = DataModel(...)` variable | **Models** + **Explore** |
-| `pipelines/` | `runner = PipelineRunner(...)` variable | **Pipelines** page |
-| `reports/` | a `<name>/` **artifact package** (current lane; shadows a same-named `.json` spec), a `.json` `ReportSpec`, or a `@register.report("name")` factory | **Reports** page |
+| `models/` | `model = DataModel(...)` variable | the model's **Overview** (Model stage) + **Explore** |
+| `pipelines/` | `runner = PipelineRunner(...)` variable | the **Transform** stage |
+| `reports/` | a `<name>/` **artifact package** (current lane; shadows a same-named `.json` spec), a `.json` `ReportSpec`, or a `@register.report("name")` factory | the **Reports** stage of its model |
 | `requests/` | any `.py` / `.ipynb` with `run()` — **deprecated, removed in 0.8** | **Requests** page (through 0.7) |
 
 **Or register explicitly** (in your app module's `registry.py`, or the notebook facade `tracebi.web.register`):
 
 | Resource | Call | Appears in UI as |
 |---|---|---|
-| Connector | `registry.add_connector(conn)` | **Sources** page |
-| Model | `registry.add_model(model, default=False)` | the **model switcher**, **Data model** + **Explore** |
-| Report | `@registry.report("name", description="…")` on a zero-arg factory | **Reports** page |
+| Connector | `registry.add_connector(conn)` | the **Sources** list (`/sources`) |
+| Model | `registry.add_model(model, default=False)` | the **model switcher**, the model's **Overview** (its Model stage) + **Explore** |
+| Report | `@registry.report("name", description="…")` on a zero-arg factory | the **Reports** stage of its model |
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
-| Pipeline | `registry.add_pipeline("name", runner)` | **Refresh** (DAG, run buttons, a live run log, history) |
+| Pipeline | `registry.add_pipeline("name", runner)` | the **Transform** stage (DAG, run buttons, a live run log, history) |
 
-The **Runs** page is not a folder. It reads `GET /api/runs`: what ran, when,
+**History** is not a folder. It reads `GET /api/runs`: what ran, when,
 for whom, and whether it reproduced. Like every page under the model
 switcher, it narrows to the picked model.
 
@@ -198,7 +198,7 @@ hard-code colors. The brand gradient is `--brand`.
 **Adding a nav page:** a page that is about a model goes in `PAGES` in
 `nav.js` (it gets `/m/<model>/<page>` and an all-models `/<page>`) with both
 routes in `App.jsx`, and takes a `model` prop (`''` means all models); the
-sidebar's four links are listed in `Layout.jsx`. A model's Overview
+sidebar's links are listed in `Layout.jsx`. A model's Overview
 (`pages/Overview.jsx`, the line in `components/TheLine.jsx`) is one page with
 three stages (`transform`, `model`, `reports`), each with an address of its own.
 A page about no one model is linked from `Layout.jsx` the same way. Use the hooks
@@ -284,7 +284,7 @@ docker compose up --build
 | `TRACEBI_APP` | *(none)* | App module imported at startup; `tracebi.web.demo_app` opts into the bundled demo |
 | `TRACEBI_MODELS_DIR` | `models` | Folder scanned for `model` variable files |
 | `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for `runner` variable files |
-| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `<name>/` artifact packages, `.json` `ReportSpec`s (phase ③), and `@register.report()` factories; all served on the Reports page |
+| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for `<name>/` artifact packages, `.json` `ReportSpec`s (phase ③), and `@register.report()` factories; all served in the app, on each model's Overview |
 | `TRACEBI_REQUESTS_DIR` | `requests` | Folder scanned for ad-hoc request scripts — deprecated lane, removed in 0.8 |
 | `TRACEBI_SCHEDULED_DIR` | `scheduled` | **Deprecated.** Still scanned if the folder exists. `@register.scheduled()` never ran anything; use a `"schedule"` block in `report.json` |
 | `TRACEBI_DEV_MODE` | unset | `1` mounts `POST /api/_dev/reload` |

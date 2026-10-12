@@ -109,7 +109,7 @@ title slugified: `"Portfolio Book"` → `portfolio_book`.
 `new-report` can put the report in a folder: `"Finance/Month end/Close pack"`
 creates `reports/finance/month_end/close_pack/`. A report in a folder is named
 by that path everywhere after: `tracebi report build finance/month_end/close_pack`,
-`output/finance/month_end/close_pack.html`, and the Reports page, which groups
+`output/finance/month_end/close_pack.html`, and the app, which groups
 reports by folder. Two folders can each hold a report of the same name.
 
 All refuse to overwrite without `--force`.
@@ -255,7 +255,7 @@ data behind them, bindings no figure reads, numbers typed outside figures), and
 has a note box for your agent. You instruct the agent in its chat; a note is
 for later.
 
-With **no name** it opens the app on Reports, where what your agent shows you
+With **no name** it opens the app's Reports list, where what your agent shows you
 (`tracebi.workbench.show`, from any script in the project) appears under *From
 your agent*, before any report exists, along with the notes you leave it.
 
@@ -483,7 +483,7 @@ Records the OS user as the audit actor, so "who ran this" answers for cron and
 CI runs too.
 
 A run is recorded like one started from the app: a `pipeline_run` row in the
-state store (so the Refresh page's **Runs** tab and the Runs page list it) and
+state store (so the app's **History** lists it) and
 the same log, `data/logs/pipelines/<name>/<id>.log`, while the terminal prints
 what it always did. `--status` runs nothing and records nothing. If the state
 store cannot be reached the pipeline still runs; it says the run is not being

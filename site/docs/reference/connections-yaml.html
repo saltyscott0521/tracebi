@@ -153,13 +153,13 @@ connectors:
   Lookup is the process environment, then the project's <code>.env</code>. <code>.env</code> is
   never copied into <code>os.environ</code>, and only the names a connection references
   are read.</li>
-<li><strong>Never shown.</strong> <code>/api/connectors</code> and the Sources page show a referenced
+<li><strong>Never shown.</strong> <code>/api/connectors</code> and the Sources list (<code>/sources</code>) show a referenced
   value as <code>${NAME}</code> and a literal URL with its password redacted; a
   credential is never resolved to describe a connection.</li>
 </ul>
 <h2 id="discovery-and-precedence">Discovery and precedence</h2>
 <p>Files in <code>connections/</code> are registered at startup and as they change, so the
-Sources page lists them. A model's <code>connection: &lt;x&gt;</code> reads
+Sources list (<code>/sources</code>) shows them. A model's <code>connection: &lt;x&gt;</code> reads
 <code>connections/&lt;x&gt;.yaml</code> first, then the legacy <code>models/_connections/&lt;x&gt;.py</code>
 that <code>tracebi connect --python</code> writes. <code>tracebi migrate connection
 models/_connections/&lt;x&gt;.py [--write]</code> converts one (it never deletes the

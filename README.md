@@ -74,13 +74,13 @@ report, not a different thing.)
 | Phase | Folder | Artifact | Discovered by the server as |
 |---|---|---|---|
 | ① Transform | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
-| ② Model | `models/` | `DataModel` (a `model` variable) | a model on the Data model page |
-| ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report on the Reports page |
+| ② Model | `models/` | `DataModel` (a `model` variable) | a model, on its Overview's Model stage |
+| ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report, on its model's Overview (Reports stage) |
 
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
 python run_workflow.py          # ① build the warehouse, ③ render the report once
-python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → Reports → portfolio_dashboard
+python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → portfolio_model's Reports → portfolio_dashboard
 ```
 
 The reference implementation ships in the repo at `examples/portfolio_project/`
@@ -324,7 +324,7 @@ keep the rest of TraceBi as the data layer.
 tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
 tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (artifact package)
 tracebi dev portfolio_book                           # live loop in the app: Build mode on that report (:8001)
-tracebi dev                                          # no name: the app on Reports, where your agent's exhibits land (phases ①/②)
+tracebi dev                                          # no name: the app's Reports list, where your agent's exhibits land (phases ①/②)
 tracebi dev portfolio_book --classic                 # the old stdlib preview + /__workbench page (fallback)
 tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
 tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
@@ -361,7 +361,7 @@ http://127.0.0.1:8001 (loopback only). The report re-renders every time you
 save the package; the panel beside it lists what changed, the data each
 binding reads, and checks (figures with no data behind them, bindings nothing
 reads, numbers typed outside figures). Click a figure to point at it, or leave
-your agent a note. With no name it opens the app on Reports, where what your
+your agent a note. With no name it opens the app's Reports list, where what your
 agent shows you appears before any report exists. Keep it next to your editor
 for a tight authoring loop. `--classic` serves the older stdlib preview and
 its `/__workbench` page instead, and is what runs when the `web` extra is not
@@ -650,18 +650,23 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 - **Explore** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Models** — table previews with column dtypes and full-table CSV export,
+- **Model** — a model's Overview, Model stage: table previews with column dtypes
+  and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
-- **Reports** — open one and it has the whole page (a link takes you back to
+- **Reports** — a model's Overview, Reports stage: open one and it has the whole
+  page (a link takes you back to
   the list). Rebuild it in the background (run history and a toast when done),
   download the self-contained HTML artifact with its embedded receipt (or a
   plain Excel or PDF) from the Download menu, read the at-a-glance receipt, and
   open its Lineage tab. Failures show the full Python traceback.
-- **Pipelines** — the medallion chain as a live DAG with per-layer run
-  buttons and run history.
-- **Runs** — what ran, when, for whom, and whether it reproduced. A report
+- **Transform** — a model's Overview, Transform stage: the medallion chain as a live DAG
+  with per-layer run buttons and run history. **Refresh data** (admin), in the Overview's
+  header, runs the whole pipeline.
+- **Map** — every model as one picture: transform → warehouse → model → reports. Open a
+  model to see its measures and the reports that use them.
+- **History** — what ran, when, for whom, and whether it reproduced. A report
   run links to the report, and a refresh names its model. A report's newest
-  build shows the same verdict as the Reports page; every older build reads
+  build shows the same verdict as the report's own page; every older build reads
   "Not checked". Only a `reproduces` verdict reads green.
 
 ```bash
@@ -684,7 +689,14 @@ The API is self-documenting: once the server is running, open
 or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
 every endpoint, parameter, and response schema is listed there.
 
-`tracebi/web/demo_app/` is the bundled demo app — opt-in via `TRACEBI_APP=tracebi.web.demo_app` (the default is no app module, so a serve shows *your* project). It is fully self-contained: its models ship inside the package (`wealth_model` at `tracebi/web/demo_app/models/wealth_model.py`; `sales_model`, a star schema over the cleaned tables of the demo's sales pipeline, in `pipeline.py`), and it stands up a self-contained SQLite medallion pipeline (Landing → Manipulation → Final) at startup so the Refresh page has live run history. Reports read from those resources.
+`tracebi/web/demo_app/` is the bundled demo app — opt-in via
+`TRACEBI_APP=tracebi.web.demo_app` (the default is no app module, so a serve
+shows *your* project). It is fully self-contained: its models ship inside the
+package (`wealth_model` at `tracebi/web/demo_app/models/wealth_model.py`;
+`sales_model`, a star schema over the cleaned tables of the demo's sales
+pipeline, in `pipeline.py`), and it stands up a self-contained SQLite medallion
+pipeline (Landing → Manipulation → Final) at startup so the model's Transform
+stage has live run history. Reports read from those resources.
 
 The second model — `wealth_model` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
 
