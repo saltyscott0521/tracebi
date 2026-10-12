@@ -31,17 +31,17 @@ function ToastContainer({ toasts, remove }) {
           <div key={t.id} className="toast-enter" style={{
             pointerEvents: 'all',
             background: 'var(--surface)',
-            border: `1px solid ${isErr ? 'var(--red-br)' : isOk ? 'var(--green-br)' : 'var(--border-strong)'}`,
+            border: `1px solid ${isErr ? 'var(--red-br)' : 'var(--border-strong)'}`,
             borderRadius: 'var(--radius-lg)', padding: '12px 14px',
             fontSize: 13, lineHeight: 1.5,
-            color: isErr ? 'var(--red-text)' : isOk ? 'var(--green-text)' : 'var(--text)',
+            color: isErr ? 'var(--red-text)' : 'var(--text)',
             boxShadow: 'var(--shadow-pop)',
             display: 'flex', alignItems: 'center', gap: 10,
             minWidth: 260, maxWidth: 380,
           }}>
             <span style={{
               fontSize: 15, flexShrink: 0,
-              color: isErr ? 'var(--red)' : isOk ? 'var(--green)' : 'var(--blue)',
+              color: isErr ? 'var(--red)' : isOk ? 'var(--text-2)' : 'var(--blue)',
             }}>
               {isErr ? '✕' : isOk ? '✓' : 'ℹ'}
             </span>
@@ -194,7 +194,9 @@ export function PageSub({ children }) {
 
 const BADGE_STYLES = {
   blue:         { background: 'var(--blue-lt)',          color: 'var(--accent-text)', border: '1px solid var(--blue-br)' },
-  green:        { background: 'var(--green-lt)',         color: 'var(--green-text)',  border: '1px solid var(--green-br)' },
+  // A fine state is a plain fact: the app colours only exceptions, so the
+  // "good" variant reads neutral (the verdict logic still calls it green).
+  green:        { background: 'var(--surface-2)',        color: 'var(--text-2)',      border: '1px solid var(--border)' },
   amber:        { background: 'var(--amber-lt)',         color: 'var(--amber-text)',  border: '1px solid var(--amber-br)' },
   red:          { background: 'var(--red-lt)',           color: 'var(--red-text)',    border: '1px solid var(--red-br)' },
   gray:         { background: 'var(--surface-2)',        color: 'var(--muted)',       border: '1px solid var(--border)' },

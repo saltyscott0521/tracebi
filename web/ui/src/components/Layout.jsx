@@ -293,7 +293,7 @@ export default function Layout({ children }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               display: 'inline-block', width: 6, height: 6,
-              borderRadius: '50%', background: 'var(--green)', flexShrink: 0,
+              borderRadius: '50%', background: 'var(--muted)', flexShrink: 0,
             }} />
             <Link to="/getting-started" onClick={close}
               aria-current={inHelp ? 'page' : undefined}

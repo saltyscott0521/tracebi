@@ -1057,7 +1057,7 @@ function ReportsOverview({ reports, builds, onOpen }) {
   const latest = [...built].sort((a, b) => String(b.built_at).localeCompare(String(a.built_at))).slice(0, 6)
   const tiles = [
     ['Reports', reports.length, null],
-    ['Reproduce', built.length ? `${good} of ${built.length}` : '—', good === built.length && built.length ? 'good' : null],
+    ['Reproduce', built.length ? `${good} of ${built.length}` : '—', null],
     ['Need a look', look, look ? 'bad' : null],
     ['Never built', never, null],
   ]
