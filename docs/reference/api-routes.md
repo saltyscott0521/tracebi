@@ -167,12 +167,13 @@ needed. See [[receipts]].
 | `GET` | `/api/pipelines/{name}/runs/{id}/log` | analyst |
 | `GET` | `/api/pipelines/{name}/source` | viewer |
 
+`GET /api/pipelines` lists each pipeline with its `layers` and last run of each,
+the `model`(s) it feeds, and, from its `pipelines/<name>.yaml`, the `transform`
+it runs (the phase ① script; `null` for a hand-built runner) and its
+`description`; a model's Overview and the Map show them.
+
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
-
-`GET /api/pipelines` names each pipeline's `models`, its layers with their last
-run, and its `transform` (the phase ① script a model pipeline runs; `null` for a
-hand-built runner).
 
 `POST …/runs` is what the Refresh page's **Run all** and per-step **Run** use. It
 starts the run in the background and returns at once (`202`; `?layer=` runs one

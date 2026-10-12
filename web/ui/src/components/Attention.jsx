@@ -80,7 +80,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => []) {
         models: pipelineModels(p),
         title: `${p.pipeline} / ${l.name}`,
         detail: `Last run ${when(l.last_run) || 'recently'}`,
-        href: pagePath('refresh', pipelineModels(p)[0] || ''),
+        href: pagePath('transform', pipelineModels(p)[0] || ''),
       })
     }
   }

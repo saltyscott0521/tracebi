@@ -1,18 +1,15 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
-import { PageHeader } from '../components/Scope'
 import RunLog, { RunList } from '../components/RunLog'
 import CodeView from '../components/CodeView'
 import { pipelineModels, pipelineBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
-  Empty, Btn, Tabs, SkeletonCard, SkeletonList, SplitLayout, ListItem,
-  SearchInput, useToast,
+  Empty, Btn, Tabs, SkeletonCard, useToast,
 } from '../components/Shared'
 
 const TYPE_BADGE = {
@@ -195,16 +192,6 @@ function LayerHistory({ pipeline, layer }) {
   )
 }
 
-function pipelineSummary(layers) {
-  const n = layers?.length || 0
-  const failed = (layers || []).filter(l =>
-    l.last_status === 'error' || l.last_status?.startsWith?.('error:')).length
-  const running = (layers || []).some(l => l.last_status === 'running')
-  if (running) return `${n} layer${n !== 1 ? 's' : ''} · running`
-  if (failed) return `${n} layer${n !== 1 ? 's' : ''} · ${failed} failed`
-  return `${n} layer${n !== 1 ? 's' : ''}`
-}
-
 export function PipelineDetail({ pipeline, layers, models = [] }) {
   const toast = useToast()
   const qc = useQueryClient()
@@ -355,80 +342,25 @@ export function PipelineDetail({ pipeline, layers, models = [] }) {
 }
 
 /**
- * Refresh: rebuild a model's data, then the reports that read it. One model
- * shows its pipeline; all models list every pipeline with the model it feeds.
+ * The pipeline that rebuilds a model's data, then the reports that read it:
+ * the Transform stage of its Overview.
  */
-export default function Pipelines({ model = '' }) {
+export default function Pipelines({ model }) {
   const { data, isLoading } = usePipelines()
-  const [params, setParams] = useSearchParams()
-  const [query, setQuery] = useState('')
   const pipelines = (data || []).filter(p => pipelineBelongsToModel(p, model))
 
-  if (model) {
+  if (isLoading) return <SkeletonCard />
+  if (!pipelines.length) {
     return (
-      <>
-        <PageHeader pageKey="refresh" model={model} />
-        {isLoading ? <SkeletonCard /> : pipelines.length
-          ? pipelines.map(p => (
-            <div key={p.pipeline} style={{ marginBottom: 16 }}>
-              <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} models={pipelineModels(p)} />
-            </div>
-          ))
-          : (
-            <Card>
-              <Empty message={`Nothing refreshes ${model} yet. Add pipelines/${model}.py with runner = model_pipeline("${model}", transform="…") and its transform runs, then its reports rebuild.`} />
-            </Card>
-          )}
-      </>
+      <Card>
+        <Empty message={<>No pipeline yet. <code>tracebi new-pipeline &quot;{model}&quot;</code> writes <code>pipelines/{model}.yaml</code>:
+          it runs a transform, then rebuilds this model&apos;s reports.</>} />
+      </Card>
     )
   }
-
-  const filtered = pipelines.filter(p =>
-    `${p.pipeline} ${pipelineModels(p).join(' ')}`.toLowerCase().includes(query.toLowerCase()))
-  // Open on the first pipeline rather than a blank "select one" pane.
-  const current = filtered.find(p => p.pipeline === params.get('p')) || filtered[0]
-  const select = name => setParams(name ? { p: name } : {}, { replace: true })
-
-  return (
-    <>
-      <PageHeader pageKey="refresh" model="" />
-      {!isLoading && pipelines.length === 0 ? (
-        <Empty message="Nothing refreshes yet. Add pipelines/<model>.py with runner = model_pipeline(…) for each model." />
-      ) : (
-        <SplitLayout
-          left={
-            isLoading ? <SkeletonList /> : (
-              <>
-                <SearchInput value={query} onChange={setQuery} placeholder="Search pipelines…" />
-                {filtered.length === 0
-                  ? <Empty message="No matches." />
-                  : filtered.map((p, i) => (
-                    <div key={p.pipeline} className="rise" style={{ '--i': i }}>
-                      <ListItem
-                        selected={current?.pipeline === p.pipeline}
-                        onClick={() => select(p.pipeline)}
-                        name={p.pipeline}
-                        sub={pipelineSummary(p.layers)}
-                        meta={pipelineModels(p).filter(m => m !== p.pipeline).map(m => (
-                          <Badge key={m} variant="gray" style={{ textTransform: 'none' }}>{m}</Badge>
-                        ))}
-                      />
-                    </div>
-                  ))
-                }
-              </>
-            )
-          }
-          right={
-            <PipelineDetail
-              key={current?.pipeline || ''}
-              pipeline={current?.pipeline}
-              layers={current?.layers || []}
-              models={current ? pipelineModels(current) : []}
-            />
-          }
-        />
-      )}
-    </>
-  )
+  return pipelines.map(p => (
+    <div key={p.pipeline} style={{ marginBottom: 16 }}>
+      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} models={pipelineModels(p)} />
+    </div>
+  ))
 }

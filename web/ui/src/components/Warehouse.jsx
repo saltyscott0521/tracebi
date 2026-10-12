@@ -63,7 +63,8 @@ function Profile({ table }) {
   )
 }
 
-export default function Warehouse({ connector }) {
+/** *only*: the table names to list (a file can hold other models' tables); the rest are counted. */
+export default function Warehouse({ connector, only }) {
   const { data, isLoading, error } = useConnectorWarehouse(connector.name)
   if (isLoading) return <div className="codeview__hint"><Spinner /> Reading the warehouse…</div>
   if (error) return <ErrorDetail error={error} />
@@ -78,9 +79,11 @@ export default function Warehouse({ connector }) {
   }
   if (data.error) return <div className="codeview__hint">Could not read the warehouse: {data.error}</div>
   if (!data.tables.length) return <div className="codeview__hint">The warehouse has no tables yet.</div>
+  const shown = only ? data.tables.filter(t => only.has(t.name)) : data.tables
+  const others = data.tables.length - shown.length
   return (
     <div className="fade-in">
-      {data.tables.map(t => {
+      {shown.map(t => {
         const c = CONTRACT[t.contract?.status] || CONTRACT.no_contract
         return (
           <details key={t.name} className="wb-details" style={{ marginBottom: 6 }}>
@@ -96,6 +99,9 @@ export default function Warehouse({ connector }) {
           </details>
         )
       })}
+      {others > 0 && (
+        <p className="wb-meta">The same file also holds {others} other {others === 1 ? 'table' : 'tables'}.</p>
+      )}
     </div>
   )
 }

@@ -232,6 +232,9 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
     # A fresh project's Refresh page has a pipeline for its model.
     [pipeline] = c.get("/api/pipelines").json()
     assert (pipeline["pipeline"], pipeline["model"]) == ("sample_model", "sample_model")
+    # What the model's Overview says about it: the transform it runs, and its description.
+    assert (pipeline["transform"], pipeline["description"]) == (
+        "sample_transform", "Rebuild the sample warehouse, then its reports.")
     run = c.post("/api/pipelines/sample_model/runs").json()
     text, done = follow_run(c, "sample_model", run["run_id"])
     assert done["status"] == "succeeded", text

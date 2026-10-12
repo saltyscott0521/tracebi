@@ -1,11 +1,15 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { PAGES, pagePath, reportPagePath, reportModels, pipelineModels } from '../nav'
+import { page, pagePath, reportPagePath, reportModels, pipelineModels } from '../nav'
 
-// Static page destinations — always available, even before data loads.
+// Static page destinations — always available, even before data loads. The
+// sidebar's own five, then help.
 const PAGES_ALL = [
-  ...PAGES.map(p => ({ label: p.label, path: p.all, kind: 'page', sub: p.sub })),
+  { label: 'Overview', path: page('overview').all, kind: 'page', sub: page('overview').sub },
+  { label: 'Map', path: '/map', kind: 'page', sub: 'Every model as one picture: what feeds what.' },
+  { label: 'Explore', path: page('explore').all, kind: 'page', sub: page('explore').sub },
+  { label: 'Drafts', path: '/drafts', kind: 'page' },
   { label: 'Verify a file', path: '/verify', kind: 'page' },
   { label: 'Get started', path: '/getting-started', kind: 'page' },
   { label: 'Docs', path: '/handbook', kind: 'page' },
@@ -33,14 +37,14 @@ export default function CommandPalette() {
     ...PAGES_ALL,
     ...(models     || []).map(m => ({
       label: m.name,
-      path: pagePath('model', m.name),
+      path: pagePath('overview', m.name),
       kind: 'model',
       sub: `${m.tables.length} tables`,
     })),
     ...(reports    || []).map(r => ({ label: r.name, path: reportPagePath(r.name, reportModels(r)), kind: 'report', sub: r.description })),
     ...(pipelines  || []).map(p => ({
       label: p.pipeline,
-      path: pagePath('refresh', pipelineModels(p)[0] || ''),
+      path: pagePath('transform', pipelineModels(p)[0] || ''),
       kind: 'pipeline',
       sub: `${(p.layers || []).length} steps${pipelineModels(p).length ? ` · ${pipelineModels(p).join(', ')}` : ''}`,
     })),

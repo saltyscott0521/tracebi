@@ -197,8 +197,11 @@ hard-code colors. The brand gradient is `--brand`.
 
 **Adding a nav page:** a page that is about a model goes in `PAGES` in
 `nav.js` (it gets `/m/<model>/<page>` and an all-models `/<page>`) with both
-routes in `App.jsx`, and takes a `model` prop (`''` means all models). A page
-about no one model goes in `NAV_TOOLS` in `Layout.jsx`. Use the hooks
+routes in `App.jsx`, and takes a `model` prop (`''` means all models); the
+sidebar's four links are listed in `Layout.jsx`. A model's Overview
+(`pages/Overview.jsx`, the line in `components/TheLine.jsx`) is one page with
+three stages (`transform`, `model`, `reports`), each with an address of its own.
+A page about no one model is linked from `Layout.jsx` the same way. Use the hooks
 in `api.js` for data and the primitives in `Shared.jsx` for visual
 consistency.
 

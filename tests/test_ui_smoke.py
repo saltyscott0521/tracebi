@@ -125,30 +125,67 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 page.wait_for_timeout(200)
                 assert not errors, "\n".join(errors)
 
-            # Two models and no remembered pick: / opens every model's reports.
+            # Two models and no remembered pick: / opens the list of models.
             page.goto(base + "/")
-            page.get_by_role("heading", name="Reports", exact=True).wait_for()
-            assert page.url.rstrip("/").endswith("/reports"), page.url
+            page.get_by_role("heading", name="Overview", exact=True).wait_for()
+            assert page.url.rstrip("/").endswith("/models"), page.url
             fail_on_browser_errors()
 
-            # Picking one scopes every page beneath the switcher to it.
-            page.goto(base + "/models")
-            page.get_by_role("heading", name="Data model", exact=True).wait_for()
+            # Picking one opens its Overview: how it is made, as three stations
+            # that are links, each with an address of its own. Reports is the
+            # one open to start with.
             page.get_by_role("link", name="portfolio_model").first.click()
             page.wait_for_url("**/m/portfolio_model")
+            line = page.get_by_role("navigation", name="How portfolio_model is made")
+
+            def station(name: str):
+                return line.get_by_role("link", name=re.compile(rf"^{name}\b"))
+
+            expect(station("Reports")).to_have_attribute("aria-current", "page")
+            # Its facts are read from what exists: the transform the pipeline
+            # runs, the warehouse file it writes, the model's tables and joins.
+            expect(station("Transform")).to_contain_text("holdings_transform")
+            expect(line).to_contain_text("warehouse.duckdb")
+            expect(station("Model")).to_contain_text(re.compile(r"\d+ tables · \d+ joins"))
+            station("Model").click()
+            page.wait_for_url("**/m/portfolio_model/model")
+            expect(station("Model")).to_have_attribute("aria-current", "page")
+            station("Transform").click()
+            page.wait_for_url("**/m/portfolio_model/transform")
+            page.go_back()
+            page.wait_for_url("**/m/portfolio_model/model")
+            fail_on_browser_errors()
+
+            # Beneath the switcher: Explore narrows to the same model.
             page.get_by_role("link", name="Explore", exact=True).click()
             page.wait_for_url("**/m/portfolio_model/explore")
             page.get_by_role("heading", name="Explore", exact=True).wait_for()
             assert page.get_by_label("Model").input_value() == "portfolio_model"
             fail_on_browser_errors()
 
-            # The pick is remembered: / now opens that model's reports.
+            # The pick is remembered: / now opens that model's Overview.
             page.goto(base + "/")
-            page.wait_for_url("**/m/portfolio_model/reports")
+            page.wait_for_url("**/m/portfolio_model")
+
+            # The Map is every model as one picture: opening one zooms in, and
+            # picking a measure says in words which reports ask for it.
+            page.get_by_role("link", name="Map", exact=True).click()
+            page.wait_for_url("**/map")
+            page.get_by_role("button", name="Open portfolio_model").click()
+            page.wait_for_url("**/map?model=portfolio_model")
+            page.get_by_role("button", name=re.compile(r"^measure: fv_share")).click()
+            expect(page.get_by_label("Selection")).to_contain_text("portfolio_concentration")
+            fail_on_browser_errors()
 
             # Old addresses land on the page that replaced them.
             page.goto(base + "/models/portfolio_model?tab=refresh")
-            page.wait_for_url("**/m/portfolio_model/refresh")
+            page.wait_for_url("**/m/portfolio_model/transform")
+            page.goto(base + "/m/portfolio_model/refresh")
+            page.wait_for_url("**/m/portfolio_model/transform")
+            page.goto(base + "/m/portfolio_model/sources")
+            page.wait_for_url("**/m/portfolio_model/transform")
+            page.goto(base + "/refresh")
+            page.wait_for_url("**/models")
 
             page.goto(base + "/reports")
             fail_on_browser_errors()
@@ -224,11 +261,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("button", name="← All reports").click()
             page.locator(".list-item", has_text=_LABEL).get_by_text("Reproduces", exact=True).wait_for()
 
-            # A build is not a check: Runs shows the list's verdict on the newest
+            # A build is not a check: History shows the list's verdict on the newest
             # build of the report, and a plain "Not checked" (never green) on
             # every older one.
             page.goto(base + "/runs")
-            page.get_by_role("heading", name="Runs", exact=True).wait_for()
+            page.get_by_role("heading", name="History", exact=True).wait_for()
             rows = page.locator("tr", has_text=_REPORT)
             rows.first.wait_for()
             page.get_by_text("Checking…").wait_for(state="detached")
@@ -245,18 +282,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             tops = {round(card.bounding_box()["y"]) for card in cards.all()}
             assert cards.count() == 3 and len(tops) == 1, tops
 
-            # Each page can show the code behind what it shows.
-            page.goto(base + "/m/portfolio_model")
+            # Each stage can show the code behind what it shows.
+            page.goto(base + "/m/portfolio_model/model")
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_text("models/portfolio_model.yaml").first.wait_for()
-            page.goto(base + "/m/portfolio_model/refresh")
+            page.goto(base + "/m/portfolio_model/transform")
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="transform", exact=True).click()
             page.get_by_text("transforms/holdings_transform.py").first.wait_for()
-            # Sources → Warehouse says what the warehouse holds and that the sink
+            # The Transform stage says what the warehouse holds, and that the sink
             # satisfied its contract, before any report is opened.
-            page.goto(base + "/m/portfolio_model/sources")
-            page.get_by_role("button", name="Warehouse", exact=True).click()
             table = page.locator("details", has_text="fact_holdings")
             table.wait_for()
             assert re.search(r"[\d,]+ rows", table.locator("summary").inner_text())
@@ -286,22 +321,29 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(builder).to_contain_text("dim_cohort")
             fail_on_browser_errors()
 
-            # Refresh: Run all opens the Runs tab, which follows the run to its end…
-            page.goto(base + "/m/portfolio_model/refresh")
+            # Transform: Run all opens the Runs tab, which follows the run to its end…
+            page.goto(base + "/m/portfolio_model/transform")
+            # The page reads the warehouse as it opens; a transform that starts
+            # writing it meanwhile fails, so let those reads finish first.
+            page.wait_for_load_state("networkidle")
             page.get_by_role("button", name="Run all").click()
             output = page.get_by_role("log", name="Run output")
             output.get_by_text("Run succeeded").wait_for()
             text = output.inner_text()
             assert "[transform] ✓" in text and "[build] ✓" in text, text
             assert page.get_by_role("list", name="Runs").get_by_role("button").count() == 1
-            # …then links the reports it rebuilt, each to its page in the app.
+            # …the Overview's header now says when it was refreshed…
+            page.get_by_text("Last refreshed").wait_for()
+            # …and the run links the reports it rebuilt, each to its page in the app.
             page.get_by_role("link", name="portfolio_book", exact=True).click()
             page.wait_for_url("**/m/portfolio_model/reports?r=portfolio_model%2Fportfolio_book")
             fail_on_browser_errors()
 
-            # That refresh is a run of its model: the model's Runs lists it, and
-            # All models names the model beside it.
-            page.goto(base + "/m/portfolio_model/runs")
+            # That refresh is a run of its model: its History (the link in the
+            # Overview's header) lists it, and All models names the model beside it.
+            page.get_by_role("link", name="History", exact=True).click()
+            page.wait_for_url("**/m/portfolio_model/runs")
+            page.get_by_role("heading", name="History", exact=True).wait_for()
             page.locator("tr", has_text="Pipeline run").first.wait_for()
             page.goto(base + "/runs")
             pipeline_row = page.locator("tr", has_text="Pipeline run").first
