@@ -656,8 +656,8 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 - **Reports** — a model's Overview, Reports stage: the list, and beside it the last
   build of the report you picked (Preview) or the files that define it (Config); a
   report with no build says so and offers **Build it now**. **Open** gives a report the
-  whole page: the app's nav is a slim icon rail on the left, with a labeled toolbar
-  above the report. **Rebuild** runs it again in the background (a toast when done).
+  whole page: the app's nav is a slim icon rail on the left, and a breadcrumb leads
+  back to the model, above a labeled toolbar. **Rebuild** runs it again in the background (a toast when done).
   **Export** saves a PDF, an Excel file, or the self-contained HTML with its embedded
   receipt. Only the HTML carries the receipt, and `tracebi verify --file` checks it.
   **Share** copies the report's link, and **Edit as a draft** makes an editable draft
