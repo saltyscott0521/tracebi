@@ -95,7 +95,7 @@ def _pipeline_yaml_template_text(title: str) -> str:
 #
 # A pipeline: run a phase-1 transform, then rebuild the reports. Scaffolded by
 # `tracebi new-pipeline` on {today}. It only NAMES things; the transform stays
-# Python. Run it with `tracebi run-pipeline {slug}`, or from the app's Refresh page.
+# Python. Run it with `tracebi run-pipeline {slug}`, or with Refresh data on the model's Overview.
 #
 # If a pipelines/{slug}.py exists too, the Python file wins (a pipeline is one file).
 
@@ -429,7 +429,7 @@ _INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.yaml.txt")
 _INIT_CONNECTION = _scaffold_text("init_connection_warehouse.yaml.txt")
 
 # The pipeline every model gets (tracebi.pipeline.model_pipeline): the
-# transform, then the model's reports. It is what the app's Refresh page runs.
+# transform, then the model's reports. It is what Refresh data runs in the app.
 _INIT_SAMPLE_PIPELINE = _scaffold_text("init_sample_pipeline.yaml.txt")
 
 # The sample report is an ARTIFACT PACKAGE — the one report lane — so the
@@ -549,7 +549,7 @@ is half the audit story.
    `data-tb-stage="exploration"` die at the final build.
 6. Copy `pipelines/sample_model.py` to `pipelines/sales.py` and name your model
    and transform in it. `tracebi run-pipeline sales` then runs the transform
-   and rebuilds the model's reports, and the app's Refresh page runs the same.
+   and rebuilds the model's reports, and Refresh data in the app runs the same.
 
 ## Agents
 
@@ -1023,7 +1023,7 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
 def _dev_in_the_app(args: argparse.Namespace) -> int:
     """``tracebi dev [<name>]``: the web app, in dev mode. With a name it opens
-    that report with Build already on; without one, the Reports page, where what
+    that report with Build already on; without one, the Reports list, where what
     the agent shows you lands before any report exists. The agent's chat goes
     beside it; the app is where you watch it work and point at what you mean
     (see docs/architecture/design-direction.md).
@@ -1461,7 +1461,7 @@ def cmd_run_pipeline(args: argparse.Namespace) -> int:
 
     print(f"[tracebi] {args.name}: {' → '.join(chain)}")
     # Recorded like a run started from the app: a row in the state store and a
-    # log, so the Refresh page lists both. Recording is not running, though: a
+    # log, so the model's History lists both. Recording is not running, though: a
     # store that cannot be reached costs the record, not the refresh.
     try:
         run_id = run_record.begin(args.name, chain)
