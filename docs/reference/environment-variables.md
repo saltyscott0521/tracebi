@@ -119,6 +119,20 @@ these variables when it is unset.
 `TRACEBI_MCP_TOKEN` keeps working beside it, for automation, acting as
 `TRACEBI_MCP_ACTOR` with the `analyst` role.
 
+### A built-in sign-in, with no identity provider
+
+For a demo or a small team. The gateway signs people in on a page of its own at
+`/oauth/callback` ([[connect-chatgpt-and-claude]]). It serves `/mcp` only: the
+app's own pages are not put behind it. It cannot be combined with
+`TRACEBI_OIDC_ISSUER` (the server refuses to start), and it needs
+`TRACEBI_PUBLIC_URL` and `TRACEBI_OAUTH_SECRET`. Run it as one worker.
+
+| Variable | Meaning |
+| --- | --- |
+| `TRACEBI_DEMO_LOGIN` | a role (`viewer`, `analyst` or `admin`). Adds a **Continue as the demo user** button that signs anyone who reaches the page in, with that role, as `demo`. Use it only on a server that holds sample data. |
+| `TRACEBI_LOCAL_USERS` | `name:role:password` entries, comma separated, e.g. `alice:analyst:a-long-password`. A password has at least 8 characters, may contain `:` but not `,`. Ten wrong passwords for one name in ten minutes stop that name for a while. |
+| `TRACEBI_OAUTH_SECRET` | a random secret of at least 32 characters (`openssl rand -hex 32`). It signs the sign-in while it is in flight, so every worker needs the same one. |
+
 The http transport **refuses to start** until you either set the token or pass
 `--insecure` deliberately. The web app has no insecure mode: without the token
 it serves no `/mcp`.

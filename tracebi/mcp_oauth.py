@@ -10,6 +10,11 @@ to the company identity provider as an ordinary confidential OIDC client
 maps the person's groups to ``viewer`` / ``analyst`` / ``admin``, and issues
 its own short-lived access token and a rotating refresh token.
 
+For a demo or a small team with no identity provider there is a built-in
+sign-in instead (``TRACEBI_DEMO_LOGIN`` and/or ``TRACEBI_LOCAL_USERS``): the
+same authorization server, but the person signs in on a page TraceBi serves at
+``/oauth/callback``. Everything after the sign-in is unchanged.
+
 The SDK (``mcp.server.auth``) supplies the endpoint handlers, request
 validation and the bearer check. This module supplies the provider behind
 them, the OIDC leg, the stores, and the three things the SDK's defaults do
@@ -26,6 +31,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import html
 import http.client
 import ipaddress
 import json
@@ -41,6 +47,7 @@ import urllib.parse
 import urllib.request
 from contextvars import ContextVar
 from dataclasses import dataclass
+from dataclasses import field as dc_field
 from typing import Any, Optional
 
 try:
@@ -99,6 +106,11 @@ SESSION_TTL = 30 * 86400          # ... but a sign-in is good for 30 days at mos
 CODE_TTL = 300
 PENDING_TTL = 600
 _REGISTRATIONS_PER_HOUR = 100
+_MIN_PASSWORD = 8
+_MIN_SECRET = 32
+_FAIL_WINDOW = 600             # seconds a failed password is remembered
+_FAILS_PER_NAME = 10
+_FAILS_PER_ADDRESS = 30
 
 CLAUDE_REDIRECT = "https://claude.ai/api/mcp/auth_callback"
 # ChatGPT's connector callback. Verify against current OpenAI docs.
@@ -176,17 +188,51 @@ def parse_role_map(raw: str) -> dict[str, str]:
     return out
 
 
+def parse_local_users(raw: str) -> dict[str, tuple[str, str]]:
+    """``alice:analyst:her-password,bob:viewer:his-password`` -> {name: (role, password)}.
+
+    The password is everything after the second colon, so it may contain ':'
+    but not ','. Like the role map, a bad entry stops startup.
+    """
+    out: dict[str, tuple[str, str]] = {}
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        name, _, rest = entry.partition(":")
+        role, _, password = rest.partition(":")
+        name, role = name.strip(), role.strip()
+        if not name or role not in _RANK or len(password) < _MIN_PASSWORD:
+            raise OAuthConfigError(
+                f"TRACEBI_LOCAL_USERS entry for {name or entry!r} is not "
+                f"name:role:password with a role from {ROLES} and a password "
+                f"of at least {_MIN_PASSWORD} characters.")
+        if name in out:
+            raise OAuthConfigError(f"TRACEBI_LOCAL_USERS lists {name!r} twice.")
+        out[name] = (role, password)
+    return out
+
+
 @dataclass(frozen=True)
 class OAuthConfig:
-    idp_issuer: str
-    client_id: str
-    client_secret: str
-    scopes: str
-    groups_claim: str
-    role_map: dict
-    default_role: str
-    mcp_url: str            # the public MCP URL: the protected resource
-    issuer: str             # TraceBi's own issuer: the public origin
+    idp_issuer: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    scopes: str = "openid email profile"
+    groups_claim: str = "groups"
+    role_map: dict = dc_field(default_factory=dict)
+    default_role: str = "viewer"
+    mcp_url: str = ""       # the public MCP URL: the protected resource
+    issuer: str = ""        # TraceBi's own issuer: the public origin
+    # The built-in sign-in, used when there is no identity provider.
+    local_users: dict = dc_field(default_factory=dict)   # name -> (role, password)
+    demo_role: Optional[str] = None                   # the role of the one-click demo user
+    local_secret: str = ""                            # signs the in-flight sign-in
+
+    @property
+    def local(self) -> bool:
+        """The built-in sign-in is on (and the identity provider is not)."""
+        return not self.idp_issuer
 
     @property
     def callback_url(self) -> str:
@@ -202,18 +248,15 @@ class OAuthConfig:
     def from_env(cls, env=None) -> Optional["OAuthConfig"]:
         env = os.environ if env is None else env
         idp = (env.get("TRACEBI_OIDC_ISSUER") or "").strip()
-        if not idp:
+        users_raw = (env.get("TRACEBI_LOCAL_USERS") or "").strip()
+        demo = (env.get("TRACEBI_DEMO_LOGIN") or "").strip()
+        if not (idp or users_raw or demo):
             return None
         problems = []
-        if not (idp.startswith("https://") or (
-                idp.startswith("http://") and _loopback_url(idp))):
-            problems.append("TRACEBI_OIDC_ISSUER must be an https URL")
-        client_id = (env.get("TRACEBI_OIDC_CLIENT_ID") or "").strip()
-        secret = (env.get("TRACEBI_OIDC_CLIENT_SECRET") or "").strip()
-        for name, value in (("TRACEBI_OIDC_CLIENT_ID", client_id),
-                            ("TRACEBI_OIDC_CLIENT_SECRET", secret)):
-            if not value:
-                problems.append(f"{name} is not set")
+        if idp and (users_raw or demo):
+            problems.append(
+                "TRACEBI_OIDC_ISSUER cannot be combined with TRACEBI_LOCAL_USERS "
+                "or TRACEBI_DEMO_LOGIN: choose one way to sign in")
         mcp_url = (env.get("TRACEBI_PUBLIC_MCP_URL") or "").strip()
         if not mcp_url:
             public = (env.get("TRACEBI_PUBLIC_URL") or "").strip()
@@ -234,6 +277,19 @@ class OAuthConfig:
                     f"the public MCP URL {mcp_url!r} must be an https URL "
                     "with no query or fragment")
             issuer = f"{parts.scheme}://{parts.netloc}".lower()
+
+        if not idp:
+            return cls._local_from_env(env, users_raw, demo, mcp_url, issuer, problems)
+
+        if not (idp.startswith("https://") or (
+                idp.startswith("http://") and _loopback_url(idp))):
+            problems.append("TRACEBI_OIDC_ISSUER must be an https URL")
+        client_id = (env.get("TRACEBI_OIDC_CLIENT_ID") or "").strip()
+        secret = (env.get("TRACEBI_OIDC_CLIENT_SECRET") or "").strip()
+        for name, value in (("TRACEBI_OIDC_CLIENT_ID", client_id),
+                            ("TRACEBI_OIDC_CLIENT_SECRET", secret)):
+            if not value:
+                problems.append(f"{name} is not set")
         scopes = (env.get("TRACEBI_OIDC_SCOPES") or "openid email profile").split()
         if "openid" not in scopes:
             scopes.insert(0, "openid")
@@ -257,6 +313,28 @@ class OAuthConfig:
             groups_claim=(env.get("TRACEBI_OIDC_GROUPS_CLAIM") or "groups").strip(),
             role_map=role_map, default_role=default_role,
             mcp_url=mcp_url, issuer=issuer)
+
+    @classmethod
+    def _local_from_env(cls, env, users_raw, demo, mcp_url, issuer, problems):
+        try:
+            users = parse_local_users(users_raw)
+        except OAuthConfigError as exc:
+            problems.append(str(exc))
+            users = {}
+        if demo and demo not in _RANK:
+            problems.append(
+                f"TRACEBI_DEMO_LOGIN must be a role from {ROLES}, got {demo!r}")
+        secret = (env.get("TRACEBI_OAUTH_SECRET") or "").strip()
+        if len(secret) < _MIN_SECRET:
+            problems.append(
+                f"TRACEBI_OAUTH_SECRET must be a random secret of at least "
+                f"{_MIN_SECRET} characters (it signs the sign-in in flight)")
+        if problems:
+            raise OAuthConfigError(
+                "Built-in MCP sign-in (TRACEBI_LOCAL_USERS / TRACEBI_DEMO_LOGIN "
+                "is set) is misconfigured: " + "; ".join(problems) + ".")
+        return cls(mcp_url=mcp_url, issuer=issuer, local_users=users,
+                   demo_role=demo or None, local_secret=secret)
 
 
 # ── Redirect allowlist ───────────────────────────────────────────────────
@@ -568,6 +646,9 @@ class Provider:
         self.cfg = cfg
         self.oidc = oidc or _OIDC(cfg)
         self._documents: dict[str, tuple[float, Optional[_Client]]] = {}
+        # Failed built-in sign-ins: key -> times. In this process only, which
+        # is how the built-in sign-in is meant to run (one worker).
+        self._failures: dict[str, list[float]] = {}
 
     # -- store ----------------------------------------------------------
     @staticmethod
@@ -591,8 +672,10 @@ class Provider:
 
     def _sign_in_key(self) -> bytes:
         """Signs the in-flight sign-in cookie. Derived from the identity
-        provider client secret, which every worker shares and nobody else has."""
-        return hashlib.sha256(b"tracebi-oauth:" + self.cfg.client_secret.encode()).digest()
+        provider client secret (or, for the built-in sign-in, TRACEBI_OAUTH_SECRET),
+        which every worker shares and nobody else has."""
+        secret = self.cfg.local_secret if self.cfg.local else self.cfg.client_secret
+        return hashlib.sha256(b"tracebi-oauth:" + secret.encode()).digest()
 
     def _revoke_family(self, family_id: str) -> None:
         self._exec("UPDATE tracebi_oauth_tokens SET revoked_at = :n "
@@ -701,6 +784,11 @@ class Provider:
             "v": verifier, "e": int(_now()) + PENDING_TTL})
         if len(sealed) > _MAX_COOKIE:
             raise AuthorizeError("invalid_request", "the request is too large")
+        if self.cfg.local:
+            # No identity provider: the person signs in on TraceBi's own page,
+            # which is the same address the provider would have returned to.
+            flow["sealed"] = sealed
+            return f"{self.cfg.issuer}/oauth/callback?{urllib.parse.urlencode({'state': state})}"
         try:
             url = await asyncio.to_thread(self.oidc.authorize_url, state, nonce, challenge)
         except (SignInError, OSError, ValueError, urllib.error.URLError) as exc:
@@ -709,60 +797,127 @@ class Provider:
         flow["sealed"] = sealed
         return url
 
-    # -- the identity provider answers ----------------------------------
-    async def callback(self, request: Request) -> Response:
-        q = request.query_params
-        state = q.get("state") or ""
+    # -- the sign-in comes back -----------------------------------------
+    def _pending(self, request: Request, state: str):
+        """The in-flight sign-in this browser began, as ``(row, cookie_name)``,
+        or ``(None, error response)`` when the link is not this browser's own,
+        has expired or was altered."""
         flow_id = state.partition(".")[0]
         if not _FLOW.fullmatch(flow_id):
-            return _bad("This sign-in link is not valid. Start again from your AI app.")
+            return None, _bad("This sign-in link is not valid. Start again from your AI app.")
         cookie_name = f"tb_oauth_{flow_id}"
         sealed = request.cookies.get(cookie_name)
         if not sealed:
             # The sign-in was begun in a different browser: a link someone
             # else made, not this person's own request.
             log.warning("sign-in refused: callback came from a browser that did not begin it")
-            return _bad("This sign-in was started in a different browser. "
-                        "Start again from your AI app.")
+            return None, _bad("This sign-in was started in a different browser. "
+                              "Start again from your AI app.")
         row = unseal(self._sign_in_key(), sealed)
         if (row is None or not hmac.compare_digest(str(row.get("s", "")), _h(state))
                 or int(row.get("e", 0)) < _now()):
-            return _bad("This sign-in link is not valid or has expired. "
-                        "Start again from your AI app.")
+            return None, _bad("This sign-in link is not valid or has expired. "
+                              "Start again from your AI app.")
+        if not redirect_allowed(row["p"]["redirect_uri"]):
+            return None, _bad("The redirect address is no longer allowed.")
+        return row, cookie_name
+
+    @staticmethod
+    def _back(row: dict, cookie_name: str, **params) -> Response:
         grant = row["p"]
-        target = grant["redirect_uri"]
-        if not redirect_allowed(target):
-            return _bad("The redirect address is no longer allowed.")
+        resp = RedirectResponse(
+            _with_query(grant["redirect_uri"], state=grant.get("state"), **params),
+            status_code=302, headers={"Cache-Control": "no-store"})
+        resp.delete_cookie(cookie_name, path="/oauth/callback")
+        return resp
 
-        def back(**params):
-            resp = RedirectResponse(
-                _with_query(target, state=grant.get("state"), **params),
-                status_code=302, headers={"Cache-Control": "no-store"})
-            resp.delete_cookie(cookie_name, path="/oauth/callback")
-            return resp
-
-        code = q.get("code")
-        if q.get("error") or not code:
-            return back(error="access_denied",
-                        error_description="sign-in was not completed")
-        try:
-            claims = await asyncio.to_thread(
-                self.oidc.sign_in, code, row["v"], row["n"])
-            who = self.oidc.identity(claims)
-        except Exception as exc:  # noqa: BLE001 — whatever went wrong, the answer is no
-            log.warning("sign-in refused: %s", exc)
-            return back(error="access_denied",
-                        error_description="sign-in could not be verified")
+    async def _issue_code(self, row: dict, who: dict) -> str:
+        """An authorization code for the person *who* signed in."""
         issued = secrets.token_urlsafe(32)
         now = int(_now())
         await asyncio.to_thread(
             self._exec,
             "INSERT INTO tracebi_oauth_codes (code_hash, client_id, params, identity, "
             "family_id, expires_at, used_at) VALUES (:h, :c, :p, :i, :f, :e, NULL)",
-            h=_h(issued), c=row["c"], p=json.dumps(grant),
+            h=_h(issued), c=row["c"], p=json.dumps(row["p"]),
             i=json.dumps({**who, "session_expires_at": now + SESSION_TTL}),
             f=secrets.token_urlsafe(16), e=now + CODE_TTL)
-        return back(code=issued)
+        return issued
+
+    async def callback(self, request: Request) -> Response:
+        """The identity provider answers."""
+        q = request.query_params
+        row, cookie_name = self._pending(request, q.get("state") or "")
+        if row is None:
+            return cookie_name
+        code = q.get("code")
+        if q.get("error") or not code:
+            return self._back(row, cookie_name, error="access_denied",
+                              error_description="sign-in was not completed")
+        try:
+            claims = await asyncio.to_thread(
+                self.oidc.sign_in, code, row["v"], row["n"])
+            who = self.oidc.identity(claims)
+        except Exception as exc:  # noqa: BLE001 — whatever went wrong, the answer is no
+            log.warning("sign-in refused: %s", exc)
+            return self._back(row, cookie_name, error="access_denied",
+                              error_description="sign-in could not be verified")
+        return self._back(row, cookie_name, code=await self._issue_code(row, who))
+
+    # -- the built-in sign-in -------------------------------------------
+    def _throttled(self, *keys: str) -> bool:
+        now = _now()
+        for key, limit in zip(keys, (_FAILS_PER_NAME, _FAILS_PER_ADDRESS)):
+            recent = [t for t in self._failures.get(key, []) if t > now - _FAIL_WINDOW]
+            if recent:
+                self._failures[key] = recent
+            else:
+                self._failures.pop(key, None)
+            if len(recent) >= limit:
+                return True
+        return False
+
+    def _failed(self, *keys: str) -> None:
+        now = _now()
+        if len(self._failures) > 10_000:       # an attacker inventing names
+            self._failures.clear()
+        for key in keys:
+            self._failures.setdefault(key, []).append(now)
+
+    def _check_password(self, name: str, password: str) -> Optional[dict]:
+        """The person *name* with *password*, or None. Constant-time, and an
+        unknown name costs the same as a wrong password."""
+        role, expected = self.cfg.local_users.get(name, (None, secrets.token_urlsafe(16)))
+        ok = hmac.compare_digest(password.encode(), expected.encode())
+        if role is None or not ok:
+            return None
+        return {"sub": f"local:{name}", "actor": name[:200], "role": role}
+
+    async def local_login(self, request: Request) -> Response:
+        """The built-in sign-in page (GET) and its answer (POST)."""
+        posted = request.method == "POST"
+        form = await request.form() if posted else {}
+        state = str(form.get("state") if posted else request.query_params.get("state") or "")
+        row, cookie_name = self._pending(request, state)
+        if row is None:
+            return cookie_name
+        if not posted:
+            return _login_page(state, self.cfg)
+        address = request.client.host if request.client else "?"
+        name = str(form.get("username") or "")[:200]
+        if form.get("demo") and self.cfg.demo_role:
+            who = {"sub": "local:demo", "actor": "demo", "role": self.cfg.demo_role}
+        else:
+            keys = (f"name:{name.lower()}", f"address:{address}")
+            if self._throttled(*keys):
+                log.warning("built-in sign-in throttled for %r from %s", name, address)
+                return _login_page(state, self.cfg, "Too many attempts. Wait a few minutes and try again.", 429)
+            who = self._check_password(name, str(form.get("password") or ""))
+            if who is None:
+                self._failed(*keys)
+                log.warning("built-in sign-in refused for %r from %s", name, address)
+                return _login_page(state, self.cfg, "That name and password do not match.", 401)
+        return self._back(row, cookie_name, code=await self._issue_code(row, who))
 
     # -- authorization code -> tokens -----------------------------------
     async def load_authorization_code(self, client, authorization_code: str):
@@ -880,6 +1035,51 @@ class Provider:
         await asyncio.to_thread(revoke)
 
 
+def _login_page(state: str, cfg: OAuthConfig, message: str = "", status: int = 200) -> Response:
+    """The built-in sign-in page: a name and password when TRACEBI_LOCAL_USERS
+    is set, and a one-click button when TRACEBI_DEMO_LOGIN is."""
+    q = html.escape
+    fields = ""
+    if cfg.local_users:
+        fields += (
+            '<label>Name<input name="username" autocomplete="username" required autofocus></label>'
+            '<label>Password<input name="password" type="password" '
+            'autocomplete="current-password" required></label>'
+            '<button type="submit">Sign in</button>')
+    demo = ""
+    if cfg.demo_role:
+        demo = (
+            ('<p class="or">or</p>' if cfg.local_users else "")
+            + '<button type="submit" name="demo" value="1" formnovalidate class="demo">'
+            f'Continue as the demo user</button><p class="note">The demo user is an {q(cfg.demo_role)}.</p>')
+    body = (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>Sign in to TraceBi</title><style>'
+        'body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fafafa;'
+        'font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#171717}'
+        'main{width:min(380px,92vw);background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:28px}'
+        'h1{margin:0 0 4px;font-size:20px}p{margin:0 0 16px;color:#404040}'
+        'label{display:block;margin:0 0 14px;font-size:13px;font-weight:600}'
+        'input{display:block;width:100%;box-sizing:border-box;margin-top:6px;height:40px;padding:0 10px;'
+        'border:1px solid #d4d4d4;border-radius:8px;font:inherit}'
+        'button{width:100%;height:40px;border:0;border-radius:8px;background:#2f5bea;color:#fff;'
+        'font:inherit;font-weight:600;cursor:pointer}'
+        'button.demo{background:#fff;color:#171717;border:1px solid #d4d4d4}'
+        '.or{text-align:center;margin:14px 0}.note{margin:8px 0 0;font-size:13px;color:#666}'
+        '.err{color:#b91c1c;font-weight:600}'
+        ':focus-visible{outline:2px solid #2f5bea;outline-offset:2px}'
+        '</style></head><body><main><h1>Sign in to TraceBi</h1>'
+        '<p>An AI app is asking to connect to this server as you.</p>'
+        + (f'<p class="err" role="alert">{q(message)}</p>' if message else "")
+        + f'<form method="post" action="/oauth/callback"><input type="hidden" name="state" value="{q(state)}">'
+        + fields + demo + '</form></main></body></html>')
+    return Response(body, status_code=status, media_type="text/html", headers={
+        "Cache-Control": "no-store", "X-Frame-Options": "DENY",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+        "Referrer-Policy": "no-referrer"})
+
+
 def _bad(message: str) -> Response:
     return PlainTextResponse(message, status_code=400, headers={"Cache-Control": "no-store"})
 
@@ -970,7 +1170,12 @@ class GatewayOAuth:
         routes.append(Route("/authorize", endpoint=RequestBodyLimitMiddleware(
             request_response(authorize), DEFAULT_MAX_REQUEST_BODY_SIZE),
             methods=["GET", "POST"]))
-        routes.append(Route("/oauth/callback", endpoint=provider.callback, methods=["GET"]))
+        if cfg.local:
+            routes.append(Route("/oauth/callback", endpoint=RequestBodyLimitMiddleware(
+                request_response(provider.local_login), DEFAULT_MAX_REQUEST_BODY_SIZE),
+                methods=["GET", "POST"]))
+        else:
+            routes.append(Route("/oauth/callback", endpoint=provider.callback, methods=["GET"]))
         routes.append(Route("/revoke", endpoint=CORSMiddleware(
             RequestBodyLimitMiddleware(request_response(_revoke_view(provider)),
                                        DEFAULT_MAX_REQUEST_BODY_SIZE),
