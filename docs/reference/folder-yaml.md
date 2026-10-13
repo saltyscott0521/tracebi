@@ -90,6 +90,34 @@ into folders where they hold `publish`.
 
 ---
 
+## My published
+
+Every signed-in person has a folder of their own, `my-published/<their sign-in
+name>/` under the library (shown in the app as **My published**, always listed,
+even empty). They hold `publish` there without any `_folder.yaml`, so a report
+published into it is shareable and schedulable without the shared folders.
+
+- Nobody else sees it. To share it, put a `_folder.yaml` **inside that folder**
+  (`view: [bob@example.com]`). A `_folder.yaml` higher up, even `view: ['*']`,
+  never reaches in. Admins keep `manage`, as everywhere.
+- The app shows a folder's permissions, read-only, to people with `manage` and
+  to the owner of a personal folder. Editing is file-only for now, and the app
+  says so.
+- A session with no sign-in identity (the shared gateway token, the command
+  line, the scheduler, an app with no sign-in) has no personal folder; it holds
+  `manage` everywhere and publishes into a shared folder. `GET /api/folders`
+  answers `personal: null` with the reason.
+- Not offered when `TRACEBI_LIBRARY_MOUNTS` is set: the library is then several
+  labelled roots with no place for it.
+
+In the app, a draft's **Publish** step lists the places it can go (My published,
+each folder where you hold `build` or more, and its own place) and says for
+each whether it publishes directly or sends a request. Approvers (`publish` on
+the folder) see pending requests under **Drafts** and approve, or decline with
+a reason the requester sees.
+
+---
+
 ## How a file applies
 
 1. **The nearest file wins.** Starting at a report's folder and walking up to

@@ -131,6 +131,8 @@ A draft's owner is the acting principal; `{owner}` is that name slugged to
 | `POST` | `/api/drafts/{owner}/{kind}/{path}/publish` | analyst, and owner or admin |
 | `DELETE` | `/api/drafts/{owner}/{kind}/{path}` | analyst, and owner or admin |
 
+| `GET` | `/api/folders` | viewer: the folders the caller may see, with their level and whether a publish there is direct or a request. `personal` is the caller's own `my-published/<sign-in name>` (null with no sign-in identity). `permissions` (read-only, `editable: false`) only for `manage` and for the owner of a personal folder |
+| `GET` | `/api/drafts/{owner}/reports/{path}/destinations` | owner or admin: where the draft may be published, each `mode: publish` or `request` |
 | `GET` | `/api/publish-requests?status=` | viewer: the caller's own requests, and those into folders where they hold `publish` |
 | `POST` | `/api/publish-requests/{id}/approve` | analyst, and `publish` on the destination |
 | `POST` | `/api/publish-requests/{id}/reject` | analyst, and `publish` on the destination; body `{"note"}` (required) |

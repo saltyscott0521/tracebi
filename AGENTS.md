@@ -658,6 +658,10 @@ nothing a draft holds goes live until `publish_draft`.
    cannot decide your own. A folder whose `_folder.yaml` says
    `accepts: checkable` refuses a report whose numbers a query cannot re-run,
    at publish and at request, and the message names why.
+   A signed-in person has a folder of their own, `my-published/<sign-in name>`
+   (My published in the app), where they hold Publish: publishing there is
+   direct, and only they see it unless a `_folder.yaml` inside it grants View.
+   With no sign-in identity (the shared token, the CLI) there is none.
 
 **Dev to prod: publish a model before a report that uses it.** A report is
 checked against the published models only, so a report that names a model not

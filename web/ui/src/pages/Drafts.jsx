@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   useDrafts, useDraftVersion, useDraftFiles, useDraftPreview, useDraftImpact,
   usePublishDraft, useDeleteDraft, useWriteDraftFile, useMe,
+  useDraftDestinations, usePublishRequests, useDecideRequest,
 } from '../api'
 import { reportModels, reportPagePath } from '../nav'
 import {
@@ -39,6 +40,7 @@ export default function Drafts() {
         Reports and models being written before they are published, newest first.
         Nothing here changes what anyone sees until it is published.
       </PageSub>
+      <PublishRequests />
       {error && <ErrorDetail error={error} />}
       {isLoading && <SkeletonList rows={3} />}
       {data && list.length === 0 && (
@@ -73,6 +75,98 @@ export default function Drafts() {
   )
 }
 
+// Requests to publish into a folder. Someone with only Build there asks;
+// someone with Publish there (the approver) approves or declines, and a
+// decline records why. Shown to the person who asked and to the approvers.
+function PublishRequests() {
+  const { data } = usePublishRequests()
+  const decide = useDecideRequest()
+  const toast = useToast()
+  const [declining, setDeclining] = useState(null)   // request id
+  const [reason, setReason] = useState('')
+  const [failure, setFailure] = useState(null)
+  const requests = data || []
+  if (!requests.length) return null
+  const pending = requests.filter(r => r.status === 'pending')
+  const settled = requests.filter(r => r.status !== 'pending').slice(0, 5)
+
+  const run = (r, approve) => decide.mutate(
+    { id: r.id, approve, note: approve ? '' : reason.trim() }, {
+      onSuccess: () => {
+        setDeclining(null); setReason(''); setFailure(null)
+        toast(approve ? `Published ${r.destination}` : 'Request declined', 'success')
+      },
+      onError: err => setFailure(err),
+    })
+
+  const row = r => (
+    <li key={r.id} style={{ fontSize: 13, lineHeight: 1.5, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+      <div>
+        <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{r.destination}</span>{' '}
+        <Badge variant={r.status === 'pending' ? 'amber' : r.status === 'approved' ? 'green' : 'gray'}>
+          {r.status === 'pending' ? 'Waiting for approval' : r.status === 'approved' ? 'Approved' : 'Declined'}
+        </Badge>
+      </div>
+      <div style={{ color: 'var(--muted)' }}>
+        Asked by {r.requested_by || 'unknown'} {when(r.requested_at) || ''}
+        {r.note && <> · “{r.note}”</>}
+        {r.decided_by && <> · {r.status === 'approved' ? 'approved' : 'declined'} by {r.decided_by} {when(r.decided_at) || ''}</>}
+        {r.status === 'rejected' && r.decision_note && <> · reason: {r.decision_note}</>}
+      </div>
+      {r.status === 'pending' && r.can_decide && declining !== r.id && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <Btn size="sm" onClick={() => run(r, true)} disabled={decide.isPending}
+               aria-label={`Approve publishing ${r.destination}`}>Approve and publish</Btn>
+          <Btn size="sm" variant="outline" onClick={() => { setDeclining(r.id); setReason(''); setFailure(null) }}
+               aria-label={`Decline publishing ${r.destination}`}>Decline</Btn>
+        </div>
+      )}
+      {r.status === 'pending' && !r.can_decide && (
+        <div style={{ color: 'var(--muted)' }}>Someone with Publish permission on this folder will decide.</div>
+      )}
+      {declining === r.id && (
+        <div style={{ marginTop: 8 }}>
+          <label htmlFor={`decline-${r.id}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+            Reason (the person who asked will see it)
+          </label>
+          <input id={`decline-${r.id}`} value={reason} onChange={e => setReason(e.target.value)}
+            style={{
+              width: '100%', maxWidth: 480, padding: '8px 10px', marginBottom: 8,
+              border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
+              background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+            }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn size="sm" variant="red" onClick={() => run(r, false)} disabled={decide.isPending || !reason.trim()}>
+              Decline request
+            </Btn>
+            <Btn size="sm" variant="outline" onClick={() => setDeclining(null)}>Cancel</Btn>
+          </div>
+        </div>
+      )}
+    </li>
+  )
+
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <h2 style={{ fontSize: 14, margin: '0 0 4px' }}>Publish requests</h2>
+      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 6px' }}>
+        {pending.length
+          ? `${pending.length} waiting. A request publishes exactly the files that were asked for, whatever the draft becomes meanwhile.`
+          : 'Nothing is waiting.'}
+      </p>
+      {failure && <div role="alert"><ErrorDetail error={failure} /></div>}
+      <ul aria-label="Publish requests" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {[...pending, ...settled].map(row)}
+      </ul>
+    </Card>
+  )
+}
+
+const modeSentence = {
+  publish: 'Publishes directly: you hold Publish permission there.',
+  request: 'Sends a request: you can build there but not publish, so someone with Publish permission approves it first.',
+}
+
 export function DraftPage() {
   const { owner, kind, '*': path } = useParams()
   const d = { owner, kind, path }
@@ -84,6 +178,7 @@ export function DraftPage() {
   const [note, setNote] = useState('')
   const [accept, setAccept] = useState(false)
   const [published, setPublished] = useState(null)
+  const [dest, setDest] = useState(null)          // chosen destination folder ('' = its own place)
   const [refusal, setRefusal] = useState(null)
   const [edits, setEdits] = useState({}) // file name -> { base, text, saved, error }
 
@@ -99,6 +194,9 @@ export function DraftPage() {
   // the previous page instead of a blank one.
   const lastHtml = useRef(null)
   if (html) lastHtml.current = html
+  const { data: places } = useDraftDestinations(d, isReport && step === 'publish')
+  const usable = (places || []).filter(p => p.mode)
+  const chosen = usable.find(p => (p.folder || '') === dest) || usable[0]
   const publish = usePublishDraft(d)
   const del = useDeleteDraft(d)
   const write = useWriteDraftFile(d)
@@ -114,10 +212,12 @@ export function DraftPage() {
 
   const doPublish = () => {
     setRefusal(null)
-    publish.mutate({ note: note.trim(), acceptImpact: needsAccept && accept }, {
+    publish.mutate({ note: note.trim(), acceptImpact: needsAccept && accept, folder: chosen?.folder }, {
       onSuccess: res => {
         setStep(null); setNote(''); setAccept(false); setPublished(res)
-        toast(`Published ${kindLabel(kind).toLowerCase()} ${path}`, 'success')
+        toast(res.status === 'requested'
+          ? `Asked to publish ${path}`
+          : `Published ${kindLabel(kind).toLowerCase()} ${path}`, 'success')
       },
       onError: err => { setRefusal(err); setStep(null) },
     })
@@ -156,9 +256,39 @@ export function DraftPage() {
       {step === 'publish' && (
         <Card style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>
-            Publishing replaces the {kindLabel(kind).toLowerCase()} everyone sees with this draft.
-            The version it replaces is kept.
+            {chosen?.personal
+              ? 'Publishing puts this report in My published: only you, and anyone you share the folder with, see it. The version it replaces is kept.'
+              : `Publishing replaces the ${kindLabel(kind).toLowerCase()} everyone who can see it sees with this draft. The version it replaces is kept.`}
           </p>
+          {isReport && places && (
+            <div style={{ marginBottom: 12 }}>
+              <label htmlFor="draft-dest" style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                Publish to
+              </label>
+              <select id="draft-dest" value={chosen ? (chosen.folder || '') : ''}
+                onChange={e => setDest(e.target.value)} disabled={!usable.length}
+                style={{
+                  minHeight: 36, maxWidth: '100%', padding: '6px 10px',
+                  border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+                }}>
+                {usable.map(p => (
+                  <option key={p.folder || ''} value={p.folder || ''}>
+                    {p.label} ({p.mode === 'publish' ? 'publishes directly' : 'asks for approval'})
+                  </option>
+                ))}
+              </select>
+              {chosen && (
+                <p role="status" style={{ fontSize: 12, color: 'var(--muted)', margin: '6px 0 0' }}>
+                  {modeSentence[chosen.mode]} It will be {chosen.destination}.
+                  {chosen.accepts === 'checkable' && ' This folder accepts only reports whose every number a query can re-run.'}
+                </p>
+              )}
+              {!usable.length && (
+                <Alert variant="warn">You do not hold Build permission on any folder this report can go to.</Alert>
+              )}
+            </div>
+          )}
           {unsaved && (
             <Alert variant="warn">
               △ A file has unsaved changes. Publishing uses what is saved in the draft.
@@ -185,7 +315,11 @@ export function DraftPage() {
             </label>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn onClick={doPublish} disabled={busy || (needsAccept && !accept)}>Publish for everyone</Btn>
+            <Btn onClick={doPublish}
+                 disabled={busy || (needsAccept && !accept) || (isReport && !chosen)}>
+              {chosen?.mode === 'request' ? 'Ask to publish'
+                : chosen?.folder ? `Publish to ${chosen.label}` : 'Publish for everyone'}
+            </Btn>
             <Btn variant="outline" onClick={() => setStep(null)}>Cancel</Btn>
           </div>
         </Card>
@@ -205,7 +339,13 @@ export function DraftPage() {
       {!isReport && <ModelImpact impact={impact} error={impactError} />}
 
       {refusal && <div role="alert"><ErrorDetail error={refusal} /></div>}
-      {published && (
+      {published?.status === 'requested' && (
+        <Alert variant="info">
+          Asked. Nothing is published yet: someone with Publish permission on {published.request.destination} will
+          approve or decline it under <Link to="/drafts">Drafts</Link>, and you will see the answer there.
+        </Alert>
+      )}
+      {published && published.status !== 'requested' && (
         <Alert variant="info">
           Published.{' '}
           {isReport

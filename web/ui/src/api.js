@@ -441,9 +441,48 @@ export const useDraftImpact = (d, version, enabled) =>
 export const usePublishDraft = (d) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ note, acceptImpact }) =>
-      postJson(`${draftUrl(d)}/publish`, { note, accept_impact: !!acceptImpact }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['drafts'] }),
+    mutationFn: ({ note, acceptImpact, folder }) =>
+      postJson(`${draftUrl(d)}/publish`, { note, accept_impact: !!acceptImpact, folder: folder || null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['drafts'] })
+      qc.invalidateQueries({ queryKey: ['publish-requests'] })
+      qc.invalidateQueries({ queryKey: ['reports'] })
+    },
+  })
+}
+
+// Where a report draft may be published, and whether each place publishes it
+// directly or sends a request for someone with Publish there to approve.
+export const useDraftDestinations = (d, enabled) =>
+  useQuery({
+    queryKey: ['draft-destinations', d.owner, d.kind, d.path],
+    queryFn: () => get(`${draftUrl(d)}/destinations`).then(x => x.destinations),
+    enabled,
+    retry: false,
+  })
+
+// The library's folders the caller may see, their own My published first.
+export const useFolders = () =>
+  useQuery({ queryKey: ['folders'], queryFn: () => get('/folders'), refetchInterval: 15000 })
+
+// Publish requests: the caller's own, and those into folders where they hold
+// Publish (each says can_decide).
+export const usePublishRequests = () =>
+  useQuery({
+    queryKey: ['publish-requests'],
+    queryFn: () => get('/publish-requests').then(x => x.requests),
+    refetchInterval: 10000,
+  })
+
+export const useDecideRequest = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, approve, note }) =>
+      postJson(`/publish-requests/${id}/${approve ? 'approve' : 'reject'}`, { note: note || '' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['publish-requests'] })
+      qc.invalidateQueries({ queryKey: ['reports'] })
+    },
   })
 }
 

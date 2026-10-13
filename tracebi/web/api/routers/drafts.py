@@ -187,6 +187,20 @@ def publish_draft(owner: str, kind: str, path: str, response: Response,
     return done
 
 
+@router.get("/{owner}/{kind}/{path:path}/destinations")
+def draft_destinations(owner: str, kind: str, path: str):
+    """Where a report draft may be published for the caller, each with whether
+    it publishes directly or sends a request (a model has no folder choice)."""
+    from tracebi import folders
+    from tracebi.web.api.registry import registry
+
+    _allow(owner)
+    if kind != "reports":
+        return {"destinations": []}
+    return {"destinations": folders.destinations(
+        path, (r["name"] for r in registry.list_reports()))}
+
+
 @router.delete("/{owner}/{kind}/{path:path}")
 def delete_draft(owner: str, kind: str, path: str):
     _allow(owner)

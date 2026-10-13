@@ -6,7 +6,7 @@ import {
   useReports, useStartReportRun, useReportRun, useReportRunHistory,
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
   useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, usePipelines,
-  useAppStatus, useMe, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
+  useAppStatus, useMe, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
   postReportSelection,
 } from '../api'
 import { FRAME_SANDBOX, answerSelections, listenToFrame, tellFrame } from '../frameBridge'
@@ -1186,9 +1186,9 @@ function ReceiptChip({ build }) {
   )
 }
 
-// Schedule, last schedule run, stored builds, and last edit. No owner:
-// there are no accounts yet. Missing values are an em dash. The row opens
-// the report, whose detail already lists recent runs.
+// Owner, schedule, last schedule run, stored builds, and last edit. The owner
+// is who last published it (or whose My published folder holds it). Only what
+// exists is shown. The row opens the report, whose detail already lists recent runs.
 function LibraryFacts({ report }) {
   const schedule = report.schedule
     ? [report.schedule.cron, report.schedule.timezone].filter(Boolean).join(' · ')
@@ -1198,6 +1198,7 @@ function LibraryFacts({ report }) {
     : null
   const builds = Number(report.past_builds) > 0 ? String(report.past_builds) : null
   const cells = [
+    ['Owner', report.owner],
     ['Schedule', schedule],
     ['Last run', lastRun],
     ['Builds', builds, 'Open to see run history'],
@@ -1264,8 +1265,10 @@ function ReportsOverview({ reports, builds, onOpen }) {
 
 // Reports in folders are named by their path ("finance/weekly"). The list
 // groups them under their folder; top-level reports come first, unheaded.
-function groupByFolder(reports) {
+function groupByFolder(reports, mine) {
   const groups = new Map()
+  // Their own My published is always there, even before anything is in it.
+  if (mine) groups.set(mine, [])
   for (const r of reports) {
     const i = r.name.lastIndexOf('/')
     const folder = i === -1 ? '' : r.name.slice(0, i)
@@ -1273,11 +1276,61 @@ function groupByFolder(reports) {
     groups.get(folder).push(r)
   }
   return [...groups.entries()]
-    .sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)))
+    .sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a === mine ? -1 : b === mine ? 1 : a.localeCompare(b)))
     .map(([folder, items]) => ({ folder, items }))
 }
 
-function FolderHeading({ folder, count, open, onToggle }) {
+const YOU_CAN = {
+  publish: 'You can publish here',
+  request: 'You can ask to publish here',
+}
+
+// What the person may do in a folder, and (to a manager, or the owner of a
+// personal folder) who holds what there. Permissions are edited in the
+// folder's _folder.yaml: the app only shows them.
+function FolderNote({ info }) {
+  if (!info) return null
+  const p = info.permissions
+  const can = YOU_CAN[info.mode] || 'View only'
+  return (
+    <div className="folder-note" style={{
+      padding: '8px 16px 10px 40px', borderBottom: '1px solid var(--border)',
+      background: 'var(--surface)', fontSize: 12, lineHeight: 1.55, color: 'var(--text-2)',
+    }}>
+      <div>
+        {can}.
+        {info.mine && ' Only you see this folder unless you share it by file.'}
+        {info.personal && !info.mine && ' Shared with you by its owner.'}
+        {info.accepts === 'checkable' && ' It accepts only reports whose every number a query can re-run.'}
+      </div>
+      {p && (
+        <div style={{ marginTop: 6 }}>
+          <div style={{ fontWeight: 600 }}>Permissions</div>
+          {p.malformed
+            ? <div>The folder file cannot be read, so nobody but admins is granted anything.</div>
+            : Object.keys(p.grants).length === 0
+              ? <div>{info.mine
+                ? 'Nobody else is granted anything.'
+                : 'No folder file applies, so roles decide.'}</div>
+              : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {Object.entries(p.grants).map(([level, who]) => (
+                    <li key={level}><span style={{ textTransform: 'capitalize' }}>{level}</span>: {who.join(', ')}</li>
+                  ))}
+                </ul>
+              )}
+          <div style={{ color: 'var(--muted)' }}>
+            {p.file ? <>From <code>{p.file}</code>. </> : null}
+            Permissions are changed in the folder&rsquo;s <code>_folder.yaml</code> file. Editing them here is not
+            available yet.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FolderHeading({ folder, label, count, open, onToggle }) {
   return (
     <button type="button" onClick={onToggle} aria-expanded={open} style={{
       display: 'flex', alignItems: 'center', gap: 8, width: '100%',
@@ -1290,7 +1343,7 @@ function FolderHeading({ folder, count, open, onToggle }) {
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'var(--muted)', flexShrink: 0 }}>
         <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
       </svg>
-      <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{folder.split('/').join(' / ')}</span>
+      <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{label || folder.split('/').join(' / ')}</span>
       <span style={{ color: 'var(--muted)', fontWeight: 400, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
     </button>
   )
@@ -1302,6 +1355,8 @@ function AllReports({ model }) {
   const { data, isLoading } = useReports()
   const { data: desk } = useDesk()
   const { data: pipelines } = usePipelines()
+  const { data: folderData } = useFolders()
+  const folderInfo = Object.fromEntries((folderData?.folders || []).map(f => [f.path, f]))
   // In dev mode (`tracebi dev`) the agent's exhibits and your notes to it are
   // here, even before a report exists.
   const { data: appStatus } = useAppStatus()
@@ -1336,7 +1391,7 @@ function AllReports({ model }) {
       <AttentionStrip items={attentionItems(desk, pipelines, modelsOf)
         .filter(it => !model || it.models.includes(model))} />
 
-      {!isLoading && reports.length === 0 ? (
+      {!isLoading && reports.length === 0 && !(folderData?.personal && !model) ? (
         <>
           <Empty message={model
             ? `No reports for ${model} yet. Reports for it live in reports/${model}/: scaffold one with tracebi new-report.`
@@ -1350,17 +1405,25 @@ function AllReports({ model }) {
             isLoading ? <SkeletonList /> : (
               <>
                 <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" />
-                {filtered.length === 0
+                {filtered.length === 0 && (model || query || !folderData?.personal)
                   ? <Empty message="No matches." />
                   // One model: its folder is the page, so no folder headings.
-                  : (model ? [{ folder: '', items: filtered }] : groupByFolder(filtered)).map(({ folder, items }) => {
+                  : (model ? [{ folder: '', items: filtered }]
+                    : groupByFolder(filtered, query ? null : folderData?.personal)).map(({ folder, items }) => {
                     // A search always shows its matches, even in a closed folder.
                     const open = !folder || query || !closed.has(folder)
+                    const info = folderInfo[folder]
                     return (
                       <div key={folder || '(top)'}>
                         {folder && (
-                          <FolderHeading folder={folder} count={items.length}
-                                         open={open} onToggle={() => toggle(folder)} />
+                          <FolderHeading folder={folder} label={info?.mine ? 'My published' : null}
+                                         count={items.length} open={open} onToggle={() => toggle(folder)} />
+                        )}
+                        {folder && open && <FolderNote info={info} />}
+                        {folder && open && items.length === 0 && (
+                          <p className="rsplit__none" style={{ padding: '8px 16px 8px 40px', margin: 0 }}>
+                            Nothing here yet. Publish a draft to My published from the Drafts page to put a report here.
+                          </p>
                         )}
                         {open && items.map((r, i) => (
                           <div key={r.name} className="rise" style={{ '--i': i }}>

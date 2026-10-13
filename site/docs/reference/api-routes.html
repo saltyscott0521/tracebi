@@ -349,7 +349,9 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 </tr>
 </tbody>
 </table>
-<p>| <code>GET</code> | <code>/api/publish-requests?status=</code> | viewer: the caller's own requests, and those into folders where they hold <code>publish</code> |
+<p>| <code>GET</code> | <code>/api/folders</code> | viewer: the folders the caller may see, with their level and whether a publish there is direct or a request. <code>personal</code> is the caller's own <code>my-published/&lt;sign-in name&gt;</code> (null with no sign-in identity). <code>permissions</code> (read-only, <code>editable: false</code>) only for <code>manage</code> and for the owner of a personal folder |
+| <code>GET</code> | <code>/api/drafts/{owner}/reports/{path}/destinations</code> | owner or admin: where the draft may be published, each <code>mode: publish</code> or <code>request</code> |
+| <code>GET</code> | <code>/api/publish-requests?status=</code> | viewer: the caller's own requests, and those into folders where they hold <code>publish</code> |
 | <code>POST</code> | <code>/api/publish-requests/{id}/approve</code> | analyst, and <code>publish</code> on the destination |
 | <code>POST</code> | <code>/api/publish-requests/{id}/reject</code> | analyst, and <code>publish</code> on the destination; body <code>{"note"}</code> (required) |</p>
 <p><code>POST /api/drafts</code> takes <code>{"kind": "reports"|"models", "path", "from_published"}</code>

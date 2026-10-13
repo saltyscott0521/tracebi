@@ -182,6 +182,31 @@ destination, checked against its nearest <code>_folder.yaml</code>:</p>
 directly and there are no requests. A person sees their own requests, and those
 into folders where they hold <code>publish</code>.</p>
 <hr>
+<h2 id="my-published">My published</h2>
+<p>Every signed-in person has a folder of their own, <code>my-published/&lt;their sign-in
+name&gt;/</code> under the library (shown in the app as <strong>My published</strong>, always listed,
+even empty). They hold <code>publish</code> there without any <code>_folder.yaml</code>, so a report
+published into it is shareable and schedulable without the shared folders.</p>
+<ul>
+<li>Nobody else sees it. To share it, put a <code>_folder.yaml</code> <strong>inside that folder</strong>
+  (<code>view: [bob@example.com]</code>). A <code>_folder.yaml</code> higher up, even <code>view: ['*']</code>,
+  never reaches in. Admins keep <code>manage</code>, as everywhere.</li>
+<li>The app shows a folder's permissions, read-only, to people with <code>manage</code> and
+  to the owner of a personal folder. Editing is file-only for now, and the app
+  says so.</li>
+<li>A session with no sign-in identity (the shared gateway token, the command
+  line, the scheduler, an app with no sign-in) has no personal folder; it holds
+  <code>manage</code> everywhere and publishes into a shared folder. <code>GET /api/folders</code>
+  answers <code>personal: null</code> with the reason.</li>
+<li>Not offered when <code>TRACEBI_LIBRARY_MOUNTS</code> is set: the library is then several
+  labelled roots with no place for it.</li>
+</ul>
+<p>In the app, a draft's <strong>Publish</strong> step lists the places it can go (My published,
+each folder where you hold <code>build</code> or more, and its own place) and says for
+each whether it publishes directly or sends a request. Approvers (<code>publish</code> on
+the folder) see pending requests under <strong>Drafts</strong> and approve, or decline with
+a reason the requester sees.</p>
+<hr>
 <h2 id="how-a-file-applies">How a file applies</h2>
 <ol>
 <li><strong>The nearest file wins.</strong> Starting at a report's folder and walking up to

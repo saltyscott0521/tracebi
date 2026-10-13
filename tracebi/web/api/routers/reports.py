@@ -216,6 +216,19 @@ def _library_runs() -> tuple[dict, dict]:
     return last, counts
 
 
+def _owner_of(name: str) -> str | None:
+    from tracebi.drafts import publish_history
+    from tracebi.permissions import PERSONAL_ROOT
+
+    if name.startswith(PERSONAL_ROOT + "/") and name.count("/") >= 2:
+        return name.split("/")[1]
+    try:
+        history = publish_history("reports", name)
+    except ValueError:
+        return None
+    return history[-1].get("published_by") if history else None
+
+
 @router.get("")
 def list_reports():
     """Registered reports, plus the library columns for the Reports list."""
@@ -227,6 +240,10 @@ def list_reports():
         schedule, last_change, models, measures = _library_package(item["name"])
         out.append({
             **item,
+            # Where it sits and who put it there (the last publish, else the
+            # person whose My published folder holds it).
+            "folder": item["name"].rpartition("/")[0],
+            "owner": _owner_of(item["name"]),
             "schedule": schedule,
             "last_run": last_runs.get(item["name"]),
             "past_builds": build_counts.get(item["name"], 0),

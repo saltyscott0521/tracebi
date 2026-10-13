@@ -444,11 +444,53 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("button", name="Files", exact=True).click()
             page.get_by_role("button", name="template.html").wait_for()
             page.get_by_role("button", name="Publish", exact=True).click()
+            # The destination picker names every place it can go and whether
+            # that publishes directly or asks (this app has no sign-in: Manage).
+            picker = page.get_by_label("Publish to", exact=True)
+            picker.wait_for()
+            assert "Its own place" in picker.locator("option:checked").inner_text()
+            page.get_by_text("Publishes directly: you hold Publish permission there.").wait_for()
             page.get_by_role("button", name="Publish for everyone").click()
             page.get_by_text("Published report portfolio_model/draft_demo").wait_for()
             page.get_by_role("link", name="Open the published report").wait_for()
             assert (project / "reports" / "portfolio_model" / "draft_demo" / "report.json").is_file()
             fail_on_browser_errors()
+
+            # The reports list is the folder tree: each folder says what the
+            # person may do there, and a report row carries its owner.
+            page.goto(base + "/reports")
+            page.get_by_role("button", name=re.compile(r"portfolio_model\s*\d*$")).first.wait_for()
+            page.get_by_text("You can publish here.").first.wait_for()
+            fail_on_browser_errors()
+
+            # A signed-in person also has My published (always listed, even
+            # empty), and a folder's permissions are read-only in the app. The
+            # sign-in is faked at the API: the real one is the e2e journey.
+            def fake_folders(route):
+                route.fulfill(json={
+                    "personal": "my-published/ada@example.com",
+                    "folders": [{
+                        "path": "my-published/ada@example.com", "name": "My published",
+                        "personal": True, "mine": True, "level": "publish", "mode": "publish",
+                        "accepts": "labelled", "reports": 0,
+                        "permissions": {"file": None, "grants": {}, "accepts": "labelled",
+                                        "malformed": False, "editable": False},
+                    }, {
+                        "path": "portfolio_model", "name": "portfolio_model", "personal": False,
+                        "mine": False, "level": "manage", "mode": "publish",
+                        "accepts": "labelled", "reports": 9,
+                        "permissions": {"file": "portfolio_model/_folder.yaml",
+                                        "grants": {"publish": ["leads"]}, "accepts": "labelled",
+                                        "malformed": False, "editable": False},
+                    }]})
+            page.route("**/api/folders", fake_folders)
+            page.goto(base + "/reports")
+            page.get_by_role("button", name=re.compile(r"My published\s*\d*$")).wait_for()
+            page.get_by_text("Only you see this folder unless you share it by file.").wait_for()
+            page.get_by_text("Nothing here yet.").wait_for()
+            page.get_by_text("Editing them here is not available yet.").first.wait_for()
+            fail_on_browser_errors()
+            page.unroute("**/api/folders")
 
             # A model draft that moves published figures lists them and makes
             # Publish wait for the person to accept the impact.
