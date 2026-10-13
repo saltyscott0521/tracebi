@@ -612,6 +612,12 @@ checked against the published models only, so a report that names a model not
 yet published does not publish. Python (`report.py`, `models/*.py`,
 transforms, pipelines) cannot be drafted remotely; those change through git.
 
+**What a remote draft may hold.** A report draft takes only `report.json`,
+`template.html` and `style.css`; a model draft takes its one `<name>.yaml` or
+`.json`. Nothing else is accepted, because code (JavaScript, Python) would run
+on the server with its secrets, so code comes only through a laptop and
+review. `list_models` and `describe_model` report `draftable` per model.
+
 ## Audit your own transcription
 
 At L1 you transcribe numbers into your own page, and nothing machine-checks

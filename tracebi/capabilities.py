@@ -1246,7 +1246,9 @@ def describe(brief: bool = False) -> dict:
                     "under .tracebi/history/, copies the draft into the library, "
                     "and records a publish run with the actor. The draft is kept. "
                     "Python (report.py, models/*.py, transforms, pipelines) cannot "
-                    "be drafted remotely.",
+                    "be drafted remotely: code would run on the server with its "
+                    "secrets, so code comes only through a laptop and review. "
+                    "list_models and describe_model say draftable per model.",
         },
         "model_json": {
             "file": "models/<name>.yaml (also .yml, or .json)",

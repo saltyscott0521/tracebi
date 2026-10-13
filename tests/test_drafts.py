@@ -186,3 +186,15 @@ def test_two_people_never_share_a_drafts_folder():
     folders = [slug_owner(p) for p in people]
     assert len(set(folders)) == len(people), folders
     assert all(slug_owner(f) == f for f in folders), "a folder name is its own slug"
+
+
+class TestCodeNeverDrafts:
+    def test_a_python_model_is_refused_and_a_code_file_says_why(self, project):
+        models = project / "models"
+        models.mkdir()
+        (models / "pym.py").write_text("model = None\n")
+        with pytest.raises(drafts.DraftError, match="laptop"):
+            drafts.start_draft("alice", "models", "pym")
+        drafts.start_draft("alice", "models", "m")
+        with pytest.raises(drafts.DraftError, match="secrets"):
+            drafts.write_draft_file("alice", "models", "m", "m.py", "x")

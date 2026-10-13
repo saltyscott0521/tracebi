@@ -1085,3 +1085,44 @@ def test_a_schema_checking_client_accepts_every_tool(gateway_model, tmp_path,
             }
 
     anyio.run(drive)
+
+
+def test_list_models_says_which_models_a_remote_draft_can_copy(tmp_path, monkeypatch):
+    """draftable must answer what start_draft answers: a declarative model
+    can be drafted, a Python model cannot, and the listing gives the reason."""
+    from tracebi import drafts
+
+    models = tmp_path / "models"
+    models.mkdir()
+    (models / "py_draft_model.py").write_text(
+        "from tracebi import DataModel\nmodel = DataModel(\x27py_draft_model\x27)\n",
+        encoding="utf-8",
+    )
+    (models / "yaml_draft_model.yaml").write_text(
+        "name: yaml_draft_model\n", encoding="utf-8")
+    monkeypatch.setenv("TRACEBI_MODELS_DIR", str(models))
+    monkeypatch.setenv("TRACEBI_DRAFTS_DIR", str(tmp_path / "drafts"))
+    monkeypatch.chdir(tmp_path)
+
+    reg = model_registry._registry
+    try:
+        listed = gateway_models()["models"]
+        described = gateway_model_info("py_draft_model")
+    finally:
+        for stem in ("py_draft_model", "yaml_draft_model"):
+            reg._models.pop(stem, None)
+            reg._paths.pop(stem, None)
+            reg._mtime_ns.pop(stem, None)
+            for key, origin in list(reg._origin.items()):
+                if origin == stem or key == stem:
+                    reg._models.pop(key, None)
+                    reg._origin.pop(key, None)
+
+    assert listed["yaml_draft_model"]["draftable"] is True
+    assert "draft_note" not in listed["yaml_draft_model"]
+    assert listed["py_draft_model"]["draftable"] is False
+    assert "laptop" in listed["py_draft_model"]["draft_note"]
+    assert described["draftable"] is False
+    with pytest.raises(drafts.DraftError, match="laptop"):
+        drafts.start_draft("alice", "models", "py_draft_model")
+    drafts.start_draft("alice", "models", "yaml_draft_model", from_published=True)

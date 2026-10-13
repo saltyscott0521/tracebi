@@ -528,6 +528,8 @@ class ModelInfoResult(TypedDict, total=False):
     measures: Any
     connectors: Any
     filter_operators: Any
+    draftable: bool
+    draft_note: Optional[str]
 
 
 class QueryResult(TypedDict, total=False):
@@ -780,6 +782,18 @@ def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTabl
     return out
 
 
+def _draft_fields(names) -> dict:
+    """``draftable`` and, when false, ``draft_note``: the same decision
+    start_draft makes (drafts.model_draft_status), over every name a model
+    answers to, so the listing and the refusal cannot disagree."""
+    from tracebi import drafts
+
+    statuses = [drafts.model_draft_status(n) for n in names]
+    if any(ok for ok, _ in statuses):
+        return {"draftable": True}
+    return {"draftable": False, "draft_note": statuses[0][1]}
+
+
 def gateway_models() -> ModelsResult:
     """
     Models this project exposes, with table/fact/dimension counts.
@@ -813,6 +827,7 @@ def gateway_models() -> ModelsResult:
                 mm.get("name") if isinstance(mm, dict) else mm
                 for mm in (info.get("measures") or [])
             ],
+            **_draft_fields(names),
         }
     return {"models": out, "skipped": list(getattr(loaded, "skipped", []))}
 
@@ -826,7 +841,8 @@ def gateway_model_info(model: str) -> ModelInfoResult:
     failed = _skipped_error(loaded, model)
     if failed and model not in loaded:
         return {"error": failed}
-    return _get_model(model).info()
+    m = _get_model(model)
+    return {**m.info(), **_draft_fields([model, getattr(m, "name", model)])}
 
 
 _BINDING_QUERY_KEYS = (
@@ -1661,9 +1677,11 @@ def build_server(token: Optional[str] = None, oauth=None):
         structured_output=True,
         description=(
             "Models this project exposes, with facts, dimensions and measures. "
-            "A model that failed to load is listed under skipped with its "
-            "error; fix the file and call again (models reload when the file "
-            "changes)."
+            "draftable says whether start_draft can copy it remotely: a "
+            "declarative .yaml/.yml/.json model can, a Python model cannot "
+            "(draft_note gives the reason). A model that failed to load is "
+            "listed under skipped with its error; fix the file and call again "
+            "(models reload when the file changes)."
         ),
     )(gateway_models)
     _tool(
@@ -1685,8 +1703,9 @@ def build_server(token: Optional[str] = None, oauth=None):
         structured_output=True,
         description=(
             "One model's full schema: tables, relationships, facts, dimensions, "
-            "named measures. A name that failed to load returns that error "
-            "instead of not found."
+            "named measures, and draftable (with draft_note when false: a "
+            "Python model is edited from a laptop). A name that failed to load "
+            "returns that error instead of not found."
         ),
     )(gateway_model_info)
     _tool(

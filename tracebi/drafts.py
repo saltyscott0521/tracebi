@@ -47,6 +47,9 @@ _MODEL_NAME = re.compile(r"[a-z0-9_]+")
 _DRAFT_MODEL_FORMS = (".yaml", ".json")
 _PUBLISHED_MODEL_FORMS = (".yaml", ".yml", ".json")
 _LAPTOP = "edit it from a laptop (git, or `tracebi push`)"
+#: Why a draft holds no code: it would run on the server, with its secrets.
+_WHY_NO_CODE = ("code (JavaScript, Python) would run on the server with its "
+                "secrets, so code comes only through a laptop and review")
 
 
 class DraftError(ValueError):
@@ -124,7 +127,7 @@ def _allowed_file(kind: str, path: str, file: str) -> str:
     if file not in allowed:
         raise DraftError(
             f"a {kind[:-1]} draft may hold only {', '.join(allowed)}; "
-            f"not {file!r}")
+            f"not {file!r}. A draft holds no code because {_WHY_NO_CODE}.")
     return file
 
 
@@ -233,6 +236,30 @@ def _report_target(path: str) -> "tuple[Path, str]":
     return roots[0][1], path
 
 
+def model_python_blocker(path: str) -> Optional[str]:
+    """Why model *path* cannot be drafted remotely, when it is a Python model
+    (``models/<path>.py`` wins over any declarative file). None otherwise."""
+    if (_models_dir() / f"{path}.py").is_file():
+        return (f"model {path} is Python (models/{path}.py), which cannot be "
+                f"drafted remotely: {_LAPTOP}")
+    return None
+
+
+def model_draft_status(path: str) -> "tuple[bool, Optional[str]]":
+    """Whether published model *path* can be drafted, and if not, why.
+
+    The one decision the MCP model listings report, so they cannot disagree
+    with :func:`start_draft`, which refuses the same Python models.
+    """
+    blocker = model_python_blocker(path)
+    if blocker:
+        return False, blocker
+    if not _published_model_files(path):
+        return False, (f"model {path} has no declarative file in models/, "
+                       f"and only a file there can be drafted: {_LAPTOP}")
+    return True, None
+
+
 def start_draft(owner: str, kind: str, path: str,
                 from_published: bool = False) -> dict:
     """Create the draft, empty or as a copy of the published one."""
@@ -241,6 +268,8 @@ def start_draft(owner: str, kind: str, path: str,
     if where.exists():
         raise DraftError(f"draft {kind}/{path} already exists: read_draft it, "
                          f"or delete it to start over")
+    if kind == "models" and (blocker := model_python_blocker(path)):
+        raise DraftError(blocker)
     files: dict[str, str] = {}
     if from_published and kind == "reports":
         opened = open_report(path, purpose="source")
@@ -257,11 +286,6 @@ def start_draft(owner: str, kind: str, path: str,
         files = {n: _text(_read_text(pkg / n)) for n in REPORT_FILES
                  if (pkg / n).is_file()}
     elif from_published:
-        published = _models_dir()
-        if (published / f"{path}.py").is_file():
-            raise DraftError(
-                f"model {path} is Python (models/{path}.py), which cannot be "
-                f"drafted remotely: {_LAPTOP}")
         [source, *_] = _published_model_files(path) or [None]
         if source is None:
             raise DraftError(f"no published declarative model {path!r} to copy")
