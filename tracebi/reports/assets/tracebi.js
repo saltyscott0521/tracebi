@@ -2722,6 +2722,7 @@
       target.textContent = text;
     }
     for (i in seen) if (seen.hasOwnProperty(i)) refreshBinding(i);
+    stampFigures();            /* the runtime wrote these: they are the new baseline */
     applyControlDomains(payload.controls);
     paintSelectionReceipt(payload);
     controlEls("data-tb-filter").forEach(function (ctrl) {
@@ -3185,6 +3186,7 @@
 
     var row = document.createElement("div");
     row.className = "tb-receipt-row";
+    row.setAttribute("data-tb-receipt-fig", String(fig.id));
     var title = document.createElement("div");
     title.className = "tb-receipt-title";
     var headline;
@@ -3252,6 +3254,7 @@
     }
     row.appendChild(details);
     drawer.appendChild(row);
+    if (_scriptChanged[fig.id]) paintScriptChange(String(fig.id));
   }
 
   function hydrateReceipt() {
@@ -3523,6 +3526,7 @@
     try { hydrateDownloads(); } catch (e) {}
     try { hydrateReceipt(); } catch (e) {}
     try { hydrateScenarios(); } catch (e) {}
+    try { watchStampedFigures(); } catch (e) {}
     /* Set once figures are drawn, charts included, and their first fade has
      * finished. A printer waits for this; it changes no number. */
     var waited = 0;
@@ -3651,6 +3655,79 @@
     } else {
       boot();
     }
+  }
+
+  /* ── Stamped figures a script changed ─────────────────────────────────────
+   * A report's script.js may draw anything, but a stamped value is a claim the
+   * receipt backs with a query. When a script rewrites the text of one after
+   * the runtime wrote it, the page no longer shows what the receipt covers:
+   * the figure gets data-tb-script-changed and its receipt row says so. The
+   * runtime's own later writes (a selection) re-stamp the text first, so only
+   * somebody else's change counts. Value figures only: a chart or table is
+   * redrawn by the runtime itself as controls move. */
+  var _stamped = {};
+  var _scriptChanged = {};
+  var CHANGED_BY_SCRIPT = "changed on the page by a custom script";
+
+  function stampedText(el) {
+    var copy = (el.querySelector(".tb-kpi-value") || el).cloneNode(true);
+    Array.prototype.forEach.call(copy.querySelectorAll(".tb-badge"), function (b) {
+      b.parentNode.removeChild(b);
+    });
+    return trim(copy.textContent || "");
+  }
+
+  function valueFigures() {
+    return Array.prototype.slice.call(
+      document.querySelectorAll('[data-tb-figure="value"][id]'));
+  }
+
+  /* Remember what every value figure shows now, as the runtime left it. */
+  function stampFigures() {
+    valueFigures().forEach(function (el) { _stamped[el.id] = stampedText(el); });
+    paintScriptChanges();
+  }
+
+  function paintScriptChange(id) {
+    var rows = document.querySelectorAll(".tb-receipt-row[data-tb-receipt-fig]");
+    Array.prototype.forEach.call(rows, function (row) {
+      if (row.getAttribute("data-tb-receipt-fig") !== id) return;
+      var old = row.querySelector(".tb-receipt-changed");
+      if (old) old.parentNode.removeChild(old);
+      if (!_scriptChanged[id]) return;
+      var note = document.createElement("div");
+      note.className = "tb-receipt-changed";
+      note.textContent = CHANGED_BY_SCRIPT + ": the receipt covers \u201c"
+        + _stamped[id] + "\u201d, the page shows \u201c" + _scriptChanged[id] + "\u201d";
+      var title = row.querySelector(".tb-receipt-title");
+      row.insertBefore(note, title ? title.nextSibling : row.firstChild);
+    });
+  }
+
+  function paintScriptChanges() {
+    valueFigures().forEach(function (el) {
+      var now = stampedText(el);
+      var changed = _stamped.hasOwnProperty(el.id) && now !== _stamped[el.id];
+      var was = _scriptChanged[el.id];
+      /* Repaint only on a change of state: painting the receipt is itself a DOM
+       * change, and must not wake this up again. */
+      if (changed && was !== now) {
+        _scriptChanged[el.id] = now;
+        el.setAttribute("data-tb-script-changed", "1");
+        paintScriptChange(el.id);
+      } else if (!changed && was !== undefined) {
+        delete _scriptChanged[el.id];
+        el.removeAttribute("data-tb-script-changed");
+        paintScriptChange(el.id);
+      }
+    });
+  }
+
+  function watchStampedFigures() {
+    stampFigures();
+    if (typeof MutationObserver === "undefined" || !document.body) return;
+    new MutationObserver(paintScriptChanges).observe(
+      document.body, { subtree: true, childList: true, characterData: true });
   }
 
   /* ── Build mode, in the frame ────────────────────────────────────────────
