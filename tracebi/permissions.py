@@ -35,6 +35,17 @@ Rules this module keeps:
 * Group names and person names are matched ignoring case; ``*`` grants a level
   to every named person.
 
+A ``_folder.yaml`` may also say what the folder **accepts** (not a permission,
+so it does not change who holds what)::
+
+    accepts: labelled     # default: anything honestly labelled
+    accepts: checkable    # only reports whose every number a query can re-run
+
+:func:`folder_accepts` reads it with the same nearest-file rule; the draft
+publish and request paths enforce it (``tracebi/drafts.py``). An unknown value
+makes the file malformed, and a malformed file is read as ``checkable`` (the
+strict answer) for this purpose.
+
 Purposes (``open_report(..., purpose=)``) map to levels: ``view`` and
 ``source`` are View, ``build`` is Build, ``schedule`` and ``manage`` (changing
 what is published) are Publish. Manage itself is for changing permissions.
@@ -58,6 +69,7 @@ NONE, VIEW, BUILD, PUBLISH, MANAGE = -1, 0, 1, 2, 3
 _PURPOSE_LEVEL = {"view": VIEW, "source": VIEW, "build": BUILD,
                   "schedule": PUBLISH, "manage": PUBLISH}
 _ROLE_CEILING = {"viewer": VIEW, "analyst": PUBLISH}
+ACCEPTS = ("labelled", "checkable")
 
 
 class NotPermitted(PermissionError):
@@ -95,10 +107,13 @@ def level_for_purpose(purpose: str) -> int:
 class _Rule:
     """One parsed ``_folder.yaml``: who holds which level."""
 
-    def __init__(self, grants: Optional[dict], path: Path) -> None:
+    def __init__(self, grants: Optional[dict], path: Path,
+                 accepts: str = ACCEPTS[0]) -> None:
         self.path = path
         #: ``None`` for a malformed file, which grants nothing.
         self.grants = grants
+        #: What the folder takes in (``ACCEPTS``); a malformed file is strict.
+        self.accepts = accepts
 
     def level_of(self, principal: Principal) -> int:
         if self.grants is None or principal.name is None:
@@ -126,19 +141,26 @@ def _parse(path: Path) -> _Rule:
     if not isinstance(doc, dict):
         return _malformed(path, "must be a mapping of permission to names")
     grants: dict = {}
+    accepts = ACCEPTS[0]
     for key, value in doc.items():
+        if key == "accepts":
+            if value not in ACCEPTS:
+                return _malformed(path, f"accepts must be one of {', '.join(ACCEPTS)}, not {value!r}")
+            accepts = value
+            continue
         if key not in LEVELS:
-            return _malformed(path, f"unknown permission {key!r} (use {', '.join(LEVELS)})")
+            return _malformed(
+                path, f"unknown permission {key!r} (use {', '.join(LEVELS)}, or accepts)")
         names = [value] if isinstance(value, str) else value
         if not isinstance(names, list) or not all(isinstance(n, str) and n.strip() for n in names):
             return _malformed(path, f"{key} must be a name or a list of names")
         grants[key] = {n.strip().casefold() for n in names}
-    return _Rule(grants, path)
+    return _Rule(grants, path, accepts)
 
 
 def _malformed(path: Path, why: str) -> _Rule:
     log.warning("%s %s; nobody but admins is granted anything under it", path, why)
-    return _Rule(None, path)
+    return _Rule(None, path, ACCEPTS[1])
 
 
 def _rule_in(directory: Path) -> Optional[_Rule]:
@@ -190,6 +212,21 @@ def granted_level(name: str, principal: Optional[Principal] = None, *,
     if rule is None:
         return ceiling
     return min(ceiling, rule.level_of(who))
+
+
+def folder_accepts(name: str, *,
+                   reports_dir: Optional[Union[str, os.PathLike]] = None) -> str:
+    """What the folder of report *name* accepts: ``labelled`` (the default, and
+    the answer where no ``_folder.yaml`` applies) or ``checkable``. The same
+    nearest-file rule as the permissions; it binds everyone, admins included,
+    because it is about what the folder holds, not who may act."""
+    from tracebi.report_paths import locate, report_name_error
+
+    if report_name_error(name):
+        return ACCEPTS[1]
+    root, relative = locate(name, reports_dir)
+    rule = _nearest_rule(root, relative) if relative is not None else None
+    return rule.accepts if rule is not None else ACCEPTS[0]
 
 
 def can(action: str, name: str, principal: Optional[Principal] = None, *,

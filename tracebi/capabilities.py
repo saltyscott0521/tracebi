@@ -1318,9 +1318,12 @@ def describe(brief: bool = False) -> dict:
             "mcp": "list_drafts(), start_draft(kind, path, from_published=False), "
                    "read_draft(kind, path), write_draft_file(kind, path, file, content), "
                    "preview_draft(kind, path), model_impact(path), "
-                   "publish_draft(kind, path, note='', accept_impact=False)",
+                   "publish_draft(kind, path, note='', accept_impact=False, folder=''), "
+                   "list_publish_requests(status=''), "
+                   "decide_publish_request(request_id, approve, note='')",
             "http": "GET /api/drafts, GET /api/drafts/{owner}/{kind}/{path}/files|preview|version|impact, "
-                    "POST /api/drafts/{owner}/{kind}/{path}/publish (body: note, accept_impact), DELETE /api/drafts/{owner}/{kind}/{path}",
+                    "POST /api/drafts/{owner}/{kind}/{path}/publish (body: note, accept_impact, folder), DELETE /api/drafts/{owner}/{kind}/{path}, "
+                    "GET /api/publish-requests, POST /api/publish-requests/{id}/approve|reject",
             "what": "Remote drafts: a report or model written before it goes live. "
                     "Drafts live under drafts/<owner>/ (TRACEBI_DRAFTS_DIR, default "
                     "drafts/). A report draft holds only report.json, template.html, "
@@ -1332,6 +1335,18 @@ def describe(brief: bool = False) -> dict:
                     "and a model must compile. It keeps the version it replaces "
                     "under .tracebi/history/, copies the draft into the library, "
                     "and records a publish run with the actor. The draft is kept. "
+                    "A report publishes to `folder` (a library path, created if "
+                    "needed; default its own path). With Publish on that folder it "
+                    "is published (history records who and when); with only Build "
+                    "(its _folder.yaml) the answer is status='requested': a publish "
+                    "request, stored as a file under drafts/_requests/, that someone "
+                    "with Publish there approves (the snapshot taken at request time "
+                    "is published; the history records requester, approver, time) "
+                    "or rejects with a note, via decide_publish_request or the app. "
+                    "The requester cannot decide their own. A folder whose "
+                    "_folder.yaml says `accepts: checkable` refuses a report with a "
+                    "report.py or a figure no query can re-run, at publish and at "
+                    "request, naming why; `accepts: labelled` is the default. "
                     "A MODEL publish first runs the impact check (model_impact): "
                     "the recorded queries of every published report that reads the "
                     "model are re-run against the draft and compared with each "

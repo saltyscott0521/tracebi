@@ -349,14 +349,24 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 </tr>
 </tbody>
 </table>
+<p>| <code>GET</code> | <code>/api/publish-requests?status=</code> | viewer: the caller's own requests, and those into folders where they hold <code>publish</code> |
+| <code>POST</code> | <code>/api/publish-requests/{id}/approve</code> | analyst, and <code>publish</code> on the destination |
+| <code>POST</code> | <code>/api/publish-requests/{id}/reject</code> | analyst, and <code>publish</code> on the destination; body <code>{"note"}</code> (required) |</p>
 <p><code>POST /api/drafts</code> takes <code>{"kind": "reports"|"models", "path", "from_published"}</code>
 and answers <code>201</code> with the new draft, or <code>200</code> with the one the caller already
 has; a Python model, or a report with a <code>report.py</code>, is <code>422</code> and the message
 says to edit it from a laptop. <code>PUT .../files/{file}</code> takes <code>{"content"}</code> and
 answers with the draft's new <code>version</code>.</p>
 <p>A draft of a report is also checked against its folder's <code>_folder.yaml</code>
-(<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>): starting one needs <code>build</code> there and publishing needs
-<code>publish</code>, otherwise <code>403</code>.</p>
+(<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>): starting one needs <code>build</code> there. <code>/publish</code> takes
+<code>{"note", "folder"}</code>; <code>folder</code> is a library path to publish into (default: the
+draft's own path). With <code>publish</code> on the destination it answers <code>200</code>,
+<code>"status": "published"</code>; with only <code>build</code> it answers <code>202</code>,
+<code>"status": "requested"</code> and the request, for someone with <code>publish</code> there to
+approve or reject; with less, <code>403</code>. A folder with <code>accepts: checkable</code> refuses
+(<code>422</code>) a report that is not made of re-runnable numbers, at publish and at
+request. Approving answers <code>200</code> with the request, now <code>approved</code>; deciding a
+request already decided is <code>422</code>; one the caller may not see is <code>404</code>.</p>
 <p><code>/preview</code> renders the draft in memory against the published models plus the
 owner's draft models, and writes nothing. <code>/publish</code> validates the draft first,
 keeps the version it replaces under <code>.tracebi/history/</code>, copies it into the
@@ -372,7 +382,9 @@ never unchanged) or <code>not_checkable</code>. It writes nothing. <code>/publis
 whose impact has a <code>moves</code> or <code>breaks</code> is <code>409</code> with the same <code>impact</code> in
 <code>detail</code>, unless the body carries <code>"accept_impact": true</code>; a break needs
 accepting too. The accepted impact is stored in the <code>publish</code> run's <code>detail</code>.
-The MCP tool <code>model_impact(path)</code> is the same check, and <code>publish_draft</code> takes
+The MCP tool <code>model_impact(path)</code> is the same check, and <code>publish_draft</code> (also <code>folder</code>; with only Build there it returns <code>status:
+requested</code>) and <code>list_publish_requests</code> / <code>decide_publish_request</code> (approve or
+reject; Publish on the destination) are the same flow for an agent. <code>publish_draft</code> takes
 <code>accept_impact</code>.</p>
 <p>A model that names <code>owners</code> in its published file may be published only by one
 of them or an admin; anyone else gets <code>403</code> (MCP <code>ok: false</code>) naming the owners,

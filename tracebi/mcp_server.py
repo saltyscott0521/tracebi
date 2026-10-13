@@ -135,7 +135,7 @@ def _acting():
 #: against the tools' own readOnlyHint, so a new write tool cannot be forgotten.
 _WRITE_TOOLS = frozenset({
     "render_report_spec", "resolve_pin", "build_report", "start_draft",
-    "write_draft_file", "preview_draft", "publish_draft",
+    "write_draft_file", "preview_draft", "publish_draft", "decide_publish_request",
 })
 
 
@@ -1500,6 +1500,9 @@ class DraftResult(TypedDict, total=False):
     version: Optional[str]
     previous: Optional[str]
     note: Optional[str]
+    status: Optional[str]
+    request: Optional[dict]
+    requests: Optional[list[dict]]
 
 
 def _draft_owner() -> str:
@@ -1567,14 +1570,32 @@ def gateway_model_impact(path: str) -> DraftResult:
 
 
 def gateway_publish_draft(kind: str, path: str, note: str = "",
-                          accept_impact: bool = False) -> DraftResult:
+                          accept_impact: bool = False, folder: str = "") -> DraftResult:
     from tracebi import drafts
     result = _draft_call(lambda: drafts.publish_draft(
         _draft_owner(), kind, path, _mcp_actor(), note or None, _load_models(),
-        accept_impact))
+        accept_impact, folder or None))
     _show_action("publish_draft", (
-        f"Published {kind}/{path}" if result.get("ok") else
-        f"Publish of {kind}/{path} refused: " + "; ".join(result["errors"])))
+        f"Publish of {kind}/{path} refused: " + "; ".join(result["errors"])
+        if not result.get("ok") else
+        f"Asked to publish {kind}/{path} (waiting for approval)"
+        if result["status"] == "requested" else f"Published {kind}/{path}"))
+    return result
+
+
+def gateway_list_publish_requests(status: str = "") -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(lambda: {"requests": drafts.list_requests(status or None)})
+
+
+def gateway_decide_publish_request(request_id: str, approve: bool,
+                                   note: str = "") -> DraftResult:
+    from tracebi import drafts
+    result = _draft_call(lambda: drafts.decide_request(
+        request_id, approve, _mcp_actor(), note or None, _load_models()))
+    _show_action("decide_publish_request", (
+        f"Request {request_id} {result['status']}" if result.get("ok") else
+        f"Request {request_id} not decided: " + "; ".join(result["errors"])))
     return result
 
 
@@ -1988,9 +2009,37 @@ def build_server(token: Optional[str] = None, oauth=None):
             "changes what the app serves. A model draft that would move or "
             "break published reports is refused (ok=false, with impact) "
             "unless accept_impact=true; a break needs accepting too, and "
-            "the accepted impact is recorded in the publish run."
+            "the accepted impact is recorded in the publish run. A report "
+            "goes to 'folder' (a library path, created if needed; default: "
+            "the draft's own path). With only Build on that folder the "
+            "result is status='requested' with a request for someone with "
+            "Publish there (decide_publish_request); a folder that "
+            "accepts only checkable reports refuses one that is not."
         ),
     )(gateway_publish_draft)
+    _tool(
+        name="list_publish_requests", title="List publish requests",
+        annotations=_READ, structured_output=True,
+        description=(
+            "Requests to publish a draft into a folder: the ones you made, "
+            "and those into folders where you hold Publish (yours to "
+            "decide). Each has id, owner, path, destination, requested_by, "
+            "requested_at, status (pending/approved/rejected) and, once "
+            "decided, decided_by and decided_at. status filters."
+        ),
+    )(gateway_list_publish_requests)
+    _tool(
+        name="decide_publish_request",
+        title="Approve or reject a publish request (changes the project)",
+        annotations=_PUBLISH, structured_output=True,
+        description=(
+            "Approve (publishes exactly what was requested, recording who "
+            "approved and when) or reject (note required) a pending request. "
+            "Needs Publish on the destination folder now; the requester "
+            "cannot decide their own unless they hold Publish. The person's "
+            "go-ahead comes first."
+        ),
+    )(gateway_decide_publish_request)
 
     # Resources — reference material a client can pull into context. The guide
     # puts the authoring SOP on the surface itself (an MCP-only agent never

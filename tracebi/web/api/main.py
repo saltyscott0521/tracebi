@@ -203,6 +203,7 @@ app.include_router(verify.router,     prefix="/api")
 app.include_router(status.router,     prefix="/api")
 app.include_router(runs.router,       prefix="/api")
 app.include_router(drafts.router,     prefix="/api")
+app.include_router(drafts.requests_router, prefix="/api")
 
 # The agent gateway, served by this app at /mcp when TRACEBI_MCP_TOKEN is set,
 # or when TRACEBI_OIDC_ISSUER is set (a sign-in per person, TraceBi's own OAuth

@@ -92,6 +92,7 @@ view:    [finance, ceo@example.com]    # see the folder; open reports and their 
 build:   [finance-analysts]            # + create and edit drafts in it
 publish: [finance-leads]               # + publish a draft into it; its schedules
 manage:  [bi-admins]                   # + change this file
+accepts: checkable                     # optional: only re-checkable numbers (see below)
 </code></pre>
 <hr>
 <h2 id="keys">Keys</h2>
@@ -128,6 +129,59 @@ manage:  [bi-admins]                   # + change this file
 also builds and views. Any other key, or a value that is not a name or a list
 of names, makes the file malformed (see below).</p>
 <hr>
+<h2 id="what-a-folder-accepts">What a folder accepts</h2>
+<p><code>accepts</code> is the one key that is not a permission. It says what may be
+published into the folder, and binds everyone who publishes there, admins
+included.</p>
+<table>
+<thead>
+<tr>
+<th>value</th>
+<th>the folder takes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>labelled</code> (default)</td>
+<td>anything honestly labelled: a number that cannot be re-run says so in its receipt</td>
+</tr>
+<tr>
+<td><code>checkable</code></td>
+<td>only reports whose every number a query can re-run</td>
+</tr>
+</tbody>
+</table>
+<p>Under <code>checkable</code>, publishing a draft (or asking to) is refused with a plain
+message naming the cause when the report has a <code>report.py</code> (Python computes its
+numbers), or when its build holds a figure's data that is marked
+<code>verifiable: false</code> or is not a single recorded query. A figure that a page's
+<code>script.js</code> changes in the browser is marked in the receipt when the page runs,
+so it cannot be judged at publish time. Any other value of <code>accepts</code> makes the
+file malformed (below), and a malformed file reads as <code>checkable</code>.</p>
+<hr>
+<h2 id="publishing-into-a-folder-and-asking-to">Publishing into a folder, and asking to</h2>
+<p>A draft of a report is published to a folder you choose (<code>folder</code>, a library
+path such as <code>finance/q3</code>; it is created if it does not exist, and the report
+keeps its last name). What happens depends on the level you hold on the
+destination, checked against its nearest <code>_folder.yaml</code>:</p>
+<ul>
+<li><strong><code>publish</code></strong> (or more): it is published, as before. The history beside the
+  kept versions (<code>.tracebi/history/reports/&lt;path&gt;/publishes.jsonl</code>) records who
+  published and when.</li>
+<li><strong><code>build</code> only</strong>: it becomes a <strong>publish request</strong>, not a publish. The
+  request holds a copy of the draft as it was when asked. It is a file,
+  <code>drafts/_requests/&lt;id&gt;.json</code>, so it survives a restart. Anyone with
+  <code>publish</code> on the destination can <strong>approve</strong> it (the copy is published
+  exactly as a direct publish would, and the history records who asked, who
+  approved and when) or <strong>reject</strong> it with a note. The permission is checked
+  when they decide, not when it was asked, so a requester with only <code>build</code>
+  cannot approve their own.</li>
+<li><strong>less than <code>build</code></strong>: refused, <code>403</code>, naming the permission.</li>
+</ul>
+<p>With no <code>_folder.yaml</code> anywhere, roles decide as before: an analyst publishes
+directly and there are no requests. A person sees their own requests, and those
+into folders where they hold <code>publish</code>.</p>
+<hr>
 <h2 id="how-a-file-applies">How a file applies</h2>
 <ol>
 <li><strong>The nearest file wins.</strong> Starting at a report's folder and walking up to
@@ -146,7 +200,7 @@ of names, makes the file malformed (see below).</p>
    sign-in role at all: the command line, the scheduler, a notebook, and an app
    run without authentication.</li>
 <li><strong>A malformed file fails closed.</strong> If the file cannot be read or parsed, or
-   has a key it does not know (<code>veiw:</code>), nobody but admins is granted anything
+   has a key it does not know (<code>veiw:</code>) or an <code>accepts</code> it does not know, nobody but admins is granted anything
    under it, a warning is logged, and nothing else breaks. An <strong>empty</strong> file is
    valid and grants no one but admins.</li>
 </ol>
@@ -162,7 +216,8 @@ outputs inherit the folder's permissions.</p>
 <p>A person who can see a report but lacks the level an action needs is refused
 with <strong>403</strong> and the permission it needs (<code>build permission is needed on the
 folder of finance/q3/pack</code>): starting a draft in the folder needs <code>build</code>,
-publishing a draft into it needs <code>publish</code>.</p>
+publishing a draft into it needs <code>publish</code> (with <code>build</code> only, it becomes a
+request, below).</p>
 <hr>
 <h2 id="where-the-groups-come-from">Where the groups come from</h2>
 <table>

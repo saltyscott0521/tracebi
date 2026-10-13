@@ -131,6 +131,10 @@ A draft's owner is the acting principal; `{owner}` is that name slugged to
 | `POST` | `/api/drafts/{owner}/{kind}/{path}/publish` | analyst, and owner or admin |
 | `DELETE` | `/api/drafts/{owner}/{kind}/{path}` | analyst, and owner or admin |
 
+| `GET` | `/api/publish-requests?status=` | viewer: the caller's own requests, and those into folders where they hold `publish` |
+| `POST` | `/api/publish-requests/{id}/approve` | analyst, and `publish` on the destination |
+| `POST` | `/api/publish-requests/{id}/reject` | analyst, and `publish` on the destination; body `{"note"}` (required) |
+
 `POST /api/drafts` takes `{"kind": "reports"|"models", "path", "from_published"}`
 and answers `201` with the new draft, or `200` with the one the caller already
 has; a Python model, or a report with a `report.py`, is `422` and the message
@@ -138,8 +142,15 @@ says to edit it from a laptop. `PUT .../files/{file}` takes `{"content"}` and
 answers with the draft's new `version`.
 
 A draft of a report is also checked against its folder's `_folder.yaml`
-([[folder-yaml]]): starting one needs `build` there and publishing needs
-`publish`, otherwise `403`.
+([[folder-yaml]]): starting one needs `build` there. `/publish` takes
+`{"note", "folder"}`; `folder` is a library path to publish into (default: the
+draft's own path). With `publish` on the destination it answers `200`,
+`"status": "published"`; with only `build` it answers `202`,
+`"status": "requested"` and the request, for someone with `publish` there to
+approve or reject; with less, `403`. A folder with `accepts: checkable` refuses
+(`422`) a report that is not made of re-runnable numbers, at publish and at
+request. Approving answers `200` with the request, now `approved`; deciding a
+request already decided is `422`; one the caller may not see is `404`.
 
 `/preview` renders the draft in memory against the published models plus the
 owner's draft models, and writes nothing. `/publish` validates the draft first,
@@ -157,7 +168,9 @@ never unchanged) or `not_checkable`. It writes nothing. `/publish` of a model
 whose impact has a `moves` or `breaks` is `409` with the same `impact` in
 `detail`, unless the body carries `"accept_impact": true`; a break needs
 accepting too. The accepted impact is stored in the `publish` run's `detail`.
-The MCP tool `model_impact(path)` is the same check, and `publish_draft` takes
+The MCP tool `model_impact(path)` is the same check, and `publish_draft` (also `folder`; with only Build there it returns `status:
+requested`) and `list_publish_requests` / `decide_publish_request` (approve or
+reject; Publish on the destination) are the same flow for an agent. `publish_draft` takes
 `accept_impact`.
 
 A model that names `owners` in its published file may be published only by one

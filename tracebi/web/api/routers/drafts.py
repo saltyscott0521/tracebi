@@ -25,6 +25,11 @@ router = APIRouter(prefix="/drafts", tags=["drafts"])
 class PublishBody(BaseModel):
     note: str = ""
     accept_impact: bool = False
+    folder: Optional[str] = None
+
+
+class DecideBody(BaseModel):
+    note: str = ""
 
 
 class StartBody(BaseModel):
@@ -162,16 +167,24 @@ def draft_preview(owner: str, kind: str, path: str):
 
 
 @router.post("/{owner}/{kind}/{path:path}/publish")
-def publish_draft(owner: str, kind: str, path: str, body: Optional[PublishBody] = None):
+def publish_draft(owner: str, kind: str, path: str, response: Response,
+                  body: Optional[PublishBody] = None):
+    """Publish a draft, into ``folder`` if given. With Publish on the
+    destination it is published (200); with only Build there it becomes a
+    publish request (202) for someone with Publish to approve."""
     from tracebi.web.api.routers.desk import _loaded_models
 
     _allow(owner)
     try:
-        return drafts.publish_draft(
+        done = drafts.publish_draft(
             owner, kind, path, _who()[0], (body.note if body else "") or None,
-            _loaded_models(), bool(body and body.accept_impact))
+            _loaded_models(), bool(body and body.accept_impact),
+            (body.folder if body else None) or None)
     except drafts.DraftError as exc:
         raise _refused(exc)
+    if done["status"] == "requested":
+        response.status_code = 202
+    return done
 
 
 @router.delete("/{owner}/{kind}/{path:path}")
@@ -183,3 +196,35 @@ def delete_draft(owner: str, kind: str, path: str):
     except drafts.DraftError as exc:
         raise _refused(exc)
     return {"deleted": True}
+
+
+requests_router = APIRouter(prefix="/publish-requests", tags=["drafts"])
+
+
+@requests_router.get("")
+def list_publish_requests(status: Optional[Literal["pending", "approved", "rejected"]] = None):
+    """The requests the caller made, and those into folders where they hold
+    Publish (so they can decide them)."""
+    return {"requests": drafts.list_requests(status)}
+
+
+def _decide(request_id: str, approve: bool, body: Optional[DecideBody]):
+    from tracebi.web.api.routers.desk import _loaded_models
+
+    try:
+        return drafts.decide_request(request_id, approve, _who()[0],
+                                     (body.note if body else "") or None, _loaded_models())
+    except drafts.DraftError as exc:
+        raise _refused(exc)
+
+
+@requests_router.post("/{request_id}/approve")
+def approve_publish_request(request_id: str, body: Optional[DecideBody] = None):
+    """Publish the request's snapshot exactly as a direct publish would.
+    Needs Publish on the destination folder now."""
+    return _decide(request_id, True, body)
+
+
+@requests_router.post("/{request_id}/reject")
+def reject_publish_request(request_id: str, body: DecideBody):
+    return _decide(request_id, False, body)

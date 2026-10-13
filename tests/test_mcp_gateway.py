@@ -676,6 +676,7 @@ def test_build_server_registers_the_tools(gateway_model):
         "fetch_artifact",
         "list_drafts", "start_draft", "read_draft", "write_draft_file",
         "preview_draft", "model_impact", "publish_draft",
+        "list_publish_requests", "decide_publish_request",
     }
 
 
@@ -773,7 +774,7 @@ class TestMcp2Features:
         from tracebi.knowledge import get_lesson
 
         server, tools = self._tools()
-        assert len(tools) == 20
+        assert len(tools) == 22
         templates = {t.uri_template for t in anyio.run(server.list_resource_templates)}
         assert "tracebi://knowledge/{slug}" in templates
         assert "tracebi://knowledge/{slug}" in server.instructions
