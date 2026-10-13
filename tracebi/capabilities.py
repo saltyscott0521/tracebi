@@ -1311,9 +1311,10 @@ def describe(brief: bool = False) -> dict:
         "drafts": {
             "mcp": "list_drafts(), start_draft(kind, path, from_published=False), "
                    "read_draft(kind, path), write_draft_file(kind, path, file, content), "
-                   "preview_draft(kind, path), publish_draft(kind, path, note='')",
-            "http": "GET /api/drafts, GET /api/drafts/{owner}/{kind}/{path}/files|preview|version, "
-                    "POST /api/drafts/{owner}/{kind}/{path}/publish, DELETE /api/drafts/{owner}/{kind}/{path}",
+                   "preview_draft(kind, path), model_impact(path), "
+                   "publish_draft(kind, path, note='', accept_impact=False)",
+            "http": "GET /api/drafts, GET /api/drafts/{owner}/{kind}/{path}/files|preview|version|impact, "
+                    "POST /api/drafts/{owner}/{kind}/{path}/publish (body: note, accept_impact), DELETE /api/drafts/{owner}/{kind}/{path}",
             "what": "Remote drafts: a report or model written before it goes live. "
                     "Drafts live under drafts/<owner>/ (TRACEBI_DRAFTS_DIR, default "
                     "drafts/). A report draft holds only report.json, template.html, "
@@ -1325,6 +1326,17 @@ def describe(brief: bool = False) -> dict:
                     "and a model must compile. It keeps the version it replaces "
                     "under .tracebi/history/, copies the draft into the library, "
                     "and records a publish run with the actor. The draft is kept. "
+                    "A MODEL publish first runs the impact check (model_impact): "
+                    "the recorded queries of every published report that reads the "
+                    "model are re-run against the draft and compared with each "
+                    "report's last build. Each report is unchanged, moves (the "
+                    "figures, old and new), breaks (the query no longer runs, with "
+                    "the error) or not_built (listed, never counted unchanged). If "
+                    "any moves or breaks, publish_draft is refused (HTTP 409, MCP "
+                    "ok=false, both with the impact) unless accept_impact=true; a "
+                    "break needs accepting too, and the accepted impact is recorded "
+                    "in the publish run. Show the person model_impact before you "
+                    "pass accept_impact. "
                     "Python (report.py, models/*.py, transforms, pipelines) cannot "
                     "be drafted remotely: it would run on the server with its "
                     "secrets, so it comes only through a laptop and review. "

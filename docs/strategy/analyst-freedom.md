@@ -156,7 +156,7 @@ So: the model is the foundation, SQL is the escape hatch, each labelled.
 
 - **Every model change is a draft, then published.** Nobody edits the live
   model ([[remote-authoring]] step 1, already built).
-- **Impact check before publishing.** Re-run every published report that
+- **Impact check before publishing (built).** Re-run every published report that
   reads the model against the changed model and show which numbers move (the
   re-run and compare `tracebi verify` already does). A change that moves
   numbers is accepted on purpose by someone with Publish on the model.

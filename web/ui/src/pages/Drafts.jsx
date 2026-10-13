@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
-  useDrafts, useDraftVersion, useDraftFiles, useDraftPreview,
+  useDrafts, useDraftVersion, useDraftFiles, useDraftPreview, useDraftImpact,
   usePublishDraft, useDeleteDraft, useWriteDraftFile, useMe,
 } from '../api'
 import { reportModels, reportPagePath } from '../nav'
@@ -82,6 +82,7 @@ export function DraftPage() {
   const [tab, setTab] = useState(isReport ? 'Preview' : 'Files')
   const [step, setStep] = useState(null) // null | 'publish' | 'delete'
   const [note, setNote] = useState('')
+  const [accept, setAccept] = useState(false)
   const [published, setPublished] = useState(null)
   const [refusal, setRefusal] = useState(null)
   const [edits, setEdits] = useState({}) // file name -> { base, text, saved, error }
@@ -91,6 +92,9 @@ export function DraftPage() {
   const { data: version, error: versionError } = useDraftVersion(d)
   const { data: files, isPlaceholderData: filesStale } = useDraftFiles(d, version)
   const { data: html, error: previewError } = useDraftPreview(d, version, isReport)
+  const { data: impact, error: impactError } = useDraftImpact(d, version, !isReport)
+  const needsAccept = !!impact?.needs_acceptance
+  useEffect(() => { setAccept(false) }, [version])   // a changed draft needs its impact accepted again
   // Keep the last page that rendered, so a broken save shows its error above
   // the previous page instead of a blank one.
   const lastHtml = useRef(null)
@@ -110,9 +114,9 @@ export function DraftPage() {
 
   const doPublish = () => {
     setRefusal(null)
-    publish.mutate(note.trim(), {
+    publish.mutate({ note: note.trim(), acceptImpact: needsAccept && accept }, {
       onSuccess: res => {
-        setStep(null); setNote(''); setPublished(res)
+        setStep(null); setNote(''); setAccept(false); setPublished(res)
         toast(`Published ${kindLabel(kind).toLowerCase()} ${path}`, 'success')
       },
       onError: err => { setRefusal(err); setStep(null) },
@@ -170,8 +174,18 @@ export function DraftPage() {
               border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
               background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
             }} />
+          {needsAccept && (
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, lineHeight: 1.5, marginBottom: 12 }}>
+              <input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)}
+                style={{ marginTop: 3 }} />
+              <span>
+                I have read the impact below and accept it: {impact.summary.moves || 0} report(s)
+                change{impact.summary.breaks ? ` and ${impact.summary.breaks} stop(s) working` : ''}.
+              </span>
+            </label>
+          )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn onClick={doPublish} disabled={busy}>Publish for everyone</Btn>
+            <Btn onClick={doPublish} disabled={busy || (needsAccept && !accept)}>Publish for everyone</Btn>
             <Btn variant="outline" onClick={() => setStep(null)}>Cancel</Btn>
           </div>
         </Card>
@@ -187,6 +201,8 @@ export function DraftPage() {
           </div>
         </Card>
       )}
+
+      {!isReport && <ModelImpact impact={impact} error={impactError} />}
 
       {refusal && <div role="alert"><ErrorDetail error={refusal} /></div>}
       {published && (
@@ -221,6 +237,53 @@ export function DraftPage() {
           : <Spinner />}
       </div>
     </div>
+  )
+}
+
+const IMPACT_BADGE = { unchanged: 'green', moves: 'amber', breaks: 'red', not_built: 'gray', not_checkable: 'gray' }
+const IMPACT_LABEL = {
+  unchanged: 'Unchanged', moves: 'Numbers move', breaks: 'Breaks',
+  not_built: 'Not built, cannot compare', not_checkable: 'Cannot compare',
+}
+const show = v => (v === null || v === undefined ? 'n/a' : typeof v === 'number' ? v.toLocaleString() : String(v))
+
+// Which published reports reading this model a publish would change, from
+// re-running their last build's queries against the draft.
+function ModelImpact({ impact, error }) {
+  if (error) return <div role="alert"><ErrorDetail error={error} /></div>
+  if (!impact) return null
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <h2 style={{ fontSize: 14, margin: '0 0 6px' }}>Impact on published reports</h2>
+      {impact.reports.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>No published report reads this model.</p>
+      )}
+      <ul aria-label="Reports this model draft touches" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
+        {impact.reports.map(r => (
+          <li key={r.report} style={{ fontSize: 13, lineHeight: 1.5 }}>
+            <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{r.report}</span>{' '}
+            <Badge variant={IMPACT_BADGE[r.status]}>{IMPACT_LABEL[r.status]}</Badge>
+            {(r.status === 'not_built' || r.status === 'not_checkable') && (
+              <div style={{ color: 'var(--muted)' }}>{r.detail}</div>
+            )}
+            {(r.moved || []).map(m => (
+              <div key={m.binding} style={{ marginLeft: 12 }}>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{m.binding}</span>
+                {m.figures.length === 0 && <> changes ({show(m.rows[0])} to {show(m.rows[1])} rows)</>}
+                {m.figures.map(f => (
+                  <div key={f.id}>{f.id}: {show(f.old)} to {show(f.new)}</div>
+                ))}
+              </div>
+            ))}
+            {(r.broken || []).map(b => (
+              <div key={b.binding} style={{ marginLeft: 12, color: 'var(--red-text)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{b.binding}</span>: {b.error}
+              </div>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }
 

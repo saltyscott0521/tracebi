@@ -193,7 +193,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   schedule.py          # report.json "schedule" block: build → verify → email → record
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 19 tools + 3 prompts (author_report, answer_question, address_pins)
+  mcp_server.py        # agent gateway over MCP — 20 tools + 3 prompts (author_report, answer_question, address_pins)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
   _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode
@@ -689,7 +689,8 @@ PUT  /api/drafts/{owner}/{kind}/{path}/files/{file}  → write one draft file {c
 GET  /api/drafts/{owner}/{kind}/{path}/files         → a draft's files (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/version       → a draft's version (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/preview       → the draft rendered in memory; writes nothing (owner or admin)
-POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft (analyst; owner or admin)
+GET  /api/drafts/{owner}/{kind}/{path}/impact        → model draft only: each published report that reads the model is unchanged / moves (figures, old and new) / breaks / not_built, from re-running its last build's queries against the draft (owner or admin)
+POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft; body {note, accept_impact}; a model that moves or breaks reports is 409 with the impact until accept_impact (analyst; owner or admin)
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
 GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not
                                                        been built, a page naming the build command

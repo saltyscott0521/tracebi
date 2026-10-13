@@ -566,7 +566,8 @@ Nineteen tools (`tracebi/mcp_server.py`):
 | `read_draft` | The draft's files as `{name: text}` |
 | `write_draft_file` | Replace one file of a draft with `content`. A report draft takes `report.json`, `template.html`, `style.css` or `script.js`; a model draft takes its `<name>.yaml` or `<name>.json` (writing the other form replaces it). Writes only under `drafts/` |
 | `preview_draft` | Render the draft in memory against the published models plus your draft models. Returns `ok`, `errors`, and the url where the person sees it. Writes nothing |
-| `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first |
+| `model_impact` | For a model draft (`path` = the model name): re-run the recorded queries of every published report that reads it against the draft and compare with each report's last build. Each report is `unchanged`, `moves` (figures, old and new), `breaks` (the error) or `not_built` (listed, never unchanged). Writes nothing |
+| `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first. A model that would move or break published reports is refused (`ok: false`, with `impact`) unless you pass `accept_impact=true`; a break needs accepting too, and the accepted impact is recorded in the run |
 
 Every tool returns **structured output** (a typed `outputSchema` and
 `structuredContent`, not JSON inside a text blob), so the stamp and the verdict
@@ -637,7 +638,10 @@ nothing a draft holds goes live until `publish_draft`.
 2. `write_draft_file(kind, path, file, content)` for each file the draft needs.
 3. `preview_draft(kind, path)`, then give the person the `url` it returns. They
    see the draft rendered in the app.
-4. `publish_draft(kind, path, note)` once they agree.
+4. `publish_draft(kind, path, note)` once they agree. For a model, run
+   `model_impact(path)` first and show the person which published reports
+   move or break; `publish_draft` is refused until you pass
+   `accept_impact=true`, and a break needs accepting too.
 
 **Dev to prod: publish a model before a report that uses it.** A report is
 checked against the published models only, so a report that names a model not

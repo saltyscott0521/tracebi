@@ -875,3 +875,78 @@ def test_a_model_draft_written_as_yaml_publishes_as_yaml(scaffolded):
     assert not (scaffolded / "models" / "regions.yaml").exists()
     kept = list((scaffolded / ".tracebi" / "history" / "models" / "regions").rglob("regions.yaml"))
     assert kept, "the replaced YAML is kept in history"
+
+
+def test_publishing_a_model_draft_shows_which_reports_it_moves_or_breaks(served, scaffolded):
+    """Before a model draft goes live, the app re-runs the published reports'
+    recorded queries against it: a measure change lists the figures that move
+    (old and new), a report never built is listed and never called unchanged,
+    the publish is refused until the impact is accepted, and what was accepted
+    is in the publish run. A break needs accepting too."""
+    import shutil
+
+    c = served
+    path = "sample_model/sample_dashboard"
+    code, out = run_cli("report", "build", path)
+    assert code == 0, out
+    shutil.copytree(scaffolded / "reports" / "sample_model" / "sample_dashboard",
+                    scaffolded / "reports" / "sample_model" / "never_built")
+
+    model_file = scaffolded / "models" / "sample_model.yaml"
+    published = model_file.read_text(encoding="utf-8")
+    base = "/api/drafts/anonymous/models/sample_model"
+    assert c.post("/api/drafts", json={"kind": "models", "path": "sample_model"}).status_code == 201
+
+    # Unedited, the draft is the published model: nothing moves, nothing blocks.
+    same = c.get(f"{base}/impact").json()
+    assert {r["report"]: r["status"] for r in same["reports"]} == {
+        path: "unchanged", "sample_model/never_built": "not_built"}
+    assert same["needs_acceptance"] is False
+
+    # Revenue becomes an average: the figures that claim it move.
+    moved_text = published.replace("column: revenue\n    agg: sum\n    description: Total revenue",
+                                   "column: revenue\n    agg: avg\n    description: Total revenue")
+    assert moved_text != published
+    assert c.put(f"{base}/files/sample_model.yaml", json={"content": moved_text}).status_code == 200
+    impact = c.get(f"{base}/impact").json()
+    [report] = [r for r in impact["reports"] if r["report"] == path]
+    assert report["status"] == "moves" and impact["needs_acceptance"] is True
+    [kpi] = [f for m in report["moved"] for f in m["figures"] if f["id"] == "val-revenue-inline"]
+    assert kpi["old"] > kpi["new"] > 0
+    assert [r["status"] for r in impact["reports"] if r["report"].endswith("never_built")] == ["not_built"]
+
+    refused = c.post(f"{base}/publish", json={"note": "avg"})
+    assert refused.status_code == 409
+    assert "accept_impact" in refused.json()["detail"]["message"]
+    assert refused.json()["detail"]["impact"]["needs_acceptance"] is True
+    assert model_file.read_text(encoding="utf-8") == published
+
+    done = c.post(f"{base}/publish", json={"note": "avg", "accept_impact": True})
+    assert done.status_code == 200, done.text
+    assert model_file.read_text(encoding="utf-8") == moved_text
+    [run] = c.get("/api/runs", params={"kind": "publish"}).json()
+    accepted = run["detail"]["accepted_impact"]
+    assert accepted["summary"]["moves"] == 1
+    assert [r["report"] for r in accepted["reports"]] == [path]
+
+    # A measure the report asks for goes away: a break, which also needs accepting.
+    broke = moved_text.replace("  - name: orders\n    column: order_id\n    agg: count\n"
+                               "    description: Order count\n", "")
+    assert broke != moved_text
+    assert c.put(f"{base}/files/sample_model.yaml", json={"content": broke}).status_code == 200
+    [report] = [r for r in c.get(f"{base}/impact").json()["reports"] if r["report"] == path]
+    assert report["status"] == "breaks" and report["broken"][0]["error"]
+    refused = c.post(f"{base}/publish", json={})
+    assert refused.status_code == 409 and "breaks" in refused.json()["detail"]["message"]
+    assert model_file.read_text(encoding="utf-8") == moved_text
+
+    # An agent over MCP sees the same check, and is refused the same way.
+    from tracebi import mcp_server as gw
+    assert gw.gateway_start_draft("models", "sample_model", True)["ok"]
+    gw.gateway_write_draft_file("models", "sample_model", "sample_model.yaml", broke)
+    seen = gw.gateway_model_impact("sample_model")["impact"]
+    assert [r["status"] for r in seen["reports"] if r["report"] == path] == ["breaks"]
+    no = gw.gateway_publish_draft("models", "sample_model")
+    assert not no["ok"] and "accept_impact" in no["errors"][0] and no["impact"]["needs_acceptance"]
+    assert gw.gateway_publish_draft("models", "sample_model", accept_impact=True)["ok"]
+    assert model_file.read_text(encoding="utf-8") == broke
