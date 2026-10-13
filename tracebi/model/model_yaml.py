@@ -106,6 +106,8 @@ def _measure(m: Any) -> dict:
 def _document(model: DataModel, root: Path) -> dict:
     info = model.info()
     doc: dict = {"name": model.name}
+    if model.owners:
+        doc["owners"] = list(model.owners)
     doc["connectors"] = [_connector(c, root) for c in model.connectors()]
     doc["tables"] = [{k: t[k] for k in ("name", "connector", "source")}
                      for t in info["tables"]]

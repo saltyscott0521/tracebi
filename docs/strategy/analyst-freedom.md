@@ -160,7 +160,7 @@ So: the model is the foundation, SQL is the escape hatch, each labelled.
   reads the model against the changed model and show which numbers move (the
   re-run and compare `tracebi verify` already does). A change that moves
   numbers is accepted on purpose by someone with Publish on the model.
-- **Owners.** Each model has owners; only they or admins publish it. Analysts
+- **Owners (built).** Each model has owners; only they or admins publish it. Analysts
   are never blocked: they calculate in their report or workspace and propose.
 - **Promotion.** A report, personal or SQL calculation that keeps being reused
   is proposed into the model (or into the transform, as a table) and goes

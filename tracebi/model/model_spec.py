@@ -30,7 +30,7 @@ _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 SPEC_SUFFIXES = (".yaml", ".yml", ".json")
 
-_TOP = {"name", "connectors", "tables", "relationships", "dimensions", "facts",
+_TOP = {"name", "owners", "connectors", "tables", "relationships", "dimensions", "facts",
         "measures", "time_grains", "value_bins"}
 _CONNECTOR = {"name", "type", "database", "connection"}
 _TABLE = {"name", "connector", "source"}
@@ -150,6 +150,14 @@ def _need(item: dict, path: str, fields: tuple[str, ...], errors: list[str]) -> 
             errors.append(f"{path}.{f}: required, a non-empty string")
 
 
+def owners_errors(owners: Any) -> list[str]:
+    """Why *owners* is not a list of non-empty sign-in names (empty: fine)."""
+    if not isinstance(owners, list) or not all(
+            isinstance(o, str) and o.strip() for o in owners):
+        return ["owners: must be a list of non-empty strings (sign-in names)"]
+    return []
+
+
 def validate_model_spec(doc: Any) -> list[str]:
     """Structural errors in a model document, each led by its path
     (``measures[2].agg``). Empty means the shape is right; whether the builder
@@ -158,6 +166,8 @@ def validate_model_spec(doc: Any) -> list[str]:
         return ["the file must hold one object (a mapping at the top level)"]
     errors = _unknown(doc, _TOP, "model")
     _need(doc, "model", ("name",), errors)
+    if "owners" in doc:
+        errors.extend(owners_errors(doc["owners"]))
 
     for path, c in _items(doc, "connectors", _CONNECTOR, errors):
         _need(c, path, ("name",), errors)
@@ -301,7 +311,7 @@ def load_model_spec(path: "str | os.PathLike[str]",
     if errors:
         raise ModelSpecError(path.name, errors)
 
-    model = DataModel(doc["name"])
+    model = DataModel(doc["name"], owners=doc.get("owners"))
     for c in doc.get("connectors", []):
         model.add_connector(_connector(c, root))
     for t in doc.get("tables", []):

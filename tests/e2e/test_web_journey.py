@@ -950,3 +950,68 @@ def test_publishing_a_model_draft_shows_which_reports_it_moves_or_breaks(served,
     assert not no["ok"] and "accept_impact" in no["errors"][0] and no["impact"]["needs_acceptance"]
     assert gw.gateway_publish_draft("models", "sample_model", accept_impact=True)["ok"]
     assert model_file.read_text(encoding="utf-8") == broke
+
+
+def test_only_a_models_owners_or_an_admin_publish_it_but_anyone_drafts_it(served, scaffolded, monkeypatch):
+    """A model that names owners is published only by one of them or an admin
+    (HTTP 403, MCP ok:false, owners named). Anyone else still drafts it and
+    sees the impact. The owners are the PUBLISHED file's, so a draft that
+    adds the analyst cannot let them publish it. No owners: an analyst publishes."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from tracebi import mcp_server as gw
+    from tracebi.web.api.auth import ProxyHeaderAuthMiddleware
+    from tracebi.web.api.routers import drafts as drafts_router
+
+    monkeypatch.setenv("TRACEBI_AUTH_ROLE_HEADER", "X-Role")
+    app = FastAPI()
+    app.include_router(drafts_router.router, prefix="/api")
+    app.add_middleware(ProxyHeaderAuthMiddleware, header="X-User")
+    c = TestClient(app)
+
+    def as_(user, role="analyst"):
+        return {"X-User": user, "X-Role": role}
+
+    model_file = scaffolded / "models" / "sample_model.yaml"
+    plain = model_file.read_text(encoding="utf-8")
+    owned = "owners: [olive]\n" + plain
+    model_file.write_text(owned, encoding="utf-8")
+
+    def draft(user, text):
+        base = f"/api/drafts/{user}/models/sample_model"
+        assert c.post("/api/drafts", json={"kind": "models", "path": "sample_model"},
+                      headers=as_(user)).status_code in (200, 201)
+        assert c.put(f"{base}/files/sample_model.yaml", json={"content": text},
+                     headers=as_(user)).status_code == 200
+        return base
+
+    # A non-owner drafts, sees the impact, and is refused with the owners named.
+    bob = draft("bob", owned + "# bob's change\n")
+    assert c.get(f"{bob}/impact", headers=as_("bob")).status_code == 200
+    refused = c.post(f"{bob}/publish", json={}, headers=as_("bob"))
+    assert refused.status_code == 403 and "olive" in refused.json()["detail"]["message"]
+    assert model_file.read_text(encoding="utf-8") == owned
+
+    # A draft that makes bob an owner cannot self-grant: the published file decides.
+    sneaky = draft("bob", owned.replace("[olive]", "[olive, bob]"))
+    assert c.post(f"{sneaky}/publish", json={}, headers=as_("bob")).status_code == 403
+    assert "bob" not in model_file.read_text(encoding="utf-8")
+
+    # An owner and an admin publish.
+    olive = draft("olive", owned + "# olive\n")
+    assert c.post(f"{olive}/publish", json={}, headers=as_("olive")).status_code == 200
+    root = draft("root", owned + "# root\n")
+    assert c.post(f"{root}/publish", json={}, headers=as_("root", "admin")).status_code == 200
+
+    # Over MCP the same check refuses a non-owner and allows an owner.
+    monkeypatch.setattr(gw, "_caller", lambda: ("bob", "analyst"))
+    no = gw.gateway_publish_draft("models", "sample_model")
+    assert not no["ok"] and "olive" in no["errors"][0]
+    monkeypatch.setattr(gw, "_caller", lambda: ("olive", "analyst"))
+    assert gw.gateway_publish_draft("models", "sample_model")["ok"]
+
+    # No owners: an analyst publishes, as before.
+    model_file.write_text(plain, encoding="utf-8")
+    again = draft("bob", plain + "# bob again\n")
+    assert c.post(f"{again}/publish", json={}, headers=as_("bob")).status_code == 200

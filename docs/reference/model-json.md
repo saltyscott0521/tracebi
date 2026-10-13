@@ -81,6 +81,7 @@ Errors lead with their path, e.g. `measures[2].agg`.
 | Key | Builder call | Fields |
 |---|---|---|
 | `name` | `DataModel(name)` | **Required.** Must equal the file name without its extension. |
+| `owners` | `DataModel(name, owners=)` | Optional list of non-empty sign-in names. Only an owner or an admin may publish a change to this model; anyone else can still draft it and run the impact check. Read from the *published* file, so a draft cannot grant itself ownership. No `owners` (or a brand-new model) means any analyst may publish. Names only: sign-in groups are not matched. |
 | `connectors` | `add_connector` | `{name, type: "duckdb", database}` or `{name, connection}` |
 | `tables` | `add_table` | `name`, `connector`, `source` |
 | `relationships` | `add_relationship` | `name`, `left_table`, `right_table`, `left_key`, optional `right_key`, `how` |
@@ -89,6 +90,9 @@ Errors lead with their path, e.g. `measures[2].agg`.
 | `time_grains` | `add_time_grain` | `dimension`, `name`, `source`, `grain` (`month`, `quarter`, ...) |
 | `value_bins` | `add_value_bins` | `dimension`, `name`, `source`, `edges`, optional `labels` (one more than `edges`) |
 | `measures` | `add_measure` | `name` plus any keyword of [[measures]]: `column`, `agg`, `expr`, `ratio`, `share`, `rank`, `running`, `partition_by`, `period_end`, `offset`, `growth`, `to_date`, `description`, `format`, `allow_rate_agg`, `allow_additive`. Pairs and triples are lists. |
+
+A publish by someone who is not an owner is refused (HTTP 403, MCP `ok: false`),
+naming the owners. The owners are shown on the model's page in the app.
 
 `time_grains` and `value_bins` name the dimension as `dimension` (the builder's
 `dim`); the other fields are the builder's own keyword arguments.

@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from tracebi.audit import get_actor
 from tracebi.report_paths import library_roots, open_report, report_name_error
 
 #: Each file a draft holds, in bytes of UTF-8.
@@ -469,6 +470,42 @@ def _validate_report(where: Path, models: dict) -> None:
             ) from exc
 
 
+class NotAnOwner(DraftError):
+    """The signed-in person may not publish this model: it names owners and
+    they are not among them (and not an admin)."""
+
+
+def model_owners(path: str) -> list:
+    """Who owns *published* model *path*: its ``owners`` list ([] when none,
+    or when nothing is published). Always the published file, never a draft,
+    so a draft cannot grant itself ownership."""
+    from tracebi.model.model_spec import ModelSpecError, read_model_doc
+
+    published = next(iter(_published_model_files(path)), None)
+    if published is None:
+        return []
+    try:
+        owners = (read_model_doc(published) or {}).get("owners")
+    except (ModelSpecError, OSError, AttributeError):
+        return []
+    return [o for o in owners if isinstance(o, str)] if isinstance(owners, list) else []
+
+
+def check_may_publish_model(path: str, user: Optional[str], role: Optional[str]) -> None:
+    """Raise :class:`NotAnOwner` unless *user* may publish model *path*: an
+    admin (or an unauthenticated deployment, which resolves to admin) always
+    may; otherwise the model must have no owners, or name *user*. Owners are
+    sign-in names; the session carries no group membership, so groups are not
+    matched. The one check HTTP and MCP both go through."""
+    owners = model_owners(path)
+    who = (user or "").removeprefix("mcp:").strip().casefold()
+    if (role or "admin") == "admin" or not owners or who in {o.strip().casefold() for o in owners}:
+        return
+    raise NotAnOwner(
+        f"model {path} is owned by {', '.join(owners)}; only they or an admin may "
+        f"publish it. You can still draft it and run model_impact, then ask an owner to publish.")
+
+
 class ImpactNotAccepted(DraftError):
     """A model publish that moves or breaks published reports, without
     ``accept_impact``. ``impact`` is the :func:`model_impact` result."""
@@ -653,6 +690,7 @@ def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
     where = _exists(owner, kind, path)
     accepted = None
     if kind == "models":
+        check_may_publish_model(path, actor, get_actor()[1])
         _validate_model_draft(where)
         impact = model_impact(owner, path, models)
         if impact["needs_acceptance"]:
@@ -706,7 +744,6 @@ def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
     result = {"owner": owner, "kind": kind, "path": path, "version": stamp,
               "files": published, "previous": str(kept) if kept else None}
 
-    from tracebi.audit import get_actor
     from tracebi.state import record_run
     now = datetime.now(timezone.utc).isoformat()
     try:

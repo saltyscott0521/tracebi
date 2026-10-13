@@ -366,6 +366,9 @@ export function ModelDetail({ name }) {
           <div key={c.name}>Data in <StorageLine storage={c.storage} /></div>
         ))}
         {grain && <div>Grain: {grain}</div>}
+        {(data.owners || []).length > 0 && (
+          <div>Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</div>
+        )}
         {desk?.warehouse && sinks.length === 0 && <div>Its tables satisfied their checks when they were last written.</div>}
         {sinks.length > 0 && (
           <div>

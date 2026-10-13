@@ -159,6 +159,11 @@ Errors lead with their path, e.g. <code>measures[2].agg</code>.</p>
 <td><strong>Required.</strong> Must equal the file name without its extension.</td>
 </tr>
 <tr>
+<td><code>owners</code></td>
+<td><code>DataModel(name, owners=)</code></td>
+<td>Optional list of non-empty sign-in names. Only an owner or an admin may publish a change to this model; anyone else can still draft it and run the impact check. Read from the <em>published</em> file, so a draft cannot grant itself ownership. No <code>owners</code> (or a brand-new model) means any analyst may publish. Names only: sign-in groups are not matched.</td>
+</tr>
+<tr>
 <td><code>connectors</code></td>
 <td><code>add_connector</code></td>
 <td><code>{name, type: "duckdb", database}</code> or <code>{name, connection}</code></td>
@@ -200,6 +205,8 @@ Errors lead with their path, e.g. <code>measures[2].agg</code>.</p>
 </tr>
 </tbody>
 </table>
+<p>A publish by someone who is not an owner is refused (HTTP 403, MCP <code>ok: false</code>),
+naming the owners. The owners are shown on the model's page in the app.</p>
 <p><code>time_grains</code> and <code>value_bins</code> name the dimension as <code>dimension</code> (the builder's
 <code>dim</code>); the other fields are the builder's own keyword arguments.</p>
 <h3 id="yaml-specifics">YAML specifics</h3>

@@ -363,6 +363,10 @@ whose impact has a <code>moves</code> or <code>breaks</code> is <code>409</code>
 accepting too. The accepted impact is stored in the <code>publish</code> run's <code>detail</code>.
 The MCP tool <code>model_impact(path)</code> is the same check, and <code>publish_draft</code> takes
 <code>accept_impact</code>.</p>
+<p>A model that names <code>owners</code> in its published file may be published only by one
+of them or an admin; anyone else gets <code>403</code> (MCP <code>ok: false</code>) naming the owners,
+checked before the impact. They can still draft and read <code>/impact</code>. Names only,
+no groups; no owners means any analyst.</p>
 <h2 id="report-specs">Report specs</h2>
 <table>
 <thead>
