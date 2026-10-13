@@ -269,6 +269,31 @@ def _presentation() -> dict:
                         "definition: promote one into the model to make it "
                         "shared.",
             },
+            "sql_calculations": {
+                "key": "sql_calculations",
+                "shape": "{\"<model>\": {\"<name>\": \"SELECT ...\"}}",
+                "example": "\"sql_calculations\": {\"sample_model\": {\"running_revenue\": "
+                           "\"SELECT region_id, order_date, SUM(revenue) OVER (PARTITION BY "
+                           "region_id ORDER BY order_date) AS running_revenue FROM fact_orders\"}}"
+                           ", bound as \"data\": {\"running\": {\"model\": \"sample_model\", "
+                           "\"sql\": \"running_revenue\"}}",
+                "note": "A named calculation the report runs as one read-only SELECT (or WITH) "
+                        "over its model's warehouse tables. It is not a model query: write the "
+                        "SQL with the warehouse's own table and column names. Anything else (a "
+                        "write, ATTACH, COPY, PRAGMA, SET, INSTALL, LOAD, or more than one "
+                        "statement) is refused when the report is discovered. The engine opens "
+                        "the warehouse read-only and reaches no other file or network. "
+                        "{{ measure('name') }} inside the SQL expands to a model measure: simple "
+                        "measures (sum, count, mean, min, max, nunique of one column) and filtered "
+                        "ones; any other kind (ratio, expression, share, rank, period_end, ...) is "
+                        "refused by name, so write it out in SQL or query the model. Rows come back "
+                        "in a canonical order (by columns, left to right); put the grouping and date "
+                        "columns first. A selection or filter cannot reach a SQL binding yet. The "
+                        "receipt records the SQL and labels it 'calculated in this report (SQL)' "
+                        "(the semantic contract's sql_calculations); the stamped query carries the "
+                        "SQL and verify re-runs it, reporting source drift when the warehouse "
+                        "changes.",
+            },
         },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",

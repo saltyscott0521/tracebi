@@ -30,6 +30,7 @@ from typing import Any, Optional
 import pandas as pd
 
 from tracebi.connectors.base import BaseConnector
+from tracebi.model.sql_calc import SqlQuery, run as run_sql_query
 from tracebi.model.dataset import (
     CURRENT_FINGERPRINT_ALGO,
     DataSet,
@@ -1597,7 +1598,11 @@ class DataModel:
 
         A spec that carries ``calculated`` measures runs against a view of the
         model that declares them (:meth:`with_measures`); the stamp keeps them.
+        A :class:`~tracebi.model.sql_calc.SqlQuery` runs read-only against the
+        model's warehouse instead (:mod:`tracebi.model.sql_calc`).
         """
+        if isinstance(spec, SqlQuery):
+            return run_sql_query(self, spec)
         if spec.calculated:
             return self.with_measures(spec.calculated)._execute(spec)
         return self._execute(spec)

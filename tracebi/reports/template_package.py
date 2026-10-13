@@ -87,6 +87,7 @@ from tracebi.reports.report import (
     Report, ReportManifest, TableSection,
 )
 from tracebi.model.data_model import DataModel, measure_references
+from tracebi.model.sql_calc import SqlQuery, check_read_only
 from tracebi.spec import DataRef
 
 #: Files that make up a package. ``report.json`` and ``template.html`` are
@@ -375,6 +376,56 @@ def _report_measures(raw, path: str) -> dict[str, dict[str, dict]]:
     return out
 
 
+def _sql_calculations(raw, path: str) -> dict[str, dict[str, str]]:
+    """The report.json ``sql_calculations`` block: ``{model: {name: SELECT}}``.
+
+    Structural and read-only: each calculation must be one SELECT, so a write
+    is refused when the report is discovered, not when it first runs.
+    """
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"{path}: 'sql_calculations' maps a model name to its named SQL "
+            f"calculations, e.g. {{\"wealth_model\": {{\"running\": \"SELECT ...\"}}}}.")
+    out: dict[str, dict[str, str]] = {}
+    for model_name, calcs in raw.items():
+        if not isinstance(calcs, dict) or not calcs:
+            raise ValueError(
+                f"{path}: sql_calculations['{model_name}'] must be an object of "
+                f"named SQL calculations.")
+        out[model_name] = {}
+        for cname, text in calcs.items():
+            if not isinstance(text, str):
+                raise ValueError(
+                    f"{path}: SQL calculation '{cname}' of '{model_name}' must be "
+                    f"a SQL string.")
+            try:
+                check_read_only(text)
+            except ValueError as exc:
+                raise ValueError(
+                    f"{path}: SQL calculation '{cname}' of '{model_name}': {exc}"
+                ) from exc
+            out[model_name][str(cname)] = text
+    return out
+
+
+def _sql_binding(binding_name: str, ref_raw: dict, calcs: dict, path: str) -> DataRef:
+    """A data binding that names a SQL calculation: ``{"model", "sql"}``."""
+    if set(ref_raw) != {"model", "sql"} or not isinstance(ref_raw["sql"], str):
+        raise ValueError(
+            f"{path}: data binding '{binding_name}' binds a SQL calculation with "
+            f"{{\"model\": ..., \"sql\": <name>}} and nothing else.")
+    model_name, cname = ref_raw["model"], ref_raw["sql"]
+    text = calcs.get(model_name, {}).get(cname)
+    if text is None:
+        raise ValueError(
+            f"{path}: data binding '{binding_name}' names SQL calculation "
+            f"'{cname}' of model '{model_name}', which 'sql_calculations' does "
+            f"not declare.")
+    return DataRef(model=model_name, query=SqlQuery(sql=text))
+
+
 def _measures_for_query(names, defs: dict[str, dict]) -> dict[str, dict]:
     """The report-level definitions a query needs: the names it lists, plus
     every report-level measure those read, transitively. Nothing else, so one
@@ -444,6 +495,8 @@ class TemplatePackage:
                 f"each binding name to {{'model': ..., 'query': ...}}."
             )
         # Reuse DataRef's structural validation for every binding.
+        sql_calcs = _sql_calculations(
+            declaration.get("sql_calculations"), report_json_path)
         self.bindings: dict[str, DataRef] = {}
         for binding_name, ref_raw in data.items():
             if not isinstance(ref_raw, dict):
@@ -451,7 +504,11 @@ class TemplatePackage:
                     f"{report_json_path}: data binding '{binding_name}' must be "
                     f"an object with 'model' and 'query'."
                 )
-            self.bindings[binding_name] = DataRef.from_dict(ref_raw)
+            if "sql" in ref_raw:
+                self.bindings[binding_name] = _sql_binding(
+                    binding_name, ref_raw, sql_calcs, report_json_path)
+            else:
+                self.bindings[binding_name] = DataRef.from_dict(ref_raw)
 
         # Report-level measures: calculations this report declares for its own
         # bindings, not added to the shared model. Each binding carries exactly
@@ -481,6 +538,13 @@ class TemplatePackage:
             )
         else:
             self.selection = None
+        if self.selection:
+            for binding_name, ref in self.bindings.items():
+                if isinstance(ref.query, SqlQuery) and ref.model == self.selection["model"]:
+                    raise ValueError(
+                        f"{report_json_path}: the selection filters model "
+                        f"'{ref.model}', and binding '{binding_name}' is a SQL "
+                        f"calculation, which a selection cannot filter yet.")
 
         # Optional: when this report runs and who receives it. Read by
         # `tracebi schedule`; the build itself ignores it.
@@ -585,6 +649,11 @@ class TemplatePackage:
             if self.selection and ref.model == self.selection["model"]:
                 query = query_under_selection(ref.query, self.selection["filters"])
             if takes(model):
+                if isinstance(query, SqlQuery):
+                    raise ValueError(
+                        f"Cannot render package '{self.name}': binding "
+                        f"'{binding_name}' is a SQL calculation, which a filter "
+                        f"cannot reach yet.")
                 query = query_under_selection(query, filters)
                 applied += 1
             sd = stamp(model, query, name=binding_name)
@@ -1280,7 +1349,16 @@ class TemplatePackage:
         table_names = {f["table"] for f in facts} | {d["table"] for d in dims}
         tables = sorted((t for t in info["tables"] if t["name"] in table_names),
                         key=lambda t: t["name"])
-        return {
+        # SQL calculations this report runs on the model's warehouse: the SQL
+        # the author wrote, labelled. Only when present, so a report without
+        # one contracts byte-for-byte as before.
+        sql_calcs = [
+            {"binding": bname, "label": "calculated in this report (SQL)",
+             "sql": ref.query.sql}
+            for bname, ref in sorted(self.bindings.items())
+            if ref.model == model_name and isinstance(ref.query, SqlQuery)
+        ]
+        contract = {
             "model": info["name"],
             "facts": [
                 {"name": f["name"], "table": f["table"],
@@ -1301,6 +1379,9 @@ class TemplatePackage:
                 for t in tables
             ],
         }
+        if sql_calcs:
+            contract["sql_calculations"] = sql_calcs
+        return contract
 
     def _measure_notes(self, models: dict) -> dict[str, str]:
         """Descriptions of the declared measures the bindings reference.

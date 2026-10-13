@@ -485,6 +485,17 @@ freely, never re-source.
   that report's bindings only, the model is not changed, and the receipt labels
   them "calculated in this report". Promote a reused one into the model through
   review.
+  A report can also run a SQL calculation the model cannot express (a rollforward,
+  a running total): a `sql_calculations` block in its `report.json`, keyed by model
+  (`{"sample_model": {"running_revenue": "SELECT region_id, order_date,
+  SUM(revenue) OVER (PARTITION BY region_id ORDER BY order_date) AS running_revenue
+  FROM fact_orders"}}`), bound as `"data": {"running": {"model": "sample_model",
+  "sql": "running_revenue"}}`. It is one read-only SELECT over the warehouse's own
+  table names; a write, ATTACH, COPY, PRAGMA, or a second statement is refused when
+  the report builds. `{{ measure('revenue') }}` inside it expands to a model measure
+  (simple and filtered measures only; other kinds are refused by name). The receipt
+  labels it "calculated in this report (SQL)" and records the SQL; `verify` re-runs
+  it. Reach for a model measure first.
   Missing a *column the measure needs*? That is a phase-① change: sink it in the
   transform. A fresh gateway process sees new vocabulary on its next call (stdio
   one-shot clients get this for free; a long-running server must be restarted —

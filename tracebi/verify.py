@@ -311,6 +311,7 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
     """Classify one data-bearing manifest section."""
     from tracebi.model.data_model import QuerySpec
     from tracebi.model.dataset import last_query_node
+    from tracebi.model.sql_calc import SqlQuery
 
     expected = section["dataset_fingerprint"]
     lineage = section.get("dataset_lineage") or []
@@ -358,7 +359,10 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
                           f"(available: {sorted(set(models))})"}
 
     try:
-        ds = models[model_name].execute(QuerySpec.from_dict(md["query_spec"]))
+        recorded = md["query_spec"]
+        spec = (SqlQuery.from_dict(recorded) if "sql" in recorded
+                else QuerySpec.from_dict(recorded))
+        ds = models[model_name].execute(spec)
     except Exception as exc:  # noqa: BLE001 — reported per section, loudly
         return {**base, "status": ERROR,
                 "detail": f"recorded query failed to re-run: "
