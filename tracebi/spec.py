@@ -73,6 +73,11 @@ _ENUM_FIELDS = {
     ("chart", "chart_type"): CHART_TYPES,
 }
 
+# Chart fields a spec may name but the compiled package cannot honor (see
+# compile_spec._chart). Rejected here, not warned about at compile: a spec
+# that validates must mean what it says.
+_SPEC_UNSUPPORTED_CHART_FIELDS = ("ylabel", "show_values")
+
 
 @dataclasses.dataclass(frozen=True)
 class DataRef:
@@ -521,6 +526,15 @@ class ReportSpec:
                     errors.append(
                         f"{where}.style: '{raw['style']}' is not one of {list(allowed)}"
                     )
+                if stype == SectionType.CHART.value:
+                    for knob in _SPEC_UNSUPPORTED_CHART_FIELDS:
+                        if raw.get(knob) not in (None, "", [], {}, False):
+                            errors.append(
+                                f"{where}.{knob}: not supported in a report "
+                                f"spec — the rendered chart has no equivalent, "
+                                f"so the value would do nothing. Remove it and "
+                                f"restyle in style.css / script.js instead."
+                            )
                 self._check_data_ref(raw, where, models, errors, warnings)
 
         if not self.name:

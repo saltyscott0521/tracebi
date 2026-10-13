@@ -420,7 +420,8 @@ def render_preview(owner: str, kind: str, path: str,
         _validate_model_draft(where)
         return None
     page, _inputs, _outputs = TemplatePackage(str(where)).render_exploration(
-        preview_models(owner, _load_models()) if models is None else models)
+        preview_models(owner, _load_models()) if models is None else models,
+        require_placed=True)
     return page
 
 

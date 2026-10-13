@@ -46,7 +46,6 @@
       "x": "dim_client.advisor",
       "y": "market_value",
       "xlabel": "Advisor",
-      "ylabel": "Market value",
       "data": {
         "model": "wealth_model",
         "query": {
@@ -58,8 +57,7 @@
             "dim_client.advisor"
           ]
         }
-      },
-      "show_values": true
+      }
     },
     {
       "type": "table",

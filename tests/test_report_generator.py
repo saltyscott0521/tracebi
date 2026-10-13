@@ -616,6 +616,17 @@ class TestFigureHelper:
             TemplatePackage(str(pkg)).render(
                 {model.name: model}, str(tmp_path / "out.html"))
 
+    def test_preview_refuses_a_declared_figure_never_placed(self, tmp_path, model):
+        """The draft preview must not show green where publish refuses. The
+        dev view (no require_placed) still renders: it only warns."""
+        pkg = self._pkg(tmp_path, template=_doc("<p>no figure here</p>"))
+        with pytest.raises(ValueError, match=r"never places"):
+            TemplatePackage(str(pkg)).render_exploration(
+                {model.name: model}, require_placed=True)
+        page, _inputs, _outputs = TemplatePackage(str(pkg)).render_exploration(
+            {model.name: model})
+        assert "fig-total" not in page
+
     def test_placing_one_figure_twice_refuses(self, tmp_path, model):
         """A figure id is the receipt's address for ONE number."""
         pkg = self._pkg(

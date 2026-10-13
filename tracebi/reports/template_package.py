@@ -550,6 +550,22 @@ class TemplatePackage:
         return value_element(binding, fig_id=fig_id, cell=fig["cell"],
                              label=fig.get("label", ""), fmt=fig.get("format"))
 
+    def _refuse_unplaced(self, unplaced: list[str]) -> None:
+        """Declared and never placed: the figure is simply absent from the
+        page. The dev view only warns (the template is mid-edit), but a final
+        build and a draft preview must not pass a report quietly missing a
+        number the author declared."""
+        if not unplaced:
+            return
+        raise ValueError(
+            f"Package '{self.name}': {REPORT_JSON} declares "
+            f"{', '.join(repr(n) for n in unplaced)} under 'figures', but "
+            f"{TEMPLATE_HTML} never places "
+            f"{'them' if len(unplaced) > 1 else 'it'} — add "
+            + " ".join('{{ figure("%s") }}' % n for n in unplaced)
+            + " where the figure belongs, or remove the declaration."
+        )
+
     def render_page(self, report: Report, *, strip_exploration: bool):
         """Render a carrier *report* through this package's template.
 
@@ -641,19 +657,7 @@ class TemplatePackage:
             report, strip_exploration=True)
         for w in id_warnings:
             print(f"[tracebi] {self.name}: {w}", file=sys.stderr)
-        if unplaced:
-            # Declared and never placed: the figure is simply absent from the
-            # page. The dev view only warns (the template is mid-edit), but a
-            # final build must not ship a report quietly missing a number the
-            # author declared.
-            raise ValueError(
-                f"Package '{self.name}': {REPORT_JSON} declares "
-                f"{', '.join(repr(n) for n in unplaced)} under 'figures', but "
-                f"{TEMPLATE_HTML} never places "
-                f"{'them' if len(unplaced) > 1 else 'it'} — add "
-                + " ".join('{{ figure("%s") }}' % n for n in unplaced)
-                + " where the figure belongs, or remove the declaration."
-            )
+        self._refuse_unplaced(unplaced)
         figs = extract_figures(page)
         self._validate_figures(figs, inputs, outputs)
         # Scenarios: the reader's what-if, computed in the browser. Checked
@@ -1229,7 +1233,7 @@ class TemplatePackage:
                     out[name] = mdef.description
         return out
 
-    def render_exploration(self, models: dict):
+    def render_exploration(self, models: dict, *, require_placed: bool = False):
         """Render the working state in memory (v2 §2.5) — the dev loop's page.
 
         Exploration blocks are KEPT, ids assigned, badges on, stage
@@ -1238,14 +1242,20 @@ class TemplatePackage:
         final build enforces. Returns ``(page, inputs, outputs)`` so the dev
         server can watch binding fingerprints without a second resolve;
         :meth:`snapshot` is this plus the banner and code appendix, on disk.
+
+        *require_placed* refuses a declared figure the template never places,
+        the same refusal :meth:`render` makes — the draft preview passes it,
+        so a preview cannot show green where publish would refuse.
         """
         report, inputs = self.build(models)
         outputs: list[StampedData] = []
         if self.report_py_path is not None:
             outputs = self.apply_report_py(report, inputs)
 
-        page, _warnings, _unplaced = self.render_page(
+        page, _warnings, unplaced = self.render_page(
             report, strip_exploration=False)
+        if require_placed:
+            self._refuse_unplaced(unplaced)
         try:
             work_figs = extract_figures(page)
         except FigureError:

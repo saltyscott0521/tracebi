@@ -2899,6 +2899,19 @@ class DataModel:
         # ── Measures ──────────────────────────────────────────
         if isinstance(spec.measures, dict):
             for out_col, mspec in spec.measures.items():
+                if isinstance(mspec, dict):
+                    # The query_model / Python form. A report spec takes one
+                    # aggregation per column; say so rather than report the
+                    # dict as an unsupported aggregation.
+                    errors.append((
+                        f"measures.{out_col}",
+                        f"a report spec takes {{column: agg}}, e.g. "
+                        f"{{\"{out_col}\": \"sum\"}}. The {{expr, agg}} form "
+                        f"is query_model's ad-hoc derived column and is not "
+                        f"valid in a spec: declare the expression as a named "
+                        f"measure on the model, or compute it in a transform.",
+                    ))
+                    continue
                 if isinstance(mspec, (tuple, list)) and len(mspec) == 2:
                     src, func = str(mspec[0]), str(mspec[1])
                 else:
@@ -3010,12 +3023,13 @@ class DataModel:
                 else:
                     warnings.append((
                         sub,
-                        f"filter column '{key_s}' is not among the declared "
-                        f"columns of fact '{spec.fact}'."
+                        f"filter column '{key_s}' is not declared on fact "
+                        f"'{spec.fact}'."
                         f"{self._hint(key_s, declared_cols)} "
-                        f"Declared: {sorted(declared_cols)}. It cannot be "
-                        f"verified before execution, which checks it against "
-                        f"the actual table.",
+                        f"Declared: {sorted(declared_cols)}. A filter on an "
+                        f"undeclared column is applied to the physical table, "
+                        f"which validation cannot read: it runs if the column "
+                        f"exists there and fails at execution if not.",
                     ))
 
         if spec.filters:
