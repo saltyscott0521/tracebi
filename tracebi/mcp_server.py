@@ -444,6 +444,9 @@ Say get_context showed a fact `fact_orders` with a `revenue` measure and a
    A value figure needs a one-row binding: its own query with no
    dimensions (the `kpis` binding above), or `order_by` plus `limit` 1.
    The cell may be text, such as the top sector's name.
+   A figure declared in `report.json` `figures` (a chart, say) is placed with
+   `{{ figure("id") }}` in the template, not hand-written markup; one never
+   placed is refused by `preview_draft` and publish.
    A number with no query behind it is honest only as `data-tb-unverified` —
    never a value figure with the number typed in.
 
