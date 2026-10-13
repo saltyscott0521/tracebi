@@ -88,8 +88,22 @@ dashboard (`transforms/sample_transform.py`).
 
 ## Authoring a report (the artifact package)
 
-`reports/sample_model/sample_dashboard/` is the working example — a page of ordinary HTML
-whose figures each name a binding from `report.json`:
+Worked example — the framework builds the figure, you place it. Declare it in
+`report.json`, then write `{{ figure("id") }}` where it belongs in `template.html`:
+
+```json
+"figures": {"total": {"kind": "value", "binding": "totals", "cell": "revenue", "format": "currency"}}
+```
+```html
+<section class="kpi">{{ figure("total") }}</section>
+```
+
+A declared figure the template never places fails `publish_draft` and
+`preview_draft` alike.
+
+`reports/sample_model/sample_dashboard/` is the working example of the
+hand-written form — a page of ordinary HTML whose figures each name a binding
+from `report.json`:
 
 - `data-tb-figure="value|chart|table|custom"` + `data-tb-binding="<name>"` —
   the claim. Values add `data-tb-cell="<column>"` and optionally

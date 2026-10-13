@@ -38,8 +38,6 @@
           "x": "dim_issuer.sector",
           "y": "fair_value",
           "xlabel": "Sector",
-          "ylabel": "Fair value",
-          "show_values": true,
           "data": {
             "model": "portfolio_model",
             "query": {
@@ -57,8 +55,6 @@
           "x": "dim_fund.fund",
           "y": "fair_value",
           "xlabel": "Fund",
-          "ylabel": "Fair value",
-          "show_values": true,
           "data": {
             "model": "portfolio_model",
             "query": {

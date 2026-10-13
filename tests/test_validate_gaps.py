@@ -378,3 +378,37 @@ def test_tuple_y_is_treated_as_a_list_of_axes():
     }
     result = _validate({"name": "s", "sections": [section]}, model)
     assert result["ok"], result["errors"]
+    assert conn.loads == []
+
+
+# ── Spec-only forms and chart knobs the compiled page cannot honor ─────────
+
+def test_query_model_dict_measure_form_names_the_spec_form():
+    """query_model takes {output: {expr, agg}}; a report spec takes
+    {column: agg}. The error must say which form a spec takes."""
+    model, conn = _model()
+    result = _validate(_table({
+        "fact": "fact_orders",
+        "measures": {"margin": {"expr": "revenue - cost", "agg": "sum"}},
+    }), model)
+    assert not result["ok"]
+    err = next(e for e in result["errors"]
+               if e.startswith("sections[0].data.query.measures.margin:"))
+    assert '{"margin": "sum"}' in err
+    assert conn.loads == []
+
+
+def test_chart_show_values_and_ylabel_are_refused_not_silently_dropped():
+    """The compiled page has no equivalent for these: a spec that validates
+    must not carry a knob that does nothing."""
+    model, conn = _model()
+    for knob, value in (("show_values", True), ("ylabel", "Revenue")):
+        section = _chart({
+            "fact": "fact_orders", "measures": ["total_revenue"],
+            "dimensions": ["dim_customer.region"],
+        }, x="dim_customer.region", y="total_revenue")["sections"][0]
+        section[knob] = value
+        result = _validate({"name": "s", "sections": [section]}, model)
+        assert not result["ok"]
+        assert any(e.startswith(f"sections[0].{knob}:") for e in result["errors"]), knob
+    assert conn.loads == []

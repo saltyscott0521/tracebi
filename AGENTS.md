@@ -136,6 +136,19 @@ a hash.
 
 ## Authoring the artifact
 
+Worked example — the framework builds the figure, you place it. Declare it in
+`report.json`, then write `{{ figure("id") }}` where it belongs in `template.html`:
+
+```json
+"figures": {"total": {"kind": "value", "binding": "totals", "cell": "revenue", "format": "currency"}}
+```
+```html
+<section class="kpi">{{ figure("total") }}</section>
+```
+
+A declared figure the template never places fails `publish_draft` and
+`preview_draft` alike. The hand-written form below is the grammar behind it.
+
 The package's `template.html` is ordinary HTML whose figures each claim a
 binding: `data-tb-figure="value|chart|table|custom"` +
 `data-tb-binding="<name>"` (values add `data-tb-cell` and optionally

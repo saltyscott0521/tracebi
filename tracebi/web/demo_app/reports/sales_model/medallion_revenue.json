@@ -27,8 +27,6 @@
       "x": "dim_customer.region",
       "y": "revenue",
       "xlabel": "Region",
-      "ylabel": "Revenue (USD)",
-      "show_values": true,
       "data": {
         "model": "sales_model",
         "query": {
@@ -65,8 +63,6 @@
       "x": "dim_customer.segment",
       "y": "revenue",
       "xlabel": "Segment",
-      "ylabel": "Revenue (USD)",
-      "show_values": true,
       "data": {
         "model": "sales_model",
         "query": {
