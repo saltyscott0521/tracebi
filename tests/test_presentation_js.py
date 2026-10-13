@@ -1026,7 +1026,7 @@ var f = el('select', { 'data-tb-filter': '', 'data-tb-binding': 'b',
 function Rejected() {}
 Rejected.prototype.then = function () { return this; };
 Rejected.prototype.catch = function (fn) { fn(); return this; };
-globalThis.fetch = function () { return new Rejected(); };
+// No host answers: there is no server to ask.
 loadRuntime();
 var tbody = tbl.querySelector('tbody');
 var before = tbody.children.length;
@@ -1070,12 +1070,14 @@ var PAYLOAD = {
   }],
   controls: [{ binding: 'b', column: 'region', included: ['East'], excluded: ['West'] }]
 };
-globalThis.fetch = function () {
-  return new Thenable({
-    ok: true,
-    json: function () { return new Thenable(PAYLOAD); }
-  });
-};
+// The page sits in the app's frame: a selection is run by the host, which answers by message.
+var __hear = null;
+globalThis.addEventListener = function (type, fn) { if (type === 'message') __hear = fn; };
+globalThis.parent = { postMessage: function (m) {
+  if (m.type !== 'selection-request') return;
+  __hear({ source: globalThis.parent,
+           data: { tracebiFrame: 1, type: 'selection-response', id: m.id, ok: true, payload: PAYLOAD } });
+} };
 loadRuntime();
 f.value = 'East';
 f._fire('change');
@@ -1396,9 +1398,14 @@ Thenable.prototype.then = function (ok) {
   return (ret && ret.then) ? ret : new Thenable(ret);
 };
 Thenable.prototype.catch = function () { return this; };
-globalThis.fetch = function () {
-  return new Thenable({ ok: true, json: function () { return new Thenable(payload); } });
-};
+// The page sits in the app's frame: a selection is run by the host, which answers by message.
+var __hear = null;
+globalThis.addEventListener = function (type, fn) { if (type === 'message') __hear = fn; };
+globalThis.parent = { postMessage: function (m) {
+  if (m.type !== 'selection-request') return;
+  __hear({ source: globalThis.parent,
+           data: { tracebiFrame: 1, type: 'selection-response', id: m.id, ok: true, payload: payload } });
+} };
 loadRuntime();
 function dataRows() {
   return tbl.querySelector('tbody').children.filter(function (tr) {

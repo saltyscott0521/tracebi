@@ -2763,28 +2763,34 @@
     el.appendChild(o);
   }
 
+  /* A page never calls the server itself: shown in the web app it runs in a
+   * sandboxed frame with no network, so it asks the app (the host bridge
+   * below) to run the selection as the signed-in viewer and send the answer
+   * back. With no app around (a file from disk, a share link) there is no one
+   * to ask: take the offline path directly. */
+  var _hostPost = null;
+  var _selectionSeq = 0;
+  var _selectionPending = {};
+
   function postSelection(filters) {
     var cfg = selectionConfig();
-    if (!cfg || !cfg.report) { failClosed(filters); return; }
-    var url = "/api/reports/" + encodeURIComponent(cfg.report) + "/selection";
-    try {
-      /* A file opened from disk has no server to ask: take the offline path
-       * directly rather than logging a failed request in the console. */
-      if (typeof fetch !== "function" ||
-          (root.location && root.location.protocol === "file:")) {
-        failClosed(filters); return;
-      }
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filters: filters || {} })
-      }).then(function (res) {
-        if (!res || !res.ok) throw new Error("selection");
-        return res.json();
-      }).then(function (payload) {
-        applySelection(payload);
-      }).catch(function () { failClosed(filters); });
-    } catch (e) { failClosed(filters); }
+    if (!cfg || !cfg.report || !_hostPost) { failClosed(filters); return; }
+    var id = ++_selectionSeq;
+    _selectionPending[id] = filters;
+    setTimeout(function () {
+      if (!_selectionPending.hasOwnProperty(id)) return;
+      delete _selectionPending[id];
+      failClosed(filters);
+    }, 8000);
+    _hostPost({ type: "selection-request", id: id, report: cfg.report, filters: filters || {} });
+  }
+
+  function selectionAnswered(m) {
+    if (!_selectionPending.hasOwnProperty(m.id)) return;
+    var filters = _selectionPending[m.id];
+    delete _selectionPending[m.id];
+    if (m.ok && m.payload) applySelection(m.payload);
+    else failClosed(filters);
   }
 
   function setSelection(filters) {
@@ -3639,24 +3645,6 @@
     })["catch"](function () { done(); });
   }
 
-  /* DOM-ready, then requestAnimationFrame: the author's inline script.js has
-   * already run by DOMContentLoaded, so its configureChart patches are
-   * registered before any chart is drawn. */
-  if (typeof document !== "undefined") {
-    var schedule = function () {
-      if (typeof requestAnimationFrame === "function") requestAnimationFrame(hydrate);
-      else hydrate();
-    };
-    var boot = function () {
-      ensureData(function () { _dataReady = true; runReady(); schedule(); });
-    };
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", boot);
-    } else {
-      boot();
-    }
-  }
-
   /* ── Stamped figures a script changed ─────────────────────────────────────
    * A report's script.js may draw anything, but a stamped value is a claim the
    * receipt backs with a query. When a script rewrites the text of one after
@@ -3889,8 +3877,8 @@
    * The web app shows a report in a sandboxed frame with an opaque origin: the
    * app cannot read the frame's DOM and the frame cannot read the app's. The
    * two talk by postMessage, and only about presentation: the frame tells the
-   * app how tall it is; the app tells the frame to apply a selection or to take
-   * part in Build mode (above). Every
+   * app how tall it is and asks it to run a selection; the app answers it, applies a
+   * cut, or has it take part in Build mode (above). Every
    * message carries tracebiFrame: 1; the frame accepts commands only from the
    * window that embeds it. A report opened on its own (no embedding window)
    * does none of this. */
@@ -3901,6 +3889,7 @@
       msg.tracebiFrame = 1;
       try { host.postMessage(msg, "*"); } catch (e) { /* defensive */ }
     }
+    _hostPost = post;
     var lastHeight = -1;
     function size() {
       var h = Math.max(document.documentElement ? document.documentElement.scrollHeight : 0,
@@ -3926,7 +3915,8 @@
       setSelection: function (m) { setSelection(m.filters || {}); },
       point: function (m) { if (m.on) startPointing(post); else if (_stopPointing) _stopPointing(); },
       snapshot: function () { post({ type: "snapshot", figures: snapshotFigures() }); },
-      flash: function (m) { flashFigures(m.ids); }
+      flash: function (m) { flashFigures(m.ids); },
+      "selection-response": selectionAnswered
     };
     root.addEventListener("message", function (e) {
       var m = e.data;
@@ -3948,5 +3938,25 @@
      * formula gives what they expect. It computes from the values passed. */
     evaluate: evalFormula
   };
+
+  /* DOM-ready, then requestAnimationFrame: the author's inline script.js has
+   * already run by DOMContentLoaded, so its configureChart patches are
+   * registered before any chart is drawn. This runs last, after every helper
+   * above (and the host bridge) is set up: a synchronous first hydrate must
+   * find them all in place. */
+  if (typeof document !== "undefined") {
+    var schedule = function () {
+      if (typeof requestAnimationFrame === "function") requestAnimationFrame(hydrate);
+      else hydrate();
+    };
+    var boot = function () {
+      ensureData(function () { _dataReady = true; runReady(); schedule(); });
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", boot);
+    } else {
+      boot();
+    }
+  }
 })(typeof window !== "undefined" ? window
    : typeof globalThis !== "undefined" ? globalThis : this);

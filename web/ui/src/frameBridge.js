@@ -25,6 +25,22 @@ export function listenToFrame(frame, handler) {
   return () => window.removeEventListener('message', on)
 }
 
+/**
+ * Run the selections a report frame asks for, as the signed-in viewer. The frame
+ * has no network of its own. Only the report this frame is showing may ask, and
+ * only for filters (never a free-text question, which can change the package).
+ * *run(filters)* resolves to the payload.
+ */
+export function answerSelections(frame, report, run) {
+  return listenToFrame(frame, m => {
+    if (m.type !== 'selection-request' || m.report !== report) return
+    run(m.filters && typeof m.filters === 'object' ? m.filters : {}).then(
+      payload => tellFrame(frame, { type: 'selection-response', id: m.id, ok: true, payload }),
+      () => tellFrame(frame, { type: 'selection-response', id: m.id, ok: false }),
+    )
+  })
+}
+
 /** Send a command to the report running in *frame*. */
 export function tellFrame(frame, message) {
   // An opaque origin cannot be named as a target; the command carries nothing secret.

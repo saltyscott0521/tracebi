@@ -7,8 +7,9 @@ import {
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
   useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, usePipelines,
   useAppStatus, useMe, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
+  postReportSelection,
 } from '../api'
-import { FRAME_SANDBOX, listenToFrame, tellFrame } from '../frameBridge'
+import { FRAME_SANDBOX, answerSelections, listenToFrame, tellFrame } from '../frameBridge'
 import Workbench, { ProjectFeed } from '../components/Workbench'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
@@ -665,6 +666,12 @@ function OpenReport({ report, model }) {
   })
   const frameHtml = pointOn && timeline.shownHtml ? timeline.shownHtml : shown?.html
   const clearPointing = () => { setPointed(null); sendPointing({ name, pointing: null }) }
+  // The report's controls recompute a cut on the server. The frame has no
+  // network, so it asks here and this runs it as the signed-in viewer.
+  useEffect(() => {
+    const frame = frameRef.current
+    return frame ? answerSelections(frame, name, filters => postReportSelection(name, filters)) : undefined
+  }, [frameHtml, name])
   useEffect(() => {
     // Pointing is at the live report; an earlier version is only for looking.
     if (!pointOn || !timeline.isLatest) return undefined
