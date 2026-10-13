@@ -8,7 +8,6 @@ import {
   useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, usePipelines,
   useAppStatus, useMe, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
 } from '../api'
-import { attachPointMode } from '../pointMode'
 import { FRAME_SANDBOX, listenToFrame, tellFrame } from '../frameBridge'
 import Workbench, { ProjectFeed } from '../components/Workbench'
 import { CodeFiles } from '../components/CodeView'
@@ -671,17 +670,17 @@ function OpenReport({ report, model }) {
     if (!pointOn || !timeline.isLatest) return undefined
     const frame = frameRef.current
     if (!frame) return undefined
-    let detach = () => {}
-    const attach = () => {
-      detach()
-      detach = attachPointMode(frame.contentDocument, {
-        onPoint: p => { setPointed(p); sendPointing({ name, pointing: p }) },
-        onClear: () => { setPointed(null); sendPointing({ name, pointing: null }) },
-      })
-    }
-    frame.addEventListener('load', attach)
-    if (frame.contentDocument?.readyState === 'complete') attach()
-    return () => { frame.removeEventListener('load', attach); detach() }
+    // The report runtime does the pointing inside its sandboxed frame; it says
+    // what was pointed at. Ask it to start now, and again whenever a new page
+    // says it is up.
+    const start = () => tellFrame(frame, { type: 'point', on: true })
+    const stop = listenToFrame(frame, m => {
+      if (m.type === 'ready') start()
+      else if (m.type === 'pointed') { setPointed(m.point); sendPointing({ name, pointing: m.point }) }
+      else if (m.type === 'point-cleared') { setPointed(null); sendPointing({ name, pointing: null }) }
+    })
+    start()
+    return () => { stop(); tellFrame(frame, { type: 'point', on: false }) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointOn, frameHtml, name, timeline.isLatest])
   // Leaving Point mode, or this report, stops pointing: the agent should not

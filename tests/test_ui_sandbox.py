@@ -59,6 +59,10 @@ def _project(tmp_path: Path) -> Path:
     assert done.returncode == 0, done.stderr or done.stdout
     package = project / "reports" / "saas_model" / "mrr_dashboard"
     (package / "script.js").write_text(_PROBE, encoding="utf-8")
+    template = package / "template.html"
+    template.write_text(template.read_text(encoding="utf-8").replace(
+        "</main>", '<button data-tb-download data-tb-binding="kpis" id="csv">CSV</button></main>', 1),
+        encoding="utf-8")
     return project
 
 
@@ -94,6 +98,11 @@ def test_a_report_script_cannot_reach_the_app_it_is_shown_in(tmp_path: Path) -> 
             assert got["parent_document"].startswith("blocked"), got
             assert got["parent_fetch"].startswith("blocked"), got
             assert got["storage"].startswith("blocked"), got
+
+            # What the sandbox still allows: saving a figure's data as CSV.
+            with page.expect_download() as saved:
+                page.frame_locator("iframe").locator("#csv").click()
+            assert saved.value.suggested_filename == "kpis.csv"
 
             # Opened on its own, by the share link: the same, because the server says so.
             page.goto(f"{base}/r/{report}")
