@@ -176,7 +176,7 @@ These cost little today and are expensive to retrofit:
 |---|---|---|
 | 1 | Scan folders recursively; a Library page that browses them read-only | Useful on day one; no new security surface |
 | 2 | Mounts in configuration (local folder, network share) | Matches how BI teams already store files |
-| 3 | Folder permissions, enforced in the one check | Needed before anyone shares a server widely |
+| 3 | Folder permissions, enforced in the one check ✅ | Needed before anyone shares a server widely |
 | 4 | My work, publish with approval, TraceBi's own version history | The Build → Schedule path, without git |
 | 5 | Source-control adapter: git first | For teams that want their own history and review |
 | 6 | Sign-in per person on the agent gateway; draft-writing tools | The personal-device path, done properly |

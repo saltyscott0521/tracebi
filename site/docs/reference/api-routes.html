@@ -52,6 +52,7 @@
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
 <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="../reference/number-formats.html">Number formats</a>
@@ -262,6 +263,13 @@ from the file, never from a warehouse); the Map draws both.</p>
 the browser shows is what <code>verify --file</code> can check. <code>POST /runs</code> starts the
 same work in the background and returns a <code>run_id</code> to poll.</p>
 <blockquote>
+<p><strong>Folders can hide reports.</strong> With a <code>_folder.yaml</code> (<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>) a person
+without <code>view</code> on a report's folder sees it nowhere: it is not in
+<code>GET /api/reports</code>, <code>/api/runs</code> or <code>/api/discovery</code>, and every route above,
+and <code>/r/{name}</code>, answers as for a name that does not exist (<code>404</code>; an empty
+list for <code>GET .../runs</code>). A report they can see but may not act on (<code>build</code> to
+start a draft in its folder, <code>publish</code> to publish into it) is <code>403</code> with
+<code>detail.required_permission</code>.</p>
 <p><strong>There is one renderer.</strong> A registered report with no package is refused with
 <code>422</code> naming the fix, never served through a weaker path. See <a href="../concepts/report.html">Report — phase ③</a>.</p>
 </blockquote>
@@ -346,6 +354,9 @@ and answers <code>201</code> with the new draft, or <code>200</code> with the on
 has; a Python model, or a report with a <code>report.py</code>, is <code>422</code> and the message
 says to edit it from a laptop. <code>PUT .../files/{file}</code> takes <code>{"content"}</code> and
 answers with the draft's new <code>version</code>.</p>
+<p>A draft of a report is also checked against its folder's <code>_folder.yaml</code>
+(<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>): starting one needs <code>build</code> there and publishing needs
+<code>publish</code>, otherwise <code>403</code>.</p>
 <p><code>/preview</code> renders the draft in memory against the published models plus the
 owner's draft models, and writes nothing. <code>/publish</code> validates the draft first,
 keeps the version it replaces under <code>.tracebi/history/</code>, copies it into the

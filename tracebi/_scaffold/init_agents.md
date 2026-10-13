@@ -49,6 +49,8 @@ same pipeline. A report is named by its path (`<model>/<name>`) in every
 command, and builds to `output/<model>/<name>.html`. The sample is
 `sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
 
+**Folder permissions.** A folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
+
 The phases are decoupled: editing a report never re-runs the pandas. Phase ①
 is unconstrained — write whatever pandas the data needs; the contract is the
 named tables you sink, not how you cleaned them. **Transforms are

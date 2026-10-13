@@ -35,6 +35,11 @@ def _opened_report(name: str, purpose: str):
     return open_report(name, purpose=purpose, registry=registry)
 
 
+def _can_view(name: str) -> bool:
+    from tracebi.permissions import can
+    return can("view", name)
+
+
 def _require_registered(name: str, purpose: str):
     opened = _opened_report(name, purpose)
     if not opened.registered:
@@ -217,6 +222,8 @@ def list_reports():
     last_runs, build_counts = _library_runs()
     out = []
     for item in registry.list_reports():
+        if not _can_view(item["name"]):
+            continue                    # a folder the person cannot see is not listed
         schedule, last_change, models, measures = _library_package(item["name"])
         out.append({
             **item,
@@ -610,7 +617,10 @@ def start_report_run(name: str):
 @router.get("/{name:path}/runs")
 def report_run_history(name: str, limit: int = 10):
     """Recent background runs for this report, newest first (no payloads)."""
-    _opened_report(name, "view")
+    # A report the person cannot see has no history for them, like one that
+    # does not exist.
+    if not _can_view(name):
+        return []
     return run_store.list_for("background_run", name, limit)
 
 
@@ -619,7 +629,7 @@ def report_run_status(name: str, run_id: str):
     """Status + result of one background run."""
     _opened_report(name, "view")
     record = run_store.get(run_id)
-    if record is None or record["kind"] != "background_run" or record["name"] != name:
+    if record is None or not _can_view(name) or record["kind"] != "background_run" or record["name"] != name:
         raise HTTPException(
             status_code=404, detail=f"Run '{run_id}' not found for report '{name}'"
         )

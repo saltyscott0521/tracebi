@@ -42,6 +42,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from tracebi.permissions import NotPermitted as _NotPermitted
 from tracebi.web.api.errors import error_detail
 
 from tracebi.web.api.routers import (
@@ -308,6 +309,16 @@ def health():
     return {"status": "ok", "version": app.version}
 
 
+@app.exception_handler(_NotPermitted)
+async def _not_permitted(request: Request, exc: _NotPermitted):
+    """A folder permission refusal: the person can see the report but may not
+    do this to it. (Without View it is simply not found.)"""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(status_code=403, content={"detail": {
+        "message": str(exc), "required_permission": exc.level}})
+
+
 @app.get("/api/me")
 def me(request: Request):
     """Who the app thinks is asking, and how they signed in. The UI shows the
@@ -329,7 +340,14 @@ def discovery():
     """
     from tracebi.web.discovery import discovery_report
 
-    entries = discovery_report()
+    from tracebi.permissions import can
+    from tracebi.report_paths import report_name_error
+
+    # An entry names a report path; a folder the person cannot see is not shown.
+    entries = [e for e in discovery_report()
+               if not (isinstance(e.get("module"), str)
+                       and report_name_error(e["module"]) is None
+                       and not can("view", e["module"]))]
     counts: dict[str, int] = {}
     for e in entries:
         counts[e["status"]] = counts.get(e["status"], 0) + 1

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Folder permissions (_folder.yaml) — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Folder permissions (_folder.yaml)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a class="on" href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="folder-permissions-_folderyaml">Folder permissions (<code>_folder.yaml</code>)</h1>
+<p><strong>Who may see, build in, publish into and manage a folder of the report library,
+in a small file that sits in the folder.</strong></p>
+<p>A folder in the library is any directory under <code>reports/</code> (or a mount, see
+<code>TRACEBI_LIBRARY_MOUNTS</code> in <a href="../reference/environment-variables.html">Environment variables</a>) that is not itself a
+report package. Put a <code>_folder.yaml</code> in it to say who may do what there. The
+file is optional: with no <code>_folder.yaml</code> anywhere, the roles <code>viewer</code>,
+<code>analyst</code> and <code>admin</code> decide, exactly as before, and nobody is locked out.</p>
+<hr>
+<h2 id="example">Example</h2>
+<pre><code class="language-yaml"># reports/finance/_folder.yaml
+view:    [finance, ceo@example.com]    # see the folder; open reports and their builds
+build:   [finance-analysts]            # + create and edit drafts in it
+publish: [finance-leads]               # + publish a draft into it; its schedules
+manage:  [bi-admins]                   # + change this file
+</code></pre>
+<hr>
+<h2 id="keys">Keys</h2>
+<p>Four keys, each a name or a list of names. Names are sign-in <strong>groups</strong> or
+<strong>person names</strong> (the sign-in name: usually an email), compared ignoring case.
+<code>'*'</code> means every signed-in person.</p>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>may</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>view</code></td>
+<td>see the folder in lists; open its reports, past builds, receipts, lineage, downloads and share links</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>view, and start and edit drafts in the folder</td>
+</tr>
+<tr>
+<td><code>publish</code></td>
+<td>build, and publish a draft into the folder; change a report's schedule</td>
+</tr>
+<tr>
+<td><code>manage</code></td>
+<td>publish, and change the folder's permissions</td>
+</tr>
+</tbody>
+</table>
+<p>A level includes the ones above it in the table: someone named under <code>publish</code>
+also builds and views. Any other key, or a value that is not a name or a list
+of names, makes the file malformed (see below).</p>
+<hr>
+<h2 id="how-a-file-applies">How a file applies</h2>
+<ol>
+<li><strong>The nearest file wins.</strong> Starting at a report's folder and walking up to
+   the library root (or the mount), the first <code>_folder.yaml</code> found is the whole
+   rule for everything below it. It replaces the files above it; it does not add
+   to them. A sub-folder that should be open to everyone says so itself
+   (<code>view: ['*']</code>).</li>
+<li><strong>It is read at request time.</strong> Edit the file and the next request sees it:
+   no restart, no rescan.</li>
+<li><strong>A folder narrows a role; it never widens one.</strong> The role still limits what
+   kind of thing a person may do: a <code>viewer</code> who is named under <code>manage</code> is
+   still only a viewer, because the routes keep checking roles. Roles are the
+   ceiling, folders decide where.</li>
+<li><strong>Admins keep the folder.</strong> The <code>admin</code> role always has Manage, so a typo in a
+   file cannot lock out the people who can fix it. So does anything with no
+   sign-in role at all: the command line, the scheduler, a notebook, and an app
+   run without authentication.</li>
+<li><strong>A malformed file fails closed.</strong> If the file cannot be read or parsed, or
+   has a key it does not know (<code>veiw:</code>), nobody but admins is granted anything
+   under it, a warning is logged, and nothing else breaks. An <strong>empty</strong> file is
+   valid and grants no one but admins.</li>
+</ol>
+<hr>
+<h2 id="what-hidden-means">What "hidden" means</h2>
+<p>A person without <code>view</code> on a folder gets the same answer for its reports as for
+a name that does not exist: they are not in <code>GET /api/reports</code>, the agent
+gateway's <code>list_reports</code>, <code>GET /api/discovery</code> or <code>GET /api/runs</code>; opening,
+running, downloading, reading the source, lineage or past builds of one is a
+404 (or, for the run history, an empty list); the share link <code>/r/&lt;name&gt;</code> is a
+404; <code>fetch_artifact</code> and <code>verify_manifest</code> do not find its built files. Built
+outputs inherit the folder's permissions.</p>
+<p>A person who can see a report but lacks the level an action needs is refused
+with <strong>403</strong> and the permission it needs (<code>build permission is needed on the
+folder of finance/q3/pack</code>): starting a draft in the folder needs <code>build</code>,
+publishing a draft into it needs <code>publish</code>.</p>
+<hr>
+<h2 id="where-the-groups-come-from">Where the groups come from</h2>
+<table>
+<thead>
+<tr>
+<th>Sign-in</th>
+<th>Groups come from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App sign-in or <code>/mcp</code> sign-in through <code>TRACEBI_OIDC_ISSUER</code></td>
+<td>the ID token's groups claim (<code>TRACEBI_OIDC_GROUPS_CLAIM</code>, default <code>groups</code>), all of them, whether or not <code>TRACEBI_OIDC_ROLE_MAP</code> maps them to a role</td>
+</tr>
+<tr>
+<td>Proxy headers (<code>TRACEBI_AUTH_PROXY_HEADER</code>)</td>
+<td>the header named by <code>TRACEBI_AUTH_GROUPS_HEADER</code>, comma separated; the proxy must set or replace it, like the role header</td>
+</tr>
+<tr>
+<td>Built-in <code>/mcp</code> sign-in (<code>TRACEBI_LOCAL_USERS</code>)</td>
+<td><code>name:role@group+group:password</code>, e.g. <code>alice:analyst@finance+ops:a-long-password</code></td>
+</tr>
+<tr>
+<td>Basic auth</td>
+<td>no groups: name the person</td>
+</tr>
+<tr>
+<td>The static <code>TRACEBI_MCP_TOKEN</code></td>
+<td>no groups. Beside a per-person sign-in it is the principal <code>mcp:&lt;TRACEBI_MCP_ACTOR&gt;</code> with the analyst role, so a folder opens to it only by that name. A gateway with only the token (and stdio) has no sign-in role at all, so it is the operator and sees every folder</td>
+</tr>
+</tbody>
+</table>
+<p>An agent acts as the person using it: over <code>/mcp</code> with a per-person sign-in, the
+agent's list and reads are exactly the person's. Folder permissions only bind
+an agent that signs in as a person.</p>
+<hr>
+<h2 id="the-command-line-and-the-scheduler">The command line and the scheduler</h2>
+<p><code>tracebi report build</code>, <code>tracebi schedule run</code> and the in-server scheduler ask
+the same check but run as the operator (role <code>cli</code>), which holds Manage
+everywhere: they have no sign-in, and whoever runs them can already read the
+files. A folder file does not stop a scheduled report from running.</p>
+<p>Sessions opened before this feature have no stored groups: the person signs in
+again to get their groups.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

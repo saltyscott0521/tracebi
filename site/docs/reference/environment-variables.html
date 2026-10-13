@@ -52,6 +52,7 @@
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a class="on" href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
 <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="../reference/number-formats.html">Number formats</a>
@@ -221,6 +222,10 @@ production.</p>
 <td>header carrying the caller's role</td>
 </tr>
 <tr>
+<td><code>TRACEBI_AUTH_GROUPS_HEADER</code></td>
+<td>header carrying the caller's groups, comma separated, in proxy mode only (the proxy must set or replace it). A folder's <code>_folder.yaml</code> matches them: <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a></td>
+</tr>
+<tr>
 <td><code>TRACEBI_AUTH_ROLE_MAP</code></td>
 <td><code>alice:admin,bob:analyst</code></td>
 </tr>
@@ -383,7 +388,7 @@ app's own pages are not put behind it. It cannot be combined with
 </tr>
 <tr>
 <td><code>TRACEBI_LOCAL_USERS</code></td>
-<td><code>name:role:password</code> entries, comma separated, e.g. <code>alice:analyst:a-long-password</code>. A password has at least 8 characters, may contain <code>:</code> but not <code>,</code>. Ten wrong passwords for one name in ten minutes stop that name for a while.</td>
+<td><code>name:role:password</code> entries, comma separated, e.g. <code>alice:analyst:a-long-password</code>. Groups for folder permissions (<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>) follow the role after <code>@</code>, joined by <code>+</code>: <code>alice:analyst@finance+ops:a-long-password</code>. A password has at least 8 characters, may contain <code>:</code> but not <code>,</code>. Ten wrong passwords for one name in ten minutes stop that name for a while.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OAUTH_SECRET</code></td>

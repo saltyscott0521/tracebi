@@ -109,6 +109,16 @@ def _caller() -> tuple[str, Optional[str]]:
             claims.get("tracebi_role"))
 
 
+def _caller_groups() -> tuple:
+    """The sign-in groups behind the tool call being served (see :func:`_caller`)."""
+    try:
+        from mcp.server.auth.middleware.auth_context import get_access_token
+        token = get_access_token()
+        return tuple((token.claims or {}).get("tracebi_groups") or ()) if token else ()
+    except ImportError:
+        return ()
+
+
 def _mcp_actor() -> str:
     """The identity recorded against this gateway's work."""
     return _caller()[0]
@@ -117,7 +127,7 @@ def _mcp_actor() -> str:
 def _acting():
     """The audit actor scope for one gateway operation: the person, with role."""
     who, role = _caller()
-    return actor(who, role=role)
+    return actor(who, role=role, groups=_caller_groups())
 
 
 #: Tools that write (an artifact, pins.json, a draft) or publish. A viewer
@@ -315,9 +325,35 @@ def _confined_read_path(path: str) -> "tuple[Optional[Path], Optional[str]]":
             f"path {path!r} escapes the artifact root ({root}); fetch reads "
             f"only files the render/build tools wrote under it"
         )
-    if not resolved.is_file():
+    if not resolved.is_file() or _belongs_to_hidden_report(resolved):
         return None, f"no file at {path!r}"
     return resolved, None
+
+
+_ARTIFACT_SUFFIXES = (".manifest.json", ".json", ".html", ".xlsx", ".pdf")
+
+
+def _belongs_to_hidden_report(file: Path) -> bool:
+    """Is *file* a report's source or build (``<out>/<name>.html`` and its
+    manifest, workbook or PDF, or a file inside ``reports/<name>/``) of a
+    report in a folder the caller cannot view? Built outputs inherit the
+    folder's permissions; this is the check for the fetch tools, which read
+    by path."""
+    from tracebi.permissions import can
+    from tracebi.report_paths import report_name_error
+    from tracebi.web.discovery import discovery_report
+
+    stem = file.as_posix()
+    for suffix in _ARTIFACT_SUFFIXES:        # pack.html.manifest.json -> pack
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+    for entry in discovery_report():
+        name = entry.get("module")
+        if (isinstance(name, str) and report_name_error(name) is None
+                and not can("view", name)
+                and (stem.endswith("/" + name) or f"/{name}/" in file.as_posix())):
+            return True
+    return False
 
 
 #: The authoring SOP, served as the ``tracebi://guide`` resource. An agent
@@ -1145,9 +1181,16 @@ gateway_render_spec.__doc__ = _render_spec.__doc__
 
 def gateway_reports() -> ReportsResult:
     """Reports the project exposes, from the discovery report."""
+    from tracebi.permissions import can
+    from tracebi.report_paths import report_name_error
     from tracebi.web.discovery import discovery_report
 
-    return {"reports": discovery_report()}
+    # A folder the caller cannot see is not listed (hidden reads as absent).
+    return {"reports": [
+        e for e in discovery_report()
+        if not (isinstance(e.get("module"), str)
+                and report_name_error(e["module"]) is None
+                and not can("view", e["module"]))]}
 
 
 def gateway_verify_manifest(manifest: Any) -> VerifyResult:
@@ -1175,7 +1218,7 @@ def gateway_verify_manifest(manifest: Any) -> VerifyResult:
 
     if isinstance(manifest, str):
         p = Path(manifest)
-        if not p.is_file():
+        if not p.is_file() or _belongs_to_hidden_report(p.resolve()):
             return {"ok": False, "errors": [f"manifest file not found: {manifest}"]}
         try:
             manifest = json.loads(p.read_text(encoding="utf-8"))
@@ -1651,7 +1694,10 @@ def build_server(token: Optional[str] = None, oauth=None):
                         f"your role (viewer) may read and query but not call "
                         f"{kwargs['name']}, which writes. Ask an admin to map "
                         f"your group to analyst.")
-                return fn(*args, **kw)
+                # The person's name, role and groups, for the folder check in
+                # open_report and for everything the tool records.
+                with _acting():
+                    return fn(*args, **kw)
 
             logged = _gateway_log.logged(kwargs["name"], guarded, _mcp_actor)
 

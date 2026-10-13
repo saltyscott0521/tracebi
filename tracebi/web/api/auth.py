@@ -16,7 +16,9 @@ Three modes, mutually exclusive (the third, OIDC sign-in, lives in ``sso.py``):
   any client-supplied role header** (``TRACEBI_AUTH_ROLE_HEADER``), which is
   trusted in this mode precisely because the proxy sets it. Appending is
   tolerated — the last occurrence is the one read — but a proxy that neither
-  strips nor sets it hands the role back to the caller.
+  strips nor sets it hands the role back to the caller. The same goes for
+  ``TRACEBI_AUTH_GROUPS_HEADER`` (comma-separated groups), which a folder's
+  ``_folder.yaml`` matches; Basic auth has no groups, only the user name.
 
 Both modes exempt ``/api/health`` so liveness probes work without credentials.
 For multi-user identity, use the proxy mode.
@@ -354,12 +356,13 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
                 status_code=401,
                 content=f"missing identity header {self._header}",
             )
+        groups = _header_groups(request)
         request.state.user = user
         request.state.user_header = self._header
         denied = self._authz.check(request, user)
         if denied is not None:
             return denied
-        with audit_actor(user, getattr(request.state, "role", None)):
+        with audit_actor(user, getattr(request.state, "role", None), groups):
             return await call_next(request)
 
     def _is_trusted_client(self, request: Request) -> bool:
@@ -371,6 +374,17 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
         except ValueError:
             return False
         return any(addr in net for net in self._trusted_networks)
+
+
+def _header_groups(request: Request) -> list[str]:
+    """The person's sign-in groups from ``TRACEBI_AUTH_GROUPS_HEADER``, which
+    folder permissions (``_folder.yaml``) match. Proxy mode only: the proxy
+    sets it, the same trust as the role header. Last occurrence wins."""
+    header = os.environ.get("TRACEBI_AUTH_GROUPS_HEADER", "").strip()
+    if not header:
+        return []
+    values = request.headers.getlist(header)
+    return [g.strip() for g in (values[-1] if values else "").split(",") if g.strip()]
 
 
 def _posture_text(mode: str, authz: _Authorizer) -> str:

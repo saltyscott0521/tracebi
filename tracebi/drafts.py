@@ -275,6 +275,8 @@ def start_draft(owner: str, kind: str, path: str,
     if kind == "models" and (blocker := model_python_blocker(path)):
         raise DraftError(blocker)
     files: dict[str, str] = {}
+    if kind == "reports":
+        _require_folder("build", path)
     if from_published and kind == "reports":
         opened = open_report(path, purpose="source")
         pkg = opened.package_dir
@@ -468,6 +470,19 @@ def _validate_report(where: Path, models: dict) -> None:
             raise DraftError(
                 f"the report does not render: {type(exc).__name__}: {line}"
             ) from exc
+
+
+class FolderDenied(DraftError):
+    """The folder's ``_folder.yaml`` does not give this person the permission
+    (Build to draft in it, Publish to publish into it)."""
+
+
+def _require_folder(action: str, path: str) -> None:
+    from tracebi import permissions
+    try:
+        permissions.require(action, path)
+    except permissions.NotPermitted as exc:
+        raise FolderDenied(str(exc)) from exc
 
 
 class NotAnOwner(DraftError):
@@ -712,6 +727,7 @@ def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
                 f"models/{path}.py is a Python model of that name; a draft "
                 f"cannot replace it: {_LAPTOP}")
     else:
+        _require_folder("publish", path)
         root, rel = _report_target(path)
         target = root / rel
         if (target / "report.py").exists():

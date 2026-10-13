@@ -11,8 +11,8 @@ mount is a top-level library folder and identity is ``label/relative_path``.
 When that variable is unset, :envvar:`TRACEBI_REPORTS_DIR` is the single root
 and identity stays the path relative to it — unchanged from before mounts.
 
-:func:`open_report` is the one read of a named report. The permission check
-will go there.
+:func:`open_report` is the one read of a named report, and where the
+permission check (:mod:`tracebi.permissions`) runs.
 """
 
 from __future__ import annotations
@@ -195,6 +195,28 @@ class OpenedReport:
     source: Optional[dict]
 
 
+def locate(name: str, reports_dir: Optional[Union[str, os.PathLike]] = None
+           ) -> tuple[Path, Optional[str]]:
+    """``(library root, path below it)`` for report *name*.
+
+    The path is ``None`` when *name* is not under any root (under mounts, a
+    first segment that is no mount's label); the root is then the default one.
+    *name* is not validated here: callers do that first.
+    """
+    if reports_dir is not None:
+        return Path(reports_dir), name
+    mounts = parse_library_mounts()
+    if mounts is None:
+        return Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports")), name
+    default = Path(os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+    parts = name.split("/", 1) if isinstance(name, str) else []
+    if len(parts) == 2:
+        mount_map = {lbl: p for lbl, p in mounts}
+        if parts[0] in mount_map:
+            return mount_map[parts[0]], parts[1]
+    return default, None
+
+
 def _resolve_under_root(root: Path, relative: str) -> tuple[Path, Path, Optional[Path], bool, bool]:
     """Locate package/spec for *relative* under *root*."""
     path = root / relative
@@ -226,44 +248,37 @@ def open_report(
     caller raises the not-found error it already raises (HTTP 404, the
     gateway's error dict, the CLI's ``FileNotFoundError``).
 
-    This is where the permission check will go. *purpose* names the read —
-    ``view``, ``build``, ``source``, ``schedule``, ``manage`` — so that check
-    can map it to View, Build, Publish or Manage without each call site
-    changing again. The check raises before the report is handed back.
+    This is where the permission check lives (:mod:`tracebi.permissions`).
+    *purpose* names the read — ``view``, ``build``, ``source``, ``schedule``,
+    ``manage`` — and maps to View, Build or Publish. A person without View on
+    the report's folder gets the answer for a report that does not exist;
+    one with View but not the purpose's level gets ``NotPermitted``.
     """
     name_error = report_name_error(name)
     path = spec_path = package_dir = None
     has_template = has_spec = False
-    resolved_root = Path(
-        reports_dir if reports_dir is not None
-        else os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
+    resolved_root, relative = locate(name, reports_dir)
 
+    hidden = False
     if name_error is None:
-        if reports_dir is not None:
-            resolved_root = Path(reports_dir)
+        from tracebi import permissions
+        granted = permissions.granted_level(name, reports_dir=reports_dir)
+        needed = permissions.level_for_purpose(purpose)
+        # Without View the report does not exist as far as this person can
+        # tell: every field below stays empty, as for a name nothing matches.
+        # Seeing it but lacking the action is a refusal, which says why.
+        hidden = granted < permissions.VIEW
+        if not hidden and granted < needed:
+            raise permissions.NotPermitted(name, needed)
+        if relative is not None:
             path, spec_path, package_dir, has_template, has_spec = (
-                _resolve_under_root(resolved_root, name))
-        else:
-            mounts = parse_library_mounts()
-            if mounts is None:
-                resolved_root = Path(
-                    os.environ.get("TRACEBI_REPORTS_DIR", "reports"))
-                path, spec_path, package_dir, has_template, has_spec = (
-                    _resolve_under_root(resolved_root, name))
-            else:
-                # Mounts: first segment is the label; the rest is under that root.
-                parts = name.split("/", 1)
-                if len(parts) == 2:
-                    label, relative = parts
-                    mount_map = {lbl: p for lbl, p in mounts}
-                    if label in mount_map:
-                        resolved_root = mount_map[label]
-                        path, spec_path, package_dir, has_template, has_spec = (
-                            _resolve_under_root(resolved_root, relative))
-                # else: name has no label → not under any mount (fields stay empty)
+                _resolve_under_root(resolved_root, relative))
 
     registered = registry_package_dir = source = None
-    if registry is not None:
+    if hidden:
+        package_dir, has_template, has_spec = None, False, False
+        registered = False if registry is not None else None
+    elif registry is not None:
         registered = name in {r["name"] for r in registry.list_reports()}
         if registered:
             registry_package_dir = registry.report_package_dir(name)
