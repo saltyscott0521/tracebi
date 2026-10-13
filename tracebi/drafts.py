@@ -3,12 +3,14 @@
 A draft is a private working copy owned by whoever is acting (an MCP agent, a
 signed-in person). It lives under ``TRACEBI_DRAFTS_DIR`` (default ``drafts/``)::
 
-    drafts/<owner>/reports/<path>/    report.json, template.html, style.css
+    drafts/<owner>/reports/<path>/    report.json, template.html, style.css, script.js
     drafts/<owner>/models/<name>.yaml a declarative model (or <name>.json)
 
-Nothing a draft holds runs on the server: a report package is a closed
-vocabulary that can only ask the model questions, so the allowed files are
-exactly those above (no ``report.py``, no ``script.js``), each at most
+Nothing a draft holds runs on the server: a report package asks the model
+questions through a closed vocabulary, and its ``script.js`` runs only in the
+reader's browser, in a sandboxed frame with no access to the app (the browser
+is the boundary, not a review of the code). So the allowed files are exactly
+those above (no ``report.py``), each at most
 :data:`MAX_FILE_BYTES` of UTF-8 text. Publishing validates the draft, keeps the
 version it replaces under ``.tracebi/history/<kind>/<path>/<timestamp>/``,
 copies the files into the library and records a ``publish`` run. The draft is
@@ -38,7 +40,7 @@ from tracebi.report_paths import library_roots, open_report, report_name_error
 #: Each file a draft holds, in bytes of UTF-8.
 MAX_FILE_BYTES = 512 * 1024
 
-REPORT_FILES = ("report.json", "template.html", "style.css")
+REPORT_FILES = ("report.json", "template.html", "style.css", "script.js")
 
 _KINDS = {"report": "reports", "reports": "reports",
           "model": "models", "models": "models"}
@@ -47,9 +49,9 @@ _MODEL_NAME = re.compile(r"[a-z0-9_]+")
 _DRAFT_MODEL_FORMS = (".yaml", ".json")
 _PUBLISHED_MODEL_FORMS = (".yaml", ".yml", ".json")
 _LAPTOP = "edit it from a laptop (git, or `tracebi push`)"
-#: Why a draft holds no code: it would run on the server, with its secrets.
-_WHY_NO_CODE = ("code (JavaScript, Python) would run on the server with its "
-                "secrets, so code comes only through a laptop and review")
+#: Why a draft holds no Python: it would run on the server, with its secrets.
+_WHY_NO_CODE = ("Python would run on the server with its "
+                "secrets, so it comes only through a laptop and review")
 
 
 class DraftError(ValueError):
@@ -127,7 +129,7 @@ def _allowed_file(kind: str, path: str, file: str) -> str:
     if file not in allowed:
         raise DraftError(
             f"a {kind[:-1]} draft may hold only {', '.join(allowed)}; "
-            f"not {file!r}. A draft holds no code because {_WHY_NO_CODE}.")
+            f"not {file!r}. A draft holds no Python because {_WHY_NO_CODE}.")
     return file
 
 
@@ -278,11 +280,10 @@ def start_draft(owner: str, kind: str, path: str,
             raise DraftError(
                 f"no published report package {path!r} to copy "
                 f"(a JSON spec: run `tracebi migrate spec` on a laptop first)")
-        for extra in ("report.py", "script.js"):
-            if (pkg / extra).exists():
-                raise DraftError(
-                    f"{path} has a {extra}, which runs on the server and "
-                    f"cannot be drafted remotely: {_LAPTOP}")
+        if (pkg / "report.py").exists():
+            raise DraftError(
+                f"{path} has a report.py, which runs on the server and "
+                f"cannot be drafted remotely: {_LAPTOP}")
         files = {n: _text(_read_text(pkg / n)) for n in REPORT_FILES
                  if (pkg / n).is_file()}
     elif from_published:

@@ -37,8 +37,8 @@ class TestWhatADraftMayHold:
             drafts.draft_dir(owner, "reports", "r")
         assert not drafts.slug_owner(owner).startswith(".")
 
-    @pytest.mark.parametrize("file", ["report.py", "script.js", "../x", "sub/report.json", "notes.txt"])
-    def test_only_the_three_report_files_are_writable(self, project, file):
+    @pytest.mark.parametrize("file", ["report.py", "../x", "sub/report.json", "notes.txt"])
+    def test_only_the_four_report_files_are_writable(self, project, file):
         drafts.start_draft("alice", "reports", "r")
         with pytest.raises(drafts.DraftError):
             drafts.write_draft_file("alice", "reports", "r", file, "x")
@@ -60,16 +60,24 @@ class TestWhatADraftMayHold:
             drafts.write_draft_file("alice", "reports", "r", "style.css",
                                     "é" * drafts.MAX_FILE_BYTES)
 
-    @pytest.mark.parametrize("extra", ["report.py", "script.js"])
-    def test_a_report_that_runs_code_cannot_be_drafted(self, project, extra):
+    def test_a_report_with_python_cannot_be_drafted(self, project):
         pkg = project / "reports" / "sales"
         pkg.mkdir(parents=True)
         (pkg / "report.json").write_text(_REPORT_JSON)
         (pkg / "template.html").write_text("<p>x</p>")
-        (pkg / extra).write_text("1")
+        (pkg / "report.py").write_text("1")
         with pytest.raises(drafts.DraftError, match="laptop"):
             drafts.start_draft("alice", "reports", "sales", from_published=True)
         assert not (project / "drafts").exists()
+
+    def test_a_published_script_is_drafted_with_the_rest(self, project):
+        pkg = project / "reports" / "sales"
+        pkg.mkdir(parents=True)
+        (pkg / "report.json").write_text(_REPORT_JSON)
+        (pkg / "template.html").write_text("<p>x</p>")
+        (pkg / "script.js").write_text("1")
+        drafts.start_draft("alice", "reports", "sales", from_published=True)
+        assert (project / "drafts/alice/reports/sales/script.js").read_text() == "1"
 
 
 class TestPublishing:
