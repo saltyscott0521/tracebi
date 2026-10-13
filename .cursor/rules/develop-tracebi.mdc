@@ -20,9 +20,10 @@ You are changing the TraceBi framework, not building a report with it.
 
 ## Working an issue
 
-1. One issue, one branch (`agent/<issue-number>-<short-name>`), one draft pull
-   request. Never push to `main`, never merge, never force-push someone
-   else's branch.
+1. Work on `main` and push to it directly. No branch or pull request per
+   issue. Commit in small, focused steps; never force-push `main`. A branch
+   and pull request are still fine for a risky change the owner wants to
+   look at first.
 2. Run `pytest tests/` before you change anything, so you know the starting
    state, and again before you push. Run `ruff check .` too.
 3. Write the test for the issue's "done when" first when you can, then make
@@ -30,11 +31,10 @@ You are changing the TraceBi framework, not building a report with it.
 4. Add `changes/<issue-number>-<short-name>.md` for anything a user would
    notice. Do not edit `CHANGELOG.md`. `scripts/collect_changes.py` folds
    the fragments in when a release is cut.
-5. Fill in the pull request template. Link the issue with `Closes #<n>`.
+5. Reference the issue in the commit message (`Closes #<n>`) when there is one.
 6. If the issue needs a decision it doesn't make, stop and comment on the
    issue with the question and your proposal. Don't guess.
 7. Don't let tests leave files in the repo's `output/` directory.
-8. When a review on your pull request asks for changes, make exactly those
-   changes on the same branch, push, and reply on the pull request with what
-   you changed, item by item. Don't widen the change. If you disagree with an
-   item, say why in the reply instead of skipping it silently.
+8. When a review asks for changes, make exactly those changes, push, and say
+   what you changed, item by item. Don't widen the change. If you disagree
+   with an item, say why instead of skipping it silently.

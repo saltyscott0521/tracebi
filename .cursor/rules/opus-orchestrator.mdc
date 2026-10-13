@@ -22,4 +22,4 @@ You are the worker. Implement directly. Do not spawn another `implementer`.
 
 ## Both
 
-One issue, one branch, one draft pull request, per `.cursor/rules/develop-tracebi.mdc`. The parent opens the pull request only after the implementer reports the checks.
+Work lands on `main` per `.cursor/rules/develop-tracebi.mdc`. The parent pushes only after the implementer reports the checks.

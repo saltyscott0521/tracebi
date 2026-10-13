@@ -543,12 +543,13 @@ working unattended. These rules keep that safe.
    one names the files it touches, what to do, and how to know it's done.
    `needs-design` means a person decides something first; an agent may
    comment a proposal but doesn't build it.
-3. **One issue, one branch, one draft pull request.** An agent never merges,
-   never pushes to `main`, and never works on two issues in one branch.
-4. **Every pull request shows its checks:** `pytest tests/` and
-   `ruff check .` pass, the issue's "done when" is demonstrated, and a
+3. **Work lands on `main` directly (changed 2026-10-12).** No branch or pull
+   request per issue; commit in small steps and never force-push `main`. Keep
+   one issue's change in its own commits so history stays readable.
+4. **Every change shows its checks before it is pushed:** `pytest tests/`
+   and `ruff check .` pass, the issue's "done when" is demonstrated, and a
    `changes/` fragment records anything a user would notice (do not edit
-   `CHANGELOG.md`; `.github/pull_request_template.md`).
+   `CHANGELOG.md`).
 5. **Coding agents follow `CLAUDE.md`.** `AGENTS.md` is the guide for agents
    that *use* TraceBi to build reports. `.cursor/rules/develop-tracebi.mdc`
    says so, so a Cursor agent doesn't mistake one for the other.
