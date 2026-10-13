@@ -20,6 +20,97 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-13 — Navigation redesign, the report page, a built-in MCP sign-in
+
+Handoff from the cloud session that did this work. Merged: #253–#260.
+
+**The app is organised as the process, not a list of pages.** A model's
+**Overview** is the line: ① Transform → ② Model → ③ Reports, as tabs, with the
+two hand-offs shown between them (the warehouse file, the measures). The
+sidebar is Overview, Map, Explore, Drafts, Verify a file; **Map** is the same
+process for the whole project as a graph (a backup for the line). Names are
+shown exactly as the author wrote them, never prettified. URLs changed
+(`/m/<model>`, `/m/<model>/{reports,model,transform}`, `/map`); the old ones
+redirect. The mockups are the design canvas
+https://claude.ai/artifact/D8UH4mqipmDL7whbjoyprL (private to the owner).
+
+**One status rule, app-wide (#258).** Only exceptions get colour, always a
+glyph plus words: `✕` failed, `△` source changed or stale, `○` never built or
+cannot be re-run. A fine state is a plain fact, never green, so "reproduced"
+does not appear on every row. The locked sentence is still "the sink satisfied
+its contract". A failed contract raises *after* the tables are written (no
+rollback, no certificate), and the failure copy says so.
+
+**Edit as a draft (#253).** `POST /api/drafts` starts a user's own draft of a
+published report or model (201 new, 200 already theirs); the UI button is
+`components/EditAsDraft.jsx`. A Python model or a report with a `report.py` /
+`script.js` is refused with "edit it from a laptop". The MCP `start_draft` tool
+copies nothing unless `from_published` is true, so a bare call makes an empty
+draft; that is a trap for agents (open question below).
+
+**The open report page (#257, #259).** The Reports stage is a list beside the
+last build. An open report keeps the app's nav as a 56px rail, has a two-row
+header (where it is; name, exception chip, built / data refreshed / schedule),
+a labelled toolbar (Rebuild, Export, Share, Edit as a draft; Lineage, History,
+Details) and a docked panel (Details, Lineage, History, Code; a drawer under
+1100px; open state remembered). A build that is not fine gets a bar under the
+toolbar. The "More" menu was removed on purpose: it hid eight actions and read
+as a developer tool.
+
+**A built-in MCP sign-in (#260).** Claude's and ChatGPT's custom connectors need
+OAuth; a static bearer token only works from Claude Code. Until now that meant
+registering TraceBi at a company identity provider. With no provider:
+`TRACEBI_DEMO_LOGIN=<role>` (a one-click demo user) and/or
+`TRACEBI_LOCAL_USERS=name:role:password,…` serve a sign-in page at
+`/oauth/callback`; everything after it is the existing authorization server.
+Needs `TRACEBI_PUBLIC_URL` and `TRACEBI_OAUTH_SECRET`; cannot be combined with
+`TRACEBI_OIDC_ISSUER`; `/mcp` only (the app's own pages are untouched);
+failures are throttled in-process, so run one worker. The demo button lets in
+anyone with the address: only for a server with sample data. In the connector
+`admin` has the same tools as `analyst`.
+
+### Not done: the hosted demo is not connected
+
+The cloud session could not reach tracebi.com (its network proxy answered 403),
+so nothing was checked against the live server. To connect the demo from
+claude.ai: redeploy `tracebi-demo` from main; set `TRACEBI_DEMO_LOGIN=admin`,
+`TRACEBI_OAUTH_SECRET` (`openssl rand -hex 32`) and `TRACEBI_PUBLIC_URL`; unset
+any `TRACEBI_OIDC_*`; make `site/nginx.conf` forward `/mcp`, `/authorize`,
+`/token`, `/register`, `/revoke`, `/oauth/callback` and `/.well-known/` to the
+demo; then add `https://tracebi.com/mcp` as a custom connector. Two things to
+verify first: `deploy/mcp/README.md` says `TRACEBI_PUBLIC_URL=https://tracebi.com/app`,
+but the connector address must equal that URL's origin plus `/mcp` exactly or the
+sign-in loops; and only `/mcp` is documented as forwarded. Check with
+`curl -i https://tracebi.com/mcp` (401 with `WWW-Authenticate`) and
+`/.well-known/oauth-authorization-server`.
+
+### Open
+
+- Demo role: admin (the plan) or a viewer for a safe public demo; a read-only
+  guest can be added with `TRACEBI_LOCAL_USERS=guest:viewer:<password>`.
+- Make `start_draft` copy the published report by default for reports.
+- Report names are still monospace; whether to switch them to the normal font
+  app-wide (still exactly as written) was offered, not done.
+- Remote authoring steps 3 (`tracebi push`, a git-mounted library) and 4
+  (pipelines publish with approval, run on the server); see
+  `docs/strategy/remote-authoring.md`.
+- The AltsVault worked example (see 2026-08-14) is still parked.
+
+### Notes for whoever continues
+
+- Use `python -m pytest`, and `PYTHONPATH=$PWD` inside a git worktree (the
+  editable install points at another checkout).
+- Browser journeys: `TRACEBI_E2E=1 python -m pytest tests/test_ui_smoke.py
+  tests/test_ui_build_mode.py tests/test_table_window.py tests/test_pdf.py
+  tests/test_d3_charts.py`. Chromium is preinstalled; never `playwright install`.
+- `tests/test_gateway_log.py` once failed because it searched the whole log
+  line for a value that a random session id contained; it now ignores the
+  random fields. Beware assertions that substring-match random ids.
+- After editing docs run `python site/build_docs.py`; a test checks the site is
+  in sync.
+
+---
+
 ## 2026-09-24 — Off Vercel, design policy in the stylesheet, docs tidied
 
 **Hosting.** tracebi.com (site) and tracebi.com/app (the demo) moved from Vercel
