@@ -99,6 +99,36 @@ days, sooner if they disconnect and reconnect).
 cannot sign in. Work done with it is recorded as `TRACEBI_MCP_ACTOR` (default
 `agent`) with the `analyst` role. Leave it unset if you do not need it.
 
+## No identity provider? A demo user, or named users
+
+For a demo, a trial or a small team, TraceBi can sign people in itself. Set
+these instead of the `TRACEBI_OIDC_*` ones (the two cannot be combined):
+
+```bash
+TRACEBI_PUBLIC_URL=https://bi.example.com
+TRACEBI_OAUTH_SECRET=<openssl rand -hex 32>
+TRACEBI_DEMO_LOGIN=admin                         # a one-click demo user
+TRACEBI_LOCAL_USERS=alice:analyst:a-long-password,vera:viewer:another-one
+```
+
+Either, or both. **Connect** then opens a TraceBi page: the named users type a
+name and password, and the demo user is one button, **Continue as the demo
+user**. Work is recorded under the name (`demo`, `alice`) and the role in the
+variable decides what they may do, exactly as with a company login.
+
+Know what you are switching on:
+
+- **The demo button lets in anyone who has the address.** Use it only on a
+  server that holds sample data. Give it the lowest role that shows what you
+  want to show: `viewer` reads and queries, `analyst` and `admin` also draft and
+  publish (in the connector `admin` can do what `analyst` can).
+- **Passwords live in the environment**, like the identity provider's client
+  secret, and are compared as written. There is no reset and no sign-up page.
+  For a team that grows, move to your company login above.
+- Ten wrong passwords for a name stop that name for ten minutes, per process:
+  run one worker.
+- It signs people in to `/mcp` only. The app's own pages stay as they are.
+
 ## Add the connector (each person)
 
 The menu names change; the address is what matters.

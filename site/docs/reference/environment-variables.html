@@ -362,6 +362,34 @@ these variables when it is unset.</p>
 </table>
 <p><code>TRACEBI_MCP_TOKEN</code> keeps working beside it, for automation, acting as
 <code>TRACEBI_MCP_ACTOR</code> with the <code>analyst</code> role.</p>
+<h3 id="a-built-in-sign-in-with-no-identity-provider">A built-in sign-in, with no identity provider</h3>
+<p>For a demo or a small team. The gateway signs people in on a page of its own at
+<code>/oauth/callback</code> (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>). It serves <code>/mcp</code> only: the
+app's own pages are not put behind it. It cannot be combined with
+<code>TRACEBI_OIDC_ISSUER</code> (the server refuses to start), and it needs
+<code>TRACEBI_PUBLIC_URL</code> and <code>TRACEBI_OAUTH_SECRET</code>. Run it as one worker.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_DEMO_LOGIN</code></td>
+<td>a role (<code>viewer</code>, <code>analyst</code> or <code>admin</code>). Adds a <strong>Continue as the demo user</strong> button that signs anyone who reaches the page in, with that role, as <code>demo</code>. Use it only on a server that holds sample data.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_LOCAL_USERS</code></td>
+<td><code>name:role:password</code> entries, comma separated, e.g. <code>alice:analyst:a-long-password</code>. A password has at least 8 characters, may contain <code>:</code> but not <code>,</code>. Ten wrong passwords for one name in ten minutes stop that name for a while.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_OAUTH_SECRET</code></td>
+<td>a random secret of at least 32 characters (<code>openssl rand -hex 32</code>). It signs the sign-in while it is in flight, so every worker needs the same one.</td>
+</tr>
+</tbody>
+</table>
 <p>The http transport <strong>refuses to start</strong> until you either set the token or pass
 <code>--insecure</code> deliberately. The web app has no insecure mode: without the token
 it serves no <code>/mcp</code>.</p>

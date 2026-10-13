@@ -270,7 +270,17 @@ def unserve_sso() -> None:
 
 _sso_routes: list = []
 
-if os.environ.get("TRACEBI_OIDC_ISSUER", "").strip():
+if (os.environ.get("TRACEBI_LOCAL_USERS", "").strip()
+        or os.environ.get("TRACEBI_DEMO_LOGIN", "").strip()):
+    # The built-in sign-in (a demo user and/or named users): the gateway signs
+    # people in on a page of its own. The app's own pages stay as they are.
+    from tracebi.mcp_oauth import GatewayOAuth, OAuthConfig
+
+    _static = os.environ.get("TRACEBI_MCP_TOKEN", "").strip() or None
+    serve_gateway(_static, oauth=GatewayOAuth(OAuthConfig.from_env()))
+    print("[tracebi] mcp gateway: /mcp (built-in sign-in via TRACEBI_LOCAL_USERS / "
+          "TRACEBI_DEMO_LOGIN" + ("; static TRACEBI_MCP_TOKEN also accepted)" if _static else ")"))
+elif os.environ.get("TRACEBI_OIDC_ISSUER", "").strip():
     from tracebi.mcp_oauth import GatewayOAuth, OAuthConfig
 
     _static = os.environ.get("TRACEBI_MCP_TOKEN", "").strip() or None
