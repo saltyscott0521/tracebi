@@ -86,6 +86,26 @@ Why SQL is the escape hatch:
 The data still has to hold the answer: a cost-basis rollforward needs the cost
 relieved on a sale, which the demo's `fact_activities` does not carry yet.
 
+### Python sandbox: data science
+
+The tier beyond SQL: ordinary Python (pandas, numpy, scikit-learn,
+statsmodels, scipy) for forecasting, clustering, regressions, anomaly
+detection, simulation. Its output (a table, a forecast series, cluster
+labels) is something a report binds to, like a SQL calculation.
+
+- **A separate locked-down worker,** not the web server: reads the warehouse
+  read-only and nothing else; no production secrets, no network, cannot write
+  shared tables. Writes only its own output, into the analyst's workspace.
+- **A fixed set of packages** baked into the worker image; no `pip install`
+  from a draft. Adding a library is a deliberate change.
+- **Limits** on time, memory and CPU per run.
+- **Honest receipt:** records the code, the input data's fingerprints, the
+  package versions and the seed; the page says "computed by custom code
+  (Python)" and never reads as verified. A seeded run in a pinned environment
+  may let `verify` report whether it reproduced; aim for it, do not promise it.
+- Arrives over the connector like a report draft, because the worker, not the
+  server, runs it.
+
 ## Why not make everything SQL (considered, rejected)
 
 The case for it is real: one language with no ceiling, what agents write best,
