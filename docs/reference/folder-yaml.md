@@ -19,6 +19,7 @@ view:    [finance, ceo@example.com]    # see the folder; open reports and their 
 build:   [finance-analysts]            # + create and edit drafts in it
 publish: [finance-leads]               # + publish a draft into it; its schedules
 manage:  [bi-admins]                   # + change this file
+accepts: checkable                     # optional: only re-checkable numbers (see below)
 ```
 
 ---
@@ -42,6 +43,53 @@ of names, makes the file malformed (see below).
 
 ---
 
+## What a folder accepts
+
+`accepts` is the one key that is not a permission. It says what may be
+published into the folder, and binds everyone who publishes there, admins
+included.
+
+| value | the folder takes |
+|---|---|
+| `labelled` (default) | anything honestly labelled: a number that cannot be re-run says so in its receipt |
+| `checkable` | only reports whose every number a query can re-run |
+
+Under `checkable`, publishing a draft (or asking to) is refused with a plain
+message naming the cause when the report has a `report.py` (Python computes its
+numbers), or when its build holds a figure's data that is marked
+`verifiable: false` or is not a single recorded query. A figure that a page's
+`script.js` changes in the browser is marked in the receipt when the page runs,
+so it cannot be judged at publish time. Any other value of `accepts` makes the
+file malformed (below), and a malformed file reads as `checkable`.
+
+---
+
+## Publishing into a folder, and asking to
+
+A draft of a report is published to a folder you choose (`folder`, a library
+path such as `finance/q3`; it is created if it does not exist, and the report
+keeps its last name). What happens depends on the level you hold on the
+destination, checked against its nearest `_folder.yaml`:
+
+- **`publish`** (or more): it is published, as before. The history beside the
+  kept versions (`.tracebi/history/reports/<path>/publishes.jsonl`) records who
+  published and when.
+- **`build` only**: it becomes a **publish request**, not a publish. The
+  request holds a copy of the draft as it was when asked. It is a file,
+  `drafts/_requests/<id>.json`, so it survives a restart. Anyone with
+  `publish` on the destination can **approve** it (the copy is published
+  exactly as a direct publish would, and the history records who asked, who
+  approved and when) or **reject** it with a note. The permission is checked
+  when they decide, not when it was asked, so a requester with only `build`
+  cannot approve their own.
+- **less than `build`**: refused, `403`, naming the permission.
+
+With no `_folder.yaml` anywhere, roles decide as before: an analyst publishes
+directly and there are no requests. A person sees their own requests, and those
+into folders where they hold `publish`.
+
+---
+
 ## How a file applies
 
 1. **The nearest file wins.** Starting at a report's folder and walking up to
@@ -60,7 +108,7 @@ of names, makes the file malformed (see below).
    sign-in role at all: the command line, the scheduler, a notebook, and an app
    run without authentication.
 5. **A malformed file fails closed.** If the file cannot be read or parsed, or
-   has a key it does not know (`veiw:`), nobody but admins is granted anything
+   has a key it does not know (`veiw:`) or an `accepts` it does not know, nobody but admins is granted anything
    under it, a warning is logged, and nothing else breaks. An **empty** file is
    valid and grants no one but admins.
 
@@ -79,7 +127,8 @@ outputs inherit the folder's permissions.
 A person who can see a report but lacks the level an action needs is refused
 with **403** and the permission it needs (`build permission is needed on the
 folder of finance/q3/pack`): starting a draft in the folder needs `build`,
-publishing a draft into it needs `publish`.
+publishing a draft into it needs `publish` (with `build` only, it becomes a
+request, below).
 
 ---
 

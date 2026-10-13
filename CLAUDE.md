@@ -194,7 +194,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   schedule.py          # report.json "schedule" block: build → verify → email → record
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 20 tools + 3 prompts (author_report, answer_question, address_pins)
+  mcp_server.py        # agent gateway over MCP — 22 tools + 3 prompts (author_report, answer_question, address_pins)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
   _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode
@@ -427,6 +427,14 @@ Three things to preserve when touching this:
    proxy mode, and `TRACEBI_LOCAL_USERS=name:role@group+group:password`; they
    cross into the library on a ContextVar beside the actor
    (`audit.get_groups()`).
+
+5. **Folder levels decide publish vs. request, and are re-checked at decision
+   time.** A draft publish into a folder (`tracebi/drafts.py`) is direct with
+   Publish there, a stored request (`drafts/_requests/`) with only Build, and a
+   403 below that. Approving or rejecting needs Publish on the destination at
+   the moment of the decision, so a Build-only requester cannot approve their
+   own. `accepts: checkable` in `_folder.yaml` binds everyone, admins included.
+   No `_folder.yaml` anywhere means no requests: roles decide, as before.
 
 Enforcement lives in the middleware, not in the routers — one place, and it
 avoids touching the router imports that tests rebind for isolation.
@@ -715,7 +723,9 @@ GET  /api/drafts/{owner}/{kind}/{path}/files         → a draft's files (owner 
 GET  /api/drafts/{owner}/{kind}/{path}/version       → a draft's version (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/preview       → the draft rendered in memory; writes nothing (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/impact        → model draft only: each published report that reads the model is unchanged / moves (figures, old and new) / breaks / not_built, from re-running its last build's queries against the draft (owner or admin)
-POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft; body {note, accept_impact}; a model that moves or breaks reports is 409 with the impact until accept_impact; 403 when the published model names `owners` and the caller is neither one nor admin (analyst; owner or admin)
+POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft; body {note, accept_impact, folder}; a report goes to `folder` (default its own path): Publish there → 200 published, only Build → 202 a publish request, less → 403; `accepts: checkable` folders refuse non-re-runnable reports (422); a model that moves or breaks reports is 409 with the impact until accept_impact; 403 when the published model names `owners` and the caller is neither one nor admin (analyst; owner or admin)
+GET  /api/publish-requests?status=                   → the caller's own requests and those into folders where they hold Publish
+POST /api/publish-requests/{id}/approve|reject       → publish the request's snapshot (records approver and time) / reject with a {note}; needs Publish on the destination at decision time (analyst)
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
 GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not
                                                        been built, a page naming the build command

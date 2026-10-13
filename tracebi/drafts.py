@@ -454,7 +454,8 @@ def render_preview(owner: str, kind: str, path: str,
     return page
 
 
-def _validate_report(where: Path, models: dict) -> None:
+def _validate_report(where: Path, models: dict):
+    """Render the package to check it; returns the build's manifest."""
     from tracebi.reports.template_package import TemplatePackage
 
     missing = [n for n in ("report.json", "template.html")
@@ -463,7 +464,7 @@ def _validate_report(where: Path, models: dict) -> None:
         raise DraftError(f"the draft has no {' or '.join(missing)}")
     with tempfile.TemporaryDirectory() as tmp:
         try:
-            TemplatePackage(str(where)).render(
+            return TemplatePackage(str(where)).render(
                 models, os.path.join(tmp, "check.html"), save_manifest=False)
         except (Exception, SystemExit) as exc:  # noqa: BLE001 — a refusal is a result
             line = str(exc).splitlines()[0] if str(exc) else ""
@@ -690,83 +691,290 @@ def _impact_line(r: dict) -> str:
         f.get("id") or m["binding"] for m in r["moved"] for f in (m["figures"] or [m]))
 
 
+def _destination(path: str, folder: Optional[str]) -> str:
+    """The report name a draft publishes to: its own path, or its last part
+    inside *folder* (a library path; it need not exist yet)."""
+    if not folder:
+        return path
+    dest = f"{folder}/{path.rsplit('/', 1)[-1]}"
+    if err := report_name_error(dest):
+        raise DraftError(err)
+    return dest
+
+
+def checkable_problems(where: Path, manifest=None) -> list:
+    """Why report package *where*, as just rendered to *manifest*, is not made
+    only of numbers a query can re-run (empty when it is). A ``report.py``
+    computes with Python; a section with ``verifiable: false`` or no single
+    recorded query cannot be replayed by ``tracebi verify``. A figure a page
+    script changes in the browser is not knowable here."""
+    problems = []
+    if (where / "report.py").exists():
+        problems.append("report.py runs Python, so its numbers cannot be re-run from a query")
+    figures = getattr(manifest, "figures", None) or []
+    for section in _walk({"sections": getattr(manifest, "sections", [])}):
+        if _query_node(section) is None:
+            binding = section.get("id") or section.get("title")
+            shown = [f["id"] for f in figures if f.get("binding") == binding and f.get("id")]
+            why = ("computed by Python" if section.get("verifiable") is False
+                   else "not a single re-runnable query")
+            problems.append(f"binding {binding!r} is {why}"
+                            + (f" (figures: {', '.join(shown)})" if shown else ""))
+    return problems
+
+
+def _prepare_report(where: Path, dest: str, models: dict) -> Path:
+    """Everything a report must pass to be published (or requested) as *dest*;
+    returns where it would land."""
+    from tracebi import permissions
+
+    def refuse(problems):
+        raise DraftError(
+            f"the folder of {dest} accepts only checkable reports (its _folder.yaml "
+            f"says accepts: checkable), and this one is not: " + "; ".join(problems))
+
+    root, rel = _report_target(dest)
+    target = root / rel
+    if (target / "report.py").exists():
+        raise DraftError(
+            f"{dest} is published with a report.py, which a draft cannot "
+            f"replace: {_LAPTOP}")
+    checkable = permissions.folder_accepts(dest) == "checkable"
+    if checkable and (where / "report.py").exists():
+        refuse(checkable_problems(where))
+    manifest = _validate_report(where, models)
+    if checkable and (problems := checkable_problems(where, manifest)):
+        refuse(problems)
+    return target
+
+
+def _stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+
+
 def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
                   note: Optional[str] = None,
                   models: Optional[dict] = None,
-                  accept_impact: bool = False) -> dict:
+                  accept_impact: bool = False,
+                  folder: Optional[str] = None) -> dict:
     """Validate the draft, keep what it replaces, copy it into the library and
     record a ``publish`` run. The draft stays.
+
+    A report goes to *folder* (default: its own path). With Publish on the
+    destination it is published (``status: "published"``); with only Build
+    there the result is a **request** (``status: "requested"``) for someone
+    with Publish to approve (:func:`decide_request`). Under ``accepts:
+    checkable`` a report that is not made of re-runnable numbers is refused
+    either way.
 
     A model draft first has its :func:`model_impact` computed: when published
     reports would move or break, the publish is refused (:class:`ImpactNotAccepted`)
     unless *accept_impact* is true, and the accepted impact is recorded in the
     run's detail."""
+    from tracebi import permissions
+
     kind = _kind(kind)
     where = _exists(owner, kind, path)
+    if kind == "reports":
+        dest = _destination(path, folder)
+        level = permissions.granted_level(dest)
+        if level < permissions.PUBLISH:
+            if level < permissions.BUILD:
+                _require_folder("publish", dest)
+            return _request_publish(owner, path, dest, actor, note, where,
+                                    _load_models() if models is None else models)
+        return _publish_report(where, dest, owner, actor, note, models)
+    if folder:
+        raise DraftError("a model is not published into a folder: models/ holds them")
+    check_may_publish_model(path, actor, get_actor()[1])
+    _validate_model_draft(where)
+    impact = model_impact(owner, path, models)
     accepted = None
-    if kind == "models":
-        check_may_publish_model(path, actor, get_actor()[1])
-        _validate_model_draft(where)
-        impact = model_impact(owner, path, models)
-        if impact["needs_acceptance"]:
-            if not accept_impact:
-                raise ImpactNotAccepted(
-                    "publishing this model would change published reports ("
-                    + "; ".join(_impact_line(r) for r in impact["reports"]
-                                if r["status"] in ("moves", "breaks"))
-                    + "). Nothing was published. Review model_impact, then "
-                    "publish again with accept_impact=true to accept it"
-                    + (" (a break needs accepting too)"
-                       if impact["summary"].get("breaks") else ""), impact)
-            accepted = {"summary": impact["summary"],
-                        "reports": [r for r in impact["reports"]
-                                    if r["status"] in ("moves", "breaks")]}
-        target = _models_dir() / where.name
-        if (_models_dir() / f"{path}.py").is_file():
-            raise DraftError(
-                f"models/{path}.py is a Python model of that name; a draft "
-                f"cannot replace it: {_LAPTOP}")
-    else:
-        _require_folder("publish", path)
-        root, rel = _report_target(path)
-        target = root / rel
-        if (target / "report.py").exists():
-            raise DraftError(
-                f"{path} is published with a report.py, which a draft cannot "
-                f"replace: {_LAPTOP}")
-        _validate_report(where, _load_models() if models is None else models)
-
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    if impact["needs_acceptance"]:
+        if not accept_impact:
+            raise ImpactNotAccepted(
+                "publishing this model would change published reports ("
+                + "; ".join(_impact_line(r) for r in impact["reports"]
+                            if r["status"] in ("moves", "breaks"))
+                + "). Nothing was published. Review model_impact, then "
+                "publish again with accept_impact=true to accept it"
+                + (" (a break needs accepting too)"
+                   if impact["summary"].get("breaks") else ""), impact)
+        accepted = {"summary": impact["summary"],
+                    "reports": [r for r in impact["reports"]
+                                if r["status"] in ("moves", "breaks")]}
+    target = _models_dir() / where.name
+    if (_models_dir() / f"{path}.py").is_file():
+        raise DraftError(
+            f"models/{path}.py is a Python model of that name; a draft "
+            f"cannot replace it: {_LAPTOP}")
+    stamp = _stamp()
     kept = _keep_previous(kind, path, target, stamp)
-    if kind == "models":
-        # Another declarative form of this name would clash with the new one.
-        stale = [f for f in _published_model_files(path) if f != target]
-        for old in stale:
-            kept = _keep_previous(kind, path, old, stamp) or kept
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(where, target)
-        for old in stale:
-            old.unlink()
-        published = [target.name]
-    else:
-        target.mkdir(parents=True, exist_ok=True)
-        files = _draft_files(kind, path, where)
-        for name in REPORT_FILES:               # a file the draft dropped goes too
-            if name not in files and (target / name).is_file():
-                (target / name).unlink()
-        for name, src in files.items():
-            shutil.copy2(src, target / name)
-        published = sorted(files)
-    result = {"owner": owner, "kind": kind, "path": path, "version": stamp,
-              "files": published, "previous": str(kept) if kept else None}
+    # Another declarative form of this name would clash with the new one.
+    stale = [f for f in _published_model_files(path) if f != target]
+    for old in stale:
+        kept = _keep_previous(kind, path, old, stamp) or kept
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(where, target)
+    for old in stale:
+        old.unlink()
+    return _record_publish(kind, path, owner, stamp, kept, [target.name], actor, note,
+                           {"accepted_impact": accepted} if accepted else {}, {})
+
+
+def _publish_report(src: Path, dest: str, owner: str, actor: Optional[str],
+                    note: Optional[str], models: Optional[dict],
+                    trail: Optional[dict] = None) -> dict:
+    """Publish the report package in *src* as *dest*: the one path for a direct
+    publish and for an approved request (whose story is *trail*)."""
+    target = _prepare_report(src, dest, _load_models() if models is None else models)
+    stamp = _stamp()
+    kept = _keep_previous("reports", dest, target, stamp)
+    target.mkdir(parents=True, exist_ok=True)
+    files = _draft_files("reports", dest, src)
+    for name in REPORT_FILES:               # a file the draft dropped goes too
+        if name not in files and (target / name).is_file():
+            (target / name).unlink()
+    for name, f in files.items():
+        shutil.copy2(f, target / name)
+    return _record_publish("reports", dest, owner, stamp, kept, sorted(files), actor,
+                           note, {}, trail or {})
+
+
+def _history_log(kind: str, path: str) -> Path:
+    return Path(".tracebi") / "history" / kind / path / "publishes.jsonl"
+
+
+def publish_history(kind: str, path: str) -> list:
+    """Every publish of *path*, oldest first: version, who published and when,
+    the note, and for an approved request who asked, who approved and when.
+    It sits beside the kept versions, in ``.tracebi/history/<kind>/<path>/``."""
+    log = _history_log(_kind(kind), path)
+    if not log.is_file():
+        return []
+    return [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines() if line]
+
+
+def _record_publish(kind: str, path: str, owner: str, stamp: str, kept, published: list,
+                    actor: Optional[str], note: Optional[str], extra: dict, trail: dict) -> dict:
+    result = {"status": "published", "owner": owner, "kind": kind, "path": path,
+              "version": stamp, "files": published, "previous": str(kept) if kept else None}
+    now = datetime.now(timezone.utc).isoformat()
+    story = {**trail, **({"approved_at": now} if "approved_by" in trail else {})}
+    entry = {"version": stamp, "published_by": trail.get("requested_by", actor),
+             "published_at": now, "note": note or "", "previous": result["previous"], **story}
+    try:
+        log = _history_log(kind, path)
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry) + "\n")
+    except OSError as exc:
+        result["note"] = f"the publish history was not written: {exc}"
 
     from tracebi.state import record_run
-    now = datetime.now(timezone.utc).isoformat()
     try:
         record_run(kind="publish", target=f"{kind}/{path}", status="ok",
                    finished=now, actor=actor, actor_role=get_actor()[1],
-                   detail={"version": stamp, "note": note or "",
-                           **({"accepted_impact": accepted} if accepted else {})})
+                   detail={"version": stamp, "note": note or "", **extra, **story})
     except Exception as exc:  # noqa: BLE001 — published is published; say the audit row is missing
         result["note"] = f"the publish was not recorded: {exc}"
     return result
+
+
+# ── Publish requests ───────────────────────────────────────────────────────
+# A person with Build (not Publish) on the destination folder asks; someone
+# with Publish there decides. Each request is one file,
+# ``drafts/_requests/<id>.json`` (an owner slug never starts with "_"), and it
+# holds a snapshot of the draft's files: what the approver reviews is what is
+# published, whatever the draft becomes meanwhile. The files survive a restart
+# and live with the drafts.
+
+_REQUEST_ID = re.compile(r"\d{8}T\d{6}-[0-9a-f]{6}")
+
+
+def _requests_dir() -> Path:
+    return drafts_root() / "_requests"
+
+
+def _public_request(req: dict) -> dict:
+    return {k: v for k, v in req.items() if k != "files"}
+
+
+def _my_slug() -> str:
+    return slug_owner((get_actor()[0] or "").removeprefix("mcp:"))
+
+
+def _request_publish(owner: str, path: str, dest: str, actor: Optional[str],
+                     note: Optional[str], where: Path, models: dict) -> dict:
+    _prepare_report(where, dest, models)         # the same refusals as a publish
+    now = datetime.now(timezone.utc)
+    req = {"id": f"{now:%Y%m%dT%H%M%S}-{os.urandom(3).hex()}", "status": "pending",
+           "owner": owner, "kind": "reports", "path": path, "destination": dest,
+           "requested_by": actor, "requested_at": now.isoformat(), "note": note or "",
+           "files": {n: _read_text(p) for n, p in _draft_files("reports", path, where).items()}}
+    _write(_requests_dir() / f"{req['id']}.json", json.dumps(req, indent=1))
+    return {"status": "requested", "request": _public_request(req)}
+
+
+def _load_request(request_id: str) -> dict:
+    """The request, or not-found when there is none or it is not the person's
+    to see (their own, or into a folder where they hold Publish)."""
+    from tracebi import permissions
+
+    if not isinstance(request_id, str) or not _REQUEST_ID.fullmatch(request_id):
+        raise DraftNotFound(f"no publish request {request_id!r}")
+    f = _requests_dir() / f"{request_id}.json"
+    if not f.is_file():
+        raise DraftNotFound(f"no publish request {request_id!r}")
+    req = json.loads(f.read_text(encoding="utf-8"))
+    if (req["owner"] != _my_slug()
+            and permissions.granted_level(req["destination"]) < permissions.PUBLISH):
+        raise DraftNotFound(f"no publish request {request_id!r}")
+    return req
+
+
+def list_requests(status: Optional[str] = None) -> list:
+    """The publish requests the current person may see, newest first: their
+    own, and those into folders where they hold Publish."""
+    from tracebi import permissions
+
+    me, found = _my_slug(), []
+    names = sorted(_requests_dir().glob("*.json"), reverse=True) if _requests_dir().is_dir() else []
+    for f in names:
+        try:
+            req = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if status and req.get("status") != status:
+            continue
+        if req["owner"] == me or permissions.granted_level(req["destination"]) >= permissions.PUBLISH:
+            found.append(_public_request(req))
+    return found
+
+
+def decide_request(request_id: str, approve: bool, actor: Optional[str],
+                   note: Optional[str] = None, models: Optional[dict] = None) -> dict:
+    """Approve (publish the snapshot exactly as a direct publish would, and
+    record who approved and when) or reject (a note says why) a pending
+    request. It needs Publish on the destination *now*, not when it was asked,
+    so a requester holding only Build cannot decide their own."""
+    req = _load_request(request_id)
+    _require_folder("publish", req["destination"])
+    if req["status"] != "pending":
+        raise DraftError(f"request {request_id} is already {req['status']}")
+    if approve:
+        with tempfile.TemporaryDirectory() as tmp:
+            snap = Path(tmp) / req["path"].rsplit("/", 1)[-1]
+            for name, text in req["files"].items():
+                _write(snap / name, text)
+            published = _publish_report(
+                snap, req["destination"], req["owner"], actor, req["note"], models,
+                {"request_id": req["id"], "requested_by": req["requested_by"],
+                 "requested_at": req["requested_at"], "approved_by": actor})
+        req["version"] = published["version"]
+    elif not (note or "").strip():
+        raise DraftError("a rejection needs a note saying why")
+    req.update(status="approved" if approve else "rejected", decided_by=actor,
+               decided_at=datetime.now(timezone.utc).isoformat(), decision_note=note or "")
+    _write(_requests_dir() / f"{request_id}.json", json.dumps(req, indent=1))
+    return {"status": req["status"], "request": _public_request(req)}

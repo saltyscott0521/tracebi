@@ -569,7 +569,9 @@ Nineteen tools (`tracebi/mcp_server.py`):
 | `write_draft_file` | Replace one file of a draft with `content`. A report draft takes `report.json`, `template.html`, `style.css` or `script.js`; a model draft takes its `<name>.yaml` or `<name>.json` (writing the other form replaces it). Writes only under `drafts/` |
 | `preview_draft` | Render the draft in memory against the published models plus your draft models. Returns `ok`, `errors`, and the url where the person sees it. Writes nothing |
 | `model_impact` | For a model draft (`path` = the model name): re-run the recorded queries of every published report that reads it against the draft and compare with each report's last build. Each report is `unchanged`, `moves` (figures, old and new), `breaks` (the error) or `not_built` (listed, never unchanged). Writes nothing |
-| `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first. A model that would move or break published reports is refused (`ok: false`, with `impact`) unless you pass `accept_impact=true`; a break needs accepting too, and the accepted impact is recorded in the run |
+| `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first. A model that would move or break published reports is refused (`ok: false`, with `impact`) unless you pass `accept_impact=true`; a break needs accepting too, and the accepted impact is recorded in the run. A report goes to `folder` (a library path, created if needed; default its own path). With only Build on that folder the answer is `status: "requested"`: a request for someone with Publish there. A folder that `accepts: checkable` refuses a report whose numbers a query cannot re-run |
+| `list_publish_requests` | Requests to publish a draft into a folder: yours, and those into folders where you hold Publish. `status` filters (`pending`, `approved`, `rejected`) |
+| `decide_publish_request` | Approve (publishes what was requested, recording who approved and when) or reject (`note` required) a pending request. Needs Publish on the destination now; you cannot decide your own. Get the person's go-ahead first |
 
 Every tool returns **structured output** (a typed `outputSchema` and
 `structuredContent`, not JSON inside a text blob), so the stamp and the verdict
@@ -648,6 +650,14 @@ nothing a draft holds goes live until `publish_draft`.
    with the owners named. Draft it, show `model_impact`, and ask an owner to
    publish; do not try to add yourself to `owners` in the draft (the published
    file decides).
+5. A report can go to a chosen folder: `publish_draft(kind, path, folder="finance/q3")`.
+   With Publish there it is published. With only Build there the answer is
+   `status: "requested"`: a request, not a publish. Tell the person it waits for
+   someone with Publish on that folder, who approves or rejects it with
+   `list_publish_requests` / `decide_publish_request` (or in the app); you
+   cannot decide your own. A folder whose `_folder.yaml` says
+   `accepts: checkable` refuses a report whose numbers a query cannot re-run,
+   at publish and at request, and the message names why.
 
 **Dev to prod: publish a model before a report that uses it.** A report is
 checked against the published models only, so a report that names a model not

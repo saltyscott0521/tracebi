@@ -122,8 +122,9 @@ def test_view_is_not_build_and_build_is_not_publish(library, sso, idp):
     started = carol.post("/api/drafts", json=body)
     assert started.status_code == 201, started.text
     owner = started.json()["owner"]
+    # Build is not Publish: her publish is a request, not a publish.
     published = carol.post(f"/api/drafts/{owner}/reports/{HIDDEN}/publish")
-    assert published.status_code == 403 and "publish permission" in published.text
+    assert published.status_code == 202 and published.json()["status"] == "requested"
 
 
 def test_without_any_folder_file_nothing_changes(library, sso, idp):
