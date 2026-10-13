@@ -3653,6 +3653,52 @@
     }
   }
 
+  /* ── Host bridge ──────────────────────────────────────────────────────────
+   * The web app shows a report in a sandboxed frame with an opaque origin: the
+   * app cannot read the frame's DOM and the frame cannot read the app's. The
+   * two talk by postMessage, and only about presentation: the frame tells the
+   * app how tall it is; the app tells the frame to apply a selection. Every
+   * message carries tracebiFrame: 1; the frame accepts commands only from the
+   * window that embeds it. A report opened on its own (no embedding window)
+   * does none of this. */
+  function hostBridge() {
+    if (typeof document === "undefined" || !root.parent || root.parent === root) return;
+    var host = root.parent;
+    function post(msg) {
+      msg.tracebiFrame = 1;
+      try { host.postMessage(msg, "*"); } catch (e) { /* defensive */ }
+    }
+    var lastHeight = -1;
+    function size() {
+      var h = Math.max(document.documentElement ? document.documentElement.scrollHeight : 0,
+                       document.body ? document.body.scrollHeight : 0);
+      if (!h || h === lastHeight) return;
+      lastHeight = h;
+      /* A frame holding nothing to operate is not a keyboard stop. */
+      var focusable = !!document.querySelector(
+        "a[href],button,input,select,textarea,summary,[tabindex],[contenteditable]");
+      post({ type: "size", height: h, focusable: focusable });
+    }
+    function watch() {
+      size();
+      if (typeof ResizeObserver !== "undefined" && document.body) {
+        new ResizeObserver(size).observe(document.body);
+      }
+    }
+    if (document.readyState === "complete") watch();
+    else root.addEventListener("load", watch);
+
+    var commands = {
+      setSelection: function (m) { setSelection(m.filters || {}); }
+    };
+    root.addEventListener("message", function (e) {
+      var m = e.data;
+      if (e.source !== host || !m || m.tracebiFrame !== 1) return;
+      if (commands.hasOwnProperty(m.type)) commands[m.type](m);
+    });
+  }
+  hostBridge();
+
   root.tracebi = {
     data: data,
     ready: ready,

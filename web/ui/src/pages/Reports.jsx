@@ -9,6 +9,7 @@ import {
   useAppStatus, useMe, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
 } from '../api'
 import { attachPointMode } from '../pointMode'
+import { FRAME_SANDBOX, listenToFrame, tellFrame } from '../frameBridge'
 import Workbench, { ProjectFeed } from '../components/Workbench'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
@@ -172,8 +173,7 @@ function AskCut({ reportName, frameRef, onPackageChange }) {
           return
         }
         const filters = payload?.filters || {}
-        const tb = frameRef.current?.contentWindow?.tracebi
-        if (tb && typeof tb.setSelection === 'function') tb.setSelection(filters)
+        tellFrame(frameRef.current, { type: 'setSelection', filters })
       },
     })
   }
@@ -834,7 +834,7 @@ function OpenReport({ report, model }) {
             </div>
           )}
           {frameHtml ? (
-            <iframe ref={frameRef} srcDoc={frameHtml} title={name} className="rp__frame" />
+            <iframe ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
           ) : opening ? (
             <div className="rp__state fade-in">
               <ReportArt mode="build" size={96} /> Opening the last build…
@@ -912,34 +912,17 @@ function PreviewFrame({ html, title }) {
     return () => observer.disconnect()
   }, [])
 
-  // The frame is as tall as the report, at the width it is laid out at.
-  useEffect(() => {
-    const el = frame.current
-    let observer
-    const measure = () => {
-      const doc = el.contentDocument
-      if (!doc?.body) return
-      const h = Math.max(doc.documentElement?.scrollHeight || 0, doc.body.scrollHeight || 0)
-      if (h) setHeight(h)
-    }
-    const onLoad = () => {
-      measure()
-      const doc = el.contentDocument
-      if (doc?.body && typeof ResizeObserver !== 'undefined') {
-        observer = new ResizeObserver(measure)
-        observer.observe(doc.body)
-      }
-    }
-    el.addEventListener('load', onLoad)
-    if (el.contentDocument?.readyState === 'complete') onLoad()
-    return () => { el.removeEventListener('load', onLoad); observer?.disconnect() }
-  }, [html])
+  // The frame is as tall as the report, at the width it is laid out at; the
+  // sandboxed report says how tall that is.
+  useEffect(() => listenToFrame(frame.current, m => {
+    if (m.type === 'size' && m.height) setHeight(m.height)
+  }), [html])
 
   const full = height * scale
   return (
     <div ref={box} className={`rprev__box${full > PREVIEW_MAX ? ' rprev__box--clipped' : ''}`}
          style={{ height: Math.min(full, PREVIEW_MAX) }}>
-      <iframe ref={frame} srcDoc={html} title={title} tabIndex={-1} className="rprev__frame"
+      <iframe ref={frame} srcDoc={html} sandbox={FRAME_SANDBOX} title={title} tabIndex={-1} className="rprev__frame"
               style={{ width: PREVIEW_W, height, transform: `scale(${scale})` }} />
     </div>
   )

@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from tracebi import drafts
 from tracebi.audit import get_actor
 from tracebi.web.api.errors import error_detail
+from tracebi.web.api.routers.reports import SANDBOX_HEADERS
 
 router = APIRouter(prefix="/drafts", tags=["drafts"])
 
@@ -130,7 +131,7 @@ def draft_preview(owner: str, kind: str, path: str):
         raise HTTPException(status_code=422, detail={
             "message": "A model draft has no page to preview.",
             "exception_type": "DraftError", "traceback": ""})
-    return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+    return HTMLResponse(page, headers={"Cache-Control": "no-store", **SANDBOX_HEADERS})
 
 
 @router.post("/{owner}/{kind}/{path:path}/publish")
