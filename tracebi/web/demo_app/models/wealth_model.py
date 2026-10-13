@@ -155,6 +155,14 @@ activities_df = pd.DataFrame({
     "amount":        _a_amounts,
 })
 
+# A measure `expr` is arithmetic only (no conditionals), so the trade type is
+# split into one column per direction. Fees are in neither: they are a cost of
+# running the account, not a flow of assets.
+activities_df["purchase_amount"] = activities_df["amount"].where(
+    activities_df["activity_type"] == "purchase", 0.0)
+activities_df["sale_amount"] = activities_df["amount"].where(
+    activities_df["activity_type"] == "sale", 0.0)
+
 # ── Connector ──────────────────────────────────────────────────────────────────
 
 connector = MemoryConnector("banking", tables={
@@ -251,7 +259,7 @@ model.add_fact(
 model.add_fact(
     "fact_activities",
     table_name="activities",
-    measures=["units", "amount"],
+    measures=["units", "amount", "purchase_amount", "sale_amount"],
     foreign_keys={"dim_account": "account_id", "dim_client": "client_id",
                   "dim_branch": "branch_id", "dim_product": "product_id"},
 )
@@ -276,6 +284,21 @@ model.add_measure(
 model.add_measure(
     "gain_pct", ratio=("unrealized_gain", "cost_basis"), format="percent",
     description="Unrealized gain as a share of cost basis (ratio of totals).",
+)
+model.add_measure(
+    "purchases", column="purchase_amount", agg="sum", format="currency0",
+    description="Sum of purchase trade amounts. Fees are excluded.",
+)
+model.add_measure(
+    "sales", column="sale_amount", agg="sum", format="currency0",
+    description="Sum of sale trade amounts. Fees are excluded.",
+)
+model.add_measure(
+    "net_new_assets", expr="purchase_amount - sale_amount", agg="sum",
+    format="currency0",
+    description="Purchases less sales. Trades only: this data has no "
+                "deposits, withdrawals or transfers, so it is net buying, "
+                "not money moving in or out of the firm.",
 )
 
 model.connect()
