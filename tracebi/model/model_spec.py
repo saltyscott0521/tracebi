@@ -44,11 +44,11 @@ _TIME_GRAIN = {"dimension", "name", "source", "grain"}
 _VALUE_BINS = {"dimension", "name", "source", "edges", "labels"}
 # Every keyword DataModel.add_measure takes, plus the measure's name.
 _MEASURE = {"name", "column", "agg", "expr", "ratio", "share", "rank", "running",
-            "partition_by", "period_end", "offset", "growth", "to_date",
+            "partition_by", "period_end", "offset", "growth", "to_date", "measure_expr",
             "description", "format", "allow_rate_agg", "allow_additive", "filters"}
 _PAIR = {"ratio", "period_end", "to_date"}
 _TRIPLE = {"offset", "growth"}
-_STR = {"column", "agg", "expr", "share", "rank", "running", "description",
+_STR = {"column", "agg", "expr", "measure_expr", "share", "rank", "running", "description",
         "format"}
 _HOWS = ("left", "inner", "right", "outer")
 

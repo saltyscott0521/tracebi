@@ -20,8 +20,11 @@ full lineage chains.
 
 from __future__ import annotations
 
+import ast
+import copy
+import operator
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Optional
 
 import pandas as pd
@@ -196,6 +199,64 @@ def _filter_leaves(node: "Optional[_FilterNode]") -> "list[_Predicate]":
     return out
 
 
+#: Arithmetic a ``combine`` measure may use over other measures. Nothing else
+#: parses: no calls, attributes, subscripts or comparisons.
+_COMBINE_OPS = {ast.Add: operator.add, ast.Sub: operator.sub,
+                ast.Mult: operator.mul, ast.Div: operator.truediv}
+
+
+def _combine_tree(name: str, expr: str) -> ast.AST:
+    """Parse and check a ``measure_expr``: arithmetic over measure names and
+    numbers. Refused at declaration, so a bad expression never reaches a query."""
+    try:
+        tree = ast.parse(str(expr), mode="eval").body
+    except SyntaxError as exc:
+        raise ValueError(
+            f"Measure '{name}': measure_expr {expr!r} is not arithmetic "
+            f"({exc.msg})."
+        ) from exc
+    for node in ast.walk(tree):
+        if isinstance(node, ast.BinOp):
+            ok = type(node.op) in _COMBINE_OPS
+        elif isinstance(node, ast.UnaryOp):
+            ok = isinstance(node.op, ast.USub)
+        elif isinstance(node, ast.Constant):
+            ok = isinstance(node.value, (int, float)) and not isinstance(node.value, bool)
+        else:   # a name, its load context, or an operator node inside a BinOp
+            ok = isinstance(node, (ast.Name, ast.Load, ast.USub, *_COMBINE_OPS))
+        if not ok:
+            raise ValueError(
+                f"Measure '{name}': measure_expr {expr!r} may only combine "
+                f"measure names and numbers with + - * / ( ). Function calls, "
+                f"columns of the fact and other syntax are not allowed."
+            )
+    return tree
+
+
+def _combine_names(tree: ast.AST) -> list[str]:
+    """The measure names a parsed ``measure_expr`` reads, in order."""
+    return [n.id for n in ast.walk(tree) if isinstance(n, ast.Name)]
+
+
+def measure_references(name: str, definition: dict) -> list[str]:
+    """The other measures one measure definition (a dict of ``add_measure``
+    keywords) reads: a ratio's two, a share/rank/running base, the base of an
+    offset/growth/to_date, and every name in a ``measure_expr``. Columns are not
+    measures and are not listed."""
+    refs: list[str] = []
+    for key in ("share", "rank", "running"):
+        if isinstance(definition.get(key), str):
+            refs.append(definition[key])
+    if isinstance(definition.get("ratio"), (list, tuple)):
+        refs.extend(str(r) for r in definition["ratio"])
+    for key in ("offset", "growth", "to_date"):
+        if isinstance(definition.get(key), (list, tuple)) and definition[key]:
+            refs.append(str(definition[key][0]))
+    if isinstance(definition.get("measure_expr"), str):
+        refs.extend(_combine_names(_combine_tree(name, definition["measure_expr"])))
+    return refs
+
+
 def _filter_columns(node: Any) -> set[str]:
     """Every column a filter dict names, through its ``and``/``or`` groups —
     what a measure's own filters read from the fact."""
@@ -281,6 +342,7 @@ class MeasureDef:
     format: Optional[str] = None               # presentation hint, e.g. "percent"
     allow_rate_agg: bool = False               # author vouched: skip the value guard
     filters: Optional[dict] = None             # simple/expression only: WHERE of this measure
+    measure_expr: Optional[str] = None         # combine: arithmetic over other measures
 
     def to_dict(self) -> dict:
         d = {"name": self.name, "kind": self.kind}
@@ -290,6 +352,8 @@ class MeasureDef:
                 d[key] = val
         if self.filters:
             d["filters"] = dict(self.filters)
+        if self.measure_expr:
+            d["measure_expr"] = self.measure_expr
         if self.ratio:
             d["ratio"] = list(self.ratio)
         if self.share:
@@ -387,6 +451,11 @@ class QuerySpec:
     allow_rate_agg: bool = False                    # skip the value-based rate guard
     order_by: tuple = ()                            # ({"column": str, "desc": bool}, ...)
     limit: Optional[int] = None
+    #: Measures this query's report declares for itself: ``{name: definition}``
+    #: where a definition takes the same keywords as ``add_measure``. They
+    #: exist only for this query; the model is not changed. Stamped with the
+    #: query, so a receipt carries them and ``verify`` replays them.
+    calculated: Any = None
 
     def __post_init__(self):
         # Normalize order_by at construction so EVERY path is forgiving — not
@@ -419,6 +488,10 @@ class QuerySpec:
             d["order_by"] = [dict(o) for o in self.order_by]
         if self.limit is not None:
             d["limit"] = int(self.limit)
+        # Only when the report declared measures of its own: a query without
+        # them stamps byte-for-byte as before.
+        if self.calculated:
+            d["calculated"] = {k: dict(v) for k, v in sorted(self.calculated.items())}
         return d
 
     @classmethod
@@ -429,13 +502,14 @@ class QuerySpec:
             raise ValueError("QuerySpec requires 'measures'.")
         unknown = set(d) - {
             "fact", "measures", "dimensions", "filters", "having", "aggregate",
-            "allow_fanout", "allow_rate_agg", "order_by", "limit",
+            "allow_fanout", "allow_rate_agg", "order_by", "limit", "calculated",
         }
         if unknown:
             raise ValueError(
                 f"Unknown QuerySpec field(s): {sorted(unknown)}. "
                 f"Allowed: fact, measures, dimensions, filters, having, "
-                f"aggregate, allow_fanout, allow_rate_agg, order_by, limit."
+                f"aggregate, allow_fanout, allow_rate_agg, order_by, limit, "
+                f"calculated."
             )
         measures = d["measures"]
         limit = d.get("limit")
@@ -443,7 +517,15 @@ class QuerySpec:
             limit = int(limit)
             if limit < 1:
                 raise ValueError(f"limit must be a positive integer, got {limit}.")
+        calculated = d.get("calculated") or None
+        if calculated is not None and not (
+                isinstance(calculated, dict)
+                and all(isinstance(v, dict) for v in calculated.values())):
+            raise ValueError(
+                "calculated must map each measure name to its definition "
+                "(an object of add_measure keywords).")
         return cls(
+            calculated=dict(calculated) if calculated else None,
             fact=d["fact"],
             measures=list(measures) if isinstance(measures, list) else dict(measures),
             dimensions=tuple(d.get("dimensions") or ()),
@@ -518,6 +600,7 @@ class _Resolved:
     pops: "dict[str, tuple[str, str, int, str]]"  # {output: (base, unit, n, mode)}
     to_dates: "dict[str, tuple[str, str]]"        # {output: (base, reset period)}
     filtered: "dict[str, dict]" = field(default_factory=dict)  # {output: its filters}
+    combines: "dict[str, str]" = field(default_factory=dict)   # {output: arithmetic over measures}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -841,6 +924,7 @@ class DataModel:
         allow_rate_agg: bool = False,
         allow_additive: bool = False,
         filters: Optional[dict[str, Any]] = None,
+        measure_expr: Optional[str] = None,
     ) -> "DataModel":
         """
         Declare a named measure on the model.
@@ -915,19 +999,21 @@ class DataModel:
                                 ("rank", rank), ("running", running),
                                 ("period_end", period_end),
                                 ("offset", offset), ("growth", growth),
-                                ("to_date", to_date))
+                                ("to_date", to_date),
+                                ("measure_expr", measure_expr))
                  if v is not None]
         if len(given) != 1:
             raise ValueError(
                 f"Measure '{name}' must specify exactly one of column=, expr=, "
                 f"ratio=, share=, rank=, running=, period_end=, offset=, "
-                f"growth=, or to_date=, got {given or 'none'}."
+                f"growth=, to_date=, or measure_expr=, got {given or 'none'}."
             )
 
         kind = {"column": "simple", "expr": "expression", "ratio": "ratio",
                 "share": "share", "rank": "rank", "running": "running",
                 "period_end": "period_end", "offset": "offset",
-                "growth": "growth", "to_date": "to_date"}[given[0]]
+                "growth": "growth", "to_date": "to_date",
+                "measure_expr": "combine"}[given[0]]
 
         # share/rank/running are all post-aggregation window measures over a
         # named base measure — none takes an agg.
@@ -1048,6 +1134,16 @@ class DataModel:
                     f"One of: {', '.join(sorted(_PERIOD_FREQ))}."
                 )
             to_date = (base_m, period)
+        elif kind == "combine":
+            # Arithmetic over other measures, computed after aggregation (so a
+            # ratio of totals or a share can be combined). No agg of its own; its
+            # names are checked against the declared measures at expansion.
+            if agg is not None:
+                raise ValueError(
+                    f"Measure '{name}': measure_expr measures take no agg — they "
+                    f"combine other measures' aggregated values."
+                )
+            _combine_tree(name, measure_expr)
         elif kind in ("simple", "expression"):    # these require an agg
             if agg is None:
                 raise ValueError(
@@ -1146,6 +1242,7 @@ class DataModel:
             to_date=tuple(to_date) if to_date else None,
             description=description, format=format,
             allow_rate_agg=bool(allow_rate_agg), filters=filters,
+            measure_expr=measure_expr,
         )
         return self
 
@@ -1469,7 +1566,43 @@ class DataModel:
             limit=limit,
         ))
 
+    def with_measures(self, measures: "dict[str, dict]") -> "DataModel":
+        """A view of this model with extra measures declared on it, for one
+        query. The model itself is not changed: the view shares its connectors
+        and tables, and its own measure table holds the extras. A name the model
+        already declares is refused, so a report cannot shadow a governed
+        definition."""
+        overlay = copy.copy(self)
+        overlay._measures = dict(self._measures)
+        for name, definition in measures.items():
+            if name in self._measures:
+                raise ValueError(
+                    f"Measure '{name}' is already declared on model "
+                    f"'{self.name}'. A report's own measure cannot shadow a "
+                    f"governed one; give it another name."
+                )
+            if not isinstance(definition, dict):
+                raise ValueError(
+                    f"Measure '{name}': its definition must be an object of "
+                    f"add_measure keywords, got {type(definition).__name__}.")
+            try:
+                overlay.add_measure(name, **definition)
+            except TypeError as exc:      # an unknown keyword
+                raise ValueError(f"Measure '{name}': {exc}") from exc
+        return overlay
+
     def execute(self, spec: QuerySpec) -> DataSet:
+        """
+        Run a :class:`QuerySpec` and return a lineage-tracked DataSet.
+
+        A spec that carries ``calculated`` measures runs against a view of the
+        model that declares them (:meth:`with_measures`); the stamp keeps them.
+        """
+        if spec.calculated:
+            return self.with_measures(spec.calculated)._execute(spec)
+        return self._execute(spec)
+
+    def _execute(self, spec: QuerySpec) -> DataSet:
         """
         Run a :class:`QuerySpec` and return a lineage-tracked DataSet.
 
@@ -1514,6 +1647,7 @@ class DataModel:
         partitions = resolved.partitions
         pops = resolved.pops
         to_dates = resolved.to_dates
+        combines = resolved.combines
 
         # A semi-additive rollup is an aggregation (latest-snapshot-then-sum);
         # there is no per-row "period end", so refuse it in the raw-row mode.
@@ -1794,6 +1928,17 @@ class DataModel:
                 metadata={"shares": dict(shares)},
             ))
 
+        # Arithmetic over other measures (measure_expr): each combined value is
+        # computed from the aggregated results, so it is a combination of totals.
+        if combines:
+            result_df = self._apply_combines(result_df, combines)
+            lineage.append(LineageNode(
+                operation="assign",
+                description=("Calculated measure(s): " + ", ".join(
+                    f"{k} = {e}" for k, e in combines.items())),
+                metadata={"combines": dict(combines)},
+            ))
+
         # Window measures — rank and running (cumulative), each over its own base
         # measure descending, with a TOTAL tie-break so the value is
         # reproducible. Applied on the full result, before HAVING/limit, so a
@@ -2028,6 +2173,7 @@ class DataModel:
         pops: dict[str, tuple[str, str, int, str]] = {}
         to_dates: dict[str, tuple[str, str]] = {}
         filtered: dict[str, dict] = {}
+        combines: dict[str, str] = {}
 
         if isinstance(measures, dict):
             if not measures:
@@ -2093,7 +2239,7 @@ class DataModel:
             if (mname in agg_map or mname in ratios or mname in shares
                     or mname in ranks or mname in runnings
                     or mname in period_ends or mname in pops
-                    or mname in to_dates):
+                    or mname in to_dates or mname in combines):
                 return
             if mname not in self._measures:
                 raise ValueError(
@@ -2146,6 +2292,10 @@ class DataModel:
                 base_m, period = m.to_date
                 _expand(base_m, seen + (mname,))     # the measure accumulated
                 to_dates[m.name] = (base_m, period)
+            elif m.kind == "combine":
+                for ref in _combine_names(_combine_tree(m.name, m.measure_expr)):
+                    _expand(ref, seen + (mname,))    # every measure it combines
+                combines[m.name] = m.measure_expr
             else:  # ratio
                 num, den = m.ratio
                 _expand(num, seen + (mname,))
@@ -2156,7 +2306,7 @@ class DataModel:
             _expand(n, ())
         return _Resolved(agg_map, derived, ratios, shares, ranks,
                          runnings, period_ends, partitions, pops, to_dates,
-                         filtered)
+                         filtered, combines)
 
     def _apply_derived(
         self,
@@ -2220,6 +2370,34 @@ class DataModel:
                 continue
             denominator = out[den].replace(0, pd.NA)
             out[name] = out[num] / denominator
+        return out
+
+    def _apply_combines(
+        self,
+        df: "pd.DataFrame",
+        combines: dict[str, str],
+    ) -> "pd.DataFrame":
+        """Compute each ``measure_expr`` from the aggregated columns: a column
+        arithmetic over the named measures' totals. A zero denominator gives
+        NaN, as a ratio does, never infinity."""
+        out = df.copy()
+
+        def _eval(node: ast.AST) -> "pd.Series":
+            if isinstance(node, ast.Expression):
+                return _eval(node.body)
+            if isinstance(node, ast.BinOp):
+                left, right = _eval(node.left), _eval(node.right)
+                if isinstance(node.op, ast.Div):
+                    right = right.where(right != 0)
+                return _COMBINE_OPS[type(node.op)](left, right)
+            if isinstance(node, ast.UnaryOp):
+                return -_eval(node.operand)
+            if isinstance(node, ast.Constant):
+                return pd.Series(float(node.value), index=out.index)
+            return out[node.id].astype(float)            # ast.Name: a measure
+
+        for name, expr in combines.items():
+            out[name] = _eval(_combine_tree(name, expr))
         return out
 
     def _apply_shares(
@@ -3003,6 +3181,14 @@ class DataModel:
         pairs relative to the query — e.g. ``("filters.region", "…")`` — so
         a caller can prefix its own location (``sections[0].data.query``).
         """
+        if spec.calculated:
+            # The query's own measures are declared on a view of the model;
+            # check against that view. A definition that does not fit is an error.
+            try:
+                view = self.with_measures(spec.calculated)
+            except ValueError as exc:
+                return [("calculated", str(exc))], []
+            return view.check_query_spec(replace(spec, calculated=None))
         errors: list[tuple[str, str]] = []
         warnings: list[tuple[str, str]] = []
 
@@ -3238,6 +3424,9 @@ class DataModel:
         them via ``_resolve_measures``. Raises ``ValueError`` when the
         fact or measures cannot be resolved; check the spec first.
         """
+        if spec.calculated:
+            return self.with_measures(spec.calculated).spec_result_columns(
+                replace(spec, calculated=None))
         fact_def = self._facts.get(spec.fact)
         if fact_def is None:
             raise ValueError(

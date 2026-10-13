@@ -9,6 +9,8 @@ is the shorter road the README prints: init's own next steps, typed as printed.
 
 import json
 
+import pytest
+
 from tests.e2e.conftest import manifests, run_cli
 
 
@@ -151,3 +153,53 @@ def test_a_filter_on_a_column_the_fact_lacks_is_refused_by_name(scaffolded):
     code, out = run_cli("report", "build", "sample_model/sample_dashboard")
     assert code != 0
     assert "large_order_revenue" in out and "quantity" in out, out
+
+
+def _replace_report_data(scaffolded, measures, data):
+    """Swap the sample dashboard's report-level measures and bindings for these."""
+    report = scaffolded / "reports" / "sample_model" / "sample_dashboard" / "report.json"
+    doc = json.loads(report.read_text())
+    doc["measures"] = {"sample_model": measures}
+    doc["data"] = data
+    report.write_text(json.dumps(doc, indent=2))
+
+
+def test_a_report_calculates_its_own_measures_and_the_model_does_not_change(scaffolded):
+    """A report declares measures of its own (a filtered split of revenue, and
+    arithmetic over the two). They are labelled as calculated in this report,
+    re-check clean, and the shared model still does not declare them."""
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    code, out = run_cli("report", "build", "sample_model/sample_dashboard")
+    assert code == 0, out
+    [manifest] = manifests(scaffolded)
+    code, out = run_cli("verify", str(manifest), "--strict")
+    assert code == 0 and "REPRODUCES" in out, out
+
+    receipt = json.loads(manifest.read_text())
+    [binding] = [b for b in receipt["embedded_data"] if b["name"] == "split"]
+    assert set(binding["query_spec"]["calculated"]) == {
+        "big_minus_small", "big_orders", "small_orders"}
+    labelled = {m["name"]: m["label"]
+                for m in receipt["semantic_contract"]["sample_model"]["slice"]["measures"]
+                if m.get("scope") == "report"}
+    assert labelled == {name: "calculated in this report" for name in
+                        ("big_minus_small", "big_orders", "small_orders")}
+
+    from tracebi.model_registry import get_model
+    model = get_model("sample_model")
+    assert "big_orders" not in model.measures()
+    with pytest.raises(ValueError, match="not declared"):
+        model.query(fact="fact_orders", measures=["big_orders"])
+
+
+def test_a_report_measure_cannot_shadow_a_model_measure(scaffolded):
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    _replace_report_data(scaffolded, {"revenue": {"column": "revenue", "agg": "sum"}},
+                         {"clash": {"model": "sample_model", "query": {
+                             "fact": "fact_orders", "measures": ["revenue"]}}})
+
+    code, out = run_cli("report", "build", "sample_model/sample_dashboard")
+    assert code != 0
+    assert "already declared" in out, out

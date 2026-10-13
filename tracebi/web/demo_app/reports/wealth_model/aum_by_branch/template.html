@@ -65,6 +65,17 @@
   </div>
 
   <div class="tb-card">
+    <h2>Net new assets by branch</h2>
+    <p>Purchases less sales, from the activity log. This report calculates it
+      itself; the shared model does not carry it.</p>
+    <table data-tb-figure="table" data-tb-binding="net_new_by_branch"
+           data-tb-columns="dim_branch.branch,purchases,sales,net_new_assets"
+           data-tb-labels="dim_branch.branch=Branch; purchases=Purchases; sales=Sales; net_new_assets=Net new assets"
+           data-tb-formats="purchases=currency0; sales=currency0; net_new_assets=currency0"
+           id="tbl-net-new"></table>
+  </div>
+
+  <div class="tb-card">
     <h2>Branch summary</h2>
     <table data-tb-figure="table" data-tb-binding="branch_summary"
            data-tb-columns="dim_branch.branch,dim_branch.region,market_value,unrealized_gain,gain_pct"

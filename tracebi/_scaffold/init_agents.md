@@ -155,6 +155,13 @@ from `report.json`:
   'purchase'})` (YAML: `filters:` on the measure). It restricts only that
   measure, so a query's own filters still narrow every measure; the receipt
   stamps the filter, and `verify` re-runs it.
+- A report can calculate its own measures: a `"measures"` block in its
+  `report.json`, keyed by model (`{"sample_model": {"big_minus_small":
+  {"measure_expr": "big_orders - small_orders"}}}`), takes the model's measure
+  keywords. A binding that lists one by name gets it for that query only; the
+  model is not changed, and a name the model already declares is refused. The
+  receipt labels these "calculated in this report". Promote one into the model
+  (a reviewed edit) to make it shared.
 - **Scenarios are the one place a page computes.** A
   `data-tb-scenario` block lets the reader ask "what if": `data-tb-input`
   fields, a `data-tb-preset` picker (`data-tb-key`, `data-tb-fill`,

@@ -480,6 +480,11 @@ freely, never re-source.
   A measure can carry its own filter (`add_measure('purchases', column='amount',
   agg='sum', filters={'activity_type': 'purchase'})`, or `filters:` in the YAML):
   it restricts that measure only, and the receipt stamps the filter.
+  A report can also calculate its own measures: a `measures` block in its
+  `report.json`, keyed by model, takes the model's measure keywords. They serve
+  that report's bindings only, the model is not changed, and the receipt labels
+  them "calculated in this report". Promote a reused one into the model through
+  review.
   Missing a *column the measure needs*? That is a phase-① change: sink it in the
   transform. A fresh gateway process sees new vocabulary on its next call (stdio
   one-shot clients get this for free; a long-running server must be restarted —

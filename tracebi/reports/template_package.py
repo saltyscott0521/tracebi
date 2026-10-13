@@ -58,6 +58,8 @@ import math
 import os
 import re
 import sys
+import inspect
+from dataclasses import replace
 from datetime import datetime
 from typing import Optional
 
@@ -84,6 +86,7 @@ from tracebi.reports.report import (
     ARTIFACT_MANIFEST_SCHEMA_VERSION, PARQUET_MANIFEST_SCHEMA_VERSION,
     Report, ReportManifest, TableSection,
 )
+from tracebi.model.data_model import DataModel, measure_references
 from tracebi.spec import DataRef
 
 #: Files that make up a package. ``report.json`` and ``template.html`` are
@@ -331,6 +334,62 @@ class _PythonDerivedSection(TableSection):
         return d
 
 
+#: The keywords a report-level measure definition may take: exactly the
+#: ``add_measure`` keywords, so a report declares a measure in the model's words.
+_REPORT_MEASURE_KEYWORDS = frozenset(
+    inspect.signature(DataModel.add_measure).parameters) - {"self", "name"}
+
+
+def _report_measures(raw, path: str) -> dict[str, dict[str, dict]]:
+    """The report.json ``measures`` block: ``{model: {name: definition}}``.
+
+    A structural check only (discovery's rule): the keys are closed to the
+    ``add_measure`` keywords. Whether a definition fits its model is checked
+    when a query runs, where a real error can be reported.
+    """
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"{path}: 'measures' maps a model name to its report-level "
+            f"measures, e.g. {{\"wealth_model\": {{\"net_new\": {{...}}}}}}.")
+    out: dict[str, dict[str, dict]] = {}
+    for model_name, defs in raw.items():
+        if not isinstance(defs, dict) or not defs:
+            raise ValueError(
+                f"{path}: measures['{model_name}'] must be an object of named "
+                f"measure definitions.")
+        out[model_name] = {}
+        for mname, definition in defs.items():
+            if not isinstance(definition, dict):
+                raise ValueError(
+                    f"{path}: measure '{mname}' of '{model_name}' must be an "
+                    f"object of add_measure keywords.")
+            unknown = set(definition) - _REPORT_MEASURE_KEYWORDS
+            if unknown:
+                raise ValueError(
+                    f"{path}: measure '{mname}' of '{model_name}' has unknown "
+                    f"key(s) {sorted(unknown)}. One of: "
+                    f"{', '.join(sorted(_REPORT_MEASURE_KEYWORDS))}.")
+            out[model_name][str(mname)] = dict(definition)
+    return out
+
+
+def _measures_for_query(names, defs: dict[str, dict]) -> dict[str, dict]:
+    """The report-level definitions a query needs: the names it lists, plus
+    every report-level measure those read, transitively. Nothing else, so one
+    binding's receipt never carries another binding's calculations."""
+    needed: dict[str, dict] = {}
+    stack = [str(n) for n in names]
+    while stack:
+        n = stack.pop()
+        if n in needed or n not in defs:
+            continue
+        needed[n] = defs[n]
+        stack.extend(measure_references(n, defs[n]))
+    return needed
+
+
 class TemplatePackage:
     """A loaded freeform report package (architecture §7).
 
@@ -393,6 +452,23 @@ class TemplatePackage:
                     f"an object with 'model' and 'query'."
                 )
             self.bindings[binding_name] = DataRef.from_dict(ref_raw)
+
+        # Report-level measures: calculations this report declares for its own
+        # bindings, not added to the shared model. Each binding carries exactly
+        # the ones its query needs, so the stamped query (and so the receipt and
+        # verify) holds the definition the number was computed under.
+        self.calculated_measures = _report_measures(
+            declaration.get("measures"), report_json_path)
+        for binding_name, ref in list(self.bindings.items()):
+            defs = self.calculated_measures.get(ref.model)
+            if not defs or not isinstance(ref.query.measures, (list, tuple)):
+                continue
+            needed = _measures_for_query(ref.query.measures, defs)
+            if needed:
+                self.bindings[binding_name] = DataRef(
+                    model=ref.model,
+                    query=replace(ref.query, calculated={
+                        **(ref.query.calculated or {}), **needed}))
 
         # Opt-in. Absent: controls subset stamped rows and value figures stay
         # still. Present: a filter is a selection DataModel re-runs.
@@ -1185,9 +1261,22 @@ class TemplatePackage:
                        key=lambda f: f["name"])
         dims = sorted((d for d in info["dimensions"] if d["name"] in dim_names),
                       key=lambda d: d["name"])
-        measures = sorted(
-            (m for m in info["measures"] if m["name"] in measure_names),
-            key=lambda m: m["name"])
+        measures = [m for m in info["measures"] if m["name"] in measure_names]
+        # The report's own measures, labelled as such: a calculation this report
+        # made, never part of the shared model's vocabulary.
+        calculated: dict[str, dict] = {}
+        for ref in self.bindings.values():
+            if ref.model == model_name and ref.query.calculated:
+                calculated.update(ref.query.calculated)
+        if calculated:
+            view = model.with_measures(calculated).measures()
+            for name in sorted(calculated):
+                measures.append({
+                    **view[name].to_dict(),
+                    "scope": "report",
+                    "label": "calculated in this report",
+                })
+        measures = sorted(measures, key=lambda m: m["name"])
         table_names = {f["table"] for f in facts} | {d["table"] for d in dims}
         tables = sorted((t for t in info["tables"] if t["name"] in table_names),
                         key=lambda t: t["name"])
@@ -1226,7 +1315,10 @@ class TemplatePackage:
             measures = ref.query.measures
             if not isinstance(measures, (list, tuple)):
                 continue
-            declared = models[ref.model].measures()
+            model = models[ref.model]
+            if ref.query.calculated:
+                model = model.with_measures(ref.query.calculated)
+            declared = model.measures()
             for name in measures:
                 mdef = declared.get(name)
                 if mdef is not None and mdef.description:

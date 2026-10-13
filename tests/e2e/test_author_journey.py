@@ -139,7 +139,7 @@ def test_status_and_the_review_snapshot(scaffolded):
     assert code == 0, out
     code, out = run_cli("report", "status", "sample_model/sample_dashboard")
     assert code == 0, out
-    assert "8 figure(s) — 8 query-backed, 0 python-derived, 0 unverified" in out
+    assert "9 figure(s) — 9 query-backed, 0 python-derived, 0 unverified" in out
 
     code, out = run_cli("report", "snapshot", "sample_model/sample_dashboard")
     assert code == 0, out

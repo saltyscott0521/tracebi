@@ -245,6 +245,30 @@ def _presentation() -> dict:
         "report_json": {
             "example": REPORT_JSON_EXAMPLE,
             "libs": REPORT_JSON_LIBS_NOTE,
+            "report_measures": {
+                "key": "measures",
+                "shape": "{\"<model>\": {\"<name>\": {<add_measure keywords>}}}",
+                "example": "\"measures\": {\"wealth_model\": {\"purchases\": "
+                           "{\"column\": \"amount\", \"agg\": \"sum\", \"filters\": "
+                           "{\"activity_type\": \"purchase\"}}, \"sales\": "
+                           "{\"column\": \"amount\", \"agg\": \"sum\", \"filters\": "
+                           "{\"activity_type\": \"sale\"}}, \"net_new_assets\": "
+                           "{\"measure_expr\": \"purchases - sales\", \"format\": "
+                           "\"currency0\"}}}",
+                "note": "This report's own calculations, not the shared model's. "
+                        "Each takes the same keywords as add_measure (simple, "
+                        "expression, ratio, share, filters, measure_expr, and "
+                        "the rest), so the vocabulary is the model's. A binding "
+                        "that lists one by name in its measures gets it for that "
+                        "query only; the model stays as it is, and a name the "
+                        "model already declares is refused. The receipt labels "
+                        "them 'calculated in this report' (the semantic contract "
+                        "carries scope: report), and the stamped query carries "
+                        "their definitions, so verify re-runs them. Report "
+                        "calculations are re-runnable, never a governed "
+                        "definition: promote one into the model to make it "
+                        "shared.",
+            },
         },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
@@ -975,6 +999,18 @@ def describe(brief: bool = False) -> dict:
                             "total. rank + share + running(share) is the whole "
                             "concentration table, governed — what report.py did. "
                             "partition_by restarts the cumulative per group.",
+                },
+                {
+                    "kind": "combine",
+                    "args": ["measure_expr"],
+                    "example": "add_measure('net_new', measure_expr='purchases - sales', "
+                               "format='currency0')",
+                    "note": "Arithmetic over OTHER measures (names and numbers, "
+                            "+ - * / and parentheses), computed after aggregation "
+                            "from their totals, so a combination of governed "
+                            "numbers. It takes no agg of its own. A zero "
+                            "denominator gives NaN. Used for net new assets, "
+                            "spread between two filtered totals, and the like.",
                 },
                 {
                     "kind": "period_end",

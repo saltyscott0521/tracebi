@@ -2,7 +2,21 @@
   "name": "Sample Dashboard",
   "author": "tracebi init",
   "description": "Every figure claims a stamped binding. Edit template.html to reshape the page; nothing re-runs the pandas.",
+  "measures": {
+    "sample_model": {
+      "big_orders": {"column": "revenue", "agg": "sum", "filters": {"qty": {"gte": 10}}, "format": "currency0"},
+      "small_orders": {"column": "revenue", "agg": "sum", "filters": {"qty": {"lt": 10}}, "format": "currency0"},
+      "big_minus_small": {"measure_expr": "big_orders - small_orders", "format": "currency0"}
+    }
+  },
   "data": {
+    "split": {
+      "model": "sample_model",
+      "query": {
+        "fact": "fact_orders",
+        "measures": ["big_minus_small", "big_orders", "small_orders"]
+      }
+    },
     "kpis": {
       "model": "sample_model",
       "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }

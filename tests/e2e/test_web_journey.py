@@ -48,7 +48,9 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
     listed = {r["name"]: r for r in c.get("/api/reports").json()}
     assert "sample_model/sample_dashboard" in listed
     # The Map draws which measures a report asks for, from its bindings alone.
-    assert listed["sample_model/sample_dashboard"]["measures"] == ["orders", "revenue", "units"]
+    # The report's own calculations (big/small/split) are listed beside the model's.
+    assert listed["sample_model/sample_dashboard"]["measures"] == [
+        "big_minus_small", "big_orders", "orders", "revenue", "small_orders", "units"]
     # ...and the transform a model's pipeline runs, by the name it is run under.
     pipelines = {p["pipeline"]: p for p in c.get("/api/pipelines").json()}
     assert pipelines["sample_model"]["transform"] == "sample_transform"
@@ -370,7 +372,7 @@ def test_the_build_panel_reads_the_data_and_the_checks(served, monkeypatch, scaf
     assert read_exhibits(discovery_dir(str(scaffolded))) == [], "reading state is not an exhibit"
 
     data = {b["name"]: b for b in state["bindings"]}
-    assert set(data) == {"kpis", "top_region", "by_region", "region_detail", "spare"}
+    assert set(data) == {"split", "kpis", "top_region", "by_region", "region_detail", "spare"}
     kpis = data["kpis"]
     assert kpis["model"] == "sample_model" and kpis["rows"] == 1
     assert kpis["columns"] == ["revenue", "orders", "units"] and "kpi-revenue" in kpis["used_by"]

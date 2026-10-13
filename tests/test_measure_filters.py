@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from tracebi import DataModel, MemoryConnector
+from tracebi.model.data_model import QuerySpec
 
 
 @pytest.fixture
@@ -94,3 +95,66 @@ def test_filters_on_a_derived_measure_are_refused(model):
     with pytest.raises(ValueError, match="simple and expression"):
         model.add_measure("bad_ratio", ratio=("purchases", "total"),
                           filters={"activity_type": "purchase"})
+
+
+# ── Report-level measures (a query's own `calculated`, and measure_expr) ──
+
+_CALC = {
+    "buys": {"column": "amount", "agg": "sum",
+             "filters": {"activity_type": "purchase"}},
+    "sells": {"column": "amount", "agg": "sum",
+              "filters": {"activity_type": "sale"}},
+    "net_new": {"measure_expr": "buys - sells"},
+}
+
+
+def test_a_calculated_measure_exists_for_one_query_and_not_the_model(model):
+    view = model.with_measures({"purchases_only": _CALC["buys"]})
+    assert _values(view.query(fact="fact_activity",
+                              measures=["purchases_only"]), "purchases_only") == [450.0]
+    assert "purchases_only" not in model.measures()
+    with pytest.raises(ValueError, match="not declared"):
+        model.query(fact="fact_activity", measures=["purchases_only"])
+
+
+def test_net_new_is_purchases_less_sales(model):
+    spec = QuerySpec(fact="fact_activity", measures=["net_new", "buys", "sells"],
+                     calculated=_CALC)
+    out = model.execute(spec).to_pandas()
+    assert out[["buys", "sells", "net_new"]].iloc[0].tolist() == [450.0, 100.0, 350.0]
+
+
+def test_the_stamp_carries_the_definitions_and_replays_to_the_same_bytes(model):
+    spec = QuerySpec(fact="fact_activity", measures=["net_new"], calculated=_CALC)
+    ds = model.execute(spec)
+    [transform] = [n for n in ds.lineage if n.operation == "transform"]
+    stamped = transform.metadata["query_spec"]
+    assert stamped["calculated"]["net_new"] == {"measure_expr": "buys - sells"}
+    assert model.execute(QuerySpec.from_dict(stamped)).fingerprint() == ds.fingerprint()
+
+
+def test_a_calculated_measure_cannot_shadow_a_governed_one(model):
+    with pytest.raises(ValueError, match="already declared"):
+        model.with_measures({"total": {"column": "amount", "agg": "sum"}})
+
+
+def test_an_unknown_keyword_in_a_calculated_definition_is_refused(model):
+    with pytest.raises(ValueError, match="Measure 'x'"):
+        model.with_measures({"x": {"colum": "amount", "agg": "sum"}})
+
+
+@pytest.mark.parametrize("expr", ["sum(total)", "purchases.x", "purchases > 0"])
+def test_measure_expr_is_arithmetic_over_measures_only(model, expr):
+    with pytest.raises(ValueError, match="measure_expr"):
+        model.add_measure("bad", measure_expr=expr)
+
+
+def test_check_query_spec_validates_calculated_measures(model):
+    ok = QuerySpec(fact="fact_activity", measures=["net_new"], calculated=_CALC)
+    errors, _warnings = model.check_query_spec(ok)
+    assert errors == []     # the undeclared filter column is a warning, not an error
+    bad = QuerySpec(fact="fact_activity", measures=["net_new"],
+                    calculated={"net_new": {"measure_expr": "missing - sells",
+                                            "agg": "sum"}})
+    errors, _ = model.check_query_spec(bad)
+    assert errors
