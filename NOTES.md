@@ -111,6 +111,68 @@ sign-in loops; and only `/mcp` is documented as forwarded. Check with
 
 ---
 
+## 2026-10-07 — Handoff: type, Refresh log, Code views, one app for building (#226–#239)
+
+A long session (Oct 5–7). Everything below is **merged** on main; nothing is in
+flight. Later work (the navigation redesign, #240+) landed after this and may
+have moved pages around: check names against the current app.
+
+**What shipped, and why**
+- **Look:** Hanken Grotesk + IBM Plex Mono replace Geist in the app; the report
+  stylesheet (`tracebi.css`) matches the app and inlines Hanken Grotesk as base64
+  (strict CSP unchanged). Licences in `NOTICE`. (#226)
+- **Refresh log:** Run all / a step's Run start a background run
+  (`POST /api/pipelines/{name}/runs`); output is captured per thread
+  (`tracebi/pipeline/runlog.py`, ContextVar) into
+  `data/logs/pipelines/<name>/<id>.log` and polled by byte offset. The recording
+  core is `tracebi/pipeline/run_record.py`, shared by the app and
+  `tracebi run-pipeline`, so both appear in one Runs list; a finished run lists
+  the reports it rebuilt. Reading a log needs `analyst`. (#227, #230)
+- **Bug found on the way:** a pipeline released only its own model's warehouse
+  handle, so refreshing `portfolio_model` failed once `saas_model` (same
+  `warehouse.duckdb`) was loaded. Now every model is released. (#227)
+- **Code views:** read-only Code tab on Data model and Refresh, View code on
+  Sources, Explore shows the query as Python and as a report.json binding. (#228)
+- **Explore speaks the model's language:** named measures (only those a fact can
+  run: `runnable_measures` in `info()`), results in the declared formats via the
+  report build's own formatting code (`display` beside `data`), NaN/inf as null.
+  (#231, #235)
+- **New projects follow the convention:** `tracebi init` and the `--template`
+  starters write `pipelines/<model>.py` and put reports under `reports/<model>/`.
+  (#229, #232)
+- **Report page:** one action row, a Download menu, full-width open report;
+  Runs uses the same verdict words as Reports. (#233)
+- **One app for building:** `tracebi dev <name>` opens the app with Build mode on;
+  `--classic` keeps the stdlib preview. Build panel gained Data and Checks;
+  a project feed shows the agent's exhibits and your notes before any report
+  exists. (#236) The dev app releases the warehouse between requests and a write
+  waits up to 10s for another process's read, so `run-transform` works with the
+  app open. (#237) The preview formats numbers like the build. (#238)
+- **Warehouse view** on Sources: tables, row counts, column profiles, per-table
+  sink-contract status in the locked wording. (#239)
+
+**Not done**
+- Runs page waits on `/api/desk` for verdicts (about 0.75s slower); caching the
+  desk check server-side would fix Reports and Runs together.
+- A run row left `running` by a killed process (SIGKILL) never clears and keeps
+  Run all disabled; needs a heartbeat or stale-row sweep. Ctrl-C is handled.
+- Grouping by a dimension the fact can't join returns a 500 (DuckDB binder
+  error), not a 400.
+- Contract status fingerprints each certified table in full: fine on the demo
+  projects, untuned for very large warehouses.
+
+**Gotchas for whoever continues**
+- Subagent worktrees import `tracebi` from the MAIN checkout (editable install):
+  run with `PYTHONPATH=<worktree>` (the literal path; `export PYTHONPATH=$PWD`
+  was refused by the sandbox). The UI smoke test starts a subprocess server and
+  needs it too.
+- `ui_audit` `slow-page` is a timing check; under machine load a different page
+  trips each run. Re-run on a quiet machine before believing it.
+- Two journeys in `tests/e2e/test_pipeline_journey.py` hand-built the old layout
+  before #229; init now scaffolds it, so don't re-add that setup.
+- Chart axis ticks in Explore still use K/M shorthand (a percent measure's axis
+  reads 0.97 while its tooltip reads 97.0%); table headers there are raw names.
+
 ## 2026-09-24 — Off Vercel, design policy in the stylesheet, docs tidied
 
 **Hosting.** tracebi.com (site) and tracebi.com/app (the demo) moved from Vercel
