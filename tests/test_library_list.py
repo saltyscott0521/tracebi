@@ -123,7 +123,7 @@ def test_the_reports_list_carries_library_columns(tmp_path, monkeypatch):
     }
     assert weekly_row["past_builds"] == 2
     assert weekly_row["last_change"] == _iso(_TEMPLATE_MTIME)
-    assert "owner" not in weekly_row
+    assert weekly_row["owner"] is None and weekly_row["folder"] == "shelf"   # never published from a draft
 
     plain_row = by_name["shelf/plain"]
     assert plain_row["schedule"] is None
@@ -142,7 +142,7 @@ def test_the_reports_list_carries_library_columns(tmp_path, monkeypatch):
     assert code_row["last_run"] is None
     assert code_row["past_builds"] == 0
     assert code_row["last_change"] is None
-    assert "owner" not in code_row
+    assert code_row["owner"] is None
 
 
 def test_a_broken_schedule_block_does_not_fail_the_list(tmp_path, monkeypatch):
@@ -172,6 +172,6 @@ def test_a_broken_schedule_block_does_not_fail_the_list(tmp_path, monkeypatch):
         row = next(r for r in res.json() if r["name"] == "shelf/broken")
         assert row["schedule"] is None
         assert row["last_change"] is not None
-        assert "owner" not in row
+        assert row["owner"] is None
     finally:
         _forget_shelf()

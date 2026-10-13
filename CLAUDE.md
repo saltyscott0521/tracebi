@@ -436,6 +436,15 @@ Three things to preserve when touching this:
    own. `accepts: checkable` in `_folder.yaml` binds everyone, admins included.
    No `_folder.yaml` anywhere means no requests: roles decide, as before.
 
+6. **`my-published/<sign-in name>` is a person's own folder** (`permissions.personal_folder`,
+   `_personal_level`). Its owner holds Publish there; anyone else holds only what
+   a `_folder.yaml` *inside it* grants (a library-wide file never reaches in).
+   Only a person with both a sign-in name and a sign-in role has one; the shared
+   token, the CLI, the scheduler and an app without sign-in act as no one, hold
+   Manage everywhere and get `personal: null` from `/api/folders`. Not offered
+   under `TRACEBI_LIBRARY_MOUNTS`. Permissions are displayed in the app, never
+   edited there: they live in the file.
+
 Enforcement lives in the middleware, not in the routers — one place, and it
 avoids touching the router imports that tests rebind for isolation.
 
@@ -725,6 +734,9 @@ GET  /api/drafts/{owner}/{kind}/{path}/preview       → the draft rendered in m
 GET  /api/drafts/{owner}/{kind}/{path}/impact        → model draft only: each published report that reads the model is unchanged / moves (figures, old and new) / breaks / not_built, from re-running its last build's queries against the draft (owner or admin)
 POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft; body {note, accept_impact, folder}; a report goes to `folder` (default its own path): Publish there → 200 published, only Build → 202 a publish request, less → 403; `accepts: checkable` folders refuse non-re-runnable reports (422); a model that moves or breaks reports is 409 with the impact until accept_impact; 403 when the published model names `owners` and the caller is neither one nor admin (analyst; owner or admin)
 GET  /api/publish-requests?status=                   → the caller's own requests and those into folders where they hold Publish
+GET  /api/folders                                    → the folders the caller may see, their own `My published` (`my-published/<sign-in name>`; `personal` is null with no sign-in identity) first; each with level, mode (publish directly / request), accepts, and read-only permissions for Manage and a personal folder's owner
+GET  /api/drafts/{owner}/{kind}/{path}/destinations  → where a report draft may go for the caller, each `mode: publish|request` (owner or admin)
+GET  /api/reports now also carries `folder` and `owner` (last publisher, or the owner of a My published folder); /api/publish-requests rows carry `can_decide`
 POST /api/publish-requests/{id}/approve|reject       → publish the request's snapshot (records approver and time) / reject with a {note}; needs Publish on the destination at decision time (analyst)
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
 GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not

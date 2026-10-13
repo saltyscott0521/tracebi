@@ -46,6 +46,14 @@ publish and request paths enforce it (``tracebi/drafts.py``). An unknown value
 makes the file malformed, and a malformed file is read as ``checkable`` (the
 strict answer) for this purpose.
 
+**My published.** Each signed-in person has a folder of their own,
+``my-published/<their sign-in name>/`` (:func:`personal_folder`), where they hold
+Publish: reports there are shareable and schedulable without the shared
+folders. Nobody else sees it unless a ``_folder.yaml`` inside it grants them
+View (the library's own file never reaches in). Admins and the no-identity
+actors keep Manage as everywhere. A person with no sign-in name and role (the
+shared gateway token, the CLI, an app with no sign-in) has no personal folder.
+
 Purposes (``open_report(..., purpose=)``) map to levels: ``view`` and
 ``source`` are View, ``build`` is Build, ``schedule`` and ``manage`` (changing
 what is published) are Publish. Manage itself is for changing permissions.
@@ -70,6 +78,8 @@ _PURPOSE_LEVEL = {"view": VIEW, "source": VIEW, "build": BUILD,
                   "schedule": PUBLISH, "manage": PUBLISH}
 _ROLE_CEILING = {"viewer": VIEW, "analyst": PUBLISH}
 ACCEPTS = ("labelled", "checkable")
+#: The library folder that holds each signed-in person's own published folder.
+PERSONAL_ROOT = "my-published"
 
 
 class NotPermitted(PermissionError):
@@ -208,10 +218,52 @@ def granted_level(name: str, principal: Optional[Principal] = None, *,
     if ceiling == MANAGE:
         return MANAGE
     root, relative = locate(name, reports_dir)
+    if name.startswith(PERSONAL_ROOT + "/"):
+        return min(ceiling, _personal_level(root, name, who))
     rule = _nearest_rule(root, relative) if relative is not None else None
     if rule is None:
         return ceiling
     return min(ceiling, rule.level_of(who))
+
+
+def _personal_level(root: Path, name: str, who: Principal) -> int:
+    """The level on a report under ``my-published/<person>/``: its owner holds
+    Publish; anyone else holds only what a ``_folder.yaml`` inside that
+    personal folder grants. A rule above it (the library's own) never reaches
+    in, so a public folder's ``view: ['*']`` does not expose it."""
+    parts = name.split("/")[:-1]               # my-published, <person>, ...
+    mine = len(parts) > 1 and parts[1] == personal_slug(who)
+    best = PUBLISH if mine else NONE
+    for depth in range(len(parts), 1, -1):
+        rule = _rule_in(root.joinpath(*parts[:depth]))
+        if rule is not None:
+            return max(best, rule.level_of(who))
+    return best
+
+
+def personal_slug(principal: Optional[Principal] = None) -> Optional[str]:
+    """The folder name of the person's own published folder, or ``None``.
+
+    Only a signed-in person has one: the name and a sign-in role are both
+    needed. The shared gateway token, the CLI, the scheduler and an app with
+    no sign-in act as no one in particular (and hold Manage everywhere), so
+    there is no "mine" to point at. Under ``TRACEBI_LIBRARY_MOUNTS`` the
+    library is several labelled roots with no place for it, so there is none.
+    """
+    from tracebi.drafts import slug_owner
+    from tracebi.report_paths import parse_library_mounts
+
+    who = principal or current_principal()
+    if not who.name or not who.role or parse_library_mounts() is not None:
+        return None
+    return slug_owner(who.name.removeprefix("mcp:"))
+
+
+def personal_folder(principal: Optional[Principal] = None) -> Optional[str]:
+    """``my-published/<person>``: the person's own published folder, or ``None``
+    when they have none (:func:`personal_slug`)."""
+    slug = personal_slug(principal)
+    return f"{PERSONAL_ROOT}/{slug}" if slug else None
 
 
 def folder_accepts(name: str, *,
@@ -227,6 +279,36 @@ def folder_accepts(name: str, *,
     root, relative = locate(name, reports_dir)
     rule = _nearest_rule(root, relative) if relative is not None else None
     return rule.accepts if rule is not None else ACCEPTS[0]
+
+
+def folder_level(folder: str, principal: Optional[Principal] = None) -> int:
+    """The level *principal* holds on library *folder* (a path, which need not
+    exist yet): what they would hold on a report put straight inside it."""
+    return granted_level(f"{folder}/x", principal)
+
+
+def describe_folder(folder: str, *,
+                    reports_dir: Optional[Union[str, os.PathLike]] = None) -> dict:
+    """What the rule over *folder* says, for showing it (never for deciding):
+    the ``_folder.yaml`` that applies (``file``, a path below its library root,
+    or ``None`` when none does), the names granted each level, what the
+    folder accepts, and whether the file is malformed (then it grants nothing)."""
+    from tracebi.report_paths import locate
+
+    root, relative = locate(f"{folder}/x", reports_dir)
+    if relative is None:
+        rule = None
+    elif folder.startswith(PERSONAL_ROOT + "/"):
+        parts = relative.split("/")[:-1]
+        rule = next((r for d in range(len(parts), 1, -1)
+                     if (r := _rule_in(root.joinpath(*parts[:d])))), None)
+    else:
+        rule = _nearest_rule(root, relative)
+    if rule is None:
+        return {"file": None, "grants": {}, "accepts": ACCEPTS[0], "malformed": False}
+    return {"file": rule.path.relative_to(root).as_posix(),
+            "grants": {k: sorted(v) for k, v in (rule.grants or {}).items()},
+            "accepts": rule.accepts, "malformed": rule.grants is None}
 
 
 def can(action: str, name: str, principal: Optional[Principal] = None, *,

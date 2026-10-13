@@ -947,8 +947,9 @@ def list_requests(status: Optional[str] = None) -> list:
             continue
         if status and req.get("status") != status:
             continue
-        if req["owner"] == me or permissions.granted_level(req["destination"]) >= permissions.PUBLISH:
-            found.append(_public_request(req))
+        decides = permissions.granted_level(req["destination"]) >= permissions.PUBLISH
+        if req["owner"] == me or decides:
+            found.append({**_public_request(req), "can_decide": decides})
     return found
 
 
