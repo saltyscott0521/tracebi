@@ -106,6 +106,29 @@ labels) is something a report binds to, like a SQL calculation.
 - Arrives over the connector like a report draft, because the worker, not the
   server, runs it.
 
+### Custom JavaScript in reports
+
+Agents and analysts may write a report's `script.js` remotely, once the safety
+rests on the browser rather than on reviewing code:
+
+1. **Every report frame is sandboxed.** Today the app shows reports in
+   `srcDoc` iframes with no `sandbox` attribute, which run with the app's own
+   origin: a report script can reach `window.parent` and call the app's API as
+   the viewer (the report's `connect-src 'none'` does not stop a call made
+   through the parent). Frames get `sandbox="allow-scripts"` without
+   `allow-same-origin` (an opaque origin: no cookies, no API, no parent DOM);
+   the share link `/r/<name>` gets the same through a
+   `Content-Security-Policy: sandbox allow-scripts` header. Build mode's
+   pointing and change timeline move from reading the frame's DOM to
+   `postMessage`.
+2. **The report CSP stays:** no network, no external scripts.
+3. **Stamped numbers are watched.** Custom JS may draw anything, but if it
+   changes a stamped figure's text the runtime notices and the receipt says
+   "changed on the page by a custom script"; what a script draws is labelled
+   "drawn by custom script".
+4. **Only then** does `write_draft_file` accept `script.js`. Static checks
+   (no `eval`, `fetch`) are a courtesy; the sandbox is the boundary.
+
 ## Why not make everything SQL (considered, rejected)
 
 The case for it is real: one language with no ceiling, what agents write best,
@@ -165,7 +188,8 @@ sandbox), and the roles (viewer, analyst, admin) as folder defaults.
 1. The filtered measure, and report-level calculations (unblocks the field
    test's question).
 2. SQL calculations: read-only, stamped, re-checked by `verify`, able to
-   reference model measures.
+   reference model measures. In parallel: sandbox every report frame and the
+   share link (a security fix on its own), then custom JS in remote drafts.
 3. The impact check on model publishing, and model owners.
 4. Folders, permissions, publishing into folders, "My published".
 5. Personal calculations and promotion.
