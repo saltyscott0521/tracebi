@@ -661,8 +661,15 @@ class DataModel:
         )
     """
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, owners: Optional[list] = None) -> None:
         self.name = name
+        #: Sign-in names allowed to publish a change to this model (admins
+        #: always may); empty means any analyst may.
+        owners = [] if owners is None else owners
+        if not isinstance(owners, (list, tuple)) or not all(
+                isinstance(o, str) and o.strip() for o in owners):
+            raise ValueError("owners: must be a list of non-empty strings (sign-in names)")
+        self.owners = list(owners)
         self._connectors: dict[str, BaseConnector] = {}
         self._tables: dict[str, _TableDef] = {}
         self._relationships: dict[str, _RelationshipDef] = {}
@@ -3698,6 +3705,7 @@ class DataModel:
         }
         return {
             "name": self.name,
+            "owners": list(self.owners),
             "connectors": list(self._connectors.keys()),
             # Where each connector's data lives, so a model file (code) can be
             # traced to its stored data (a file, folder, database or cloud).

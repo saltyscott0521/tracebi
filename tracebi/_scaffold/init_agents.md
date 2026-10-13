@@ -311,7 +311,7 @@ If you cannot reach the project's files, draft over the gateway instead:
 returns), then `publish_draft` once they agree. For a model, `model_impact(path)`
 first: it re-runs the published reports that read it against the draft and lists
 which move or break (or are `not_built`); `publish_draft` is refused until you
-pass `accept_impact=true`, a break included. Drafts live under `drafts/`
+pass `accept_impact=true`, a break included. A model that names `owners` is published only by one of them or an admin: otherwise `publish_draft` is refused naming them, so draft it, show `model_impact` and ask an owner (a draft cannot add you to `owners`). Drafts live under `drafts/`
 and nothing goes live until publish. Publish a model before a report that uses
 it. A declarative model, `models/<name>.yaml` or `.json`, can be drafted this
 way (writing the other form replaces the draft file); a Python model cannot.

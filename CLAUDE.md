@@ -690,7 +690,7 @@ GET  /api/drafts/{owner}/{kind}/{path}/files         → a draft's files (owner 
 GET  /api/drafts/{owner}/{kind}/{path}/version       → a draft's version (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/preview       → the draft rendered in memory; writes nothing (owner or admin)
 GET  /api/drafts/{owner}/{kind}/{path}/impact        → model draft only: each published report that reads the model is unchanged / moves (figures, old and new) / breaks / not_built, from re-running its last build's queries against the draft (owner or admin)
-POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft; body {note, accept_impact}; a model that moves or breaks reports is 409 with the impact until accept_impact (analyst; owner or admin)
+POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft; body {note, accept_impact}; a model that moves or breaks reports is 409 with the impact until accept_impact; 403 when the published model names `owners` and the caller is neither one nor admin (analyst; owner or admin)
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
 GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not
                                                        been built, a page naming the build command

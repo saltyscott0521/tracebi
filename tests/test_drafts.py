@@ -206,3 +206,17 @@ class TestCodeNeverDrafts:
         drafts.start_draft("alice", "models", "m")
         with pytest.raises(drafts.DraftError, match="secrets"):
             drafts.write_draft_file("alice", "models", "m", "m.py", "x")
+
+
+class TestModelOwnersValidation:
+    @pytest.mark.parametrize("bad", ["olive", [""], [1], {"a": 1}])
+    def test_owners_must_be_a_list_of_non_empty_strings(self, bad):
+        from tracebi.model.model_spec import validate_model_spec
+        errors = validate_model_spec({"name": "m", "owners": bad})
+        assert any(e.startswith("owners:") for e in errors)
+
+    def test_a_python_model_refuses_bad_owners_and_info_lists_them(self):
+        from tracebi import DataModel
+        assert DataModel("m", owners=["olive"]).info()["owners"] == ["olive"]
+        with pytest.raises(ValueError, match="owners"):
+            DataModel("m", owners="olive")

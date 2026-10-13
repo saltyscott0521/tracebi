@@ -641,7 +641,11 @@ nothing a draft holds goes live until `publish_draft`.
 4. `publish_draft(kind, path, note)` once they agree. For a model, run
    `model_impact(path)` first and show the person which published reports
    move or break; `publish_draft` is refused until you pass
-   `accept_impact=true`, and a break needs accepting too.
+   `accept_impact=true`, and a break needs accepting too. A model may name
+   `owners`: if you are not one (and not an admin), `publish_draft` is refused
+   with the owners named. Draft it, show `model_impact`, and ask an owner to
+   publish; do not try to add yourself to `owners` in the draft (the published
+   file decides).
 
 **Dev to prod: publish a model before a report that uses it.** A report is
 checked against the published models only, so a report that names a model not

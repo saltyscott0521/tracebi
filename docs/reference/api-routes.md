@@ -148,6 +148,11 @@ accepting too. The accepted impact is stored in the `publish` run's `detail`.
 The MCP tool `model_impact(path)` is the same check, and `publish_draft` takes
 `accept_impact`.
 
+A model that names `owners` in its published file may be published only by one
+of them or an admin; anyone else gets `403` (MCP `ok: false`) naming the owners,
+checked before the impact. They can still draft and read `/impact`. Names only,
+no groups; no owners means any analyst.
+
 ## Report specs
 
 | Method | Path | Role |
