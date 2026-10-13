@@ -51,6 +51,7 @@ equivalent where it matters.
 | `TRACEBI_AUTH_PROXY_HEADER` | header carrying the authenticated user, when a proxy sets it |
 | `TRACEBI_AUTH_PROXY_TRUSTED_IPS` | CIDRs allowed to assert that header |
 | `TRACEBI_AUTH_ROLE_HEADER` | header carrying the caller's role |
+| `TRACEBI_AUTH_GROUPS_HEADER` | header carrying the caller's groups, comma separated, in proxy mode only (the proxy must set or replace it). A folder's `_folder.yaml` matches them: [[folder-yaml]] |
 | `TRACEBI_AUTH_ROLE_MAP` | `alice:admin,bob:analyst` |
 | `TRACEBI_AUTH_DEFAULT_ROLE` | fallback role for principals the map omits |
 | `TRACEBI_ALLOWED_ORIGINS` | CORS allowlist |
@@ -130,7 +131,7 @@ app's own pages are not put behind it. It cannot be combined with
 | Variable | Meaning |
 | --- | --- |
 | `TRACEBI_DEMO_LOGIN` | a role (`viewer`, `analyst` or `admin`). Adds a **Continue as the demo user** button that signs anyone who reaches the page in, with that role, as `demo`. Use it only on a server that holds sample data. |
-| `TRACEBI_LOCAL_USERS` | `name:role:password` entries, comma separated, e.g. `alice:analyst:a-long-password`. A password has at least 8 characters, may contain `:` but not `,`. Ten wrong passwords for one name in ten minutes stop that name for a while. |
+| `TRACEBI_LOCAL_USERS` | `name:role:password` entries, comma separated, e.g. `alice:analyst:a-long-password`. Groups for folder permissions ([[folder-yaml]]) follow the role after `@`, joined by `+`: `alice:analyst@finance+ops:a-long-password`. A password has at least 8 characters, may contain `:` but not `,`. Ten wrong passwords for one name in ten minutes stop that name for a while. |
 | `TRACEBI_OAUTH_SECRET` | a random secret of at least 32 characters (`openssl rand -hex 32`). It signs the sign-in while it is in flight, so every worker needs the same one. |
 
 The http transport **refuses to start** until you either set the token or pass

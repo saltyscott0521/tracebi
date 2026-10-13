@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Optional
+from typing import Iterable, Optional
 
 #: (user, role). A ContextVar rather than a module global so concurrent
 #: requests in one process cannot read each other's actor — the exact bug a
@@ -38,14 +38,23 @@ _actor: ContextVar[tuple[Optional[str], Optional[str]]] = ContextVar(
 )
 
 
-def set_actor(user: Optional[str], role: Optional[str] = None):
+#: The sign-in groups of the current actor (``tracebi.permissions`` matches
+#: them against a folder's ``_folder.yaml``). Beside the actor, not inside it:
+#: ``get_actor()`` stays the ``(user, role)`` pair its callers unpack.
+_groups: ContextVar[tuple] = ContextVar("tracebi_actor_groups", default=())
+
+
+def set_actor(user: Optional[str], role: Optional[str] = None,
+              groups: Iterable[str] = ()):
     """Set the current actor. Returns a token for :func:`reset_actor`."""
-    return _actor.set((user, role))
+    return _actor.set((user, role)), _groups.set(tuple(groups or ()))
 
 
 def reset_actor(token) -> None:
     """Restore whatever actor was current before the matching ``set_actor``."""
-    _actor.reset(token)
+    actor_token, groups_token = token
+    _actor.reset(actor_token)
+    _groups.reset(groups_token)
 
 
 def get_actor() -> tuple[Optional[str], Optional[str]]:
@@ -53,10 +62,16 @@ def get_actor() -> tuple[Optional[str], Optional[str]]:
     return _actor.get()
 
 
+def get_groups() -> tuple:
+    """Sign-in groups of the current actor; ``()`` when there are none."""
+    return _groups.get()
+
+
 @contextmanager
-def actor(user: Optional[str], role: Optional[str] = None):
+def actor(user: Optional[str], role: Optional[str] = None,
+          groups: Iterable[str] = ()):
     """Scope an actor to a block, restoring the previous one on exit."""
-    token = set_actor(user, role)
+    token = set_actor(user, role, groups)
     try:
         yield
     finally:

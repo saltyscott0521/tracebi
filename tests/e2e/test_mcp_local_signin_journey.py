@@ -206,7 +206,7 @@ def test_a_half_set_configuration_stops_startup():
     good = mcp_oauth.OAuthConfig.from_env(_env())
     assert (good.mcp_url, good.issuer, good.local, good.demo_role) == (
         MCP_URL, PUBLIC, True, "analyst")
-    assert good.local_users["alice"] == ("analyst", "alice-password")
+    assert good.local_users["alice"] == ("analyst", "alice-password", ())
     assert mcp_oauth.OAuthConfig.from_env(_env(TRACEBI_LOCAL_USERS="")).local_users == {}
 
     for broken, mention in [

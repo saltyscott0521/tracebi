@@ -32,6 +32,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import re
 import secrets
@@ -117,10 +118,11 @@ class AppSSO:
         self._exec("DELETE FROM tracebi_sessions WHERE absolute_expires_at < :n",
                    n=now - 86400)
         self._exec(
-            "INSERT INTO tracebi_sessions (session_hash, sub, actor, role, created_at, "
+            "INSERT INTO tracebi_sessions (session_hash, sub, actor, role, groups, created_at, "
             "expires_at, absolute_expires_at, revoked_at) VALUES "
-            "(:h, :s, :a, :r, :c, :e, :x, NULL)",
-            h=_h(raw), s=who["sub"], a=who["actor"], r=who["role"], c=now,
+            "(:h, :s, :a, :r, :g, :c, :e, :x, NULL)",
+            h=_h(raw), s=who["sub"], a=who["actor"], r=who["role"],
+            g=json.dumps(who.get("groups") or []), c=now,
             e=now + IDLE_TTL, x=now + ABSOLUTE_TTL)
         return raw
 
@@ -135,7 +137,12 @@ class AppSSO:
         if row["expires_at"] - now < IDLE_TTL - _TOUCH_EVERY:
             self._exec("UPDATE tracebi_sessions SET expires_at = :e WHERE session_hash = :h",
                        e=int(min(now + IDLE_TTL, row["absolute_expires_at"])), h=_h(raw))
-        return {"sub": row["sub"], "actor": row["actor"], "role": row["role"]}
+        try:
+            groups = json.loads(row["groups"] or "[]")
+        except ValueError:
+            groups = []
+        return {"sub": row["sub"], "actor": row["actor"], "role": row["role"],
+                "groups": groups}
 
     def end_session(self, raw: str) -> None:
         if raw:
@@ -157,7 +164,8 @@ class AppSSO:
             if found is None:
                 return None
             return {"actor": found.claims["tracebi_actor"],
-                    "role": found.claims["tracebi_role"], "via": "bearer"}
+                    "role": found.claims["tracebi_role"],
+                    "groups": found.claims.get("tracebi_groups") or [], "via": "bearer"}
         raw = request.cookies.get(COOKIE)
         who = await asyncio.to_thread(self.load_session, raw) if raw else None
         return {**who, "via": "cookie"} if who else None
@@ -325,7 +333,7 @@ class SessionAuthMiddleware(BaseHTTPMiddleware):
         denied = self._authz.check(request, who["actor"], role=who["role"])
         if denied is not None:
             return denied
-        with audit_actor(who["actor"], who["role"]):
+        with audit_actor(who["actor"], who["role"], who.get("groups") or ()):
             return await call_next(request)
 
     @staticmethod

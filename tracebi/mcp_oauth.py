@@ -188,20 +188,25 @@ def parse_role_map(raw: str) -> dict[str, str]:
     return out
 
 
-def parse_local_users(raw: str) -> dict[str, tuple[str, str]]:
-    """``alice:analyst:her-password,bob:viewer:his-password`` -> {name: (role, password)}.
+def parse_local_users(raw: str) -> dict[str, tuple[str, str, tuple]]:
+    """``alice:analyst@finance+ops:her-password,bob:viewer:his-password``
+    -> {name: (role, password, groups)}.
 
-    The password is everything after the second colon, so it may contain ':'
-    but not ','. Like the role map, a bad entry stops startup.
+    The groups follow the role after ``@``, joined by ``+``; they are what a
+    folder's ``_folder.yaml`` matches. They sit beside the role, not after the
+    password, because the password is everything after the second colon, so it
+    may contain ':' but not ','. Like the role map, a bad entry stops startup.
     """
-    out: dict[str, tuple[str, str]] = {}
+    out: dict[str, tuple[str, str, tuple]] = {}
     for entry in raw.split(","):
         entry = entry.strip()
         if not entry:
             continue
         name, _, rest = entry.partition(":")
         role, _, password = rest.partition(":")
+        role, _, group_list = role.partition("@")
         name, role = name.strip(), role.strip()
+        groups = tuple(g.strip() for g in group_list.split("+") if g.strip())
         if not name or role not in _RANK or len(password) < _MIN_PASSWORD:
             raise OAuthConfigError(
                 f"TRACEBI_LOCAL_USERS entry for {name or entry!r} is not "
@@ -209,7 +214,7 @@ def parse_local_users(raw: str) -> dict[str, tuple[str, str]]:
                 f"of at least {_MIN_PASSWORD} characters.")
         if name in out:
             raise OAuthConfigError(f"TRACEBI_LOCAL_USERS lists {name!r} twice.")
-        out[name] = (role, password)
+        out[name] = (role, password, groups)
     return out
 
 
@@ -225,7 +230,7 @@ class OAuthConfig:
     mcp_url: str = ""       # the public MCP URL: the protected resource
     issuer: str = ""        # TraceBi's own issuer: the public origin
     # The built-in sign-in, used when there is no identity provider.
-    local_users: dict = dc_field(default_factory=dict)   # name -> (role, password)
+    local_users: dict = dc_field(default_factory=dict)   # name -> (role, password, groups)
     demo_role: Optional[str] = None                   # the role of the one-click demo user
     local_secret: str = ""                            # signs the in-flight sign-in
 
@@ -575,7 +580,9 @@ class _OIDC:
             mapped = self.cfg.role_map.get(group)
             if mapped and _RANK[mapped] > _RANK[role]:
                 role = mapped
-        return {"sub": str(claims["sub"]), "actor": str(actor)[:200], "role": role}
+        return {"sub": str(claims["sub"]), "actor": str(actor)[:200], "role": role,
+                "groups": [g[:200] for g in groups if isinstance(g, str)][:200]
+                if isinstance(groups, list) else []}
 
 
 # ── Models the SDK hands back to us ──────────────────────────────────────
@@ -614,6 +621,7 @@ class _Code(AuthorizationCode):
     sub: str
     actor: str
     role: str
+    groups: list = []
     session_expires_at: int
 
 
@@ -621,6 +629,7 @@ class _Refresh(RefreshToken):
     family_id: str
     actor: str
     role: str
+    groups: list = []
     session_expires_at: int
 
 
@@ -887,11 +896,13 @@ class Provider:
     def _check_password(self, name: str, password: str) -> Optional[dict]:
         """The person *name* with *password*, or None. Constant-time, and an
         unknown name costs the same as a wrong password."""
-        role, expected = self.cfg.local_users.get(name, (None, secrets.token_urlsafe(16)))
+        role, expected, groups = self.cfg.local_users.get(
+            name, (None, secrets.token_urlsafe(16), ()))
         ok = hmac.compare_digest(password.encode(), expected.encode())
         if role is None or not ok:
             return None
-        return {"sub": f"local:{name}", "actor": name[:200], "role": role}
+        return {"sub": f"local:{name}", "actor": name[:200], "role": role,
+                "groups": list(groups)}
 
     async def local_login(self, request: Request) -> Response:
         """The built-in sign-in page (GET) and its answer (POST)."""
@@ -940,7 +951,8 @@ class Provider:
                 redirect_uri_provided_explicitly=grant["explicit"],
                 resource=grant["resource"], subject=who["sub"],
                 family_id=row["family_id"], sub=who["sub"], actor=who["actor"],
-                role=who["role"], session_expires_at=who["session_expires_at"])
+                role=who["role"], groups=who.get("groups") or [],
+                session_expires_at=who["session_expires_at"])
         return await asyncio.to_thread(load)
 
     async def exchange_authorization_code(self, client, authorization_code) -> OAuthToken:
@@ -954,15 +966,16 @@ class Provider:
             return self._issue(
                 authorization_code.family_id, client.client_id,
                 authorization_code.sub, authorization_code.actor,
-                authorization_code.role, authorization_code.scopes,
+                authorization_code.role, authorization_code.groups,
+                authorization_code.scopes,
                 authorization_code.resource, authorization_code.session_expires_at)
         return await asyncio.to_thread(exchange)
 
-    def _issue(self, family, client_id, sub, actor, role, scopes, resource,
+    def _issue(self, family, client_id, sub, actor, role, groups, scopes, resource,
                session_expires_at) -> OAuthToken:
         now = int(_now())
         access, refresh = "tbat_" + secrets.token_urlsafe(32), "tbrt_" + secrets.token_urlsafe(32)
-        who = json.dumps({"sub": sub, "actor": actor, "role": role})
+        who = json.dumps({"sub": sub, "actor": actor, "role": role, "groups": groups})
         refresh_expires = min(now + REFRESH_TTL, session_expires_at)
         sql = ("INSERT INTO tracebi_oauth_tokens (token_hash, kind, family_id, client_id, "
                "identity, scopes, resource, expires_at, session_expires_at) VALUES "
@@ -992,6 +1005,7 @@ class Provider:
                 scopes=row["scopes"].split(), expires_at=row["expires_at"],
                 resource=row["resource"], subject=who["sub"],
                 family_id=row["family_id"], actor=who["actor"], role=who["role"],
+                groups=who.get("groups") or [],
                 session_expires_at=row["session_expires_at"])
         return await asyncio.to_thread(load)
 
@@ -1005,7 +1019,8 @@ class Provider:
                 raise TokenError("invalid_grant", "refresh token is no longer valid")
             return self._issue(
                 refresh_token.family_id, client.client_id, refresh_token.subject,
-                refresh_token.actor, refresh_token.role, scopes or refresh_token.scopes,
+                refresh_token.actor, refresh_token.role, refresh_token.groups,
+                scopes or refresh_token.scopes,
                 refresh_token.resource, refresh_token.session_expires_at)
         return await asyncio.to_thread(rotate)
 
@@ -1022,7 +1037,8 @@ class Provider:
                 scopes=row["scopes"].split(), expires_at=row["expires_at"],
                 resource=row["resource"], subject=who["sub"],
                 claims={"iss": self.cfg.issuer, "tracebi_actor": who["actor"],
-                        "tracebi_role": who["role"]})
+                        "tracebi_role": who["role"],
+                        "tracebi_groups": who.get("groups") or []})
         return await asyncio.to_thread(load)
 
     async def revoke_token(self, token) -> None:

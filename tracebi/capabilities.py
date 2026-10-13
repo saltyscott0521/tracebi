@@ -802,6 +802,12 @@ def _conventions() -> dict:
             "(`finance/weekly_summary`) everywhere — `tracebi report build "
             "finance/weekly_summary`, output/finance/weekly_summary.html, the "
             "web URL. Code modules in reports/ load only from the top level.",
+            "A folder may hold a `_folder.yaml` granting view / build / publish / "
+            "manage to sign-in groups or names (the nearest file wins; none "
+            "means roles decide). A report in a folder you cannot view is "
+            "absent from list_reports and every read of it answers as if it did "
+            "not exist; a build or publish refusal names the permission needed. "
+            "Reference: docs/reference/folder-yaml.md.",
             "Registration happens as an import side effect, so module scope must "
             "be safe to execute at server startup.",
             "A file that raises on import is skipped with a warning, not an error — "

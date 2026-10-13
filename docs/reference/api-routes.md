@@ -83,6 +83,14 @@ from the file, never from a warehouse); the Map draws both.
 the browser shows is what `verify --file` can check. `POST /runs` starts the
 same work in the background and returns a `run_id` to poll.
 
+> **Folders can hide reports.** With a `_folder.yaml` ([[folder-yaml]]) a person
+> without `view` on a report's folder sees it nowhere: it is not in
+> `GET /api/reports`, `/api/runs` or `/api/discovery`, and every route above,
+> and `/r/{name}`, answers as for a name that does not exist (`404`; an empty
+> list for `GET .../runs`). A report they can see but may not act on (`build` to
+> start a draft in its folder, `publish` to publish into it) is `403` with
+> `detail.required_permission`.
+
 > **There is one renderer.** A registered report with no package is refused with
 > `422` naming the fix, never served through a weaker path. See [[report]].
 
@@ -128,6 +136,10 @@ and answers `201` with the new draft, or `200` with the one the caller already
 has; a Python model, or a report with a `report.py`, is `422` and the message
 says to edit it from a laptop. `PUT .../files/{file}` takes `{"content"}` and
 answers with the draft's new `version`.
+
+A draft of a report is also checked against its folder's `_folder.yaml`
+([[folder-yaml]]): starting one needs `build` there and publishing needs
+`publish`, otherwise `403`.
 
 `/preview` renders the draft in memory against the published models plus the
 owner's draft models, and writes nothing. `/publish` validates the draft first,

@@ -55,6 +55,9 @@ def _refused(exc: drafts.DraftError) -> HTTPException:
     if isinstance(exc, drafts.ImpactNotAccepted):
         return HTTPException(status_code=409, detail={
             **error_detail("Draft refused", exc), "impact": exc.impact})
+    if isinstance(exc, drafts.FolderDenied):
+        return HTTPException(status_code=403, detail={
+            **error_detail("Draft refused", exc), "role": get_actor()[1]})
     if isinstance(exc, drafts.NotAnOwner):
         return HTTPException(status_code=403, detail={
             **error_detail("Draft refused", exc), "role": get_actor()[1],
