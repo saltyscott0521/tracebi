@@ -106,6 +106,7 @@ def test_the_demo_user_connects_in_one_click_and_can_draft(local, scaffolded):
     page = c.get("/oauth/callback", params={"state": state}, headers=cookie)
     assert page.status_code == 200
     assert "Continue as the demo user" in page.text
+    assert "The demo user is an analyst." in page.text
     assert "Password" in page.text            # the named users' form is there too
     assert page.headers["cache-control"] == "no-store"
     assert page.headers["x-frame-options"] == "DENY"

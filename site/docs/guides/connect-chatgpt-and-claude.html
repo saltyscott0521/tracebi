@@ -173,7 +173,7 @@ cannot sign in. Work done with it is recorded as <code>TRACEBI_MCP_ACTOR</code> 
 these instead of the <code>TRACEBI_OIDC_*</code> ones (the two cannot be combined):</p>
 <pre><code class="language-bash">TRACEBI_PUBLIC_URL=https://bi.example.com
 TRACEBI_OAUTH_SECRET=&lt;openssl rand -hex 32&gt;
-TRACEBI_DEMO_LOGIN=analyst                       # a one-click demo user
+TRACEBI_DEMO_LOGIN=admin                         # a one-click demo user
 TRACEBI_LOCAL_USERS=alice:analyst:a-long-password,vera:viewer:another-one
 </code></pre>
 <p>Either, or both. <strong>Connect</strong> then opens a TraceBi page: the named users type a
@@ -183,8 +183,9 @@ variable decides what they may do, exactly as with a company login.</p>
 <p>Know what you are switching on:</p>
 <ul>
 <li><strong>The demo button lets in anyone who has the address.</strong> Use it only on a
-  server that holds sample data, and give it the lowest role that shows what
-  you want to show. Drafting needs <code>analyst</code>.</li>
+  server that holds sample data. Give it the lowest role that shows what you
+  want to show: <code>viewer</code> reads and queries, <code>analyst</code> and <code>admin</code> also draft and
+  publish (in the connector <code>admin</code> can do what <code>analyst</code> can).</li>
 <li><strong>Passwords live in the environment</strong>, like the identity provider's client
   secret, and are compared as written. There is no reset and no sign-up page.
   For a team that grows, move to your company login above.</li>

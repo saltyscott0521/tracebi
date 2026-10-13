@@ -1048,10 +1048,11 @@ def _login_page(state: str, cfg: OAuthConfig, message: str = "", status: int = 2
             '<button type="submit">Sign in</button>')
     demo = ""
     if cfg.demo_role:
+        article = "an" if cfg.demo_role[0] in "aeiou" else "a"
         demo = (
             ('<p class="or">or</p>' if cfg.local_users else "")
             + '<button type="submit" name="demo" value="1" formnovalidate class="demo">'
-            f'Continue as the demo user</button><p class="note">The demo user is an {q(cfg.demo_role)}.</p>')
+            f'Continue as the demo user</button><p class="note">The demo user is {article} {q(cfg.demo_role)}.</p>')
     body = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
