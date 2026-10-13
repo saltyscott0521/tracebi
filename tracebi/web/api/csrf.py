@@ -43,7 +43,13 @@ _DEFAULT_ALLOWED = (
 #: Basic credential a browser would attach, so there is nothing for a
 #: cross-site POST to ride on; a browser-based MCP client (an inspector) sends
 #: an Origin here and must not be refused.
-_EXEMPT_PATHS = frozenset({"/token", "/register", "/revoke"})
+#: The built-in sign-in form posts to ``/oauth/callback``. The browser arrives
+#: there from the AI app's site (a cross-origin redirect chain), so it sends
+#: ``Origin: null``, which the same-origin rule would refuse. It does not need
+#: the rule: the form is answered only for the browser that began the sign-in
+#: (a sealed per-flow cookie) and a state checked against it, neither of which a
+#: page on another site can supply.
+_EXEMPT_PATHS = frozenset({"/token", "/register", "/revoke", "/oauth/callback"})
 
 
 def allowed_origins() -> list[str]:

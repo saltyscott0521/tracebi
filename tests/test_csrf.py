@@ -57,3 +57,23 @@ def test_env_extends_the_allow_list(monkeypatch):
     monkeypatch.setenv("TRACEBI_ALLOWED_ORIGINS", "https://app.example.com")
     r = _client().post("/x", headers={"Origin": "https://app.example.com"})
     assert r.status_code == 200
+
+
+def test_the_connector_sign_in_form_posts_from_a_null_origin():
+    """The built-in MCP sign-in form is reached through a cross-origin redirect
+    from claude.ai / ChatGPT, so its POST carries ``Origin: null``. That one
+    path must pass; the same Origin on any other endpoint is still refused."""
+    app = FastAPI()
+    app.add_middleware(CSRFMiddleware)
+
+    @app.post("/oauth/callback")
+    def _signin():
+        return {"ok": True}
+
+    @app.post("/x")
+    def _other():
+        return {"ok": True}
+
+    c = TestClient(app)
+    assert c.post("/oauth/callback", headers={"Origin": "null"}).status_code == 200
+    assert c.post("/x", headers={"Origin": "null"}).status_code == 403
