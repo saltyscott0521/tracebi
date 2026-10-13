@@ -31,6 +31,30 @@ after the switch. `tracebi mcp --transport http` itself still works for anyone
 who wants a gateway with no web app;
 `docker-compose.yml` here is that stand-alone container.
 
+## claude.ai and ChatGPT custom connectors (built-in sign-in)
+
+Those connectors need OAuth, not a static token. With no identity provider,
+the demo can serve its own sign-in page (`docs/guides/connect-chatgpt-and-claude.md`).
+Add to the same Coolify environment, **before** redeploying the site:
+
+| Var | Value |
+|---|---|
+| `TRACEBI_DEMO_LOGIN` | the role the one-click demo user gets (`viewer` for a safe public demo); anyone with the address can sign in |
+| `TRACEBI_OAUTH_SECRET` | `openssl rand -hex 32` (a Coolify secret; signs the sign-in in flight) |
+| `TRACEBI_PUBLIC_URL` | `https://tracebi.com/app` is fine: the connector address is its origin plus `/mcp`, i.e. `https://tracebi.com/mcp` |
+
+No `TRACEBI_OIDC_*` may be set (they are exclusive). nginx forwards the OAuth
+addresses (`/authorize`, `/token`, `/register`, `/revoke`, `/oauth/`,
+`/.well-known/`) to the demo along with `/mcp`. Check:
+
+```bash
+curl -i https://tracebi.com/mcp                                    # 401 with WWW-Authenticate
+curl -s https://tracebi.com/.well-known/oauth-authorization-server # JSON naming /authorize and /token
+```
+
+Then in claude.ai: Settings → Connectors → Add custom connector →
+`https://tracebi.com/mcp`, and sign in with the demo button.
+
 Run one worker (the demo does). MCP sessions live in the process that opened
 them; several workers need a load balancer that keeps a session on one worker.
 
