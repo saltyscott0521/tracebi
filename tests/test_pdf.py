@@ -185,3 +185,40 @@ def test_pdf_download_names_the_install_when_playwright_is_missing(
     finally:
         registry._report_factories.pop(name, None)
         model_registry._registry._models.pop(model.name, None)
+
+
+def test_a_report_script_cannot_reach_the_network_while_printing(tmp_path: Path) -> None:
+    """The print runs on the server, so a page that sends the browser anywhere off
+    ``file:`` (an internal address, say) is refused rather than followed."""
+    import http.server
+    import threading
+
+    _chromium_or_skip()
+    from tracebi.reports.pdf import print_pdf
+
+    hits: list[str] = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            hits.append(self.path)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"<p>internal</p>")
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        html = _built_html(tmp_path)
+        page = html.read_text(encoding="utf-8")
+        script = f'<script>location.href = "http://127.0.0.1:{server.server_port}/hit";</script></body>'
+        html.write_text(page.replace("</body>", script, 1), encoding="utf-8")
+        try:
+            print_pdf(html, tmp_path / "bars.pdf")
+        except RuntimeError:
+            pass                      # printing may fail; reaching the server is the failure
+    finally:
+        server.shutdown()
+    assert hits == []

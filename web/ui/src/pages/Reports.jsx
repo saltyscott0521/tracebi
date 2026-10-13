@@ -7,8 +7,9 @@ import {
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
   useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, usePipelines,
   useAppStatus, useMe, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
+  postReportSelection,
 } from '../api'
-import { attachPointMode } from '../pointMode'
+import { FRAME_SANDBOX, answerSelections, listenToFrame, tellFrame } from '../frameBridge'
 import Workbench, { ProjectFeed } from '../components/Workbench'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
@@ -172,8 +173,7 @@ function AskCut({ reportName, frameRef, onPackageChange }) {
           return
         }
         const filters = payload?.filters || {}
-        const tb = frameRef.current?.contentWindow?.tracebi
-        if (tb && typeof tb.setSelection === 'function') tb.setSelection(filters)
+        tellFrame(frameRef.current, { type: 'setSelection', filters })
       },
     })
   }
@@ -666,22 +666,28 @@ function OpenReport({ report, model }) {
   })
   const frameHtml = pointOn && timeline.shownHtml ? timeline.shownHtml : shown?.html
   const clearPointing = () => { setPointed(null); sendPointing({ name, pointing: null }) }
+  // The report's controls recompute a cut on the server. The frame has no
+  // network, so it asks here and this runs it as the signed-in viewer.
+  useEffect(() => {
+    const frame = frameRef.current
+    return frame ? answerSelections(frame, name, filters => postReportSelection(name, filters)) : undefined
+  }, [frameHtml, name])
   useEffect(() => {
     // Pointing is at the live report; an earlier version is only for looking.
     if (!pointOn || !timeline.isLatest) return undefined
     const frame = frameRef.current
     if (!frame) return undefined
-    let detach = () => {}
-    const attach = () => {
-      detach()
-      detach = attachPointMode(frame.contentDocument, {
-        onPoint: p => { setPointed(p); sendPointing({ name, pointing: p }) },
-        onClear: () => { setPointed(null); sendPointing({ name, pointing: null }) },
-      })
-    }
-    frame.addEventListener('load', attach)
-    if (frame.contentDocument?.readyState === 'complete') attach()
-    return () => { frame.removeEventListener('load', attach); detach() }
+    // The report runtime does the pointing inside its sandboxed frame; it says
+    // what was pointed at. Ask it to start now, and again whenever a new page
+    // says it is up.
+    const start = () => tellFrame(frame, { type: 'point', on: true })
+    const stop = listenToFrame(frame, m => {
+      if (m.type === 'ready') start()
+      else if (m.type === 'pointed') { setPointed(m.point); sendPointing({ name, pointing: m.point }) }
+      else if (m.type === 'point-cleared') { setPointed(null); sendPointing({ name, pointing: null }) }
+    })
+    start()
+    return () => { stop(); tellFrame(frame, { type: 'point', on: false }) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointOn, frameHtml, name, timeline.isLatest])
   // Leaving Point mode, or this report, stops pointing: the agent should not
@@ -834,7 +840,7 @@ function OpenReport({ report, model }) {
             </div>
           )}
           {frameHtml ? (
-            <iframe ref={frameRef} srcDoc={frameHtml} title={name} className="rp__frame" />
+            <iframe ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
           ) : opening ? (
             <div className="rp__state fade-in">
               <ReportArt mode="build" size={96} /> Opening the last build…
@@ -912,34 +918,17 @@ function PreviewFrame({ html, title }) {
     return () => observer.disconnect()
   }, [])
 
-  // The frame is as tall as the report, at the width it is laid out at.
-  useEffect(() => {
-    const el = frame.current
-    let observer
-    const measure = () => {
-      const doc = el.contentDocument
-      if (!doc?.body) return
-      const h = Math.max(doc.documentElement?.scrollHeight || 0, doc.body.scrollHeight || 0)
-      if (h) setHeight(h)
-    }
-    const onLoad = () => {
-      measure()
-      const doc = el.contentDocument
-      if (doc?.body && typeof ResizeObserver !== 'undefined') {
-        observer = new ResizeObserver(measure)
-        observer.observe(doc.body)
-      }
-    }
-    el.addEventListener('load', onLoad)
-    if (el.contentDocument?.readyState === 'complete') onLoad()
-    return () => { el.removeEventListener('load', onLoad); observer?.disconnect() }
-  }, [html])
+  // The frame is as tall as the report, at the width it is laid out at; the
+  // sandboxed report says how tall that is.
+  useEffect(() => listenToFrame(frame.current, m => {
+    if (m.type === 'size' && m.height) setHeight(m.height)
+  }), [html])
 
   const full = height * scale
   return (
     <div ref={box} className={`rprev__box${full > PREVIEW_MAX ? ' rprev__box--clipped' : ''}`}
          style={{ height: Math.min(full, PREVIEW_MAX) }}>
-      <iframe ref={frame} srcDoc={html} title={title} tabIndex={-1} className="rprev__frame"
+      <iframe ref={frame} srcDoc={html} sandbox={FRAME_SANDBOX} title={title} tabIndex={-1} className="rprev__frame"
               style={{ width: PREVIEW_W, height, transform: `scale(${scale})` }} />
     </div>
   )

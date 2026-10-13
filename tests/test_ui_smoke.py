@@ -237,11 +237,14 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             accent = report.locator("html").evaluate(
                 "el => getComputedStyle(el).getPropertyValue('--tb-accent').trim()")
             assert cells.first.get_attribute("fill") == accent
-            report.locator("select[data-tb-column='dim_issuer.sector']").select_option("Software")
+            # The report frame has no network: the app runs the cut for it, as the viewer.
+            with page.expect_response(
+                lambda r: r.url.endswith("/selection") and r.request.method == "POST"
+            ) as cut:
+                report.locator("select[data-tb-column='dim_issuer.sector']").select_option("Software")
+            assert cut.value.ok
             report.locator("#fig-treemap g.sector").first.wait_for()
-            page.wait_for_function(
-                """() => document.querySelector('iframe').contentDocument
-                    .querySelectorAll('#fig-treemap g.cell').length === 2""")
+            expect(report.locator("#fig-treemap g.cell")).to_have_count(2)
             fail_on_browser_errors()
 
             # An open report is a page of its own: the nav stays as a rail, the list

@@ -313,11 +313,16 @@ and nothing goes live until publish. Publish a model before a report that uses
 it. A declarative model, `models/<name>.yaml` or `.json`, can be drafted this
 way (writing the other form replaces the draft file); a Python model cannot.
 
-**What a remote draft may hold.** A report draft takes only `report.json`,
-`template.html` and `style.css`; a model draft takes its one `<name>.yaml` or
-`.json`. Nothing else is accepted, because code (JavaScript, Python) would run
-on the server with its secrets, so code comes only through a laptop and
-review. `list_models` and `describe_model` report `draftable` per model.
+**What a remote draft may hold.** A report draft takes `report.json`,
+`template.html`, `style.css` and `script.js`; a model draft takes its one
+`<name>.yaml` or `.json`. Nothing else is accepted: Python would run on the
+server with its secrets, so it comes only through a laptop and review.
+`script.js` is different because it runs only in the reader's browser, in a
+sandboxed frame with no network and no access to the app. It may draw
+anything, but if it changes the text of a stamped figure the receipt says
+"changed on the page by a custom script" for that figure, so leave stamped
+numbers to the runtime. `list_models` and `describe_model` report `draftable`
+per model.
 
 Resources: `tracebi://guide` (how to author), `tracebi://spec-schema`,
 `tracebi://models/{name}`, and `tracebi://knowledge/{slug}` (one lesson

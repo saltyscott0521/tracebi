@@ -1316,8 +1316,8 @@ def describe(brief: bool = False) -> dict:
                     "POST /api/drafts/{owner}/{kind}/{path}/publish, DELETE /api/drafts/{owner}/{kind}/{path}",
             "what": "Remote drafts: a report or model written before it goes live. "
                     "Drafts live under drafts/<owner>/ (TRACEBI_DRAFTS_DIR, default "
-                    "drafts/). A report draft holds only report.json, template.html "
-                    "and style.css. A model draft is one models/<name>.yaml or "
+                    "drafts/). A report draft holds only report.json, template.html, "
+                    "style.css and script.js. A model draft is one models/<name>.yaml or "
                     ".json, one form at a time (see model_json). preview_draft "
                     "renders against the published models plus the owner's draft models, in memory, and returns "
                     "the url where the person sees it. publish_draft validates "
@@ -1326,8 +1326,12 @@ def describe(brief: bool = False) -> dict:
                     "under .tracebi/history/, copies the draft into the library, "
                     "and records a publish run with the actor. The draft is kept. "
                     "Python (report.py, models/*.py, transforms, pipelines) cannot "
-                    "be drafted remotely: code would run on the server with its "
-                    "secrets, so code comes only through a laptop and review. "
+                    "be drafted remotely: it would run on the server with its "
+                    "secrets, so it comes only through a laptop and review. "
+                    "script.js is accepted: it runs only in the reader's browser, "
+                    "in a sandboxed frame with no network and no access to the "
+                    "app, and if it changes a stamped figure's text the receipt "
+                    "says 'changed on the page by a custom script'. "
                     "list_models and describe_model say draftable per model.",
         },
         "model_json": {

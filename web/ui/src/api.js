@@ -226,6 +226,10 @@ export const useReportSelection = () =>
         question ? { question } : { filters: filters || {} }),
   })
 
+// A cut for a report page that asked the app to run it (see frameBridge.js).
+export const postReportSelection = (name, filters) =>
+  postJson(`/reports/${reportPath(name)}/selection`, { filters: filters || {} })
+
 // Build mode (local only): what the builder is pointing at, so the agent can
 // resolve "this". `pointing: null` stops pointing. Not the Ask cut above.
 // One scope runs these one at a time, in the order sent: a click and then

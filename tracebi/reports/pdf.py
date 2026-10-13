@@ -32,6 +32,19 @@ _DRAWN = """() => {
 }"""
 
 
+def _local_only(route) -> None:
+    """Let the page load nothing from the network.
+
+    The page is a built, self-contained file, but it may carry a custom
+    ``script.js`` that runs here, on the server. A page that tries to navigate
+    or load anything off ``file:`` (an internal address, say) is refused.
+    """
+    if route.request.url.startswith(("file:", "data:", "blob:")):
+        route.continue_()
+    else:
+        route.abort()
+
+
 def _launch_args() -> list[str]:
     """Chromium's sandbox cannot start as the image's non-root user."""
     if os.environ.get("TRACEBI_IN_DOCKER") == "1":
@@ -76,6 +89,7 @@ def print_pdf(html_path, pdf_path) -> None:
                 ) from exc
             try:
                 page = browser.new_page()
+                page.route("**/*", _local_only)
                 page.goto(html.resolve().as_uri(), wait_until="load")
                 try:
                     page.wait_for_function(_DRAWN, timeout=30_000)

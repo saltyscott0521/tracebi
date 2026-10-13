@@ -1870,11 +1870,11 @@ def build_server(token: Optional[str] = None, oauth=None):
         annotations=_DRAFT_WRITE, structured_output=True,
         description=(
             "Create a draft: kind is 'reports' (a package: report.json, "
-            "template.html, style.css) or 'models' (one declarative "
+            "template.html, style.css, script.js) or 'models' (one declarative "
             "<name>.yaml, or <name>.json; a new model draft starts as "
             "YAML). path is a report path like finance/weekly, or a "
             "model name [a-z0-9_]+. from_published=true copies the published "
-            "one; a published report with a report.py or script.js cannot be "
+            "one; a published report with a report.py cannot be "
             "drafted remotely. Returns the draft's url: give it to the person "
             "once. Writes only under drafts/."
         ),
@@ -1889,8 +1889,9 @@ def build_server(token: Optional[str] = None, oauth=None):
         annotations=_DRAFT_WRITE, structured_output=True,
         description=(
             "Replace one file of an existing draft with content (UTF-8 text, "
-            "at most 512 KB). file is report.json, template.html or "
-            "style.css for a report; <name>.yaml or <name>.json for a model "
+            "at most 512 KB). file is report.json, template.html, "
+            "style.css or script.js for a report (script.js runs only in the "
+            "reader's sandboxed browser frame, never on the server); <name>.yaml or <name>.json for a model "
             "(one form at a time: writing the other replaces the draft's "
             "file). Nothing else is accepted. Writes only under drafts/; nothing is published."
         ),

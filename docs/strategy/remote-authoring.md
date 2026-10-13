@@ -82,12 +82,14 @@ stays in one place.
   signed-in person.
 - Layout:
   - `drafts/<owner>/reports/<path>/` — `report.json`, `template.html`,
-    `style.css`. `<path>` is a report path (`folder/name`), validated by
+    `style.css`, `script.js`. `<path>` is a report path (`folder/name`), validated by
     `report_paths.report_name_error`.
   - `drafts/<owner>/models/<name>.json` — a declarative model.
-- Files a draft may hold: exactly those. No `report.py`, no `script.js`, no
-  other file. Each at most 512 KB, UTF-8 text.
-- Starting a draft from a published report copies its three files; a
+- Files a draft may hold: exactly those. No `report.py`, no other file.
+  `script.js` is accepted because the browser, not a review of the code, is
+  its boundary: every report frame is sandboxed, so it cannot reach the app
+  (see `analyst-freedom`, "Custom JavaScript in reports"). Each at most 512 KB, UTF-8 text.
+- Starting a draft from a published report copies its four files; a
   published report with a `report.py` cannot be drafted remotely (the error
   says to edit it from a laptop).
 - Functions (all take `owner` explicitly; the web and MCP layers pass the

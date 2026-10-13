@@ -715,6 +715,16 @@ def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, s
                            file="report.py", content="print(1)")
             assert not refused["ok"] and "report.py" in refused["errors"][0]
 
+            # A script is accepted: it runs only in the reader's sandboxed frame.
+            script = 'tracebi.ready(function () { document.title = "scripted"; });\n'
+            assert call(session, "write_draft_file", kind="reports", path=path,
+                        file="script.js", content=script)["ok"]
+            assert call(session, "read_draft", kind="reports", path=path)["files"]["script.js"] == script
+            scripted = served.get(f"/api/drafts/agent/reports/{path}/preview")
+            assert scripted.status_code == 200 and 'document.title = "scripted"' in scripted.text
+            assert scripted.headers["content-security-policy"].startswith("sandbox allow-scripts")
+            assert "allow-same-origin" not in scripted.headers["content-security-policy"]
+
             listed = served.get("/api/drafts").json()["drafts"]
             assert [(d["owner"], d["kind"], d["path"], d["differs_from_published"])
                     for d in listed] == [("agent", "reports", path, True)]
@@ -727,6 +737,7 @@ def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, s
             done = call(session, "publish_draft", kind="reports", path=path, note="adds a note")
             assert done["ok"], done
             assert published.read_text(encoding="utf-8") == changed
+            assert (published.parent / "script.js").read_text(encoding="utf-8") == script
             kept = scaffolded / ".tracebi" / "history" / "reports" / path / done["version"]
             assert (kept / "template.html").read_text(encoding="utf-8") == html
 

@@ -5,7 +5,7 @@ import { useConnectors, useDesk, useModel, useModels, usePipelines, useReports }
 import { lastModel, rememberModel } from '../nav'
 import { Empty, ErrorDetail, SkeletonCard } from '../components/Shared'
 import MapCanvas from '../components/map/MapCanvas'
-import { Legend, Readout } from '../components/map/Readout'
+import { Legend, Readout } from '../components/map/Readout.jsx'
 import { analyze, modelLayout, parseSel, validSel } from '../components/map/model'
 import { projectLayout } from '../components/map/project'
 import { modelReadout, projectReadout } from '../components/map/readout'

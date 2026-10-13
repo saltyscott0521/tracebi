@@ -1,31 +1,17 @@
 // Build mode: a timeline of what the agent's edits did to the report.
 //
 // Each time the working render changes, the figures in it are read back out of
-// the preview's own DOM (after the runtime has filled them in), compared with
-// the version before, and the ones that changed flash in the report. Every
-// version is kept (in memory, for this visit), so you can flip back to what it
+// the preview (the report runtime sends them when asked, once it has filled
+// them in; the frame is sandboxed), compared with the version before, and the
+// ones that changed flash in the report. Every version is kept (in memory, for this visit), so you can flip back to what it
 // looked like before the agent's last change. Nothing here is saved or sent
 // anywhere: it is a view.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { listenToFrame, tellFrame } from './frameBridge'
 
 const KEEP = 8                 // versions kept (each is a whole page)
 const SETTLE_MS = 450          // let the runtime fill the figures in before reading them
-
-const compact = t => (t || '').replace(/\s+/g, ' ').trim()
-
-/** {figure id: {kind, sig, text}} for every identified figure in *doc*. */
-export function snapshotFigures(doc) {
-  const out = {}
-  for (const el of doc?.querySelectorAll?.('[data-tb-figure][id]') || []) {
-    const kind = el.getAttribute('data-tb-figure')
-    const valueEl = el.querySelector('.tb-kpi-value') || el
-    const text = compact(valueEl.textContent).slice(0, 60)
-    // A value is shown as itself; a chart or table only as "changed".
-    out[el.id] = { kind, text: kind === 'value' ? text : '', sig: compact(el.textContent) }
-  }
-  return out
-}
 
 /** What differs between two snapshots: {changed: [{id, from, to}], added, removed}. */
 export function diffFigures(prev, next) {
@@ -54,30 +40,6 @@ export function summarize(changes) {
   return parts.join(' · ')
 }
 
-const FLASH = `
-  @keyframes tb-point-flash { from { outline-color: #d97706; background-color: rgba(217,119,6,.18); } to { outline-color: transparent; background-color: transparent; } }
-  .tb-point-changed { outline: 2px solid #d97706; outline-offset: 2px; animation: tb-point-flash 3.5s ease-out forwards; }
-`
-
-/** Briefly outline the figures that just changed, in the preview only. */
-export function flashChanged(doc, ids) {
-  if (!doc?.body || !ids.length) return
-  if (!doc.querySelector('style[data-tb-flash]')) {
-    const style = doc.createElement('style')
-    style.setAttribute('data-tb-flash', '')
-    style.textContent = FLASH
-    doc.head.appendChild(style)
-  }
-  for (const id of ids) {
-    const el = doc.getElementById(id)
-    if (el) {
-      el.classList.remove('tb-point-changed')
-      void el.offsetWidth                       // restart the animation
-      el.classList.add('tb-point-changed')
-    }
-  }
-}
-
 /**
  * Track the working render. Give it the current html (the latest preview) and
  * the preview frame; get back the versions seen, which one is on screen, and how
@@ -104,27 +66,28 @@ export function useBuildTimeline({ html, frameRef, enabled }) {
     const frame = frameRef.current
     if (!frame) return undefined
     let timer
-    const read = () => {
+    // Ask once the page says it is up (or now, if it already was), after a beat.
+    const ask = () => {
       clearTimeout(timer)
-      timer = setTimeout(() => {
-        const doc = frame.contentDocument
-        if (!doc?.body) return
-        const snapshot = snapshotFigures(doc)
-        setVersions(vs => {
-          const i = vs.findIndex(v => v.id === latestId)
-          if (i < 0 || vs[i].snapshot) return vs
-          const prev = vs[i - 1]
-          const changes = prev?.snapshot ? diffFigures(prev.snapshot, snapshot) : null
-          if (changes) flashChanged(doc, [...changes.changed.map(c => c.id), ...changes.added])
-          const next = vs.slice()
-          next[i] = { ...vs[i], snapshot, changes }
-          return next
-        })
-      }, SETTLE_MS)
+      timer = setTimeout(() => tellFrame(frame, { type: 'snapshot' }), SETTLE_MS)
     }
-    frame.addEventListener('load', read)
-    if (frame.contentDocument?.readyState === 'complete') read()
-    return () => { clearTimeout(timer); frame.removeEventListener('load', read) }
+    const stop = listenToFrame(frame, m => {
+      if (m.type === 'ready') { ask(); return }
+      if (m.type !== 'snapshot') return
+      const snapshot = m.figures || {}
+      setVersions(vs => {
+        const i = vs.findIndex(v => v.id === latestId)
+        if (i < 0 || vs[i].snapshot) return vs
+        const prev = vs[i - 1]
+        const changes = prev?.snapshot ? diffFigures(prev.snapshot, snapshot) : null
+        if (changes) tellFrame(frame, { type: 'flash', ids: [...changes.changed.map(c => c.id), ...changes.added] })
+        const next = vs.slice()
+        next[i] = { ...vs[i], snapshot, changes }
+        return next
+      })
+    })
+    ask()
+    return () => { clearTimeout(timer); stop() }
   }, [enabled, latestId, viewedId, frameRef])
 
   const view = useCallback(id => setViewedId(id), [])

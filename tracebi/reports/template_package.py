@@ -952,7 +952,6 @@ class TemplatePackage:
         page = self._inject(page, embed_plan.blocks_html, stage="final",
                             figures_cfg=cfg,
                             extra_blocks_html="".join(contract_blocks))
-        page = self._allow_selection_connect(page)
 
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
@@ -1447,7 +1446,6 @@ class TemplatePackage:
             stage="exploration", figures_cfg=cfg,
             extra_blocks_html=(embed_json(formats, "tracebi-formats") + "\n"
                                + self._selection_blocks(models)))
-        page = self._allow_selection_connect(page)
         return page, inputs, outputs
 
     def snapshot(self, models: dict, output_path: str) -> None:
@@ -1602,17 +1600,6 @@ class TemplatePackage:
         if grain:
             blocks += embed_json(grain, "tracebi-grain") + "\n"
         return blocks
-
-    def _allow_selection_connect(self, page: str) -> str:
-        """``connect-src 'self'`` only when the package opted into selection.
-
-        The emailed file still cannot reach another origin. Served inside
-        the app, the page can POST the selection endpoint. A package with
-        no selection block keeps ``connect-src 'none'``.
-        """
-        if not self.selection:
-            return page
-        return page.replace("connect-src 'none'", "connect-src 'self'", 1)
 
     def _libs_for_page(self, page: str) -> list:
         """Declared ``libs``, plus D3 when *page* contains a chart figure.

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import { FRAME_SANDBOX, listenToFrame } from '../frameBridge'
 
 /** Track a media query, so an inline-styled layout can still be responsive. */
 export function useNarrow(query = '(max-width: 768px)') {
@@ -253,9 +254,9 @@ export function Empty({ icon, message, action }) {
  * Nobody scrolls a region they cannot tell is scrollable.
  *
  * A report is a document, so it should lay out at full height and let the page
- * scroll. srcDoc inherits this origin, so the content is measurable; the
- * ResizeObserver covers content that settles after load (late fonts, images)
- * rather than trusting a single measurement at the load event.
+ * scroll. The frame is sandboxed (see frameBridge.js), so the app cannot
+ * measure it: the report's own runtime says how tall it is, and again whenever
+ * that changes (late fonts, images, a chart settling).
  */
 export function ReportFrame({ html, title, frameRef }) {
   const ref = useRef(null)
@@ -263,35 +264,14 @@ export function ReportFrame({ html, title, frameRef }) {
 
   useEffect(() => {
     const frame = ref.current
-    if (!frame) return
-    let observer
-
-    const measure = () => {
-      const doc = frame.contentDocument
-      if (!doc?.body) return
-      const h = Math.max(doc.documentElement?.scrollHeight || 0, doc.body.scrollHeight || 0)
-      if (h) setHeight(h)
+    if (!frame) return undefined
+    return listenToFrame(frame, m => {
+      if (m.type !== 'size') return
+      if (m.height) setHeight(m.height)
       // A frame holding nothing to operate is not a keyboard stop: Tab would
       // land on a page-sized box that shows no focus.
-      frame.tabIndex = doc.querySelector(
-        'a[href],button,input,select,textarea,summary,[tabindex],[contenteditable]') ? 0 : -1
-    }
-
-    const onLoad = () => {
-      measure()
-      const doc = frame.contentDocument
-      if (doc?.body && typeof ResizeObserver !== 'undefined') {
-        observer = new ResizeObserver(measure)
-        observer.observe(doc.body)
-      }
-    }
-
-    frame.addEventListener('load', onLoad)
-    if (frame.contentDocument?.readyState === 'complete') onLoad()
-    return () => {
-      frame.removeEventListener('load', onLoad)
-      observer?.disconnect()
-    }
+      frame.tabIndex = m.focusable ? 0 : -1
+    })
   }, [html])
 
   return (
@@ -301,6 +281,7 @@ export function ReportFrame({ html, title, frameRef }) {
         if (frameRef) frameRef.current = node
       }}
       srcDoc={html}
+      sandbox={FRAME_SANDBOX}
       title={title}
       scrolling="no"
       style={{

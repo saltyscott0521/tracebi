@@ -75,6 +75,11 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             page.locator(".wb-version", has_text="Opened").wait_for()
             frame.locator("#kpi-mrr").wait_for()
             assert pointing() is None
+            # A message that did not come from the report's own frame is ignored.
+            page.evaluate("""() => window.postMessage(
+                {tracebiFrame: 1, type: 'pointed', point: {kind: 'element', tag: 'forged'}}, '*')""")
+            page.wait_for_timeout(500)
+            assert pointing() is None
             frame.locator("#kpi-mrr").click()
 
             note = page.locator(".point-note")

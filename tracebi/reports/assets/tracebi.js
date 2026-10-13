@@ -2722,6 +2722,7 @@
       target.textContent = text;
     }
     for (i in seen) if (seen.hasOwnProperty(i)) refreshBinding(i);
+    try { stampFigures(); } catch (e) { /* the runtime wrote these: they are the new baseline */ }
     applyControlDomains(payload.controls);
     paintSelectionReceipt(payload);
     controlEls("data-tb-filter").forEach(function (ctrl) {
@@ -2762,28 +2763,34 @@
     el.appendChild(o);
   }
 
+  /* A page never calls the server itself: shown in the web app it runs in a
+   * sandboxed frame with no network, so it asks the app (the host bridge
+   * below) to run the selection as the signed-in viewer and send the answer
+   * back. With no app around (a file from disk, a share link) there is no one
+   * to ask: take the offline path directly. */
+  var _hostPost = null;
+  var _selectionSeq = 0;
+  var _selectionPending = {};
+
   function postSelection(filters) {
     var cfg = selectionConfig();
-    if (!cfg || !cfg.report) { failClosed(filters); return; }
-    var url = "/api/reports/" + encodeURIComponent(cfg.report) + "/selection";
-    try {
-      /* A file opened from disk has no server to ask: take the offline path
-       * directly rather than logging a failed request in the console. */
-      if (typeof fetch !== "function" ||
-          (root.location && root.location.protocol === "file:")) {
-        failClosed(filters); return;
-      }
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filters: filters || {} })
-      }).then(function (res) {
-        if (!res || !res.ok) throw new Error("selection");
-        return res.json();
-      }).then(function (payload) {
-        applySelection(payload);
-      }).catch(function () { failClosed(filters); });
-    } catch (e) { failClosed(filters); }
+    if (!cfg || !cfg.report || !_hostPost) { failClosed(filters); return; }
+    var id = ++_selectionSeq;
+    _selectionPending[id] = filters;
+    setTimeout(function () {
+      if (!_selectionPending.hasOwnProperty(id)) return;
+      delete _selectionPending[id];
+      failClosed(filters);
+    }, 8000);
+    _hostPost({ type: "selection-request", id: id, report: cfg.report, filters: filters || {} });
+  }
+
+  function selectionAnswered(m) {
+    if (!_selectionPending.hasOwnProperty(m.id)) return;
+    var filters = _selectionPending[m.id];
+    delete _selectionPending[m.id];
+    if (m.ok && m.payload) applySelection(m.payload);
+    else failClosed(filters);
   }
 
   function setSelection(filters) {
@@ -3185,6 +3192,7 @@
 
     var row = document.createElement("div");
     row.className = "tb-receipt-row";
+    row.setAttribute("data-tb-receipt-fig", String(fig.id));
     var title = document.createElement("div");
     title.className = "tb-receipt-title";
     var headline;
@@ -3252,6 +3260,7 @@
     }
     row.appendChild(details);
     drawer.appendChild(row);
+    if (_scriptChanged[fig.id]) paintScriptChange(String(fig.id));
   }
 
   function hydrateReceipt() {
@@ -3523,6 +3532,7 @@
     try { hydrateDownloads(); } catch (e) {}
     try { hydrateReceipt(); } catch (e) {}
     try { hydrateScenarios(); } catch (e) {}
+    try { watchStampedFigures(); } catch (e) {}
     /* Set once figures are drawn, charts included, and their first fade has
      * finished. A printer waits for this; it changes no number. */
     var waited = 0;
@@ -3635,9 +3645,305 @@
     })["catch"](function () { done(); });
   }
 
+  /* ── Stamped figures a script changed ─────────────────────────────────────
+   * A report's script.js may draw anything, but a stamped value is a claim the
+   * receipt backs with a query. When a script rewrites the text of one after
+   * the runtime wrote it, the page no longer shows what the receipt covers:
+   * the figure gets data-tb-script-changed and its receipt row says so. The
+   * runtime's own later writes (a selection) re-stamp the text first, so only
+   * somebody else's change counts. Value figures only: a chart or table is
+   * redrawn by the runtime itself as controls move. */
+  var _stamped = {};
+  var _scriptChanged = {};
+  var CHANGED_BY_SCRIPT = "changed on the page by a custom script";
+
+  function stampedText(el) {
+    var copy = (el.querySelector(".tb-kpi-value") || el).cloneNode(true);
+    Array.prototype.forEach.call(copy.querySelectorAll(".tb-badge"), function (b) {
+      b.parentNode.removeChild(b);
+    });
+    return trim(copy.textContent || "");
+  }
+
+  function valueFigures() {
+    return Array.prototype.slice.call(
+      document.querySelectorAll('[data-tb-figure="value"][id]'));
+  }
+
+  /* Remember what every value figure shows now, as the runtime left it. */
+  function stampFigures() {
+    valueFigures().forEach(function (el) { _stamped[el.id] = stampedText(el); });
+    paintScriptChanges();
+  }
+
+  function paintScriptChange(id) {
+    var rows = document.querySelectorAll(".tb-receipt-row[data-tb-receipt-fig]");
+    Array.prototype.forEach.call(rows, function (row) {
+      if (row.getAttribute("data-tb-receipt-fig") !== id) return;
+      var old = row.querySelector(".tb-receipt-changed");
+      if (old) old.parentNode.removeChild(old);
+      if (!_scriptChanged[id]) return;
+      var note = document.createElement("div");
+      note.className = "tb-receipt-changed";
+      note.textContent = CHANGED_BY_SCRIPT + ": the receipt covers \u201c"
+        + _stamped[id] + "\u201d, the page shows \u201c" + _scriptChanged[id] + "\u201d";
+      var title = row.querySelector(".tb-receipt-title");
+      row.insertBefore(note, title ? title.nextSibling : row.firstChild);
+    });
+  }
+
+  function paintScriptChanges() {
+    valueFigures().forEach(function (el) {
+      var now = stampedText(el);
+      var changed = _stamped.hasOwnProperty(el.id) && now !== _stamped[el.id];
+      var was = _scriptChanged[el.id];
+      /* Repaint only on a change of state: painting the receipt is itself a DOM
+       * change, and must not wake this up again. */
+      if (changed && was !== now) {
+        _scriptChanged[el.id] = now;
+        el.setAttribute("data-tb-script-changed", "1");
+        paintScriptChange(el.id);
+      } else if (!changed && was !== undefined) {
+        delete _scriptChanged[el.id];
+        el.removeAttribute("data-tb-script-changed");
+        paintScriptChange(el.id);
+      }
+    });
+  }
+
+  function watchStampedFigures() {
+    stampFigures();
+    if (typeof MutationObserver === "undefined" || !document.body) return;
+    new MutationObserver(paintScriptChanges).observe(
+      document.body, { subtree: true, childList: true, characterData: true });
+  }
+
+  /* ── Build mode, in the frame ────────────────────────────────────────────
+   * The web app's Build mode points at things in the report and shows what an
+   * edit changed. It cannot read this document (the frame is sandboxed), so
+   * the page does that part itself when the app asks: outline what the pointer
+   * is over and report what was clicked; read the figures back out; flash the
+   * ones that changed. Presentation only, and only on request from the
+   * embedding window. */
+  var POINT_CHROME = "#tracebi-receipt, .tb-badge, .tb-receipt-btn, [data-tb-chrome]";
+  var POINT_INLINE = { SPAN: 1, B: 1, I: 1, EM: 1, STRONG: 1, A: 1, CODE: 1, SMALL: 1, SUP: 1, SUB: 1, TSPAN: 1 };
+  var POINT_STYLE =
+    ".tb-point-hover { outline: 2px solid #2563eb !important; outline-offset: 2px; cursor: crosshair !important; }" +
+    ".tb-point-picked { outline: 2px solid #2563eb !important; outline-offset: 2px;" +
+    " background-color: rgba(37,99,235,.08) !important; }" +
+    "body * { cursor: crosshair; }";
+  var FLASH_STYLE =
+    "@keyframes tb-point-flash { from { outline-color: #d97706; background-color: rgba(217,119,6,.18); }" +
+    " to { outline-color: transparent; background-color: transparent; } }" +
+    ".tb-point-changed { outline: 2px solid #d97706; outline-offset: 2px; animation: tb-point-flash 3.5s ease-out forwards; }";
+
+  function compactText(t) { return (t || "").replace(/\s+/g, " ").trim(); }
+
+  function addStyle(attr, css) {
+    var style = document.createElement("style");
+    style.setAttribute(attr, "");
+    style.textContent = css;
+    document.head.appendChild(style);
+    return style;
+  }
+
+  /* The element a click means: its figure, else the nearest block. */
+  function pointTarget(el) {
+    if (!el || el.nodeType !== 1 || el.closest(POINT_CHROME)) return null;
+    var figure = el.closest("[data-tb-figure]");
+    if (figure) return figure;
+    var node = el;
+    while (node && POINT_INLINE[node.tagName] && node.parentElement) node = node.parentElement;
+    return node && node.tagName !== "HTML" && node.tagName !== "BODY" ? node : null;
+  }
+
+  function pointSelector(el) {
+    var parts = [];
+    for (var node = el; node && node.nodeType === 1 && node.tagName !== "BODY"; node = node.parentElement) {
+      var part = node.tagName.toLowerCase();
+      if (node.id) { parts.unshift(part + "#" + node.id); break; }
+      var cls = Array.prototype.filter.call(node.classList, function (c) { return c.indexOf("tb-point") !== 0; }).slice(0, 2);
+      if (cls.length) part += "." + cls.join(".");
+      parts.unshift(part);
+      if (parts.length >= 4) break;
+    }
+    return parts.join(" > ");
+  }
+
+  /* The nearest heading above the element: which section of the page it is in. */
+  function pointSection(el) {
+    for (var node = el; node && node.nodeType === 1; node = node.parentElement) {
+      for (var sib = node.previousElementSibling; sib; sib = sib.previousElementSibling) {
+        if (/^H[1-6]$/.test(sib.tagName)) return sib.textContent;
+        var inner = sib.querySelector && sib.querySelector("h1,h2,h3,h4,h5,h6");
+        if (inner) return inner.textContent;
+      }
+    }
+    return "";
+  }
+
+  /* What the agent is told: the figure's addresses, or the element's selector and text. */
+  function describePoint(el) {
+    var text = compactText(el.textContent).slice(0, 200);
+    var figure = el.getAttribute("data-tb-figure");
+    if (figure) {
+      return {
+        kind: "figure", figure_kind: figure, id: el.id || "",
+        binding: el.getAttribute("data-tb-binding") || "",
+        cell: el.getAttribute("data-tb-cell") || "", text: text
+      };
+    }
+    return {
+      kind: "element", tag: el.tagName.toLowerCase(), id: el.id || "",
+      selector: pointSelector(el), text: text,
+      section: compactText(pointSection(el)).slice(0, 120)
+    };
+  }
+
+  var _stopPointing = null;
+  function startPointing(post) {
+    if (_stopPointing) return;
+    var style = addStyle("data-tb-point", POINT_STYLE);
+    var hovered = null, picked = null;
+    function mark(el, cls, on) { if (el) el.classList[on ? "add" : "remove"](cls); }
+    function over(e) {
+      var el = pointTarget(e.target);
+      if (el === hovered) return;
+      mark(hovered, "tb-point-hover", false);
+      hovered = el;
+      mark(hovered, "tb-point-hover", true);
+    }
+    function out(e) {
+      if (!e.relatedTarget) { mark(hovered, "tb-point-hover", false); hovered = null; }
+    }
+    function click(e) {
+      var el = pointTarget(e.target);
+      if (!el) return;
+      e.preventDefault();
+      e.stopPropagation();
+      mark(picked, "tb-point-picked", false);
+      picked = el;
+      mark(picked, "tb-point-picked", true);
+      post({ type: "pointed", point: describePoint(el) });
+    }
+    function key(e) {
+      if (e.key !== "Escape") return;
+      mark(picked, "tb-point-picked", false);
+      picked = null;
+      post({ type: "point-cleared" });
+    }
+    document.addEventListener("mouseover", over, true);
+    document.addEventListener("mouseout", out, true);
+    document.addEventListener("click", click, true);
+    document.addEventListener("keydown", key, true);
+    _stopPointing = function () {
+      document.removeEventListener("mouseover", over, true);
+      document.removeEventListener("mouseout", out, true);
+      document.removeEventListener("click", click, true);
+      document.removeEventListener("keydown", key, true);
+      mark(hovered, "tb-point-hover", false);
+      mark(picked, "tb-point-picked", false);
+      if (style.parentNode) style.parentNode.removeChild(style);
+      _stopPointing = null;
+    };
+  }
+
+  /* {figure id: {kind, text, sig}} for every identified figure on the page. */
+  function snapshotFigures() {
+    var out = {};
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tb-figure][id]"), function (el) {
+      var kind = el.getAttribute("data-tb-figure");
+      var valueEl = el.querySelector(".tb-kpi-value") || el;
+      var text = compactText(valueEl.textContent).slice(0, 60);
+      /* A value is shown as itself; a chart or table only as "changed". */
+      out[el.id] = { kind: kind, text: kind === "value" ? text : "", sig: compactText(el.textContent) };
+    });
+    return out;
+  }
+
+  function flashFigures(ids) {
+    if (!ids || !ids.length) return;
+    if (!document.querySelector("style[data-tb-flash]")) addStyle("data-tb-flash", FLASH_STYLE);
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove("tb-point-changed");
+      void el.offsetWidth;                       /* restart the animation */
+      el.classList.add("tb-point-changed");
+    });
+  }
+
+  /* ── Host bridge ──────────────────────────────────────────────────────────
+   * The web app shows a report in a sandboxed frame with an opaque origin: the
+   * app cannot read the frame's DOM and the frame cannot read the app's. The
+   * two talk by postMessage, and only about presentation: the frame tells the
+   * app how tall it is and asks it to run a selection; the app answers it, applies a
+   * cut, or has it take part in Build mode (above). Every
+   * message carries tracebiFrame: 1; the frame accepts commands only from the
+   * window that embeds it. A report opened on its own (no embedding window)
+   * does none of this. */
+  function hostBridge() {
+    if (typeof document === "undefined" || !root.parent || root.parent === root) return;
+    var host = root.parent;
+    function post(msg) {
+      msg.tracebiFrame = 1;
+      try { host.postMessage(msg, "*"); } catch (e) { /* defensive */ }
+    }
+    _hostPost = post;
+    var lastHeight = -1;
+    function size() {
+      var h = Math.max(document.documentElement ? document.documentElement.scrollHeight : 0,
+                       document.body ? document.body.scrollHeight : 0);
+      if (!h || h === lastHeight) return;
+      lastHeight = h;
+      /* A frame holding nothing to operate is not a keyboard stop. */
+      var focusable = !!document.querySelector(
+        "a[href],button,input,select,textarea,summary,[tabindex],[contenteditable]");
+      post({ type: "size", height: h, focusable: focusable });
+    }
+    function watch() {
+      size();
+      post({ type: "ready" });
+      if (typeof ResizeObserver !== "undefined" && document.body) {
+        new ResizeObserver(size).observe(document.body);
+      }
+    }
+    if (document.readyState === "complete") watch();
+    else root.addEventListener("load", watch);
+
+    var commands = {
+      setSelection: function (m) { setSelection(m.filters || {}); },
+      point: function (m) { if (m.on) startPointing(post); else if (_stopPointing) _stopPointing(); },
+      snapshot: function () { post({ type: "snapshot", figures: snapshotFigures() }); },
+      flash: function (m) { flashFigures(m.ids); },
+      "selection-response": selectionAnswered
+    };
+    root.addEventListener("message", function (e) {
+      var m = e.data;
+      if (e.source !== host || !m || m.tracebiFrame !== 1) return;
+      if (commands.hasOwnProperty(m.type)) commands[m.type](m);
+    });
+  }
+  hostBridge();
+
+  root.tracebi = {
+    data: data,
+    ready: ready,
+    fmt: fmt,
+    configureChart: configureChart,
+    draw: draw,
+    theme: theme,
+    setSelection: setSelection,
+    /* The scenario evaluator, exposed so tests and authors can check a
+     * formula gives what they expect. It computes from the values passed. */
+    evaluate: evalFormula
+  };
+
   /* DOM-ready, then requestAnimationFrame: the author's inline script.js has
    * already run by DOMContentLoaded, so its configureChart patches are
-   * registered before any chart is drawn. */
+   * registered before any chart is drawn. This runs last, after every helper
+   * above (and the host bridge) is set up: a synchronous first hydrate must
+   * find them all in place. */
   if (typeof document !== "undefined") {
     var schedule = function () {
       if (typeof requestAnimationFrame === "function") requestAnimationFrame(hydrate);
@@ -3652,18 +3958,5 @@
       boot();
     }
   }
-
-  root.tracebi = {
-    data: data,
-    ready: ready,
-    fmt: fmt,
-    configureChart: configureChart,
-    draw: draw,
-    theme: theme,
-    setSelection: setSelection,
-    /* The scenario evaluator, exposed so tests and authors can check a
-     * formula gives what they expect. It computes from the values passed. */
-    evaluate: evalFormula
-  };
 })(typeof window !== "undefined" ? window
    : typeof globalThis !== "undefined" ? globalThis : this);

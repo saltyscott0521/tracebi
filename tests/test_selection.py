@@ -234,7 +234,9 @@ class TestEvaluate:
         assert "connect-src 'none'" in html
         assert 'id="tracebi-selection"' not in html
 
-    def test_opted_in_page_can_reach_the_model(self, tmp_path):
+    def test_opted_in_page_still_cannot_connect_anywhere(self, tmp_path):
+        """A selection is run by the app on the page's behalf (the page is sandboxed
+        and asks by message), so opting in does not loosen the page's CSP."""
         model = _model()
         pkg = TemplatePackage(str(_package(
             tmp_path, selection={"model": "selection_model", "filters": {}},
@@ -242,7 +244,8 @@ class TestEvaluate:
         out = tmp_path / "cut.html"
         pkg.render({"selection_model": model}, str(out), save_manifest=True)
         html = out.read_text(encoding="utf-8")
-        assert "connect-src 'self'" in html
+        assert "connect-src 'none'" in html
+        assert "connect-src 'self'" not in html
         assert 'id="tracebi-selection"' in html
         assert 'id="tracebi-grain"' in html
         from tracebi.verify import verify_file

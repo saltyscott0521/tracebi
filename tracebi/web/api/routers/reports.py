@@ -899,7 +899,7 @@ def workbench_preview(name: str):
                 os.environ.pop("TRACEBI_WORKBENCH_DIR", None)
             else:
                 os.environ["TRACEBI_WORKBENCH_DIR"] = previous
-    return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+    return HTMLResponse(page, headers={"Cache-Control": "no-store", **SANDBOX_HEADERS})
 
 
 # The project feed: before a report is open (or exists), what the agent shows you
@@ -1035,7 +1035,14 @@ def report_lineage(name: str):
 
 share_router = APIRouter(tags=["reports"])
 
+#: A report page may carry its author's script, so a page served to be opened
+#: on its own is sandboxed by the browser: an opaque origin, with no cookies
+#: and no way to call this app as the viewer. (The web app puts the same
+#: sandbox on its frames.) It merges with the report's own CSP meta tag: both
+#: are enforced, so neither can loosen the other.
+SANDBOX_HEADERS = {"Content-Security-Policy": "sandbox allow-scripts allow-downloads"}
+
 
 @share_router.get("/r/{name:path}", response_class=HTMLResponse)
 def share_report(name: str):
-    return HTMLResponse(_last_build(name.strip("/"))["html"])
+    return HTMLResponse(_last_build(name.strip("/"))["html"], headers=SANDBOX_HEADERS)
