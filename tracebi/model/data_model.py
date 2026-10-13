@@ -196,6 +196,21 @@ def _filter_leaves(node: "Optional[_FilterNode]") -> "list[_Predicate]":
     return out
 
 
+def _filter_columns(node: Any) -> set[str]:
+    """Every column a filter dict names, through its ``and``/``or`` groups —
+    what a measure's own filters read from the fact."""
+    out: set[str] = set()
+    if not isinstance(node, dict):
+        return out
+    for key, raw in node.items():
+        if str(key).lower() in ("or", "and"):
+            for sub in raw or ():
+                out |= _filter_columns(sub)
+        else:
+            out.add(str(key))
+    return out
+
+
 @dataclass(frozen=True)
 class MeasureDef:
     """
@@ -265,6 +280,7 @@ class MeasureDef:
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
     allow_rate_agg: bool = False               # author vouched: skip the value guard
+    filters: Optional[dict] = None             # simple/expression only: WHERE of this measure
 
     def to_dict(self) -> dict:
         d = {"name": self.name, "kind": self.kind}
@@ -272,6 +288,8 @@ class MeasureDef:
             val = getattr(self, key)
             if val:
                 d[key] = val
+        if self.filters:
+            d["filters"] = dict(self.filters)
         if self.ratio:
             d["ratio"] = list(self.ratio)
         if self.share:
@@ -499,6 +517,7 @@ class _Resolved:
     partitions: "dict[str, tuple[str, ...]]"     # {rank/running output: part cols}
     pops: "dict[str, tuple[str, str, int, str]]"  # {output: (base, unit, n, mode)}
     to_dates: "dict[str, tuple[str, str]]"        # {output: (base, reset period)}
+    filtered: "dict[str, dict]" = field(default_factory=dict)  # {output: its filters}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -821,6 +840,7 @@ class DataModel:
         format: Optional[str] = None,
         allow_rate_agg: bool = False,
         allow_additive: bool = False,
+        filters: Optional[dict[str, Any]] = None,
     ) -> "DataModel":
         """
         Declare a named measure on the model.
@@ -864,6 +884,18 @@ class DataModel:
         point-in-time balance double-counts when summed across snapshots.
         Declare a ``period_end`` measure instead, or pass ``allow_additive=True``
         if the column is genuinely a flow (a delta, not a level).
+
+        ``filters=`` restricts a ``simple`` or ``expression`` measure to the rows
+        that match, with the same vocabulary as a query's ``filters`` (equality,
+        ``in``, operators, ``or`` groups) over the fact's own columns::
+
+            model.add_measure("purchases", column="amount", agg="sum",
+                              filters={"activity_type": "purchase"})
+
+        The filter is part of the measure's definition: it applies wherever the
+        measure is used, is stamped in the query's lineage, and is re-checked by
+        ``tracebi verify``. Other measures are unaffected. A ratio or other
+        derived measure filters through the base measures it names.
 
         Everything here is declarative data — callables are rejected, since
         a lambda cannot be serialized, diffed, reviewed, or validated
@@ -1094,6 +1126,16 @@ class DataModel:
                     f"expr='revenue - cost', agg='sum'."
                 )
 
+        if filters is not None:
+            if kind not in ("simple", "expression"):
+                raise ValueError(
+                    f"Measure '{name}': filters= applies to simple and "
+                    f"expression measures only. A {kind} measure filters "
+                    f"through the base measures it names."
+                )
+            self._check_measure_filters(name, filters)
+            filters = dict(filters)
+
         self._measures[name] = MeasureDef(
             name=name, kind=kind, agg=agg, column=column, expr=expr,
             ratio=tuple(ratio) if ratio else None, share=share,
@@ -1103,9 +1145,39 @@ class DataModel:
             growth=tuple(growth) if growth else None,
             to_date=tuple(to_date) if to_date else None,
             description=description, format=format,
-            allow_rate_agg=bool(allow_rate_agg),
+            allow_rate_agg=bool(allow_rate_agg), filters=filters,
         )
         return self
+
+    def _check_measure_filters(self, name: str, filters: Any) -> None:
+        """Declaration-time shape check for a measure's ``filters``: the query
+        vocabulary, restricted to the fact's own columns. Dimension references
+        are refused here because a measure is fact-agnostic (its columns are
+        resolved against whichever fact a query names, at execution)."""
+        if not isinstance(filters, dict) or not filters:
+            raise ValueError(
+                f"Measure '{name}': filters must be a non-empty dict of "
+                f"conditions, e.g. {{'activity_type': 'purchase'}}."
+            )
+        for key, raw in filters.items():
+            kl = str(key).lower()
+            if kl in ("or", "and"):
+                if not isinstance(raw, (list, tuple)) or not raw:
+                    raise ValueError(
+                        f"Measure '{name}': filter '{kl}' takes a non-empty "
+                        f"list of condition groups, got {raw!r}."
+                    )
+                for sub in raw:
+                    self._check_measure_filters(name, sub)
+                continue
+            if "." in str(key):
+                raise ValueError(
+                    f"Measure '{name}': filter '{key}' refers to a dimension "
+                    f"attribute. A measure's filters apply to the fact's own "
+                    f"columns; filter the query with filters= instead."
+                )
+            # Reuse the query parser for the value shape (operator, list, between).
+            self._parse_one_predicate(str(key), raw, None, {str(key)})
 
     def measures(self) -> dict[str, MeasureDef]:
         """Declared measures, by name."""
@@ -1502,6 +1574,28 @@ class DataModel:
             ))
         fact_cols = set(fact_df.columns) | probe_cols
 
+        # A measure's own filters: parsed against this fact's columns here, so
+        # a column the fact does not have is refused by name, before any
+        # aggregation runs. They restrict only their measure, never the rows.
+        measure_filters: dict[str, "_FilterNode"] = {}
+        if resolved.filtered and not aggregate:
+            raise ValueError(
+                f"Filtered measure(s) {sorted(resolved.filtered)} apply to an "
+                f"aggregation, but this query has aggregate=False. Query them "
+                f"with aggregate=True (the default)."
+            )
+        for out_name, raw in resolved.filtered.items():
+            try:
+                node = self._parse_filter_dict(raw, fact_def, fact_cols)
+            except ValueError as exc:
+                raise ValueError(f"Measure '{out_name}': {exc}") from exc
+            if any(p.is_dim for p in _filter_leaves(node)):
+                raise ValueError(
+                    f"Measure '{out_name}': a measure's filters apply to the "
+                    f"fact's own columns, not a dimension attribute."
+                )
+            measure_filters[out_name] = node
+
         # Value-based rate guard. The name guard at add_measure is blind to a
         # per-row ratio whose column name matches no token (mark_cost =
         # fair_value / cost, ~1.0); at execution the values are here, so refuse
@@ -1618,6 +1712,20 @@ class DataModel:
                     "pushed_down": p.target in pushed,
                 },
             ))
+        for out_name, node in measure_filters.items():
+            for p in _filter_leaves(node):
+                lineage.append(LineageNode(
+                    operation="filter",
+                    description=(f"Measure '{out_name}' filter: {p.describe()}"),
+                    metadata={
+                        "measure": out_name,
+                        "target": p.target,
+                        "operator": p.op,
+                        "value": p.value,
+                        "on": "fact",
+                        "pushed_down": False,
+                    },
+                ))
 
         # ── Single canonical query engine: DuckDB ─────────────
         # One engine means one semantics and one set of bytes, so a receipt
@@ -1635,6 +1743,7 @@ class DataModel:
             filter_tree=filter_tree,
             aggregate=aggregate,
             lineage=lineage,
+            measure_filters=measure_filters,
         )
         engine = "duckdb"
         engine_version = duckdb.__version__
@@ -1863,6 +1972,13 @@ class DataModel:
                 "fingerprint_algo": CURRENT_FINGERPRINT_ALGO,
                 "rows_out": len(result_df),
                 "measures": dict(measures),
+                # The resolved WHERE of each filtered measure, so the receipt
+                # shows the definition the number was computed under.
+                **({"measure_filters": {
+                    out: [{"target": p.target, "operator": p.op, "value": p.value}
+                          for p in _filter_leaves(node)]
+                    for out, node in measure_filters.items()}}
+                   if measure_filters else {}),
                 # The model and the exact spec that produced this frame —
                 # with the fully resolved ordering, so replay compares like
                 # with like. With DataSet.fingerprint() that makes the run
@@ -1911,6 +2027,7 @@ class DataModel:
         partitions: dict[str, tuple[str, ...]] = {}
         pops: dict[str, tuple[str, str, int, str]] = {}
         to_dates: dict[str, tuple[str, str]] = {}
+        filtered: dict[str, dict] = {}
 
         if isinstance(measures, dict):
             if not measures:
@@ -1996,9 +2113,13 @@ class DataModel:
                 agg_map[m.name] = m.agg
                 if m.column != m.name:
                     derived[m.name] = m.column
+                if m.filters:
+                    filtered[m.name] = dict(m.filters)
             elif m.kind == "expression":
                 agg_map[m.name] = m.agg
                 derived[m.name] = m.expr
+                if m.filters:
+                    filtered[m.name] = dict(m.filters)
             elif m.kind == "share":
                 _expand(m.share, seen + (mname,))    # the measure it's a share of
                 shares[m.name] = m.share
@@ -2034,7 +2155,8 @@ class DataModel:
         for n in names:
             _expand(n, ())
         return _Resolved(agg_map, derived, ratios, shares, ranks,
-                         runnings, period_ends, partitions, pops, to_dates)
+                         runnings, period_ends, partitions, pops, to_dates,
+                         filtered)
 
     def _apply_derived(
         self,
@@ -3035,6 +3157,26 @@ class DataModel:
         if spec.filters:
             _check_filter_group(spec.filters, "filters")
 
+        # ── Measure filters ───────────────────────────────────
+        # A filtered measure's own columns are checked like a query filter's:
+        # declared on the fact is clean; undeclared is a warning here (it may be
+        # a physical column) and execution refuses it by name if it is absent.
+        if isinstance(spec.measures, (list, tuple)) and all(
+                isinstance(m, str) for m in spec.measures):
+            try:
+                mresolved = self._resolve_measures(list(spec.measures), fact_def)
+            except ValueError:
+                mresolved = None      # unknown measures are reported above
+            for mname, raw in (mresolved.filtered.items() if mresolved else ()):
+                for col in sorted(_filter_columns(raw) - declared_cols):
+                    warnings.append((
+                        f"measures.{mname}",
+                        f"filter column '{col}' of measure '{mname}' is not "
+                        f"declared on fact '{spec.fact}'. It cannot be verified "
+                        f"before execution, which checks it against the actual "
+                        f"table and fails there if the column is absent.",
+                    ))
+
         # ── Ordering ──────────────────────────────────────────
         if spec.limit is not None and not (spec.order_by or ()):
             errors.append((
@@ -3150,6 +3292,7 @@ class DataModel:
         filter_tree: "_FilterNode",
         aggregate: bool,
         lineage: list[LineageNode],
+        measure_filters: "Optional[dict[str, _FilterNode]]" = None,
     ) -> pd.DataFrame:
         import duckdb
 
@@ -3188,6 +3331,9 @@ class DataModel:
                 select_cols_sql.append(f"{col_sql} AS {alias}")
                 group_cols_sql.append(alias)
 
+            # Parameters of the SELECT list (a measure's FILTER clause), which
+            # come before the WHERE's in the SQL text, so they lead the list.
+            select_params: list[Any] = []
             if aggregate:
                 for col, func in measures.items():
                     func_l = func.lower()
@@ -3200,18 +3346,20 @@ class DataModel:
                         # Interpolated percentile (p90 → quantile_cont(col, 0.9)).
                         # Deterministic; the fraction comes from a validated
                         # p0–p100 integer, never free text.
-                        select_cols_sql.append(
-                            f'quantile_cont(fact."{col}", {frac}) AS "{col}"'
-                        )
+                        agg_sql = f'quantile_cont(fact."{col}", {frac})'
                     elif func_l == "nunique":
-                        select_cols_sql.append(
-                            f'COUNT(DISTINCT fact."{col}") AS "{col}"'
-                        )
+                        agg_sql = f'COUNT(DISTINCT fact."{col}")'
                     else:
                         sql_func = "AVG" if func_l == "mean" else func_l.upper()
-                        select_cols_sql.append(
-                            f'{sql_func}(fact."{col}") AS "{col}"'
-                        )
+                        agg_sql = f'{sql_func}(fact."{col}")'
+                    node = (measure_filters or {}).get(col)
+                    if node is not None:
+                        # The measure's own filter: aggregate only the rows it
+                        # matches. Other measures in the same query are unaffected.
+                        f_sql, f_params = self._filter_where(node)
+                        agg_sql += f" FILTER (WHERE {f_sql})"
+                        select_params.extend(f_params)
+                    select_cols_sql.append(f'{agg_sql} AS "{col}"')
             else:
                 for col in measures.keys():
                     select_cols_sql.append(f'fact."{col}" AS "{col}"')
@@ -3268,7 +3416,7 @@ class DataModel:
                 # and manifest fingerprints were not re-verifiable.
                 sql += " ORDER BY " + ", ".join(group_cols_sql)
 
-            out = con.execute(sql, params).df()
+            out = con.execute(sql, select_params + params).df()
             if skeleton:
                 out = out.drop(columns=["__skeleton__"])
             return out
@@ -3312,6 +3460,8 @@ class DataModel:
             cols |= {t for t in _EXPR_TOKEN.findall(r.derived.get(out, out))
                      if not t.isdigit()}
         cols |= {value_col for value_col, _ in r.period_ends.values()}
+        for raw in r.filtered.values():
+            cols |= _filter_columns(raw)
         return cols
 
     def _runnable_measures(

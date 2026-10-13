@@ -58,3 +58,10 @@ measures:
     column: order_id
     agg: count
     description: Order count
+  # A measure with its own filter: only the rows it matches are summed, the
+  # rest of the vocabulary is untouched. The receipt stamps the filter.
+  - name: large_order_revenue
+    column: revenue
+    agg: sum
+    filters: {qty: {gte: 10}}
+    description: Revenue from orders of ten units or more

@@ -45,7 +45,7 @@ _VALUE_BINS = {"dimension", "name", "source", "edges", "labels"}
 # Every keyword DataModel.add_measure takes, plus the measure's name.
 _MEASURE = {"name", "column", "agg", "expr", "ratio", "share", "rank", "running",
             "partition_by", "period_end", "offset", "growth", "to_date",
-            "description", "format", "allow_rate_agg", "allow_additive"}
+            "description", "format", "allow_rate_agg", "allow_additive", "filters"}
 _PAIR = {"ratio", "period_end", "to_date"}
 _TRIPLE = {"offset", "growth"}
 _STR = {"column", "agg", "expr", "share", "rank", "running", "description",
@@ -244,6 +244,10 @@ def validate_model_spec(doc: Any) -> list[str]:
         for k in ("allow_rate_agg", "allow_additive"):
             if k in m and not isinstance(m[k], bool):
                 errors.append(f"{path}.{k}: must be true or false")
+        if "filters" in m and not (isinstance(m["filters"], dict) and m["filters"]):
+            errors.append(f"{path}.filters: must be a non-empty mapping of "
+                          "conditions over the fact's columns, e.g. "
+                          "{activity_type: purchase}")
     return errors
 
 

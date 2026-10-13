@@ -150,6 +150,11 @@ from `report.json`:
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the
   group totals. To keep only groups whose *total* clears a threshold, use
   `having` (HAVING): `"having": {"revenue": {"gte": 250}}`.
+- A measure can carry its own filter, declared on the model:
+  `add_measure('purchases', column='amount', agg='sum', filters={'activity_type':
+  'purchase'})` (YAML: `filters:` on the measure). It restricts only that
+  measure, so a query's own filters still narrow every measure; the receipt
+  stamps the filter, and `verify` re-runs it.
 - **Scenarios are the one place a page computes.** A
   `data-tb-scenario` block lets the reader ask "what if": `data-tb-input`
   fields, a `data-tb-preset` picker (`data-tb-key`, `data-tb-fill`,

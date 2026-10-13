@@ -477,6 +477,9 @@ freely, never re-source.
   authored and code-reviewed here. Missing a measure? The fix is a code-reviewed
   edit to the model file (e.g. `model.add_measure(...)` in
   `models/portfolio_model.yaml`) — never a workaround in the report layer.
+  A measure can carry its own filter (`add_measure('purchases', column='amount',
+  agg='sum', filters={'activity_type': 'purchase'})`, or `filters:` in the YAML):
+  it restricts that measure only, and the receipt stamps the filter.
   Missing a *column the measure needs*? That is a phase-① change: sink it in the
   transform. A fresh gateway process sees new vocabulary on its next call (stdio
   one-shot clients get this for free; a long-running server must be restarted —

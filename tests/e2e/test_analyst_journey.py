@@ -7,6 +7,8 @@ shipped file, and the warehouse changing under a built report. The first test
 is the shorter road the README prints: init's own next steps, typed as printed.
 """
 
+import json
+
 from tests.e2e.conftest import manifests, run_cli
 
 
@@ -98,3 +100,54 @@ def test_a_report_in_a_folder_builds_by_its_path(scaffolded):
     code, out = run_cli("report", "build", "finance/weekly")
     assert code == 0, out
     assert (scaffolded / "output" / "finance" / "weekly.html").is_file()
+
+
+def test_a_measure_with_its_own_filter_is_stamped_and_reproduces(scaffolded):
+    """The scaffolded model declares a measure with its own filter; a report
+    binds it, and the receipt shows the filter and re-checks clean. The
+    filtered figure is the one the rows say: a subset of the unfiltered total."""
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+
+    report = scaffolded / "reports" / "sample_model" / "sample_dashboard" / "report.json"
+    doc = json.loads(report.read_text())
+    doc["data"]["large"] = {"model": "sample_model", "query": {
+        "fact": "fact_orders", "measures": ["large_order_revenue", "revenue"]}}
+    report.write_text(json.dumps(doc, indent=2))
+
+    code, out = run_cli("report", "build", "sample_model/sample_dashboard")
+    assert code == 0, out
+    [manifest] = manifests(scaffolded)
+    code, out = run_cli("verify", str(manifest), "--strict")
+    assert code == 0 and "REPRODUCES" in out, out
+
+    receipt = json.loads(manifest.read_text())
+    [binding] = [b for b in receipt["embedded_data"] if b["name"] == "large"]
+    assert binding["query_spec"]["measures"] == ["large_order_revenue", "revenue"]
+    [measure] = [m for m in receipt["semantic_contract"]["sample_model"]["slice"]["measures"]
+                 if m["name"] == "large_order_revenue"]
+    assert measure["filters"] == {"qty": {"gte": 10}}
+
+    from tracebi.model_registry import get_model
+    both = get_model("sample_model").query(
+        fact="fact_orders", measures=["large_order_revenue", "revenue"]).to_pandas()
+    assert 0 < both["large_order_revenue"].iloc[0] < both["revenue"].iloc[0]
+
+
+def test_a_filter_on_a_column_the_fact_lacks_is_refused_by_name(scaffolded):
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    model_file = scaffolded / "models" / "sample_model.yaml"
+    text = model_file.read_text()
+    assert "filters: {qty: {gte: 10}}" in text
+    model_file.write_text(text.replace("filters: {qty: {gte: 10}}",
+                                       "filters: {quantity: {gte: 10}}"))
+    report = scaffolded / "reports" / "sample_model" / "sample_dashboard" / "report.json"
+    doc = json.loads(report.read_text())
+    doc["data"]["large"] = {"model": "sample_model", "query": {
+        "fact": "fact_orders", "measures": ["large_order_revenue"]}}
+    report.write_text(json.dumps(doc, indent=2))
+
+    code, out = run_cli("report", "build", "sample_model/sample_dashboard")
+    assert code != 0
+    assert "large_order_revenue" in out and "quantity" in out, out

@@ -1054,6 +1054,25 @@ def describe(brief: bool = False) -> dict:
                         "not filterable — filter on the source column. 'group by "
                         "band' without report.py or a pre-baked bucket column.",
             },
+            "measure_filters": {
+                "declare": "model.add_measure(name, column=..., agg=..., "
+                           "filters={col: value}); YAML: a filters: mapping on "
+                           "the measure",
+                "applies_to": ["simple", "expression"],
+                "example": "add_measure('purchases', column='amount', agg='sum', "
+                           "filters={'activity_type': 'purchase'})",
+                "note": "A per-measure WHERE inside the aggregation, so only this "
+                        "measure sees the matching rows. The query's own filters "
+                        "still narrow every measure in it, and a ratio or share of "
+                        "filtered measures is a ratio of their filtered totals. "
+                        "The same filter vocabulary as a query's filters over the "
+                        "fact's own columns (equality, lists, operator dicts, "
+                        "or/and groups); dimension references are refused. A "
+                        "column the fact lacks is refused by name at execution. "
+                        "The stamped lineage and the receipt carry the filter, and "
+                        "verify re-runs it: changing it in the model shows as "
+                        "drift.",
+            },
             "aggregations": sorted(_AGG_FUNCS) + ["p<N> (percentile, e.g. p90)"],
             "aggregations_note": "median and stddev summarize a distribution's "
                                  "shape — a mean hides skew and tails, so use "
