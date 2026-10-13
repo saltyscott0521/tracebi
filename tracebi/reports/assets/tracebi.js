@@ -2722,7 +2722,7 @@
       target.textContent = text;
     }
     for (i in seen) if (seen.hasOwnProperty(i)) refreshBinding(i);
-    stampFigures();            /* the runtime wrote these: they are the new baseline */
+    try { stampFigures(); } catch (e) { /* the runtime wrote these: they are the new baseline */ }
     applyControlDomains(payload.controls);
     paintSelectionReceipt(payload);
     controlEls("data-tb-filter").forEach(function (ctrl) {
