@@ -449,6 +449,29 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("link", name="Open the published report").wait_for()
             assert (project / "reports" / "portfolio_model" / "draft_demo" / "report.json").is_file()
             fail_on_browser_errors()
+
+            # A model draft that moves published figures lists them and makes
+            # Publish wait for the person to accept the impact.
+            model_text = (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8")
+            moved = model_text.replace("name: fair_value\n    column: fair_value\n    agg: sum",
+                                       "name: fair_value\n    column: fair_value\n    agg: avg", 1)
+            assert moved != model_text
+            model_draft = project / "drafts" / "anonymous" / "models" / "portfolio_model.yaml"
+            model_draft.parent.mkdir(parents=True, exist_ok=True)
+            model_draft.write_text(moved, encoding="utf-8")
+            page.goto(base + "/drafts/anonymous/models/portfolio_model")
+            page.get_by_role("heading", name="Impact on published reports").wait_for()
+            impact = page.get_by_role("list", name="Reports this model draft touches")
+            impact.get_by_text("Numbers move").first.wait_for()
+            page.get_by_role("button", name="Publish", exact=True).click()
+            go = page.get_by_role("button", name="Publish for everyone")
+            expect(go).to_be_disabled()
+            page.get_by_role("checkbox").check()
+            expect(go).to_be_enabled()
+            go.click()
+            page.get_by_text("Published model portfolio_model").wait_for()
+            assert (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8") == moved
+            fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:

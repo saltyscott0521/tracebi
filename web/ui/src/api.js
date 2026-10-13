@@ -429,10 +429,20 @@ export const useDraftPreview = (d, version, enabled) =>
     placeholderData: (previous) => previous,
   })
 
+// What publishing a model draft would do to the reports that read the model.
+export const useDraftImpact = (d, version, enabled) =>
+  useQuery({
+    queryKey: ['draft-impact', d.owner, d.kind, d.path, version],
+    queryFn: () => get(`${draftUrl(d)}/impact`),
+    enabled: !!version && enabled,
+    retry: false,
+  })
+
 export const usePublishDraft = (d) => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (note) => postJson(`${draftUrl(d)}/publish`, { note }),
+    mutationFn: ({ note, acceptImpact }) =>
+      postJson(`${draftUrl(d)}/publish`, { note, accept_impact: !!acceptImpact }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['drafts'] }),
   })
 }

@@ -27,6 +27,7 @@ declarative form of that name there (the previous one is kept in history).
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -468,6 +469,154 @@ def _validate_report(where: Path, models: dict) -> None:
             ) from exc
 
 
+class ImpactNotAccepted(DraftError):
+    """A model publish that moves or breaks published reports, without
+    ``accept_impact``. ``impact`` is the :func:`model_impact` result."""
+
+    def __init__(self, message: str, impact: dict):
+        super().__init__(message)
+        self.impact = impact
+
+
+def _walk(manifest: Optional[dict]) -> list:
+    from tracebi.verify import _walk_sections
+    return [s for s in _walk_sections((manifest or {}).get("sections") or [])
+            if s.get("dataset_fingerprint")]
+
+
+def _query_node(section: dict) -> Optional[dict]:
+    """The recorded query of a section a query alone reproduces, else None
+    (python-derived, ad hoc, or transformed after the query)."""
+    from tracebi.model.dataset import last_query_node
+    lineage = section.get("dataset_lineage") or []
+    node = last_query_node(lineage)
+    if section.get("verifiable") is False or node is None or lineage[-1] is not node:
+        return None
+    return node
+
+
+def _models_a_report_reads(pkg: Path, manifest: Optional[dict]) -> set:
+    """Model names a package binds in ``report.json``, plus the ones its last
+    build actually queried."""
+    names: set = set()
+    try:
+        data = json.loads((pkg / "report.json").read_text(encoding="utf-8")).get("data")
+    except (OSError, ValueError, AttributeError):
+        data = None
+    for binding in (data if isinstance(data, dict) else {}).values():
+        if isinstance(binding, dict) and isinstance(binding.get("model"), str):
+            names.add(binding["model"])
+    for section in _walk(manifest):
+        node = _query_node(section)
+        if node:
+            names.add((node.get("metadata") or {}).get("model"))
+    return names
+
+
+def _run_recorded(node: dict, model):
+    """(DataSet, None) or (None, error line) for a recorded query on *model*."""
+    from tracebi.model.data_model import QuerySpec
+    from tracebi.model.sql_calc import SqlQuery
+    try:
+        recorded = node["metadata"]["query_spec"]
+        spec = (SqlQuery.from_dict(recorded) if "sql" in recorded
+                else QuerySpec.from_dict(recorded))
+        return model.execute(spec), None
+    except Exception as exc:  # noqa: BLE001 — a query that no longer runs is the finding
+        return None, f"{type(exc).__name__}: {str(exc).splitlines()[0] if str(exc) else ''}"
+
+
+def _cell(frame, column: Optional[str]):
+    """First-row value of *column* (or its last dotted part), JSON-safe."""
+    if frame is None or column is None or len(frame) == 0:
+        return None
+    for c in (column, column.rsplit(".", 1)[-1]):
+        if c in frame.columns:
+            v = frame[c].iloc[0]
+            return v.item() if hasattr(v, "item") else v
+    return None
+
+
+def _impact_of(report: str, manifest: Optional[dict], path: str, published, draft) -> dict:
+    """One report's verdict: unchanged / moves / breaks / not_built / not_checkable."""
+    if manifest is None:
+        return {"report": report, "status": "not_built",
+                "detail": "no last build, so there is nothing to compare; build it to check"}
+    figures = manifest.get("figures") or []
+    moved, broken, checked = [], [], 0
+    for section in _walk(manifest):
+        node = _query_node(section)
+        if node is None or (node.get("metadata") or {}).get("model") != path:
+            continue
+        checked += 1
+        binding = section.get("id") or section.get("title")
+        was = _run_recorded(node, published)[0] if published is not None else None
+        now, error = _run_recorded(node, draft)
+        if now is None:
+            if was is not None:         # it ran before this draft; the draft broke it
+                broken.append({"binding": binding, "error": error})
+            continue
+        fp = now.fingerprint()
+        if fp == section["dataset_fingerprint"] or (was is not None and fp == was.fingerprint()):
+            continue            # as the last build had it, or moved by something other than this draft
+        old = was.to_pandas() if was is not None else None
+        new = now.to_pandas()
+        moved.append({
+            "binding": binding,
+            "rows": [None if old is None else len(old), len(new)],
+            "figures": [{"id": f.get("id"), "kind": f.get("kind"), "cell": f.get("cell"),
+                         "old": _cell(old, f.get("cell")), "new": _cell(new, f.get("cell"))}
+                        for f in figures if f.get("binding") == binding]})
+    if broken:
+        status, detail = "breaks", f"{len(broken)} recorded query(ies) no longer run"
+    elif moved:
+        status, detail = "moves", f"{len(moved)} binding(s) change"
+    elif checked:
+        status, detail = "unchanged", "every recorded query returns what the last build did"
+    else:
+        return {"report": report, "status": "not_checkable",
+                "detail": "its last build holds no recorded query on this model to re-run"}
+    return {"report": report, "status": status, "detail": detail,
+            "moved": moved, "broken": broken}
+
+
+def model_impact(owner: str, path: str, models: Optional[dict] = None) -> dict:
+    """What publishing model draft *path* would do to the published reports.
+
+    Every published report that reads the model has its last build's recorded
+    queries re-run against the draft: ``unchanged``, ``moves`` (the figures,
+    old and new) or ``breaks`` (the error). A report with no last build is
+    ``not_built``; it is listed, never counted unchanged. ``needs_acceptance``
+    is true when anything moves or breaks.
+    """
+    from tracebi.model.model_spec import load_model_spec
+    from tracebi.report_paths import output_html, report_name_for_dir
+
+    where = _exists(owner, "models", path)
+    _validate_model_draft(where)
+    published = (_load_models() if models is None else models).get(path)
+    draft = load_model_spec(where, root=Path.cwd())
+    base = os.getcwd()
+    reports = []
+    for _label, root in library_roots():
+        for f in sorted(Path(base, root).rglob("report.json")):
+            report = report_name_for_dir(str(f.parent), base)
+            try:
+                manifest = json.loads(Path(
+                    output_html(os.path.join(base, "output"), report) + ".manifest.json"
+                ).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                manifest = None
+            if path in _models_a_report_reads(f.parent, manifest):
+                reports.append(_impact_of(report, manifest, path, published, draft))
+    summary: dict = {}
+    for r in reports:
+        summary[r["status"]] = summary.get(r["status"], 0) + 1
+    return {"owner": owner, "kind": "models", "path": path, "reports": reports,
+            "summary": summary,
+            "needs_acceptance": bool(summary.get("moves") or summary.get("breaks"))}
+
+
 def _keep_previous(kind: str, path: str, current: Path, stamp: str) -> Optional[Path]:
     if not current.exists():
         return None
@@ -481,15 +630,44 @@ def _keep_previous(kind: str, path: str, current: Path, stamp: str) -> Optional[
     return keep
 
 
+def _impact_line(r: dict) -> str:
+    if r["status"] == "breaks":
+        return f"{r['report']} breaks: " + "; ".join(
+            f"{b['binding']}: {b['error']}" for b in r["broken"])
+    return f"{r['report']} moves: " + ", ".join(
+        f.get("id") or m["binding"] for m in r["moved"] for f in (m["figures"] or [m]))
+
+
 def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
                   note: Optional[str] = None,
-                  models: Optional[dict] = None) -> dict:
+                  models: Optional[dict] = None,
+                  accept_impact: bool = False) -> dict:
     """Validate the draft, keep what it replaces, copy it into the library and
-    record a ``publish`` run. The draft stays."""
+    record a ``publish`` run. The draft stays.
+
+    A model draft first has its :func:`model_impact` computed: when published
+    reports would move or break, the publish is refused (:class:`ImpactNotAccepted`)
+    unless *accept_impact* is true, and the accepted impact is recorded in the
+    run's detail."""
     kind = _kind(kind)
     where = _exists(owner, kind, path)
+    accepted = None
     if kind == "models":
         _validate_model_draft(where)
+        impact = model_impact(owner, path, models)
+        if impact["needs_acceptance"]:
+            if not accept_impact:
+                raise ImpactNotAccepted(
+                    "publishing this model would change published reports ("
+                    + "; ".join(_impact_line(r) for r in impact["reports"]
+                                if r["status"] in ("moves", "breaks"))
+                    + "). Nothing was published. Review model_impact, then "
+                    "publish again with accept_impact=true to accept it"
+                    + (" (a break needs accepting too)"
+                       if impact["summary"].get("breaks") else ""), impact)
+            accepted = {"summary": impact["summary"],
+                        "reports": [r for r in impact["reports"]
+                                    if r["status"] in ("moves", "breaks")]}
         target = _models_dir() / where.name
         if (_models_dir() / f"{path}.py").is_file():
             raise DraftError(
@@ -534,7 +712,8 @@ def publish_draft(owner: str, kind: str, path: str, actor: Optional[str],
     try:
         record_run(kind="publish", target=f"{kind}/{path}", status="ok",
                    finished=now, actor=actor, actor_role=get_actor()[1],
-                   detail={"version": stamp, "note": note or ""})
+                   detail={"version": stamp, "note": note or "",
+                           **({"accepted_impact": accepted} if accepted else {})})
     except Exception as exc:  # noqa: BLE001 — published is published; say the audit row is missing
         result["note"] = f"the publish was not recorded: {exc}"
     return result

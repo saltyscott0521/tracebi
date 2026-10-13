@@ -1453,6 +1453,7 @@ class DraftResult(TypedDict, total=False):
     files: Any
     updated: Optional[str]
     differs_from_published: Optional[bool]
+    impact: Optional[dict]
     version: Optional[str]
     previous: Optional[str]
     note: Optional[str]
@@ -1471,7 +1472,8 @@ def _draft_call(fn, *args, **kwargs) -> DraftResult:
         with _acting():
             return {"ok": True, **fn(*args, **kwargs)}
     except DraftError as exc:
-        return {"ok": False, "errors": [str(exc)]}
+        impact = getattr(exc, "impact", None)    # a refused publish carries what it would change
+        return {"ok": False, "errors": [str(exc)], **({"impact": impact} if impact else {})}
 
 
 def gateway_list_drafts() -> DraftResult:
@@ -1515,10 +1517,18 @@ def gateway_preview_draft(kind: str, path: str) -> DraftResult:
         return {"ok": False, "errors": [_one_line_error(exc)]}
 
 
-def gateway_publish_draft(kind: str, path: str, note: str = "") -> DraftResult:
+def gateway_model_impact(path: str) -> DraftResult:
+    from tracebi import drafts
+    return _draft_call(lambda: {"impact": drafts.model_impact(
+        _draft_owner(), path, _load_models())})
+
+
+def gateway_publish_draft(kind: str, path: str, note: str = "",
+                          accept_impact: bool = False) -> DraftResult:
     from tracebi import drafts
     result = _draft_call(lambda: drafts.publish_draft(
-        _draft_owner(), kind, path, _mcp_actor(), note or None, _load_models()))
+        _draft_owner(), kind, path, _mcp_actor(), note or None, _load_models(),
+        accept_impact))
     _show_action("publish_draft", (
         f"Published {kind}/{path}" if result.get("ok") else
         f"Publish of {kind}/{path} refused: " + "; ".join(result["errors"])))
@@ -1907,6 +1917,21 @@ def build_server(token: Optional[str] = None, oauth=None):
         ),
     )(gateway_preview_draft)
     _tool(
+        name="model_impact", title="Impact of a model draft on reports",
+        annotations=_READ_WAREHOUSE, structured_output=True,
+        description=(
+            "For a model draft (path = the model name): re-run the recorded "
+            "queries of every published report that reads that model against "
+            "the draft, compared with each report's last build. Returns "
+            "impact.reports, each unchanged, moves (figures with old and new "
+            "values), breaks (the error) or not_built (listed, never "
+            "unchanged), and impact.needs_acceptance. Writes nothing. "
+            "publish_draft of a model that moves or breaks reports is "
+            "refused until the person has seen this and you pass "
+            "accept_impact=true."
+        ),
+    )(gateway_model_impact)
+    _tool(
         name="publish_draft", title="Publish a draft (changes the project)",
         annotations=_PUBLISH, structured_output=True,
         description=(
@@ -1914,7 +1939,10 @@ def build_server(token: Optional[str] = None, oauth=None):
             "replaces under .tracebi/history/, copy the draft into the "
             "library and record a publish run with this actor and the note. "
             "The draft is kept. The person's go-ahead comes first: this "
-            "changes what the app serves."
+            "changes what the app serves. A model draft that would move or "
+            "break published reports is refused (ok=false, with impact) "
+            "unless accept_impact=true; a break needs accepting too, and "
+            "the accepted impact is recorded in the publish run."
         ),
     )(gateway_publish_draft)
 

@@ -119,6 +119,7 @@ A draft's owner is the acting principal; `{owner}` is that name slugged to
 | `GET` | `/api/drafts/{owner}/{kind}/{path}/files` | owner or admin |
 | `GET` | `/api/drafts/{owner}/{kind}/{path}/version` | owner or admin |
 | `GET` | `/api/drafts/{owner}/{kind}/{path}/preview` | owner or admin |
+| `GET` | `/api/drafts/{owner}/{kind}/{path}/impact` | owner or admin |
 | `POST` | `/api/drafts/{owner}/{kind}/{path}/publish` | analyst, and owner or admin |
 | `DELETE` | `/api/drafts/{owner}/{kind}/{path}` | analyst, and owner or admin |
 
@@ -133,6 +134,19 @@ owner's draft models, and writes nothing. `/publish` validates the draft first,
 keeps the version it replaces under `.tracebi/history/`, copies it into the
 library and records a `publish` run. The draft is kept. `DELETE` removes the
 draft only, never the published copy.
+
+`/impact` is for a model draft (a report draft is `422`). It re-runs the
+recorded queries of every published report that reads the model, from each
+report's last build, against the draft, and answers
+`{reports: [{report, status, detail, moved, broken}], summary, needs_acceptance}`.
+`status` is `unchanged`, `moves` (`moved[].figures` carry `id`, `old`, `new`),
+`breaks` (`broken[].error`), `not_built` (no last build to compare; listed,
+never unchanged) or `not_checkable`. It writes nothing. `/publish` of a model
+whose impact has a `moves` or `breaks` is `409` with the same `impact` in
+`detail`, unless the body carries `"accept_impact": true`; a break needs
+accepting too. The accepted impact is stored in the `publish` run's `detail`.
+The MCP tool `model_impact(path)` is the same check, and `publish_draft` takes
+`accept_impact`.
 
 ## Report specs
 

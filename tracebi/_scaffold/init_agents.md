@@ -308,7 +308,10 @@ on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
 
 If you cannot reach the project's files, draft over the gateway instead:
 `start_draft`, `write_draft_file`, `preview_draft` (give the person the url it
-returns), then `publish_draft` once they agree. Drafts live under `drafts/`
+returns), then `publish_draft` once they agree. For a model, `model_impact(path)`
+first: it re-runs the published reports that read it against the draft and lists
+which move or break (or are `not_built`); `publish_draft` is refused until you
+pass `accept_impact=true`, a break included. Drafts live under `drafts/`
 and nothing goes live until publish. Publish a model before a report that uses
 it. A declarative model, `models/<name>.yaml` or `.json`, can be drafted this
 way (writing the other form replaces the draft file); a Python model cannot.

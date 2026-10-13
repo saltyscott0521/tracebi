@@ -24,6 +24,7 @@ router = APIRouter(prefix="/drafts", tags=["drafts"])
 
 class PublishBody(BaseModel):
     note: str = ""
+    accept_impact: bool = False
 
 
 class StartBody(BaseModel):
@@ -51,6 +52,9 @@ def _allow(owner: str) -> None:
 
 
 def _refused(exc: drafts.DraftError) -> HTTPException:
+    if isinstance(exc, drafts.ImpactNotAccepted):
+        return HTTPException(status_code=409, detail={
+            **error_detail("Draft refused", exc), "impact": exc.impact})
     status = 404 if isinstance(exc, drafts.DraftNotFound) else 422
     return HTTPException(status_code=status, detail=error_detail("Draft refused", exc))
 
@@ -112,6 +116,22 @@ def write_draft_file(owner: str, kind: str, path: str, file: str, body: FileBody
         raise _refused(exc)
 
 
+@router.get("/{owner}/{kind}/{path:path}/impact")
+def draft_impact(owner: str, kind: str, path: str):
+    """What publishing a model draft would do to the published reports that
+    read it: each is unchanged, moves (the figures, old and new), breaks, or
+    not built. Computes, writes nothing. A report draft has no impact (422)."""
+    from tracebi.web.api.routers.desk import _loaded_models
+
+    _allow(owner)
+    try:
+        if drafts._kind(kind) != "models":
+            raise drafts.DraftError("only a model draft has an impact on reports")
+        return drafts.model_impact(owner, path, _loaded_models())
+    except drafts.DraftError as exc:
+        raise _refused(exc)
+
+
 @router.get("/{owner}/{kind}/{path:path}/preview", response_class=HTMLResponse)
 def draft_preview(owner: str, kind: str, path: str):
     """The draft as it is right now, rendered in memory (exploration blocks
@@ -142,7 +162,7 @@ def publish_draft(owner: str, kind: str, path: str, body: Optional[PublishBody] 
     try:
         return drafts.publish_draft(
             owner, kind, path, _who()[0], (body.note if body else "") or None,
-            _loaded_models())
+            _loaded_models(), bool(body and body.accept_impact))
     except drafts.DraftError as exc:
         raise _refused(exc)
 

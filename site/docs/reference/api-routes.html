@@ -325,6 +325,11 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 <td>owner or admin</td>
 </tr>
 <tr>
+<td><code>GET</code></td>
+<td><code>/api/drafts/{owner}/{kind}/{path}/impact</code></td>
+<td>owner or admin</td>
+</tr>
+<tr>
 <td><code>POST</code></td>
 <td><code>/api/drafts/{owner}/{kind}/{path}/publish</code></td>
 <td>analyst, and owner or admin</td>
@@ -346,6 +351,18 @@ owner's draft models, and writes nothing. <code>/publish</code> validates the dr
 keeps the version it replaces under <code>.tracebi/history/</code>, copies it into the
 library and records a <code>publish</code> run. The draft is kept. <code>DELETE</code> removes the
 draft only, never the published copy.</p>
+<p><code>/impact</code> is for a model draft (a report draft is <code>422</code>). It re-runs the
+recorded queries of every published report that reads the model, from each
+report's last build, against the draft, and answers
+<code>{reports: [{report, status, detail, moved, broken}], summary, needs_acceptance}</code>.
+<code>status</code> is <code>unchanged</code>, <code>moves</code> (<code>moved[].figures</code> carry <code>id</code>, <code>old</code>, <code>new</code>),
+<code>breaks</code> (<code>broken[].error</code>), <code>not_built</code> (no last build to compare; listed,
+never unchanged) or <code>not_checkable</code>. It writes nothing. <code>/publish</code> of a model
+whose impact has a <code>moves</code> or <code>breaks</code> is <code>409</code> with the same <code>impact</code> in
+<code>detail</code>, unless the body carries <code>"accept_impact": true</code>; a break needs
+accepting too. The accepted impact is stored in the <code>publish</code> run's <code>detail</code>.
+The MCP tool <code>model_impact(path)</code> is the same check, and <code>publish_draft</code> takes
+<code>accept_impact</code>.</p>
 <h2 id="report-specs">Report specs</h2>
 <table>
 <thead>
