@@ -135,12 +135,14 @@ def test_the_showcase_carries_every_affordance(built):
                    "tb-methodology", "data-tb-unverified",
                    "tb-semantic-contract-portfolio_model",
                    'id="tracebi-selection"', 'id="tracebi-grain"',
-                   "connect-src 'self'", 'class="tb-total"',
+                   'class="tb-total"',
                    "data-tb-sort", "data-tb-bars", "data-tb-direction",
                    "tb-table--freeze", "tb-about-receipt",
                    'id="fig-treemap"', "D3 7.9.0 (ISC)"):
         assert marker in html, f"showcase lost its {marker} affordance"
     assert "Working notes" not in html, "exploration must die at build"
+    # A page with a selection block asks the app to run its cut; it connects nowhere.
+    assert "connect-src 'none'" in html and "connect-src 'self'" not in html
 
     manifest = json.loads(_manifest(built, "portfolio_model/portfolio_showcase").read_text())
     assert manifest["schema_version"] == 2
