@@ -79,6 +79,15 @@ filterable, exactly as in a template.
 | `<Search>` | `binding`, `placeholder`, `label` |
 | `<Download>` | `binding`, `label` — the stamped CSV, verbatim |
 
+**App behaviour.**
+
+| Piece | What it does |
+|---|---|
+| `<Filter column label>` with no `binding` | A page-wide filter: it subsets every binding that has the column — tables and charts, including ones mounted later. KPIs and values stay the stamped totals (a filtered KPI needs its own binding, or `report.json` `"selection"`). |
+| `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its receipt. |
+| `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`): a reload or a shared link opens where the reader was. |
+| `<Built>` | When the file was built, from its receipt. |
+
 **Data for your own components.** `useBinding("name")` returns the binding's
 stamped rows (copies), and `fmt(value, "currency0")` formats a number with the
 named formats ([[number-formats]]).
@@ -139,6 +148,22 @@ export default function App() {
   );
 }
 ```
+
+## Without JavaScript
+
+An email client's preview or a phone's file viewer runs no script. The build
+writes the kit figures into the app's mount point as a static view — labelled
+KPIs, each chart's static picture, the tables — so those readers still see the
+numbers; the app replaces that view when it starts. `tracebi report build
+--format pdf` prints the app's first view.
+
+## Starting points
+
+`tracebi new-dashboard "Name" --job …`:
+
+- `overview` (default) — a KPI strip with a lead, a chart beside its ranking, a filterable detail.
+- `trend` — the latest period leading with its sparkline, the series as a chart or a table (a `<Segmented>` kept in the URL). Needs a time dimension in the model.
+- `leaderboard` — the leader, a top-ten bar chart, the full ranking with search.
 
 A broken app shows its error on the page instead of a blank one. The vendored
 bundles and their licences are listed in `tracebi/reports/assets/REACT_NOTICE.md`.

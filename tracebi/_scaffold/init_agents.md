@@ -106,6 +106,14 @@ literal strings: the build reads them as claims and refuses a binding or
 column that does not exist. `useBinding("name")` hands your own components
 the stamped rows; a number your code computes or draws (a Recharts chart, a
 sum) is the app's presentation, not a checked figure, and the page says so.
+For app behaviour: `<Filter column>` with no `binding` filters the whole page
+(every binding with that column; KPIs stay the stamped totals);
+`<Segmented options value onChange>` picks which figure shows — a period
+toggle is one literal-binding figure per option, never arithmetic; and
+`useUrlState("view", "Overview")` keeps a view or period in the URL so a
+shared link opens on it. `tracebi new-dashboard --job overview|trend|leaderboard`
+starts from the shape the dashboard is for. Without JavaScript (an email
+preview) the page shows its kit figures as built.
 `docs/reference/app-jsx.md` has the kit.
 
 Worked example — the framework builds the figure, you place it. Declare it in

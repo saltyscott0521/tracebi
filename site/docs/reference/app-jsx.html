@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>app.jsx — the React lane — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="app.jsx — the React lane">
+<meta name="description" content="App behaviour.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -223,6 +223,33 @@ filterable, exactly as in a template.</p>
 </tr>
 </tbody>
 </table>
+<p><strong>App behaviour.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;Filter column label&gt;</code> with no <code>binding</code></td>
+<td>A page-wide filter: it subsets every binding that has the column — tables and charts, including ones mounted later. KPIs and values stay the stamped totals (a filtered KPI needs its own binding, or <code>report.json</code> <code>"selection"</code>).</td>
+</tr>
+<tr>
+<td><code>&lt;Segmented options value onChange label&gt;</code></td>
+<td>One choice of a few — a view, a period. Use it to pick <em>which</em> figure shows: one literal-binding figure per option (<code>{p === "YTD" ? &lt;Kpi binding="kpis_ytd" …/&gt; : &lt;Kpi binding="kpis_mtd" …/&gt;}</code>), so each number keeps its receipt.</td>
+</tr>
+<tr>
+<td><code>useUrlState(key, initial)</code></td>
+<td><code>useState</code> kept in the URL (<code>#view=Detail&amp;period=YTD</code>): a reload or a shared link opens where the reader was.</td>
+</tr>
+<tr>
+<td><code>&lt;Built&gt;</code></td>
+<td>When the file was built, from its receipt.</td>
+</tr>
+</tbody>
+</table>
 <p><strong>Data for your own components.</strong> <code>useBinding("name")</code> returns the binding's
 stamped rows (copies), and <code>fmt(value, "currency0")</code> formats a number with the
 named formats (<a href="../reference/number-formats.html">Number formats</a>).</p>
@@ -277,6 +304,19 @@ export default function App() {
   );
 }
 </code></pre>
+<h2 id="without-javascript">Without JavaScript</h2>
+<p>An email client's preview or a phone's file viewer runs no script. The build
+writes the kit figures into the app's mount point as a static view — labelled
+KPIs, each chart's static picture, the tables — so those readers still see the
+numbers; the app replaces that view when it starts. <code>tracebi report build
+--format pdf</code> prints the app's first view.</p>
+<h2 id="starting-points">Starting points</h2>
+<p><code>tracebi new-dashboard "Name" --job …</code>:</p>
+<ul>
+<li><code>overview</code> (default) — a KPI strip with a lead, a chart beside its ranking, a filterable detail.</li>
+<li><code>trend</code> — the latest period leading with its sparkline, the series as a chart or a table (a <code>&lt;Segmented&gt;</code> kept in the URL). Needs a time dimension in the model.</li>
+<li><code>leaderboard</code> — the leader, a top-ten bar chart, the full ranking with search.</li>
+</ul>
 <p>A broken app shows its error on the page instead of a blank one. The vendored
 bundles and their licences are listed in <code>tracebi/reports/assets/REACT_NOTICE.md</code>.</p>
   </main>

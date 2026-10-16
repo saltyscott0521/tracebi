@@ -258,6 +258,42 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     assert code != 0 and "kpi" in out
 
 
+def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
+    """--job picks what a dashboard is for, and each one builds and verifies.
+    A trend asks for a time dimension: without one it says so and starts
+    from totals; with one, the latest period and the series are its bindings."""
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    code, out = run_cli("new-dashboard", "Regions Board", "--job", "leaderboard")
+    assert code == 0, out
+    decl = json.loads((scaffolded / "reports" / "regions_board" / "report.json").read_text())
+    assert decl["data"]["top10"]["query"]["limit"] == 10
+    code, out = run_cli("report", "build", "regions_board")
+    assert code == 0, out
+    code, out = run_cli("verify", str(scaffolded / "output" / "regions_board.html.manifest.json"))
+    assert code == 0, out
+
+    code, out = run_cli("new-dashboard", "Sample Trend", "--job", "trend")
+    assert code == 0 and "no time dimension" in out, out
+
+    saas = tmp_path / "saas"
+    code, out = run_cli("init", str(saas), "--template", "saas-metrics")
+    assert code == 0, out
+    monkeypatch.chdir(saas)
+    code, out = run_cli("run-transform", "saas_transform")
+    assert code == 0, out
+    code, out = run_cli("new-dashboard", "MRR Trend", "--job", "trend")
+    assert code == 0, out
+    data = json.loads((saas / "reports" / "mrr_trend" / "report.json").read_text())["data"]
+    assert data["by_period"]["query"]["dimensions"] == ["dim_month.month"]
+    assert data["latest"]["query"]["order_by"] == ["-dim_month.month"]
+    code, out = run_cli("report", "build", "mrr_trend")
+    assert code == 0, out
+    claims = {f["id"] for f in json.loads(
+        (saas / "output" / "mrr_trend.html.manifest.json").read_text())["figures"]}
+    assert {"fig-spark-by_period-ending_mrr", "kpi-latest-period"} <= claims
+
+
 def test_themes_and_the_house_style(scaffolded):
     """A report names a shipped theme and the page carries it, over the
     project default that `theme use` writes; an unknown name fails the

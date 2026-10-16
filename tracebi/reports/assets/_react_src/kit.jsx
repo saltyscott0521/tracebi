@@ -117,9 +117,12 @@ export function Table({ binding, columns, labels, formats, sort, bars, totals, r
   );
 }
 
+/** A filter on one binding's column — or, with no binding, on the whole
+ * page: every binding that has the column. It chooses rows; KPIs stay the
+ * stamped totals. */
 export function Filter({ binding, column, label, className }) {
   useHydrate();
-  const select = <select data-tb-filter="" data-tb-binding={binding} data-tb-column={column} />;
+  const select = <select data-tb-filter="" data-tb-binding={binding || "*"} data-tb-column={column} />;
   return label ? <label className={className}>{label} {select}</label> : select;
 }
 
@@ -141,4 +144,66 @@ export function Download({ binding, label }) {
 export function Built({ className }) {
   useHydrate();
   return <span className={className} data-tb-built="" />;
+}
+
+
+// ── App state that a shared link carries ────────────────────────────────────
+
+function readHash() {
+  const out = {};
+  const h = (window.location.hash || "").replace(/^#/, "");
+  h.split("&").forEach((part) => {
+    if (!part) return;
+    const i = part.indexOf("=");
+    const k = decodeURIComponent(i < 0 ? part : part.slice(0, i));
+    out[k] = i < 0 ? "" : decodeURIComponent(part.slice(i + 1));
+  });
+  return out;
+}
+
+function writeHash(state) {
+  const h = Object.keys(state).filter((k) => state[k] !== undefined && state[k] !== "")
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(state[k])}`).join("&");
+  try { window.history.replaceState(null, "", h ? `#${h}` : window.location.pathname + window.location.search); }
+  catch (e) { window.location.hash = h; }
+}
+
+/** useState kept in the page's URL (#view=Detail&period=YTD), so a shared
+ * link — or a reload — opens where the reader was. Values are strings. */
+export function useUrlState(key, initial) {
+  const [value, setValue] = React.useState(() => {
+    const v = readHash()[key];
+    return v === undefined ? initial : v;
+  });
+  const set = React.useCallback((next) => {
+    setValue((prev) => {
+      const v = typeof next === "function" ? next(prev) : next;
+      const state = readHash();
+      if (v === initial) delete state[key]; else state[key] = String(v);
+      writeHash(state);
+      return v;
+    });
+  }, [key, initial]);
+  return [value, set];
+}
+
+/** A segmented control: one choice of a few ("MTD", "QTD", "YTD"). Use it to
+ * pick WHICH figure shows — each option its own binding, so each number keeps
+ * its receipt — never to compute one. */
+export function Segmented({ options, value, onChange, label, className }) {
+  return (
+    <div role="radiogroup" aria-label={label}
+      className={["tb-segmented", className || ""].join(" ").trim()}>
+      {options.map((opt) => {
+        const v = typeof opt === "string" ? opt : opt.value;
+        const text = typeof opt === "string" ? opt : opt.label;
+        return (
+          <button key={v} type="button" role="radio" aria-checked={value === v}
+            className={value === v ? "tb-segmented-on" : ""} onClick={() => onChange(v)}>
+            {text}
+          </button>
+        );
+      })}
+    </div>
+  );
 }

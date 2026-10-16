@@ -2019,7 +2019,10 @@ def cmd_migrate(args: argparse.Namespace) -> int:
 
 # ── Report generator: new-report / report build|preview ────────────────────
 
-def _scaffold_binding() -> tuple[str, dict, str]:
+_TIME_WORDS = re.compile(r"(date|day|week|month|quarter|year|period|time)", re.I)
+
+
+def _scaffold_binding(job: str = "overview") -> tuple[str, dict, str]:
     """A concrete ``(model_name, query_dict, note)`` for a starter package.
 
     So ``tracebi new-report`` renders out of the box, the query is derived from
@@ -2039,11 +2042,21 @@ def _scaffold_binding() -> tuple[str, dict, str]:
             continue
         query: dict = {"fact": facts[0]["name"],
                        "measures": [measures[0]["name"]]}
-        dims = info.get("dimensions") or []
-        for d in dims:
-            if d.get("attributes"):
-                query["dimensions"] = [f"{d['name']}.{d['attributes'][0]}"]
-                break
+        refs = [f"{d['name']}.{a}" for d in (info.get("dimensions") or [])
+                for a in (d.get("attributes") or [])[:1]]
+        timed = [r for r in refs if _TIME_WORDS.search(r)]
+        other = [r for r in refs if r not in timed]
+        if job == "trend":
+            if not timed:
+                return info.get("name", name), query, (
+                    "The model has no time dimension (an attribute named like "
+                    "month, week or date), so this dashboard shows totals only: "
+                    "add one to the model, then run new-dashboard --job trend "
+                    "--force again.")
+            query["dimensions"] = [timed[0]]
+        elif other or timed:
+            # A breakdown or a ranking reads best by a category, not by time.
+            query["dimensions"] = [(other or timed)[0]]
         return info.get("name", name), query, ""
     return (
         "your_model",
@@ -2063,7 +2076,8 @@ def _humanise_label(ref: str) -> str:
 
 
 def _report_json_text(title: str, model: str, query: dict,
-                      look: "dict | None" = None, theme: "str | None" = None) -> str:
+                      look: "dict | None" = None, theme: "str | None" = None,
+                      job: str = "overview") -> str:
     """Teaching bindings from the derived query: ``totals`` (measures only,
     one row — for KPI cards and bound prose) and, when the model has a
     dimension, ``top`` (the leading member, one row — for the answer-first
@@ -2076,13 +2090,26 @@ def _report_json_text(title: str, model: str, query: dict,
     dims = query.get("dimensions")
     data = {"totals": {"model": model,
                        "query": {"fact": fact, "measures": measures}}}
-    if dims:
+    if dims and job == "trend":
+        # The series in time order, and its latest period on its own.
+        data["latest"] = {"model": model, "query": {
+            "fact": fact, "measures": measures, "dimensions": dims,
+            "order_by": ["-" + dims[0]], "limit": 1}}
+        data["by_period"] = {"model": model, "query": {
+            "fact": fact, "measures": measures, "dimensions": dims,
+            "order_by": [dims[0]]}}
+    elif dims:
         data["top"] = {"model": model, "query": {
             "fact": fact, "measures": measures[:1], "dimensions": dims,
             "order_by": ["-" + measures[0]], "limit": 1}}
-        data["breakdown"] = {"model": model, "query": {
-            "fact": fact, "measures": measures, "dimensions": dims,
-            "order_by": ["-" + measures[0]]}}
+        data["ranking" if job == "leaderboard" else "breakdown"] = {
+            "model": model, "query": {
+                "fact": fact, "measures": measures, "dimensions": dims,
+                "order_by": ["-" + measures[0]]}}
+        if job == "leaderboard":
+            data["top10"] = {"model": model, "query": {
+                "fact": fact, "measures": measures[:1], "dimensions": dims,
+                "order_by": ["-" + measures[0]], "limit": 10}}
     declaration = {
         "name": title,
         "author": "",
@@ -2572,13 +2599,14 @@ def cmd_new_report(args: argparse.Namespace) -> int:
         return 1
     pkg_dir.mkdir(parents=True, exist_ok=True)
 
-    model, query, note = _scaffold_binding()
-    measure = query["measures"][0]
-    dims = query.get("dimensions")
-    dim_ref = dims[0] if dims else None
     # new-dashboard writes an app (the React lane) unless --html asks for the
     # template page; new-report always writes a template page.
     app = getattr(args, "kind", "report") == "dashboard" and not args.html
+    job = getattr(args, "job", "overview") if app else "overview"
+    model, query, note = _scaffold_binding(job)
+    measure = query["measures"][0]
+    dims = query.get("dimensions")
+    dim_ref = dims[0] if dims else None
     look = {k: v for k, v in (("mode", args.mode), ("density", args.density))
             if v not in ("light", "comfortable")}
     for stale in ("template.html", "app.jsx"):     # --force switching lanes
@@ -2586,16 +2614,16 @@ def cmd_new_report(args: argparse.Namespace) -> int:
             (pkg_dir / stale).unlink()
     (pkg_dir / "report.json").write_text(
         _report_json_text(args.title, model, query, look=look if app else None,
-                          theme=args.theme),
+                          theme=args.theme, job=job),
         encoding="utf-8")
     if app:
         from tracebi._app_scaffold import report_app_jsx
         page = "app.jsx"
         (pkg_dir / page).write_text(
             report_app_jsx(args.title, measure, dim_ref, nav=args.nav,
-                           title_at=args.title_at, humanise=_humanise_label),
+                           title_at=args.title_at, humanise=_humanise_label, job=job),
             encoding="utf-8")
-        layout = "dashboard app"
+        layout = f"dashboard app ({job})"
     else:
         page = "template.html"
         (pkg_dir / page).write_text(
@@ -3621,6 +3649,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--html", action="store_true",
         help="Write the dashboard as template.html (reads with JavaScript off) "
              "instead of an app.jsx React app.")
+    p_new_dashboard.add_argument(
+        "--job", choices=["overview", "trend", "leaderboard"], default="overview",
+        help="What the dashboard is for. overview (default): a KPI strip, a "
+             "chart beside its ranking, a filterable detail. trend: the latest "
+             "period leading with its sparkline, the series as a chart or a "
+             "table (needs a time dimension). leaderboard: the leader, the top "
+             "ten, the full ranking with search.")
     p_new_dashboard.set_defaults(func=cmd_new_report, kind="dashboard",
                                  layout="dashboard")
 

@@ -154,6 +154,7 @@ tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
                       [--mode light|dark|auto] [--density comfortable|compact]
                       [--nav top|side] [--title-at left|center|banner|nav] [--theme NAME]
 tracebi new-dashboard &quot;Ops Board&quot;     [--force] [--reports-dir DIR] [--html]
+                      [--job overview|trend|leaderboard]
                       [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
 </code></pre>
@@ -175,7 +176,9 @@ prints and emails. <code>--layout brief</code> (answer, KPIs, one chart), <code>
 other pages.</p>
 <p><code>new-dashboard</code> writes an <strong>app</strong>: <code>app.jsx</code>, a React component built from the
 TraceBi kit (<a href="../reference/app-jsx.html">app.jsx — the React lane</a>) — a KPI strip with a lead, a chart beside its
-ranking, a filterable detail. <code>--html</code> writes the dashboard as <code>template.html</code>
+ranking, a filterable detail. <code>--job trend</code> starts from the latest period and
+its series (the model needs a time dimension); <code>--job leaderboard</code> from the
+leader, the top ten and the full ranking. <code>--html</code> writes the dashboard as <code>template.html</code>
 instead (the same page as <code>new-report --layout dashboard</code>).</p>
 <p>The look flags answer the questions an agent asks before it builds: <code>--mode</code>,
 <code>--density</code>, <code>--nav</code> (top tabs or a sidebar) and <code>--title-at</code> (<code>nav</code> puts the

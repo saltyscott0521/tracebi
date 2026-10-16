@@ -304,8 +304,13 @@ def _presentation() -> dict:
             "kit": "<Kpi binding cell format label context lead>, <Value binding cell "
                    "format>, <Chart binding type x y valueFormat ...>, <Spark ...> (a "
                    "sparkline), <Table binding columns sort bars rows>, <Filter binding "
-                   "column>, <Search binding>, <Download binding>; useBinding(name) returns "
-                   "the stamped rows; fmt(value, format).",
+                   "column> (no binding: a page-wide filter on every binding with the "
+                   "column; KPIs stay the stamped totals), <Search binding>, <Download "
+                   "binding>, <Built>; <Segmented options value onChange> to choose which "
+                   "figure shows (each option its own binding — never to compute one); "
+                   "useUrlState(key, initial) keeps a view or period in the URL so a "
+                   "shared link opens on it; useBinding(name) returns the stamped rows; "
+                   "fmt(value, format).",
             "claims": "Kit figures are claims: binding, cell, x and y must be literal "
                       "strings, and the build refuses a binding or column that does not "
                       "exist. A number the app computes or draws itself is presentation, "
@@ -317,8 +322,15 @@ def _presentation() -> dict:
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
             "scaffold": "tracebi new-dashboard \"Name\" writes a dashboard app.jsx; "
-                        "--nav top|side, --title-at, --mode, --density and --theme "
-                        "shape it. (new-report writes pages to be read.)",
+                        "--job overview|trend|leaderboard picks what it is for (trend "
+                        "needs a time dimension), and --nav top|side, --title-at, "
+                        "--mode, --density and --theme shape it. (new-report writes "
+                        "pages to be read.)",
+            "without_javascript": "The build writes the kit figures into the app's "
+                                  "mount point as a static view (labelled KPIs, the "
+                                  "charts' static pictures, tables), so an email "
+                                  "preview or a phone's file viewer shows the "
+                                  "numbers; the app replaces it when it starts.",
         },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",

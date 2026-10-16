@@ -2955,6 +2955,51 @@
     postSelection(collectFilters());
   }
 
+  /* Every binding the page embeds, by name. */
+  function allBindings() {
+    var els = document.querySelectorAll('script[type="application/json"][id^="tracebi-data-"]');
+    var out = [];
+    for (var i = 0; i < els.length; i++) out.push(els[i].id.slice(13));
+    return out;
+  }
+
+  /* data-tb-binding="*": one filter for the whole page. It subsets the rows
+   * of every binding that has the column — each binding's tables and charts
+   * redraw — and, like every control, never touches a value figure: a KPI
+   * stays the stamped total (a filtered KPI needs its own binding, or a
+   * report.json selection). */
+  function pageFilter(el, column) {
+    var targets = allBindings().filter(function (b) {
+      var blk = readBlock(b);
+      return blk && blk.cols.indexOf(column) !== -1;
+    });
+    if (!column || !targets.length) { noteUnknown(el, "no binding has column: " + column); return; }
+    var values = [];
+    targets.forEach(function (b) {
+      readBlock(b).rows.forEach(function (r) {
+        var v = r[column];
+        if (v === undefined) return;
+        v = String(v);
+        if (values.indexOf(v) === -1) values.push(v);
+      });
+    });
+    values.sort();
+    ["All"].concat(values).forEach(function (v) {
+      var o = document.createElement("option");
+      o.value = v;
+      o.textContent = v;
+      el.appendChild(o);
+    });
+    el.addEventListener("change", function () {
+      targets.forEach(function (b) {
+        var view = viewOf(b);
+        if (el.value === "All") delete view.filters[column];
+        else view.filters[column] = el.value;
+        refreshBinding(b);
+      });
+    });
+  }
+
   function hydrateControls() {
     if (selectionConfig()) {
       try { hydrateSelectionFilters(); } catch (e) { /* defensive */ }
@@ -2962,6 +3007,7 @@
       try {
         var binding = attr(el, "data-tb-binding");
         var column = attr(el, "data-tb-column");
+        if (binding === "*") { pageFilter(el, column); return; }
         var block = readBlock(binding);
         if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
         if (!column || block.cols.indexOf(column) === -1) {

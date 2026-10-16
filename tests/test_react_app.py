@@ -73,7 +73,8 @@ def _build(tmp: Path, app: str) -> Path:
     q = lambda dims: {"model": "sales_model", "query": {  # noqa: E731
         "fact": "fact_sales", "measures": ["revenue"], "dimensions": dims}}
     (pkg / "report.json").write_text(json.dumps({"name": "App", "data": {
-        "totals": q([]), "by_region": q(["dim_sale.region"])}}), encoding="utf-8")
+        "totals": q([]), "by_region": q(["dim_sale.region"]),
+        "by_sale": q(["dim_sale.region", "dim_sale.sale_id"])}}), encoding="utf-8")
     (pkg / "app.jsx").write_text(app, encoding="utf-8")
     out = tmp / "app.html"
     TemplatePackage(str(pkg)).render({"sales_model": _model()}, str(out))
@@ -147,3 +148,44 @@ def test_without_javascript_the_figures_still_read(browser, tmp_path):
     assert page.evaluate(
         "() => { const ids = [...document.querySelectorAll('[id]')].map(e => e.id);"
         " return ids.length - new Set(ids).size; }") == 0
+
+
+_APP_STATE = """
+import { Kpi, Table, Filter, Segmented, useUrlState } from "tracebi";
+
+export default function App() {
+  const [view, setView] = useUrlState("view", "Totals");
+  return (
+    <div>
+      <Segmented options={["Totals", "Sales"]} value={view} onChange={setView} />
+      <Filter column="dim_sale.region" label="Region" />
+      <Kpi binding="totals" cell="revenue" format="currency0" label="Revenue" />
+      <Table binding="by_region" />
+      {view === "Sales" && <Table binding="by_sale" />}
+    </div>
+  );
+}
+"""
+
+
+def test_a_page_filter_reaches_every_binding_and_the_view_rides_in_the_url(browser, tmp_path):
+    """One filter with no binding subsets every binding that has the column —
+    tables mounted later too — and leaves the KPI the stamped total. The
+    segmented choice is kept in the URL, so a reload opens on it."""
+    html = _build(tmp_path, _APP_STATE)
+    page = _open(browser, html)
+    page.select_option("select[data-tb-filter]", "West")
+    assert page.locator("#fig-table-by_region tbody tr").count() == 1
+    assert page.locator(".tb-kpi-value").inner_text() == "$5,251"
+
+    page.get_by_role("radio", name="Sales").click()
+    sales = page.locator("#fig-table-by_sale tbody tr")
+    sales.first.wait_for()
+    assert sales.count() == 2          # the West's two sales, filtered on arrival
+    assert "view=Sales" in page.evaluate("() => location.hash")
+
+    page.reload()
+    page.wait_for_function("() => document.documentElement.getAttribute('data-tb-ready') === '1'")
+    assert page.get_by_role("radio", name="Sales").get_attribute("aria-checked") == "true"
+    assert page.locator("#fig-table-by_sale").count() == 1
+    assert page.errors == []
