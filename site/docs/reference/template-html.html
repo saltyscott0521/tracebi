@@ -221,7 +221,16 @@ is the in-page find.</p>
 <ul>
 <li><strong>Tabs</strong> — <code>&lt;div class="tb-tabs"&gt;&lt;section data-tb-tab="Label"&gt;…&lt;/section&gt;&lt;/div&gt;</code>;
   the runtime builds the tab bar from the labels.</li>
-<li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, collapsing to one column under 720px.</li>
+<li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, and <code>.tb-cols-2-1</code> / <code>.tb-cols-1-2</code>
+  for a wide panel beside a narrow one; all collapse to one column under 720px.</li>
+<li><strong>KPI strip</strong> — a <code>.tb-grid</code> of <code>.tb-kpi</code> cells renders as one panel with
+  hairlines between the cells. <code>.tb-kpi--lead</code> makes the page's main number
+  twice as wide and larger.</li>
+<li><strong>Sparkline</strong> — a line or area chart with <code>class="tb-spark"</code> inside a
+  <code>.tb-kpi</code> draws the trend's shape alone (no axes, grid or legend; 44px tall;
+  zero-based); hovering still reads each value.</li>
+<li><strong>Panels</strong> — a <code>.tb-note</code> straight after a <code>.tb-card</code>'s first <code>&lt;h2&gt;</code> is the
+  panel's subtitle; a table that ends a card runs edge to edge.</li>
 <li><strong>Sidebar</strong> — <code>&lt;div class="tb-tabs" data-tb-nav="side"&gt;</code> lays the same tab
   bar out as a left column (a top bar again under 720px).</li>
 </ul>

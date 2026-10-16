@@ -212,7 +212,11 @@ from `report.json`:
   inventing one: `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
   (`presentation.layout` in `tracebi context`). `brief` is one finding — `.tb-lede`, a few
   `.tb-kpi` cards, one chart in one `.tb-card`. `dashboard` (the default, also what
-  `tracebi init` writes) is `brief` plus `.tb-cols-2`, a chart beside a filterable table.
+  `tracebi init` writes) is `brief` plus `.tb-cols-2-1`, a wide chart beside a narrow
+  filterable table. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
+  number `.tb-kpi--lead`, and give a KPI with a trend a `class="tb-spark"` line or area
+  chart (the shape alone, no axes). `.tb-cols-2-1` / `.tb-cols-1-2` put a wide panel
+  beside a narrow one.
   `tabbed` is the same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail).
   Pick by fit — `brief` for one finding, `dashboard` otherwise, `tabbed` for two jobs —
   and ask only when a person is in the loop and the choice is not obvious. Every built

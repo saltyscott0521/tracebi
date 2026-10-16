@@ -81,6 +81,11 @@ _FIGURES = """
      data-tb-annotate="W05=Launch" data-tb-x-title="Week"></div>
 <div id="facet" data-tb-figure="chart" data-tb-binding="by_quarter" data-tb-type="bar"
      data-tb-x="dim_sale.quarter" data-tb-y="revenue" data-tb-facet="dim_sale.product"></div>
+<div class="tb-kpi" style="width:300px">
+  <div id="spark" class="tb-spark" data-tb-figure="chart" data-tb-binding="totals_by_quarter"
+       data-tb-type="area" data-tb-x="dim_sale.quarter" data-tb-y="revenue"
+       data-tb-value-format="currency0"></div>
+</div>
 """
 
 
@@ -268,3 +273,26 @@ def test_currency_ticks_stay_short_and_a_unit_never_rescales(page):
     assert page.locator("#area .tb-chart-tip strong").inner_text() == "2,800 u"
     assert all(t.endswith(" u") for t in page.locator("#area .tb-axis-v text").all_text_contents())
 
+
+
+def test_a_sparkline_is_the_shape_alone_at_its_own_height(page):
+    """A .tb-spark under a KPI is drawn bare at the CSS height: no axes, no
+    grid, no legend, its line from edge to edge, and hover still reads the
+    row's own value. Ignoring the class would drop a 320px chart into a tile."""
+    _reset(page)
+    svg = page.locator("#spark svg.tb-chart-svg")
+    assert svg.get_attribute("height") == "44"
+    assert page.locator("#spark .tb-axis text").evaluate_all(
+        "ts => ts.filter(t => t.getBoundingClientRect().width > 0).length") == 0
+    assert page.locator("#spark .tb-grid line").count() == 0
+    assert page.locator("#spark .tb-legend-row").is_hidden()
+    xs = page.locator("#spark path.tb-line").get_attribute("d")
+    import re
+    points = [float(x) for x in re.findall(r"[ML]([-\d.]+),", xs)]
+    width = float(svg.get_attribute("width"))
+    assert points[0] < 1 and points[-1] > width - 7
+    page.locator("#spark .tb-hit").first.hover()
+    tip = page.locator("#spark .tb-chart-tip")
+    tip.wait_for(state="visible")
+    # Q1 revenue: 1200+900+400+300.
+    assert tip.locator("strong").inner_text() == "$2,800"

@@ -178,12 +178,20 @@ The cell may be text, such as the top sector's name.
 **Pick a structure by name.** `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
 writes that skeleton (omit the flag for `dashboard`, which is also what
 `tracebi init` writes). `brief`: one finding — `.tb-lede`, a few `.tb-kpi`
-cards, one chart in one `.tb-card`. `dashboard`: `brief`, then `.tb-cols-2`
-(a chart beside a filterable table). `tabbed`: the same header, then
+cards, one chart in one `.tb-card`. `dashboard`: `brief`, then `.tb-cols-2-1`
+(a wide chart beside a narrow filterable table). `tabbed`: the same header, then
 `.tb-tabs` / `data-tb-tab` (Overview and Detail). Pick the one that fits —
 `brief` for one finding, `dashboard` otherwise, `tabbed` when the page
 serves two jobs. Ask only when a person is in the loop and the choice is
 not obvious.
+
+**Lay it out like a dashboard.** A `.tb-grid` of `.tb-kpi` cells is one
+KPI strip; mark the number the page is about `.tb-kpi--lead` (twice as wide)
+rather than a row of identical boxes. Under a KPI with a trend, add a
+`class="tb-spark"` line or area chart bound to the by-period query — the
+shape alone, no axes. Put a wide panel beside a narrow one with `.tb-cols-2-1`
+(or `.tb-cols-1-2`); a `.tb-note` straight after a card's `<h2>` is its
+subtitle, and a table that ends a card runs edge to edge.
 
 **Ask how it should look, once, before you build.** With a person in the
 loop, ask in one short message: the title and where it sits (left, centred,

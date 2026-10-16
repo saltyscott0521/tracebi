@@ -1779,10 +1779,18 @@
     var marks = marksWanted(plan);
     if (marks.length && !horizontal) m.top += 14;
     if (marks.length && horizontal) m.right += 56;
+    /* A sparkline (.tb-spark) is the shape alone: no axes, no grid, no dots —
+     * the KPI beside it carries the number. Still zero-based. */
+    if (plan.spark) m = { top: 3, right: 3, bottom: 3, left: 3 };
     var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
     var band = d3.scaleBand().domain(cats).range(horizontal ? [0, ih] : [0, iw])
       .paddingInner(kind === "bar" || kind === "barh" ? 0.28 : 0).paddingOuter(0.14);
     val.range(horizontal ? [0, iw] : [ih, 0]);
+    /* A sparkline runs edge to edge: the first and last points on the sides. */
+    if (plan.spark && cats.length > 1) {
+      var half = iw / (2 * (cats.length - 1));
+      band.range([-half, iw + half]).paddingOuter(0);
+    }
     var keys = series.map(function (s) { return s.key; });
     var inner = d3.scaleBand().domain(stacked ? ["all"] : keys)
       .range([0, band.bandwidth()]).paddingInner(0.12);
@@ -1801,7 +1809,7 @@
 
     /* Grid and axes: recessive, in the page's rule and muted ink. */
     var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
-    transition(entry, grid.selectAll("line").data(val.ticks(5), function (v) { return v; }).join(
+    transition(entry, grid.selectAll("line").data(plan.spark ? [] : val.ticks(5), function (v) { return v; }).join(
       function (en) { return en.append("line").attr("stroke", t.rule); }))
       .attr(horizontal ? "x1" : "y1", function (v) { return val(v); })
       .attr(horizontal ? "x2" : "y2", function (v) { return val(v); })
@@ -1823,6 +1831,7 @@
     var ca = g.selectAll("g.tb-axis-c").data([0]).join("g").attr("class", "tb-axis tb-axis-c")
       .attr("transform", horizontal ? null : "translate(0," + ih + ")");
     ca.call(cAxis);
+    g.selectAll(".tb-axis").style("display", plan.spark ? "none" : null);
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11)
       .attr("font-family", t.font);
@@ -1878,7 +1887,7 @@
     var to = function (p) { return stacked ? p.y1 : p.y; };
 
     if (kind === "bar" || kind === "barh") {
-      var thick = Math.min(inner.bandwidth(), 44);
+      var thick = Math.min(inner.bandwidth(), 36);
       var off = (inner.bandwidth() - thick) / 2;
       groups.each(function (s) {
         var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
@@ -1957,7 +1966,7 @@
           function (ex) { return ex.remove(); }))
           .attr("cx", function (p) { return centre(p.cat); })
           .attr("cy", function (p) { return val(to(p)); })
-          .attr("r", cats.length > 24 ? 0 : 3.5)
+          .attr("r", plan.spark || cats.length > 24 ? 0 : 3.5)
           .attr("fill", colour(s.key)).attr("stroke", t.bg).attr("stroke-width", 2);
       });
     }
@@ -2331,7 +2340,8 @@
     t.ink = t.ink || "#111";
     t.bg = t.bg || "#fff";
     legendFor(entry, kind);
-    var H = Math.max(200, entry.height - entry.legend.offsetHeight - 8);
+    var H = entry.plan.spark ? entry.height
+      : Math.max(200, entry.height - entry.legend.offsetHeight - 8);
     if (!entry.svg) {
       entry.svg = d3.select(surface).append("svg").attr("class", "tb-chart-svg")
         .attr("tabindex", 0).attr("role", "img")
@@ -2374,7 +2384,7 @@
     if (fb) el.removeChild(fb);
     /* The figure's own height (CSS, else the 320px minimum), read once:
      * reading it after drawing would measure the chart itself. */
-    var height = Math.max(320, el.clientHeight);
+    var height = plan.spark ? (el.clientHeight || 44) : Math.max(320, el.clientHeight);
     var surface = document.createElement("div");
     surface.className = "tb-chart";
     var legend = document.createElement("div");
@@ -2432,7 +2442,8 @@
           mark: attr(el, "data-tb-mark"),
           annotate: attr(el, "data-tb-annotate"),
           facet: attr(el, "data-tb-facet"),
-          unit: attr(el, "data-tb-unit")
+          unit: attr(el, "data-tb-unit"),
+          spark: (" " + (el.className || "") + " ").indexOf(" tb-spark ") !== -1
         };
         /* Remove the server-rendered static SVG fallback (no-JS picture of the
          * chart) before drawing — echarts.init appends its root without

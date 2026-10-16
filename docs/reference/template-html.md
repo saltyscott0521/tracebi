@@ -144,7 +144,16 @@ is the in-page find.
 
 - **Tabs** — `<div class="tb-tabs"><section data-tb-tab="Label">…</section></div>`;
   the runtime builds the tab bar from the labels.
-- **Columns** — `.tb-cols-2` / `.tb-cols-3`, collapsing to one column under 720px.
+- **Columns** — `.tb-cols-2` / `.tb-cols-3`, and `.tb-cols-2-1` / `.tb-cols-1-2`
+  for a wide panel beside a narrow one; all collapse to one column under 720px.
+- **KPI strip** — a `.tb-grid` of `.tb-kpi` cells renders as one panel with
+  hairlines between the cells. `.tb-kpi--lead` makes the page's main number
+  twice as wide and larger.
+- **Sparkline** — a line or area chart with `class="tb-spark"` inside a
+  `.tb-kpi` draws the trend's shape alone (no axes, grid or legend; 44px tall;
+  zero-based); hovering still reads each value.
+- **Panels** — a `.tb-note` straight after a `.tb-card`'s first `<h2>` is the
+  panel's subtitle; a table that ends a card runs edge to edge.
 - **Sidebar** — `<div class="tb-tabs" data-tb-nav="side">` lays the same tab
   bar out as a left column (a top bar again under 720px).
 

@@ -29,7 +29,7 @@
   </header>
 
   <div class="tb-grid">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+    <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="win_rate" data-tb-format="percent" id="kpi-win">
       <span class="tb-kpi-label">Win rate</span>
       <span class="tb-kpi-value"></span>
@@ -76,7 +76,7 @@
                data-tb-labels="dim_rep.rep=Rep; pipeline_value=Open pipeline; won_value=Won value; win_rate=Win rate; closed_deals=Closed deals"
                data-tb-formats="pipeline_value=currency0; won_value=currency0; win_rate=percent; closed_deals=comma"
                data-tb-bars="pipeline_value"
-               class="tb-table--striped" id="tbl-rep"></table>
+               id="tbl-rep"></table>
       </div>
     </section>
 
@@ -95,7 +95,7 @@
                data-tb-labels="dim_region.region=Region; pipeline_value=Open pipeline; won_value=Won value; win_rate=Win rate; closed_deals=Closed deals"
                data-tb-formats="pipeline_value=currency0; won_value=currency0; win_rate=percent; closed_deals=comma"
                data-tb-bars="pipeline_value"
-               class="tb-table--striped" id="tbl-region"></table>
+               id="tbl-region"></table>
       </div>
     </section>
   </div>

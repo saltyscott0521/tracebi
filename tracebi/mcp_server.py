@@ -2109,7 +2109,7 @@ def build_server(token: Optional[str] = None, oauth=None):
             "from that recipe's pieces:\n"
             "- brief — .tb-lede, a few .tb-kpi cards, one chart in one "
             ".tb-card. `tracebi new-report \"<Name>\" --layout brief`\n"
-            "- dashboard — brief, then .tb-cols-2 (a chart beside a "
+            "- dashboard — brief, then .tb-cols-2-1 (a wide chart beside a "
             "filterable table). "
             "`tracebi new-report \"<Name>\" --layout dashboard`\n"
             "- tabbed — the same header, then .tb-tabs / data-tb-tab "

@@ -29,7 +29,7 @@
   </header>
 
   <div class="tb-grid">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+    <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="pipeline_value" data-tb-format="currency0"
          id="kpi-pipeline">
       <span class="tb-kpi-label">Open pipeline</span>
@@ -50,7 +50,7 @@
     </div>
   </div>
 
-  <div class="tb-cols-2">
+  <div class="tb-cols-2-1">
     <div class="tb-card">
       <h2>Open pipeline by stage</h2>
       <div data-tb-figure="chart" data-tb-binding="by_stage" data-tb-type="bar"
@@ -77,7 +77,7 @@
              data-tb-labels="dim_region.region=Region; pipeline_value=Open pipeline; win_rate=Win rate; won_value=Won value"
              data-tb-formats="pipeline_value=currency0; win_rate=percent; won_value=currency0"
              data-tb-bars="pipeline_value"
-             class="tb-table--striped" id="tbl-region"></table>
+             id="tbl-region"></table>
     </div>
   </div>
 

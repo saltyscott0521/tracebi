@@ -32,10 +32,20 @@ it.
 - **The numbers are the headline.** A slim title, then a KPI strip of three to
   five values, each with its comparison ([[design-kpis-with-context]]). The
   answer sentence ([[design-lead-with-the-answer]]) sits under it, short.
-- **Panels side by side, not cards down a page.** `.tb-cols-2` / `.tb-cols-3`,
-  one figure per `.tb-card`, the most important top-left
-  ([[design-layout-by-importance]]). The first screen holds the overview; detail
-  goes on a second tab, not further down.
+- **One strip with an anchor, not a row of equal boxes.** A `.tb-grid` of
+  `.tb-kpi` cells is one panel with hairlines between them. Mark the number the
+  page is about `.tb-kpi--lead` (twice as wide, larger). A row of three
+  identical cards is the most recognisable sign of a generated dashboard.
+- **Trends under their numbers.** A KPI that changes over time gets a
+  `class="tb-spark"` line or area chart bound to the by-period query: the
+  shape alone, no axes. It stays zero-based; never crop it to make a flat line
+  look steep.
+- **Panels side by side, not cards down a page.** A wide panel beside a narrow
+  one (`.tb-cols-2-1`: the trend beside its ranking) reads as a dashboard; two
+  equal halves read as a document. One figure per `.tb-card`, the most
+  important top-left ([[design-layout-by-importance]]). Give a panel a
+  one-line `.tb-note` subtitle under its `<h2>`. The first screen holds the
+  overview; detail goes on a second tab, not further down.
 - **Small labels, big values.** Card titles short and plain ("Fair value by
   sector"), controls (a filter, "top 10") beside the figure they change.
 - **Quiet chrome.** No gradients, shadows or icons for decoration

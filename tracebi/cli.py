@@ -2102,7 +2102,7 @@ def _layout_brief_body(measure: str, dim_ref: "str | None", table_binding: str,
             '  <div class="tb-card">',
             "    <h2>Detail</h2>",
             f'    <table data-tb-figure="table" data-tb-binding="{table_binding}"',
-            '           class="tb-table--striped" id="tbl-detail"></table>',
+            '           id="tbl-detail"></table>',
             "  </div>",
         ]
     d_label = _humanise_label(dim_ref)
@@ -2134,7 +2134,7 @@ def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
             '      <div class="tb-card">',
             "        <h2>Detail</h2>",
             f'        <table data-tb-figure="table" data-tb-binding="{table_binding}"',
-            '               class="tb-table--striped" id="tbl-detail"></table>',
+            '               id="tbl-detail"></table>',
             "      </div>",
             "    </section>",
             "  </div>",
@@ -2170,7 +2170,7 @@ def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
         '                  data-tb-label="Download CSV"></button>',
         "        </p>",
         f'        <table data-tb-figure="table" data-tb-binding="{table_binding}"',
-        '               class="tb-table--striped" id="tbl-detail"></table>',
+        '               id="tbl-detail"></table>',
         "      </div>",
         "    </section>",
         "  </div>",
@@ -2185,7 +2185,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
 
     ``dashboard`` (the default, and what ``tracebi init`` writes) is an answer
     sentence, a KPI strip, and — when the model has a dimension — a chart
-    beside a filter/search/download table (``.tb-cols-2``), plus a methodology
+    beside a filter/search/download table (``.tb-cols-2-1``), plus a methodology
     block and an exploration stage. ``brief`` is that header and one chart
     card. ``tabbed`` is that header, then Overview and Detail tabs. Generated
     (not a static file) because ``data-tb-*`` attributes name the model's real
@@ -2249,13 +2249,32 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         "      with <code>tracebi verify --file</code>.</p>",
         "  </header>",
         "",
+        "",
+        "  <!-- One KPI strip: the lead number twice as wide, then the figures",
+        "       that explain it. Never a row of identical boxes. -->",
         '  <div class="tb-grid">',
-        f'    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="totals"',
-        f'         data-tb-cell="{esc(measure)}" id="kpi-{esc(measure)}">',
+        f'    <div class="tb-kpi{" tb-kpi--lead" if dim_ref else ""}" data-tb-figure="value"',
+        f'         data-tb-binding="totals" data-tb-cell="{esc(measure)}" id="kpi-{esc(measure)}">',
         f'      <span class="tb-kpi-label">{esc(m_label)}</span>',
         '      <span class="tb-kpi-value"></span>',
         '      <span class="tb-kpi-context">state the period and comparison</span>',
         "    </div>",
+    ]
+    if dim_ref:
+        d_lab = _humanise_label(dim_ref)
+        parts += [
+            '    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="top"',
+            f'         data-tb-cell="{esc(dim_ref)}" id="kpi-top">',
+            f'      <span class="tb-kpi-label">Top {esc(d_lab.lower())}</span>',
+            '      <span class="tb-kpi-value"></span>',
+            "    </div>",
+            '    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="top"',
+            f'         data-tb-cell="{esc(measure)}" id="kpi-top-{esc(measure)}">',
+            f'      <span class="tb-kpi-label">{esc(m_label)}, top {esc(d_lab.lower())}</span>',
+            '      <span class="tb-kpi-value"></span>',
+            "    </div>",
+        ]
+    parts += [
         "  </div>",
     ]
     if layout == "brief":
@@ -2276,9 +2295,10 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         d_label = _humanise_label(dim_ref)
         parts += [
             "",
-            "  <!-- Chart and the filterable table share one dashboard row.",
-            "       tb-cols-2 stacks to a single column on a narrow screen. -->",
-            '  <div class="tb-cols-2">',
+            "  <!-- Chart and the filterable table share one dashboard row: the",
+            "       wide panel beside the narrow one (tb-cols-2-1). It stacks to",
+            "       a single column on a narrow screen. -->",
+            '  <div class="tb-cols-2-1">',
             '    <div class="tb-card">',
             f"      <h2>{esc(m_label)} by {esc(d_label)}</h2>",
             f'      <div data-tb-figure="chart" data-tb-binding="breakdown"',
@@ -2302,7 +2322,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
             '                data-tb-label="Download CSV"></button>',
             "      </p>",
             f'      <table data-tb-figure="table" data-tb-binding="{table_binding}"',
-            '             class="tb-table--striped" id="tbl-detail"></table>',
+            '             id="tbl-detail"></table>',
             "    </div>",
             "  </div>",
         ]
@@ -2312,7 +2332,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
             '  <div class="tb-card">',
             "    <h2>Detail</h2>",
             f'    <table data-tb-figure="table" data-tb-binding="{table_binding}"',
-            '           class="tb-table--striped" id="tbl-detail"></table>',
+            '           id="tbl-detail"></table>',
             "  </div>",
         ]
     parts += [

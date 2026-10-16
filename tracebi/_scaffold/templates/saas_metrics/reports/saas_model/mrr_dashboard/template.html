@@ -3,8 +3,12 @@
 <head><meta charset="utf-8"><title>SaaS MRR Dashboard</title></head>
 <body>
 <main class="tb-page">
+  <header class="tb-title" data-tb-title="left">
+    <h1>SaaS MRR Dashboard</h1>
+    <p class="tb-subtitle">Recurring revenue, customers and churn, month by month.</p>
+    <span data-tb-built></span>
+  </header>
   <header>
-    <h1>Scale leads ending MRR</h1>
     <p class="tb-lede">
       <span data-tb-figure="value" data-tb-binding="top_plan"
             data-tb-cell="dim_plan.plan" id="val-top-plan">—</span>
@@ -31,18 +35,26 @@
       the start of that month.</p>
   </header>
 
+  <!-- One KPI strip: the lead number twice as wide. A .tb-spark chart under
+       a KPI is its trend's shape, bound to the monthly query. -->
   <div class="tb-grid">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+    <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="ending_mrr" data-tb-format="currency0" id="kpi-mrr">
       <span class="tb-kpi-label">Ending MRR</span>
       <span class="tb-kpi-value"></span>
       <span class="tb-kpi-context">latest month in the warehouse</span>
+      <div class="tb-spark" data-tb-figure="chart" data-tb-binding="by_month"
+           data-tb-type="area" data-tb-x="dim_month.month" data-tb-y="ending_mrr"
+           data-tb-value-format="currency0" id="spark-mrr"></div>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="customers" data-tb-format="comma" id="kpi-customers">
       <span class="tb-kpi-label">Customers</span>
       <span class="tb-kpi-value"></span>
       <span class="tb-kpi-context">logos active at that month</span>
+      <div class="tb-spark" data-tb-figure="chart" data-tb-binding="by_month"
+           data-tb-type="line" data-tb-x="dim_month.month" data-tb-y="customers"
+           data-tb-value-format="comma" id="spark-customers"></div>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="logo_churn" data-tb-format="percent" id="kpi-churn">
@@ -52,7 +64,7 @@
     </div>
   </div>
 
-  <div class="tb-cols-2">
+  <div class="tb-cols-2-1">
     <div class="tb-card">
       <h2>Ending MRR by month</h2>
       <div data-tb-figure="chart" data-tb-binding="by_month" data-tb-type="line"
@@ -79,7 +91,7 @@
              data-tb-labels="dim_plan.plan=Plan; ending_mrr=Ending MRR; customers=Customers; logo_churn=Logo churn"
              data-tb-formats="ending_mrr=currency0; customers=comma; logo_churn=percent"
              data-tb-bars="ending_mrr"
-             class="tb-table--striped" id="tbl-plan"></table>
+             id="tbl-plan"></table>
     </div>
   </div>
 

@@ -560,15 +560,25 @@ def _presentation() -> dict:
                     "data-tb-tab=\"Label\">…</section>…</div> — the "
                     "runtime builds the tab bar from the labels and shows "
                     "one section at a time",
-            "columns": ".tb-cols-2 / .tb-cols-3 grid classes; responsive "
-                       "collapse to one column under 720px",
+            "columns": ".tb-cols-2 / .tb-cols-3 grid classes, and .tb-cols-2-1 / "
+                       ".tb-cols-1-2 for a wide panel beside a narrow one "
+                       "(the dashboard row); responsive collapse to one "
+                       "column under 720px",
+            "kpi_strip": "A .tb-grid of .tb-kpi cells renders as ONE panel "
+                         "with hairlines between the cells. Mark the number "
+                         "the page is about .tb-kpi--lead (twice as wide, a "
+                         "larger figure) — never a row of identical boxes. "
+                         "A line or area chart with class .tb-spark inside "
+                         "a .tb-kpi is its trend's shape: no axes or legend, "
+                         "44px tall, zero-based, hover still reads each "
+                         "value",
             "recipes": {
                 "brief": "One finding: answer sentence (.tb-lede), a few "
                          "KPIs (.tb-grid / .tb-kpi), one chart in one "
                          ".tb-card. "
                          "tracebi new-report \"Name\" --layout brief",
-                "dashboard": "brief, then .tb-cols-2 (a chart beside a "
-                             "filterable table). The default — what "
+                "dashboard": "brief, then .tb-cols-2-1 (a wide chart beside a "
+                             "narrow filterable table). The default — what "
                              "tracebi init and new-report write when "
                              "--layout is omitted. "
                              "tracebi new-report \"Name\" --layout dashboard",

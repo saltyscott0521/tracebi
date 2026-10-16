@@ -3,8 +3,14 @@
 <head><meta charset="utf-8"><title>Sample Dashboard</title></head>
 <body>
 <main class="tb-page">
-  <header>
+  <!-- The standard title: placement left | center | banner | nav.
+       data-tb-built shows when this file was built, from its receipt. -->
+  <header class="tb-title" data-tb-title="left">
     <h1>Orders — Sample Dashboard</h1>
+    <p class="tb-subtitle">Revenue, orders and units across every region.</p>
+    <span data-tb-built></span>
+  </header>
+  <header>
     <!-- Lead with the answer: one sentence, its numbers bound, under the title. -->
     <p class="tb-lede">
       <span data-tb-figure="value" data-tb-binding="top_region"
@@ -23,8 +29,10 @@
       Prose numbers can be bound too; never type one in.</p>
   </header>
 
+  <!-- One KPI strip: the lead number twice as wide, then the figures that
+       explain it. Never a row of identical boxes. -->
   <div class="tb-grid">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+    <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="revenue" data-tb-format="currency0" id="kpi-revenue">
       <span class="tb-kpi-label">Revenue</span>
       <span class="tb-kpi-value"></span>
@@ -50,11 +58,12 @@
     </div>
   </div>
 
-  <!-- Dashboard row: chart and the filterable table share the width.
-       tb-cols-2 stacks to one column on a narrow screen. -->
-  <div class="tb-cols-2">
+  <!-- Dashboard row: the wide chart beside the narrow table (tb-cols-2-1).
+       It stacks to one column on a narrow screen. -->
+  <div class="tb-cols-2-1">
     <div class="tb-card">
       <h2>Revenue by region</h2>
+      <p class="tb-note">Ranked by revenue, largest first.</p>
       <div data-tb-figure="chart" data-tb-binding="by_region" data-tb-type="bar"
            data-tb-x="dim_region.region" data-tb-y="revenue"
            data-tb-value-format="compact" id="chart-by-region"></div>
@@ -79,7 +88,7 @@
            number format for the columns they name ("col=Value; col=Value"). -->
       <table data-tb-figure="table" data-tb-binding="region_detail"
              data-tb-formats="revenue=currency"
-             class="tb-table--striped" id="tbl-regions"></table>
+             id="tbl-regions"></table>
     </div>
   </div>
 

@@ -57,10 +57,13 @@ needs: charts follow it automatically.
 .tb-page   .tb-grid   .tb-card
 .tb-lede                     the answer sentence under the title
 .tb-kpi  (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context)
+.tb-kpi--lead                the strip's main number, twice as wide
+.tb-spark                    a line/area chart in a KPI: the trend's shape alone
 .tb-table  (.tb-table--striped / .tb-table--compact / .tb-table--freeze)
 .tb-callout   .tb-note   .tb-badge
 .tb-good / .tb-bad           direction tones; pair with a sign or a word
 .tb-cols-2 / .tb-cols-3      responsive, collapse under 720px
+.tb-cols-2-1 / .tb-cols-1-2  a wide panel beside a narrow one
 .tb-tabs                     with data-tb-tab sections
 ```
 
