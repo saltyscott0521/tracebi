@@ -3579,6 +3579,7 @@
     try { hydrateScroll(); } catch (e) {}
     try { hydrateControls(); } catch (e) {}
     try { hydrateDownloads(); } catch (e) {}
+    try { hydrateTitle(); } catch (e) {}
   }
 
   function hydrate() {

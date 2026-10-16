@@ -193,14 +193,23 @@ def libraries_comment(libs) -> str:
 
 def stack_head(stage: Optional[str] = None, project_css: str = "",
                report_css: str = "", include_csp: bool = True,
-               libs=None) -> str:
-    """The head injection, in override order (later wins)."""
+               libs=None, app: bool = False) -> str:
+    """The head injection, in override order (later wins).
+
+    On an app page (app.jsx) tracebi.css goes in a cascade layer between
+    Tailwind's reset and its utilities, so a utility class (text-2xl) wins
+    over a TraceBi default while the kit's tb-* classes still style the
+    figures. The project theme and style.css stay unlayered: they win."""
     head = csp_meta() if include_csp else ""
     head += libraries_comment(libs)
     if stage:
         head += f'<meta name="tracebi-stage" content="{stage}">\n'
+    css = read_asset("tracebi.css")
+    if app:
+        css = ("@layer theme, base, tracebi, components, utilities;\n"
+               f"@layer tracebi {{\n{css}\n}}")
     head += ("<!-- tracebi.css: the TraceBi design system -->\n"
-             f"<style>\n{font_face_css()}\n{read_asset('tracebi.css')}\n</style>\n")
+             f"<style>\n{font_face_css()}\n{css}\n</style>\n")
     if project_css.strip():
         head += ("<!-- reports/_theme.css: the project theme -->\n"
                  f"<style>\n{project_css}\n</style>\n")
@@ -244,7 +253,7 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
 def apply_stack(page: str, *, libs, data_blocks_html: str,
                 stage: Optional[str] = None, project_css: str = "",
                 report_css: str = "", figures_cfg: Optional[dict] = None,
-                report_js: str = "") -> str:
+                report_js: str = "", app: bool = False) -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
     # The carrier render may already carry the framework CSP meta
     # (html_renderer inserts the same one); a second identical tag is just
@@ -255,7 +264,7 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
     page = insert_before(
         page, "</head>",
         stack_head(stage, project_css, report_css,
-                   include_csp=csp_meta().strip() not in page, libs=libs))
+                   include_csp=csp_meta().strip() not in page, libs=libs, app=app))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))

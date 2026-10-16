@@ -578,7 +578,8 @@ class TemplatePackage:
             self.app_imports = app_lane.scan_imports(self.app_source)
             self.app_icons = app_lane.icon_nodes(self.app_imports)
             app_shell = app_lane.shell_html(
-                self.page_title, app_lane.scan_figures(self.app_source))
+                self.page_title, app_lane.scan_figures(self.app_source),
+                app_lane.parse_look(declaration.get("look"), report_json_path))
 
         # Fonts and images under assets/ are inlined as data: URIs here, at
         # load, so every render path (dev, build, snapshot, web) carries them.
@@ -1696,6 +1697,7 @@ class TemplatePackage:
             report_css=self.style_css,
             figures_cfg=figures_cfg,
             report_js=self.script_js,
+            app=self.app_source is not None,
         )
 
 

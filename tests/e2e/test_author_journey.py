@@ -102,10 +102,14 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     assert code == 0, out
     plain = scaffolded / "plain" / "weekly"
     dash = scaffolded / "dash" / "weekly"
-    assert (plain / "template.html").read_bytes() == (dash / "template.html").read_bytes()
+    # The default is the dashboard, and a dashboard is an app (the React lane).
+    assert (plain / "app.jsx").read_bytes() == (dash / "app.jsx").read_bytes()
     assert (plain / "report.json").read_bytes() == (dash / "report.json").read_bytes()
+    assert not (dash / "template.html").exists()
     assert not (dash / "style.css").exists()
     assert not (dash / "script.js").exists()
+    code, out = run_cli("report", "build", "weekly", "--reports-dir", str(scaffolded / "dash"))
+    assert code == 0, out
 
     code, out = run_cli("new-report", "Weekly Brief", "--layout", "brief")
     assert code == 0, out
@@ -129,7 +133,7 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     # with the title at the top of the sidebar. It builds, and the answers
     # are attributes the runtime and the stylesheet read.
     code, out = run_cli("new-report", "Desk", "--nav", "side", "--mode", "dark",
-                        "--density", "compact", "--title-at", "nav")
+                        "--density", "compact", "--title-at", "nav", "--html")
     assert code == 0, out
     desk = (scaffolded / "reports" / "desk" / "template.html").read_text()
     assert ('<html lang="en" data-tb-mode="dark" data-tb-density="compact" '
@@ -142,6 +146,20 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     assert code == 0, out
     built = (scaffolded / "output" / "desk.html").read_text()
     assert 'data-tb-mode="dark"' in built and "data-tb-built" in built
+
+    # The same answers for an app: its look rides in report.json (an app has
+    # no <html> of its own), the sidebar holds the title, and it builds.
+    code, out = run_cli("new-report", "Desk App", "--nav", "side", "--mode", "dark",
+                        "--density", "compact", "--title-at", "nav")
+    assert code == 0, out
+    app_dir = scaffolded / "reports" / "desk_app"
+    decl = json.loads((app_dir / "report.json").read_text())
+    assert decl["look"] == {"mode": "dark", "density": "compact"}
+    assert "<aside" in (app_dir / "app.jsx").read_text()
+    code, out = run_cli("report", "build", "desk_app")
+    assert code == 0, out
+    built = (scaffolded / "output" / "desk_app.html").read_text()
+    assert '<html lang="en" data-tb-app data-tb-mode="dark" data-tb-density="compact">' in built
 
     code, out = run_cli("context")
     assert code == 0, out

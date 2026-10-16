@@ -1,0 +1,243 @@
+"""The React-lane starter that ``tracebi new-report`` writes for a dashboard.
+
+A string template, not a component library: the scaffold is the teaching page
+for app.jsx, as ``_report_template_html`` is for template.html — the kit, a
+KPI strip with a lead, a wide panel beside a narrow one, controls, and the
+look the builder chose (navigation and title placement).
+"""
+
+from __future__ import annotations
+
+_APP_HEAD = '''// app.jsx — this report's page, a React app (the React lane).
+// Numbers shown through the tracebi kit (<Kpi>, <Value>, <Chart>, <Table>)
+// carry the receipt: the build reads their binding / cell / x / y as claims,
+// so keep those literal strings. A number your own code computes or draws is
+// the app's presentation, not a checked figure. Imports: react, recharts,
+// lucide-react (icons by name), tracebi. Colours: bg-page bg-card bg-surface
+// text-ink text-muted border-rule bg-accent follow the page's theme and mode.
+// The kit and patterns: docs/reference/app-jsx.md.
+import { useState } from "react";
+import { LayoutDashboard, Table2 } from "lucide-react";
+import { Kpi, Value, Chart, Table, Filter, Search, Download, Built } from "tracebi";
+
+const TITLE = "__TITLE__";
+const VIEWS = { Overview: LayoutDashboard, Detail: Table2 };
+'''
+
+_APP_HEADERS = {
+    "left": '''
+function Header() {
+  return (
+    <header className="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">{TITLE}</h1>
+        <p className="text-sm text-muted">One line on what this page is for.</p>
+      </div>
+      <Built className="text-xs text-muted" />
+    </header>
+  );
+}
+''',
+    "center": '''
+function Header() {
+  return (
+    <header className="text-center">
+      <h1 className="text-2xl font-semibold tracking-tight">{TITLE}</h1>
+      <p className="text-sm text-muted">One line on what this page is for.</p>
+      <Built className="text-xs text-muted" />
+    </header>
+  );
+}
+''',
+    "banner": '''
+function Header() {
+  return (
+    <header className="rounded-panel bg-accent px-8 py-7 text-white">
+      <h1 className="text-2xl font-semibold tracking-tight">{TITLE}</h1>
+      <p className="text-sm opacity-85">One line on what this page is for.</p>
+      <Built className="text-xs opacity-75" />
+    </header>
+  );
+}
+''',
+}
+
+_APP_VIEWS_DIM = '''
+// Lead with the answer: one sentence, its numbers bound to the stamped rows.
+function Overview() {
+  return (
+    <>
+      <p className="tb-lede">
+        <Value binding="top" cell="__DIM__" /> leads on __MLOWER__ with{" "}
+        <Value binding="top" cell="__MEASURE__" />. Rewrite this sentence as the
+        page's finding.
+      </p>
+      {/* One KPI strip: the lead number twice as wide, then what explains it. */}
+      <div className="tb-grid">
+        <Kpi lead binding="totals" cell="__MEASURE__" label="__MLABEL__"
+             context="state the period and comparison" />
+        <Kpi binding="top" cell="__DIM__" label="Top __DLOWER__" id="kpi-top" />
+        <Kpi binding="top" cell="__MEASURE__" label="__MLABEL__, top __DLOWER__"
+             id="kpi-top-__MEASURE_ID__" />
+      </div>
+      {/* A wide panel beside a narrow one: the breakdown and its ranking. */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="tb-card lg:col-span-2">
+          <h2>__MLABEL__ by __DLABEL__</h2>
+          <p className="tb-note">Largest first.</p>
+          <Chart binding="breakdown" type="bar" x="__DIM__" y="__MEASURE__"
+                 valueFormat="compact" />
+        </section>
+        <section className="tb-card">
+          <h2>Ranking</h2>
+          <Table binding="breakdown" sort bars="__MEASURE__" />
+        </section>
+      </div>
+    </>
+  );
+}
+
+// Controls choose which stamped rows show; they never compute a number.
+function Detail() {
+  return (
+    <section className="tb-card">
+      <h2>Detail</h2>
+      <p className="tb-note">Search and filter choose rows; the CSV is the stamped data, verbatim.</p>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Search binding="breakdown" />
+        <Filter binding="breakdown" column="__DIM__" label="__DLABEL__" />
+        <Download binding="breakdown" />
+      </div>
+      <Table binding="breakdown" id="detail-table" sort />
+    </section>
+  );
+}
+'''
+
+_APP_VIEWS_TOTALS = '''
+function Overview() {
+  return (
+    <div className="tb-grid">
+      <Kpi lead binding="totals" cell="__MEASURE__" label="__MLABEL__"
+           context="state the period and comparison" />
+    </div>
+  );
+}
+
+function Detail() {
+  return (
+    <section className="tb-card">
+      <h2>Detail</h2>
+      <Table binding="totals" />
+    </section>
+  );
+}
+'''
+
+_APP_SHELLS = {
+    "": '''
+export default function App() {
+  return (
+    <div className="min-h-screen bg-page text-ink">
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
+        <Header />
+        <Overview />
+        <Detail />
+      </main>
+    </div>
+  );
+}
+''',
+    "top": '''
+export default function App() {
+  const [view, setView] = useState("Overview");
+  const View = view === "Overview" ? Overview : Detail;
+  return (
+    <div className="min-h-screen bg-page text-ink">
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
+        <Header />
+        <nav className="flex gap-1 border-b border-rule">
+          {Object.entries(VIEWS).map(([name, Icon]) => (
+            <button key={name} onClick={() => setView(name)}
+              className={"flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm " +
+                (view === name ? "border-accent font-medium text-ink"
+                               : "border-transparent text-muted hover:text-ink")}>
+              <Icon size={15} />{name}
+            </button>
+          ))}
+        </nav>
+        <View />
+      </main>
+    </div>
+  );
+}
+''',
+    "side": '''
+export default function App() {
+  const [view, setView] = useState("Overview");
+  const View = view === "Overview" ? Overview : Detail;
+  return (
+    <div className="min-h-screen bg-page text-ink md:flex">
+      <aside className="shrink-0 border-b border-rule bg-card p-3 md:sticky md:top-0
+                        md:h-screen md:w-60 md:border-r md:border-b-0">
+__BRAND__
+        <nav className="flex gap-1 md:flex-col">
+          {Object.entries(VIEWS).map(([name, Icon]) => (
+            <button key={name} onClick={() => setView(name)}
+              className={"flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm " +
+                (view === name ? "bg-surface font-medium text-ink"
+                               : "text-muted hover:bg-surface hover:text-ink")}>
+              <Icon size={16} />{name}
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <main className="min-w-0 flex-1 space-y-6 px-6 py-8">
+__MAIN_HEADER__
+        <View />
+      </main>
+    </div>
+  );
+}
+''',
+}
+
+_BRAND_PLAIN = '''        <div className="mb-3 border-b border-rule px-2.5 pb-3 font-semibold">{TITLE}</div>'''
+_BRAND_TITLE = '''        <div className="mb-3 border-b border-rule px-2.5 pb-3">
+          <div className="font-semibold">{TITLE}</div>
+          <p className="text-xs text-muted">One line on what this page is for.</p>
+          <Built className="text-xs text-muted" />
+        </div>'''
+
+
+def report_app_jsx(title, measure, dim_ref, *, nav="", title_at="left",
+                   humanise=lambda s: s):
+    """The React-lane starter: one app.jsx over the scaffold's bindings
+    (totals, top, breakdown), shaped by the look the builder chose."""
+    in_nav = nav == "side" and title_at == "nav"
+    header = _APP_HEADERS.get(title_at if title_at in _APP_HEADERS else "left")
+    if in_nav:
+        header = '''
+function Header({ view }) {
+  return <h1 className="text-2xl font-semibold tracking-tight">{view}</h1>;
+}
+'''
+    shell = _APP_SHELLS[nav if nav in _APP_SHELLS else ""]
+    shell = shell.replace("__BRAND__", _BRAND_TITLE if in_nav else _BRAND_PLAIN)
+    shell = shell.replace("__MAIN_HEADER__",
+                          "        <Header view={view} />" if in_nav else "        <Header />")
+    views = _APP_VIEWS_DIM if dim_ref else _APP_VIEWS_TOTALS
+    head = _APP_HEAD if nav else _APP_HEAD.replace("import { useState } from \"react\";\n", "")
+    if not nav:
+        head = head.replace('import { LayoutDashboard, Table2 } from "lucide-react";\n', "")
+        head = head.replace("const VIEWS = { Overview: LayoutDashboard, Detail: Table2 };\n", "")
+    m_label = humanise(measure)
+    d_label = humanise(dim_ref) if dim_ref else ""
+    text = head + header + views + shell
+    js = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')  # noqa: E731
+    for token, value in (("__TITLE__", js(title)), ("__MEASURE_ID__", measure.replace(".", "-")),
+                         ("__MEASURE__", measure), ("__DIM__", dim_ref or ""),
+                         ("__MLABEL__", m_label), ("__MLOWER__", m_label.lower()),
+                         ("__DLABEL__", d_label), ("__DLOWER__", d_label.lower())):
+        text = text.replace(token, value)
+    return text

@@ -2058,7 +2058,8 @@ def _humanise_label(ref: str) -> str:
     return name[:1].upper() + name[1:] if name else str(ref)
 
 
-def _report_json_text(title: str, model: str, query: dict) -> str:
+def _report_json_text(title: str, model: str, query: dict,
+                      look: "dict | None" = None) -> str:
     """Teaching bindings from the derived query: ``totals`` (measures only,
     one row — for KPI cards and bound prose) and, when the model has a
     dimension, ``top`` (the leading member, one row — for the answer-first
@@ -2087,6 +2088,12 @@ def _report_json_text(title: str, model: str, query: dict) -> str:
                        "pandas.",
         "data": data,
     }
+    if look is not None:
+        # An app page has no <html> of its own: its mode and density live here.
+        declaration["description"] = declaration["description"].replace(
+            "edit template.html", "edit app.jsx")
+        if look:
+            declaration["look"] = look
     return json.dumps(declaration, indent=2) + "\n"
 
 
@@ -2413,19 +2420,38 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     measure = query["measures"][0]
     dims = query.get("dimensions")
     dim_ref = dims[0] if dims else None
+    # A dashboard is an app (the React lane) unless --html asks for the
+    # template page; a brief and a tabbed page are template pages.
+    app = args.layout == "dashboard" and not args.html
+    look = {k: v for k, v in (("mode", args.mode), ("density", args.density))
+            if v not in ("light", "comfortable")}
+    for stale in ("template.html", "app.jsx"):     # --force switching lanes
+        if (pkg_dir / stale).is_file():
+            (pkg_dir / stale).unlink()
     (pkg_dir / "report.json").write_text(
-        _report_json_text(args.title, model, query), encoding="utf-8")
-    (pkg_dir / "template.html").write_text(
-        _report_template_html(args.title, measure, dim_ref, args.layout,
-                              mode=args.mode, density=args.density,
-                              nav=args.nav, title_at=args.title_at),
+        _report_json_text(args.title, model, query, look=look if app else None),
         encoding="utf-8")
+    if app:
+        from tracebi._app_scaffold import report_app_jsx
+        page = "app.jsx"
+        (pkg_dir / page).write_text(
+            report_app_jsx(args.title, measure, dim_ref, nav=args.nav,
+                           title_at=args.title_at, humanise=_humanise_label),
+            encoding="utf-8")
+        layout = "dashboard app"
+    else:
+        page = "template.html"
+        (pkg_dir / page).write_text(
+            _report_template_html(args.title, measure, dim_ref, args.layout,
+                                  mode=args.mode, density=args.density,
+                                  nav=args.nav, title_at=args.title_at),
+            encoding="utf-8")
+        layout = "tabbed" if args.nav in ("top", "side") else args.layout
 
-    layout = "tabbed" if args.nav in ("top", "side") else args.layout
-    look = [args.mode, args.density] + ([f"{args.nav} nav"] if args.nav else []) \
+    look_words = [args.mode, args.density] + ([f"{args.nav} nav"] if args.nav else []) \
         + [f"title {args.title_at}"]
-    print(f"Created {pkg_dir}/ (report.json, template.html), layout {layout}, "
-          f"{', '.join(look)}")
+    print(f"Created {pkg_dir}/ (report.json, {page}), layout {layout}, "
+          f"{', '.join(look_words)}")
     if note:
         print(f"  {note}")
     else:
@@ -3389,9 +3415,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--layout",
         choices=["brief", "dashboard", "tabbed"],
         default="dashboard",
-        help="Page structure. brief: answer sentence, KPIs, one chart. "
-             "dashboard (default): brief, then a chart beside a filterable "
-             "table. tabbed: the same header, then Overview and Detail tabs.",
+        help="Page structure. dashboard (default): an app.jsx React app — "
+             "a KPI strip, a chart beside its ranking, a filterable detail "
+             "(--html for the template.html version). brief: answer sentence, "
+             "KPIs, one chart. tabbed: the same header, then Overview and "
+             "Detail tabs. brief and tabbed are template.html pages.",
     )
     # The look: the same four questions an agent asks before it builds.
     p_new_report.add_argument(
@@ -3402,8 +3430,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="comfortable (default) or compact spacing.")
     p_new_report.add_argument(
         "--nav", choices=["top", "side"], default="",
-        help="Pages as top tabs or a sidebar (implies the tabbed layout; a "
+        help="Views as top tabs or a sidebar. In a dashboard app, the app's "
+             "own navigation; with --html, the tabbed template page (a "
              "sidebar also uses the full window width).")
+    p_new_report.add_argument(
+        "--html", action="store_true",
+        help="Write the dashboard as template.html (the data-tb-* page that "
+             "reads with JavaScript off) instead of an app.jsx React app.")
     p_new_report.add_argument(
         "--title-at", choices=["left", "center", "banner", "nav"], default="left",
         help="Where the title sits: left (default), center, a banner, or at "

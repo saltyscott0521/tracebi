@@ -43,6 +43,9 @@
   --tb-space-3: 16px;
   --tb-space-4: 32px;
   --tb-radius: 12px;
+  /* A card's padding, which a table ending the card bleeds through. */
+  --tb-card-pad-y: 20px;
+  --tb-card-pad-x: 20px;
   /* Table density in one token: rows read at this padding everywhere; the
    * --compact variant tightens it. Change density here, not per table. */
   --tb-cell-pad: 10px 12px;
@@ -83,21 +86,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4 {
+/* Element defaults for a template page. An app page (app.jsx) styles its
+ * own elements with Tailwind, so these step aside there; :where() keeps
+ * their specificity that of a bare element. */
+:where(:root:not([data-tb-app])) :is(h1, h2, h3, h4) {
   line-height: 1.25;
   text-wrap: balance;
   margin: var(--tb-space-4) 0 var(--tb-space-2);
   letter-spacing: -0.01em;
 }
-h1 { font-size: 2.1em; font-weight: 650; letter-spacing: -0.03em; margin-top: 0; }
-h1 + p { color: var(--tb-muted); font-size: 1.05em; max-width: 72ch;
+:where(:root:not([data-tb-app])) h1 { font-size: 2.1em; font-weight: 650; letter-spacing: -0.03em; margin-top: 0; }
+:where(:root:not([data-tb-app])) h1 + p { color: var(--tb-muted); font-size: 1.05em; max-width: 72ch;
          margin-top: 0; }
-h2 { font-size: 1.2em; font-weight: 600; margin-top: 40px; }
-h3 { font-size: 1em; font-weight: 600; }
-h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
+:where(:root:not([data-tb-app])) h2 { font-size: 1.2em; font-weight: 600; margin-top: 40px; }
+:where(:root:not([data-tb-app])) h3 { font-size: 1em; font-weight: 600; }
+:where(:root:not([data-tb-app])) h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
      text-transform: uppercase; letter-spacing: 0.06em; }
 
-p { margin: var(--tb-space-2) 0 var(--tb-space-3); max-width: 75ch; }
+:where(:root:not([data-tb-app])) p { margin: var(--tb-space-2) 0 var(--tb-space-3); max-width: 75ch; }
 a { color: var(--tb-accent-text); text-underline-offset: 0.18em; }
 ::selection { background: color-mix(in srgb, var(--tb-accent) 22%, transparent); }
 hr { border: 0; border-top: 1px solid var(--tb-rule);
@@ -157,7 +163,7 @@ img, svg { max-width: 100%; }
 .tb-card {
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
-  padding: 20px;
+  padding: var(--tb-card-pad-y) var(--tb-card-pad-x);
   background: var(--tb-bg);
   box-shadow: var(--tb-shadow);
   min-width: 0;
@@ -181,16 +187,16 @@ img, svg { max-width: 100%; }
 /* A table that is the card's body runs edge to edge, like a list in an app:
  * its rules meet the card's border and its text lines up with the title. */
 .tb-card > :is(.tb-table, [data-tb-figure="table"], .tb-scroll):last-child {
-  width: calc(100% + 40px);
-  margin: 0 -20px -20px;
+  width: calc(100% + 2 * var(--tb-card-pad-x));
+  margin: 0 calc(-1 * var(--tb-card-pad-x)) calc(-1 * var(--tb-card-pad-y));
 }
 .tb-card > .tb-scroll:last-child > :is(.tb-table, [data-tb-figure="table"]) { width: 100%; }
 /* A table wider than its panel scrolls inside it, never past the border. */
 .tb-card:has(> :is(.tb-table, [data-tb-figure="table"], .tb-scroll):last-child) { overflow-x: auto; }
 .tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child :is(th, td):first-child,
-.tb-card > .tb-scroll:last-child :is(th, td):first-child { padding-left: 20px; }
+.tb-card > .tb-scroll:last-child :is(th, td):first-child { padding-left: var(--tb-card-pad-x); }
 .tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child :is(th, td):last-child,
-.tb-card > .tb-scroll:last-child :is(th, td):last-child { padding-right: 20px; }
+.tb-card > .tb-scroll:last-child :is(th, td):last-child { padding-right: var(--tb-card-pad-x); }
 .tb-card > :is(.tb-table, [data-tb-figure="table"], .tb-scroll):last-child thead th {
   background: var(--tb-surface);
   border-top: 1px solid var(--tb-rule);
@@ -820,8 +826,8 @@ label > input[data-tb-search] { width: 11em; }
   --tb-cell-pad: 6px 10px;
 }
 :root[data-tb-density="compact"] body { font-size: 14px; padding-top: 20px; }
-:root[data-tb-density="compact"] .tb-card { padding: 14px 16px; }
-:root[data-tb-density="compact"] h2 { margin-top: 24px; }
+:root[data-tb-density="compact"] { --tb-card-pad-y: 14px; --tb-card-pad-x: 16px; }
+:root[data-tb-density="compact"] h2:not(:first-child) { margin-top: 24px; }
 
 :root[data-tb-width="full"] body,
 :root[data-tb-width="full"] .tb-page { max-width: none; }

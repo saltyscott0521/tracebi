@@ -296,11 +296,32 @@ def claims_html(figs: list[KitFigure]) -> str:
             + "\n</template>\n") if parts else ""
 
 
-def shell_html(title: str, figs: list[KitFigure]) -> str:
+#: report.json "look" for an app page: the attributes a template would put
+#: on its own <html>, which an app.jsx does not have.
+LOOK = {"mode": ("light", "dark", "auto"), "density": ("comfortable", "compact")}
+
+
+def parse_look(raw, path: str) -> dict:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict) or any(k not in LOOK for k in raw):
+        raise ValueError(f"{path}: 'look' is an object with {', '.join(LOOK)}.")
+    for key, value in raw.items():
+        if value not in LOOK[key]:
+            raise ValueError(f"{path}: look.{key} is one of "
+                             f"{', '.join(LOOK[key])}, not {value!r}.")
+    return dict(raw)
+
+
+def shell_html(title: str, figs: list[KitFigure], look: dict | None = None) -> str:
     """The template a React package renders through: a mount point and the
     claims. Everything the reader sees is drawn by the app."""
+    look = look or {}
+    attrs = "".join(
+        [f' data-tb-mode="{look["mode"]}"' if look.get("mode") in ("dark", "auto") else "",
+         ' data-tb-density="compact"' if look.get("density") == "compact" else ""])
     return (
-        "<!doctype html>\n<html lang=\"en\" data-tb-app>\n<head><meta charset=\"utf-8\">"
+        f"<!doctype html>\n<html lang=\"en\" data-tb-app{attrs}>\n<head><meta charset=\"utf-8\">"
         f"<title>{html.escape(title)}</title></head>\n<body>\n"
         "<div id=\"tb-app\"></div>\n" + claims_html(figs) + "</body></html>\n")
 

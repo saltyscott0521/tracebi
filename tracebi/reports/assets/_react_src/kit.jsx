@@ -135,3 +135,10 @@ export function Download({ binding, label }) {
   return <button type="button" data-tb-download="" data-tb-binding={binding}
     data-tb-label={label || "Download CSV"} />;
 }
+
+/** When this file was built, from its receipt ("Built Oct 16, 2026, 6:10 PM").
+ * A fact about the build, never typed in. */
+export function Built({ className }) {
+  useHydrate();
+  return <span className={className} data-tb-built="" />;
+}
