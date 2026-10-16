@@ -171,6 +171,7 @@ _TAILWIND_PRELUDE = '''<style type="text/tailwindcss">
   --color-rule: var(--tb-rule);
   --color-accent: var(--tb-accent);
   --color-accent-text: var(--tb-accent-text);
+  --color-on-accent: var(--tb-on-accent);
   --color-good: var(--tb-good);
   --color-bad: var(--tb-bad);
   --color-chart-1: var(--tb-chart-1);

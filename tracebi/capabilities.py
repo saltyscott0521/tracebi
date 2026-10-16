@@ -311,7 +311,8 @@ def _presentation() -> dict:
                       "exist. A number the app computes or draws itself is presentation, "
                       "not a checked figure; the page's About block says so.",
             "styling": "Tailwind classes, with the TraceBi tokens as colours (bg-page, "
-                       "bg-card, bg-surface, text-ink, text-muted, border-rule, bg-accent, "
+                       "bg-card, bg-surface, text-ink, text-muted, border-rule, bg-accent "
+                       "with text-on-accent, "
                        "text-good, text-bad, chart-1..8) and the kit's tb-* classes.",
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
@@ -321,6 +322,7 @@ def _presentation() -> dict:
         },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
+            "--tb-on-accent (text on an accent fill)",
             "--tb-rule", "--tb-radius", "--tb-space-1..4",
             "--tb-good / --tb-bad (direction tones)",
             "--tb-cell-pad (table density)",

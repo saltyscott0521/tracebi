@@ -48,7 +48,7 @@ Any other import fails the build and names the list. Tailwind classes work
 everywhere, generated in the page. The TraceBi tokens are Tailwind colours, so
 an app follows the page's mode and the project's `reports/_theme.css`:
 `bg-page`, `bg-card`, `bg-surface`, `text-ink`, `text-muted`, `border-rule`,
-`bg-accent`, `text-accent-text`, `text-good`, `text-bad`, `chart-1` … `chart-8`,
+`bg-accent`, `text-accent-text`, `text-on-accent` (text on an accent fill), `text-good`, `text-bad`, `chart-1` … `chart-8`,
 `font-sans` / `font-mono`, `rounded-panel`. The `tb-*` classes
 ([[styling-a-report]]) work too.
 

@@ -52,7 +52,7 @@ function Header() {
     "banner": '''
 function Header() {
   return (
-    <header className="rounded-panel bg-accent px-8 py-7 text-white">
+    <header className="rounded-panel bg-accent px-8 py-7 text-on-accent">
       <h1 className="text-2xl font-semibold tracking-tight">{TITLE}</h1>
       <p className="text-sm opacity-85">One line on what this page is for.</p>
       <Built className="text-xs opacity-75" />
